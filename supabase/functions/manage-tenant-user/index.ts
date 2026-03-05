@@ -93,15 +93,22 @@ serve(async (req) => {
     const isPlatformAdmin = await hasPlatformAdminAccess(supabaseAdmin, user);
     console.log(`User ${user.email} is platform admin: ${isPlatformAdmin}`);
 
-    // Get caller's tenant and role for permission checks
-    const { data: callerMembership } = await supabaseAdmin
-      .from('user_tenant_memberships')
-      .select('tenant_id, role')
-      .eq('user_id', user.id)
-      .eq('is_active', true)
-      .single();
+    const assertTenantPermission = async (tenantId: string, requiredRole: 'abgeordneter') => {
+      if (isSuperadmin) return;
 
-    const isAbgeordneter = callerMembership?.role === 'abgeordneter';
+      const { data: permission } = await supabaseAdmin
+        .from('user_tenant_memberships')
+        .select('user_id, tenant_id, is_active, role')
+        .eq('user_id', user.id)
+        .eq('tenant_id', tenantId)
+        .eq('is_active', true)
+        .eq('role', requiredRole)
+        .maybeSingle();
+
+      if (!permission) {
+        throw new HttpError(403, 'Insufficient permissions');
+      }
+    };
 
     const body = await req.json();
     const { action } = body;
@@ -359,12 +366,12 @@ serve(async (req) => {
             .from('user_tenant_memberships')
             .select('tenant_id')
             .eq('user_id', userId)
-            .eq('tenant_id', callerMembership?.tenant_id)
+            .eq('tenant_id', tenantId)
             .eq('is_active', true)
-            .single();
+            .maybeSingle();
 
           if (!targetMembership) {
-            throw new Error('Insufficient permissions - user not in your tenant');
+            throw new HttpError(403, 'Insufficient permissions - user not in target tenant');
           }
         } else if (!isPlatformAdmin) {
           throw new Error('Insufficient permissions');
@@ -501,7 +508,7 @@ serve(async (req) => {
       success: false,
       error: error instanceof Error ? error.message : String(error) 
     }), {
-      status: 400,
+      status: error instanceof HttpError ? error.status : 400,
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });
   }

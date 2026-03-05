@@ -7,6 +7,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { useTenant } from '@/hooks/useTenant';
 import { supabase } from '@/integrations/supabase/client';
 import { debugConsole, isDebugConsoleEnabled } from '@/utils/debugConsole';
+import { getCoiCapabilityStatus } from '@/lib/coiRuntime';
 
 // ─── Interfaces ──────────────────────────────────────────────────────────────
 
@@ -38,6 +39,7 @@ interface MatrixE2EEDiagnostics {
   crossSigningReady: boolean | null;
   keyBackupEnabled: boolean | null;
   cryptoError: string | null;
+  coiBlockedReason: 'iframe' | 'preview-host' | 'iframe-preview' | null;
 }
 
 interface MatrixSasVerificationState {
@@ -83,6 +85,9 @@ export interface MatrixMessage {
 // ─── Constants ───────────────────────────────────────────────────────────────
 
 const MAX_CACHED_MESSAGES = 200;
+const MAX_CACHED_ROOMS = 60;
+const SCROLLBACK_BATCH_LIMIT = 40;
+const MAX_SCROLLBACK_LOOPS = 6;
 
 
 
@@ -326,6 +331,7 @@ const createDefaultE2EEDiagnostics = (): MatrixE2EEDiagnostics => {
       crossSigningReady: null,
       keyBackupEnabled: null,
       cryptoError: null,
+      coiBlockedReason: null,
     };
   }
 
@@ -338,6 +344,7 @@ const createDefaultE2EEDiagnostics = (): MatrixE2EEDiagnostics => {
     crossSigningReady: null,
     keyBackupEnabled: null,
     cryptoError: null,
+    coiBlockedReason: getCoiCapabilityStatus().reason,
   };
 };
 
@@ -400,6 +407,7 @@ export function MatrixClientProvider({ children }: { children: ReactNode }) {
     crossSigningReady: null,
     keyBackupEnabled: null,
     cryptoError: null,
+    coiBlockedReason: getCoiCapabilityStatus().reason,
   });
 
   // Refs for cleanup
@@ -410,6 +418,37 @@ export function MatrixClientProvider({ children }: { children: ReactNode }) {
   const clientRef = useRef<sdk.MatrixClient | null>(null);
   const listenersRef = useRef<Array<{ event: string; handler: (...args: any[]) => void }>>([]);
   const refreshInFlightRef = useRef<Set<string>>(new Set());
+  const messagesRoomLruRef = useRef<string[]>([]);
+
+  const touchRoomInLru = useCallback((roomId: string) => {
+    const lru = messagesRoomLruRef.current;
+    const existingIndex = lru.indexOf(roomId);
+    if (existingIndex >= 0) {
+      lru.splice(existingIndex, 1);
+    }
+    lru.push(roomId);
+  }, []);
+
+  const upsertRoomMessages = useCallback((
+    prev: Map<string, MatrixMessage[]>,
+    roomId: string,
+    updater: (current: MatrixMessage[]) => MatrixMessage[],
+  ) => {
+    const current = prev.get(roomId) || [];
+    const nextRoomMessages = updater(current).slice(-MAX_CACHED_MESSAGES);
+    const next = new Map(prev);
+    next.set(roomId, nextRoomMessages);
+
+    touchRoomInLru(roomId);
+    const lru = messagesRoomLruRef.current;
+    while (next.size > MAX_CACHED_ROOMS && lru.length > 0) {
+      const evictRoomId = lru.shift();
+      if (!evictRoomId || evictRoomId === roomId) continue;
+      next.delete(evictRoomId);
+    }
+
+    return next;
+  }, [touchRoomInLru]);
 
   // Keep isConnectedRef in sync
   useEffect(() => { isConnectedRef.current = isConnected; }, [isConnected]);
@@ -492,8 +531,49 @@ export function MatrixClientProvider({ children }: { children: ReactNode }) {
     setConnectionError(null);
 
     try {
-      // 1. Resolve device ID from localStorage (no whoAmI call)
-      const localDeviceId = creds.deviceId || localStorage.getItem(`matrix_device_id:${creds.userId}`) || undefined;
+      const deviceStorageKey = `matrix_device_id:${creds.userId}`;
+      const resolveDeviceId = async (options?: { ignoreCached?: boolean }) => {
+        const cachedDeviceId = options?.ignoreCached
+          ? undefined
+          : (creds.deviceId || localStorage.getItem(deviceStorageKey) || undefined);
+
+        let whoamiBody: { user_id?: string; device_id?: string };
+        try {
+          const whoamiResponse = await fetch(`${creds.homeserverUrl}/_matrix/client/v3/account/whoami`, {
+            headers: { Authorization: `Bearer ${creds.accessToken}` },
+          });
+
+          if (!whoamiResponse.ok) {
+            throw new Error(`whoami antwortete mit HTTP ${whoamiResponse.status}`);
+          }
+
+          whoamiBody = await whoamiResponse.json();
+        } catch (error) {
+          throw new Error(
+            `Matrix-Connect abgebrochen: deviceId konnte nicht via whoami ermittelt werden (${error instanceof Error ? error.message : 'Unbekannter Fehler'}).`,
+          );
+        }
+
+        if (whoamiBody.user_id && whoamiBody.user_id !== creds.userId) {
+          throw new Error(
+            `Matrix-Connect abgebrochen: whoami user_id (${whoamiBody.user_id}) passt nicht zu den Credentials (${creds.userId}).`,
+          );
+        }
+
+        const resolvedDeviceId = cachedDeviceId || whoamiBody.device_id;
+        if (!resolvedDeviceId) {
+          throw new Error('Matrix-Connect abgebrochen: whoami lieferte keine device_id und lokal ist keine deviceId gespeichert.');
+        }
+
+        if (!cachedDeviceId && whoamiBody.device_id) {
+          localStorage.setItem(deviceStorageKey, whoamiBody.device_id);
+        }
+
+        return resolvedDeviceId;
+      };
+
+      // 1. Hard precondition: resolve canonical device ID before creating any client
+      let localDeviceId = await resolveDeviceId();
       authPasswordRef.current = creds.password;
 
       const getSecretStorageKey = async ({ keys }: { keys: Record<string, unknown> }) => {
@@ -515,8 +595,8 @@ export function MatrixClientProvider({ children }: { children: ReactNode }) {
         baseUrl: creds.homeserverUrl,
         accessToken: creds.accessToken,
         userId: creds.userId,
+        deviceId: localDeviceId,
         cryptoCallbacks: { getSecretStorageKey },
-        ...(localDeviceId ? { deviceId: localDeviceId } : {}),
       });
 
       clientRef.current = matrixClient;
@@ -565,11 +645,13 @@ export function MatrixClientProvider({ children }: { children: ReactNode }) {
             localStorage.removeItem(`matrix_device_id:${creds.userId}`);
             // Clear stale crypto stores to prevent OTK collisions
             await clearLocalCryptoStores(creds.userId);
+            localDeviceId = await resolveDeviceId({ ignoreCached: true });
             // Recreate client without stale deviceId
             matrixClient = sdk.createClient({
               baseUrl: creds.homeserverUrl,
               accessToken: creds.accessToken,
               userId: creds.userId,
+              deviceId: localDeviceId,
               cryptoCallbacks: { getSecretStorageKey },
             });
             clientRef.current = matrixClient;
@@ -581,6 +663,7 @@ export function MatrixClientProvider({ children }: { children: ReactNode }) {
         cryptoError: string | null = null,
         cryptoState?: { secretStorageReady: boolean | null; crossSigningReady: boolean | null; keyBackupEnabled: boolean | null }
       ) => {
+        const coiStatus = getCoiCapabilityStatus();
         setE2eeDiagnostics({
           secureContext: window.isSecureContext,
           crossOriginIsolated: window.crossOriginIsolated,
@@ -590,6 +673,7 @@ export function MatrixClientProvider({ children }: { children: ReactNode }) {
           crossSigningReady: cryptoState?.crossSigningReady ?? null,
           keyBackupEnabled: cryptoState?.keyBackupEnabled ?? null,
           cryptoError,
+          coiBlockedReason: coiStatus.reason,
         });
       };
 
@@ -598,22 +682,30 @@ export function MatrixClientProvider({ children }: { children: ReactNode }) {
       let lastCryptoError: string | null = null;
 
       // 3. Init Rust Crypto (BEFORE startClient)
-      try {
-        matrixLogger.log('=== Matrix E2EE Diagnostics ===');
-        matrixLogger.log('Cross-Origin Isolated:', window.crossOriginIsolated);
-        matrixLogger.log('SharedArrayBuffer available:', typeof SharedArrayBuffer !== 'undefined');
-
-        if (!window.crossOriginIsolated) {
-          matrixLogger.warn('Cross-Origin Isolation not enabled. E2EE may not work. Try a new tab.');
-        }
-
-        await matrixClient.initRustCrypto();
-        matrixLogger.log('Matrix E2EE initialized successfully');
-      } catch (cryptoError) {
-        matrixLogger.error('Failed to initialize E2EE:', cryptoError);
-        lastCryptoError = cryptoError instanceof Error ? cryptoError.message : 'E2EE-Initialisierung fehlgeschlagen';
+      const coiStatus = getCoiCapabilityStatus();
+      if (coiStatus.blocked) {
+        lastCryptoError = 'Cross-Origin-Isolation ist in dieser Session nicht erreichbar (iframe/Preview-Host). Bitte in einem neuen Tab öffnen.';
+        matrixLogger.warn('Skipping Matrix E2EE init due to hard COI capability block:', coiStatus);
         updateRuntimeDiagnostics(lastCryptoError);
         setCryptoEnabled(false);
+      } else {
+        try {
+          matrixLogger.log('=== Matrix E2EE Diagnostics ===');
+          matrixLogger.log('Cross-Origin Isolated:', window.crossOriginIsolated);
+          matrixLogger.log('SharedArrayBuffer available:', typeof SharedArrayBuffer !== 'undefined');
+
+          if (!window.crossOriginIsolated) {
+            matrixLogger.warn('Cross-Origin Isolation not enabled. E2EE may not work. Try a new tab.');
+          }
+
+          await matrixClient.initRustCrypto();
+          matrixLogger.log('Matrix E2EE initialized successfully');
+        } catch (cryptoError) {
+          matrixLogger.error('Failed to initialize E2EE:', cryptoError);
+          lastCryptoError = cryptoError instanceof Error ? cryptoError.message : 'E2EE-Initialisierung fehlgeschlagen';
+          updateRuntimeDiagnostics(lastCryptoError);
+          setCryptoEnabled(false);
+        }
       }
 
       // 4. Bootstrap Secret Storage (only if NOT already ready)
@@ -705,9 +797,7 @@ export function MatrixClientProvider({ children }: { children: ReactNode }) {
           setMessages(prev => {
             const roomMessages = prev.get(room.roomId) || [];
             if (roomMessages.some(m => m.eventId === newMessage.eventId)) return prev;
-            const updated = new Map(prev);
-            updated.set(room.roomId, [...roomMessages, newMessage].slice(-MAX_CACHED_MESSAGES));
-            return updated;
+            return upsertRoomMessages(prev, room.roomId, (existing) => [...existing, newMessage]);
           });
           updateRoomList(matrixClient);
         }
@@ -721,7 +811,6 @@ export function MatrixClientProvider({ children }: { children: ReactNode }) {
             setMessages(prev => {
               const roomMessages = prev.get(room.roomId);
               if (!roomMessages) return prev;
-              const updated = new Map(prev);
               const newRoomMessages = roomMessages.map(msg => {
                 if (msg.eventId === targetEventId) {
                   const reactions = new Map(msg.reactions);
@@ -734,8 +823,7 @@ export function MatrixClientProvider({ children }: { children: ReactNode }) {
                 }
                 return msg;
               });
-              updated.set(room.roomId, newRoomMessages);
-              return updated;
+              return upsertRoomMessages(prev, room.roomId, () => newRoomMessages);
             });
           }
         }
@@ -788,16 +876,14 @@ export function MatrixClientProvider({ children }: { children: ReactNode }) {
 
         setMessages(prev => {
           const roomMessages = prev.get(roomId) || [];
-          const updated = new Map(prev);
           const existingIndex = roomMessages.findIndex(m => m.eventId === decryptedMessage.eventId);
           if (existingIndex >= 0) {
             const next = [...roomMessages];
             next[existingIndex] = decryptedMessage;
-            updated.set(roomId, next);
+            return upsertRoomMessages(prev, roomId, () => next);
           } else {
-            updated.set(roomId, [...roomMessages, decryptedMessage].slice(-MAX_CACHED_MESSAGES));
+            return upsertRoomMessages(prev, roomId, (existing) => [...existing, decryptedMessage]);
           }
-          return updated;
         });
       };
 
@@ -919,15 +1005,19 @@ export function MatrixClientProvider({ children }: { children: ReactNode }) {
         // Clear crypto stores
         await clearLocalCryptoStores(creds.userId);
         localStorage.removeItem(`matrix_device_id:${creds.userId}`);
-        // Recreate client from scratch without stale device
+        localDeviceId = await resolveDeviceId({ ignoreCached: true });
+        // Recreate client from scratch with refreshed device
         matrixClient = sdk.createClient({
           baseUrl: creds.homeserverUrl,
           accessToken: creds.accessToken,
           userId: creds.userId,
+          deviceId: localDeviceId,
           cryptoCallbacks: { getSecretStorageKey },
         });
         clientRef.current = matrixClient;
-        await matrixClient.initRustCrypto();
+        if (!getCoiCapabilityStatus().blocked) {
+          await matrixClient.initRustCrypto();
+        }
         // Re-register listeners on new client
         for (const l of registeredListeners) {
           matrixClient.removeListener(l.event as any, l.handler);
@@ -1019,6 +1109,7 @@ export function MatrixClientProvider({ children }: { children: ReactNode }) {
       crossSigningReady: null,
       keyBackupEnabled: null,
       cryptoError: null,
+      coiBlockedReason: getCoiCapabilityStatus().reason,
     });
     setRooms([]);
     setMessages(new Map());
@@ -1031,21 +1122,31 @@ export function MatrixClientProvider({ children }: { children: ReactNode }) {
   // ─── refreshMessages (mutation, NOT a getter) ────────────────────────────
 
   const refreshMessages = useCallback((roomId: string, limit: number = MAX_CACHED_MESSAGES) => {
+    const refreshStartedAt = performance.now();
     const mc = clientRef.current;
     if (!mc) return;
 
     const room = mc.getRoom(roomId);
     if (!room) return;
 
+    const normalizedLimit = Math.min(limit, MAX_CACHED_MESSAGES);
+    touchRoomInLru(roomId);
     const timeline = room.getLiveTimeline().getEvents();
+    const timelineWindow = timeline.slice(-normalizedLimit);
 
-    if (timeline.length < limit && !refreshInFlightRef.current.has(roomId)) {
+    let scrollbackLoops = 0;
+    if (timeline.length < normalizedLimit && !refreshInFlightRef.current.has(roomId)) {
       refreshInFlightRef.current.add(roomId);
       void (async () => {
         try {
           let hasMore = true;
-          while (hasMore && room.getLiveTimeline().getEvents().length < limit) {
-            hasMore = (await mc.scrollback(room, limit)) as unknown as boolean;
+          while (
+            hasMore &&
+            room.getLiveTimeline().getEvents().length < normalizedLimit &&
+            scrollbackLoops < MAX_SCROLLBACK_LOOPS
+          ) {
+            scrollbackLoops += 1;
+            hasMore = (await mc.scrollback(room, SCROLLBACK_BATCH_LIMIT)) as unknown as boolean;
           }
         } catch (error) {
           matrixLogger.warn('Matrix scrollback failed:', error);
@@ -1055,8 +1156,15 @@ export function MatrixClientProvider({ children }: { children: ReactNode }) {
       })();
     }
 
-    // Trigger decryption for encrypted events
-    timeline.forEach(event => {
+    const cached = messagesRef.current.get(roomId) || [];
+    const cachedEventIds = new Set(cached.map((message) => message.eventId));
+    const visibleOrNewEvents = timelineWindow.filter((event) => {
+      const id = event.getId();
+      return !id || !cachedEventIds.has(id);
+    });
+
+    // Trigger decryption only for the visible/new timeline delta
+    visibleOrNewEvents.forEach(event => {
       if (event.isEncrypted() && !event.isDecryptionFailure()) {
         try {
           event.attemptDecryption(mc.getCrypto() as any).catch(() => {});
@@ -1064,33 +1172,57 @@ export function MatrixClientProvider({ children }: { children: ReactNode }) {
       }
     });
 
-    const timelineMessages: MatrixMessage[] = timeline
+    const timelineMessages: MatrixMessage[] = timelineWindow
       .map(event => mapMatrixEventToMessage(room, event))
       .filter((msg): msg is MatrixMessage => Boolean(msg));
 
-    const cached = messagesRef.current.get(roomId) || [];
-    const mergedByEventId = new Map<string, MatrixMessage>();
-    for (const msg of timelineMessages) mergedByEventId.set(msg.eventId, msg);
-    for (const msg of cached) {
-      const existing = mergedByEventId.get(msg.eventId);
-      if (!existing ||
-        (existing.type === 'm.bad.encrypted' && msg.type !== 'm.bad.encrypted') ||
-        (existing.type === 'm.room.encrypted' && msg.type !== 'm.room.encrypted' && msg.type !== 'm.bad.encrypted') ||
-        (existing.content === '[Encrypted]' && msg.content !== '[Encrypted]')) {
-        mergedByEventId.set(msg.eventId, msg);
+    const deltaMessages: MatrixMessage[] = [];
+    const cachedById = new Map(cached.map((message) => [message.eventId, message]));
+    for (const message of timelineMessages) {
+      const existing = cachedById.get(message.eventId);
+      const shouldReplace = Boolean(existing) && (
+        (existing.type === 'm.bad.encrypted' && message.type !== 'm.bad.encrypted') ||
+        (existing.type === 'm.room.encrypted' && message.type !== 'm.room.encrypted' && message.type !== 'm.bad.encrypted') ||
+        (existing.content === '[Encrypted]' && message.content !== '[Encrypted]')
+      );
+      if (!existing || shouldReplace) {
+        deltaMessages.push(message);
       }
     }
 
-    const mergedMessages = Array.from(mergedByEventId.values())
-      .sort((a, b) => a.timestamp - b.timestamp)
-      .slice(-limit);
+    if (deltaMessages.length > 0 || !messagesRef.current.has(roomId)) {
+      setMessages(prev => upsertRoomMessages(prev, roomId, (current) => {
+        const merged = [...current];
+        for (const deltaMessage of deltaMessages) {
+          const existingIndex = merged.findIndex((message) => message.eventId === deltaMessage.eventId);
+          if (existingIndex >= 0) {
+            merged[existingIndex] = deltaMessage;
+            continue;
+          }
 
-    setMessages(prev => {
-      const updated = new Map(prev);
-      updated.set(roomId, mergedMessages);
-      return updated;
+          const insertIndex = merged.findIndex((message) => message.timestamp > deltaMessage.timestamp);
+          if (insertIndex === -1) {
+            merged.push(deltaMessage);
+          } else {
+            merged.splice(insertIndex, 0, deltaMessage);
+          }
+        }
+        return merged;
+      }));
+    }
+
+    matrixLogger.log('[Matrix][Perf] refreshMessages', {
+      roomId,
+      durationMs: Number((performance.now() - refreshStartedAt).toFixed(2)),
+      timelineEvents: timeline.length,
+      windowEvents: timelineWindow.length,
+      cachedEvents: cached.length,
+      deltaEvents: deltaMessages.length,
+      decryptAttempts: visibleOrNewEvents.length,
+      scrollbackLoops,
+      cacheRooms: messagesRef.current.size,
     });
-  }, []);
+  }, [touchRoomInLru, upsertRoomMessages]);
 
   // ─── sendMessage ─────────────────────────────────────────────────────────
 

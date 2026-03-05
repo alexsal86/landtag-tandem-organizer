@@ -1,4 +1,5 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
+import { RealtimePostgresChangesPayload } from "@supabase/supabase-js";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { useTenant } from "@/hooks/useTenant";
@@ -7,131 +8,172 @@ interface Contact {
   id: string;
   name: string;
   contact_type: "person" | "organization" | "archive";
-  role?: string | null;
   organization?: string | null;
-  organization_id?: string | null;
-  email?: string | null;
-  phone?: string | null;
-  location?: string | null;
-  address?: string | null;
-  birthday?: string | null;
-  website?: string | null;
-  linkedin?: string | null;
-  twitter?: string | null;
-  facebook?: string | null;
-  instagram?: string | null;
-  xing?: string | null;
-  category?: "citizen" | "colleague" | "business" | "media" | "organization" | "government" | "ngo" | "academia" | "healthcare" | "legal" | "other" | "lobbyist" | null;
-  priority?: "low" | "medium" | "high" | null;
-  last_contact?: string | null;
-  avatar_url?: string | null;
-  notes?: string | null;
-  additional_info?: string | null;
-  legal_form?: string | null;
-  tax_number?: string | null;
-  vat_number?: string | null;
-  commercial_register_number?: string | null;
   industry?: string | null;
-  company_size?: string | null;
-  annual_revenue?: string | null;
   business_description?: string | null;
   main_contact_person?: string | null;
-  is_favorite?: boolean | null;
+  email?: string | null;
   tags?: string[] | null;
 }
 
+const PAGE_SIZE = 500;
+const STAKEHOLDER_SELECT = "id, contact_type, name, organization, industry, business_description, main_contact_person, email, tags";
+
+type MinimalStakeholder = Contact;
+
+const mapStakeholder = (contact: MinimalStakeholder): Contact => ({
+  id: contact.id,
+  contact_type: contact.contact_type,
+  name: contact.name,
+  organization: contact.organization ?? null,
+  industry: contact.industry ?? null,
+  business_description: contact.business_description ?? null,
+  main_contact_person: contact.main_contact_person ?? null,
+  email: contact.email ?? null,
+  tags: contact.tags ?? [],
+});
+
 export const useStakeholderPreload = (searchTerm?: string) => {
   const [stakeholders, setStakeholders] = useState<Contact[]>([]);
-  const [filteredStakeholders, setFilteredStakeholders] = useState<Contact[]>([]);
   const [loading, setLoading] = useState(true);
-  
+
   const { user } = useAuth();
   const { currentTenant } = useTenant();
 
-  const fetchStakeholders = async () => {
-    if (!user || !currentTenant) return;
+  const buildStakeholderSearch = useCallback((term: string) => {
+    const escapedTerm = term.replace(/[%_,]/g, (char) => `\\${char}`);
+    const exactTagTerm = term.replace(/["{}]/g, "").trim();
+    const wildcardTerm = `%${escapedTerm}%`;
+
+    const searchFilters = [
+      `name.ilike.${wildcardTerm}`,
+      `industry.ilike.${wildcardTerm}`,
+      `business_description.ilike.${wildcardTerm}`,
+      `main_contact_person.ilike.${wildcardTerm}`,
+      `email.ilike.${wildcardTerm}`,
+    ];
+
+    if (exactTagTerm) {
+      searchFilters.push(`tags.cs.{"${exactTagTerm}"}`);
+    }
+
+    return searchFilters.join(",");
+  }, []);
+
+  const fetchStakeholders = useCallback(async () => {
+    if (!user || !currentTenant) {
+      setLoading(false);
+      return;
+    }
 
     try {
       setLoading(true);
-      
-      const { data, error } = await supabase
-        .from('contacts')
-        .select('id, contact_type, name, role, organization, organization_id, email, phone, location, address, birthday, website, linkedin, twitter, facebook, instagram, xing, category, priority, last_contact, avatar_url, notes, additional_info, is_favorite, legal_form, industry, main_contact_person, business_description, tags, business_street, business_house_number, business_postal_code, business_city, business_country, tax_number, vat_number, commercial_register_number, company_size, annual_revenue')
-        .eq('tenant_id', currentTenant.id)
-        .eq('contact_type', 'organization')
-        .order('name', { ascending: true });
+      const allStakeholders: Contact[] = [];
+      let from = 0;
+      const normalizedSearch = searchTerm?.trim();
 
-      if (error) {
-        console.error('Error fetching stakeholders:', error);
-        return;
+      while (true) {
+        const to = from + PAGE_SIZE - 1;
+        let query = supabase
+          .from("contacts")
+          .select(STAKEHOLDER_SELECT)
+          .eq("tenant_id", currentTenant.id)
+          .eq("contact_type", "organization")
+          .order("name", { ascending: true })
+          .range(from, to);
+
+        if (normalizedSearch) {
+          query = query.or(buildStakeholderSearch(normalizedSearch));
+        }
+
+        const { data, error } = await query;
+
+        if (error) {
+          console.error("Error fetching stakeholders:", error);
+          return;
+        }
+
+        const pageStakeholders = (data || []).map(mapStakeholder);
+        allStakeholders.push(...pageStakeholders);
+
+        if (!data || data.length < PAGE_SIZE) {
+          break;
+        }
+
+        from += PAGE_SIZE;
       }
 
-      const formattedStakeholders = data?.map(contact => ({
-        id: contact.id,
-        contact_type: (contact.contact_type as "person" | "organization" | "archive") || "organization",
-        name: contact.name,
-        role: contact.role,
-        organization: contact.organization,
-        organization_id: contact.organization_id,
-        email: contact.email,
-        phone: contact.phone,
-        location: contact.location,
-        address: contact.address,
-        birthday: contact.birthday,
-        website: contact.website,
-        linkedin: contact.linkedin,
-        twitter: contact.twitter,
-        facebook: contact.facebook,
-        instagram: contact.instagram,
-        xing: contact.xing,
-        category: contact.category as Contact["category"],
-        priority: contact.priority as Contact["priority"],
-        last_contact: contact.last_contact,
-        avatar_url: contact.avatar_url,
-        notes: contact.notes,
-        additional_info: contact.additional_info,
-        legal_form: contact.legal_form,
-        tax_number: contact.tax_number,
-        vat_number: contact.vat_number,
-        commercial_register_number: contact.commercial_register_number,
-        industry: contact.industry,
-        company_size: contact.company_size,
-        annual_revenue: contact.annual_revenue,
-        business_description: contact.business_description,
-        main_contact_person: contact.main_contact_person,
-        is_favorite: contact.is_favorite || false,
-        tags: contact.tags || [],
-      })) || [];
-
-      setStakeholders(formattedStakeholders);
-      setFilteredStakeholders(formattedStakeholders);
+      setStakeholders(allStakeholders);
     } catch (error) {
-      console.error('Error in fetchStakeholders:', error);
+      console.error("Error in fetchStakeholders:", error);
     } finally {
       setLoading(false);
     }
-  };
+  }, [user, currentTenant, searchTerm, buildStakeholderSearch]);
+
+  const upsertStakeholderById = useCallback(
+    async (contactId: string) => {
+      if (!currentTenant) return;
+
+      let query = supabase
+        .from("contacts")
+        .select(STAKEHOLDER_SELECT)
+        .eq("tenant_id", currentTenant.id)
+        .eq("id", contactId)
+        .eq("contact_type", "organization");
+
+      const normalizedSearch = searchTerm?.trim();
+      if (normalizedSearch) {
+        query = query.or(buildStakeholderSearch(normalizedSearch));
+      }
+
+      const { data, error } = await query.maybeSingle();
+
+      if (error) {
+        console.error("Error refreshing stakeholder by id:", error);
+        return;
+      }
+
+      setStakeholders((prev) => {
+        const next = prev.filter((stakeholder) => stakeholder.id !== contactId);
+        if (!data) {
+          return next;
+        }
+
+        next.push(mapStakeholder(data as MinimalStakeholder));
+        return next.sort((a, b) => a.name.localeCompare(b.name));
+      });
+    },
+    [currentTenant, searchTerm, buildStakeholderSearch]
+  );
 
   useEffect(() => {
     fetchStakeholders();
-  }, [user, currentTenant]);
+  }, [fetchStakeholders]);
 
-  // Listen for changes to stakeholders
   useEffect(() => {
     if (!user || !currentTenant) return;
 
     const channel = supabase
-      .channel('stakeholder-changes')
+      .channel("stakeholder-changes")
       .on(
-        'postgres_changes',
+        "postgres_changes",
         {
-          event: '*',
-          schema: 'public',
-          table: 'contacts',
+          event: "*",
+          schema: "public",
+          table: "contacts",
           filter: `tenant_id=eq.${currentTenant.id},contact_type=eq.organization`,
         },
-        () => {
-          fetchStakeholders();
+        (payload: RealtimePostgresChangesPayload<{ id: string }>) => {
+          const changedId = payload.new?.id || payload.old?.id;
+          if (!changedId) return;
+
+          if (payload.eventType === "DELETE") {
+            setStakeholders((prev) => prev.filter((stakeholder) => stakeholder.id !== changedId));
+            return;
+          }
+
+          upsertStakeholderById(changedId);
         }
       )
       .subscribe();
@@ -139,29 +181,11 @@ export const useStakeholderPreload = (searchTerm?: string) => {
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [user, currentTenant]);
+  }, [user, currentTenant, upsertStakeholderById]);
 
-  // Filter stakeholders based on search term
-  useEffect(() => {
-    if (!searchTerm || searchTerm.trim() === '') {
-      setFilteredStakeholders(stakeholders);
-    } else {
-      const searchLower = searchTerm.toLowerCase().trim();
-      const filtered = stakeholders.filter(stakeholder => 
-        stakeholder.name.toLowerCase().includes(searchLower) ||
-        (stakeholder.industry && stakeholder.industry.toLowerCase().includes(searchLower)) ||
-        (stakeholder.business_description && stakeholder.business_description.toLowerCase().includes(searchLower)) ||
-        (stakeholder.main_contact_person && stakeholder.main_contact_person.toLowerCase().includes(searchLower)) ||
-        (stakeholder.email && stakeholder.email.toLowerCase().includes(searchLower)) ||
-        (stakeholder.tags && stakeholder.tags.some(tag => tag.toLowerCase().includes(searchLower)))
-      );
-      setFilteredStakeholders(filtered);
-    }
-  }, [searchTerm, stakeholders]);
-
-  return { 
-    stakeholders: filteredStakeholders, 
-    loading, 
-    refreshStakeholders: fetchStakeholders 
+  return {
+    stakeholders,
+    loading,
+    refreshStakeholders: fetchStakeholders,
   };
 };

@@ -1,5 +1,6 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.57.4'
+import { requireTenantAccess } from "../_shared/tenant-access.ts";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -110,11 +111,18 @@ serve(async (req) => {
   }
 
   try {
-    const { category, limit, tenant_id } = await req.json();
-    
-    if (!tenant_id) {
-      throw new Error('tenant_id is required');
+    const { category, limit } = await req.json();
+
+    const tenantAccess = await requireTenantAccess({
+      req,
+      functionName: "fetch-rss-feeds",
+    });
+
+    if ("response" in tenantAccess) {
+      return tenantAccess.response;
     }
+
+    const tenant_id = tenantAccess.tenantId;
 
     // Initialize Supabase client first for cache check
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!;

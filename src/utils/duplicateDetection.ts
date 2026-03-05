@@ -18,6 +18,19 @@ export interface DuplicateMatch {
   reasons: string[];
 }
 
+export interface DuplicatePair {
+  contact1: Contact;
+  contact2: Contact;
+  matchScore: number;
+  matchReasons: string[];
+}
+
+interface CandidatePairMeta {
+  index1: number;
+  index2: number;
+  minBucketSize: number;
+}
+
 /**
  * Calculate Levenshtein distance between two strings
  */
@@ -73,97 +86,197 @@ function normalizePhone(phone: string): string {
   return phone.replace(/[\s()-]/g, "");
 }
 
-/**
- * Detect potential duplicate contacts - returns pairs of duplicates
- */
-export function findDuplicates(contacts: Contact[]): Array<{
-  contact1: Contact;
-  contact2: Contact;
-  matchScore: number;
-  matchReasons: string[];
-}> {
-  const duplicates: Array<{
-    contact1: Contact;
-    contact2: Contact;
-    matchScore: number;
-    matchReasons: string[];
-  }> = [];
-  const processed = new Set<string>();
+function normalizeEmail(email?: string | null): string {
+  return email?.toLowerCase().trim() ?? "";
+}
 
-  for (let i = 0; i < contacts.length; i++) {
-    for (let j = i + 1; j < contacts.length; j++) {
-      const contact1 = contacts[i];
-      const contact2 = contacts[j];
+function normalizeName(name?: string | null): string {
+  return name?.toLowerCase().trim().replace(/\s+/g, " ") ?? "";
+}
 
-      const pairKey = [contact1.id, contact2.id].sort().join("-");
-      if (processed.has(pairKey)) continue;
+function getNamePrefix(name: string, length = 3): string {
+  return normalizeName(name).replace(/[^a-z0-9]/g, "").slice(0, length);
+}
 
-      const matchReasons: string[] = [];
-      let matchScore = 0;
+function collectPairCandidates(contacts: Contact[]): CandidatePairMeta[] {
+  const bucketMap = new Map<string, number[]>();
+  const addToBucket = (key: string, index: number) => {
+    if (!bucketMap.has(key)) {
+      bucketMap.set(key, [index]);
+      return;
+    }
 
-      // Exact email match (very strong indicator)
-      if (contact1.email && contact2.email) {
-        const email1 = contact1.email.toLowerCase().trim();
-        const email2 = contact2.email.toLowerCase().trim();
+    bucketMap.get(key)?.push(index);
+  };
 
-        if (email1 === email2) {
-          matchScore += 80;
-          matchReasons.push("Identische E-Mail-Adresse");
+  contacts.forEach((contact, index) => {
+    const email = normalizeEmail(contact.email);
+    if (email) addToBucket(`email:${email}`, index);
+
+    const phone = contact.phone ? normalizePhone(contact.phone) : "";
+    if (phone.length > 5) addToBucket(`phone:${phone}`, index);
+
+    const namePrefix = getNamePrefix(contact.name);
+    if (namePrefix.length >= 2) addToBucket(`name:${namePrefix}`, index);
+  });
+
+  const pairCandidates = new Map<string, CandidatePairMeta>();
+
+  bucketMap.forEach((indices) => {
+    if (indices.length < 2) return;
+
+    for (let i = 0; i < indices.length; i++) {
+      for (let j = i + 1; j < indices.length; j++) {
+        const index1 = Math.min(indices[i], indices[j]);
+        const index2 = Math.max(indices[i], indices[j]);
+        const key = `${index1}-${index2}`;
+        const existing = pairCandidates.get(key);
+
+        if (!existing) {
+          pairCandidates.set(key, {
+            index1,
+            index2,
+            minBucketSize: indices.length,
+          });
+          continue;
         }
+
+        existing.minBucketSize = Math.min(existing.minBucketSize, indices.length);
       }
+    }
+  });
 
-      // Exact phone match (strong indicator)
-      if (contact1.phone && contact2.phone) {
-        const phone1 = normalizePhone(contact1.phone);
-        const phone2 = normalizePhone(contact2.phone);
+  return Array.from(pairCandidates.values());
+}
 
-        if (phone1 === phone2 && phone1.length > 5) {
-          matchScore += 70;
-          matchReasons.push("Identische Telefonnummer");
-        }
-      }
+function evaluatePair(
+  contact1: Contact,
+  contact2: Contact,
+  options: { allowLevenshtein: boolean },
+): DuplicatePair | null {
+  const matchReasons: string[] = [];
+  let matchScore = 0;
 
-      // Name similarity
-      const nameSimilarity = stringSimilarity(contact1.name, contact2.name);
-      if (nameSimilarity > 0.8) {
-        matchScore += nameSimilarity * 50;
-        matchReasons.push(
-          `Ähnlicher Name (${Math.round(nameSimilarity * 100)}% Übereinstimmung)`,
-        );
-      }
+  // Exact email match (very strong indicator)
+  if (contact1.email && contact2.email) {
+    const email1 = normalizeEmail(contact1.email);
+    const email2 = normalizeEmail(contact2.email);
 
-      // Organization match (if both are persons)
-      if (
-        contact1.contact_type === "person" &&
-        contact2.contact_type === "person" &&
-        contact1.organization &&
-        contact2.organization
-      ) {
-        const orgSimilarity = stringSimilarity(
-          contact1.organization,
-          contact2.organization,
-        );
-        if (orgSimilarity > 0.85 && nameSimilarity > 0.6) {
-          matchScore += 30;
-          matchReasons.push(`Gleiche Organisation (${contact1.organization})`);
-        }
-      }
-
-      // If match score is high enough, add to duplicates
-      if (matchScore >= 70 && matchReasons.length > 0) {
-        duplicates.push({
-          contact1,
-          contact2,
-          matchScore: Math.min(matchScore, 100),
-          matchReasons,
-        });
-
-        processed.add(pairKey);
-      }
+    if (email1 === email2) {
+      matchScore += 80;
+      matchReasons.push("Identische E-Mail-Adresse");
     }
   }
 
-  // Sort by match score (highest first)
+  // Exact phone match (strong indicator)
+  if (contact1.phone && contact2.phone) {
+    const phone1 = normalizePhone(contact1.phone);
+    const phone2 = normalizePhone(contact2.phone);
+
+    if (phone1 === phone2 && phone1.length > 5) {
+      matchScore += 70;
+      matchReasons.push("Identische Telefonnummer");
+    }
+  }
+
+  let nameSimilarity = 0;
+  if (options.allowLevenshtein) {
+    nameSimilarity = stringSimilarity(contact1.name, contact2.name);
+    if (nameSimilarity > 0.8) {
+      matchScore += nameSimilarity * 50;
+      matchReasons.push(
+        `Ähnlicher Name (${Math.round(nameSimilarity * 100)}% Übereinstimmung)`,
+      );
+    }
+  } else if (normalizeName(contact1.name) === normalizeName(contact2.name)) {
+    matchScore += 45;
+    nameSimilarity = 1;
+    matchReasons.push("Identischer Name");
+  }
+
+  // Organization match (if both are persons)
+  if (
+    contact1.contact_type === "person" &&
+    contact2.contact_type === "person" &&
+    contact1.organization &&
+    contact2.organization
+  ) {
+    const orgSimilarity = options.allowLevenshtein
+      ? stringSimilarity(contact1.organization, contact2.organization)
+      : normalizeName(contact1.organization) === normalizeName(contact2.organization)
+        ? 1
+        : 0;
+
+    if (orgSimilarity > 0.85 && nameSimilarity > 0.6) {
+      matchScore += 30;
+      matchReasons.push(`Gleiche Organisation (${contact1.organization})`);
+    }
+  }
+
+  if (matchScore < 70 || matchReasons.length === 0) return null;
+
+  return {
+    contact1,
+    contact2,
+    matchScore: Math.min(matchScore, 100),
+    matchReasons,
+  };
+}
+
+async function yieldToBrowser(): Promise<void> {
+  await new Promise<void>((resolve) => {
+    setTimeout(() => resolve(), 0);
+  });
+}
+
+/**
+ * Detect potential duplicate contacts - returns pairs of duplicates
+ */
+export function findDuplicates(contacts: Contact[]): DuplicatePair[] {
+  const pairCandidates = collectPairCandidates(contacts);
+  const duplicates: DuplicatePair[] = [];
+
+  for (const pair of pairCandidates) {
+    const result = evaluatePair(contacts[pair.index1], contacts[pair.index2], {
+      allowLevenshtein: pair.minBucketSize <= 60,
+    });
+    if (result) duplicates.push(result);
+  }
+
+  return duplicates.sort((a, b) => b.matchScore - a.matchScore);
+}
+
+export async function findDuplicatesProgressive(
+  contacts: Contact[],
+  options?: {
+    chunkSize?: number;
+    onProgress?: (processedPairs: number, totalPairs: number) => void;
+  },
+): Promise<DuplicatePair[]> {
+  const chunkSize = options?.chunkSize ?? 250;
+  const pairCandidates = collectPairCandidates(contacts);
+  const duplicates: DuplicatePair[] = [];
+
+  for (let index = 0; index < pairCandidates.length; index += chunkSize) {
+    const chunk = pairCandidates.slice(index, index + chunkSize);
+
+    for (const pair of chunk) {
+      const result = evaluatePair(contacts[pair.index1], contacts[pair.index2], {
+        allowLevenshtein: pair.minBucketSize <= 60,
+      });
+      if (result) duplicates.push(result);
+    }
+
+    options?.onProgress?.(
+      Math.min(index + chunk.length, pairCandidates.length),
+      pairCandidates.length,
+    );
+
+    if (index + chunkSize < pairCandidates.length) {
+      await yieldToBrowser();
+    }
+  }
+
   return duplicates.sort((a, b) => b.matchScore - a.matchScore);
 }
 

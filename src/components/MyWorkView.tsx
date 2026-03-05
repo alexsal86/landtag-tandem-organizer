@@ -126,6 +126,7 @@ export function MyWorkView() {
     const context = tabToContext[tab];
     if (context) {
       markTabAsVisited(context as any);
+      refreshCounts([context as any]);
     }
   };
 
@@ -203,11 +204,11 @@ export function MyWorkView() {
 
   // Debounced realtime handler to prevent rapid-fire refetches
   const debounceTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const debouncedUpdate = useCallback(() => {
+  const debouncedUpdate = useCallback((contexts?: Parameters<typeof refreshCounts>[0]) => {
     if (debounceTimerRef.current) clearTimeout(debounceTimerRef.current);
     debounceTimerRef.current = setTimeout(() => {
       loadCounts(shouldIncludeTeamCountRef.current);
-      refreshCounts();
+      refreshCounts(contexts);
     }, 2000);
   }, [loadCounts, refreshCounts]);
 
@@ -222,22 +223,22 @@ export function MyWorkView() {
       .on(
         'postgres_changes',
         { event: '*', schema: 'public', table: 'tasks', filter: `user_id=eq.${user.id}` },
-        debouncedUpdate
+        () => debouncedUpdate(['mywork_tasks'])
       )
       .on(
         'postgres_changes',
         { event: '*', schema: 'public', table: 'task_decisions', filter: `user_id=eq.${user.id}` },
-        debouncedUpdate
+        () => debouncedUpdate(['mywork_decisions'])
       )
       .on(
         'postgres_changes',
         { event: '*', schema: 'public', table: 'task_decision_participants', filter: `user_id=eq.${user.id}` },
-        debouncedUpdate
+        () => debouncedUpdate(['mywork_decisions'])
       )
       .on(
         'postgres_changes',
         { event: '*', schema: 'public', table: 'task_decision_responses', filter: `user_id=eq.${user.id}` },
-        debouncedUpdate
+        () => debouncedUpdate(['mywork_decisions'])
       )
       .on(
         'postgres_changes',
@@ -247,17 +248,17 @@ export function MyWorkView() {
       .on(
         'postgres_changes',
         { event: '*', schema: 'public', table: 'meetings', filter: `user_id=eq.${user.id}` },
-        debouncedUpdate
+        () => debouncedUpdate(['mywork_jourFixe'])
       )
       .on(
         'postgres_changes',
         { event: '*', schema: 'public', table: 'case_files', filter: `user_id=eq.${user.id}` },
-        debouncedUpdate
+        () => debouncedUpdate(['mywork_casefiles'])
       )
       .on(
         'postgres_changes',
         { event: '*', schema: 'public', table: 'event_plannings', filter: `user_id=eq.${user.id}` },
-        debouncedUpdate
+        () => debouncedUpdate(['mywork_plannings'])
       )
       .subscribe((status) => {
         if (status === "SUBSCRIBED") setRealtimeStatus("connected");

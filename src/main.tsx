@@ -1,22 +1,7 @@
 import { createRoot } from 'react-dom/client'
 import App from './App.tsx'
 import './index.css'
-
-function isLovablePreviewHost(hostname: string): boolean {
-  return (
-    hostname.endsWith('lovable.app') ||
-    hostname.endsWith('lovableproject.com') ||
-    hostname.includes('lovable')
-  );
-}
-
-function isInIframe(): boolean {
-  try {
-    return window.self !== window.top;
-  } catch {
-    return true;
-  }
-}
+import { evaluateCoiCapabilityStatus, setCoiCapabilityStatus } from './lib/coiRuntime'
 
 async function unregisterAllServiceWorkers(): Promise<void> {
   if (!('serviceWorker' in navigator)) return;
@@ -26,10 +11,10 @@ async function unregisterAllServiceWorkers(): Promise<void> {
 }
 
 async function setupCrossOriginIsolation(): Promise<void> {
-  const inIframe = isInIframe();
-  const isPreviewHost = isLovablePreviewHost(window.location.hostname);
+  const coiStatus = evaluateCoiCapabilityStatus();
+  setCoiCapabilityStatus(coiStatus);
 
-  if (inIframe || isPreviewHost) {
+  if (coiStatus.blocked) {
     sessionStorage.removeItem('coi-cleanup-state');
     return;
   }

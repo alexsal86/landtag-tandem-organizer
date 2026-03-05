@@ -10035,6 +10035,10 @@ export type Database = {
         Args: { p_include_team?: boolean; p_user_id: string }
         Returns: Json
       }
+      get_my_work_new_counts: {
+        Args: { p_contexts?: string[] | null; p_user_id: string }
+        Returns: Json
+      }
       get_shared_note_ids: { Args: { _user_id: string }; Returns: string[] }
       get_user_messages: {
         Args: { user_id_param: string }
