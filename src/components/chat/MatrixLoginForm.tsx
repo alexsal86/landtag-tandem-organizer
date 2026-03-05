@@ -86,7 +86,8 @@ export function MatrixLoginForm() {
   };
 
   const handlePasswordLogin = async () => {
-    if (!matrixUserId.trim() || !matrixUserId.startsWith('@') || !matrixUserId.includes(':')) {
+    const trimmedUserId = matrixUserId.trim();
+    if (!trimmedUserId || !trimmedUserId.startsWith('@') || !trimmedUserId.includes(':')) {
       toast({
         title: 'Ungültige Matrix User ID',
         description: 'Format: @benutzername:server.tld',
@@ -94,7 +95,9 @@ export function MatrixLoginForm() {
       });
       return;
     }
-    if (!password.trim()) {
+
+    const loginPassword = password.trim();
+    if (!loginPassword) {
       toast({
         title: 'Fehler',
         description: 'Bitte geben Sie Ihr Passwort ein',
@@ -102,12 +105,15 @@ export function MatrixLoginForm() {
       });
       return;
     }
+
     if (!user || !currentTenant?.id) return;
 
     setIsLoggingIn(true);
+    setPassword('');
+
     try {
-      const effectiveHomeserver = homeserverUrl.trim() || deriveHomeserverUrl(matrixUserId.trim());
-      const localpart = matrixUserId.trim().split(':')[0].substring(1);
+      const effectiveHomeserver = homeserverUrl.trim() || deriveHomeserverUrl(trimmedUserId);
+      const localpart = trimmedUserId.split(':')[0].substring(1);
 
       const response = await fetch(`${effectiveHomeserver}/_matrix/client/v3/login`, {
         method: 'POST',
@@ -118,7 +124,7 @@ export function MatrixLoginForm() {
             type: 'm.id.user',
             user: localpart,
           },
-          password: password,
+          password: loginPassword,
           initial_device_display_name: 'Lovable App',
         }),
       });
@@ -132,12 +138,11 @@ export function MatrixLoginForm() {
       // Update form fields with received credentials
       const newAccessToken = data.access_token;
       const newDeviceId = data.device_id || '';
-      const confirmedUserId = data.user_id || matrixUserId.trim();
+      const confirmedUserId = data.user_id || trimmedUserId;
 
       setAccessToken(newAccessToken);
       setDeviceId(newDeviceId);
       setMatrixUserId(confirmedUserId);
-      setPassword(''); // Clear password immediately
       setHomeserverUrl(effectiveHomeserver);
 
       // Save to Supabase
@@ -156,21 +161,23 @@ export function MatrixLoginForm() {
         localStorage.setItem(`matrix_device_id:${confirmedUserId}`, newDeviceId);
       }
 
-      // Connect (pass password for UIA cross-signing bootstrap)
-      await connect({
-        userId: confirmedUserId,
-        accessToken: newAccessToken,
-        homeserverUrl: effectiveHomeserver,
-        deviceId: newDeviceId || undefined,
-        password: password, // Used only for bootstrapCrossSigning UIA, not persisted
-      });
+      // Connect: UIA-Passwort wird nicht persistent gespeichert, aber temporär im Speicher/Request verwendet.
+      await connect(
+        {
+          userId: confirmedUserId,
+          accessToken: newAccessToken,
+          homeserverUrl: effectiveHomeserver,
+          deviceId: newDeviceId || undefined,
+        },
+        { uiaPassword: loginPassword },
+      );
 
       toast({
         title: 'Angemeldet',
         description: `Verbunden als ${confirmedUserId}`,
       });
     } catch (error) {
-      console.error('Matrix password login failed:', error);
+      console.error('Matrix password login failed:', error instanceof Error ? error.message : 'Unbekannter Fehler');
       toast({
         title: 'Anmeldung fehlgeschlagen',
         description: error instanceof Error ? error.message : 'Login konnte nicht durchgeführt werden',
