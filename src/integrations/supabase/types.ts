@@ -1808,6 +1808,7 @@ export type Database = {
       case_files: {
         Row: {
           assigned_to: string | null
+          case_scale: string | null
           case_type: string
           created_at: string
           current_status_note: string | null
@@ -1832,6 +1833,7 @@ export type Database = {
         }
         Insert: {
           assigned_to?: string | null
+          case_scale?: string | null
           case_type?: string
           created_at?: string
           current_status_note?: string | null
@@ -1856,6 +1858,7 @@ export type Database = {
         }
         Update: {
           assigned_to?: string | null
+          case_scale?: string | null
           case_type?: string
           created_at?: string
           current_status_note?: string | null
@@ -2006,45 +2009,73 @@ export type Database = {
       }
       case_item_interactions: {
         Row: {
-          case_item_id: string
+          case_file_id: string | null
+          case_item_id: string | null
           created_at: string
           created_by: string | null
+          details: string | null
           direction: string
           id: string
           interaction_at: string
           interaction_type: Database["public"]["Enums"]["case_item_source_channel"]
+          is_resolution: boolean | null
           payload: Json | null
+          source_id: string | null
+          source_type: string | null
+          subject: string | null
           summary: string | null
-          tenant_id: string
+          tenant_id: string | null
+          updated_at: string | null
           visibility: Database["public"]["Enums"]["case_item_interaction_visibility"]
         }
         Insert: {
-          case_item_id: string
+          case_file_id?: string | null
+          case_item_id?: string | null
           created_at?: string
           created_by?: string | null
+          details?: string | null
           direction?: string
           id?: string
           interaction_at?: string
           interaction_type: Database["public"]["Enums"]["case_item_source_channel"]
+          is_resolution?: boolean | null
           payload?: Json | null
+          source_id?: string | null
+          source_type?: string | null
+          subject?: string | null
           summary?: string | null
-          tenant_id: string
+          tenant_id?: string | null
+          updated_at?: string | null
           visibility?: Database["public"]["Enums"]["case_item_interaction_visibility"]
         }
         Update: {
-          case_item_id?: string
+          case_file_id?: string | null
+          case_item_id?: string | null
           created_at?: string
           created_by?: string | null
+          details?: string | null
           direction?: string
           id?: string
           interaction_at?: string
           interaction_type?: Database["public"]["Enums"]["case_item_source_channel"]
+          is_resolution?: boolean | null
           payload?: Json | null
+          source_id?: string | null
+          source_type?: string | null
+          subject?: string | null
           summary?: string | null
-          tenant_id?: string
+          tenant_id?: string | null
+          updated_at?: string | null
           visibility?: Database["public"]["Enums"]["case_item_interaction_visibility"]
         }
         Relationships: [
+          {
+            foreignKeyName: "case_item_interactions_case_file_id_fkey"
+            columns: ["case_file_id"]
+            isOneToOne: false
+            referencedRelation: "case_files"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "case_item_interactions_case_item_id_fkey"
             columns: ["case_item_id"]
@@ -2147,6 +2178,7 @@ export type Database = {
       case_items: {
         Row: {
           case_file_id: string | null
+          case_scale: string | null
           confidentiality_level: string | null
           contact_id: string | null
           contains_personal_data: boolean
@@ -2176,6 +2208,7 @@ export type Database = {
         }
         Insert: {
           case_file_id?: string | null
+          case_scale?: string | null
           confidentiality_level?: string | null
           contact_id?: string | null
           contains_personal_data?: boolean
@@ -2205,6 +2238,7 @@ export type Database = {
         }
         Update: {
           case_file_id?: string | null
+          case_scale?: string | null
           confidentiality_level?: string | null
           contact_id?: string | null
           contains_personal_data?: boolean
