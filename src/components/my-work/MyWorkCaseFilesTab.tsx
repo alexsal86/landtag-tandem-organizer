@@ -210,6 +210,13 @@ export function MyWorkCaseFilesTab() {
   return (
     <ScrollArea className="h-[500px]">
       <div className="space-y-2 p-4">
+        <div className="flex items-center justify-end pb-1">
+          <Button size="sm" onClick={() => navigate("/casefiles?action=create")}>
+            <Briefcase className="mr-2 h-4 w-4" />
+            Akte erstellen
+          </Button>
+        </div>
+
         {suggestions.map((suggestion) => {
           const shortId = suggestion.case_items.id.slice(0, 8);
           const selectedCaseFileId = selectedCaseFileBySuggestion[suggestion.id] ?? "";
