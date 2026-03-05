@@ -57,6 +57,19 @@ export function CaseFilesView() {
     }
   }, [searchParams, setSearchParams]);
 
+  useEffect(() => {
+    const caseFileId = searchParams.get('caseFileId');
+    if (!caseFileId || selectedCaseFile || caseFiles.length === 0) return;
+
+    const matched = caseFiles.find((caseFile) => caseFile.id === caseFileId);
+    if (!matched) return;
+
+    setSelectedCaseFile(matched);
+
+    searchParams.delete('caseFileId');
+    setSearchParams(searchParams, { replace: true });
+  }, [searchParams, setSearchParams, caseFiles, selectedCaseFile]);
+
   const baseFilteredCaseFiles = caseFiles.filter((cf) => {
     const matchesSearch = 
       cf.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -74,11 +87,7 @@ export function CaseFilesView() {
     if (scopeFilter === "all") return true;
 
     return (
-      classifyCaseScale({
-        caseType: cf.case_type,
-        title: cf.title,
-        tags: cf.tags,
-      }) === scopeFilter
+classifyCaseScale({ caseType: cf.case_type }) === scopeFilter
     );
   });
 
@@ -178,8 +187,8 @@ export function CaseFilesView() {
 
   const scopeCounts = {
     all: caseFiles.length,
-    small: caseFiles.filter((cf) => classifyCaseScale({ caseType: cf.case_type, title: cf.title, tags: cf.tags }) === "small").length,
-    large: caseFiles.filter((cf) => classifyCaseScale({ caseType: cf.case_type, title: cf.title, tags: cf.tags }) === "large").length,
+    small: caseFiles.filter((cf) => classifyCaseScale({ caseType: cf.case_type }) === "small").length,
+    large: caseFiles.filter((cf) => classifyCaseScale({ caseType: cf.case_type }) === "large").length,
   };
 
   if (selectedCaseFile) {

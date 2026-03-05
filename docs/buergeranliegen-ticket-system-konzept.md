@@ -153,3 +153,14 @@ Die beste Lösung ist ein **zweistufiges Modell**:
 - **Akte (`case_file`)** für längere, komplexe Petitionen/Sachverhalte.
 
 So bleiben Prozesse für das Tagesgeschäft leichtgewichtig, ohne die Fähigkeit zu verlieren, große Fälle sauber und langfristig nachzuverfolgen.
+
+
+## Implementierungsstand (aktuell im Code)
+- Aktuell ist in der UI/DB primär `case_files` umgesetzt; `case_item` als eigene Entität ist noch nicht produktiv eingeführt.
+- Die jetzige Umsetzung in `Meine Arbeit` und `Akten/FallAkten` ist damit eine **Zwischenstufe (Phase 0/1)**: gemeinsame Sichtlogik auf bestehende Fallakten, noch kein vollständiges Ticket-Datenmodell mit eigenen `ticket_interactions`-Tabellen.
+- Nächster fachlicher Schritt ist daher, `case_item`/Ticket als explizite Entität einzuführen und mit `case_file` zu verknüpfen.
+
+## Wichtige Korrektur zur Größenlogik
+- Größe (`small`/`large`) sollte **langfristig als explizites Feld** gepflegt werden (`case_scale`) statt aus Freitext abzuleiten.
+- Heuristiken dürfen maximal Übergangslösungen sein.
+- Für den Übergang wird derzeit primär `case_type` verwendet; unbekannte Typen werden defaultmäßig als `small` behandelt, um das „groß“-Segment nicht künstlich zu überfrachten.

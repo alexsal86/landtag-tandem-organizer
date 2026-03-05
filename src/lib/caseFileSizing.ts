@@ -1,53 +1,39 @@
 export type CaseScale = "small" | "large";
 
-const LARGE_CASE_KEYWORDS = [
+const LARGE_CASE_TYPES = new Set([
   "petition",
   "petitions",
-  "fallakte",
-  "akte",
-  "verfahren",
   "investigation",
   "untersuchung",
-  "komplex",
-  "complex",
-  "mehrstufig",
-];
+  "fallakte",
+  "verfahren",
+]);
 
-const SMALL_CASE_KEYWORDS = [
-  "anfrage",
-  "kleine_anfrage",
+const SMALL_CASE_TYPES = new Set([
   "small_inquiry",
-  "buergeranliegen",
+  "kleine_anfrage",
   "citizen_concern",
+  "buergeranliegen",
+  "anfrage",
   "hinweis",
-  "kurz",
-];
+]);
 
 const normalize = (value?: string | null) => (value || "").trim().toLowerCase();
 
-const matchesKeywords = (haystack: string, keywords: string[]) => keywords.some((keyword) => haystack.includes(keyword));
-
 export const classifyCaseScale = (input: {
+  explicitScale?: string | null;
   caseType?: string | null;
-  title?: string | null;
-  tags?: string[] | null;
 }): CaseScale => {
+  const explicitScale = normalize(input.explicitScale);
+  if (explicitScale === "small" || explicitScale === "large") {
+    return explicitScale;
+  }
+
   const caseType = normalize(input.caseType);
-  const title = normalize(input.title);
-  const tagBlob = (input.tags || []).map(normalize).join(" ");
-  const haystack = `${caseType} ${title} ${tagBlob}`.trim();
 
-  if (!haystack) return "small";
+  if (SMALL_CASE_TYPES.has(caseType)) return "small";
+  if (LARGE_CASE_TYPES.has(caseType)) return "large";
 
-  if (matchesKeywords(haystack, LARGE_CASE_KEYWORDS)) {
-    return "large";
-  }
-
-  if (matchesKeywords(haystack, SMALL_CASE_KEYWORDS)) {
-    return "small";
-  }
-
-  // Conservative fallback: unknown types are treated as larger dossiers
-  // in Akten-Kontext to avoid underestimating coordination effort.
-  return "large";
+  // Default to small to avoid flooding the "large" bucket with unknown values.
+  return "small";
 };

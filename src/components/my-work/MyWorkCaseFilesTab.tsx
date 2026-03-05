@@ -24,6 +24,7 @@ interface CaseFile {
   reference_number: string | null;
   created_at: string;
   user_id: string;
+  assigned_to: string | null;
 }
 
 const STATUS_COLORS: Record<string, string> = {
@@ -38,18 +39,17 @@ export function MyWorkCaseFilesTab() {
   const { currentTenant } = useTenant();
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
-  
+
   const [caseFiles, setCaseFiles] = useState<CaseFile[]>([]);
   const [loading, setLoading] = useState(true);
   const [scaleFilter, setScaleFilter] = useState<"all" | CaseScale>("all");
 
-  // Handle action parameter from URL
   useEffect(() => {
-    const action = searchParams.get('action');
-    if (action === 'create-casefile') {
-      searchParams.delete('action');
+    const action = searchParams.get("action");
+    if (action === "create-casefile") {
+      searchParams.delete("action");
       setSearchParams(searchParams, { replace: true });
-      navigate('/casefiles?action=create');
+      navigate("/casefiles?action=create");
     }
   }, [searchParams, setSearchParams, navigate]);
 
@@ -61,13 +61,13 @@ export function MyWorkCaseFilesTab() {
 
   const loadCaseFiles = async () => {
     if (!user || !currentTenant?.id) return;
-    
+
     try {
-      // Load case files visible to user (RLS handles visibility filtering)
       const { data, error } = await supabase
         .from("case_files")
-        .select("*")
+        .select("id, title, description, current_status_note, status, case_type, priority, target_date, reference_number, created_at, user_id, assigned_to")
         .eq("tenant_id", currentTenant.id)
+        .or(`user_id.eq.${user.id},assigned_to.eq.${user.id}`)
         .in("status", ["active", "pending"])
         .order("updated_at", { ascending: false })
         .limit(20);
@@ -107,18 +107,13 @@ export function MyWorkCaseFilesTab() {
   const filteredCaseFiles = caseFiles.filter((caseFile) => {
     if (scaleFilter === "all") return true;
 
-    return (
-      classifyCaseScale({
-        caseType: caseFile.case_type,
-        title: caseFile.title,
-      }) === scaleFilter
-    );
+    return classifyCaseScale({ caseType: caseFile.case_type }) === scaleFilter;
   });
 
   const scaleCounts = {
     all: caseFiles.length,
-    small: caseFiles.filter((caseFile) => classifyCaseScale({ caseType: caseFile.case_type, title: caseFile.title }) === "small").length,
-    large: caseFiles.filter((caseFile) => classifyCaseScale({ caseType: caseFile.case_type, title: caseFile.title }) === "large").length,
+    small: caseFiles.filter((caseFile) => classifyCaseScale({ caseType: caseFile.case_type }) === "small").length,
+    large: caseFiles.filter((caseFile) => classifyCaseScale({ caseType: caseFile.case_type }) === "large").length,
   };
 
   if (loading) {
@@ -135,27 +130,9 @@ export function MyWorkCaseFilesTab() {
     <ScrollArea className="h-[500px]">
       <div className="space-y-2 p-4">
         <div className="flex items-center gap-2 pb-2">
-          <Button
-            size="sm"
-            variant={scaleFilter === "all" ? "secondary" : "outline"}
-            onClick={() => setScaleFilter("all")}
-          >
-            Alle ({scaleCounts.all})
-          </Button>
-          <Button
-            size="sm"
-            variant={scaleFilter === "small" ? "secondary" : "outline"}
-            onClick={() => setScaleFilter("small")}
-          >
-            Kleine Vorgänge ({scaleCounts.small})
-          </Button>
-          <Button
-            size="sm"
-            variant={scaleFilter === "large" ? "secondary" : "outline"}
-            onClick={() => setScaleFilter("large")}
-          >
-            Große Akten ({scaleCounts.large})
-          </Button>
+          <Button size="sm" variant={scaleFilter === "all" ? "secondary" : "outline"} onClick={() => setScaleFilter("all")}>Alle ({scaleCounts.all})</Button>
+          <Button size="sm" variant={scaleFilter === "small" ? "secondary" : "outline"} onClick={() => setScaleFilter("small")}>Kleine Vorgänge ({scaleCounts.small})</Button>
+          <Button size="sm" variant={scaleFilter === "large" ? "secondary" : "outline"} onClick={() => setScaleFilter("large")}>Große Akten ({scaleCounts.large})</Button>
         </div>
 
         {filteredCaseFiles.length === 0 ? (
@@ -192,14 +169,10 @@ export function MyWorkCaseFilesTab() {
                   </Badge>
                 </div>
                 {caseFile.reference_number && (
-                  <p className="text-xs text-muted-foreground mt-0.5">
-                    Az: {caseFile.reference_number}
-                  </p>
+                  <p className="text-xs text-muted-foreground mt-0.5">Az: {caseFile.reference_number}</p>
                 )}
                 {caseFile.description && (
-                  <p className="text-xs text-muted-foreground line-clamp-1 mt-0.5">
-                    {caseFile.description}
-                  </p>
+                  <p className="text-xs text-muted-foreground line-clamp-1 mt-0.5">{caseFile.description}</p>
                 )}
                 {caseFile.current_status_note && (
                   <p className="text-xs text-muted-foreground line-clamp-1 mt-0.5">
@@ -220,7 +193,7 @@ export function MyWorkCaseFilesTab() {
                 variant="ghost"
                 size="icon"
                 className="h-7 w-7 flex-shrink-0"
-                onClick={() => navigate("/casefiles")}
+                onClick={() => navigate(`/casefiles?caseFileId=${caseFile.id}`)}
               >
                 <ExternalLink className="h-3 w-3" />
               </Button>
