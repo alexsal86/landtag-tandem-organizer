@@ -327,7 +327,7 @@ export const useCaseFileDetails = (caseFileId: string | null) => {
       return;
     }
 
-    setInteractions((data || []) as CaseItemInteraction[]);
+    setInteractions((data || []) as unknown as CaseItemInteraction[]);
   }, [caseFileId]);
 
   const fetchAll = useCallback(async () => {
