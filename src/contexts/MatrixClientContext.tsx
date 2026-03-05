@@ -492,8 +492,49 @@ export function MatrixClientProvider({ children }: { children: ReactNode }) {
     setConnectionError(null);
 
     try {
-      // 1. Resolve device ID from localStorage (no whoAmI call)
-      const localDeviceId = creds.deviceId || localStorage.getItem(`matrix_device_id:${creds.userId}`) || undefined;
+      const deviceStorageKey = `matrix_device_id:${creds.userId}`;
+      const resolveDeviceId = async (options?: { ignoreCached?: boolean }) => {
+        const cachedDeviceId = options?.ignoreCached
+          ? undefined
+          : (creds.deviceId || localStorage.getItem(deviceStorageKey) || undefined);
+
+        let whoamiBody: { user_id?: string; device_id?: string };
+        try {
+          const whoamiResponse = await fetch(`${creds.homeserverUrl}/_matrix/client/v3/account/whoami`, {
+            headers: { Authorization: `Bearer ${creds.accessToken}` },
+          });
+
+          if (!whoamiResponse.ok) {
+            throw new Error(`whoami antwortete mit HTTP ${whoamiResponse.status}`);
+          }
+
+          whoamiBody = await whoamiResponse.json();
+        } catch (error) {
+          throw new Error(
+            `Matrix-Connect abgebrochen: deviceId konnte nicht via whoami ermittelt werden (${error instanceof Error ? error.message : 'Unbekannter Fehler'}).`,
+          );
+        }
+
+        if (whoamiBody.user_id && whoamiBody.user_id !== creds.userId) {
+          throw new Error(
+            `Matrix-Connect abgebrochen: whoami user_id (${whoamiBody.user_id}) passt nicht zu den Credentials (${creds.userId}).`,
+          );
+        }
+
+        const resolvedDeviceId = cachedDeviceId || whoamiBody.device_id;
+        if (!resolvedDeviceId) {
+          throw new Error('Matrix-Connect abgebrochen: whoami lieferte keine device_id und lokal ist keine deviceId gespeichert.');
+        }
+
+        if (!cachedDeviceId && whoamiBody.device_id) {
+          localStorage.setItem(deviceStorageKey, whoamiBody.device_id);
+        }
+
+        return resolvedDeviceId;
+      };
+
+      // 1. Hard precondition: resolve canonical device ID before creating any client
+      let localDeviceId = await resolveDeviceId();
       authPasswordRef.current = creds.password;
 
       const getSecretStorageKey = async ({ keys }: { keys: Record<string, unknown> }) => {
@@ -515,8 +556,8 @@ export function MatrixClientProvider({ children }: { children: ReactNode }) {
         baseUrl: creds.homeserverUrl,
         accessToken: creds.accessToken,
         userId: creds.userId,
+        deviceId: localDeviceId,
         cryptoCallbacks: { getSecretStorageKey },
-        ...(localDeviceId ? { deviceId: localDeviceId } : {}),
       });
 
       clientRef.current = matrixClient;
@@ -565,11 +606,13 @@ export function MatrixClientProvider({ children }: { children: ReactNode }) {
             localStorage.removeItem(`matrix_device_id:${creds.userId}`);
             // Clear stale crypto stores to prevent OTK collisions
             await clearLocalCryptoStores(creds.userId);
+            localDeviceId = await resolveDeviceId({ ignoreCached: true });
             // Recreate client without stale deviceId
             matrixClient = sdk.createClient({
               baseUrl: creds.homeserverUrl,
               accessToken: creds.accessToken,
               userId: creds.userId,
+              deviceId: localDeviceId,
               cryptoCallbacks: { getSecretStorageKey },
             });
             clientRef.current = matrixClient;
@@ -919,11 +962,13 @@ export function MatrixClientProvider({ children }: { children: ReactNode }) {
         // Clear crypto stores
         await clearLocalCryptoStores(creds.userId);
         localStorage.removeItem(`matrix_device_id:${creds.userId}`);
-        // Recreate client from scratch without stale device
+        localDeviceId = await resolveDeviceId({ ignoreCached: true });
+        // Recreate client from scratch with refreshed device
         matrixClient = sdk.createClient({
           baseUrl: creds.homeserverUrl,
           accessToken: creds.accessToken,
           userId: creds.userId,
+          deviceId: localDeviceId,
           cryptoCallbacks: { getSecretStorageKey },
         });
         clientRef.current = matrixClient;
