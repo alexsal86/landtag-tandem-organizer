@@ -85,6 +85,9 @@ export interface MatrixMessage {
 // ─── Constants ───────────────────────────────────────────────────────────────
 
 const MAX_CACHED_MESSAGES = 200;
+const MAX_CACHED_ROOMS = 60;
+const SCROLLBACK_BATCH_LIMIT = 40;
+const MAX_SCROLLBACK_LOOPS = 6;
 
 
 
@@ -415,6 +418,37 @@ export function MatrixClientProvider({ children }: { children: ReactNode }) {
   const clientRef = useRef<sdk.MatrixClient | null>(null);
   const listenersRef = useRef<Array<{ event: string; handler: (...args: any[]) => void }>>([]);
   const refreshInFlightRef = useRef<Set<string>>(new Set());
+  const messagesRoomLruRef = useRef<string[]>([]);
+
+  const touchRoomInLru = useCallback((roomId: string) => {
+    const lru = messagesRoomLruRef.current;
+    const existingIndex = lru.indexOf(roomId);
+    if (existingIndex >= 0) {
+      lru.splice(existingIndex, 1);
+    }
+    lru.push(roomId);
+  }, []);
+
+  const upsertRoomMessages = useCallback((
+    prev: Map<string, MatrixMessage[]>,
+    roomId: string,
+    updater: (current: MatrixMessage[]) => MatrixMessage[],
+  ) => {
+    const current = prev.get(roomId) || [];
+    const nextRoomMessages = updater(current).slice(-MAX_CACHED_MESSAGES);
+    const next = new Map(prev);
+    next.set(roomId, nextRoomMessages);
+
+    touchRoomInLru(roomId);
+    const lru = messagesRoomLruRef.current;
+    while (next.size > MAX_CACHED_ROOMS && lru.length > 0) {
+      const evictRoomId = lru.shift();
+      if (!evictRoomId || evictRoomId === roomId) continue;
+      next.delete(evictRoomId);
+    }
+
+    return next;
+  }, [touchRoomInLru]);
 
   // Keep isConnectedRef in sync
   useEffect(() => { isConnectedRef.current = isConnected; }, [isConnected]);
@@ -763,9 +797,7 @@ export function MatrixClientProvider({ children }: { children: ReactNode }) {
           setMessages(prev => {
             const roomMessages = prev.get(room.roomId) || [];
             if (roomMessages.some(m => m.eventId === newMessage.eventId)) return prev;
-            const updated = new Map(prev);
-            updated.set(room.roomId, [...roomMessages, newMessage].slice(-MAX_CACHED_MESSAGES));
-            return updated;
+            return upsertRoomMessages(prev, room.roomId, (existing) => [...existing, newMessage]);
           });
           updateRoomList(matrixClient);
         }
@@ -779,7 +811,6 @@ export function MatrixClientProvider({ children }: { children: ReactNode }) {
             setMessages(prev => {
               const roomMessages = prev.get(room.roomId);
               if (!roomMessages) return prev;
-              const updated = new Map(prev);
               const newRoomMessages = roomMessages.map(msg => {
                 if (msg.eventId === targetEventId) {
                   const reactions = new Map(msg.reactions);
@@ -792,8 +823,7 @@ export function MatrixClientProvider({ children }: { children: ReactNode }) {
                 }
                 return msg;
               });
-              updated.set(room.roomId, newRoomMessages);
-              return updated;
+              return upsertRoomMessages(prev, room.roomId, () => newRoomMessages);
             });
           }
         }
@@ -846,16 +876,14 @@ export function MatrixClientProvider({ children }: { children: ReactNode }) {
 
         setMessages(prev => {
           const roomMessages = prev.get(roomId) || [];
-          const updated = new Map(prev);
           const existingIndex = roomMessages.findIndex(m => m.eventId === decryptedMessage.eventId);
           if (existingIndex >= 0) {
             const next = [...roomMessages];
             next[existingIndex] = decryptedMessage;
-            updated.set(roomId, next);
+            return upsertRoomMessages(prev, roomId, () => next);
           } else {
-            updated.set(roomId, [...roomMessages, decryptedMessage].slice(-MAX_CACHED_MESSAGES));
+            return upsertRoomMessages(prev, roomId, (existing) => [...existing, decryptedMessage]);
           }
-          return updated;
         });
       };
 
@@ -1094,21 +1122,31 @@ export function MatrixClientProvider({ children }: { children: ReactNode }) {
   // ─── refreshMessages (mutation, NOT a getter) ────────────────────────────
 
   const refreshMessages = useCallback((roomId: string, limit: number = MAX_CACHED_MESSAGES) => {
+    const refreshStartedAt = performance.now();
     const mc = clientRef.current;
     if (!mc) return;
 
     const room = mc.getRoom(roomId);
     if (!room) return;
 
+    const normalizedLimit = Math.min(limit, MAX_CACHED_MESSAGES);
+    touchRoomInLru(roomId);
     const timeline = room.getLiveTimeline().getEvents();
+    const timelineWindow = timeline.slice(-normalizedLimit);
 
-    if (timeline.length < limit && !refreshInFlightRef.current.has(roomId)) {
+    let scrollbackLoops = 0;
+    if (timeline.length < normalizedLimit && !refreshInFlightRef.current.has(roomId)) {
       refreshInFlightRef.current.add(roomId);
       void (async () => {
         try {
           let hasMore = true;
-          while (hasMore && room.getLiveTimeline().getEvents().length < limit) {
-            hasMore = (await mc.scrollback(room, limit)) as unknown as boolean;
+          while (
+            hasMore &&
+            room.getLiveTimeline().getEvents().length < normalizedLimit &&
+            scrollbackLoops < MAX_SCROLLBACK_LOOPS
+          ) {
+            scrollbackLoops += 1;
+            hasMore = (await mc.scrollback(room, SCROLLBACK_BATCH_LIMIT)) as unknown as boolean;
           }
         } catch (error) {
           matrixLogger.warn('Matrix scrollback failed:', error);
@@ -1118,8 +1156,15 @@ export function MatrixClientProvider({ children }: { children: ReactNode }) {
       })();
     }
 
-    // Trigger decryption for encrypted events
-    timeline.forEach(event => {
+    const cached = messagesRef.current.get(roomId) || [];
+    const cachedEventIds = new Set(cached.map((message) => message.eventId));
+    const visibleOrNewEvents = timelineWindow.filter((event) => {
+      const id = event.getId();
+      return !id || !cachedEventIds.has(id);
+    });
+
+    // Trigger decryption only for the visible/new timeline delta
+    visibleOrNewEvents.forEach(event => {
       if (event.isEncrypted() && !event.isDecryptionFailure()) {
         try {
           event.attemptDecryption(mc.getCrypto() as any).catch(() => {});
@@ -1127,33 +1172,57 @@ export function MatrixClientProvider({ children }: { children: ReactNode }) {
       }
     });
 
-    const timelineMessages: MatrixMessage[] = timeline
+    const timelineMessages: MatrixMessage[] = timelineWindow
       .map(event => mapMatrixEventToMessage(room, event))
       .filter((msg): msg is MatrixMessage => Boolean(msg));
 
-    const cached = messagesRef.current.get(roomId) || [];
-    const mergedByEventId = new Map<string, MatrixMessage>();
-    for (const msg of timelineMessages) mergedByEventId.set(msg.eventId, msg);
-    for (const msg of cached) {
-      const existing = mergedByEventId.get(msg.eventId);
-      if (!existing ||
-        (existing.type === 'm.bad.encrypted' && msg.type !== 'm.bad.encrypted') ||
-        (existing.type === 'm.room.encrypted' && msg.type !== 'm.room.encrypted' && msg.type !== 'm.bad.encrypted') ||
-        (existing.content === '[Encrypted]' && msg.content !== '[Encrypted]')) {
-        mergedByEventId.set(msg.eventId, msg);
+    const deltaMessages: MatrixMessage[] = [];
+    const cachedById = new Map(cached.map((message) => [message.eventId, message]));
+    for (const message of timelineMessages) {
+      const existing = cachedById.get(message.eventId);
+      const shouldReplace = Boolean(existing) && (
+        (existing.type === 'm.bad.encrypted' && message.type !== 'm.bad.encrypted') ||
+        (existing.type === 'm.room.encrypted' && message.type !== 'm.room.encrypted' && message.type !== 'm.bad.encrypted') ||
+        (existing.content === '[Encrypted]' && message.content !== '[Encrypted]')
+      );
+      if (!existing || shouldReplace) {
+        deltaMessages.push(message);
       }
     }
 
-    const mergedMessages = Array.from(mergedByEventId.values())
-      .sort((a, b) => a.timestamp - b.timestamp)
-      .slice(-limit);
+    if (deltaMessages.length > 0 || !messagesRef.current.has(roomId)) {
+      setMessages(prev => upsertRoomMessages(prev, roomId, (current) => {
+        const merged = [...current];
+        for (const deltaMessage of deltaMessages) {
+          const existingIndex = merged.findIndex((message) => message.eventId === deltaMessage.eventId);
+          if (existingIndex >= 0) {
+            merged[existingIndex] = deltaMessage;
+            continue;
+          }
 
-    setMessages(prev => {
-      const updated = new Map(prev);
-      updated.set(roomId, mergedMessages);
-      return updated;
+          const insertIndex = merged.findIndex((message) => message.timestamp > deltaMessage.timestamp);
+          if (insertIndex === -1) {
+            merged.push(deltaMessage);
+          } else {
+            merged.splice(insertIndex, 0, deltaMessage);
+          }
+        }
+        return merged;
+      }));
+    }
+
+    matrixLogger.log('[Matrix][Perf] refreshMessages', {
+      roomId,
+      durationMs: Number((performance.now() - refreshStartedAt).toFixed(2)),
+      timelineEvents: timeline.length,
+      windowEvents: timelineWindow.length,
+      cachedEvents: cached.length,
+      deltaEvents: deltaMessages.length,
+      decryptAttempts: visibleOrNewEvents.length,
+      scrollbackLoops,
+      cacheRooms: messagesRef.current.size,
     });
-  }, []);
+  }, [touchRoomInLru, upsertRoomMessages]);
 
   // ─── sendMessage ─────────────────────────────────────────────────────────
 
