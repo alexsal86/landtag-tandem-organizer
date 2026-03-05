@@ -271,7 +271,7 @@ export function MyWorkCasesWorkspace() {
       >
         <div className="flex items-start justify-between gap-2">
           <div>
-            <p className="text-sm font-medium">{item.resolution_summary || "Ohne Titel"}</p>
+            <p className="text-sm font-medium">{item.subject || item.resolution_summary || "Ohne Titel"}</p>
             {item.source_channel ? <p className="mt-1 text-xs text-muted-foreground">Kanal: {item.source_channel}</p> : null}
           </div>
           {item.priority && <Badge variant="outline">{item.priority}</Badge>}
