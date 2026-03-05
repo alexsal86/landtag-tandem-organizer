@@ -10,7 +10,8 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
-import { CaseFileCreateDialog } from "@/features/cases/files/components";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { CaseFileDetail, CaseFileCreateDialog } from "@/features/cases/files/components";
 import { CaseItemCreateDialog } from "@/components/my-work/CaseItemCreateDialog";
 import { useCaseItems } from "@/features/cases/items/hooks";
 import { useAuth } from "@/hooks/useAuth";
@@ -41,6 +42,11 @@ type CaseFile = {
   case_type: string | null;
 };
 
+type TeamUser = {
+  id: string;
+  name: string;
+};
+
 const sourceChannelMeta: Record<string, { icon: typeof Phone; label: string }> = {
   phone: { icon: Phone, label: "Telefon" },
   email: { icon: Mail, label: "E-Mail" },
@@ -60,6 +66,7 @@ export function MyWorkCasesWorkspace() {
   const [caseItems, setCaseItems] = useState<CaseItem[]>([]);
   const [allCaseFiles, setAllCaseFiles] = useState<CaseFile[]>([]);
   const [caseFilesById, setCaseFilesById] = useState<Record<string, CaseFile>>({});
+  const [teamUsers, setTeamUsers] = useState<TeamUser[]>([]);
   const [loading, setLoading] = useState(true);
   const [itemFilterQuery, setItemFilterQuery] = useState("");
   const [fileFilterQuery, setFileFilterQuery] = useState("");
@@ -100,6 +107,7 @@ export function MyWorkCasesWorkspace() {
       setCaseItems([]);
       setAllCaseFiles([]);
       setCaseFilesById({});
+      setTeamUsers([]);
       setLoading(false);
       return;
     }
@@ -107,7 +115,7 @@ export function MyWorkCasesWorkspace() {
     setLoading(true);
     try {
       // Load case items and ALL case files in parallel
-      const [itemsRes, filesRes] = await Promise.all([
+      const [itemsRes, filesRes, membersRes] = await Promise.all([
         supabase
           .from("case_items" as any)
           .select("id, subject, resolution_summary, source_channel, status, priority, due_at, case_file_id, user_id, owner_user_id, updated_at")
@@ -120,10 +128,16 @@ export function MyWorkCasesWorkspace() {
           .eq("tenant_id", tenantId)
           .order("updated_at", { ascending: false })
           .limit(200),
+        supabase
+          .from("user_tenant_memberships")
+          .select("user_id, profiles:user_id(display_name)")
+          .eq("tenant_id", tenantId)
+          .eq("is_active", true),
       ]);
 
       if (itemsRes.error) throw itemsRes.error;
       if (filesRes.error) throw filesRes.error;
+      if (membersRes.error) throw membersRes.error;
 
       const items = (itemsRes.data || []) as unknown as CaseItem[];
       const files = (filesRes.data || []) as unknown as CaseFile[];
@@ -136,6 +150,14 @@ export function MyWorkCasesWorkspace() {
         return acc;
       }, {});
       setCaseFilesById(mapped);
+      const members = ((membersRes.data || []) as Array<{ user_id: string; profiles: { display_name: string | null } | { display_name: string | null }[] | null }>).map((row) => {
+        const profile = Array.isArray(row.profiles) ? row.profiles[0] : row.profiles;
+        return {
+          id: row.user_id,
+          name: profile?.display_name || "Unbekannt",
+        };
+      });
+      setTeamUsers(members);
     } catch (error) {
       console.error("Error loading cases workspace:", error);
     } finally {
@@ -185,6 +207,15 @@ export function MyWorkCasesWorkspace() {
     }
     return counts;
   }, [caseItems]);
+
+
+  const defaultAssigneeId = user?.id ?? null;
+
+  const handleOwnerChange = async (caseItemId: string, ownerId: string) => {
+    const value = ownerId === "unassigned" ? null : ownerId;
+    await supabase.from("case_items").update({ owner_user_id: value }).eq("id", caseItemId);
+    setCaseItems((prev) => prev.map((item) => (item.id === caseItemId ? { ...item, owner_user_id: value } : item)));
+  };
 
   const fileStats = useMemo(() => {
     const closedStatuses = new Set(["closed", "done", "abgeschlossen", "archived", "archiviert"]);
@@ -244,10 +275,6 @@ export function MyWorkCasesWorkspace() {
     return caseItems.find((i) => i.id === detailItemId) || null;
   }, [caseItems, detailItemId]);
 
-  const detailFile = useMemo(() => {
-    if (!detailFileId) return null;
-    return caseFilesById[detailFileId] ?? null;
-  }, [caseFilesById, detailFileId]);
 
   // --- Render ---
 
@@ -300,8 +327,8 @@ export function MyWorkCasesWorkspace() {
                         key={item.id}
                         type="button"
                         className={cn(
-                          "w-full rounded-md border p-3 text-left transition-colors hover:bg-muted/50",
-                          isActive && "border-primary bg-primary/5",
+                          "w-full border-b px-2 py-2 text-left transition-colors hover:bg-muted/40",
+                          isActive && "bg-primary/5",
                         )}
                         onClick={() => handleSelectCaseItem(item)}
                       >
@@ -316,9 +343,23 @@ export function MyWorkCasesWorkspace() {
                           </div>
                           {item.priority && <Badge variant="outline" className="shrink-0 text-[10px]">{item.priority}</Badge>}
                         </div>
-                        <div className="mt-1.5 flex items-center justify-between text-xs text-muted-foreground">
-                          <span>{item.status || "offen"}</span>
-                          {item.due_at && <span>Fällig: {format(new Date(item.due_at), "dd.MM.yy", { locale: de })}</span>}
+                        <div className="mt-1.5 grid grid-cols-1 gap-2 text-xs text-muted-foreground sm:grid-cols-3">
+                          <span>Status: {item.status || "offen"}</span>
+                          <span>{item.due_at ? `Fällig: ${format(new Date(item.due_at), "dd.MM.yy", { locale: de })}` : "Keine Frist"}</span>
+                          <div className="flex items-center gap-2" onClick={(event) => event.stopPropagation()}>
+                            <span>Bearbeiter:</span>
+                            <Select value={item.owner_user_id || "unassigned"} onValueChange={(value) => { void handleOwnerChange(item.id, value); }}>
+                              <SelectTrigger className="h-7 w-[170px] text-xs">
+                                <SelectValue placeholder="Bearbeiter" />
+                              </SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="unassigned">Nicht zugewiesen</SelectItem>
+                                {teamUsers.map((member) => (
+                                  <SelectItem key={member.id} value={member.id}>{member.name}</SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                          </div>
                         </div>
                         {linkedFile ? (
                           <p className="mt-1 text-xs text-muted-foreground truncate">
@@ -388,8 +429,8 @@ export function MyWorkCasesWorkspace() {
                         key={cf.id}
                         type="button"
                         className={cn(
-                          "w-full rounded-md border p-3 text-left transition-colors hover:bg-muted/50",
-                          isActive && "border-primary bg-primary/5",
+                          "w-full border-b px-2 py-2 text-left transition-colors hover:bg-muted/40",
+                          isActive && "bg-primary/5",
                         )}
                         onClick={() => handleSelectCaseFile(cf)}
                       >
@@ -514,6 +555,8 @@ export function MyWorkCasesWorkspace() {
         onOpenChange={setIsCaseItemDialogOpen}
         onCreated={(id) => { void handleCaseItemCreated(id); }}
         createCaseItem={createCaseItem}
+        assignees={teamUsers}
+        defaultAssigneeId={defaultAssigneeId}
       />
 
       <CaseFileCreateDialog
