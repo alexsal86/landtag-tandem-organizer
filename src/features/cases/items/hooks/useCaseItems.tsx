@@ -115,7 +115,14 @@ export const useCaseItems = () => {
   }, [user, currentTenant, toast]);
 
   const createCaseItem = async (data: CaseItemFormData) => {
-    if (!user || !currentTenant) return null;
+    if (!user || !currentTenant) {
+      toast({
+        title: "Fehlender Kontext",
+        description: "Keine aktive Mandanten-/Sitzungskontext. Bitte neu anmelden oder Mandant auswählen.",
+        variant: "destructive",
+      });
+      return null;
+    }
 
     try {
       const { data: newCaseItem, error } = await supabase
