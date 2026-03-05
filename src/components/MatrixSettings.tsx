@@ -273,13 +273,29 @@ export const MatrixSettings: React.FC = () => {
 
   // Test Matrix integration
   const testMatrixIntegration = async () => {
+    if (!user) {
+      return;
+    }
+
+    const activeSubscription = subscriptions.find((subscription) => subscription.is_active);
+    if (!activeSubscription) {
+      toast({
+        title: 'Keine aktiven Räume',
+        description: 'Bitte aktivieren Sie mindestens einen Matrix-Raum für den Test.',
+        variant: 'destructive',
+      });
+      return;
+    }
+
     setTestLoading(true);
     try {
       const { data, error } = await supabase.functions.invoke('matrix-bot-handler', {
         body: {
           test: true,
           title: 'Matrix-Test',
-          message: 'Dies ist eine Test-Nachricht aus der Matrix-Integration!'
+          message: 'Dies ist eine Test-Nachricht aus der Matrix-Integration!',
+          user_id: user.id,
+          room_id: activeSubscription.room_id,
         }
       });
 

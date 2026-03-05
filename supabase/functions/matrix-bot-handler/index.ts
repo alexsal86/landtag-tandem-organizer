@@ -45,6 +45,18 @@ interface WebsiteWidgetTestRequest {
   callback_request?: WebsiteWidgetCallbackPayload;
 }
 
+interface MatrixSendRequestBody {
+  test?: boolean;
+  type?: string;
+  title?: string;
+  message?: string;
+  data?: Record<string, unknown>;
+  priority?: string;
+  user_id?: string;
+  room_id?: string;
+  allow_broadcast?: boolean;
+}
+
 interface WidgetRateLimitResult {
   allowed: boolean;
   retryAfterSeconds: number;
@@ -53,39 +65,55 @@ interface WidgetRateLimitResult {
 const WIDGET_RATE_LIMIT_WINDOW_SECONDS = Number(Deno.env.get('WIDGET_RATE_LIMIT_WINDOW_SECONDS') ?? 300);
 const WIDGET_RATE_LIMIT_MAX_REQUESTS = Number(Deno.env.get('WIDGET_RATE_LIMIT_MAX_REQUESTS') ?? 5);
 
-type MatrixLogStatus = 'success' | 'failed';
-
-interface MatrixLogPayload {
-  event_type: string;
-  room_id?: string | null;
-  user_id?: string | null;
-  message_content?: string | null;
-  response_content?: string | null;
-  status: MatrixLogStatus;
-  error_message?: string | null;
-  metadata?: Record<string, unknown>;
-}
-
-async function logMatrixEvent(
-  supabaseAdmin: any,
-  payload: MatrixLogPayload,
+async function resolveTargetedSubscriptions(
+  supabaseAdmin: ReturnType<typeof createClient>,
+  body: MatrixSendRequestBody,
 ) {
-  const { error } = await supabaseAdmin
-    .from('matrix_bot_logs')
-    .insert({
-      event_type: payload.event_type,
-      room_id: payload.room_id ?? null,
-      user_id: payload.user_id ?? null,
-      message_content: payload.message_content ?? null,
-      response_content: payload.response_content ?? null,
-      status: payload.status,
-      error_message: payload.error_message ?? null,
-      metadata: payload.metadata ?? {},
-    });
+  if (!body.user_id && !body.allow_broadcast) {
+    return {
+      subscriptions: null,
+      errorResponse: new Response(JSON.stringify({
+        success: false,
+        error: 'user_id ist erforderlich, um unbeabsichtigten Broadcast zu verhindern'
+      }), {
+        status: 400,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+      })
+    };
+  }
+
+  let query = supabaseAdmin
+    .from('matrix_subscriptions')
+    .select('*')
+    .eq('is_active', true);
+
+  if (body.user_id) {
+    query = query.eq('user_id', body.user_id);
+  }
+
+  if (body.room_id) {
+    query = query.eq('room_id', body.room_id);
+  }
+
+  const { data: subscriptions, error } = await query;
 
   if (error) {
-    console.error('❌ Failed to insert matrix_bot_logs entry:', error, payload);
+    return {
+      subscriptions: null,
+      errorResponse: new Response(JSON.stringify({
+        success: false,
+        error: 'Database error: ' + error.message
+      }), {
+        status: 500,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+      })
+    };
   }
+
+  return {
+    subscriptions,
+    errorResponse: null,
+  };
 }
 
 serve(async (req) => {
@@ -98,7 +126,7 @@ serve(async (req) => {
 
   try {
     // Parse request body
-    const body = await req.json();
+    const body = await req.json() as MatrixSendRequestBody;
     console.log('📨 Matrix request body:', JSON.stringify(body, null, 2));
 
     // Get Matrix configuration from secrets
@@ -138,21 +166,10 @@ serve(async (req) => {
       console.log('🧪 Processing Matrix test request - sending REAL messages');
       
       try {
-        // Get Matrix subscriptions for testing
-        const { data: subscriptions, error } = await supabaseAdmin
-          .from('matrix_subscriptions')
-          .select('*')
-          .eq('is_active', true);
+        const { subscriptions, errorResponse } = await resolveTargetedSubscriptions(supabaseAdmin, body);
 
-        if (error) {
-          console.error('❌ Database error:', error);
-          return new Response(JSON.stringify({
-            success: false,
-            error: 'Database error: ' + error.message
-          }), {
-            status: 500,
-            headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-          });
+        if (errorResponse) {
+          return errorResponse;
         }
 
         console.log(`📋 Found ${subscriptions?.length || 0} Matrix subscriptions`);
@@ -275,7 +292,7 @@ serve(async (req) => {
           failed: failedCount,
           total_subscriptions: subscriptions.length,
           message: sentCount > 0 
-            ? `✅ Matrix-Test erfolgreich! ${sentCount} echte Nachrichten gesendet, ${failedCount} fehlgeschlagen.`
+            ? `✅ Matrix-Test erfolgreich! An ${sentCount} meiner Räume gesendet, ${failedCount} fehlgeschlagen.`
             : `❌ Matrix-Test fehlgeschlagen. ${failedCount} Nachrichten konnten nicht gesendet werden.`
         }), {
           status: 200,
@@ -303,20 +320,10 @@ serve(async (req) => {
     // Handle real Matrix message sending
     console.log('📤 Processing real Matrix message request');
     
-    const { data: subscriptions, error } = await supabaseAdmin
-      .from('matrix_subscriptions')
-      .select('*')
-      .eq('is_active', true);
+    const { subscriptions, errorResponse } = await resolveTargetedSubscriptions(supabaseAdmin, body);
 
-    if (error) {
-      console.error('❌ Database error:', error);
-      return new Response(JSON.stringify({
-        success: false,
-        error: 'Database error: ' + error.message
-      }), {
-        status: 500,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-      });
+    if (errorResponse) {
+      return errorResponse;
     }
 
     if (!subscriptions || subscriptions.length === 0) {
@@ -438,7 +445,7 @@ serve(async (req) => {
       sent: sentCount,
       failed: failedCount,
       total_subscriptions: totalSubscriptions,
-      message: `Matrix-Nachrichten versendet! ${sentCount} erfolgreich, ${failedCount} fehlgeschlagen.`
+      message: `Matrix-Nachrichten versendet! An ${sentCount} meiner Räume gesendet, ${failedCount} fehlgeschlagen.`
     }), {
       status: 200,
       headers: { ...corsHeaders, 'Content-Type': 'application/json' }
