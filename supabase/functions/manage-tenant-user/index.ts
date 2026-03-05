@@ -6,17 +6,6 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version',
 };
 
-const SUPERADMIN_EMAIL = 'mail@alexander-salomon.de';
-
-class HttpError extends Error {
-  status: number;
-
-  constructor(status: number, message: string) {
-    super(message);
-    this.status = status;
-  }
-}
-
 function generatePassword(): string {
   const chars = 'ABCDEFGHJKMNPQRSTUVWXYZabcdefghijkmnpqrstuvwxyz23456789!@#$%';
   let password = '';
@@ -24,6 +13,56 @@ function generatePassword(): string {
     password += chars.charAt(Math.floor(Math.random() * chars.length));
   }
   return password;
+}
+
+async function hasPlatformAdminAccess(supabaseAdmin: ReturnType<typeof createClient>, user: any): Promise<boolean> {
+  const claimRoles = user?.app_metadata?.platform_roles;
+  if (Array.isArray(claimRoles) && claimRoles.includes('platform_admin')) {
+    return true;
+  }
+
+  const { data, error } = await supabaseAdmin
+    .from('platform_roles')
+    .select('role')
+    .eq('user_id', user.id)
+    .eq('role', 'platform_admin')
+    .maybeSingle();
+
+  if (error) {
+    console.error('Failed to check platform admin role:', error);
+    return false;
+  }
+
+  return Boolean(data);
+}
+
+async function logAdminAction(
+  supabaseAdmin: ReturnType<typeof createClient>,
+  actorUserId: string,
+  actorEmail: string | undefined,
+  action: string,
+  details: Record<string, unknown> = {},
+  tenantId: string | null = null,
+) {
+  const payload = {
+    action,
+    source: 'manage-tenant-user',
+    actor_email: actorEmail ?? null,
+    details,
+    timestamp: new Date().toISOString(),
+  };
+
+  const { error } = await supabaseAdmin
+    .from('audit_log_entries')
+    .insert({
+      user_id: actorUserId,
+      tenant_id: tenantId,
+      payload,
+    });
+
+  if (error) {
+    console.error('Failed to write admin audit log:', error);
+  }
 }
 
 serve(async (req) => {
@@ -51,8 +90,8 @@ serve(async (req) => {
       throw new Error('Authentication failed');
     }
 
-    const isSuperadmin = user.email === SUPERADMIN_EMAIL;
-    console.log(`User ${user.email} is superadmin: ${isSuperadmin}`);
+    const isPlatformAdmin = await hasPlatformAdminAccess(supabaseAdmin, user);
+    console.log(`User ${user.email} is platform admin: ${isPlatformAdmin}`);
 
     const assertTenantPermission = async (tenantId: string, requiredRole: 'abgeordneter') => {
       if (isSuperadmin) return;
@@ -78,9 +117,11 @@ serve(async (req) => {
     switch (action) {
       case 'listAllUsers': {
         // Superadmin only
-        if (!isSuperadmin) {
-          throw new HttpError(403, 'Only superadmin can list all users');
+        if (!isPlatformAdmin) {
+          throw new Error('Only superadmin can list all users');
         }
+
+        await logAdminAction(supabaseAdmin, user.id, user.email, 'platform_admin.list_all_users');
 
         // Get all users from auth
         const { data: authUsers, error: usersError } = await supabaseAdmin.auth.admin.listUsers();
@@ -130,8 +171,8 @@ serve(async (req) => {
 
       case 'createUser': {
         // Superadmin only
-        if (!isSuperadmin) {
-          throw new HttpError(403, 'Only superadmin can create users');
+        if (!isPlatformAdmin) {
+          throw new Error('Only superadmin can create users');
         }
 
         const { email, displayName, role, tenantId } = body;
@@ -191,6 +232,15 @@ serve(async (req) => {
         if (statusError) console.error('Status creation error:', statusError);
 
         console.log(`User ${email} created successfully`);
+        await logAdminAction(
+          supabaseAdmin,
+          user.id,
+          user.email,
+          'platform_admin.create_user',
+          { target_user_id: newUser.user.id, target_email: email, role: role || 'mitarbeiter' },
+          tenantId,
+        );
+
         return new Response(JSON.stringify({
           success: true,
           user: { 
@@ -206,8 +256,8 @@ serve(async (req) => {
 
       case 'assignTenant': {
         // Superadmin only
-        if (!isSuperadmin) {
-          throw new HttpError(403, 'Only superadmin can assign tenants');
+        if (!isPlatformAdmin) {
+          throw new Error('Only superadmin can assign tenants');
         }
 
         const { userId, tenantId, role } = body;
@@ -251,6 +301,15 @@ serve(async (req) => {
           }, { onConflict: 'user_id' });
         }
 
+        await logAdminAction(
+          supabaseAdmin,
+          user.id,
+          user.email,
+          'platform_admin.assign_tenant',
+          { target_user_id: userId, role: role || 'mitarbeiter' },
+          tenantId,
+        );
+
         return new Response(JSON.stringify({ success: true }), {
           headers: { ...corsHeaders, 'Content-Type': 'application/json' }
         });
@@ -263,7 +322,12 @@ serve(async (req) => {
           throw new Error('userId and tenantId are required');
         }
 
-        await assertTenantPermission(tenantId, 'abgeordneter');
+        const canRemove = isPlatformAdmin || 
+          (isAbgeordneter && callerMembership?.tenant_id === tenantId);
+
+        if (!canRemove) {
+          throw new Error('Insufficient permissions');
+        }
 
         console.log(`Removing user ${userId} from tenant ${tenantId}`);
 
@@ -274,6 +338,15 @@ serve(async (req) => {
           .eq('tenant_id', tenantId);
 
         if (error) throw error;
+
+        await logAdminAction(
+          supabaseAdmin,
+          user.id,
+          user.email,
+          'platform_admin.remove_tenant_membership',
+          { target_user_id: userId },
+          tenantId,
+        );
 
         return new Response(JSON.stringify({ success: true }), {
           headers: { ...corsHeaders, 'Content-Type': 'application/json' }
@@ -287,14 +360,8 @@ serve(async (req) => {
           throw new Error('userId is required');
         }
 
-        // Actions without tenant context are platform-admin only
-        if (!tenantId) {
-          if (!isSuperadmin) {
-            throw new HttpError(403, 'Only superadmin can delete users without tenant context');
-          }
-        } else {
-          await assertTenantPermission(tenantId, 'abgeordneter');
-
+        // For Abgeordneter: verify user is in their tenant
+        if (!isPlatformAdmin && isAbgeordneter) {
           const { data: targetMembership } = await supabaseAdmin
             .from('user_tenant_memberships')
             .select('tenant_id')
@@ -306,6 +373,8 @@ serve(async (req) => {
           if (!targetMembership) {
             throw new HttpError(403, 'Insufficient permissions - user not in target tenant');
           }
+        } else if (!isPlatformAdmin) {
+          throw new Error('Insufficient permissions');
         }
 
         // Prevent self-deletion
@@ -322,6 +391,15 @@ serve(async (req) => {
           throw new Error(`Failed to delete user: ${error.message}`);
         }
 
+        await logAdminAction(
+          supabaseAdmin,
+          user.id,
+          user.email,
+          'platform_admin.delete_user',
+          { target_user_id: userId },
+          tenantId ?? callerMembership?.tenant_id ?? null,
+        );
+
         return new Response(JSON.stringify({ success: true }), {
           headers: { ...corsHeaders, 'Content-Type': 'application/json' }
         });
@@ -334,7 +412,12 @@ serve(async (req) => {
           throw new Error('userId, tenantId, and role are required');
         }
 
-        await assertTenantPermission(tenantId, 'abgeordneter');
+        const canUpdate = isPlatformAdmin || 
+          (isAbgeordneter && callerMembership?.tenant_id === tenantId);
+
+        if (!canUpdate) {
+          throw new Error('Insufficient permissions');
+        }
 
         console.log(`Updating role for user ${userId} to ${role}`);
 
@@ -355,6 +438,15 @@ serve(async (req) => {
 
         if (roleError) throw roleError;
 
+        await logAdminAction(
+          supabaseAdmin,
+          user.id,
+          user.email,
+          'platform_admin.update_role',
+          { target_user_id: userId, role },
+          tenantId,
+        );
+
         return new Response(JSON.stringify({ success: true }), {
           headers: { ...corsHeaders, 'Content-Type': 'application/json' }
         });
@@ -362,8 +454,8 @@ serve(async (req) => {
 
       case 'initializeTenant': {
         // Superadmin only - initialize default settings for a new tenant
-        if (!isSuperadmin) {
-          throw new HttpError(403, 'Only superadmin can initialize tenants');
+        if (!isPlatformAdmin) {
+          throw new Error('Only superadmin can initialize tenants');
         }
 
         const { tenantId } = body;
@@ -392,6 +484,15 @@ serve(async (req) => {
         }
 
         console.log(`Tenant ${tenantId} initialized successfully`);
+        await logAdminAction(
+          supabaseAdmin,
+          user.id,
+          user.email,
+          'platform_admin.initialize_tenant',
+          { tenant_id: tenantId },
+          tenantId,
+        );
+
         return new Response(JSON.stringify({ success: true }), {
           headers: { ...corsHeaders, 'Content-Type': 'application/json' }
         });

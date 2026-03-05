@@ -928,16 +928,6 @@ const [editingChild, setEditingChild] = useState<{ parentIndex: number; childInd
             </Card>
           );
         case "tenants":
-          // Only for system superadmin (mail@alexander-salomon.de)
-          if (user?.email !== "mail@alexander-salomon.de") {
-            return (
-              <Card>
-                <CardContent className="p-8 text-center text-muted-foreground">
-                  Nur für System-Administratoren zugänglich.
-                </CardContent>
-              </Card>
-            );
-          }
           return <SuperadminTenantManagement />;
         case "auditlogs":
           return <AuditLogViewer />;
@@ -2052,15 +2042,6 @@ const [editingChild, setEditingChild] = useState<{ parentIndex: number; childInd
     if (activeSection === "superadmin") {
       switch (activeSubSection) {
         case "tenants":
-          if (user?.email !== "mail@alexander-salomon.de") {
-            return (
-              <Card>
-                <CardContent className="p-8 text-center text-muted-foreground">
-                  Nur für System-Administratoren zugänglich.
-                </CardContent>
-              </Card>
-            );
-          }
           return <SuperadminTenantManagement />;
         case "push-tests":
           return (
