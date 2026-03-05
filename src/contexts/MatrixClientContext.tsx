@@ -7,6 +7,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { useTenant } from '@/hooks/useTenant';
 import { supabase } from '@/integrations/supabase/client';
 import { debugConsole, isDebugConsoleEnabled } from '@/utils/debugConsole';
+import { getCoiCapabilityStatus } from '@/lib/coiRuntime';
 
 // ─── Interfaces ──────────────────────────────────────────────────────────────
 
@@ -38,6 +39,7 @@ interface MatrixE2EEDiagnostics {
   crossSigningReady: boolean | null;
   keyBackupEnabled: boolean | null;
   cryptoError: string | null;
+  coiBlockedReason: 'iframe' | 'preview-host' | 'iframe-preview' | null;
 }
 
 interface MatrixSasVerificationState {
@@ -326,6 +328,7 @@ const createDefaultE2EEDiagnostics = (): MatrixE2EEDiagnostics => {
       crossSigningReady: null,
       keyBackupEnabled: null,
       cryptoError: null,
+      coiBlockedReason: null,
     };
   }
 
@@ -338,6 +341,7 @@ const createDefaultE2EEDiagnostics = (): MatrixE2EEDiagnostics => {
     crossSigningReady: null,
     keyBackupEnabled: null,
     cryptoError: null,
+    coiBlockedReason: getCoiCapabilityStatus().reason,
   };
 };
 
@@ -400,6 +404,7 @@ export function MatrixClientProvider({ children }: { children: ReactNode }) {
     crossSigningReady: null,
     keyBackupEnabled: null,
     cryptoError: null,
+    coiBlockedReason: getCoiCapabilityStatus().reason,
   });
 
   // Refs for cleanup
@@ -624,6 +629,7 @@ export function MatrixClientProvider({ children }: { children: ReactNode }) {
         cryptoError: string | null = null,
         cryptoState?: { secretStorageReady: boolean | null; crossSigningReady: boolean | null; keyBackupEnabled: boolean | null }
       ) => {
+        const coiStatus = getCoiCapabilityStatus();
         setE2eeDiagnostics({
           secureContext: window.isSecureContext,
           crossOriginIsolated: window.crossOriginIsolated,
@@ -633,6 +639,7 @@ export function MatrixClientProvider({ children }: { children: ReactNode }) {
           crossSigningReady: cryptoState?.crossSigningReady ?? null,
           keyBackupEnabled: cryptoState?.keyBackupEnabled ?? null,
           cryptoError,
+          coiBlockedReason: coiStatus.reason,
         });
       };
 
@@ -641,22 +648,30 @@ export function MatrixClientProvider({ children }: { children: ReactNode }) {
       let lastCryptoError: string | null = null;
 
       // 3. Init Rust Crypto (BEFORE startClient)
-      try {
-        matrixLogger.log('=== Matrix E2EE Diagnostics ===');
-        matrixLogger.log('Cross-Origin Isolated:', window.crossOriginIsolated);
-        matrixLogger.log('SharedArrayBuffer available:', typeof SharedArrayBuffer !== 'undefined');
-
-        if (!window.crossOriginIsolated) {
-          matrixLogger.warn('Cross-Origin Isolation not enabled. E2EE may not work. Try a new tab.');
-        }
-
-        await matrixClient.initRustCrypto();
-        matrixLogger.log('Matrix E2EE initialized successfully');
-      } catch (cryptoError) {
-        matrixLogger.error('Failed to initialize E2EE:', cryptoError);
-        lastCryptoError = cryptoError instanceof Error ? cryptoError.message : 'E2EE-Initialisierung fehlgeschlagen';
+      const coiStatus = getCoiCapabilityStatus();
+      if (coiStatus.blocked) {
+        lastCryptoError = 'Cross-Origin-Isolation ist in dieser Session nicht erreichbar (iframe/Preview-Host). Bitte in einem neuen Tab öffnen.';
+        matrixLogger.warn('Skipping Matrix E2EE init due to hard COI capability block:', coiStatus);
         updateRuntimeDiagnostics(lastCryptoError);
         setCryptoEnabled(false);
+      } else {
+        try {
+          matrixLogger.log('=== Matrix E2EE Diagnostics ===');
+          matrixLogger.log('Cross-Origin Isolated:', window.crossOriginIsolated);
+          matrixLogger.log('SharedArrayBuffer available:', typeof SharedArrayBuffer !== 'undefined');
+
+          if (!window.crossOriginIsolated) {
+            matrixLogger.warn('Cross-Origin Isolation not enabled. E2EE may not work. Try a new tab.');
+          }
+
+          await matrixClient.initRustCrypto();
+          matrixLogger.log('Matrix E2EE initialized successfully');
+        } catch (cryptoError) {
+          matrixLogger.error('Failed to initialize E2EE:', cryptoError);
+          lastCryptoError = cryptoError instanceof Error ? cryptoError.message : 'E2EE-Initialisierung fehlgeschlagen';
+          updateRuntimeDiagnostics(lastCryptoError);
+          setCryptoEnabled(false);
+        }
       }
 
       // 4. Bootstrap Secret Storage (only if NOT already ready)
@@ -972,7 +987,9 @@ export function MatrixClientProvider({ children }: { children: ReactNode }) {
           cryptoCallbacks: { getSecretStorageKey },
         });
         clientRef.current = matrixClient;
-        await matrixClient.initRustCrypto();
+        if (!getCoiCapabilityStatus().blocked) {
+          await matrixClient.initRustCrypto();
+        }
         // Re-register listeners on new client
         for (const l of registeredListeners) {
           matrixClient.removeListener(l.event as any, l.handler);
@@ -1064,6 +1081,7 @@ export function MatrixClientProvider({ children }: { children: ReactNode }) {
       crossSigningReady: null,
       keyBackupEnabled: null,
       cryptoError: null,
+      coiBlockedReason: getCoiCapabilityStatus().reason,
     });
     setRooms([]);
     setMessages(new Map());

@@ -304,6 +304,16 @@ export function MatrixChatView() {
                   <AlertCircle className="h-4 w-4" />
                   <AlertTitle>Verschlüsselung nicht verfügbar</AlertTitle>
                   <AlertDescription className="mt-1">
+                    {e2eeDiagnostics.coiBlockedReason && (
+                      <p className="font-medium mb-2">
+                        Für verschlüsselte Räume bitte in neuem Tab öffnen.
+                      </p>
+                    )}
+                    {e2eeDiagnostics.coiBlockedReason === 'iframe-preview' && (
+                      <p className="text-xs mb-2">
+                        Lovable läuft hier im eingebetteten Preview-iframe. In diesem Modus ist die benötigte Cross-Origin-Isolation technisch blockiert.
+                      </p>
+                    )}
                     Die Verschlüsselung konnte in dieser Sitzung nicht initialisiert werden. Laut Matrix JS SDK sollten für Rust-Crypto mindestens sicherer Kontext, Cross-Origin-Isolation und SharedArrayBuffer verfügbar sein.
                     <ul className="mt-2 space-y-1 text-xs">
                       <li>• HTTPS / sicherer Kontext: {e2eeDiagnostics.secureContext ? '✅' : '❌'}</li>
