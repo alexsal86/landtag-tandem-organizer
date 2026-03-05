@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from './useAuth';
 
@@ -12,16 +12,6 @@ export interface NewCounts {
   feedbackFeed: number;
 }
 
-interface LastVisits {
-  mywork_tasks?: Date;
-  mywork_decisions?: Date;
-  mywork_jourFixe?: Date;
-  mywork_casefiles?: Date;
-  mywork_plannings?: Date;
-  mywork_team?: Date;
-  mywork_feedbackfeed?: Date;
-}
-
 const CONTEXTS = [
   'mywork_tasks',
   'mywork_decisions',
@@ -32,240 +22,166 @@ const CONTEXTS = [
   'mywork_feedbackfeed',
 ] as const;
 
-type ContextType = typeof CONTEXTS[number];
+export type ContextType = typeof CONTEXTS[number];
+
+const CONTEXT_TO_COUNT_KEY: Record<ContextType, keyof NewCounts> = {
+  mywork_tasks: 'tasks',
+  mywork_decisions: 'decisions',
+  mywork_jourFixe: 'jourFixe',
+  mywork_casefiles: 'caseFiles',
+  mywork_plannings: 'plannings',
+  mywork_team: 'team',
+  mywork_feedbackfeed: 'feedbackFeed',
+};
 
 interface MyWorkNewCountsResult {
   newCounts: NewCounts;
   isLoading: boolean;
   markTabAsVisited: (context: ContextType) => Promise<void>;
-  refreshCounts: () => Promise<void>;
+  refreshCounts: (contexts?: ContextType[]) => Promise<void>;
 }
+
+const DEFAULT_COUNTS: NewCounts = {
+  tasks: 0,
+  decisions: 0,
+  jourFixe: 0,
+  caseFiles: 0,
+  plannings: 0,
+  team: 0,
+  feedbackFeed: 0,
+};
+
+const REFRESH_THROTTLE_MS = 1200;
 
 export function useMyWorkNewCounts(): MyWorkNewCountsResult {
   const { user } = useAuth();
-  const [newCounts, setNewCounts] = useState<NewCounts>({
-    tasks: 0,
-    decisions: 0,
-    jourFixe: 0,
-    caseFiles: 0,
-    plannings: 0,
-    team: 0,
-    feedbackFeed: 0,
-  });
-  const [lastVisits, setLastVisits] = useState<LastVisits>({});
+  const [newCounts, setNewCounts] = useState<NewCounts>(DEFAULT_COUNTS);
   const [isLoading, setIsLoading] = useState(true);
+  const isMountedRef = useRef(true);
+  const inFlightRef = useRef<Promise<void> | null>(null);
+  const queuedContextsRef = useRef<Set<ContextType>>(new Set());
+  const throttleTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const lastRefreshAtRef = useRef(0);
 
-  // Load last visited timestamps for all mywork contexts
-  const loadLastVisits = useCallback(async () => {
-    if (!user) return;
-
-    try {
-      const { data, error } = await supabase
-        .from('user_navigation_visits')
-        .select('navigation_context, last_visited_at')
-        .eq('user_id', user.id)
-        .in('navigation_context', CONTEXTS);
-
-      if (error) {
-        console.error('Error loading last visits:', error);
-        return;
+  useEffect(() => {
+    return () => {
+      isMountedRef.current = false;
+      if (throttleTimerRef.current) {
+        clearTimeout(throttleTimerRef.current);
       }
+    };
+  }, []);
 
-      const visits: LastVisits = {};
-      (data || []).forEach((row) => {
-        visits[row.navigation_context as ContextType] = new Date(row.last_visited_at);
-      });
-      setLastVisits(visits);
-    } catch (error) {
-      console.error('Error in loadLastVisits:', error);
-    }
-  }, [user]);
-
-  // Count new items for each tab based on last visit
-  const loadNewCounts = useCallback(async () => {
+  const runRefresh = useCallback(async (contexts?: ContextType[]) => {
     if (!user) {
-      setIsLoading(false);
+      if (isMountedRef.current) {
+        setNewCounts(DEFAULT_COUNTS);
+        setIsLoading(false);
+      }
       return;
     }
 
-    try {
-      const tasksLastVisit = lastVisits.mywork_tasks?.toISOString() || new Date(0).toISOString();
-      const decisionsLastVisit = lastVisits.mywork_decisions?.toISOString() || new Date(0).toISOString();
-      const jourFixeLastVisit = lastVisits.mywork_jourFixe?.toISOString() || new Date(0).toISOString();
-      const caseFilesLastVisit = lastVisits.mywork_casefiles?.toISOString() || new Date(0).toISOString();
-      const planningsLastVisit = lastVisits.mywork_plannings?.toISOString() || new Date(0).toISOString();
-      const teamLastVisit = lastVisits.mywork_team?.toISOString() || new Date(0).toISOString();
-      const feedbackFeedLastVisit = lastVisits.mywork_feedbackfeed?.toISOString() || new Date(0).toISOString();
-
-      // Count new tasks (created after last visit, assigned to user or created by user)
-      const { count: newTaskCount } = await supabase
-        .from('tasks')
-        .select('*', { count: 'exact', head: true })
-        .or(`assigned_to.eq.${user.id},assigned_to.ilike.%${user.id}%,user_id.eq.${user.id}`)
-        .neq('status', 'completed')
-        .gt('created_at', tasksLastVisit);
-
-      // Count new decision requests (participant added after last visit)
-      const { count: newDecisionRequestCount } = await supabase
-        .from('task_decision_participants')
-        .select('*, task_decisions!inner(*)', { count: 'exact', head: true })
-        .eq('user_id', user.id)
-        .in('task_decisions.status', ['active', 'open'])
-        .gt('invited_at', decisionsLastVisit);
-
-      // Count new responses to user's own decisions
-      const { data: userDecisions } = await supabase
-        .from('task_decisions')
-        .select('id')
-        .eq('created_by', user.id)
-        .in('status', ['active', 'open']);
-
-      let newResponseCount = 0;
-      if (userDecisions && userDecisions.length > 0) {
-        const decisionIds = userDecisions.map(d => d.id);
-        const { count } = await supabase
-          .from('task_decision_responses')
-          .select('*, task_decision_participants!inner(decision_id)', { count: 'exact', head: true })
-          .in('task_decision_participants.decision_id', decisionIds)
-          .gt('created_at', decisionsLastVisit);
-        newResponseCount = count || 0;
-      }
-
-      // Count new Jour Fixe meetings (user is owner or participant, created after last visit)
-      const { count: newJourFixeCount } = await supabase
-        .from('meetings')
-        .select('*', { count: 'exact', head: true })
-        .eq('user_id', user.id)
-        .neq('status', 'archived')
-        .gt('created_at', jourFixeLastVisit);
-
-      // Check for meetings where user was added as participant after last visit
-      const { count: newParticipantMeetingCount } = await supabase
-        .from('meeting_participants')
-        .select('*', { count: 'exact', head: true })
-        .eq('user_id', user.id)
-        .gt('created_at', jourFixeLastVisit);
-
-      // Count new case files
-      const { count: newCaseFileCount } = await supabase
-        .from('case_files')
-        .select('*', { count: 'exact', head: true })
-        .eq('user_id', user.id)
-        .gt('created_at', caseFilesLastVisit);
-
-      // Count new plannings (owned)
-      const { count: newOwnedPlanningCount } = await supabase
-        .from('event_plannings')
-        .select('*', { count: 'exact', head: true })
-        .eq('user_id', user.id)
-        .gt('created_at', planningsLastVisit);
-
-      // Count plannings where user was added as collaborator after last visit
-      const { count: newCollabPlanningCount } = await supabase
-        .from('event_planning_collaborators')
-        .select('*', { count: 'exact', head: true })
-        .eq('user_id', user.id)
-        .gt('created_at', planningsLastVisit);
-
-      // Count unread notifications for team tab
-      const { count: newTeamNotifCount } = await supabase
-        .from('notifications')
-        .select('id', { count: 'exact', head: true })
-        .eq('user_id', user.id)
-        .eq('is_read', false)
-        .gt('created_at', teamLastVisit);
-
-      const { count: newFeedbackFeedCount } = await supabase
-        .from('appointment_feedback')
-        .select('id', { count: 'exact', head: true })
-        .eq('feedback_status', 'completed')
-        .gt('completed_at', feedbackFeedLastVisit);
-
-      setNewCounts({
-        tasks: newTaskCount || 0,
-        decisions: (newDecisionRequestCount || 0) + newResponseCount,
-        jourFixe: (newJourFixeCount || 0) + (newParticipantMeetingCount || 0),
-        caseFiles: newCaseFileCount || 0,
-        plannings: (newOwnedPlanningCount || 0) + (newCollabPlanningCount || 0),
-        team: newTeamNotifCount || 0,
-        feedbackFeed: newFeedbackFeedCount || 0,
-      });
-    } catch (error) {
-      console.error('Error loading new counts:', error);
-    } finally {
-      setIsLoading(false);
+    if (isMountedRef.current) {
+      setIsLoading(true);
     }
-  }, [user, lastVisits]);
 
-  // Mark a tab as visited (update last_visited_at)
+    try {
+      const { data, error } = await supabase.rpc('get_my_work_new_counts', {
+        p_user_id: user.id,
+        p_contexts: contexts && contexts.length > 0 ? contexts : null,
+      });
+
+      if (error) throw error;
+
+      const incoming = (data || {}) as Partial<NewCounts>;
+      setNewCounts((prev) => ({
+        ...prev,
+        ...Object.fromEntries(
+          Object.entries(incoming).map(([key, value]) => [key, Number(value || 0)]),
+        ),
+      }));
+    } catch (error) {
+      console.error('Error loading new counts via RPC:', error);
+    } finally {
+      if (isMountedRef.current) {
+        setIsLoading(false);
+      }
+    }
+  }, [user]);
+
+  const flushRefreshQueue = useCallback(async () => {
+    if (inFlightRef.current) return inFlightRef.current;
+
+    const queuedContexts = Array.from(queuedContextsRef.current);
+    queuedContextsRef.current.clear();
+    const promise = runRefresh(queuedContexts.length > 0 ? queuedContexts : undefined);
+    inFlightRef.current = promise;
+
+    await promise;
+    inFlightRef.current = null;
+    lastRefreshAtRef.current = Date.now();
+
+    if (queuedContextsRef.current.size > 0) {
+      await flushRefreshQueue();
+    }
+  }, [runRefresh]);
+
+  const refreshCounts = useCallback(async (contexts?: ContextType[]) => {
+    if (contexts && contexts.length > 0) {
+      contexts.forEach((context) => queuedContextsRef.current.add(context));
+    } else {
+      CONTEXTS.forEach((context) => queuedContextsRef.current.add(context));
+    }
+
+    const sinceLastRefresh = Date.now() - lastRefreshAtRef.current;
+    if (sinceLastRefresh < REFRESH_THROTTLE_MS) {
+      if (throttleTimerRef.current) clearTimeout(throttleTimerRef.current);
+      await new Promise<void>((resolve) => {
+        throttleTimerRef.current = setTimeout(() => {
+          flushRefreshQueue().finally(resolve);
+        }, REFRESH_THROTTLE_MS - sinceLastRefresh);
+      });
+      return;
+    }
+
+    await flushRefreshQueue();
+  }, [flushRefreshQueue]);
+
   const markTabAsVisited = useCallback(async (context: ContextType) => {
     if (!user) return;
 
+    const now = new Date().toISOString();
+
     try {
-      const now = new Date();
-      
-      // Upsert the visit record
-      await supabase
+      const { error } = await supabase
         .from('user_navigation_visits')
         .upsert({
           user_id: user.id,
           navigation_context: context,
-          last_visited_at: now.toISOString(),
+          last_visited_at: now,
         }, { onConflict: 'user_id,navigation_context' });
 
-      // Update local state
-      setLastVisits(prev => ({
+      if (error) throw error;
+
+      const countKey = CONTEXT_TO_COUNT_KEY[context];
+      setNewCounts((prev) => ({
         ...prev,
-        [context]: now,
+        [countKey]: 0,
       }));
 
-      // Reset the count for this tab
-      const contextToCountKey: Record<ContextType, keyof NewCounts> = {
-        mywork_tasks: 'tasks',
-        mywork_decisions: 'decisions',
-        mywork_jourFixe: 'jourFixe',
-        mywork_casefiles: 'caseFiles',
-        mywork_plannings: 'plannings',
-        mywork_team: 'team',
-        mywork_feedbackfeed: 'feedbackFeed',
-      };
-
-      const countKey = contextToCountKey[context];
-      if (countKey) {
-        setNewCounts(prev => ({
-          ...prev,
-          [countKey]: 0,
-        }));
-      }
-
-      // Sync across tabs
       localStorage.setItem('navigation_visit_sync', JSON.stringify({
         userId: user.id,
         context,
-        timestamp: now.toISOString(),
+        timestamp: now,
       }));
     } catch (error) {
       console.error('Error marking tab as visited:', error);
     }
   }, [user]);
 
-  // Load last visits first
   useEffect(() => {
-    loadLastVisits();
-  }, [loadLastVisits]);
-
-  // Load new counts after last visits are loaded
-  useEffect(() => {
-    if (Object.keys(lastVisits).length > 0 || !isLoading) {
-      loadNewCounts();
-    }
-  }, [lastVisits, loadNewCounts]);
-
-  // Refresh function for external use
-  const refreshCounts = useCallback(async () => {
-    await loadLastVisits();
-    await loadNewCounts();
-  }, [loadLastVisits, loadNewCounts]);
+    void refreshCounts();
+  }, [refreshCounts]);
 
   return {
     newCounts,
