@@ -66,7 +66,7 @@ export interface CaseItemFormData {
   contains_personal_data?: boolean;
   resolution_summary?: string | null;
   case_file_id?: string | null;
-  case_scale?: CaseItem["case_scale"] | null;
+  case_scale?: string | null;
 }
 
 export interface CaseItemInteractionFormData {
