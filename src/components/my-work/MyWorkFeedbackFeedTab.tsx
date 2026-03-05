@@ -11,6 +11,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { Button } from '@/components/ui/button';
+import type { TeamFeedbackEntry } from '@/hooks/useTeamFeedbackFeed';
 
 const PERIOD_PRESETS = {
   '3d': 3,
@@ -43,16 +44,34 @@ export function MyWorkFeedbackFeedTab() {
     onlyWithTasks,
   });
 
-  const getFeedbackTarget = (entry: { appointment_id: string | null; external_event_id: string | null }) => {
-    if (entry.appointment_id) {
-      return `/calendar?highlight=${entry.appointment_id}`;
+  const getFeedbackTarget = (entry: TeamFeedbackEntry) => {
+    if (entry.target_type === 'appointment' && entry.target_id) {
+      const params = new URLSearchParams({
+        highlight: entry.target_id,
+        source: 'mywork-feedbackfeed',
+      });
+      return `/calendar?${params.toString()}`;
     }
 
-    if (entry.external_event_id) {
-      return '/mywork?tab=feedbackfeed';
+    if (entry.target_type === 'external_event' && entry.target_id) {
+      const params = new URLSearchParams({
+        highlight: `external-${entry.target_id}`,
+        source: 'mywork-feedbackfeed',
+      });
+
+      if (entry.appointment_start_time) {
+        params.set('date', new Date(entry.appointment_start_time).toISOString().split('T')[0]);
+      }
+
+      return `/calendar?${params.toString()}`;
     }
 
-    return '/mywork?tab=feedbackfeed';
+    const fallbackParams = new URLSearchParams({
+      tab: 'feedbackfeed',
+      highlight: entry.id,
+      source: 'mywork-feedbackfeed',
+    });
+    return `/mywork?${fallbackParams.toString()}`;
   };
 
   if (isLoading) {
