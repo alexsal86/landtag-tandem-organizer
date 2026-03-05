@@ -106,7 +106,6 @@ export function MyWorkCasesWorkspace() {
         .from("case_items" as any)
         .select("id, resolution_summary, source_channel, status, priority, due_at, case_file_id, user_id, owner_user_id, updated_at")
         .eq("tenant_id", currentTenant.id)
-        .or(`user_id.eq.${user.id},owner_user_id.eq.${user.id}`)
         .order("updated_at", { ascending: false, nullsFirst: false })
         .limit(120);
 
