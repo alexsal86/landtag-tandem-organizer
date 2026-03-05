@@ -1,6 +1,7 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.39.3";
 import { Resend } from "npm:resend@2.0.0";
+import { requireTenantAccess } from "../_shared/tenant-access.ts";
 
 const resend = new Resend(Deno.env.get("RESEND_API_KEY"));
 const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
@@ -22,8 +23,6 @@ interface SendEmailRequest {
   distribution_list_ids?: string[];
   contact_ids?: string[];
   document_ids?: string[];
-  tenant_id: string;
-  user_id: string;
   sender_id?: string;
   reply_to?: string;
   scheduled_at?: string;
@@ -40,29 +39,13 @@ serve(async (req) => {
   }
 
   try {
-    const authHeader = req.headers.get("Authorization");
-    if (!authHeader) {
-      return new Response(
-        JSON.stringify({ error: "Missing authorization header" }),
-        { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
-    }
+    const tenantAccess = await requireTenantAccess({
+      req,
+      functionName: "send-document-email",
+    });
 
-    const supabaseAuth = createClient(
-      supabaseUrl,
-      Deno.env.get("SUPABASE_ANON_KEY")!,
-      {
-        global: { headers: { Authorization: authHeader } },
-        auth: { persistSession: false, autoRefreshToken: false },
-      }
-    );
-
-    const { data: authData, error: authError } = await supabaseAuth.auth.getUser();
-    if (authError || !authData.user) {
-      return new Response(
-        JSON.stringify({ error: "Unauthorized" }),
-        { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
+    if ("response" in tenantAccess) {
+      return tenantAccess.response;
     }
 
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
@@ -77,8 +60,6 @@ serve(async (req) => {
       distribution_list_ids = [],
       contact_ids = [],
       document_ids = [],
-      tenant_id,
-      user_id,
       sender_id,
       reply_to,
       scheduled_at,
@@ -91,28 +72,8 @@ serve(async (req) => {
       distribution_list_ids_count: distribution_list_ids.length,
     });
 
-    if (authData.user.id !== user_id) {
-      return new Response(
-        JSON.stringify({ error: "user_id does not match authenticated user" }),
-        { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
-    }
-
-    const { data: membership } = await supabase
-      .from("user_tenant_memberships")
-      .select("role, is_active")
-      .eq("user_id", user_id)
-      .eq("tenant_id", tenant_id)
-      .eq("is_active", true)
-      .maybeSingle();
-
-    const { data: isAdmin } = await supabase.rpc("is_admin", { _user_id: user_id });
-    if (!membership && !isAdmin) {
-      return new Response(
-        JSON.stringify({ error: "No tenant membership found for user" }),
-        { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
-    }
+    const user_id = tenantAccess.user.id;
+    const tenant_id = tenantAccess.tenantId;
 
     // Collect recipients with contact data for personalization
     const allRecipients: Array<{ email: string; contact_data?: any }> = [];

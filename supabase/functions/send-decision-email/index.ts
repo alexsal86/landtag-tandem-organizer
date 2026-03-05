@@ -1,6 +1,7 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { Resend } from "https://esm.sh/resend@4.0.0";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { requireTenantAccess } from "../_shared/tenant-access.ts";
 
 const resend = new Resend(Deno.env.get("RESEND_API_KEY"));
 
@@ -16,7 +17,6 @@ interface DecisionEmailRequest {
   participantIds: string[];
   decisionTitle: string;
   decisionDescription?: string;
-  tenantId?: string;
 }
 
 const handler = async (req: Request): Promise<Response> => {
@@ -31,13 +31,23 @@ const handler = async (req: Request): Promise<Response> => {
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? ""
     );
 
+    const tenantAccess = await requireTenantAccess({
+      req,
+      functionName: "send-decision-email",
+    });
+
+    if ("response" in tenantAccess) {
+      return tenantAccess.response;
+    }
+
+    const effectiveTenantId = tenantAccess.tenantId;
+
     const { 
       decisionId, 
       taskId,
       participantIds, 
       decisionTitle, 
-      decisionDescription,
-      tenantId
+      decisionDescription
     }: DecisionEmailRequest = await req.json();
 
     console.log("=== SEND DECISION EMAIL DEBUG ===");
@@ -45,35 +55,29 @@ const handler = async (req: Request): Promise<Response> => {
     console.log("Task ID:", taskId);
     console.log("Participant IDs:", participantIds);
     console.log("Decision title:", decisionTitle);
-    console.log("Tenant ID:", tenantId);
     console.log("=== END DEBUG INFO ===");
 
-    // Determine effective tenant from payload or decision record
-    let effectiveTenantId = tenantId;
-    if (!effectiveTenantId) {
-      const { data: decisionData, error: decisionError } = await supabase
-        .from('task_decisions')
-        .select('tenant_id')
-        .eq('id', decisionId)
-        .maybeSingle();
+    const { data: decisionData, error: decisionError } = await supabase
+      .from('task_decisions')
+      .select('id')
+      .eq('id', decisionId)
+      .eq('tenant_id', effectiveTenantId)
+      .maybeSingle();
 
-      if (decisionError) {
-        console.error("Error getting decision tenant:", decisionError);
-      }
-
-      effectiveTenantId = decisionData?.tenant_id || undefined;
+    if (decisionError || !decisionData) {
+      return new Response(
+        JSON.stringify({ error: 'Decision not found in tenant context' }),
+        {
+          status: 404,
+          headers: { "Content-Type": "application/json", ...corsHeaders },
+        },
+      );
     }
 
-    // Get email template from administration settings - filter by tenant_id if provided
-    let templateQuery = supabase
+    const { data: templates, error: templateError } = await supabase
       .from('decision_email_templates')
-      .select('*');
-    
-    if (effectiveTenantId) {
-      templateQuery = templateQuery.eq('tenant_id', effectiveTenantId);
-    }
-    
-    const { data: templates, error: templateError } = await templateQuery
+      .select('*')
+      .eq('tenant_id', effectiveTenantId)
       .order('created_at', { ascending: false })
       .limit(1);
 
@@ -98,7 +102,7 @@ const handler = async (req: Request): Promise<Response> => {
     console.log("Using email template:", {
       subject: emailTemplate.subject,
       hasCustomTemplate: !!template,
-      effectiveTenantId: effectiveTenantId || null,
+      effectiveTenantId,
     });
 
     // Get task info
@@ -108,6 +112,7 @@ const handler = async (req: Request): Promise<Response> => {
         .from('tasks')
         .select('title, user_id')
         .eq('id', taskId)
+        .eq('tenant_id', effectiveTenantId)
         .maybeSingle();
 
       if (taskError) {

@@ -1,5 +1,6 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.57.4";
+import { requireTenantAccess } from "../_shared/tenant-access.ts";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -17,7 +18,16 @@ serve(async (req) => {
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
     );
 
-    const { contactIds, tenantId, limit = 50 } = await req.json();
+    const { contactIds, limit = 50 } = await req.json();
+
+    const tenantAccess = await requireTenantAccess({
+      req,
+      functionName: "batch-geocode-contacts",
+    });
+
+    if ("response" in tenantAccess) {
+      return tenantAccess.response;
+    }
 
     // Build query to find contacts that need geocoding
     let query = supabaseClient
@@ -31,9 +41,7 @@ serve(async (req) => {
       query = query.in('id', contactIds);
     }
 
-    if (tenantId) {
-      query = query.eq('tenant_id', tenantId);
-    }
+    query = query.eq('tenant_id', tenantAccess.tenantId);
 
     // Only geocode contacts with at least a city
     query = query.not('business_city', 'is', null);
