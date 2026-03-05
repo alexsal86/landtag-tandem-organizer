@@ -10,7 +10,9 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
-import { CaseFileDetail } from "@/features/cases/files/components";
+import { CaseFileDetail, CaseFileCreateDialog } from "@/features/cases/files/components";
+import { CaseItemCreateDialog } from "@/components/my-work/CaseItemCreateDialog";
+import { useCaseItems } from "@/features/cases/items/hooks";
 import { useAuth } from "@/hooks/useAuth";
 import { useTenant } from "@/hooks/useTenant";
 import { supabase } from "@/integrations/supabase/client";
@@ -18,11 +20,11 @@ import { cn } from "@/lib/utils";
 
 type CaseItem = {
   id: string;
-  title: string | null;
-  description: string | null;
+  resolution_summary: string | null;
+  source_channel: string | null;
   status: string | null;
   priority: string | null;
-  due_date: string | null;
+  due_at: string | null;
   case_file_id: string | null;
   user_id: string | null;
   owner_user_id: string | null;
@@ -42,8 +44,12 @@ export function MyWorkCasesWorkspace() {
   const { currentTenant } = useTenant();
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
+  const { createCaseItem } = useCaseItems();
 
   const [caseItems, setCaseItems] = useState<CaseItem[]>([]);
+  const [isCaseItemDialogOpen, setIsCaseItemDialogOpen] = useState(false);
+  const [isCaseFileDialogOpen, setIsCaseFileDialogOpen] = useState(false);
+  const [pendingCaseItemLinkId, setPendingCaseItemLinkId] = useState<string | null>(null);
   const [caseFilesById, setCaseFilesById] = useState<Record<string, CaseFile>>({});
   const [loading, setLoading] = useState(true);
   const [filterQuery, setFilterQuery] = useState("");
@@ -52,16 +58,28 @@ export function MyWorkCasesWorkspace() {
 
   const selectedCaseItemId = searchParams.get("caseItemId");
 
+  const clearActionParam = useCallback(() => {
+    setSearchParams((prev) => {
+      const params = new URLSearchParams(prev);
+      params.delete("action");
+      return params;
+    }, { replace: true });
+  }, [setSearchParams]);
+
   useEffect(() => {
     const action = searchParams.get("action");
     if (action === "create-caseitem") {
-      navigate("/caseitems?action=create");
+      setPendingCaseItemLinkId(null);
+      setIsCaseItemDialogOpen(true);
+      clearActionParam();
       return;
     }
     if (action === "create-casefile") {
-      navigate("/casefiles?action=create");
+      setPendingCaseItemLinkId(searchParams.get("caseItemId"));
+      setIsCaseFileDialogOpen(true);
+      clearActionParam();
     }
-  }, [navigate, searchParams]);
+  }, [clearActionParam, searchParams]);
 
   const updateWorkspaceParams = useCallback((next: { caseItemId?: string | null; caseFileId?: string | null }) => {
     setSearchParams((prev) => {
@@ -86,7 +104,7 @@ export function MyWorkCasesWorkspace() {
     try {
       const { data: caseItemsData, error: caseItemsError } = await supabase
         .from("case_items" as any)
-        .select("id, title, description, status, priority, due_date, case_file_id, user_id, owner_user_id, updated_at")
+        .select("id, resolution_summary, source_channel, status, priority, due_at, case_file_id, user_id, owner_user_id, updated_at")
         .eq("tenant_id", currentTenant.id)
         .or(`user_id.eq.${user.id},owner_user_id.eq.${user.id}`)
         .order("updated_at", { ascending: false, nullsFirst: false })
@@ -161,7 +179,7 @@ export function MyWorkCasesWorkspace() {
 
     return caseItems.filter((item) => {
       const linkedFile = item.case_file_id ? caseFilesById[item.case_file_id] : null;
-      return [item.title, item.description, item.status, item.priority]
+      return [item.resolution_summary, item.source_channel, item.status, item.priority]
         .concat(linkedFile ? [linkedFile.title, linkedFile.reference_number] : [])
         .filter(Boolean)
         .some((value) => value!.toLowerCase().includes(query));
@@ -217,16 +235,14 @@ export function MyWorkCasesWorkspace() {
       >
         <div className="flex items-start justify-between gap-2">
           <div>
-            <p className="text-sm font-medium">{item.title || "Ohne Titel"}</p>
-            {item.description && (
-              <p className="mt-1 line-clamp-2 text-xs text-muted-foreground">{item.description}</p>
-            )}
+            <p className="text-sm font-medium">{item.resolution_summary || "Ohne Titel"}</p>
+            {item.source_channel ? <p className="mt-1 text-xs text-muted-foreground">Kanal: {item.source_channel}</p> : null}
           </div>
           {item.priority && <Badge variant="outline">{item.priority}</Badge>}
         </div>
         <div className="mt-2 flex items-center justify-between text-xs text-muted-foreground">
           <span>{item.status || "offen"}</span>
-          {item.due_date ? <span>Fällig: {format(new Date(item.due_date), "dd.MM.yyyy", { locale: de })}</span> : null}
+          {item.due_at ? <span>Fällig: {format(new Date(item.due_at), "dd.MM.yyyy", { locale: de })}</span> : null}
         </div>
         {linkedFile ? (
           <p className="mt-2 text-xs text-muted-foreground">
@@ -248,11 +264,37 @@ export function MyWorkCasesWorkspace() {
   };
 
   const handleCreateCaseItem = () => {
-    navigate('/caseitems?action=create');
+    setPendingCaseItemLinkId(null);
+    setIsCaseItemDialogOpen(true);
   };
 
-  const handleCreateCaseFile = () => {
-    navigate('/casefiles?action=create');
+  const handleCreateCaseFile = (caseItemId?: string) => {
+    setPendingCaseItemLinkId(caseItemId ?? null);
+    setIsCaseFileDialogOpen(true);
+  };
+
+  const handleCaseItemCreated = async (newCaseItemId: string) => {
+    await loadWorkspaceData();
+    updateWorkspaceParams({ caseItemId: newCaseItemId, caseFileId: null });
+  };
+
+  const handleCaseFileCreated = async (newCaseFileId: string) => {
+    if (pendingCaseItemLinkId) {
+      await supabase
+        .from("case_items")
+        .update({ case_file_id: newCaseFileId, case_scale: "large" })
+        .eq("id", pendingCaseItemLinkId);
+    }
+
+    await loadWorkspaceData();
+
+    if (pendingCaseItemLinkId) {
+      updateWorkspaceParams({ caseItemId: pendingCaseItemLinkId, caseFileId: newCaseFileId });
+    } else {
+      navigate(`/casefiles?caseFileId=${newCaseFileId}`);
+    }
+
+    setPendingCaseItemLinkId(null);
   };
 
   const renderDetailPanel = () => {
@@ -270,10 +312,8 @@ export function MyWorkCasesWorkspace() {
         <div className="space-y-3">
           <div className="rounded-md border bg-muted/30 p-3 text-sm">
             <p className="font-medium">Vorgang</p>
-            <p>{selectedCaseItem.title || "Ohne Titel"}</p>
-            {selectedCaseItem.description ? (
-              <p className="mt-1 text-xs text-muted-foreground">{selectedCaseItem.description}</p>
-            ) : null}
+            <p>{selectedCaseItem.resolution_summary || "Ohne Titel"}</p>
+            {selectedCaseItem.source_channel ? <p className="mt-1 text-xs text-muted-foreground">Kanal: {selectedCaseItem.source_channel}</p> : null}
           </div>
           <CaseFileDetail caseFileId={selectedCaseItem.case_file_id} onBack={() => undefined} />
           <Button size="sm" variant="outline" onClick={() => navigate(`/casefiles?caseFileId=${selectedCaseItem.case_file_id}`)}>
@@ -289,7 +329,7 @@ export function MyWorkCasesWorkspace() {
         <Briefcase className="h-4 w-4" />
         <p>Für dieses Anliegen ist noch keine Akte verknüpft.</p>
         <div className="flex flex-wrap gap-2">
-          <Button size="sm" onClick={() => navigate(`/casefiles?action=create&caseItemId=${selectedCaseItem.id}`)}>
+          <Button size="sm" onClick={() => handleCreateCaseFile(selectedCaseItem.id)}>
             Neue Akte anlegen
           </Button>
           <Button
@@ -324,7 +364,7 @@ export function MyWorkCasesWorkspace() {
               <Plus className="mr-1 h-4 w-4" />
               Vorgang erstellen
             </Button>
-            <Button size="sm" variant="outline" onClick={handleCreateCaseFile}>
+            <Button size="sm" variant="outline" onClick={() => handleCreateCaseFile()}>
               <Plus className="mr-1 h-4 w-4" />
               FallAkte erstellen
             </Button>
@@ -365,7 +405,7 @@ export function MyWorkCasesWorkspace() {
                   <p>Keine Anliegen passend zum Filter gefunden.</p>
                   <div className="flex flex-wrap gap-2">
                     <Button size="sm" onClick={handleCreateCaseItem}>Vorgang erstellen</Button>
-                    <Button size="sm" variant="outline" onClick={handleCreateCaseFile}>FallAkte erstellen</Button>
+                    <Button size="sm" variant="outline" onClick={() => handleCreateCaseFile()}>FallAkte erstellen</Button>
                   </div>
                 </div>
               ) : (
@@ -423,6 +463,29 @@ export function MyWorkCasesWorkspace() {
           <div className="mt-4">{renderDetailPanel()}</div>
         </SheetContent>
       </Sheet>
+
+      <CaseItemCreateDialog
+        open={isCaseItemDialogOpen}
+        onOpenChange={setIsCaseItemDialogOpen}
+        onCreated={(id) => {
+          void handleCaseItemCreated(id);
+        }}
+        createCaseItem={createCaseItem}
+      />
+
+      <CaseFileCreateDialog
+        open={isCaseFileDialogOpen}
+        onOpenChange={(open) => {
+          setIsCaseFileDialogOpen(open);
+          if (!open) {
+            setPendingCaseItemLinkId(null);
+          }
+        }}
+        onSuccess={(caseFile) => {
+          void handleCaseFileCreated(caseFile.id);
+          setIsCaseFileDialogOpen(false);
+        }}
+      />
     </div>
   );
 }
