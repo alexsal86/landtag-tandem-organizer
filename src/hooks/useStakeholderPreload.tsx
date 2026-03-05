@@ -93,7 +93,7 @@ export const useStakeholderPreload = (searchTerm?: string) => {
           return;
         }
 
-        const pageStakeholders = (data || []).map(mapStakeholder);
+        const pageStakeholders = (data || []).map((d: any) => mapStakeholder(d));
         allStakeholders.push(...pageStakeholders);
 
         if (!data || data.length < PAGE_SIZE) {

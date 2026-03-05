@@ -53,7 +53,7 @@ export const useAllPersonContacts = () => {
           return;
         }
 
-        const pageContacts = (contacts || []).map(mapPersonContact);
+        const pageContacts = (contacts || []).map((c: any) => mapPersonContact(c));
         allContacts.push(...pageContacts);
 
         if (!contacts || contacts.length < PAGE_SIZE) {
