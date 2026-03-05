@@ -70,7 +70,7 @@ export function MyWorkCaseItemsTab() {
   const { toast } = useToast();
   const navigate = useNavigate();
 
-  const [items, setItems] = useState<CaseItem[]>([]);
+  const [items, setItems] = useState<any[]>([]);
   const [caseFiles, setCaseFiles] = useState<CaseFileOption[]>([]);
   const [escalationSuggestionByItemId, setEscalationSuggestionByItemId] = useState<Record<string, EscalationSuggestion>>({});
   const [selectedCaseFileByItemId, setSelectedCaseFileByItemId] = useState<Record<string, string>>({});
