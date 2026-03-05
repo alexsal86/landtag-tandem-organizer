@@ -20,11 +20,11 @@ import { cn } from "@/lib/utils";
 
 type CaseItem = {
   id: string;
-  title: string | null;
-  description: string | null;
+  resolution_summary: string | null;
+  source_channel: string | null;
   status: string | null;
   priority: string | null;
-  due_date: string | null;
+  due_at: string | null;
   case_file_id: string | null;
   user_id: string | null;
   owner_user_id: string | null;
@@ -104,7 +104,7 @@ export function MyWorkCasesWorkspace() {
     try {
       const { data: caseItemsData, error: caseItemsError } = await supabase
         .from("case_items" as any)
-        .select("id, title, description, status, priority, due_date, case_file_id, user_id, owner_user_id, updated_at")
+        .select("id, resolution_summary, source_channel, status, priority, due_at, case_file_id, user_id, owner_user_id, updated_at")
         .eq("tenant_id", currentTenant.id)
         .or(`user_id.eq.${user.id},owner_user_id.eq.${user.id}`)
         .order("updated_at", { ascending: false, nullsFirst: false })
@@ -179,7 +179,7 @@ export function MyWorkCasesWorkspace() {
 
     return caseItems.filter((item) => {
       const linkedFile = item.case_file_id ? caseFilesById[item.case_file_id] : null;
-      return [item.title, item.description, item.status, item.priority]
+      return [item.resolution_summary, item.source_channel, item.status, item.priority]
         .concat(linkedFile ? [linkedFile.title, linkedFile.reference_number] : [])
         .filter(Boolean)
         .some((value) => value!.toLowerCase().includes(query));
@@ -235,16 +235,14 @@ export function MyWorkCasesWorkspace() {
       >
         <div className="flex items-start justify-between gap-2">
           <div>
-            <p className="text-sm font-medium">{item.title || "Ohne Titel"}</p>
-            {item.description && (
-              <p className="mt-1 line-clamp-2 text-xs text-muted-foreground">{item.description}</p>
-            )}
+            <p className="text-sm font-medium">{item.resolution_summary || "Ohne Titel"}</p>
+            {item.source_channel ? <p className="mt-1 text-xs text-muted-foreground">Kanal: {item.source_channel}</p> : null}
           </div>
           {item.priority && <Badge variant="outline">{item.priority}</Badge>}
         </div>
         <div className="mt-2 flex items-center justify-between text-xs text-muted-foreground">
           <span>{item.status || "offen"}</span>
-          {item.due_date ? <span>Fällig: {format(new Date(item.due_date), "dd.MM.yyyy", { locale: de })}</span> : null}
+          {item.due_at ? <span>Fällig: {format(new Date(item.due_at), "dd.MM.yyyy", { locale: de })}</span> : null}
         </div>
         {linkedFile ? (
           <p className="mt-2 text-xs text-muted-foreground">
@@ -293,7 +291,7 @@ export function MyWorkCasesWorkspace() {
     if (pendingCaseItemLinkId) {
       updateWorkspaceParams({ caseItemId: pendingCaseItemLinkId, caseFileId: newCaseFileId });
     } else {
-      updateWorkspaceParams({ caseItemId: null, caseFileId: newCaseFileId });
+      navigate(`/casefiles?caseFileId=${newCaseFileId}`);
     }
 
     setPendingCaseItemLinkId(null);
@@ -314,10 +312,8 @@ export function MyWorkCasesWorkspace() {
         <div className="space-y-3">
           <div className="rounded-md border bg-muted/30 p-3 text-sm">
             <p className="font-medium">Vorgang</p>
-            <p>{selectedCaseItem.title || "Ohne Titel"}</p>
-            {selectedCaseItem.description ? (
-              <p className="mt-1 text-xs text-muted-foreground">{selectedCaseItem.description}</p>
-            ) : null}
+            <p>{selectedCaseItem.resolution_summary || "Ohne Titel"}</p>
+            {selectedCaseItem.source_channel ? <p className="mt-1 text-xs text-muted-foreground">Kanal: {selectedCaseItem.source_channel}</p> : null}
           </div>
           <CaseFileDetail caseFileId={selectedCaseItem.case_file_id} onBack={() => undefined} />
           <Button size="sm" variant="outline" onClick={() => navigate(`/casefiles?caseFileId=${selectedCaseItem.case_file_id}`)}>
