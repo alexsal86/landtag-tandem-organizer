@@ -11,7 +11,7 @@ export interface CaseFile {
   title: string;
   description: string | null;
   case_type: string;
-  case_scale: "small" | "large" | null;
+  case_scale: string | null;
   status: string;
   priority: string | null;
   reference_number: string | null;
