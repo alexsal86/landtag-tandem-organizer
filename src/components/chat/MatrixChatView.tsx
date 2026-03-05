@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { MessageSquare, Settings, Wifi, WifiOff, Loader2, AlertCircle, Search, Plus, Lock, ExternalLink, PanelLeft, PanelLeftClose } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
@@ -43,6 +43,7 @@ export function MatrixChatView() {
   const [roomFilter, setRoomFilter] = useState<RoomFilterType>('all');
   const [replyTo, setReplyTo] = useState<{ eventId: string; sender: string; content: string } | null>(null);
   const [isRoomListCollapsed, setIsRoomListCollapsed] = useState(false);
+  const previousRoomIdRef = useRef<string | null>(null);
 
   // Get messages from context
   const messages = selectedRoomId ? (roomMessages.get(selectedRoomId) || []) : [];
@@ -81,6 +82,25 @@ export function MatrixChatView() {
       refreshMessages(selectedRoomId, 100);
     }
   }, [selectedRoomId, isConnected, refreshMessages]);
+
+  useEffect(() => {
+    const previousRoomId = previousRoomIdRef.current;
+
+    if (previousRoomId && previousRoomId !== selectedRoomId) {
+      sendTypingNotification(previousRoomId, false);
+    }
+
+    previousRoomIdRef.current = selectedRoomId;
+  }, [selectedRoomId, sendTypingNotification]);
+
+  useEffect(() => {
+    return () => {
+      const currentRoomId = previousRoomIdRef.current;
+      if (currentRoomId) {
+        sendTypingNotification(currentRoomId, false);
+      }
+    };
+  }, [sendTypingNotification]);
 
 
   // Fallback refresh for encrypted timelines if event callbacks are delayed/missed
