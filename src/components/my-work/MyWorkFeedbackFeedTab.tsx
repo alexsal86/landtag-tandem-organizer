@@ -1,5 +1,5 @@
-import { useMemo, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useEffect, useMemo, useState } from 'react';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { format, subDays } from 'date-fns';
 import { de } from 'date-fns/locale';
 import { CheckCircle2, Paperclip, CheckSquare, MessageSquare, Loader2, Filter, AlertTriangle, RefreshCw } from 'lucide-react';
@@ -21,10 +21,22 @@ const PERIOD_PRESETS = {
 
 export function MyWorkFeedbackFeedTab() {
   const navigate = useNavigate();
-  const [scope, setScope] = useState<'team' | 'mine' | 'team-plus-relevant'>('team');
-  const [periodPreset, setPeriodPreset] = useState<keyof typeof PERIOD_PRESETS>('7d');
-  const [onlyWithAttachments, setOnlyWithAttachments] = useState(false);
-  const [onlyWithTasks, setOnlyWithTasks] = useState(false);
+  const [searchParams, setSearchParams] = useSearchParams();
+  const [scope, setScope] = useState<'team' | 'mine' | 'team-plus-relevant'>(() => (searchParams.get('scope') as any) || 'team');
+  const [periodPreset, setPeriodPreset] = useState<keyof typeof PERIOD_PRESETS>(() => (searchParams.get('period') as keyof typeof PERIOD_PRESETS) || '7d');
+  const [onlyWithAttachments, setOnlyWithAttachments] = useState(searchParams.get('withAttachments') === '1');
+  const [onlyWithTasks, setOnlyWithTasks] = useState(searchParams.get('withTasks') === '1');
+
+  useEffect(() => {
+    const next = new URLSearchParams(searchParams);
+    next.set('scope', scope);
+    next.set('period', periodPreset);
+    if (onlyWithAttachments) next.set('withAttachments', '1'); else next.delete('withAttachments');
+    if (onlyWithTasks) next.set('withTasks', '1'); else next.delete('withTasks');
+    if (next.toString() !== searchParams.toString()) {
+      setSearchParams(next, { replace: true });
+    }
+  }, [onlyWithAttachments, onlyWithTasks, periodPreset, scope, searchParams, setSearchParams]);
 
   const completedFrom = useMemo(
     () => subDays(new Date(), PERIOD_PRESETS[periodPreset]).toISOString(),
@@ -45,6 +57,10 @@ export function MyWorkFeedbackFeedTab() {
   });
 
   const getFeedbackTarget = (entry: TeamFeedbackEntry) => {
+    if (entry.feedback_context.target.type === 'task') {
+      return `/tasks?highlight=${entry.feedback_context.target.id}&feedback_id=${entry.id}&source=mywork-feedbackfeed`;
+    }
+
     if (entry.target_type === 'appointment' && entry.target_id) {
       const params = new URLSearchParams({
         highlight: entry.target_id,
@@ -188,6 +204,21 @@ export function MyWorkFeedbackFeedTab() {
                 )}
               </div>
             </div>
+
+            {entry.linked_task_id && (
+              <div className="ml-6 mb-2">
+                <Button
+                  variant="link"
+                  className="h-auto px-0 text-xs"
+                  onClick={(event) => {
+                    event.stopPropagation();
+                    navigate(`/tasks?highlight=${entry.linked_task_id}&feedback_id=${entry.id}&source=mywork-feedbackfeed`);
+                  }}
+                >
+                  aus Rückmeldung erstellt → Aufgabe öffnen
+                </Button>
+              </div>
+            )}
 
             <div className="ml-6 pl-3 border-l border-border">
               <RichTextDisplay content={entry.notes} />

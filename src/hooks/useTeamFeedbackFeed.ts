@@ -4,6 +4,7 @@ import { subDays } from 'date-fns';
 import { supabase } from '@/integrations/supabase/client';
 import { useTenant } from './useTenant';
 import { useAuth } from './useAuth';
+import { createFeedbackContext, type FeedbackContext } from '@/types/feedbackContext';
 
 export type FeedbackFeedScope = 'team' | 'mine' | 'team-plus-relevant';
 
@@ -32,6 +33,8 @@ export interface TeamFeedbackEntry {
   author_id: string;
   author_name: string | null;
   is_relevant_to_me: boolean;
+  linked_task_id: string | null;
+  feedback_context: FeedbackContext;
 }
 
 const DEFAULT_FILTERS: Required<TeamFeedbackFeedFilters> = {
@@ -88,6 +91,7 @@ export const useTeamFeedbackFeed = (filters?: TeamFeedbackFeedFilters) => {
       const appointmentIds = feedbackData.flatMap(f => (f.appointment_id ? [f.appointment_id] : []));
       const externalEventIds = feedbackData.flatMap(f => (f.external_event_id ? [f.external_event_id] : []));
       const authorIds = Array.from(new Set(feedbackData.map(f => f.user_id)));
+      const feedbackIds = feedbackData.map((f) => f.id);
 
       const [appointmentsResult, externalEventsResult, profilesResult] = await Promise.all([
         appointmentIds.length > 0
@@ -117,6 +121,22 @@ export const useTeamFeedbackFeed = (filters?: TeamFeedbackFeedFilters) => {
         : { data: [] };
 
       const participantMeetingIds = new Set((participantRows || []).map((row) => row.meeting_id));
+      const { data: taskLinks } = feedbackIds.length
+        ? await supabase
+            .from('tasks')
+            .select('id, source_id, created_at')
+            .eq('source_type', 'appointment_feedback')
+            .in('source_id', feedbackIds)
+            .order('created_at', { ascending: false })
+        : { data: [] };
+
+      const taskLinkMap = new Map<string, string>();
+      (taskLinks || []).forEach((task) => {
+        if (task.source_id && !taskLinkMap.has(task.source_id)) {
+          taskLinkMap.set(task.source_id, task.id);
+        }
+      });
+
       const appointmentMap = new Map((appointmentsResult.data || []).map(a => [a.id, a]));
       const externalEventMap = new Map((externalEventsResult.data || []).map(e => [e.id, e]));
       const profileMap = new Map((profilesResult.data || []).map(p => [p.user_id, p.display_name]));
@@ -152,6 +172,16 @@ export const useTeamFeedbackFeed = (filters?: TeamFeedbackFeedFilters) => {
           author_id: f.user_id,
           author_name: profileMap.get(f.user_id) || null,
           is_relevant_to_me: f.user_id === user.id || isAppointmentRelevant || isExternalEventRelevant,
+          linked_task_id: taskLinkMap.get(f.id) || null,
+          feedback_context: createFeedbackContext(
+            f.id,
+            taskLinkMap.get(f.id)
+              ? { type: 'task', id: taskLinkMap.get(f.id)! }
+              : {
+                  type: appointment ? 'calendar' : 'feedback',
+                  id: appointment?.id || f.id,
+                },
+          ),
         };
       });
 

@@ -4,6 +4,7 @@ import { useSearchParams, useNavigate } from "react-router-dom";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Card } from "@/components/ui/card";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -45,6 +46,7 @@ interface TabCounts {
   plannings: number;
   team: number;
   jourFixe: number;
+  feedbackFeed: number;
 }
 
 type TabValue = "dashboard" | "capture" | "tasks" | "decisions" | "jourFixe" | "caseitems" | "casefiles" | "plannings" | "team" | "time" | "feedbackfeed";
@@ -73,7 +75,7 @@ const BASE_TABS: TabConfig[] = [
   { value: "casefiles", label: "Vorgänge & Akten", icon: Briefcase, countKey: "caseFiles" },
   { value: "plannings", label: "Planungen", icon: CalendarPlus, countKey: "plannings" },
   { value: "time", label: "Meine Zeit", icon: Clock, employeeOnly: true },
-  { value: "feedbackfeed", label: "Rückmeldungen", icon: MessageSquare, countKey: "team" },
+  { value: "feedbackfeed", label: "Rückmeldungen", icon: MessageSquare, countKey: "feedbackFeed" },
   { value: "team", label: "Team", icon: Users, countKey: "team", badgeVariant: "destructive", abgeordneterOrBueroOnly: true },
 ];
 
@@ -97,6 +99,7 @@ export function MyWorkView() {
     plannings: 0,
     team: 0,
     jourFixe: 0,
+    feedbackFeed: 0,
   });
   const loadCountsRequestRef = useRef(0);
   const shouldIncludeTeamCountRef = useRef(false);
@@ -191,6 +194,7 @@ export function MyWorkView() {
         plannings: Number(counts.plannings || 0),
         team: Number(counts.team || 0),
         jourFixe: Number(counts.jourFixe || 0),
+        feedbackFeed: Number((counts as any).feedbackFeed || 0),
       });
       setRealtimeStatus("connected");
     } catch (error) {
@@ -505,7 +509,27 @@ export function MyWorkView() {
       {activeTab === "dashboard" && (
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           <DashboardGreetingSection />
-          <NewsWidget />
+          <div className="space-y-4">
+            <NewsWidget />
+            <Card className="p-4">
+              <div className="flex items-center justify-between gap-3">
+                <div>
+                  <p className="text-sm font-semibold">Rückmeldungen im Fokus</p>
+                  <p className="text-xs text-muted-foreground">
+                    {newCounts.feedbackFeed > 0
+                      ? `${newCounts.feedbackFeed} neue Rückmeldungen warten auf Einordnung.`
+                      : 'Direkt in den Rückmeldungs-Feed mit Aufgabenfokus springen.'}
+                  </p>
+                </div>
+                <Button
+                  size="sm"
+                  onClick={() => setSearchParams({ tab: 'feedbackfeed', scope: 'team-plus-relevant', withTasks: '1', period: '7d' })}
+                >
+                  Neue Rückmeldungen
+                </Button>
+              </div>
+            </Card>
+          </div>
         </div>
       )}
 

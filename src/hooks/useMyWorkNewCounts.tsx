@@ -9,9 +9,12 @@ export interface NewCounts {
   caseFiles: number;
   caseItems: number;
   plannings: number;
-  team: number;
-  feedbackFeed: number;
+  team: number; // Team-Notifications
+  feedbackFeed: number; // Neue Rückmeldungen
 }
+
+const TEAM_NAV_CONTEXT = 'mywork_team' as const;
+const FEEDBACK_NAV_CONTEXT = 'mywork_feedbackfeed' as const;
 
 const CONTEXTS = [
   'mywork_tasks',
@@ -20,8 +23,8 @@ const CONTEXTS = [
   'mywork_casefiles',
   'mywork_caseitems',
   'mywork_plannings',
-  'mywork_team',
-  'mywork_feedbackfeed',
+  TEAM_NAV_CONTEXT,
+  FEEDBACK_NAV_CONTEXT,
 ] as const;
 
 export type ContextType = typeof CONTEXTS[number];
@@ -33,8 +36,8 @@ const CONTEXT_TO_COUNT_KEY: Record<ContextType, keyof NewCounts> = {
   mywork_casefiles: 'caseFiles',
   mywork_caseitems: 'caseItems',
   mywork_plannings: 'plannings',
-  mywork_team: 'team',
-  mywork_feedbackfeed: 'feedbackFeed',
+  [TEAM_NAV_CONTEXT]: 'team',
+  [FEEDBACK_NAV_CONTEXT]: 'feedbackFeed',
 };
 
 interface MyWorkNewCountsResult {

@@ -29,6 +29,7 @@ import {
 } from 'lucide-react';
 import SimpleRichTextEditor from '@/components/ui/SimpleRichTextEditor';
 import { AppointmentFeedbackSettings } from './AppointmentFeedbackSettings';
+import { createFeedbackContext } from '@/types/feedbackContext';
 
 interface AppointmentFeedbackWidgetProps {
   widgetSize?: string;
@@ -144,7 +145,7 @@ export const AppointmentFeedbackWidget = ({
   // Notification-Type ID for appointment_feedback
   const FEEDBACK_NOTIFICATION_TYPE_ID = 'c51a3c97-a10d-40f9-9900-1931479a89c8';
 
-  const handleSaveNote = async (feedbackId: string, userName: string, appointmentTitle: string, appointmentStartTime: string) => {
+  const handleSaveNote = async (feedbackId: string, userName: string, appointmentTitle: string) => {
     if (!noteText || noteText === '<p></p>' || noteText.trim() === '') {
       toast({ title: 'Fehler', description: 'Bitte geben Sie eine Notiz ein.', variant: 'destructive' });
       return;
@@ -166,7 +167,7 @@ export const AppointmentFeedbackWidget = ({
       const otherUsers = tenantUsers.filter(u => u.user_id !== user?.id);
       if (otherUsers.length > 0) {
         const plainText = noteWithAuthor.replace(/<[^>]*>/g, '').slice(0, 120);
-        const dateStr = appointmentStartTime.split('T')[0];
+        const feedbackContext = createFeedbackContext(feedbackId, { type: 'feedback', id: feedbackId });
         await Promise.all(
           otherUsers.map(u =>
             supabase.rpc('create_notification', {
@@ -175,7 +176,11 @@ export const AppointmentFeedbackWidget = ({
               title_param: `Rückmeldung: ${appointmentTitle}`,
               message_param: plainText,
               priority_param: 'medium',
-              data_param: JSON.stringify({ navigation_context: `mywork?tab=feedbackfeed` }),
+              data_param: JSON.stringify({
+                navigation_context: `mywork?tab=feedbackfeed&highlight=${feedbackId}`,
+                feedback_id: feedbackId,
+                feedback_context: feedbackContext,
+              }),
             })
           )
         );
@@ -233,7 +238,7 @@ export const AppointmentFeedbackWidget = ({
       // assigned_to als komma-separierte Liste aller Mitarbeiter
       const assignedToValue = mitarbeiterIds.join(',');
 
-      const { error } = await supabase
+      const { data: createdTask, error } = await supabase
         .from('tasks')
         .insert({
           title: taskTitle,
@@ -244,8 +249,12 @@ export const AppointmentFeedbackWidget = ({
           assigned_to: assignedToValue,
           due_date: taskDueDate || null,
           status: 'todo',
-          priority: taskPriority
-        });
+          priority: taskPriority,
+          source_type: 'appointment_feedback',
+          source_id: feedbackId,
+        })
+        .select('id')
+        .single();
 
       if (error) throw error;
 
@@ -257,6 +266,33 @@ export const AppointmentFeedbackWidget = ({
           completed_at: new Date().toISOString()
         }
       });
+      const createdTaskId = createdTask?.id;
+      const feedbackContext = createFeedbackContext(feedbackId, {
+        type: createdTaskId ? 'task' : 'feedback',
+        id: createdTaskId || feedbackId,
+      });
+
+      await Promise.allSettled(
+        tenantUsers
+          .filter((member) => member.user_id !== user.id)
+          .map((member) =>
+            supabase.rpc('create_notification', {
+              user_id_param: member.user_id,
+              type_name: 'appointment_feedback',
+              title_param: `Aufgabe aus Rückmeldung: ${appointmentTitle}`,
+              message_param: taskTitle,
+              priority_param: 'medium',
+              data_param: JSON.stringify({
+                navigation_context: createdTaskId
+                  ? `tasks?highlight=${createdTaskId}&feedback_id=${feedbackId}`
+                  : `mywork?tab=feedbackfeed&highlight=${feedbackId}`,
+                feedback_id: feedbackId,
+                task_id: createdTaskId,
+                feedback_context: feedbackContext,
+              }),
+            }),
+          ),
+      );
 
       setTaskTitle('');
       setTaskDescription('');
@@ -461,7 +497,7 @@ export const AppointmentFeedbackWidget = ({
                               />
                             </div>
                             <Button
-                              onClick={() => handleSaveNote(feedback.id, displayName, appointment.title, appointment.start_time)}
+                              onClick={() => handleSaveNote(feedback.id, displayName, appointment.title)}
                               className="w-full"
                             >
                               Rückmeldung speichern
