@@ -48,6 +48,7 @@ export function MatrixChatView() {
   const [isRoomListCollapsed, setIsRoomListCollapsed] = useState(false);
   const [highlightedEventId, setHighlightedEventId] = useState<string | null>(null);
   const [scrollToEventId, setScrollToEventId] = useState<string | null>(null);
+  const previousRoomIdRef = useRef<string | null>(null);
 
   // Get messages from context
   const messages = selectedRoomId ? (roomMessages.get(selectedRoomId) || []) : [];
@@ -160,8 +161,24 @@ export function MatrixChatView() {
 
   const handleLoadOlderMessages = useCallback(() => {
     if (!selectedRoomId) return;
-    void loadOlderMessages(selectedRoomId, 1);
+    void loadOlderMessages(selectedRoomId, 50);
   }, [loadOlderMessages, selectedRoomId]);
+
+  const handleSelectMessage = useCallback((eventId: string) => {
+    setScrollToEventId(eventId);
+    setHighlightedEventId(eventId);
+    setShowSearch(false);
+  }, []);
+
+  useEffect(() => {
+    if (!scrollToEventId) return;
+
+    const timeoutId = window.setTimeout(() => {
+      setScrollToEventId((current) => (current === scrollToEventId ? null : current));
+    }, 1200);
+
+    return () => window.clearTimeout(timeoutId);
+  }, [scrollToEventId]);
 
   // Show settings/login form
   if (showSettings || (!credentials && !isConnecting)) {
@@ -413,6 +430,8 @@ export function MatrixChatView() {
                 onLoadOlderMessages={handleLoadOlderMessages}
                 isLoadingOlderMessages={currentRoomHistoryState.isLoadingMore}
                 hasMoreHistory={currentRoomHistoryState.hasMoreHistory}
+                scrollToEventId={scrollToEventId}
+                highlightedEventId={highlightedEventId}
               />
 
               {/* Typing Indicator */}
