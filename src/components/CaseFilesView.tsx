@@ -28,6 +28,7 @@ import { CaseFileCard } from "./case-files/CaseFileCard";
 import { CaseFileDetail } from "./case-files/CaseFileDetail";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
+import { classifyCaseScale, type CaseScale } from "@/lib/caseFileSizing";
 
 type ViewStyle = "flat" | "grouped";
 
@@ -38,6 +39,7 @@ export function CaseFilesView() {
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [typeFilter, setTypeFilter] = useState<string>("all");
+  const [scopeFilter, setScopeFilter] = useState<"all" | CaseScale>("all");
   const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
   const [viewStyle, setViewStyle] = useState<ViewStyle>("flat");
   const [createDialogOpen, setCreateDialogOpen] = useState(false);
@@ -55,7 +57,20 @@ export function CaseFilesView() {
     }
   }, [searchParams, setSearchParams]);
 
-  const filteredCaseFiles = caseFiles.filter((cf) => {
+  useEffect(() => {
+    const caseFileId = searchParams.get('caseFileId');
+    if (!caseFileId || selectedCaseFile || caseFiles.length === 0) return;
+
+    const matched = caseFiles.find((caseFile) => caseFile.id === caseFileId);
+    if (!matched) return;
+
+    setSelectedCaseFile(matched);
+
+    searchParams.delete('caseFileId');
+    setSearchParams(searchParams, { replace: true });
+  }, [searchParams, setSearchParams, caseFiles, selectedCaseFile]);
+
+  const baseFilteredCaseFiles = caseFiles.filter((cf) => {
     const matchesSearch = 
       cf.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
       cf.description?.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -66,6 +81,14 @@ export function CaseFilesView() {
     const matchesType = typeFilter === "all" || cf.case_type === typeFilter;
 
     return matchesSearch && matchesStatus && matchesType;
+  });
+
+  const filteredCaseFiles = baseFilteredCaseFiles.filter((cf) => {
+    if (scopeFilter === "all") return true;
+
+    return (
+classifyCaseScale({ caseType: cf.case_type }) === scopeFilter
+    );
   });
 
   // Group case files by type
@@ -162,6 +185,12 @@ export function CaseFilesView() {
     archived: caseFiles.filter(cf => cf.status === 'archived').length,
   };
 
+  const scopeCounts = {
+    all: caseFiles.length,
+    small: caseFiles.filter((cf) => classifyCaseScale({ caseType: cf.case_type }) === "small").length,
+    large: caseFiles.filter((cf) => classifyCaseScale({ caseType: cf.case_type }) === "large").length,
+  };
+
   if (selectedCaseFile) {
     return (
       <div className="space-y-6 p-6">
@@ -228,6 +257,19 @@ export function CaseFilesView() {
         </Card>
       </div>
 
+      <Card>
+        <CardHeader className="pb-3">
+          <CardTitle className="text-base">Vorgangsgröße</CardTitle>
+        </CardHeader>
+        <CardContent className="pt-0">
+          <div className="flex flex-wrap gap-2">
+            <Button variant={scopeFilter === "all" ? "secondary" : "outline"} size="sm" onClick={() => setScopeFilter("all")}>Alle ({scopeCounts.all})</Button>
+            <Button variant={scopeFilter === "small" ? "secondary" : "outline"} size="sm" onClick={() => setScopeFilter("small")}>Kleine Vorgänge ({scopeCounts.small})</Button>
+            <Button variant={scopeFilter === "large" ? "secondary" : "outline"} size="sm" onClick={() => setScopeFilter("large")}>Große Akten ({scopeCounts.large})</Button>
+          </div>
+        </CardContent>
+      </Card>
+
       {/* Filters */}
       <Card>
         <CardContent className="p-4">
@@ -272,6 +314,16 @@ export function CaseFilesView() {
                       </div>
                     </SelectItem>
                   ))}
+                </SelectContent>
+              </Select>
+              <Select value={scopeFilter} onValueChange={(value) => setScopeFilter(value as "all" | CaseScale)}>
+                <SelectTrigger className="w-[220px]">
+                  <SelectValue placeholder="Vorgangsgröße" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Alle Größen</SelectItem>
+                  <SelectItem value="small">Kleine Vorgänge</SelectItem>
+                  <SelectItem value="large">Große Akten</SelectItem>
                 </SelectContent>
               </Select>
               <div className="flex border rounded-md">
@@ -329,10 +381,11 @@ export function CaseFilesView() {
             <h3 className="text-lg font-semibold">Keine FallAkten gefunden</h3>
             <p className="text-muted-foreground text-center mt-2">
               {searchTerm || statusFilter !== "all" || typeFilter !== "all"
+                || scopeFilter !== "all"
                 ? "Versuchen Sie andere Filterkriterien."
                 : "Erstellen Sie Ihre erste FallAkte, um Sachverhalte zentral zu verwalten."}
             </p>
-            {!searchTerm && statusFilter === "all" && typeFilter === "all" && (
+            {!searchTerm && statusFilter === "all" && typeFilter === "all" && scopeFilter === "all" && (
               <Button className="mt-4" onClick={() => setCreateDialogOpen(true)}>
                 <Plus className="mr-2 h-4 w-4" />
                 Erste FallAkte erstellen
