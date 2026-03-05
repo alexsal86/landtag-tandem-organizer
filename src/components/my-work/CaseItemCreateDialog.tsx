@@ -5,7 +5,10 @@ import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { useToast } from "@/components/ui/use-toast";
 import { CaseItemFormData, useCaseItems } from "@/features/cases/items/hooks";
+import { useAuth } from "@/hooks/useAuth";
+import { useTenant } from "@/hooks/useTenant";
 
 interface CaseItemCreateDialogProps {
   open: boolean;
@@ -15,14 +18,21 @@ interface CaseItemCreateDialogProps {
 }
 
 export function CaseItemCreateDialog({ open, onOpenChange, onCreated, createCaseItem }: CaseItemCreateDialogProps) {
+  const { user } = useAuth();
+  const { currentTenant } = useTenant();
+  const { toast } = useToast();
   const [subject, setSubject] = useState("");
   const [sourceChannel, setSourceChannel] = useState<CaseItemFormData["source_channel"]>("email");
   const [priority, setPriority] = useState<NonNullable<CaseItemFormData["priority"]>>("medium");
   const [dueDate, setDueDate] = useState("");
   const [submitting, setSubmitting] = useState(false);
+  const [submitError, setSubmitError] = useState<string | null>(null);
+  const hasContext = Boolean(user && currentTenant);
 
   const handleSubmit = async () => {
-    if (!subject.trim()) return;
+    if (!subject.trim() || !hasContext) return;
+
+    setSubmitError(null);
 
     setSubmitting(true);
 
@@ -38,7 +48,15 @@ export function CaseItemCreateDialog({ open, onOpenChange, onCreated, createCase
 
     setSubmitting(false);
 
-    if (!newItem) return;
+    if (!newItem) {
+      setSubmitError("Anliegen konnte nicht erstellt werden. Bitte Kontext und Eingaben prüfen.");
+      toast({
+        title: "Anliegen nicht erstellt",
+        description: "Bitte versuchen Sie es erneut oder prüfen Sie den aktiven Mandanten.",
+        variant: "destructive",
+      });
+      return;
+    }
 
     onCreated(newItem.id);
     setSubject("");
@@ -56,6 +74,14 @@ export function CaseItemCreateDialog({ open, onOpenChange, onCreated, createCase
         </DialogHeader>
 
         <div className="space-y-4 py-2">
+          {!hasContext && (
+            <p className="text-sm text-destructive">
+              Kein aktiver Mandanten-/Sitzungskontext vorhanden. Bitte neu anmelden oder Mandant auswählen.
+            </p>
+          )}
+
+          {submitError && <p className="text-sm text-destructive">{submitError}</p>}
+
           <div className="space-y-2">
             <Label htmlFor="case-item-subject">Betreff</Label>
             <Input
@@ -112,7 +138,7 @@ export function CaseItemCreateDialog({ open, onOpenChange, onCreated, createCase
           <Button variant="outline" onClick={() => onOpenChange(false)} disabled={submitting}>
             Abbrechen
           </Button>
-          <Button onClick={handleSubmit} disabled={submitting || !subject.trim()}>
+          <Button onClick={handleSubmit} disabled={submitting || !subject.trim() || !hasContext}>
             Anliegen erstellen
           </Button>
         </DialogFooter>
