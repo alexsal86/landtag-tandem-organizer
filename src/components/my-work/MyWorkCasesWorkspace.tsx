@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { format } from "date-fns";
 import { de } from "date-fns/locale";
-import { Briefcase, ExternalLink, FileText, FolderOpen, Search } from "lucide-react";
+import { Briefcase, ExternalLink, FileText, FolderOpen, Plus, Search } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -136,6 +136,8 @@ export function MyWorkCasesWorkspace() {
     return caseItems[0] || null;
   }, [caseItems, selectedCaseItemId]);
 
+
+
   useEffect(() => {
     if (typeof window === "undefined") return;
 
@@ -158,17 +160,77 @@ export function MyWorkCasesWorkspace() {
     if (!query) return caseItems;
 
     return caseItems.filter((item) => {
+      const linkedFile = item.case_file_id ? caseFilesById[item.case_file_id] : null;
       return [item.title, item.description, item.status, item.priority]
+        .concat(linkedFile ? [linkedFile.title, linkedFile.reference_number] : [])
         .filter(Boolean)
         .some((value) => value!.toLowerCase().includes(query));
     });
-  }, [caseItems, filterQuery]);
+  }, [caseFilesById, caseItems, filterQuery]);
+
+
+  const unlinkedCaseItems = useMemo(
+    () => filteredCaseItems.filter((item) => !item.case_file_id),
+    [filteredCaseItems],
+  );
+
+  const linkedCaseItems = useMemo(
+    () => filteredCaseItems.filter((item) => Boolean(item.case_file_id)),
+    [filteredCaseItems],
+  );
+
+  const renderCaseItemEntry = (item: CaseItem) => {
+    const linkedFile = item.case_file_id ? caseFilesById[item.case_file_id] : null;
+    const isActive = selectedCaseItem?.id === item.id;
+
+    return (
+      <button
+        key={item.id}
+        type="button"
+        className={cn(
+          "w-full rounded-md border p-3 text-left transition-colors hover:bg-muted/50",
+          isActive && "border-primary bg-primary/5",
+        )}
+        onClick={() => handleSelectCaseItem(item)}
+      >
+        <div className="flex items-start justify-between gap-2">
+          <div>
+            <p className="text-sm font-medium">{item.title || "Ohne Titel"}</p>
+            {item.description && (
+              <p className="mt-1 line-clamp-2 text-xs text-muted-foreground">{item.description}</p>
+            )}
+          </div>
+          {item.priority && <Badge variant="outline">{item.priority}</Badge>}
+        </div>
+        <div className="mt-2 flex items-center justify-between text-xs text-muted-foreground">
+          <span>{item.status || "offen"}</span>
+          {item.due_date ? <span>Fällig: {format(new Date(item.due_date), "dd.MM.yyyy", { locale: de })}</span> : null}
+        </div>
+        {linkedFile ? (
+          <p className="mt-2 text-xs text-muted-foreground">
+            Akte: <span className="font-medium text-foreground">{linkedFile.title}</span>
+            {linkedFile.reference_number ? <span className="ml-1">({linkedFile.reference_number})</span> : null}
+          </p>
+        ) : (
+          <p className="mt-2 text-xs text-amber-700 dark:text-amber-400">Einzelvorgang ohne Akte</p>
+        )}
+      </button>
+    );
+  };
 
   const handleSelectCaseItem = (item: CaseItem) => {
     updateWorkspaceParams({ caseItemId: item.id, caseFileId: item.case_file_id });
     if (isMobileViewport) {
       setMobileDetailOpen(true);
     }
+  };
+
+  const handleCreateCaseItem = () => {
+    navigate('/caseitems?action=create');
+  };
+
+  const handleCreateCaseFile = () => {
+    navigate('/casefiles?action=create');
   };
 
   const renderDetailPanel = () => {
@@ -184,6 +246,13 @@ export function MyWorkCasesWorkspace() {
     if (selectedCaseItem.case_file_id) {
       return (
         <div className="space-y-3">
+          <div className="rounded-md border bg-muted/30 p-3 text-sm">
+            <p className="font-medium">Vorgang</p>
+            <p>{selectedCaseItem.title || "Ohne Titel"}</p>
+            {selectedCaseItem.description ? (
+              <p className="mt-1 text-xs text-muted-foreground">{selectedCaseItem.description}</p>
+            ) : null}
+          </div>
           <CaseFileDetail caseFileId={selectedCaseItem.case_file_id} onBack={() => undefined} />
           <Button size="sm" variant="outline" onClick={() => navigate(`/casefiles?caseFileId=${selectedCaseItem.case_file_id}`)}>
             <ExternalLink className="mr-1 h-3.5 w-3.5" />
@@ -223,8 +292,21 @@ export function MyWorkCasesWorkspace() {
         <CardHeader className="pb-2">
           <CardTitle className="flex items-center gap-2 text-base">
             <FileText className="h-4 w-4" />
-            Anliegen
+            Vorgänge in Meine Arbeit
           </CardTitle>
+          <p className="text-xs text-muted-foreground">
+            Alle Bürgeranfragen, Petitionen und ähnliche Sachverhalte als Vorgangs-Items – mit optionaler Zuordnung zu einer FallAkte.
+          </p>
+          <div className="mt-3 flex flex-wrap gap-2">
+            <Button size="sm" onClick={handleCreateCaseItem}>
+              <Plus className="mr-1 h-4 w-4" />
+              Vorgang erstellen
+            </Button>
+            <Button size="sm" variant="outline" onClick={handleCreateCaseFile}>
+              <Plus className="mr-1 h-4 w-4" />
+              FallAkte erstellen
+            </Button>
+          </div>
         </CardHeader>
         <CardContent className="space-y-3">
           <div className="relative">
@@ -237,47 +319,43 @@ export function MyWorkCasesWorkspace() {
             />
           </div>
           <ScrollArea className="h-[520px] pr-3">
-            <div className="space-y-2">
+            <div className="space-y-4">
               {filteredCaseItems.length === 0 ? (
-                <div className="rounded-md border border-dashed p-4 text-sm text-muted-foreground">
-                  Keine Anliegen passend zum Filter gefunden.
+                <div className="rounded-md border border-dashed p-4 text-sm text-muted-foreground space-y-3">
+                  <p>Keine Anliegen passend zum Filter gefunden.</p>
+                  <div className="flex flex-wrap gap-2">
+                    <Button size="sm" onClick={handleCreateCaseItem}>Vorgang erstellen</Button>
+                    <Button size="sm" variant="outline" onClick={handleCreateCaseFile}>FallAkte erstellen</Button>
+                  </div>
                 </div>
               ) : (
-                filteredCaseItems.map((item) => {
-                  const linkedFile = item.case_file_id ? caseFilesById[item.case_file_id] : null;
-                  const isActive = selectedCaseItem?.id === item.id;
+                <>
+                  <div className="space-y-2">
+                    <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                      Einzelvorgänge (ohne FallAkte)
+                    </p>
+                    {unlinkedCaseItems.length > 0 ? (
+                      unlinkedCaseItems.map(renderCaseItemEntry)
+                    ) : (
+                      <div className="rounded-md border border-dashed p-3 text-xs text-muted-foreground">
+                        Keine Einzelvorgänge im aktuellen Filter.
+                      </div>
+                    )}
+                  </div>
 
-                  return (
-                    <button
-                      key={item.id}
-                      type="button"
-                      className={cn(
-                        "w-full rounded-md border p-3 text-left transition-colors hover:bg-muted/50",
-                        isActive && "border-primary bg-primary/5",
-                      )}
-                      onClick={() => handleSelectCaseItem(item)}
-                    >
-                      <div className="flex items-start justify-between gap-2">
-                        <div>
-                          <p className="text-sm font-medium">{item.title || "Ohne Titel"}</p>
-                          {item.description && (
-                            <p className="mt-1 line-clamp-2 text-xs text-muted-foreground">{item.description}</p>
-                          )}
-                        </div>
-                        {item.priority && <Badge variant="outline">{item.priority}</Badge>}
+                  <div className="space-y-2">
+                    <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                      Vorgänge in FallAkten
+                    </p>
+                    {linkedCaseItems.length > 0 ? (
+                      linkedCaseItems.map(renderCaseItemEntry)
+                    ) : (
+                      <div className="rounded-md border border-dashed p-3 text-xs text-muted-foreground">
+                        Keine zugeordneten Vorgänge im aktuellen Filter.
                       </div>
-                      <div className="mt-2 flex items-center justify-between text-xs text-muted-foreground">
-                        <span>{item.status || "offen"}</span>
-                        {item.due_date ? <span>Fällig: {format(new Date(item.due_date), "dd.MM.yyyy", { locale: de })}</span> : null}
-                      </div>
-                      {linkedFile ? (
-                        <p className="mt-2 text-xs text-muted-foreground">
-                          Akte: <span className="font-medium text-foreground">{linkedFile.title}</span>
-                        </p>
-                      ) : null}
-                    </button>
-                  );
-                })
+                    )}
+                  </div>
+                </>
               )}
             </div>
           </ScrollArea>
