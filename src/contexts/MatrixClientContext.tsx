@@ -16,7 +16,10 @@ interface MatrixCredentials {
   accessToken: string;
   homeserverUrl: string;
   deviceId?: string;
-  password?: string; // Only used for UIA during bootstrapCrossSigning, never persisted
+}
+
+interface ConnectOptions {
+  uiaPassword?: string; // Nicht persistent gespeichert, aber temporär im Speicher/Request für UIA verwendet.
 }
 
 interface MatrixRoom {
@@ -169,6 +172,11 @@ const matrixLogger = {
   error: (...args: unknown[]) => debugConsole.error(...args),
 };
 
+const toSafeErrorMessage = (error: unknown): string => {
+  if (error instanceof Error) return error.message;
+  return typeof error === 'string' ? error : 'Unbekannter Fehler';
+};
+
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
@@ -296,7 +304,7 @@ interface MatrixClientContextType {
   e2eeDiagnostics: MatrixE2EEDiagnostics;
   rooms: MatrixRoom[];
   credentials: MatrixCredentials | null;
-  connect: (credentials: MatrixCredentials) => Promise<void>;
+  connect: (credentials: MatrixCredentials, options?: ConnectOptions) => Promise<void>;
   disconnect: () => void;
   sendMessage: (roomId: string, message: string, replyToEventId?: string) => Promise<void>;
   refreshMessages: (roomId: string, limit?: number) => void;
@@ -526,7 +534,7 @@ export function MatrixClientProvider({ children }: { children: ReactNode }) {
 
   // ─── connect ─────────────────────────────────────────────────────────────
 
-  const connect = useCallback(async (creds: MatrixCredentials) => {
+  const connect = useCallback(async (creds: MatrixCredentials, options?: ConnectOptions) => {
     if (isConnectingRef.current) return;
 
     isConnectingRef.current = true;
@@ -579,7 +587,8 @@ export function MatrixClientProvider({ children }: { children: ReactNode }) {
 
       // 1. Hard precondition: resolve canonical device ID before creating any client
       let localDeviceId = await resolveDeviceId();
-      authPasswordRef.current = creds.password;
+      const uiaPassword = options?.uiaPassword?.trim() || undefined;
+      authPasswordRef.current = uiaPassword;
 
       const getSecretStorageKey = async ({ keys }: { keys: Record<string, unknown> }) => {
         const recoveryKey = localStorage.getItem(`matrix_recovery_key:${creds.userId}`)?.trim();
@@ -743,7 +752,7 @@ export function MatrixClientProvider({ children }: { children: ReactNode }) {
         }
 
         // 5. Bootstrap Cross-Signing with UIA (password only)
-        if (creds.password) {
+        if (uiaPassword) {
           try {
             const localpart = creds.userId.split(':')[0].substring(1);
             await crypto.bootstrapCrossSigning({
@@ -751,16 +760,17 @@ export function MatrixClientProvider({ children }: { children: ReactNode }) {
                 await (makeRequest as any)({
                   type: 'm.login.password',
                   identifier: { type: 'm.id.user', user: localpart },
-                  password: creds.password,
+                  password: uiaPassword,
                 });
               },
             } as any);
             matrixLogger.log('Cross-Signing bootstrapped (with UIA password)');
           } catch (e) {
-            matrixLogger.warn('bootstrapCrossSigning failed:', e);
+            matrixLogger.warn(`bootstrapCrossSigning failed: ${toSafeErrorMessage(e)}`);
           }
         } else {
           matrixLogger.info('Skipping bootstrapCrossSigning: no password available for UIA');
+          matrixLogger.info('Alternative UIA-Strategie: UIA nur bei Bedarf in einem separaten Schritt starten (z. B. serverseitig verifiziertes Token/OIDC), um Passwort-Passage im Connect-Flow weiter zu reduzieren.');
         }
 
         // 6. Check & enable key backup
@@ -1076,10 +1086,9 @@ export function MatrixClientProvider({ children }: { children: ReactNode }) {
       }
 
       setClient(matrixClient);
-      const { password: _password, ...safeCreds } = creds;
-      setCredentials({ ...safeCreds, deviceId: finalDeviceId || undefined });
+      setCredentials({ ...creds, deviceId: finalDeviceId || undefined });
     } catch (error) {
-      matrixLogger.error('Error connecting to Matrix:', error);
+      matrixLogger.error(`Error connecting to Matrix: ${toSafeErrorMessage(error)}`);
       setConnectionError(error instanceof Error ? error.message : 'Verbindungsfehler');
       setIsConnecting(false);
     } finally {
