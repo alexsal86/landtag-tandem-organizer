@@ -70,6 +70,14 @@ const CHANNEL_LABELS: Record<string, string> = {
 
 const normalize = (value: string | null | undefined) => value?.trim().toLowerCase() || "";
 
+const getAssigneeId = (row: Record<string, any>): string | null => (
+  row.assigned_to
+  || row.assigned_user_id
+  || row.assigned_to_user_id
+  || row.assignee_id
+  || null
+);
+
 export function MyWorkCaseItemsTab() {
   const { user } = useAuth();
   const { currentTenant } = useTenant();
@@ -98,27 +106,30 @@ export function MyWorkCaseItemsTab() {
           .from("case_items" as any)
           .select("*")
           .eq("tenant_id", currentTenant.id)
-          .or(`user_id.eq.${user.id},assigned_to.eq.${user.id}`)
-          .order("updated_at", { ascending: false })
+          .order("updated_at", { ascending: false, nullsFirst: false })
           .limit(150);
 
         if (error) throw error;
 
-        setItems(((data || []) as any[]).map((row) => ({
-          id: row.id,
-          title: row.title || "Ohne Titel",
-          description: row.description || null,
-          status: row.status || null,
-          priority: row.priority || null,
-          channel: row.channel || null,
-          follow_up_at: row.follow_up_at || row.snoozed_until || null,
-          due_date: row.due_date || row.target_date || null,
-          assigned_to: row.assigned_to || null,
-          user_id: row.user_id || null,
-          case_file_id: row.case_file_id || null,
-          created_at: row.created_at,
-          updated_at: row.updated_at || null,
-        })));
+        const visibleItems = ((data || []) as any[])
+          .filter((row) => row.user_id === user.id || getAssigneeId(row) === user.id)
+          .map((row) => ({
+            id: row.id,
+            title: row.title || "Ohne Titel",
+            description: row.description || null,
+            status: row.status || null,
+            priority: row.priority || null,
+            channel: row.channel || null,
+            follow_up_at: row.follow_up_at || row.snoozed_until || null,
+            due_date: row.due_date || row.target_date || null,
+            assigned_to: getAssigneeId(row),
+            user_id: row.user_id || null,
+            case_file_id: row.case_file_id || null,
+            created_at: row.created_at,
+            updated_at: row.updated_at || null,
+          }));
+
+        setItems(visibleItems);
       } catch (error) {
         console.error("Error loading case items:", error);
       } finally {

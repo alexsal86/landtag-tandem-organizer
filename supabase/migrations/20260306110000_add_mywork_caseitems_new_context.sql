@@ -122,7 +122,12 @@ begin
         from case_items ci
         where (
           ci.user_id = p_user_id
-          or ci.assigned_to = p_user_id
+          or coalesce(
+            to_jsonb(ci)->>'assigned_to',
+            to_jsonb(ci)->>'assigned_user_id',
+            to_jsonb(ci)->>'assigned_to_user_id',
+            to_jsonb(ci)->>'assignee_id'
+          ) = p_user_id::text
         )
           and greatest(ci.created_at, coalesce(ci.updated_at, ci.created_at)) > v_case_items_last_visit
       )
@@ -160,5 +165,5 @@ $$;
 
 grant execute on function public.get_my_work_new_counts(uuid, text[]) to authenticated;
 
-create index if not exists idx_case_items_user_assigned_created_updated
-  on public.case_items (user_id, assigned_to, created_at desc, updated_at desc);
+create index if not exists idx_case_items_user_created_updated
+  on public.case_items (user_id, created_at desc, updated_at desc);
