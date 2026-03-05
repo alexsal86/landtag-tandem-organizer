@@ -20,6 +20,18 @@ interface SendNewsMatrixRequest {
   personalMessage?: string;
 }
 
+interface RoomSendResult {
+  room_id: string;
+  success: boolean;
+  error?: string;
+}
+
+interface RecipientSendResult {
+  user_id: string;
+  rooms_sent: string[];
+  rooms_failed: RoomSendResult[];
+}
+
 serve(async (req: Request): Promise<Response> => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
@@ -38,22 +50,64 @@ serve(async (req: Request): Promise<Response> => {
 
     console.log(`📨 Sending news via Matrix to ${recipientUserIds.length} users`);
 
+    const matrixBaseUrl = Deno.env.get("MATRIX_BASE_URL");
+    const matrixAccessToken = Deno.env.get("MATRIX_ACCESS_TOKEN");
+
+    if (!matrixBaseUrl || !matrixAccessToken) {
+      throw new Error("Matrix credentials not configured");
+    }
+
     let successCount = 0;
     let errorCount = 0;
+    const recipientResults: RecipientSendResult[] = [];
 
     // Send to each recipient
     for (const userId of recipientUserIds) {
       try {
-        // Get user's Matrix room
-        const { data: profile } = await supabase
-          .from("profiles")
-          .select("matrix_room_id")
+        // Get user's active Matrix subscriptions.
+        // Fachliche Entscheidung: Versand an alle aktiven Räume eines Users,
+        // damit der User die Nachricht in jedem bewusst aktivierten Kanal erhält.
+        const { data: subscriptions, error: subscriptionsError } = await supabase
+          .from("matrix_subscriptions")
+          .select("room_id")
           .eq("user_id", userId)
-          .single();
+          .eq("is_active", true);
 
-        if (!profile?.matrix_room_id) {
-          console.log(`⚠️ User ${userId} has no Matrix room configured`);
+        if (subscriptionsError) {
+          console.error(`❌ Could not load Matrix subscriptions for user ${userId}:`, subscriptionsError);
           errorCount++;
+          recipientResults.push({
+            user_id: userId,
+            rooms_sent: [],
+            rooms_failed: [
+              {
+                room_id: "unknown",
+                success: false,
+                error: subscriptionsError.message,
+              },
+            ],
+          });
+          continue;
+        }
+
+        const roomIds = (subscriptions ?? [])
+          .map((subscription) => subscription.room_id)
+          .filter((roomId): roomId is string => Boolean(roomId));
+
+        if (roomIds.length === 0) {
+          console.log(`⚠️ User ${userId} has no active Matrix subscriptions`);
+          errorCount++;
+          recipientResults.push({
+            user_id: userId,
+            rooms_sent: [],
+            rooms_failed: [
+              {
+                room_id: "none",
+                success: false,
+                error: "No active Matrix rooms",
+              },
+            ],
+          });
           continue;
         }
 
@@ -81,52 +135,80 @@ Quelle: ${article.source}
 → ${article.link}
         `.trim();
 
-        // Get Matrix credentials
-        const matrixBaseUrl = Deno.env.get("MATRIX_BASE_URL");
-        const matrixAccessToken = Deno.env.get("MATRIX_ACCESS_TOKEN");
+        const userResult: RecipientSendResult = {
+          user_id: userId,
+          rooms_sent: [],
+          rooms_failed: [],
+        };
 
-        if (!matrixBaseUrl || !matrixAccessToken) {
-          console.error("❌ Matrix credentials not configured");
-          errorCount++;
-          continue;
-        }
+        for (const roomId of roomIds) {
+          const response = await fetch(
+            `${matrixBaseUrl}/_matrix/client/r0/rooms/${roomId}/send/m.room.message`,
+            {
+              method: "POST",
+              headers: {
+                "Authorization": `Bearer ${matrixAccessToken}`,
+                "Content-Type": "application/json",
+              },
+              body: JSON.stringify({
+                msgtype: "m.text",
+                body: plainMessage,
+                format: "org.matrix.custom.html",
+                formatted_body: htmlMessage,
+              }),
+            }
+          );
 
-        // Send message via Matrix API
-        const response = await fetch(
-          `${matrixBaseUrl}/_matrix/client/r0/rooms/${profile.matrix_room_id}/send/m.room.message`,
-          {
-            method: "POST",
-            headers: {
-              "Authorization": `Bearer ${matrixAccessToken}`,
-              "Content-Type": "application/json",
-            },
-            body: JSON.stringify({
-              msgtype: "m.text",
-              body: plainMessage,
-              format: "org.matrix.custom.html",
-              formatted_body: htmlMessage,
-            }),
+          if (!response.ok) {
+            const error = await response.text();
+            const errorMessage = `HTTP ${response.status}: ${error}`;
+            console.error(`❌ Matrix API error for user ${userId} room ${roomId}:`, errorMessage);
+            errorCount++;
+            userResult.rooms_failed.push({
+              room_id: roomId,
+              success: false,
+              error: errorMessage,
+            });
+            continue;
           }
-        );
 
-        if (!response.ok) {
-          const error = await response.text();
-          console.error(`❌ Matrix API error for user ${userId}:`, response.status, error);
-          errorCount++;
-        } else {
           successCount++;
-          console.log(`✅ Sent Matrix message to user ${userId}`);
+          userResult.rooms_sent.push(roomId);
+          console.log(`✅ Sent Matrix message to user ${userId} room ${roomId}`);
         }
+
+        recipientResults.push(userResult);
       } catch (error) {
         console.error(`❌ Error sending to user ${userId}:`, error);
         errorCount++;
+        recipientResults.push({
+          user_id: userId,
+          rooms_sent: [],
+          rooms_failed: [
+            {
+              room_id: "unknown",
+              success: false,
+              error: error instanceof Error ? error.message : String(error),
+            },
+          ],
+        });
       }
     }
 
     console.log(`📊 Matrix news results: ${successCount} sent, ${errorCount} failed`);
 
+    const roomsSent = recipientResults.flatMap((result) => result.rooms_sent);
+    const roomsFailed = recipientResults.flatMap((result) => result.rooms_failed);
+
     return new Response(
-      JSON.stringify({ success: true, sent: successCount, failed: errorCount }),
+      JSON.stringify({
+        success: true,
+        sent: successCount,
+        failed: errorCount,
+        rooms_sent: roomsSent,
+        rooms_failed: roomsFailed,
+        recipients: recipientResults,
+      }),
       {
         status: 200,
         headers: { "Content-Type": "application/json", ...corsHeaders },
