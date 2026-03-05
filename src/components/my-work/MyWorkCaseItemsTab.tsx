@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { format, isPast, isToday } from "date-fns";
 import { de } from "date-fns/locale";
-import { AlertCircle, ArrowUpDown, Briefcase, CalendarClock, ExternalLink, Search } from "lucide-react";
+import { AlertCircle, ArrowUpDown, Briefcase, CalendarClock, ExternalLink, Plus, Search } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -11,27 +11,12 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { CaseItemCreateDialog } from "@/components/my-work/CaseItemCreateDialog";
 import { useAuth } from "@/hooks/useAuth";
 import { useTenant } from "@/hooks/useTenant";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { cn } from "@/lib/utils";
-
-type CaseItem = {
-  id: string;
-  title: string;
-  description: string | null;
-  status: string | null;
-  priority: string | null;
-  channel: string | null;
-  follow_up_at: string | null;
-  due_date: string | null;
-  assigned_to: string | null;
-  user_id: string | null;
-  case_file_id: string | null;
-  created_at: string;
-  updated_at: string | null;
-};
 
 type SortBy = "updated_desc" | "due_asc" | "priority_desc";
 
@@ -49,12 +34,10 @@ type EscalationSuggestion = {
 };
 
 const STATUS_STYLES: Record<string, string> = {
-  open: "bg-blue-500 text-white",
-  in_progress: "bg-yellow-500 text-black",
-  waiting: "bg-orange-500 text-white",
-  done: "bg-green-600 text-white",
+  active: "bg-blue-500 text-white",
+  pending: "bg-yellow-500 text-black",
   closed: "bg-green-600 text-white",
-  cancelled: "bg-gray-500 text-white",
+  archived: "bg-gray-500 text-white",
 };
 
 const PRIORITY_LABELS: Record<string, string> = {
@@ -65,32 +48,21 @@ const PRIORITY_LABELS: Record<string, string> = {
 };
 
 const STATUS_LABELS: Record<string, string> = {
-  open: "Offen",
-  in_progress: "In Bearbeitung",
-  waiting: "Wartend",
-  done: "Erledigt",
+  active: "Aktiv",
+  pending: "In Bearbeitung",
   closed: "Geschlossen",
-  cancelled: "Abgebrochen",
+  archived: "Archiviert",
 };
 
 const CHANNEL_LABELS: Record<string, string> = {
   email: "E-Mail",
   phone: "Telefon",
-  letter: "Brief",
-  meeting: "Termin",
   social: "Social Media",
-  portal: "Portal",
+  in_person: "Persönlich",
+  other: "Sonstiges",
 };
 
 const normalize = (value: string | null | undefined) => value?.trim().toLowerCase() || "";
-
-const getAssigneeId = (row: Record<string, any>): string | null => (
-  row.assigned_to
-  || row.assigned_user_id
-  || row.assigned_to_user_id
-  || row.assignee_id
-  || null
-);
 
 export function MyWorkCaseItemsTab() {
   const { user } = useAuth();
@@ -113,6 +85,28 @@ export function MyWorkCaseItemsTab() {
   const [dueFilter, setDueFilter] = useState("all");
   const [assignedToMeOnly, setAssignedToMeOnly] = useState(false);
   const [sortBy, setSortBy] = useState<SortBy>("updated_desc");
+  const [createOpen, setCreateOpen] = useState(false);
+  const [highlightedItemId, setHighlightedItemId] = useState<string | null>(null);
+
+  const items = useMemo(() => (
+    caseItems
+      .filter((row) => row.user_id === user?.id || row.owner_user_id === user?.id)
+      .map((row) => ({
+        id: row.id,
+        title: row.resolution_summary || "Ohne Titel",
+        description: null,
+        status: row.status || null,
+        priority: row.priority || null,
+        channel: row.source_channel || null,
+        follow_up_at: row.follow_up_at || null,
+        due_date: row.due_at || null,
+        assigned_to: row.owner_user_id,
+        user_id: row.user_id || null,
+        case_file_id: row.case_file_id || null,
+        created_at: row.created_at,
+        updated_at: row.updated_at || null,
+      }))
+  ), [caseItems, user?.id]);
 
   const loadCaseItems = useCallback(async () => {
     if (!user || !currentTenant?.id) return;
@@ -326,16 +320,29 @@ export function MyWorkCaseItemsTab() {
 
   return (
     <div className="space-y-4 p-4">
+      <CaseItemCreateDialog
+        open={createOpen}
+        onOpenChange={setCreateOpen}
+        onCreated={(newItemId) => setHighlightedItemId(newItemId)}
+        createCaseItem={createCaseItem}
+      />
+
       <Card>
         <CardContent className="p-4 space-y-3">
-          <div className="relative">
-            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-            <Input
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              placeholder="Suche in Titel, Beschreibung, Kanal, Status…"
-              className="pl-9"
-            />
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <div className="relative w-full max-w-xl">
+              <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+              <Input
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                placeholder="Suche in Titel, Beschreibung, Kanal, Status…"
+                className="pl-9"
+              />
+            </div>
+            <Button onClick={() => setCreateOpen(true)}>
+              <Plus className="mr-2 h-4 w-4" />
+              Neues Anliegen
+            </Button>
           </div>
 
           <div className="flex flex-wrap gap-2">
@@ -422,7 +429,13 @@ export function MyWorkCaseItemsTab() {
               const isOverdue = Boolean(dueDate && isPast(dueDate) && !isToday(dueDate));
 
               return (
-                <div key={item.id} className="rounded-lg border bg-card p-3 transition-colors hover:bg-muted/40">
+                <div
+                  key={item.id}
+                  className={cn(
+                    "rounded-lg border bg-card p-3 transition-colors hover:bg-muted/40",
+                    highlightedItemId === item.id && "border-primary bg-primary/10"
+                  )}
+                >
                   <div className="flex items-start justify-between gap-3">
                     <div className="min-w-0 space-y-1">
                       <div className="flex flex-wrap items-center gap-2">
