@@ -291,6 +291,24 @@ export function MyWorkCasesWorkspace() {
           </p>
         </CardHeader>
         <CardContent className="space-y-3">
+          <div className="grid grid-cols-2 gap-2 text-xs lg:grid-cols-4">
+            <div className="rounded-md border p-2">
+              <p className="text-muted-foreground">Alle Vorgänge</p>
+              <p className="text-sm font-semibold">{stats.totalItems}</p>
+            </div>
+            <div className="rounded-md border p-2">
+              <p className="text-muted-foreground">Offen</p>
+              <p className="text-sm font-semibold">{stats.openItems}</p>
+            </div>
+            <div className="rounded-md border p-2">
+              <p className="text-muted-foreground">Einzelvorgänge</p>
+              <p className="text-sm font-semibold">{stats.singleItemsCount}</p>
+            </div>
+            <div className="rounded-md border p-2">
+              <p className="text-muted-foreground">FallAkten</p>
+              <p className="text-sm font-semibold">{stats.uniqueCaseFiles}</p>
+            </div>
+          </div>
           <div className="relative">
             <Search className="pointer-events-none absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
             <Input
