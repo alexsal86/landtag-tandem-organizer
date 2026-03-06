@@ -72,7 +72,7 @@ type EditableCaseItem = {
   assigneeIds: string[];
 };
 
-type CaseItemSortKey = "channel" | "subject" | "description" | "received" | "due" | "type" | "category" | "priority" | "assignee";
+type CaseItemSortKey = "channel" | "subject" | "description" | "status" | "received" | "due" | "category" | "priority" | "assignee";
 type SortDirection = "asc" | "desc";
 
 const categoryOptions = ["Allgemein", "Bürgeranliegen", "Anfrage", "Beschwerde", "Termin", "Sonstiges"] as const;
@@ -273,8 +273,6 @@ export function MyWorkCasesWorkspace() {
     const directionFactor = itemSort.direction === "asc" ? 1 : -1;
 
     return [...filteredCaseItems].sort((a, b) => {
-      const aLinkedFile = a.case_file_id ? caseFilesById[a.case_file_id] : null;
-      const bLinkedFile = b.case_file_id ? caseFilesById[b.case_file_id] : null;
       const aAssignee = getAssigneeIds(a).map((id) => teamUsers.find((member) => member.id === id)?.name || "").join(", ");
       const bAssignee = getAssigneeIds(b).map((id) => teamUsers.find((member) => member.id === id)?.name || "").join(", ");
 
@@ -282,9 +280,9 @@ export function MyWorkCasesWorkspace() {
         channel: sourceChannelMeta[a.source_channel || ""]?.label || a.source_channel || "",
         subject: getItemSubject(a),
         description: getItemDescription(a),
+        status: statusOptions.find((option) => option.value === a.status)?.label || a.status || "Neu",
         received: a.source_received_at ? new Date(a.source_received_at).getTime() : 0,
         due: a.due_at ? new Date(a.due_at).getTime() : 0,
-        type: aLinkedFile ? `Akte: ${aLinkedFile.title}` : "Einzelvorgang",
         category: getCategory(a),
         priority: priorityRank[a.priority || ""] || 0,
         assignee: aAssignee,
@@ -294,9 +292,9 @@ export function MyWorkCasesWorkspace() {
         channel: sourceChannelMeta[b.source_channel || ""]?.label || b.source_channel || "",
         subject: getItemSubject(b),
         description: getItemDescription(b),
+        status: statusOptions.find((option) => option.value === b.status)?.label || b.status || "Neu",
         received: b.source_received_at ? new Date(b.source_received_at).getTime() : 0,
         due: b.due_at ? new Date(b.due_at).getTime() : 0,
-        type: bLinkedFile ? `Akte: ${bLinkedFile.title}` : "Einzelvorgang",
         category: getCategory(b),
         priority: priorityRank[b.priority || ""] || 0,
         assignee: bAssignee,
@@ -590,7 +588,7 @@ export function MyWorkCasesWorkspace() {
                   </div>
                   <p className="text-xs text-muted-foreground mt-1">Vorgänge per Drag & Drop auf eine FallAkte ziehen zum Verknüpfen</p>
                 </CardHeader>
-                <CardContent className="space-y-3">
+                <CardContent className="space-y-3 pt-5">
                   <Droppable droppableId="case-items-list" isDropDisabled>
                     {(provided) => (
                       <ScrollArea className="h-[520px] pr-2">
@@ -602,7 +600,7 @@ export function MyWorkCasesWorkspace() {
                             </div>
                           ) : (
                             <div className="space-y-1.5">
-                              <div className="hidden grid-cols-[28px_40px_minmax(160px,1.3fr)_minmax(140px,1.2fr)_120px_1fr_1fr_1.2fr_1fr_52px_1.8fr] gap-2 border-b px-2 pb-1 text-[11px] font-medium uppercase tracking-wide text-muted-foreground lg:grid">
+                              <div className="hidden grid-cols-[28px_40px_minmax(160px,1.1fr)_minmax(260px,2.4fr)_minmax(120px,0.8fr)_88px_88px_minmax(110px,0.8fr)_52px_112px] gap-2 border-b px-2 pb-1 text-[11px] font-medium uppercase tracking-wide text-muted-foreground lg:grid">
                                 <span />
                                 <span className="group inline-flex items-center justify-center gap-0.5">
                                   <button type="button" className={sortButtonClass("channel", "asc")} onClick={() => toggleSort("channel", "asc")} aria-label="Kanal aufsteigend sortieren"><ArrowUp className="h-3 w-3" /></button>
@@ -610,10 +608,9 @@ export function MyWorkCasesWorkspace() {
                                 </span>
                                 <span className="group inline-flex items-center gap-0.5">Betreff<button type="button" className={sortButtonClass("subject", "asc")} onClick={() => toggleSort("subject", "asc")} aria-label="Betreff aufsteigend sortieren"><ArrowUp className="h-3 w-3" /></button><button type="button" className={sortButtonClass("subject", "desc")} onClick={() => toggleSort("subject", "desc")} aria-label="Betreff absteigend sortieren"><ArrowDown className="h-3 w-3" /></button></span>
                                 <span className="group inline-flex items-center gap-0.5">Beschreibung<button type="button" className={sortButtonClass("description", "asc")} onClick={() => toggleSort("description", "asc")} aria-label="Beschreibung aufsteigend sortieren"><ArrowUp className="h-3 w-3" /></button><button type="button" className={sortButtonClass("description", "desc")} onClick={() => toggleSort("description", "desc")} aria-label="Beschreibung absteigend sortieren"><ArrowDown className="h-3 w-3" /></button></span>
-                                <span>Status</span>
+                                <span className="group inline-flex items-center gap-0.5">Status<button type="button" className={sortButtonClass("status", "asc")} onClick={() => toggleSort("status", "asc")} aria-label="Status aufsteigend sortieren"><ArrowUp className="h-3 w-3" /></button><button type="button" className={sortButtonClass("status", "desc")} onClick={() => toggleSort("status", "desc")} aria-label="Status absteigend sortieren"><ArrowDown className="h-3 w-3" /></button></span>
                                 <span className="group inline-flex items-center gap-0.5">Eingang<button type="button" className={sortButtonClass("received", "asc")} onClick={() => toggleSort("received", "asc")} aria-label="Eingang aufsteigend sortieren"><ArrowUp className="h-3 w-3" /></button><button type="button" className={sortButtonClass("received", "desc")} onClick={() => toggleSort("received", "desc")} aria-label="Eingang absteigend sortieren"><ArrowDown className="h-3 w-3" /></button></span>
                                 <span className="group inline-flex items-center gap-0.5">Fällig<button type="button" className={sortButtonClass("due", "asc")} onClick={() => toggleSort("due", "asc")} aria-label="Fällig aufsteigend sortieren"><ArrowUp className="h-3 w-3" /></button><button type="button" className={sortButtonClass("due", "desc")} onClick={() => toggleSort("due", "desc")} aria-label="Fällig absteigend sortieren"><ArrowDown className="h-3 w-3" /></button></span>
-                                <span className="group inline-flex items-center gap-0.5">Art<button type="button" className={sortButtonClass("type", "asc")} onClick={() => toggleSort("type", "asc")} aria-label="Art aufsteigend sortieren"><ArrowUp className="h-3 w-3" /></button><button type="button" className={sortButtonClass("type", "desc")} onClick={() => toggleSort("type", "desc")} aria-label="Art absteigend sortieren"><ArrowDown className="h-3 w-3" /></button></span>
                                 <span className="group inline-flex items-center gap-0.5">Kategorie<button type="button" className={sortButtonClass("category", "asc")} onClick={() => toggleSort("category", "asc")} aria-label="Kategorie aufsteigend sortieren"><ArrowUp className="h-3 w-3" /></button><button type="button" className={sortButtonClass("category", "desc")} onClick={() => toggleSort("category", "desc")} aria-label="Kategorie absteigend sortieren"><ArrowDown className="h-3 w-3" /></button></span>
                                 <span className="group inline-flex items-center justify-center gap-0.5"><button type="button" className={sortButtonClass("priority", "asc")} onClick={() => toggleSort("priority", "asc")} aria-label="Priorität aufsteigend sortieren"><ArrowUp className="h-3 w-3" /></button><button type="button" className={sortButtonClass("priority", "desc")} onClick={() => toggleSort("priority", "desc")} aria-label="Priorität absteigend sortieren"><ArrowDown className="h-3 w-3" /></button></span>
                                 <span className="group inline-flex items-center gap-0.5">Bearbeiter<button type="button" className={sortButtonClass("assignee", "asc")} onClick={() => toggleSort("assignee", "asc")} aria-label="Bearbeiter aufsteigend sortieren"><ArrowUp className="h-3 w-3" /></button><button type="button" className={sortButtonClass("assignee", "desc")} onClick={() => toggleSort("assignee", "desc")} aria-label="Bearbeiter absteigend sortieren"><ArrowDown className="h-3 w-3" /></button></span>
@@ -645,7 +642,7 @@ export function MyWorkCasesWorkspace() {
                                               )}
                                               onClick={() => handleSelectCaseItem(item)}
                                             >
-                                              <div className="hidden h-12 grid-cols-[28px_40px_minmax(160px,1.3fr)_minmax(140px,1.2fr)_120px_1fr_1fr_1.2fr_1fr_52px_1.8fr] items-center gap-2 text-xs text-muted-foreground lg:grid">
+                                              <div className="hidden h-12 grid-cols-[28px_40px_minmax(160px,1.1fr)_minmax(260px,2.4fr)_minmax(120px,0.8fr)_88px_88px_minmax(110px,0.8fr)_52px_112px] items-center gap-2 text-xs text-muted-foreground lg:grid">
                                                 {/* Drag handle */}
                                                 <span
                                                   {...dragProvided.dragHandleProps}
@@ -669,7 +666,7 @@ export function MyWorkCasesWorkspace() {
                                                           <Link2 className="h-3.5 w-3.5 text-blue-500 shrink-0" />
                                                         </TooltipTrigger>
                                                         <TooltipContent side="top" className="text-xs">
-                                                          <p className="font-medium">{linkedFile.title}</p>
+                                                          <p className="font-medium">Ist Bestandteil der Akte „{linkedFile.title}“</p>
                                                           {linkedFile.reference_number && <p className="text-muted-foreground">{linkedFile.reference_number}</p>}
                                                         </TooltipContent>
                                                       </Tooltip>
@@ -684,9 +681,6 @@ export function MyWorkCasesWorkspace() {
                                                 </span>
                                                 <span>{item.source_received_at ? format(new Date(item.source_received_at), "dd.MM.yy", { locale: de }) : "–"}</span>
                                                 <span>{item.due_at ? format(new Date(item.due_at), "dd.MM.yy", { locale: de }) : "–"}</span>
-                                                <span className="truncate" title={linkedFile ? linkedFile.title : "Einzelvorgang"}>
-                                                  {linkedFile ? `Akte: ${linkedFile.title}` : "Einzelvorgang"}
-                                                </span>
                                                 <span className={cn("truncate", !category && "text-amber-600")}>{category || "Pflichtfeld"}</span>
                                                 <span className="inline-flex items-center justify-center" title={priorityMeta(item.priority).label}>
                                                   <Circle className={cn("h-3.5 w-3.5 fill-current", priorityMeta(item.priority).color)} />
@@ -700,7 +694,6 @@ export function MyWorkCasesWorkspace() {
                                                       </Avatar>
                                                     ))}
                                                   </div>
-                                                  <span className="truncate">{assignees.length > 0 ? assignees.map((m) => m.name).join(", ") : "Nicht zugewiesen"}</span>
                                                   <DropdownMenu>
                                                     <DropdownMenuTrigger asChild>
                                                       <Button type="button" size="icon" variant="outline" className="h-7 w-7">
