@@ -61,6 +61,7 @@ export function CaseItemDetailPanel({
   onAddInteraction,
   onCreateCaseFile,
   onNavigateToCaseFile,
+  contactDisplay,
 }: {
   itemId: string;
   itemCaseFileId: string | null;
@@ -82,6 +83,7 @@ export function CaseItemDetailPanel({
   onAddInteraction: () => void;
   onCreateCaseFile: (itemId: string) => void;
   onNavigateToCaseFile: (caseFileId: string) => void;
+  contactDisplay: string;
 }) {
   const [showMetaFields, setShowMetaFields] = useState(false);
 
@@ -192,6 +194,13 @@ export function CaseItemDetailPanel({
               </div>
             </CollapsibleContent>
           </Collapsible>
+
+          {contactDisplay && (
+            <div className="space-y-1.5 rounded-md border bg-background p-3 text-sm">
+              <Label className="font-bold">Kontakt</Label>
+              <p className="text-muted-foreground">{contactDisplay}</p>
+            </div>
+          )}
 
           <div className="space-y-2 rounded-md border bg-background p-3">
             <Label className="font-bold flex items-center gap-1.5"><Vote className="h-4 w-4" />Verknüpfte Entscheidungen</Label>

@@ -20,6 +20,7 @@ import { StandaloneDecisionCreator } from "@/components/task-decisions/Standalon
 import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { CaseItemDetailPanel } from "@/components/my-work/CaseItemDetailPanel";
 import { useCaseItems } from "@/features/cases/items/hooks";
+import type { CaseItemIntakePayload } from "@/features/cases/items/types";
 import { useAuth } from "@/hooks/useAuth";
 import { useTenant } from "@/hooks/useTenant";
 import { supabase } from "@/integrations/supabase/client";
@@ -113,7 +114,7 @@ const sanitizeTimelineNote = (note: string | undefined) => {
   return DOMPurify.sanitize(note, { USE_PROFILES: { html: true } });
 };
 
-const parseTimelineEvents = (payload: Record<string, unknown> | null): TimelineEvent[] => {
+const parseTimelineEvents = (payload: CaseItemIntakePayload | null): TimelineEvent[] => {
   const raw = payload?.timeline_events;
   if (!Array.isArray(raw)) return [];
   const results: TimelineEvent[] = [];
@@ -136,6 +137,17 @@ const parseTimelineEvents = (payload: Record<string, unknown> | null): TimelineE
   return results.sort((a, b) => toTimeSafe(a.timestamp) - toTimeSafe(b.timestamp));
 };
 
+
+
+const getContactName = (payload: CaseItemIntakePayload | null): string => {
+  const value = payload?.contact_name;
+  return typeof value === "string" ? value : "";
+};
+
+const getContactDetail = (payload: CaseItemIntakePayload | null): string => {
+  const value = payload?.contact_detail;
+  return typeof value === "string" ? value : "";
+};
 const loggedInvalidDateWarnings = new Set<string>();
 
 const formatDateSafe = (
@@ -519,7 +531,7 @@ export function MyWorkCasesWorkspace() {
       assigneeIds: getAssigneeIds(item),
       timelineEvents: parseTimelineEvents(item.intake_payload),
       interactionType: "anruf",
-      interactionContact: "",
+      interactionContact: getContactDetail(item.intake_payload) || getContactName(item.intake_payload),
       interactionDateTime: "",
       interactionNote: "",
     });
@@ -752,11 +764,13 @@ export function MyWorkCasesWorkspace() {
       return;
     }
 
-    const intakePayload = {
+    const intakePayload: CaseItemIntakePayload = {
       ...(detailItem?.intake_payload || {}),
       category: editableCaseItem.category,
       assignee_ids: editableCaseItem.assigneeIds,
       timeline_events: editableCaseItem.timelineEvents,
+      contact_name: getContactName(detailItem?.intake_payload || null) || null,
+      contact_detail: getContactDetail(detailItem?.intake_payload || null) || null,
     };
 
     const patch = {
@@ -862,6 +876,9 @@ export function MyWorkCasesWorkspace() {
                                 const assigneeIds = getAssigneeIds(item);
                                 const assignees = assigneeIds.map((id) => teamUsers.find((member) => member.id === id)).filter(Boolean) as TeamUser[];
                                 const category = getCategory(item);
+                                const contactName = getContactName(item.intake_payload);
+                                const contactDetail = getContactDetail(item.intake_payload);
+                                const contactDisplay = [contactName, contactDetail].filter(Boolean).join(" · ");
                                 const hasInlineDetail = isActive && editableCaseItem;
                                 return (
                                   <Draggable key={item.id} draggableId={item.id} index={index}>
@@ -957,6 +974,7 @@ export function MyWorkCasesWorkspace() {
                                               <div className="space-y-1 lg:hidden">
                                                 <p className="truncate text-sm font-medium">{getItemSubject(item)}</p>
                                                 <p className="text-xs text-muted-foreground">{category || "Kategorie fehlt"}</p>
+                                                {contactDisplay && <p className="text-xs text-muted-foreground">Kontakt: {contactDisplay}</p>}
                                               </div>
                                             </button>
                                           </ContextMenuTrigger>
@@ -1062,6 +1080,7 @@ export function MyWorkCasesWorkspace() {
                                                 onAddInteraction={handleAddInteraction}
                                                 onCreateCaseFile={handleCreateCaseFile}
                                                 onNavigateToCaseFile={(caseFileId) => navigate(`/casefiles?caseFileId=${caseFileId}`)}
+                                                contactDisplay={contactDisplay}
                                               />
                                             )}
                                           </div>
