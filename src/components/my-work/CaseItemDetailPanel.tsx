@@ -1,11 +1,13 @@
+import { useState } from "react";
 import { format } from "date-fns";
 import { de } from "date-fns/locale";
-import { AlertCircle, ExternalLink, Gavel, Loader2, Mail, MessageSquare, Phone, Trash2, Users, Vote } from "lucide-react";
+import { AlertCircle, ChevronDown, ExternalLink, Gavel, Loader2, Mail, MessageSquare, Phone, Trash2, Users, Vote } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { cn } from "@/lib/utils";
 import SimpleRichTextEditor from "@/components/ui/SimpleRichTextEditor";
 import type { EditableCaseItem, TimelineInteractionType } from "@/components/my-work/hooks/useCaseItemEdit";
@@ -16,6 +18,7 @@ type TimelineEntry = {
   title: string;
   safeNoteHtml?: string;
   accentClass: string;
+  icon?: typeof Phone;
   canDelete?: boolean;
   onDelete?: () => void;
 };
@@ -82,6 +85,8 @@ export function CaseItemDetailPanel({
   onCreateCaseFile: (itemId: string) => void;
   onNavigateToCaseFile: (caseFileId: string) => void;
 }) {
+  const [showMetaFields, setShowMetaFields] = useState(false);
+
   return (
     <div className="mx-2 mb-3 rounded-md border bg-muted/20 p-3 space-y-4">
       <div className="grid gap-4 lg:grid-cols-[minmax(0,2fr)_minmax(0,1fr)]">
@@ -110,68 +115,78 @@ export function CaseItemDetailPanel({
               <Input id="detail-due" type="date" value={editableCaseItem.dueAt} onChange={(event) => onUpdate({ dueAt: event.target.value })} />
             </div>
           </div>
-          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-            <div className="space-y-1.5">
-              <Label className="font-bold">Status</Label>
-              <Select value={editableCaseItem.status} onValueChange={(value) => onUpdate({ status: value })}>
-                <SelectTrigger><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  {statusOptions.map((statusOption) => (
-                    <SelectItem key={statusOption.value} value={statusOption.value}>{statusOption.label}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="space-y-1.5">
-              <Label className="font-bold">Kategorie *</Label>
-              <Select value={editableCaseItem.category} onValueChange={(value) => onUpdate({ category: value })}>
-                <SelectTrigger><SelectValue placeholder="Kategorie wählen" /></SelectTrigger>
-                <SelectContent>
-                  {categoryOptions.map((categoryOption) => (
-                    <SelectItem key={categoryOption} value={categoryOption}>{categoryOption}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-          </div>
-          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-            <div className="space-y-1.5">
-              <Label className="font-bold">Priorität</Label>
-              <Select value={editableCaseItem.priority} onValueChange={(value) => onUpdate({ priority: value })}>
-                <SelectTrigger><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="low">Niedrig</SelectItem>
-                  <SelectItem value="medium">Mittel</SelectItem>
-                  <SelectItem value="high">Hoch</SelectItem>
-                  <SelectItem value="urgent">Dringend</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="space-y-1.5">
-              <Label className="font-bold">Bearbeiter</Label>
-              <div className="flex flex-wrap gap-2 rounded-md border p-2">
-                {teamUsers.map((member) => {
-                  const selected = editableCaseItem.assigneeIds.includes(member.id);
-                  return (
-                    <Button
-                      key={member.id}
-                      type="button"
-                      size="sm"
-                      variant={selected ? "default" : "outline"}
-                      onClick={() => {
-                        const next = selected
-                          ? editableCaseItem.assigneeIds.filter((id) => id !== member.id)
-                          : [...editableCaseItem.assigneeIds, member.id];
-                        onUpdate({ assigneeIds: next });
-                      }}
-                    >
-                      {member.name}
-                    </Button>
-                  );
-                })}
+          <Collapsible open={showMetaFields} onOpenChange={setShowMetaFields} className="rounded-md border bg-background">
+            <CollapsibleTrigger asChild>
+              <Button type="button" variant="ghost" className="flex w-full items-center justify-between rounded-md px-3 py-2 text-left">
+                <span className="text-sm font-semibold">Erweiterte Angaben</span>
+                <ChevronDown className={cn("h-4 w-4 transition-transform", showMetaFields && "rotate-180")} />
+              </Button>
+            </CollapsibleTrigger>
+            <CollapsibleContent className="space-y-3 px-3 pb-3">
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                <div className="space-y-1.5">
+                  <Label className="font-bold">Status</Label>
+                  <Select value={editableCaseItem.status} onValueChange={(value) => onUpdate({ status: value })}>
+                    <SelectTrigger><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      {statusOptions.map((statusOption) => (
+                        <SelectItem key={statusOption.value} value={statusOption.value}>{statusOption.label}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-1.5">
+                  <Label className="font-bold">Kategorie *</Label>
+                  <Select value={editableCaseItem.category} onValueChange={(value) => onUpdate({ category: value })}>
+                    <SelectTrigger><SelectValue placeholder="Kategorie wählen" /></SelectTrigger>
+                    <SelectContent>
+                      {categoryOptions.map((categoryOption) => (
+                        <SelectItem key={categoryOption} value={categoryOption}>{categoryOption}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
               </div>
-            </div>
-          </div>
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                <div className="space-y-1.5">
+                  <Label className="font-bold">Priorität</Label>
+                  <Select value={editableCaseItem.priority} onValueChange={(value) => onUpdate({ priority: value })}>
+                    <SelectTrigger><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="low">Niedrig</SelectItem>
+                      <SelectItem value="medium">Mittel</SelectItem>
+                      <SelectItem value="high">Hoch</SelectItem>
+                      <SelectItem value="urgent">Dringend</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-1.5">
+                  <Label className="font-bold">Bearbeiter</Label>
+                  <div className="flex flex-wrap gap-2 rounded-md border p-2">
+                    {teamUsers.map((member) => {
+                      const selected = editableCaseItem.assigneeIds.includes(member.id);
+                      return (
+                        <Button
+                          key={member.id}
+                          type="button"
+                          size="sm"
+                          variant={selected ? "default" : "outline"}
+                          onClick={() => {
+                            const next = selected
+                              ? editableCaseItem.assigneeIds.filter((id) => id !== member.id)
+                              : [...editableCaseItem.assigneeIds, member.id];
+                            onUpdate({ assigneeIds: next });
+                          }}
+                        >
+                          {member.name}
+                        </Button>
+                      );
+                    })}
+                  </div>
+                </div>
+              </div>
+            </CollapsibleContent>
+          </Collapsible>
 
           <div className="space-y-2 rounded-md border bg-background p-3">
             <Label className="font-bold flex items-center gap-1.5"><Vote className="h-4 w-4" />Verknüpfte Entscheidungen</Label>
@@ -266,7 +281,9 @@ export function CaseItemDetailPanel({
                 <>
                   {timelineEntries.map((entry) => (
                     <div key={entry.id} className="relative">
-                      <span className={`absolute -left-[18px] top-1.5 h-2.5 w-2.5 rounded-full ${entry.accentClass}`} />
+                      <span className={`absolute -left-[20px] top-1 h-4 w-4 rounded-full ${entry.accentClass} flex items-center justify-center text-white`}>
+                        {entry.icon ? <entry.icon className="h-2.5 w-2.5" /> : null}
+                      </span>
                       <div className="rounded border p-2 text-xs">
                         <div className="flex items-start justify-between gap-2">
                           <div>
