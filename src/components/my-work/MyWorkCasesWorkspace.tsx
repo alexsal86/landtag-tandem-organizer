@@ -450,7 +450,14 @@ export function MyWorkCasesWorkspace() {
 
   return (
     <>
-      <div className="grid grid-cols-1 gap-4 lg:grid-cols-[minmax(0,7fr)_minmax(0,3fr)]">
+      {detailFileId ? (
+        <Card>
+          <CardContent className="pt-6">
+            <CaseFileDetail caseFileId={detailFileId} onBack={() => setDetailFileId(null)} />
+          </CardContent>
+        </Card>
+      ) : (
+        <div className="grid grid-cols-1 gap-4 lg:grid-cols-[minmax(0,7fr)_minmax(0,3fr)]">
         {/* LEFT: Vorgänge */}
         <Card>
           <CardHeader className="pb-2">
@@ -579,79 +586,68 @@ export function MyWorkCasesWorkspace() {
 
         {/* RIGHT: FallAkten */}
         <Card>
-          {detailFileId ? (
-            <CardContent className="pt-6">
-              <CaseFileDetail caseFileId={detailFileId} onBack={() => setDetailFileId(null)} />
-            </CardContent>
-          ) : (
-            <>
-              <CardHeader className="pb-2">
-                <div className="flex items-center justify-between">
-                  <CardTitle className="flex items-center gap-2 text-base">
-                    <FolderOpen className="h-4 w-4" />
-                    FallAkten
-                  </CardTitle>
-                  <Button size="sm" onClick={() => handleCreateCaseFile()}>
-                    <Plus className="mr-1 h-4 w-4" />
-                    Neu
-                  </Button>
-                </div>
-              </CardHeader>
-              <CardContent className="space-y-3">
-                <div className="relative">
-                  <Search className="pointer-events-none absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
-                  <Input
-                    value={fileFilterQuery}
-                    onChange={(e) => setFileFilterQuery(e.target.value)}
-                    placeholder="FallAkten filtern…"
-                    className="pl-8"
-                  />
-                </div>
-                <ScrollArea className="h-[520px] pr-2">
-                  <div className="space-y-1.5">
-                    {filteredCaseFiles.length === 0 ? (
-                      <div className="rounded-md border border-dashed p-4 text-sm text-muted-foreground space-y-3">
-                        <p>Keine FallAkten gefunden.</p>
-                        <Button size="sm" onClick={() => handleCreateCaseFile()}>FallAkte erstellen</Button>
-                      </div>
-                    ) : (
-                      filteredCaseFiles.map((cf) => {
-                        const isActive = detailFileId === cf.id;
-                        const linkedCount = linkedItemsCountByFile[cf.id] || 0;
-                        return (
-                          <button
-                            key={cf.id}
-                            type="button"
-                            className={cn(
-                              "w-full border-b px-2 py-2 text-left transition-colors hover:bg-muted/40",
-                              isActive && "bg-primary/5",
-                            )}
-                            onClick={() => handleSelectCaseFile(cf)}
-                          >
-                            <p className="text-sm font-medium line-clamp-1">{cf.title}</p>
-                            <div className="mt-1.5 flex items-center justify-between text-xs text-muted-foreground">
-                              {cf.reference_number && <span>{cf.reference_number}</span>}
-                              {linkedCount > 0 && (
-                                <span>
-                                  <FileText className="inline h-3 w-3 mr-0.5" />
-                                  {linkedCount} {linkedCount === 1 ? "Vorgang" : "Vorgänge"}
-                                </span>
-                              )}
-                            </div>
-                            {cf.current_status_note && (
-                              <p className="mt-1 text-xs text-muted-foreground truncate">{cf.current_status_note}</p>
-                            )}
-                          </button>
-                        );
-                      })
-                    )}
+          <CardHeader className="pb-2">
+            <div className="flex items-center justify-between">
+              <CardTitle className="flex items-center gap-2 text-base">
+                <FolderOpen className="h-4 w-4" />
+                FallAkten
+              </CardTitle>
+              <Button size="sm" onClick={() => handleCreateCaseFile()}>
+                <Plus className="mr-1 h-4 w-4" />
+                Neu
+              </Button>
+            </div>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            <div className="relative">
+              <Search className="pointer-events-none absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
+              <Input
+                value={fileFilterQuery}
+                onChange={(e) => setFileFilterQuery(e.target.value)}
+                placeholder="FallAkten filtern…"
+                className="pl-8"
+              />
+            </div>
+            <ScrollArea className="h-[520px] pr-2">
+              <div className="space-y-1.5">
+                {filteredCaseFiles.length === 0 ? (
+                  <div className="rounded-md border border-dashed p-4 text-sm text-muted-foreground space-y-3">
+                    <p>Keine FallAkten gefunden.</p>
+                    <Button size="sm" onClick={() => handleCreateCaseFile()}>FallAkte erstellen</Button>
                   </div>
-                </ScrollArea>
-              </CardContent>
-            </>
-          )}
+                ) : (
+                  filteredCaseFiles.map((cf) => {
+                    const linkedCount = linkedItemsCountByFile[cf.id] || 0;
+                    return (
+                      <button
+                        key={cf.id}
+                        type="button"
+                        className="w-full border-b px-2 py-2 text-left transition-colors hover:bg-muted/40"
+                        onClick={() => handleSelectCaseFile(cf)}
+                      >
+                        <p className="text-sm font-medium line-clamp-1">{cf.title}</p>
+                        <div className="mt-1.5 flex items-center justify-between text-xs text-muted-foreground">
+                          {cf.reference_number && <span>{cf.reference_number}</span>}
+                          {linkedCount > 0 && (
+                            <span>
+                              <FileText className="inline h-3 w-3 mr-0.5" />
+                              {linkedCount} {linkedCount === 1 ? "Vorgang" : "Vorgänge"}
+                            </span>
+                          )}
+                        </div>
+                        {cf.current_status_note && (
+                          <p className="mt-1 text-xs text-muted-foreground truncate">{cf.current_status_note}</p>
+                        )}
+                      </button>
+                    );
+                  })
+                )}
+              </div>
+            </ScrollArea>
+          </CardContent>
         </Card>
       </div>
+      )}
 
       {/* Sheet: Vorgang Detail (from left) */}
       <Sheet open={!!detailItemId} onOpenChange={(open) => { if (!open) { setDetailItemId(null); setEditableCaseItem(null); } }}>
