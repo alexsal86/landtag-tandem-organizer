@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { addWeeks, format } from "date-fns";
 import { Briefcase, Mail, MessageSquare, Phone, UserRound } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
@@ -196,7 +197,15 @@ export function CaseItemCreateDialog({ open, onOpenChange, onCreated, createCase
               id="case-item-received"
               type="date"
               value={sourceReceivedDate}
-              onChange={(event) => setSourceReceivedDate(event.target.value)}
+              onChange={(event) => {
+                const value = event.target.value;
+                setSourceReceivedDate(value);
+                if (value) {
+                  setDueDate(format(addWeeks(new Date(`${value}T12:00:00`), 4), "yyyy-MM-dd"));
+                } else {
+                  setDueDate("");
+                }
+              }}
               required
             />
           </div>
