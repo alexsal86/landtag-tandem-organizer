@@ -141,25 +141,24 @@ const normalizeRichTextValue = (value: string): string | null => {
 const parseTimelineEvents = (payload: Record<string, unknown> | null): TimelineEvent[] => {
   const raw = payload?.timeline_events;
   if (!Array.isArray(raw)) return [];
-  return raw
-    .map((event) => {
-      if (!event || typeof event !== "object") return null;
-      const item = event as Record<string, unknown>;
-      if (typeof item.id !== "string" || typeof item.type !== "string" || typeof item.title !== "string" || typeof item.timestamp !== "string") return null;
-      const type = item.type;
-      if (type !== "status" && type !== "interaktion" && type !== "entscheidung") return null;
-      return {
-        id: item.id,
-        type,
-        title: item.title,
-        note: typeof item.note === "string" ? item.note : undefined,
-        timestamp: item.timestamp,
-        statusValue: typeof item.statusValue === "string" ? item.statusValue : undefined,
-        interactionType: typeof item.interactionType === "string" ? item.interactionType as TimelineInteractionType : undefined,
-      };
-    })
-    .filter((event): event is TimelineEvent => event !== null)
-    .sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime());
+  const results: TimelineEvent[] = [];
+  for (const event of raw) {
+    if (!event || typeof event !== "object") continue;
+    const item = event as Record<string, unknown>;
+    if (typeof item.id !== "string" || typeof item.type !== "string" || typeof item.title !== "string" || typeof item.timestamp !== "string") continue;
+    const type = item.type as string;
+    if (type !== "status" && type !== "interaktion" && type !== "entscheidung") continue;
+    results.push({
+      id: item.id,
+      type: type as TimelineEvent["type"],
+      title: item.title,
+      note: typeof item.note === "string" ? item.note : undefined,
+      timestamp: item.timestamp,
+      statusValue: typeof item.statusValue === "string" ? item.statusValue : undefined,
+      interactionType: typeof item.interactionType === "string" ? item.interactionType as TimelineInteractionType : undefined,
+    });
+  }
+  return results.sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime());
 };
 
 const priorityOptions = [

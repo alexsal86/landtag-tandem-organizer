@@ -22,6 +22,10 @@ interface StandaloneDecisionCreatorProps {
   variant?: 'button' | 'icon';
   isOpen?: boolean;
   onOpenChange?: (open: boolean) => void;
+  caseItemId?: string;
+  defaultTitle?: string;
+  defaultDescription?: string;
+  onCreatedWithId?: (decisionId: string) => void;
 }
 
 interface Profile {
