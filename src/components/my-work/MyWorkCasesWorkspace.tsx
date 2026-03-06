@@ -23,7 +23,9 @@ type CaseItem = {
   id: string;
   subject: string | null;
   resolution_summary: string | null;
+  summary: string | null;
   source_channel: string | null;
+  source_received_at: string | null;
   status: string | null;
   priority: string | null;
   due_at: string | null;
@@ -118,7 +120,7 @@ export function MyWorkCasesWorkspace() {
       const [itemsRes, filesRes, membersRes] = await Promise.all([
         supabase
           .from("case_items" as any)
-          .select("id, subject, resolution_summary, source_channel, status, priority, due_at, case_file_id, user_id, owner_user_id, updated_at")
+          .select("id, subject, summary, resolution_summary, source_channel, source_received_at, status, priority, due_at, case_file_id, user_id, owner_user_id, updated_at")
           .eq("tenant_id", tenantId)
           .order("updated_at", { ascending: false, nullsFirst: false })
           .limit(200),
@@ -130,7 +132,7 @@ export function MyWorkCasesWorkspace() {
           .limit(200),
         supabase
           .from("user_tenant_memberships")
-          .select("user_id, profiles:user_id(display_name)")
+          .select("user_id")
           .eq("tenant_id", tenantId)
           .eq("is_active", true),
       ]);
@@ -150,14 +152,19 @@ export function MyWorkCasesWorkspace() {
         return acc;
       }, {});
       setCaseFilesById(mapped);
-      const members = ((membersRes.data || []) as Array<{ user_id: string; profiles: { display_name: string | null } | { display_name: string | null }[] | null }>).map((row) => {
-        const profile = Array.isArray(row.profiles) ? row.profiles[0] : row.profiles;
-        return {
-          id: row.user_id,
-          name: profile?.display_name || "Unbekannt",
-        };
-      });
-      setTeamUsers(members);
+      const memberIds = ((membersRes.data || []) as Array<{ user_id: string }>).map((row) => row.user_id);
+      if (memberIds.length === 0) {
+        setTeamUsers([]);
+      } else {
+        const { data: profileRows, error: profilesError } = await supabase
+          .from("profiles")
+          .select("user_id, display_name")
+          .in("user_id", memberIds);
+        if (profilesError) throw profilesError;
+
+        const nameById = new Map((profileRows || []).map((row) => [row.user_id, row.display_name || "Unbekannt"]));
+        setTeamUsers(memberIds.map((id) => ({ id, name: nameById.get(id) || "Unbekannt" })));
+      }
     } catch (error) {
       console.error("Error loading cases workspace:", error);
     } finally {
@@ -180,7 +187,7 @@ export function MyWorkCasesWorkspace() {
     if (!query) return caseItems;
     return caseItems.filter((item) => {
       const linkedFile = item.case_file_id ? caseFilesById[item.case_file_id] : null;
-      return [item.subject, item.resolution_summary, item.source_channel, item.status, item.priority]
+      return [item.subject, item.summary, item.resolution_summary, item.source_channel, item.status, item.priority]
         .concat(linkedFile ? [linkedFile.title, linkedFile.reference_number] : [])
         .filter(Boolean)
         .some((v) => v!.toLowerCase().includes(query));
@@ -338,14 +345,16 @@ export function MyWorkCasesWorkspace() {
                               <ChannelIcon className="h-3 w-3" />
                             </span>
                             <p className="text-sm font-medium line-clamp-1">
-                              {item.subject || item.resolution_summary || "Ohne Titel"}
+                              {item.subject || item.summary || item.resolution_summary || "Ohne Titel"}
                             </p>
                           </div>
                           {item.priority && <Badge variant="outline" className="shrink-0 text-[10px]">{item.priority}</Badge>}
                         </div>
-                        <div className="mt-1.5 grid grid-cols-1 gap-2 text-xs text-muted-foreground sm:grid-cols-3">
+                        <div className="mt-1.5 grid grid-cols-1 gap-2 text-xs text-muted-foreground sm:grid-cols-2 lg:grid-cols-5">
                           <span>Status: {item.status || "offen"}</span>
-                          <span>{item.due_at ? `Fällig: ${format(new Date(item.due_at), "dd.MM.yy", { locale: de })}` : "Keine Frist"}</span>
+                          <span>{item.source_received_at ? `Eingang: ${format(new Date(item.source_received_at), "dd.MM.yy", { locale: de })}` : "Eingang: –"}</span>
+                          <span>{item.due_at ? `Fällig: ${format(new Date(item.due_at), "dd.MM.yy", { locale: de })}` : "Fällig: –"}</span>
+                          <span className="truncate" title={item.summary || item.resolution_summary || ""}>Thema: {item.summary || item.resolution_summary || "–"}</span>
                           <div className="flex items-center gap-2" onClick={(event) => event.stopPropagation()}>
                             <span>Bearbeiter:</span>
                             <Select value={item.owner_user_id || "unassigned"} onValueChange={(value) => { void handleOwnerChange(item.id, value); }}>
@@ -472,7 +481,7 @@ export function MyWorkCasesWorkspace() {
           {detailItem && (
             <div className="mt-4 space-y-4">
               <div className="space-y-2">
-                <h3 className="font-semibold">{detailItem.subject || detailItem.resolution_summary || "Ohne Titel"}</h3>
+                <h3 className="font-semibold">{detailItem.subject || detailItem.summary || detailItem.resolution_summary || "Ohne Titel"}</h3>
                 <div className="flex flex-wrap gap-2 text-xs">
                   {detailItem.status && <Badge variant="outline">{detailItem.status}</Badge>}
                   {detailItem.priority && <Badge variant="secondary">{detailItem.priority}</Badge>}
