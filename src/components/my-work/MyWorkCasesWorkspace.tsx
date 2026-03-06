@@ -631,21 +631,31 @@ export function MyWorkCasesWorkspace() {
   }, [appendTimelineEvent, editableCaseItem]);
 
   const handleRequestDecision = useCallback(() => {
-    if (!editableCaseItem || editableCaseItem.status === "entscheidung_abwartend") return;
+    if (!editableCaseItem || !detailItemId) return;
+    // Open the decision creator dialog with pre-filled data
+    setDecisionCreatorItemId(detailItemId);
+    setIsDecisionCreatorOpen(true);
+  }, [editableCaseItem, detailItemId]);
+
+  const handleDecisionCreated = useCallback(async (decisionId: string) => {
+    if (!detailItemId || !editableCaseItem) return;
+    // Set status to "entscheidung_abwartend" and add timeline event
     const previousStatus = editableCaseItem.status;
     setEditableCaseItem((prev) => prev ? {
       ...prev,
       status: "entscheidung_abwartend",
       timelineEvents: [...prev.timelineEvents, {
         id: typeof crypto !== "undefined" && "randomUUID" in crypto ? crypto.randomUUID() : `${Date.now()}-${Math.random()}`,
-        type: "entscheidung",
-        title: "Entscheidung angefordert",
+        type: "entscheidung" as const,
+        title: "Entscheidung erstellt",
         note: `Vorheriger Status: ${getStatusMeta(previousStatus).label}`,
         timestamp: new Date().toISOString(),
         statusValue: previousStatus,
       }],
     } : prev);
-  }, [editableCaseItem, getStatusMeta]);
+    // Reload decisions for this item
+    await loadLinkedDecisions(detailItemId);
+  }, [detailItemId, editableCaseItem, getStatusMeta, loadLinkedDecisions]);
 
   const handleDecisionReceived = useCallback(() => {
     if (!editableCaseItem || editableCaseItem.status !== "entscheidung_abwartend") return;
