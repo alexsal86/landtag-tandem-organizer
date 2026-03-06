@@ -5,9 +5,27 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import type { TimelineInteractionType } from "@/components/my-work/hooks/useCaseItemEdit";
 
 export type InteractionType = "call" | "email" | "social" | "meeting" | "note" | "letter" | "system";
 export type InteractionDirection = "inbound" | "outbound" | "internal";
+
+/**
+ * Mapping for the legacy quick-capture interaction enum (English) to the
+ * timeline interaction enum used in the case workspace (German).
+ *
+ * NOTE: This component is currently not wired into the workspace editor flow,
+ * but exposing the mapped value avoids ad-hoc mapping logic when it is reused.
+ */
+const QUICK_CAPTURE_TO_TIMELINE_TYPE: Record<InteractionType, TimelineInteractionType> = {
+  call: "anruf",
+  email: "mail",
+  meeting: "treffen",
+  note: "notiz",
+  social: "gespraech",
+  letter: "notiz",
+  system: "notiz",
+};
 
 type SourceType = "contacts" | "documents" | "letters" | "tasks";
 
@@ -19,6 +37,7 @@ interface Props {
   onCreate: (payload: {
     case_file_id: string;
     interaction_type: InteractionType;
+    timeline_interaction_type: TimelineInteractionType;
     direction: InteractionDirection;
     subject: string;
     details?: string;
@@ -45,6 +64,7 @@ export function CaseItemInteractionQuickCapture({ title, interactionType, defaul
     const success = await onCreate({
       case_file_id: caseFileId,
       interaction_type: interactionType,
+      timeline_interaction_type: QUICK_CAPTURE_TO_TIMELINE_TYPE[interactionType],
       direction,
       subject: subject.trim(),
       details: details.trim() || undefined,

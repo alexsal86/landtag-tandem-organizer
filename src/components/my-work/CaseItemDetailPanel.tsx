@@ -52,7 +52,6 @@ export function CaseItemDetailPanel({
   timelineEntries,
   toEditorHtml,
   formatTimelineDate,
-  getInitials,
   getStatusMeta,
   caseFilesById,
   onUpdate,
@@ -74,7 +73,6 @@ export function CaseItemDetailPanel({
   timelineEntries: TimelineEntry[];
   toEditorHtml: (value: string | null | undefined) => string;
   formatTimelineDate: (timestamp: string) => string;
-  getInitials: (name: string) => string;
   getStatusMeta: (status: string | null) => { label: string };
   caseFilesById: Record<string, CaseFile>;
   onUpdate: (patch: Partial<EditableCaseItem>) => void;

@@ -201,16 +201,20 @@ export function MyWorkCasesWorkspace() {
   }, []);
 
   const applyItemOptimisticUpdate = useCallback(async (itemId: string, updater: (item: CaseItem) => CaseItem, persist: () => Promise<{ error?: unknown } | null>, rollbackMessage: string) => {
-    const previousItems = caseItems;
-    setCaseItems((prev) => prev.map((row) => (row.id === itemId ? updater(row) : row)));
+    let snapshot: CaseItem[] = [];
+    setCaseItems((current) => {
+      snapshot = current;
+      return current.map((row) => (row.id === itemId ? updater(row) : row));
+    });
+
     const result = await persist();
     if (result?.error) {
-      setCaseItems(previousItems);
+      setCaseItems(snapshot);
       toast.error(rollbackMessage);
       return false;
     }
     return true;
-  }, [caseItems, setCaseItems]);
+  }, [setCaseItems]);
 
   // Decision integration state
   const [isDecisionCreatorOpen, setIsDecisionCreatorOpen] = useState(false);
@@ -1024,7 +1028,6 @@ export function MyWorkCasesWorkspace() {
                                                 timelineEntries={timelineEntries}
                                                 toEditorHtml={toEditorHtml}
                                                 formatTimelineDate={formatTimelineDate}
-                                                getInitials={getInitials}
                                                 getStatusMeta={getStatusMeta}
                                                 caseFilesById={caseFilesById}
                                                 onUpdate={updateEdit}
