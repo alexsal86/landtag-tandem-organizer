@@ -66,10 +66,10 @@ interface TabConfig {
 const BASE_TABS: TabConfig[] = [
   { value: "dashboard", label: "", icon: Home, isLogo: true },
   { value: "capture", label: "Quick Notes", icon: StickyNote },
+  { value: "cases", label: "Vorgänge", icon: Briefcase, countKey: "cases" },
   { value: "tasks", label: "Aufgaben", icon: CheckSquare, countKey: "tasks" },
   { value: "decisions", label: "Entscheidungen", icon: Vote, countKey: "decisions" },
   { value: "jourFixe", label: "Jour Fixe", icon: Calendar, countKey: "jourFixe" },
-  { value: "cases", label: "Vorgänge", icon: Briefcase, countKey: "cases" },
   { value: "plannings", label: "Planungen", icon: CalendarPlus, countKey: "plannings" },
   { value: "time", label: "Meine Zeit", icon: Clock, employeeOnly: true },
   { value: "feedbackfeed", label: "Rückmeldungen", icon: MessageSquare, countKey: "feedbackFeed" },
