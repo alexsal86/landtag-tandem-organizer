@@ -230,7 +230,7 @@ export function MyWorkCasesWorkspace() {
     });
   }, []);
 
-  const applyItemOptimisticUpdate = useCallback(async (itemId: string, updater: (item: CaseItem) => CaseItem, persist: () => Promise<{ error?: unknown } | null>, rollbackMessage: string) => {
+  const applyItemOptimisticUpdate = useCallback(async (itemId: string, updater: (item: CaseItem) => CaseItem, persist: () => PromiseLike<{ error?: unknown } | null>, rollbackMessage: string) => {
     let snapshot: CaseItem[] = [];
     setCaseItems((current) => {
       snapshot = current;
