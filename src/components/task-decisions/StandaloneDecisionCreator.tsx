@@ -22,6 +22,10 @@ interface StandaloneDecisionCreatorProps {
   variant?: 'button' | 'icon';
   isOpen?: boolean;
   onOpenChange?: (open: boolean) => void;
+  caseItemId?: string;
+  defaultTitle?: string;
+  defaultDescription?: string;
+  onCreatedWithId?: (decisionId: string) => void;
 }
 
 interface Profile {
@@ -33,7 +37,11 @@ export const StandaloneDecisionCreator = ({
   onDecisionCreated, 
   variant = 'button',
   isOpen: externalIsOpen,
-  onOpenChange 
+  onOpenChange,
+  caseItemId,
+  defaultTitle,
+  defaultDescription,
+  onCreatedWithId,
 }: StandaloneDecisionCreatorProps) => {
   const [internalIsOpen, setInternalIsOpen] = useState(false);
   
@@ -47,8 +55,8 @@ export const StandaloneDecisionCreator = ({
       setInternalIsOpen(open);
     }
   };
-  const [title, setTitle] = useState("");
-  const [description, setDescription] = useState("");
+  const [title, setTitle] = useState(defaultTitle || "");
+  const [description, setDescription] = useState(defaultDescription || "");
   const [responseDeadline, setResponseDeadline] = useState("");
   const [selectedUsers, setSelectedUsers] = useState<string[]>([]);
   const [profiles, setProfiles] = useState<Profile[]>([]);
@@ -260,7 +268,7 @@ export const StandaloneDecisionCreator = ({
       }
 
       const insertData = {
-        task_id: null,
+        task_id: null as string | null,
         title: title.trim(),
         description: description.trim() || null,
         response_deadline: responseDeadline ? new Date(responseDeadline).toISOString() : null,
@@ -269,6 +277,7 @@ export const StandaloneDecisionCreator = ({
         visible_to_all: visibleToAll,
         response_options: JSON.parse(JSON.stringify(currentOptions)),
         priority: priority ? 1 : 0,
+        case_item_id: caseItemId || null,
       };
       
       console.log('Creating standalone decision with data:', insertData);
@@ -480,6 +489,7 @@ export const StandaloneDecisionCreator = ({
       setProfilesLoaded(false);
       setIsOpen(false);
       onDecisionCreated();
+      if (onCreatedWithId && decision?.id) onCreatedWithId(decision.id);
     } catch (error) {
       setUploadStatus(null);
       console.error('Error creating decision:', error);

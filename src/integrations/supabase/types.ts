@@ -2179,8 +2179,8 @@ export type Database = {
         Row: {
           case_file_id: string | null
           case_scale: string | null
-          completion_note: string | null
           completed_at: string | null
+          completion_note: string | null
           confidentiality_level: string | null
           contact_id: string | null
           contains_personal_data: boolean
@@ -2211,8 +2211,8 @@ export type Database = {
         Insert: {
           case_file_id?: string | null
           case_scale?: string | null
-          completion_note?: string | null
           completed_at?: string | null
+          completion_note?: string | null
           confidentiality_level?: string | null
           contact_id?: string | null
           contains_personal_data?: boolean
@@ -2243,8 +2243,8 @@ export type Database = {
         Update: {
           case_file_id?: string | null
           case_scale?: string | null
-          completion_note?: string | null
           completed_at?: string | null
+          completion_note?: string | null
           confidentiality_level?: string | null
           contact_id?: string | null
           contains_personal_data?: boolean
@@ -9179,6 +9179,7 @@ export type Database = {
         Row: {
           archived_at: string | null
           archived_by: string | null
+          case_item_id: string | null
           created_at: string
           created_by: string
           description: string | null
@@ -9197,6 +9198,7 @@ export type Database = {
         Insert: {
           archived_at?: string | null
           archived_by?: string | null
+          case_item_id?: string | null
           created_at?: string
           created_by: string
           description?: string | null
@@ -9215,6 +9217,7 @@ export type Database = {
         Update: {
           archived_at?: string | null
           archived_by?: string | null
+          case_item_id?: string | null
           created_at?: string
           created_by?: string
           description?: string | null
@@ -9231,6 +9234,13 @@ export type Database = {
           visible_to_all?: boolean
         }
         Relationships: [
+          {
+            foreignKeyName: "task_decisions_case_item_id_fkey"
+            columns: ["case_item_id"]
+            isOneToOne: false
+            referencedRelation: "case_items"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "task_decisions_task_id_fkey"
             columns: ["task_id"]
@@ -10661,7 +10671,11 @@ export type Database = {
         | "social"
         | "in_person"
         | "other"
-      case_item_status: "neu" | "in_klaerung" | "antwort_ausstehend" | "erledigt"
+      case_item_status:
+        | "neu"
+        | "in_klaerung"
+        | "antwort_ausstehend"
+        | "erledigt"
       flag_visibility: "public" | "private" | "team"
       leave_status:
         | "pending"
@@ -10824,7 +10838,12 @@ export const Constants = {
         "in_person",
         "other",
       ],
-      case_item_status: ["neu", "in_klaerung", "antwort_ausstehend", "erledigt"],
+      case_item_status: [
+        "neu",
+        "in_klaerung",
+        "antwort_ausstehend",
+        "erledigt",
+      ],
       flag_visibility: ["public", "private", "team"],
       leave_status: [
         "pending",

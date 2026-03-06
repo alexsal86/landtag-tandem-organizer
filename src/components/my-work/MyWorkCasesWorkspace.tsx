@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { format } from "date-fns";
 import { de } from "date-fns/locale";
-import { AlertCircle, ArrowDown, ArrowUp, Briefcase, Circle, ExternalLink, FileText, FolderOpen, Gavel, GripVertical, Link2, Mail, MessageSquare, Phone, Plus, Search, Trash2, UserRound, Users } from "lucide-react";
+import { AlertCircle, ArrowDown, ArrowUp, Briefcase, CheckCircle2, Circle, Clock, ExternalLink, FileText, FolderOpen, Gavel, GripVertical, Link2, Loader2, Mail, MessageSquare, Phone, Plus, Search, Trash2, UserRound, Users, Vote } from "lucide-react";
 import { DragDropContext, Droppable, Draggable, type DropResult } from "@hello-pangea/dnd";
 
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -18,6 +18,8 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/comp
 import SimpleRichTextEditor from "@/components/ui/SimpleRichTextEditor";
 import { CaseFileDetail, CaseFileCreateDialog } from "@/features/cases/files/components";
 import { CaseItemCreateDialog } from "@/components/my-work/CaseItemCreateDialog";
+import { StandaloneDecisionCreator } from "@/components/task-decisions/StandaloneDecisionCreator";
+import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { useCaseItems } from "@/features/cases/items/hooks";
 import { useAuth } from "@/hooks/useAuth";
 import { useTenant } from "@/hooks/useTenant";
@@ -141,25 +143,24 @@ const normalizeRichTextValue = (value: string): string | null => {
 const parseTimelineEvents = (payload: Record<string, unknown> | null): TimelineEvent[] => {
   const raw = payload?.timeline_events;
   if (!Array.isArray(raw)) return [];
-  return raw
-    .map((event) => {
-      if (!event || typeof event !== "object") return null;
-      const item = event as Record<string, unknown>;
-      if (typeof item.id !== "string" || typeof item.type !== "string" || typeof item.title !== "string" || typeof item.timestamp !== "string") return null;
-      const type = item.type;
-      if (type !== "status" && type !== "interaktion" && type !== "entscheidung") return null;
-      return {
-        id: item.id,
-        type,
-        title: item.title,
-        note: typeof item.note === "string" ? item.note : undefined,
-        timestamp: item.timestamp,
-        statusValue: typeof item.statusValue === "string" ? item.statusValue : undefined,
-        interactionType: typeof item.interactionType === "string" ? item.interactionType as TimelineInteractionType : undefined,
-      };
-    })
-    .filter((event): event is TimelineEvent => event !== null)
-    .sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime());
+  const results: TimelineEvent[] = [];
+  for (const event of raw) {
+    if (!event || typeof event !== "object") continue;
+    const item = event as Record<string, unknown>;
+    if (typeof item.id !== "string" || typeof item.type !== "string" || typeof item.title !== "string" || typeof item.timestamp !== "string") continue;
+    const type = item.type as string;
+    if (type !== "status" && type !== "interaktion" && type !== "entscheidung") continue;
+    results.push({
+      id: item.id,
+      type: type as TimelineEvent["type"],
+      title: item.title,
+      note: typeof item.note === "string" ? item.note : undefined,
+      timestamp: item.timestamp,
+      statusValue: typeof item.statusValue === "string" ? item.statusValue : undefined,
+      interactionType: typeof item.interactionType === "string" ? item.interactionType as TimelineInteractionType : undefined,
+    });
+  }
+  return results.sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime());
 };
 
 const priorityOptions = [
@@ -206,6 +207,12 @@ export function MyWorkCasesWorkspace() {
   const [detailFileId, setDetailFileId] = useState<string | null>(null);
   const [editableCaseItem, setEditableCaseItem] = useState<EditableCaseItem | null>(null);
   const [itemSort, setItemSort] = useState<{ key: CaseItemSortKey; direction: SortDirection }>({ key: "received", direction: "desc" });
+
+  // Decision integration state
+  const [isDecisionCreatorOpen, setIsDecisionCreatorOpen] = useState(false);
+  const [decisionCreatorItemId, setDecisionCreatorItemId] = useState<string | null>(null);
+  const [linkedDecisions, setLinkedDecisions] = useState<Record<string, Array<{ id: string; title: string; status: string; created_at: string; response_deadline: string | null }>>>({});
+  const [loadingDecisions, setLoadingDecisions] = useState(false);
 
   const getItemSubject = useCallback((item: CaseItem) => item.subject || item.summary || item.resolution_summary || "Ohne Titel", []);
   const getItemDescription = useCallback((item: CaseItem) => item.summary || item.resolution_summary || "", []);
@@ -310,6 +317,32 @@ export function MyWorkCasesWorkspace() {
     }
     void loadWorkspaceData();
   }, [loadWorkspaceData, tenantId, user]);
+
+  // Load linked decisions for a case item
+  const loadLinkedDecisions = useCallback(async (itemId: string) => {
+    setLoadingDecisions(true);
+    try {
+      const { data, error } = await supabase
+        .from("task_decisions")
+        .select("id, title, status, created_at, response_deadline")
+        .eq("case_item_id", itemId)
+        .order("created_at", { ascending: false });
+      if (!error && data) {
+        setLinkedDecisions((prev) => ({ ...prev, [itemId]: data as any }));
+      }
+    } catch (e) {
+      console.error("Error loading linked decisions:", e);
+    } finally {
+      setLoadingDecisions(false);
+    }
+  }, []);
+
+  // Load decisions when detail item changes
+  useEffect(() => {
+    if (detailItemId) {
+      void loadLinkedDecisions(detailItemId);
+    }
+  }, [detailItemId, loadLinkedDecisions]);
 
   const getAssigneeIds = useCallback((item: CaseItem) => {
     const payloadAssigneeIds = Array.isArray(item.intake_payload?.assignee_ids)
@@ -624,21 +657,31 @@ export function MyWorkCasesWorkspace() {
   }, [appendTimelineEvent, editableCaseItem]);
 
   const handleRequestDecision = useCallback(() => {
-    if (!editableCaseItem || editableCaseItem.status === "entscheidung_abwartend") return;
+    if (!editableCaseItem || !detailItemId) return;
+    // Open the decision creator dialog with pre-filled data
+    setDecisionCreatorItemId(detailItemId);
+    setIsDecisionCreatorOpen(true);
+  }, [editableCaseItem, detailItemId]);
+
+  const handleDecisionCreated = useCallback(async (decisionId: string) => {
+    if (!detailItemId || !editableCaseItem) return;
+    // Set status to "entscheidung_abwartend" and add timeline event
     const previousStatus = editableCaseItem.status;
     setEditableCaseItem((prev) => prev ? {
       ...prev,
       status: "entscheidung_abwartend",
       timelineEvents: [...prev.timelineEvents, {
         id: typeof crypto !== "undefined" && "randomUUID" in crypto ? crypto.randomUUID() : `${Date.now()}-${Math.random()}`,
-        type: "entscheidung",
-        title: "Entscheidung angefordert",
+        type: "entscheidung" as const,
+        title: "Entscheidung erstellt",
         note: `Vorheriger Status: ${getStatusMeta(previousStatus).label}`,
         timestamp: new Date().toISOString(),
         statusValue: previousStatus,
       }],
     } : prev);
-  }, [editableCaseItem, getStatusMeta]);
+    // Reload decisions for this item
+    await loadLinkedDecisions(detailItemId);
+  }, [detailItemId, editableCaseItem, getStatusMeta, loadLinkedDecisions]);
 
   const handleDecisionReceived = useCallback(() => {
     if (!editableCaseItem || editableCaseItem.status !== "entscheidung_abwartend") return;
@@ -930,6 +973,14 @@ export function MyWorkCasesWorkspace() {
                                                 ))}
                                               </ContextMenuSubContent>
                                             </ContextMenuSub>
+                                            <ContextMenuSeparator />
+                                            <ContextMenuItem onClick={() => {
+                                              setDecisionCreatorItemId(item.id);
+                                              setIsDecisionCreatorOpen(true);
+                                            }}>
+                                              <Vote className="mr-2 h-3 w-3" />
+                                              Entscheidung stellen
+                                            </ContextMenuItem>
                                           </ContextMenuContent>
                                         </ContextMenu>
 
@@ -1008,7 +1059,7 @@ export function MyWorkCasesWorkspace() {
                                                       <div className="space-y-1.5">
                                                         <Label className="font-bold">Entscheidung</Label>
                                                         <div className="flex gap-2">
-                                                          <Button type="button" variant="outline" size="sm" onClick={handleRequestDecision} disabled={editableCaseItem.status === "entscheidung_abwartend"}><Gavel className="mr-1 h-3.5 w-3.5" />Anfordern</Button>
+                                                          <Button type="button" variant="outline" size="sm" onClick={handleRequestDecision}><Vote className="mr-1 h-3.5 w-3.5" />Entscheidung stellen</Button>
                                                           <Button type="button" variant="outline" size="sm" onClick={handleDecisionReceived} disabled={editableCaseItem.status !== "entscheidung_abwartend"}>Eingegangen</Button>
                                                         </div>
                                                       </div>
@@ -1030,6 +1081,38 @@ export function MyWorkCasesWorkspace() {
                                                         })}
                                                       </div>
                                                     </div>
+                                                    {/* Linked Decisions Section */}
+                                                    {detailItemId && (
+                                                      <div className="space-y-2">
+                                                        <Label className="font-bold flex items-center gap-1.5"><Vote className="h-4 w-4" />Verknüpfte Entscheidungen</Label>
+                                                        {loadingDecisions ? (
+                                                          <div className="flex items-center gap-2 text-xs text-muted-foreground"><Loader2 className="h-3 w-3 animate-spin" />Lade…</div>
+                                                        ) : (linkedDecisions[detailItemId] || []).length === 0 ? (
+                                                          <p className="text-xs text-muted-foreground">Keine Entscheidungen verknüpft.</p>
+                                                        ) : (
+                                                          <div className="space-y-1.5">
+                                                            {(linkedDecisions[detailItemId] || []).map((dec) => (
+                                                              <div key={dec.id} className="flex items-center justify-between rounded-md border bg-background p-2 text-xs">
+                                                                <div className="flex items-center gap-2 min-w-0">
+                                                                  {dec.status === "completed" ? (
+                                                                    <CheckCircle2 className="h-3.5 w-3.5 text-emerald-500 shrink-0" />
+                                                                  ) : (
+                                                                    <Clock className="h-3.5 w-3.5 text-amber-500 shrink-0" />
+                                                                  )}
+                                                                  <span className="truncate font-medium">{dec.title}</span>
+                                                                </div>
+                                                                <Badge variant="outline" className={cn("text-[10px] shrink-0 ml-2", dec.status === "completed" ? "border-emerald-500/40 text-emerald-600" : "border-amber-500/40 text-amber-600")}>
+                                                                  {dec.status === "completed" ? "Abgeschlossen" : dec.status === "archived" ? "Archiviert" : "Offen"}
+                                                                </Badge>
+                                                              </div>
+                                                            ))}
+                                                          </div>
+                                                        )}
+                                                        <Button type="button" variant="outline" size="sm" className="w-full" onClick={handleRequestDecision}>
+                                                          <Plus className="mr-1 h-3.5 w-3.5" />Weitere Entscheidung stellen
+                                                        </Button>
+                                                      </div>
+                                                    )}
                                                     {editableCaseItem.status === "erledigt" && (
                                                       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                                                         <div className="space-y-1.5 sm:col-span-2">
@@ -1064,26 +1147,41 @@ export function MyWorkCasesWorkspace() {
                                                       <p className="font-bold mb-3">Zeitstrahl</p>
                                                       <div className="relative space-y-4 pl-6">
                                                         <span className="absolute left-2 top-1 bottom-1 w-px bg-border" />
-                                                        {editableCaseItem.timelineEvents.length === 0 ? (
+                                                        {editableCaseItem.timelineEvents.length === 0 && (!detailItemId || !(linkedDecisions[detailItemId] || []).some(d => d.status === "completed")) ? (
                                                           <p className="text-xs text-muted-foreground">Noch keine Einträge im Zeitstrahl.</p>
                                                         ) : (
-                                                          editableCaseItem.timelineEvents.map((event) => (
-                                                            <div key={event.id} className="relative">
-                                                              <span className="absolute -left-[18px] top-1.5 h-2.5 w-2.5 rounded-full bg-primary" />
-                                                              <div className="rounded border p-2 text-xs">
-                                                                <div className="flex items-start justify-between gap-2">
-                                                                  <div>
-                                                                    <p className="font-semibold">{event.title}</p>
-                                                                    <p className="text-muted-foreground">{formatTimelineDate(event.timestamp)}</p>
+                                                          <>
+                                                            {editableCaseItem.timelineEvents.map((event) => (
+                                                              <div key={event.id} className="relative">
+                                                                <span className="absolute -left-[18px] top-1.5 h-2.5 w-2.5 rounded-full bg-primary" />
+                                                                <div className="rounded border p-2 text-xs">
+                                                                  <div className="flex items-start justify-between gap-2">
+                                                                    <div>
+                                                                      <p className="font-semibold">{event.title}</p>
+                                                                      <p className="text-muted-foreground">{formatTimelineDate(event.timestamp)}</p>
+                                                                    </div>
+                                                                    <Button type="button" variant="ghost" size="icon" className="h-6 w-6" onClick={() => handleDeleteTimelineEvent(event.id)}>
+                                                                      <Trash2 className="h-3.5 w-3.5" />
+                                                                    </Button>
                                                                   </div>
-                                                                  <Button type="button" variant="ghost" size="icon" className="h-6 w-6" onClick={() => handleDeleteTimelineEvent(event.id)}>
-                                                                    <Trash2 className="h-3.5 w-3.5" />
-                                                                  </Button>
+                                                                  {event.note && <p className="mt-1 text-muted-foreground">{event.note}</p>}
                                                                 </div>
-                                                                {event.note && <p className="mt-1 text-muted-foreground">{event.note}</p>}
                                                               </div>
-                                                            </div>
-                                                          ))
+                                                            ))}
+                                                            {/* Completed decisions reflected in timeline */}
+                                                            {detailItemId && (linkedDecisions[detailItemId] || [])
+                                                              .filter(d => d.status === "completed")
+                                                              .map((dec) => (
+                                                                <div key={`dec-${dec.id}`} className="relative">
+                                                                  <span className="absolute -left-[18px] top-1.5 h-2.5 w-2.5 rounded-full bg-emerald-500" />
+                                                                  <div className="rounded border border-emerald-500/30 bg-emerald-50/50 dark:bg-emerald-950/20 p-2 text-xs">
+                                                                    <p className="font-semibold">Entscheidung abgeschlossen: {dec.title}</p>
+                                                                    <p className="text-muted-foreground">{formatTimelineDate(dec.created_at)}</p>
+                                                                  </div>
+                                                                </div>
+                                                              ))
+                                                            }
+                                                          </>
                                                         )}
                                                       </div>
                                                     </div>
@@ -1119,7 +1217,6 @@ export function MyWorkCasesWorkspace() {
                                               </div>
                                             )}
                                           </div>
-                                        </div>
                                         </div>
                                       </div>
                                     )}
@@ -1237,6 +1334,23 @@ export function MyWorkCasesWorkspace() {
             onSuccess={(caseFile) => {
               void handleCaseFileCreated(caseFile.id);
               setIsCaseFileDialogOpen(false);
+            }}
+          />
+
+          <StandaloneDecisionCreator
+            isOpen={isDecisionCreatorOpen}
+            onOpenChange={(open) => {
+              setIsDecisionCreatorOpen(open);
+              if (!open) setDecisionCreatorItemId(null);
+            }}
+            onDecisionCreated={() => {
+              if (decisionCreatorItemId) void loadLinkedDecisions(decisionCreatorItemId);
+            }}
+            caseItemId={decisionCreatorItemId || undefined}
+            defaultTitle={decisionCreatorItemId ? (caseItems.find(i => i.id === decisionCreatorItemId)?.subject || "") : ""}
+            defaultDescription={decisionCreatorItemId ? (caseItems.find(i => i.id === decisionCreatorItemId)?.summary || "") : ""}
+            onCreatedWithId={(decisionId) => {
+              void handleDecisionCreated(decisionId);
             }}
           />
         </>
