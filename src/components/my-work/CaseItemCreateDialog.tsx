@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { addWeeks, format } from "date-fns";
 import { Briefcase, Mail, MessageSquare, Phone, UserRound } from "lucide-react";
 
@@ -8,6 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import { supabase } from "@/integrations/supabase/client";
 import { CaseItemFormData, useCaseItems } from "@/features/cases/items/hooks";
 import { useAuth } from "@/hooks/useAuth";
 import { useTenant } from "@/hooks/useTenant";
@@ -19,6 +20,14 @@ interface CaseItemCreateDialogProps {
   createCaseItem: ReturnType<typeof useCaseItems>["createCaseItem"];
   assignees: Array<{ id: string; name: string }>;
   defaultAssigneeId: string | null;
+}
+
+interface ContactSearchResult {
+  id: string;
+  name: string;
+  email: string | null;
+  phone: string | null;
+  organization: string | null;
 }
 
 const sourceChannelOptions = [
@@ -44,7 +53,12 @@ export function CaseItemCreateDialog({ open, onOpenChange, onCreated, createCase
   const [subject, setSubject] = useState("");
   const [description, setDescription] = useState("");
   const [contactName, setContactName] = useState("");
-  const [contactDetail, setContactDetail] = useState("");
+  const [contactEmail, setContactEmail] = useState("");
+  const [contactPhone, setContactPhone] = useState("");
+  const [selectedContactId, setSelectedContactId] = useState<string | null>(null);
+  const [searchResults, setSearchResults] = useState<ContactSearchResult[]>([]);
+  const [searchingContacts, setSearchingContacts] = useState(false);
+  const [showSearchResults, setShowSearchResults] = useState(false);
   const [sourceChannel, setSourceChannel] = useState<CaseItemFormData["source_channel"]>("email");
   const [priority, setPriority] = useState<NonNullable<CaseItemFormData["priority"]>>("medium");
   const [selectedAssigneeIds, setSelectedAssigneeIds] = useState<string[]>(defaultAssigneeId ? [defaultAssigneeId] : []);
@@ -54,6 +68,7 @@ export function CaseItemCreateDialog({ open, onOpenChange, onCreated, createCase
   const [submitting, setSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
   const hasContext = Boolean(user && currentTenant);
+  const contactSearchRequestId = useRef(0);
 
   const setDefaultDates = () => {
     const today = format(new Date(), "yyyy-MM-dd");
@@ -66,17 +81,65 @@ export function CaseItemCreateDialog({ open, onOpenChange, onCreated, createCase
       setSubject("");
       setDescription("");
       setContactName("");
-      setContactDetail("");
+      setContactEmail("");
+      setContactPhone("");
+      setSelectedContactId(null);
+      setSearchResults([]);
+      setShowSearchResults(false);
       setSelectedAssigneeIds(defaultAssigneeId ? [defaultAssigneeId] : []);
       setDefaultDates();
     }
   }, [defaultAssigneeId, open]);
 
+  useEffect(() => {
+    if (!open || !currentTenant) return;
+
+    const query = contactName.trim();
+    if (query.length < 2) {
+      setSearchResults([]);
+      setSearchingContacts(false);
+      return;
+    }
+
+    const timer = setTimeout(async () => {
+      const requestId = ++contactSearchRequestId.current;
+      setSearchingContacts(true);
+
+      const { data, error } = await supabase
+        .from("contacts")
+        .select("id, name, email, phone, organization")
+        .eq("tenant_id", currentTenant.id)
+        .neq("contact_type", "archive")
+        .ilike("name", `%${query}%`)
+        .order("is_favorite", { ascending: false })
+        .order("name")
+        .limit(8);
+
+      if (requestId !== contactSearchRequestId.current) return;
+
+      if (error) {
+        console.error("Error searching contacts:", error);
+        setSearchResults([]);
+      } else {
+        setSearchResults((data ?? []) as ContactSearchResult[]);
+      }
+
+      setSearchingContacts(false);
+    }, 250);
+
+    return () => clearTimeout(timer);
+  }, [contactName, currentTenant, open]);
+
+  const getReporterContact = () => {
+    if (sourceChannel === "email") return contactEmail.trim() || contactPhone.trim() || null;
+    if (sourceChannel === "phone") return contactPhone.trim() || contactEmail.trim() || null;
+    return [contactEmail.trim(), contactPhone.trim()].filter(Boolean).join(" · ") || null;
+  };
+
   const handleSubmit = async () => {
     if (!subject.trim() || !sourceReceivedDate || !category || !hasContext) return;
 
     setSubmitError(null);
-
     setSubmitting(true);
 
     const newItem = await createCaseItem({
@@ -86,11 +149,17 @@ export function CaseItemCreateDialog({ open, onOpenChange, onCreated, createCase
       due_at: dueDate ? new Date(`${dueDate}T12:00:00`).toISOString() : null,
       source_received_at: new Date(`${sourceReceivedDate}T12:00:00`).toISOString(),
       owner_user_id: selectedAssigneeIds[0] || null,
+      contact_id: selectedContactId,
+      reporter_name: contactName.trim() || null,
+      reporter_contact: getReporterContact(),
       intake_payload: {
         category,
         assignee_ids: selectedAssigneeIds,
         contact_name: contactName.trim() || null,
-        contact_detail: contactDetail.trim() || null,
+        contact_detail: getReporterContact(),
+        contact_email: contactEmail.trim() || null,
+        contact_phone: contactPhone.trim() || null,
+        matched_contact_id: selectedContactId,
       },
       subject: subject.trim(),
       summary: description.trim() || subject.trim(),
@@ -108,7 +177,11 @@ export function CaseItemCreateDialog({ open, onOpenChange, onCreated, createCase
     setSubject("");
     setDescription("");
     setContactName("");
-    setContactDetail("");
+    setContactEmail("");
+    setContactPhone("");
+    setSelectedContactId(null);
+    setSearchResults([]);
+    setShowSearchResults(false);
     setSourceChannel("email");
     setPriority("medium");
     setSelectedAssigneeIds(defaultAssigneeId ? [defaultAssigneeId] : []);
@@ -158,25 +231,84 @@ export function CaseItemCreateDialog({ open, onOpenChange, onCreated, createCase
           <div className="grid gap-4 md:grid-cols-2">
             <div className="space-y-2">
               <Label htmlFor="case-item-contact-name" className="font-bold">Von / Gesprächspartner</Label>
+
               <div className="space-y-2">
                 <Label htmlFor="case-item-contact-name" className="text-xs font-semibold text-muted-foreground">Name</Label>
-                <Input
-                  id="case-item-contact-name"
-                  placeholder="Name des Bürgers"
-                  value={contactName}
-                  onChange={(event) => setContactName(event.target.value)}
-                />
+                <div className="relative">
+                  <Input
+                    id="case-item-contact-name"
+                    placeholder="Name des Bürgers"
+                    value={contactName}
+                    onFocus={() => setShowSearchResults(true)}
+                    onBlur={() => {
+                      setTimeout(() => setShowSearchResults(false), 120);
+                    }}
+                    onChange={(event) => {
+                      setContactName(event.target.value);
+                      if (selectedContactId) {
+                        setSelectedContactId(null);
+                        setContactEmail("");
+                        setContactPhone("");
+                      }
+                    }}
+                  />
+
+                  {showSearchResults && (searchingContacts || searchResults.length > 0) && (
+                    <div className="absolute z-20 mt-1 max-h-48 w-full overflow-y-auto rounded-md border bg-background p-1 shadow-md">
+                      {searchingContacts ? (
+                        <p className="px-2 py-1 text-xs text-muted-foreground">Suche Kontakte…</p>
+                      ) : (
+                        searchResults.map((contact) => (
+                          <button
+                            key={contact.id}
+                            type="button"
+                            className="flex w-full flex-col rounded-sm px-2 py-1 text-left hover:bg-muted"
+                            onMouseDown={(event) => {
+                              event.preventDefault();
+                              setSelectedContactId(contact.id);
+                              setContactName(contact.name);
+                              setContactEmail(contact.email || "");
+                              setContactPhone(contact.phone || "");
+                              setShowSearchResults(false);
+                            }}
+                          >
+                            <span className="text-sm font-medium">{contact.name}</span>
+                            <span className="text-xs text-muted-foreground">
+                              {[contact.organization, contact.email, contact.phone].filter(Boolean).join(" · ") || "Kontakt ohne E-Mail/Telefon"}
+                            </span>
+                          </button>
+                        ))
+                      )}
+                    </div>
+                  )}
+                </div>
+                {selectedContactId ? (
+                  <p className="text-xs text-primary">Kontakt verknüpft.</p>
+                ) : (
+                  <p className="text-xs text-muted-foreground">Ab 2 Zeichen wird in den Kontakten gesucht.</p>
+                )}
               </div>
-              <div className="space-y-2">
-                <Label htmlFor="case-item-contact-detail" className="text-xs font-semibold text-muted-foreground">
-                  {sourceChannel === "email" ? "E-Mail-Adresse" : sourceChannel === "phone" ? "Telefonnummer" : "Kontaktdetail"}
-                </Label>
-                <Input
-                  id="case-item-contact-detail"
-                  placeholder={sourceChannel === "email" ? "E-Mail-Adresse" : sourceChannel === "phone" ? "Telefonnummer" : "Kontaktdetail (optional)"}
-                  value={contactDetail}
-                  onChange={(event) => setContactDetail(event.target.value)}
-                />
+
+              <div className="grid gap-2 sm:grid-cols-2">
+                <div className="space-y-2">
+                  <Label htmlFor="case-item-contact-email" className="text-xs font-semibold text-muted-foreground">E-Mail</Label>
+                  <Input
+                    id="case-item-contact-email"
+                    placeholder="E-Mail-Adresse"
+                    value={contactEmail}
+                    onChange={(event) => setContactEmail(event.target.value)}
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="case-item-contact-phone" className="text-xs font-semibold text-muted-foreground">Telefon</Label>
+                  <Input
+                    id="case-item-contact-phone"
+                    placeholder="Telefonnummer"
+                    value={contactPhone}
+                    onChange={(event) => setContactPhone(event.target.value)}
+                  />
+                </div>
               </div>
             </div>
 
