@@ -41,6 +41,8 @@ export function CaseItemCreateDialog({ open, onOpenChange, onCreated, createCase
   const { user } = useAuth();
   const { currentTenant } = useTenant();
   const [subject, setSubject] = useState("");
+  const [contactName, setContactName] = useState("");
+  const [contactDetail, setContactDetail] = useState("");
   const [sourceChannel, setSourceChannel] = useState<CaseItemFormData["source_channel"]>("email");
   const [priority, setPriority] = useState<NonNullable<CaseItemFormData["priority"]>>("medium");
   const [selectedAssigneeIds, setSelectedAssigneeIds] = useState<string[]>(defaultAssigneeId ? [defaultAssigneeId] : []);
@@ -81,6 +83,8 @@ export function CaseItemCreateDialog({ open, onOpenChange, onCreated, createCase
       intake_payload: {
         category,
         assignee_ids: selectedAssigneeIds,
+        contact_name: contactName.trim() || null,
+        contact_detail: contactDetail.trim() || null,
       },
       subject: subject.trim(),
       summary: subject.trim(),
@@ -96,6 +100,8 @@ export function CaseItemCreateDialog({ open, onOpenChange, onCreated, createCase
 
     onCreated(newItem.id);
     setSubject("");
+    setContactName("");
+    setContactDetail("");
     setSourceChannel("email");
     setPriority("medium");
     setSelectedAssigneeIds(defaultAssigneeId ? [defaultAssigneeId] : []);
@@ -150,6 +156,24 @@ export function CaseItemCreateDialog({ open, onOpenChange, onCreated, createCase
               value={subject}
               onChange={(event) => setSubject(event.target.value)}
             />
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="case-item-contact-name">Von / Gesprächspartner</Label>
+            <div className="grid gap-2 sm:grid-cols-2">
+              <Input
+                id="case-item-contact-name"
+                placeholder="Name des Bürgers"
+                value={contactName}
+                onChange={(event) => setContactName(event.target.value)}
+              />
+              <Input
+                id="case-item-contact-detail"
+                placeholder={sourceChannel === "email" ? "E-Mail-Adresse" : sourceChannel === "phone" ? "Telefonnummer" : "Kontaktdetail (optional)"}
+                value={contactDetail}
+                onChange={(event) => setContactDetail(event.target.value)}
+              />
+            </div>
           </div>
 
           <div className="space-y-2">
