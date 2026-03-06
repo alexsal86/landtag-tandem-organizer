@@ -11,7 +11,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { ClipboardList, CheckSquare, Vote, Briefcase, CalendarPlus, Users, StickyNote, Calendar, Clock, Plus, Home, CheckCircle2, MessageSquare } from "lucide-react";
+import { CheckSquare, Vote, Briefcase, CalendarPlus, Users, StickyNote, Calendar, Clock, Plus, Home, CheckCircle2, MessageSquare } from "lucide-react";
 import { PageHelpButton } from "@/components/shared/PageHelpButton";
 import { MYWORK_HELP_CONTENT } from "@/config/helpContent";
 import { supabase } from "@/integrations/supabase/client";
@@ -389,19 +389,94 @@ export function MyWorkView() {
 
   return (
     <div className="min-h-[calc(100vh-8rem)] p-6">
-      {/* Header */}
-      <div className="mb-6 flex items-start justify-between">
-        <div>
-          <h1 className="text-3xl font-bold flex items-center gap-2">
-            <ClipboardList className="h-8 w-8" />
-            Meine Arbeit
-          </h1>
-          <p className="text-muted-foreground mt-1">
-            Alle Aufgaben, Entscheidungen und Projekte auf einen Blick
-          </p>
+      {countLoadError && (
+        <Alert className="mb-4" variant="destructive">
+          <AlertDescription className="flex items-center justify-between gap-3">
+            <span>{countLoadError}</span>
+            <Button size="sm" variant="outline" onClick={() => loadCounts(shouldIncludeTeamCountRef.current)}>
+              Erneut laden
+            </Button>
+          </AlertDescription>
+        </Alert>
+      )}
+
+      {/* Tab Navigation + Actions */}
+      <div className="mb-6 flex items-center justify-between gap-3 border-b">
+        <div className="flex min-w-0 flex-1 overflow-x-auto">
+          {visibleTabs.map((tab) => {
+            const Icon = tab.icon;
+
+            // Get display count based on badge display mode
+            const getDisplayCount = () => {
+              if (tab.value === 'feedbackfeed') {
+                return newCounts.feedbackFeed || 0;
+              }
+
+              if (!tab.countKey) return 0;
+
+              // Team tab shows unread notifications count
+              if (tab.countKey === 'team') {
+                return newCounts.team || 0;
+              }
+
+              if (badgeDisplayMode === 'new') {
+                // Map countKey to newCounts keys
+                const newCountsMap: Record<string, keyof typeof newCounts> = {
+                  tasks: 'tasks',
+                  decisions: 'decisions',
+                  jourFixe: 'jourFixe',
+                  cases: 'cases',
+                  plannings: 'plannings',
+                };
+                const key = newCountsMap[tab.countKey];
+                return key ? newCounts[key] : 0;
+              }
+
+              return totalCounts[tab.countKey];
+            };
+
+            const count = getDisplayCount();
+            const isActiveTab = activeTab === tab.value;
+
+            // Badge variant: "new" mode uses destructive for new items, total uses secondary
+            const badgeVariant = tab.badgeVariant || (badgeDisplayMode === 'new' ? 'destructive' : 'secondary');
+
+            return (
+              <button
+                key={tab.value}
+                onClick={() => setActiveTab(tab.value)}
+                className={`flex items-center gap-1.5 ${tab.isLogo ? 'px-2' : 'px-4'} py-2.5 text-sm font-medium border-b-2 transition-colors whitespace-nowrap ${
+                  isActiveTab
+                    ? "border-primary text-primary"
+                    : "border-transparent text-muted-foreground hover:text-foreground"
+                }`}
+              >
+                {tab.isLogo && app_logo_url && !isTabLogoError ? (
+                  <img
+                    src={app_logo_url}
+                    alt="Logo"
+                    className="h-8 w-8 object-contain rounded flex-shrink-0"
+                    crossOrigin="anonymous"
+                    onError={() => setIsTabLogoError(true)}
+                  />
+                ) : (
+                  <Icon className="h-4 w-4" />
+                )}
+                {tab.label}
+                {count > 0 && (
+                  <Badge
+                    variant={badgeVariant}
+                    className="ml-1 h-5 min-w-5 text-xs"
+                  >
+                    {count}
+                  </Badge>
+                )}
+              </button>
+            );
+          })}
         </div>
-        
-        <div className="flex items-center gap-2">
+
+        <div className="flex shrink-0 items-center gap-2 pb-2">
           <Badge variant={realtimeStatus === "connected" ? "secondary" : "destructive"} className="hidden md:inline-flex">
             Realtime: {realtimeStatus === "connected" ? "online" : realtimeStatus === "connecting" ? "verbinde…" : "degradiert"}
           </Badge>
@@ -450,94 +525,6 @@ export function MyWorkView() {
             />
           )}
         </div>
-      </div>
-
-
-      {countLoadError && (
-        <Alert className="mb-4" variant="destructive">
-          <AlertDescription className="flex items-center justify-between gap-3">
-            <span>{countLoadError}</span>
-            <Button size="sm" variant="outline" onClick={() => loadCounts(shouldIncludeTeamCountRef.current)}>
-              Erneut laden
-            </Button>
-          </AlertDescription>
-        </Alert>
-      )}
-
-      {/* Tab Navigation (horizontal, oben) */}
-      <div className="flex border-b mb-6 overflow-x-auto">
-        {visibleTabs
-          .map((tab) => {
-            const Icon = tab.icon;
-            
-            // Get display count based on badge display mode
-            const getDisplayCount = () => {
-              if (tab.value === 'feedbackfeed') {
-                return newCounts.feedbackFeed || 0;
-              }
-
-              if (!tab.countKey) return 0;
-              
-              // Team tab shows unread notifications count
-              if (tab.countKey === 'team') {
-                return newCounts.team || 0;
-              }
-              
-              if (badgeDisplayMode === 'new') {
-                // Map countKey to newCounts keys
-                const newCountsMap: Record<string, keyof typeof newCounts> = {
-                  tasks: 'tasks',
-                  decisions: 'decisions',
-                  jourFixe: 'jourFixe',
-                  cases: 'cases',
-                  plannings: 'plannings',
-                };
-                const key = newCountsMap[tab.countKey];
-                return key ? newCounts[key] : 0;
-              }
-
-              return totalCounts[tab.countKey];
-            };
-            
-            const count = getDisplayCount();
-            const isActiveTab = activeTab === tab.value;
-            
-            // Badge variant: "new" mode uses destructive for new items, total uses secondary
-            const badgeVariant = tab.badgeVariant || (badgeDisplayMode === 'new' ? 'destructive' : 'secondary');
-            
-            return (
-              <button
-                key={tab.value}
-                onClick={() => setActiveTab(tab.value)}
-                className={`flex items-center gap-1.5 ${tab.isLogo ? 'px-2' : 'px-4'} py-2.5 text-sm font-medium border-b-2 transition-colors whitespace-nowrap ${
-                  isActiveTab
-                    ? "border-primary text-primary"
-                    : "border-transparent text-muted-foreground hover:text-foreground"
-                }`}
-              >
-                {tab.isLogo && app_logo_url && !isTabLogoError ? (
-                  <img
-                    src={app_logo_url}
-                    alt="Logo"
-                    className="h-8 w-8 object-contain rounded flex-shrink-0"
-                    crossOrigin="anonymous"
-                    onError={() => setIsTabLogoError(true)}
-                  />
-                ) : (
-                  <Icon className="h-4 w-4" />
-                )}
-                {tab.label}
-                {count > 0 && (
-                  <Badge 
-                    variant={badgeVariant} 
-                    className="ml-1 h-5 min-w-5 text-xs"
-                  >
-                    {count}
-                  </Badge>
-                )}
-              </button>
-            );
-          })}
       </div>
 
       {/* Tab Content */}
