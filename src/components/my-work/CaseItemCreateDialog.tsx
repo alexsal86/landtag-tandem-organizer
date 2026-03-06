@@ -3,10 +3,10 @@ import { addWeeks, format } from "date-fns";
 import { Briefcase, Mail, MessageSquare, Phone, UserRound } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
-import { Checkbox } from "@/components/ui/checkbox";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { CaseItemFormData, useCaseItems } from "@/features/cases/items/hooks";
 import { useAuth } from "@/hooks/useAuth";
 import { useTenant } from "@/hooks/useTenant";
@@ -122,26 +122,24 @@ export function CaseItemCreateDialog({ open, onOpenChange, onCreated, createCase
 
           <div className="space-y-2">
             <Label>Kanal</Label>
-            <div className="grid gap-2 sm:grid-cols-2">
+            <RadioGroup value={sourceChannel} onValueChange={(value) => setSourceChannel(value as CaseItemFormData["source_channel"])} className="grid gap-2 sm:grid-cols-2">
               {sourceChannelOptions.map((option) => {
                 const Icon = option.icon;
                 const selected = sourceChannel === option.value;
+                const id = `source-channel-${option.value}`;
                 return (
                   <label
                     key={option.value}
+                    htmlFor={id}
                     className={`flex cursor-pointer items-center gap-2 rounded-md border p-2 text-sm ${selected ? "border-primary bg-primary/5" : "border-border"}`}
                   >
-                    <Checkbox
-                      checked={selected}
-                      onCheckedChange={() => setSourceChannel(option.value)}
-                      aria-label={`Kanal ${option.label}`}
-                    />
+                    <RadioGroupItem id={id} value={option.value} aria-label={`Kanal ${option.label}`} />
                     <Icon className="h-3.5 w-3.5" />
                     <span>{option.label}</span>
                   </label>
                 );
               })}
-            </div>
+            </RadioGroup>
           </div>
 
           <div className="space-y-2">
@@ -156,24 +154,22 @@ export function CaseItemCreateDialog({ open, onOpenChange, onCreated, createCase
 
           <div className="space-y-2">
             <Label>Kategorie *</Label>
-            <div className="flex flex-wrap gap-2">
+            <RadioGroup value={category} onValueChange={setCategory} className="flex flex-wrap gap-2">
               {categoryOptions.map((option) => {
                 const selected = category === option;
+                const id = `category-${option}`;
                 return (
                   <label
                     key={option}
+                    htmlFor={id}
                     className={`flex cursor-pointer items-center gap-2 rounded-md border px-3 py-2 text-sm ${selected ? "border-primary bg-primary/5" : "border-border"}`}
                   >
-                    <Checkbox
-                      checked={selected}
-                      onCheckedChange={() => setCategory(option)}
-                      aria-label={`Kategorie ${option}`}
-                    />
+                    <RadioGroupItem id={id} value={option} aria-label={`Kategorie ${option}`} />
                     <span>{option}</span>
                   </label>
                 );
               })}
-            </div>
+            </RadioGroup>
           </div>
 
           <div className="space-y-2">
@@ -200,24 +196,22 @@ export function CaseItemCreateDialog({ open, onOpenChange, onCreated, createCase
 
           <div className="space-y-2">
             <Label>Priorität</Label>
-            <div className="flex flex-wrap gap-2">
+            <RadioGroup value={priority} onValueChange={(value) => setPriority(value as NonNullable<CaseItemFormData["priority"]>)} className="flex flex-wrap gap-2">
               {priorityOptions.map((option) => {
                 const selected = priority === option.value;
+                const id = `priority-${option.value}`;
                 return (
                   <label
                     key={option.value}
+                    htmlFor={id}
                     className={`flex cursor-pointer items-center gap-2 rounded-md border px-3 py-2 text-sm ${selected ? "border-primary bg-primary/5" : "border-border"}`}
                   >
-                    <Checkbox
-                      checked={selected}
-                      onCheckedChange={() => setPriority(option.value as NonNullable<CaseItemFormData["priority"]>)}
-                      aria-label={`Priorität ${option.label}`}
-                    />
+                    <RadioGroupItem id={id} value={option.value} aria-label={`Priorität ${option.label}`} />
                     <span>{option.label}</span>
                   </label>
                 );
               })}
-            </div>
+            </RadioGroup>
           </div>
 
           <div className="grid gap-4 sm:grid-cols-2">

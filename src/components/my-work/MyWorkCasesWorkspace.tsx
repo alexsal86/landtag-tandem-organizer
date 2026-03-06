@@ -1,9 +1,10 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { type KeyboardEvent, useCallback, useEffect, useMemo, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { format } from "date-fns";
 import { de } from "date-fns/locale";
-import { AlertCircle, ArrowDown, ArrowUp, Briefcase, CheckCircle2, Circle, Clock, ExternalLink, FileText, FolderOpen, Gavel, GripVertical, Link2, Loader2, Mail, MessageSquare, Phone, Plus, Search, Trash2, UserRound, Users, Vote } from "lucide-react";
+import { ArrowDown, ArrowUp, Briefcase, CheckCircle2, Circle, Clock, FileText, FolderOpen, GripVertical, Link2, Plus, Search, UserRound } from "lucide-react";
 import { DragDropContext, Droppable, Draggable, type DropResult } from "@hello-pangea/dnd";
+import DOMPurify from "dompurify";
 
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
@@ -12,90 +13,32 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ContextMenu, ContextMenuContent, ContextMenuItem, ContextMenuSeparator, ContextMenuSub, ContextMenuSubContent, ContextMenuSubTrigger, ContextMenuTrigger } from "@/components/ui/context-menu";
 import { DropdownMenu, DropdownMenuCheckboxItem, DropdownMenuContent, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
-import SimpleRichTextEditor from "@/components/ui/SimpleRichTextEditor";
 import { CaseFileDetail, CaseFileCreateDialog } from "@/features/cases/files/components";
 import { CaseItemCreateDialog } from "@/components/my-work/CaseItemCreateDialog";
 import { StandaloneDecisionCreator } from "@/components/task-decisions/StandaloneDecisionCreator";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
+import { CaseItemDetailPanel } from "@/components/my-work/CaseItemDetailPanel";
 import { useCaseItems } from "@/features/cases/items/hooks";
 import { useAuth } from "@/hooks/useAuth";
 import { useTenant } from "@/hooks/useTenant";
 import { supabase } from "@/integrations/supabase/client";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
+import { useCaseWorkspaceData, type CaseFile, type CaseItem, type TeamUser } from "@/components/my-work/hooks/useCaseWorkspaceData";
+import { useCaseItemEdit, type EditableCaseItem, type TimelineEvent, type TimelineInteractionType } from "@/components/my-work/hooks/useCaseItemEdit";
 
-type CaseItem = {
-  id: string;
-  subject: string | null;
-  resolution_summary: string | null;
-  summary: string | null;
-  source_channel: string | null;
-  source_received_at: string | null;
-  status: string | null;
-  completion_note: string | null;
-  completed_at: string | null;
-  priority: string | null;
-  due_at: string | null;
-  case_file_id: string | null;
-  user_id: string | null;
-  owner_user_id: string | null;
-  intake_payload: Record<string, unknown> | null;
-  updated_at: string | null;
-};
 
-type CaseFile = {
-  id: string;
-  title: string;
-  status: string;
-  reference_number: string | null;
-  current_status_note: string | null;
-  case_type: string | null;
-};
 
-type TeamUser = {
-  id: string;
-  name: string;
-  avatarUrl: string | null;
-};
 
-type EditableCaseItem = {
-  subject: string;
-  summary: string;
-  status: string;
-  completionNote: string;
-  completedAt: string;
-  sourceReceivedAt: string;
-  dueAt: string;
-  category: string;
-  priority: string;
-  assigneeIds: string[];
-  timelineEvents: TimelineEvent[];
-  interactionType: TimelineInteractionType;
-  interactionContact: string;
-  interactionDateTime: string;
-  interactionNote: string;
-};
 
-type TimelineInteractionType = "anruf" | "mail" | "treffen" | "gespraech" | "notiz";
-
-type TimelineEvent = {
-  id: string;
-  type: "status" | "interaktion" | "entscheidung";
-  title: string;
-  note?: string;
-  timestamp: string;
-  statusValue?: string;
-  interactionType?: TimelineInteractionType;
-};
 
 type TimelineEntry = {
   id: string;
   timestamp: string;
   title: string;
   note?: string;
+  safeNoteHtml?: string;
   accentClass: string;
   canDelete?: boolean;
   onDelete?: () => void;
@@ -151,6 +94,11 @@ const normalizeRichTextValue = (value: string): string | null => {
   return withoutTags ? trimmed : null;
 };
 
+const sanitizeTimelineNote = (note: string | undefined) => {
+  if (!note) return undefined;
+  return DOMPurify.sanitize(note, { USE_PROFILES: { html: true } });
+};
+
 const parseTimelineEvents = (payload: Record<string, unknown> | null): TimelineEvent[] => {
   const raw = payload?.timeline_events;
   if (!Array.isArray(raw)) return [];
@@ -202,11 +150,21 @@ export function MyWorkCasesWorkspace() {
   const [searchParams, setSearchParams] = useSearchParams();
   const { createCaseItem } = useCaseItems();
 
-  const [caseItems, setCaseItems] = useState<CaseItem[]>([]);
-  const [allCaseFiles, setAllCaseFiles] = useState<CaseFile[]>([]);
-  const [caseFilesById, setCaseFilesById] = useState<Record<string, CaseFile>>({});
-  const [teamUsers, setTeamUsers] = useState<TeamUser[]>([]);
-  const [loading, setLoading] = useState(true);
+  const {
+    caseItems,
+    setCaseItems,
+    caseFiles: allCaseFiles,
+    caseFilesById,
+    teamUsers,
+    loading,
+    refreshAll,
+    hasMoreItems,
+    hasMoreFiles,
+    loadMoreItems,
+    loadMoreFiles,
+    loadingMoreItems,
+    loadingMoreFiles,
+  } = useCaseWorkspaceData({ tenantId, userId: user?.id });
   const [itemFilterQuery, setItemFilterQuery] = useState("");
   const [fileFilterQuery, setFileFilterQuery] = useState("");
 
@@ -216,8 +174,29 @@ export function MyWorkCasesWorkspace() {
 
   const [detailItemId, setDetailItemId] = useState<string | null>(null);
   const [detailFileId, setDetailFileId] = useState<string | null>(null);
-  const [editableCaseItem, setEditableCaseItem] = useState<EditableCaseItem | null>(null);
+  const { editableCaseItem, setEditableCaseItem, updateEdit, appendTimelineEvent, deleteTimelineEvent } = useCaseItemEdit();
   const [itemSort, setItemSort] = useState<{ key: CaseItemSortKey; direction: SortDirection }>({ key: "received", direction: "desc" });
+
+  const [focusedItemIndex, setFocusedItemIndex] = useState(0);
+
+  const runAsync = useCallback((action: () => Promise<unknown>) => {
+    action().catch((error) => {
+      console.error("Unerwarteter Fehler:", error);
+      toast.error("Aktion konnte nicht ausgeführt werden.");
+    });
+  }, []);
+
+  const applyItemOptimisticUpdate = useCallback(async (itemId: string, updater: (item: CaseItem) => CaseItem, persist: () => Promise<{ error?: unknown } | null>, rollbackMessage: string) => {
+    const previousItems = caseItems;
+    setCaseItems((prev) => prev.map((row) => (row.id === itemId ? updater(row) : row)));
+    const result = await persist();
+    if (result?.error) {
+      setCaseItems(previousItems);
+      toast.error(rollbackMessage);
+      return false;
+    }
+    return true;
+  }, [caseItems, setCaseItems]);
 
   // Decision integration state
   const [isDecisionCreatorOpen, setIsDecisionCreatorOpen] = useState(false);
@@ -251,84 +230,6 @@ export function MyWorkCasesWorkspace() {
     }
   }, [clearActionParam, searchParams]);
 
-  const loadWorkspaceData = useCallback(async () => {
-    if (!user || !tenantId) {
-      setCaseItems([]);
-      setAllCaseFiles([]);
-      setCaseFilesById({});
-      setTeamUsers([]);
-      setLoading(false);
-      return;
-    }
-
-    setLoading(true);
-    try {
-      const [itemsRes, filesRes, membersRes] = await Promise.all([
-        supabase
-          .from("case_items" as any)
-          .select("id, subject, summary, resolution_summary, source_channel, source_received_at, status, completion_note, completed_at, priority, due_at, case_file_id, user_id, owner_user_id, intake_payload, updated_at")
-          .eq("tenant_id", tenantId)
-          .order("updated_at", { ascending: false, nullsFirst: false })
-          .limit(200),
-        supabase
-          .from("case_files")
-          .select("id, title, status, reference_number, current_status_note, case_type")
-          .eq("tenant_id", tenantId)
-          .order("updated_at", { ascending: false })
-          .limit(200),
-        supabase
-          .from("user_tenant_memberships")
-          .select("user_id")
-          .eq("tenant_id", tenantId)
-          .eq("is_active", true),
-      ]);
-
-      if (itemsRes.error) throw itemsRes.error;
-      if (filesRes.error) throw filesRes.error;
-      if (membersRes.error) throw membersRes.error;
-
-      const items = (itemsRes.data || []) as unknown as CaseItem[];
-      const files = (filesRes.data || []) as unknown as CaseFile[];
-
-      setCaseItems(items);
-      setAllCaseFiles(files);
-
-      const mapped = files.reduce<Record<string, CaseFile>>((acc, row) => {
-        acc[row.id] = row;
-        return acc;
-      }, {});
-      setCaseFilesById(mapped);
-      const memberIds = ((membersRes.data || []) as Array<{ user_id: string }>).map((row) => row.user_id);
-      if (memberIds.length === 0) {
-        setTeamUsers([]);
-      } else {
-        const { data: profileRows, error: profilesError } = await supabase
-          .from("profiles")
-          .select("user_id, display_name, avatar_url")
-          .in("user_id", memberIds);
-        if (profilesError) throw profilesError;
-
-        const profileById = new Map((profileRows || []).map((row) => [row.user_id, { name: row.display_name || "Unbekannt", avatarUrl: row.avatar_url || null }]));
-        setTeamUsers(memberIds.map((id) => {
-          const profile = profileById.get(id);
-          return { id, name: profile?.name || "Unbekannt", avatarUrl: profile?.avatarUrl || null };
-        }));
-      }
-    } catch (error) {
-      console.error("Error loading cases workspace:", error);
-    } finally {
-      setLoading(false);
-    }
-  }, [tenantId, user]);
-
-  useEffect(() => {
-    if (!user || !tenantId) {
-      setLoading(false);
-      return;
-    }
-    void loadWorkspaceData();
-  }, [loadWorkspaceData, tenantId, user]);
-
   // Load linked decisions for a case item
   const loadLinkedDecisions = useCallback(async (itemId: string) => {
     setLoadingDecisions(true);
@@ -351,7 +252,7 @@ export function MyWorkCasesWorkspace() {
   // Load decisions when detail item changes
   useEffect(() => {
     if (detailItemId) {
-      void loadLinkedDecisions(detailItemId);
+      runAsync(() => loadLinkedDecisions(detailItemId));
     }
   }, [detailItemId, loadLinkedDecisions]);
 
@@ -478,12 +379,12 @@ export function MyWorkCasesWorkspace() {
     };
     const ownerUserId = assigneeIds[0] || null;
 
-    await supabase
-      .from("case_items")
-      .update({ owner_user_id: ownerUserId, intake_payload: payload })
-      .eq("id", item.id);
-
-    setCaseItems((prev) => prev.map((row) => (row.id === item.id ? { ...row, owner_user_id: ownerUserId, intake_payload: payload } : row)));
+    await applyItemOptimisticUpdate(
+      item.id,
+      (row) => ({ ...row, owner_user_id: ownerUserId, intake_payload: payload }),
+      () => supabase.from("case_items").update({ owner_user_id: ownerUserId, intake_payload: payload }).eq("id", item.id),
+      "Zuweisung konnte nicht gespeichert werden.",
+    );
   };
 
   const handleAssigneeToggle = async (item: CaseItem, memberId: string, checked: boolean) => {
@@ -495,44 +396,45 @@ export function MyWorkCasesWorkspace() {
   // --- Quick action handlers ---
 
   const handleQuickStatusChange = async (item: CaseItem, newStatus: string) => {
-    const { error } = await supabase.from("case_items").update({ status: newStatus } as any).eq("id", item.id);
-    if (error) {
-      toast.error("Status konnte nicht geändert werden.");
-      return;
-    }
-    setCaseItems((prev) => prev.map((row) => (row.id === item.id ? { ...row, status: newStatus as CaseItem["status"] } : row)));
-    toast.success(`Status auf "${statusOptions.find((s) => s.value === newStatus)?.label || newStatus}" gesetzt.`);
+    const ok = await applyItemOptimisticUpdate(
+      item.id,
+      (row) => ({ ...row, status: newStatus as CaseItem["status"] }),
+      () => supabase.from("case_items").update({ status: newStatus } as any).eq("id", item.id),
+      "Status konnte nicht geändert werden.",
+    );
+    if (ok) toast.success(`Status auf "${statusOptions.find((s) => s.value === newStatus)?.label || newStatus}" gesetzt.`);
   };
 
   const handleQuickPriorityChange = async (item: CaseItem, newPriority: string) => {
-    const { error } = await supabase.from("case_items").update({ priority: newPriority } as any).eq("id", item.id);
-    if (error) {
-      toast.error("Priorität konnte nicht geändert werden.");
-      return;
-    }
-    setCaseItems((prev) => prev.map((row) => (row.id === item.id ? { ...row, priority: newPriority as CaseItem["priority"] } : row)));
-    toast.success(`Priorität auf "${priorityOptions.find((p) => p.value === newPriority)?.label || newPriority}" gesetzt.`);
+    const ok = await applyItemOptimisticUpdate(
+      item.id,
+      (row) => ({ ...row, priority: newPriority as CaseItem["priority"] }),
+      () => supabase.from("case_items").update({ priority: newPriority } as any).eq("id", item.id),
+      "Priorität konnte nicht geändert werden.",
+    );
+    if (ok) toast.success(`Priorität auf "${priorityOptions.find((p) => p.value === newPriority)?.label || newPriority}" gesetzt.`);
   };
 
   const handleQuickLinkToFile = async (item: CaseItem, caseFileId: string) => {
-    const { error } = await supabase.from("case_items").update({ case_file_id: caseFileId } as any).eq("id", item.id);
-    if (error) {
-      toast.error("Verknüpfung konnte nicht erstellt werden.");
-      return;
-    }
-    setCaseItems((prev) => prev.map((row) => (row.id === item.id ? { ...row, case_file_id: caseFileId } : row)));
+    const ok = await applyItemOptimisticUpdate(
+      item.id,
+      (row) => ({ ...row, case_file_id: caseFileId }),
+      () => supabase.from("case_items").update({ case_file_id: caseFileId } as any).eq("id", item.id),
+      "Verknüpfung konnte nicht erstellt werden.",
+    );
+    if (!ok) return;
     const file = caseFilesById[caseFileId];
     toast.success(`Vorgang mit "${file?.title || "Akte"}" verknüpft.`);
   };
 
   const handleUnlinkFromFile = async (item: CaseItem) => {
-    const { error } = await supabase.from("case_items").update({ case_file_id: null } as any).eq("id", item.id);
-    if (error) {
-      toast.error("Verknüpfung konnte nicht gelöst werden.");
-      return;
-    }
-    setCaseItems((prev) => prev.map((row) => (row.id === item.id ? { ...row, case_file_id: null } : row)));
-    toast.success("Verknüpfung zur Akte gelöst.");
+    const ok = await applyItemOptimisticUpdate(
+      item.id,
+      (row) => ({ ...row, case_file_id: null }),
+      () => supabase.from("case_items").update({ case_file_id: null } as any).eq("id", item.id),
+      "Verknüpfung konnte nicht gelöst werden.",
+    );
+    if (ok) toast.success("Verknüpfung zur Akte gelöst.");
   };
 
   const handleDragEnd = (result: DropResult) => {
@@ -544,7 +446,7 @@ export function MyWorkCasesWorkspace() {
     const item = caseItems.find((i) => i.id === draggableId);
     if (!item) return;
     if (item.case_file_id === caseFileId) return;
-    void handleQuickLinkToFile(item, caseFileId);
+    runAsync(() => handleQuickLinkToFile(item, caseFileId));
   };
 
   const handleSelectCaseItem = (item: CaseItem) => {
@@ -575,6 +477,33 @@ export function MyWorkCasesWorkspace() {
     });
   };
 
+  useEffect(() => {
+    if (!sortedCaseItems.length) {
+      setFocusedItemIndex(0);
+      return;
+    }
+    setFocusedItemIndex((prev) => Math.min(prev, sortedCaseItems.length - 1));
+  }, [sortedCaseItems.length]);
+
+  const handleListKeyDown = useCallback((event: KeyboardEvent<HTMLDivElement>) => {
+    if (!sortedCaseItems.length) return;
+    if (event.key === "ArrowDown") {
+      event.preventDefault();
+      setFocusedItemIndex((prev) => Math.min(prev + 1, sortedCaseItems.length - 1));
+      return;
+    }
+    if (event.key === "ArrowUp") {
+      event.preventDefault();
+      setFocusedItemIndex((prev) => Math.max(prev - 1, 0));
+      return;
+    }
+    if (event.key === "Enter") {
+      event.preventDefault();
+      const item = sortedCaseItems[focusedItemIndex];
+      if (item) handleSelectCaseItem(item);
+    }
+  }, [focusedItemIndex, sortedCaseItems]);
+
   const handleSelectCaseFile = (cf: CaseFile) => {
     setDetailFileId(cf.id);
     setDetailItemId(null);
@@ -591,7 +520,7 @@ export function MyWorkCasesWorkspace() {
   };
 
   const handleCaseItemCreated = async (newCaseItemId: string) => {
-    await loadWorkspaceData();
+    await refreshAll();
     setDetailItemId(newCaseItemId);
   };
 
@@ -602,7 +531,7 @@ export function MyWorkCasesWorkspace() {
         .update({ case_file_id: newCaseFileId, case_scale: "large" })
         .eq("id", pendingCaseItemLinkId);
     }
-    await loadWorkspaceData();
+    await refreshAll();
     if (pendingCaseItemLinkId) {
       setDetailItemId(pendingCaseItemLinkId);
     } else {
@@ -643,20 +572,6 @@ export function MyWorkCasesWorkspace() {
   }, []);
 
 
-  const appendTimelineEvent = useCallback((event: Omit<TimelineEvent, "id" | "timestamp"> & { timestamp?: string }) => {
-    setEditableCaseItem((prev) => {
-      if (!prev) return prev;
-      return {
-        ...prev,
-        timelineEvents: [...prev.timelineEvents, {
-          ...event,
-          id: typeof crypto !== "undefined" && "randomUUID" in crypto ? crypto.randomUUID() : `${Date.now()}-${Math.random()}`,
-          timestamp: event.timestamp || new Date().toISOString(),
-        }],
-      };
-    });
-  }, []);
-
   const formatInteractionTimestamp = useCallback((value: string) => {
     if (!value) return new Date().toISOString();
     const parsed = new Date(value);
@@ -686,7 +601,7 @@ export function MyWorkCasesWorkspace() {
       interactionType: editableCaseItem.interactionType,
       timestamp: formatInteractionTimestamp(editableCaseItem.interactionDateTime),
     });
-    setEditableCaseItem((prev) => prev ? { ...prev, interactionContact: "", interactionDateTime: "", interactionNote: "" } : prev);
+    updateEdit({ interactionContact: "", interactionDateTime: "", interactionNote: "" });
   }, [appendTimelineEvent, editableCaseItem, formatInteractionTimestamp]);
 
   const handleRequestDecision = useCallback(() => {
@@ -735,10 +650,6 @@ export function MyWorkCasesWorkspace() {
     } : prev);
   }, [editableCaseItem, getStatusMeta]);
 
-  const handleDeleteTimelineEvent = useCallback((eventId: string) => {
-    setEditableCaseItem((prev) => prev ? { ...prev, timelineEvents: prev.timelineEvents.filter((event) => event.id !== eventId) } : prev);
-  }, []);
-
   const timelineEntries = useMemo<TimelineEntry[]>(() => {
     if (!editableCaseItem) return [];
     const entries: TimelineEntry[] = [];
@@ -764,9 +675,10 @@ export function MyWorkCasesWorkspace() {
       timestamp: event.timestamp,
       title: event.title,
       note: event.note,
+      safeNoteHtml: sanitizeTimelineNote(event.note),
       accentClass: "bg-primary",
       canDelete: true,
-      onDelete: () => handleDeleteTimelineEvent(event.id),
+      onDelete: () => deleteTimelineEvent(event.id),
     })));
 
     if (detailItemId) {
@@ -781,7 +693,7 @@ export function MyWorkCasesWorkspace() {
     }
 
     return entries.sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime());
-  }, [detailItemId, editableCaseItem, handleDeleteTimelineEvent, linkedDecisions]);
+  }, [deleteTimelineEvent, detailItemId, editableCaseItem, linkedDecisions]);
 
   const handleCaseItemSave = async () => {
     if (!detailItemId || !editableCaseItem) return;
@@ -789,28 +701,36 @@ export function MyWorkCasesWorkspace() {
       toast.error("Für den Status „Erledigt“ sind Abschlussnotiz und Abgeschlossen am Pflichtfelder.");
       return;
     }
-    await supabase
-      .from("case_items")
-      .update({
-        subject: editableCaseItem.subject.trim() || null,
-        summary: normalizeRichTextValue(editableCaseItem.summary),
-        resolution_summary: normalizeRichTextValue(editableCaseItem.summary),
-        status: editableCaseItem.status as any,
-        completion_note: editableCaseItem.completionNote.trim() || null,
-        completed_at: editableCaseItem.completedAt ? new Date(`${editableCaseItem.completedAt}T12:00:00`).toISOString() : null,
-        source_received_at: editableCaseItem.sourceReceivedAt ? new Date(`${editableCaseItem.sourceReceivedAt}T12:00:00`).toISOString() : null,
-        due_at: editableCaseItem.dueAt ? new Date(`${editableCaseItem.dueAt}T12:00:00`).toISOString() : null,
-        priority: editableCaseItem.priority as any,
-        owner_user_id: editableCaseItem.assigneeIds[0] || null,
-        intake_payload: {
-          ...(detailItem?.intake_payload || {}),
-          category: editableCaseItem.category,
-          assignee_ids: editableCaseItem.assigneeIds,
-          timeline_events: editableCaseItem.timelineEvents,
-        },
-      })
-      .eq("id", detailItemId);
-    await loadWorkspaceData();
+
+    const intakePayload = {
+      ...(detailItem?.intake_payload || {}),
+      category: editableCaseItem.category,
+      assignee_ids: editableCaseItem.assigneeIds,
+      timeline_events: editableCaseItem.timelineEvents,
+    };
+
+    const patch = {
+      subject: editableCaseItem.subject.trim() || null,
+      summary: normalizeRichTextValue(editableCaseItem.summary),
+      resolution_summary: normalizeRichTextValue(editableCaseItem.summary),
+      status: editableCaseItem.status as any,
+      completion_note: editableCaseItem.completionNote.trim() || null,
+      completed_at: editableCaseItem.completedAt ? new Date(`${editableCaseItem.completedAt}T12:00:00`).toISOString() : null,
+      source_received_at: editableCaseItem.sourceReceivedAt ? new Date(`${editableCaseItem.sourceReceivedAt}T12:00:00`).toISOString() : null,
+      due_at: editableCaseItem.dueAt ? new Date(`${editableCaseItem.dueAt}T12:00:00`).toISOString() : null,
+      priority: editableCaseItem.priority as any,
+      owner_user_id: editableCaseItem.assigneeIds[0] || null,
+      intake_payload: intakePayload,
+    };
+
+    const ok = await applyItemOptimisticUpdate(
+      detailItemId,
+      (row) => ({ ...row, ...patch, intake_payload: intakePayload }),
+      () => supabase.from("case_items").update(patch).eq("id", detailItemId),
+      "Vorgang konnte nicht gespeichert werden.",
+    );
+    if (!ok) return;
+    toast.success("Vorgang gespeichert.");
   };
 
   // --- Render ---
@@ -861,7 +781,7 @@ export function MyWorkCasesWorkspace() {
                   <Droppable droppableId="case-items-list" isDropDisabled>
                     {(provided) => (
                       <div className="space-y-1.5 pr-2">
-                        <div ref={provided.innerRef} {...provided.droppableProps} className="space-y-1.5">
+                        <div ref={provided.innerRef} {...provided.droppableProps} className="space-y-1.5" tabIndex={0} onKeyDown={handleListKeyDown}>
                           {sortedCaseItems.length === 0 ? (
                             <div className="rounded-md border border-dashed p-4 text-sm text-muted-foreground space-y-3">
                               <p>Keine Vorgänge gefunden.</p>
@@ -908,6 +828,7 @@ export function MyWorkCasesWorkspace() {
                                               className={cn(
                                                 "w-full px-2 py-2 text-left transition-colors hover:bg-muted/40",
                                                 isActive && "bg-primary/5",
+                                                focusedItemIndex === index && "ring-1 ring-primary/40",
                                               )}
                                               onClick={() => handleSelectCaseItem(item)}
                                             >
@@ -974,7 +895,7 @@ export function MyWorkCasesWorkspace() {
                                                         <DropdownMenuCheckboxItem
                                                           key={member.id}
                                                           checked={assigneeIds.includes(member.id)}
-                                                          onCheckedChange={(checked) => { void handleAssigneeToggle(item, member.id, checked === true); }}
+                                                          onCheckedChange={(checked) => { runAsync(() => handleAssigneeToggle(item, member.id, checked === true)); }}
                                                         >
                                                           {member.name}
                                                         </DropdownMenuCheckboxItem>
@@ -998,7 +919,7 @@ export function MyWorkCasesWorkspace() {
                                                   <ContextMenuItem
                                                     key={opt.value}
                                                     className={cn(item.status === opt.value && "bg-accent")}
-                                                    onClick={() => void handleQuickStatusChange(item, opt.value)}
+                                                    onClick={() => runAsync(() => handleQuickStatusChange(item, opt.value))}
                                                   >
                                                     <span className={cn("mr-2 h-2 w-2 rounded-full inline-block", opt.dotColor)} />
                                                     {opt.label}
@@ -1015,7 +936,7 @@ export function MyWorkCasesWorkspace() {
                                                   <ContextMenuItem
                                                     key={opt.value}
                                                     className={cn(item.priority === opt.value && "bg-accent")}
-                                                    onClick={() => void handleQuickPriorityChange(item, opt.value)}
+                                                    onClick={() => runAsync(() => handleQuickPriorityChange(item, opt.value))}
                                                   >
                                                     <Circle className={cn("mr-2 h-3 w-3 fill-current", opt.color)} />
                                                     {opt.label}
@@ -1031,7 +952,7 @@ export function MyWorkCasesWorkspace() {
                                               <ContextMenuSubContent className="w-56 max-h-64 overflow-y-auto">
                                                 {item.case_file_id && (
                                                   <>
-                                                    <ContextMenuItem onClick={() => void handleUnlinkFromFile(item)} className="text-destructive">
+                                                    <ContextMenuItem onClick={() => runAsync(() => handleUnlinkFromFile(item))} className="text-destructive">
                                                       Verknüpfung lösen
                                                     </ContextMenuItem>
                                                     <ContextMenuSeparator />
@@ -1041,7 +962,7 @@ export function MyWorkCasesWorkspace() {
                                                   <ContextMenuItem
                                                     key={cf.id}
                                                     className={cn(item.case_file_id === cf.id && "bg-accent")}
-                                                    onClick={() => void handleQuickLinkToFile(item, cf.id)}
+                                                    onClick={() => runAsync(() => handleQuickLinkToFile(item, cf.id))}
                                                   >
                                                     <FolderOpen className="mr-2 h-3 w-3 shrink-0" />
                                                     <span className="truncate">{cf.title}</span>
@@ -1070,259 +991,45 @@ export function MyWorkCasesWorkspace() {
                                         >
                                           <div className="overflow-hidden">
                                             {hasInlineDetail && (
-                                              <div className="mx-2 mb-3 rounded-md border bg-muted/20 p-3 space-y-4">
-                                                <div className="grid gap-4 lg:grid-cols-[minmax(0,2fr)_minmax(0,1fr)]">
-                                                  <div className="space-y-3">
-                                                    <div className="space-y-1.5">
-                                                      <Label className="font-bold" htmlFor="detail-subject">Betreff</Label>
-                                                      <Input id="detail-subject" value={editableCaseItem.subject} onChange={(event) => setEditableCaseItem((prev) => prev ? { ...prev, subject: event.target.value } : prev)} />
-                                                    </div>
-                                                    <div className="space-y-1.5">
-                                                      <Label className="font-bold" htmlFor="detail-summary">Beschreibung</Label>
-                                                      <SimpleRichTextEditor
-                                                        key={`detail-summary-${item.id}`}
-                                                        initialContent={toEditorHtml(editableCaseItem.summary)}
-                                                        onChange={(html) => setEditableCaseItem((prev) => prev ? { ...prev, summary: html } : prev)}
-                                                        placeholder="Beschreibung hinzufügen"
-                                                        minHeight="140px"
-                                                      />
-                                                    </div>
-                                                    <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-                                                      <div className="space-y-1.5">
-                                                        <Label className="font-bold" htmlFor="detail-received">Eingangsdatum</Label>
-                                                        <Input id="detail-received" type="date" value={editableCaseItem.sourceReceivedAt} onChange={(event) => setEditableCaseItem((prev) => prev ? { ...prev, sourceReceivedAt: event.target.value } : prev)} />
-                                                      </div>
-                                                      <div className="space-y-1.5">
-                                                        <Label className="font-bold" htmlFor="detail-due">Fällig am</Label>
-                                                        <Input id="detail-due" type="date" value={editableCaseItem.dueAt} onChange={(event) => setEditableCaseItem((prev) => prev ? { ...prev, dueAt: event.target.value } : prev)} />
-                                                      </div>
-                                                    </div>
-                                                    <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-                                                      <div className="space-y-1.5">
-                                                        <Label className="font-bold">Status</Label>
-                                                        <Select value={editableCaseItem.status} onValueChange={(value) => setEditableCaseItem((prev) => prev ? { ...prev, status: value } : prev)}>
-                                                          <SelectTrigger><SelectValue /></SelectTrigger>
-                                                          <SelectContent>
-                                                            {statusOptions.map((statusOption) => (
-                                                              <SelectItem key={statusOption.value} value={statusOption.value}>{statusOption.label}</SelectItem>
-                                                            ))}
-                                                          </SelectContent>
-                                                        </Select>
-                                                      </div>
-                                                      <div className="space-y-1.5">
-                                                        <Label className="font-bold">Kategorie *</Label>
-                                                        <Select value={editableCaseItem.category} onValueChange={(value) => setEditableCaseItem((prev) => prev ? { ...prev, category: value } : prev)}>
-                                                          <SelectTrigger><SelectValue placeholder="Kategorie wählen" /></SelectTrigger>
-                                                          <SelectContent>
-                                                            {categoryOptions.map((categoryOption) => (
-                                                              <SelectItem key={categoryOption} value={categoryOption}>{categoryOption}</SelectItem>
-                                                            ))}
-                                                          </SelectContent>
-                                                        </Select>
-                                                      </div>
-                                                    </div>
-                                                    <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-                                                      <div className="space-y-1.5">
-                                                        <Label className="font-bold">Priorität</Label>
-                                                        <Select value={editableCaseItem.priority} onValueChange={(value) => setEditableCaseItem((prev) => prev ? { ...prev, priority: value } : prev)}>
-                                                          <SelectTrigger><SelectValue /></SelectTrigger>
-                                                          <SelectContent>
-                                                            {priorityOptions.map((priorityOption) => (
-                                                              <SelectItem key={priorityOption.value} value={priorityOption.value}>{priorityOption.label}</SelectItem>
-                                                            ))}
-                                                          </SelectContent>
-                                                        </Select>
-                                                      </div>
-                                                      <div className="space-y-1.5">
-                                                        <Label className="font-bold">Entscheidung</Label>
-                                                        <div className="flex gap-2">
-                                                          <Button type="button" variant="outline" size="sm" onClick={handleRequestDecision}><Vote className="mr-1 h-3.5 w-3.5" />Entscheidung stellen</Button>
-                                                          <Button type="button" variant="outline" size="sm" onClick={handleDecisionReceived} disabled={editableCaseItem.status !== "entscheidung_abwartend"}>Eingegangen</Button>
-                                                        </div>
-                                                      </div>
-                                                    </div>
-                                                    <div className="space-y-1.5">
-                                                      <Label className="font-bold">Bearbeiter</Label>
-                                                      <div className="flex flex-wrap gap-2">
-                                                        {teamUsers.map((member) => {
-                                                          const selected = editableCaseItem.assigneeIds.includes(member.id);
-                                                          return (
-                                                            <Button key={member.id} type="button" size="sm" variant={selected ? "default" : "outline"} onClick={() => {
-                                                              setEditableCaseItem((prev) => {
-                                                                if (!prev) return prev;
-                                                                const next = selected ? prev.assigneeIds.filter((id) => id !== member.id) : [...prev.assigneeIds, member.id];
-                                                                return { ...prev, assigneeIds: Array.from(new Set(next)) };
-                                                              });
-                                                            }}>{member.name}</Button>
-                                                          );
-                                                        })}
-                                                      </div>
-                                                    </div>
-                                                    {/* Linked Decisions Section */}
-                                                    {detailItemId && (
-                                                      <div className="space-y-2">
-                                                        <Label className="font-bold flex items-center gap-1.5"><Vote className="h-4 w-4" />Verknüpfte Entscheidungen</Label>
-                                                        {loadingDecisions ? (
-                                                          <div className="flex items-center gap-2 text-xs text-muted-foreground"><Loader2 className="h-3 w-3 animate-spin" />Lade…</div>
-                                                        ) : (linkedDecisions[detailItemId] || []).length === 0 ? (
-                                                          <p className="text-xs text-muted-foreground">Keine Entscheidungen verknüpft.</p>
-                                                        ) : (
-                                                          <div className="space-y-1.5">
-                                                            {(linkedDecisions[detailItemId] || []).map((dec) => (
-                                                              <div key={dec.id} className="flex items-center justify-between rounded-md border bg-background p-2 text-xs">
-                                                                <div className="flex items-center gap-2 min-w-0">
-                                                                  {dec.status === "completed" ? (
-                                                                    <CheckCircle2 className="h-3.5 w-3.5 text-emerald-500 shrink-0" />
-                                                                  ) : (
-                                                                    <Clock className="h-3.5 w-3.5 text-amber-500 shrink-0" />
-                                                                  )}
-                                                                  <span className="truncate font-medium">{dec.title}</span>
-                                                                </div>
-                                                                <Badge variant="outline" className={cn("text-[10px] shrink-0 ml-2", dec.status === "completed" ? "border-emerald-500/40 text-emerald-600" : "border-amber-500/40 text-amber-600")}>
-                                                                  {dec.status === "completed" ? "Abgeschlossen" : dec.status === "archived" ? "Archiviert" : "Offen"}
-                                                                </Badge>
-                                                              </div>
-                                                            ))}
-                                                          </div>
-                                                        )}
-                                                        <Button type="button" variant="outline" size="sm" className="w-full" onClick={handleRequestDecision}>
-                                                          <Plus className="mr-1 h-3.5 w-3.5" />Weitere Entscheidung stellen
-                                                        </Button>
-                                                      </div>
-                                                    )}
-                                                    {editableCaseItem.status === "erledigt" && (
-                                                      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-                                                        <div className="space-y-1.5 sm:col-span-2">
-                                                          <Label className="font-bold" htmlFor="detail-completion-note">Abschlussnotiz *</Label>
-                                                          <Input id="detail-completion-note" value={editableCaseItem.completionNote} onChange={(event) => setEditableCaseItem((prev) => prev ? { ...prev, completionNote: event.target.value } : prev)} />
-                                                        </div>
-                                                        <div className="space-y-1.5">
-                                                          <Label className="font-bold" htmlFor="detail-completed-at">Abgeschlossen am *</Label>
-                                                          <Input id="detail-completed-at" type="date" value={editableCaseItem.completedAt} onChange={(event) => setEditableCaseItem((prev) => prev ? { ...prev, completedAt: event.target.value } : prev)} />
-                                                        </div>
-                                                      </div>
-                                                    )}
-                                                    <Button disabled={!editableCaseItem.category} onClick={() => { void handleCaseItemSave(); }}>Speichern</Button>
-                                                  </div>
-                                                  <div className="space-y-4">
-                                                    <div className="rounded-md border bg-background p-3 space-y-3">
-                                                      <div className="flex items-center gap-2 text-sm font-semibold"><Users className="h-4 w-4" />Inter-/Aktionen</div>
-                                                      <div className="space-y-2">
-                                                        <div className="flex flex-wrap gap-2">
-                                                          {interactionTypeOptions.map((option) => {
-                                                            const Icon = option.icon;
-                                                            const selected = editableCaseItem.interactionType === option.value;
-                                                            return (
-                                                              <Tooltip key={option.value}>
-                                                                <TooltipTrigger asChild>
-                                                                  <Button
-                                                                    type="button"
-                                                                    size="icon"
-                                                                    variant={selected ? "default" : "outline"}
-                                                                    aria-label={option.label}
-                                                                    onClick={() => setEditableCaseItem((prev) => prev ? { ...prev, interactionType: option.value } : prev)}
-                                                                  >
-                                                                    <Icon className="h-4 w-4" />
-                                                                  </Button>
-                                                                </TooltipTrigger>
-                                                                <TooltipContent>{option.label}</TooltipContent>
-                                                              </Tooltip>
-                                                            );
-                                                          })}
-                                                        </div>
-                                                        {(editableCaseItem.interactionType === "anruf" || editableCaseItem.interactionType === "mail" || editableCaseItem.interactionType === "gespraech" || editableCaseItem.interactionType === "treffen") && (
-                                                          <Input
-                                                            placeholder={editableCaseItem.interactionType === "mail" ? "E-Mail-Adresse" : editableCaseItem.interactionType === "anruf" ? "Telefonnummer" : "Kontaktperson"}
-                                                            value={editableCaseItem.interactionContact}
-                                                            onChange={(event) => setEditableCaseItem((prev) => prev ? { ...prev, interactionContact: event.target.value } : prev)}
-                                                          />
-                                                        )}
-                                                        <Input
-                                                          type="datetime-local"
-                                                          value={editableCaseItem.interactionDateTime}
-                                                          onChange={(event) => setEditableCaseItem((prev) => prev ? { ...prev, interactionDateTime: event.target.value } : prev)}
-                                                        />
-                                                        <SimpleRichTextEditor
-                                                          key={editableCaseItem.timelineEvents.length}
-                                                          initialContent={editableCaseItem.interactionNote}
-                                                          onChange={(value) => setEditableCaseItem((prev) => prev ? { ...prev, interactionNote: value } : prev)}
-                                                          placeholder="Notiz (optional)"
-                                                          minHeight="100px"
-                                                          maxHeight="180px"
-                                                          scrollable
-                                                        />
-                                                        <Button type="button" size="sm" onClick={handleAddInteraction}>Interaktion hinzufügen</Button>
-                                                      </div>
-                                                    </div>
-                                                    <div className="rounded-md border bg-background p-3">
-                                                      <p className="font-bold mb-3">Zeitstrahl</p>
-                                                      <div className="relative space-y-4 pl-6">
-                                                        <span className="absolute left-2 top-1 bottom-1 w-px bg-border" />
-                                                        {timelineEntries.length === 0 ? (
-                                                          <p className="text-xs text-muted-foreground">Noch keine Einträge im Zeitstrahl.</p>
-                                                        ) : (
-                                                          <>
-                                                            {timelineEntries.map((entry) => (
-                                                              <div key={entry.id} className="relative">
-                                                                <span className={`absolute -left-[18px] top-1.5 h-2.5 w-2.5 rounded-full ${entry.accentClass}`} />
-                                                                <div className="rounded border p-2 text-xs">
-                                                                  <div className="flex items-start justify-between gap-2">
-                                                                    <div>
-                                                                      <p className="font-semibold">{entry.title}</p>
-                                                                      <p className="text-muted-foreground">{formatTimelineDate(entry.timestamp)}</p>
-                                                                    </div>
-                                                                    {entry.canDelete && entry.onDelete ? (
-                                                                      <Button type="button" variant="ghost" size="icon" className="h-6 w-6" onClick={entry.onDelete}>
-                                                                        <Trash2 className="h-3.5 w-3.5" />
-                                                                      </Button>
-                                                                    ) : null}
-                                                                  </div>
-                                                                  {entry.note && <div className="mt-1 text-muted-foreground" dangerouslySetInnerHTML={{ __html: entry.note }} />}
-                                                                </div>
-                                                              </div>
-                                                            ))}
-                                                          </>
-                                                        )}
-                                                      </div>
-                                                    </div>
-                                                  </div>
-                                                </div>
-
-                                                {item.case_file_id && caseFilesById[item.case_file_id] ? (
-                                                  <div className="mt-1 space-y-2">
-                                                    <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Verknüpfte FallAkte</p>
-                                                    <div className="rounded-md border bg-background p-3 text-sm">
-                                                      <p className="font-semibold">{caseFilesById[item.case_file_id].title}</p>
-                                                      <ul className="mt-2 space-y-1 text-xs text-muted-foreground">
-                                                        <li>• Status: {caseFilesById[item.case_file_id].status || "offen"}</li>
-                                                        {caseFilesById[item.case_file_id].reference_number && <li>• Aktenzeichen: {caseFilesById[item.case_file_id].reference_number}</li>}
-                                                        {caseFilesById[item.case_file_id].case_type && <li>• Typ: {caseFilesById[item.case_file_id].case_type}</li>}
-                                                        {caseFilesById[item.case_file_id].current_status_note && <li>• Hinweis: {caseFilesById[item.case_file_id].current_status_note}</li>}
-                                                      </ul>
-                                                    </div>
-                                                    <Button size="sm" variant="outline" onClick={() => navigate(`/casefiles?caseFileId=${item.case_file_id}`)}>
-                                                      <ExternalLink className="mr-1 h-3.5 w-3.5" />
-                                                      Vollansicht
-                                                    </Button>
-                                                  </div>
-                                                ) : (
-                                                  <div className="mt-1 space-y-3 rounded-md border border-dashed bg-background p-4 text-sm text-muted-foreground">
-                                                    <AlertCircle className="h-4 w-4" />
-                                                    <p>Keine Akte verknüpft.</p>
-                                                    <div className="flex flex-wrap gap-2">
-                                                      <Button size="sm" onClick={() => handleCreateCaseFile(item.id)}>Neue Akte anlegen</Button>
-                                                    </div>
-                                                  </div>
-                                                )}
-                                              </div>
+                                              <CaseItemDetailPanel
+                                                itemId={item.id}
+                                                itemCaseFileId={item.case_file_id}
+                                                editableCaseItem={editableCaseItem}
+                                                statusOptions={statusOptions.map(({ value, label }) => ({ value, label }))}
+                                                categoryOptions={categoryOptions}
+                                                teamUsers={teamUsers}
+                                                linkedDecisions={detailItemId ? (linkedDecisions[detailItemId] || []) : []}
+                                                loadingDecisions={loadingDecisions}
+                                                timelineEntries={timelineEntries}
+                                                toEditorHtml={toEditorHtml}
+                                                formatTimelineDate={formatTimelineDate}
+                                                getInitials={getInitials}
+                                                getStatusMeta={getStatusMeta}
+                                                caseFilesById={caseFilesById}
+                                                onUpdate={updateEdit}
+                                                onSave={() => runAsync(handleCaseItemSave)}
+                                                onDecisionRequest={handleRequestDecision}
+                                                onDecisionReceived={handleDecisionReceived}
+                                                onAddInteraction={handleAddInteraction}
+                                                onCreateCaseFile={handleCreateCaseFile}
+                                                onNavigateToCaseFile={(caseFileId) => navigate(`/casefiles?caseFileId=${caseFileId}`)}
+                                              />
                                             )}
                                           </div>
+                                        </div>
                                         </div>
                                       </div>
                                     )}
                                   </Draggable>
                                 );
                               })}
+                              {hasMoreItems && (
+                                <div className="pt-2">
+                                  <Button type="button" variant="outline" size="sm" disabled={loadingMoreItems} onClick={() => runAsync(loadMoreItems)}>
+                                    {loadingMoreItems ? "Lade weitere Vorgänge…" : "Weitere Vorgänge laden"}
+                                  </Button>
+                                </div>
+                              )}
                             </div>
                           )}
                           {provided.placeholder}
@@ -1410,6 +1117,11 @@ export function MyWorkCasesWorkspace() {
                         })
                       )}
                     </div>
+                    {hasMoreFiles && (
+                      <Button type="button" variant="outline" size="sm" disabled={loadingMoreFiles} onClick={() => runAsync(loadMoreFiles)}>
+                        {loadingMoreFiles ? "Lade weitere FallAkten…" : "Weitere FallAkten laden"}
+                      </Button>
+                    )}
                   </div>
                 </CardContent>
               </Card>
@@ -1419,7 +1131,7 @@ export function MyWorkCasesWorkspace() {
           <CaseItemCreateDialog
             open={isCaseItemDialogOpen}
             onOpenChange={setIsCaseItemDialogOpen}
-            onCreated={(id) => { void handleCaseItemCreated(id); }}
+            onCreated={(id) => { runAsync(() => handleCaseItemCreated(id)); }}
             createCaseItem={createCaseItem}
             assignees={teamUsers}
             defaultAssigneeId={defaultAssigneeId}
@@ -1432,7 +1144,7 @@ export function MyWorkCasesWorkspace() {
               if (!open) setPendingCaseItemLinkId(null);
             }}
             onSuccess={(caseFile) => {
-              void handleCaseFileCreated(caseFile.id);
+              runAsync(() => handleCaseFileCreated(caseFile.id));
               setIsCaseFileDialogOpen(false);
             }}
           />
@@ -1444,13 +1156,13 @@ export function MyWorkCasesWorkspace() {
               if (!open) setDecisionCreatorItemId(null);
             }}
             onDecisionCreated={() => {
-              if (decisionCreatorItemId) void loadLinkedDecisions(decisionCreatorItemId);
+              if (decisionCreatorItemId) runAsync(() => loadLinkedDecisions(decisionCreatorItemId));
             }}
             caseItemId={decisionCreatorItemId || undefined}
             defaultTitle={decisionCreatorItemId ? (caseItems.find(i => i.id === decisionCreatorItemId)?.subject || "") : ""}
             defaultDescription={decisionCreatorItemId ? (caseItems.find(i => i.id === decisionCreatorItemId)?.summary || "") : ""}
             onCreatedWithId={(decisionId) => {
-              void handleDecisionCreated(decisionId);
+              runAsync(() => handleDecisionCreated(decisionId));
             }}
           />
         </>
