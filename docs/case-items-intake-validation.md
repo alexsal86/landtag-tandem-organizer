@@ -11,6 +11,7 @@ Diese Regeln beschreiben die erwartete Validierung für die neuen strukturierten
 - `reporter_name`: Name der meldenden Person/Quelle.
 - `reporter_contact`: Kontaktweg (Mail, Telefon, Profil-Link etc.).
 - `intake_payload`: kanal-spezifische Rohdaten (JSONB).
+  - Optional unterstützt: `contact_name` (Kontaktname) und `contact_detail` (E-Mail/Telefon/Handle).
 - `confidentiality_level`: Einstufung `public|internal|restricted|strictly_confidential`.
 - `contains_personal_data`: Kennzeichen für personenbezogene Daten.
 

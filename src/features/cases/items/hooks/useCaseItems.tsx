@@ -3,6 +3,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { useTenant } from "@/hooks/useTenant";
 import { useToast } from "@/components/ui/use-toast";
+import type { CaseItemIntakePayload } from "@/features/cases/items/types";
 
 export interface CaseItem {
   id: string;
@@ -21,7 +22,7 @@ export interface CaseItem {
   source_reference: string | null;
   reporter_name: string | null;
   reporter_contact: string | null;
-  intake_payload: Record<string, unknown> | null;
+  intake_payload: CaseItemIntakePayload | null;
   confidentiality_level: string | null;
   contains_personal_data: boolean;
   resolution_summary: string | null;
@@ -61,7 +62,7 @@ export interface CaseItemFormData {
   source_reference?: string | null;
   reporter_name?: string | null;
   reporter_contact?: string | null;
-  intake_payload?: Record<string, unknown> | null;
+  intake_payload?: CaseItemIntakePayload | null;
   confidentiality_level?: "public" | "internal" | "restricted" | "strictly_confidential" | null;
   contains_personal_data?: boolean;
   resolution_summary?: string | null;
@@ -144,6 +145,7 @@ export const useCaseItems = () => {
         contains_personal_data: data.contains_personal_data ?? false,
         case_file_id: data.case_file_id ?? null,
         case_scale: data.case_scale ?? null,
+        intake_payload: data.intake_payload ?? null,
         user_id: user.id,
         tenant_id: currentTenant.id,
       };

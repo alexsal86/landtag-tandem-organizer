@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import { supabase } from "@/integrations/supabase/client";
+import type { CaseItemIntakePayload } from "@/features/cases/items/types";
 
 export type CaseItem = {
   id: string;
@@ -17,7 +18,7 @@ export type CaseItem = {
   case_file_id: string | null;
   user_id: string | null;
   owner_user_id: string | null;
-  intake_payload: Record<string, unknown> | null;
+  intake_payload: CaseItemIntakePayload | null;
   updated_at: string | null;
 };
 
