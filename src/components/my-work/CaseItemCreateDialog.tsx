@@ -33,7 +33,9 @@ export function CaseItemCreateDialog({ open, onOpenChange, onCreated, createCase
   const [subject, setSubject] = useState("");
   const [sourceChannel, setSourceChannel] = useState<CaseItemFormData["source_channel"]>("email");
   const [priority, setPriority] = useState<NonNullable<CaseItemFormData["priority"]>>("medium");
-  const [ownerUserId, setOwnerUserId] = useState<string>(defaultAssigneeId || "unassigned");
+  const [selectedAssigneeIds, setSelectedAssigneeIds] = useState<string[]>(defaultAssigneeId ? [defaultAssigneeId] : []);
+  const [category, setCategory] = useState("");
+  const [sourceReceivedDate, setSourceReceivedDate] = useState("");
   const [dueDate, setDueDate] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
@@ -41,12 +43,12 @@ export function CaseItemCreateDialog({ open, onOpenChange, onCreated, createCase
 
   useEffect(() => {
     if (open) {
-      setOwnerUserId(defaultAssigneeId || "unassigned");
+      setSelectedAssigneeIds(defaultAssigneeId ? [defaultAssigneeId] : []);
     }
   }, [defaultAssigneeId, open]);
 
   const handleSubmit = async () => {
-    if (!subject.trim() || !hasContext) return;
+    if (!subject.trim() || !sourceReceivedDate || !category || !hasContext) return;
 
     setSubmitError(null);
 
@@ -57,7 +59,12 @@ export function CaseItemCreateDialog({ open, onOpenChange, onCreated, createCase
       priority,
       status: "active",
       due_at: dueDate ? new Date(`${dueDate}T12:00:00`).toISOString() : null,
-      owner_user_id: ownerUserId === "unassigned" ? null : ownerUserId,
+      source_received_at: new Date(`${sourceReceivedDate}T12:00:00`).toISOString(),
+      owner_user_id: selectedAssigneeIds[0] || null,
+      intake_payload: {
+        category,
+        assignee_ids: selectedAssigneeIds,
+      },
       subject: subject.trim(),
       summary: subject.trim(),
       resolution_summary: subject.trim(),
@@ -74,7 +81,9 @@ export function CaseItemCreateDialog({ open, onOpenChange, onCreated, createCase
     setSubject("");
     setSourceChannel("email");
     setPriority("medium");
-    setOwnerUserId(defaultAssigneeId || "unassigned");
+    setSelectedAssigneeIds(defaultAssigneeId ? [defaultAssigneeId] : []);
+    setCategory("");
+    setSourceReceivedDate("");
     setDueDate("");
     onOpenChange(false);
   };
@@ -128,18 +137,42 @@ export function CaseItemCreateDialog({ open, onOpenChange, onCreated, createCase
           </div>
 
           <div className="space-y-2">
-            <Label>Bearbeiter</Label>
-            <Select value={ownerUserId} onValueChange={setOwnerUserId}>
+            <Label>Kategorie *</Label>
+            <Select value={category} onValueChange={setCategory}>
               <SelectTrigger>
-                <SelectValue placeholder="Bearbeiter auswählen" />
+                <SelectValue placeholder="Kategorie auswählen" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="unassigned">Nicht zugewiesen</SelectItem>
-                {assignees.map((assignee) => (
-                  <SelectItem key={assignee.id} value={assignee.id}>{assignee.name}</SelectItem>
-                ))}
+                <SelectItem value="Allgemein">Allgemein</SelectItem>
+                <SelectItem value="Bürgeranliegen">Bürgeranliegen</SelectItem>
+                <SelectItem value="Anfrage">Anfrage</SelectItem>
+                <SelectItem value="Beschwerde">Beschwerde</SelectItem>
+                <SelectItem value="Termin">Termin</SelectItem>
+                <SelectItem value="Sonstiges">Sonstiges</SelectItem>
               </SelectContent>
             </Select>
+          </div>
+
+          <div className="space-y-2">
+            <Label>Bearbeiter (mehrfach)</Label>
+            <div className="flex flex-wrap gap-2">
+              {assignees.map((assignee) => {
+                const selected = selectedAssigneeIds.includes(assignee.id);
+                return (
+                  <Button
+                    key={assignee.id}
+                    type="button"
+                    size="sm"
+                    variant={selected ? "default" : "outline"}
+                    onClick={() => {
+                      setSelectedAssigneeIds((prev) => selected ? prev.filter((id) => id !== assignee.id) : [...prev, assignee.id]);
+                    }}
+                  >
+                    {assignee.name}
+                  </Button>
+                );
+              })}
+            </div>
           </div>
 
           <div className="space-y-2">
@@ -158,6 +191,17 @@ export function CaseItemCreateDialog({ open, onOpenChange, onCreated, createCase
           </div>
 
           <div className="space-y-2">
+            <Label htmlFor="case-item-received">Eingangsdatum</Label>
+            <Input
+              id="case-item-received"
+              type="date"
+              value={sourceReceivedDate}
+              onChange={(event) => setSourceReceivedDate(event.target.value)}
+              required
+            />
+          </div>
+
+          <div className="space-y-2">
             <Label htmlFor="case-item-due">Frist</Label>
             <Input
               id="case-item-due"
@@ -172,7 +216,7 @@ export function CaseItemCreateDialog({ open, onOpenChange, onCreated, createCase
           <Button variant="outline" onClick={() => onOpenChange(false)} disabled={submitting}>
             Abbrechen
           </Button>
-          <Button onClick={handleSubmit} disabled={submitting || !subject.trim() || !hasContext}>
+          <Button onClick={handleSubmit} disabled={submitting || !subject.trim() || !sourceReceivedDate || !category || !hasContext}>
             Vorgang erstellen
           </Button>
         </DialogFooter>
