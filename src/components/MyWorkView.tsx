@@ -11,7 +11,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { ClipboardList, CheckSquare, Vote, Briefcase, CalendarPlus, Users, StickyNote, Calendar, Clock, Plus, Home, CheckCircle2, MessageSquare } from "lucide-react";
+import { CheckSquare, Vote, Briefcase, CalendarPlus, Users, StickyNote, Calendar, Clock, Plus, Home, CheckCircle2, MessageSquare } from "lucide-react";
 import { PageHelpButton } from "@/components/shared/PageHelpButton";
 import { MYWORK_HELP_CONTENT } from "@/config/helpContent";
 import { supabase } from "@/integrations/supabase/client";
@@ -390,17 +390,7 @@ export function MyWorkView() {
   return (
     <div className="min-h-[calc(100vh-8rem)] p-6">
       {/* Header */}
-      <div className="mb-6 flex items-start justify-between">
-        <div>
-          <h1 className="text-3xl font-bold flex items-center gap-2">
-            <ClipboardList className="h-8 w-8" />
-            Meine Arbeit
-          </h1>
-          <p className="text-muted-foreground mt-1">
-            Alle Aufgaben, Entscheidungen und Projekte auf einen Blick
-          </p>
-        </div>
-        
+      <div className="mb-6 flex items-start justify-end">
         <div className="flex items-center gap-2">
           <Badge variant={realtimeStatus === "connected" ? "secondary" : "destructive"} className="hidden md:inline-flex">
             Realtime: {realtimeStatus === "connected" ? "online" : realtimeStatus === "connecting" ? "verbinde…" : "degradiert"}
