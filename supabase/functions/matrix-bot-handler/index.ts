@@ -229,7 +229,7 @@ serve(async (req) => {
       return await handleWebsiteWidgetTest(
         body as WebsiteWidgetTestRequest,
         supabaseAdmin,
-        matrixToken,
+        matrixToken ?? "",
         matrixHomeserver,
         req,
       );
