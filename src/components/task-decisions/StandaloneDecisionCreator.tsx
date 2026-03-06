@@ -37,7 +37,11 @@ export const StandaloneDecisionCreator = ({
   onDecisionCreated, 
   variant = 'button',
   isOpen: externalIsOpen,
-  onOpenChange 
+  onOpenChange,
+  caseItemId,
+  defaultTitle,
+  defaultDescription,
+  onCreatedWithId,
 }: StandaloneDecisionCreatorProps) => {
   const [internalIsOpen, setInternalIsOpen] = useState(false);
   
