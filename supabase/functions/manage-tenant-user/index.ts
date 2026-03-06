@@ -101,8 +101,19 @@ serve(async (req) => {
     const isPlatformAdmin = await hasPlatformAdminAccess(supabaseAdmin, user);
     console.log(`User ${user.email} is platform admin: ${isPlatformAdmin}`);
 
+    // Resolve caller's tenant membership and role
+    const { data: callerMembershipData } = await supabaseAdmin
+      .from('user_tenant_memberships')
+      .select('tenant_id, role')
+      .eq('user_id', user.id)
+      .eq('is_active', true)
+      .limit(1)
+      .maybeSingle();
+    const callerMembership = callerMembershipData as { tenant_id: string; role: string } | null;
+    const isAbgeordneter = callerMembership?.role === 'abgeordneter';
+
     const assertTenantPermission = async (tenantId: string, requiredRole: 'abgeordneter') => {
-      if (isSuperadmin) return;
+      if (isPlatformAdmin) return;
 
       const { data: permission } = await supabaseAdmin
         .from('user_tenant_memberships')
