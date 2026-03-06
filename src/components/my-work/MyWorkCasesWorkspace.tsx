@@ -374,7 +374,7 @@ export function MyWorkCasesWorkspace() {
       toast.error("Status konnte nicht geändert werden.");
       return;
     }
-    setCaseItems((prev) => prev.map((row) => (row.id === item.id ? { ...row, status: newStatus } : row)));
+    setCaseItems((prev) => prev.map((row) => (row.id === item.id ? { ...row, status: newStatus as CaseItem["status"] } : row)));
     toast.success(`Status auf "${statusOptions.find((s) => s.value === newStatus)?.label || newStatus}" gesetzt.`);
   };
 
