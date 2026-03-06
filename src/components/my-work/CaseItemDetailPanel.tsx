@@ -85,6 +85,13 @@ export function CaseItemDetailPanel({
 }) {
   const [showMetaFields, setShowMetaFields] = useState(false);
 
+  const formatDecisionDate = (value: string | null | undefined) => {
+    if (!value) return "–";
+    const parsed = new Date(value);
+    if (Number.isNaN(parsed.getTime())) return "–";
+    return format(parsed, "dd.MM.yyyy", { locale: de });
+  };
+
   return (
     <div className="mx-2 mb-3 rounded-md border bg-muted/20 p-3 space-y-4">
       <div className="grid gap-4 lg:grid-cols-[minmax(0,2fr)_minmax(0,1fr)]">
@@ -200,8 +207,8 @@ export function CaseItemDetailPanel({
                       <p className="font-semibold truncate">{decision.title}</p>
                       <span className="text-muted-foreground">{decision.status}</span>
                     </div>
-                    <p className="text-muted-foreground">Erstellt: {format(new Date(decision.created_at), "dd.MM.yyyy", { locale: de })}</p>
-                    {decision.response_deadline && <p className="text-muted-foreground">Frist: {format(new Date(decision.response_deadline), "dd.MM.yyyy", { locale: de })}</p>}
+                    <p className="text-muted-foreground">Erstellt: {formatDecisionDate(decision.created_at)}</p>
+                    {decision.response_deadline && <p className="text-muted-foreground">Frist: {formatDecisionDate(decision.response_deadline)}</p>}
                   </div>
                 ))}
               </div>
