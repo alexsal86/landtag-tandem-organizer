@@ -6,6 +6,14 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version',
 };
 
+class HttpError extends Error {
+  status: number;
+  constructor(status: number, message: string) {
+    super(message);
+    this.status = status;
+  }
+}
+
 function generatePassword(): string {
   const chars = 'ABCDEFGHJKMNPQRSTUVWXYZabcdefghijkmnpqrstuvwxyz23456789!@#$%';
   let password = '';
@@ -93,8 +101,19 @@ serve(async (req) => {
     const isPlatformAdmin = await hasPlatformAdminAccess(supabaseAdmin, user);
     console.log(`User ${user.email} is platform admin: ${isPlatformAdmin}`);
 
+    // Resolve caller's tenant membership and role
+    const { data: callerMembershipData } = await supabaseAdmin
+      .from('user_tenant_memberships')
+      .select('tenant_id, role')
+      .eq('user_id', user.id)
+      .eq('is_active', true)
+      .limit(1)
+      .maybeSingle();
+    const callerMembership = callerMembershipData as { tenant_id: string; role: string } | null;
+    const isAbgeordneter = callerMembership?.role === 'abgeordneter';
+
     const assertTenantPermission = async (tenantId: string, requiredRole: 'abgeordneter') => {
-      if (isSuperadmin) return;
+      if (isPlatformAdmin) return;
 
       const { data: permission } = await supabaseAdmin
         .from('user_tenant_memberships')

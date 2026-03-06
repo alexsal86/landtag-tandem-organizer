@@ -1,5 +1,5 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { createClient, type SupabaseClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -83,11 +83,12 @@ const WIDGET_RATE_LIMIT_MAX_REQUESTS = Number(
   Deno.env.get("WIDGET_RATE_LIMIT_MAX_REQUESTS") ?? 5,
 );
 
+// deno-lint-ignore no-explicit-any
 async function logMatrixEvent(
-  supabaseAdmin: ReturnType<typeof createClient>,
+  supabaseAdmin: any,
   payload: MatrixLogPayload,
 ) {
-  const { error } = await supabaseAdmin.from("matrix_bot_logs").insert({
+  const { error } = await (supabaseAdmin as ReturnType<typeof createClient>).from("matrix_bot_logs").insert({
     event_type: payload.event_type,
     user_id: payload.user_id ?? null,
     room_id: payload.room_id ?? null,
@@ -105,8 +106,9 @@ async function logMatrixEvent(
   }
 }
 
+// deno-lint-ignore no-explicit-any
 async function isMatrixEnabledForUser(
-  supabaseAdmin: ReturnType<typeof createClient>,
+  supabaseAdmin: any,
   userId: string,
   cache: Map<string, boolean>,
 ) {
@@ -135,8 +137,9 @@ async function isMatrixEnabledForUser(
   return enabled;
 }
 
+// deno-lint-ignore no-explicit-any
 async function resolveTargetedSubscriptions(
-  supabaseAdmin: ReturnType<typeof createClient>,
+  supabaseAdmin: any,
   body: MatrixSendRequestBody,
 ) {
   if (!body.user_id && !body.allow_broadcast) {
@@ -226,7 +229,7 @@ serve(async (req) => {
       return await handleWebsiteWidgetTest(
         body as WebsiteWidgetTestRequest,
         supabaseAdmin,
-        matrixToken,
+        matrixToken ?? "",
         matrixHomeserver,
         req,
       );
