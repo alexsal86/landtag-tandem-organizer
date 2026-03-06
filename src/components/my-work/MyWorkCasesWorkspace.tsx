@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { format } from "date-fns";
 import { de } from "date-fns/locale";
-import { AlertCircle, ArrowDown, ArrowUp, Briefcase, Circle, ExternalLink, FileText, FolderOpen, Gavel, GripVertical, Link2, Mail, MessageSquare, Phone, Plus, Search, Trash2, UserRound, Users } from "lucide-react";
+import { AlertCircle, ArrowDown, ArrowUp, Briefcase, CheckCircle2, Circle, Clock, ExternalLink, FileText, FolderOpen, Gavel, GripVertical, Link2, Loader2, Mail, MessageSquare, Phone, Plus, Search, Trash2, UserRound, Users, Vote } from "lucide-react";
 import { DragDropContext, Droppable, Draggable, type DropResult } from "@hello-pangea/dnd";
 
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
