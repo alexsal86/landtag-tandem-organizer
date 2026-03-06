@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { format } from "date-fns";
 import { de } from "date-fns/locale";
 import { AlertCircle, ChevronDown, ExternalLink, Gavel, Loader2, Mail, MessageSquare, Phone, Trash2, Users, Vote } from "lucide-react";
@@ -53,7 +53,6 @@ export function CaseItemDetailPanel({
   loadingDecisions,
   timelineEntries,
   toEditorHtml,
-  getStatusMeta,
   caseFilesById,
   onUpdate,
   onSave,
@@ -63,6 +62,8 @@ export function CaseItemDetailPanel({
   onCreateCaseFile,
   onNavigateToCaseFile,
   contactDisplay,
+  contactPerson,
+  onContactPersonChange,
 }: {
   itemId: string;
   itemCaseFileId: string | null;
@@ -74,7 +75,6 @@ export function CaseItemDetailPanel({
   loadingDecisions: boolean;
   timelineEntries: TimelineEntry[];
   toEditorHtml: (value: string | null | undefined) => string;
-  getStatusMeta: (status: string | null) => { label: string };
   caseFilesById: Record<string, CaseFile>;
   onUpdate: (patch: Partial<EditableCaseItem>) => void;
   onSave: () => void;
@@ -84,8 +84,15 @@ export function CaseItemDetailPanel({
   onCreateCaseFile: (itemId: string) => void;
   onNavigateToCaseFile: (caseFileId: string) => void;
   contactDisplay: string;
+  contactPerson: string;
+  onContactPersonChange: (value: string) => void;
 }) {
   const [showMetaFields, setShowMetaFields] = useState(false);
+  const [showInteractionComposer, setShowInteractionComposer] = useState(false);
+
+  useEffect(() => {
+    setShowInteractionComposer(false);
+  }, [itemId]);
 
   const formatDecisionDate = (value: string | null | undefined) => {
     if (!value) return "–";
@@ -108,23 +115,90 @@ export function CaseItemDetailPanel({
 
   return (
     <div className="mx-2 mb-3 rounded-md border bg-muted/20 p-3 space-y-4">
-      <div className="grid gap-4 lg:grid-cols-[minmax(0,2fr)_minmax(0,1fr)]">
+      <div className="grid gap-4 lg:grid-cols-[minmax(230px,1fr)_minmax(0,2.8fr)]">
         <div className="space-y-3">
-          <div className="space-y-1.5">
-            <Label className="font-bold" htmlFor="detail-subject">Betreff</Label>
-            <Input id="detail-subject" value={editableCaseItem.subject} onChange={(event) => onUpdate({ subject: event.target.value })} />
+          <div className="rounded-md border bg-background p-3">
+            <p className="font-bold mb-3">Zeitstrahl</p>
+            <div className="relative space-y-4 pl-6">
+              {timelineEntries.length === 0 ? (
+                <p className="text-xs text-muted-foreground">Noch keine Einträge im Zeitstrahl.</p>
+              ) : (
+                <>
+                  {timelineEntries.map((entry, index) => {
+                    const isLastEntry = index === timelineEntries.length - 1;
+                    return (
+                      <div key={entry.id} className="relative">
+                        {!isLastEntry ? <span className="absolute -left-[12px] top-3 bottom-[-18px] w-px bg-border" /> : null}
+                        <span className={`absolute -left-[20px] top-1 h-4 w-4 rounded-full ${entry.accentClass} flex items-center justify-center text-white`}>
+                          {entry.icon ? <entry.icon className="h-2.5 w-2.5" /> : null}
+                        </span>
+                        <div className="group rounded p-2 text-xs">
+                          <div className="flex items-start justify-between gap-2">
+                            <div>
+                              <p className="font-semibold leading-4">{entry.title}</p>
+                            </div>
+                            {entry.canDelete && entry.onDelete ? (
+                              <TooltipProvider>
+                                <Tooltip>
+                                  <AlertDialog>
+                                    <TooltipTrigger asChild>
+                                      <AlertDialogTrigger asChild>
+                                        <Button
+                                          type="button"
+                                          variant="ghost"
+                                          size="icon"
+                                          className="h-6 w-6 opacity-0 transition-opacity duration-200 ease-out group-hover:opacity-100 focus-visible:opacity-100"
+                                        >
+                                          <Trash2 className="h-3.5 w-3.5" />
+                                        </Button>
+                                      </AlertDialogTrigger>
+                                    </TooltipTrigger>
+                                    <TooltipContent>Interaktion löschen</TooltipContent>
+                                    <AlertDialogContent>
+                                      <AlertDialogHeader>
+                                        <AlertDialogTitle>Interaktion löschen?</AlertDialogTitle>
+                                        <AlertDialogDescription>
+                                          Diese Interaktion wird dauerhaft aus dem Zeitstrahl entfernt.
+                                        </AlertDialogDescription>
+                                      </AlertDialogHeader>
+                                      <AlertDialogFooter>
+                                        <AlertDialogCancel>Abbrechen</AlertDialogCancel>
+                                        <AlertDialogAction onClick={entry.onDelete}>Löschen</AlertDialogAction>
+                                      </AlertDialogFooter>
+                                    </AlertDialogContent>
+                                  </AlertDialog>
+                                </Tooltip>
+                              </TooltipProvider>
+                            ) : null}
+                          </div>
+                          {entry.safeNoteHtml && <div className="mt-1 text-muted-foreground" dangerouslySetInnerHTML={{ __html: entry.safeNoteHtml }} />}
+                          <div className="mt-2 flex justify-end gap-1 text-[11px] text-muted-foreground">
+                            <span>{formatTimelineDateOnly(entry.timestamp)}</span>
+                            <span className="opacity-0 transition-opacity duration-200 ease-out group-hover:opacity-100 group-focus-within:opacity-100">• {formatTimelineTimeOnly(entry.timestamp)}</span>
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </>
+              )}
+            </div>
           </div>
-          <div className="space-y-1.5">
-            <Label className="font-bold" htmlFor="detail-summary">Beschreibung</Label>
-            <SimpleRichTextEditor
-              key={`detail-summary-${itemId}`}
-              initialContent={toEditorHtml(editableCaseItem.summary)}
-              onChange={(html) => onUpdate({ summary: html })}
-              placeholder="Beschreibung hinzufügen"
-              minHeight="140px"
-            />
+
+          <div className="space-y-1.5 rounded-md border bg-background p-3 text-sm">
+            <Label className="font-bold" htmlFor="detail-contact-person">Von / Gesprächspartner</Label>
+            <div className="flex gap-2">
+              <Input
+                id="detail-contact-person"
+                value={contactPerson}
+                placeholder={contactDisplay || "Von / Gesprächspartner"}
+                onChange={(event) => onContactPersonChange(event.target.value)}
+              />
+              <Button type="button" variant="outline" onClick={() => onContactPersonChange("")}>Löschen</Button>
+            </div>
           </div>
-          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+
+          <div className="grid grid-cols-1 gap-3">
             <div className="space-y-1.5">
               <Label className="font-bold" htmlFor="detail-received">Eingangsdatum</Label>
               <Input id="detail-received" type="date" value={editableCaseItem.sourceReceivedAt} onChange={(event) => onUpdate({ sourceReceivedAt: event.target.value })} />
@@ -134,6 +208,7 @@ export function CaseItemDetailPanel({
               <Input id="detail-due" type="date" value={editableCaseItem.dueAt} onChange={(event) => onUpdate({ dueAt: event.target.value })} />
             </div>
           </div>
+
           <Collapsible open={showMetaFields} onOpenChange={setShowMetaFields} className="rounded-md border bg-background">
             <CollapsibleTrigger asChild>
               <Button type="button" variant="ghost" className="flex w-full items-center justify-between rounded-md px-3 py-2 text-left">
@@ -207,13 +282,6 @@ export function CaseItemDetailPanel({
             </CollapsibleContent>
           </Collapsible>
 
-          {contactDisplay && (
-            <div className="space-y-1.5 rounded-md border bg-background p-3 text-sm">
-              <Label className="font-bold">Kontakt</Label>
-              <p className="text-muted-foreground">{contactDisplay}</p>
-            </div>
-          )}
-
           <div className="space-y-2 rounded-md border bg-background p-3">
             <Label className="font-bold flex items-center gap-1.5"><Vote className="h-4 w-4" />Verknüpfte Entscheidungen</Label>
             {loadingDecisions ? (
@@ -258,7 +326,7 @@ export function CaseItemDetailPanel({
         <div className="space-y-3">
           <div className="rounded-md border bg-background p-3 space-y-2">
             <p className="font-bold">Interaktion erfassen</p>
-            <div className="grid grid-cols-2 gap-2">
+            <div className="flex flex-wrap gap-2 xl:flex-nowrap">
               {interactionTypeOptions.map((option) => {
                 const selected = editableCaseItem.interactionType === option.value;
                 const OptionIcon = option.icon;
@@ -268,8 +336,16 @@ export function CaseItemDetailPanel({
                     type="button"
                     variant={selected ? "default" : "outline"}
                     size="sm"
-                    className={cn("justify-start", selected && "shadow")}
-                    onClick={() => onUpdate({ interactionType: option.value })}
+                    className="flex-1 justify-start"
+                    onClick={() => {
+                      if (selected && showInteractionComposer) {
+                        onUpdate({ interactionType: "", interactionContact: "", interactionDateTime: "", interactionNote: "" });
+                        setShowInteractionComposer(false);
+                        return;
+                      }
+                      onUpdate({ interactionType: option.value });
+                      setShowInteractionComposer(true);
+                    }}
                   >
                     <OptionIcon className="mr-1 h-3.5 w-3.5" />
                     {option.label}
@@ -277,92 +353,45 @@ export function CaseItemDetailPanel({
                 );
               })}
             </div>
-            {(editableCaseItem.interactionType === "anruf" || editableCaseItem.interactionType === "mail" || editableCaseItem.interactionType === "gespraech" || editableCaseItem.interactionType === "treffen") && (
-              <Input
-                placeholder={editableCaseItem.interactionType === "mail" ? "E-Mail-Adresse" : editableCaseItem.interactionType === "anruf" ? "Telefonnummer" : "Kontaktperson"}
-                value={editableCaseItem.interactionContact}
-                onChange={(event) => onUpdate({ interactionContact: event.target.value })}
-              />
+            {showInteractionComposer ? (
+              <>
+                {(editableCaseItem.interactionType === "anruf" || editableCaseItem.interactionType === "mail" || editableCaseItem.interactionType === "gespraech" || editableCaseItem.interactionType === "treffen") && (
+                  <Input
+                    placeholder={editableCaseItem.interactionType === "mail" ? "E-Mail-Adresse" : editableCaseItem.interactionType === "anruf" ? "Telefonnummer" : "Kontaktperson"}
+                    value={editableCaseItem.interactionContact}
+                    onChange={(event) => onUpdate({ interactionContact: event.target.value })}
+                  />
+                )}
+                <Input type="datetime-local" value={editableCaseItem.interactionDateTime} onChange={(event) => onUpdate({ interactionDateTime: event.target.value })} />
+                <SimpleRichTextEditor
+                  key={editableCaseItem.timelineEvents.length}
+                  initialContent={editableCaseItem.interactionNote}
+                  onChange={(value) => onUpdate({ interactionNote: value })}
+                  placeholder="Notiz"
+                  minHeight="120px"
+                  maxHeight="180px"
+                  scrollable
+                />
+                <Button type="button" size="sm" onClick={onAddInteraction}>Interaktion hinzufügen</Button>
+              </>
+            ) : (
+              <p className="text-xs text-muted-foreground">Bitte Interaktion wählen, um Details zu öffnen.</p>
             )}
-            <Input type="datetime-local" value={editableCaseItem.interactionDateTime} onChange={(event) => onUpdate({ interactionDateTime: event.target.value })} />
-            <SimpleRichTextEditor
-              key={editableCaseItem.timelineEvents.length}
-              initialContent={editableCaseItem.interactionNote}
-              onChange={(value) => onUpdate({ interactionNote: value })}
-              placeholder="Notiz"
-              minHeight="120px"
-              maxHeight="180px"
-              scrollable
-            />
-            <Button type="button" size="sm" onClick={onAddInteraction}>Interaktion hinzufügen</Button>
           </div>
 
-          <div className="rounded-md border bg-background p-3">
-            <p className="font-bold mb-3">Zeitstrahl</p>
-            <div className="relative space-y-4 pl-6">
-              {timelineEntries.length === 0 ? (
-                <p className="text-xs text-muted-foreground">Noch keine Einträge im Zeitstrahl.</p>
-              ) : (
-                <>
-                  {timelineEntries.map((entry, index) => {
-                    const isLastEntry = index === timelineEntries.length - 1;
-                    return (
-                      <div key={entry.id} className="relative">
-                        {!isLastEntry ? <span className="absolute -left-[12px] top-2 bottom-[-18px] w-px bg-border" /> : null}
-                        <span className={`absolute -left-[20px] top-0 h-4 w-4 rounded-full ${entry.accentClass} flex items-center justify-center text-white`}>
-                          {entry.icon ? <entry.icon className="h-2.5 w-2.5" /> : null}
-                        </span>
-                        <div className="group rounded p-2 text-xs">
-                          <div className="flex items-start justify-between gap-2">
-                            <div>
-                              <p className="font-semibold leading-4">{entry.title}</p>
-                            </div>
-                            {entry.canDelete && entry.onDelete ? (
-                              <TooltipProvider>
-                                <Tooltip>
-                                  <AlertDialog>
-                                    <TooltipTrigger asChild>
-                                      <AlertDialogTrigger asChild>
-                                        <Button
-                                          type="button"
-                                          variant="ghost"
-                                          size="icon"
-                                          className="h-6 w-6 opacity-0 transition-opacity duration-200 ease-out group-hover:opacity-100 focus-visible:opacity-100"
-                                        >
-                                          <Trash2 className="h-3.5 w-3.5" />
-                                        </Button>
-                                      </AlertDialogTrigger>
-                                    </TooltipTrigger>
-                                    <TooltipContent>Interaktion löschen</TooltipContent>
-                                    <AlertDialogContent>
-                                      <AlertDialogHeader>
-                                        <AlertDialogTitle>Interaktion löschen?</AlertDialogTitle>
-                                        <AlertDialogDescription>
-                                          Diese Interaktion wird dauerhaft aus dem Zeitstrahl entfernt.
-                                        </AlertDialogDescription>
-                                      </AlertDialogHeader>
-                                      <AlertDialogFooter>
-                                        <AlertDialogCancel>Abbrechen</AlertDialogCancel>
-                                        <AlertDialogAction onClick={entry.onDelete}>Löschen</AlertDialogAction>
-                                      </AlertDialogFooter>
-                                    </AlertDialogContent>
-                                  </AlertDialog>
-                                </Tooltip>
-                              </TooltipProvider>
-                            ) : null}
-                          </div>
-                          {entry.safeNoteHtml && <div className="mt-1 text-muted-foreground" dangerouslySetInnerHTML={{ __html: entry.safeNoteHtml }} />}
-                          <div className="mt-2 flex justify-end gap-1 text-[11px] text-muted-foreground">
-                            <span>{formatTimelineDateOnly(entry.timestamp)}</span>
-                            <span className="opacity-0 transition-opacity duration-200 ease-out group-hover:opacity-100 group-focus-within:opacity-100">• {formatTimelineTimeOnly(entry.timestamp)}</span>
-                          </div>
-                        </div>
-                      </div>
-                    );
-                  })}
-                </>
-              )}
-            </div>
+          <div className="space-y-1.5">
+            <Label className="font-bold" htmlFor="detail-subject">Betreff</Label>
+            <Input id="detail-subject" value={editableCaseItem.subject} onChange={(event) => onUpdate({ subject: event.target.value })} />
+          </div>
+          <div className="space-y-1.5">
+            <Label className="font-bold" htmlFor="detail-summary">Beschreibung</Label>
+            <SimpleRichTextEditor
+              key={`detail-summary-${itemId}`}
+              initialContent={toEditorHtml(editableCaseItem.summary)}
+              onChange={(html) => onUpdate({ summary: html })}
+              placeholder="Beschreibung hinzufügen"
+              minHeight="140px"
+            />
           </div>
         </div>
       </div>
