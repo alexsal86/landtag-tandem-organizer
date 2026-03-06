@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect, useCallback } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -96,7 +96,7 @@ export const StandaloneDecisionCreator = ({
     }
   };
 
-  const loadProfiles = async () => {
+  const loadProfiles = useCallback(async () => {
     console.log("Loading profiles for decision creator...");
     try {
       // Get current user's tenant
@@ -197,7 +197,7 @@ export const StandaloneDecisionCreator = ({
       console.error('Error loading profiles:', error);
       setProfilesLoaded(true);
     }
-  };
+  }, []);
 
   const handleSubmit = async () => {
     if (!title.trim()) {
@@ -503,6 +503,12 @@ export const StandaloneDecisionCreator = ({
       setUploadStatus(null);
     }
   };
+
+  useEffect(() => {
+    if (isOpen && !profilesLoaded) {
+      void loadProfiles();
+    }
+  }, [isOpen, profilesLoaded, loadProfiles]);
 
   const userOptions = useMemo(() => {
     if (!Array.isArray(profiles)) return [];

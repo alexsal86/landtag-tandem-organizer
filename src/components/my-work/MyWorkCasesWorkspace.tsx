@@ -1197,22 +1197,24 @@ export function MyWorkCasesWorkspace() {
             }}
           />
 
-          <StandaloneDecisionCreator
-            isOpen={isDecisionCreatorOpen}
-            onOpenChange={(open) => {
-              setIsDecisionCreatorOpen(open);
-              if (!open) setDecisionCreatorItemId(null);
-            }}
-            onDecisionCreated={() => {
-              if (decisionCreatorItemId) runAsync(() => loadLinkedDecisions(decisionCreatorItemId));
-            }}
-            caseItemId={decisionCreatorItemId || undefined}
-            defaultTitle={decisionCreatorItemId ? (caseItems.find(i => i.id === decisionCreatorItemId)?.subject || "") : ""}
-            defaultDescription={decisionCreatorItemId ? (caseItems.find(i => i.id === decisionCreatorItemId)?.summary || "") : ""}
-            onCreatedWithId={(decisionId) => {
-              runAsync(() => handleDecisionCreated(decisionId));
-            }}
-          />
+          {isDecisionCreatorOpen && (
+            <StandaloneDecisionCreator
+              isOpen={isDecisionCreatorOpen}
+              onOpenChange={(open) => {
+                setIsDecisionCreatorOpen(open);
+                if (!open) setDecisionCreatorItemId(null);
+              }}
+              onDecisionCreated={() => {
+                if (decisionCreatorItemId) runAsync(() => loadLinkedDecisions(decisionCreatorItemId));
+              }}
+              caseItemId={decisionCreatorItemId || undefined}
+              defaultTitle={decisionCreatorItemId ? (caseItems.find(i => i.id === decisionCreatorItemId)?.subject || "") : ""}
+              defaultDescription={decisionCreatorItemId ? (caseItems.find(i => i.id === decisionCreatorItemId)?.summary || "") : ""}
+              onCreatedWithId={(decisionId) => {
+                runAsync(() => handleDecisionCreated(decisionId));
+              }}
+            />
+          )}
         </>
       )}
     </>
