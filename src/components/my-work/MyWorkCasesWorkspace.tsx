@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { format } from "date-fns";
 import { de } from "date-fns/locale";
-import { Briefcase, ExternalLink, FileText, FolderOpen, Plus, Search } from "lucide-react";
+import { Briefcase, ExternalLink, FileText, FolderOpen, Mail, MessageSquare, Phone, Plus, Search, UserRound } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -10,6 +10,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { CaseFileDetail, CaseFileCreateDialog } from "@/features/cases/files/components";
 import { CaseItemCreateDialog } from "@/components/my-work/CaseItemCreateDialog";
 import { useCaseItems } from "@/features/cases/items/hooks";
@@ -22,7 +23,9 @@ type CaseItem = {
   id: string;
   subject: string | null;
   resolution_summary: string | null;
+  summary: string | null;
   source_channel: string | null;
+  source_received_at: string | null;
   status: string | null;
   priority: string | null;
   due_at: string | null;
@@ -41,6 +44,19 @@ type CaseFile = {
   case_type: string | null;
 };
 
+type TeamUser = {
+  id: string;
+  name: string;
+};
+
+const sourceChannelMeta: Record<string, { icon: typeof Phone; label: string }> = {
+  phone: { icon: Phone, label: "Telefon" },
+  email: { icon: Mail, label: "E-Mail" },
+  social: { icon: MessageSquare, label: "Social" },
+  in_person: { icon: UserRound, label: "Vor Ort" },
+  other: { icon: Briefcase, label: "Sonstiges" },
+};
+
 export function MyWorkCasesWorkspace() {
   const { user } = useAuth();
   const { currentTenant } = useTenant();
@@ -52,6 +68,7 @@ export function MyWorkCasesWorkspace() {
   const [caseItems, setCaseItems] = useState<CaseItem[]>([]);
   const [allCaseFiles, setAllCaseFiles] = useState<CaseFile[]>([]);
   const [caseFilesById, setCaseFilesById] = useState<Record<string, CaseFile>>({});
+  const [teamUsers, setTeamUsers] = useState<TeamUser[]>([]);
   const [loading, setLoading] = useState(true);
   const [itemFilterQuery, setItemFilterQuery] = useState("");
   const [fileFilterQuery, setFileFilterQuery] = useState("");
@@ -92,6 +109,7 @@ export function MyWorkCasesWorkspace() {
       setCaseItems([]);
       setAllCaseFiles([]);
       setCaseFilesById({});
+      setTeamUsers([]);
       setLoading(false);
       return;
     }
@@ -99,10 +117,10 @@ export function MyWorkCasesWorkspace() {
     setLoading(true);
     try {
       // Load case items and ALL case files in parallel
-      const [itemsRes, filesRes] = await Promise.all([
+      const [itemsRes, filesRes, membersRes] = await Promise.all([
         supabase
           .from("case_items" as any)
-          .select("id, subject, resolution_summary, source_channel, status, priority, due_at, case_file_id, user_id, owner_user_id, updated_at")
+          .select("id, subject, summary, resolution_summary, source_channel, source_received_at, status, priority, due_at, case_file_id, user_id, owner_user_id, updated_at")
           .eq("tenant_id", tenantId)
           .order("updated_at", { ascending: false, nullsFirst: false })
           .limit(200),
@@ -112,10 +130,16 @@ export function MyWorkCasesWorkspace() {
           .eq("tenant_id", tenantId)
           .order("updated_at", { ascending: false })
           .limit(200),
+        supabase
+          .from("user_tenant_memberships")
+          .select("user_id")
+          .eq("tenant_id", tenantId)
+          .eq("is_active", true),
       ]);
 
       if (itemsRes.error) throw itemsRes.error;
       if (filesRes.error) throw filesRes.error;
+      if (membersRes.error) throw membersRes.error;
 
       const items = (itemsRes.data || []) as unknown as CaseItem[];
       const files = (filesRes.data || []) as unknown as CaseFile[];
@@ -128,6 +152,19 @@ export function MyWorkCasesWorkspace() {
         return acc;
       }, {});
       setCaseFilesById(mapped);
+      const memberIds = ((membersRes.data || []) as Array<{ user_id: string }>).map((row) => row.user_id);
+      if (memberIds.length === 0) {
+        setTeamUsers([]);
+      } else {
+        const { data: profileRows, error: profilesError } = await supabase
+          .from("profiles")
+          .select("user_id, display_name")
+          .in("user_id", memberIds);
+        if (profilesError) throw profilesError;
+
+        const nameById = new Map((profileRows || []).map((row) => [row.user_id, row.display_name || "Unbekannt"]));
+        setTeamUsers(memberIds.map((id) => ({ id, name: nameById.get(id) || "Unbekannt" })));
+      }
     } catch (error) {
       console.error("Error loading cases workspace:", error);
     } finally {
@@ -150,7 +187,7 @@ export function MyWorkCasesWorkspace() {
     if (!query) return caseItems;
     return caseItems.filter((item) => {
       const linkedFile = item.case_file_id ? caseFilesById[item.case_file_id] : null;
-      return [item.subject, item.resolution_summary, item.source_channel, item.status, item.priority]
+      return [item.subject, item.summary, item.resolution_summary, item.source_channel, item.status, item.priority]
         .concat(linkedFile ? [linkedFile.title, linkedFile.reference_number] : [])
         .filter(Boolean)
         .some((v) => v!.toLowerCase().includes(query));
@@ -178,15 +215,14 @@ export function MyWorkCasesWorkspace() {
     return counts;
   }, [caseItems]);
 
-  const itemStats = useMemo(() => {
-    const closedStatuses = new Set(["closed", "done", "abgeschlossen"]);
-    const openItems = filteredCaseItems.filter((item) => {
-      const s = item.status?.trim().toLowerCase();
-      return !s || !closedStatuses.has(s);
-    }).length;
-    const singleItems = filteredCaseItems.filter((i) => !i.case_file_id).length;
-    return { total: filteredCaseItems.length, open: openItems, single: singleItems };
-  }, [filteredCaseItems]);
+
+  const defaultAssigneeId = user?.id ?? null;
+
+  const handleOwnerChange = async (caseItemId: string, ownerId: string) => {
+    const value = ownerId === "unassigned" ? null : ownerId;
+    await supabase.from("case_items").update({ owner_user_id: value }).eq("id", caseItemId);
+    setCaseItems((prev) => prev.map((item) => (item.id === caseItemId ? { ...item, owner_user_id: value } : item)));
+  };
 
   const fileStats = useMemo(() => {
     const closedStatuses = new Set(["closed", "done", "abgeschlossen", "archived", "archiviert"]);
@@ -246,6 +282,7 @@ export function MyWorkCasesWorkspace() {
     return caseItems.find((i) => i.id === detailItemId) || null;
   }, [caseItems, detailItemId]);
 
+
   // --- Render ---
 
   if (loading) {
@@ -267,20 +304,6 @@ export function MyWorkCasesWorkspace() {
                 <Plus className="mr-1 h-4 w-4" />
                 Neu
               </Button>
-            </div>
-            <div className="mt-2 flex gap-3 text-xs">
-              <span className="rounded-md border px-2 py-1">
-                <span className="text-muted-foreground">Gesamt:</span>{" "}
-                <span className="font-semibold">{itemStats.total}</span>
-              </span>
-              <span className="rounded-md border px-2 py-1">
-                <span className="text-muted-foreground">Offen:</span>{" "}
-                <span className="font-semibold">{itemStats.open}</span>
-              </span>
-              <span className="rounded-md border px-2 py-1">
-                <span className="text-muted-foreground">Einzeln:</span>{" "}
-                <span className="font-semibold">{itemStats.single}</span>
-              </span>
             </div>
           </CardHeader>
           <CardContent className="space-y-3">
@@ -304,25 +327,48 @@ export function MyWorkCasesWorkspace() {
                   filteredCaseItems.map((item) => {
                     const linkedFile = item.case_file_id ? caseFilesById[item.case_file_id] : null;
                     const isActive = detailItemId === item.id;
+                    const channel = item.source_channel ? sourceChannelMeta[item.source_channel] : null;
+                    const ChannelIcon = channel?.icon ?? Briefcase;
                     return (
                       <button
                         key={item.id}
                         type="button"
                         className={cn(
-                          "w-full rounded-md border p-3 text-left transition-colors hover:bg-muted/50",
-                          isActive && "border-primary bg-primary/5",
+                          "w-full border-b px-2 py-2 text-left transition-colors hover:bg-muted/40",
+                          isActive && "bg-primary/5",
                         )}
                         onClick={() => handleSelectCaseItem(item)}
                       >
                         <div className="flex items-start justify-between gap-2">
-                          <p className="text-sm font-medium line-clamp-1">
-                            {item.subject || item.resolution_summary || "Ohne Titel"}
-                          </p>
+                          <div className="flex items-start gap-2 min-w-0">
+                            <span className="mt-0.5 rounded-sm bg-muted p-1 text-muted-foreground" title={channel?.label || "Kanal unbekannt"}>
+                              <ChannelIcon className="h-3 w-3" />
+                            </span>
+                            <p className="text-sm font-medium line-clamp-1">
+                              {item.subject || item.summary || item.resolution_summary || "Ohne Titel"}
+                            </p>
+                          </div>
                           {item.priority && <Badge variant="outline" className="shrink-0 text-[10px]">{item.priority}</Badge>}
                         </div>
-                        <div className="mt-1.5 flex items-center justify-between text-xs text-muted-foreground">
-                          <span>{item.status || "offen"}</span>
-                          {item.due_at && <span>Fällig: {format(new Date(item.due_at), "dd.MM.yy", { locale: de })}</span>}
+                        <div className="mt-1.5 grid grid-cols-1 gap-2 text-xs text-muted-foreground sm:grid-cols-2 lg:grid-cols-5">
+                          <span>Status: {item.status || "offen"}</span>
+                          <span>{item.source_received_at ? `Eingang: ${format(new Date(item.source_received_at), "dd.MM.yy", { locale: de })}` : "Eingang: –"}</span>
+                          <span>{item.due_at ? `Fällig: ${format(new Date(item.due_at), "dd.MM.yy", { locale: de })}` : "Fällig: –"}</span>
+                          <span className="truncate" title={item.summary || item.resolution_summary || ""}>Thema: {item.summary || item.resolution_summary || "–"}</span>
+                          <div className="flex items-center gap-2" onClick={(event) => event.stopPropagation()}>
+                            <span>Bearbeiter:</span>
+                            <Select value={item.owner_user_id || "unassigned"} onValueChange={(value) => { void handleOwnerChange(item.id, value); }}>
+                              <SelectTrigger className="h-7 w-[170px] text-xs">
+                                <SelectValue placeholder="Bearbeiter" />
+                              </SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="unassigned">Nicht zugewiesen</SelectItem>
+                                {teamUsers.map((member) => (
+                                  <SelectItem key={member.id} value={member.id}>{member.name}</SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                          </div>
                         </div>
                         {linkedFile ? (
                           <p className="mt-1 text-xs text-muted-foreground truncate">
@@ -392,8 +438,8 @@ export function MyWorkCasesWorkspace() {
                         key={cf.id}
                         type="button"
                         className={cn(
-                          "w-full rounded-md border p-3 text-left transition-colors hover:bg-muted/50",
-                          isActive && "border-primary bg-primary/5",
+                          "w-full border-b px-2 py-2 text-left transition-colors hover:bg-muted/40",
+                          isActive && "bg-primary/5",
                         )}
                         onClick={() => handleSelectCaseFile(cf)}
                       >
@@ -435,7 +481,7 @@ export function MyWorkCasesWorkspace() {
           {detailItem && (
             <div className="mt-4 space-y-4">
               <div className="space-y-2">
-                <h3 className="font-semibold">{detailItem.subject || detailItem.resolution_summary || "Ohne Titel"}</h3>
+                <h3 className="font-semibold">{detailItem.subject || detailItem.summary || detailItem.resolution_summary || "Ohne Titel"}</h3>
                 <div className="flex flex-wrap gap-2 text-xs">
                   {detailItem.status && <Badge variant="outline">{detailItem.status}</Badge>}
                   {detailItem.priority && <Badge variant="secondary">{detailItem.priority}</Badge>}
@@ -499,6 +545,8 @@ export function MyWorkCasesWorkspace() {
         onOpenChange={setIsCaseItemDialogOpen}
         onCreated={(id) => { void handleCaseItemCreated(id); }}
         createCaseItem={createCaseItem}
+        assignees={teamUsers}
+        defaultAssigneeId={defaultAssigneeId}
       />
 
       <CaseFileCreateDialog

@@ -1,11 +1,11 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { Briefcase, Mail, MessageSquare, Phone, UserRound } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { useToast } from "@/components/ui/use-toast";
 import { CaseItemFormData, useCaseItems } from "@/features/cases/items/hooks";
 import { useAuth } from "@/hooks/useAuth";
 import { useTenant } from "@/hooks/useTenant";
@@ -15,19 +15,35 @@ interface CaseItemCreateDialogProps {
   onOpenChange: (open: boolean) => void;
   onCreated: (id: string) => void;
   createCaseItem: ReturnType<typeof useCaseItems>["createCaseItem"];
+  assignees: Array<{ id: string; name: string }>;
+  defaultAssigneeId: string | null;
 }
 
-export function CaseItemCreateDialog({ open, onOpenChange, onCreated, createCaseItem }: CaseItemCreateDialogProps) {
+const sourceChannelOptions = [
+  { value: "email", label: "E-Mail", icon: Mail },
+  { value: "phone", label: "Telefon", icon: Phone },
+  { value: "social", label: "Social Media", icon: MessageSquare },
+  { value: "in_person", label: "Persönlich", icon: UserRound },
+  { value: "other", label: "Sonstiges", icon: Briefcase },
+] as const;
+
+export function CaseItemCreateDialog({ open, onOpenChange, onCreated, createCaseItem, assignees, defaultAssigneeId }: CaseItemCreateDialogProps) {
   const { user } = useAuth();
   const { currentTenant } = useTenant();
-  const { toast } = useToast();
   const [subject, setSubject] = useState("");
   const [sourceChannel, setSourceChannel] = useState<CaseItemFormData["source_channel"]>("email");
   const [priority, setPriority] = useState<NonNullable<CaseItemFormData["priority"]>>("medium");
+  const [ownerUserId, setOwnerUserId] = useState<string>(defaultAssigneeId || "unassigned");
   const [dueDate, setDueDate] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
   const hasContext = Boolean(user && currentTenant);
+
+  useEffect(() => {
+    if (open) {
+      setOwnerUserId(defaultAssigneeId || "unassigned");
+    }
+  }, [defaultAssigneeId, open]);
 
   const handleSubmit = async () => {
     if (!subject.trim() || !hasContext) return;
@@ -41,6 +57,7 @@ export function CaseItemCreateDialog({ open, onOpenChange, onCreated, createCase
       priority,
       status: "active",
       due_at: dueDate ? new Date(`${dueDate}T12:00:00`).toISOString() : null,
+      owner_user_id: ownerUserId === "unassigned" ? null : ownerUserId,
       subject: subject.trim(),
       summary: subject.trim(),
       resolution_summary: subject.trim(),
@@ -49,7 +66,7 @@ export function CaseItemCreateDialog({ open, onOpenChange, onCreated, createCase
     setSubmitting(false);
 
     if (!newItem) {
-      setSubmitError("Anliegen konnte nicht erstellt werden. Details siehe Benachrichtigung.");
+      setSubmitError("Vorgang konnte nicht erstellt werden. Details siehe Benachrichtigung.");
       return;
     }
 
@@ -57,6 +74,7 @@ export function CaseItemCreateDialog({ open, onOpenChange, onCreated, createCase
     setSubject("");
     setSourceChannel("email");
     setPriority("medium");
+    setOwnerUserId(defaultAssigneeId || "unassigned");
     setDueDate("");
     onOpenChange(false);
   };
@@ -65,7 +83,7 @@ export function CaseItemCreateDialog({ open, onOpenChange, onCreated, createCase
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>Neues Anliegen</DialogTitle>
+          <DialogTitle>Neuer Vorgang</DialogTitle>
         </DialogHeader>
 
         <div className="space-y-4 py-2">
@@ -94,11 +112,32 @@ export function CaseItemCreateDialog({ open, onOpenChange, onCreated, createCase
                 <SelectValue placeholder="Kanal auswählen" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="email">E-Mail</SelectItem>
-                <SelectItem value="phone">Telefon</SelectItem>
-                <SelectItem value="social">Social Media</SelectItem>
-                <SelectItem value="in_person">Persönlich</SelectItem>
-                <SelectItem value="other">Sonstiges</SelectItem>
+                {sourceChannelOptions.map((option) => {
+                  const Icon = option.icon;
+                  return (
+                    <SelectItem key={option.value} value={option.value}>
+                      <span className="inline-flex items-center gap-2">
+                        <Icon className="h-3.5 w-3.5" />
+                        {option.label}
+                      </span>
+                    </SelectItem>
+                  );
+                })}
+              </SelectContent>
+            </Select>
+          </div>
+
+          <div className="space-y-2">
+            <Label>Bearbeiter</Label>
+            <Select value={ownerUserId} onValueChange={setOwnerUserId}>
+              <SelectTrigger>
+                <SelectValue placeholder="Bearbeiter auswählen" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="unassigned">Nicht zugewiesen</SelectItem>
+                {assignees.map((assignee) => (
+                  <SelectItem key={assignee.id} value={assignee.id}>{assignee.name}</SelectItem>
+                ))}
               </SelectContent>
             </Select>
           </div>
@@ -134,7 +173,7 @@ export function CaseItemCreateDialog({ open, onOpenChange, onCreated, createCase
             Abbrechen
           </Button>
           <Button onClick={handleSubmit} disabled={submitting || !subject.trim() || !hasContext}>
-            Anliegen erstellen
+            Vorgang erstellen
           </Button>
         </DialogFooter>
       </DialogContent>
