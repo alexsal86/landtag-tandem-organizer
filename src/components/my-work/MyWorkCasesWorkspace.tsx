@@ -623,9 +623,6 @@ export function MyWorkCasesWorkspace() {
     return parts.slice(0, 2).map((part) => part[0]?.toUpperCase()).join("") || "?";
   };
 
-  const formatTimelineDate = useCallback((timestamp: string) =>
-    formatDateSafe(timestamp, "dd.MM.yyyy, HH:mm", "–", { locale: de }), []);
-
 
   const formatInteractionTimestamp = useCallback((value: string) => {
     if (!value) return new Date().toISOString();
@@ -1070,7 +1067,6 @@ export function MyWorkCasesWorkspace() {
                                                 loadingDecisions={loadingDecisions}
                                                 timelineEntries={timelineEntries}
                                                 toEditorHtml={toEditorHtml}
-                                                formatTimelineDate={formatTimelineDate}
                                                 getStatusMeta={getStatusMeta}
                                                 caseFilesById={caseFilesById}
                                                 onUpdate={updateEdit}
