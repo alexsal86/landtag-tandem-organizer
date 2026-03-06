@@ -74,7 +74,8 @@ type EditableCaseItem = {
   assigneeIds: string[];
   timelineEvents: TimelineEvent[];
   interactionType: TimelineInteractionType;
-  interactionTitle: string;
+  interactionContact: string;
+  interactionDateTime: string;
   interactionNote: string;
 };
 
@@ -88,6 +89,16 @@ type TimelineEvent = {
   timestamp: string;
   statusValue?: string;
   interactionType?: TimelineInteractionType;
+};
+
+type TimelineEntry = {
+  id: string;
+  timestamp: string;
+  title: string;
+  note?: string;
+  accentClass: string;
+  canDelete?: boolean;
+  onDelete?: () => void;
 };
 
 type CaseItemSortKey = "channel" | "subject" | "description" | "status" | "received" | "due" | "category" | "priority" | "assignee";
@@ -111,12 +122,12 @@ const statusOptions = [
   { value: "erledigt", label: "Erledigt", dotColor: "bg-emerald-600", badgeClass: "border-emerald-500/40 text-emerald-700 bg-emerald-500/10" },
 ] as const;
 
-const interactionTypeOptions: Array<{ value: TimelineInteractionType; label: string }> = [
-  { value: "anruf", label: "Anruf" },
-  { value: "mail", label: "Mail" },
-  { value: "treffen", label: "Treffen" },
-  { value: "gespraech", label: "Gespräch" },
-  { value: "notiz", label: "Notiz" },
+const interactionTypeOptions: Array<{ value: TimelineInteractionType; label: string; icon: typeof Phone }> = [
+  { value: "anruf", label: "Anruf", icon: Phone },
+  { value: "mail", label: "Mail", icon: Mail },
+  { value: "treffen", label: "Treffen", icon: Users },
+  { value: "gespraech", label: "Gespräch", icon: MessageSquare },
+  { value: "notiz", label: "Notiz", icon: FileText },
 ];
 
 const toEditorHtml = (value: string | null | undefined) => {
@@ -558,7 +569,8 @@ export function MyWorkCasesWorkspace() {
       assigneeIds: getAssigneeIds(item),
       timelineEvents: parseTimelineEvents(item.intake_payload),
       interactionType: "anruf",
-      interactionTitle: "",
+      interactionContact: "",
+      interactionDateTime: "",
       interactionNote: "",
     });
   };
@@ -630,7 +642,8 @@ export function MyWorkCasesWorkspace() {
     }
   }, []);
 
-  const appendTimelineEvent = useCallback((event: Omit<TimelineEvent, "id" | "timestamp">) => {
+
+  const appendTimelineEvent = useCallback((event: Omit<TimelineEvent, "id" | "timestamp"> & { timestamp?: string }) => {
     setEditableCaseItem((prev) => {
       if (!prev) return prev;
       return {
@@ -638,23 +651,43 @@ export function MyWorkCasesWorkspace() {
         timelineEvents: [...prev.timelineEvents, {
           ...event,
           id: typeof crypto !== "undefined" && "randomUUID" in crypto ? crypto.randomUUID() : `${Date.now()}-${Math.random()}`,
-          timestamp: new Date().toISOString(),
+          timestamp: event.timestamp || new Date().toISOString(),
         }],
       };
     });
   }, []);
 
+  const formatInteractionTimestamp = useCallback((value: string) => {
+    if (!value) return new Date().toISOString();
+    const parsed = new Date(value);
+    if (Number.isNaN(parsed.getTime())) return new Date().toISOString();
+    return parsed.toISOString();
+  }, []);
+
   const handleAddInteraction = useCallback(() => {
     if (!editableCaseItem) return;
-    const title = editableCaseItem.interactionTitle.trim() || `${interactionTypeOptions.find((opt) => opt.value === editableCaseItem.interactionType)?.label || "Interaktion"}`;
+    const typeMeta = interactionTypeOptions.find((opt) => opt.value === editableCaseItem.interactionType);
+    const contact = editableCaseItem.interactionContact.trim();
+    const fallbackTypeLabel = typeMeta?.label || "Interaktion";
+
+    let title = fallbackTypeLabel;
+    if (editableCaseItem.interactionType === "anruf") {
+      title = `Telefonat mit ${contact || "unbekannt"}`;
+    } else if (editableCaseItem.interactionType === "mail") {
+      title = `E-Mail mit ${contact || "unbekannt"}`;
+    } else if (contact) {
+      title = `${fallbackTypeLabel} mit ${contact}`;
+    }
+
     appendTimelineEvent({
       type: "interaktion",
       title,
-      note: editableCaseItem.interactionNote.trim() || undefined,
+      note: normalizeRichTextValue(editableCaseItem.interactionNote) || undefined,
       interactionType: editableCaseItem.interactionType,
+      timestamp: formatInteractionTimestamp(editableCaseItem.interactionDateTime),
     });
-    setEditableCaseItem((prev) => prev ? { ...prev, interactionTitle: "", interactionNote: "" } : prev);
-  }, [appendTimelineEvent, editableCaseItem]);
+    setEditableCaseItem((prev) => prev ? { ...prev, interactionContact: "", interactionDateTime: "", interactionNote: "" } : prev);
+  }, [appendTimelineEvent, editableCaseItem, formatInteractionTimestamp]);
 
   const handleRequestDecision = useCallback(() => {
     if (!editableCaseItem || !detailItemId) return;
@@ -705,6 +738,50 @@ export function MyWorkCasesWorkspace() {
   const handleDeleteTimelineEvent = useCallback((eventId: string) => {
     setEditableCaseItem((prev) => prev ? { ...prev, timelineEvents: prev.timelineEvents.filter((event) => event.id !== eventId) } : prev);
   }, []);
+
+  const timelineEntries = useMemo<TimelineEntry[]>(() => {
+    if (!editableCaseItem) return [];
+    const entries: TimelineEntry[] = [];
+    if (editableCaseItem.sourceReceivedAt) {
+      entries.push({
+        id: "source-received",
+        timestamp: `${editableCaseItem.sourceReceivedAt}T08:00:00`,
+        title: "Eingang",
+        accentClass: "bg-sky-500",
+      });
+    }
+    if (editableCaseItem.dueAt) {
+      entries.push({
+        id: "due-at",
+        timestamp: `${editableCaseItem.dueAt}T18:00:00`,
+        title: "Frist",
+        accentClass: "bg-amber-500",
+      });
+    }
+
+    entries.push(...editableCaseItem.timelineEvents.map((event) => ({
+      id: event.id,
+      timestamp: event.timestamp,
+      title: event.title,
+      note: event.note,
+      accentClass: "bg-primary",
+      canDelete: true,
+      onDelete: () => handleDeleteTimelineEvent(event.id),
+    })));
+
+    if (detailItemId) {
+      entries.push(...(linkedDecisions[detailItemId] || [])
+        .filter((decision) => decision.status === "completed")
+        .map((decision) => ({
+          id: `dec-${decision.id}`,
+          timestamp: decision.created_at,
+          title: `Entscheidung abgeschlossen: ${decision.title}`,
+          accentClass: "bg-emerald-500",
+        })));
+    }
+
+    return entries.sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime());
+  }, [detailItemId, editableCaseItem, handleDeleteTimelineEvent, linkedDecisions]);
 
   const handleCaseItemSave = async () => {
     if (!detailItemId || !editableCaseItem) return;
@@ -1127,19 +1204,53 @@ export function MyWorkCasesWorkspace() {
                                                     )}
                                                     <Button disabled={!editableCaseItem.category} onClick={() => { void handleCaseItemSave(); }}>Speichern</Button>
                                                   </div>
-
                                                   <div className="space-y-4">
                                                     <div className="rounded-md border bg-background p-3 space-y-3">
                                                       <div className="flex items-center gap-2 text-sm font-semibold"><Users className="h-4 w-4" />Inter-/Aktionen</div>
                                                       <div className="space-y-2">
-                                                        <Select value={editableCaseItem.interactionType} onValueChange={(value: TimelineInteractionType) => setEditableCaseItem((prev) => prev ? { ...prev, interactionType: value } : prev)}>
-                                                          <SelectTrigger><SelectValue /></SelectTrigger>
-                                                          <SelectContent>
-                                                            {interactionTypeOptions.map((option) => <SelectItem key={option.value} value={option.value}>{option.label}</SelectItem>)}
-                                                          </SelectContent>
-                                                        </Select>
-                                                        <Input placeholder="Titel der Interaktion" value={editableCaseItem.interactionTitle} onChange={(event) => setEditableCaseItem((prev) => prev ? { ...prev, interactionTitle: event.target.value } : prev)} />
-                                                        <Input placeholder="Notiz (optional)" value={editableCaseItem.interactionNote} onChange={(event) => setEditableCaseItem((prev) => prev ? { ...prev, interactionNote: event.target.value } : prev)} />
+                                                        <div className="flex flex-wrap gap-2">
+                                                          {interactionTypeOptions.map((option) => {
+                                                            const Icon = option.icon;
+                                                            const selected = editableCaseItem.interactionType === option.value;
+                                                            return (
+                                                              <Tooltip key={option.value}>
+                                                                <TooltipTrigger asChild>
+                                                                  <Button
+                                                                    type="button"
+                                                                    size="icon"
+                                                                    variant={selected ? "default" : "outline"}
+                                                                    aria-label={option.label}
+                                                                    onClick={() => setEditableCaseItem((prev) => prev ? { ...prev, interactionType: option.value } : prev)}
+                                                                  >
+                                                                    <Icon className="h-4 w-4" />
+                                                                  </Button>
+                                                                </TooltipTrigger>
+                                                                <TooltipContent>{option.label}</TooltipContent>
+                                                              </Tooltip>
+                                                            );
+                                                          })}
+                                                        </div>
+                                                        {(editableCaseItem.interactionType === "anruf" || editableCaseItem.interactionType === "mail" || editableCaseItem.interactionType === "gespraech" || editableCaseItem.interactionType === "treffen") && (
+                                                          <Input
+                                                            placeholder={editableCaseItem.interactionType === "mail" ? "E-Mail-Adresse" : editableCaseItem.interactionType === "anruf" ? "Telefonnummer" : "Kontaktperson"}
+                                                            value={editableCaseItem.interactionContact}
+                                                            onChange={(event) => setEditableCaseItem((prev) => prev ? { ...prev, interactionContact: event.target.value } : prev)}
+                                                          />
+                                                        )}
+                                                        <Input
+                                                          type="datetime-local"
+                                                          value={editableCaseItem.interactionDateTime}
+                                                          onChange={(event) => setEditableCaseItem((prev) => prev ? { ...prev, interactionDateTime: event.target.value } : prev)}
+                                                        />
+                                                        <SimpleRichTextEditor
+                                                          key={editableCaseItem.timelineEvents.length}
+                                                          initialContent={editableCaseItem.interactionNote}
+                                                          onChange={(value) => setEditableCaseItem((prev) => prev ? { ...prev, interactionNote: value } : prev)}
+                                                          placeholder="Notiz (optional)"
+                                                          minHeight="100px"
+                                                          maxHeight="180px"
+                                                          scrollable
+                                                        />
                                                         <Button type="button" size="sm" onClick={handleAddInteraction}>Interaktion hinzufügen</Button>
                                                       </div>
                                                     </div>
@@ -1147,40 +1258,29 @@ export function MyWorkCasesWorkspace() {
                                                       <p className="font-bold mb-3">Zeitstrahl</p>
                                                       <div className="relative space-y-4 pl-6">
                                                         <span className="absolute left-2 top-1 bottom-1 w-px bg-border" />
-                                                        {editableCaseItem.timelineEvents.length === 0 && (!detailItemId || !(linkedDecisions[detailItemId] || []).some(d => d.status === "completed")) ? (
+                                                        {timelineEntries.length === 0 ? (
                                                           <p className="text-xs text-muted-foreground">Noch keine Einträge im Zeitstrahl.</p>
                                                         ) : (
                                                           <>
-                                                            {editableCaseItem.timelineEvents.map((event) => (
-                                                              <div key={event.id} className="relative">
-                                                                <span className="absolute -left-[18px] top-1.5 h-2.5 w-2.5 rounded-full bg-primary" />
+                                                            {timelineEntries.map((entry) => (
+                                                              <div key={entry.id} className="relative">
+                                                                <span className={`absolute -left-[18px] top-1.5 h-2.5 w-2.5 rounded-full ${entry.accentClass}`} />
                                                                 <div className="rounded border p-2 text-xs">
                                                                   <div className="flex items-start justify-between gap-2">
                                                                     <div>
-                                                                      <p className="font-semibold">{event.title}</p>
-                                                                      <p className="text-muted-foreground">{formatTimelineDate(event.timestamp)}</p>
+                                                                      <p className="font-semibold">{entry.title}</p>
+                                                                      <p className="text-muted-foreground">{formatTimelineDate(entry.timestamp)}</p>
                                                                     </div>
-                                                                    <Button type="button" variant="ghost" size="icon" className="h-6 w-6" onClick={() => handleDeleteTimelineEvent(event.id)}>
-                                                                      <Trash2 className="h-3.5 w-3.5" />
-                                                                    </Button>
+                                                                    {entry.canDelete && entry.onDelete ? (
+                                                                      <Button type="button" variant="ghost" size="icon" className="h-6 w-6" onClick={entry.onDelete}>
+                                                                        <Trash2 className="h-3.5 w-3.5" />
+                                                                      </Button>
+                                                                    ) : null}
                                                                   </div>
-                                                                  {event.note && <p className="mt-1 text-muted-foreground">{event.note}</p>}
+                                                                  {entry.note && <div className="mt-1 text-muted-foreground" dangerouslySetInnerHTML={{ __html: entry.note }} />}
                                                                 </div>
                                                               </div>
                                                             ))}
-                                                            {/* Completed decisions reflected in timeline */}
-                                                            {detailItemId && (linkedDecisions[detailItemId] || [])
-                                                              .filter(d => d.status === "completed")
-                                                              .map((dec) => (
-                                                                <div key={`dec-${dec.id}`} className="relative">
-                                                                  <span className="absolute -left-[18px] top-1.5 h-2.5 w-2.5 rounded-full bg-emerald-500" />
-                                                                  <div className="rounded border border-emerald-500/30 bg-emerald-50/50 dark:bg-emerald-950/20 p-2 text-xs">
-                                                                    <p className="font-semibold">Entscheidung abgeschlossen: {dec.title}</p>
-                                                                    <p className="text-muted-foreground">{formatTimelineDate(dec.created_at)}</p>
-                                                                  </div>
-                                                                </div>
-                                                              ))
-                                                            }
                                                           </>
                                                         )}
                                                       </div>
