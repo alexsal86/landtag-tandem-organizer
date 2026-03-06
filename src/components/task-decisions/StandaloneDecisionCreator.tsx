@@ -267,8 +267,8 @@ export const StandaloneDecisionCreator = ({
         return;
       }
 
-      const insertData: Record<string, unknown> = {
-        task_id: null,
+      const insertData = {
+        task_id: null as string | null,
         title: title.trim(),
         description: description.trim() || null,
         response_deadline: responseDeadline ? new Date(responseDeadline).toISOString() : null,
@@ -277,7 +277,7 @@ export const StandaloneDecisionCreator = ({
         visible_to_all: visibleToAll,
         response_options: JSON.parse(JSON.stringify(currentOptions)),
         priority: priority ? 1 : 0,
-        ...(caseItemId ? { case_item_id: caseItemId } : {}),
+        case_item_id: caseItemId || null,
       };
       
       console.log('Creating standalone decision with data:', insertData);
