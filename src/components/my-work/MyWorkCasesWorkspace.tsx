@@ -1081,6 +1081,38 @@ export function MyWorkCasesWorkspace() {
                                                         })}
                                                       </div>
                                                     </div>
+                                                    {/* Linked Decisions Section */}
+                                                    {detailItemId && (
+                                                      <div className="space-y-2">
+                                                        <Label className="font-bold flex items-center gap-1.5"><Vote className="h-4 w-4" />Verknüpfte Entscheidungen</Label>
+                                                        {loadingDecisions ? (
+                                                          <div className="flex items-center gap-2 text-xs text-muted-foreground"><Loader2 className="h-3 w-3 animate-spin" />Lade…</div>
+                                                        ) : (linkedDecisions[detailItemId] || []).length === 0 ? (
+                                                          <p className="text-xs text-muted-foreground">Keine Entscheidungen verknüpft.</p>
+                                                        ) : (
+                                                          <div className="space-y-1.5">
+                                                            {(linkedDecisions[detailItemId] || []).map((dec) => (
+                                                              <div key={dec.id} className="flex items-center justify-between rounded-md border bg-background p-2 text-xs">
+                                                                <div className="flex items-center gap-2 min-w-0">
+                                                                  {dec.status === "completed" ? (
+                                                                    <CheckCircle2 className="h-3.5 w-3.5 text-emerald-500 shrink-0" />
+                                                                  ) : (
+                                                                    <Clock className="h-3.5 w-3.5 text-amber-500 shrink-0" />
+                                                                  )}
+                                                                  <span className="truncate font-medium">{dec.title}</span>
+                                                                </div>
+                                                                <Badge variant="outline" className={cn("text-[10px] shrink-0 ml-2", dec.status === "completed" ? "border-emerald-500/40 text-emerald-600" : "border-amber-500/40 text-amber-600")}>
+                                                                  {dec.status === "completed" ? "Abgeschlossen" : dec.status === "archived" ? "Archiviert" : "Offen"}
+                                                                </Badge>
+                                                              </div>
+                                                            ))}
+                                                          </div>
+                                                        )}
+                                                        <Button type="button" variant="outline" size="sm" className="w-full" onClick={handleRequestDecision}>
+                                                          <Plus className="mr-1 h-3.5 w-3.5" />Weitere Entscheidung stellen
+                                                        </Button>
+                                                      </div>
+                                                    )
                                                     {editableCaseItem.status === "erledigt" && (
                                                       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                                                         <div className="space-y-1.5 sm:col-span-2">
