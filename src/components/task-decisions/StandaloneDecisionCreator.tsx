@@ -489,6 +489,7 @@ export const StandaloneDecisionCreator = ({
       setProfilesLoaded(false);
       setIsOpen(false);
       onDecisionCreated();
+      if (onCreatedWithId && decision?.id) onCreatedWithId(decision.id);
     } catch (error) {
       setUploadStatus(null);
       console.error('Error creating decision:', error);
