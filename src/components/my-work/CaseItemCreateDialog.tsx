@@ -34,6 +34,7 @@ export function CaseItemCreateDialog({ open, onOpenChange, onCreated, createCase
   const [sourceChannel, setSourceChannel] = useState<CaseItemFormData["source_channel"]>("email");
   const [priority, setPriority] = useState<NonNullable<CaseItemFormData["priority"]>>("medium");
   const [ownerUserId, setOwnerUserId] = useState<string>(defaultAssigneeId || "unassigned");
+  const [sourceReceivedDate, setSourceReceivedDate] = useState("");
   const [dueDate, setDueDate] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
@@ -46,7 +47,7 @@ export function CaseItemCreateDialog({ open, onOpenChange, onCreated, createCase
   }, [defaultAssigneeId, open]);
 
   const handleSubmit = async () => {
-    if (!subject.trim() || !hasContext) return;
+    if (!subject.trim() || !sourceReceivedDate || !hasContext) return;
 
     setSubmitError(null);
 
@@ -57,6 +58,7 @@ export function CaseItemCreateDialog({ open, onOpenChange, onCreated, createCase
       priority,
       status: "active",
       due_at: dueDate ? new Date(`${dueDate}T12:00:00`).toISOString() : null,
+      source_received_at: new Date(`${sourceReceivedDate}T12:00:00`).toISOString(),
       owner_user_id: ownerUserId === "unassigned" ? null : ownerUserId,
       subject: subject.trim(),
       summary: subject.trim(),
@@ -75,6 +77,7 @@ export function CaseItemCreateDialog({ open, onOpenChange, onCreated, createCase
     setSourceChannel("email");
     setPriority("medium");
     setOwnerUserId(defaultAssigneeId || "unassigned");
+    setSourceReceivedDate("");
     setDueDate("");
     onOpenChange(false);
   };
@@ -158,6 +161,17 @@ export function CaseItemCreateDialog({ open, onOpenChange, onCreated, createCase
           </div>
 
           <div className="space-y-2">
+            <Label htmlFor="case-item-received">Eingangsdatum</Label>
+            <Input
+              id="case-item-received"
+              type="date"
+              value={sourceReceivedDate}
+              onChange={(event) => setSourceReceivedDate(event.target.value)}
+              required
+            />
+          </div>
+
+          <div className="space-y-2">
             <Label htmlFor="case-item-due">Frist</Label>
             <Input
               id="case-item-due"
@@ -172,7 +186,7 @@ export function CaseItemCreateDialog({ open, onOpenChange, onCreated, createCase
           <Button variant="outline" onClick={() => onOpenChange(false)} disabled={submitting}>
             Abbrechen
           </Button>
-          <Button onClick={handleSubmit} disabled={submitting || !subject.trim() || !hasContext}>
+          <Button onClick={handleSubmit} disabled={submitting || !subject.trim() || !sourceReceivedDate || !hasContext}>
             Vorgang erstellen
           </Button>
         </DialogFooter>
