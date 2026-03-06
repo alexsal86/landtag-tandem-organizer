@@ -1059,7 +1059,7 @@ export function MyWorkCasesWorkspace() {
                                                       <div className="space-y-1.5">
                                                         <Label className="font-bold">Entscheidung</Label>
                                                         <div className="flex gap-2">
-                                                          <Button type="button" variant="outline" size="sm" onClick={handleRequestDecision} disabled={editableCaseItem.status === "entscheidung_abwartend"}><Gavel className="mr-1 h-3.5 w-3.5" />Anfordern</Button>
+                                                          <Button type="button" variant="outline" size="sm" onClick={handleRequestDecision}><Vote className="mr-1 h-3.5 w-3.5" />Entscheidung stellen</Button>
                                                           <Button type="button" variant="outline" size="sm" onClick={handleDecisionReceived} disabled={editableCaseItem.status !== "entscheidung_abwartend"}>Eingegangen</Button>
                                                         </div>
                                                       </div>
