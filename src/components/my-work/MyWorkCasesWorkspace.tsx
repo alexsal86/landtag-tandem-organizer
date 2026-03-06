@@ -318,6 +318,32 @@ export function MyWorkCasesWorkspace() {
     void loadWorkspaceData();
   }, [loadWorkspaceData, tenantId, user]);
 
+  // Load linked decisions for a case item
+  const loadLinkedDecisions = useCallback(async (itemId: string) => {
+    setLoadingDecisions(true);
+    try {
+      const { data, error } = await supabase
+        .from("task_decisions")
+        .select("id, title, status, created_at, response_deadline")
+        .eq("case_item_id", itemId)
+        .order("created_at", { ascending: false });
+      if (!error && data) {
+        setLinkedDecisions((prev) => ({ ...prev, [itemId]: data as any }));
+      }
+    } catch (e) {
+      console.error("Error loading linked decisions:", e);
+    } finally {
+      setLoadingDecisions(false);
+    }
+  }, []);
+
+  // Load decisions when detail item changes
+  useEffect(() => {
+    if (detailItemId) {
+      void loadLinkedDecisions(detailItemId);
+    }
+  }, [detailItemId, loadLinkedDecisions]);
+
   const getAssigneeIds = useCallback((item: CaseItem) => {
     const payloadAssigneeIds = Array.isArray(item.intake_payload?.assignee_ids)
       ? item.intake_payload.assignee_ids.filter((id): id is string => typeof id === "string" && id.length > 0)
