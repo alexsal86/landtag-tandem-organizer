@@ -4,6 +4,7 @@ import { format } from "date-fns";
 import { de } from "date-fns/locale";
 import { AlertCircle, ArrowDown, ArrowUp, Briefcase, CheckCircle2, Circle, Clock, ExternalLink, FileText, FolderOpen, Gavel, GripVertical, Link2, Loader2, Mail, MessageSquare, Phone, Plus, Search, Trash2, UserRound, Users, Vote } from "lucide-react";
 import { DragDropContext, Droppable, Draggable, type DropResult } from "@hello-pangea/dnd";
+import DOMPurify from "dompurify";
 
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
@@ -96,6 +97,7 @@ type TimelineEntry = {
   timestamp: string;
   title: string;
   note?: string;
+  safeNoteHtml?: string;
   accentClass: string;
   canDelete?: boolean;
   onDelete?: () => void;
@@ -149,6 +151,11 @@ const normalizeRichTextValue = (value: string): string | null => {
     .replace(/&nbsp;/gi, "")
     .trim();
   return withoutTags ? trimmed : null;
+};
+
+const sanitizeTimelineNote = (note: string | undefined) => {
+  if (!note) return undefined;
+  return DOMPurify.sanitize(note, { USE_PROFILES: { html: true } });
 };
 
 const parseTimelineEvents = (payload: Record<string, unknown> | null): TimelineEvent[] => {
@@ -764,6 +771,7 @@ export function MyWorkCasesWorkspace() {
       timestamp: event.timestamp,
       title: event.title,
       note: event.note,
+      safeNoteHtml: sanitizeTimelineNote(event.note),
       accentClass: "bg-primary",
       canDelete: true,
       onDelete: () => handleDeleteTimelineEvent(event.id),
@@ -1277,7 +1285,7 @@ export function MyWorkCasesWorkspace() {
                                                                       </Button>
                                                                     ) : null}
                                                                   </div>
-                                                                  {entry.note && <div className="mt-1 text-muted-foreground" dangerouslySetInnerHTML={{ __html: entry.note }} />}
+                                                                  {entry.safeNoteHtml && <div className="mt-1 text-muted-foreground" dangerouslySetInnerHTML={{ __html: entry.safeNoteHtml }} />}
                                                                 </div>
                                                               </div>
                                                             ))}
