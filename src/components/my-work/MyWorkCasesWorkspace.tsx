@@ -126,6 +126,18 @@ const toEditorHtml = (value: string | null | undefined) => {
     .replace(/>/g, "&gt;")}</p>`;
 };
 
+const normalizeRichTextValue = (value: string): string | null => {
+  const trimmed = value.trim();
+  if (!trimmed) return null;
+  const withoutTags = trimmed
+    .replace(/<p><br><\/p>/gi, "")
+    .replace(/<br\s*\/?/gi, "")
+    .replace(/<[^>]+>/g, "")
+    .replace(/&nbsp;/gi, "")
+    .trim();
+  return withoutTags ? trimmed : null;
+};
+
 const parseTimelineEvents = (payload: Record<string, unknown> | null): TimelineEvent[] => {
   const raw = payload?.timeline_events;
   if (!Array.isArray(raw)) return [];
@@ -661,8 +673,8 @@ export function MyWorkCasesWorkspace() {
       .from("case_items")
       .update({
         subject: editableCaseItem.subject.trim() || null,
-        summary: editableCaseItem.summary.trim() || null,
-        resolution_summary: editableCaseItem.summary.trim() || null,
+        summary: normalizeRichTextValue(editableCaseItem.summary),
+        resolution_summary: normalizeRichTextValue(editableCaseItem.summary),
         status: editableCaseItem.status as any,
         completion_note: editableCaseItem.completionNote.trim() || null,
         completed_at: editableCaseItem.completedAt ? new Date(`${editableCaseItem.completedAt}T12:00:00`).toISOString() : null,
@@ -940,6 +952,7 @@ export function MyWorkCasesWorkspace() {
                                                     <div className="space-y-1.5">
                                                       <Label className="font-bold" htmlFor="detail-summary">Beschreibung</Label>
                                                       <SimpleRichTextEditor
+                                                        key={`detail-summary-${item.id}`}
                                                         initialContent={toEditorHtml(editableCaseItem.summary)}
                                                         onChange={(html) => setEditableCaseItem((prev) => prev ? { ...prev, summary: html } : prev)}
                                                         placeholder="Beschreibung hinzufügen"
