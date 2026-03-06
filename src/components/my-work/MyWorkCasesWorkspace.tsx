@@ -2,12 +2,14 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { format } from "date-fns";
 import { de } from "date-fns/locale";
-import { Briefcase, ExternalLink, FileText, FolderOpen, Mail, MessageSquare, Phone, Plus, Search, UserRound } from "lucide-react";
+import { AlertCircle, Briefcase, Circle, ExternalLink, FileText, FolderOpen, Mail, MessageSquare, Phone, Plus, Search, UserRound } from "lucide-react";
 
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -47,6 +49,16 @@ type CaseFile = {
 type TeamUser = {
   id: string;
   name: string;
+  avatarUrl: string | null;
+};
+
+type EditableCaseItem = {
+  subject: string;
+  summary: string;
+  sourceReceivedAt: string;
+  dueAt: string;
+  priority: string;
+  ownerUserId: string;
 };
 
 const sourceChannelMeta: Record<string, { icon: typeof Phone; label: string }> = {
@@ -80,6 +92,7 @@ export function MyWorkCasesWorkspace() {
   // Sheet states for detail views
   const [detailItemId, setDetailItemId] = useState<string | null>(null);
   const [detailFileId, setDetailFileId] = useState<string | null>(null);
+  const [editableCaseItem, setEditableCaseItem] = useState<EditableCaseItem | null>(null);
 
   const clearActionParam = useCallback(() => {
     setSearchParams((prev) => {
@@ -158,12 +171,15 @@ export function MyWorkCasesWorkspace() {
       } else {
         const { data: profileRows, error: profilesError } = await supabase
           .from("profiles")
-          .select("user_id, display_name")
+          .select("user_id, display_name, avatar_url")
           .in("user_id", memberIds);
         if (profilesError) throw profilesError;
 
-        const nameById = new Map((profileRows || []).map((row) => [row.user_id, row.display_name || "Unbekannt"]));
-        setTeamUsers(memberIds.map((id) => ({ id, name: nameById.get(id) || "Unbekannt" })));
+        const profileById = new Map((profileRows || []).map((row) => [row.user_id, { name: row.display_name || "Unbekannt", avatarUrl: row.avatar_url || null }]));
+        setTeamUsers(memberIds.map((id) => {
+          const profile = profileById.get(id);
+          return { id, name: profile?.name || "Unbekannt", avatarUrl: profile?.avatarUrl || null };
+        }));
       }
     } catch (error) {
       console.error("Error loading cases workspace:", error);
@@ -238,6 +254,14 @@ export function MyWorkCasesWorkspace() {
   const handleSelectCaseItem = (item: CaseItem) => {
     setDetailItemId(item.id);
     setDetailFileId(null);
+    setEditableCaseItem({
+      subject: item.subject || "",
+      summary: item.summary || item.resolution_summary || "",
+      sourceReceivedAt: item.source_received_at ? format(new Date(item.source_received_at), "yyyy-MM-dd") : "",
+      dueAt: item.due_at ? format(new Date(item.due_at), "yyyy-MM-dd") : "",
+      priority: item.priority || "medium",
+      ownerUserId: item.owner_user_id || "unassigned",
+    });
   };
 
   const handleSelectCaseFile = (cf: CaseFile) => {
@@ -282,6 +306,41 @@ export function MyWorkCasesWorkspace() {
     return caseItems.find((i) => i.id === detailItemId) || null;
   }, [caseItems, detailItemId]);
 
+  const priorityMeta = useCallback((priority: string | null) => {
+    switch (priority) {
+      case "low":
+        return { color: "text-emerald-500", label: "Niedrig" };
+      case "high":
+      case "urgent":
+        return { color: "text-red-500", label: priority === "urgent" ? "Dringend" : "Hoch" };
+      case "medium":
+      default:
+        return { color: "text-amber-500", label: "Mittel" };
+    }
+  }, []);
+
+  const getInitials = (name: string) => {
+    const parts = name.trim().split(" ").filter(Boolean);
+    return parts.slice(0, 2).map((part) => part[0]?.toUpperCase()).join("") || "?";
+  };
+
+  const handleCaseItemSave = async () => {
+    if (!detailItemId || !editableCaseItem) return;
+    await supabase
+      .from("case_items")
+      .update({
+        subject: editableCaseItem.subject.trim() || null,
+        summary: editableCaseItem.summary.trim() || null,
+        resolution_summary: editableCaseItem.summary.trim() || null,
+        source_received_at: editableCaseItem.sourceReceivedAt ? new Date(`${editableCaseItem.sourceReceivedAt}T12:00:00`).toISOString() : null,
+        due_at: editableCaseItem.dueAt ? new Date(`${editableCaseItem.dueAt}T12:00:00`).toISOString() : null,
+        priority: editableCaseItem.priority,
+        owner_user_id: editableCaseItem.ownerUserId === "unassigned" ? null : editableCaseItem.ownerUserId,
+      })
+      .eq("id", detailItemId);
+    await loadWorkspaceData();
+  };
+
 
   // --- Render ---
 
@@ -324,7 +383,15 @@ export function MyWorkCasesWorkspace() {
                     <Button size="sm" onClick={handleCreateCaseItem}>Vorgang erstellen</Button>
                   </div>
                 ) : (
-                  filteredCaseItems.map((item) => {
+                  <div className="space-y-1.5">
+                    <div className="hidden grid-cols-[1.1fr_1fr_1fr_1fr_1.8fr] gap-2 border-b px-2 pb-1 text-[11px] font-medium uppercase tracking-wide text-muted-foreground lg:grid">
+                      <span>Eingang</span>
+                      <span>Fällig</span>
+                      <span>Art</span>
+                      <span>Priorität</span>
+                      <span>Bearbeiter</span>
+                    </div>
+                    {filteredCaseItems.map((item) => {
                     const linkedFile = item.case_file_id ? caseFilesById[item.case_file_id] : null;
                     const isActive = detailItemId === item.id;
                     const channel = item.source_channel ? sourceChannelMeta[item.source_channel] : null;
@@ -348,18 +415,31 @@ export function MyWorkCasesWorkspace() {
                               {item.subject || item.summary || item.resolution_summary || "Ohne Titel"}
                             </p>
                           </div>
-                          {item.priority && <Badge variant="outline" className="shrink-0 text-[10px]">{item.priority}</Badge>}
                         </div>
-                        <div className="mt-1.5 grid grid-cols-1 gap-2 text-xs text-muted-foreground sm:grid-cols-2 lg:grid-cols-5">
-                          <span>Status: {item.status || "offen"}</span>
-                          <span>{item.source_received_at ? `Eingang: ${format(new Date(item.source_received_at), "dd.MM.yy", { locale: de })}` : "Eingang: –"}</span>
-                          <span>{item.due_at ? `Fällig: ${format(new Date(item.due_at), "dd.MM.yy", { locale: de })}` : "Fällig: –"}</span>
-                          <span className="truncate" title={item.summary || item.resolution_summary || ""}>Thema: {item.summary || item.resolution_summary || "–"}</span>
+                        <div className="mt-1.5 grid grid-cols-1 gap-2 text-xs text-muted-foreground lg:grid-cols-[1.1fr_1fr_1fr_1fr_1.8fr]">
+                          <span>{item.source_received_at ? format(new Date(item.source_received_at), "dd.MM.yy", { locale: de }) : "–"}</span>
+                          <span>{item.due_at ? format(new Date(item.due_at), "dd.MM.yy", { locale: de }) : "–"}</span>
+                          <span>{linkedFile ? "Bestandteil einer Akte" : "Einzelvorgang"}</span>
+                          <span className="inline-flex items-center gap-1.5">
+                            <Circle className={cn("h-3.5 w-3.5 fill-current", priorityMeta(item.priority).color)} />
+                            {priorityMeta(item.priority).label}
+                          </span>
                           <div className="flex items-center gap-2" onClick={(event) => event.stopPropagation()}>
-                            <span>Bearbeiter:</span>
+                            {(() => {
+                              const currentOwner = teamUsers.find((member) => member.id === item.owner_user_id);
+                              return (
+                                <>
+                                  <Avatar className="h-6 w-6">
+                                    <AvatarImage src={currentOwner?.avatarUrl || undefined} />
+                                    <AvatarFallback className="text-[10px]">{currentOwner ? getInitials(currentOwner.name) : "--"}</AvatarFallback>
+                                  </Avatar>
+                                  <span className="truncate max-w-[120px]">{currentOwner?.name || "Nicht zugewiesen"}</span>
+                                </>
+                              );
+                            })()}
                             <Select value={item.owner_user_id || "unassigned"} onValueChange={(value) => { void handleOwnerChange(item.id, value); }}>
-                              <SelectTrigger className="h-7 w-[170px] text-xs">
-                                <SelectValue placeholder="Bearbeiter" />
+                              <SelectTrigger className="h-7 w-8 px-1">
+                                <Plus className="h-3.5 w-3.5" />
                               </SelectTrigger>
                               <SelectContent>
                                 <SelectItem value="unassigned">Nicht zugewiesen</SelectItem>
@@ -370,18 +450,17 @@ export function MyWorkCasesWorkspace() {
                             </Select>
                           </div>
                         </div>
-                        {linkedFile ? (
+                        {linkedFile && (
                           <p className="mt-1 text-xs text-muted-foreground truncate">
                             <FolderOpen className="inline h-3 w-3 mr-0.5" />
                             {linkedFile.title}
                             {linkedFile.reference_number && <span className="ml-1 opacity-70">({linkedFile.reference_number})</span>}
                           </p>
-                        ) : (
-                          <p className="mt-1 text-xs text-amber-700 dark:text-amber-400">Einzelvorgang</p>
                         )}
                       </button>
                     );
-                  })
+                    })}
+                  </div>
                 )}
               </div>
             </ScrollArea>
@@ -470,7 +549,7 @@ export function MyWorkCasesWorkspace() {
       </div>
 
       {/* Sheet: Vorgang Detail (from left) */}
-      <Sheet open={!!detailItemId} onOpenChange={(open) => { if (!open) setDetailItemId(null); }}>
+      <Sheet open={!!detailItemId} onOpenChange={(open) => { if (!open) { setDetailItemId(null); setEditableCaseItem(null); } }}>
         <SheetContent side="left" className="w-full overflow-y-auto sm:max-w-lg">
           <SheetHeader>
             <SheetTitle className="flex items-center gap-2">
@@ -478,20 +557,63 @@ export function MyWorkCasesWorkspace() {
               Vorgang
             </SheetTitle>
           </SheetHeader>
-          {detailItem && (
+          {detailItem && editableCaseItem && (
             <div className="mt-4 space-y-4">
               <div className="space-y-2">
-                <h3 className="font-semibold">{detailItem.subject || detailItem.summary || detailItem.resolution_summary || "Ohne Titel"}</h3>
+                <h3 className="font-semibold">Vorgang bearbeiten</h3>
                 <div className="flex flex-wrap gap-2 text-xs">
                   {detailItem.status && <Badge variant="outline">{detailItem.status}</Badge>}
-                  {detailItem.priority && <Badge variant="secondary">{detailItem.priority}</Badge>}
+                  <Badge variant="secondary" className="inline-flex items-center gap-1"><Circle className={cn("h-3 w-3 fill-current", priorityMeta(editableCaseItem.priority).color)} /> {priorityMeta(editableCaseItem.priority).label}</Badge>
                   {detailItem.source_channel && <Badge variant="secondary">Kanal: {detailItem.source_channel}</Badge>}
                 </div>
-                {detailItem.due_at && (
-                  <p className="text-xs text-muted-foreground">
-                    Fällig: {format(new Date(detailItem.due_at), "dd.MM.yyyy", { locale: de })}
-                  </p>
-                )}
+              </div>
+
+              <div className="space-y-3 rounded-md border p-3">
+                <div className="space-y-1.5">
+                  <Label htmlFor="detail-subject">Betreff</Label>
+                  <Input id="detail-subject" value={editableCaseItem.subject} onChange={(event) => setEditableCaseItem((prev) => prev ? { ...prev, subject: event.target.value } : prev)} />
+                </div>
+                <div className="space-y-1.5">
+                  <Label htmlFor="detail-summary">Beschreibung</Label>
+                  <Input id="detail-summary" value={editableCaseItem.summary} onChange={(event) => setEditableCaseItem((prev) => prev ? { ...prev, summary: event.target.value } : prev)} />
+                </div>
+                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                  <div className="space-y-1.5">
+                    <Label htmlFor="detail-received">Eingangsdatum</Label>
+                    <Input id="detail-received" type="date" value={editableCaseItem.sourceReceivedAt} onChange={(event) => setEditableCaseItem((prev) => prev ? { ...prev, sourceReceivedAt: event.target.value } : prev)} />
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label htmlFor="detail-due">Fällig am</Label>
+                    <Input id="detail-due" type="date" value={editableCaseItem.dueAt} onChange={(event) => setEditableCaseItem((prev) => prev ? { ...prev, dueAt: event.target.value } : prev)} />
+                  </div>
+                </div>
+                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                  <div className="space-y-1.5">
+                    <Label>Priorität</Label>
+                    <Select value={editableCaseItem.priority} onValueChange={(value) => setEditableCaseItem((prev) => prev ? { ...prev, priority: value } : prev)}>
+                      <SelectTrigger><SelectValue /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="low">Niedrig</SelectItem>
+                        <SelectItem value="medium">Mittel</SelectItem>
+                        <SelectItem value="high">Hoch</SelectItem>
+                        <SelectItem value="urgent">Dringend</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label>Bearbeiter</Label>
+                    <Select value={editableCaseItem.ownerUserId} onValueChange={(value) => setEditableCaseItem((prev) => prev ? { ...prev, ownerUserId: value } : prev)}>
+                      <SelectTrigger><SelectValue /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="unassigned">Nicht zugewiesen</SelectItem>
+                        {teamUsers.map((member) => <SelectItem key={member.id} value={member.id}>{member.name}</SelectItem>)}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+                <Button onClick={() => { void handleCaseItemSave(); }}>
+                  Speichern
+                </Button>
               </div>
 
               {detailItem.case_file_id && caseFilesById[detailItem.case_file_id] ? (
@@ -513,7 +635,7 @@ export function MyWorkCasesWorkspace() {
                 </div>
               ) : (
                 <div className="rounded-md border border-dashed p-4 text-sm text-muted-foreground space-y-3">
-                  <Briefcase className="h-4 w-4" />
+                  <AlertCircle className="h-4 w-4" />
                   <p>Keine Akte verknüpft.</p>
                   <div className="flex flex-wrap gap-2">
                     <Button size="sm" onClick={() => handleCreateCaseFile(detailItem.id)}>
