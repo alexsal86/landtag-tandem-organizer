@@ -71,20 +71,6 @@ export const useCaseWorkspaceData = ({ tenantId, userId }: { tenantId?: string; 
   const itemsOffsetRef = useRef(0);
   const filesOffsetRef = useRef(0);
 
-  const hydrateFromCache = useCallback(() => {
-    if (!tenantId) return;
-    const cached = workspaceCache.get(tenantId);
-    if (!cached) return;
-    setCaseItems(cached.caseItems);
-    setCaseFiles(cached.caseFiles);
-    setTeamUsers(cached.teamUsers);
-    itemsOffsetRef.current = cached.itemsOffset;
-    filesOffsetRef.current = cached.filesOffset;
-    setHasMoreItems(cached.hasMoreItems);
-    setHasMoreFiles(cached.hasMoreFiles);
-    setLoading(false);
-  }, [tenantId]);
-
   const persistCache = useCallback((patch: Partial<WorkspaceCache>) => {
     if (!tenantId) return;
     const current = workspaceCache.get(tenantId) ?? EMPTY_CACHE;
@@ -177,37 +163,72 @@ export const useCaseWorkspaceData = ({ tenantId, userId }: { tenantId?: string; 
     setLoadingMoreItems(true);
     try {
       const next = await fetchItemsPage(itemsOffsetRef.current);
-      const merged = [...caseItems, ...next];
       itemsOffsetRef.current += next.length;
       const hasMore = next.length === PAGE_SIZE;
-      setCaseItems(merged);
+      setCaseItems((prev) => {
+        const existing = new Set(prev.map((item) => item.id));
+        const dedupedNext = next.filter((item) => !existing.has(item.id));
+        const merged = [...prev, ...dedupedNext];
+        persistCache({ caseItems: merged, itemsOffset: itemsOffsetRef.current, hasMoreItems: hasMore });
+        return merged;
+      });
       setHasMoreItems(hasMore);
-      persistCache({ caseItems: merged, itemsOffset: itemsOffsetRef.current, hasMoreItems: hasMore });
     } finally {
       setLoadingMoreItems(false);
     }
-  }, [caseItems, fetchItemsPage, hasMoreItems, loadingMoreItems, persistCache]);
+  }, [fetchItemsPage, hasMoreItems, loadingMoreItems, persistCache]);
 
   const loadMoreFiles = useCallback(async () => {
     if (!hasMoreFiles || loadingMoreFiles) return;
     setLoadingMoreFiles(true);
     try {
       const next = await fetchFilesPage(filesOffsetRef.current);
-      const merged = [...caseFiles, ...next];
       filesOffsetRef.current += next.length;
       const hasMore = next.length === PAGE_SIZE;
-      setCaseFiles(merged);
+      setCaseFiles((prev) => {
+        const existing = new Set(prev.map((file) => file.id));
+        const dedupedNext = next.filter((file) => !existing.has(file.id));
+        const merged = [...prev, ...dedupedNext];
+        persistCache({ caseFiles: merged, filesOffset: filesOffsetRef.current, hasMoreFiles: hasMore });
+        return merged;
+      });
       setHasMoreFiles(hasMore);
-      persistCache({ caseFiles: merged, filesOffset: filesOffsetRef.current, hasMoreFiles: hasMore });
     } finally {
       setLoadingMoreFiles(false);
     }
-  }, [caseFiles, fetchFilesPage, hasMoreFiles, loadingMoreFiles, persistCache]);
+  }, [fetchFilesPage, hasMoreFiles, loadingMoreFiles, persistCache]);
 
   useEffect(() => {
-    hydrateFromCache();
+    if (!tenantId || !userId) {
+      setCaseItems([]);
+      setCaseFiles([]);
+      setTeamUsers([]);
+      setLoading(false);
+      return;
+    }
+
+    const cached = workspaceCache.get(tenantId);
+    if (cached) {
+      setCaseItems(cached.caseItems);
+      setCaseFiles(cached.caseFiles);
+      setTeamUsers(cached.teamUsers);
+      itemsOffsetRef.current = cached.itemsOffset;
+      filesOffsetRef.current = cached.filesOffset;
+      setHasMoreItems(cached.hasMoreItems);
+      setHasMoreFiles(cached.hasMoreFiles);
+      setLoading(false);
+    } else {
+      setCaseItems([]);
+      setCaseFiles([]);
+      setTeamUsers([]);
+      itemsOffsetRef.current = 0;
+      filesOffsetRef.current = 0;
+      setHasMoreItems(true);
+      setHasMoreFiles(true);
+    }
+
     void refreshAll();
-  }, [hydrateFromCache, refreshAll]);
+  }, [refreshAll, tenantId, userId]);
 
   useEffect(() => {
     if (!tenantId || !userId) return;
