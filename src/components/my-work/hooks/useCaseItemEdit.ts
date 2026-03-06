@@ -24,7 +24,7 @@ export type EditableCaseItem = {
   priority: string;
   assigneeIds: string[];
   timelineEvents: TimelineEvent[];
-  interactionType: TimelineInteractionType;
+  interactionType: TimelineInteractionType | "";
   interactionContact: string;
   interactionDateTime: string;
   interactionNote: string;
