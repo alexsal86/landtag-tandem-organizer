@@ -1321,6 +1321,23 @@ export function MyWorkCasesWorkspace() {
               setIsCaseFileDialogOpen(false);
             }}
           />
+
+          <StandaloneDecisionCreator
+            isOpen={isDecisionCreatorOpen}
+            onOpenChange={(open) => {
+              setIsDecisionCreatorOpen(open);
+              if (!open) setDecisionCreatorItemId(null);
+            }}
+            onDecisionCreated={() => {
+              if (decisionCreatorItemId) void loadLinkedDecisions(decisionCreatorItemId);
+            }}
+            caseItemId={decisionCreatorItemId || undefined}
+            defaultTitle={decisionCreatorItemId ? (caseItems.find(i => i.id === decisionCreatorItemId)?.subject || "") : ""}
+            defaultDescription={decisionCreatorItemId ? (caseItems.find(i => i.id === decisionCreatorItemId)?.summary || "") : ""}
+            onCreatedWithId={(decisionId) => {
+              void handleDecisionCreated(decisionId);
+            }}
+          />
         </>
       )}
     </>
