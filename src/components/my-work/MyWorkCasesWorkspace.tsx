@@ -18,6 +18,8 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/comp
 import SimpleRichTextEditor from "@/components/ui/SimpleRichTextEditor";
 import { CaseFileDetail, CaseFileCreateDialog } from "@/features/cases/files/components";
 import { CaseItemCreateDialog } from "@/components/my-work/CaseItemCreateDialog";
+import { StandaloneDecisionCreator } from "@/components/task-decisions/StandaloneDecisionCreator";
+import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { useCaseItems } from "@/features/cases/items/hooks";
 import { useAuth } from "@/hooks/useAuth";
 import { useTenant } from "@/hooks/useTenant";
