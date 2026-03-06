@@ -947,6 +947,14 @@ export function MyWorkCasesWorkspace() {
                                                 ))}
                                               </ContextMenuSubContent>
                                             </ContextMenuSub>
+                                            <ContextMenuSeparator />
+                                            <ContextMenuItem onClick={() => {
+                                              setDecisionCreatorItemId(item.id);
+                                              setIsDecisionCreatorOpen(true);
+                                            }}>
+                                              <Vote className="mr-2 h-3 w-3" />
+                                              Entscheidung stellen
+                                            </ContextMenuItem>
                                           </ContextMenuContent>
                                         </ContextMenu>
 
