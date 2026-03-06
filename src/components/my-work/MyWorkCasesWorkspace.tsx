@@ -1,6 +1,6 @@
 import { type KeyboardEvent, useCallback, useEffect, useMemo, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
-import { format } from "date-fns";
+import { format, type Locale } from "date-fns";
 import { de } from "date-fns/locale";
 import { ArrowDown, ArrowUp, Briefcase, CheckCircle2, Circle, Clock, FileText, FolderOpen, Gavel, GripVertical, Link2, Mail, MessageSquare, Phone, Plus, Search, UserRound, Users } from "lucide-react";
 import { DragDropContext, Droppable, Draggable, type DropResult } from "@hello-pangea/dnd";
@@ -133,8 +133,38 @@ const parseTimelineEvents = (payload: Record<string, unknown> | null): TimelineE
       interactionType: typeof item.interactionType === "string" ? item.interactionType as TimelineInteractionType : undefined,
     });
   }
-  return results.sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime());
+  return results.sort((a, b) => toTimeSafe(a.timestamp) - toTimeSafe(b.timestamp));
 };
+
+const loggedInvalidDateWarnings = new Set<string>();
+
+const formatDateSafe = (
+  value: string | number | Date | null | undefined,
+  pattern: string,
+  fallback = "–",
+  options?: { locale?: Locale; warnKey?: string; warnItemId?: string; warnField?: string },
+) => {
+  if (!value) return fallback;
+  const parsedDate = value instanceof Date ? value : new Date(value);
+  if (Number.isNaN(parsedDate.getTime())) {
+    if (options?.warnKey && !loggedInvalidDateWarnings.has(options.warnKey)) {
+      loggedInvalidDateWarnings.add(options.warnKey);
+      console.warn("Invalid date in case workspace item", {
+        itemId: options.warnItemId,
+        field: options.warnField,
+        value,
+      });
+    }
+    return fallback;
+  }
+  return format(parsedDate, pattern, options?.locale ? { locale: options.locale } : undefined);
+};
+
+function toTimeSafe(value: string | null | undefined) {
+  if (!value) return 0;
+  const parsedDate = new Date(value);
+  return Number.isNaN(parsedDate.getTime()) ? 0 : parsedDate.getTime();
+}
 
 const priorityOptions = [
   { value: "low", label: "Niedrig", color: "text-emerald-500" },
@@ -314,8 +344,8 @@ export function MyWorkCasesWorkspace() {
         subject: getItemSubject(a),
         description: getItemDescription(a),
         status: statusOptions.find((option) => option.value === a.status)?.label || a.status || "Neu",
-        received: a.source_received_at ? new Date(a.source_received_at).getTime() : 0,
-        due: a.due_at ? new Date(a.due_at).getTime() : 0,
+        received: toTimeSafe(a.source_received_at),
+        due: toTimeSafe(a.due_at),
         category: getCategory(a),
         priority: priorityRank[a.priority || ""] || 0,
         assignee: aAssignee,
@@ -326,8 +356,8 @@ export function MyWorkCasesWorkspace() {
         subject: getItemSubject(b),
         description: getItemDescription(b),
         status: statusOptions.find((option) => option.value === b.status)?.label || b.status || "Neu",
-        received: b.source_received_at ? new Date(b.source_received_at).getTime() : 0,
-        due: b.due_at ? new Date(b.due_at).getTime() : 0,
+        received: toTimeSafe(b.source_received_at),
+        due: toTimeSafe(b.due_at),
         category: getCategory(b),
         priority: priorityRank[b.priority || ""] || 0,
         assignee: bAssignee,
@@ -481,9 +511,9 @@ export function MyWorkCasesWorkspace() {
       summary: item.summary || item.resolution_summary || "",
       status: item.status || "neu",
       completionNote: item.completion_note || "",
-      completedAt: item.completed_at ? format(new Date(item.completed_at), "yyyy-MM-dd") : "",
-      sourceReceivedAt: item.source_received_at ? format(new Date(item.source_received_at), "yyyy-MM-dd") : "",
-      dueAt: item.due_at ? format(new Date(item.due_at), "yyyy-MM-dd") : "",
+      completedAt: formatDateSafe(item.completed_at, "yyyy-MM-dd", "", { warnKey: `${item.id}:completed_at`, warnItemId: item.id, warnField: "completed_at" }),
+      sourceReceivedAt: formatDateSafe(item.source_received_at, "yyyy-MM-dd", "", { warnKey: `${item.id}:source_received_at`, warnItemId: item.id, warnField: "source_received_at" }),
+      dueAt: formatDateSafe(item.due_at, "yyyy-MM-dd", "", { warnKey: `${item.id}:due_at`, warnItemId: item.id, warnField: "due_at" }),
       category: getCategory(item),
       priority: item.priority || "medium",
       assigneeIds: getAssigneeIds(item),
@@ -581,13 +611,8 @@ export function MyWorkCasesWorkspace() {
     return parts.slice(0, 2).map((part) => part[0]?.toUpperCase()).join("") || "?";
   };
 
-  const formatTimelineDate = useCallback((timestamp: string) => {
-    try {
-      return format(new Date(timestamp), "dd.MM.yyyy, HH:mm", { locale: de });
-    } catch {
-      return timestamp;
-    }
-  }, []);
+  const formatTimelineDate = useCallback((timestamp: string) =>
+    formatDateSafe(timestamp, "dd.MM.yyyy, HH:mm", "–", { locale: de }), []);
 
 
   const formatInteractionTimestamp = useCallback((value: string) => {
@@ -717,7 +742,7 @@ export function MyWorkCasesWorkspace() {
         })));
     }
 
-    return entries.sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime());
+    return entries.sort((a, b) => toTimeSafe(a.timestamp) - toTimeSafe(b.timestamp));
   }, [deleteTimelineEvent, detailItemId, editableCaseItem, linkedDecisions]);
 
   const handleCaseItemSave = async () => {
@@ -894,8 +919,8 @@ export function MyWorkCasesWorkspace() {
                                                     {getStatusMeta(item.status).label}
                                                   </Badge>
                                                 </span>
-                                                <span>{item.source_received_at ? format(new Date(item.source_received_at), "dd.MM.yy", { locale: de }) : "–"}</span>
-                                                <span>{item.due_at ? format(new Date(item.due_at), "dd.MM.yy", { locale: de }) : "–"}</span>
+                                                <span>{formatDateSafe(item.source_received_at, "dd.MM.yy", "–", { locale: de, warnKey: `${item.id}:source_received_at:list`, warnItemId: item.id, warnField: "source_received_at" })}</span>
+                                                <span>{formatDateSafe(item.due_at, "dd.MM.yy", "–", { locale: de, warnKey: `${item.id}:due_at:list`, warnItemId: item.id, warnField: "due_at" })}</span>
                                                 <span className={cn("truncate", !category && "text-amber-600")}>{category || "Pflichtfeld"}</span>
                                                 <span className="inline-flex items-center justify-center" title={priorityMeta(item.priority).label}>
                                                   <Circle className={cn("h-3.5 w-3.5 fill-current", priorityMeta(item.priority).color)} />
