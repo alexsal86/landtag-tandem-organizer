@@ -8,6 +8,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { DropdownMenu, DropdownMenuCheckboxItem, DropdownMenuContent, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -34,6 +35,7 @@ type CaseItem = {
   case_file_id: string | null;
   user_id: string | null;
   owner_user_id: string | null;
+  intake_payload: Record<string, unknown> | null;
   updated_at: string | null;
 };
 
@@ -57,9 +59,12 @@ type EditableCaseItem = {
   summary: string;
   sourceReceivedAt: string;
   dueAt: string;
+  category: string;
   priority: string;
-  ownerUserId: string;
+  assigneeIds: string[];
 };
+
+const categoryOptions = ["Allgemein", "Bürgeranliegen", "Anfrage", "Beschwerde", "Termin", "Sonstiges"] as const;
 
 const sourceChannelMeta: Record<string, { icon: typeof Phone; label: string }> = {
   phone: { icon: Phone, label: "Telefon" },
@@ -133,7 +138,7 @@ export function MyWorkCasesWorkspace() {
       const [itemsRes, filesRes, membersRes] = await Promise.all([
         supabase
           .from("case_items" as any)
-          .select("id, subject, summary, resolution_summary, source_channel, source_received_at, status, priority, due_at, case_file_id, user_id, owner_user_id, updated_at")
+          .select("id, subject, summary, resolution_summary, source_channel, source_received_at, status, priority, due_at, case_file_id, user_id, owner_user_id, intake_payload, updated_at")
           .eq("tenant_id", tenantId)
           .order("updated_at", { ascending: false, nullsFirst: false })
           .limit(200),
@@ -234,10 +239,41 @@ export function MyWorkCasesWorkspace() {
 
   const defaultAssigneeId = user?.id ?? null;
 
-  const handleOwnerChange = async (caseItemId: string, ownerId: string) => {
-    const value = ownerId === "unassigned" ? null : ownerId;
-    await supabase.from("case_items").update({ owner_user_id: value }).eq("id", caseItemId);
-    setCaseItems((prev) => prev.map((item) => (item.id === caseItemId ? { ...item, owner_user_id: value } : item)));
+  const getAssigneeIds = useCallback((item: CaseItem) => {
+    const payloadAssigneeIds = Array.isArray(item.intake_payload?.assignee_ids)
+      ? item.intake_payload.assignee_ids.filter((id): id is string => typeof id === "string" && id.length > 0)
+      : [];
+
+    const merged = [...payloadAssigneeIds];
+    if (item.owner_user_id && !merged.includes(item.owner_user_id)) merged.unshift(item.owner_user_id);
+    return Array.from(new Set(merged));
+  }, []);
+
+  const getCategory = useCallback((item: CaseItem) => {
+    const value = item.intake_payload?.category;
+    return typeof value === "string" ? value : "";
+  }, []);
+
+  const persistAssignees = async (item: CaseItem, assigneeIds: string[]) => {
+    const payload = {
+      ...(item.intake_payload || {}),
+      assignee_ids: assigneeIds,
+      category: getCategory(item),
+    };
+    const ownerUserId = assigneeIds[0] || null;
+
+    await supabase
+      .from("case_items")
+      .update({ owner_user_id: ownerUserId, intake_payload: payload })
+      .eq("id", item.id);
+
+    setCaseItems((prev) => prev.map((row) => (row.id === item.id ? { ...row, owner_user_id: ownerUserId, intake_payload: payload } : row)));
+  };
+
+  const handleAssigneeToggle = async (item: CaseItem, memberId: string, checked: boolean) => {
+    const current = getAssigneeIds(item);
+    const next = checked ? Array.from(new Set([...current, memberId])) : current.filter((id) => id !== memberId);
+    await persistAssignees(item, next);
   };
 
   const fileStats = useMemo(() => {
@@ -259,8 +295,9 @@ export function MyWorkCasesWorkspace() {
       summary: item.summary || item.resolution_summary || "",
       sourceReceivedAt: item.source_received_at ? format(new Date(item.source_received_at), "yyyy-MM-dd") : "",
       dueAt: item.due_at ? format(new Date(item.due_at), "yyyy-MM-dd") : "",
+      category: getCategory(item),
       priority: item.priority || "medium",
-      ownerUserId: item.owner_user_id || "unassigned",
+      assigneeIds: getAssigneeIds(item),
     });
   };
 
@@ -335,7 +372,12 @@ export function MyWorkCasesWorkspace() {
         source_received_at: editableCaseItem.sourceReceivedAt ? new Date(`${editableCaseItem.sourceReceivedAt}T12:00:00`).toISOString() : null,
         due_at: editableCaseItem.dueAt ? new Date(`${editableCaseItem.dueAt}T12:00:00`).toISOString() : null,
         priority: editableCaseItem.priority,
-        owner_user_id: editableCaseItem.ownerUserId === "unassigned" ? null : editableCaseItem.ownerUserId,
+        owner_user_id: editableCaseItem.assigneeIds[0] || null,
+        intake_payload: {
+          ...(detailItem?.intake_payload || {}),
+          category: editableCaseItem.category,
+          assignee_ids: editableCaseItem.assigneeIds,
+        },
       })
       .eq("id", detailItemId);
     await loadWorkspaceData();
@@ -384,19 +426,25 @@ export function MyWorkCasesWorkspace() {
                   </div>
                 ) : (
                   <div className="space-y-1.5">
-                    <div className="hidden grid-cols-[1.1fr_1fr_1fr_1fr_1.8fr] gap-2 border-b px-2 pb-1 text-[11px] font-medium uppercase tracking-wide text-muted-foreground lg:grid">
+                    <div className="hidden grid-cols-[56px_minmax(180px,1.6fr)_1fr_1fr_1.6fr_1fr_1fr_2fr] gap-2 border-b px-2 pb-1 text-[11px] font-medium uppercase tracking-wide text-muted-foreground lg:grid">
+                      <span>Kanal</span>
+                      <span>Betreff</span>
                       <span>Eingang</span>
                       <span>Fällig</span>
                       <span>Art</span>
+                      <span>Kategorie</span>
                       <span>Priorität</span>
                       <span>Bearbeiter</span>
                     </div>
                     {filteredCaseItems.map((item) => {
-                    const linkedFile = item.case_file_id ? caseFilesById[item.case_file_id] : null;
-                    const isActive = detailItemId === item.id;
-                    const channel = item.source_channel ? sourceChannelMeta[item.source_channel] : null;
-                    const ChannelIcon = channel?.icon ?? Briefcase;
-                    return (
+                      const linkedFile = item.case_file_id ? caseFilesById[item.case_file_id] : null;
+                      const isActive = detailItemId === item.id;
+                      const channel = item.source_channel ? sourceChannelMeta[item.source_channel] : null;
+                      const ChannelIcon = channel?.icon ?? Briefcase;
+                      const assigneeIds = getAssigneeIds(item);
+                      const assignees = assigneeIds.map((id) => teamUsers.find((member) => member.id === id)).filter(Boolean) as TeamUser[];
+                      const category = getCategory(item);
+                      return (
                       <button
                         key={item.id}
                         type="button"
@@ -406,57 +454,57 @@ export function MyWorkCasesWorkspace() {
                         )}
                         onClick={() => handleSelectCaseItem(item)}
                       >
-                        <div className="flex items-start justify-between gap-2">
-                          <div className="flex items-start gap-2 min-w-0">
-                            <span className="mt-0.5 rounded-sm bg-muted p-1 text-muted-foreground" title={channel?.label || "Kanal unbekannt"}>
+                        <div className="hidden h-12 grid-cols-[56px_minmax(180px,1.6fr)_1fr_1fr_1.6fr_1fr_1fr_2fr] items-center gap-2 text-xs text-muted-foreground lg:grid">
+                          <span className="inline-flex" title={channel?.label || "Kanal unbekannt"}>
+                            <span className="rounded-sm bg-muted p-1 text-muted-foreground">
                               <ChannelIcon className="h-3 w-3" />
                             </span>
-                            <p className="text-sm font-medium line-clamp-1">
-                              {item.subject || item.summary || item.resolution_summary || "Ohne Titel"}
-                            </p>
-                          </div>
-                        </div>
-                        <div className="mt-1.5 grid grid-cols-1 gap-2 text-xs text-muted-foreground lg:grid-cols-[1.1fr_1fr_1fr_1fr_1.8fr]">
+                          </span>
+                          <span className="text-sm font-medium text-foreground truncate">{item.subject || item.summary || item.resolution_summary || "Ohne Titel"}</span>
                           <span>{item.source_received_at ? format(new Date(item.source_received_at), "dd.MM.yy", { locale: de }) : "–"}</span>
                           <span>{item.due_at ? format(new Date(item.due_at), "dd.MM.yy", { locale: de }) : "–"}</span>
-                          <span>{linkedFile ? "Bestandteil einer Akte" : "Einzelvorgang"}</span>
+                          <span className="truncate" title={linkedFile ? linkedFile.title : "Einzelvorgang"}>
+                            {linkedFile ? `Akte: ${linkedFile.title}` : "Einzelvorgang"}
+                          </span>
+                          <span className={cn("truncate", !category && "text-amber-600")}>{category || "Pflichtfeld"}</span>
                           <span className="inline-flex items-center gap-1.5">
                             <Circle className={cn("h-3.5 w-3.5 fill-current", priorityMeta(item.priority).color)} />
                             {priorityMeta(item.priority).label}
                           </span>
-                          <div className="flex items-center gap-2" onClick={(event) => event.stopPropagation()}>
-                            {(() => {
-                              const currentOwner = teamUsers.find((member) => member.id === item.owner_user_id);
-                              return (
-                                <>
-                                  <Avatar className="h-6 w-6">
-                                    <AvatarImage src={currentOwner?.avatarUrl || undefined} />
-                                    <AvatarFallback className="text-[10px]">{currentOwner ? getInitials(currentOwner.name) : "--"}</AvatarFallback>
-                                  </Avatar>
-                                  <span className="truncate max-w-[120px]">{currentOwner?.name || "Nicht zugewiesen"}</span>
-                                </>
-                              );
-                            })()}
-                            <Select value={item.owner_user_id || "unassigned"} onValueChange={(value) => { void handleOwnerChange(item.id, value); }}>
-                              <SelectTrigger className="h-7 w-8 px-1">
-                                <Plus className="h-3.5 w-3.5" />
-                              </SelectTrigger>
-                              <SelectContent>
-                                <SelectItem value="unassigned">Nicht zugewiesen</SelectItem>
+                          <div className="flex items-center gap-2 min-w-0" onClick={(event) => event.stopPropagation()}>
+                            <div className="flex items-center -space-x-2">
+                              {assignees.slice(0, 3).map((member) => (
+                                <Avatar key={member.id} className="h-6 w-6 border bg-background">
+                                  <AvatarImage src={member.avatarUrl || undefined} />
+                                  <AvatarFallback className="text-[10px]">{getInitials(member.name)}</AvatarFallback>
+                                </Avatar>
+                              ))}
+                            </div>
+                            <span className="truncate">{assignees.length > 0 ? assignees.map((m) => m.name).join(", ") : "Nicht zugewiesen"}</span>
+                            <DropdownMenu>
+                              <DropdownMenuTrigger asChild>
+                                <Button type="button" size="icon" variant="outline" className="h-7 w-7">
+                                  <Plus className="h-3.5 w-3.5" />
+                                </Button>
+                              </DropdownMenuTrigger>
+                              <DropdownMenuContent align="end" className="w-56">
                                 {teamUsers.map((member) => (
-                                  <SelectItem key={member.id} value={member.id}>{member.name}</SelectItem>
+                                  <DropdownMenuCheckboxItem
+                                    key={member.id}
+                                    checked={assigneeIds.includes(member.id)}
+                                    onCheckedChange={(checked) => { void handleAssigneeToggle(item, member.id, checked === true); }}
+                                  >
+                                    {member.name}
+                                  </DropdownMenuCheckboxItem>
                                 ))}
-                              </SelectContent>
-                            </Select>
+                              </DropdownMenuContent>
+                            </DropdownMenu>
                           </div>
                         </div>
-                        {linkedFile && (
-                          <p className="mt-1 text-xs text-muted-foreground truncate">
-                            <FolderOpen className="inline h-3 w-3 mr-0.5" />
-                            {linkedFile.title}
-                            {linkedFile.reference_number && <span className="ml-1 opacity-70">({linkedFile.reference_number})</span>}
-                          </p>
-                        )}
+                        <div className="space-y-1 lg:hidden">
+                          <p className="text-sm font-medium truncate">{item.subject || item.summary || item.resolution_summary || "Ohne Titel"}</p>
+                          <p className="text-xs text-muted-foreground">{category || "Kategorie fehlt"}</p>
+                        </div>
                       </button>
                     );
                     })}
@@ -589,6 +637,15 @@ export function MyWorkCasesWorkspace() {
                 </div>
                 <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                   <div className="space-y-1.5">
+                    <Label>Kategorie *</Label>
+                    <Select value={editableCaseItem.category} onValueChange={(value) => setEditableCaseItem((prev) => prev ? { ...prev, category: value } : prev)}>
+                      <SelectTrigger><SelectValue placeholder="Kategorie auswählen" /></SelectTrigger>
+                      <SelectContent>
+                        {categoryOptions.map((category) => <SelectItem key={category} value={category}>{category}</SelectItem>)}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-1.5">
                     <Label>Priorität</Label>
                     <Select value={editableCaseItem.priority} onValueChange={(value) => setEditableCaseItem((prev) => prev ? { ...prev, priority: value } : prev)}>
                       <SelectTrigger><SelectValue /></SelectTrigger>
@@ -601,17 +658,39 @@ export function MyWorkCasesWorkspace() {
                     </Select>
                   </div>
                   <div className="space-y-1.5">
-                    <Label>Bearbeiter</Label>
-                    <Select value={editableCaseItem.ownerUserId} onValueChange={(value) => setEditableCaseItem((prev) => prev ? { ...prev, ownerUserId: value } : prev)}>
-                      <SelectTrigger><SelectValue /></SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="unassigned">Nicht zugewiesen</SelectItem>
-                        {teamUsers.map((member) => <SelectItem key={member.id} value={member.id}>{member.name}</SelectItem>)}
-                      </SelectContent>
-                    </Select>
+                    <Label>Bearbeiter (mehrfach)</Label>
+                    <div className="rounded-md border px-3 py-2 text-sm">
+                      {editableCaseItem.assigneeIds.length > 0
+                        ? editableCaseItem.assigneeIds.map((id) => teamUsers.find((member) => member.id === id)?.name || id).join(", ")
+                        : "Nicht zugewiesen"}
+                    </div>
+                    <div className="flex flex-wrap gap-2">
+                      {teamUsers.map((member) => {
+                        const selected = editableCaseItem.assigneeIds.includes(member.id);
+                        return (
+                          <Button
+                            key={member.id}
+                            type="button"
+                            size="sm"
+                            variant={selected ? "default" : "outline"}
+                            onClick={() => {
+                              setEditableCaseItem((prev) => {
+                                if (!prev) return prev;
+                                const next = selected
+                                  ? prev.assigneeIds.filter((id) => id !== member.id)
+                                  : [...prev.assigneeIds, member.id];
+                                return { ...prev, assigneeIds: Array.from(new Set(next)) };
+                              });
+                            }}
+                          >
+                            {member.name}
+                          </Button>
+                        );
+                      })}
+                    </div>
                   </div>
                 </div>
-                <Button onClick={() => { void handleCaseItemSave(); }}>
+                <Button disabled={!editableCaseItem.category} onClick={() => { void handleCaseItemSave(); }}>
                   Speichern
                 </Button>
               </div>
