@@ -106,8 +106,9 @@ async function logMatrixEvent(
   }
 }
 
+// deno-lint-ignore no-explicit-any
 async function isMatrixEnabledForUser(
-  supabaseAdmin: ReturnType<typeof createClient>,
+  supabaseAdmin: any,
   userId: string,
   cache: Map<string, boolean>,
 ) {
