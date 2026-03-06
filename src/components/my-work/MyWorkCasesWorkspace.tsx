@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { format } from "date-fns";
 import { de } from "date-fns/locale";
-import { AlertCircle, ArrowDown, ArrowUp, Briefcase, Circle, ExternalLink, FileText, FolderOpen, GripVertical, Link2, Mail, MessageSquare, Phone, Plus, Search, UserRound } from "lucide-react";
+import { AlertCircle, ArrowDown, ArrowUp, Briefcase, Circle, ExternalLink, FileText, FolderOpen, Gavel, GripVertical, Link2, Mail, MessageSquare, Phone, Plus, Search, Trash2, UserRound, Users } from "lucide-react";
 import { DragDropContext, Droppable, Draggable, type DropResult } from "@hello-pangea/dnd";
 
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -13,9 +13,9 @@ import { ContextMenu, ContextMenuContent, ContextMenuItem, ContextMenuSeparator,
 import { DropdownMenu, DropdownMenuCheckboxItem, DropdownMenuContent, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { ScrollArea } from "@/components/ui/scroll-area";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import SimpleRichTextEditor from "@/components/ui/SimpleRichTextEditor";
 import { CaseFileDetail, CaseFileCreateDialog } from "@/features/cases/files/components";
 import { CaseItemCreateDialog } from "@/components/my-work/CaseItemCreateDialog";
 import { useCaseItems } from "@/features/cases/items/hooks";
@@ -70,6 +70,22 @@ type EditableCaseItem = {
   category: string;
   priority: string;
   assigneeIds: string[];
+  timelineEvents: TimelineEvent[];
+  interactionType: TimelineInteractionType;
+  interactionTitle: string;
+  interactionNote: string;
+};
+
+type TimelineInteractionType = "anruf" | "mail" | "treffen" | "gespraech" | "notiz";
+
+type TimelineEvent = {
+  id: string;
+  type: "status" | "interaktion" | "entscheidung";
+  title: string;
+  note?: string;
+  timestamp: string;
+  statusValue?: string;
+  interactionType?: TimelineInteractionType;
 };
 
 type CaseItemSortKey = "channel" | "subject" | "description" | "status" | "received" | "due" | "category" | "priority" | "assignee";
@@ -89,8 +105,62 @@ const statusOptions = [
   { value: "neu", label: "Neu", dotColor: "bg-sky-500", badgeClass: "border-sky-500/40 text-sky-700 bg-sky-500/10" },
   { value: "in_klaerung", label: "In Klärung", dotColor: "bg-amber-500", badgeClass: "border-amber-500/40 text-amber-700 bg-amber-500/10" },
   { value: "antwort_ausstehend", label: "Antwort ausstehend", dotColor: "bg-violet-500", badgeClass: "border-violet-500/40 text-violet-700 bg-violet-500/10" },
+  { value: "entscheidung_abwartend", label: "Entscheidung abwartend", dotColor: "bg-fuchsia-600", badgeClass: "border-fuchsia-500/40 text-fuchsia-700 bg-fuchsia-500/10" },
   { value: "erledigt", label: "Erledigt", dotColor: "bg-emerald-600", badgeClass: "border-emerald-500/40 text-emerald-700 bg-emerald-500/10" },
 ] as const;
+
+const interactionTypeOptions: Array<{ value: TimelineInteractionType; label: string }> = [
+  { value: "anruf", label: "Anruf" },
+  { value: "mail", label: "Mail" },
+  { value: "treffen", label: "Treffen" },
+  { value: "gespraech", label: "Gespräch" },
+  { value: "notiz", label: "Notiz" },
+];
+
+const toEditorHtml = (value: string | null | undefined) => {
+  if (!value) return "";
+  if (/<[^>]+>/.test(value)) return value;
+  return `<p>${value
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")}</p>`;
+};
+
+const normalizeRichTextValue = (value: string): string | null => {
+  const trimmed = value.trim();
+  if (!trimmed) return null;
+  const withoutTags = trimmed
+    .replace(/<p><br><\/p>/gi, "")
+    .replace(/<br\s*\/?/gi, "")
+    .replace(/<[^>]+>/g, "")
+    .replace(/&nbsp;/gi, "")
+    .trim();
+  return withoutTags ? trimmed : null;
+};
+
+const parseTimelineEvents = (payload: Record<string, unknown> | null): TimelineEvent[] => {
+  const raw = payload?.timeline_events;
+  if (!Array.isArray(raw)) return [];
+  return raw
+    .map((event) => {
+      if (!event || typeof event !== "object") return null;
+      const item = event as Record<string, unknown>;
+      if (typeof item.id !== "string" || typeof item.type !== "string" || typeof item.title !== "string" || typeof item.timestamp !== "string") return null;
+      const type = item.type;
+      if (type !== "status" && type !== "interaktion" && type !== "entscheidung") return null;
+      return {
+        id: item.id,
+        type,
+        title: item.title,
+        note: typeof item.note === "string" ? item.note : undefined,
+        timestamp: item.timestamp,
+        statusValue: typeof item.statusValue === "string" ? item.statusValue : undefined,
+        interactionType: typeof item.interactionType === "string" ? item.interactionType as TimelineInteractionType : undefined,
+      };
+    })
+    .filter((event): event is TimelineEvent => event !== null)
+    .sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime());
+};
 
 const priorityOptions = [
   { value: "low", label: "Niedrig", color: "text-emerald-500" },
@@ -453,6 +523,10 @@ export function MyWorkCasesWorkspace() {
       category: getCategory(item),
       priority: item.priority || "medium",
       assigneeIds: getAssigneeIds(item),
+      timelineEvents: parseTimelineEvents(item.intake_payload),
+      interactionType: "anruf",
+      interactionTitle: "",
+      interactionNote: "",
     });
   };
 
@@ -515,6 +589,80 @@ export function MyWorkCasesWorkspace() {
     return parts.slice(0, 2).map((part) => part[0]?.toUpperCase()).join("") || "?";
   };
 
+  const formatTimelineDate = useCallback((timestamp: string) => {
+    try {
+      return format(new Date(timestamp), "dd.MM.yyyy, HH:mm", { locale: de });
+    } catch {
+      return timestamp;
+    }
+  }, []);
+
+  const appendTimelineEvent = useCallback((event: Omit<TimelineEvent, "id" | "timestamp">) => {
+    setEditableCaseItem((prev) => {
+      if (!prev) return prev;
+      return {
+        ...prev,
+        timelineEvents: [...prev.timelineEvents, {
+          ...event,
+          id: typeof crypto !== "undefined" && "randomUUID" in crypto ? crypto.randomUUID() : `${Date.now()}-${Math.random()}`,
+          timestamp: new Date().toISOString(),
+        }],
+      };
+    });
+  }, []);
+
+  const handleAddInteraction = useCallback(() => {
+    if (!editableCaseItem) return;
+    const title = editableCaseItem.interactionTitle.trim() || `${interactionTypeOptions.find((opt) => opt.value === editableCaseItem.interactionType)?.label || "Interaktion"}`;
+    appendTimelineEvent({
+      type: "interaktion",
+      title,
+      note: editableCaseItem.interactionNote.trim() || undefined,
+      interactionType: editableCaseItem.interactionType,
+    });
+    setEditableCaseItem((prev) => prev ? { ...prev, interactionTitle: "", interactionNote: "" } : prev);
+  }, [appendTimelineEvent, editableCaseItem]);
+
+  const handleRequestDecision = useCallback(() => {
+    if (!editableCaseItem || editableCaseItem.status === "entscheidung_abwartend") return;
+    const previousStatus = editableCaseItem.status;
+    setEditableCaseItem((prev) => prev ? {
+      ...prev,
+      status: "entscheidung_abwartend",
+      timelineEvents: [...prev.timelineEvents, {
+        id: typeof crypto !== "undefined" && "randomUUID" in crypto ? crypto.randomUUID() : `${Date.now()}-${Math.random()}`,
+        type: "entscheidung",
+        title: "Entscheidung angefordert",
+        note: `Vorheriger Status: ${getStatusMeta(previousStatus).label}`,
+        timestamp: new Date().toISOString(),
+        statusValue: previousStatus,
+      }],
+    } : prev);
+  }, [editableCaseItem, getStatusMeta]);
+
+  const handleDecisionReceived = useCallback(() => {
+    if (!editableCaseItem || editableCaseItem.status !== "entscheidung_abwartend") return;
+    const decisionEvent = [...editableCaseItem.timelineEvents].reverse().find((event) => event.type === "entscheidung" && event.statusValue);
+    const fallback = "in_klaerung";
+    const restoredStatus = decisionEvent?.statusValue || fallback;
+    setEditableCaseItem((prev) => prev ? {
+      ...prev,
+      status: restoredStatus,
+      timelineEvents: [...prev.timelineEvents, {
+        id: typeof crypto !== "undefined" && "randomUUID" in crypto ? crypto.randomUUID() : `${Date.now()}-${Math.random()}`,
+        type: "status",
+        title: "Entscheidung eingegangen",
+        note: `Status zurück auf ${getStatusMeta(restoredStatus).label}`,
+        timestamp: new Date().toISOString(),
+        statusValue: restoredStatus,
+      }],
+    } : prev);
+  }, [editableCaseItem, getStatusMeta]);
+
+  const handleDeleteTimelineEvent = useCallback((eventId: string) => {
+    setEditableCaseItem((prev) => prev ? { ...prev, timelineEvents: prev.timelineEvents.filter((event) => event.id !== eventId) } : prev);
+  }, []);
+
   const handleCaseItemSave = async () => {
     if (!detailItemId || !editableCaseItem) return;
     if (editableCaseItem.status === "erledigt" && (!editableCaseItem.completionNote.trim() || !editableCaseItem.completedAt)) {
@@ -525,8 +673,8 @@ export function MyWorkCasesWorkspace() {
       .from("case_items")
       .update({
         subject: editableCaseItem.subject.trim() || null,
-        summary: editableCaseItem.summary.trim() || null,
-        resolution_summary: editableCaseItem.summary.trim() || null,
+        summary: normalizeRichTextValue(editableCaseItem.summary),
+        resolution_summary: normalizeRichTextValue(editableCaseItem.summary),
         status: editableCaseItem.status as any,
         completion_note: editableCaseItem.completionNote.trim() || null,
         completed_at: editableCaseItem.completedAt ? new Date(`${editableCaseItem.completedAt}T12:00:00`).toISOString() : null,
@@ -538,6 +686,7 @@ export function MyWorkCasesWorkspace() {
           ...(detailItem?.intake_payload || {}),
           category: editableCaseItem.category,
           assignee_ids: editableCaseItem.assigneeIds,
+          timeline_events: editableCaseItem.timelineEvents,
         },
       })
       .eq("id", detailItemId);
@@ -591,7 +740,7 @@ export function MyWorkCasesWorkspace() {
                 <CardContent className="space-y-3 pt-5">
                   <Droppable droppableId="case-items-list" isDropDisabled>
                     {(provided) => (
-                      <ScrollArea className="h-[520px] pr-2">
+                      <div className="space-y-1.5 pr-2">
                         <div ref={provided.innerRef} {...provided.droppableProps} className="space-y-1.5">
                           {sortedCaseItems.length === 0 ? (
                             <div className="rounded-md border border-dashed p-4 text-sm text-muted-foreground space-y-3">
@@ -793,125 +942,156 @@ export function MyWorkCasesWorkspace() {
                                         >
                                           <div className="overflow-hidden">
                                             {hasInlineDetail && (
-                                              <div className="mx-2 mb-3 rounded-md border bg-muted/20 p-3">
-                                                <div className="space-y-2">
-                                                  <h3 className="font-semibold">Vorgang bearbeiten</h3>
-                                                  <div className="flex flex-wrap gap-2 text-xs">
-                                                    <div className="rounded-md border bg-background px-3 py-2">
-                                                    <p className="text-xs uppercase tracking-wide text-muted-foreground">Aktuelle Phase</p>
-                                                    <Badge variant="outline" className={cn("mt-1 text-sm", getStatusMeta(editableCaseItem.status).badgeClass)}>
-                                                      {getStatusMeta(editableCaseItem.status).label}
-                                                    </Badge>
-                                                  </div>
-                                                    <Badge variant="secondary" className="inline-flex items-center gap-1"><Circle className={cn("h-3 w-3 fill-current", priorityMeta(editableCaseItem.priority).color)} /> {priorityMeta(editableCaseItem.priority).label}</Badge>
-                                                    {item.source_channel && <Badge variant="secondary">Kanal: {item.source_channel}</Badge>}
-                                                  </div>
-                                                </div>
-
-                                                <div className="mt-3 space-y-3 rounded-md border bg-background p-3">
-                                                  <div className="space-y-1.5">
-                                                    <Label htmlFor="detail-subject">Betreff</Label>
-                                                    <Input id="detail-subject" value={editableCaseItem.subject} onChange={(event) => setEditableCaseItem((prev) => prev ? { ...prev, subject: event.target.value } : prev)} />
-                                                  </div>
-                                                  <div className="space-y-1.5">
-                                                    <Label htmlFor="detail-summary">Beschreibung</Label>
-                                                    <Input id="detail-summary" value={editableCaseItem.summary} onChange={(event) => setEditableCaseItem((prev) => prev ? { ...prev, summary: event.target.value } : prev)} />
-                                                  </div>
-                                                  <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                                              <div className="mx-2 mb-3 rounded-md border bg-muted/20 p-3 space-y-4">
+                                                <div className="grid gap-4 lg:grid-cols-[minmax(0,2fr)_minmax(0,1fr)]">
+                                                  <div className="space-y-3">
                                                     <div className="space-y-1.5">
-                                                      <Label htmlFor="detail-received">Eingangsdatum</Label>
-                                                      <Input id="detail-received" type="date" value={editableCaseItem.sourceReceivedAt} onChange={(event) => setEditableCaseItem((prev) => prev ? { ...prev, sourceReceivedAt: event.target.value } : prev)} />
+                                                      <Label className="font-bold" htmlFor="detail-subject">Betreff</Label>
+                                                      <Input id="detail-subject" value={editableCaseItem.subject} onChange={(event) => setEditableCaseItem((prev) => prev ? { ...prev, subject: event.target.value } : prev)} />
                                                     </div>
                                                     <div className="space-y-1.5">
-                                                      <Label htmlFor="detail-due">Fällig am</Label>
-                                                      <Input id="detail-due" type="date" value={editableCaseItem.dueAt} onChange={(event) => setEditableCaseItem((prev) => prev ? { ...prev, dueAt: event.target.value } : prev)} />
+                                                      <Label className="font-bold" htmlFor="detail-summary">Beschreibung</Label>
+                                                      <SimpleRichTextEditor
+                                                        key={`detail-summary-${item.id}`}
+                                                        initialContent={toEditorHtml(editableCaseItem.summary)}
+                                                        onChange={(html) => setEditableCaseItem((prev) => prev ? { ...prev, summary: html } : prev)}
+                                                        placeholder="Beschreibung hinzufügen"
+                                                        minHeight="140px"
+                                                      />
                                                     </div>
-                                                  </div>
-                                                  <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-                                                    <div className="space-y-1.5">
-                                                      <Label>Status</Label>
-                                                      <Select value={editableCaseItem.status} onValueChange={(value) => setEditableCaseItem((prev) => prev ? { ...prev, status: value } : prev)}>
-                                                        <SelectTrigger><SelectValue /></SelectTrigger>
-                                                        <SelectContent>
-                                                          {statusOptions.map((statusOption) => (
-                                                            <SelectItem key={statusOption.value} value={statusOption.value}>{statusOption.label}</SelectItem>
-                                                          ))}
-                                                        </SelectContent>
-                                                      </Select>
-                                                    </div>
-                                                    <div className="space-y-1.5">
-                                                      <Label>Kategorie *</Label>
-                                                      <Select value={editableCaseItem.category} onValueChange={(value) => setEditableCaseItem((prev) => prev ? { ...prev, category: value } : prev)}>
-                                                        <SelectTrigger><SelectValue placeholder="Kategorie auswählen" /></SelectTrigger>
-                                                        <SelectContent>
-                                                          {categoryOptions.map((categoryOption) => <SelectItem key={categoryOption} value={categoryOption}>{categoryOption}</SelectItem>)}
-                                                        </SelectContent>
-                                                      </Select>
-                                                    </div>
-                                                    <div className="space-y-1.5">
-                                                      <Label>Priorität</Label>
-                                                      <Select value={editableCaseItem.priority} onValueChange={(value) => setEditableCaseItem((prev) => prev ? { ...prev, priority: value } : prev)}>
-                                                        <SelectTrigger><SelectValue /></SelectTrigger>
-                                                        <SelectContent>
-                                                          <SelectItem value="low">Niedrig</SelectItem>
-                                                          <SelectItem value="medium">Mittel</SelectItem>
-                                                          <SelectItem value="high">Hoch</SelectItem>
-                                                          <SelectItem value="urgent">Dringend</SelectItem>
-                                                        </SelectContent>
-                                                      </Select>
-                                                    </div>
-                                                    <div className="space-y-1.5 sm:col-span-2">
-                                                      <Label>Bearbeiter (mehrfach)</Label>
-                                                      <div className="rounded-md border px-3 py-2 text-sm">
-                                                        {editableCaseItem.assigneeIds.length > 0
-                                                          ? editableCaseItem.assigneeIds.map((id) => teamUsers.find((member) => member.id === id)?.name || id).join(", ")
-                                                          : "Nicht zugewiesen"}
+                                                    <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                                                      <div className="space-y-1.5">
+                                                        <Label className="font-bold" htmlFor="detail-received">Eingangsdatum</Label>
+                                                        <Input id="detail-received" type="date" value={editableCaseItem.sourceReceivedAt} onChange={(event) => setEditableCaseItem((prev) => prev ? { ...prev, sourceReceivedAt: event.target.value } : prev)} />
                                                       </div>
+                                                      <div className="space-y-1.5">
+                                                        <Label className="font-bold" htmlFor="detail-due">Fällig am</Label>
+                                                        <Input id="detail-due" type="date" value={editableCaseItem.dueAt} onChange={(event) => setEditableCaseItem((prev) => prev ? { ...prev, dueAt: event.target.value } : prev)} />
+                                                      </div>
+                                                    </div>
+                                                    <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                                                      <div className="space-y-1.5">
+                                                        <Label className="font-bold">Status</Label>
+                                                        <Select value={editableCaseItem.status} onValueChange={(value) => setEditableCaseItem((prev) => prev ? { ...prev, status: value } : prev)}>
+                                                          <SelectTrigger><SelectValue /></SelectTrigger>
+                                                          <SelectContent>
+                                                            {statusOptions.map((statusOption) => (
+                                                              <SelectItem key={statusOption.value} value={statusOption.value}>{statusOption.label}</SelectItem>
+                                                            ))}
+                                                          </SelectContent>
+                                                        </Select>
+                                                      </div>
+                                                      <div className="space-y-1.5">
+                                                        <Label className="font-bold">Kategorie *</Label>
+                                                        <Select value={editableCaseItem.category} onValueChange={(value) => setEditableCaseItem((prev) => prev ? { ...prev, category: value } : prev)}>
+                                                          <SelectTrigger><SelectValue placeholder="Kategorie wählen" /></SelectTrigger>
+                                                          <SelectContent>
+                                                            {categoryOptions.map((categoryOption) => (
+                                                              <SelectItem key={categoryOption} value={categoryOption}>{categoryOption}</SelectItem>
+                                                            ))}
+                                                          </SelectContent>
+                                                        </Select>
+                                                      </div>
+                                                    </div>
+                                                    <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                                                      <div className="space-y-1.5">
+                                                        <Label className="font-bold">Priorität</Label>
+                                                        <Select value={editableCaseItem.priority} onValueChange={(value) => setEditableCaseItem((prev) => prev ? { ...prev, priority: value } : prev)}>
+                                                          <SelectTrigger><SelectValue /></SelectTrigger>
+                                                          <SelectContent>
+                                                            {priorityOptions.map((priorityOption) => (
+                                                              <SelectItem key={priorityOption.value} value={priorityOption.value}>{priorityOption.label}</SelectItem>
+                                                            ))}
+                                                          </SelectContent>
+                                                        </Select>
+                                                      </div>
+                                                      <div className="space-y-1.5">
+                                                        <Label className="font-bold">Entscheidung</Label>
+                                                        <div className="flex gap-2">
+                                                          <Button type="button" variant="outline" size="sm" onClick={handleRequestDecision} disabled={editableCaseItem.status === "entscheidung_abwartend"}><Gavel className="mr-1 h-3.5 w-3.5" />Anfordern</Button>
+                                                          <Button type="button" variant="outline" size="sm" onClick={handleDecisionReceived} disabled={editableCaseItem.status !== "entscheidung_abwartend"}>Eingegangen</Button>
+                                                        </div>
+                                                      </div>
+                                                    </div>
+                                                    <div className="space-y-1.5">
+                                                      <Label className="font-bold">Bearbeiter</Label>
                                                       <div className="flex flex-wrap gap-2">
                                                         {teamUsers.map((member) => {
                                                           const selected = editableCaseItem.assigneeIds.includes(member.id);
                                                           return (
-                                                            <Button
-                                                              key={member.id}
-                                                              type="button"
-                                                              size="sm"
-                                                              variant={selected ? "default" : "outline"}
-                                                              onClick={() => {
-                                                                setEditableCaseItem((prev) => {
-                                                                  if (!prev) return prev;
-                                                                  const next = selected
-                                                                    ? prev.assigneeIds.filter((id) => id !== member.id)
-                                                                    : [...prev.assigneeIds, member.id];
-                                                                  return { ...prev, assigneeIds: Array.from(new Set(next)) };
-                                                                });
-                                                              }}
-                                                            >
-                                                              {member.name}
-                                                            </Button>
+                                                            <Button key={member.id} type="button" size="sm" variant={selected ? "default" : "outline"} onClick={() => {
+                                                              setEditableCaseItem((prev) => {
+                                                                if (!prev) return prev;
+                                                                const next = selected ? prev.assigneeIds.filter((id) => id !== member.id) : [...prev.assigneeIds, member.id];
+                                                                return { ...prev, assigneeIds: Array.from(new Set(next)) };
+                                                              });
+                                                            }}>{member.name}</Button>
                                                           );
                                                         })}
                                                       </div>
                                                     </div>
-                                                  </div>
-                                                  {editableCaseItem.status === "erledigt" && (
-                                                    <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-                                                      <div className="space-y-1.5 sm:col-span-2">
-                                                        <Label htmlFor="detail-completion-note">Abschlussnotiz *</Label>
-                                                        <Input id="detail-completion-note" value={editableCaseItem.completionNote} onChange={(event) => setEditableCaseItem((prev) => prev ? { ...prev, completionNote: event.target.value } : prev)} />
+                                                    {editableCaseItem.status === "erledigt" && (
+                                                      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                                                        <div className="space-y-1.5 sm:col-span-2">
+                                                          <Label className="font-bold" htmlFor="detail-completion-note">Abschlussnotiz *</Label>
+                                                          <Input id="detail-completion-note" value={editableCaseItem.completionNote} onChange={(event) => setEditableCaseItem((prev) => prev ? { ...prev, completionNote: event.target.value } : prev)} />
+                                                        </div>
+                                                        <div className="space-y-1.5">
+                                                          <Label className="font-bold" htmlFor="detail-completed-at">Abgeschlossen am *</Label>
+                                                          <Input id="detail-completed-at" type="date" value={editableCaseItem.completedAt} onChange={(event) => setEditableCaseItem((prev) => prev ? { ...prev, completedAt: event.target.value } : prev)} />
+                                                        </div>
                                                       </div>
-                                                      <div className="space-y-1.5">
-                                                        <Label htmlFor="detail-completed-at">Abgeschlossen am *</Label>
-                                                        <Input id="detail-completed-at" type="date" value={editableCaseItem.completedAt} onChange={(event) => setEditableCaseItem((prev) => prev ? { ...prev, completedAt: event.target.value } : prev)} />
+                                                    )}
+                                                    <Button disabled={!editableCaseItem.category} onClick={() => { void handleCaseItemSave(); }}>Speichern</Button>
+                                                  </div>
+
+                                                  <div className="space-y-4">
+                                                    <div className="rounded-md border bg-background p-3 space-y-3">
+                                                      <div className="flex items-center gap-2 text-sm font-semibold"><Users className="h-4 w-4" />Inter-/Aktionen</div>
+                                                      <div className="space-y-2">
+                                                        <Select value={editableCaseItem.interactionType} onValueChange={(value: TimelineInteractionType) => setEditableCaseItem((prev) => prev ? { ...prev, interactionType: value } : prev)}>
+                                                          <SelectTrigger><SelectValue /></SelectTrigger>
+                                                          <SelectContent>
+                                                            {interactionTypeOptions.map((option) => <SelectItem key={option.value} value={option.value}>{option.label}</SelectItem>)}
+                                                          </SelectContent>
+                                                        </Select>
+                                                        <Input placeholder="Titel der Interaktion" value={editableCaseItem.interactionTitle} onChange={(event) => setEditableCaseItem((prev) => prev ? { ...prev, interactionTitle: event.target.value } : prev)} />
+                                                        <Input placeholder="Notiz (optional)" value={editableCaseItem.interactionNote} onChange={(event) => setEditableCaseItem((prev) => prev ? { ...prev, interactionNote: event.target.value } : prev)} />
+                                                        <Button type="button" size="sm" onClick={handleAddInteraction}>Interaktion hinzufügen</Button>
                                                       </div>
                                                     </div>
-                                                  )}
-                                                  <Button disabled={!editableCaseItem.category} onClick={() => { void handleCaseItemSave(); }}>
-                                                    Speichern
-                                                  </Button>
+                                                    <div className="rounded-md border bg-background p-3">
+                                                      <p className="font-bold mb-3">Zeitstrahl</p>
+                                                      <div className="relative space-y-4 pl-6">
+                                                        <span className="absolute left-2 top-1 bottom-1 w-px bg-border" />
+                                                        {editableCaseItem.timelineEvents.length === 0 ? (
+                                                          <p className="text-xs text-muted-foreground">Noch keine Einträge im Zeitstrahl.</p>
+                                                        ) : (
+                                                          editableCaseItem.timelineEvents.map((event) => (
+                                                            <div key={event.id} className="relative">
+                                                              <span className="absolute -left-[18px] top-1.5 h-2.5 w-2.5 rounded-full bg-primary" />
+                                                              <div className="rounded border p-2 text-xs">
+                                                                <div className="flex items-start justify-between gap-2">
+                                                                  <div>
+                                                                    <p className="font-semibold">{event.title}</p>
+                                                                    <p className="text-muted-foreground">{formatTimelineDate(event.timestamp)}</p>
+                                                                  </div>
+                                                                  <Button type="button" variant="ghost" size="icon" className="h-6 w-6" onClick={() => handleDeleteTimelineEvent(event.id)}>
+                                                                    <Trash2 className="h-3.5 w-3.5" />
+                                                                  </Button>
+                                                                </div>
+                                                                {event.note && <p className="mt-1 text-muted-foreground">{event.note}</p>}
+                                                              </div>
+                                                            </div>
+                                                          ))
+                                                        )}
+                                                      </div>
+                                                    </div>
+                                                  </div>
                                                 </div>
 
                                                 {item.case_file_id && caseFilesById[item.case_file_id] ? (
-                                                  <div className="mt-3 space-y-2">
+                                                  <div className="mt-1 space-y-2">
                                                     <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Verknüpfte FallAkte</p>
                                                     <div className="rounded-md border bg-background p-3 text-sm">
                                                       <p className="font-semibold">{caseFilesById[item.case_file_id].title}</p>
@@ -928,19 +1108,18 @@ export function MyWorkCasesWorkspace() {
                                                     </Button>
                                                   </div>
                                                 ) : (
-                                                  <div className="mt-3 space-y-3 rounded-md border border-dashed bg-background p-4 text-sm text-muted-foreground">
+                                                  <div className="mt-1 space-y-3 rounded-md border border-dashed bg-background p-4 text-sm text-muted-foreground">
                                                     <AlertCircle className="h-4 w-4" />
                                                     <p>Keine Akte verknüpft.</p>
                                                     <div className="flex flex-wrap gap-2">
-                                                      <Button size="sm" onClick={() => handleCreateCaseFile(item.id)}>
-                                                        Neue Akte anlegen
-                                                      </Button>
+                                                      <Button size="sm" onClick={() => handleCreateCaseFile(item.id)}>Neue Akte anlegen</Button>
                                                     </div>
                                                   </div>
                                                 )}
                                               </div>
                                             )}
                                           </div>
+                                        </div>
                                         </div>
                                       </div>
                                     )}
@@ -951,7 +1130,7 @@ export function MyWorkCasesWorkspace() {
                           )}
                           {provided.placeholder}
                         </div>
-                      </ScrollArea>
+                      </div>
                     )}
                   </Droppable>
                 </CardContent>
@@ -981,7 +1160,7 @@ export function MyWorkCasesWorkspace() {
                       className="pl-8"
                     />
                   </div>
-                  <ScrollArea className="h-[520px] pr-2">
+                  <div className="space-y-1.5 pr-2">
                     <div className="space-y-1.5">
                       {filteredCaseFiles.length === 0 ? (
                         <div className="rounded-md border border-dashed p-4 text-sm text-muted-foreground space-y-3">
@@ -1034,7 +1213,7 @@ export function MyWorkCasesWorkspace() {
                         })
                       )}
                     </div>
-                  </ScrollArea>
+                  </div>
                 </CardContent>
               </Card>
             </div>
