@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { format } from "date-fns";
 import { de } from "date-fns/locale";
-import { AlertCircle, Briefcase, Circle, ExternalLink, FileText, FolderOpen, Mail, MessageSquare, Phone, Plus, Search, UserRound } from "lucide-react";
+import { AlertCircle, ArrowDown, ArrowUp, Briefcase, Circle, ExternalLink, FileText, FolderOpen, Mail, MessageSquare, Phone, Plus, Search, UserRound } from "lucide-react";
 
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
@@ -64,6 +64,9 @@ type EditableCaseItem = {
   assigneeIds: string[];
 };
 
+type CaseItemSortKey = "channel" | "subject" | "description" | "received" | "due" | "type" | "category" | "priority" | "assignee";
+type SortDirection = "asc" | "desc";
+
 const categoryOptions = ["Allgemein", "Bürgeranliegen", "Anfrage", "Beschwerde", "Termin", "Sonstiges"] as const;
 
 const sourceChannelMeta: Record<string, { icon: typeof Phone; label: string }> = {
@@ -98,6 +101,10 @@ export function MyWorkCasesWorkspace() {
   const [detailItemId, setDetailItemId] = useState<string | null>(null);
   const [detailFileId, setDetailFileId] = useState<string | null>(null);
   const [editableCaseItem, setEditableCaseItem] = useState<EditableCaseItem | null>(null);
+  const [itemSort, setItemSort] = useState<{ key: CaseItemSortKey; direction: SortDirection }>({ key: "received", direction: "desc" });
+
+  const getItemSubject = useCallback((item: CaseItem) => item.subject || item.summary || item.resolution_summary || "Ohne Titel", []);
+  const getItemDescription = useCallback((item: CaseItem) => item.summary || item.resolution_summary || "", []);
 
   const clearActionParam = useCallback(() => {
     setSearchParams((prev) => {
@@ -203,17 +210,92 @@ export function MyWorkCasesWorkspace() {
 
   // --- Filtered lists ---
 
+  const getAssigneeIds = useCallback((item: CaseItem) => {
+    const payloadAssigneeIds = Array.isArray(item.intake_payload?.assignee_ids)
+      ? item.intake_payload.assignee_ids.filter((id): id is string => typeof id === "string" && id.length > 0)
+      : [];
+
+    const merged = [...payloadAssigneeIds];
+    if (item.owner_user_id && !merged.includes(item.owner_user_id)) merged.unshift(item.owner_user_id);
+    return Array.from(new Set(merged));
+  }, []);
+
+  const getCategory = useCallback((item: CaseItem) => {
+    const value = item.intake_payload?.category;
+    return typeof value === "string" ? value : "";
+  }, []);
+
   const filteredCaseItems = useMemo(() => {
     const query = itemFilterQuery.trim().toLowerCase();
     if (!query) return caseItems;
     return caseItems.filter((item) => {
       const linkedFile = item.case_file_id ? caseFilesById[item.case_file_id] : null;
-      return [item.subject, item.summary, item.resolution_summary, item.source_channel, item.status, item.priority]
+      const category = getCategory(item);
+      return [item.subject, item.summary, item.resolution_summary, item.source_channel, item.status, item.priority, category]
         .concat(linkedFile ? [linkedFile.title, linkedFile.reference_number] : [])
         .filter(Boolean)
         .some((v) => v!.toLowerCase().includes(query));
     });
-  }, [caseFilesById, caseItems, itemFilterQuery]);
+  }, [caseFilesById, caseItems, getCategory, itemFilterQuery]);
+
+  const sortedCaseItems = useMemo(() => {
+    const priorityRank: Record<string, number> = { low: 1, medium: 2, high: 3, urgent: 4 };
+    const directionFactor = itemSort.direction === "asc" ? 1 : -1;
+
+    return [...filteredCaseItems].sort((a, b) => {
+      const aLinkedFile = a.case_file_id ? caseFilesById[a.case_file_id] : null;
+      const bLinkedFile = b.case_file_id ? caseFilesById[b.case_file_id] : null;
+      const aAssignee = getAssigneeIds(a).map((id) => teamUsers.find((member) => member.id === id)?.name || "").join(", ");
+      const bAssignee = getAssigneeIds(b).map((id) => teamUsers.find((member) => member.id === id)?.name || "").join(", ");
+
+      const aValue: string | number = {
+        channel: sourceChannelMeta[a.source_channel || ""]?.label || a.source_channel || "",
+        subject: getItemSubject(a),
+        description: getItemDescription(a),
+        received: a.source_received_at ? new Date(a.source_received_at).getTime() : 0,
+        due: a.due_at ? new Date(a.due_at).getTime() : 0,
+        type: aLinkedFile ? `Akte: ${aLinkedFile.title}` : "Einzelvorgang",
+        category: getCategory(a),
+        priority: priorityRank[a.priority || ""] || 0,
+        assignee: aAssignee,
+      }[itemSort.key];
+
+      const bValue: string | number = {
+        channel: sourceChannelMeta[b.source_channel || ""]?.label || b.source_channel || "",
+        subject: getItemSubject(b),
+        description: getItemDescription(b),
+        received: b.source_received_at ? new Date(b.source_received_at).getTime() : 0,
+        due: b.due_at ? new Date(b.due_at).getTime() : 0,
+        type: bLinkedFile ? `Akte: ${bLinkedFile.title}` : "Einzelvorgang",
+        category: getCategory(b),
+        priority: priorityRank[b.priority || ""] || 0,
+        assignee: bAssignee,
+      }[itemSort.key];
+
+      if (typeof aValue === "number" && typeof bValue === "number") {
+        return (aValue - bValue) * directionFactor;
+      }
+
+      return String(aValue).localeCompare(String(bValue), "de", { sensitivity: "base" }) * directionFactor;
+    });
+  }, [caseFilesById, filteredCaseItems, getAssigneeIds, getCategory, getItemDescription, getItemSubject, itemSort, teamUsers]);
+
+  const toggleSort = useCallback((key: CaseItemSortKey, direction: SortDirection) => {
+    setItemSort((prev) => (prev.key === key && prev.direction === direction ? prev : { key, direction }));
+  }, []);
+
+  const isSortActive = useCallback(
+    (key: CaseItemSortKey, direction: SortDirection) => itemSort.key === key && itemSort.direction === direction,
+    [itemSort.direction, itemSort.key],
+  );
+
+  const sortButtonClass = useCallback(
+    (key: CaseItemSortKey, direction: SortDirection) => cn(
+      "rounded p-0.5 opacity-0 transition-all group-hover:opacity-100 hover:bg-muted",
+      isSortActive(key, direction) && "bg-primary/15 text-primary opacity-100",
+    ),
+    [isSortActive],
+  );
 
   const filteredCaseFiles = useMemo(() => {
     const query = fileFilterQuery.trim().toLowerCase();
@@ -238,21 +320,6 @@ export function MyWorkCasesWorkspace() {
 
 
   const defaultAssigneeId = user?.id ?? null;
-
-  const getAssigneeIds = useCallback((item: CaseItem) => {
-    const payloadAssigneeIds = Array.isArray(item.intake_payload?.assignee_ids)
-      ? item.intake_payload.assignee_ids.filter((id): id is string => typeof id === "string" && id.length > 0)
-      : [];
-
-    const merged = [...payloadAssigneeIds];
-    if (item.owner_user_id && !merged.includes(item.owner_user_id)) merged.unshift(item.owner_user_id);
-    return Array.from(new Set(merged));
-  }, []);
-
-  const getCategory = useCallback((item: CaseItem) => {
-    const value = item.intake_payload?.category;
-    return typeof value === "string" ? value : "";
-  }, []);
 
   const persistAssignees = async (item: CaseItem, assigneeIds: string[]) => {
     const payload = {
@@ -392,7 +459,7 @@ export function MyWorkCasesWorkspace() {
 
   return (
     <>
-      <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+      <div className="grid grid-cols-1 gap-4 lg:grid-cols-[minmax(0,7fr)_minmax(0,3fr)]">
         {/* LEFT: Vorgänge */}
         <Card>
           <CardHeader className="pb-2">
@@ -419,24 +486,28 @@ export function MyWorkCasesWorkspace() {
             </div>
             <ScrollArea className="h-[520px] pr-2">
               <div className="space-y-1.5">
-                {filteredCaseItems.length === 0 ? (
+                {sortedCaseItems.length === 0 ? (
                   <div className="rounded-md border border-dashed p-4 text-sm text-muted-foreground space-y-3">
                     <p>Keine Vorgänge gefunden.</p>
                     <Button size="sm" onClick={handleCreateCaseItem}>Vorgang erstellen</Button>
                   </div>
                 ) : (
                   <div className="space-y-1.5">
-                    <div className="hidden grid-cols-[56px_minmax(180px,1.6fr)_1fr_1fr_1.6fr_1fr_1fr_2fr] gap-2 border-b px-2 pb-1 text-[11px] font-medium uppercase tracking-wide text-muted-foreground lg:grid">
-                      <span>Kanal</span>
-                      <span>Betreff</span>
-                      <span>Eingang</span>
-                      <span>Fällig</span>
-                      <span>Art</span>
-                      <span>Kategorie</span>
-                      <span>Priorität</span>
-                      <span>Bearbeiter</span>
+                    <div className="hidden grid-cols-[40px_minmax(180px,1.4fr)_minmax(140px,1.2fr)_1fr_1fr_1.4fr_1fr_52px_2fr] gap-2 border-b px-2 pb-1 text-[11px] font-medium uppercase tracking-wide text-muted-foreground lg:grid">
+                      <span className="group inline-flex items-center justify-center gap-0.5">
+                        <button type="button" className={sortButtonClass("channel", "asc")} onClick={() => toggleSort("channel", "asc")} aria-label="Kanal aufsteigend sortieren"><ArrowUp className="h-3 w-3" /></button>
+                        <button type="button" className={sortButtonClass("channel", "desc")} onClick={() => toggleSort("channel", "desc")} aria-label="Kanal absteigend sortieren"><ArrowDown className="h-3 w-3" /></button>
+                      </span>
+                      <span className="group inline-flex items-center gap-0.5">Betreff<button type="button" className={sortButtonClass("subject", "asc")} onClick={() => toggleSort("subject", "asc")} aria-label="Betreff aufsteigend sortieren"><ArrowUp className="h-3 w-3" /></button><button type="button" className={sortButtonClass("subject", "desc")} onClick={() => toggleSort("subject", "desc")} aria-label="Betreff absteigend sortieren"><ArrowDown className="h-3 w-3" /></button></span>
+                      <span className="group inline-flex items-center gap-0.5">Beschreibung<button type="button" className={sortButtonClass("description", "asc")} onClick={() => toggleSort("description", "asc")} aria-label="Beschreibung aufsteigend sortieren"><ArrowUp className="h-3 w-3" /></button><button type="button" className={sortButtonClass("description", "desc")} onClick={() => toggleSort("description", "desc")} aria-label="Beschreibung absteigend sortieren"><ArrowDown className="h-3 w-3" /></button></span>
+                      <span className="group inline-flex items-center gap-0.5">Eingang<button type="button" className={sortButtonClass("received", "asc")} onClick={() => toggleSort("received", "asc")} aria-label="Eingang aufsteigend sortieren"><ArrowUp className="h-3 w-3" /></button><button type="button" className={sortButtonClass("received", "desc")} onClick={() => toggleSort("received", "desc")} aria-label="Eingang absteigend sortieren"><ArrowDown className="h-3 w-3" /></button></span>
+                      <span className="group inline-flex items-center gap-0.5">Fällig<button type="button" className={sortButtonClass("due", "asc")} onClick={() => toggleSort("due", "asc")} aria-label="Fällig aufsteigend sortieren"><ArrowUp className="h-3 w-3" /></button><button type="button" className={sortButtonClass("due", "desc")} onClick={() => toggleSort("due", "desc")} aria-label="Fällig absteigend sortieren"><ArrowDown className="h-3 w-3" /></button></span>
+                      <span className="group inline-flex items-center gap-0.5">Art<button type="button" className={sortButtonClass("type", "asc")} onClick={() => toggleSort("type", "asc")} aria-label="Art aufsteigend sortieren"><ArrowUp className="h-3 w-3" /></button><button type="button" className={sortButtonClass("type", "desc")} onClick={() => toggleSort("type", "desc")} aria-label="Art absteigend sortieren"><ArrowDown className="h-3 w-3" /></button></span>
+                      <span className="group inline-flex items-center gap-0.5">Kategorie<button type="button" className={sortButtonClass("category", "asc")} onClick={() => toggleSort("category", "asc")} aria-label="Kategorie aufsteigend sortieren"><ArrowUp className="h-3 w-3" /></button><button type="button" className={sortButtonClass("category", "desc")} onClick={() => toggleSort("category", "desc")} aria-label="Kategorie absteigend sortieren"><ArrowDown className="h-3 w-3" /></button></span>
+                      <span className="group inline-flex items-center justify-center gap-0.5"><button type="button" className={sortButtonClass("priority", "asc")} onClick={() => toggleSort("priority", "asc")} aria-label="Priorität aufsteigend sortieren"><ArrowUp className="h-3 w-3" /></button><button type="button" className={sortButtonClass("priority", "desc")} onClick={() => toggleSort("priority", "desc")} aria-label="Priorität absteigend sortieren"><ArrowDown className="h-3 w-3" /></button></span>
+                      <span className="group inline-flex items-center gap-0.5">Bearbeiter<button type="button" className={sortButtonClass("assignee", "asc")} onClick={() => toggleSort("assignee", "asc")} aria-label="Bearbeiter aufsteigend sortieren"><ArrowUp className="h-3 w-3" /></button><button type="button" className={sortButtonClass("assignee", "desc")} onClick={() => toggleSort("assignee", "desc")} aria-label="Bearbeiter absteigend sortieren"><ArrowDown className="h-3 w-3" /></button></span>
                     </div>
-                    {filteredCaseItems.map((item) => {
+                    {sortedCaseItems.map((item) => {
                       const linkedFile = item.case_file_id ? caseFilesById[item.case_file_id] : null;
                       const isActive = detailItemId === item.id;
                       const channel = item.source_channel ? sourceChannelMeta[item.source_channel] : null;
@@ -454,22 +525,22 @@ export function MyWorkCasesWorkspace() {
                         )}
                         onClick={() => handleSelectCaseItem(item)}
                       >
-                        <div className="hidden h-12 grid-cols-[56px_minmax(180px,1.6fr)_1fr_1fr_1.6fr_1fr_1fr_2fr] items-center gap-2 text-xs text-muted-foreground lg:grid">
+                        <div className="hidden h-12 grid-cols-[40px_minmax(180px,1.4fr)_minmax(140px,1.2fr)_1fr_1fr_1.4fr_1fr_52px_2fr] items-center gap-2 text-xs text-muted-foreground lg:grid">
                           <span className="inline-flex" title={channel?.label || "Kanal unbekannt"}>
                             <span className="rounded-sm bg-muted p-1 text-muted-foreground">
                               <ChannelIcon className="h-3 w-3" />
                             </span>
                           </span>
-                          <span className="text-sm font-medium text-foreground truncate">{item.subject || item.summary || item.resolution_summary || "Ohne Titel"}</span>
+                          <span className="text-sm font-medium text-foreground truncate">{getItemSubject(item)}</span>
+                          <span className="text-sm font-medium text-foreground truncate" title={getItemDescription(item) || "–"}>{getItemDescription(item) || "–"}</span>
                           <span>{item.source_received_at ? format(new Date(item.source_received_at), "dd.MM.yy", { locale: de }) : "–"}</span>
                           <span>{item.due_at ? format(new Date(item.due_at), "dd.MM.yy", { locale: de }) : "–"}</span>
                           <span className="truncate" title={linkedFile ? linkedFile.title : "Einzelvorgang"}>
                             {linkedFile ? `Akte: ${linkedFile.title}` : "Einzelvorgang"}
                           </span>
                           <span className={cn("truncate", !category && "text-amber-600")}>{category || "Pflichtfeld"}</span>
-                          <span className="inline-flex items-center gap-1.5">
+                          <span className="inline-flex items-center justify-center" title={priorityMeta(item.priority).label}>
                             <Circle className={cn("h-3.5 w-3.5 fill-current", priorityMeta(item.priority).color)} />
-                            {priorityMeta(item.priority).label}
                           </span>
                           <div className="flex items-center gap-2 min-w-0" onClick={(event) => event.stopPropagation()}>
                             <div className="flex items-center -space-x-2">
