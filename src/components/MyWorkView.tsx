@@ -76,6 +76,13 @@ const BASE_TABS: TabConfig[] = [
   { value: "team", label: "Team", icon: Users, countKey: "team", badgeVariant: "destructive", abgeordneterOrBueroOnly: true },
 ];
 
+const LEGACY_TAB_MAP: Record<string, TabValue> = {
+  caseitems: "cases",
+  casefiles: "cases",
+};
+
+const ALLOWED_TABS = new Set<TabValue>(BASE_TABS.map((tab) => tab.value));
+
 export function MyWorkView() {
   const { user } = useAuth();
   const { currentTenant } = useTenant();
@@ -108,9 +115,45 @@ export function MyWorkView() {
   const { badgeDisplayMode } = useMyWorkSettings();
   const { newCounts, markTabAsVisited, refreshCounts } = useMyWorkNewCounts();
   
-  // Get active tab from URL or default to "dashboard"
+  const role: UserRole = isAbgeordneter
+    ? "abgeordneter"
+    : isBueroleitung
+      ? "bueroleitung"
+      : isEmployee
+        ? "mitarbeiter"
+        : null;
+
+  const visibleTabs = BASE_TABS.filter((tab) => {
+    const visibilityFlags = tab.value === "feedbackfeed"
+      ? { ...tab, feedbackFeedCoreRolesOnly }
+      : tab;
+    return canViewTab(visibilityFlags, role);
+  });
+
+  const fallbackTab = (visibleTabs[0]?.value ?? "dashboard") as TabValue;
+
+  // Get active tab from URL with whitelist validation and legacy mapping
   const rawTab = searchParams.get("tab");
-  const activeTab = rawTab === "caseitems" || rawTab === "casefiles" ? "cases" : ((rawTab as TabValue) || "dashboard");
+  const normalizedFromRaw = rawTab ? (LEGACY_TAB_MAP[rawTab] ?? rawTab) : null;
+  const isAllowedTab = normalizedFromRaw ? ALLOWED_TABS.has(normalizedFromRaw as TabValue) : false;
+  const normalizedTab = isAllowedTab ? (normalizedFromRaw as TabValue) : fallbackTab;
+  const isVisibleTab = visibleTabs.some((tab) => tab.value === normalizedTab);
+  const activeTab = isVisibleTab ? normalizedTab : fallbackTab;
+
+  useEffect(() => {
+    const action = searchParams.get("action");
+    const hasRawTab = typeof rawTab === "string";
+    const needsNormalization = !hasRawTab || rawTab !== activeTab;
+
+    if (!needsNormalization) return;
+
+    const nextParams: Record<string, string> = { tab: activeTab };
+    if (action) {
+      nextParams.action = action;
+    }
+
+    setSearchParams(nextParams, { replace: true });
+  }, [rawTab, activeTab, searchParams, setSearchParams]);
   
   const setActiveTab = (tab: TabValue) => {
     setSearchParams({ tab });
@@ -423,20 +466,7 @@ export function MyWorkView() {
 
       {/* Tab Navigation (horizontal, oben) */}
       <div className="flex border-b mb-6 overflow-x-auto">
-        {BASE_TABS
-          .filter((tab) => {
-            const role: UserRole = isAbgeordneter
-              ? "abgeordneter"
-              : isBueroleitung
-                ? "bueroleitung"
-                : isEmployee
-                  ? "mitarbeiter"
-                  : null;
-            const visibilityFlags = tab.value === 'feedbackfeed'
-              ? { ...tab, feedbackFeedCoreRolesOnly }
-              : tab;
-            return canViewTab(visibilityFlags, role);
-          })
+        {visibleTabs
           .map((tab) => {
             const Icon = tab.icon;
             
