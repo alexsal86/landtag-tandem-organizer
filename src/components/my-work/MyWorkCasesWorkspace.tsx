@@ -1016,7 +1016,7 @@ export function MyWorkCasesWorkspace() {
                                               />
                                             )}
                                           </div>
-                                       
+                                       </div>
                                       </div>
                                     )}
                                   </Draggable>
