@@ -1147,26 +1147,41 @@ export function MyWorkCasesWorkspace() {
                                                       <p className="font-bold mb-3">Zeitstrahl</p>
                                                       <div className="relative space-y-4 pl-6">
                                                         <span className="absolute left-2 top-1 bottom-1 w-px bg-border" />
-                                                        {editableCaseItem.timelineEvents.length === 0 ? (
+                                                        {editableCaseItem.timelineEvents.length === 0 && (!detailItemId || !(linkedDecisions[detailItemId] || []).some(d => d.status === "completed")) ? (
                                                           <p className="text-xs text-muted-foreground">Noch keine Einträge im Zeitstrahl.</p>
                                                         ) : (
-                                                          editableCaseItem.timelineEvents.map((event) => (
-                                                            <div key={event.id} className="relative">
-                                                              <span className="absolute -left-[18px] top-1.5 h-2.5 w-2.5 rounded-full bg-primary" />
-                                                              <div className="rounded border p-2 text-xs">
-                                                                <div className="flex items-start justify-between gap-2">
-                                                                  <div>
-                                                                    <p className="font-semibold">{event.title}</p>
-                                                                    <p className="text-muted-foreground">{formatTimelineDate(event.timestamp)}</p>
+                                                          <>
+                                                            {editableCaseItem.timelineEvents.map((event) => (
+                                                              <div key={event.id} className="relative">
+                                                                <span className="absolute -left-[18px] top-1.5 h-2.5 w-2.5 rounded-full bg-primary" />
+                                                                <div className="rounded border p-2 text-xs">
+                                                                  <div className="flex items-start justify-between gap-2">
+                                                                    <div>
+                                                                      <p className="font-semibold">{event.title}</p>
+                                                                      <p className="text-muted-foreground">{formatTimelineDate(event.timestamp)}</p>
+                                                                    </div>
+                                                                    <Button type="button" variant="ghost" size="icon" className="h-6 w-6" onClick={() => handleDeleteTimelineEvent(event.id)}>
+                                                                      <Trash2 className="h-3.5 w-3.5" />
+                                                                    </Button>
                                                                   </div>
-                                                                  <Button type="button" variant="ghost" size="icon" className="h-6 w-6" onClick={() => handleDeleteTimelineEvent(event.id)}>
-                                                                    <Trash2 className="h-3.5 w-3.5" />
-                                                                  </Button>
+                                                                  {event.note && <p className="mt-1 text-muted-foreground">{event.note}</p>}
                                                                 </div>
-                                                                {event.note && <p className="mt-1 text-muted-foreground">{event.note}</p>}
                                                               </div>
-                                                            </div>
-                                                          ))
+                                                            ))}
+                                                            {/* Completed decisions reflected in timeline */}
+                                                            {detailItemId && (linkedDecisions[detailItemId] || [])
+                                                              .filter(d => d.status === "completed")
+                                                              .map((dec) => (
+                                                                <div key={`dec-${dec.id}`} className="relative">
+                                                                  <span className="absolute -left-[18px] top-1.5 h-2.5 w-2.5 rounded-full bg-emerald-500" />
+                                                                  <div className="rounded border border-emerald-500/30 bg-emerald-50/50 dark:bg-emerald-950/20 p-2 text-xs">
+                                                                    <p className="font-semibold">Entscheidung abgeschlossen: {dec.title}</p>
+                                                                    <p className="text-muted-foreground">{formatTimelineDate(dec.created_at)}</p>
+                                                                  </div>
+                                                                </div>
+                                                              ))
+                                                            }
+                                                          </>
                                                         )}
                                                       </div>
                                                     </div>
