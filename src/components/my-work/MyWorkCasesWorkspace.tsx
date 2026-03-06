@@ -2,17 +2,20 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { format } from "date-fns";
 import { de } from "date-fns/locale";
-import { AlertCircle, ArrowDown, ArrowUp, Briefcase, Circle, ExternalLink, FileText, FolderOpen, Mail, MessageSquare, Phone, Plus, Search, UserRound } from "lucide-react";
+import { AlertCircle, ArrowDown, ArrowUp, Briefcase, Circle, ExternalLink, FileText, FolderOpen, GripVertical, Link2, Mail, MessageSquare, Phone, Plus, Search, UserRound } from "lucide-react";
+import { DragDropContext, Droppable, Draggable, type DropResult } from "@hello-pangea/dnd";
 
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { ContextMenu, ContextMenuContent, ContextMenuItem, ContextMenuSeparator, ContextMenuSub, ContextMenuSubContent, ContextMenuSubTrigger, ContextMenuTrigger } from "@/components/ui/context-menu";
 import { DropdownMenu, DropdownMenuCheckboxItem, DropdownMenuContent, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { CaseFileDetail, CaseFileCreateDialog } from "@/features/cases/files/components";
 import { CaseItemCreateDialog } from "@/components/my-work/CaseItemCreateDialog";
 import { useCaseItems } from "@/features/cases/items/hooks";
@@ -20,6 +23,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { useTenant } from "@/hooks/useTenant";
 import { supabase } from "@/integrations/supabase/client";
 import { cn } from "@/lib/utils";
+import { toast } from "sonner";
 
 type CaseItem = {
   id: string;
@@ -76,6 +80,33 @@ const sourceChannelMeta: Record<string, { icon: typeof Phone; label: string }> =
   other: { icon: Briefcase, label: "Sonstiges" },
 };
 
+const statusOptions = [
+  { value: "active", label: "Offen", color: "bg-emerald-500" },
+  { value: "pending", label: "Wartend", color: "bg-amber-500" },
+  { value: "closed", label: "Geschlossen", color: "bg-muted-foreground" },
+  { value: "archived", label: "Archiviert", color: "bg-muted-foreground/50" },
+];
+
+const priorityOptions = [
+  { value: "low", label: "Niedrig", color: "text-emerald-500" },
+  { value: "medium", label: "Mittel", color: "text-amber-500" },
+  { value: "high", label: "Hoch", color: "text-red-500" },
+  { value: "urgent", label: "Dringend", color: "text-red-600" },
+];
+
+const caseFileStatusBadge = (status: string) => {
+  switch (status) {
+    case "open":
+      return <Badge variant="outline" className="border-emerald-500/40 text-emerald-600 text-[10px] px-1.5 py-0">Offen</Badge>;
+    case "in_progress":
+      return <Badge variant="outline" className="border-blue-500/40 text-blue-600 text-[10px] px-1.5 py-0">In Bearbeitung</Badge>;
+    case "closed":
+      return <Badge variant="outline" className="border-muted-foreground/40 text-muted-foreground text-[10px] px-1.5 py-0">Geschlossen</Badge>;
+    default:
+      return <Badge variant="outline" className="text-[10px] px-1.5 py-0">{status}</Badge>;
+  }
+};
+
 export function MyWorkCasesWorkspace() {
   const { user } = useAuth();
   const { currentTenant } = useTenant();
@@ -96,7 +127,6 @@ export function MyWorkCasesWorkspace() {
   const [isCaseFileDialogOpen, setIsCaseFileDialogOpen] = useState(false);
   const [pendingCaseItemLinkId, setPendingCaseItemLinkId] = useState<string | null>(null);
 
-  // Sheet states for detail views
   const [detailItemId, setDetailItemId] = useState<string | null>(null);
   const [detailFileId, setDetailFileId] = useState<string | null>(null);
   const [editableCaseItem, setEditableCaseItem] = useState<EditableCaseItem | null>(null);
@@ -140,7 +170,6 @@ export function MyWorkCasesWorkspace() {
 
     setLoading(true);
     try {
-      // Load case items and ALL case files in parallel
       const [itemsRes, filesRes, membersRes] = await Promise.all([
         supabase
           .from("case_items" as any)
@@ -207,13 +236,10 @@ export function MyWorkCasesWorkspace() {
     void loadWorkspaceData();
   }, [loadWorkspaceData, tenantId, user]);
 
-  // --- Filtered lists ---
-
   const getAssigneeIds = useCallback((item: CaseItem) => {
     const payloadAssigneeIds = Array.isArray(item.intake_payload?.assignee_ids)
       ? item.intake_payload.assignee_ids.filter((id): id is string => typeof id === "string" && id.length > 0)
       : [];
-
     const merged = [...payloadAssigneeIds];
     if (item.owner_user_id && !merged.includes(item.owner_user_id)) merged.unshift(item.owner_user_id);
     return Array.from(new Set(merged));
@@ -306,7 +332,6 @@ export function MyWorkCasesWorkspace() {
     );
   }, [allCaseFiles, fileFilterQuery]);
 
-  // Count linked items per case file
   const linkedItemsCountByFile = useMemo(() => {
     const counts: Record<string, number> = {};
     for (const item of caseItems) {
@@ -316,7 +341,6 @@ export function MyWorkCasesWorkspace() {
     }
     return counts;
   }, [caseItems]);
-
 
   const defaultAssigneeId = user?.id ?? null;
 
@@ -342,7 +366,60 @@ export function MyWorkCasesWorkspace() {
     await persistAssignees(item, next);
   };
 
-  // --- Handlers ---
+  // --- Quick action handlers ---
+
+  const handleQuickStatusChange = async (item: CaseItem, newStatus: string) => {
+    const { error } = await supabase.from("case_items").update({ status: newStatus } as any).eq("id", item.id);
+    if (error) {
+      toast.error("Status konnte nicht geändert werden.");
+      return;
+    }
+    setCaseItems((prev) => prev.map((row) => (row.id === item.id ? { ...row, status: newStatus as CaseItem["status"] } : row)));
+    toast.success(`Status auf "${statusOptions.find((s) => s.value === newStatus)?.label || newStatus}" gesetzt.`);
+  };
+
+  const handleQuickPriorityChange = async (item: CaseItem, newPriority: string) => {
+    const { error } = await supabase.from("case_items").update({ priority: newPriority } as any).eq("id", item.id);
+    if (error) {
+      toast.error("Priorität konnte nicht geändert werden.");
+      return;
+    }
+    setCaseItems((prev) => prev.map((row) => (row.id === item.id ? { ...row, priority: newPriority as CaseItem["priority"] } : row)));
+    toast.success(`Priorität auf "${priorityOptions.find((p) => p.value === newPriority)?.label || newPriority}" gesetzt.`);
+  };
+
+  const handleQuickLinkToFile = async (item: CaseItem, caseFileId: string) => {
+    const { error } = await supabase.from("case_items").update({ case_file_id: caseFileId } as any).eq("id", item.id);
+    if (error) {
+      toast.error("Verknüpfung konnte nicht erstellt werden.");
+      return;
+    }
+    setCaseItems((prev) => prev.map((row) => (row.id === item.id ? { ...row, case_file_id: caseFileId } : row)));
+    const file = caseFilesById[caseFileId];
+    toast.success(`Vorgang mit "${file?.title || "Akte"}" verknüpft.`);
+  };
+
+  const handleUnlinkFromFile = async (item: CaseItem) => {
+    const { error } = await supabase.from("case_items").update({ case_file_id: null } as any).eq("id", item.id);
+    if (error) {
+      toast.error("Verknüpfung konnte nicht gelöst werden.");
+      return;
+    }
+    setCaseItems((prev) => prev.map((row) => (row.id === item.id ? { ...row, case_file_id: null } : row)));
+    toast.success("Verknüpfung zur Akte gelöst.");
+  };
+
+  const handleDragEnd = (result: DropResult) => {
+    const { destination, draggableId } = result;
+    if (!destination) return;
+    const droppableId = destination.droppableId;
+    if (!droppableId.startsWith("casefile-")) return;
+    const caseFileId = droppableId.replace("casefile-", "");
+    const item = caseItems.find((i) => i.id === draggableId);
+    if (!item) return;
+    if (item.case_file_id === caseFileId) return;
+    void handleQuickLinkToFile(item, caseFileId);
+  };
 
   const handleSelectCaseItem = (item: CaseItem) => {
     if (detailItemId === item.id) {
@@ -400,7 +477,6 @@ export function MyWorkCasesWorkspace() {
     setPendingCaseItemLinkId(null);
   };
 
-  // --- Detail item for Sheet ---
   const detailItem = useMemo(() => {
     if (!detailItemId) return null;
     return caseItems.find((i) => i.id === detailItemId) || null;
@@ -434,7 +510,7 @@ export function MyWorkCasesWorkspace() {
         resolution_summary: editableCaseItem.summary.trim() || null,
         source_received_at: editableCaseItem.sourceReceivedAt ? new Date(`${editableCaseItem.sourceReceivedAt}T12:00:00`).toISOString() : null,
         due_at: editableCaseItem.dueAt ? new Date(`${editableCaseItem.dueAt}T12:00:00`).toISOString() : null,
-        priority: editableCaseItem.priority,
+        priority: editableCaseItem.priority as any,
         owner_user_id: editableCaseItem.assigneeIds[0] || null,
         intake_payload: {
           ...(detailItem?.intake_payload || {}),
@@ -445,7 +521,6 @@ export function MyWorkCasesWorkspace() {
       .eq("id", detailItemId);
     await loadWorkspaceData();
   };
-
 
   // --- Render ---
 
@@ -462,350 +537,480 @@ export function MyWorkCasesWorkspace() {
           </CardContent>
         </Card>
       ) : (
-        <div className="grid grid-cols-1 gap-4 lg:grid-cols-[minmax(0,7fr)_minmax(0,3fr)]">
-        {/* LEFT: Vorgänge */}
-        <Card>
-          <CardHeader className="pb-2">
-            <div className="flex flex-wrap items-center justify-between gap-2">
-              <CardTitle className="flex items-center gap-2 text-base">
-                <FileText className="h-4 w-4" />
-                Vorgänge
-              </CardTitle>
-              <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row sm:items-center">
-                <Button size="sm" onClick={handleCreateCaseItem}>
-                  <Plus className="mr-1 h-4 w-4" />
-                  Neu
-                </Button>
-                <div className="relative w-full sm:w-64">
-                  <Search className="pointer-events-none absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
-                  <Input
-                    value={itemFilterQuery}
-                    onChange={(e) => setItemFilterQuery(e.target.value)}
-                    placeholder="Vorgänge filtern…"
-                    className="h-9 pl-8"
-                  />
-                </div>
-              </div>
-            </div>
-          </CardHeader>
-          <CardContent className="space-y-3">
-            <ScrollArea className="h-[520px] pr-2">
-              <div className="space-y-1.5">
-                {sortedCaseItems.length === 0 ? (
-                  <div className="rounded-md border border-dashed p-4 text-sm text-muted-foreground space-y-3">
-                    <p>Keine Vorgänge gefunden.</p>
-                    <Button size="sm" onClick={handleCreateCaseItem}>Vorgang erstellen</Button>
-                  </div>
-                ) : (
-                  <div className="space-y-1.5">
-                    <div className="hidden grid-cols-[40px_minmax(180px,1.4fr)_minmax(140px,1.2fr)_1fr_1fr_1.4fr_1fr_52px_2fr] gap-2 border-b px-2 pb-1 text-[11px] font-medium uppercase tracking-wide text-muted-foreground lg:grid">
-                      <span className="group inline-flex items-center justify-center gap-0.5">
-                        <button type="button" className={sortButtonClass("channel", "asc")} onClick={() => toggleSort("channel", "asc")} aria-label="Kanal aufsteigend sortieren"><ArrowUp className="h-3 w-3" /></button>
-                        <button type="button" className={sortButtonClass("channel", "desc")} onClick={() => toggleSort("channel", "desc")} aria-label="Kanal absteigend sortieren"><ArrowDown className="h-3 w-3" /></button>
-                      </span>
-                      <span className="group inline-flex items-center gap-0.5">Betreff<button type="button" className={sortButtonClass("subject", "asc")} onClick={() => toggleSort("subject", "asc")} aria-label="Betreff aufsteigend sortieren"><ArrowUp className="h-3 w-3" /></button><button type="button" className={sortButtonClass("subject", "desc")} onClick={() => toggleSort("subject", "desc")} aria-label="Betreff absteigend sortieren"><ArrowDown className="h-3 w-3" /></button></span>
-                      <span className="group inline-flex items-center gap-0.5">Beschreibung<button type="button" className={sortButtonClass("description", "asc")} onClick={() => toggleSort("description", "asc")} aria-label="Beschreibung aufsteigend sortieren"><ArrowUp className="h-3 w-3" /></button><button type="button" className={sortButtonClass("description", "desc")} onClick={() => toggleSort("description", "desc")} aria-label="Beschreibung absteigend sortieren"><ArrowDown className="h-3 w-3" /></button></span>
-                      <span className="group inline-flex items-center gap-0.5">Eingang<button type="button" className={sortButtonClass("received", "asc")} onClick={() => toggleSort("received", "asc")} aria-label="Eingang aufsteigend sortieren"><ArrowUp className="h-3 w-3" /></button><button type="button" className={sortButtonClass("received", "desc")} onClick={() => toggleSort("received", "desc")} aria-label="Eingang absteigend sortieren"><ArrowDown className="h-3 w-3" /></button></span>
-                      <span className="group inline-flex items-center gap-0.5">Fällig<button type="button" className={sortButtonClass("due", "asc")} onClick={() => toggleSort("due", "asc")} aria-label="Fällig aufsteigend sortieren"><ArrowUp className="h-3 w-3" /></button><button type="button" className={sortButtonClass("due", "desc")} onClick={() => toggleSort("due", "desc")} aria-label="Fällig absteigend sortieren"><ArrowDown className="h-3 w-3" /></button></span>
-                      <span className="group inline-flex items-center gap-0.5">Art<button type="button" className={sortButtonClass("type", "asc")} onClick={() => toggleSort("type", "asc")} aria-label="Art aufsteigend sortieren"><ArrowUp className="h-3 w-3" /></button><button type="button" className={sortButtonClass("type", "desc")} onClick={() => toggleSort("type", "desc")} aria-label="Art absteigend sortieren"><ArrowDown className="h-3 w-3" /></button></span>
-                      <span className="group inline-flex items-center gap-0.5">Kategorie<button type="button" className={sortButtonClass("category", "asc")} onClick={() => toggleSort("category", "asc")} aria-label="Kategorie aufsteigend sortieren"><ArrowUp className="h-3 w-3" /></button><button type="button" className={sortButtonClass("category", "desc")} onClick={() => toggleSort("category", "desc")} aria-label="Kategorie absteigend sortieren"><ArrowDown className="h-3 w-3" /></button></span>
-                      <span className="group inline-flex items-center justify-center gap-0.5"><button type="button" className={sortButtonClass("priority", "asc")} onClick={() => toggleSort("priority", "asc")} aria-label="Priorität aufsteigend sortieren"><ArrowUp className="h-3 w-3" /></button><button type="button" className={sortButtonClass("priority", "desc")} onClick={() => toggleSort("priority", "desc")} aria-label="Priorität absteigend sortieren"><ArrowDown className="h-3 w-3" /></button></span>
-                      <span className="group inline-flex items-center gap-0.5">Bearbeiter<button type="button" className={sortButtonClass("assignee", "asc")} onClick={() => toggleSort("assignee", "asc")} aria-label="Bearbeiter aufsteigend sortieren"><ArrowUp className="h-3 w-3" /></button><button type="button" className={sortButtonClass("assignee", "desc")} onClick={() => toggleSort("assignee", "desc")} aria-label="Bearbeiter absteigend sortieren"><ArrowDown className="h-3 w-3" /></button></span>
+        <>
+          <DragDropContext onDragEnd={handleDragEnd}>
+            <div className="grid grid-cols-1 gap-4 lg:grid-cols-[minmax(0,7fr)_minmax(0,3fr)]">
+              {/* LEFT: Vorgänge */}
+              <Card>
+                <CardHeader className="pb-2">
+                  <div className="flex flex-wrap items-center justify-between gap-2">
+                    <CardTitle className="flex items-center gap-2 text-base">
+                      <FileText className="h-4 w-4" />
+                      Vorgänge
+                    </CardTitle>
+                    <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row sm:items-center">
+                      <Button size="sm" onClick={handleCreateCaseItem}>
+                        <Plus className="mr-1 h-4 w-4" />
+                        Neu
+                      </Button>
+                      <div className="relative w-full sm:w-64">
+                        <Search className="pointer-events-none absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
+                        <Input
+                          value={itemFilterQuery}
+                          onChange={(e) => setItemFilterQuery(e.target.value)}
+                          placeholder="Vorgänge filtern…"
+                          className="h-9 pl-8"
+                        />
+                      </div>
                     </div>
-                    {sortedCaseItems.map((item) => {
-                      const linkedFile = item.case_file_id ? caseFilesById[item.case_file_id] : null;
-                      const isActive = detailItemId === item.id;
-                      const channel = item.source_channel ? sourceChannelMeta[item.source_channel] : null;
-                      const ChannelIcon = channel?.icon ?? Briefcase;
-                      const assigneeIds = getAssigneeIds(item);
-                      const assignees = assigneeIds.map((id) => teamUsers.find((member) => member.id === id)).filter(Boolean) as TeamUser[];
-                      const category = getCategory(item);
-                      const hasInlineDetail = isActive && editableCaseItem;
-                      return (
-                        <div key={item.id} className="border-b">
-                          <button
-                            type="button"
-                            className={cn(
-                              "w-full px-2 py-2 text-left transition-colors hover:bg-muted/40",
-                              isActive && "bg-primary/5",
-                            )}
-                            onClick={() => handleSelectCaseItem(item)}
-                          >
-                            <div className="hidden h-12 grid-cols-[40px_minmax(180px,1.4fr)_minmax(140px,1.2fr)_1fr_1fr_1.4fr_1fr_52px_2fr] items-center gap-2 text-xs text-muted-foreground lg:grid">
-                              <span className="inline-flex" title={channel?.label || "Kanal unbekannt"}>
-                                <span className="rounded-sm bg-muted p-1 text-muted-foreground">
-                                  <ChannelIcon className="h-3 w-3" />
+                  </div>
+                  <p className="text-xs text-muted-foreground mt-1">Vorgänge per Drag & Drop auf eine FallAkte ziehen zum Verknüpfen</p>
+                </CardHeader>
+                <CardContent className="space-y-3">
+                  <Droppable droppableId="case-items-list" isDropDisabled>
+                    {(provided) => (
+                      <ScrollArea className="h-[520px] pr-2">
+                        <div ref={provided.innerRef} {...provided.droppableProps} className="space-y-1.5">
+                          {sortedCaseItems.length === 0 ? (
+                            <div className="rounded-md border border-dashed p-4 text-sm text-muted-foreground space-y-3">
+                              <p>Keine Vorgänge gefunden.</p>
+                              <Button size="sm" onClick={handleCreateCaseItem}>Vorgang erstellen</Button>
+                            </div>
+                          ) : (
+                            <div className="space-y-1.5">
+                              <div className="hidden grid-cols-[28px_40px_minmax(180px,1.4fr)_minmax(140px,1.2fr)_1fr_1fr_1.4fr_1fr_52px_2fr] gap-2 border-b px-2 pb-1 text-[11px] font-medium uppercase tracking-wide text-muted-foreground lg:grid">
+                                <span />
+                                <span className="group inline-flex items-center justify-center gap-0.5">
+                                  <button type="button" className={sortButtonClass("channel", "asc")} onClick={() => toggleSort("channel", "asc")} aria-label="Kanal aufsteigend sortieren"><ArrowUp className="h-3 w-3" /></button>
+                                  <button type="button" className={sortButtonClass("channel", "desc")} onClick={() => toggleSort("channel", "desc")} aria-label="Kanal absteigend sortieren"><ArrowDown className="h-3 w-3" /></button>
                                 </span>
-                              </span>
-                              <span className="truncate text-sm font-medium text-foreground">{getItemSubject(item)}</span>
-                              <span className="truncate text-sm font-medium text-foreground" title={getItemDescription(item) || "–"}>{getItemDescription(item) || "–"}</span>
-                              <span>{item.source_received_at ? format(new Date(item.source_received_at), "dd.MM.yy", { locale: de }) : "–"}</span>
-                              <span>{item.due_at ? format(new Date(item.due_at), "dd.MM.yy", { locale: de }) : "–"}</span>
-                              <span className="truncate" title={linkedFile ? linkedFile.title : "Einzelvorgang"}>
-                                {linkedFile ? `Akte: ${linkedFile.title}` : "Einzelvorgang"}
-                              </span>
-                              <span className={cn("truncate", !category && "text-amber-600")}>{category || "Pflichtfeld"}</span>
-                              <span className="inline-flex items-center justify-center" title={priorityMeta(item.priority).label}>
-                                <Circle className={cn("h-3.5 w-3.5 fill-current", priorityMeta(item.priority).color)} />
-                              </span>
-                              <div className="flex min-w-0 items-center gap-2" onClick={(event) => event.stopPropagation()}>
-                                <div className="flex items-center -space-x-2">
-                                  {assignees.slice(0, 3).map((member) => (
-                                    <Avatar key={member.id} className="h-6 w-6 border bg-background">
-                                      <AvatarImage src={member.avatarUrl || undefined} />
-                                      <AvatarFallback className="text-[10px]">{getInitials(member.name)}</AvatarFallback>
-                                    </Avatar>
-                                  ))}
-                                </div>
-                                <span className="truncate">{assignees.length > 0 ? assignees.map((m) => m.name).join(", ") : "Nicht zugewiesen"}</span>
-                                <DropdownMenu>
-                                  <DropdownMenuTrigger asChild>
-                                    <Button type="button" size="icon" variant="outline" className="h-7 w-7">
-                                      <Plus className="h-3.5 w-3.5" />
-                                    </Button>
-                                  </DropdownMenuTrigger>
-                                  <DropdownMenuContent align="end" className="w-56">
-                                    {teamUsers.map((member) => (
-                                      <DropdownMenuCheckboxItem
-                                        key={member.id}
-                                        checked={assigneeIds.includes(member.id)}
-                                        onCheckedChange={(checked) => { void handleAssigneeToggle(item, member.id, checked === true); }}
-                                      >
-                                        {member.name}
-                                      </DropdownMenuCheckboxItem>
-                                    ))}
-                                  </DropdownMenuContent>
-                                </DropdownMenu>
+                                <span className="group inline-flex items-center gap-0.5">Betreff<button type="button" className={sortButtonClass("subject", "asc")} onClick={() => toggleSort("subject", "asc")} aria-label="Betreff aufsteigend sortieren"><ArrowUp className="h-3 w-3" /></button><button type="button" className={sortButtonClass("subject", "desc")} onClick={() => toggleSort("subject", "desc")} aria-label="Betreff absteigend sortieren"><ArrowDown className="h-3 w-3" /></button></span>
+                                <span className="group inline-flex items-center gap-0.5">Beschreibung<button type="button" className={sortButtonClass("description", "asc")} onClick={() => toggleSort("description", "asc")} aria-label="Beschreibung aufsteigend sortieren"><ArrowUp className="h-3 w-3" /></button><button type="button" className={sortButtonClass("description", "desc")} onClick={() => toggleSort("description", "desc")} aria-label="Beschreibung absteigend sortieren"><ArrowDown className="h-3 w-3" /></button></span>
+                                <span className="group inline-flex items-center gap-0.5">Eingang<button type="button" className={sortButtonClass("received", "asc")} onClick={() => toggleSort("received", "asc")} aria-label="Eingang aufsteigend sortieren"><ArrowUp className="h-3 w-3" /></button><button type="button" className={sortButtonClass("received", "desc")} onClick={() => toggleSort("received", "desc")} aria-label="Eingang absteigend sortieren"><ArrowDown className="h-3 w-3" /></button></span>
+                                <span className="group inline-flex items-center gap-0.5">Fällig<button type="button" className={sortButtonClass("due", "asc")} onClick={() => toggleSort("due", "asc")} aria-label="Fällig aufsteigend sortieren"><ArrowUp className="h-3 w-3" /></button><button type="button" className={sortButtonClass("due", "desc")} onClick={() => toggleSort("due", "desc")} aria-label="Fällig absteigend sortieren"><ArrowDown className="h-3 w-3" /></button></span>
+                                <span className="group inline-flex items-center gap-0.5">Art<button type="button" className={sortButtonClass("type", "asc")} onClick={() => toggleSort("type", "asc")} aria-label="Art aufsteigend sortieren"><ArrowUp className="h-3 w-3" /></button><button type="button" className={sortButtonClass("type", "desc")} onClick={() => toggleSort("type", "desc")} aria-label="Art absteigend sortieren"><ArrowDown className="h-3 w-3" /></button></span>
+                                <span className="group inline-flex items-center gap-0.5">Kategorie<button type="button" className={sortButtonClass("category", "asc")} onClick={() => toggleSort("category", "asc")} aria-label="Kategorie aufsteigend sortieren"><ArrowUp className="h-3 w-3" /></button><button type="button" className={sortButtonClass("category", "desc")} onClick={() => toggleSort("category", "desc")} aria-label="Kategorie absteigend sortieren"><ArrowDown className="h-3 w-3" /></button></span>
+                                <span className="group inline-flex items-center justify-center gap-0.5"><button type="button" className={sortButtonClass("priority", "asc")} onClick={() => toggleSort("priority", "asc")} aria-label="Priorität aufsteigend sortieren"><ArrowUp className="h-3 w-3" /></button><button type="button" className={sortButtonClass("priority", "desc")} onClick={() => toggleSort("priority", "desc")} aria-label="Priorität absteigend sortieren"><ArrowDown className="h-3 w-3" /></button></span>
+                                <span className="group inline-flex items-center gap-0.5">Bearbeiter<button type="button" className={sortButtonClass("assignee", "asc")} onClick={() => toggleSort("assignee", "asc")} aria-label="Bearbeiter aufsteigend sortieren"><ArrowUp className="h-3 w-3" /></button><button type="button" className={sortButtonClass("assignee", "desc")} onClick={() => toggleSort("assignee", "desc")} aria-label="Bearbeiter absteigend sortieren"><ArrowDown className="h-3 w-3" /></button></span>
                               </div>
-                            </div>
-                            <div className="space-y-1 lg:hidden">
-                              <p className="truncate text-sm font-medium">{item.subject || item.summary || item.resolution_summary || "Ohne Titel"}</p>
-                              <p className="text-xs text-muted-foreground">{category || "Kategorie fehlt"}</p>
-                            </div>
-                          </button>
+                              {sortedCaseItems.map((item, index) => {
+                                const linkedFile = item.case_file_id ? caseFilesById[item.case_file_id] : null;
+                                const isActive = detailItemId === item.id;
+                                const channel = item.source_channel ? sourceChannelMeta[item.source_channel] : null;
+                                const ChannelIcon = channel?.icon ?? Briefcase;
+                                const assigneeIds = getAssigneeIds(item);
+                                const assignees = assigneeIds.map((id) => teamUsers.find((member) => member.id === id)).filter(Boolean) as TeamUser[];
+                                const category = getCategory(item);
+                                const hasInlineDetail = isActive && editableCaseItem;
+                                return (
+                                  <Draggable key={item.id} draggableId={item.id} index={index}>
+                                    {(dragProvided, dragSnapshot) => (
+                                      <div
+                                        ref={dragProvided.innerRef}
+                                        {...dragProvided.draggableProps}
+                                        className={cn("border-b", dragSnapshot.isDragging && "opacity-80 shadow-lg rounded-md bg-background")}
+                                      >
+                                        <ContextMenu>
+                                          <ContextMenuTrigger asChild>
+                                            <button
+                                              type="button"
+                                              className={cn(
+                                                "w-full px-2 py-2 text-left transition-colors hover:bg-muted/40",
+                                                isActive && "bg-primary/5",
+                                              )}
+                                              onClick={() => handleSelectCaseItem(item)}
+                                            >
+                                              <div className="hidden h-12 grid-cols-[28px_40px_minmax(180px,1.4fr)_minmax(140px,1.2fr)_1fr_1fr_1.4fr_1fr_52px_2fr] items-center gap-2 text-xs text-muted-foreground lg:grid">
+                                                {/* Drag handle */}
+                                                <span
+                                                  {...dragProvided.dragHandleProps}
+                                                  className="inline-flex items-center justify-center cursor-grab text-muted-foreground/50 hover:text-muted-foreground"
+                                                  onClick={(e) => e.stopPropagation()}
+                                                >
+                                                  <GripVertical className="h-4 w-4" />
+                                                </span>
+                                                <span className="inline-flex" title={channel?.label || "Kanal unbekannt"}>
+                                                  <span className="rounded-sm bg-muted p-1 text-muted-foreground">
+                                                    <ChannelIcon className="h-3 w-3" />
+                                                  </span>
+                                                </span>
+                                                <span className="truncate text-sm font-medium text-foreground inline-flex items-center gap-1">
+                                                  {getItemSubject(item)}
+                                                  {/* 3c: Link indicator */}
+                                                  {linkedFile && (
+                                                    <TooltipProvider delayDuration={200}>
+                                                      <Tooltip>
+                                                        <TooltipTrigger asChild>
+                                                          <Link2 className="h-3.5 w-3.5 text-blue-500 shrink-0" />
+                                                        </TooltipTrigger>
+                                                        <TooltipContent side="top" className="text-xs">
+                                                          <p className="font-medium">{linkedFile.title}</p>
+                                                          {linkedFile.reference_number && <p className="text-muted-foreground">{linkedFile.reference_number}</p>}
+                                                        </TooltipContent>
+                                                      </Tooltip>
+                                                    </TooltipProvider>
+                                                  )}
+                                                </span>
+                                                <span className="truncate text-sm font-medium text-foreground" title={getItemDescription(item) || "–"}>{getItemDescription(item) || "–"}</span>
+                                                <span>{item.source_received_at ? format(new Date(item.source_received_at), "dd.MM.yy", { locale: de }) : "–"}</span>
+                                                <span>{item.due_at ? format(new Date(item.due_at), "dd.MM.yy", { locale: de }) : "–"}</span>
+                                                <span className="truncate" title={linkedFile ? linkedFile.title : "Einzelvorgang"}>
+                                                  {linkedFile ? `Akte: ${linkedFile.title}` : "Einzelvorgang"}
+                                                </span>
+                                                <span className={cn("truncate", !category && "text-amber-600")}>{category || "Pflichtfeld"}</span>
+                                                <span className="inline-flex items-center justify-center" title={priorityMeta(item.priority).label}>
+                                                  <Circle className={cn("h-3.5 w-3.5 fill-current", priorityMeta(item.priority).color)} />
+                                                </span>
+                                                <div className="flex min-w-0 items-center gap-2" onClick={(event) => event.stopPropagation()}>
+                                                  <div className="flex items-center -space-x-2">
+                                                    {assignees.slice(0, 3).map((member) => (
+                                                      <Avatar key={member.id} className="h-6 w-6 border bg-background">
+                                                        <AvatarImage src={member.avatarUrl || undefined} />
+                                                        <AvatarFallback className="text-[10px]">{getInitials(member.name)}</AvatarFallback>
+                                                      </Avatar>
+                                                    ))}
+                                                  </div>
+                                                  <span className="truncate">{assignees.length > 0 ? assignees.map((m) => m.name).join(", ") : "Nicht zugewiesen"}</span>
+                                                  <DropdownMenu>
+                                                    <DropdownMenuTrigger asChild>
+                                                      <Button type="button" size="icon" variant="outline" className="h-7 w-7">
+                                                        <Plus className="h-3.5 w-3.5" />
+                                                      </Button>
+                                                    </DropdownMenuTrigger>
+                                                    <DropdownMenuContent align="end" className="w-56">
+                                                      {teamUsers.map((member) => (
+                                                        <DropdownMenuCheckboxItem
+                                                          key={member.id}
+                                                          checked={assigneeIds.includes(member.id)}
+                                                          onCheckedChange={(checked) => { void handleAssigneeToggle(item, member.id, checked === true); }}
+                                                        >
+                                                          {member.name}
+                                                        </DropdownMenuCheckboxItem>
+                                                      ))}
+                                                    </DropdownMenuContent>
+                                                  </DropdownMenu>
+                                                </div>
+                                              </div>
+                                              <div className="space-y-1 lg:hidden">
+                                                <p className="truncate text-sm font-medium">{getItemSubject(item)}</p>
+                                                <p className="text-xs text-muted-foreground">{category || "Kategorie fehlt"}</p>
+                                              </div>
+                                            </button>
+                                          </ContextMenuTrigger>
+                                          <ContextMenuContent className="w-56">
+                                            {/* Status submenu */}
+                                            <ContextMenuSub>
+                                              <ContextMenuSubTrigger>Status ändern</ContextMenuSubTrigger>
+                                              <ContextMenuSubContent className="w-48">
+                                                {statusOptions.map((opt) => (
+                                                  <ContextMenuItem
+                                                    key={opt.value}
+                                                    className={cn(item.status === opt.value && "bg-accent")}
+                                                    onClick={() => void handleQuickStatusChange(item, opt.value)}
+                                                  >
+                                                    <span className={cn("mr-2 h-2 w-2 rounded-full inline-block", opt.color)} />
+                                                    {opt.label}
+                                                    {item.status === opt.value && <span className="ml-auto text-xs text-muted-foreground">✓</span>}
+                                                  </ContextMenuItem>
+                                                ))}
+                                              </ContextMenuSubContent>
+                                            </ContextMenuSub>
+                                            {/* Priority submenu */}
+                                            <ContextMenuSub>
+                                              <ContextMenuSubTrigger>Priorität ändern</ContextMenuSubTrigger>
+                                              <ContextMenuSubContent className="w-48">
+                                                {priorityOptions.map((opt) => (
+                                                  <ContextMenuItem
+                                                    key={opt.value}
+                                                    className={cn(item.priority === opt.value && "bg-accent")}
+                                                    onClick={() => void handleQuickPriorityChange(item, opt.value)}
+                                                  >
+                                                    <Circle className={cn("mr-2 h-3 w-3 fill-current", opt.color)} />
+                                                    {opt.label}
+                                                    {item.priority === opt.value && <span className="ml-auto text-xs text-muted-foreground">✓</span>}
+                                                  </ContextMenuItem>
+                                                ))}
+                                              </ContextMenuSubContent>
+                                            </ContextMenuSub>
+                                            <ContextMenuSeparator />
+                                            {/* Link to file submenu */}
+                                            <ContextMenuSub>
+                                              <ContextMenuSubTrigger>Akte zuordnen</ContextMenuSubTrigger>
+                                              <ContextMenuSubContent className="w-56 max-h-64 overflow-y-auto">
+                                                {item.case_file_id && (
+                                                  <>
+                                                    <ContextMenuItem onClick={() => void handleUnlinkFromFile(item)} className="text-destructive">
+                                                      Verknüpfung lösen
+                                                    </ContextMenuItem>
+                                                    <ContextMenuSeparator />
+                                                  </>
+                                                )}
+                                                {allCaseFiles.slice(0, 20).map((cf) => (
+                                                  <ContextMenuItem
+                                                    key={cf.id}
+                                                    className={cn(item.case_file_id === cf.id && "bg-accent")}
+                                                    onClick={() => void handleQuickLinkToFile(item, cf.id)}
+                                                  >
+                                                    <FolderOpen className="mr-2 h-3 w-3 shrink-0" />
+                                                    <span className="truncate">{cf.title}</span>
+                                                    {cf.reference_number && <span className="ml-auto text-xs text-muted-foreground pl-2">{cf.reference_number}</span>}
+                                                  </ContextMenuItem>
+                                                ))}
+                                              </ContextMenuSubContent>
+                                            </ContextMenuSub>
+                                          </ContextMenuContent>
+                                        </ContextMenu>
 
-                          <div
-                            className={cn(
-                              "grid transition-all duration-300 ease-in-out",
-                              hasInlineDetail ? "grid-rows-[1fr] opacity-100" : "grid-rows-[0fr] opacity-0",
-                            )}
-                          >
-                            <div className="overflow-hidden">
-                              {hasInlineDetail && (
-                                <div className="mx-2 mb-3 rounded-md border bg-muted/20 p-3">
-                                  <div className="space-y-2">
-                                    <h3 className="font-semibold">Vorgang bearbeiten</h3>
-                                    <div className="flex flex-wrap gap-2 text-xs">
-                                      {item.status && <Badge variant="outline">{item.status}</Badge>}
-                                      <Badge variant="secondary" className="inline-flex items-center gap-1"><Circle className={cn("h-3 w-3 fill-current", priorityMeta(editableCaseItem.priority).color)} /> {priorityMeta(editableCaseItem.priority).label}</Badge>
-                                      {item.source_channel && <Badge variant="secondary">Kanal: {item.source_channel}</Badge>}
-                                    </div>
-                                  </div>
+                                        {/* Inline detail expansion */}
+                                        <div
+                                          className={cn(
+                                            "grid transition-all duration-300 ease-in-out",
+                                            hasInlineDetail ? "grid-rows-[1fr] opacity-100" : "grid-rows-[0fr] opacity-0",
+                                          )}
+                                        >
+                                          <div className="overflow-hidden">
+                                            {hasInlineDetail && (
+                                              <div className="mx-2 mb-3 rounded-md border bg-muted/20 p-3">
+                                                <div className="space-y-2">
+                                                  <h3 className="font-semibold">Vorgang bearbeiten</h3>
+                                                  <div className="flex flex-wrap gap-2 text-xs">
+                                                    {item.status && <Badge variant="outline">{item.status}</Badge>}
+                                                    <Badge variant="secondary" className="inline-flex items-center gap-1"><Circle className={cn("h-3 w-3 fill-current", priorityMeta(editableCaseItem.priority).color)} /> {priorityMeta(editableCaseItem.priority).label}</Badge>
+                                                    {item.source_channel && <Badge variant="secondary">Kanal: {item.source_channel}</Badge>}
+                                                  </div>
+                                                </div>
 
-                                  <div className="mt-3 space-y-3 rounded-md border bg-background p-3">
-                                    <div className="space-y-1.5">
-                                      <Label htmlFor="detail-subject">Betreff</Label>
-                                      <Input id="detail-subject" value={editableCaseItem.subject} onChange={(event) => setEditableCaseItem((prev) => prev ? { ...prev, subject: event.target.value } : prev)} />
-                                    </div>
-                                    <div className="space-y-1.5">
-                                      <Label htmlFor="detail-summary">Beschreibung</Label>
-                                      <Input id="detail-summary" value={editableCaseItem.summary} onChange={(event) => setEditableCaseItem((prev) => prev ? { ...prev, summary: event.target.value } : prev)} />
-                                    </div>
-                                    <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-                                      <div className="space-y-1.5">
-                                        <Label htmlFor="detail-received">Eingangsdatum</Label>
-                                        <Input id="detail-received" type="date" value={editableCaseItem.sourceReceivedAt} onChange={(event) => setEditableCaseItem((prev) => prev ? { ...prev, sourceReceivedAt: event.target.value } : prev)} />
-                                      </div>
-                                      <div className="space-y-1.5">
-                                        <Label htmlFor="detail-due">Fällig am</Label>
-                                        <Input id="detail-due" type="date" value={editableCaseItem.dueAt} onChange={(event) => setEditableCaseItem((prev) => prev ? { ...prev, dueAt: event.target.value } : prev)} />
-                                      </div>
-                                    </div>
-                                    <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-                                      <div className="space-y-1.5">
-                                        <Label>Kategorie *</Label>
-                                        <Select value={editableCaseItem.category} onValueChange={(value) => setEditableCaseItem((prev) => prev ? { ...prev, category: value } : prev)}>
-                                          <SelectTrigger><SelectValue placeholder="Kategorie auswählen" /></SelectTrigger>
-                                          <SelectContent>
-                                            {categoryOptions.map((categoryOption) => <SelectItem key={categoryOption} value={categoryOption}>{categoryOption}</SelectItem>)}
-                                          </SelectContent>
-                                        </Select>
-                                      </div>
-                                      <div className="space-y-1.5">
-                                        <Label>Priorität</Label>
-                                        <Select value={editableCaseItem.priority} onValueChange={(value) => setEditableCaseItem((prev) => prev ? { ...prev, priority: value } : prev)}>
-                                          <SelectTrigger><SelectValue /></SelectTrigger>
-                                          <SelectContent>
-                                            <SelectItem value="low">Niedrig</SelectItem>
-                                            <SelectItem value="medium">Mittel</SelectItem>
-                                            <SelectItem value="high">Hoch</SelectItem>
-                                            <SelectItem value="urgent">Dringend</SelectItem>
-                                          </SelectContent>
-                                        </Select>
-                                      </div>
-                                      <div className="space-y-1.5 sm:col-span-2">
-                                        <Label>Bearbeiter (mehrfach)</Label>
-                                        <div className="rounded-md border px-3 py-2 text-sm">
-                                          {editableCaseItem.assigneeIds.length > 0
-                                            ? editableCaseItem.assigneeIds.map((id) => teamUsers.find((member) => member.id === id)?.name || id).join(", ")
-                                            : "Nicht zugewiesen"}
+                                                <div className="mt-3 space-y-3 rounded-md border bg-background p-3">
+                                                  <div className="space-y-1.5">
+                                                    <Label htmlFor="detail-subject">Betreff</Label>
+                                                    <Input id="detail-subject" value={editableCaseItem.subject} onChange={(event) => setEditableCaseItem((prev) => prev ? { ...prev, subject: event.target.value } : prev)} />
+                                                  </div>
+                                                  <div className="space-y-1.5">
+                                                    <Label htmlFor="detail-summary">Beschreibung</Label>
+                                                    <Input id="detail-summary" value={editableCaseItem.summary} onChange={(event) => setEditableCaseItem((prev) => prev ? { ...prev, summary: event.target.value } : prev)} />
+                                                  </div>
+                                                  <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                                                    <div className="space-y-1.5">
+                                                      <Label htmlFor="detail-received">Eingangsdatum</Label>
+                                                      <Input id="detail-received" type="date" value={editableCaseItem.sourceReceivedAt} onChange={(event) => setEditableCaseItem((prev) => prev ? { ...prev, sourceReceivedAt: event.target.value } : prev)} />
+                                                    </div>
+                                                    <div className="space-y-1.5">
+                                                      <Label htmlFor="detail-due">Fällig am</Label>
+                                                      <Input id="detail-due" type="date" value={editableCaseItem.dueAt} onChange={(event) => setEditableCaseItem((prev) => prev ? { ...prev, dueAt: event.target.value } : prev)} />
+                                                    </div>
+                                                  </div>
+                                                  <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                                                    <div className="space-y-1.5">
+                                                      <Label>Kategorie *</Label>
+                                                      <Select value={editableCaseItem.category} onValueChange={(value) => setEditableCaseItem((prev) => prev ? { ...prev, category: value } : prev)}>
+                                                        <SelectTrigger><SelectValue placeholder="Kategorie auswählen" /></SelectTrigger>
+                                                        <SelectContent>
+                                                          {categoryOptions.map((categoryOption) => <SelectItem key={categoryOption} value={categoryOption}>{categoryOption}</SelectItem>)}
+                                                        </SelectContent>
+                                                      </Select>
+                                                    </div>
+                                                    <div className="space-y-1.5">
+                                                      <Label>Priorität</Label>
+                                                      <Select value={editableCaseItem.priority} onValueChange={(value) => setEditableCaseItem((prev) => prev ? { ...prev, priority: value } : prev)}>
+                                                        <SelectTrigger><SelectValue /></SelectTrigger>
+                                                        <SelectContent>
+                                                          <SelectItem value="low">Niedrig</SelectItem>
+                                                          <SelectItem value="medium">Mittel</SelectItem>
+                                                          <SelectItem value="high">Hoch</SelectItem>
+                                                          <SelectItem value="urgent">Dringend</SelectItem>
+                                                        </SelectContent>
+                                                      </Select>
+                                                    </div>
+                                                    <div className="space-y-1.5 sm:col-span-2">
+                                                      <Label>Bearbeiter (mehrfach)</Label>
+                                                      <div className="rounded-md border px-3 py-2 text-sm">
+                                                        {editableCaseItem.assigneeIds.length > 0
+                                                          ? editableCaseItem.assigneeIds.map((id) => teamUsers.find((member) => member.id === id)?.name || id).join(", ")
+                                                          : "Nicht zugewiesen"}
+                                                      </div>
+                                                      <div className="flex flex-wrap gap-2">
+                                                        {teamUsers.map((member) => {
+                                                          const selected = editableCaseItem.assigneeIds.includes(member.id);
+                                                          return (
+                                                            <Button
+                                                              key={member.id}
+                                                              type="button"
+                                                              size="sm"
+                                                              variant={selected ? "default" : "outline"}
+                                                              onClick={() => {
+                                                                setEditableCaseItem((prev) => {
+                                                                  if (!prev) return prev;
+                                                                  const next = selected
+                                                                    ? prev.assigneeIds.filter((id) => id !== member.id)
+                                                                    : [...prev.assigneeIds, member.id];
+                                                                  return { ...prev, assigneeIds: Array.from(new Set(next)) };
+                                                                });
+                                                              }}
+                                                            >
+                                                              {member.name}
+                                                            </Button>
+                                                          );
+                                                        })}
+                                                      </div>
+                                                    </div>
+                                                  </div>
+                                                  <Button disabled={!editableCaseItem.category} onClick={() => { void handleCaseItemSave(); }}>
+                                                    Speichern
+                                                  </Button>
+                                                </div>
+
+                                                {item.case_file_id && caseFilesById[item.case_file_id] ? (
+                                                  <div className="mt-3 space-y-2">
+                                                    <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Verknüpfte FallAkte</p>
+                                                    <div className="rounded-md border bg-background p-3 text-sm">
+                                                      <p className="font-semibold">{caseFilesById[item.case_file_id].title}</p>
+                                                      <ul className="mt-2 space-y-1 text-xs text-muted-foreground">
+                                                        <li>• Status: {caseFilesById[item.case_file_id].status || "offen"}</li>
+                                                        {caseFilesById[item.case_file_id].reference_number && <li>• Aktenzeichen: {caseFilesById[item.case_file_id].reference_number}</li>}
+                                                        {caseFilesById[item.case_file_id].case_type && <li>• Typ: {caseFilesById[item.case_file_id].case_type}</li>}
+                                                        {caseFilesById[item.case_file_id].current_status_note && <li>• Hinweis: {caseFilesById[item.case_file_id].current_status_note}</li>}
+                                                      </ul>
+                                                    </div>
+                                                    <Button size="sm" variant="outline" onClick={() => navigate(`/casefiles?caseFileId=${item.case_file_id}`)}>
+                                                      <ExternalLink className="mr-1 h-3.5 w-3.5" />
+                                                      Vollansicht
+                                                    </Button>
+                                                  </div>
+                                                ) : (
+                                                  <div className="mt-3 space-y-3 rounded-md border border-dashed bg-background p-4 text-sm text-muted-foreground">
+                                                    <AlertCircle className="h-4 w-4" />
+                                                    <p>Keine Akte verknüpft.</p>
+                                                    <div className="flex flex-wrap gap-2">
+                                                      <Button size="sm" onClick={() => handleCreateCaseFile(item.id)}>
+                                                        Neue Akte anlegen
+                                                      </Button>
+                                                    </div>
+                                                  </div>
+                                                )}
+                                              </div>
+                                            )}
+                                          </div>
                                         </div>
-                                        <div className="flex flex-wrap gap-2">
-                                          {teamUsers.map((member) => {
-                                            const selected = editableCaseItem.assigneeIds.includes(member.id);
-                                            return (
-                                              <Button
-                                                key={member.id}
-                                                type="button"
-                                                size="sm"
-                                                variant={selected ? "default" : "outline"}
-                                                onClick={() => {
-                                                  setEditableCaseItem((prev) => {
-                                                    if (!prev) return prev;
-                                                    const next = selected
-                                                      ? prev.assigneeIds.filter((id) => id !== member.id)
-                                                      : [...prev.assigneeIds, member.id];
-                                                    return { ...prev, assigneeIds: Array.from(new Set(next)) };
-                                                  });
-                                                }}
-                                              >
-                                                {member.name}
-                                              </Button>
-                                            );
-                                          })}
-                                        </div>
                                       </div>
-                                    </div>
-                                    <Button disabled={!editableCaseItem.category} onClick={() => { void handleCaseItemSave(); }}>
-                                      Speichern
-                                    </Button>
-                                  </div>
+                                    )}
+                                  </Draggable>
+                                );
+                              })}
+                            </div>
+                          )}
+                          {provided.placeholder}
+                        </div>
+                      </ScrollArea>
+                    )}
+                  </Droppable>
+                </CardContent>
+              </Card>
 
-                                  {item.case_file_id && caseFilesById[item.case_file_id] ? (
-                                    <div className="mt-3 space-y-2">
-                                      <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Verknüpfte FallAkte</p>
-                                      <div className="rounded-md border bg-background p-3 text-sm">
-                                        <p className="font-semibold">{caseFilesById[item.case_file_id].title}</p>
-                                        <ul className="mt-2 space-y-1 text-xs text-muted-foreground">
-                                          <li>• Status: {caseFilesById[item.case_file_id].status || "offen"}</li>
-                                          {caseFilesById[item.case_file_id].reference_number && <li>• Aktenzeichen: {caseFilesById[item.case_file_id].reference_number}</li>}
-                                          {caseFilesById[item.case_file_id].case_type && <li>• Typ: {caseFilesById[item.case_file_id].case_type}</li>}
-                                          {caseFilesById[item.case_file_id].current_status_note && <li>• Hinweis: {caseFilesById[item.case_file_id].current_status_note}</li>}
-                                        </ul>
-                                      </div>
-                                      <Button size="sm" variant="outline" onClick={() => navigate(`/casefiles?caseFileId=${item.case_file_id}`)}>
-                                        <ExternalLink className="mr-1 h-3.5 w-3.5" />
-                                        Vollansicht
-                                      </Button>
+              {/* RIGHT: FallAkten */}
+              <Card>
+                <CardHeader className="pb-2">
+                  <div className="flex items-center justify-between">
+                    <CardTitle className="flex items-center gap-2 text-base">
+                      <FolderOpen className="h-4 w-4" />
+                      FallAkten
+                    </CardTitle>
+                    <Button size="sm" onClick={() => handleCreateCaseFile()}>
+                      <Plus className="mr-1 h-4 w-4" />
+                      Neu
+                    </Button>
+                  </div>
+                </CardHeader>
+                <CardContent className="space-y-3">
+                  <div className="relative">
+                    <Search className="pointer-events-none absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
+                    <Input
+                      value={fileFilterQuery}
+                      onChange={(e) => setFileFilterQuery(e.target.value)}
+                      placeholder="FallAkten filtern…"
+                      className="pl-8"
+                    />
+                  </div>
+                  <ScrollArea className="h-[520px] pr-2">
+                    <div className="space-y-1.5">
+                      {filteredCaseFiles.length === 0 ? (
+                        <div className="rounded-md border border-dashed p-4 text-sm text-muted-foreground space-y-3">
+                          <p>Keine FallAkten gefunden.</p>
+                          <Button size="sm" onClick={() => handleCreateCaseFile()}>FallAkte erstellen</Button>
+                        </div>
+                      ) : (
+                        filteredCaseFiles.map((cf) => {
+                          const linkedCount = linkedItemsCountByFile[cf.id] || 0;
+                          return (
+                            <Droppable key={cf.id} droppableId={`casefile-${cf.id}`}>
+                              {(dropProvided, dropSnapshot) => (
+                                <div
+                                  ref={dropProvided.innerRef}
+                                  {...dropProvided.droppableProps}
+                                >
+                                  <button
+                                    type="button"
+                                    className={cn(
+                                      "w-full border-b px-2 py-2 text-left transition-colors hover:bg-muted/40 rounded-md",
+                                      dropSnapshot.isDraggingOver && "ring-2 ring-blue-500 bg-blue-50 dark:bg-blue-950/20",
+                                    )}
+                                    onClick={() => handleSelectCaseFile(cf)}
+                                  >
+                                    <div className="flex items-center gap-2">
+                                      <p className="text-sm font-medium line-clamp-1 flex-1">{cf.title}</p>
+                                      {caseFileStatusBadge(cf.status)}
                                     </div>
-                                  ) : (
-                                    <div className="mt-3 space-y-3 rounded-md border border-dashed bg-background p-4 text-sm text-muted-foreground">
-                                      <AlertCircle className="h-4 w-4" />
-                                      <p>Keine Akte verknüpft.</p>
-                                      <div className="flex flex-wrap gap-2">
-                                        <Button size="sm" onClick={() => handleCreateCaseFile(item.id)}>
-                                          Neue Akte anlegen
-                                        </Button>
-                                      </div>
+                                    <div className="mt-1.5 flex items-center justify-between text-xs text-muted-foreground">
+                                      {cf.reference_number && <span>{cf.reference_number}</span>}
+                                      {linkedCount > 0 && (
+                                        <span>
+                                          <FileText className="inline h-3 w-3 mr-0.5" />
+                                          {linkedCount} {linkedCount === 1 ? "Vorgang" : "Vorgänge"}
+                                        </span>
+                                      )}
                                     </div>
-                                  )}
+                                    {dropSnapshot.isDraggingOver && (
+                                      <p className="mt-1 text-xs text-blue-600 font-medium">Vorgang hier ablegen zum Verknüpfen</p>
+                                    )}
+                                    {cf.current_status_note && !dropSnapshot.isDraggingOver && (
+                                      <p className="mt-1 text-xs text-muted-foreground truncate">{cf.current_status_note}</p>
+                                    )}
+                                  </button>
+                                  {dropProvided.placeholder}
                                 </div>
                               )}
-                            </div>
-                          </div>
-                        </div>
-                      );
-                    })}
-                  </div>
-                )}
-              </div>
-            </ScrollArea>
-          </CardContent>
-        </Card>
-
-        {/* RIGHT: FallAkten */}
-        <Card>
-          <CardHeader className="pb-2">
-            <div className="flex items-center justify-between">
-              <CardTitle className="flex items-center gap-2 text-base">
-                <FolderOpen className="h-4 w-4" />
-                FallAkten
-              </CardTitle>
-              <Button size="sm" onClick={() => handleCreateCaseFile()}>
-                <Plus className="mr-1 h-4 w-4" />
-                Neu
-              </Button>
+                            </Droppable>
+                          );
+                        })
+                      )}
+                    </div>
+                  </ScrollArea>
+                </CardContent>
+              </Card>
             </div>
-          </CardHeader>
-          <CardContent className="space-y-3">
-            <div className="relative">
-              <Search className="pointer-events-none absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
-              <Input
-                value={fileFilterQuery}
-                onChange={(e) => setFileFilterQuery(e.target.value)}
-                placeholder="FallAkten filtern…"
-                className="pl-8"
-              />
-            </div>
-            <ScrollArea className="h-[520px] pr-2">
-              <div className="space-y-1.5">
-                {filteredCaseFiles.length === 0 ? (
-                  <div className="rounded-md border border-dashed p-4 text-sm text-muted-foreground space-y-3">
-                    <p>Keine FallAkten gefunden.</p>
-                    <Button size="sm" onClick={() => handleCreateCaseFile()}>FallAkte erstellen</Button>
-                  </div>
-                ) : (
-                  filteredCaseFiles.map((cf) => {
-                    const linkedCount = linkedItemsCountByFile[cf.id] || 0;
-                    return (
-                      <button
-                        key={cf.id}
-                        type="button"
-                        className="w-full border-b px-2 py-2 text-left transition-colors hover:bg-muted/40"
-                        onClick={() => handleSelectCaseFile(cf)}
-                      >
-                        <p className="text-sm font-medium line-clamp-1">{cf.title}</p>
-                        <div className="mt-1.5 flex items-center justify-between text-xs text-muted-foreground">
-                          {cf.reference_number && <span>{cf.reference_number}</span>}
-                          {linkedCount > 0 && (
-                            <span>
-                              <FileText className="inline h-3 w-3 mr-0.5" />
-                              {linkedCount} {linkedCount === 1 ? "Vorgang" : "Vorgänge"}
-                            </span>
-                          )}
-                        </div>
-                        {cf.current_status_note && (
-                          <p className="mt-1 text-xs text-muted-foreground truncate">{cf.current_status_note}</p>
-                        )}
-                      </button>
-                    );
-                  })
-                )}
-              </div>
-            </ScrollArea>
-          </CardContent>
-        </Card>
-      </div>
-      <CaseItemCreateDialog
-        open={isCaseItemDialogOpen}
-        onOpenChange={setIsCaseItemDialogOpen}
-        onCreated={(id) => { void handleCaseItemCreated(id); }}
-        createCaseItem={createCaseItem}
-        assignees={teamUsers}
-        defaultAssigneeId={defaultAssigneeId}
-      />
+          </DragDropContext>
 
-      <CaseFileCreateDialog
-        open={isCaseFileDialogOpen}
-        onOpenChange={(open) => {
-          setIsCaseFileDialogOpen(open);
-          if (!open) setPendingCaseItemLinkId(null);
-        }}
-        onSuccess={(caseFile) => {
-          void handleCaseFileCreated(caseFile.id);
-          setIsCaseFileDialogOpen(false);
-        }}
-      />
+          <CaseItemCreateDialog
+            open={isCaseItemDialogOpen}
+            onOpenChange={setIsCaseItemDialogOpen}
+            onCreated={(id) => { void handleCaseItemCreated(id); }}
+            createCaseItem={createCaseItem}
+            assignees={teamUsers}
+            defaultAssigneeId={defaultAssigneeId}
+          />
+
+          <CaseFileCreateDialog
+            open={isCaseFileDialogOpen}
+            onOpenChange={(open) => {
+              setIsCaseFileDialogOpen(open);
+              if (!open) setPendingCaseItemLinkId(null);
+            }}
+            onSuccess={(caseFile) => {
+              void handleCaseFileCreated(caseFile.id);
+              setIsCaseFileDialogOpen(false);
+            }}
+          />
+        </>
+      )}
     </>
   );
 }

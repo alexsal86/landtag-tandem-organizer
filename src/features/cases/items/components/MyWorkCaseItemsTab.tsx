@@ -315,6 +315,8 @@ export function MyWorkCaseItemsTab() {
         onOpenChange={setCreateOpen}
         onCreated={(newItemId) => setHighlightedItemId(newItemId)}
         createCaseItem={createCaseItem}
+        assignees={[]}
+        defaultAssigneeId={null}
       />
 
       <Card>
