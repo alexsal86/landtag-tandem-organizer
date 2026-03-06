@@ -3,10 +3,10 @@ import { addWeeks, format } from "date-fns";
 import { Briefcase, Mail, MessageSquare, Phone, UserRound } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { CaseItemFormData, useCaseItems } from "@/features/cases/items/hooks";
 import { useAuth } from "@/hooks/useAuth";
 import { useTenant } from "@/hooks/useTenant";
@@ -28,6 +28,15 @@ const sourceChannelOptions = [
   { value: "other", label: "Sonstiges", icon: Briefcase },
 ] as const;
 
+const categoryOptions = ["Allgemein", "Bürgeranliegen", "Anfrage", "Beschwerde", "Termin", "Sonstiges"] as const;
+
+const priorityOptions = [
+  { value: "low", label: "Niedrig" },
+  { value: "medium", label: "Mittel" },
+  { value: "high", label: "Hoch" },
+  { value: "urgent", label: "Dringend" },
+] as const;
+
 export function CaseItemCreateDialog({ open, onOpenChange, onCreated, createCaseItem, assignees, defaultAssigneeId }: CaseItemCreateDialogProps) {
   const { user } = useAuth();
   const { currentTenant } = useTenant();
@@ -42,9 +51,16 @@ export function CaseItemCreateDialog({ open, onOpenChange, onCreated, createCase
   const [submitError, setSubmitError] = useState<string | null>(null);
   const hasContext = Boolean(user && currentTenant);
 
+  const setDefaultDates = () => {
+    const today = format(new Date(), "yyyy-MM-dd");
+    setSourceReceivedDate(today);
+    setDueDate(format(addWeeks(new Date(`${today}T12:00:00`), 4), "yyyy-MM-dd"));
+  };
+
   useEffect(() => {
     if (open) {
       setSelectedAssigneeIds(defaultAssigneeId ? [defaultAssigneeId] : []);
+      setDefaultDates();
     }
   }, [defaultAssigneeId, open]);
 
@@ -84,14 +100,13 @@ export function CaseItemCreateDialog({ open, onOpenChange, onCreated, createCase
     setPriority("medium");
     setSelectedAssigneeIds(defaultAssigneeId ? [defaultAssigneeId] : []);
     setCategory("");
-    setSourceReceivedDate("");
-    setDueDate("");
+    setDefaultDates();
     onOpenChange(false);
   };
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent>
+      <DialogContent className="sm:max-w-2xl">
         <DialogHeader>
           <DialogTitle>Neuer Vorgang</DialogTitle>
         </DialogHeader>
@@ -106,6 +121,30 @@ export function CaseItemCreateDialog({ open, onOpenChange, onCreated, createCase
           {submitError && <p className="text-sm text-destructive">{submitError}</p>}
 
           <div className="space-y-2">
+            <Label>Kanal</Label>
+            <div className="grid gap-2 sm:grid-cols-2">
+              {sourceChannelOptions.map((option) => {
+                const Icon = option.icon;
+                const selected = sourceChannel === option.value;
+                return (
+                  <label
+                    key={option.value}
+                    className={`flex cursor-pointer items-center gap-2 rounded-md border p-2 text-sm ${selected ? "border-primary bg-primary/5" : "border-border"}`}
+                  >
+                    <Checkbox
+                      checked={selected}
+                      onCheckedChange={() => setSourceChannel(option.value)}
+                      aria-label={`Kanal ${option.label}`}
+                    />
+                    <Icon className="h-3.5 w-3.5" />
+                    <span>{option.label}</span>
+                  </label>
+                );
+              })}
+            </div>
+          </div>
+
+          <div className="space-y-2">
             <Label htmlFor="case-item-subject">Betreff</Label>
             <Input
               id="case-item-subject"
@@ -116,42 +155,25 @@ export function CaseItemCreateDialog({ open, onOpenChange, onCreated, createCase
           </div>
 
           <div className="space-y-2">
-            <Label>Kanal</Label>
-            <Select value={sourceChannel} onValueChange={(value) => setSourceChannel(value as CaseItemFormData["source_channel"])}>
-              <SelectTrigger>
-                <SelectValue placeholder="Kanal auswählen" />
-              </SelectTrigger>
-              <SelectContent>
-                {sourceChannelOptions.map((option) => {
-                  const Icon = option.icon;
-                  return (
-                    <SelectItem key={option.value} value={option.value}>
-                      <span className="inline-flex items-center gap-2">
-                        <Icon className="h-3.5 w-3.5" />
-                        {option.label}
-                      </span>
-                    </SelectItem>
-                  );
-                })}
-              </SelectContent>
-            </Select>
-          </div>
-
-          <div className="space-y-2">
             <Label>Kategorie *</Label>
-            <Select value={category} onValueChange={setCategory}>
-              <SelectTrigger>
-                <SelectValue placeholder="Kategorie auswählen" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="Allgemein">Allgemein</SelectItem>
-                <SelectItem value="Bürgeranliegen">Bürgeranliegen</SelectItem>
-                <SelectItem value="Anfrage">Anfrage</SelectItem>
-                <SelectItem value="Beschwerde">Beschwerde</SelectItem>
-                <SelectItem value="Termin">Termin</SelectItem>
-                <SelectItem value="Sonstiges">Sonstiges</SelectItem>
-              </SelectContent>
-            </Select>
+            <div className="flex flex-wrap gap-2">
+              {categoryOptions.map((option) => {
+                const selected = category === option;
+                return (
+                  <label
+                    key={option}
+                    className={`flex cursor-pointer items-center gap-2 rounded-md border px-3 py-2 text-sm ${selected ? "border-primary bg-primary/5" : "border-border"}`}
+                  >
+                    <Checkbox
+                      checked={selected}
+                      onCheckedChange={() => setCategory(option)}
+                      aria-label={`Kategorie ${option}`}
+                    />
+                    <span>{option}</span>
+                  </label>
+                );
+              })}
+            </div>
           </div>
 
           <div className="space-y-2">
@@ -178,46 +200,55 @@ export function CaseItemCreateDialog({ open, onOpenChange, onCreated, createCase
 
           <div className="space-y-2">
             <Label>Priorität</Label>
-            <Select value={priority} onValueChange={(value) => setPriority(value as NonNullable<CaseItemFormData["priority"]>)}>
-              <SelectTrigger>
-                <SelectValue placeholder="Priorität auswählen" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="low">Niedrig</SelectItem>
-                <SelectItem value="medium">Mittel</SelectItem>
-                <SelectItem value="high">Hoch</SelectItem>
-                <SelectItem value="urgent">Dringend</SelectItem>
-              </SelectContent>
-            </Select>
+            <div className="flex flex-wrap gap-2">
+              {priorityOptions.map((option) => {
+                const selected = priority === option.value;
+                return (
+                  <label
+                    key={option.value}
+                    className={`flex cursor-pointer items-center gap-2 rounded-md border px-3 py-2 text-sm ${selected ? "border-primary bg-primary/5" : "border-border"}`}
+                  >
+                    <Checkbox
+                      checked={selected}
+                      onCheckedChange={() => setPriority(option.value as NonNullable<CaseItemFormData["priority"]>)}
+                      aria-label={`Priorität ${option.label}`}
+                    />
+                    <span>{option.label}</span>
+                  </label>
+                );
+              })}
+            </div>
           </div>
 
-          <div className="space-y-2">
-            <Label htmlFor="case-item-received">Eingangsdatum</Label>
-            <Input
-              id="case-item-received"
-              type="date"
-              value={sourceReceivedDate}
-              onChange={(event) => {
-                const value = event.target.value;
-                setSourceReceivedDate(value);
-                if (value) {
-                  setDueDate(format(addWeeks(new Date(`${value}T12:00:00`), 4), "yyyy-MM-dd"));
-                } else {
-                  setDueDate("");
-                }
-              }}
-              required
-            />
-          </div>
+          <div className="grid gap-4 sm:grid-cols-2">
+            <div className="space-y-2">
+              <Label htmlFor="case-item-received">Eingangsdatum</Label>
+              <Input
+                id="case-item-received"
+                type="date"
+                value={sourceReceivedDate}
+                onChange={(event) => {
+                  const value = event.target.value;
+                  setSourceReceivedDate(value);
+                  if (value) {
+                    setDueDate(format(addWeeks(new Date(`${value}T12:00:00`), 4), "yyyy-MM-dd"));
+                  } else {
+                    setDueDate("");
+                  }
+                }}
+                required
+              />
+            </div>
 
-          <div className="space-y-2">
-            <Label htmlFor="case-item-due">Frist</Label>
-            <Input
-              id="case-item-due"
-              type="date"
-              value={dueDate}
-              onChange={(event) => setDueDate(event.target.value)}
-            />
+            <div className="space-y-2">
+              <Label htmlFor="case-item-due">Frist</Label>
+              <Input
+                id="case-item-due"
+                type="date"
+                value={dueDate}
+                onChange={(event) => setDueDate(event.target.value)}
+              />
+            </div>
           </div>
         </div>
 
