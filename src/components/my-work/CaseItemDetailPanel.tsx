@@ -324,6 +324,20 @@ export function CaseItemDetailPanel({
         </div>
 
         <div className="space-y-3">
+          <div className="space-y-1.5">
+            <Label className="font-bold" htmlFor="detail-subject">Betreff</Label>
+            <Input id="detail-subject" value={editableCaseItem.subject} onChange={(event) => onUpdate({ subject: event.target.value })} />
+          </div>
+          <div className="space-y-1.5">
+            <Label className="font-bold" htmlFor="detail-summary">Beschreibung</Label>
+            <SimpleRichTextEditor
+              key={`detail-summary-${itemId}`}
+              initialContent={toEditorHtml(editableCaseItem.summary)}
+              onChange={(html) => onUpdate({ summary: html })}
+              placeholder="Beschreibung hinzufügen"
+              minHeight="140px"
+            />
+          </div>
           <div className="rounded-md border bg-background p-3 space-y-2">
             <p className="font-bold">Interaktion erfassen</p>
             <div className="flex flex-wrap gap-2 xl:flex-nowrap">
