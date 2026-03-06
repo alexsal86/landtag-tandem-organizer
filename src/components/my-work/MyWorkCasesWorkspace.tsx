@@ -2,7 +2,7 @@ import { type KeyboardEvent, useCallback, useEffect, useMemo, useState } from "r
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { format } from "date-fns";
 import { de } from "date-fns/locale";
-import { ArrowDown, ArrowUp, Briefcase, CheckCircle2, Circle, Clock, FileText, FolderOpen, GripVertical, Link2, Plus, Search, UserRound } from "lucide-react";
+import { ArrowDown, ArrowUp, Briefcase, CheckCircle2, Circle, Clock, FileText, FolderOpen, Gavel, GripVertical, Link2, Mail, MessageSquare, Phone, Plus, Search, UserRound, Users } from "lucide-react";
 import { DragDropContext, Droppable, Draggable, type DropResult } from "@hello-pangea/dnd";
 import DOMPurify from "dompurify";
 
@@ -40,6 +40,7 @@ type TimelineEntry = {
   note?: string;
   safeNoteHtml?: string;
   accentClass: string;
+  icon?: typeof Phone;
   canDelete?: boolean;
   onDelete?: () => void;
 };
@@ -92,6 +93,19 @@ const normalizeRichTextValue = (value: string): string | null => {
     .replace(/&nbsp;/gi, "")
     .trim();
   return withoutTags ? trimmed : null;
+};
+
+const richTextToPlain = (value: string | null | undefined): string => {
+  if (!value) return "";
+  return value
+    .replace(/<br\s*\/?>/gi, "\n")
+    .replace(/<[^>]+>/g, " ")
+    .replace(/&nbsp;/gi, " ")
+    .replace(/&amp;/gi, "&")
+    .replace(/&lt;/gi, "<")
+    .replace(/&gt;/gi, ">")
+    .replace(/\s+/g, " ")
+    .trim();
 };
 
 const sanitizeTimelineNote = (note: string | undefined) => {
@@ -205,7 +219,7 @@ export function MyWorkCasesWorkspace() {
   const [loadingDecisions, setLoadingDecisions] = useState(false);
 
   const getItemSubject = useCallback((item: CaseItem) => item.subject || item.summary || item.resolution_summary || "Ohne Titel", []);
-  const getItemDescription = useCallback((item: CaseItem) => item.summary || item.resolution_summary || "", []);
+  const getItemDescription = useCallback((item: CaseItem) => richTextToPlain(item.summary || item.resolution_summary || ""), []);
 
   const clearActionParam = useCallback(() => {
     setSearchParams((prev) => {
@@ -627,9 +641,10 @@ export function MyWorkCasesWorkspace() {
         statusValue: previousStatus,
       }],
     } : prev);
+    setCaseItems((prev) => prev.map((row) => row.id === detailItemId ? { ...row, status: "entscheidung_abwartend" } : row));
     // Reload decisions for this item
     await loadLinkedDecisions(detailItemId);
-  }, [detailItemId, editableCaseItem, getStatusMeta, loadLinkedDecisions]);
+  }, [detailItemId, editableCaseItem, getStatusMeta, loadLinkedDecisions, setCaseItems]);
 
   const handleDecisionReceived = useCallback(() => {
     if (!editableCaseItem || editableCaseItem.status !== "entscheidung_abwartend") return;
@@ -648,7 +663,10 @@ export function MyWorkCasesWorkspace() {
         statusValue: restoredStatus,
       }],
     } : prev);
-  }, [editableCaseItem, getStatusMeta]);
+    if (detailItemId) {
+      setCaseItems((prev) => prev.map((row) => row.id === detailItemId ? { ...row, status: restoredStatus } : row));
+    }
+  }, [detailItemId, editableCaseItem, getStatusMeta, setCaseItems]);
 
   const timelineEntries = useMemo<TimelineEntry[]>(() => {
     if (!editableCaseItem) return [];
@@ -677,18 +695,21 @@ export function MyWorkCasesWorkspace() {
       note: event.note,
       safeNoteHtml: sanitizeTimelineNote(event.note),
       accentClass: "bg-primary",
+      icon: event.type === "entscheidung" ? Gavel : interactionTypeOptions.find((option) => option.value === event.interactionType)?.icon,
       canDelete: true,
       onDelete: () => deleteTimelineEvent(event.id),
     })));
 
     if (detailItemId) {
       entries.push(...(linkedDecisions[detailItemId] || [])
-        .filter((decision) => decision.status === "completed")
         .map((decision) => ({
           id: `dec-${decision.id}`,
           timestamp: decision.created_at,
-          title: `Entscheidung abgeschlossen: ${decision.title}`,
-          accentClass: "bg-emerald-500",
+          title: `Entscheidung: ${decision.title}`,
+          note: `Status: ${decision.status}`,
+          safeNoteHtml: sanitizeTimelineNote(`Status: ${decision.status}`),
+          accentClass: decision.status === "completed" ? "bg-emerald-500" : "bg-fuchsia-600",
+          icon: Gavel,
         })));
     }
 
