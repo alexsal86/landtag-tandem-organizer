@@ -35,10 +35,10 @@ type EscalationSuggestion = {
 };
 
 const STATUS_STYLES: Record<string, string> = {
-  active: "bg-blue-500 text-white",
-  pending: "bg-yellow-500 text-black",
-  closed: "bg-green-600 text-white",
-  archived: "bg-gray-500 text-white",
+  neu: "bg-sky-500 text-white",
+  in_klaerung: "bg-amber-500 text-black",
+  antwort_ausstehend: "bg-violet-500 text-white",
+  erledigt: "bg-emerald-600 text-white",
 };
 
 const PRIORITY_LABELS: Record<string, string> = {
@@ -49,10 +49,10 @@ const PRIORITY_LABELS: Record<string, string> = {
 };
 
 const STATUS_LABELS: Record<string, string> = {
-  active: "Aktiv",
-  pending: "In Bearbeitung",
-  closed: "Geschlossen",
-  archived: "Archiviert",
+  neu: "Neu",
+  in_klaerung: "In Klärung",
+  antwort_ausstehend: "Antwort ausstehend",
+  erledigt: "Erledigt",
 };
 
 const CHANNEL_LABELS: Record<string, string> = {

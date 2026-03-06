@@ -33,7 +33,7 @@ type CaseScale = "small" | "large";
 type CaseItemRecord = {
   id: string;
   source_channel: "phone" | "email" | "social" | "in_person" | "other";
-  status: "active" | "pending" | "closed" | "archived";
+  status: "neu" | "in_klaerung" | "antwort_ausstehend" | "erledigt";
   owner_user_id: string | null;
   due_at: string | null;
   follow_up_at: string | null;
@@ -50,6 +50,13 @@ type CaseFileRecord = {
   start_date: string | null;
   target_date: string | null;
   risks_and_opportunities: unknown;
+};
+
+const CASE_ITEM_STATUS_META: Record<CaseItemRecord["status"], { label: string; className: string }> = {
+  neu: { label: "Neu", className: "border-sky-500/40 text-sky-700 bg-sky-500/10" },
+  in_klaerung: { label: "In Klärung", className: "border-amber-500/40 text-amber-700 bg-amber-500/10" },
+  antwort_ausstehend: { label: "Antwort ausstehend", className: "border-violet-500/40 text-violet-700 bg-violet-500/10" },
+  erledigt: { label: "Erledigt", className: "border-emerald-500/40 text-emerald-700 bg-emerald-500/10" },
 };
 
 const CaseItemDetail = () => {
@@ -272,7 +279,12 @@ const CaseItemDetail = () => {
                 <Card>
                   <CardHeader className="flex flex-row items-center justify-between">
                     <CardTitle className="flex items-center gap-2"><Briefcase className="h-5 w-5" /> Vorgang {caseItem.id.slice(0, 8)}</CardTitle>
-                    <Badge variant={isLarge ? "default" : "secondary"}>{isLarge ? "extended" : "compact"}</Badge>
+                    <div className="flex items-center gap-2">
+                      <Badge variant="outline" className={CASE_ITEM_STATUS_META[caseItem.status].className}>
+                        Phase: {CASE_ITEM_STATUS_META[caseItem.status].label}
+                      </Badge>
+                      <Badge variant={isLarge ? "default" : "secondary"}>{isLarge ? "extended" : "compact"}</Badge>
+                    </div>
                   </CardHeader>
                   <CardContent className="space-y-4">
                     <div className="flex items-center gap-3">

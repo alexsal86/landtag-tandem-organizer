@@ -74,7 +74,7 @@ export function CaseItemCreateDialog({ open, onOpenChange, onCreated, createCase
     const newItem = await createCaseItem({
       source_channel: sourceChannel,
       priority,
-      status: "active",
+      status: "neu",
       due_at: dueDate ? new Date(`${dueDate}T12:00:00`).toISOString() : null,
       source_received_at: new Date(`${sourceReceivedDate}T12:00:00`).toISOString(),
       owner_user_id: selectedAssigneeIds[0] || null,
