@@ -384,7 +384,7 @@ export function MyWorkCasesWorkspace() {
       toast.error("Priorität konnte nicht geändert werden.");
       return;
     }
-    setCaseItems((prev) => prev.map((row) => (row.id === item.id ? { ...row, priority: newPriority } : row)));
+    setCaseItems((prev) => prev.map((row) => (row.id === item.id ? { ...row, priority: newPriority as CaseItem["priority"] } : row)));
     toast.success(`Priorität auf "${priorityOptions.find((p) => p.value === newPriority)?.label || newPriority}" gesetzt.`);
   };
 
