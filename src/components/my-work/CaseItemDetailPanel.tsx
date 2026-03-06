@@ -207,8 +207,8 @@ export function CaseItemDetailPanel({
                       <p className="font-semibold truncate">{decision.title}</p>
                       <span className="text-muted-foreground">{decision.status}</span>
                     </div>
-                    <p className="text-muted-foreground">Erstellt: {format(new Date(decision.created_at), "dd.MM.yyyy", { locale: de })}</p>
-                    {decision.response_deadline && <p className="text-muted-foreground">Frist: {format(new Date(decision.response_deadline), "dd.MM.yyyy", { locale: de })}</p>}
+                    <p className="text-muted-foreground">Erstellt: {formatDecisionDate(decision.created_at)}</p>
+                    {decision.response_deadline && <p className="text-muted-foreground">Frist: {formatDecisionDate(decision.response_deadline)}</p>}
                   </div>
                 ))}
               </div>
