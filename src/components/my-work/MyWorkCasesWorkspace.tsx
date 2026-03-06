@@ -148,6 +148,29 @@ const getContactDetail = (payload: CaseItemIntakePayload | null): string => {
   const value = payload?.contact_detail;
   return typeof value === "string" ? value : "";
 };
+
+const parseContactPerson = (value: string): { contactName: string | null; contactDetail: string | null } => {
+  const trimmed = value.trim();
+  if (!trimmed) return { contactName: null, contactDetail: null };
+
+  const separators = [" · ", "|", ","];
+  for (const separator of separators) {
+    if (!trimmed.includes(separator)) continue;
+    const parts = trimmed
+      .split(separator)
+      .map((part) => part.trim())
+      .filter(Boolean);
+    if (parts.length >= 2) {
+      return {
+        contactName: parts[0] || null,
+        contactDetail: parts.slice(1).join(" ").trim() || null,
+      };
+    }
+  }
+
+  return { contactName: trimmed, contactDetail: null };
+};
+
 const loggedInvalidDateWarnings = new Set<string>();
 
 const formatDateSafe = (
@@ -771,8 +794,7 @@ export function MyWorkCasesWorkspace() {
       category: editableCaseItem.category,
       assignee_ids: editableCaseItem.assigneeIds,
       timeline_events: editableCaseItem.timelineEvents,
-      contact_name: editableCaseItem.contactPerson.trim() || null,
-      contact_detail: null,
+      ...parseContactPerson(editableCaseItem.contactPerson),
     };
 
     const patch = {
