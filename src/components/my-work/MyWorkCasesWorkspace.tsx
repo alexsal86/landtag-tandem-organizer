@@ -148,6 +148,29 @@ const getContactDetail = (payload: CaseItemIntakePayload | null): string => {
   const value = payload?.contact_detail;
   return typeof value === "string" ? value : "";
 };
+
+const parseContactPerson = (value: string): { contactName: string | null; contactDetail: string | null } => {
+  const trimmed = value.trim();
+  if (!trimmed) return { contactName: null, contactDetail: null };
+
+  const separators = [" · ", "|", ","];
+  for (const separator of separators) {
+    if (!trimmed.includes(separator)) continue;
+    const parts = trimmed
+      .split(separator)
+      .map((part) => part.trim())
+      .filter(Boolean);
+    if (parts.length >= 2) {
+      return {
+        contactName: parts[0] || null,
+        contactDetail: parts.slice(1).join(" ").trim() || null,
+      };
+    }
+  }
+
+  return { contactName: trimmed, contactDetail: null };
+};
+
 const loggedInvalidDateWarnings = new Set<string>();
 
 const formatDateSafe = (
@@ -530,10 +553,11 @@ export function MyWorkCasesWorkspace() {
       priority: item.priority || "medium",
       assigneeIds: getAssigneeIds(item),
       timelineEvents: parseTimelineEvents(item.intake_payload),
-      interactionType: "anruf",
+      interactionType: "",
       interactionContact: getContactDetail(item.intake_payload) || getContactName(item.intake_payload),
       interactionDateTime: "",
       interactionNote: "",
+      contactPerson: [getContactName(item.intake_payload), getContactDetail(item.intake_payload)].filter(Boolean).join(" · "),
     });
   };
 
@@ -633,6 +657,10 @@ export function MyWorkCasesWorkspace() {
 
   const handleAddInteraction = useCallback(() => {
     if (!editableCaseItem) return;
+    if (!editableCaseItem.interactionType) {
+      toast.error("Bitte zuerst eine Interaktion auswählen.");
+      return;
+    }
     const typeMeta = interactionTypeOptions.find((opt) => opt.value === editableCaseItem.interactionType);
     const contact = editableCaseItem.interactionContact.trim();
     const fallbackTypeLabel = typeMeta?.label || "Interaktion";
@@ -654,7 +682,7 @@ export function MyWorkCasesWorkspace() {
       timestamp: formatInteractionTimestamp(editableCaseItem.interactionDateTime),
     });
     updateEdit({ interactionContact: "", interactionDateTime: "", interactionNote: "" });
-  }, [appendTimelineEvent, editableCaseItem, formatInteractionTimestamp]);
+  }, [appendTimelineEvent, editableCaseItem, formatInteractionTimestamp, updateEdit]);
 
   const handleRequestDecision = useCallback(() => {
     if (!editableCaseItem || !detailItemId) return;
@@ -766,8 +794,7 @@ export function MyWorkCasesWorkspace() {
       category: editableCaseItem.category,
       assignee_ids: editableCaseItem.assigneeIds,
       timeline_events: editableCaseItem.timelineEvents,
-      contact_name: getContactName(detailItem?.intake_payload || null) || null,
-      contact_detail: getContactDetail(detailItem?.intake_payload || null) || null,
+      ...parseContactPerson(editableCaseItem.contactPerson),
     };
 
     const patch = {
@@ -850,7 +877,7 @@ export function MyWorkCasesWorkspace() {
                             </div>
                           ) : (
                             <div className="space-y-1.5">
-                              <div className="hidden grid-cols-[28px_40px_minmax(160px,1.1fr)_minmax(260px,2.4fr)_minmax(120px,0.8fr)_88px_88px_minmax(110px,0.8fr)_52px_112px] gap-2 border-b px-2 pb-1 text-[11px] font-medium uppercase tracking-wide text-muted-foreground lg:grid">
+                              <div className="hidden grid-cols-[28px_40px_minmax(160px,1.1fr)_minmax(260px,2.4fr)_88px_88px_minmax(110px,0.8fr)_minmax(120px,0.8fr)_52px_112px] gap-2 border-b px-2 pb-1 text-[11px] font-medium uppercase tracking-wide text-muted-foreground lg:grid">
                                 <span />
                                 <span className="group inline-flex items-center justify-center gap-0.5">
                                   <button type="button" className={sortButtonClass("channel", "asc")} onClick={() => toggleSort("channel", "asc")} aria-label="Kanal aufsteigend sortieren"><ArrowUp className="h-3 w-3" /></button>
@@ -858,10 +885,10 @@ export function MyWorkCasesWorkspace() {
                                 </span>
                                 <span className="group inline-flex items-center gap-0.5">Betreff<button type="button" className={sortButtonClass("subject", "asc")} onClick={() => toggleSort("subject", "asc")} aria-label="Betreff aufsteigend sortieren"><ArrowUp className="h-3 w-3" /></button><button type="button" className={sortButtonClass("subject", "desc")} onClick={() => toggleSort("subject", "desc")} aria-label="Betreff absteigend sortieren"><ArrowDown className="h-3 w-3" /></button></span>
                                 <span className="group inline-flex items-center gap-0.5">Beschreibung<button type="button" className={sortButtonClass("description", "asc")} onClick={() => toggleSort("description", "asc")} aria-label="Beschreibung aufsteigend sortieren"><ArrowUp className="h-3 w-3" /></button><button type="button" className={sortButtonClass("description", "desc")} onClick={() => toggleSort("description", "desc")} aria-label="Beschreibung absteigend sortieren"><ArrowDown className="h-3 w-3" /></button></span>
-                                <span className="group inline-flex items-center gap-0.5">Status<button type="button" className={sortButtonClass("status", "asc")} onClick={() => toggleSort("status", "asc")} aria-label="Status aufsteigend sortieren"><ArrowUp className="h-3 w-3" /></button><button type="button" className={sortButtonClass("status", "desc")} onClick={() => toggleSort("status", "desc")} aria-label="Status absteigend sortieren"><ArrowDown className="h-3 w-3" /></button></span>
                                 <span className="group inline-flex items-center gap-0.5">Eingang<button type="button" className={sortButtonClass("received", "asc")} onClick={() => toggleSort("received", "asc")} aria-label="Eingang aufsteigend sortieren"><ArrowUp className="h-3 w-3" /></button><button type="button" className={sortButtonClass("received", "desc")} onClick={() => toggleSort("received", "desc")} aria-label="Eingang absteigend sortieren"><ArrowDown className="h-3 w-3" /></button></span>
                                 <span className="group inline-flex items-center gap-0.5">Fällig<button type="button" className={sortButtonClass("due", "asc")} onClick={() => toggleSort("due", "asc")} aria-label="Fällig aufsteigend sortieren"><ArrowUp className="h-3 w-3" /></button><button type="button" className={sortButtonClass("due", "desc")} onClick={() => toggleSort("due", "desc")} aria-label="Fällig absteigend sortieren"><ArrowDown className="h-3 w-3" /></button></span>
                                 <span className="group inline-flex items-center gap-0.5">Kategorie<button type="button" className={sortButtonClass("category", "asc")} onClick={() => toggleSort("category", "asc")} aria-label="Kategorie aufsteigend sortieren"><ArrowUp className="h-3 w-3" /></button><button type="button" className={sortButtonClass("category", "desc")} onClick={() => toggleSort("category", "desc")} aria-label="Kategorie absteigend sortieren"><ArrowDown className="h-3 w-3" /></button></span>
+                                <span className="group inline-flex items-center gap-0.5">Status<button type="button" className={sortButtonClass("status", "asc")} onClick={() => toggleSort("status", "asc")} aria-label="Status aufsteigend sortieren"><ArrowUp className="h-3 w-3" /></button><button type="button" className={sortButtonClass("status", "desc")} onClick={() => toggleSort("status", "desc")} aria-label="Status absteigend sortieren"><ArrowDown className="h-3 w-3" /></button></span>
                                 <span className="group inline-flex items-center justify-center gap-0.5"><button type="button" className={sortButtonClass("priority", "asc")} onClick={() => toggleSort("priority", "asc")} aria-label="Priorität aufsteigend sortieren"><ArrowUp className="h-3 w-3" /></button><button type="button" className={sortButtonClass("priority", "desc")} onClick={() => toggleSort("priority", "desc")} aria-label="Priorität absteigend sortieren"><ArrowDown className="h-3 w-3" /></button></span>
                                 <span className="group inline-flex items-center gap-0.5">Bearbeiter<button type="button" className={sortButtonClass("assignee", "asc")} onClick={() => toggleSort("assignee", "asc")} aria-label="Bearbeiter aufsteigend sortieren"><ArrowUp className="h-3 w-3" /></button><button type="button" className={sortButtonClass("assignee", "desc")} onClick={() => toggleSort("assignee", "desc")} aria-label="Bearbeiter absteigend sortieren"><ArrowDown className="h-3 w-3" /></button></span>
                               </div>
@@ -896,7 +923,7 @@ export function MyWorkCasesWorkspace() {
                                               )}
                                               onClick={() => handleSelectCaseItem(item)}
                                             >
-                                              <div className="hidden h-12 grid-cols-[28px_40px_minmax(160px,1.1fr)_minmax(260px,2.4fr)_minmax(120px,0.8fr)_88px_88px_minmax(110px,0.8fr)_52px_112px] items-center gap-2 text-xs text-muted-foreground lg:grid">
+                                              <div className="hidden h-12 grid-cols-[28px_40px_minmax(160px,1.1fr)_minmax(260px,2.4fr)_88px_88px_minmax(110px,0.8fr)_minmax(120px,0.8fr)_52px_112px] items-center gap-2 text-xs text-muted-foreground lg:grid">
                                                 {/* Drag handle */}
                                                 <span
                                                   {...dragProvided.dragHandleProps}
@@ -928,14 +955,14 @@ export function MyWorkCasesWorkspace() {
                                                   )}
                                                 </span>
                                                 <span className="truncate text-sm font-medium text-foreground" title={getItemDescription(item) || "–"}>{getItemDescription(item) || "–"}</span>
+                                                <span>{formatDateSafe(item.source_received_at, "dd.MM.yy", "–", { locale: de, warnKey: `${item.id}:source_received_at:list`, warnItemId: item.id, warnField: "source_received_at" })}</span>
+                                                <span>{formatDateSafe(item.due_at, "dd.MM.yy", "–", { locale: de, warnKey: `${item.id}:due_at:list`, warnItemId: item.id, warnField: "due_at" })}</span>
+                                                <span className={cn("truncate", !category && "text-amber-600")}>{category || "Pflichtfeld"}</span>
                                                 <span>
                                                   <Badge variant="outline" className={cn("text-[11px]", getStatusMeta(item.status).badgeClass)}>
                                                     {getStatusMeta(item.status).label}
                                                   </Badge>
                                                 </span>
-                                                <span>{formatDateSafe(item.source_received_at, "dd.MM.yy", "–", { locale: de, warnKey: `${item.id}:source_received_at:list`, warnItemId: item.id, warnField: "source_received_at" })}</span>
-                                                <span>{formatDateSafe(item.due_at, "dd.MM.yy", "–", { locale: de, warnKey: `${item.id}:due_at:list`, warnItemId: item.id, warnField: "due_at" })}</span>
-                                                <span className={cn("truncate", !category && "text-amber-600")}>{category || "Pflichtfeld"}</span>
                                                 <span className="inline-flex items-center justify-center" title={priorityMeta(item.priority).label}>
                                                   <Circle className={cn("h-3.5 w-3.5 fill-current", priorityMeta(item.priority).color)} />
                                                 </span>
@@ -1067,7 +1094,6 @@ export function MyWorkCasesWorkspace() {
                                                 loadingDecisions={loadingDecisions}
                                                 timelineEntries={timelineEntries}
                                                 toEditorHtml={toEditorHtml}
-                                                getStatusMeta={getStatusMeta}
                                                 caseFilesById={caseFilesById}
                                                 onUpdate={updateEdit}
                                                 onSave={() => runAsync(handleCaseItemSave)}
@@ -1077,6 +1103,8 @@ export function MyWorkCasesWorkspace() {
                                                 onCreateCaseFile={handleCreateCaseFile}
                                                 onNavigateToCaseFile={(caseFileId) => navigate(`/casefiles?caseFileId=${caseFileId}`)}
                                                 contactDisplay={contactDisplay}
+                                                onContactPersonChange={(value) => updateEdit({ contactPerson: value })}
+                                                contactPerson={editableCaseItem.contactPerson}
                                               />
                                             )}
                                           </div>
