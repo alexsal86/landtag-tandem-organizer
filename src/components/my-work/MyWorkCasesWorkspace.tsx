@@ -534,6 +534,7 @@ export function MyWorkCasesWorkspace() {
       interactionContact: getContactDetail(item.intake_payload) || getContactName(item.intake_payload),
       interactionDateTime: "",
       interactionNote: "",
+      contactPerson: [getContactName(item.intake_payload), getContactDetail(item.intake_payload)].filter(Boolean).join(" · "),
     });
   };
 
@@ -770,8 +771,8 @@ export function MyWorkCasesWorkspace() {
       category: editableCaseItem.category,
       assignee_ids: editableCaseItem.assigneeIds,
       timeline_events: editableCaseItem.timelineEvents,
-      contact_name: getContactName(detailItem?.intake_payload || null) || null,
-      contact_detail: getContactDetail(detailItem?.intake_payload || null) || null,
+      contact_name: editableCaseItem.contactPerson.trim() || null,
+      contact_detail: null,
     };
 
     const patch = {
@@ -1071,7 +1072,6 @@ export function MyWorkCasesWorkspace() {
                                                 loadingDecisions={loadingDecisions}
                                                 timelineEntries={timelineEntries}
                                                 toEditorHtml={toEditorHtml}
-                                                getStatusMeta={getStatusMeta}
                                                 caseFilesById={caseFilesById}
                                                 onUpdate={updateEdit}
                                                 onSave={() => runAsync(handleCaseItemSave)}
@@ -1081,6 +1081,8 @@ export function MyWorkCasesWorkspace() {
                                                 onCreateCaseFile={handleCreateCaseFile}
                                                 onNavigateToCaseFile={(caseFileId) => navigate(`/casefiles?caseFileId=${caseFileId}`)}
                                                 contactDisplay={contactDisplay}
+                                                onContactPersonChange={(value) => updateEdit({ contactPerson: value })}
+                                                contactPerson={editableCaseItem.contactPerson}
                                               />
                                             )}
                                           </div>

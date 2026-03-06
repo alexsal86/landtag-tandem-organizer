@@ -28,6 +28,7 @@ export type EditableCaseItem = {
   interactionContact: string;
   interactionDateTime: string;
   interactionNote: string;
+  contactPerson: string;
 };
 
 export const useCaseItemEdit = () => {
