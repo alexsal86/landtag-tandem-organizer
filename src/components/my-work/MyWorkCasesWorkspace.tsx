@@ -208,6 +208,12 @@ export function MyWorkCasesWorkspace() {
   const [editableCaseItem, setEditableCaseItem] = useState<EditableCaseItem | null>(null);
   const [itemSort, setItemSort] = useState<{ key: CaseItemSortKey; direction: SortDirection }>({ key: "received", direction: "desc" });
 
+  // Decision integration state
+  const [isDecisionCreatorOpen, setIsDecisionCreatorOpen] = useState(false);
+  const [decisionCreatorItemId, setDecisionCreatorItemId] = useState<string | null>(null);
+  const [linkedDecisions, setLinkedDecisions] = useState<Record<string, Array<{ id: string; title: string; status: string; created_at: string; response_deadline: string | null }>>>({});
+  const [loadingDecisions, setLoadingDecisions] = useState(false);
+
   const getItemSubject = useCallback((item: CaseItem) => item.subject || item.summary || item.resolution_summary || "Ohne Titel", []);
   const getItemDescription = useCallback((item: CaseItem) => item.summary || item.resolution_summary || "", []);
 
