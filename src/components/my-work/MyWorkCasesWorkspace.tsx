@@ -2,7 +2,7 @@ import { type KeyboardEvent, useCallback, useEffect, useMemo, useState } from "r
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { format } from "date-fns";
 import { de } from "date-fns/locale";
-import { AlertCircle, ArrowDown, ArrowUp, Briefcase, CheckCircle2, Circle, Clock, ExternalLink, FileText, FolderOpen, Gavel, GripVertical, Link2, Loader2, Mail, MessageSquare, Phone, Plus, Search, Trash2, UserRound, Users, Vote } from "lucide-react";
+import { ArrowDown, ArrowUp, Briefcase, CheckCircle2, Circle, Clock, FileText, FolderOpen, GripVertical, Link2, Plus, Search, UserRound } from "lucide-react";
 import { DragDropContext, Droppable, Draggable, type DropResult } from "@hello-pangea/dnd";
 import DOMPurify from "dompurify";
 
@@ -13,14 +13,12 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ContextMenu, ContextMenuContent, ContextMenuItem, ContextMenuSeparator, ContextMenuSub, ContextMenuSubContent, ContextMenuSubTrigger, ContextMenuTrigger } from "@/components/ui/context-menu";
 import { DropdownMenu, DropdownMenuCheckboxItem, DropdownMenuContent, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
-import SimpleRichTextEditor from "@/components/ui/SimpleRichTextEditor";
 import { CaseFileDetail, CaseFileCreateDialog } from "@/features/cases/files/components";
 import { CaseItemCreateDialog } from "@/components/my-work/CaseItemCreateDialog";
 import { StandaloneDecisionCreator } from "@/components/task-decisions/StandaloneDecisionCreator";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
+import { CaseItemDetailPanel } from "@/components/my-work/CaseItemDetailPanel";
 import { useCaseItems } from "@/features/cases/items/hooks";
 import { useAuth } from "@/hooks/useAuth";
 import { useTenant } from "@/hooks/useTenant";
@@ -993,253 +991,32 @@ export function MyWorkCasesWorkspace() {
                                         >
                                           <div className="overflow-hidden">
                                             {hasInlineDetail && (
-                                              <div className="mx-2 mb-3 rounded-md border bg-muted/20 p-3 space-y-4">
-                                                <div className="grid gap-4 lg:grid-cols-[minmax(0,2fr)_minmax(0,1fr)]">
-                                                  <div className="space-y-3">
-                                                    <div className="space-y-1.5">
-                                                      <Label className="font-bold" htmlFor="detail-subject">Betreff</Label>
-                                                      <Input id="detail-subject" value={editableCaseItem.subject} onChange={(event) => updateEdit({ subject: event.target.value })} />
-                                                    </div>
-                                                    <div className="space-y-1.5">
-                                                      <Label className="font-bold" htmlFor="detail-summary">Beschreibung</Label>
-                                                      <SimpleRichTextEditor
-                                                        key={`detail-summary-${item.id}`}
-                                                        initialContent={toEditorHtml(editableCaseItem.summary)}
-                                                        onChange={(html) => setEditableCaseItem((prev) => prev ? { ...prev, summary: html } : prev)}
-                                                        placeholder="Beschreibung hinzufügen"
-                                                        minHeight="140px"
-                                                      />
-                                                    </div>
-                                                    <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-                                                      <div className="space-y-1.5">
-                                                        <Label className="font-bold" htmlFor="detail-received">Eingangsdatum</Label>
-                                                        <Input id="detail-received" type="date" value={editableCaseItem.sourceReceivedAt} onChange={(event) => updateEdit({ sourceReceivedAt: event.target.value })} />
-                                                      </div>
-                                                      <div className="space-y-1.5">
-                                                        <Label className="font-bold" htmlFor="detail-due">Fällig am</Label>
-                                                        <Input id="detail-due" type="date" value={editableCaseItem.dueAt} onChange={(event) => updateEdit({ dueAt: event.target.value })} />
-                                                      </div>
-                                                    </div>
-                                                    <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-                                                      <div className="space-y-1.5">
-                                                        <Label className="font-bold">Status</Label>
-                                                        <Select value={editableCaseItem.status} onValueChange={(value) => updateEdit({ status: value })}>
-                                                          <SelectTrigger><SelectValue /></SelectTrigger>
-                                                          <SelectContent>
-                                                            {statusOptions.map((statusOption) => (
-                                                              <SelectItem key={statusOption.value} value={statusOption.value}>{statusOption.label}</SelectItem>
-                                                            ))}
-                                                          </SelectContent>
-                                                        </Select>
-                                                      </div>
-                                                      <div className="space-y-1.5">
-                                                        <Label className="font-bold">Kategorie *</Label>
-                                                        <Select value={editableCaseItem.category} onValueChange={(value) => updateEdit({ category: value })}>
-                                                          <SelectTrigger><SelectValue placeholder="Kategorie wählen" /></SelectTrigger>
-                                                          <SelectContent>
-                                                            {categoryOptions.map((categoryOption) => (
-                                                              <SelectItem key={categoryOption} value={categoryOption}>{categoryOption}</SelectItem>
-                                                            ))}
-                                                          </SelectContent>
-                                                        </Select>
-                                                      </div>
-                                                    </div>
-                                                    <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-                                                      <div className="space-y-1.5">
-                                                        <Label className="font-bold">Priorität</Label>
-                                                        <Select value={editableCaseItem.priority} onValueChange={(value) => updateEdit({ priority: value })}>
-                                                          <SelectTrigger><SelectValue /></SelectTrigger>
-                                                          <SelectContent>
-                                                            {priorityOptions.map((priorityOption) => (
-                                                              <SelectItem key={priorityOption.value} value={priorityOption.value}>{priorityOption.label}</SelectItem>
-                                                            ))}
-                                                          </SelectContent>
-                                                        </Select>
-                                                      </div>
-                                                      <div className="space-y-1.5">
-                                                        <Label className="font-bold">Entscheidung</Label>
-                                                        <div className="flex gap-2">
-                                                          <Button type="button" variant="outline" size="sm" onClick={handleRequestDecision}><Vote className="mr-1 h-3.5 w-3.5" />Entscheidung stellen</Button>
-                                                          <Button type="button" variant="outline" size="sm" onClick={handleDecisionReceived} disabled={editableCaseItem.status !== "entscheidung_abwartend"}>Eingegangen</Button>
-                                                        </div>
-                                                      </div>
-                                                    </div>
-                                                    <div className="space-y-1.5">
-                                                      <Label className="font-bold">Bearbeiter</Label>
-                                                      <div className="flex flex-wrap gap-2">
-                                                        {teamUsers.map((member) => {
-                                                          const selected = editableCaseItem.assigneeIds.includes(member.id);
-                                                          return (
-                                                            <Button key={member.id} type="button" size="sm" variant={selected ? "default" : "outline"} onClick={() => {
-                                                              setEditableCaseItem((prev) => {
-                                                                if (!prev) return prev;
-                                                                const next = selected ? prev.assigneeIds.filter((id) => id !== member.id) : [...prev.assigneeIds, member.id];
-                                                                return { ...prev, assigneeIds: Array.from(new Set(next)) };
-                                                              });
-                                                            }}>{member.name}</Button>
-                                                          );
-                                                        })}
-                                                      </div>
-                                                    </div>
-                                                    {/* Linked Decisions Section */}
-                                                    {detailItemId && (
-                                                      <div className="space-y-2">
-                                                        <Label className="font-bold flex items-center gap-1.5"><Vote className="h-4 w-4" />Verknüpfte Entscheidungen</Label>
-                                                        {loadingDecisions ? (
-                                                          <div className="flex items-center gap-2 text-xs text-muted-foreground"><Loader2 className="h-3 w-3 animate-spin" />Lade…</div>
-                                                        ) : (linkedDecisions[detailItemId] || []).length === 0 ? (
-                                                          <p className="text-xs text-muted-foreground">Keine Entscheidungen verknüpft.</p>
-                                                        ) : (
-                                                          <div className="space-y-1.5">
-                                                            {(linkedDecisions[detailItemId] || []).map((dec) => (
-                                                              <div key={dec.id} className="flex items-center justify-between rounded-md border bg-background p-2 text-xs">
-                                                                <div className="flex items-center gap-2 min-w-0">
-                                                                  {dec.status === "completed" ? (
-                                                                    <CheckCircle2 className="h-3.5 w-3.5 text-emerald-500 shrink-0" />
-                                                                  ) : (
-                                                                    <Clock className="h-3.5 w-3.5 text-amber-500 shrink-0" />
-                                                                  )}
-                                                                  <span className="truncate font-medium">{dec.title}</span>
-                                                                </div>
-                                                                <Badge variant="outline" className={cn("text-[10px] shrink-0 ml-2", dec.status === "completed" ? "border-emerald-500/40 text-emerald-600" : "border-amber-500/40 text-amber-600")}>
-                                                                  {dec.status === "completed" ? "Abgeschlossen" : dec.status === "archived" ? "Archiviert" : "Offen"}
-                                                                </Badge>
-                                                              </div>
-                                                            ))}
-                                                          </div>
-                                                        )}
-                                                        <Button type="button" variant="outline" size="sm" className="w-full" onClick={handleRequestDecision}>
-                                                          <Plus className="mr-1 h-3.5 w-3.5" />Weitere Entscheidung stellen
-                                                        </Button>
-                                                      </div>
-                                                    )}
-                                                    {editableCaseItem.status === "erledigt" && (
-                                                      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-                                                        <div className="space-y-1.5 sm:col-span-2">
-                                                          <Label className="font-bold" htmlFor="detail-completion-note">Abschlussnotiz *</Label>
-                                                          <Input id="detail-completion-note" value={editableCaseItem.completionNote} onChange={(event) => updateEdit({ completionNote: event.target.value })} />
-                                                        </div>
-                                                        <div className="space-y-1.5">
-                                                          <Label className="font-bold" htmlFor="detail-completed-at">Abgeschlossen am *</Label>
-                                                          <Input id="detail-completed-at" type="date" value={editableCaseItem.completedAt} onChange={(event) => updateEdit({ completedAt: event.target.value })} />
-                                                        </div>
-                                                      </div>
-                                                    )}
-                                                    <Button disabled={!editableCaseItem.category} onClick={() => runAsync(handleCaseItemSave)}>Speichern</Button>
-                                                  </div>
-                                                  <div className="space-y-4">
-                                                    <div className="rounded-md border bg-background p-3 space-y-3">
-                                                      <div className="flex items-center gap-2 text-sm font-semibold"><Users className="h-4 w-4" />Inter-/Aktionen</div>
-                                                      <div className="space-y-2">
-                                                        <div className="flex flex-wrap gap-2">
-                                                          {interactionTypeOptions.map((option) => {
-                                                            const Icon = option.icon;
-                                                            const selected = editableCaseItem.interactionType === option.value;
-                                                            return (
-                                                              <Tooltip key={option.value}>
-                                                                <TooltipTrigger asChild>
-                                                                  <Button
-                                                                    type="button"
-                                                                    size="icon"
-                                                                    variant={selected ? "default" : "outline"}
-                                                                    aria-label={option.label}
-                                                                    onClick={() => setEditableCaseItem((prev) => prev ? { ...prev, interactionType: option.value } : prev)}
-                                                                  >
-                                                                    <Icon className="h-4 w-4" />
-                                                                  </Button>
-                                                                </TooltipTrigger>
-                                                                <TooltipContent>{option.label}</TooltipContent>
-                                                              </Tooltip>
-                                                            );
-                                                          })}
-                                                        </div>
-                                                        {(editableCaseItem.interactionType === "anruf" || editableCaseItem.interactionType === "mail" || editableCaseItem.interactionType === "gespraech" || editableCaseItem.interactionType === "treffen") && (
-                                                          <Input
-                                                            placeholder={editableCaseItem.interactionType === "mail" ? "E-Mail-Adresse" : editableCaseItem.interactionType === "anruf" ? "Telefonnummer" : "Kontaktperson"}
-                                                            value={editableCaseItem.interactionContact}
-                                                            onChange={(event) => updateEdit({ interactionContact: event.target.value })}
-                                                          />
-                                                        )}
-                                                        <Input
-                                                          type="datetime-local"
-                                                          value={editableCaseItem.interactionDateTime}
-                                                          onChange={(event) => updateEdit({ interactionDateTime: event.target.value })}
-                                                        />
-                                                        <SimpleRichTextEditor
-                                                          key={editableCaseItem.timelineEvents.length}
-                                                          initialContent={editableCaseItem.interactionNote}
-                                                          onChange={(value) => updateEdit({ interactionNote: value })}
-                                                          placeholder="Notiz (optional)"
-                                                          minHeight="100px"
-                                                          maxHeight="180px"
-                                                          scrollable
-                                                        />
-                                                        <Button type="button" size="sm" onClick={handleAddInteraction}>Interaktion hinzufügen</Button>
-                                                      </div>
-                                                    </div>
-                                                    <div className="rounded-md border bg-background p-3">
-                                                      <p className="font-bold mb-3">Zeitstrahl</p>
-                                                      <div className="relative space-y-4 pl-6">
-                                                        <span className="absolute left-2 top-1 bottom-1 w-px bg-border" />
-                                                        {timelineEntries.length === 0 ? (
-                                                          <p className="text-xs text-muted-foreground">Noch keine Einträge im Zeitstrahl.</p>
-                                                        ) : (
-                                                          <>
-                                                            {timelineEntries.map((entry) => (
-                                                              <div key={entry.id} className="relative">
-                                                                <span className={`absolute -left-[18px] top-1.5 h-2.5 w-2.5 rounded-full ${entry.accentClass}`} />
-                                                                <div className="rounded border p-2 text-xs">
-                                                                  <div className="flex items-start justify-between gap-2">
-                                                                    <div>
-                                                                      <p className="font-semibold">{entry.title}</p>
-                                                                      <p className="text-muted-foreground">{formatTimelineDate(entry.timestamp)}</p>
-                                                                    </div>
-                                                                    {entry.canDelete && entry.onDelete ? (
-                                                                      <Button type="button" variant="ghost" size="icon" className="h-6 w-6" onClick={entry.onDelete}>
-                                                                        <Trash2 className="h-3.5 w-3.5" />
-                                                                      </Button>
-                                                                    ) : null}
-                                                                  </div>
-                                                                  {entry.safeNoteHtml && <div className="mt-1 text-muted-foreground" dangerouslySetInnerHTML={{ __html: entry.safeNoteHtml }} />}
-                                                                </div>
-                                                              </div>
-                                                            ))}
-                                                          </>
-                                                        )}
-                                                      </div>
-                                                    </div>
-                                                  </div>
-                                                </div>
-
-                                                {item.case_file_id && caseFilesById[item.case_file_id] ? (
-                                                  <div className="mt-1 space-y-2">
-                                                    <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Verknüpfte FallAkte</p>
-                                                    <div className="rounded-md border bg-background p-3 text-sm">
-                                                      <p className="font-semibold">{caseFilesById[item.case_file_id].title}</p>
-                                                      <ul className="mt-2 space-y-1 text-xs text-muted-foreground">
-                                                        <li>• Status: {caseFilesById[item.case_file_id].status || "offen"}</li>
-                                                        {caseFilesById[item.case_file_id].reference_number && <li>• Aktenzeichen: {caseFilesById[item.case_file_id].reference_number}</li>}
-                                                        {caseFilesById[item.case_file_id].case_type && <li>• Typ: {caseFilesById[item.case_file_id].case_type}</li>}
-                                                        {caseFilesById[item.case_file_id].current_status_note && <li>• Hinweis: {caseFilesById[item.case_file_id].current_status_note}</li>}
-                                                      </ul>
-                                                    </div>
-                                                    <Button size="sm" variant="outline" onClick={() => navigate(`/casefiles?caseFileId=${item.case_file_id}`)}>
-                                                      <ExternalLink className="mr-1 h-3.5 w-3.5" />
-                                                      Vollansicht
-                                                    </Button>
-                                                  </div>
-                                                ) : (
-                                                  <div className="mt-1 space-y-3 rounded-md border border-dashed bg-background p-4 text-sm text-muted-foreground">
-                                                    <AlertCircle className="h-4 w-4" />
-                                                    <p>Keine Akte verknüpft.</p>
-                                                    <div className="flex flex-wrap gap-2">
-                                                      <Button size="sm" onClick={() => handleCreateCaseFile(item.id)}>Neue Akte anlegen</Button>
-                                                    </div>
-                                                  </div>
-                                                )}
-                                              </div>
+                                              <CaseItemDetailPanel
+                                                itemId={item.id}
+                                                itemCaseFileId={item.case_file_id}
+                                                editableCaseItem={editableCaseItem}
+                                                statusOptions={statusOptions.map(({ value, label }) => ({ value, label }))}
+                                                categoryOptions={categoryOptions}
+                                                teamUsers={teamUsers}
+                                                linkedDecisions={detailItemId ? (linkedDecisions[detailItemId] || []) : []}
+                                                loadingDecisions={loadingDecisions}
+                                                timelineEntries={timelineEntries}
+                                                toEditorHtml={toEditorHtml}
+                                                formatTimelineDate={formatTimelineDate}
+                                                getInitials={getInitials}
+                                                getStatusMeta={getStatusMeta}
+                                                caseFilesById={caseFilesById}
+                                                onUpdate={updateEdit}
+                                                onSave={() => runAsync(handleCaseItemSave)}
+                                                onDecisionRequest={handleRequestDecision}
+                                                onDecisionReceived={handleDecisionReceived}
+                                                onAddInteraction={handleAddInteraction}
+                                                onCreateCaseFile={handleCreateCaseFile}
+                                                onNavigateToCaseFile={(caseFileId) => navigate(`/casefiles?caseFileId=${caseFileId}`)}
+                                              />
                                             )}
                                           </div>
+                                        </div>
                                         </div>
                                       </div>
                                     )}
