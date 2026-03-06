@@ -12,7 +12,6 @@ import { DropdownMenu, DropdownMenuCheckboxItem, DropdownMenuContent, DropdownMe
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { CaseFileDetail, CaseFileCreateDialog } from "@/features/cases/files/components";
 import { CaseItemCreateDialog } from "@/components/my-work/CaseItemCreateDialog";
@@ -346,6 +345,12 @@ export function MyWorkCasesWorkspace() {
   // --- Handlers ---
 
   const handleSelectCaseItem = (item: CaseItem) => {
+    if (detailItemId === item.id) {
+      setDetailItemId(null);
+      setEditableCaseItem(null);
+      return;
+    }
+
     setDetailItemId(item.id);
     setDetailFileId(null);
     setEditableCaseItem({
@@ -461,27 +466,29 @@ export function MyWorkCasesWorkspace() {
         {/* LEFT: Vorgänge */}
         <Card>
           <CardHeader className="pb-2">
-            <div className="flex items-center justify-between">
+            <div className="flex flex-wrap items-center justify-between gap-2">
               <CardTitle className="flex items-center gap-2 text-base">
                 <FileText className="h-4 w-4" />
                 Vorgänge
               </CardTitle>
-              <Button size="sm" onClick={handleCreateCaseItem}>
-                <Plus className="mr-1 h-4 w-4" />
-                Neu
-              </Button>
+              <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row sm:items-center">
+                <Button size="sm" onClick={handleCreateCaseItem}>
+                  <Plus className="mr-1 h-4 w-4" />
+                  Neu
+                </Button>
+                <div className="relative w-full sm:w-64">
+                  <Search className="pointer-events-none absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
+                  <Input
+                    value={itemFilterQuery}
+                    onChange={(e) => setItemFilterQuery(e.target.value)}
+                    placeholder="Vorgänge filtern…"
+                    className="h-9 pl-8"
+                  />
+                </div>
+              </div>
             </div>
           </CardHeader>
           <CardContent className="space-y-3">
-            <div className="relative">
-              <Search className="pointer-events-none absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
-              <Input
-                value={itemFilterQuery}
-                onChange={(e) => setItemFilterQuery(e.target.value)}
-                placeholder="Vorgänge filtern…"
-                className="pl-8"
-              />
-            </div>
             <ScrollArea className="h-[520px] pr-2">
               <div className="space-y-1.5">
                 {sortedCaseItems.length === 0 ? (
@@ -513,69 +520,201 @@ export function MyWorkCasesWorkspace() {
                       const assigneeIds = getAssigneeIds(item);
                       const assignees = assigneeIds.map((id) => teamUsers.find((member) => member.id === id)).filter(Boolean) as TeamUser[];
                       const category = getCategory(item);
+                      const hasInlineDetail = isActive && editableCaseItem;
                       return (
-                      <button
-                        key={item.id}
-                        type="button"
-                        className={cn(
-                          "w-full border-b px-2 py-2 text-left transition-colors hover:bg-muted/40",
-                          isActive && "bg-primary/5",
-                        )}
-                        onClick={() => handleSelectCaseItem(item)}
-                      >
-                        <div className="hidden h-12 grid-cols-[40px_minmax(180px,1.4fr)_minmax(140px,1.2fr)_1fr_1fr_1.4fr_1fr_52px_2fr] items-center gap-2 text-xs text-muted-foreground lg:grid">
-                          <span className="inline-flex" title={channel?.label || "Kanal unbekannt"}>
-                            <span className="rounded-sm bg-muted p-1 text-muted-foreground">
-                              <ChannelIcon className="h-3 w-3" />
-                            </span>
-                          </span>
-                          <span className="text-sm font-medium text-foreground truncate">{getItemSubject(item)}</span>
-                          <span className="text-sm font-medium text-foreground truncate" title={getItemDescription(item) || "–"}>{getItemDescription(item) || "–"}</span>
-                          <span>{item.source_received_at ? format(new Date(item.source_received_at), "dd.MM.yy", { locale: de }) : "–"}</span>
-                          <span>{item.due_at ? format(new Date(item.due_at), "dd.MM.yy", { locale: de }) : "–"}</span>
-                          <span className="truncate" title={linkedFile ? linkedFile.title : "Einzelvorgang"}>
-                            {linkedFile ? `Akte: ${linkedFile.title}` : "Einzelvorgang"}
-                          </span>
-                          <span className={cn("truncate", !category && "text-amber-600")}>{category || "Pflichtfeld"}</span>
-                          <span className="inline-flex items-center justify-center" title={priorityMeta(item.priority).label}>
-                            <Circle className={cn("h-3.5 w-3.5 fill-current", priorityMeta(item.priority).color)} />
-                          </span>
-                          <div className="flex items-center gap-2 min-w-0" onClick={(event) => event.stopPropagation()}>
-                            <div className="flex items-center -space-x-2">
-                              {assignees.slice(0, 3).map((member) => (
-                                <Avatar key={member.id} className="h-6 w-6 border bg-background">
-                                  <AvatarImage src={member.avatarUrl || undefined} />
-                                  <AvatarFallback className="text-[10px]">{getInitials(member.name)}</AvatarFallback>
-                                </Avatar>
-                              ))}
+                        <div key={item.id} className="border-b">
+                          <button
+                            type="button"
+                            className={cn(
+                              "w-full px-2 py-2 text-left transition-colors hover:bg-muted/40",
+                              isActive && "bg-primary/5",
+                            )}
+                            onClick={() => handleSelectCaseItem(item)}
+                          >
+                            <div className="hidden h-12 grid-cols-[40px_minmax(180px,1.4fr)_minmax(140px,1.2fr)_1fr_1fr_1.4fr_1fr_52px_2fr] items-center gap-2 text-xs text-muted-foreground lg:grid">
+                              <span className="inline-flex" title={channel?.label || "Kanal unbekannt"}>
+                                <span className="rounded-sm bg-muted p-1 text-muted-foreground">
+                                  <ChannelIcon className="h-3 w-3" />
+                                </span>
+                              </span>
+                              <span className="truncate text-sm font-medium text-foreground">{getItemSubject(item)}</span>
+                              <span className="truncate text-sm font-medium text-foreground" title={getItemDescription(item) || "–"}>{getItemDescription(item) || "–"}</span>
+                              <span>{item.source_received_at ? format(new Date(item.source_received_at), "dd.MM.yy", { locale: de }) : "–"}</span>
+                              <span>{item.due_at ? format(new Date(item.due_at), "dd.MM.yy", { locale: de }) : "–"}</span>
+                              <span className="truncate" title={linkedFile ? linkedFile.title : "Einzelvorgang"}>
+                                {linkedFile ? `Akte: ${linkedFile.title}` : "Einzelvorgang"}
+                              </span>
+                              <span className={cn("truncate", !category && "text-amber-600")}>{category || "Pflichtfeld"}</span>
+                              <span className="inline-flex items-center justify-center" title={priorityMeta(item.priority).label}>
+                                <Circle className={cn("h-3.5 w-3.5 fill-current", priorityMeta(item.priority).color)} />
+                              </span>
+                              <div className="flex min-w-0 items-center gap-2" onClick={(event) => event.stopPropagation()}>
+                                <div className="flex items-center -space-x-2">
+                                  {assignees.slice(0, 3).map((member) => (
+                                    <Avatar key={member.id} className="h-6 w-6 border bg-background">
+                                      <AvatarImage src={member.avatarUrl || undefined} />
+                                      <AvatarFallback className="text-[10px]">{getInitials(member.name)}</AvatarFallback>
+                                    </Avatar>
+                                  ))}
+                                </div>
+                                <span className="truncate">{assignees.length > 0 ? assignees.map((m) => m.name).join(", ") : "Nicht zugewiesen"}</span>
+                                <DropdownMenu>
+                                  <DropdownMenuTrigger asChild>
+                                    <Button type="button" size="icon" variant="outline" className="h-7 w-7">
+                                      <Plus className="h-3.5 w-3.5" />
+                                    </Button>
+                                  </DropdownMenuTrigger>
+                                  <DropdownMenuContent align="end" className="w-56">
+                                    {teamUsers.map((member) => (
+                                      <DropdownMenuCheckboxItem
+                                        key={member.id}
+                                        checked={assigneeIds.includes(member.id)}
+                                        onCheckedChange={(checked) => { void handleAssigneeToggle(item, member.id, checked === true); }}
+                                      >
+                                        {member.name}
+                                      </DropdownMenuCheckboxItem>
+                                    ))}
+                                  </DropdownMenuContent>
+                                </DropdownMenu>
+                              </div>
                             </div>
-                            <span className="truncate">{assignees.length > 0 ? assignees.map((m) => m.name).join(", ") : "Nicht zugewiesen"}</span>
-                            <DropdownMenu>
-                              <DropdownMenuTrigger asChild>
-                                <Button type="button" size="icon" variant="outline" className="h-7 w-7">
-                                  <Plus className="h-3.5 w-3.5" />
-                                </Button>
-                              </DropdownMenuTrigger>
-                              <DropdownMenuContent align="end" className="w-56">
-                                {teamUsers.map((member) => (
-                                  <DropdownMenuCheckboxItem
-                                    key={member.id}
-                                    checked={assigneeIds.includes(member.id)}
-                                    onCheckedChange={(checked) => { void handleAssigneeToggle(item, member.id, checked === true); }}
-                                  >
-                                    {member.name}
-                                  </DropdownMenuCheckboxItem>
-                                ))}
-                              </DropdownMenuContent>
-                            </DropdownMenu>
+                            <div className="space-y-1 lg:hidden">
+                              <p className="truncate text-sm font-medium">{item.subject || item.summary || item.resolution_summary || "Ohne Titel"}</p>
+                              <p className="text-xs text-muted-foreground">{category || "Kategorie fehlt"}</p>
+                            </div>
+                          </button>
+
+                          <div
+                            className={cn(
+                              "grid transition-all duration-300 ease-in-out",
+                              hasInlineDetail ? "grid-rows-[1fr] opacity-100" : "grid-rows-[0fr] opacity-0",
+                            )}
+                          >
+                            <div className="overflow-hidden">
+                              {hasInlineDetail && (
+                                <div className="mx-2 mb-3 rounded-md border bg-muted/20 p-3">
+                                  <div className="space-y-2">
+                                    <h3 className="font-semibold">Vorgang bearbeiten</h3>
+                                    <div className="flex flex-wrap gap-2 text-xs">
+                                      {item.status && <Badge variant="outline">{item.status}</Badge>}
+                                      <Badge variant="secondary" className="inline-flex items-center gap-1"><Circle className={cn("h-3 w-3 fill-current", priorityMeta(editableCaseItem.priority).color)} /> {priorityMeta(editableCaseItem.priority).label}</Badge>
+                                      {item.source_channel && <Badge variant="secondary">Kanal: {item.source_channel}</Badge>}
+                                    </div>
+                                  </div>
+
+                                  <div className="mt-3 space-y-3 rounded-md border bg-background p-3">
+                                    <div className="space-y-1.5">
+                                      <Label htmlFor="detail-subject">Betreff</Label>
+                                      <Input id="detail-subject" value={editableCaseItem.subject} onChange={(event) => setEditableCaseItem((prev) => prev ? { ...prev, subject: event.target.value } : prev)} />
+                                    </div>
+                                    <div className="space-y-1.5">
+                                      <Label htmlFor="detail-summary">Beschreibung</Label>
+                                      <Input id="detail-summary" value={editableCaseItem.summary} onChange={(event) => setEditableCaseItem((prev) => prev ? { ...prev, summary: event.target.value } : prev)} />
+                                    </div>
+                                    <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                                      <div className="space-y-1.5">
+                                        <Label htmlFor="detail-received">Eingangsdatum</Label>
+                                        <Input id="detail-received" type="date" value={editableCaseItem.sourceReceivedAt} onChange={(event) => setEditableCaseItem((prev) => prev ? { ...prev, sourceReceivedAt: event.target.value } : prev)} />
+                                      </div>
+                                      <div className="space-y-1.5">
+                                        <Label htmlFor="detail-due">Fällig am</Label>
+                                        <Input id="detail-due" type="date" value={editableCaseItem.dueAt} onChange={(event) => setEditableCaseItem((prev) => prev ? { ...prev, dueAt: event.target.value } : prev)} />
+                                      </div>
+                                    </div>
+                                    <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                                      <div className="space-y-1.5">
+                                        <Label>Kategorie *</Label>
+                                        <Select value={editableCaseItem.category} onValueChange={(value) => setEditableCaseItem((prev) => prev ? { ...prev, category: value } : prev)}>
+                                          <SelectTrigger><SelectValue placeholder="Kategorie auswählen" /></SelectTrigger>
+                                          <SelectContent>
+                                            {categoryOptions.map((categoryOption) => <SelectItem key={categoryOption} value={categoryOption}>{categoryOption}</SelectItem>)}
+                                          </SelectContent>
+                                        </Select>
+                                      </div>
+                                      <div className="space-y-1.5">
+                                        <Label>Priorität</Label>
+                                        <Select value={editableCaseItem.priority} onValueChange={(value) => setEditableCaseItem((prev) => prev ? { ...prev, priority: value } : prev)}>
+                                          <SelectTrigger><SelectValue /></SelectTrigger>
+                                          <SelectContent>
+                                            <SelectItem value="low">Niedrig</SelectItem>
+                                            <SelectItem value="medium">Mittel</SelectItem>
+                                            <SelectItem value="high">Hoch</SelectItem>
+                                            <SelectItem value="urgent">Dringend</SelectItem>
+                                          </SelectContent>
+                                        </Select>
+                                      </div>
+                                      <div className="space-y-1.5 sm:col-span-2">
+                                        <Label>Bearbeiter (mehrfach)</Label>
+                                        <div className="rounded-md border px-3 py-2 text-sm">
+                                          {editableCaseItem.assigneeIds.length > 0
+                                            ? editableCaseItem.assigneeIds.map((id) => teamUsers.find((member) => member.id === id)?.name || id).join(", ")
+                                            : "Nicht zugewiesen"}
+                                        </div>
+                                        <div className="flex flex-wrap gap-2">
+                                          {teamUsers.map((member) => {
+                                            const selected = editableCaseItem.assigneeIds.includes(member.id);
+                                            return (
+                                              <Button
+                                                key={member.id}
+                                                type="button"
+                                                size="sm"
+                                                variant={selected ? "default" : "outline"}
+                                                onClick={() => {
+                                                  setEditableCaseItem((prev) => {
+                                                    if (!prev) return prev;
+                                                    const next = selected
+                                                      ? prev.assigneeIds.filter((id) => id !== member.id)
+                                                      : [...prev.assigneeIds, member.id];
+                                                    return { ...prev, assigneeIds: Array.from(new Set(next)) };
+                                                  });
+                                                }}
+                                              >
+                                                {member.name}
+                                              </Button>
+                                            );
+                                          })}
+                                        </div>
+                                      </div>
+                                    </div>
+                                    <Button disabled={!editableCaseItem.category} onClick={() => { void handleCaseItemSave(); }}>
+                                      Speichern
+                                    </Button>
+                                  </div>
+
+                                  {item.case_file_id && caseFilesById[item.case_file_id] ? (
+                                    <div className="mt-3 space-y-2">
+                                      <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Verknüpfte FallAkte</p>
+                                      <div className="rounded-md border bg-background p-3 text-sm">
+                                        <p className="font-semibold">{caseFilesById[item.case_file_id].title}</p>
+                                        <ul className="mt-2 space-y-1 text-xs text-muted-foreground">
+                                          <li>• Status: {caseFilesById[item.case_file_id].status || "offen"}</li>
+                                          {caseFilesById[item.case_file_id].reference_number && <li>• Aktenzeichen: {caseFilesById[item.case_file_id].reference_number}</li>}
+                                          {caseFilesById[item.case_file_id].case_type && <li>• Typ: {caseFilesById[item.case_file_id].case_type}</li>}
+                                          {caseFilesById[item.case_file_id].current_status_note && <li>• Hinweis: {caseFilesById[item.case_file_id].current_status_note}</li>}
+                                        </ul>
+                                      </div>
+                                      <Button size="sm" variant="outline" onClick={() => navigate(`/casefiles?caseFileId=${item.case_file_id}`)}>
+                                        <ExternalLink className="mr-1 h-3.5 w-3.5" />
+                                        Vollansicht
+                                      </Button>
+                                    </div>
+                                  ) : (
+                                    <div className="mt-3 space-y-3 rounded-md border border-dashed bg-background p-4 text-sm text-muted-foreground">
+                                      <AlertCircle className="h-4 w-4" />
+                                      <p>Keine Akte verknüpft.</p>
+                                      <div className="flex flex-wrap gap-2">
+                                        <Button size="sm" onClick={() => handleCreateCaseFile(item.id)}>
+                                          Neue Akte anlegen
+                                        </Button>
+                                      </div>
+                                    </div>
+                                  )}
+                                </div>
+                              )}
+                            </div>
                           </div>
                         </div>
-                        <div className="space-y-1 lg:hidden">
-                          <p className="text-sm font-medium truncate">{item.subject || item.summary || item.resolution_summary || "Ohne Titel"}</p>
-                          <p className="text-xs text-muted-foreground">{category || "Kategorie fehlt"}</p>
-                        </div>
-                      </button>
-                    );
+                      );
                     })}
                   </div>
                 )}
@@ -647,140 +786,6 @@ export function MyWorkCasesWorkspace() {
           </CardContent>
         </Card>
       </div>
-      )}
-
-      {/* Sheet: Vorgang Detail (from left) */}
-      <Sheet open={!!detailItemId} onOpenChange={(open) => { if (!open) { setDetailItemId(null); setEditableCaseItem(null); } }}>
-        <SheetContent side="left" className="w-full overflow-y-auto sm:max-w-lg">
-          <SheetHeader>
-            <SheetTitle className="flex items-center gap-2">
-              <FileText className="h-4 w-4" />
-              Vorgang
-            </SheetTitle>
-          </SheetHeader>
-          {detailItem && editableCaseItem && (
-            <div className="mt-4 space-y-4">
-              <div className="space-y-2">
-                <h3 className="font-semibold">Vorgang bearbeiten</h3>
-                <div className="flex flex-wrap gap-2 text-xs">
-                  {detailItem.status && <Badge variant="outline">{detailItem.status}</Badge>}
-                  <Badge variant="secondary" className="inline-flex items-center gap-1"><Circle className={cn("h-3 w-3 fill-current", priorityMeta(editableCaseItem.priority).color)} /> {priorityMeta(editableCaseItem.priority).label}</Badge>
-                  {detailItem.source_channel && <Badge variant="secondary">Kanal: {detailItem.source_channel}</Badge>}
-                </div>
-              </div>
-
-              <div className="space-y-3 rounded-md border p-3">
-                <div className="space-y-1.5">
-                  <Label htmlFor="detail-subject">Betreff</Label>
-                  <Input id="detail-subject" value={editableCaseItem.subject} onChange={(event) => setEditableCaseItem((prev) => prev ? { ...prev, subject: event.target.value } : prev)} />
-                </div>
-                <div className="space-y-1.5">
-                  <Label htmlFor="detail-summary">Beschreibung</Label>
-                  <Input id="detail-summary" value={editableCaseItem.summary} onChange={(event) => setEditableCaseItem((prev) => prev ? { ...prev, summary: event.target.value } : prev)} />
-                </div>
-                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-                  <div className="space-y-1.5">
-                    <Label htmlFor="detail-received">Eingangsdatum</Label>
-                    <Input id="detail-received" type="date" value={editableCaseItem.sourceReceivedAt} onChange={(event) => setEditableCaseItem((prev) => prev ? { ...prev, sourceReceivedAt: event.target.value } : prev)} />
-                  </div>
-                  <div className="space-y-1.5">
-                    <Label htmlFor="detail-due">Fällig am</Label>
-                    <Input id="detail-due" type="date" value={editableCaseItem.dueAt} onChange={(event) => setEditableCaseItem((prev) => prev ? { ...prev, dueAt: event.target.value } : prev)} />
-                  </div>
-                </div>
-                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-                  <div className="space-y-1.5">
-                    <Label>Kategorie *</Label>
-                    <Select value={editableCaseItem.category} onValueChange={(value) => setEditableCaseItem((prev) => prev ? { ...prev, category: value } : prev)}>
-                      <SelectTrigger><SelectValue placeholder="Kategorie auswählen" /></SelectTrigger>
-                      <SelectContent>
-                        {categoryOptions.map((category) => <SelectItem key={category} value={category}>{category}</SelectItem>)}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <div className="space-y-1.5">
-                    <Label>Priorität</Label>
-                    <Select value={editableCaseItem.priority} onValueChange={(value) => setEditableCaseItem((prev) => prev ? { ...prev, priority: value } : prev)}>
-                      <SelectTrigger><SelectValue /></SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="low">Niedrig</SelectItem>
-                        <SelectItem value="medium">Mittel</SelectItem>
-                        <SelectItem value="high">Hoch</SelectItem>
-                        <SelectItem value="urgent">Dringend</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <div className="space-y-1.5">
-                    <Label>Bearbeiter (mehrfach)</Label>
-                    <div className="rounded-md border px-3 py-2 text-sm">
-                      {editableCaseItem.assigneeIds.length > 0
-                        ? editableCaseItem.assigneeIds.map((id) => teamUsers.find((member) => member.id === id)?.name || id).join(", ")
-                        : "Nicht zugewiesen"}
-                    </div>
-                    <div className="flex flex-wrap gap-2">
-                      {teamUsers.map((member) => {
-                        const selected = editableCaseItem.assigneeIds.includes(member.id);
-                        return (
-                          <Button
-                            key={member.id}
-                            type="button"
-                            size="sm"
-                            variant={selected ? "default" : "outline"}
-                            onClick={() => {
-                              setEditableCaseItem((prev) => {
-                                if (!prev) return prev;
-                                const next = selected
-                                  ? prev.assigneeIds.filter((id) => id !== member.id)
-                                  : [...prev.assigneeIds, member.id];
-                                return { ...prev, assigneeIds: Array.from(new Set(next)) };
-                              });
-                            }}
-                          >
-                            {member.name}
-                          </Button>
-                        );
-                      })}
-                    </div>
-                  </div>
-                </div>
-                <Button disabled={!editableCaseItem.category} onClick={() => { void handleCaseItemSave(); }}>
-                  Speichern
-                </Button>
-              </div>
-
-              {detailItem.case_file_id && caseFilesById[detailItem.case_file_id] ? (
-                <div className="space-y-2">
-                  <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Verknüpfte FallAkte</p>
-                  <div className="rounded-md border p-3 text-sm">
-                    <p className="font-semibold">{caseFilesById[detailItem.case_file_id].title}</p>
-                    <ul className="mt-2 space-y-1 text-xs text-muted-foreground">
-                      <li>• Status: {caseFilesById[detailItem.case_file_id].status || "offen"}</li>
-                      {caseFilesById[detailItem.case_file_id].reference_number && <li>• Aktenzeichen: {caseFilesById[detailItem.case_file_id].reference_number}</li>}
-                      {caseFilesById[detailItem.case_file_id].case_type && <li>• Typ: {caseFilesById[detailItem.case_file_id].case_type}</li>}
-                      {caseFilesById[detailItem.case_file_id].current_status_note && <li>• Hinweis: {caseFilesById[detailItem.case_file_id].current_status_note}</li>}
-                    </ul>
-                  </div>
-                  <Button size="sm" variant="outline" onClick={() => navigate(`/casefiles?caseFileId=${detailItem.case_file_id}`)}>
-                    <ExternalLink className="mr-1 h-3.5 w-3.5" />
-                    Vollansicht
-                  </Button>
-                </div>
-              ) : (
-                <div className="rounded-md border border-dashed p-4 text-sm text-muted-foreground space-y-3">
-                  <AlertCircle className="h-4 w-4" />
-                  <p>Keine Akte verknüpft.</p>
-                  <div className="flex flex-wrap gap-2">
-                    <Button size="sm" onClick={() => handleCreateCaseFile(detailItem.id)}>
-                      Neue Akte anlegen
-                    </Button>
-                  </div>
-                </div>
-              )}
-            </div>
-          )}
-        </SheetContent>
-      </Sheet>
-
       <CaseItemCreateDialog
         open={isCaseItemDialogOpen}
         onOpenChange={setIsCaseItemDialogOpen}
