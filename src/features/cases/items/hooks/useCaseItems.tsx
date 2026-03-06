@@ -9,7 +9,7 @@ export interface CaseItem {
   user_id: string;
   tenant_id: string;
   source_channel: "phone" | "email" | "social" | "in_person" | "other";
-  status: "active" | "pending" | "closed" | "archived";
+  status: "neu" | "in_klaerung" | "antwort_ausstehend" | "erledigt";
   priority: "low" | "medium" | "high" | "urgent";
   owner_user_id: string | null;
   contact_id: string | null;
@@ -127,7 +127,7 @@ export const useCaseItems = () => {
     try {
       const insertData = {
         source_channel: data.source_channel,
-        status: data.status ?? "active",
+        status: data.status ?? "neu",
         priority: data.priority ?? "medium",
         subject: data.subject ?? null,
         summary: data.summary ?? null,

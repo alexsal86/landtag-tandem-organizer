@@ -33,6 +33,8 @@ type CaseItem = {
   source_channel: string | null;
   source_received_at: string | null;
   status: string | null;
+  completion_note: string | null;
+  completed_at: string | null;
   priority: string | null;
   due_at: string | null;
   case_file_id: string | null;
@@ -60,6 +62,9 @@ type TeamUser = {
 type EditableCaseItem = {
   subject: string;
   summary: string;
+  status: string;
+  completionNote: string;
+  completedAt: string;
   sourceReceivedAt: string;
   dueAt: string;
   category: string;
@@ -81,11 +86,11 @@ const sourceChannelMeta: Record<string, { icon: typeof Phone; label: string }> =
 };
 
 const statusOptions = [
-  { value: "active", label: "Offen", color: "bg-emerald-500" },
-  { value: "pending", label: "Wartend", color: "bg-amber-500" },
-  { value: "closed", label: "Geschlossen", color: "bg-muted-foreground" },
-  { value: "archived", label: "Archiviert", color: "bg-muted-foreground/50" },
-];
+  { value: "neu", label: "Neu", dotColor: "bg-sky-500", badgeClass: "border-sky-500/40 text-sky-700 bg-sky-500/10" },
+  { value: "in_klaerung", label: "In Klärung", dotColor: "bg-amber-500", badgeClass: "border-amber-500/40 text-amber-700 bg-amber-500/10" },
+  { value: "antwort_ausstehend", label: "Antwort ausstehend", dotColor: "bg-violet-500", badgeClass: "border-violet-500/40 text-violet-700 bg-violet-500/10" },
+  { value: "erledigt", label: "Erledigt", dotColor: "bg-emerald-600", badgeClass: "border-emerald-500/40 text-emerald-700 bg-emerald-500/10" },
+] as const;
 
 const priorityOptions = [
   { value: "low", label: "Niedrig", color: "text-emerald-500" },
@@ -173,7 +178,7 @@ export function MyWorkCasesWorkspace() {
       const [itemsRes, filesRes, membersRes] = await Promise.all([
         supabase
           .from("case_items" as any)
-          .select("id, subject, summary, resolution_summary, source_channel, source_received_at, status, priority, due_at, case_file_id, user_id, owner_user_id, intake_payload, updated_at")
+          .select("id, subject, summary, resolution_summary, source_channel, source_received_at, status, completion_note, completed_at, priority, due_at, case_file_id, user_id, owner_user_id, intake_payload, updated_at")
           .eq("tenant_id", tenantId)
           .order("updated_at", { ascending: false, nullsFirst: false })
           .limit(200),
@@ -344,6 +349,15 @@ export function MyWorkCasesWorkspace() {
 
   const defaultAssigneeId = user?.id ?? null;
 
+  const getStatusMeta = useCallback((status: string | null) => {
+    return statusOptions.find((option) => option.value === status) || {
+      value: status || "neu",
+      label: status || "Neu",
+      dotColor: "bg-muted-foreground",
+      badgeClass: "border-muted-foreground/40 text-muted-foreground",
+    };
+  }, []);
+
   const persistAssignees = async (item: CaseItem, assigneeIds: string[]) => {
     const payload = {
       ...(item.intake_payload || {}),
@@ -433,6 +447,9 @@ export function MyWorkCasesWorkspace() {
     setEditableCaseItem({
       subject: item.subject || "",
       summary: item.summary || item.resolution_summary || "",
+      status: item.status || "neu",
+      completionNote: item.completion_note || "",
+      completedAt: item.completed_at ? format(new Date(item.completed_at), "yyyy-MM-dd") : "",
       sourceReceivedAt: item.source_received_at ? format(new Date(item.source_received_at), "yyyy-MM-dd") : "",
       dueAt: item.due_at ? format(new Date(item.due_at), "yyyy-MM-dd") : "",
       category: getCategory(item),
@@ -502,12 +519,19 @@ export function MyWorkCasesWorkspace() {
 
   const handleCaseItemSave = async () => {
     if (!detailItemId || !editableCaseItem) return;
+    if (editableCaseItem.status === "erledigt" && (!editableCaseItem.completionNote.trim() || !editableCaseItem.completedAt)) {
+      toast.error("Für den Status „Erledigt“ sind Abschlussnotiz und Abgeschlossen am Pflichtfelder.");
+      return;
+    }
     await supabase
       .from("case_items")
       .update({
         subject: editableCaseItem.subject.trim() || null,
         summary: editableCaseItem.summary.trim() || null,
         resolution_summary: editableCaseItem.summary.trim() || null,
+        status: editableCaseItem.status as any,
+        completion_note: editableCaseItem.completionNote.trim() || null,
+        completed_at: editableCaseItem.completedAt ? new Date(`${editableCaseItem.completedAt}T12:00:00`).toISOString() : null,
         source_received_at: editableCaseItem.sourceReceivedAt ? new Date(`${editableCaseItem.sourceReceivedAt}T12:00:00`).toISOString() : null,
         due_at: editableCaseItem.dueAt ? new Date(`${editableCaseItem.dueAt}T12:00:00`).toISOString() : null,
         priority: editableCaseItem.priority as any,
@@ -578,7 +602,7 @@ export function MyWorkCasesWorkspace() {
                             </div>
                           ) : (
                             <div className="space-y-1.5">
-                              <div className="hidden grid-cols-[28px_40px_minmax(180px,1.4fr)_minmax(140px,1.2fr)_1fr_1fr_1.4fr_1fr_52px_2fr] gap-2 border-b px-2 pb-1 text-[11px] font-medium uppercase tracking-wide text-muted-foreground lg:grid">
+                              <div className="hidden grid-cols-[28px_40px_minmax(160px,1.3fr)_minmax(140px,1.2fr)_120px_1fr_1fr_1.2fr_1fr_52px_1.8fr] gap-2 border-b px-2 pb-1 text-[11px] font-medium uppercase tracking-wide text-muted-foreground lg:grid">
                                 <span />
                                 <span className="group inline-flex items-center justify-center gap-0.5">
                                   <button type="button" className={sortButtonClass("channel", "asc")} onClick={() => toggleSort("channel", "asc")} aria-label="Kanal aufsteigend sortieren"><ArrowUp className="h-3 w-3" /></button>
@@ -586,6 +610,7 @@ export function MyWorkCasesWorkspace() {
                                 </span>
                                 <span className="group inline-flex items-center gap-0.5">Betreff<button type="button" className={sortButtonClass("subject", "asc")} onClick={() => toggleSort("subject", "asc")} aria-label="Betreff aufsteigend sortieren"><ArrowUp className="h-3 w-3" /></button><button type="button" className={sortButtonClass("subject", "desc")} onClick={() => toggleSort("subject", "desc")} aria-label="Betreff absteigend sortieren"><ArrowDown className="h-3 w-3" /></button></span>
                                 <span className="group inline-flex items-center gap-0.5">Beschreibung<button type="button" className={sortButtonClass("description", "asc")} onClick={() => toggleSort("description", "asc")} aria-label="Beschreibung aufsteigend sortieren"><ArrowUp className="h-3 w-3" /></button><button type="button" className={sortButtonClass("description", "desc")} onClick={() => toggleSort("description", "desc")} aria-label="Beschreibung absteigend sortieren"><ArrowDown className="h-3 w-3" /></button></span>
+                                <span>Status</span>
                                 <span className="group inline-flex items-center gap-0.5">Eingang<button type="button" className={sortButtonClass("received", "asc")} onClick={() => toggleSort("received", "asc")} aria-label="Eingang aufsteigend sortieren"><ArrowUp className="h-3 w-3" /></button><button type="button" className={sortButtonClass("received", "desc")} onClick={() => toggleSort("received", "desc")} aria-label="Eingang absteigend sortieren"><ArrowDown className="h-3 w-3" /></button></span>
                                 <span className="group inline-flex items-center gap-0.5">Fällig<button type="button" className={sortButtonClass("due", "asc")} onClick={() => toggleSort("due", "asc")} aria-label="Fällig aufsteigend sortieren"><ArrowUp className="h-3 w-3" /></button><button type="button" className={sortButtonClass("due", "desc")} onClick={() => toggleSort("due", "desc")} aria-label="Fällig absteigend sortieren"><ArrowDown className="h-3 w-3" /></button></span>
                                 <span className="group inline-flex items-center gap-0.5">Art<button type="button" className={sortButtonClass("type", "asc")} onClick={() => toggleSort("type", "asc")} aria-label="Art aufsteigend sortieren"><ArrowUp className="h-3 w-3" /></button><button type="button" className={sortButtonClass("type", "desc")} onClick={() => toggleSort("type", "desc")} aria-label="Art absteigend sortieren"><ArrowDown className="h-3 w-3" /></button></span>
@@ -620,7 +645,7 @@ export function MyWorkCasesWorkspace() {
                                               )}
                                               onClick={() => handleSelectCaseItem(item)}
                                             >
-                                              <div className="hidden h-12 grid-cols-[28px_40px_minmax(180px,1.4fr)_minmax(140px,1.2fr)_1fr_1fr_1.4fr_1fr_52px_2fr] items-center gap-2 text-xs text-muted-foreground lg:grid">
+                                              <div className="hidden h-12 grid-cols-[28px_40px_minmax(160px,1.3fr)_minmax(140px,1.2fr)_120px_1fr_1fr_1.2fr_1fr_52px_1.8fr] items-center gap-2 text-xs text-muted-foreground lg:grid">
                                                 {/* Drag handle */}
                                                 <span
                                                   {...dragProvided.dragHandleProps}
@@ -652,6 +677,11 @@ export function MyWorkCasesWorkspace() {
                                                   )}
                                                 </span>
                                                 <span className="truncate text-sm font-medium text-foreground" title={getItemDescription(item) || "–"}>{getItemDescription(item) || "–"}</span>
+                                                <span>
+                                                  <Badge variant="outline" className={cn("text-[11px]", getStatusMeta(item.status).badgeClass)}>
+                                                    {getStatusMeta(item.status).label}
+                                                  </Badge>
+                                                </span>
                                                 <span>{item.source_received_at ? format(new Date(item.source_received_at), "dd.MM.yy", { locale: de }) : "–"}</span>
                                                 <span>{item.due_at ? format(new Date(item.due_at), "dd.MM.yy", { locale: de }) : "–"}</span>
                                                 <span className="truncate" title={linkedFile ? linkedFile.title : "Einzelvorgang"}>
@@ -708,7 +738,7 @@ export function MyWorkCasesWorkspace() {
                                                     className={cn(item.status === opt.value && "bg-accent")}
                                                     onClick={() => void handleQuickStatusChange(item, opt.value)}
                                                   >
-                                                    <span className={cn("mr-2 h-2 w-2 rounded-full inline-block", opt.color)} />
+                                                    <span className={cn("mr-2 h-2 w-2 rounded-full inline-block", opt.dotColor)} />
                                                     {opt.label}
                                                     {item.status === opt.value && <span className="ml-auto text-xs text-muted-foreground">✓</span>}
                                                   </ContextMenuItem>
@@ -774,7 +804,12 @@ export function MyWorkCasesWorkspace() {
                                                 <div className="space-y-2">
                                                   <h3 className="font-semibold">Vorgang bearbeiten</h3>
                                                   <div className="flex flex-wrap gap-2 text-xs">
-                                                    {item.status && <Badge variant="outline">{item.status}</Badge>}
+                                                    <div className="rounded-md border bg-background px-3 py-2">
+                                                    <p className="text-xs uppercase tracking-wide text-muted-foreground">Aktuelle Phase</p>
+                                                    <Badge variant="outline" className={cn("mt-1 text-sm", getStatusMeta(editableCaseItem.status).badgeClass)}>
+                                                      {getStatusMeta(editableCaseItem.status).label}
+                                                    </Badge>
+                                                  </div>
                                                     <Badge variant="secondary" className="inline-flex items-center gap-1"><Circle className={cn("h-3 w-3 fill-current", priorityMeta(editableCaseItem.priority).color)} /> {priorityMeta(editableCaseItem.priority).label}</Badge>
                                                     {item.source_channel && <Badge variant="secondary">Kanal: {item.source_channel}</Badge>}
                                                   </div>
@@ -800,6 +835,17 @@ export function MyWorkCasesWorkspace() {
                                                     </div>
                                                   </div>
                                                   <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                                                    <div className="space-y-1.5">
+                                                      <Label>Status</Label>
+                                                      <Select value={editableCaseItem.status} onValueChange={(value) => setEditableCaseItem((prev) => prev ? { ...prev, status: value } : prev)}>
+                                                        <SelectTrigger><SelectValue /></SelectTrigger>
+                                                        <SelectContent>
+                                                          {statusOptions.map((statusOption) => (
+                                                            <SelectItem key={statusOption.value} value={statusOption.value}>{statusOption.label}</SelectItem>
+                                                          ))}
+                                                        </SelectContent>
+                                                      </Select>
+                                                    </div>
                                                     <div className="space-y-1.5">
                                                       <Label>Kategorie *</Label>
                                                       <Select value={editableCaseItem.category} onValueChange={(value) => setEditableCaseItem((prev) => prev ? { ...prev, category: value } : prev)}>
@@ -854,6 +900,18 @@ export function MyWorkCasesWorkspace() {
                                                       </div>
                                                     </div>
                                                   </div>
+                                                  {editableCaseItem.status === "erledigt" && (
+                                                    <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                                                      <div className="space-y-1.5 sm:col-span-2">
+                                                        <Label htmlFor="detail-completion-note">Abschlussnotiz *</Label>
+                                                        <Input id="detail-completion-note" value={editableCaseItem.completionNote} onChange={(event) => setEditableCaseItem((prev) => prev ? { ...prev, completionNote: event.target.value } : prev)} />
+                                                      </div>
+                                                      <div className="space-y-1.5">
+                                                        <Label htmlFor="detail-completed-at">Abgeschlossen am *</Label>
+                                                        <Input id="detail-completed-at" type="date" value={editableCaseItem.completedAt} onChange={(event) => setEditableCaseItem((prev) => prev ? { ...prev, completedAt: event.target.value } : prev)} />
+                                                      </div>
+                                                    </div>
+                                                  )}
                                                   <Button disabled={!editableCaseItem.category} onClick={() => { void handleCaseItemSave(); }}>
                                                     Speichern
                                                   </Button>
