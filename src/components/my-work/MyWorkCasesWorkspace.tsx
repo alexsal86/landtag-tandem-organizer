@@ -1112,7 +1112,7 @@ export function MyWorkCasesWorkspace() {
                                                           <Plus className="mr-1 h-3.5 w-3.5" />Weitere Entscheidung stellen
                                                         </Button>
                                                       </div>
-                                                    )
+                                                    )}
                                                     {editableCaseItem.status === "erledigt" && (
                                                       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                                                         <div className="space-y-1.5 sm:col-span-2">
