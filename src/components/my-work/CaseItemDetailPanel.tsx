@@ -4,10 +4,12 @@ import { de } from "date-fns/locale";
 import { AlertCircle, ChevronDown, ExternalLink, Gavel, Loader2, Mail, MessageSquare, Phone, Trash2, Users, Vote } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
 import SimpleRichTextEditor from "@/components/ui/SimpleRichTextEditor";
 import type { EditableCaseItem, TimelineInteractionType } from "@/components/my-work/hooks/useCaseItemEdit";
@@ -51,7 +53,6 @@ export function CaseItemDetailPanel({
   loadingDecisions,
   timelineEntries,
   toEditorHtml,
-  formatTimelineDate,
   getStatusMeta,
   caseFilesById,
   onUpdate,
@@ -73,7 +74,6 @@ export function CaseItemDetailPanel({
   loadingDecisions: boolean;
   timelineEntries: TimelineEntry[];
   toEditorHtml: (value: string | null | undefined) => string;
-  formatTimelineDate: (timestamp: string) => string;
   getStatusMeta: (status: string | null) => { label: string };
   caseFilesById: Record<string, CaseFile>;
   onUpdate: (patch: Partial<EditableCaseItem>) => void;
@@ -92,6 +92,18 @@ export function CaseItemDetailPanel({
     const parsed = new Date(value);
     if (Number.isNaN(parsed.getTime())) return "–";
     return format(parsed, "dd.MM.yyyy", { locale: de });
+  };
+
+  const formatTimelineDateOnly = (timestamp: string) => {
+    const parsed = new Date(timestamp);
+    if (Number.isNaN(parsed.getTime())) return "–";
+    return format(parsed, "dd.MM.yyyy", { locale: de });
+  };
+
+  const formatTimelineTimeOnly = (timestamp: string) => {
+    const parsed = new Date(timestamp);
+    if (Number.isNaN(parsed.getTime())) return "–";
+    return format(parsed, "HH:mm", { locale: de });
   };
 
   return (
@@ -288,32 +300,66 @@ export function CaseItemDetailPanel({
           <div className="rounded-md border bg-background p-3">
             <p className="font-bold mb-3">Zeitstrahl</p>
             <div className="relative space-y-4 pl-6">
-              <span className="absolute left-2 top-1 bottom-1 w-px bg-border" />
               {timelineEntries.length === 0 ? (
                 <p className="text-xs text-muted-foreground">Noch keine Einträge im Zeitstrahl.</p>
               ) : (
                 <>
-                  {timelineEntries.map((entry) => (
-                    <div key={entry.id} className="relative">
-                      <span className={`absolute -left-[20px] top-1 h-4 w-4 rounded-full ${entry.accentClass} flex items-center justify-center text-white`}>
-                        {entry.icon ? <entry.icon className="h-2.5 w-2.5" /> : null}
-                      </span>
-                      <div className="rounded border p-2 text-xs">
-                        <div className="flex items-start justify-between gap-2">
-                          <div>
-                            <p className="font-semibold">{entry.title}</p>
-                            <p className="text-muted-foreground">{formatTimelineDate(entry.timestamp)}</p>
+                  {timelineEntries.map((entry, index) => {
+                    const isLastEntry = index === timelineEntries.length - 1;
+                    return (
+                      <div key={entry.id} className="relative">
+                        {!isLastEntry ? <span className="absolute -left-[12px] top-2 bottom-[-18px] w-px bg-border" /> : null}
+                        <span className={`absolute -left-[20px] top-0 h-4 w-4 rounded-full ${entry.accentClass} flex items-center justify-center text-white`}>
+                          {entry.icon ? <entry.icon className="h-2.5 w-2.5" /> : null}
+                        </span>
+                        <div className="group rounded p-2 text-xs">
+                          <div className="flex items-start justify-between gap-2">
+                            <div>
+                              <p className="font-semibold leading-4">{entry.title}</p>
+                            </div>
+                            {entry.canDelete && entry.onDelete ? (
+                              <TooltipProvider>
+                                <Tooltip>
+                                  <AlertDialog>
+                                    <TooltipTrigger asChild>
+                                      <AlertDialogTrigger asChild>
+                                        <Button
+                                          type="button"
+                                          variant="ghost"
+                                          size="icon"
+                                          className="h-6 w-6 opacity-0 transition-opacity duration-200 ease-out group-hover:opacity-100 focus-visible:opacity-100"
+                                        >
+                                          <Trash2 className="h-3.5 w-3.5" />
+                                        </Button>
+                                      </AlertDialogTrigger>
+                                    </TooltipTrigger>
+                                    <TooltipContent>Interaktion löschen</TooltipContent>
+                                    <AlertDialogContent>
+                                      <AlertDialogHeader>
+                                        <AlertDialogTitle>Interaktion löschen?</AlertDialogTitle>
+                                        <AlertDialogDescription>
+                                          Diese Interaktion wird dauerhaft aus dem Zeitstrahl entfernt.
+                                        </AlertDialogDescription>
+                                      </AlertDialogHeader>
+                                      <AlertDialogFooter>
+                                        <AlertDialogCancel>Abbrechen</AlertDialogCancel>
+                                        <AlertDialogAction onClick={entry.onDelete}>Löschen</AlertDialogAction>
+                                      </AlertDialogFooter>
+                                    </AlertDialogContent>
+                                  </AlertDialog>
+                                </Tooltip>
+                              </TooltipProvider>
+                            ) : null}
                           </div>
-                          {entry.canDelete && entry.onDelete ? (
-                            <Button type="button" variant="ghost" size="icon" className="h-6 w-6" onClick={entry.onDelete}>
-                              <Trash2 className="h-3.5 w-3.5" />
-                            </Button>
-                          ) : null}
+                          {entry.safeNoteHtml && <div className="mt-1 text-muted-foreground" dangerouslySetInnerHTML={{ __html: entry.safeNoteHtml }} />}
+                          <div className="mt-2 flex justify-end gap-1 text-[11px] text-muted-foreground">
+                            <span>{formatTimelineDateOnly(entry.timestamp)}</span>
+                            <span className="opacity-0 transition-opacity duration-200 ease-out group-hover:opacity-100 group-focus-within:opacity-100">• {formatTimelineTimeOnly(entry.timestamp)}</span>
+                          </div>
                         </div>
-                        {entry.safeNoteHtml && <div className="mt-1 text-muted-foreground" dangerouslySetInnerHTML={{ __html: entry.safeNoteHtml }} />}
                       </div>
-                    </div>
-                  ))}
+                    );
+                  })}
                 </>
               )}
             </div>
