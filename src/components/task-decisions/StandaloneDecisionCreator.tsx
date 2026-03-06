@@ -55,8 +55,8 @@ export const StandaloneDecisionCreator = ({
       setInternalIsOpen(open);
     }
   };
-  const [title, setTitle] = useState("");
-  const [description, setDescription] = useState("");
+  const [title, setTitle] = useState(defaultTitle || "");
+  const [description, setDescription] = useState(defaultDescription || "");
   const [responseDeadline, setResponseDeadline] = useState("");
   const [selectedUsers, setSelectedUsers] = useState<string[]>([]);
   const [profiles, setProfiles] = useState<Profile[]>([]);
