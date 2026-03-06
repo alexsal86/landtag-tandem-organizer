@@ -137,8 +137,9 @@ async function isMatrixEnabledForUser(
   return enabled;
 }
 
+// deno-lint-ignore no-explicit-any
 async function resolveTargetedSubscriptions(
-  supabaseAdmin: ReturnType<typeof createClient>,
+  supabaseAdmin: any,
   body: MatrixSendRequestBody,
 ) {
   if (!body.user_id && !body.allow_broadcast) {
