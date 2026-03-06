@@ -61,6 +61,8 @@ export function CaseItemCreateDialog({ open, onOpenChange, onCreated, createCase
 
   useEffect(() => {
     if (open) {
+      setContactName("");
+      setContactDetail("");
       setSelectedAssigneeIds(defaultAssigneeId ? [defaultAssigneeId] : []);
       setDefaultDates();
     }
