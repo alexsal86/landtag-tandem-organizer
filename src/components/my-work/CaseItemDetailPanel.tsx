@@ -113,26 +113,46 @@ export function CaseItemDetailPanel({
     return format(parsed, "HH:mm", { locale: de });
   };
 
+  const contactParts = contactPerson
+    .split(/[|,·]/)
+    .map((value) => value.trim())
+    .filter(Boolean);
+  const contactName = contactParts[0] || "";
+  const contactAddress = contactParts.slice(1).join(" ").trim();
+
+  const updateContact = (name: string, detail: string) => {
+    onContactPersonChange([name.trim(), detail.trim()].filter(Boolean).join(" · "));
+  };
+
   return (
     <div className="mx-2 mb-3 rounded-md border bg-muted/20 p-3 space-y-4">
       <div className="grid gap-4 lg:grid-cols-[minmax(230px,1fr)_minmax(0,2.8fr)]">
         <div className="space-y-3">
-          <div className="space-y-1.5 rounded-md border bg-background p-3 text-sm">
-            <Label className="font-bold" htmlFor="detail-contact-person">Von / Gesprächspartner</Label>
-            <div className="flex gap-2">
+          <div className="space-y-3 rounded-md border bg-background p-3 text-sm">
+            <Label className="font-bold" htmlFor="detail-contact-name">Von / Gesprächspartner</Label>
+            <div className="space-y-1.5">
+              <Label className="text-xs text-muted-foreground" htmlFor="detail-contact-name">Name</Label>
               <Input
-                id="detail-contact-person"
-                value={contactPerson}
-                placeholder={contactDisplay || "Von / Gesprächspartner"}
-                onChange={(event) => onContactPersonChange(event.target.value)}
+                id="detail-contact-name"
+                value={contactName}
+                placeholder={contactDisplay || "Name"}
+                onChange={(event) => updateContact(event.target.value, contactAddress)}
               />
-              <Button type="button" variant="outline" onClick={() => onContactPersonChange("")}>Löschen</Button>
+            </div>
+            <div className="space-y-1.5">
+              <Label className="text-xs text-muted-foreground" htmlFor="detail-contact-detail">E-Mail / Telefon</Label>
+              <Input
+                id="detail-contact-detail"
+                value={contactAddress}
+                placeholder="name@beispiel.de oder +49 …"
+                onChange={(event) => updateContact(contactName, event.target.value)}
+              />
             </div>
           </div>
 
           <div className="rounded-md border bg-background p-3">
             <p className="font-bold mb-3">Zeitstrahl</p>
-            <div className="relative space-y-4 pl-6">
+            <div className="relative space-y-5 pl-7">
               {timelineEntries.length === 0 ? (
                 <p className="text-xs text-muted-foreground">Noch keine Einträge im Zeitstrahl.</p>
               ) : (
@@ -141,14 +161,15 @@ export function CaseItemDetailPanel({
                     const isLastEntry = index === timelineEntries.length - 1;
                     return (
                       <div key={entry.id} className="relative">
-                        {!isLastEntry ? <span className="absolute -left-[12px] top-3 bottom-[-18px] w-px bg-border" /> : null}
-                        <span className={`absolute -left-[20px] top-1 h-4 w-4 rounded-full ${entry.accentClass} flex items-center justify-center text-white`}>
-                          {entry.icon ? <entry.icon className="h-2.5 w-2.5" /> : null}
+                        {!isLastEntry ? <span className="absolute -left-[14px] top-7 bottom-[-20px] w-0.5 bg-border" /> : null}
+                        <span className={`absolute -left-[24px] top-9 h-5 w-5 rounded-full ${entry.accentClass} flex items-center justify-center text-white`}>
+                          {entry.icon ? <entry.icon className="h-3 w-3" /> : null}
                         </span>
-                        <div className="group rounded p-2 text-xs">
+                        <div className={cn("group rounded border p-2 text-xs", entry.title === "Frist" && "border-amber-400/60 bg-amber-50/70 dark:border-amber-500/50 dark:bg-amber-950/20")}>
+                          <p className="text-[10px] font-medium text-muted-foreground">{formatTimelineDateOnly(entry.timestamp)}</p>
                           <div className="flex items-start justify-between gap-2">
                             <div>
-                              <p className="font-semibold leading-4">{entry.title}</p>
+                              <p className="font-bold leading-4">{entry.title}</p>
                             </div>
                             {entry.canDelete && entry.onDelete ? (
                               <TooltipProvider>
@@ -184,10 +205,9 @@ export function CaseItemDetailPanel({
                               </TooltipProvider>
                             ) : null}
                           </div>
-                          {entry.safeNoteHtml && <div className="mt-1 text-muted-foreground" dangerouslySetInnerHTML={{ __html: entry.safeNoteHtml }} />}
-                          <div className="mt-2 flex justify-end gap-1 text-[11px] text-muted-foreground">
-                            <span>{formatTimelineDateOnly(entry.timestamp)}</span>
-                            <span className="opacity-0 transition-opacity duration-200 ease-out group-hover:opacity-100 group-focus-within:opacity-100">• {formatTimelineTimeOnly(entry.timestamp)}</span>
+                          {entry.safeNoteHtml && <div className="mt-1 font-normal text-muted-foreground" dangerouslySetInnerHTML={{ __html: entry.safeNoteHtml }} />}
+                          <div className="mt-1 flex justify-end gap-1 text-[10px] text-muted-foreground/80">
+                            <span className="opacity-0 transition-opacity duration-200 ease-out group-hover:opacity-100 group-focus-within:opacity-100">{formatTimelineTimeOnly(entry.timestamp)} Uhr</span>
                           </div>
                         </div>
                       </div>
@@ -324,20 +344,6 @@ export function CaseItemDetailPanel({
         </div>
 
         <div className="space-y-3">
-          <div className="space-y-1.5">
-            <Label className="font-bold" htmlFor="detail-subject">Betreff</Label>
-            <Input id="detail-subject" value={editableCaseItem.subject} onChange={(event) => onUpdate({ subject: event.target.value })} />
-          </div>
-          <div className="space-y-1.5">
-            <Label className="font-bold" htmlFor="detail-summary">Beschreibung</Label>
-            <SimpleRichTextEditor
-              key={`detail-summary-${itemId}`}
-              initialContent={toEditorHtml(editableCaseItem.summary)}
-              onChange={(html) => onUpdate({ summary: html })}
-              placeholder="Beschreibung hinzufügen"
-              minHeight="140px"
-            />
-          </div>
           <div className="rounded-md border bg-background p-3 space-y-2">
             <p className="font-bold">Interaktion erfassen</p>
             <div className="flex flex-wrap gap-2 xl:flex-nowrap">

@@ -2,7 +2,7 @@ import { type KeyboardEvent, useCallback, useEffect, useMemo, useState } from "r
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { format, type Locale } from "date-fns";
 import { de } from "date-fns/locale";
-import { ArrowDown, ArrowUp, Briefcase, CheckCircle2, Circle, Clock, FileText, FolderOpen, Gavel, GripVertical, Link2, Mail, MessageSquare, Phone, Plus, Search, UserRound, Users, Vote } from "lucide-react";
+import { ArrowDown, ArrowUp, Briefcase, CheckCircle2, Circle, Clock, FileText, FolderOpen, Gavel, GripVertical, Inbox, Link2, Mail, MessageSquare, Phone, Plus, Search, Timer, UserRound, Users, Vote } from "lucide-react";
 import { DragDropContext, Droppable, Draggable, type DropResult } from "@hello-pangea/dnd";
 import DOMPurify from "dompurify";
 
@@ -743,6 +743,7 @@ export function MyWorkCasesWorkspace() {
         timestamp: `${editableCaseItem.sourceReceivedAt}T08:00:00`,
         title: "Eingang",
         accentClass: "bg-sky-500",
+        icon: Inbox,
       });
     }
     if (editableCaseItem.dueAt) {
@@ -751,6 +752,7 @@ export function MyWorkCasesWorkspace() {
         timestamp: `${editableCaseItem.dueAt}T18:00:00`,
         title: "Frist",
         accentClass: "bg-amber-500",
+        icon: Timer,
       });
     }
 
