@@ -158,7 +158,7 @@ export const DashboardTasksSection = () => {
         <div className="space-y-4">
           {renderGroup('Überfällig', grouped.overdue, 'text-destructive')}
           {renderGroup('Heute', grouped.today)}
-          {renderGroup('Diese Woche', grouped.thisWeek)}
+          {renderGroup('Nächste 7 Tage', grouped.thisWeek)}
           {renderGroup('Später', grouped.later)}
         </div>
       )}
