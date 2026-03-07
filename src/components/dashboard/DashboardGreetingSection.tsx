@@ -4,6 +4,7 @@ import { useNavigate } from 'react-router-dom';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 
+import { GripVertical } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import { useTenant } from '@/hooks/useTenant';
 import { useAppointmentFeedback } from '@/hooks/useAppointmentFeedback';
