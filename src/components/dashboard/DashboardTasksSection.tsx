@@ -1,6 +1,6 @@
 import { useEffect, useState, useMemo } from 'react';
 import { GripVertical, CheckSquare, StickyNote, Briefcase, Vote } from 'lucide-react';
-import { format, isToday, isAfter, isBefore, startOfDay, endOfWeek } from 'date-fns';
+import { format, isToday, isAfter, isBefore, startOfDay, addDays } from 'date-fns';
 import { de } from 'date-fns/locale';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
@@ -58,10 +58,10 @@ export const DashboardTasksSection = () => {
           .or('is_archived.is.null,is_archived.eq.false')
           .not('follow_up_date', 'is', null),
         tenantId
-          ? (supabase as any).from('case_items').select('id, subject, due_at')
+          ? supabase.from('case_items').select('id, subject, due_at')
               .eq('tenant_id', tenantId)
               .not('due_at', 'is', null)
-              .not('status', 'in', '("completed","closed")')
+              .neq('status', 'erledigt')
           : Promise.resolve({ data: [] }),
         supabase.from('task_decisions').select('id, title, response_deadline')
           .neq('status', 'resolved')
@@ -98,13 +98,13 @@ export const DashboardTasksSection = () => {
     const later: DeadlineItem[] = [];
     const now = new Date();
     const todayStart = startOfDay(now);
-    const weekEnd = endOfWeek(now, { weekStartsOn: 1 });
+    const sevenDaysOut = addDays(todayStart, 7);
 
     for (const item of items) {
       const d = new Date(item.dueDate);
       if (isBefore(d, todayStart)) overdue.push(item);
       else if (isToday(d)) today.push(item);
-      else if (!isAfter(d, weekEnd)) thisWeek.push(item);
+      else if (!isAfter(d, sevenDaysOut)) thisWeek.push(item);
       else later.push(item);
     }
     return { overdue, today, thisWeek, later };
@@ -158,7 +158,7 @@ export const DashboardTasksSection = () => {
         <div className="space-y-4">
           {renderGroup('Überfällig', grouped.overdue, 'text-destructive')}
           {renderGroup('Heute', grouped.today)}
-          {renderGroup('Diese Woche', grouped.thisWeek)}
+          {renderGroup('Nächste 7 Tage', grouped.thisWeek)}
           {renderGroup('Später', grouped.later)}
         </div>
       )}
