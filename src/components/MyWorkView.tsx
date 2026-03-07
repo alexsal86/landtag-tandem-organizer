@@ -533,11 +533,17 @@ export function MyWorkView() {
       {activeTab === "dashboard" && (
         <div className="space-y-6">
           <DashboardHeader />
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            <DashboardTasksSection />
+          <div className="grid grid-cols-1 lg:grid-cols-[3fr_2fr] gap-6">
+            <Card className="p-5">
+              <DashboardTasksSection />
+            </Card>
             <div className="space-y-6">
-              <DashboardAppointments />
-              <NewsWidget compact />
+              <Card className="p-5">
+                <DashboardAppointments />
+              </Card>
+              <Card className="p-5">
+                <NewsWidget compact />
+              </Card>
             </div>
           </div>
         </div>

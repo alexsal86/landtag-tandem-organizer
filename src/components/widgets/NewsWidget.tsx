@@ -120,20 +120,18 @@ export const NewsWidget: React.FC<NewsWidgetProps> = ({ widgetId, compact = fals
         {loading && <div className="animate-pulse space-y-2">{[...Array(3)].map((_, i) => <div key={i} className="h-6 bg-muted rounded" />)}</div>}
         {error && <p className="text-xs text-muted-foreground">{error}</p>}
         {!loading && !error && (
-          <div className="space-y-1.5">
+          <div className="space-y-2">
             {filteredArticles.length === 0 ? (
               <p className="text-xs text-muted-foreground">Keine Artikel gefunden</p>
             ) : (
               filteredArticles.slice(0, 8).map((article) => (
                 <div
                   key={article.id}
-                  className="flex items-start gap-2 text-sm cursor-pointer hover:bg-muted/40 rounded px-1 py-0.5 transition-colors"
+                  className="cursor-pointer hover:bg-muted/40 rounded px-1 py-1 transition-colors"
                   onClick={() => window.open(article.link, '_blank')}
                 >
-                  <span className="text-foreground line-clamp-1 flex-1">{article.title}</span>
-                  <Badge variant="secondary" className="text-[10px] py-0 px-1.5 shrink-0">
-                    {article.source}
-                  </Badge>
+                  <span className="text-sm text-foreground line-clamp-1">{article.title}</span>
+                  <span className="text-[11px] text-primary block mt-0.5">{article.source}</span>
                 </div>
               ))
             )}

@@ -211,7 +211,9 @@ export const DashboardAppointments = () => {
 
       {/* Special Day */}
       {specialDayHint && (
-        <p className="text-sm text-muted-foreground">{specialDayHint}</p>
+        <div className="bg-amber-50 dark:bg-amber-950/30 border-l-2 border-amber-400 px-3 py-1.5 rounded text-sm text-foreground">
+          {specialDayHint}
+        </div>
       )}
 
       {/* Termine */}
@@ -225,14 +227,21 @@ export const DashboardAppointments = () => {
           </p>
         ) : (
           <div className="space-y-1.5">
-            {appointments.map(apt => (
-              <div key={apt.id} className="flex items-center gap-2 text-sm">
-                <span className="text-muted-foreground font-mono text-xs w-12 shrink-0">
-                  {apt.is_all_day ? 'Ganzt.' : format(new Date(apt.start_time), 'HH:mm', { locale: de })}
-                </span>
-                <span className="text-foreground truncate">{apt.title}</span>
-              </div>
-            ))}
+            {appointments.map(apt => {
+              const aptDate = format(new Date(apt.start_time), 'yyyy-MM-dd');
+              return (
+                <div
+                  key={apt.id}
+                  className="flex items-center gap-2 text-sm cursor-pointer hover:bg-muted/40 rounded px-1 py-0.5 transition-colors"
+                  onClick={() => navigate(`/calendar?date=${aptDate}&event=${apt.id}`)}
+                >
+                  <span className="text-muted-foreground font-mono text-xs w-12 shrink-0">
+                    {apt.is_all_day ? 'Ganzt.' : format(new Date(apt.start_time), 'HH:mm', { locale: de })}
+                  </span>
+                  <span className="text-foreground truncate hover:underline">{apt.title}</span>
+                </div>
+              );
+            })}
           </div>
         )}
       </div>
