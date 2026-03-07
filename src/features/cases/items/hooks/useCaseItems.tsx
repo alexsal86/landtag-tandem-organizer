@@ -152,7 +152,7 @@ export const useCaseItems = () => {
 
       const { error } = await supabase
         .from("case_items")
-        .insert(insertData);
+        .insert(insertData as any);
 
       if (error) throw error;
 
