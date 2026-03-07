@@ -152,6 +152,13 @@ export const DashboardGreetingSection = () => {
           .or(`assigned_to.eq.${user.id},assigned_to.ilike.%${user.id}%,user_id.eq.${user.id}`)
           .eq('status', 'completed')
           .gte('updated_at', today.toISOString()),
+        supabase
+          .from('tasks')
+          .select('id, title')
+          .or(`assigned_to.eq.${user.id},assigned_to.ilike.%${user.id}%,user_id.eq.${user.id}`)
+          .neq('status', 'completed')
+          .order('due_date', { ascending: true, nullsFirst: false })
+          .limit(8),
       ]);
 
       setOpenTasksCount(openCount || 0);
@@ -443,6 +450,37 @@ export const DashboardGreetingSection = () => {
           )}
           {dashboardContent.roleLine && <p className="text-sm text-muted-foreground">{dashboardContent.roleLine}</p>}
           <p className="text-sm">{dashboardContent.motivationalLine}</p>
+
+          {openTaskTitles.length > 0 && (
+            <div className="rounded-md border bg-muted/20 p-3">
+              <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">Aufgaben (drag & drop)</p>
+              <div className="space-y-1">
+                {openTaskTitles.map((task, index) => (
+                  <button
+                    key={`${task.id}-${index}`}
+                    type="button"
+                    className="flex w-full items-center gap-1.5 rounded px-1 py-1 text-left text-sm text-foreground/90 transition-colors hover:bg-muted/60"
+                    onClick={() => navigate('/mywork?tab=tasks')}
+                    title="Klicken um zur Aufgabe zu gehen, oder per Handle in den Tageszettel ziehen"
+                  >
+                    <span
+                      draggable
+                      onDragStart={(event) => {
+                        event.stopPropagation();
+                        handleTaskTitleDragStart(event, task.title, task.id);
+                      }}
+                      className="cursor-grab rounded p-0.5 text-muted-foreground transition-colors hover:bg-muted/60 hover:text-foreground active:cursor-grabbing"
+                      aria-label="Aufgabe in den Tageszettel ziehen"
+                      onClick={(e) => e.stopPropagation()}
+                    >
+                      <GripVertical className="h-4 w-4" />
+                    </span>
+                    <span className="line-clamp-1">{task.title}</span>
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
 
           <div className="space-y-2 pt-1">
             {isLoading ? (
