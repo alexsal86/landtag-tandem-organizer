@@ -104,7 +104,7 @@ export const DashboardTasksSection = () => {
       const d = new Date(item.dueDate);
       if (isBefore(d, todayStart)) overdue.push(item);
       else if (isToday(d)) today.push(item);
-      else if (!isAfter(d, weekEnd)) thisWeek.push(item);
+      else if (!isAfter(d, sevenDaysOut)) thisWeek.push(item);
       else later.push(item);
     }
     return { overdue, today, thisWeek, later };
