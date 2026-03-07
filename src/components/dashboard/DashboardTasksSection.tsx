@@ -156,6 +156,7 @@ export const DashboardTasksSection = () => {
         <p className="text-sm text-muted-foreground">Keine offenen Fristen.</p>
       ) : (
         <div className="space-y-4">
+          {renderGroup('Überfällig', grouped.overdue, 'text-destructive')}
           {renderGroup('Heute', grouped.today)}
           {renderGroup('Diese Woche', grouped.thisWeek)}
           {renderGroup('Später', grouped.later)}
