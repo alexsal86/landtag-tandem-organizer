@@ -31,7 +31,9 @@ const MyWorkJourFixeTab = lazyWithRetry(() => import("./my-work/MyWorkJourFixeTa
 const MyWorkTimeTrackingTab = lazyWithRetry(() => import("./my-work/MyWorkTimeTrackingTab").then(m => ({ default: m.MyWorkTimeTrackingTab })));
 const MyWorkAppointmentFeedbackTab = lazyWithRetry(() => import("./my-work/MyWorkAppointmentFeedbackTab").then(m => ({ default: m.MyWorkAppointmentFeedbackTab })));
 const MyWorkFeedbackFeedTab = lazyWithRetry(() => import("./my-work/MyWorkFeedbackFeedTab").then(m => ({ default: m.MyWorkFeedbackFeedTab })));
-import { DashboardGreetingSection } from "./dashboard/DashboardGreetingSection";
+import { DashboardHeader } from "./dashboard/DashboardHeader";
+import { DashboardTasksSection } from "./dashboard/DashboardTasksSection";
+import { DashboardAppointments } from "./dashboard/DashboardAppointments";
 import { canViewTab, getRoleFlags, type UserRole } from "@/components/my-work/tabVisibility";
 import { MyWorkTabErrorState } from "@/components/my-work/MyWorkTabErrorState";
 import { NewsWidget } from "./widgets/NewsWidget";
@@ -529,28 +531,14 @@ export function MyWorkView() {
 
       {/* Tab Content */}
       {activeTab === "dashboard" && (
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          <DashboardGreetingSection />
-          <div className="space-y-4">
-            <NewsWidget />
-            <Card className="p-4">
-              <div className="flex items-center justify-between gap-3">
-                <div>
-                  <p className="text-sm font-semibold">Rückmeldungen im Fokus</p>
-                  <p className="text-xs text-muted-foreground">
-                    {newCounts.feedbackFeed > 0
-                      ? `${newCounts.feedbackFeed} neue Rückmeldungen warten auf Einordnung.`
-                      : 'Direkt in den Rückmeldungs-Feed mit Aufgabenfokus springen.'}
-                  </p>
-                </div>
-                <Button
-                  size="sm"
-                  onClick={() => setSearchParams({ tab: 'feedbackfeed', scope: 'team-plus-relevant', withTasks: '1', period: '7d' })}
-                >
-                  Neue Rückmeldungen
-                </Button>
-              </div>
-            </Card>
+        <div className="space-y-6">
+          <DashboardHeader />
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <DashboardTasksSection />
+            <div className="space-y-6">
+              <DashboardAppointments />
+              <NewsWidget compact />
+            </div>
           </div>
         </div>
       )}
