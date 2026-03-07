@@ -58,10 +58,10 @@ export const DashboardTasksSection = () => {
           .or('is_archived.is.null,is_archived.eq.false')
           .not('follow_up_date', 'is', null),
         tenantId
-          ? (supabase as any).from('case_items').select('id, subject, due_at')
+          ? supabase.from('case_items').select('id, subject, due_at')
               .eq('tenant_id', tenantId)
               .not('due_at', 'is', null)
-              .not('status', 'in', '("completed","closed")')
+              .neq('status', 'erledigt')
           : Promise.resolve({ data: [] }),
         supabase.from('task_decisions').select('id, title, response_deadline')
           .neq('status', 'resolved')
