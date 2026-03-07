@@ -46,6 +46,12 @@ export const DashboardGreetingSection = () => {
   const [specialDays, setSpecialDays] = useState<SpecialDay[]>(DEFAULT_SPECIAL_DAYS);
   const [openTaskTitles, setOpenTaskTitles] = useState<{ id: string; title: string }[]>([]);
 
+  const handleTaskTitleDragStart = (event: React.DragEvent, title: string, taskId: string) => {
+    event.dataTransfer.setData("text/plain", title);
+    event.dataTransfer.setData("application/x-task-id", taskId);
+    event.dataTransfer.effectAllowed = "copy";
+  };
+
   // Feedback-Reminder: zeitgesteuert + offene Feedbacks
   const feedbackReminderVisible = useMemo(() => {
     if (!feedbackSettings?.reminder_start_time) return false;
