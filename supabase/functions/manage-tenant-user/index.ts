@@ -23,7 +23,8 @@ function generatePassword(): string {
   return password;
 }
 
-async function hasPlatformAdminAccess(supabaseAdmin: ReturnType<typeof createClient>, user: any): Promise<boolean> {
+// deno-lint-ignore no-explicit-any
+async function hasPlatformAdminAccess(supabaseAdmin: any, user: any): Promise<boolean> {
   const claimRoles = user?.app_metadata?.platform_roles;
   if (Array.isArray(claimRoles) && claimRoles.includes('platform_admin')) {
     return true;
