@@ -45,7 +45,7 @@ async function hasPlatformAdminAccess(supabaseAdmin: any, user: any): Promise<bo
 }
 
 async function logAdminAction(
-  supabaseAdmin: ReturnType<typeof createClient>,
+  supabaseAdmin: any,
   actorUserId: string,
   actorEmail: string | undefined,
   action: string,

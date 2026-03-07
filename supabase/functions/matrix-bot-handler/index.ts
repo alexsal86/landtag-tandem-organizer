@@ -131,7 +131,7 @@ async function isMatrixEnabledForUser(
   }
 
   const enabled = (data ?? []).some(
-    (row) => row.matrix_enabled === true && row.is_enabled !== false,
+    (row: any) => row.matrix_enabled === true && row.is_enabled !== false,
   );
   cache.set(userId, enabled);
   return enabled;

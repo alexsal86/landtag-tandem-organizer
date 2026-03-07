@@ -810,7 +810,7 @@ export function MyWorkCasesWorkspace() {
       due_at: editableCaseItem.dueAt ? new Date(`${editableCaseItem.dueAt}T12:00:00`).toISOString() : null,
       priority: editableCaseItem.priority as any,
       owner_user_id: editableCaseItem.assigneeIds[0] || null,
-      intake_payload: intakePayload,
+      intake_payload: intakePayload as any,
     };
 
     const ok = await applyItemOptimisticUpdate(
