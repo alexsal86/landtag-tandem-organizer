@@ -11,6 +11,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { CheckSquare, Vote, Briefcase, CalendarPlus, Users, StickyNote, Calendar, Clock, Plus, Home, CheckCircle2, MessageSquare } from "lucide-react";
+import { Card } from "@/components/ui/card";
 import { PageHelpButton } from "@/components/shared/PageHelpButton";
 import { MYWORK_HELP_CONTENT } from "@/config/helpContent";
 import { supabase } from "@/integrations/supabase/client";
@@ -34,6 +35,7 @@ const MyWorkJourFixeTab = lazyWithRetry(() => import("./my-work/MyWorkJourFixeTa
 const MyWorkTimeTrackingTab = lazyWithRetry(() => import("./my-work/MyWorkTimeTrackingTab").then(m => ({ default: m.MyWorkTimeTrackingTab })));
 const MyWorkAppointmentFeedbackTab = lazyWithRetry(() => import("./my-work/MyWorkAppointmentFeedbackTab").then(m => ({ default: m.MyWorkAppointmentFeedbackTab })));
 const MyWorkFeedbackFeedTab = lazyWithRetry(() => import("./my-work/MyWorkFeedbackFeedTab").then(m => ({ default: m.MyWorkFeedbackFeedTab })));
+const MyWorkTasksTab = lazyWithRetry(() => import("./my-work/MyWorkTasksTab").then(m => ({ default: m.MyWorkTasksTab })));
 
 interface TabCounts {
   tasks: number;

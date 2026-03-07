@@ -3,6 +3,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useNavigate } from 'react-router-dom';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
+import { GripVertical } from 'lucide-react';
 
 import { useAuth } from '@/hooks/useAuth';
 import { useTenant } from '@/hooks/useTenant';
@@ -43,6 +44,13 @@ export const DashboardGreetingSection = () => {
   const [isShowingTomorrow, setIsShowingTomorrow] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [specialDays, setSpecialDays] = useState<SpecialDay[]>(DEFAULT_SPECIAL_DAYS);
+  const [openTaskTitles, setOpenTaskTitles] = useState<{ id: string; title: string }[]>([]);
+
+  const handleTaskTitleDragStart = (event: React.DragEvent, title: string, taskId: string) => {
+    event.dataTransfer.setData("text/plain", title);
+    event.dataTransfer.setData("application/x-task-id", taskId);
+    event.dataTransfer.effectAllowed = "copy";
+  };
 
   // Feedback-Reminder: zeitgesteuert + offene Feedbacks
   const feedbackReminderVisible = useMemo(() => {
