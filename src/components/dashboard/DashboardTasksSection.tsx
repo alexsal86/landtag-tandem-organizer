@@ -92,19 +92,22 @@ export const DashboardTasksSection = () => {
   }, [user, currentTenant]);
 
   const grouped = useMemo(() => {
+    const overdue: DeadlineItem[] = [];
     const today: DeadlineItem[] = [];
     const thisWeek: DeadlineItem[] = [];
     const later: DeadlineItem[] = [];
     const now = new Date();
+    const todayStart = startOfDay(now);
     const weekEnd = endOfWeek(now, { weekStartsOn: 1 });
 
     for (const item of items) {
       const d = new Date(item.dueDate);
-      if (isToday(d)) today.push(item);
-      else if (isAfter(d, startOfDay(now)) && !isAfter(d, weekEnd)) thisWeek.push(item);
+      if (isBefore(d, todayStart)) overdue.push(item);
+      else if (isToday(d)) today.push(item);
+      else if (!isAfter(d, weekEnd)) thisWeek.push(item);
       else later.push(item);
     }
-    return { today, thisWeek, later };
+    return { overdue, today, thisWeek, later };
   }, [items]);
 
   const renderItem = (item: DeadlineItem) => {
