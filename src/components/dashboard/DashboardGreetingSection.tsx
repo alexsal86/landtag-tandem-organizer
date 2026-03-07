@@ -1,5 +1,4 @@
 import { useEffect, useState, useMemo } from 'react';
-import { GripVertical } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useNavigate } from 'react-router-dom';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -41,7 +40,6 @@ export const DashboardGreetingSection = () => {
   const [appointments, setAppointments] = useState<AppointmentData[]>([]);
   const [openTasksCount, setOpenTasksCount] = useState(0);
   const [completedTasksToday, setCompletedTasksToday] = useState(0);
-  const [openTaskTitles, setOpenTaskTitles] = useState<{id: string; title: string}[]>([]);
   const [isShowingTomorrow, setIsShowingTomorrow] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [specialDays, setSpecialDays] = useState<SpecialDay[]>(DEFAULT_SPECIAL_DAYS);
@@ -57,22 +55,6 @@ export const DashboardGreetingSection = () => {
   const pendingFeedbackCount = useMemo(() => {
     return feedbackAppointments?.filter(a => a.feedback?.feedback_status === 'pending').length ?? 0;
   }, [feedbackAppointments]);
-
-  const handleTaskTitleDragStart = (event: React.DragEvent<HTMLElement>, taskTitle: string, taskId?: string) => {
-    event.dataTransfer.effectAllowed = 'copy';
-    event.dataTransfer.setData('text/plain', taskTitle);
-    event.dataTransfer.setData('application/x-mywork-task-title', taskTitle);
-    if (taskId) {
-      event.dataTransfer.setData('application/x-mywork-task-id', taskId);
-    }
-
-    const ghost = document.createElement('div');
-    ghost.className = 'pointer-events-none bg-transparent px-0 py-0 text-lg font-medium text-foreground';
-    ghost.textContent = taskTitle;
-    document.body.appendChild(ghost);
-    event.dataTransfer.setDragImage(ghost, 12, 12);
-    requestAnimationFrame(() => ghost.remove());
-  };
 
   // Load user name
   useEffect(() => {
@@ -158,7 +140,7 @@ export const DashboardGreetingSection = () => {
       const today = new Date();
       today.setHours(0, 0, 0, 0);
 
-      const [{ count: openCount }, { count: completedTodayCount }, { data: openTasks }] = await Promise.all([
+      const [{ count: openCount }, { count: completedTodayCount }] = await Promise.all([
         supabase
           .from('tasks')
           .select('*', { count: 'exact', head: true })
@@ -181,11 +163,6 @@ export const DashboardGreetingSection = () => {
 
       setOpenTasksCount(openCount || 0);
       setCompletedTasksToday(completedTodayCount || 0);
-      setOpenTaskTitles(
-        (openTasks || [])
-          .filter((task) => Boolean(task.title?.trim()))
-          .map((task) => ({ id: task.id, title: task.title!.trim() }))
-      );
     };
 
     loadTaskStats();
