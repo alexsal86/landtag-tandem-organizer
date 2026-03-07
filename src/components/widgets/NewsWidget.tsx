@@ -3,9 +3,8 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { RefreshCw, ExternalLink, Filter, Rss, Share2, CheckSquare } from 'lucide-react';
+import { RefreshCw, ExternalLink, Rss, Share2, CheckSquare } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
-import { toast } from 'sonner';
 import { NewsShareDialog } from './NewsShareDialog';
 import { NewsToTaskDialog } from './NewsToTaskDialog';
 
@@ -22,9 +21,10 @@ interface NewsArticle {
 
 interface NewsWidgetProps {
   widgetId?: string;
+  compact?: boolean;
 }
 
-export const NewsWidget: React.FC<NewsWidgetProps> = ({ widgetId }) => {
+export const NewsWidget: React.FC<NewsWidgetProps> = ({ widgetId, compact = false }) => {
   const [articles, setArticles] = useState<NewsArticle[]>([]);
   const [loading, setLoading] = useState(false);
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
@@ -66,7 +66,7 @@ export const NewsWidget: React.FC<NewsWidgetProps> = ({ widgetId }) => {
       const fetchPromise = supabase.functions.invoke('fetch-rss-feeds', {
         body: { 
           category: selectedCategory === 'all' ? undefined : selectedCategory,
-          limit: 20,
+          limit: compact ? 12 : 20,
           tenant_id: memberships.tenant_id
         }
       });
@@ -94,7 +94,7 @@ export const NewsWidget: React.FC<NewsWidgetProps> = ({ widgetId }) => {
     }, 500);
     
     return () => clearTimeout(timer);
-  }, [selectedCategory]);
+  }, [selectedCategory, compact]);
 
   const filteredArticles = articles.filter(article => 
     selectedCategory === 'all' || article.category === selectedCategory
@@ -118,15 +118,17 @@ export const NewsWidget: React.FC<NewsWidgetProps> = ({ widgetId }) => {
             News
           </CardTitle>
           <div className="flex gap-2">
-            <select
-              value={selectedCategory}
-              onChange={(e) => setSelectedCategory(e.target.value)}
-              className="text-xs px-2 py-1 border rounded bg-background"
-            >
-              {categories.map(cat => (
-                <option key={cat.value} value={cat.value}>{cat.label}</option>
-              ))}
-            </select>
+            {!compact && (
+              <select
+                value={selectedCategory}
+                onChange={(e) => setSelectedCategory(e.target.value)}
+                className="text-xs px-2 py-1 border rounded bg-background"
+              >
+                {categories.map(cat => (
+                  <option key={cat.value} value={cat.value}>{cat.label}</option>
+                ))}
+              </select>
+            )}
             <Button
               variant="ghost"
               size="sm"
@@ -221,27 +223,29 @@ export const NewsWidget: React.FC<NewsWidgetProps> = ({ widgetId }) => {
                       </div>
                     </div>
                     
-                    {article.description && (
+                    {!compact && article.description && (
                       <p className="text-xs text-muted-foreground line-clamp-2 mb-2">
                         {article.description}
                       </p>
                     )}
-                    
-                    <div className="flex justify-between items-center">
-                      <div className="flex gap-2 items-center">
-                        <Badge variant="secondary" className="text-xs py-0 px-2">
-                          {article.source}
-                        </Badge>
-                        {article.category !== 'general' && (
-                          <Badge variant="outline" className="text-xs py-0 px-2">
-                            {article.category}
+
+                    {!compact && (
+                      <div className="flex justify-between items-center">
+                        <div className="flex gap-2 items-center">
+                          <Badge variant="secondary" className="text-xs py-0 px-2">
+                            {article.source}
                           </Badge>
-                        )}
+                          {article.category !== 'general' && (
+                            <Badge variant="outline" className="text-xs py-0 px-2">
+                              {article.category}
+                            </Badge>
+                          )}
+                        </div>
+                        <span className="text-xs text-muted-foreground">
+                          {formatDate(article.pub_date)}
+                        </span>
                       </div>
-                      <span className="text-xs text-muted-foreground">
-                        {formatDate(article.pub_date)}
-                      </span>
-                    </div>
+                    )}
                   </div>
                 ))
               )}
