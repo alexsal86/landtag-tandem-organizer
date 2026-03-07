@@ -148,7 +148,7 @@ export const DashboardGreetingSection = () => {
       const today = new Date();
       today.setHours(0, 0, 0, 0);
 
-      const [{ count: openCount }, { count: completedTodayCount }] = await Promise.all([
+      const [{ count: openCount }, { count: completedTodayCount }, { data: taskTitlesData }] = await Promise.all([
         supabase
           .from('tasks')
           .select('*', { count: 'exact', head: true })
@@ -171,6 +171,7 @@ export const DashboardGreetingSection = () => {
 
       setOpenTasksCount(openCount || 0);
       setCompletedTasksToday(completedTodayCount || 0);
+      setOpenTaskTitles((taskTitlesData || []).map((t: any) => ({ id: t.id, title: t.title || 'Ohne Titel' })));
     };
 
     loadTaskStats();
