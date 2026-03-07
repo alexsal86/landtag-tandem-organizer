@@ -465,7 +465,7 @@ export function MyWorkCasesWorkspace() {
     await applyItemOptimisticUpdate(
       item.id,
       (row) => ({ ...row, owner_user_id: ownerUserId, intake_payload: payload }),
-      () => supabase.from("case_items").update({ owner_user_id: ownerUserId, intake_payload: payload }).eq("id", item.id),
+      () => supabase.from("case_items").update({ owner_user_id: ownerUserId, intake_payload: payload as any }).eq("id", item.id),
       "Zuweisung konnte nicht gespeichert werden.",
     );
   };
