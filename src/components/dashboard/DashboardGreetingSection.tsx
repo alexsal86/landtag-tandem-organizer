@@ -3,7 +3,6 @@ import { supabase } from '@/integrations/supabase/client';
 import { useNavigate } from 'react-router-dom';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { GripVertical } from 'lucide-react';
 
 import { useAuth } from '@/hooks/useAuth';
 import { useTenant } from '@/hooks/useTenant';
@@ -165,8 +164,7 @@ export const DashboardGreetingSection = () => {
           .select('id, title')
           .or(`assigned_to.eq.${user.id},assigned_to.ilike.%${user.id}%,user_id.eq.${user.id}`)
           .neq('status', 'completed')
-          .order('due_date', { ascending: true, nullsFirst: false })
-          .limit(8),
+          .order('due_date', { ascending: true, nullsFirst: false }),
       ]);
 
       setOpenTasksCount(openCount || 0);
@@ -460,37 +458,6 @@ export const DashboardGreetingSection = () => {
           {dashboardContent.roleLine && <p className="text-sm text-muted-foreground">{dashboardContent.roleLine}</p>}
           <p className="text-sm">{dashboardContent.motivationalLine}</p>
 
-          {openTaskTitles.length > 0 && (
-            <div className="rounded-md border bg-muted/20 p-3">
-              <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">Aufgaben (drag & drop)</p>
-              <div className="space-y-1">
-                {openTaskTitles.map((task, index) => (
-                  <button
-                    key={`${task.id}-${index}`}
-                    type="button"
-                    className="flex w-full items-center gap-1.5 rounded px-1 py-1 text-left text-sm text-foreground/90 transition-colors hover:bg-muted/60"
-                    onClick={() => navigate('/mywork?tab=tasks')}
-                    title="Klicken um zur Aufgabe zu gehen, oder per Handle in den Tageszettel ziehen"
-                  >
-                    <span
-                      draggable
-                      onDragStart={(event) => {
-                        event.stopPropagation();
-                        handleTaskTitleDragStart(event, task.title, task.id);
-                      }}
-                      className="cursor-grab rounded p-0.5 text-muted-foreground transition-colors hover:bg-muted/60 hover:text-foreground active:cursor-grabbing"
-                      aria-label="Aufgabe in den Tageszettel ziehen"
-                      onClick={(e) => e.stopPropagation()}
-                    >
-                      <GripVertical className="h-4 w-4" />
-                    </span>
-                    <span className="line-clamp-1">{task.title}</span>
-                  </button>
-                ))}
-              </div>
-            </div>
-          )}
-
           <div className="space-y-2 pt-1">
             {isLoading ? (
               <p className="text-sm text-muted-foreground">Termine werden geladen…</p>
@@ -512,6 +479,48 @@ export const DashboardGreetingSection = () => {
           </div>
         </CardContent>
       </Card>
+
+      {openTaskTitles.length > 0 && (
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle>Aufgaben</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="block">
+              {openTaskTitles.map((task, index) => (
+                <div
+                  key={`${task.id}-${index}`}
+                  className="flex items-center gap-1.5 rounded px-1 py-0.5 text-foreground/90 cursor-pointer hover:bg-muted/40 transition-colors"
+                  onClick={() => navigate('/mywork?tab=tasks')}
+                  title="Klicken um zur Aufgabe zu gehen, oder per Handle in den Tageszettel ziehen"
+                  role="button"
+                  tabIndex={0}
+                  onKeyDown={(event) => {
+                    if (event.key === 'Enter' || event.key === ' ') {
+                      event.preventDefault();
+                      navigate('/mywork?tab=tasks');
+                    }
+                  }}
+                >
+                  <span
+                    draggable
+                    onDragStart={(event) => {
+                      event.stopPropagation();
+                      handleTaskTitleDragStart(event, task.title, task.id);
+                    }}
+                    className="cursor-grab rounded p-0.5 text-muted-foreground transition-colors hover:bg-muted/60 hover:text-foreground active:cursor-grabbing"
+                    aria-label="Aufgabe in den Tageszettel ziehen"
+                    onClick={(e) => e.stopPropagation()}
+                  >
+                    <GripVertical className="h-4 w-4" />
+                  </span>
+                  <span className="flex-1">{task.title}</span>
+                </div>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       {feedbackReminderVisible && (
         <div className="mt-3">
