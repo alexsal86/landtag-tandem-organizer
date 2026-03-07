@@ -110,6 +110,39 @@ export const NewsWidget: React.FC<NewsWidgetProps> = ({ widgetId, compact = fals
     });
   };
 
+  if (compact) {
+    return (
+      <div>
+        <h3 className="text-sm font-semibold text-foreground mb-2 flex items-center gap-2">
+          <Rss className="h-3.5 w-3.5" />
+          News
+        </h3>
+        {loading && <div className="animate-pulse space-y-2">{[...Array(3)].map((_, i) => <div key={i} className="h-6 bg-muted rounded" />)}</div>}
+        {error && <p className="text-xs text-muted-foreground">{error}</p>}
+        {!loading && !error && (
+          <div className="space-y-1.5">
+            {filteredArticles.length === 0 ? (
+              <p className="text-xs text-muted-foreground">Keine Artikel gefunden</p>
+            ) : (
+              filteredArticles.slice(0, 8).map((article) => (
+                <div
+                  key={article.id}
+                  className="flex items-start gap-2 text-sm cursor-pointer hover:bg-muted/40 rounded px-1 py-0.5 transition-colors"
+                  onClick={() => window.open(article.link, '_blank')}
+                >
+                  <span className="text-foreground line-clamp-1 flex-1">{article.title}</span>
+                  <Badge variant="secondary" className="text-[10px] py-0 px-1.5 shrink-0">
+                    {article.source}
+                  </Badge>
+                </div>
+              ))
+            )}
+          </div>
+        )}
+      </div>
+    );
+  }
+
   return (
     <Card className="h-full flex flex-col">
       <CardHeader className="pb-3">
