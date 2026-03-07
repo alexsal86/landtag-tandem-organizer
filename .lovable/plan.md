@@ -1,61 +1,68 @@
 
-Ziel: Rückmeldungs-Feed stabil sichtbar machen und gleichzeitig die aktuellen Build-Blocker entfernen, damit die Fixes überhaupt wieder ausgeliefert werden.
 
-1) Diagnose (aus Code + DB)
-- Do I know what the issue is? Ja.
-- Es gibt aktuell 2 Ebenen von Problemen:
-  1. Build ist kaputt (TypeScript):
-     - `src/components/ui/calendar.tsx`: doppelte Keys im `classNames`-Objekt (`caption_label`, `dropdowns`, `dropdown`) → TS1117.
-     - `src/components/task-decisions/DecisionOverview.tsx`: `ResponseOption`-Typ ohne `requires_comment` → TS2339.
-  2. Feed-Logik ist instabil/zu restriktiv:
-     - `src/components/my-work/MyWorkFeedbackFeedTab.tsx` übergibt `completedTo: new Date().toISOString()` bei jedem Render.
-       Dadurch ändert sich der React-Query-Key permanent (`useTeamFeedbackFeed`), was zu dauerndem Neu-Laden bzw. instabilem Feed führt.
-     - `useTeamFeedbackFeed` filtert hart auf `.not('notes','is',null)`. Damit verschwinden abgeschlossene Rückmeldungen ohne Notiz (z. B. nur Anhang/Aufgabe), obwohl sie fachlich oft relevant sind.
-- DB-Check:
-  - `appointment_feedback` hat Daten (u. a. completed in den letzten 7 Tagen vorhanden).
-  - RLS auf `appointment_feedback` erlaubt tenant-basiertes Lesen (`tenant_id = ANY(get_user_tenant_ids(auth.uid()))`), also kein offensichtlicher RLS-Blocker für Team-Feed im Tenant.
+# Plan: Dashboard-Umbau "Meine Arbeit"
 
-2) Umsetzungsplan (in Reihenfolge)
-A. Build sofort reparieren (Blocker)
-- `calendar.tsx`: doppelte Objekt-Keys entfernen, nur eine konsistente Definition für `caption_label`, `dropdowns`, `dropdown` behalten.
-- `DecisionOverview.tsx`: lokalen `ResponseOption`-Typ um `requires_comment?: boolean` ergänzen (oder auf den zentralen Typ aus `decisionTemplates` umstellen).
+## Zusammenfassung
 
-B. Feed-Query stabilisieren
-- `MyWorkFeedbackFeedTab.tsx`:
-  - `completedTo` nicht mehr bei jedem Render neu erzeugen.
-  - Entweder:
-    - `completedTo` ganz weglassen (nur `completedFrom` + order/limit), oder
-    - `completedTo` per `useMemo/useState` nur bei Filterwechsel neu setzen.
-- `useTeamFeedbackFeed.ts`:
-  - Query-Key nur mit stabilen Filterwerten.
-  - Zeitfilter robust halten (kein per-render Drift).
+Das Dashboard im Tab "Meine Arbeit" wird neu strukturiert: Header mit Datum + Begruessung + Wetter oben, Aufgaben links, Termine + besondere Tage + wechselnde Begruessung + News rechts. KPI-Cards entfallen.
 
-C. Sichtbarkeit der Rückmeldungen fachlich korrigieren
-- `useTeamFeedbackFeed.ts`:
-  - Notiz-Pflicht entfernen oder erweitern:
-    - statt nur `notes is not null` auch Einträge mit `has_documents = true` oder `has_tasks = true` zulassen.
-  - Ergebnis: auch „abgeschlossen ohne Notiz, aber mit Anhang/Aufgabe“ erscheint im Feed.
+## Schritt 1: Build-Fehler beheben
 
-D. Fehler nicht mehr als „keine Daten“ maskieren
-- `MyWorkFeedbackFeedTab.tsx`:
-  - `isError` + `error` aus Query auslesen.
-  - Bei Fehler einen klaren Error-State anzeigen (statt „Keine passenden Rückmeldungen gefunden“), inkl. Retry-Button (`refetch`).
+Bevor das Dashboard umgebaut wird, muessen die bestehenden Build-Fehler gefixt werden:
 
-E. Quercheck auf Seiteneffekte
-- `useMyWorkNewCounts.tsx` zählt derzeit ebenfalls nur `completed + notes not null`; ggf. auf dieselbe fachliche Logik angleichen, damit Badge und Feed konsistent sind.
+- **`manage-tenant-user/index.ts`**: `supabaseAdmin` mit `as any` casten bei Aufrufen von `hasPlatformAdminAccess` und `logAdminAction`
+- **`matrix-bot-handler/index.ts`**: Insert-Aufruf und `row`-Parameter mit expliziten Typen versehen (`as any` fuer den Supabase-Client, `row: any` im Filter)
+- **`MyWorkCasesWorkspace.tsx`**: `intake_payload` mit `as any` casten, damit es zum `Json`-Typ passt
+- **`useCaseItems.tsx`**: `insertData` mit `as any` casten beim `.insert()`-Aufruf
 
-3) Validierung nach Umsetzung
-- Build grün ohne TS-Fehler.
-- Im Tab „Meine Arbeit > Rückmeldungen“:
-  - Keine Endlos-Ladeanzeige.
-  - Team-Einträge der letzten 7/14 Tage sichtbar.
-  - Filter (Sicht/Zeitraum/Anhänge/Aufgaben) funktionieren.
-  - Bei absichtlichem Query-Fehler erscheint Error-State statt Empty-State.
-- Schneller Datenabgleich:
-  - Feed-Anzahl grob konsistent mit SQL-Count für completed im Zeitraum (unter Berücksichtigung der Filter).
+## Schritt 2: Dashboard-Layout umbauen (MyWorkView.tsx)
 
-4) Warum das den aktuellen Zustand löst
-- Solange Build fehlschlägt, werden vorherige Fixes teils nicht wirksam.
-- Selbst bei laufendem Build kann der Feed durch den „beweglichen“ `completedTo`-Key instabil bleiben.
-- Zusätzlich blendet der harte Notiz-Filter valide Rückmeldungen aus.
-- Mit den vier Korrekturen (Build, stabiler Query-Key, fachlich korrekter Filter, echter Error-State) wird die Ursachekette vollständig geschlossen.
+Aktuell (Zeilen 531-555):
+```
+grid-cols-2: DashboardGreetingSection | NewsWidget + Feedback-Card
+```
+
+Neu:
+```
+Zeile 1: Header-Zeile (volle Breite)
+  - Links: "Freitag, 6. Maerz" (Tag + Datum, gross/fett) + Begruessung ("Guten Abend, Alexander")
+  - Rechts: Wetter-Anzeige (Karlsruhe + Stuttgart inline, kompakt)
+
+Zeile 2: Zwei-Spalten-Layout
+  - Links: Aufgaben (bestehendes TasksSummary/Aufgabenliste aus DashboardGreetingSection - UNVERAENDERT)
+  - Rechts:
+    - Termine (heute/morgen) mit besonderen Tagen
+    - Wechselnde Begruessung (rollenbasierte Zeile + kontextuelle Nachricht)
+    - News (nur Titel + Quelle)
+```
+
+## Schritt 3: DashboardGreetingSection aufteilen
+
+Die aktuelle `DashboardGreetingSection` ist ein Monolith, der Begruessung, Wetter, Aufgaben und Termine in einem Textblock rendert. Dieser wird aufgeteilt:
+
+1. **Header-Bereich** (neues Element direkt in MyWorkView): Datum + Begruessung + Wetter-Kompaktanzeige
+2. **Linke Spalte**: Nur der Aufgaben-Teil aus DashboardGreetingSection (Aufgabenstatus mit draggable Tasks) - Code wird extrahiert aber Logik/Darstellung bleibt identisch
+3. **Rechte Spalte oben**: Termine-Sektion (aus DashboardGreetingSection extrahiert) + Special-Day-Hints + rollenbasierte/kontextuelle Begruessung
+4. **Rechte Spalte unten**: NewsWidget, vereinfacht auf Titel + Quelle
+
+## Schritt 4: NewsWidget vereinfachen
+
+Im Dashboard-Kontext wird dem NewsWidget ein neuer `compact`-Prop uebergeben. Im Compact-Modus:
+- Nur Titel + Quelle (Badge) anzeigen
+- Beschreibung, Kategorie-Badge, Datum und Hover-Aktionen ausblenden
+- Schlanker, wie im Mockup
+
+## Betroffene Dateien
+
+| Datei | Aenderung |
+|---|---|
+| `supabase/functions/manage-tenant-user/index.ts` | Type-Casts fuer supabaseAdmin |
+| `supabase/functions/matrix-bot-handler/index.ts` | Type-Casts fuer insert + row |
+| `src/components/my-work/MyWorkCasesWorkspace.tsx` | `as any` fuer intake_payload |
+| `src/features/cases/items/hooks/useCaseItems.tsx` | `as any` fuer insertData |
+| `src/components/MyWorkView.tsx` | Dashboard-Tab Layout komplett neu |
+| `src/components/dashboard/DashboardGreetingSection.tsx` | Aufteilen in Teilkomponenten |
+| `src/components/widgets/NewsWidget.tsx` | `compact`-Prop hinzufuegen |
+| Neue Datei: `src/components/dashboard/DashboardHeader.tsx` | Datum + Begruessung + Wetter |
+| Neue Datei: `src/components/dashboard/DashboardAppointments.tsx` | Termine + Special Days + Kontextbegruessung |
+
