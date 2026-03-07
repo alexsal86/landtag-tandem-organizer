@@ -20,6 +20,11 @@ import { useTenant } from "@/hooks/useTenant";
 import { useMyWorkSettings } from "@/hooks/useMyWorkSettings";
 import { useMyWorkNewCounts } from "@/hooks/useMyWorkNewCounts";
 import { useAppSettings } from "@/hooks/useAppSettings";
+import { DashboardGreetingSection } from "./dashboard/DashboardGreetingSection";
+import { canViewTab, getRoleFlags, type UserRole } from "@/components/my-work/tabVisibility";
+import { MyWorkTabErrorState } from "@/components/my-work/MyWorkTabErrorState";
+import { NewsWidget } from "./widgets/NewsWidget";
+import { ErrorBoundary } from "@/components/ErrorBoundary";
 const MyWorkQuickCapture = lazyWithRetry(() => import("./my-work/MyWorkQuickCapture").then(m => ({ default: m.MyWorkQuickCapture })));
 const MyWorkNotesList = lazyWithRetry(() => import("./my-work/MyWorkNotesList").then(m => ({ default: m.MyWorkNotesList })));
 const MyWorkTasksTab = lazyWithRetry(() => import("./my-work/MyWorkTasksTab").then(m => ({ default: m.MyWorkTasksTab })));
@@ -31,11 +36,6 @@ const MyWorkJourFixeTab = lazyWithRetry(() => import("./my-work/MyWorkJourFixeTa
 const MyWorkTimeTrackingTab = lazyWithRetry(() => import("./my-work/MyWorkTimeTrackingTab").then(m => ({ default: m.MyWorkTimeTrackingTab })));
 const MyWorkAppointmentFeedbackTab = lazyWithRetry(() => import("./my-work/MyWorkAppointmentFeedbackTab").then(m => ({ default: m.MyWorkAppointmentFeedbackTab })));
 const MyWorkFeedbackFeedTab = lazyWithRetry(() => import("./my-work/MyWorkFeedbackFeedTab").then(m => ({ default: m.MyWorkFeedbackFeedTab })));
-import { DashboardGreetingSection } from "./dashboard/DashboardGreetingSection";
-import { canViewTab, getRoleFlags, type UserRole } from "@/components/my-work/tabVisibility";
-import { MyWorkTabErrorState } from "@/components/my-work/MyWorkTabErrorState";
-import { NewsWidget } from "./widgets/NewsWidget";
-import { ErrorBoundary } from "@/components/ErrorBoundary";
 
 interface TabCounts {
   tasks: number;
@@ -532,7 +532,7 @@ export function MyWorkView() {
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           <DashboardGreetingSection />
           <div className="space-y-4">
-            <NewsWidget />
+            <NewsWidget compact />
             <Card className="p-4">
               <div className="flex items-center justify-between gap-3">
                 <div>

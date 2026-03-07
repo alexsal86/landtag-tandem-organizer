@@ -2,6 +2,8 @@ import { useEffect, useState, useMemo } from 'react';
 import { GripVertical } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useNavigate } from 'react-router-dom';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
 
 import { useAuth } from '@/hooks/useAuth';
 import { useTenant } from '@/hooks/useTenant';
@@ -41,7 +43,6 @@ export const DashboardGreetingSection = () => {
   const [completedTasksToday, setCompletedTasksToday] = useState(0);
   const [openTaskTitles, setOpenTaskTitles] = useState<{id: string; title: string}[]>([]);
   const [isShowingTomorrow, setIsShowingTomorrow] = useState(false);
-  const [showWeather, setShowWeather] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [specialDays, setSpecialDays] = useState<SpecialDay[]>(DEFAULT_SPECIAL_DAYS);
 
@@ -175,7 +176,7 @@ export const DashboardGreetingSection = () => {
           .or(`assigned_to.eq.${user.id},assigned_to.ilike.%${user.id}%,user_id.eq.${user.id}`)
           .neq('status', 'completed')
           .order('due_date', { ascending: true, nullsFirst: false })
-
+          .limit(8),
       ]);
 
       setOpenTasksCount(openCount || 0);
@@ -315,31 +316,7 @@ export const DashboardGreetingSection = () => {
     loadAppointments();
   }, [user, currentTenant]);
 
-  // Generate weather hints
-  const getWeatherHint = (condition: string, temp: number): string => {
-    const lowerCondition = condition.toLowerCase();
-    
-    if (lowerCondition.includes('regen') || lowerCondition.includes('rain')) {
-      return '☔ Regenschirm nicht vergessen!';
-    } else if (lowerCondition.includes('schnee') || lowerCondition.includes('snow')) {
-      return '❄️ Warme Kleidung empfohlen!';
-    } else if (lowerCondition.includes('sonne') || lowerCondition.includes('clear') || lowerCondition.includes('heiter')) {
-      return '☀️ Perfektes Wetter für Außentermine!';
-    } else if (temp > 25) {
-      return '🌡️ Heute wird es warm!';
-    } else if (temp < 5) {
-      return '🧥 Zieh dich warm an!';
-    } else if (lowerCondition.includes('bewölkt') || lowerCondition.includes('cloud')) {
-      return '☁️ Ein bewölkter Tag erwartet uns.';
-    }
-    
-    return '';
-  };
-
-  // Build complete text
-  const fullText = useMemo(() => {
-    if (isLoading) return '';
-    
+  const dashboardContent = useMemo(() => {
     const timeSlot = getCurrentTimeSlot();
     const greeting = getGreeting(timeSlot);
     
@@ -430,128 +407,33 @@ export const DashboardGreetingSection = () => {
       return undefined;
     };
 
-    const roleLine = getRoleLeadLine();
-
-    let text = `${greeting}, ${userName}!\n\n`;
-    if (roleLine) {
-      text += `${roleLine}\n\n`;
-    }
-
-    text += `${message.text}\n\n`;
-
-    const specialDayHint = getSpecialDayHint(new Date(), specialDays);
-    if (specialDayHint) {
-      text += `${specialDayHint}\n\n`;
-    }
-    
-    // Task summary section
-    text += '✅ **Aufgabenstatus:**\n';
-    text += '{{TASK_LIST_PLACEHOLDER}}\n';
-    if (showWeather) {
-      text += '\n☀️ **Das Wetter heute (optional):**\n';
-      if (weatherKarlsruhe) {
-        const translatedCondition = translateCondition(weatherKarlsruhe.condition);
-        const hint = getWeatherHint(weatherKarlsruhe.condition, weatherKarlsruhe.temp);
-        text += `${getWeatherIcon(weatherKarlsruhe.icon)} Karlsruhe: ${Math.round(weatherKarlsruhe.temp)}°C, ${translatedCondition}`;
-        if (hint) text += ` ${hint}`;
-        text += '\n';
-      }
-      if (weatherStuttgart) {
-        const translatedCondition = translateCondition(weatherStuttgart.condition);
-        const hint = getWeatherHint(weatherStuttgart.condition, weatherStuttgart.temp);
-        text += `${getWeatherIcon(weatherStuttgart.icon)} Stuttgart: ${Math.round(weatherStuttgart.temp)}°C, ${translatedCondition}`;
-        if (hint) text += ` ${hint}`;
-        text += '\n';
-      }
-    }
-    
-    // Appointments section mit dynamischer Überschrift
-    text += isShowingTomorrow 
-      ? '\n📅 **Deine Termine morgen:**\n' 
-      : '\n📅 **Deine Termine heute:**\n';
-    
-    if (appointments.length === 0) {
-      text += isShowingTomorrow 
-        ? 'Keine Termine morgen.\n'
-        : 'Keine Termine heute.\n';
-    } else {
-      appointments.forEach(apt => {
-        const time = apt.is_all_day 
-          ? 'Ganztägig' 
-          : format(new Date(apt.start_time), 'HH:mm', { locale: de });
-        text += `${time} - ${apt.title}\n`;
-      });
-    }
-    
-    return text;
+    return {
+      greeting,
+      roleLine: getRoleLeadLine(),
+      motivationalLine: message.text,
+      specialDayHint: getSpecialDayHint(new Date(), specialDays),
+    };
   }, [
-    isLoading,
-    userName,
     userRole,
-    weatherKarlsruhe,
-    weatherStuttgart,
     appointments,
     isShowingTomorrow,
     openTasksCount,
     completedTasksToday,
-    openTaskTitles,
-    showWeather,
     specialDays
   ]);
 
-  // Parse text for bold markers (**text**) and task list placeholder
-  const parsedContent = useMemo(() => {
-    // Split by task list placeholder first
-    const sections = fullText.split('{{TASK_LIST_PLACEHOLDER}}\n');
-    
-    const parseTextSection = (text: string) => {
-      const parts = text.split(/(\*\*.*?\*\*)/g);
-      return parts.map((part, index) => {
-        if (part.startsWith('**') && part.endsWith('**')) {
-          const boldText = part.slice(2, -2);
-          return <strong key={index} className="font-bold">{boldText}</strong>;
-        }
-        return part;
-      });
-    };
-
-    if (sections.length < 2) {
-      return parseTextSection(fullText.replace('{{TASK_LIST_PLACEHOLDER}}\n', ''));
+  const weatherItems = useMemo(() => {
+    const items: string[] = [];
+    if (weatherKarlsruhe) {
+      items.push(`${getWeatherIcon(weatherKarlsruhe.icon)} Karlsruhe ${Math.round(weatherKarlsruhe.temp)}°C · ${translateCondition(weatherKarlsruhe.condition)}`);
     }
+    if (weatherStuttgart) {
+      items.push(`${getWeatherIcon(weatherStuttgart.icon)} Stuttgart ${Math.round(weatherStuttgart.temp)}°C · ${translateCondition(weatherStuttgart.condition)}`);
+    }
+    return items;
+  }, [weatherKarlsruhe, weatherStuttgart]);
 
-    return (
-      <>
-        {parseTextSection(sections[0])}
-        {openTaskTitles.length > 0 && (
-          <span className="block">
-            {openTaskTitles.map((task, index) => (
-              <span
-                key={`${task.id}-${index}`}
-                className="flex items-center gap-1.5 rounded px-1 py-0.5 text-foreground/90 cursor-pointer hover:bg-muted/40 transition-colors"
-                onClick={() => navigate('/mywork?tab=tasks')}
-                title="Klicken um zur Aufgabe zu gehen, oder per Handle in den Tageszettel ziehen"
-              >
-                <span
-                  draggable
-                  onDragStart={(event) => {
-                    event.stopPropagation();
-                    handleTaskTitleDragStart(event, task.title, task.id);
-                  }}
-                  className="cursor-grab rounded p-0.5 text-muted-foreground transition-colors hover:bg-muted/60 hover:text-foreground active:cursor-grabbing"
-                  aria-label="Aufgabe in den Tageszettel ziehen"
-                  onClick={(e) => e.stopPropagation()}
-                >
-                  <GripVertical className="h-4 w-4" />
-                </span>
-                <span className="flex-1">{task.title}</span>
-              </span>
-            ))}
-          </span>
-        )}
-        {parseTextSection(sections[1])}
-      </>
-    );
-  }, [fullText, openTaskTitles, navigate, handleTaskTitleDragStart]);
+  const dayLabel = format(new Date(), 'EEEE, d. MMMM', { locale: de });
 
   // Show skeleton while tenant is loading
   if (tenantLoading) {
@@ -564,10 +446,87 @@ export const DashboardGreetingSection = () => {
   }
 
   return (
-    <div>
-      <span className="text-xl lg:text-2xl font-light tracking-tight text-foreground/90 block whitespace-pre-wrap">
-        {parsedContent}
-      </span>
+    <div className="space-y-6">
+      <div className="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
+        <div className="flex flex-wrap items-end gap-3">
+          <h1 className="text-3xl lg:text-5xl font-semibold tracking-tight">{dayLabel}</h1>
+          <p className="text-xl text-muted-foreground">{dashboardContent.greeting}, {userName}</p>
+        </div>
+        <div className="flex flex-wrap gap-2">
+          {weatherItems.length > 0 ? weatherItems.map((item) => (
+            <Badge key={item} variant="outline" className="px-3 py-1.5 text-sm">
+              {item}
+            </Badge>
+          )) : (
+            <Badge variant="outline" className="px-3 py-1.5 text-sm">Wetterdaten werden geladen…</Badge>
+          )}
+        </div>
+      </div>
+
+      <Card>
+        <CardHeader className="pb-3">
+          <CardTitle>{isShowingTomorrow ? 'Termine morgen' : 'Termine heute'}</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          {dashboardContent.specialDayHint && (
+            <p className="text-sm text-amber-700 dark:text-amber-300">🌸 {dashboardContent.specialDayHint}</p>
+          )}
+          {dashboardContent.roleLine && <p className="text-sm text-muted-foreground">{dashboardContent.roleLine}</p>}
+          <p className="text-sm">{dashboardContent.motivationalLine}</p>
+
+          {openTaskTitles.length > 0 && (
+            <div className="rounded-md border bg-muted/20 p-3">
+              <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">Aufgaben (drag & drop)</p>
+              <div className="space-y-1">
+                {openTaskTitles.map((task, index) => (
+                  <button
+                    key={`${task.id}-${index}`}
+                    type="button"
+                    className="flex w-full items-center gap-1.5 rounded px-1 py-1 text-left text-sm text-foreground/90 transition-colors hover:bg-muted/60"
+                    onClick={() => navigate('/mywork?tab=tasks')}
+                    title="Klicken um zur Aufgabe zu gehen, oder per Handle in den Tageszettel ziehen"
+                  >
+                    <span
+                      draggable
+                      onDragStart={(event) => {
+                        event.stopPropagation();
+                        handleTaskTitleDragStart(event, task.title, task.id);
+                      }}
+                      className="cursor-grab rounded p-0.5 text-muted-foreground transition-colors hover:bg-muted/60 hover:text-foreground active:cursor-grabbing"
+                      aria-label="Aufgabe in den Tageszettel ziehen"
+                      onClick={(e) => e.stopPropagation()}
+                    >
+                      <GripVertical className="h-4 w-4" />
+                    </span>
+                    <span className="line-clamp-1">{task.title}</span>
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+
+          <div className="space-y-2 pt-1">
+            {isLoading ? (
+              <p className="text-sm text-muted-foreground">Termine werden geladen…</p>
+            ) : appointments.length === 0 ? (
+              <p className="text-sm text-muted-foreground">Keine Termine.</p>
+            ) : (
+              appointments.map((apt) => (
+                <button
+                  key={apt.id}
+                  type="button"
+                  onClick={() => navigate('/mywork?tab=jourFixe')}
+                  className="w-full rounded-md border px-3 py-2 text-left text-sm hover:bg-muted/50 transition-colors"
+                >
+                  <span className="font-medium mr-2">{apt.is_all_day ? 'Ganztägig' : format(new Date(apt.start_time), 'HH:mm', { locale: de })}</span>
+                  <span>{apt.title}</span>
+                </button>
+              ))
+            )}
+          </div>
+        </CardContent>
+      </Card>
+
       {feedbackReminderVisible && (
         <div className="mt-3">
           <button
@@ -579,15 +538,6 @@ export const DashboardGreetingSection = () => {
           </button>
         </div>
       )}
-      <div className="mt-4">
-        <button
-          type="button"
-          onClick={() => setShowWeather((prev) => !prev)}
-          className="text-sm text-muted-foreground hover:text-foreground underline-offset-2 hover:underline"
-        >
-          {showWeather ? 'Wetter ausblenden' : 'Wetter anzeigen (optional)'}
-        </button>
-      </div>
     </div>
   );
 };
