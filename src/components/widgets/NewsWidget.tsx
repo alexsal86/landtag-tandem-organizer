@@ -22,9 +22,10 @@ interface NewsArticle {
 
 interface NewsWidgetProps {
   widgetId?: string;
+  compact?: boolean;
 }
 
-export const NewsWidget: React.FC<NewsWidgetProps> = ({ widgetId }) => {
+export const NewsWidget: React.FC<NewsWidgetProps> = ({ widgetId, compact = false }) => {
   const [articles, setArticles] = useState<NewsArticle[]>([]);
   const [loading, setLoading] = useState(false);
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
