@@ -98,7 +98,7 @@ export const DashboardTasksSection = () => {
     const later: DeadlineItem[] = [];
     const now = new Date();
     const todayStart = startOfDay(now);
-    const weekEnd = endOfWeek(now, { weekStartsOn: 1 });
+    const sevenDaysOut = addDays(todayStart, 7);
 
     for (const item of items) {
       const d = new Date(item.dueDate);
