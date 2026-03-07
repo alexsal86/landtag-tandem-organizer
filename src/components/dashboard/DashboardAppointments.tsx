@@ -241,8 +241,7 @@ export const DashboardAppointments = () => {
                   <span className="text-foreground truncate hover:underline">{apt.title}</span>
                 </div>
               );
-            }
-            ))}
+            })}
           </div>
         )}
       </div>
