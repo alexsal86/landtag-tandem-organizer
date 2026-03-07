@@ -211,7 +211,9 @@ export const DashboardAppointments = () => {
 
       {/* Special Day */}
       {specialDayHint && (
-        <p className="text-sm text-muted-foreground">{specialDayHint}</p>
+        <div className="bg-amber-50 dark:bg-amber-950/30 border-l-2 border-amber-400 px-3 py-1.5 rounded text-sm text-foreground">
+          {specialDayHint}
+        </div>
       )}
 
       {/* Termine */}
