@@ -527,29 +527,33 @@ export function MyWorkView() {
 
       {/* Tab Content */}
       {activeTab === "dashboard" && (
-        <div className="space-y-6">
-          <DashboardGreetingSection />
-          <div className="space-y-4">
-            <NewsWidget compact />
-            <Card className="p-4">
-              <div className="flex items-center justify-between gap-3">
-                <div>
-                  <p className="text-sm font-semibold">Rückmeldungen im Fokus</p>
-                  <p className="text-xs text-muted-foreground">
-                    {newCounts.feedbackFeed > 0
-                      ? `${newCounts.feedbackFeed} neue Rückmeldungen warten auf Einordnung.`
-                      : 'Direkt in den Rückmeldungs-Feed mit Aufgabenfokus springen.'}
-                  </p>
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          <ErrorBoundary fallback={tabError("Dashboard")}> 
+            <DashboardGreetingSection />
+          </ErrorBoundary>
+          <ErrorBoundary fallback={tabError("News")}> 
+            <div className="space-y-4">
+              <NewsWidget compact />
+              <Card className="p-4">
+                <div className="flex items-center justify-between gap-3">
+                  <div>
+                    <p className="text-sm font-semibold">Rückmeldungen im Fokus</p>
+                    <p className="text-xs text-muted-foreground">
+                      {newCounts.feedbackFeed > 0
+                        ? `${newCounts.feedbackFeed} neue Rückmeldungen warten auf Einordnung.`
+                        : 'Direkt in den Rückmeldungs-Feed mit Aufgabenfokus springen.'}
+                    </p>
+                  </div>
+                  <Button
+                    size="sm"
+                    onClick={() => setSearchParams({ tab: 'feedbackfeed', scope: 'team-plus-relevant', withTasks: '1', period: '7d' })}
+                  >
+                    Neue Rückmeldungen
+                  </Button>
                 </div>
-                <Button
-                  size="sm"
-                  onClick={() => setSearchParams({ tab: 'feedbackfeed', scope: 'team-plus-relevant', withTasks: '1', period: '7d' })}
-                >
-                  Neue Rückmeldungen
-                </Button>
-              </div>
-            </Card>
-          </div>
+              </Card>
+            </div>
+          </ErrorBoundary>
         </div>
       )}
 

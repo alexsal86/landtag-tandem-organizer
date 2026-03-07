@@ -21,7 +21,7 @@ import { de } from 'date-fns/locale';
 
 interface AppointmentData {
   id: string;
-  title: string;
+  title: string | null;
   start_time: string;
   end_time?: string;
   is_all_day: boolean;
@@ -298,18 +298,18 @@ export const DashboardGreetingSection = () => {
     const greeting = getGreeting(timeSlot);
     
     // Keyword-Detection für Plenum, Ausschuss, AK
-    const hasPlenum = appointments.some(apt => 
-      apt.title.toLowerCase().includes('plenum')
+    const hasPlenum = appointments.some(apt =>
+      (apt.title || '').toLowerCase().includes('plenum')
     );
     
-    const hasCommittee = appointments.some(apt => 
-      apt.title.toLowerCase().match(/ausschuss|ak\s/i)
+    const hasCommittee = appointments.some(apt =>
+      (apt.title || '').toLowerCase().match(/ausschuss|ak\s/i)
     );
 
     const multipleSessions = (hasPlenum && hasCommittee) || 
-      (appointments.filter(apt => 
-        apt.title.toLowerCase().includes('plenum') || 
-        apt.title.toLowerCase().match(/ausschuss|ak\s/i)
+      (appointments.filter(apt =>
+        (apt.title || '').toLowerCase().includes('plenum') ||
+        (apt.title || '').toLowerCase().match(/ausschuss|ak\s/i)
       ).length >= 2);
     
     // Get contextual message
@@ -496,7 +496,7 @@ export const DashboardGreetingSection = () => {
                   className="w-full rounded-md border px-3 py-2 text-left text-sm hover:bg-muted/50 transition-colors"
                 >
                   <span className="font-medium mr-2">{apt.is_all_day ? 'Ganztägig' : format(new Date(apt.start_time), 'HH:mm', { locale: de })}</span>
-                  <span>{apt.title}</span>
+                  <span>{apt.title || 'Ohne Titel'}</span>
                 </button>
               ))
             )}
