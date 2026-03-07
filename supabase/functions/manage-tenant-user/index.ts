@@ -45,8 +45,9 @@ async function hasPlatformAdminAccess(supabaseAdmin: any, user: any): Promise<bo
   return Boolean(data);
 }
 
+// deno-lint-ignore no-explicit-any
 async function logAdminAction(
-  supabaseAdmin: ReturnType<typeof createClient>,
+  supabaseAdmin: any,
   actorUserId: string,
   actorEmail: string | undefined,
   action: string,

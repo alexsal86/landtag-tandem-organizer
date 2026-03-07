@@ -44,6 +44,7 @@ export const DashboardGreetingSection = () => {
   const [isShowingTomorrow, setIsShowingTomorrow] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [specialDays, setSpecialDays] = useState<SpecialDay[]>(DEFAULT_SPECIAL_DAYS);
+  const [openTaskTitles, setOpenTaskTitles] = useState<{ id: string; title: string }[]>([]);
 
   // Feedback-Reminder: zeitgesteuert + offene Feedbacks
   const feedbackReminderVisible = useMemo(() => {

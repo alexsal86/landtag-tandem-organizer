@@ -816,7 +816,7 @@ export function MyWorkCasesWorkspace() {
     const ok = await applyItemOptimisticUpdate(
       detailItemId,
       (row) => ({ ...row, ...patch, intake_payload: intakePayload }),
-      () => supabase.from("case_items").update(patch).eq("id", detailItemId),
+      () => supabase.from("case_items").update(patch as any).eq("id", detailItemId),
       "Vorgang konnte nicht gespeichert werden.",
     );
     if (!ok) return;
