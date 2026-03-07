@@ -4,6 +4,7 @@ import { useSearchParams, useNavigate } from "react-router-dom";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Card } from "@/components/ui/card";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -11,7 +12,6 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { CheckSquare, Vote, Briefcase, CalendarPlus, Users, StickyNote, Calendar, Clock, Plus, Home, CheckCircle2, MessageSquare } from "lucide-react";
-import { Card } from "@/components/ui/card";
 import { PageHelpButton } from "@/components/shared/PageHelpButton";
 import { MYWORK_HELP_CONTENT } from "@/config/helpContent";
 import { supabase } from "@/integrations/supabase/client";
@@ -20,22 +20,22 @@ import { useTenant } from "@/hooks/useTenant";
 import { useMyWorkSettings } from "@/hooks/useMyWorkSettings";
 import { useMyWorkNewCounts } from "@/hooks/useMyWorkNewCounts";
 import { useAppSettings } from "@/hooks/useAppSettings";
+const MyWorkQuickCapture = lazyWithRetry(() => import("./my-work/MyWorkQuickCapture").then(m => ({ default: m.MyWorkQuickCapture })));
+const MyWorkNotesList = lazyWithRetry(() => import("./my-work/MyWorkNotesList").then(m => ({ default: m.MyWorkNotesList })));
+const MyWorkTasksTab = lazyWithRetry(() => import("./my-work/MyWorkTasksTab").then(m => ({ default: m.MyWorkTasksTab })));
+const MyWorkDecisionsTab = lazyWithRetry(() => import("./my-work/MyWorkDecisionsTab").then(m => ({ default: m.MyWorkDecisionsTab })));
+const MyWorkCasesWorkspace = lazyWithRetry(() => import("./my-work/MyWorkCasesWorkspace").then(m => ({ default: m.MyWorkCasesWorkspace })));
+const MyWorkPlanningsTab = lazyWithRetry(() => import("./my-work/MyWorkPlanningsTab").then(m => ({ default: m.MyWorkPlanningsTab })));
+const MyWorkTeamTab = lazyWithRetry(() => import("./my-work/MyWorkTeamTab").then(m => ({ default: m.MyWorkTeamTab })));
+const MyWorkJourFixeTab = lazyWithRetry(() => import("./my-work/MyWorkJourFixeTab").then(m => ({ default: m.MyWorkJourFixeTab })));
+const MyWorkTimeTrackingTab = lazyWithRetry(() => import("./my-work/MyWorkTimeTrackingTab").then(m => ({ default: m.MyWorkTimeTrackingTab })));
+const MyWorkAppointmentFeedbackTab = lazyWithRetry(() => import("./my-work/MyWorkAppointmentFeedbackTab").then(m => ({ default: m.MyWorkAppointmentFeedbackTab })));
+const MyWorkFeedbackFeedTab = lazyWithRetry(() => import("./my-work/MyWorkFeedbackFeedTab").then(m => ({ default: m.MyWorkFeedbackFeedTab })));
 import { DashboardGreetingSection } from "./dashboard/DashboardGreetingSection";
 import { canViewTab, getRoleFlags, type UserRole } from "@/components/my-work/tabVisibility";
 import { MyWorkTabErrorState } from "@/components/my-work/MyWorkTabErrorState";
 import { NewsWidget } from "./widgets/NewsWidget";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
-const MyWorkQuickCapture = lazyWithRetry(() => import("./my-work/MyWorkQuickCapture").then(m => ({ default: m.MyWorkQuickCapture })));
-const MyWorkNotesList = lazyWithRetry(() => import("./my-work/MyWorkNotesList").then(m => ({ default: m.MyWorkNotesList })));
-const MyWorkDecisionsTab = lazyWithRetry(() => import("./my-work/MyWorkDecisionsTab").then(m => ({ default: m.MyWorkDecisionsTab })));
-const MyWorkCasesWorkspace = lazyWithRetry(() => import("./my-work/MyWorkCasesWorkspace").then(m => ({ default: m.MyWorkCasesWorkspace })));
-const MyWorkPlanningsTab = lazyWithRetry(() => import("./my-work/MyWorkPlanningsTab").then(m => ({ default: m.MyWorkPlanningsTab })));
-const MyWorkTeamTab = lazyWithRetry(() => import("./my-work/MyWorkTeamTab").then(m => ({ default: m.MyWorkTeamTab })));
-const MyWorkTasksTab = lazyWithRetry(() => import("./my-work/MyWorkTasksTab").then(m => ({ default: m.MyWorkTasksTab })));
-const MyWorkJourFixeTab = lazyWithRetry(() => import("./my-work/MyWorkJourFixeTab").then(m => ({ default: m.MyWorkJourFixeTab })));
-const MyWorkTimeTrackingTab = lazyWithRetry(() => import("./my-work/MyWorkTimeTrackingTab").then(m => ({ default: m.MyWorkTimeTrackingTab })));
-const MyWorkAppointmentFeedbackTab = lazyWithRetry(() => import("./my-work/MyWorkAppointmentFeedbackTab").then(m => ({ default: m.MyWorkAppointmentFeedbackTab })));
-const MyWorkFeedbackFeedTab = lazyWithRetry(() => import("./my-work/MyWorkFeedbackFeedTab").then(m => ({ default: m.MyWorkFeedbackFeedTab })));
 
 interface TabCounts {
   tasks: number;
@@ -530,32 +530,28 @@ export function MyWorkView() {
       {/* Tab Content */}
       {activeTab === "dashboard" && (
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          <ErrorBoundary fallback={tabError("Dashboard")}> 
-            <DashboardGreetingSection />
-          </ErrorBoundary>
-          <ErrorBoundary fallback={tabError("News")}> 
-            <div className="space-y-4">
-              <NewsWidget compact />
-              <Card className="p-4">
-                <div className="flex items-center justify-between gap-3">
-                  <div>
-                    <p className="text-sm font-semibold">Rückmeldungen im Fokus</p>
-                    <p className="text-xs text-muted-foreground">
-                      {newCounts.feedbackFeed > 0
-                        ? `${newCounts.feedbackFeed} neue Rückmeldungen warten auf Einordnung.`
-                        : 'Direkt in den Rückmeldungs-Feed mit Aufgabenfokus springen.'}
-                    </p>
-                  </div>
-                  <Button
-                    size="sm"
-                    onClick={() => setSearchParams({ tab: 'feedbackfeed', scope: 'team-plus-relevant', withTasks: '1', period: '7d' })}
-                  >
-                    Neue Rückmeldungen
-                  </Button>
+          <DashboardGreetingSection />
+          <div className="space-y-4">
+            <NewsWidget />
+            <Card className="p-4">
+              <div className="flex items-center justify-between gap-3">
+                <div>
+                  <p className="text-sm font-semibold">Rückmeldungen im Fokus</p>
+                  <p className="text-xs text-muted-foreground">
+                    {newCounts.feedbackFeed > 0
+                      ? `${newCounts.feedbackFeed} neue Rückmeldungen warten auf Einordnung.`
+                      : 'Direkt in den Rückmeldungs-Feed mit Aufgabenfokus springen.'}
+                  </p>
                 </div>
-              </Card>
-            </div>
-          </ErrorBoundary>
+                <Button
+                  size="sm"
+                  onClick={() => setSearchParams({ tab: 'feedbackfeed', scope: 'team-plus-relevant', withTasks: '1', period: '7d' })}
+                >
+                  Neue Rückmeldungen
+                </Button>
+              </div>
+            </Card>
+          </div>
         </div>
       )}
 

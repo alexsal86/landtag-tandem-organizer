@@ -44,12 +44,11 @@ function parseDeviceInfo(ua: string | null): { icon: typeof Monitor; label: stri
 }
 
 export function ActiveSessionsCard() {
-  const { user, signOut } = useAuth();
+  const { user } = useAuth();
   const { toast } = useToast();
   const [sessions, setSessions] = useState<UserSession[]>([]);
   const [loading, setLoading] = useState(true);
   const [loggingOut, setLoggingOut] = useState(false);
-  const [loggingOutSessionId, setLoggingOutSessionId] = useState<string | null>(null);
 
   const loadSessions = async () => {
     if (!user?.id) return;
@@ -72,45 +71,6 @@ export function ActiveSessionsCard() {
   useEffect(() => {
     loadSessions();
   }, [user?.id]);
-
-  const handleLogoutSession = async (targetSession: UserSession) => {
-    if (!user?.id) return;
-
-    setLoggingOutSessionId(targetSession.id);
-    try {
-      const { error } = await supabase
-        .from('user_sessions' as any)
-        .delete()
-        .eq('id', targetSession.id)
-        .eq('user_id', user.id);
-
-      if (error) throw error;
-
-      if (targetSession.is_current) {
-        toast({
-          title: "Aktuelle Sitzung wird beendet",
-          description: "Sie werden jetzt von diesem Gerät abgemeldet.",
-        });
-        await signOut();
-        return;
-      }
-
-      toast({
-        title: "Sitzung entfernt",
-        description: "Die ausgewählte Sitzung wurde aus der Liste aktiver Sitzungen entfernt.",
-      });
-
-      await loadSessions();
-    } catch (error: any) {
-      toast({
-        title: "Fehler",
-        description: "Sitzung konnte nicht abgemeldet werden: " + (error.message || "Unbekannter Fehler"),
-        variant: "destructive",
-      });
-    } finally {
-      setLoggingOutSessionId(null);
-    }
-  };
 
   const handleLogoutAll = async () => {
     setLoggingOut(true);
@@ -205,19 +165,6 @@ export function ActiveSessionsCard() {
                     Angemeldet: {format(new Date(session.created_at), "dd.MM.yyyy HH:mm", { locale: de })}
                   </p>
                 </div>
-                <Button
-                  variant={session.is_current ? "destructive" : "outline"}
-                  size="sm"
-                  onClick={() => handleLogoutSession(session)}
-                  disabled={loggingOutSessionId === session.id || loggingOut}
-                >
-                  <LogOut className="h-3.5 w-3.5 mr-1" />
-                  {loggingOutSessionId === session.id
-                    ? "Abmelden..."
-                    : session.is_current
-                      ? "Diese Sitzung beenden"
-                      : "Sitzung abmelden"}
-                </Button>
               </div>
             );
           })

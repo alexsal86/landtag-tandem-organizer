@@ -23,8 +23,7 @@ function generatePassword(): string {
   return password;
 }
 
-// deno-lint-ignore no-explicit-any
-async function hasPlatformAdminAccess(supabaseAdmin: any, user: any): Promise<boolean> {
+async function hasPlatformAdminAccess(supabaseAdmin: ReturnType<typeof createClient>, user: any): Promise<boolean> {
   const claimRoles = user?.app_metadata?.platform_roles;
   if (Array.isArray(claimRoles) && claimRoles.includes('platform_admin')) {
     return true;
@@ -45,9 +44,8 @@ async function hasPlatformAdminAccess(supabaseAdmin: any, user: any): Promise<bo
   return Boolean(data);
 }
 
-// deno-lint-ignore no-explicit-any
 async function logAdminAction(
-  supabaseAdmin: any,
+  supabaseAdmin: ReturnType<typeof createClient>,
   actorUserId: string,
   actorEmail: string | undefined,
   action: string,

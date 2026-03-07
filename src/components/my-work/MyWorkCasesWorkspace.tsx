@@ -465,7 +465,7 @@ export function MyWorkCasesWorkspace() {
     await applyItemOptimisticUpdate(
       item.id,
       (row) => ({ ...row, owner_user_id: ownerUserId, intake_payload: payload }),
-      () => supabase.from("case_items").update({ owner_user_id: ownerUserId, intake_payload: payload as any }).eq("id", item.id),
+      () => supabase.from("case_items").update({ owner_user_id: ownerUserId, intake_payload: payload }).eq("id", item.id),
       "Zuweisung konnte nicht gespeichert werden.",
     );
   };
@@ -816,7 +816,7 @@ export function MyWorkCasesWorkspace() {
     const ok = await applyItemOptimisticUpdate(
       detailItemId,
       (row) => ({ ...row, ...patch, intake_payload: intakePayload }),
-      () => supabase.from("case_items").update(patch as any).eq("id", detailItemId),
+      () => supabase.from("case_items").update(patch).eq("id", detailItemId),
       "Vorgang konnte nicht gespeichert werden.",
     );
     if (!ok) return;

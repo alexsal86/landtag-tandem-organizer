@@ -88,7 +88,7 @@ async function logMatrixEvent(
   supabaseAdmin: any,
   payload: MatrixLogPayload,
 ) {
-  const { error } = await supabaseAdmin.from("matrix_bot_logs").insert({
+  const { error } = await (supabaseAdmin as ReturnType<typeof createClient>).from("matrix_bot_logs").insert({
     event_type: payload.event_type,
     user_id: payload.user_id ?? null,
     room_id: payload.room_id ?? null,
@@ -131,7 +131,7 @@ async function isMatrixEnabledForUser(
   }
 
   const enabled = (data ?? []).some(
-    (row: any) => row.matrix_enabled === true && row.is_enabled !== false,
+    (row) => row.matrix_enabled === true && row.is_enabled !== false,
   );
   cache.set(userId, enabled);
   return enabled;
