@@ -1,6 +1,6 @@
 import { useEffect, useState, useMemo } from 'react';
 import { GripVertical, CheckSquare, StickyNote, Briefcase, Vote } from 'lucide-react';
-import { format, isToday, isThisWeek, isAfter, startOfDay, endOfWeek } from 'date-fns';
+import { format, isToday, isAfter, isBefore, startOfDay, endOfWeek } from 'date-fns';
 import { de } from 'date-fns/locale';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
