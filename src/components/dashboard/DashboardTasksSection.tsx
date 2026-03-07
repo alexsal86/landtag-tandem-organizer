@@ -1,6 +1,6 @@
 import { useEffect, useState, useMemo } from 'react';
 import { GripVertical, CheckSquare, StickyNote, Briefcase, Vote } from 'lucide-react';
-import { format, isToday, isThisWeek, isAfter, startOfDay, endOfWeek } from 'date-fns';
+import { format, isToday, isAfter, isBefore, startOfDay, endOfWeek } from 'date-fns';
 import { de } from 'date-fns/locale';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
@@ -92,19 +92,22 @@ export const DashboardTasksSection = () => {
   }, [user, currentTenant]);
 
   const grouped = useMemo(() => {
+    const overdue: DeadlineItem[] = [];
     const today: DeadlineItem[] = [];
     const thisWeek: DeadlineItem[] = [];
     const later: DeadlineItem[] = [];
     const now = new Date();
+    const todayStart = startOfDay(now);
     const weekEnd = endOfWeek(now, { weekStartsOn: 1 });
 
     for (const item of items) {
       const d = new Date(item.dueDate);
-      if (isToday(d)) today.push(item);
-      else if (isAfter(d, startOfDay(now)) && !isAfter(d, weekEnd)) thisWeek.push(item);
+      if (isBefore(d, todayStart)) overdue.push(item);
+      else if (isToday(d)) today.push(item);
+      else if (!isAfter(d, weekEnd)) thisWeek.push(item);
       else later.push(item);
     }
-    return { today, thisWeek, later };
+    return { overdue, today, thisWeek, later };
   }, [items]);
 
   const renderItem = (item: DeadlineItem) => {
@@ -134,11 +137,11 @@ export const DashboardTasksSection = () => {
     );
   };
 
-  const renderGroup = (label: string, groupItems: DeadlineItem[]) => {
+  const renderGroup = (label: string, groupItems: DeadlineItem[], headerClass?: string) => {
     if (groupItems.length === 0) return null;
     return (
       <div key={label}>
-        <h4 className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-1">{label}</h4>
+        <h4 className={`text-xs font-medium uppercase tracking-wide mb-1 ${headerClass || 'text-muted-foreground'}`}>{label}</h4>
         <div className="space-y-0.5">{groupItems.map(renderItem)}</div>
       </div>
     );
@@ -153,6 +156,7 @@ export const DashboardTasksSection = () => {
         <p className="text-sm text-muted-foreground">Keine offenen Fristen.</p>
       ) : (
         <div className="space-y-4">
+          {renderGroup('Überfällig', grouped.overdue, 'text-destructive')}
           {renderGroup('Heute', grouped.today)}
           {renderGroup('Diese Woche', grouped.thisWeek)}
           {renderGroup('Später', grouped.later)}
