@@ -477,7 +477,7 @@ export function EmployeeMeetingProtocol({ meetingId, onBack }: EmployeeMeetingPr
       );
 
       toast({ title: "Anfrage gesendet", description: "Umterminierungsanfrage wurde an den Vorgesetzten gesendet" });
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Error requesting reschedule:", error);
       toast({ title: "Fehler", description: "Anfrage konnte nicht gesendet werden", variant: "destructive" });
     }
