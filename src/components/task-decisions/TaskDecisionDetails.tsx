@@ -334,7 +334,7 @@ export const TaskDecisionDetails = ({ decisionId, isOpen, onClose, onArchived, h
       setCreatorResponses(prev => ({ ...prev, [responseId]: '' }));
       loadDecisionDetails();
     } catch (error) {
-      console.error('Error sending creator response:', error);
+      debugConsole.error('Error sending creator response:', error);
       toast({
         title: "Fehler",
         description: "Antwort konnte nicht gesendet werden.",
