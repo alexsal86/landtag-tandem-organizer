@@ -139,7 +139,7 @@ export function RSSSourceManager() {
 
     if (error) {
       toast.error("Fehler beim Aktualisieren des Status");
-      console.error(error);
+      debugConsole.error(error);
     } else {
       toast.success(source.is_active ? "Quelle deaktiviert" : "Quelle aktiviert");
       loadSources();
