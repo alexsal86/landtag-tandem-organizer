@@ -3,11 +3,11 @@ export interface DocumentFolder {
   user_id: string;
   tenant_id: string;
   name: string;
-  description?: string;
-  parent_folder_id?: string;
-  color: string;
-  icon: string;
-  order_index: number;
+  description?: string | null;
+  parent_folder_id?: string | null;
+  color: string | null;
+  icon: string | null;
+  order_index: number | null;
   created_at: string;
   updated_at: string;
   documentCount?: number;
