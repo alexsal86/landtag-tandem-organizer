@@ -62,7 +62,7 @@ export class CalendarEventAdapter {
       endTime = new Date(startTime.getTime() + 60 * 60 * 1000); // Fallback to 1h later
     }
 
-    console.log('✅ Converted dates - start:', startTime, 'end:', endTime);
+    debugConsole.log('✅ Converted dates - start:', startTime, 'end:', endTime);
 
     return {
       id: event.id,
