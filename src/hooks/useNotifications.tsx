@@ -403,7 +403,7 @@ export const useNotifications = () => {
           });
 
         if (error) {
-          console.error('❌ Database error:', error);
+          debugConsole.error('❌ Database error:', error);
           throw error;
         }
 
