@@ -313,9 +313,9 @@ export function AnnualTasksView() {
         loadTasks();
       }, result ? 2000 : 500);
 
-    } catch (error: any) {
+    } catch (error: unknown) {
       debugConsole.error("Error completing task:", error);
-      toast({ title: "Fehler", description: error.message, variant: "destructive" });
+      toast({ title: "Fehler", description: error instanceof Error ? error.message : String(error), variant: "destructive" });
     } finally {
       setCompleting(false);
     }
