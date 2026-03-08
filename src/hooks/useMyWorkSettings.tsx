@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from './useAuth';
+import { debugConsole } from '@/utils/debugConsole';
 
 export type BadgeDisplayMode = 'new' | 'total';
 export type DecisionTabId = 'for-me' | 'answered' | 'my-decisions' | 'public';
