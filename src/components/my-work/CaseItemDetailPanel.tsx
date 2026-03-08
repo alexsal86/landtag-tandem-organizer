@@ -176,6 +176,10 @@ export function CaseItemDetailPanel({
     setShowSearchResults(false);
   };
 
+  const handleClearContact = () => {
+    onContactSelected(null);
+  };
+
   const formatDecisionDate = (value: string | null | undefined) => {
     if (!value) return "–";
     const parsed = new Date(value);
