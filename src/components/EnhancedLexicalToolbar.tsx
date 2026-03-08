@@ -501,37 +501,19 @@ export const EnhancedLexicalToolbar: React.FC<EnhancedLexicalToolbarProps> = ({
           <Mic className="h-4 w-4" />
         </Button>
 
-        <TooltipProvider>
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <Button
-                variant="ghost"
-                size="sm"
-                className="h-8 w-8 p-0 text-muted-foreground"
-                aria-label="Sprachbefehle anzeigen"
-                onMouseDown={(event) => event.preventDefault()}
-              >
-                <CircleHelp className="h-4 w-4" />
-              </Button>
-            </TooltipTrigger>
-            <TooltipContent side="bottom" align="start" className="max-w-[320px]">
-              <div className="space-y-2 text-xs">
-                <p className="font-medium">Push-to-talk</p>
-                <p>Halte den Mikrofon-Button oder <span className="font-medium">Strg + Shift + M</span>, um zu sprechen.</p>
-                <p className="font-medium">Sprachbefehle</p>
-                <ul className="list-disc pl-4 space-y-1">
-                  {SPEECH_COMMAND_HINTS.map((commandHint) => (
-                    <li key={commandHint}>{commandHint}</li>
-                  ))}
-                </ul>
-              </div>
-            </TooltipContent>
-          </Tooltip>
-        </TooltipProvider>
+        <SpeechCommandsDialog />
+
+        {lastRecognizedCommand && (
+          <span className="text-xs font-medium text-primary bg-primary/10 rounded px-1.5 py-0.5 animate-in fade-in-0 zoom-in-95">
+            ✓ {lastRecognizedCommand}
+          </span>
+        )}
 
         {speechState === 'listening' && (
           <span className="text-xs text-primary">Aufnahme läuft…</span>
         )}
+
+        <SpeechSessionStats sessionStartTime={sessionStartTime} wordCount={sessionWordCount} isListening={isListening} />
 
         {speechState === 'listening' && interimTranscript && (
           <span className="text-xs text-muted-foreground italic" title="Live-Erkennung">
