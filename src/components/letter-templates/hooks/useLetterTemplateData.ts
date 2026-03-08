@@ -84,7 +84,7 @@ export function useLetterTemplateData() {
       const { data, error } = await supabase.from('information_blocks').select('id, name, label, is_default').eq('tenant_id', currentTenant.id).eq('is_active', true).order('is_default', { ascending: false });
       if (error) throw error;
       setInfoBlocks(data || []);
-    } catch (error) { console.error('Error fetching info blocks:', error); }
+    } catch (error) { debugConsole.error('Error fetching info blocks:', error); }
   };
 
   const stripBlobUrls = (elements: any): any => {
