@@ -1,5 +1,6 @@
 import '@/styles/lexical-editor.css';
 import React, { useCallback, useMemo, useRef } from 'react';
+import { debugConsole } from '@/utils/debugConsole';
 import { createPortal } from 'react-dom';
 import { $getRoot, EditorState, $createParagraphNode, $createTextNode } from 'lexical';
 import { $generateHtmlFromNodes } from '@lexical/html';
