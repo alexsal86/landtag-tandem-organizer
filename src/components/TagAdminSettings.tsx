@@ -302,7 +302,7 @@ export function TagAdminSettings() {
                                 />
                               ) : (
                                 (() => {
-                                  const Icon = getIconComponent(tag.icon);
+                                  const Icon = getIconComponent(tag.icon ?? undefined);
                                   return Icon ? (
                                     <div className="flex items-center justify-center w-8 h-8">
                                       <Icon className="h-4 w-4" />
