@@ -53,7 +53,7 @@ export function PendingJourFixeCaseItems({ className }: PendingJourFixeCaseItems
         .order('created_at', { ascending: false });
 
       if (error) throw error;
-      setItems((data || []) as PendingCaseItem[]);
+      setItems((data || []) as unknown as PendingCaseItem[]);
     } catch (error) {
       console.error('Error loading pending case items:', error);
     } finally {
