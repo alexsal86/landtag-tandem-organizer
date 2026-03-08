@@ -70,6 +70,8 @@ export function TaskListRow({
   followUpDate,
   commentCount = 0,
   depth = 0,
+  className,
+  highlightRef,
   onComplete,
   onSubtaskComplete,
   onNavigate,
