@@ -184,7 +184,7 @@ export const useInfiniteContacts = ({
       const { data, error, count } = await query;
 
       if (error) {
-        console.error('Supabase query error:', error);
+        debugConsole.error('Supabase query error:', error);
         throw error;
       }
 
