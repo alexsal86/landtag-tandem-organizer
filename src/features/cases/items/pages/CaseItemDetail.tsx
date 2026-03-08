@@ -34,7 +34,7 @@ type CaseScale = "small" | "large";
 type CaseItemRecord = {
   id: string;
   source_channel: "phone" | "email" | "social" | "in_person" | "other";
-  status: "neu" | "in_klaerung" | "antwort_ausstehend" | "erledigt";
+  status: "neu" | "in_klaerung" | "antwort_ausstehend" | "erledigt" | "archiviert";
   owner_user_id: string | null;
   due_at: string | null;
   follow_up_at: string | null;
