@@ -109,14 +109,14 @@ export function RSSSourceManager() {
         const maxOrder = sources.reduce((max, s) => Math.max(max, s.order_index), -1);
         const { error } = await supabase
           .from("rss_sources")
-          .insert({
+          .insert([{
             tenant_id: currentTenant.id,
             name: data.name,
             url: data.url,
             category: data.category,
             order_index: maxOrder + 1,
             created_by: user.id,
-          });
+          }]);
 
         if (error) throw error;
         toast.success("RSS-Quelle hinzugefügt");

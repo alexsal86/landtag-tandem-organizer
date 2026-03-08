@@ -63,7 +63,7 @@ export function FundingDialog({ open, onOpenChange, initialContactId }: FundingD
       // Create funding
       const { data: funding, error: fundingError } = await supabase
         .from('fundings')
-        .insert({
+        .insert([{
           tenant_id: currentTenant.id,
           created_by: user.id,
           title: data.title,
@@ -74,7 +74,7 @@ export function FundingDialog({ open, onOpenChange, initialContactId }: FundingD
           status: data.status,
           funding_source: data.funding_source,
           category: data.category,
-        })
+        }])
         .select()
         .single();
 

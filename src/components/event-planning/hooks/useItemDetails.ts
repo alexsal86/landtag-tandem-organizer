@@ -76,7 +76,7 @@ export function useItemDetails({
   const addItemComment = async () => {
     if (!newComment.trim() || !selectedItemId || !user) return;
     try {
-      const { error } = await supabase.from('planning_item_comments').insert({ planning_item_id: selectedItemId, user_id: user.id, content: newComment.trim() });
+      const { error } = await supabase.from('planning_item_comments').insert([{ planning_item_id: selectedItemId, user_id: user.id, content: newComment.trim() }]);
       if (error) throw error;
       setNewComment('');
       loadItemComments(selectedItemId);
@@ -88,7 +88,7 @@ export function useItemDetails({
   const addItemCommentForItem = async (itemId: string, comment: string) => {
     if (!comment.trim() || !user) return;
     try {
-      const { error } = await supabase.from('planning_item_comments').insert({ planning_item_id: itemId, user_id: user.id, content: comment.trim() });
+      const { error } = await supabase.from('planning_item_comments').insert([{ planning_item_id: itemId, user_id: user.id, content: comment.trim() }]);
       if (error) throw error;
       loadItemComments(itemId);
       loadAllItemCounts();
@@ -106,7 +106,7 @@ export function useItemDetails({
     try {
       const currentSubtasks = itemSubtasks[planningItemId] || [];
       const nextOrderIndex = Math.max(...currentSubtasks.map(s => s.order_index), -1) + 1;
-      const { error } = await supabase.from('planning_item_subtasks').insert({ planning_item_id: planningItemId, user_id: user.id, description: desc, assigned_to: assigned === 'unassigned' ? null : assigned, due_date: due || null, order_index: nextOrderIndex });
+      const { error } = await supabase.from('planning_item_subtasks').insert([{ planning_item_id: planningItemId, user_id: user.id, description: desc, assigned_to: assigned === 'unassigned' ? null : assigned, due_date: due || null, order_index: nextOrderIndex }]);
       if (error) throw error;
       setNewSubtask({ description: '', assigned_to: 'unassigned', due_date: '' });
       loadItemSubtasks(planningItemId);
@@ -161,7 +161,7 @@ export function useItemDetails({
       const filePath = `${currentTenantId}/planning-items/${itemId}/${fileName}`;
       const { error: uploadError } = await supabase.storage.from('planning-documents').upload(filePath, file);
       if (uploadError) throw uploadError;
-      const { error: dbError } = await supabase.from('planning_item_documents').insert({ planning_item_id: itemId, user_id: user.id, tenant_id: currentTenantId, file_name: file.name, file_path: filePath, file_size: file.size, file_type: file.type });
+      const { error: dbError } = await supabase.from('planning_item_documents').insert([{ planning_item_id: itemId, user_id: user.id, tenant_id: currentTenantId, file_name: file.name, file_path: filePath, file_size: file.size, file_type: file.type }]);
       if (dbError) throw dbError;
       loadItemDocuments(itemId);
       loadAllItemCounts();

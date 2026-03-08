@@ -150,7 +150,7 @@ export function MyWorkTasksTab() {
 
       await supabase
         .from('archived_tasks')
-        .insert({
+        .insert([{
           task_id: taskId,
           user_id: user.id,
           title: task.title,
@@ -162,7 +162,7 @@ export function MyWorkTasksTab() {
           due_date: task.due_date,
           completed_at: new Date().toISOString(),
           auto_delete_after_days: null,
-        });
+        }]);
 
       await supabase.from('tasks').delete().eq('id', taskId);
       
@@ -321,11 +321,11 @@ export function MyWorkTasksTab() {
         // Create new snooze
         const { error } = await supabase
           .from('task_snoozes')
-          .insert({
+          .insert([{
             user_id: user.id,
             task_id: snoozeTaskId,
             snoozed_until: date.toISOString()
-          });
+          }]);
         if (error) throw error;
       }
       
@@ -528,7 +528,7 @@ export function MyWorkTasksTab() {
     try {
       const { data, error } = await supabase
         .from("tasks")
-        .insert({
+        .insert([{
           user_id: user.id,
           tenant_id: parentTask.tenant_id,
           parent_task_id: parentTaskId,
@@ -538,7 +538,7 @@ export function MyWorkTasksTab() {
           priority: "medium",
           category: parentTask.category || "personal",
           assigned_to: user.id,
-        })
+        }])
         .select("id, title, description, priority, status, due_date, assigned_to, user_id, created_at, category, meeting_id, pending_for_jour_fixe, parent_task_id, tenant_id")
         .single();
 
