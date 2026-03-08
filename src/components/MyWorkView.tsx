@@ -244,7 +244,7 @@ export function MyWorkView() {
       });
       setRealtimeStatus("connected");
     } catch (error) {
-      console.error("Error loading counts:", error);
+      debugConsole.error("Error loading counts:", error);
       setCountLoadError("Counts konnten nicht aktualisiert werden.");
       setRealtimeStatus("degraded");
     } finally {

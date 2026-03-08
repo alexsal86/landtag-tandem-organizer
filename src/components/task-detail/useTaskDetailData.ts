@@ -170,7 +170,7 @@ export function useTaskDetailData(task: Task | null) {
         setSaving(false);
         return;
       }
-      console.error("Error saving task:", error);
+      debugConsole.error("Error saving task:", error);
       toast({ title: "Fehler", description: "Aufgabe konnte nicht gespeichert werden.", variant: "destructive" });
     } finally {
       setSaving(false);

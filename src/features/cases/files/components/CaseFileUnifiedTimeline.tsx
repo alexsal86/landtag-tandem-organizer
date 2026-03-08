@@ -109,7 +109,7 @@ export function CaseFileUnifiedTimeline({
         }
       }
     } catch (error) {
-      console.error('Error opening document:', error);
+      debugConsole.error('Error opening document:', error);
     }
   };
 

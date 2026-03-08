@@ -124,7 +124,7 @@ export function useDaySlipStore(userId?: string, tenantId?: string) {
 
         dbLoadedRef.current = true;
       } catch (e) {
-        console.error("useDaySlipStore: DB load error", e);
+        debugConsole.error("useDaySlipStore: DB load error", e);
       }
     };
 

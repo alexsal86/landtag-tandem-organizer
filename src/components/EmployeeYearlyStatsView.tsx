@@ -106,7 +106,7 @@ export function EmployeeYearlyStatsView({ isOpen, onClose }: EmployeeYearlyStats
 
       setStats(enrichedStats);
     } catch (error) {
-      console.error("Error loading stats:", error);
+      debugConsole.error("Error loading stats:", error);
     } finally {
       setLoading(false);
     }

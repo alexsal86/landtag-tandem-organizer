@@ -89,7 +89,7 @@ export function DecisionResponseSummary({
 
       setSummary(result);
     } catch (error) {
-      console.error('Error loading decision summary:', error);
+      debugConsole.error('Error loading decision summary:', error);
     } finally {
       setLoading(false);
     }

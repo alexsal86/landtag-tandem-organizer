@@ -189,7 +189,7 @@ export function ImageCropper({ imageSrc, onCropComplete, onCancel, open }: Image
         0.9
       );
     } catch (error) {
-      console.error("Error cropping image:", error);
+      debugConsole.error("Error cropping image:", error);
       setIsProcessing(false);
     }
   }, [image, zoom, position, onCropComplete]);

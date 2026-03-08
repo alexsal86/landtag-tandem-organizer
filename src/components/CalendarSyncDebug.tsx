@@ -68,7 +68,7 @@ export function CalendarSyncDebug() {
         validateCalendar();
       }, 2000);
     } catch (error) {
-      console.error('Force resync error:', error);
+      debugConsole.error('Force resync error:', error);
       toast.error('Fehler beim Neuaufbau: ' + (error as Error).message);
     } finally {
       setSyncLoading(false);

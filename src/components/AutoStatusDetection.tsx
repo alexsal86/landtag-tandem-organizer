@@ -82,7 +82,7 @@ export const AutoStatusDetection: React.FC = () => {
 
       return false;
     } catch (error) {
-      console.error('Error detecting meeting:', error);
+      debugConsole.error('Error detecting meeting:', error);
       return false;
     }
   };

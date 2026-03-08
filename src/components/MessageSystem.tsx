@@ -244,7 +244,7 @@ export function MessageSystem() {
 
       fetchMessages();
     } catch (error) {
-      console.error('Error marking message as read:', error);
+      debugConsole.error('Error marking message as read:', error);
       toast({
         title: "Fehler",
         description: "Die Nachricht konnte nicht als gelesen markiert werden.",

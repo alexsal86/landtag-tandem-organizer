@@ -675,7 +675,7 @@ export function AdminTimeTrackingView() {
       setTimeout(() => loadMonthData(), 500);
       
     } catch (error: unknown) {
-      console.error("Type change error:", error);
+      debugConsole.error("Type change error:", error);
       const msg = error instanceof Error ? error.message : '';
       toast.error(msg || "Fehler bei der Typänderung");
       // On network errors, still reload data to verify

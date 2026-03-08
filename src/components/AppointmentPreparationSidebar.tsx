@@ -340,7 +340,7 @@ export default function AppointmentPreparationSidebar({
         description: 'PDF wurde erfolgreich erstellt und heruntergeladen.',
       });
     } catch (error) {
-      console.error('Error generating PDF:', error);
+      debugConsole.error('Error generating PDF:', error);
       toast({
         title: 'Fehler',
         description: 'PDF konnte nicht erstellt werden.',
