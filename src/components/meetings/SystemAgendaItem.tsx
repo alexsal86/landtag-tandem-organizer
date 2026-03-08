@@ -89,6 +89,7 @@ export function SystemAgendaItem({
   linkedQuickNotes = [],
   linkedTasks = [],
   linkedDecisions = [],
+  linkedCaseItems = [],
   profiles,
   resultText,
   onUpdateNoteResult,
