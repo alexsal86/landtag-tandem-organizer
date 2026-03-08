@@ -189,7 +189,6 @@ export function useDashboardLayout() {
 
     try {
       setLoading(true);
-      console.log('🔄 Loading dashboard layout from database...', { userId: user.id, tenantId: currentTenant.id });
       
       const { data, error } = await supabase
         .from('team_dashboards')
