@@ -324,9 +324,7 @@ export function AutomationRulesManager() {
     }
 
     setSaving(true);
-    const conditionsPayload = form.conditionLogic === "any"
-      ? { any: form.conditions.map((c) => ({ field: c.field, operator: c.operator, value: c.value })) }
-      : { all: form.conditions.map((c) => ({ field: c.field, operator: c.operator, value: c.value })) };
+    const conditionsPayload = serializeConditionGroup(form.conditionGroup);
 
     const payload = {
       tenant_id: currentTenant.id,
