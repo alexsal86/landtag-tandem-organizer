@@ -177,7 +177,7 @@ export const TaskDecisionResponse = ({
           });
 
         if (error) {
-          console.error('Error inserting response:', error);
+          debugConsole.error('Error inserting response:', error);
           throw new Error('Antwort konnte nicht gespeichert werden');
         }
       }
