@@ -235,6 +235,7 @@ export function MeetingsView() {
           loadAgendaItems(nextMeeting.id);
           loadLinkedQuickNotes(nextMeeting.id);
           loadMeetingLinkedTasks(nextMeeting.id);
+          loadMeetingLinkedCaseItems(nextMeeting.id);
           loadMeetingRelevantDecisions();
           loadMeetingUpcomingAppointments(nextMeeting.id, nextMeeting.meeting_date);
           loadStarredAppointments(nextMeeting.id);
