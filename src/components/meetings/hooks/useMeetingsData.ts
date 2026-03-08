@@ -117,9 +117,9 @@ export function useMeetingsData() {
     }
   }, [user, currentTenant?.id]);
 
-  // Auto-select next upcoming meeting
+  // Auto-select next upcoming meeting (skip if URL deep-link is present)
   useEffect(() => {
-    if (meetings.length > 0 && !selectedMeeting && !activeMeeting) {
+    if (meetings.length > 0 && !selectedMeeting && !activeMeeting && !searchParams.get('id')) {
       const now = new Date();
       const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate());
       const nextMeeting = meetings
