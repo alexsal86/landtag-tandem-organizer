@@ -212,7 +212,7 @@ export function useEventPlanningData() {
       clearTimeout(timeoutId);
 
       if (error) {
-        console.error('Error fetching plannings:', error);
+        debugConsole.error('Error fetching plannings:', error);
         toast({ title: "Fehler", description: `Planungen konnten nicht geladen werden: ${error.message}`, variant: "destructive" });
         return;
       }
