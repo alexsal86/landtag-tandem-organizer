@@ -68,7 +68,7 @@ export function TaskMeetingSelector({
         .eq('user_id', user.id);
 
       if (participantError) {
-        console.error('Error loading participant meetings:', participantError);
+        debugConsole.error('Error loading participant meetings:', participantError);
       }
 
       // Combine and deduplicate
