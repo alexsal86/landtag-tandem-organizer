@@ -225,7 +225,7 @@ export function getJSONProtocolPreview(jsonData: JSONProtocolStructure): {
   const parties = Array.from(new Set(
     jsonData.speeches
       .map(s => s.party)
-      .filter(Boolean)
+      .filter((p): p is string => Boolean(p))
   ));
 
   const sessionInfo = `Sitzung ${jsonData.session.number || 'unbekannt'} (${jsonData.session.legislative_period || '17'}. Wahlperiode)`;
