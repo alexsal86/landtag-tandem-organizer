@@ -1,39 +1,19 @@
 
+## Benachrichtigungen & Badges für Vorgänge — Umgesetzt
 
-# Paket E: User-Picker statt UUID-Eingabe
+### Was wurde gemacht:
 
-## Problem
-Im Wizard-Step 4 gibt es drei UUID-Eingabefelder:
-- **Ziel-User-ID** (Zeile 524) — für Notifications/Push
-- **Assigned_to** (Zeile 646) — für Task-Erstellung
-- **Record-ID** (Zeile 571) — bleibt UUID (kein User)
+1. **DB: Neue `notification_types` für Kategorie `cases`** (alle 3 Tenants)
+   - `case_item_created`, `case_item_assigned`, `case_item_status_changed`, `case_item_comment`
 
-Nutzer müssen aktuell UUIDs manuell eintippen — das ist fehleranfällig und unpraktisch.
+2. **DB: `notification_navigation_mapping`** — alle 4 Typen auf `navigation_context = 'mywork'` gemappt, damit Sidebar-Badge korrekt zählt.
 
-## Lösung
-Einen wiederverwendbaren `TenantUserSelect`-Combobox erstellen, der Tenant-Mitglieder lädt und als Dropdown anzeigt.
+3. **UI: `NotificationSettings.tsx`** — Kategorie `cases` / "Vorgänge" mit Icon 📋 eingefügt (Order 3).
 
-## Umsetzung
+4. **Code: `useCaseItems.tsx`** — `create_notification` RPC-Aufrufe bei:
+   - Vorgang erstellen → Benachrichtigung an zugewiesenen Owner
+   - Status-Änderung → Benachrichtigung an Ersteller + Owner
+   - Zuweisung-Änderung → Benachrichtigung an neuen Owner
+   - Kommentar/Interaktion → Benachrichtigung an Ersteller + Owner
 
-### 1. Neuer Hook: `useTenantUsers.ts`
-- Lädt `user_tenant_memberships` für aktuellen Tenant (Pattern aus `useMeetingsData.ts`)
-- Dann `profiles` für die gefundenen `user_id`s
-- Gibt `{ users: Array<{ id, display_name, avatar_url }>, loading }` zurück
-
-### 2. Neue Komponente: `TenantUserSelect.tsx`
-- Combobox (cmdk ist bereits installiert) mit Suche
-- Props: `value`, `onValueChange`, `placeholder`, `label`
-- Zeigt `display_name` + Avatar, speichert `user_id`
-
-### 3. Wizard anpassen
-- Zeile 522-528: `Input` für `actionTargetUserId` → `TenantUserSelect`
-- Zeile 644-649: `Input` für `actionTaskAssignees` → `TenantUserSelect`
-- Validierung bleibt gleich (prüft auf nicht-leeren String)
-
-### Dateien
-| Datei | Änderung |
-|-------|----------|
-| `src/hooks/useTenantUsers.ts` | Neu — Hook zum Laden der Tenant-Nutzer |
-| `src/components/administration/TenantUserSelect.tsx` | Neu — Combobox-Komponente |
-| `src/components/administration/AutomationRuleWizard.tsx` | 2 Input-Felder durch TenantUserSelect ersetzen |
-
+5. **Badge-System**: Sidebar-Badge für "Meine Arbeit" zählt nun auch Vorgang-Benachrichtigungen (via `navigation_context = 'mywork'` Trigger). Interne Tab-Badges bleiben über `useMyWorkNewCounts` (Zeitstempel-basiert).

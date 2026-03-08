@@ -1,4 +1,5 @@
 import { useMemo, useState } from "react";
+import { TenantUserSelect } from "./TenantUserSelect";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -520,11 +521,11 @@ export function AutomationRuleWizard({
             {isNotificationAction && (
               <div className="space-y-4">
                 <div className="space-y-2">
-                  <Label>Ziel-User-ID *</Label>
-                  <Input
+                  <Label>Empfänger:in *</Label>
+                  <TenantUserSelect
                     value={form.actionTargetUserId}
-                    onChange={(e) => setForm((prev) => ({ ...prev, actionTargetUserId: e.target.value }))}
-                    placeholder="UUID der Empfänger:in"
+                    onValueChange={(v) => setForm((prev) => ({ ...prev, actionTargetUserId: v }))}
+                    placeholder="Empfänger:in auswählen…"
                   />
                 </div>
                 <div className="space-y-2">
@@ -641,11 +642,11 @@ export function AutomationRuleWizard({
                     />
                   </div>
                   <div className="space-y-2">
-                    <Label>Assigned_to</Label>
-                    <Input
+                    <Label>Zuweisen an</Label>
+                    <TenantUserSelect
                       value={form.actionTaskAssignees}
-                      onChange={(e) => setForm((prev) => ({ ...prev, actionTaskAssignees: e.target.value }))}
-                      placeholder="UUID, UUID"
+                      onValueChange={(v) => setForm((prev) => ({ ...prev, actionTaskAssignees: v }))}
+                      placeholder="Nutzer:in zuweisen…"
                     />
                   </div>
                 </div>
