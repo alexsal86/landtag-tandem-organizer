@@ -412,7 +412,7 @@ export function EmployeeMeetingProtocol({ meetingId, onBack }: EmployeeMeetingPr
           .from("employee_settings")
           .update({ last_meeting_date: meeting.meeting_date })
           .eq("user_id", meeting.employee_id);
-        if (settingsError) console.error("Error updating employee_settings:", settingsError);
+        if (settingsError) debugConsole.error("Error updating employee_settings:", settingsError);
 
         sendMeetingNotification(meeting.employee_id, "Gespräch abgeschlossen", `Ihr Mitarbeitergespräch wurde abgeschlossen.`);
 
