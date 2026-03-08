@@ -439,7 +439,7 @@ export const TaskDecisionDetails = ({ decisionId, isOpen, onClose, onArchived, h
       setNewCommentEditorKey((prev) => prev + 1);
       await loadDecisionDetails();
     } catch (error) {
-      console.error('Error submitting comment:', error);
+      debugConsole.error('Error submitting comment:', error);
       toast({
         title: 'Fehler',
         description: 'Kommentar konnte nicht gespeichert werden.',
