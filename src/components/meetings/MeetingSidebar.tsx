@@ -192,7 +192,7 @@ export function MeetingSidebar({
                     </div>
                     <div>
                       <label className="text-xs font-medium text-muted-foreground">Beschreibung</label>
-                      <Textarea value={editingMeeting.description || ''} onChange={(e) => onSetEditingMeeting({ ...editingMeeting, description: e.target.value })} className="text-sm min-h-[60px]" />
+                      <Textarea value={editingMeeting?.description || ''} onChange={(e) => onSetEditingMeeting({ ...editingMeeting!, description: e.target.value } as Meeting)} className="text-sm min-h-[60px]" />
                     </div>
                     <div>
                       <label className="text-xs font-medium text-muted-foreground">Ort</label>
