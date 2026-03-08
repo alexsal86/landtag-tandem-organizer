@@ -58,7 +58,7 @@ export class CalendarEventAdapter {
     }
     
     if (!this.isValidDate(endTime)) {
-      console.error('❌ Invalid end date for event:', event.id, endTime);
+      debugConsole.error('❌ Invalid end date for event:', event.id, endTime);
       endTime = new Date(startTime.getTime() + 60 * 60 * 1000); // Fallback to 1h later
     }
 
