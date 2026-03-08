@@ -241,7 +241,7 @@ export function useTaskOperations({
         description: isCompleted ? "Die Unteraufgabe wurde als erledigt markiert." : "Die Unteraufgabe wurde wieder geöffnet."
       });
     } catch (error: unknown) {
-      console.error('Error updating subtask:', error);
+      debugConsole.error('Error updating subtask:', error);
       toast({ title: "Fehler", description: "Unteraufgabe konnte nicht aktualisiert werden.", variant: "destructive" });
     }
   };
