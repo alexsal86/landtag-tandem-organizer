@@ -198,7 +198,7 @@ export function useTaskOperations({
       loadTaskSnoozes();
       toast({ title: "Erfolgreich", description: "Wiedervorlage wurde aktualisiert." });
     } catch (error) {
-      console.error('Error updating snooze:', error);
+      debugConsole.error('Error updating snooze:', error);
       toast({ title: "Fehler", description: "Wiedervorlage konnte nicht aktualisiert werden.", variant: "destructive" });
     }
   };
