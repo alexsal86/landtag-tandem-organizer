@@ -257,7 +257,7 @@ export function useEventPlanningData() {
       if (selectedPlanning?.id === planningId) setSelectedPlanning(null);
       fetchPlannings();
     } catch (error) {
-      console.error('Error archiving planning:', error);
+      debugConsole.error('Error archiving planning:', error);
       toast({ title: "Fehler", description: "Planung konnte nicht archiviert werden.", variant: "destructive" });
     }
   };
