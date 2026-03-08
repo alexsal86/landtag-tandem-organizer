@@ -217,7 +217,7 @@ export const StructuredFooterEditor: React.FC<StructuredFooterEditorProps> = ({
 
   const generateCommunication = (): string => {
     if (!senderInfo) return '';
-    const parts = [];
+    const parts: string[] = [];
     // Remove "Tel: " prefix from phone numbers
     if (senderInfo.phone) parts.push(senderInfo.phone);
     if (senderInfo.fax) parts.push(`Fax: ${senderInfo.fax}`);
