@@ -375,7 +375,7 @@ export const useNotifications = () => {
         const auth = subscription.getKey('auth');
 
         if (!p256dh || !auth) {
-          console.error('❌ Invalid subscription keys');
+          debugConsole.error('❌ Invalid subscription keys');
           throw new Error('Invalid subscription keys');
         }
 
