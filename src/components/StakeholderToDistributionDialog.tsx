@@ -8,6 +8,7 @@ import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { Users, ArrowRight } from "lucide-react";
+import { debugConsole } from "@/utils/debugConsole";
 
 interface Contact {
   id: string;
