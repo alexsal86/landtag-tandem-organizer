@@ -68,7 +68,7 @@ export async function createLetterSendTask(
   try {
     await supabase
       .from('tasks')
-      .insert({
+      .insert([{
         title: `Brief versenden: ${letterTitle}`,
         description: `Der Brief "${letterTitle}" wurde freigegeben und kann jetzt versendet werden.`,
         status: 'to-do',
@@ -77,7 +77,7 @@ export async function createLetterSendTask(
         assigned_to: assignedToUserId,
         user_id: createdByUserId,
         tenant_id: tenantId,
-      });
+      }]);
   } catch (error) {
     debugConsole.error('Error creating send task:', error);
   }
