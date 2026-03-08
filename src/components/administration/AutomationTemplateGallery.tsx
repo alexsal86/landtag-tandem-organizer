@@ -20,6 +20,7 @@ const ACTION_LABELS: Record<string, string> = {
   create_task: "Aufgabe erstellen",
   update_record_status: "Status ändern",
   send_push_notification: "Push senden",
+  send_email_template: "E-Mail senden",
 };
 
 const TRIGGER_LABELS: Record<string, string> = {
