@@ -337,7 +337,7 @@ export function CommentPlugin({ documentId }: { documentId?: string }) {
           .in('user_id', userIds);
 
         if (profilesError) {
-          console.warn('Could not load user profiles:', profilesError);
+          debugConsole.warn('Could not load user profiles:', profilesError);
         } else {
           profilesData = profiles || [];
         }
