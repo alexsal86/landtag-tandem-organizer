@@ -1163,13 +1163,13 @@ export function MyWorkCasesWorkspace() {
                 </CardContent>
               </Card>
 
-              {/* RIGHT: FallAkten */}
+              {/* RIGHT: Fallakten */}
               <Card>
                 <CardHeader className="pb-2">
                   <div className="flex items-center justify-between">
                     <CardTitle className="flex items-center gap-2 text-base">
                       <FolderOpen className="h-4 w-4" />
-                      FallAkten
+                      Fallakten
                     </CardTitle>
                     <div className="flex items-center gap-2">
                       <Button size="sm" onClick={() => handleCreateCaseFile()}>
