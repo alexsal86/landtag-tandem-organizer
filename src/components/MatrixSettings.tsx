@@ -81,7 +81,7 @@ export const MatrixSettings: React.FC = () => {
           });
         }
       } catch (error) {
-        console.error("Error loading Matrix data:", error);
+        debugConsole.error("Error loading Matrix data:", error);
         toast({
           title: "Fehler",
           description: "Matrix-Einstellungen konnten nicht geladen werden.",
