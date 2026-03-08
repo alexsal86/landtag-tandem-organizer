@@ -188,7 +188,7 @@ export function MeetingSidebar({
                   <div className="mt-3 pt-3 border-t space-y-3" onClick={(e) => e.stopPropagation()}>
                     <div>
                       <label className="text-xs font-medium text-muted-foreground">Titel</label>
-                      <Input value={editingMeeting.title} onChange={(e) => onSetEditingMeeting({ ...editingMeeting, title: e.target.value })} className="h-8 text-sm" />
+                      <Input value={editingMeeting?.title ?? ''} onChange={(e) => onSetEditingMeeting({ ...editingMeeting!, title: e.target.value } as Meeting)} className="h-8 text-sm" />
                     </div>
                     <div>
                       <label className="text-xs font-medium text-muted-foreground">Beschreibung</label>
