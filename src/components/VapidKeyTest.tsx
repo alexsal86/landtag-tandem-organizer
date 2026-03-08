@@ -52,7 +52,7 @@ export const VapidKeyTest: React.FC = () => {
       }
 
       const data = await response.json();
-      console.log('📊 Response data:', data);
+      debugConsole.log('📊 Response data:', data);
 
       if (data.success && data.publicKey) {
         // Validate the public key format
