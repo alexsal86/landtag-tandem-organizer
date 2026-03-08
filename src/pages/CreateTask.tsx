@@ -95,9 +95,9 @@ export default function CreateTask() {
     e.preventDefault();
     setLoading(true);
 
-      console.log('📝 Starting task creation process');
-      console.log('📝 Current tenant:', currentTenant);
-      console.log('📝 Form data:', formData);
+      debugConsole.log('📝 Starting task creation process');
+      debugConsole.log('📝 Current tenant:', currentTenant);
+      debugConsole.log('📝 Form data:', formData);
 
       try {
         // Validate required fields
