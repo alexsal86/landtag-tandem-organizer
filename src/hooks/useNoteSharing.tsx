@@ -154,7 +154,7 @@ export const useNoteSharing = (noteId?: string) => {
         return false;
       }
 
-      console.log("Share data for permission update:", shareData);
+      
 
       // Update with note_id filter to help RLS policy
       const { data, error } = await supabase
