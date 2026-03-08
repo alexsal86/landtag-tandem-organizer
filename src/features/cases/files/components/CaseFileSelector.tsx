@@ -117,10 +117,10 @@ export function CaseFileSelector({
           break;
         }
         case 'letter': {
-          const letterResult = await supabase.from('case_file_letters').insert({
+          const letterResult = await supabase.from('case_file_letters').insert([{
             case_file_id: caseFileId,
             letter_id: itemId,
-          });
+          }]);
           linkError = letterResult.error;
           break;
         }
