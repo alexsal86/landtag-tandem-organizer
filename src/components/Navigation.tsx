@@ -1,5 +1,5 @@
 import { Calendar, Users, CheckSquare, Home, FileText, MessageSquare, MessageSquareText, Contact, Database, Clock, CalendarPlus, Shield, Vote, MapPin, Archive, Briefcase } from "lucide-react";
-import { useMatrixClient } from "@/contexts/MatrixClientContext";
+import { useMatrixUnread } from "@/contexts/MatrixUnreadContext";
 import { NavigationBadge } from "./NavigationBadge";
 import { useNavigationNotifications } from "@/hooks/useNavigationNotifications";
 import { useNotifications } from "@/contexts/NotificationContext";
