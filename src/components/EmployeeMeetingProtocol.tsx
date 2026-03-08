@@ -387,7 +387,7 @@ export function EmployeeMeetingProtocol({ meetingId, onBack }: EmployeeMeetingPr
         data_param: JSON.stringify({ meeting_id: meetingId }),
       });
     } catch (e) {
-      console.error("Notification error:", e);
+      debugConsole.error("Notification error:", e);
     }
   };
 
