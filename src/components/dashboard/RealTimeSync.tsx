@@ -116,7 +116,7 @@ export function RealTimeSync({ currentLayout, onLayoutUpdate }: RealTimeSyncProp
       setupLayoutPersistence();
       
     } catch (error) {
-      console.error('Real-time sync initialization failed:', error);
+      debugConsole.error('Real-time sync initialization failed:', error);
       setIsConnected(false);
       setSyncErrors(prev => [...prev, 'Failed to initialize sync']);
     }
