@@ -120,7 +120,7 @@ export function useLetterOperations(opts: UseLetterOperationsOptions) {
       } else {
         const { error } = await supabase
           .from('letters')
-          .insert({
+          .insert([{
             tenant_id: tenantId,
             created_by: userId,
             title: editedLetter.title || 'Neuer Brief',
@@ -138,7 +138,7 @@ export function useLetterOperations(opts: UseLetterOperationsOptions) {
             letter_date: editedLetter.letter_date,
             status: editedLetter.status || 'draft',
             show_pagination: showPagination,
-          });
+          }]);
         if (error) throw error;
       }
 
