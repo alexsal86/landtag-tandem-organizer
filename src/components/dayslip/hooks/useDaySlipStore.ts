@@ -444,7 +444,7 @@ export function useDaySlipStore(userId?: string, tenantId?: string) {
       horizontalRule: "my-4 border-border/80",
     },
     nodes: [HorizontalRuleNode, LabeledHorizontalRuleNode, DaySlipLineNode, { replace: ParagraphNode, with: () => $createDaySlipLineNode() }],
-    onError: (error: Error) => console.error("DaySlip Lexical error", error),
+    onError: (error: Error) => debugConsole.error("DaySlip Lexical error", error),
   }), []);
 
   return {

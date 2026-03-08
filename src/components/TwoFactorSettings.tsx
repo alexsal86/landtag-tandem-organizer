@@ -56,7 +56,7 @@ export function TwoFactorSettings() {
         setIsEnabled(hasVerifiedFactor);
       }
     } catch (error: unknown) {
-      console.error("Error loading MFA status:", error);
+      debugConsole.error("Error loading MFA status:", error);
     } finally {
       setLoading(false);
     }

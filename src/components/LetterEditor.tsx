@@ -724,7 +724,7 @@ const LetterEditor: React.FC<LetterEditorProps> = ({ letter, isOpen, onClose, on
           try {
             const { error } = await supabase.from('letters').update({ status: 'approved', updated_at: new Date().toISOString() }).eq('id', letter!.id);
             if (error) throw error;
-          } catch (error) { console.error('Error saving status:', error); } finally { setSaving(false); }
+          } catch (error) { debugConsole.error('Error saving status:', error); } finally { setSaving(false); }
         }}
       />
     </div>

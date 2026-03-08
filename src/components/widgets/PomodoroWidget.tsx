@@ -205,7 +205,7 @@ export const PomodoroWidget: React.FC<PomodoroWidgetProps> = ({
         }
 
       } catch (error) {
-        console.error('Error completing session:', error);
+        debugConsole.error('Error completing session:', error);
       }
     }
 

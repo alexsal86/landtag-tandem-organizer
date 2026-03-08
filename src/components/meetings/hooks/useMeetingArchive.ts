@@ -449,7 +449,7 @@ export function useMeetingArchive(deps: ArchiveDeps) {
       await loadMeetings();
       toast({ title: "Besprechung archiviert", description: "Die Besprechung wurde erfolgreich archiviert und Aufgaben wurden erstellt. Teilnehmer wurden benachrichtigt." });
     } catch (error) {
-      console.error('Archive meeting error:', error);
+      debugConsole.error('Archive meeting error:', error);
       const errorMessage = error instanceof Error ? error.message : (typeof error === 'string' ? error : JSON.stringify(error));
       toast({ title: "Fehler", description: `Die Besprechung konnte nicht archiviert werden: ${errorMessage}`, variant: "destructive" });
     }

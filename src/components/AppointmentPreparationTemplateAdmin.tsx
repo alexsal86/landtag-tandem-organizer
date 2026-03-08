@@ -188,7 +188,7 @@ export default function AppointmentPreparationTemplateAdmin() {
 
       fetchTemplates();
     } catch (error) {
-      console.error('Error setting default template:', error);
+      debugConsole.error('Error setting default template:', error);
       toast({
         title: 'Fehler',
         description: 'Standard-Template konnte nicht gesetzt werden.',

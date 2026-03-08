@@ -735,7 +735,7 @@ export function CommentPlugin({ documentId }: { documentId?: string }) {
         description: "The comment has been removed.",
       });
     } catch (error) {
-      console.error('Error deleting comment:', error);
+      debugConsole.error('Error deleting comment:', error);
       toast({
         title: "Error",
         description: "Failed to delete comment. Please try again.",

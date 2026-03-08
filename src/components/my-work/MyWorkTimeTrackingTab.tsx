@@ -193,7 +193,7 @@ export function MyWorkTimeTrackingTab() {
       setEmployeeSettings(settingsRes.data);
       setEntries(weekEntriesRes.data || []);
     } catch (error) {
-      console.error("Error loading time tracking data:", error);
+      debugConsole.error("Error loading time tracking data:", error);
     } finally {
       setLoading(false);
     }

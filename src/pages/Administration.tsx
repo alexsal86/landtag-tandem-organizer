@@ -541,7 +541,7 @@ const [editingChild, setEditingChild] = useState<{ parentIndex: number; childInd
         toast({ title: "Gespeichert", description: "Template erfolgreich aktualisiert." });
       }
     } catch (error: unknown) {
-      console.error(error);
+      debugConsole.error(error);
       toast({ title: "Fehler", description: "Fehler beim Speichern.", variant: "destructive" });
     }
   };

@@ -206,7 +206,7 @@ export const NewsShareDialog: React.FC<NewsShareDialogProps> = ({
       setSendViaMatrix(false);
       onOpenChange(false);
     } catch (error) {
-      console.error('Error sharing news:', error);
+      debugConsole.error('Error sharing news:', error);
       toast.error('Fehler beim Versenden der News');
     } finally {
       setLoading(false);

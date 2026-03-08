@@ -131,7 +131,7 @@ export function ProtocolsList({ protocols, onProtocolSelect, onProtocolsRefresh 
       toast.success('Protokoll erfolgreich gelöscht');
       onProtocolsRefresh();
     } catch (error) {
-      console.error('Error deleting protocol:', error);
+      debugConsole.error('Error deleting protocol:', error);
       toast.error('Fehler beim Löschen des Protokolls');
     }
   };

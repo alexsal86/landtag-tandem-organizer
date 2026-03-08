@@ -156,7 +156,7 @@ export function EmployeeMeetingHistory({ employeeId, showFilters = true }: Emplo
         description: "Das Mitarbeitergespräch wurde erfolgreich entfernt.",
       });
     } catch (error) {
-      console.error("Error deleting meeting:", error);
+      debugConsole.error("Error deleting meeting:", error);
       toast({
         title: "Fehler",
         description: "Das Gespräch konnte nicht gelöscht werden.",

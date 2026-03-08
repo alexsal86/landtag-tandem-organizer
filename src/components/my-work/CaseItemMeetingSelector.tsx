@@ -80,7 +80,7 @@ export function CaseItemMeetingSelector({
 
       setMeetings(allMeetings);
     } catch (error) {
-      console.error("Error loading meetings:", error);
+      debugConsole.error("Error loading meetings:", error);
     } finally {
       setLoading(false);
     }

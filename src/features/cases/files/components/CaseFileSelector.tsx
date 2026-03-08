@@ -161,7 +161,7 @@ export function CaseFileSelector({
       });
 
       if (timelineError) {
-        console.error('Error creating timeline entry for case file link:', timelineError);
+        debugConsole.error('Error creating timeline entry for case file link:', timelineError);
       }
 
       return { caseFileId, timelineFailed: Boolean(timelineError) };
