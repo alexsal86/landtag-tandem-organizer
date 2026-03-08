@@ -257,9 +257,9 @@ export function SuperadminTenantManagement() {
       // Reload data
       loadTenants();
       loadAllUsers();
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Create user error:", error);
-      toast({ title: "Fehler", description: error.message, variant: "destructive" });
+      toast({ title: "Fehler", description: error instanceof Error ? error.message : "Erstellen fehlgeschlagen", variant: "destructive" });
     }
   };
 
