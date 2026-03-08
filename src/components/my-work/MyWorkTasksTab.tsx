@@ -117,7 +117,7 @@ export function MyWorkTasksTab() {
         .order('order_index');
       setTaskStatuses(statuses || []);
     } catch (error) {
-      console.error('Error loading task statuses:', error);
+      debugConsole.error('Error loading task statuses:', error);
     }
   };
 
