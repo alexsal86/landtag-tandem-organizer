@@ -259,7 +259,7 @@ export const AppointmentPollCreator = ({ onClose }: { onClose: () => void }) => 
         });
 
         if (emailError) {
-          console.error('Error sending emails:', emailError);
+          debugConsole.error('Error sending emails:', emailError);
           toast({
             title: "E-Mail-Versendung fehlgeschlagen",
             description: `Die Abstimmung wurde erstellt, aber E-Mails konnten nicht versendet werden: ${emailError.message}`,
