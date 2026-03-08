@@ -114,7 +114,7 @@ export function useAgendaOperations(deps: AgendaOpsDeps) {
       }
       toast({ title: "Dynamischer Punkt hinzugefügt", description: `"${titles[systemType]}" wurde zur Agenda hinzugefügt.` });
     } catch (error) {
-      console.error('Error saving system agenda item:', error);
+      debugConsole.error('Error saving system agenda item:', error);
       toast({ title: "Fehler", description: "Der dynamische Punkt konnte nicht gespeichert werden.", variant: "destructive" });
     }
   };
