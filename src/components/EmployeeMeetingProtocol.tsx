@@ -456,7 +456,7 @@ export function EmployeeMeetingProtocol({ meetingId, onBack }: EmployeeMeetingPr
 
       toast({ title: "Abgesagt", description: "Gespräch wurde abgesagt" });
       loadMeetingData();
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Error cancelling meeting:", error);
       toast({ title: "Fehler", description: "Gespräch konnte nicht abgesagt werden", variant: "destructive" });
     }
