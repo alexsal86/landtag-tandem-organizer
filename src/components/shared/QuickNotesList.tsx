@@ -1035,7 +1035,7 @@ export function QuickNotesList({
       setConfirmDeleteTaskNote(null);
       loadNotes();
     } catch (error) {
-      console.error('Error removing task from note:', error);
+      debugConsole.error('Error removing task from note:', error);
       toast.error("Fehler beim Entfernen der Aufgabe");
     }
   };
