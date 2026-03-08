@@ -118,14 +118,14 @@ const LetterAttachmentManager: React.FC<LetterAttachmentManagerProps> = ({
         // Save attachment record
         const { data: insertData, error: insertError } = await supabase
           .from('letter_attachments')
-          .insert({
+          .insert([{
             letter_id: letterId,
             file_name: file.name,
             file_path: filePath,
             file_type: file.type,
             file_size: file.size,
             uploaded_by: user?.id
-          })
+          }])
           .select()
           .single();
 
