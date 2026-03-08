@@ -1,6 +1,6 @@
 import React, { useState, useCallback, useEffect, useRef } from 'react';
 import { useLexicalComposerContext } from '@lexical/react/LexicalComposerContext';
-import { $getSelection, $isRangeSelection, $createParagraphNode, $createTextNode, $isTextNode, FORMAT_TEXT_COMMAND, FORMAT_ELEMENT_COMMAND, UNDO_COMMAND, REDO_COMMAND, TextFormatType, ElementFormatType, $insertNodes } from 'lexical';
+import { $getSelection, $isRangeSelection, $createParagraphNode, $createTextNode, $isTextNode, $getRoot, TextNode, FORMAT_TEXT_COMMAND, FORMAT_ELEMENT_COMMAND, UNDO_COMMAND, REDO_COMMAND, TextFormatType, ElementFormatType, $insertNodes } from 'lexical';
 import {
   $createHeadingNode,
   $createQuoteNode,
@@ -42,7 +42,6 @@ import {
   Superscript,
   RemoveFormatting,
   Mic,
-  CircleHelp,
 } from 'lucide-react';
 import {
   DropdownMenu,
@@ -60,19 +59,9 @@ import { LineHeightPlugin } from './plugins/LineHeightPlugin';
 import { ImageUploadDialog } from './plugins/ImagePlugin';
 import { Input } from '@/components/ui/input';
 import { useSpeechDictation } from '@/hooks/useSpeechDictation';
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 
-const SPEECH_COMMAND_HINTS = [
-  'Fett',
-  'Kursiv',
-  'Unterstreichen',
-  'Aufzählung / Liste',
-  'Nummerierte Liste',
-  'Rückgängig',
-  'Wiederholen',
-  'Neue Zeile / Neuer Absatz',
-  'Stopp (beendet die Aufnahme)',
-] as const;
+import { SpeechCommandsDialog } from '@/components/SpeechCommandsDialog';
+import { SpeechSessionStats } from '@/components/SpeechSessionStats';
 
 interface EnhancedLexicalToolbarProps {
   showFloatingToolbar?: boolean;
@@ -101,6 +90,9 @@ export const EnhancedLexicalToolbar: React.FC<EnhancedLexicalToolbarProps> = ({
     interimTranscript,
     isListening,
     speechSupported,
+    lastRecognizedCommand,
+    sessionStartTime,
+    sessionWordCount,
     toggleSpeechRecognition,
     startSpeechRecognition,
     stopSpeechRecognition,
@@ -136,6 +128,69 @@ export const EnhancedLexicalToolbar: React.FC<EnhancedLexicalToolbarProps> = ({
             const selection = $getSelection();
             if ($isRangeSelection(selection)) {
               selection.insertText('\n');
+            }
+          });
+          break;
+        case 'delete-last-word':
+          editor.update(() => {
+            const selection = $getSelection();
+            if ($isRangeSelection(selection)) {
+              const node = selection.anchor.getNode();
+              if ($isTextNode(node)) {
+                const text = node.getTextContent().trimEnd();
+                const lastSpace = text.lastIndexOf(' ');
+                node.setTextContent(lastSpace >= 0 ? text.slice(0, lastSpace + 1) : '');
+              }
+            }
+          });
+          break;
+        case 'delete-last-sentence':
+          editor.update(() => {
+            const selection = $getSelection();
+            if ($isRangeSelection(selection)) {
+              const node = selection.anchor.getNode();
+              if ($isTextNode(node)) {
+                const text = node.getTextContent();
+                const lastEnd = Math.max(text.lastIndexOf('. '), text.lastIndexOf('! '), text.lastIndexOf('? '));
+                node.setTextContent(lastEnd >= 0 ? text.slice(0, lastEnd + 2) : '');
+              }
+            }
+          });
+          break;
+        case 'select-all':
+          editor.update(() => {
+            const root = $getRoot();
+            root.select(0, root.getChildrenSize());
+          });
+          break;
+        case 'insert-heading':
+          editor.update(() => {
+            const selection = $getSelection();
+            if ($isRangeSelection(selection)) {
+              $setBlocksType(selection, () => $createHeadingNode(`h${command.level}` as HeadingTagType));
+            }
+          });
+          break;
+        case 'insert-quote':
+          editor.update(() => {
+            const selection = $getSelection();
+            if ($isRangeSelection(selection)) {
+              $setBlocksType(selection, () => $createQuoteNode());
+            }
+          });
+          break;
+        case 'replace-text':
+          editor.update(() => {
+            const selection = $getSelection();
+            if ($isRangeSelection(selection)) {
+              const node = selection.anchor.getNode();
+              if ($isTextNode(node)) {
+                const text = node.getTextContent();
+                const idx = text.toLowerCase().indexOf(command.search.toLowerCase());
+                if (idx >= 0) {
+                  node.setTextContent(text.slice(0, idx) + command.replacement + text.slice(idx + command.search.length));
+                }
+              }
             }
           });
           break;
@@ -438,37 +493,19 @@ export const EnhancedLexicalToolbar: React.FC<EnhancedLexicalToolbarProps> = ({
           <Mic className="h-4 w-4" />
         </Button>
 
-        <TooltipProvider>
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <Button
-                variant="ghost"
-                size="sm"
-                className="h-8 w-8 p-0 text-muted-foreground"
-                aria-label="Sprachbefehle anzeigen"
-                onMouseDown={(event) => event.preventDefault()}
-              >
-                <CircleHelp className="h-4 w-4" />
-              </Button>
-            </TooltipTrigger>
-            <TooltipContent side="bottom" align="start" className="max-w-[320px]">
-              <div className="space-y-2 text-xs">
-                <p className="font-medium">Push-to-talk</p>
-                <p>Halte den Mikrofon-Button oder <span className="font-medium">Strg + Shift + M</span>, um zu sprechen.</p>
-                <p className="font-medium">Sprachbefehle</p>
-                <ul className="list-disc pl-4 space-y-1">
-                  {SPEECH_COMMAND_HINTS.map((commandHint) => (
-                    <li key={commandHint}>{commandHint}</li>
-                  ))}
-                </ul>
-              </div>
-            </TooltipContent>
-          </Tooltip>
-        </TooltipProvider>
+        <SpeechCommandsDialog />
+
+        {lastRecognizedCommand && (
+          <span className="text-xs font-medium text-primary bg-primary/10 rounded px-1.5 py-0.5 animate-in fade-in-0 zoom-in-95">
+            ✓ {lastRecognizedCommand}
+          </span>
+        )}
 
         {speechState === 'listening' && (
           <span className="text-xs text-primary">Aufnahme läuft…</span>
         )}
+
+        <SpeechSessionStats sessionStartTime={sessionStartTime} wordCount={sessionWordCount} isListening={isListening} />
 
         {speechState === 'listening' && interimTranscript && (
           <span className="text-xs text-muted-foreground italic" title="Live-Erkennung">

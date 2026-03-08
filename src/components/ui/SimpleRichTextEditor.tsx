@@ -25,14 +25,15 @@ import {
   INSERT_ORDERED_LIST_COMMAND, 
   INSERT_UNORDERED_LIST_COMMAND,
 } from '@lexical/list';
-import { Bold, Italic, Underline, List, ListOrdered, Mic, CircleHelp } from 'lucide-react';
+import { Bold, Italic, Underline, List, ListOrdered, Mic } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import { MentionNode } from '@/components/nodes/MentionNode';
 import { MentionsPlugin } from '@/components/plugins/MentionsPlugin';
 import { useSpeechDictation } from '@/hooks/useSpeechDictation';
 import { toast } from 'sonner';
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+import { SpeechCommandsDialog } from '@/components/SpeechCommandsDialog';
+import { SpeechSessionStats } from '@/components/SpeechSessionStats';
 
 interface SimpleRichTextEditorProps {
   initialContent?: string;
@@ -47,17 +48,6 @@ interface SimpleRichTextEditorProps {
   showToolbar?: boolean;
 }
 
-const SPEECH_COMMAND_HINTS = [
-  'Fett',
-  'Kursiv',
-  'Unterstreichen',
-  'Aufzählung / Liste',
-  'Nummerierte Liste',
-  'Rückgängig',
-  'Wiederholen',
-  'Neue Zeile / Neuer Absatz',
-  'Stopp (beendet die Aufnahme)',
-] as const;
 
 // Toolbar Component
 const Toolbar = () => {
@@ -70,6 +60,9 @@ const Toolbar = () => {
     interimTranscript,
     isListening,
     speechSupported,
+    lastRecognizedCommand,
+    sessionStartTime,
+    sessionWordCount,
     toggleSpeechRecognition,
     startSpeechRecognition,
     stopSpeechRecognition,
@@ -101,12 +94,13 @@ const Toolbar = () => {
           editor.dispatchCommand(REDO_COMMAND, undefined);
           break;
         case 'insert-newline':
-          editor.update(() => {
-            const selection = $getSelection();
-            if ($isRangeSelection(selection)) {
-              selection.insertText('\n');
-            }
-          });
+        case 'delete-last-word':
+        case 'delete-last-sentence':
+        case 'select-all':
+        case 'insert-heading':
+        case 'insert-quote':
+        case 'replace-text':
+          // SimpleRichTextEditor does not support these advanced commands
           break;
         case 'stop-listening':
           break;
@@ -284,39 +278,18 @@ const Toolbar = () => {
           <span className="absolute -top-0.5 -right-0.5 h-2.5 w-2.5 rounded-full bg-destructive border-2 border-background animate-pulse" />
         )}
       </Button>
-      <TooltipProvider>
-        <Tooltip>
-          <TooltipTrigger asChild>
-            <Button
-              type="button"
-              variant="ghost"
-              size="sm"
-              className="h-8 w-8 p-0 text-muted-foreground"
-              aria-label="Sprachbefehle anzeigen"
-              onMouseDown={(event) => event.preventDefault()}
-            >
-              <CircleHelp className="h-4 w-4" />
-            </Button>
-          </TooltipTrigger>
-          <TooltipContent side="bottom" align="start" className="max-w-[320px]">
-            <div className="space-y-2 text-xs">
-              <p className="font-medium">Diktat</p>
-              <p>Klicke den Mikrofon-Button zum Starten und erneut zum Stoppen. Alternativ <span className="font-medium">Strg + Shift + M</span> gedrückt halten (Push-to-talk).</p>
-              <p className="font-medium">Sprachbefehle</p>
-              <ul className="list-disc pl-4 space-y-1">
-                {SPEECH_COMMAND_HINTS.map((commandHint) => (
-                  <li key={commandHint}>{commandHint}</li>
-                ))}
-              </ul>
-            </div>
-          </TooltipContent>
-        </Tooltip>
-      </TooltipProvider>
+      <SpeechCommandsDialog />
+      {lastRecognizedCommand && (
+        <span className="text-xs font-medium text-primary bg-primary/10 rounded px-1.5 py-0.5 animate-in fade-in-0 zoom-in-95">
+          ✓ {lastRecognizedCommand}
+        </span>
+      )}
       {isListening && (
         <span className="text-xs text-destructive font-medium pl-1 animate-pulse">
           Aufnahme läuft…
         </span>
       )}
+      <SpeechSessionStats sessionStartTime={sessionStartTime} wordCount={sessionWordCount} isListening={isListening} />
       {speechError && (
         <span className="text-xs text-destructive pl-1" title={speechError.code}>
           {speechError.message}
