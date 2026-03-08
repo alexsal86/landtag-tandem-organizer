@@ -257,7 +257,7 @@ export function useTasksData() {
       }));
       setSubtasks(prev => ({ ...prev, [taskId]: mappedChildTasks as any }));
     } catch (error) {
-      console.error('Error loading subtasks:', error);
+      debugConsole.error('Error loading subtasks:', error);
     }
   };
 
