@@ -386,7 +386,7 @@ export function useTasksData() {
       // 2. Planning subtasks
       const { data: planningSubtasksData } = await supabase
         .from('planning_item_subtasks')
-        .select('*')
+        .select('id, description, assigned_to, due_date, is_completed, planning_item_id, order_index, created_at, updated_at')
         .eq('assigned_to', user.id)
         .eq('is_completed', false);
 
