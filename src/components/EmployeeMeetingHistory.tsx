@@ -125,7 +125,7 @@ export function EmployeeMeetingHistory({ employeeId, showFilters = true }: Emplo
 
       setMeetings(enrichedMeetings);
     } catch (error: unknown) {
-      console.error("Error loading meetings:", error);
+      debugConsole.error("Error loading meetings:", error);
       toast({
         title: "Fehler",
         description: "Meetings konnten nicht geladen werden",
