@@ -95,7 +95,7 @@ export function DecisionFileUpload({
       const { data, error } = await supabase
         .from('task_decision_attachments')
         .select('*')
-        .eq('decision_id', decisionId)
+        .eq('decision_id', decisionId!)
         .order('created_at', { ascending: false });
 
       if (error) throw error;
