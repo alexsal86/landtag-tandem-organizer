@@ -75,7 +75,7 @@ export function useLetterTemplateData() {
       const { data, error } = await supabase.from('sender_information').select('id, name, organization, is_default').eq('tenant_id', currentTenant.id).eq('is_active', true).order('is_default', { ascending: false });
       if (error) throw error;
       setSenderInfos(data || []);
-    } catch (error) { debugConsole.error('Error fetching sender infos:', error); }
+    } catch (error) { handleAppError(error, { context: 'fetchSenderInfos' }); }
   };
 
   const fetchInformationBlocks = async () => {
