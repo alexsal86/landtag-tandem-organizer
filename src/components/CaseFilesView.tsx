@@ -383,7 +383,7 @@ classifyCaseScale({ explicitScale: cf.case_scale, caseType: cf.case_type }) === 
               {searchTerm || statusFilter !== "all" || typeFilter !== "all"
                 || scopeFilter !== "all"
                 ? "Versuchen Sie andere Filterkriterien."
-                : "Erstellen Sie Ihre erste FallAkte, um Sachverhalte zentral zu verwalten."}
+                : "Erstellen Sie Ihre erste Fallakte, um Sachverhalte zentral zu verwalten."}
             </p>
             {!searchTerm && statusFilter === "all" && typeFilter === "all" && scopeFilter === "all" && (
               <Button className="mt-4" onClick={() => setCreateDialogOpen(true)}>
