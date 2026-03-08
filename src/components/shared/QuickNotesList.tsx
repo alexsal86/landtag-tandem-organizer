@@ -888,7 +888,7 @@ export function QuickNotesList({
         .eq("user_id", user.id);
 
       if (error) {
-        console.error("Error updating priority via drag:", error);
+        debugConsole.error("Error updating priority via drag:", error);
         loadNotes(); // Rollback on error
         toast.error("Fehler beim Verschieben");
       } else {
