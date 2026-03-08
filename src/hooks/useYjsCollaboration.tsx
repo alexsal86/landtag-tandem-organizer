@@ -148,7 +148,7 @@ export const useYjsCollaboration = ({
       return;
     }
 
-    console.log('[Yjs] Connecting to collaboration for document:', documentId);
+    
     setConnectionState('connecting');
 
     try {
