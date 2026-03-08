@@ -118,7 +118,7 @@ export function CreateContact() {
     const { data, error } = await supabase
       .from("contacts")
       .select("id, name, email, phone, organization, organization_id")
-      .eq("tenant_id", currentTenant.id)
+      .eq("tenant_id", currentTenant!.id)
       .order("name");
 
     if (error) return;
