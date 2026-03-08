@@ -46,7 +46,7 @@ export const MatrixMorningSettings: React.FC = () => {
           .maybeSingle();
 
         if (error && error.code !== 'PGRST116') {
-          console.error('Error loading morning settings:', error);
+          debugConsole.error('Error loading morning settings:', error);
           return;
         }
 
