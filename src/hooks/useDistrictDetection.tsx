@@ -88,7 +88,7 @@ export const useDistrictDetection = () => {
       }
 
       if (data?.error) {
-        console.error('Detection error:', data.error);
+        debugConsole.error('Detection error:', data.error);
         setError(data.error);
         return null;
       }
