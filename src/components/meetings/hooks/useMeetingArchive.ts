@@ -147,14 +147,14 @@ export function useMeetingArchive(deps: ArchiveDeps) {
       for (const item of pendingItems) {
         const dedupeKey = `${item.original_meeting_id}::${item.title}`;
         if (existingSet.has(dedupeKey)) continue;
-        await supabase.from('meeting_agenda_items').insert({
+        await supabase.from('meeting_agenda_items').insert([{
           meeting_id: meetingId, parent_id: reviewParentId, title: item.title,
           description: item.description, notes: item.notes, result_text: item.result_text,
           assigned_to: item.assigned_to, order_index: nextOrderIndex++,
           source_meeting_id: item.original_meeting_id,
           original_meeting_date: item.original_meeting_date, original_meeting_title: item.original_meeting_title,
           carryover_notes: `Übertragen von: ${item.original_meeting_title} (${item.original_meeting_date})`
-        });
+        }]);
       }
       await loadAgendaItems(meetingId);
       toast({ title: "Punkte übertragen", description: `${pendingItems.length} vorgemerkte Punkte wurden in die Agenda eingefügt.` });
