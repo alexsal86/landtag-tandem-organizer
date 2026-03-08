@@ -75,6 +75,8 @@ export function TaskCard({
   commentCount = 0,
   depth = 0,
   isLastChild = false,
+  className,
+  highlightRef,
   onComplete,
   onSubtaskComplete,
   onNavigate,
