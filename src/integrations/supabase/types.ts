@@ -2193,7 +2193,9 @@ export type Database = {
           is_political_relevant: boolean
           last_modified_at: string
           last_modified_by: string | null
+          meeting_id: string | null
           owner_user_id: string | null
+          pending_for_jour_fixe: boolean
           priority: Database["public"]["Enums"]["case_item_priority"]
           reporter_contact: string | null
           reporter_name: string | null
@@ -2225,7 +2227,9 @@ export type Database = {
           is_political_relevant?: boolean
           last_modified_at?: string
           last_modified_by?: string | null
+          meeting_id?: string | null
           owner_user_id?: string | null
+          pending_for_jour_fixe?: boolean
           priority?: Database["public"]["Enums"]["case_item_priority"]
           reporter_contact?: string | null
           reporter_name?: string | null
@@ -2257,7 +2261,9 @@ export type Database = {
           is_political_relevant?: boolean
           last_modified_at?: string
           last_modified_by?: string | null
+          meeting_id?: string | null
           owner_user_id?: string | null
+          pending_for_jour_fixe?: boolean
           priority?: Database["public"]["Enums"]["case_item_priority"]
           reporter_contact?: string | null
           reporter_name?: string | null
@@ -2285,6 +2291,13 @@ export type Database = {
             columns: ["contact_id"]
             isOneToOne: false
             referencedRelation: "contacts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "case_items_meeting_id_fkey"
+            columns: ["meeting_id"]
+            isOneToOne: false
+            referencedRelation: "meetings"
             referencedColumns: ["id"]
           },
           {
