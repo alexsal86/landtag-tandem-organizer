@@ -149,7 +149,7 @@ export const getSpecialDayHint = (
   }
 
   return {
-    text: `**Hinweis:** In ${upcoming.daysUntil} Tag${upcoming.daysUntil === 1 ? '' : 'en'} ist ${upcoming.name} (${format(upcoming.targetDate, 'dd.MM.')}).`,
+    text: `**Hinweis:** In ${upcoming.daysUntil} Tag${upcoming.daysUntil === 1 ? '' : 'en'} ist ${upcoming.name} (${format(upcoming.targetDate, 'dd.MM.')}).\n${upcoming.hint}`,
     icon: upcoming.icon,
   };
 };
