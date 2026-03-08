@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { debugConsole } from "@/utils/debugConsole";
 import { Check, X, HelpCircle, Clock } from "lucide-react";
 import { cn } from "@/lib/utils";
 
