@@ -102,39 +102,82 @@ export function CaseItemDetailPanel({
 }) {
   const [showMetaFields, setShowMetaFields] = useState(false);
   const [showInteractionComposer, setShowInteractionComposer] = useState(false);
+  const [contactSearchResults, setContactSearchResults] = useState<Array<{ id: string; name: string; email: string | null; phone: string | null; organization: string | null }>>([]);
+  const [searchingContacts, setSearchingContacts] = useState(false);
+  const [showSearchResults, setShowSearchResults] = useState(false);
+  const contactSearchRef = useRef(0);
+  const searchContainerRef = useRef<HTMLDivElement>(null);
+  const { currentTenant } = useTenant();
 
   useEffect(() => {
     setShowInteractionComposer(false);
   }, [itemId]);
 
-  const formatDecisionDate = (value: string | null | undefined) => {
-    if (!value) return "–";
-    const parsed = new Date(value);
-    if (Number.isNaN(parsed.getTime())) return "–";
-    return format(parsed, "dd.MM.yyyy", { locale: de });
+  // Contact search effect
+  useEffect(() => {
+    if (!currentTenant) return;
+
+    const query = contactPerson.trim();
+    if (query.length < 2) {
+      setContactSearchResults([]);
+      setSearchingContacts(false);
+      return;
+    }
+
+    // Don't search if a contact is already selected with this exact name
+    if (selectedContactId) return;
+
+    const timer = setTimeout(async () => {
+      const requestId = ++contactSearchRef.current;
+      setSearchingContacts(true);
+
+      const { data, error } = await supabase
+        .from("contacts")
+        .select("id, name, email, phone, organization")
+        .eq("tenant_id", currentTenant.id)
+        .neq("contact_type", "archive")
+        .ilike("name", `%${query}%`)
+        .order("is_favorite", { ascending: false })
+        .order("name")
+        .limit(8);
+
+      if (requestId !== contactSearchRef.current) return;
+
+      if (error) {
+        console.error("Error searching contacts:", error);
+        setContactSearchResults([]);
+      } else {
+        setContactSearchResults((data ?? []) as Array<{ id: string; name: string; email: string | null; phone: string | null; organization: string | null }>);
+        setShowSearchResults(true);
+      }
+
+      setSearchingContacts(false);
+    }, 250);
+
+    return () => clearTimeout(timer);
+  }, [contactPerson, currentTenant, selectedContactId]);
+
+  // Close search results on outside click
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (searchContainerRef.current && !searchContainerRef.current.contains(e.target as Node)) {
+        setShowSearchResults(false);
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
+
+  const handleSelectContact = (contact: { id: string; name: string; email: string | null; phone: string | null }) => {
+    onContactPersonChange(contact.name);
+    onContactEmailChange(contact.email || "");
+    onContactPhoneChange(contact.phone || "");
+    onContactSelected(contact);
+    setShowSearchResults(false);
   };
 
-  const formatTimelineDateOnly = (timestamp: string) => {
-    const parsed = new Date(timestamp);
-    if (Number.isNaN(parsed.getTime())) return "–";
-    return format(parsed, "dd.MM.yyyy", { locale: de });
-  };
-
-  const formatTimelineTimeOnly = (timestamp: string) => {
-    const parsed = new Date(timestamp);
-    if (Number.isNaN(parsed.getTime())) return "–";
-    return format(parsed, "HH:mm", { locale: de });
-  };
-
-  const contactParts = contactPerson
-    .split(/[|,·]/)
-    .map((value) => value.trim())
-    .filter(Boolean);
-  const contactName = contactParts[0] || "";
-  const contactAddress = contactParts.slice(1).join(" ").trim();
-
-  const updateContact = (name: string, detail: string) => {
-    onContactPersonChange([name.trim(), detail.trim()].filter(Boolean).join(" · "));
+  const handleClearContact = () => {
+    onContactSelected(null);
   };
 
   return (
