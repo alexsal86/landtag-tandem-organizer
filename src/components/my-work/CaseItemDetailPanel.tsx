@@ -176,8 +176,23 @@ export function CaseItemDetailPanel({
     setShowSearchResults(false);
   };
 
-  const handleClearContact = () => {
-    onContactSelected(null);
+  const formatDecisionDate = (value: string | null | undefined) => {
+    if (!value) return "–";
+    const parsed = new Date(value);
+    if (Number.isNaN(parsed.getTime())) return "–";
+    return format(parsed, "dd.MM.yyyy", { locale: de });
+  };
+
+  const formatTimelineDateOnly = (timestamp: string) => {
+    const parsed = new Date(timestamp);
+    if (Number.isNaN(parsed.getTime())) return "–";
+    return format(parsed, "dd.MM.yyyy", { locale: de });
+  };
+
+  const formatTimelineTimeOnly = (timestamp: string) => {
+    const parsed = new Date(timestamp);
+    if (Number.isNaN(parsed.getTime())) return "–";
+    return format(parsed, "HH:mm", { locale: de });
   };
 
   return (
@@ -186,22 +201,65 @@ export function CaseItemDetailPanel({
         <div className="space-y-3">
           <div className="space-y-3 rounded-md border bg-background p-3 text-sm">
             <Label className="font-bold" htmlFor="detail-contact-name">Von / Gesprächspartner</Label>
-            <div className="space-y-1.5">
+            <div className="space-y-1.5 relative" ref={searchContainerRef}>
               <Label className="text-xs text-muted-foreground" htmlFor="detail-contact-name">Name</Label>
+              <div className="relative">
+                <Input
+                  id="detail-contact-name"
+                  value={contactPerson}
+                  placeholder={contactDisplay || "Name eingeben zum Suchen…"}
+                  onChange={(event) => {
+                    onContactPersonChange(event.target.value);
+                    if (selectedContactId) handleClearContact();
+                  }}
+                  onFocus={() => { if (contactSearchResults.length > 0) setShowSearchResults(true); }}
+                  className="pr-8"
+                />
+                {searchingContacts && <Loader2 className="absolute right-2.5 top-1/2 -translate-y-1/2 h-4 w-4 animate-spin text-muted-foreground" />}
+                {!searchingContacts && !selectedContactId && contactPerson.length >= 2 && <Search className="absolute right-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />}
+              </div>
+              {selectedContactId && (
+                <p className="flex items-center gap-1 text-xs text-emerald-600">
+                  <Check className="h-3 w-3" />
+                  Kontakt verknüpft
+                </p>
+              )}
+              {showSearchResults && contactSearchResults.length > 0 && (
+                <div className="absolute left-0 right-0 top-full z-50 mt-1 max-h-56 overflow-y-auto rounded-md border bg-popover shadow-lg">
+                  {contactSearchResults.map((result) => (
+                    <button
+                      key={result.id}
+                      type="button"
+                      className="flex w-full flex-col items-start gap-0.5 px-3 py-2 text-left text-sm hover:bg-accent transition-colors"
+                      onClick={() => handleSelectContact(result)}
+                    >
+                      <span className="font-medium">{result.name}</span>
+                      <span className="text-xs text-muted-foreground">
+                        {[result.organization, result.email, result.phone].filter(Boolean).join(" · ")}
+                      </span>
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+            <div className="space-y-1.5">
+              <Label className="text-xs text-muted-foreground" htmlFor="detail-contact-email">E-Mail</Label>
               <Input
-                id="detail-contact-name"
-                value={contactName}
-                placeholder={contactDisplay || "Name"}
-                onChange={(event) => updateContact(event.target.value, contactAddress)}
+                id="detail-contact-email"
+                type="email"
+                value={contactEmail}
+                placeholder="name@beispiel.de"
+                onChange={(event) => onContactEmailChange(event.target.value)}
               />
             </div>
             <div className="space-y-1.5">
-              <Label className="text-xs text-muted-foreground" htmlFor="detail-contact-detail">E-Mail / Telefon</Label>
+              <Label className="text-xs text-muted-foreground" htmlFor="detail-contact-phone">Telefon</Label>
               <Input
-                id="detail-contact-detail"
-                value={contactAddress}
-                placeholder="name@beispiel.de oder +49 …"
-                onChange={(event) => updateContact(contactName, event.target.value)}
+                id="detail-contact-phone"
+                type="tel"
+                value={contactPhone}
+                placeholder="+49 …"
+                onChange={(event) => onContactPhoneChange(event.target.value)}
               />
             </div>
           </div>

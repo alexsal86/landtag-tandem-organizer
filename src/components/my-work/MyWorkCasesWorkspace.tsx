@@ -1128,6 +1128,14 @@ export function MyWorkCasesWorkspace() {
                                                 contactDisplay={contactDisplay}
                                                 onContactPersonChange={(value) => updateEdit({ contactPerson: value })}
                                                 contactPerson={editableCaseItem.contactPerson}
+                                                contactEmail={editableCaseItem.contactEmail}
+                                                contactPhone={editableCaseItem.contactPhone}
+                                                selectedContactId={editableCaseItem.selectedContactId}
+                                                onContactEmailChange={(value) => updateEdit({ contactEmail: value })}
+                                                onContactPhoneChange={(value) => updateEdit({ contactPhone: value })}
+                                                onContactSelected={(contact) => updateEdit({
+                                                  selectedContactId: contact?.id || null,
+                                                })}
                                               />
                                             )}
                                           </div>
