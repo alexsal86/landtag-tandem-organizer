@@ -213,7 +213,7 @@ export default function AppointmentPreparationSidebar({
         description: 'Vorbereitung wurde gespeichert.',
       });
     } catch (error) {
-      console.error('Error saving preparation:', error);
+      debugConsole.error('Error saving preparation:', error);
       toast({
         title: 'Fehler',
         description: 'Vorbereitung konnte nicht gespeichert werden.',
