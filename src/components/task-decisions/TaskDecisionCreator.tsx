@@ -339,7 +339,7 @@ export const TaskDecisionCreator = ({
           .insert(participants);
 
         if (participantsError) {
-          console.error('Participants creation error:', participantsError);
+          debugConsole.error('Participants creation error:', participantsError);
           throw participantsError;
         }
 
