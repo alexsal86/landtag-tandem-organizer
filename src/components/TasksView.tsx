@@ -443,7 +443,7 @@ export function TasksView() {
         ? cleanField.split(',').map(id => id.trim()).filter(id => id)
         : [];
     
-    console.log('🔍 Resolving user names for:', userIds, 'from original field:', assignedToField);
+    
     
     return userIds
       .map(userId => {
