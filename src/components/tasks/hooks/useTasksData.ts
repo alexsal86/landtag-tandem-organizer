@@ -80,7 +80,7 @@ export function useTasksData() {
         .select('user_id, display_name')
         .order('display_name');
       if (error) throw error;
-      setUsers(data || []);
+      setUsers((data || []).map(u => ({ user_id: u.user_id, display_name: u.display_name ?? undefined })));
     } catch (error) {
       debugConsole.error('Error loading users:', error);
     }
