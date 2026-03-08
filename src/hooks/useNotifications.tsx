@@ -548,7 +548,7 @@ export const useNotifications = () => {
           }
         )
         .subscribe((status) => {
-          console.log('📡 Notifications realtime subscription status:', status);
+          debugConsole.log('📡 Notifications realtime subscription status:', status);
           if (status === 'SUBSCRIBED') {
             subscriptionHealthy = true;
             retryCount = 0; // Reset on successful connection
