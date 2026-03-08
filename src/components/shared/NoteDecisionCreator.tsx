@@ -323,7 +323,7 @@ export function NoteDecisionCreator({
                   }
                 });
               } catch (emailError) {
-                console.warn('Email sending failed:', emailError);
+                debugConsole.warn('Email sending failed:', emailError);
               }
             }
           }
