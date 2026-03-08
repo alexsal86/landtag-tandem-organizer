@@ -153,7 +153,7 @@ export function MentionsPlugin({ onMentionInsert }: MentionsPluginProps = {}): R
           })),
         );
       } catch (error) {
-        console.error('Error fetching users for mentions:', error);
+        debugConsole.error('Error fetching users for mentions:', error);
       }
     };
 

@@ -163,7 +163,7 @@ export function MyWorkQuickCapture({ onNoteSaved }: MyWorkQuickCaptureProps) {
       resetQuickCaptureForm();
       onNoteSaved?.();
     } catch (error) {
-      console.error("Error saving as task:", error);
+      debugConsole.error("Error saving as task:", error);
       toast({ title: "Fehler beim Speichern", variant: "destructive" });
     } finally {
       setSavingAsTask(false);

@@ -157,7 +157,7 @@ export const useCaseWorkspaceData = ({ tenantId, userId }: { tenantId?: string; 
         hasMoreFiles: files.length === PAGE_SIZE,
       });
     } catch (error) {
-      console.error("Failed to refresh case workspace data:", error);
+      debugConsole.error("Failed to refresh case workspace data:", error);
       setCaseItems([]);
       setCaseFiles([]);
       setTeamUsers([]);

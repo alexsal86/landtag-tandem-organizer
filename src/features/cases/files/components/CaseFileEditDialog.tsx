@@ -111,7 +111,7 @@ export function CaseFileEditDialog({ caseFile, open, onOpenChange }: CaseFileEdi
       setSelectedParticipantIds(ids);
       setParticipantRoles(roles);
     } catch (error) {
-      console.error('Error loading participants:', error);
+      debugConsole.error('Error loading participants:', error);
     }
   };
 

@@ -180,7 +180,7 @@ export function EmployeeMeetingScheduler({
       // Navigate to meeting protocol
       navigate(`/employee-meeting/${meeting.id}`);
     } catch (error: unknown) {
-      console.error("Error scheduling meeting:", error);
+      debugConsole.error("Error scheduling meeting:", error);
       toast({
         title: "Fehler",
         description: error instanceof Error ? error.message : "Gespräch konnte nicht geplant werden",

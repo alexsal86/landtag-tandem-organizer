@@ -69,7 +69,7 @@ export function CaseFileCreateDialog({ open, onOpenChange, onSuccess }: CaseFile
       setProfiles(data || []);
       setProfilesLoaded(true);
     } catch (error) {
-      console.error('Error loading profiles:', error);
+      debugConsole.error('Error loading profiles:', error);
       setProfilesLoaded(true);
     }
   };

@@ -100,7 +100,7 @@ export function StakeholderNetworkTagSettings() {
 
       toast({ title: "Gespeichert", description: "Tag-Synonyme wurden aktualisiert." });
     } catch (error) {
-      console.error("Error saving stakeholder network tag synonyms:", error);
+      debugConsole.error("Error saving stakeholder network tag synonyms:", error);
       toast({
         title: "Fehler",
         description: "Tag-Synonyme konnten nicht gespeichert werden.",

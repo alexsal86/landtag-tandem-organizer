@@ -74,7 +74,7 @@ export function StakeholderToDistributionDialog({
 
       onClose();
     } catch (error) {
-      console.error('Error creating distribution list:', error);
+      debugConsole.error('Error creating distribution list:', error);
       toast({
         title: "Fehler",
         description: "Verteiler konnte nicht erstellt werden.",

@@ -110,7 +110,7 @@ export function MyWorkDecisionSidebar({
       setRespondingTo(null);
       onResponseSent?.();
     } catch (error) {
-      console.error('Error sending response:', error);
+      debugConsole.error('Error sending response:', error);
       toast.error("Fehler beim Senden");
     } finally {
       setIsLoading(false);
