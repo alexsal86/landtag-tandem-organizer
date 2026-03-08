@@ -152,11 +152,11 @@ export function GeneralSettings() {
         title: "Erfolgreich",
         description: "Logo wurde hochgeladen."
       });
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Error uploading file:', error);
       toast({
         title: "Fehler",
-        description: `Logo konnte nicht hochgeladen werden: ${error.message || 'Unbekannter Fehler'}`,
+        description: `Logo konnte nicht hochgeladen werden: ${error instanceof Error ? error.message : 'Unbekannter Fehler'}`,
         variant: "destructive"
       });
     } finally {

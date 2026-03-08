@@ -209,8 +209,8 @@ export function RSSSourceManager() {
       } else {
         toast.error("Die URL scheint kein gültiger RSS-Feed zu sein");
       }
-    } catch (error: any) {
-      toast.error(`Fehler beim Testen: ${error.message}`);
+    } catch (error: unknown) {
+      toast.error(`Fehler beim Testen: ${error instanceof Error ? error.message : String(error)}`);
     } finally {
       setTestingUrl(false);
     }

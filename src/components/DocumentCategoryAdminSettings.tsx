@@ -122,7 +122,7 @@ export function DocumentCategoryAdminSettings() {
       
       await loadCategories();
       toast({ title: "Erfolg", description: `Kategorie wurde ${!isActive ? 'aktiviert' : 'deaktiviert'}.` });
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Error toggling category:', error);
       toast({ title: "Fehler", description: "Status konnte nicht geändert werden.", variant: "destructive" });
     }
