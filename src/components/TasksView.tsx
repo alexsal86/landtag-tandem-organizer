@@ -818,7 +818,7 @@ export function TasksView() {
       
       // Fallback: Try a simpler query without join
       try {
-        console.log('Trying fallback query...');
+        
         const { data: fallbackData, error: fallbackError } = await supabase
           .from('task_comments')
           .select('id, task_id, content, user_id, created_at')
