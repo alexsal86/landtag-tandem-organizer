@@ -118,7 +118,7 @@ export const HabitsWidget: React.FC<HabitsWidgetProps> = ({
       setCompletions(data || []);
       calculateHabitStats(data || []);
     } catch (error) {
-      console.error('Error loading completions:', error);
+      debugConsole.error('Error loading completions:', error);
     }
   };
 
