@@ -131,6 +131,7 @@ export function SystemAgendaItem({
       case 'tasks': return <ListTodo className="h-4 w-4 text-green-500" />;
       case 'birthdays': return <Cake className="h-4 w-4 text-pink-500" />;
       case 'decisions': return <Scale className="h-4 w-4 text-violet-500" />;
+      case 'case_items': return <Briefcase className="h-4 w-4 text-teal-500" />;
       default: return null;
     }
   };
