@@ -610,12 +610,12 @@ export function useQuickNotes(refreshTrigger?: number) {
       };
       const { data: task, error: taskError } = await supabase
         .from('tasks')
-        .insert({
+        .insert([{
           user_id: user.id, tenant_id: currentTenant.id, title: taskTitle,
           description: note.content, category: 'personal', priority: mapPriority(note.priority_level),
           status: 'todo', due_date: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),
           assigned_to: user.id,
-        })
+        }])
         .select().single();
       if (taskError) throw taskError;
       await supabase.from("quick_notes").update({ task_id: task.id }).eq("id", note.id);
