@@ -11,6 +11,7 @@ import { Plus, Edit, Trash2, Save, X, GripVertical, Users, Building2, PartyPoppe
 import { supabase } from '@/integrations/supabase/client';
 import { useTenant } from '@/hooks/useTenant';
 import { useToast } from '@/hooks/use-toast';
+import { debugConsole } from '@/utils/debugConsole';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 
 interface LetterOccasion {
