@@ -86,54 +86,7 @@ const ProperReactBigCalendar: React.FC<ProperReactBigCalendarProps> = ({
   onEventDrop,
   onEventResize
 }) => {
-  // Set up German locale with Monday as first day of week
-  useEffect(() => {
-    moment.locale('de', {
-      months: 'Januar_Februar_März_April_Mai_Juni_Juli_August_September_Oktober_November_Dezember'.split('_'),
-      monthsShort: 'Jan_Feb_Mär_Apr_Mai_Jun_Jul_Aug_Sep_Okt_Nov_Dez'.split('_'),
-      weekdays: 'Sonntag_Montag_Dienstag_Mittwoch_Donnerstag_Freitag_Samstag'.split('_'),
-      weekdaysShort: 'So_Mo_Di_Mi_Do_Fr_Sa'.split('_'),
-      weekdaysMin: 'So_Mo_Di_Mi_Do_Fr_Sa'.split('_'),
-      longDateFormat: {
-        LT: 'HH:mm',
-        LTS: 'HH:mm:ss',
-        L: 'DD.MM.YYYY',
-        LL: 'D. MMMM YYYY',
-        LLL: 'D. MMMM YYYY HH:mm',
-        LLLL: 'dddd, D. MMMM YYYY HH:mm'
-      },
-      calendar: {
-        sameDay: '[heute um] LT [Uhr]',
-        nextDay: '[morgen um] LT [Uhr]',
-        nextWeek: 'dddd [um] LT [Uhr]',
-        lastDay: '[gestern um] LT [Uhr]',
-        lastWeek: '[letzten] dddd [um] LT [Uhr]',
-        sameElse: 'L'
-      },
-      relativeTime: {
-        future: 'in %s',
-        past: 'vor %s',
-        s: 'ein paar Sekunden',
-        ss: '%d Sekunden',
-        m: 'einer Minute',
-        mm: '%d Minuten',
-        h: 'einer Stunde',
-        hh: '%d Stunden',
-        d: 'einem Tag',
-        dd: '%d Tagen',
-        M: 'einem Monat',
-        MM: '%d Monaten',
-        y: 'einem Jahr',
-        yy: '%d Jahren'
-      },
-      week: {
-        dow: 1, // Monday is the first day of the week
-        doy: 4  // The week that contains Jan 4th is the first week of the year
-      }
-    });
-  }, []);
-  
-  const localizer = momentLocalizer(moment);
+  // No locale setup needed - date-fns localizer handles it
 
   // Convert events to RBC format using the adapter
   const rbcEvents = useMemo(() => {
