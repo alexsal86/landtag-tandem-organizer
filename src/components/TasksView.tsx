@@ -245,7 +245,7 @@ export function TasksView() {
                                       data.loadSubtasksForTask(task.id);
                                       data.loadSubtaskCounts();
                                       toast({ title: "Unteraufgabe hinzugefügt" });
-                                    } catch (error) { console.error('Error adding subtask:', error); toast({ title: "Fehler", description: "Unteraufgabe konnte nicht hinzugefügt werden.", variant: "destructive" }); }
+                                    } catch (error) { debugConsole.error('Error adding subtask:', error); toast({ title: "Fehler", description: "Unteraufgabe konnte nicht hinzugefügt werden.", variant: "destructive" }); }
                                   })();
                                 }
                               }}><Plus className="h-4 w-4" />Unteraufgabe hinzufügen</Button>
