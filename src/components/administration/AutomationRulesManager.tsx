@@ -203,12 +203,12 @@ export function AutomationRulesManager() {
     setLoading(true);
     const [{ data: rulesData, error: rulesError }, { data: runData, error: runsError }] = await Promise.all([
       supabase
-        .from("automation_rules" as any)
+        .from("automation_rules")
         .select("id, name, description, module, trigger_type, trigger_config, conditions, actions, enabled, updated_at")
         .eq("tenant_id", currentTenant.id)
         .order("updated_at", { ascending: false }),
       supabase
-        .from("automation_rule_runs" as any)
+        .from("automation_rule_runs")
         .select("id, rule_id, status, dry_run, trigger_source, started_at, error_message")
         .eq("tenant_id", currentTenant.id)
         .order("started_at", { ascending: false })
