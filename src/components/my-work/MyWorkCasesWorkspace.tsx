@@ -4,7 +4,7 @@ import { format, type Locale } from "date-fns";
 import { de } from "date-fns/locale";
 import { ArrowDown, ArrowUp, Briefcase, CalendarDays, CheckCircle2, ChevronRight, Circle, Clock, FileText, FolderOpen, Gavel, GripVertical, Inbox, Link2, Mail, MessageSquare, Phone, Plus, Search, Timer, UserRound, Users, Vote } from "lucide-react";
 import { DragDropContext, Droppable, Draggable, type DropResult } from "@hello-pangea/dnd";
-import DOMPurify from "dompurify";
+import { sanitizeRichHtml } from "@/utils/htmlSanitizer";
 import { RichTextDisplay } from "@/components/ui/RichTextDisplay";
 import { debugConsole } from '@/utils/debugConsole';
 
