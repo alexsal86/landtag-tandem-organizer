@@ -122,7 +122,7 @@ export function EmailTemplateManager() {
       resetForm();
       setShowDialog(false);
       fetchTemplates();
-    } catch (error: any) {
+    } catch (error: unknown) {
       toast({
         title: "Fehler beim Speichern",
         description: error.message,
