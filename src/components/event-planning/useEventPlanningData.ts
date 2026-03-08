@@ -881,7 +881,7 @@ export function useEventPlanningData() {
       }
       const formattedComments: PlanningComment[] = (comments || []).map(comment => ({ id: comment.id, planning_item_id: comment.planning_item_id, user_id: comment.user_id, content: comment.content, created_at: comment.created_at, profile: profiles.find(p => p.user_id === comment.user_id) || null }));
       setItemComments(prev => ({ ...prev, [itemId]: formattedComments }));
-    } catch (error) { debugConsole.error('Error loading item comments:', error); }
+    } catch (error) { handleAppError(error, { context: 'loadItemComments' }); }
   };
 
   const loadItemSubtasks = async (itemId: string) => {
