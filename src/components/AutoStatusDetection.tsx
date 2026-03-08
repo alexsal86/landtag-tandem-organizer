@@ -64,7 +64,7 @@ export const AutoStatusDetection: React.FC = () => {
 
       const { data: appointments, error } = await supabase
         .from('appointments')
-        .select('*')
+        .select('id, title, start_time, end_time, is_all_day')
         .eq('user_id', user?.id)
         .eq('category', 'meeting')
         .gte('start_time', now.toISOString())

@@ -77,13 +77,6 @@ export function useCounts(): CountsData {
         console.error('Error fetching distribution lists count:', distributionError);
       }
 
-      console.log('Count debug info:', {
-        contactsCount,
-        stakeholdersCount,
-        archiveCount,
-        distributionListsCount,
-        tenantId: currentTenant.id
-      });
 
       setCounts({
         contactsCount: contactsCount || 0,
