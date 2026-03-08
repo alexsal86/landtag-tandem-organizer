@@ -290,7 +290,10 @@ export function CaseItemDetailPanel({
                           {entry.icon ? <entry.icon className="h-3 w-3" /> : null}
                         </span>
                         <div className={cn("group py-1 text-xs", isFrist && "rounded-sm bg-amber-50/70 dark:bg-amber-950/20 px-2 py-1.5 -mx-1")}>
-                          <p className="text-[10px] font-medium text-muted-foreground">{formatTimelineDateOnly(entry.timestamp)}</p>
+                          <p className="text-[10px] font-medium text-muted-foreground">
+                            {formatTimelineDateOnly(entry.timestamp)}
+                            <span className="ml-1.5 opacity-0 transition-opacity duration-200 ease-out group-hover:opacity-100 group-focus-within:opacity-100">{formatTimelineTimeOnly(entry.timestamp)} Uhr</span>
+                          </p>
                           <div className="flex items-start justify-between gap-2">
                             <p className={cn("font-bold leading-4", isFrist && "text-amber-700 dark:text-amber-400")}>{entry.title}</p>
                             {entry.canDelete && entry.onDelete ? (
@@ -328,9 +331,6 @@ export function CaseItemDetailPanel({
                             ) : null}
                           </div>
                           {entry.safeNoteHtml && <div className="mt-1 font-normal text-muted-foreground" dangerouslySetInnerHTML={{ __html: entry.safeNoteHtml }} />}
-                          <div className="mt-0.5 flex justify-end gap-1 text-[10px] text-muted-foreground/80">
-                            <span className="opacity-0 transition-opacity duration-200 ease-out group-hover:opacity-100 group-focus-within:opacity-100">{formatTimelineTimeOnly(entry.timestamp)} Uhr</span>
-                          </div>
                         </div>
                       </div>
                     );
