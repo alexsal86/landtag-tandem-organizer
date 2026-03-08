@@ -84,7 +84,7 @@ export function TaskArchiveView() {
       
       setArchivedTasks(formattedTasks);
     } catch (error) {
-      console.error('Error loading archived tasks:', error);
+      debugConsole.error('Error loading archived tasks:', error);
       toast({
         title: "Fehler",
         description: "Archivierte Aufgaben konnten nicht geladen werden.",
