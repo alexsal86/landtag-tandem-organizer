@@ -1,5 +1,6 @@
 import { supabase } from '@/integrations/supabase/client';
 import { generateLetterPDF } from '@/utils/letterPDFGenerator';
+import { debugConsole } from '@/utils/debugConsole';
 
 interface Letter {
   id: string;
