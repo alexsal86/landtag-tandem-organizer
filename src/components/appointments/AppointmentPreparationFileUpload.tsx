@@ -110,14 +110,14 @@ export function AppointmentPreparationFileUpload({
         // Save to database
         const { data: docData, error: dbError } = await supabase
           .from('appointment_preparation_documents')
-          .insert({
+          .insert([{
             preparation_id: preparationId,
             file_path: filePath,
             file_name: file.name,
             file_size: file.size,
             file_type: file.type,
             uploaded_by: user.id
-          })
+          }])
           .select()
           .single();
 

@@ -84,7 +84,7 @@ export function useTimeTrackingOperations({
     if (pause > MAX_PAUSE_MINUTES) { toast.error(`Die Pause darf maximal ${MAX_PAUSE_MINUTES} Minuten betragen`); return; }
     try {
       await validateDailyLimit(entryDate, gross);
-      await supabase.from("time_entries").insert({ user_id: userId, work_date: entryDate, started_at: start.toISOString(), ended_at: end.toISOString(), minutes: gross - pause, pause_minutes: pause, notes: notes || null });
+      await supabase.from("time_entries").insert([{ user_id: userId, work_date: entryDate, started_at: start.toISOString(), ended_at: end.toISOString(), minutes: gross - pause, pause_minutes: pause, notes: notes || null }]);
       toast.success("Gespeichert"); resetEntryForm(); loadData();
     } catch (error: unknown) { toast.error(error instanceof Error ? error.message : "Fehler beim Speichern"); }
   };
@@ -134,13 +134,13 @@ export function useTimeTrackingOperations({
   const handleRequestVacation = async () => {
     if (!userId || !vacationStartDate || !vacationEndDate) { toast.error("Bitte beide Felder"); return; }
     if (vacationEndDate < vacationStartDate) { toast.error("Das Enddatum darf nicht vor dem Startdatum liegen"); return; }
-    try { await supabase.from("leave_requests").insert({ user_id: userId, type: "vacation", start_date: vacationStartDate, end_date: vacationEndDate, reason: vacationReason || null, status: "pending" }); toast.success("Urlaubsantrag eingereicht"); setVacationStartDate(""); setVacationEndDate(""); setVacationReason(""); loadData(); } catch (error: unknown) { toast.error(error instanceof Error ? error.message : "Fehler"); }
+    try { await supabase.from("leave_requests").insert([{ user_id: userId, type: "vacation", start_date: vacationStartDate, end_date: vacationEndDate, reason: vacationReason || null, status: "pending" }]); toast.success("Urlaubsantrag eingereicht"); setVacationStartDate(""); setVacationEndDate(""); setVacationReason(""); loadData(); } catch (error: unknown) { toast.error(error instanceof Error ? error.message : "Fehler"); }
   };
 
   const handleReportSick = async () => {
     if (!userId || !sickStartDate || !sickEndDate) { toast.error("Bitte beide Felder"); return; }
     if (sickEndDate < sickStartDate) { toast.error("Das Enddatum darf nicht vor dem Startdatum liegen"); return; }
-    try { await supabase.from("leave_requests").insert({ user_id: userId, type: "sick", start_date: sickStartDate, end_date: sickEndDate, reason: sickNotes || null, status: "pending" }); toast.success("Krankmeldung eingereicht"); setSickStartDate(""); setSickEndDate(""); setSickNotes(""); loadData(); } catch (error: unknown) { toast.error(error instanceof Error ? error.message : "Fehler"); }
+    try { await supabase.from("leave_requests").insert([{ user_id: userId, type: "sick", start_date: sickStartDate, end_date: sickEndDate, reason: sickNotes || null, status: "pending" }]); toast.success("Krankmeldung eingereicht"); setSickStartDate(""); setSickEndDate(""); setSickNotes(""); loadData(); } catch (error: unknown) { toast.error(error instanceof Error ? error.message : "Fehler"); }
   };
 
   const handleReportMedical = async () => {
@@ -150,7 +150,7 @@ export function useTimeTrackingOperations({
     const minutesCounted = (endH * 60 + endM) - (startH * 60 + startM);
     if (minutesCounted <= 0) { toast.error("Endzeit muss nach Startzeit liegen"); return; }
     try {
-      const { error } = await supabase.from("leave_requests").insert({ user_id: userId, type: "medical", start_date: medicalDate, end_date: medicalDate, medical_reason: medicalReason, start_time: medicalStartTime, end_time: medicalEndTime, minutes_counted: minutesCounted, reason: medicalNotes || null, status: "pending" }).select();
+      const { error } = await supabase.from("leave_requests").insert([{ user_id: userId, type: "medical", start_date: medicalDate, end_date: medicalDate, medical_reason: medicalReason, start_time: medicalStartTime, end_time: medicalEndTime, minutes_counted: minutesCounted, reason: medicalNotes || null, status: "pending" }]).select();
       if (error) throw error;
       toast.success("Arzttermin eingereicht"); setMedicalDate(""); setMedicalStartTime(""); setMedicalEndTime(""); setMedicalReason("acute"); setMedicalNotes(""); loadData();
     } catch (error: unknown) { debugConsole.error("Medical appointment error:", error); toast.error(error instanceof Error ? error.message : "Fehler"); }
@@ -163,7 +163,7 @@ export function useTimeTrackingOperations({
     try { days = eachDayOfInterval({ start: parseISO(overtimeStartDate), end: parseISO(overtimeEndDate) }).filter(d => d.getDay() !== 0 && d.getDay() !== 6).length; } catch { toast.error("Ungültiger Datumsbereich für den Überstundenabbau"); return; }
     if (days === 0) { toast.error("Bitte mindestens einen Werktag auswählen"); return; }
     try {
-      const { error } = await supabase.from("leave_requests").insert({ user_id: userId, type: "overtime_reduction", start_date: overtimeStartDate, end_date: overtimeEndDate, reason: overtimeReason || null, status: "pending" }).select();
+      const { error } = await supabase.from("leave_requests").insert([{ user_id: userId, type: "overtime_reduction", start_date: overtimeStartDate, end_date: overtimeEndDate, reason: overtimeReason || null, status: "pending" }]).select();
       if (error) throw error;
       toast.success("Überstundenabbau beantragt"); setOvertimeStartDate(""); setOvertimeEndDate(""); setOvertimeReason(""); loadData();
     } catch (error: unknown) { debugConsole.error("Overtime reduction error:", error); toast.error(error instanceof Error ? error.message : "Fehler"); }

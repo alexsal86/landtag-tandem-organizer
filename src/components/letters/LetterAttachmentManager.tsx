@@ -118,14 +118,14 @@ const LetterAttachmentManager: React.FC<LetterAttachmentManagerProps> = ({
         // Save attachment record
         const { data: insertData, error: insertError } = await supabase
           .from('letter_attachments')
-          .insert({
+          .insert([{
             letter_id: letterId,
             file_name: file.name,
             file_path: filePath,
             file_type: file.type,
             file_size: file.size,
             uploaded_by: user?.id
-          })
+          }])
           .select()
           .single();
 
@@ -285,15 +285,15 @@ const LetterAttachmentManager: React.FC<LetterAttachmentManagerProps> = ({
     try {
       const { data, error } = await supabase
         .from('letter_attachments')
-        .insert({
+        .insert([{
           letter_id: letterId,
           file_name: document.file_name,
           file_path: document.file_path,
           file_type: document.file_type,
           file_size: document.file_size,
           uploaded_by: document.user_id,
-          display_name: document.title // Use document title as display name
-        })
+          display_name: document.title
+        }])
         .select()
         .single();
 

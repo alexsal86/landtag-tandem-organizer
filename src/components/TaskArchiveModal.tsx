@@ -224,10 +224,10 @@ export function TaskArchiveModal({ isOpen, onClose, onTaskRestored }: TaskArchiv
         // Create new task with the original ID if it doesn't exist
         const { error: insertError } = await supabase
           .from('tasks')
-          .insert({
-            id: task.task_id, // Use the original task ID
+          .insert([{
+            id: task.task_id,
             user_id: user.id,
-            tenant_id: tenantId, // Jetzt garantiert vorhanden
+            tenant_id: tenantId,
             title: task.title,
             description: task.description,
             priority: task.priority,
@@ -236,7 +236,7 @@ export function TaskArchiveModal({ isOpen, onClose, onTaskRestored }: TaskArchiv
             progress: task.progress || 0,
             due_date: task.due_date,
             status: 'todo'
-          });
+          }]);
 
         if (insertError) throw insertError;
       }

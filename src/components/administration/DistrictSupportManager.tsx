@@ -85,12 +85,12 @@ export const DistrictSupportManager = () => {
     }) => {
       const { data, error } = await supabase
         .from('district_support_assignments')
-        .insert({
+        .insert([{
           district_id: districtId,
           supporting_representative_id: representativeId,
           notes: notes || null,
           priority: 1
-        })
+        }])
         .select()
         .single();
       

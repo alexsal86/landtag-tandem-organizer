@@ -38,7 +38,7 @@ export function useMeetingArchive(deps: ArchiveDeps) {
 
     const { data: created, error: createError } = await supabase
       .from('meeting_agenda_items')
-      .insert({ meeting_id: meetingId, title: 'Rückblick', description: 'Übertragene Punkte aus vorherigen Besprechungen', order_index: 0, is_completed: false, is_recurring: false })
+      .insert([{ meeting_id: meetingId, title: 'Rückblick', description: 'Übertragene Punkte aus vorherigen Besprechungen', order_index: 0, is_completed: false, is_recurring: false }])
       .select('id').single();
     if (createError) throw createError;
     return created.id;
@@ -59,7 +59,7 @@ export function useMeetingArchive(deps: ArchiveDeps) {
       try {
         const dedupeKey = `${sourceMeeting.id}::${item.title}`;
         if (existingSet.has(dedupeKey)) continue;
-        const { error } = await supabase.from('meeting_agenda_items').insert({
+        const { error } = await supabase.from('meeting_agenda_items').insert([{
           meeting_id: targetMeetingId, parent_id: reviewParentId, title: item.title,
           description: item.description, notes: item.notes, result_text: item.result_text,
           assigned_to: item.assigned_to, order_index: nextOrderIndex++,
@@ -67,7 +67,7 @@ export function useMeetingArchive(deps: ArchiveDeps) {
           original_meeting_date: typeof sourceMeeting.meeting_date === 'string' ? sourceMeeting.meeting_date : sourceMeeting.meeting_date?.toISOString().split('T')[0],
           original_meeting_title: sourceMeeting.title,
           carryover_notes: `Übertragen von: ${sourceMeeting.title} (${sourceMeeting.meeting_date})`
-        });
+        }]);
         if (error) debugConsole.error('Error transferring item:', error);
         else existingSet.add(dedupeKey);
       } catch (error) {
@@ -79,14 +79,14 @@ export function useMeetingArchive(deps: ArchiveDeps) {
   const storeCarryoverItems = async (items: AgendaItem[], sourceMeeting: Meeting) => {
     for (const item of items) {
       try {
-        const { error } = await supabase.from('carryover_items').insert({
+        const { error } = await supabase.from('carryover_items').insert([{
           user_id: user!.id, template_id: sourceMeeting.template_id, title: item.title,
           description: item.description, notes: item.notes, result_text: item.result_text,
           assigned_to: item.assigned_to, order_index: item.order_index,
           original_meeting_id: sourceMeeting.id,
           original_meeting_date: typeof sourceMeeting.meeting_date === 'string' ? sourceMeeting.meeting_date : sourceMeeting.meeting_date?.toISOString().split('T')[0],
           original_meeting_title: sourceMeeting.title
-        });
+        }]);
         if (error) debugConsole.error('Error storing carryover item:', error);
       } catch (error) {
         debugConsole.error('Error storing carryover item:', item.title, error);

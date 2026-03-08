@@ -190,13 +190,13 @@ export function MyWorkDecisionsTab() {
 
       const { error } = await supabase
         .from('task_decision_responses')
-        .insert({
+        .insert([{
           decision_id: parentResponse.decision_id,
           participant_id: parentResponse.participant_id,
           response_type: 'question',
           comment: text.trim(),
           parent_response_id: responseId,
-        });
+        }]);
 
       if (error) {
         toast({ title: "Fehler", description: "Antwort konnte nicht gesendet werden.", variant: "destructive" });
@@ -277,7 +277,7 @@ export function MyWorkDecisionsTab() {
     else resultText += 'Unentschieden';
     
     try {
-      const { error } = await supabase.from('tasks').insert({
+      const { error } = await supabase.from('tasks').insert([{
         user_id: user.id,
         title: `[Entscheidung] ${decision.title}`,
         description: `<h3>Aus Entscheidung: ${decision.title}</h3><p><strong>${resultText}</strong> (Ja: ${summary.yesCount}, Nein: ${summary.noCount})</p>${decision.description ? `<div>${decision.description}</div>` : ''}`,
@@ -286,7 +286,7 @@ export function MyWorkDecisionsTab() {
         status: 'todo',
         priority: 'medium',
         category: 'personal'
-      });
+      }]);
       if (error) throw error;
       toast({ title: "Aufgabe erstellt", description: "Aufgabe wurde aus der Entscheidung erstellt." });
     } catch (error) {

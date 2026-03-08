@@ -59,7 +59,7 @@ export const persistPressTemplates = async (tenantId: string, templates: PressTe
 
   const query = existing
     ? supabase.from('app_settings').update({ setting_value: serialized }).eq('id', existing.id)
-    : supabase.from('app_settings').insert({ tenant_id: tenantId, setting_key: PRESS_TEMPLATE_SETTINGS_KEY, setting_value: serialized });
+    : supabase.from('app_settings').insert([{ tenant_id: tenantId, setting_key: PRESS_TEMPLATE_SETTINGS_KEY, setting_value: serialized }]);
 
   const { error } = await query;
   if (error) {

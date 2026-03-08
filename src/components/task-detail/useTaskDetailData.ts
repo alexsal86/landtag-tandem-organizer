@@ -180,7 +180,7 @@ export function useTaskDetailData(task: Task | null) {
   const addComment = async () => {
     if (!newComment.trim() || !task || !user) return;
     try {
-      const { error } = await supabase.from("task_comments").insert({ task_id: task.id, user_id: user.id, content: newComment.trim() });
+      const { error } = await supabase.from("task_comments").insert([{ task_id: task.id, user_id: user.id, content: newComment.trim() }]);
       if (error) throw error;
       setNewComment("");
       setNewCommentEditorKey((p) => p + 1);
@@ -224,7 +224,7 @@ export function useTaskDetailData(task: Task | null) {
       const filePath = `${user.id}/${task.id}/${Date.now()}.${ext}`;
       const { error: ue } = await supabase.storage.from("task-documents").upload(filePath, file);
       if (ue) throw ue;
-      const { error: de } = await supabase.from("task_documents").insert({ task_id: task.id, user_id: user.id, file_name: file.name, file_path: filePath, file_size: file.size, file_type: file.type });
+      const { error: de } = await supabase.from("task_documents").insert([{ task_id: task.id, user_id: user.id, file_name: file.name, file_path: filePath, file_size: file.size, file_type: file.type }]);
       if (de) throw de;
       loadTaskDocuments(task.id);
       toast({ title: "Dokument hochgeladen" });
@@ -267,7 +267,7 @@ export function useTaskDetailData(task: Task | null) {
   const addSubtask = async () => {
     if (!newSubtask.description.trim() || !task || !user) return;
     try {
-      const { error } = await supabase.from("tasks").insert({
+      const { error } = await supabase.from("tasks").insert([{
         parent_task_id: task.id,
         user_id: user.id,
         tenant_id: (task as any).tenant_id,
@@ -279,7 +279,7 @@ export function useTaskDetailData(task: Task | null) {
         priority: task.priority || "medium",
         category: task.category || "personal",
         progress: 0,
-      } as any);
+      }] as any);
       if (error) throw error;
       setNewSubtask({ description: "", assigned_to: "", due_date: "" });
       loadSubtasks(task.id);

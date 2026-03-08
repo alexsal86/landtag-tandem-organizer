@@ -359,7 +359,7 @@ export function useEventPlanningData() {
     if (!user || !newPlanningTitle.trim()) return;
     if (!currentTenant) { toast({ title: "Fehler", description: "Kein Tenant gefunden. Bitte laden Sie die Seite neu.", variant: "destructive" }); return; }
 
-    const { data, error } = await supabase.from("event_plannings").insert({ title: newPlanningTitle, user_id: user.id, tenant_id: currentTenant.id, is_private: newPlanningIsPrivate }).select().single();
+    const { data, error } = await supabase.from("event_plannings").insert([{ title: newPlanningTitle, user_id: user.id, tenant_id: currentTenant.id, is_private: newPlanningIsPrivate }]).select().single();
     if (error) { toast({ title: "Fehler", description: "Planung konnte nicht erstellt werden.", variant: "destructive" }); return; }
 
     const templateParam = selectedTemplateId === "none" ? null : selectedTemplateId;
@@ -453,14 +453,14 @@ export function useEventPlanningData() {
       if (isNaN(hours) || isNaN(minutes)) throw new Error("Ungültiges Zeitformat");
       dateTime.setHours(hours, minutes, 0, 0);
 
-      const { data, error } = await supabase.from("event_planning_dates").insert({ event_planning_id: selectedPlanning.id, date_time: dateTime.toISOString() }).select().single();
+      const { data, error } = await supabase.from("event_planning_dates").insert([{ event_planning_id: selectedPlanning.id, date_time: dateTime.toISOString() }]).select().single();
       if (error) throw error;
 
-      const { data: appointment, error: appointmentError } = await supabase.from("appointments").insert({
+      const { data: appointment, error: appointmentError } = await supabase.from("appointments").insert([{
         user_id: user?.id, tenant_id: currentTenant.id, title: `Geplant: ${selectedPlanning.title}`,
         start_time: dateTime.toISOString(), end_time: new Date(dateTime.getTime() + 2 * 60 * 60 * 1000).toISOString(),
         category: "blocked", status: "planned",
-      }).select().single();
+      }]).select().single();
 
       if (!appointmentError && appointment) {
         await supabase.from("event_planning_dates").update({ appointment_id: appointment.id }).eq("id", data.id);

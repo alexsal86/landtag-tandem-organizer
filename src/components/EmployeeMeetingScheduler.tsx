@@ -75,7 +75,7 @@ export function EmployeeMeetingScheduler({
       // Create the meeting
       const { data: meeting, error: meetingError } = await supabase
         .from("employee_meetings")
-        .insert({
+        .insert([{
           employee_id: employeeId,
           conducted_by: user.id,
           tenant_id: currentTenant.id,
@@ -83,7 +83,7 @@ export function EmployeeMeetingScheduler({
           next_meeting_due: nextMeetingDue.toISOString(),
           meeting_type: meetingType,
           status: "scheduled",
-        })
+        }])
         .select()
         .single();
 
@@ -139,7 +139,7 @@ export function EmployeeMeetingScheduler({
 
         const { error: calendarError } = await supabase
           .from("appointments")
-          .insert({
+          .insert([{
             user_id: user.id,
             tenant_id: currentTenant.id,
             title: `Mitarbeitergespräch mit ${employeeName}`,
@@ -152,7 +152,7 @@ export function EmployeeMeetingScheduler({
             end_time: endTime.toISOString(),
             status: "planned",
             priority: "high",
-          });
+          }]);
 
         if (calendarError) {
           debugConsole.error("Calendar entry error:", calendarError);
