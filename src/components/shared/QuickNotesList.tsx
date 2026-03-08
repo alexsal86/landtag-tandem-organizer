@@ -1014,7 +1014,7 @@ export function QuickNotesList({
 
       // Task might already be deleted - that's ok (PGRST116 = no rows found)
       if (taskError && !taskError.message.includes('0 rows')) {
-        console.warn('Task deletion warning:', taskError);
+        debugConsole.warn('Task deletion warning:', taskError);
         // Continue anyway as long as it's not a critical error
       }
 
