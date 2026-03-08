@@ -98,7 +98,7 @@ export const useNoteSharing = (noteId?: string) => {
   };
 
   const unshareNote = async (shareId: string) => {
-    console.log("Unsharing note:", { shareId });
+    
     
     try {
       // Hole zuerst die note_id für die RLS-Policy
