@@ -1,9 +1,9 @@
-import React, { useMemo, useCallback, useEffect } from 'react';
+import React, { useMemo, useCallback } from 'react';
 import { debugConsole } from '@/utils/debugConsole';
-import { Calendar, momentLocalizer, Views } from 'react-big-calendar';
+import { Calendar, dateFnsLocalizer, Views } from 'react-big-calendar';
 import withDragAndDrop from 'react-big-calendar/lib/addons/dragAndDrop';
-import moment from 'moment';
-import 'moment/locale/de';
+import { format, parse, startOfWeek, getDay, isSameDay } from 'date-fns';
+import { de } from 'date-fns/locale';
 import 'react-big-calendar/lib/css/react-big-calendar.css';
 import 'react-big-calendar/lib/addons/dragAndDrop/styles.css';
 import { CalendarEventAdapter, type RBCEvent } from './CalendarEventAdapter';
@@ -21,9 +21,17 @@ interface ProperReactBigCalendarProps {
   onView?: (view: string) => void;
 }
 
-// Set up German localizer
-moment.locale('de');
-const localizer = momentLocalizer(moment);
+// Set up date-fns localizer with German locale
+const locales = { 'de': de };
+const localizer = dateFnsLocalizer({
+  format: (date: Date, formatStr: string, options?: any) =>
+    format(date, formatStr, { ...options, locale: de }),
+  parse: (dateStr: string, formatStr: string, backupDate: Date) =>
+    parse(dateStr, formatStr, backupDate, { locale: de }),
+  startOfWeek: () => startOfWeek(new Date(), { locale: de }),
+  getDay,
+  locales,
+});
 
 // Create DnD Calendar with drag and drop support
 const DnDCalendar = withDragAndDrop(Calendar);
@@ -45,26 +53,26 @@ const messages = {
   showMore: (total: number) => `+ ${total} weitere`
 };
 
-// German date formats
+// German date formats using date-fns tokens
 const formats = {
-  monthHeaderFormat: 'MMMM YYYY',
-  dayHeaderFormat: 'dddd, DD. MMMM YYYY',
+  monthHeaderFormat: 'MMMM yyyy',
+  dayHeaderFormat: 'EEEE, dd. MMMM yyyy',
   dayRangeHeaderFormat: ({ start, end }: { start: Date; end: Date }) =>
-    `${moment(start).format('DD. MMM')} – ${moment(end).format('DD. MMM YYYY')}`,
+    `${format(start, 'dd. MMM', { locale: de })} – ${format(end, 'dd. MMM yyyy', { locale: de })}`,
   timeGutterFormat: 'HH:mm',
   eventTimeRangeFormat: ({ start, end }: { start: Date; end: Date }) =>
-    `${moment(start).format('HH:mm')} – ${moment(end).format('HH:mm')}`,
-  dayFormat: 'DD',
-  dateFormat: 'DD',
-  weekdayFormat: 'dddd',
+    `${format(start, 'HH:mm', { locale: de })} – ${format(end, 'HH:mm', { locale: de })}`,
+  dayFormat: 'dd',
+  dateFormat: 'dd',
+  weekdayFormat: 'EEEE',
   agendaHeaderFormat: ({ start, end }: { start: Date; end: Date }) =>
-    `${moment(start).format('DD. MMMM')} – ${moment(end).format('DD. MMMM YYYY')}`,
-  agendaDateFormat: 'dddd, DD. MMMM',
+    `${format(start, 'dd. MMMM', { locale: de })} – ${format(end, 'dd. MMMM yyyy', { locale: de })}`,
+  agendaDateFormat: 'EEEE, dd. MMMM',
   agendaTimeFormat: 'HH:mm',
   agendaTimeRangeFormat: ({ start, end }: { start: Date; end: Date }) =>
-    `${moment(start).format('HH:mm')} – ${moment(end).format('HH:mm')}`,
+    `${format(start, 'HH:mm', { locale: de })} – ${format(end, 'HH:mm', { locale: de })}`,
   selectRangeFormat: ({ start, end }: { start: Date; end: Date }) =>
-    `${moment(start).format('DD. MMM')} – ${moment(end).format('DD. MMM')}`
+    `${format(start, 'dd. MMM', { locale: de })} – ${format(end, 'dd. MMM', { locale: de })}`
 };
 
 const ProperReactBigCalendar: React.FC<ProperReactBigCalendarProps> = ({
@@ -78,54 +86,7 @@ const ProperReactBigCalendar: React.FC<ProperReactBigCalendarProps> = ({
   onEventDrop,
   onEventResize
 }) => {
-  // Set up German locale with Monday as first day of week
-  useEffect(() => {
-    moment.locale('de', {
-      months: 'Januar_Februar_März_April_Mai_Juni_Juli_August_September_Oktober_November_Dezember'.split('_'),
-      monthsShort: 'Jan_Feb_Mär_Apr_Mai_Jun_Jul_Aug_Sep_Okt_Nov_Dez'.split('_'),
-      weekdays: 'Sonntag_Montag_Dienstag_Mittwoch_Donnerstag_Freitag_Samstag'.split('_'),
-      weekdaysShort: 'So_Mo_Di_Mi_Do_Fr_Sa'.split('_'),
-      weekdaysMin: 'So_Mo_Di_Mi_Do_Fr_Sa'.split('_'),
-      longDateFormat: {
-        LT: 'HH:mm',
-        LTS: 'HH:mm:ss',
-        L: 'DD.MM.YYYY',
-        LL: 'D. MMMM YYYY',
-        LLL: 'D. MMMM YYYY HH:mm',
-        LLLL: 'dddd, D. MMMM YYYY HH:mm'
-      },
-      calendar: {
-        sameDay: '[heute um] LT [Uhr]',
-        nextDay: '[morgen um] LT [Uhr]',
-        nextWeek: 'dddd [um] LT [Uhr]',
-        lastDay: '[gestern um] LT [Uhr]',
-        lastWeek: '[letzten] dddd [um] LT [Uhr]',
-        sameElse: 'L'
-      },
-      relativeTime: {
-        future: 'in %s',
-        past: 'vor %s',
-        s: 'ein paar Sekunden',
-        ss: '%d Sekunden',
-        m: 'einer Minute',
-        mm: '%d Minuten',
-        h: 'einer Stunde',
-        hh: '%d Stunden',
-        d: 'einem Tag',
-        dd: '%d Tagen',
-        M: 'einem Monat',
-        MM: '%d Monaten',
-        y: 'einem Jahr',
-        yy: '%d Jahren'
-      },
-      week: {
-        dow: 1, // Monday is the first day of the week
-        doy: 4  // The week that contains Jan 4th is the first week of the year
-      }
-    });
-  }, []);
-  
-  const localizer = momentLocalizer(moment);
+  // No locale setup needed - date-fns localizer handles it
 
   // Convert events to RBC format using the adapter
   const rbcEvents = useMemo(() => {
@@ -209,7 +170,7 @@ const ProperReactBigCalendar: React.FC<ProperReactBigCalendarProps> = ({
 
   // Day prop getter for today highlighting
   const dayPropGetter = useCallback((date: Date) => {
-    const isToday = moment(date).isSame(moment(), 'day');
+    const isToday = isSameDay(date, new Date());
     return {
       className: isToday ? 'rbc-today' : '',
       style: {}
@@ -269,22 +230,22 @@ const ProperReactBigCalendar: React.FC<ProperReactBigCalendarProps> = ({
         dayPropGetter={dayPropGetter}
         messages={messages}
         formats={{
-          dayFormat: 'D',
-          weekdayFormat: 'ddd',
-          monthHeaderFormat: 'MMMM YYYY',
-          dayHeaderFormat: 'dddd, DD. MMMM YYYY',
+          dayFormat: 'd',
+          weekdayFormat: 'EEE',
+          monthHeaderFormat: 'MMMM yyyy',
+          dayHeaderFormat: 'EEEE, dd. MMMM yyyy',
           dayRangeHeaderFormat: ({ start, end }) => 
-            `${moment(start).format('DD. MMMM')} – ${moment(end).format('DD. MMMM YYYY')}`,
-          agendaDateFormat: 'dddd, DD. MMMM',
+            `${format(start, 'dd. MMMM', { locale: de })} – ${format(end, 'dd. MMMM yyyy', { locale: de })}`,
+          agendaDateFormat: 'EEEE, dd. MMMM',
           agendaTimeFormat: 'HH:mm',
           agendaTimeRangeFormat: ({ start, end }) => 
-            `${moment(start).format('HH:mm')} – ${moment(end).format('HH:mm')}`,
+            `${format(start, 'HH:mm', { locale: de })} – ${format(end, 'HH:mm', { locale: de })}`,
           timeGutterFormat: 'HH:mm',
           eventTimeRangeFormat: ({ start, end }) => 
-            `${moment(start).format('HH:mm')} – ${moment(end).format('HH:mm')}`,
-          dateFormat: 'D',
+            `${format(start, 'HH:mm', { locale: de })} – ${format(end, 'HH:mm', { locale: de })}`,
+          dateFormat: 'd',
           selectRangeFormat: ({ start, end }) =>
-            `${moment(start).format('DD. MMM')} – ${moment(end).format('DD. MMM')}`
+            `${format(start, 'dd. MMM', { locale: de })} – ${format(end, 'dd. MMM', { locale: de })}`
         }}
         toolbar={false}
         selectable
