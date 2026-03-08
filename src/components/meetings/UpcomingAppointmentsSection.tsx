@@ -220,7 +220,7 @@ export const UpcomingAppointmentsSection: React.FC<UpcomingAppointmentsSectionPr
         await supabase.from('starred_appointments').insert(insertData);
       }
     } catch (error) {
-      console.error('Error toggling star:', error);
+      debugConsole.error('Error toggling star:', error);
       // Rollback on error
       setStarredIds(prev => {
         const newSet = new Set(prev);
