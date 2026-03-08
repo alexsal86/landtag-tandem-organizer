@@ -195,7 +195,7 @@ export function GlobalSearchCommand() {
       let query = supabase
         .from('appointments')
         .select('id, title, start_time, location, category, description, meeting_details')
-        .eq('tenant_id', currentTenant!.id)
+        .eq('tenant_id', currentTenant?.id ?? '')
         .or(`title.ilike.%${searchQuery}%,location.ilike.%${searchQuery}%,description.ilike.%${searchQuery}%,meeting_details.ilike.%${searchQuery}%`);
       
       if (filters.dateFrom) {
