@@ -64,7 +64,13 @@ export function CaseItemDetailPanel({
   onNavigateToCaseFile,
   contactDisplay,
   contactPerson,
+  contactEmail,
+  contactPhone,
+  selectedContactId,
   onContactPersonChange,
+  onContactEmailChange,
+  onContactPhoneChange,
+  onContactSelected,
 }: {
   itemId: string;
   itemCaseFileId: string | null;
@@ -86,7 +92,13 @@ export function CaseItemDetailPanel({
   onNavigateToCaseFile: (caseFileId: string) => void;
   contactDisplay: string;
   contactPerson: string;
+  contactEmail: string;
+  contactPhone: string;
+  selectedContactId: string | null;
   onContactPersonChange: (value: string) => void;
+  onContactEmailChange: (value: string) => void;
+  onContactPhoneChange: (value: string) => void;
+  onContactSelected: (contact: { id: string; name: string; email: string | null; phone: string | null } | null) => void;
 }) {
   const [showMetaFields, setShowMetaFields] = useState(false);
   const [showInteractionComposer, setShowInteractionComposer] = useState(false);
