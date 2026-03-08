@@ -201,7 +201,7 @@ export const loadElectoralDistrictsGeoJson = async (): Promise<GeoJsonData> => {
       
       const res = await fetch(path);
       if (!res.ok) {
-        console.warn('Fetch failed for', path, res.status, res.statusText);
+        debugConsole.warn('Fetch failed for', path, res.status, res.statusText);
         continue;
       }
 
