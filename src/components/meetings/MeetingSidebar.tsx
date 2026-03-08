@@ -196,7 +196,7 @@ export function MeetingSidebar({
                     </div>
                     <div>
                       <label className="text-xs font-medium text-muted-foreground">Ort</label>
-                      <Input value={editingMeeting.location || ''} onChange={(e) => onSetEditingMeeting({ ...editingMeeting, location: e.target.value })} className="h-8 text-sm" />
+                      <Input value={editingMeeting?.location || ''} onChange={(e) => onSetEditingMeeting({ ...editingMeeting!, location: e.target.value } as Meeting)} className="h-8 text-sm" />
                     </div>
                     <div className="grid grid-cols-2 gap-2">
                       <div>
