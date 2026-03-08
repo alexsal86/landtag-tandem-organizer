@@ -266,7 +266,7 @@ export function useTasksData() {
     try {
       const { data, error } = await supabase
         .from('task_snoozes')
-        .select('*')
+        .select('id, task_id, subtask_id, snoozed_until')
         .eq('user_id', user.id)
         .gt('snoozed_until', new Date().toISOString());
       if (error) throw error;
