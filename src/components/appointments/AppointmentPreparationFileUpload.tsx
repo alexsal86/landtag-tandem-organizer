@@ -59,7 +59,7 @@ export function AppointmentPreparationFileUpload({
 
       setFiles(loadedFiles);
     } catch (error) {
-      console.error('Error loading files:', error);
+      debugConsole.error('Error loading files:', error);
       toast({
         title: "Fehler",
         description: "Dateien konnten nicht geladen werden.",
