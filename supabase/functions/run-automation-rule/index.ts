@@ -124,6 +124,22 @@ serve(async (req) => {
       }
     }
 
+    // Kill-Switch: check if tenant has paused all automations
+    if (!dryRun) {
+      const { data: tenantRow } = await supabaseAdmin
+        .from("tenants")
+        .select("automations_paused")
+        .eq("id", rule.tenant_id)
+        .maybeSingle();
+
+      if (tenantRow?.automations_paused) {
+        return new Response(JSON.stringify({ error: "Automations are paused for this tenant" }), {
+          status: 400,
+          headers: { ...CORS_HEADERS, "Content-Type": "application/json" },
+        });
+      }
+    }
+
     if (!rule.enabled && !dryRun) {
       return new Response(JSON.stringify({ error: "Rule is disabled" }), {
         status: 400,

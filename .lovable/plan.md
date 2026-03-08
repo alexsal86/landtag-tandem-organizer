@@ -1,44 +1,19 @@
 
+## Benachrichtigungen & Badges für Vorgänge — Umgesetzt
 
-## Empfohlene nächste Schritte (nach Priorität)
+### Was wurde gemacht:
 
-### 1. Kill-Switch für Tenant-Automations (Quick Win)
+1. **DB: Neue `notification_types` für Kategorie `cases`** (alle 3 Tenants)
+   - `case_item_created`, `case_item_assigned`, `case_item_status_changed`, `case_item_comment`
 
-Ein Toggle im Admin-Header des Automatisierungs-Bereichs, der alle Regeln eines Tenants pausiert/reaktiviert.
+2. **DB: `notification_navigation_mapping`** — alle 4 Typen auf `navigation_context = 'mywork'` gemappt, damit Sidebar-Badge korrekt zählt.
 
-- Neues Feld `automations_paused` in `tenants`-Tabelle (boolean, default false)
-- Toggle-Button im `AutomationRulesManager`-Header
-- `run-automation-rule` und `run-scheduled-automation-rules` prüfen dieses Flag vor Ausführung
-- ~30 Zeilen Code + 1 Migration
+3. **UI: `NotificationSettings.tsx`** — Kategorie `cases` / "Vorgänge" mit Icon 📋 eingefügt (Order 3).
 
-### 2. Fehler-Alerts für Admins (Quick Win)
+4. **Code: `useCaseItems.tsx`** — `create_notification` RPC-Aufrufe bei:
+   - Vorgang erstellen → Benachrichtigung an zugewiesenen Owner
+   - Status-Änderung → Benachrichtigung an Ersteller + Owner
+   - Zuweisung-Änderung → Benachrichtigung an neuen Owner
+   - Kommentar/Interaktion → Benachrichtigung an Ersteller + Owner
 
-Wenn ein Run fehlschlägt, automatisch eine In-App-Notification an Tenant-Admins senden.
-
-- Bereits im `run-automation-rule` Backend bei Fehler implementiert (Zeile 518ff erstellt Notification)
-- Prüfen ob das korrekt funktioniert, ggf. erweitern um Push-Notification
-- Im Admin-UI: Fehlerhafte Runs rot hervorheben, Filter "Nur Fehler" prominenter machen
-
-### 3. DB-Trigger für `record_changed` (Komplex)
-
-Postgres-Trigger + `pg_net` Extension, der bei Änderungen an tasks/decisions/meetings die Edge Function aufruft.
-
-- `pg_net` Extension aktivieren
-- Postgres-Trigger-Funktionen für relevante Tabellen erstellen
-- HTTP-Call an `run-automation-rule` mit geändertem Record als Payload
-- Condition-Matching im Backend erweitern um Feld-Vergleiche gegen tatsächliche Daten
-- Aufwand: ~2 Sprints, höchstes Risiko
-
-### 4. Rule-Versionierung & Import/Export (Phase 4)
-
-- Versionstabelle `automation_rule_versions` mit Snapshots bei jeder Änderung
-- JSON-Export/Import Button im Admin-UI
-
----
-
-### Empfehlung
-
-**Kill-Switch** und **Fehler-Alerts** sind schnelle Wins mit hohem Betriebsnutzen. Der DB-Trigger ist das Feature mit dem größten Impact, aber auch dem höchsten Aufwand.
-
-Soll ich mit dem **Kill-Switch** starten?
-
+5. **Badge-System**: Sidebar-Badge für "Meine Arbeit" zählt nun auch Vorgang-Benachrichtigungen (via `navigation_context = 'mywork'` Trigger). Interne Tab-Badges bleiben über `useMyWorkNewCounts` (Zeitstempel-basiert).

@@ -8,7 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/components/ui/use-toast";
-import { AlertTriangle, Loader2, Play, Plus, Trash2, Zap } from "lucide-react";
+import { AlertTriangle, Loader2, Pause, Play, Plus, Trash2, Zap } from "lucide-react";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { formatDistanceToNow } from "date-fns";
 import { de } from "date-fns/locale";
@@ -64,6 +64,8 @@ export function AutomationRulesManager() {
   const [form, setForm] = useState<WizardForm>(DEFAULT_FORM);
   const [wizardOpen, setWizardOpen] = useState(false);
   const [runStatusFilter, setRunStatusFilter] = useState<string>("all");
+  const [automationsPaused, setAutomationsPaused] = useState(false);
+  const [togglingPause, setTogglingPause] = useState(false);
 
   const filteredRuns = useMemo(() => {
     if (runStatusFilter === "all") return runs;
@@ -71,10 +73,38 @@ export function AutomationRulesManager() {
     return runs.filter((run) => run.status === runStatusFilter && !run.dry_run);
   }, [runs, runStatusFilter]);
 
+  const toggleAutomationsPaused = async () => {
+    if (!currentTenant) return;
+    setTogglingPause(true);
+    const newVal = !automationsPaused;
+    const { error } = await supabase
+      .from("tenants")
+      .update({ automations_paused: newVal } as any)
+      .eq("id", currentTenant.id);
+    setTogglingPause(false);
+    if (error) {
+      toast({ title: "Fehler", description: error.message, variant: "destructive" });
+      return;
+    }
+    setAutomationsPaused(newVal);
+    toast({ title: newVal ? "Alle Automations pausiert" : "Automations reaktiviert" });
+  };
+
   const loadData = async () => {
     if (!currentTenant) return;
 
     setLoading(true);
+
+    // Load pause state from tenant
+    const { data: tenantData } = await supabase
+      .from("tenants")
+      .select("automations_paused")
+      .eq("id", currentTenant.id)
+      .maybeSingle();
+    if (tenantData) {
+      setAutomationsPaused(!!(tenantData as any).automations_paused);
+    }
+
     const [{ data: rulesData, error: rulesError }, { data: runData, error: runsError }] = await Promise.all([
       supabase
         .from("automation_rules")
@@ -355,6 +385,32 @@ export function AutomationRulesManager() {
 
     return (
     <div className="space-y-6">
+      {/* Kill-Switch */}
+      <Card>
+        <CardContent className="flex items-center justify-between py-4">
+          <div className="flex items-center gap-3">
+            <Pause className="h-5 w-5 text-muted-foreground" />
+            <div>
+              <p className="font-medium text-sm">Kill-Switch: Alle Automations pausieren</p>
+              <p className="text-xs text-muted-foreground">
+                {automationsPaused
+                  ? "Alle Regeln sind aktuell pausiert – keine automatischen Ausführungen."
+                  : "Automations sind aktiv und werden planmäßig ausgeführt."}
+              </p>
+            </div>
+          </div>
+          <div className="flex items-center gap-2">
+            {automationsPaused && <Badge variant="destructive">Pausiert</Badge>}
+            <Switch
+              checked={automationsPaused}
+              onCheckedChange={toggleAutomationsPaused}
+              disabled={togglingPause}
+              aria-label="Automations pausieren"
+            />
+          </div>
+        </CardContent>
+      </Card>
+
       {/* Failed runs alert banner */}
       {failedRunCount > 0 && (
         <Alert variant="destructive">

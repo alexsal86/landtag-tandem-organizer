@@ -9853,6 +9853,7 @@ export type Database = {
       }
       tenants: {
         Row: {
+          automations_paused: boolean
           created_at: string
           description: string | null
           id: string
@@ -9862,6 +9863,7 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          automations_paused?: boolean
           created_at?: string
           description?: string | null
           id?: string
@@ -9871,6 +9873,7 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          automations_paused?: boolean
           created_at?: string
           description?: string | null
           id?: string
