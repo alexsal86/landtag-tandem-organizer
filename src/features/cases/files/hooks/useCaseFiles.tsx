@@ -197,7 +197,7 @@ export const useCaseFiles = () => {
       await fetchCaseFiles();
       return newCaseFile;
     } catch (error) {
-      console.error('Error creating case file:', error);
+      debugConsole.error('Error creating case file:', error);
       const participantsRollbackError =
         error instanceof Error && error.message === 'ROLLBACK_CASE_FILE_PARTICIPANTS';
 
