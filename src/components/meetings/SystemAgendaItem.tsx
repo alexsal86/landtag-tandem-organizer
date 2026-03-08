@@ -163,7 +163,7 @@ export function SystemAgendaItem({
         {renderHeader()}
         <CardContent className="px-3 pb-2 pt-0">
           <UpcomingAppointmentsSection 
-            meetingDate={meetingDate} 
+            meetingDate={meetingDate!} 
             meetingId={meetingId}
             allowStarring={allowStarring}
             profiles={profiles}
