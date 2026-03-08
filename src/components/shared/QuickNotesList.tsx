@@ -846,7 +846,7 @@ export function QuickNotesList({
       
       loadNotes();
     } catch (error) {
-      console.error(`Error cleaning up ${field}:`, error);
+      debugConsole.error(`Error cleaning up ${field}:`, error);
     }
   };
 
