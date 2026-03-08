@@ -132,7 +132,7 @@ export function useCombinedTimeEntries({
           .filter(d => d >= monthStart && d <= monthEnd && d.getDay() !== 0 && d.getDay() !== 6)
           .forEach(day => overtimeDates.add(format(day, 'yyyy-MM-dd')));
       } catch (e) {
-        console.error('Error processing overtime dates:', e);
+        debugConsole.error('Error processing overtime dates:', e);
       }
     });
 
