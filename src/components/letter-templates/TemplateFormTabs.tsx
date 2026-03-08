@@ -213,7 +213,7 @@ export const useTemplateFormTabs = ({
             <SelectTrigger><SelectValue placeholder="Absenderinformation auswählen..." /></SelectTrigger>
             <SelectContent>
               <SelectItem value="none">Keine Auswahl</SelectItem>
-              {senderInfos.map((sender) => (
+              {senderInfos.map((sender: SenderInformation) => (
                 <SelectItem key={sender.id} value={sender.id}>{sender.name} - {sender.organization}{sender.is_default && " (Standard)"}</SelectItem>
               ))}
             </SelectContent>
