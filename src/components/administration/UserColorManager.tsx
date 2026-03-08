@@ -98,7 +98,7 @@ export const UserColorManager = () => {
         description: "Die Benutzerfarbe wurde erfolgreich gespeichert.",
       });
     } catch (error) {
-      console.error('Error updating user color:', error);
+      debugConsole.error('Error updating user color:', error);
       toast({
         title: "Fehler",
         description: "Farbe konnte nicht aktualisiert werden.",
