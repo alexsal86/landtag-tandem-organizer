@@ -1,23 +1,9 @@
-import { useEffect, useState } from "react";
+import { useUserPreference } from "@/hooks/useUserPreference";
 
+/**
+ * Generic persistent state hook backed by the user_preferences DB table.
+ * Drop-in replacement for the old localStorage-only version.
+ */
 export function usePersistentState<T>(key: string, defaultValue: T) {
-  const [value, setValue] = useState<T>(() => {
-    try {
-      const saved = localStorage.getItem(key);
-      if (saved === null) return defaultValue;
-      return JSON.parse(saved) as T;
-    } catch {
-      return defaultValue;
-    }
-  });
-
-  useEffect(() => {
-    try {
-      localStorage.setItem(key, JSON.stringify(value));
-    } catch {
-      // ignore persistence issues (e.g. private mode / quota)
-    }
-  }, [key, value]);
-
-  return [value, setValue] as const;
+  return useUserPreference<T>(key, defaultValue);
 }

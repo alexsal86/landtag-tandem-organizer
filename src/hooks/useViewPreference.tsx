@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useUserPreference } from '@/hooks/useUserPreference';
 
 export type ViewType = 'card' | 'list';
 
@@ -8,14 +8,6 @@ interface UseViewPreferenceProps {
 }
 
 export const useViewPreference = ({ key, defaultView = 'card' }: UseViewPreferenceProps) => {
-  const [viewType, setViewType] = useState<ViewType>(() => {
-    const saved = localStorage.getItem(`viewPreference_${key}`);
-    return (saved as ViewType) || defaultView;
-  });
-
-  useEffect(() => {
-    localStorage.setItem(`viewPreference_${key}`, viewType);
-  }, [key, viewType]);
-
+  const [viewType, setViewType] = useUserPreference<ViewType>(`viewPreference_${key}`, defaultView);
   return { viewType, setViewType };
 };

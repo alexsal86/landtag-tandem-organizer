@@ -1,7 +1,5 @@
-import { useState, useCallback } from 'react';
-
-const STORAGE_KEY = 'default_decision_settings';
-const OLD_STORAGE_KEY = 'default_decision_participants';
+import { useCallback, useMemo } from 'react';
+import { useUserPreference } from '@/hooks/useUserPreference';
 
 export interface DefaultDecisionSettings {
   participants: string[];
@@ -17,54 +15,34 @@ const DEFAULT_SETTINGS: DefaultDecisionSettings = {
   sendViaMatrix: true,
 };
 
-const loadSettings = (): DefaultDecisionSettings => {
-  try {
-    const stored = localStorage.getItem(STORAGE_KEY);
-    if (stored) return { ...DEFAULT_SETTINGS, ...JSON.parse(stored) };
-
-    // Migrate from old key
-    const oldStored = localStorage.getItem(OLD_STORAGE_KEY);
-    if (oldStored) {
-      const participants = JSON.parse(oldStored);
-      if (Array.isArray(participants)) {
-        const migrated: DefaultDecisionSettings = { ...DEFAULT_SETTINGS, participants };
-        localStorage.setItem(STORAGE_KEY, JSON.stringify(migrated));
-        localStorage.removeItem(OLD_STORAGE_KEY);
-        return migrated;
-      }
-    }
-  } catch (e) {
-    console.error('Error loading default decision settings:', e);
-  }
-  return DEFAULT_SETTINGS;
-};
-
 export const useDefaultDecisionSettings = () => {
-  const [settings, setSettingsState] = useState<DefaultDecisionSettings>(loadSettings);
+  const [settings, setSettingsRaw] = useUserPreference<DefaultDecisionSettings>(
+    'default_decision_settings',
+    DEFAULT_SETTINGS,
+  );
 
-  const setSettings = useCallback((next: DefaultDecisionSettings) => {
-    setSettingsState(next);
-    try {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(next));
-    } catch (e) {
-      console.error('Error saving default decision settings:', e);
-    }
-  }, []);
+  // Ensure all keys exist (forward-compat)
+  const mergedSettings = useMemo(
+    () => ({ ...DEFAULT_SETTINGS, ...settings }),
+    [settings],
+  );
 
-  const setDefaultParticipants = useCallback((userIds: string[]) => {
-    setSettingsState(prev => {
-      const next = { ...prev, participants: userIds };
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(next));
-      return next;
-    });
-  }, []);
+  const setSettings = useCallback(
+    (next: DefaultDecisionSettings) => setSettingsRaw(next),
+    [setSettingsRaw],
+  );
 
-  // Backwards-compatible aliases
-  const defaultParticipants = settings.participants;
-  const hasDefaults = settings.participants.length > 0;
+  const setDefaultParticipants = useCallback(
+    (userIds: string[]) =>
+      setSettingsRaw((prev) => ({ ...prev, participants: userIds })),
+    [setSettingsRaw],
+  );
+
+  const defaultParticipants = mergedSettings.participants;
+  const hasDefaults = mergedSettings.participants.length > 0;
 
   return {
-    settings,
+    settings: mergedSettings,
     setSettings,
     defaultParticipants,
     setDefaultParticipants,
@@ -72,5 +50,5 @@ export const useDefaultDecisionSettings = () => {
   };
 };
 
-// Keep old hook name as alias for existing imports
+// Backwards-compatible alias
 export const useDefaultDecisionParticipants = useDefaultDecisionSettings;

@@ -1,35 +1,26 @@
-import { useState, useEffect, useCallback } from 'react';
-
-const STORAGE_KEY = 'nav-collapsed';
+import { useCallback } from 'react';
+import { useUserPreference } from '@/hooks/useUserPreference';
 
 export function useNavCollapse() {
-  const [isCollapsed, setIsCollapsed] = useState(() => {
-    if (typeof window === 'undefined') return false;
-    return localStorage.getItem(STORAGE_KEY) === 'true';
-  });
-
-  // Persist to localStorage
-  useEffect(() => {
-    localStorage.setItem(STORAGE_KEY, String(isCollapsed));
-  }, [isCollapsed]);
+  const [isCollapsed, setIsCollapsed] = useUserPreference<boolean>('nav-collapsed', false);
 
   const toggle = useCallback(() => {
-    setIsCollapsed(prev => !prev);
-  }, []);
+    setIsCollapsed((prev) => !prev);
+  }, [setIsCollapsed]);
 
   const collapse = useCallback(() => {
     setIsCollapsed(true);
-  }, []);
+  }, [setIsCollapsed]);
 
   const expand = useCallback(() => {
     setIsCollapsed(false);
-  }, []);
+  }, [setIsCollapsed]);
 
   return {
     isCollapsed,
     toggle,
     collapse,
     expand,
-    setIsCollapsed
+    setIsCollapsed,
   };
 }
