@@ -299,7 +299,7 @@ export const TaskDecisionCreator = ({
         .single();
 
       if (decisionError) {
-        console.error('Decision creation error:', decisionError);
+        debugConsole.error('Decision creation error:', decisionError);
         throw decisionError;
       }
 
