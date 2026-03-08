@@ -61,7 +61,7 @@ export function TodoCreateDialog({ open, onOpenChange, onTodoCreated }: TodoCrea
       if (error) throw error;
       setCategories(data || []);
     } catch (error) {
-      console.error('Error loading categories:', error);
+      debugConsole.error('Error loading categories:', error);
       toast({
         title: "Fehler",
         description: "Kategorien konnten nicht geladen werden.",
