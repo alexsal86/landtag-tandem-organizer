@@ -29,6 +29,7 @@ export type CaseFile = {
   reference_number: string | null;
   current_status_note: string | null;
   case_type: string | null;
+  updated_at: string;
 };
 
 export type TeamUser = {
