@@ -748,7 +748,7 @@ export const DIN5008LetterLayout: React.FC<DIN5008LetterLayoutProps> = ({
           {/* 1 blank line after salutation */}
           {salutation && <div style={{ height: '4.5mm' }} />}
           {/* Letter content */}
-          <div className="din5008-content-text" style={contentTextStyle} dangerouslySetInnerHTML={{ __html: content }} />
+          <div className="din5008-content-text" style={contentTextStyle} dangerouslySetInnerHTML={{ __html: sanitizeRichHtml(content) }} />
           {/* Closing formula + signature */}
           {!hideClosing && layout.closing?.formula && (
             <>
