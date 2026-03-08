@@ -338,13 +338,13 @@ export function useEventPlanningData() {
     if (!user) return;
     try {
       const { data: activeData, error: activeError } = await supabase.from("appointment_preparations").select("*").eq("is_archived", false).order("created_at", { ascending: false });
-      if (activeError) console.error("Error fetching active preparations:", activeError);
+      if (activeError) debugConsole.error("Error fetching active preparations:", activeError);
       else setAppointmentPreparations(activeData || []);
 
       const { data: archivedData, error: archivedError } = await supabase.from("appointment_preparations").select("*").eq("is_archived", true).order("archived_at", { ascending: false });
-      if (archivedError) console.error("Error fetching archived preparations:", archivedError);
+      if (archivedError) debugConsole.error("Error fetching archived preparations:", archivedError);
       else setArchivedPreparations(archivedData || []);
-    } catch (error) { console.error("Error in fetchAppointmentPreparations:", error); }
+    } catch (error) { debugConsole.error("Error in fetchAppointmentPreparations:", error); }
   };
 
   const handlePreparationClick = (preparation: AppointmentPreparation) => {
