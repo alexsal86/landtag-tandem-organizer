@@ -144,21 +144,23 @@ export const useSpeechDictation = ({ editor, insertText, dispatchCommand }: UseS
   // Setup effect
   useEffect(() => {
     speechAdapter.onStateChange = (state) => {
-      setSpeechState(state);
-      if (state === 'listening') {
-        playTone('start');
-        setSessionStartTime(Date.now());
-        setSessionWordCount(0);
-        lastInsertedSegmentRef.current = '';
-      } else if (state === 'idle') {
-        playTone('stop');
-        setSessionStartTime(null);
-        // Clean up any leftover interim node
-        editor.update(() => {
-          clearInterimNode();
-        });
-        setInterimTranscript('');
-      }
+      setSpeechState((prev) => {
+        if (state === 'listening') {
+          playTone('start');
+          setSessionStartTime(Date.now());
+          setSessionWordCount(0);
+          lastInsertedSegmentRef.current = '';
+        } else if (state === 'idle' && prev === 'listening') {
+          // Only play stop tone if we were actually listening
+          playTone('stop');
+          setSessionStartTime(null);
+          editor.update(() => {
+            clearInterimNode();
+          });
+          setInterimTranscript('');
+        }
+        return state;
+      });
     };
     speechAdapter.onError = setSpeechError;
 
