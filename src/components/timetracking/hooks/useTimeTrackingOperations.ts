@@ -127,7 +127,7 @@ export function useTimeTrackingOperations({
       if (!data || data.length === 0) toast.warning("Eintrag wurde möglicherweise bereits gelöscht");
       else toast.success("Eintrag gelöscht");
       loadData();
-    } catch (error: unknown) { console.error("Delete error:", error); toast.error("Fehler beim Löschen: " + (error instanceof Error ? error.message : String(error))); }
+    } catch (error: unknown) { debugConsole.error("Delete error:", error); toast.error("Fehler beim Löschen: " + (error instanceof Error ? error.message : String(error))); }
   };
 
   // Leave request handlers
