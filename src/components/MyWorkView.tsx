@@ -34,6 +34,7 @@ const MyWorkFeedbackFeedTab = lazyWithRetry(() => import("./my-work/MyWorkFeedba
 import { DashboardHeader } from "./dashboard/DashboardHeader";
 import { DashboardTasksSection } from "./dashboard/DashboardTasksSection";
 import { DashboardAppointments } from "./dashboard/DashboardAppointments";
+import { useDashboardData } from "@/hooks/useDashboardData";
 import { canViewTab, getRoleFlags, type UserRole } from "@/components/my-work/tabVisibility";
 import { MyWorkTabErrorState } from "@/components/my-work/MyWorkTabErrorState";
 import { NewsWidget } from "./widgets/NewsWidget";
@@ -88,6 +89,7 @@ const ALLOWED_TABS = new Set<TabValue>(BASE_TABS.map((tab) => tab.value));
 export function MyWorkView() {
   const { user } = useAuth();
   const { currentTenant } = useTenant();
+  const dashboardData = useDashboardData();
   const { app_logo_url } = useAppSettings();
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
@@ -539,7 +541,7 @@ export function MyWorkView() {
             </Card>
             <div className="space-y-6">
               <Card className="p-5">
-                <DashboardAppointments />
+                <DashboardAppointments data={dashboardData} />
               </Card>
               <Card className="p-5">
                 <NewsWidget compact />

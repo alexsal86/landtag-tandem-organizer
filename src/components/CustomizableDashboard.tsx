@@ -17,6 +17,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { useTenant } from '@/hooks/useTenant';
 import { DashboardWidget } from './DashboardWidget';
 import { DashboardGreetingSection } from './dashboard/DashboardGreetingSection';
+import { useDashboardData } from '@/hooks/useDashboardData';
 import { DashboardCoverImage } from './dashboard/DashboardCoverImage';
 import { QuickActionsWidget } from './widgets/QuickActionsWidget';
 import { NewsWidget } from './widgets/NewsWidget';
@@ -68,6 +69,7 @@ export const CustomizableDashboard: React.FC = () => {
   
   const { user } = useAuth();
   const { currentTenant, loading: tenantLoading } = useTenant();
+  const dashboardData = useDashboardData();
 
   const [isEditMode, setIsEditMode] = useState(false);
   const [showSaveDialog, setShowSaveDialog] = useState(false);
@@ -278,7 +280,7 @@ export const CustomizableDashboard: React.FC = () => {
         {/* Greeting (40%) + News (60%) */}
         <div className="grid grid-cols-1 lg:grid-cols-5 gap-6 mb-6">
           <div className="lg:col-span-2">
-            <DashboardGreetingSection />
+            <DashboardGreetingSection data={dashboardData} />
           </div>
           <div className="lg:col-span-3">
             <h2 className="text-2xl font-bold text-foreground mb-4">
