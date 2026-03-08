@@ -192,7 +192,7 @@ export function EventPlanningDetailView(data: EventPlanningDataReturn) {
                       {uniquePlanningCollaborators.map((collab) => (
                         <div key={collab.id} className="flex items-center justify-between p-2 rounded-md bg-muted/30">
                           <div className="flex items-center gap-2">
-                            <Avatar className="h-6 w-6"><AvatarImage src={collab.profiles?.avatar_url} /><AvatarFallback>{collab.profiles?.display_name?.charAt(0) || 'U'}</AvatarFallback></Avatar>
+                            <Avatar className="h-6 w-6"><AvatarImage src={collab.profiles?.avatar_url ?? undefined} /><AvatarFallback>{collab.profiles?.display_name?.charAt(0) || 'U'}</AvatarFallback></Avatar>
                             <span>{collab.profiles?.display_name || 'Unbenannt'}</span>
                           </div>
                           <Badge variant={collab.can_edit ? "default" : "secondary"}>{collab.can_edit ? "Bearbeiten" : "Nur ansehen"}</Badge>
