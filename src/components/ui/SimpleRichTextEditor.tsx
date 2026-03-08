@@ -25,14 +25,15 @@ import {
   INSERT_ORDERED_LIST_COMMAND, 
   INSERT_UNORDERED_LIST_COMMAND,
 } from '@lexical/list';
-import { Bold, Italic, Underline, List, ListOrdered, Mic, CircleHelp } from 'lucide-react';
+import { Bold, Italic, Underline, List, ListOrdered, Mic } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import { MentionNode } from '@/components/nodes/MentionNode';
 import { MentionsPlugin } from '@/components/plugins/MentionsPlugin';
 import { useSpeechDictation } from '@/hooks/useSpeechDictation';
 import { toast } from 'sonner';
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+import { SpeechCommandsDialog } from '@/components/SpeechCommandsDialog';
+import { SpeechSessionStats } from '@/components/SpeechSessionStats';
 
 interface SimpleRichTextEditorProps {
   initialContent?: string;
