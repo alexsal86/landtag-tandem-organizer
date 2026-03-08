@@ -65,7 +65,7 @@ export const InformationBlockManager: React.FC = () => {
       if (error) throw error;
       setBlocks(data || []);
     } catch (error) {
-      console.error('Fehler beim Laden der Informationsblöcke:', error);
+      debugConsole.error('Fehler beim Laden der Informationsblöcke:', error);
       toast({
         title: "Fehler",
         description: "Informationsblöcke konnten nicht geladen werden.",
