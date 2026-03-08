@@ -236,7 +236,7 @@ export function useEmailComposer() {
       if (error) throw error;
       setContacts(data || []);
     } catch (error: unknown) {
-      console.error("Error fetching contacts:", error);
+      debugConsole.error("Error fetching contacts:", error);
     }
   };
 
