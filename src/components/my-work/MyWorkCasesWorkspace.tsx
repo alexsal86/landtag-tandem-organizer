@@ -3,7 +3,7 @@ import { useNavigate, useSearchParams } from "react-router-dom";
 import { useNotificationHighlight } from "@/hooks/useNotificationHighlight";
 import { format, type Locale } from "date-fns";
 import { de } from "date-fns/locale";
-import { ArrowDown, ArrowUp, Briefcase, CalendarDays, CheckCircle2, ChevronRight, Circle, Clock, FileText, FolderOpen, Gavel, GripVertical, Inbox, Link2, Mail, MessageSquare, Phone, Plus, Search, Timer, UserRound, Users, Vote } from "lucide-react";
+import { ArrowDown, ArrowUp, Briefcase, CalendarDays, CheckCircle2, ChevronRight, Circle, Clock, FileText, FolderOpen, Gavel, GripVertical, Inbox, Link2, Mail, MessageSquare, Phone, Plus, Search, Timer, Trash2, UserRound, Users, Vote } from "lucide-react";
 import { DragDropContext, Droppable, Draggable, type DropResult } from "@hello-pangea/dnd";
 import { sanitizeRichHtml } from "@/utils/htmlSanitizer";
 import { RichTextDisplay } from "@/components/ui/RichTextDisplay";
@@ -24,6 +24,7 @@ import { CaseItemCreateDialog } from "@/components/my-work/CaseItemCreateDialog"
 import { CaseItemMeetingSelector } from "@/components/my-work/CaseItemMeetingSelector";
 import { StandaloneDecisionCreator } from "@/components/task-decisions/StandaloneDecisionCreator";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { CaseItemDetailPanel } from "@/components/my-work/CaseItemDetailPanel";
 import { useCaseItems } from "@/features/cases/items/hooks";
 import type { CaseItemIntakePayload } from "@/features/cases/items/types";
@@ -233,7 +234,7 @@ export function MyWorkCasesWorkspace() {
   const tenantId = currentTenant?.id;
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
-  const { createCaseItem } = useCaseItems();
+  const { createCaseItem, deleteCaseItem } = useCaseItems();
   const { caseFileTypes } = useCaseFileTypes();
   const { isHighlighted, highlightRef } = useNotificationHighlight();
 
@@ -298,6 +299,23 @@ export function MyWorkCasesWorkspace() {
   // Jour Fixe meeting selector state
   const [isMeetingSelectorOpen, setIsMeetingSelectorOpen] = useState(false);
   const [meetingSelectorItemId, setMeetingSelectorItemId] = useState<string | null>(null);
+
+  // Delete confirmation state
+  const [deleteConfirmItemId, setDeleteConfirmItemId] = useState<string | null>(null);
+
+  const handleDeleteCaseItem = useCallback(async () => {
+    if (!deleteConfirmItemId) return;
+    const id = deleteConfirmItemId;
+    setDeleteConfirmItemId(null);
+    // If this item is open in detail, close it
+    if (detailItemId === id) {
+      setDetailItemId(null);
+      setEditableCaseItem(null);
+    }
+    setCaseItems((current) => current.filter((row) => row.id !== id));
+    await deleteCaseItem(id);
+    toast.success("Vorgang gelöscht");
+  }, [deleteConfirmItemId, detailItemId, setEditableCaseItem, setCaseItems, deleteCaseItem]);
 
   const getItemSubject = useCallback((item: CaseItem) => item.subject || item.summary || item.resolution_summary || "Ohne Titel", []);
   const getItemDescription = useCallback((item: CaseItem) => richTextToPlain(item.summary || item.resolution_summary || ""), []);
@@ -1120,6 +1138,14 @@ export function MyWorkCasesWorkspace() {
                                               <CalendarDays className="mr-2 h-3 w-3" />
                                               Zum Jour Fixe hinzufügen
                                             </ContextMenuItem>
+                                            <ContextMenuSeparator />
+                                            <ContextMenuItem
+                                              className="text-destructive focus:text-destructive"
+                                              onClick={() => setDeleteConfirmItemId(item.id)}
+                                            >
+                                              <Trash2 className="mr-2 h-3 w-3" />
+                                              Vorgang löschen
+                                            </ContextMenuItem>
                                           </ContextMenuContent>
                                         </ContextMenu>
 
@@ -1162,6 +1188,7 @@ export function MyWorkCasesWorkspace() {
                                                 onContactSelected={(contact) => updateEdit({
                                                   selectedContactId: contact?.id || null,
                                                 })}
+                                                onDelete={() => setDeleteConfirmItemId(item.id)}
                                               />
                                             )}
                                           </div>
@@ -1405,6 +1432,23 @@ export function MyWorkCasesWorkspace() {
           />
         </>
       )}
+
+      <AlertDialog open={!!deleteConfirmItemId} onOpenChange={(open) => { if (!open) setDeleteConfirmItemId(null); }}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Vorgang endgültig löschen?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Dieser Vorgang wird unwiderruflich gelöscht. Verknüpfte Zeitstrahlereignisse und Interaktionen gehen ebenfalls verloren.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Abbrechen</AlertDialogCancel>
+            <AlertDialogAction onClick={() => runAsync(handleDeleteCaseItem)} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+              Löschen
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </>
   );
 }

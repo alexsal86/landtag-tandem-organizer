@@ -72,6 +72,7 @@ export function CaseItemDetailPanel({
   onContactEmailChange,
   onContactPhoneChange,
   onContactSelected,
+  onDelete,
 }: {
   itemId: string;
   itemCaseFileId: string | null;
@@ -100,6 +101,7 @@ export function CaseItemDetailPanel({
   onContactEmailChange: (value: string) => void;
   onContactPhoneChange: (value: string) => void;
   onContactSelected: (contact: { id: string; name: string; email: string | null; phone: string | null } | null) => void;
+  onDelete?: () => void;
 }) {
   const [showMetaFields, setShowMetaFields] = useState(false);
   const [showInteractionComposer, setShowInteractionComposer] = useState(false);
@@ -559,6 +561,16 @@ export function CaseItemDetailPanel({
           <div className="flex flex-wrap gap-2">
             <Button size="sm" onClick={() => onCreateCaseFile(itemId)}>Neue Akte anlegen</Button>
           </div>
+        </div>
+      )}
+
+      {/* Delete action */}
+      {onDelete && (
+        <div className="mt-6 pt-4 border-t border-dashed">
+          <Button variant="ghost" size="sm" className="text-destructive hover:text-destructive hover:bg-destructive/10" onClick={onDelete}>
+            <Trash2 className="mr-2 h-3.5 w-3.5" />
+            Vorgang löschen
+          </Button>
         </div>
       )}
     </div>
