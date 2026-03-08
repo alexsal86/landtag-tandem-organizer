@@ -214,7 +214,7 @@ export class CalendarEventAdapter {
       const normalizedEnd = new Date(startTime);
       normalizedEnd.setHours(23, 59, 59, 999);
       
-      console.log('🎂 CalendarEventAdapter: Normalized birthday end time:', {
+      debugConsole.log('🎂 CalendarEventAdapter: Normalized birthday end time:', {
         title: eventInfo.title,
         original: endTime.toISOString(),
         normalized: normalizedEnd.toISOString(),
