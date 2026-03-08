@@ -145,7 +145,7 @@ export function useMyWorkDecisionsData(userId?: string) {
           visible_to_all: item.visible_to_all,
           priority: item.priority ?? 0,
           ...attInfo,
-          response_options: Array.isArray(item.response_options) ? item.response_options : undefined,
+          response_options: Array.isArray(item.response_options) ? item.response_options as unknown as ResponseOption[] : undefined,
         };
       });
 
