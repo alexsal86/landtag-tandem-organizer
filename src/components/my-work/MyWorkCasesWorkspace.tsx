@@ -5,6 +5,7 @@ import { de } from "date-fns/locale";
 import { ArrowDown, ArrowUp, Briefcase, CalendarDays, CheckCircle2, Circle, Clock, FileText, FolderOpen, Gavel, GripVertical, Inbox, Link2, Mail, MessageSquare, Phone, Plus, Search, Timer, UserRound, Users, Vote } from "lucide-react";
 import { DragDropContext, Droppable, Draggable, type DropResult } from "@hello-pangea/dnd";
 import DOMPurify from "dompurify";
+import { RichTextDisplay } from "@/components/ui/RichTextDisplay";
 
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
