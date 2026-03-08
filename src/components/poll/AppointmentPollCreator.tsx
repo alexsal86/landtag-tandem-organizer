@@ -224,7 +224,7 @@ export const AppointmentPollCreator = ({ onClose }: { onClose: () => void }) => 
             });
           }
         } catch (error) {
-          console.error('Error processing participant', p.email, ':', error);
+          debugConsole.error('Error processing participant', p.email, ':', error);
           throw new Error(`Fehler beim Verarbeiten von Teilnehmer ${p.email}`);
         }
       }
