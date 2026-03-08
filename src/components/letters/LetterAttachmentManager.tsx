@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
+import { debugConsole } from '@/utils/debugConsole';
 import { useToast } from "@/hooks/use-toast";
 import { FileText, Upload, Download, Trash2, X, Edit, Plus, FolderOpen } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
