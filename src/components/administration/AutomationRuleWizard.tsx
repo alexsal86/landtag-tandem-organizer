@@ -311,8 +311,24 @@ function ActionCard({
   const isNotification = action.type === "create_notification" || action.type === "send_push_notification";
   const isStatus = action.type === "update_record_status";
   const isTask = action.type === "create_task";
+  const isEmail = action.type === "send_email_template";
 
-  return (
+  // Load email templates for the email action
+  const { currentTenant } = useTenant();
+  const [emailTemplates, setEmailTemplates] = useState<Array<{ id: string; name: string; subject: string }>>([]);
+
+  useEffect(() => {
+    if (!isEmail || !currentTenant?.id) return;
+    supabase
+      .from("email_templates")
+      .select("id, name, subject")
+      .eq("tenant_id", currentTenant.id)
+      .eq("is_active", true)
+      .order("name")
+      .then(({ data }) => {
+        if (data) setEmailTemplates(data);
+      });
+  }, [isEmail, currentTenant?.id]);
     <div className="rounded-md border bg-muted/20 p-3 space-y-3">
       <div className="flex items-center justify-between">
         <span className="text-xs font-medium text-muted-foreground">
