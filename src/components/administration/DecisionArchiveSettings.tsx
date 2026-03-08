@@ -61,7 +61,7 @@ export const DecisionArchiveSettings = () => {
         setAutoArchiveDays(settings.auto_archive_days?.toString() ?? '');
         setAutoDeleteDays(settings.auto_delete_after_days?.toString() ?? '');
       }
-    } catch (error: any) {
+    } catch (error: unknown) {
       debugConsole.error('Error loading settings:', error);
       toast({
         title: 'Fehler',
