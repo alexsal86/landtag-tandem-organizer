@@ -188,7 +188,7 @@ export function useTimeTrackingOperations({
       if (newStatus === "cancelled") await removeLeaveCalendarEntry(leave, type);
       toast.success(newStatus === "cancelled" ? successMsg : "Stornierungsanfrage gesendet");
       loadData();
-    } catch (error: unknown) { console.error(`Error cancelling ${type}:`, error); toast.error("Fehler beim Stornieren"); }
+    } catch (error: unknown) { debugConsole.error(`Error cancelling ${type}:`, error); toast.error("Fehler beim Stornieren"); }
   };
 
   const handleCancelVacationRequest = (leaveId: string) => {

@@ -75,7 +75,7 @@ export function MyWorkCaseFilesTab() {
       if (error) throw error;
       setCaseFiles((data || []) as unknown as CaseFile[]);
     } catch (error) {
-      console.error("Error loading case files:", error);
+      debugConsole.error("Error loading case files:", error);
     } finally {
       setLoading(false);
     }

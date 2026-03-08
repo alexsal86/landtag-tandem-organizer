@@ -257,7 +257,7 @@ export function MyWorkTeamTab() {
 
       setTeamMembers(members);
     } catch (error) {
-      console.error("Error loading team:", error);
+      debugConsole.error("Error loading team:", error);
     } finally {
       setLoading(false);
     }

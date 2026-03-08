@@ -281,7 +281,7 @@ export const AppointmentPollCreator = ({ onClose }: { onClose: () => void }) => 
 
       onClose();
     } catch (error) {
-      console.error('Error creating poll:', error);
+      debugConsole.error('Error creating poll:', error);
       toast({
         title: "Fehler",
         description: "Die Abstimmung konnte nicht erstellt werden.",

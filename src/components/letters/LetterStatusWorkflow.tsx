@@ -102,7 +102,7 @@ export const LetterStatusWorkflow: React.FC<LetterStatusWorkflowProps> = ({
       if (error) throw error;
       setUsers(data || []);
     } catch (error) {
-      console.error('Error fetching users:', error);
+      debugConsole.error('Error fetching users:', error);
     }
   };
 

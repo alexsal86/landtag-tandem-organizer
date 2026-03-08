@@ -588,7 +588,7 @@ export async function generatePDF(options: GeneratePDFOptions): Promise<{ blob: 
           reader.readAsDataURL(fileData);
         });
       } catch (error) {
-        console.error('Error processing attachment:', error);
+        debugConsole.error('Error processing attachment:', error);
         pdf.addPage();
         currentPage++;
         const attachmentMargin = 20;

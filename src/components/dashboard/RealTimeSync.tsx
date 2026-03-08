@@ -222,7 +222,7 @@ export function RealTimeSync({ currentLayout, onLayoutUpdate }: RealTimeSyncProp
         }
       });
     } catch (error) {
-      console.error('Failed to broadcast layout update:', error);
+      debugConsole.error('Failed to broadcast layout update:', error);
     }
   };
 
