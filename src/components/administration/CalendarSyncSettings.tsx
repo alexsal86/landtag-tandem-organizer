@@ -56,7 +56,7 @@ export function CalendarSyncSettings() {
         if (insertError) throw insertError;
       }
     } catch (error) {
-      console.error('Error loading sync settings:', error);
+      debugConsole.error('Error loading sync settings:', error);
       toast.error('Fehler beim Laden der Einstellungen');
     }
   };
