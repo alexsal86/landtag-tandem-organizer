@@ -159,7 +159,7 @@ export function useTaskOperations({
         const { error } = await supabase.from('task_snoozes').update({ snoozed_until: snoozeUntil }).eq('id', existingSnooze.id);
         if (error) throw error;
       } else {
-        const { error } = await supabase.from('task_snoozes').insert({ user_id: user.id, task_id: taskId, snoozed_until: snoozeUntil });
+        const { error } = await supabase.from('task_snoozes').insert([{ user_id: user.id, task_id: taskId, snoozed_until: snoozeUntil }]);
         if (error) throw error;
       }
       loadTaskSnoozes();
