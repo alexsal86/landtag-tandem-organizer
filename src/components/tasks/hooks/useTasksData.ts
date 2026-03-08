@@ -82,7 +82,7 @@ export function useTasksData() {
       if (error) throw error;
       setUsers(data || []);
     } catch (error) {
-      console.error('Error loading users:', error);
+      debugConsole.error('Error loading users:', error);
     }
   };
 
