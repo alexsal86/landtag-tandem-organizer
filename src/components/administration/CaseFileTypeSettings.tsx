@@ -65,7 +65,7 @@ export function CaseFileTypeSettings() {
     return (
       <Card>
         <CardHeader>
-          <CardTitle>FallAkten-Typen</CardTitle>
+          <CardTitle>Fallakten-Typen</CardTitle>
         </CardHeader>
         <CardContent>
           <div className="space-y-2">
