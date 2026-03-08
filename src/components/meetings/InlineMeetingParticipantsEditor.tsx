@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import type { ParticipantRole } from '@/components/meetings/types';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -232,7 +233,7 @@ export function InlineMeetingParticipantsEditor({ meetingId }: InlineMeetingPart
             excludeUserIds={participants.map(p => p.user_id)}
           />
         </div>
-        <Select value={selectedRole} onValueChange={(v) => setSelectedRole(v as any)}>
+        <Select value={selectedRole} onValueChange={(v) => setSelectedRole(v as ParticipantRole)}>
           <SelectTrigger className="w-28 h-9">
             <SelectValue />
           </SelectTrigger>
@@ -259,7 +260,7 @@ export function InlineMeetingParticipantsEditor({ meetingId }: InlineMeetingPart
                 </AvatarFallback>
               </Avatar>
               <span className="flex-1 text-sm">{p.user?.display_name || 'Unbekannt'}</span>
-              <Select value={p.role} onValueChange={(v) => handleRoleChange(p.id, v as any)}>
+              <Select value={p.role} onValueChange={(v) => handleRoleChange(p.id, v as ParticipantRole)}>
                 <SelectTrigger className="w-28 h-7 text-xs">
                   <SelectValue />
                 </SelectTrigger>

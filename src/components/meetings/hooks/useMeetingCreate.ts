@@ -122,7 +122,7 @@ export function useMeetingCreate(deps: UseMeetingCreateDeps) {
                   title: newMeeting.title, description: newMeeting.description || null,
                   meeting_date: format(futureDate, 'yyyy-MM-dd'), location: newMeeting.location || null,
                   status: 'planned', user_id: user.id, tenant_id: currentTenant?.id,
-                  template_id: newMeeting.template_id, recurrence_rule: newMeetingRecurrence as any
+                  template_id: newMeeting.template_id, recurrence_rule: JSON.parse(JSON.stringify(newMeetingRecurrence))
                 }]).select().single();
               if (!futureError && futureMeeting?.id && newMeetingParticipants.length > 0) {
                 await supabase.from('meeting_participants').insert(

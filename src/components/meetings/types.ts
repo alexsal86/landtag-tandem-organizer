@@ -1,3 +1,7 @@
+export type ParticipantRole = 'organizer' | 'participant' | 'optional';
+
+export type SystemAgendaType = 'upcoming_appointments' | 'quick_notes' | 'tasks' | 'birthdays' | 'decisions' | 'case_items';
+
 export interface RecurrenceData {
   enabled: boolean;
   frequency: "daily" | "weekly" | "monthly" | "yearly";
@@ -8,7 +12,7 @@ export interface RecurrenceData {
 
 export interface NewMeetingParticipant {
   userId: string;
-  role: 'organizer' | 'participant' | 'optional';
+  role: ParticipantRole;
   user?: {
     id: string;
     display_name: string;

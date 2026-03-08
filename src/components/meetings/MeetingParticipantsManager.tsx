@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import type { ParticipantRole } from '@/components/meetings/types';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
@@ -84,7 +85,7 @@ export function MeetingParticipantsManager({
               excludeUserIds={excludedUserIds}
             />
           </div>
-          <Select value={selectedRole} onValueChange={(v) => setSelectedRole(v as any)}>
+          <Select value={selectedRole} onValueChange={(v) => setSelectedRole(v as ParticipantRole)}>
             <SelectTrigger className="w-36">
               <SelectValue />
             </SelectTrigger>
