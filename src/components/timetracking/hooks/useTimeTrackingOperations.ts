@@ -163,7 +163,7 @@ export function useTimeTrackingOperations({
     try { days = eachDayOfInterval({ start: parseISO(overtimeStartDate), end: parseISO(overtimeEndDate) }).filter(d => d.getDay() !== 0 && d.getDay() !== 6).length; } catch { toast.error("Ungültiger Datumsbereich für den Überstundenabbau"); return; }
     if (days === 0) { toast.error("Bitte mindestens einen Werktag auswählen"); return; }
     try {
-      const { error } = await supabase.from("leave_requests").insert({ user_id: userId, type: "overtime_reduction", start_date: overtimeStartDate, end_date: overtimeEndDate, reason: overtimeReason || null, status: "pending" }).select();
+      const { error } = await supabase.from("leave_requests").insert([{ user_id: userId, type: "overtime_reduction", start_date: overtimeStartDate, end_date: overtimeEndDate, reason: overtimeReason || null, status: "pending" }]).select();
       if (error) throw error;
       toast.success("Überstundenabbau beantragt"); setOvertimeStartDate(""); setOvertimeEndDate(""); setOvertimeReason(""); loadData();
     } catch (error: unknown) { debugConsole.error("Overtime reduction error:", error); toast.error(error instanceof Error ? error.message : "Fehler"); }
