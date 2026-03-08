@@ -126,7 +126,7 @@ export const CallLogWidget: React.FC<CallLogWidgetProps> = ({
       if (error) throw error;
       setContacts(data || []);
     } catch (error) {
-      console.error('Error loading contacts:', error);
+      debugConsole.error('Error loading contacts:', error);
     }
   };
 
