@@ -545,7 +545,7 @@ export const TaskDecisionDetails = ({ decisionId, isOpen, onClose, onArchived, h
           .eq('user_id', currentUserId)
           .eq('navigation_context', 'decisions');
       } catch (e) {
-        console.warn('Notifications update failed:', e);
+        debugConsole.warn('Notifications update failed:', e);
       }
     } catch (error) {
       console.error('Error archiving decision:', error);
