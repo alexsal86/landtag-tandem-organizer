@@ -82,7 +82,7 @@ export default function DecisionResponse() {
         setResponseOptions(data.response_options as unknown as ResponseOption[]);
       }
     } catch (error) {
-      console.error('Error loading decision options:', error);
+      debugConsole.error('Error loading decision options:', error);
     } finally {
       setIsLoadingOptions(false);
     }
