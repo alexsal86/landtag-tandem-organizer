@@ -352,7 +352,7 @@ export function EmployeeMeetingProtocol({ meetingId, onBack }: EmployeeMeetingPr
         toast({ title: "Gespeichert", description: "Protokoll wurde gespeichert" });
       }
     } catch (error: unknown) {
-      console.error("Error saving protocol:", error);
+      debugConsole.error("Error saving protocol:", error);
       setSaveState("unsaved");
       if (!isAutoSave) {
         toast({ title: "Fehler", description: "Protokoll konnte nicht gespeichert werden", variant: "destructive" });
