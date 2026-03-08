@@ -77,7 +77,7 @@ export function useMyWorkJourFixeSystemData(userId?: string, tenantId?: string) 
       const now = nowDate.toISOString();
       const in7Days = addDays(nowDate, 7).toISOString();
 
-      const [notesResult, tasksResult, decisionsResult, contactsResult] = await Promise.all([
+      const [notesResult, tasksResult, decisionsResult, contactsResult, caseItemsResult] = await Promise.all([
         hasNotes
           ? supabase
               .from("quick_notes")
@@ -105,6 +105,13 @@ export function useMyWorkJourFixeSystemData(userId?: string, tenantId?: string) 
               .eq("tenant_id", tenantId)
               .not("birthday", "is", null)
           : Promise.resolve({ data: [] as Array<{ id: string; name: string; birthday: string | null }>, error: null }),
+        hasCaseItems && tenantId
+          ? supabase
+              .from("case_items" as any)
+              .select("id, subject, status, priority, due_at, owner_user_id")
+              .eq("meeting_id", meetingId)
+              .neq("status", "erledigt")
+          : Promise.resolve({ data: [] as CaseItemData[], error: null }),
       ]);
 
       if (!isCurrentRequest()) return;
