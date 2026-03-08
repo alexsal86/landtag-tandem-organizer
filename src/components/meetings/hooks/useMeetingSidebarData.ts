@@ -114,7 +114,7 @@ export function useMeetingSidebarData(deps: UseMeetingSidebarDataDeps) {
       );
       setMeetingRelevantDecisions(relevant);
     } catch (error) {
-      console.error("Error loading meeting relevant decisions:", error);
+      debugConsole.error("Error loading meeting relevant decisions:", error);
       setMeetingRelevantDecisions([]);
     }
   };
