@@ -269,8 +269,11 @@ export type WizardForm = {
   triggerType: string;
   triggerField: string;
   triggerValue: string;
+  /** @deprecated kept for backward compat during migration */
   conditionLogic: "all" | "any";
+  /** @deprecated kept for backward compat during migration */
   conditions: ConditionItem[];
+  conditionGroup: ConditionGroup;
   actions: ActionItem[];
   enabled: boolean;
 };
