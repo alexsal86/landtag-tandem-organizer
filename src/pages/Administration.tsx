@@ -212,7 +212,7 @@ const [editingChild, setEditingChild] = useState<{ parentIndex: number; childInd
       setIsAdmin(roleData?.role === 'abgeordneter' || roleData?.role === 'bueroleitung');
       setIsSuperAdmin(roleData?.role === 'abgeordneter');
     } catch (error) {
-      console.error('Error checking admin status:', error);
+      debugConsole.error('Error checking admin status:', error);
     } finally {
       setCheckingAdmin(false);
     }
@@ -250,7 +250,7 @@ const [editingChild, setEditingChild] = useState<{ parentIndex: number; childInd
       
       setAnnualTasksBadge(pendingCount);
     } catch (error) {
-      console.error('Error loading annual tasks badge:', error);
+      debugConsole.error('Error loading annual tasks badge:', error);
     }
   };
 
@@ -379,7 +379,7 @@ const [editingChild, setEditingChild] = useState<{ parentIndex: number; childInd
 
       toast({ title: "Gespeichert", description: "Rolle erfolgreich aktualisiert." });
     } catch (e: any) {
-      console.error(e);
+      debugConsole.error(e);
       toast({ title: "Fehler", description: e?.message ?? "Änderung fehlgeschlagen.", variant: "destructive" });
     } finally {
       setBusyUserId(null);

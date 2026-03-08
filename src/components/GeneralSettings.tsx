@@ -9,6 +9,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useTenant } from "@/hooks/useTenant";
 import { DashboardDefaultCover } from "./administration/DashboardDefaultCover";
 import { CelebrationSettingsCard } from "./administration/CelebrationSettingsCard";
+import { debugConsole } from "@/utils/debugConsole";
 
 interface AppSettings {
   app_name: string;
@@ -72,7 +73,7 @@ export function GeneralSettings() {
               return acc;
             }, {} as Partial<AppSettings>);
           } else {
-            console.warn('Global app settings fallback not available:', globalError);
+            debugConsole.warn('Global app settings fallback not available:', globalError);
           }
         }
 
@@ -82,7 +83,7 @@ export function GeneralSettings() {
           app_logo_url: tenantSettings.app_logo_url || globalSettings.app_logo_url || ""
         });
       } catch (error) {
-        console.error('Error loading settings:', error);
+        debugConsole.error('Error loading settings:', error);
         toast({
           title: "Fehler",
           description: "Einstellungen konnten nicht geladen werden.",
@@ -153,7 +154,7 @@ export function GeneralSettings() {
         description: "Logo wurde hochgeladen."
       });
     } catch (error: unknown) {
-      console.error('Error uploading file:', error);
+      debugConsole.error('Error uploading file:', error);
       toast({
         title: "Fehler",
         description: `Logo konnte nicht hochgeladen werden: ${error instanceof Error ? error.message : 'Unbekannter Fehler'}`,
@@ -206,7 +207,7 @@ export function GeneralSettings() {
         window.location.reload();
       }, 1000);
     } catch (error) {
-      console.error('Error saving settings:', error);
+      debugConsole.error('Error saving settings:', error);
       toast({
         title: "Fehler", 
         description: "Einstellungen konnten nicht gespeichert werden.",
@@ -260,7 +261,7 @@ export function GeneralSettings() {
                   className="max-h-16 max-w-16 object-contain"
                   crossOrigin="anonymous"
                   onError={(e) => {
-                    console.error("Logo konnte nicht geladen werden:", logoPreviewUrl, e);
+                    debugConsole.error("Logo konnte nicht geladen werden:", logoPreviewUrl, e);
                     setLogoLoadFailed(true);
                   }}
                 />

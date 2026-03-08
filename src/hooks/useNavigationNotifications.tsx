@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from './useAuth';
 import { useTenant } from './useTenant';
+import { debugConsole } from '@/utils/debugConsole';
 
 export interface NavigationCounts {
   [key: string]: number;
@@ -37,7 +38,7 @@ export const useNavigationNotifications = (): NavigationNotifications => {
         .eq('is_read', false);
 
       if (error) {
-        console.error('Error loading navigation counts:', error);
+        debugConsole.error('Error loading navigation counts:', error);
         return;
       }
 
@@ -84,7 +85,7 @@ export const useNavigationNotifications = (): NavigationNotifications => {
         .eq('user_id', user.id);
 
       if (visitsError) {
-        console.error('Error loading visits:', visitsError);
+        debugConsole.error('Error loading visits:', visitsError);
         return;
       }
 
@@ -95,7 +96,7 @@ export const useNavigationNotifications = (): NavigationNotifications => {
 
       setLastVisited(visitMap);
     } catch (error) {
-      console.error('Error in loadNavigationCounts:', error);
+      debugConsole.error('Error in loadNavigationCounts:', error);
     } finally {
       setIsLoading(false);
     }
@@ -124,7 +125,7 @@ export const useNavigationNotifications = (): NavigationNotifications => {
         );
 
       if (error) {
-        console.error('Error marking navigation as visited:', error);
+        debugConsole.error('Error marking navigation as visited:', error);
         return;
       }
 
@@ -163,7 +164,7 @@ export const useNavigationNotifications = (): NavigationNotifications => {
       }));
       localStorage.removeItem('notifications_marked_read');
     } catch (error) {
-      console.error('Error in markNavigationAsVisited:', error);
+      debugConsole.error('Error in markNavigationAsVisited:', error);
     }
   };
 
@@ -238,7 +239,7 @@ export const useNavigationNotifications = (): NavigationNotifications => {
             }));
           }
         } catch (error) {
-          console.error('Error parsing navigation visit sync data:', error);
+          debugConsole.error('Error parsing navigation visit sync data:', error);
         }
       }
 

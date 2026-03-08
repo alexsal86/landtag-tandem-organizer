@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { debugConsole } from '@/utils/debugConsole';
 import { Button } from '@/components/ui/button';
 import {
   Dialog,
@@ -199,7 +200,7 @@ export function MergeContactsDialog({
       onMergeComplete();
       onClose();
     } catch (error) {
-      console.error('Error merging contacts:', error);
+      debugConsole.error('Error merging contacts:', error);
       toast({
         title: 'Fehler',
         description: 'Kontakte konnten nicht zusammengeführt werden.',

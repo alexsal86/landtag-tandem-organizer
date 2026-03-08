@@ -1,3 +1,5 @@
+import { debugConsole } from '@/utils/debugConsole';
+
 export interface WeatherData {
   temperature: number;
   condition: string;
@@ -34,7 +36,7 @@ export const getWeather = async (lat: number, lon: number): Promise<WeatherData 
     );
     
     if (!response.ok) {
-      console.error('Weather API error:', response.statusText);
+      debugConsole.error('Weather API error:', response.statusText);
       return null;
     }
     
@@ -50,7 +52,7 @@ export const getWeather = async (lat: number, lon: number): Promise<WeatherData 
     
     return weatherData;
   } catch (error) {
-    console.error('Failed to fetch weather:', error);
+    debugConsole.error('Failed to fetch weather:', error);
     return null;
   }
 };

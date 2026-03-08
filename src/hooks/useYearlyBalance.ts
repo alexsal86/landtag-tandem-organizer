@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { format, endOfMonth, eachDayOfInterval, parseISO } from "date-fns";
+import { debugConsole } from "@/utils/debugConsole";
 import { MonthlyBreakdown, YearlyBalanceResult, EmployeeSettingsBase } from "@/types/timeTracking";
 
 /**
@@ -186,7 +187,7 @@ export function useYearlyBalance(
         setYearlyBalance(totalBalance);
       } catch (error) {
         if (!signal.aborted) {
-          console.error("useYearlyBalance: Error loading yearly balance:", error);
+          debugConsole.error("useYearlyBalance: Error loading yearly balance:", error);
         }
       } finally {
         if (!signal.aborted) {

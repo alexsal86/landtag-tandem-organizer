@@ -7,6 +7,7 @@ import { CheckCircle, XCircle, Loader2, Check, X, MessageCircle, Circle, Star } 
 import { supabase } from "@/integrations/supabase/client";
 import SimpleRichTextEditor from "@/components/ui/SimpleRichTextEditor";
 import { ResponseOption, getColorClasses, getDefaultOptions } from "@/lib/decisionTemplates";
+import { debugConsole } from "@/utils/debugConsole";
 
 const getIcon = (iconName?: string, className = "h-4 w-4") => {
   switch (iconName) {
@@ -64,7 +65,7 @@ export default function DecisionResponse() {
         .single();
 
       if (participantError || !participant) {
-        console.error('Error loading participant:', participantError);
+        debugConsole.error('Error loading participant:', participantError);
         setIsLoadingOptions(false);
         return;
       }
@@ -81,7 +82,7 @@ export default function DecisionResponse() {
         setResponseOptions(data.response_options as unknown as ResponseOption[]);
       }
     } catch (error) {
-      console.error('Error loading decision options:', error);
+      debugConsole.error('Error loading decision options:', error);
     } finally {
       setIsLoadingOptions(false);
     }
@@ -118,7 +119,7 @@ export default function DecisionResponse() {
       setResult({ ...data, selectedOption: option });
       setIsSubmitted(true);
     } catch (err: any) {
-      console.error('Error submitting response:', err);
+      debugConsole.error('Error submitting response:', err);
       setError(err.message || "Fehler beim Speichern der Antwort");
     } finally {
       setIsLoading(false);
@@ -144,7 +145,7 @@ export default function DecisionResponse() {
       setResult({ ...result, commentAdded: true });
       setComment("");
     } catch (err: any) {
-      console.error('Error adding comment:', err);
+      debugConsole.error('Error adding comment:', err);
       setError(err.message || "Fehler beim Speichern des Kommentars");
     } finally {
       setIsLoading(false);

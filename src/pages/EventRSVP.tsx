@@ -10,6 +10,7 @@ import { format } from 'date-fns';
 import { de } from 'date-fns/locale';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
+import { debugConsole } from '@/utils/debugConsole';
 
 export default function EventRSVP() {
   const { eventId } = useParams<{ eventId: string }>();
@@ -61,7 +62,7 @@ export default function EventRSVP() {
           setSubmitted(true);
         }
       } catch (error) {
-        console.error('Error loading RSVP data:', error);
+        debugConsole.error('Error loading RSVP data:', error);
       } finally {
         setLoading(false);
       }
@@ -91,7 +92,7 @@ export default function EventRSVP() {
         description: status === 'accepted' ? 'Sie haben zugesagt.' : status === 'declined' ? 'Sie haben abgesagt.' : 'Sie haben unter Vorbehalt zugesagt.',
       });
     } catch (error) {
-      console.error('Error saving response:', error);
+      debugConsole.error('Error saving response:', error);
       toast({ title: "Fehler", description: "Antwort konnte nicht gespeichert werden.", variant: "destructive" });
     } finally {
       setSaving(false);

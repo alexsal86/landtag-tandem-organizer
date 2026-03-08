@@ -8,6 +8,7 @@ import { Send, MessageSquare } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
+import { debugConsole } from "@/utils/debugConsole";
 
 const DELETED_COMMENT_TEXT = "Dieser Kommentar wurde gelöscht.";
 
@@ -90,7 +91,7 @@ export function DecisionComments({
 
       setComments(rootComments);
     } catch (error) {
-      console.error('Error loading comments:', error);
+      debugConsole.error('Error loading comments:', error);
       toast({
         title: "Fehler",
         description: "Kommentare konnten nicht geladen werden.",
@@ -180,7 +181,7 @@ export function DecisionComments({
       loadComments();
       onCommentAdded?.();
     } catch (error) {
-      console.error('Error submitting comment:', error);
+      debugConsole.error('Error submitting comment:', error);
       toast({
         title: "Fehler",
         description: "Kommentar konnte nicht gespeichert werden.",
@@ -210,7 +211,7 @@ export function DecisionComments({
       toast({ title: "Kommentar aktualisiert" });
       loadComments();
     } catch (error) {
-      console.error('Error updating comment:', error);
+      debugConsole.error('Error updating comment:', error);
       toast({
         title: "Fehler",
         description: "Kommentar konnte nicht bearbeitet werden.",
@@ -245,7 +246,7 @@ export function DecisionComments({
       loadComments();
       onCommentAdded?.();
     } catch (error) {
-      console.error('Error deleting comment:', error);
+      debugConsole.error('Error deleting comment:', error);
       toast({
         title: "Fehler",
         description: "Kommentar konnte nicht gelöscht werden.",

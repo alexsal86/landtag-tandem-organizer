@@ -8,6 +8,7 @@ import { useTenant } from '@/hooks/useTenant';
 import { format } from 'date-fns';
 import { de } from 'date-fns/locale';
 import { cn } from '@/lib/utils';
+import { debugConsole } from '@/utils/debugConsole';
 
 interface PendingCaseItem {
   id: string;
@@ -55,7 +56,7 @@ export function PendingJourFixeCaseItems({ className }: PendingJourFixeCaseItems
       if (error) throw error;
       setItems((data || []) as PendingCaseItem[]);
     } catch (error) {
-      console.error('Error loading pending case items:', error);
+      debugConsole.error('Error loading pending case items:', error);
     } finally {
       setLoading(false);
     }

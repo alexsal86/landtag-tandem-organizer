@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { useTenant } from "@/hooks/useTenant";
+import { debugConsole } from "@/utils/debugConsole";
 
 interface CountsData {
   contactsCount: number;
@@ -38,7 +39,7 @@ export function useCounts(): CountsData {
         .neq('name', 'Archivierter Kontakt');
 
       if (contactsError) {
-        console.error('Error fetching contacts count:', contactsError);
+        debugConsole.error('Error fetching contacts count:', contactsError);
       }
 
       // Get stakeholders count (organizations only)
@@ -49,7 +50,7 @@ export function useCounts(): CountsData {
         .eq('contact_type', 'organization');
 
       if (stakeholdersError) {
-        console.error('Error fetching stakeholders count:', stakeholdersError);
+        debugConsole.error('Error fetching stakeholders count:', stakeholdersError);
       }
 
       // Get archived contacts count (grouped by phone number)
@@ -60,7 +61,7 @@ export function useCounts(): CountsData {
         .eq('name', 'Archivierter Kontakt');
 
       if (archiveError) {
-        console.error('Error fetching archived contacts:', archiveError);
+        debugConsole.error('Error fetching archived contacts:', archiveError);
       }
 
       // Count unique phone numbers for archive
@@ -74,7 +75,7 @@ export function useCounts(): CountsData {
         .or(`tenant_id.eq.${currentTenant.id},tenant_id.is.null`);
 
       if (distributionError) {
-        console.error('Error fetching distribution lists count:', distributionError);
+        debugConsole.error('Error fetching distribution lists count:', distributionError);
       }
 
 
@@ -86,7 +87,7 @@ export function useCounts(): CountsData {
         loading: false,
       });
     } catch (error) {
-      console.error('Error fetching counts:', error);
+      debugConsole.error('Error fetching counts:', error);
       setCounts(prev => ({ ...prev, loading: false }));
     }
   };

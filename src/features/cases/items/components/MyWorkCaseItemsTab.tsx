@@ -25,6 +25,7 @@ import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { cn } from "@/lib/utils";
 import { useCaseItems } from "@/features/cases/items/hooks";
+import { debugConsole } from "@/utils/debugConsole";
 
 type SortBy = "updated_desc" | "due_asc" | "priority_desc";
 
@@ -134,7 +135,7 @@ export function MyWorkCaseItemsTab() {
         });
         if (!escError) escalationData = escData;
       } catch (e) {
-        console.warn("Eskalationsvorschläge konnten nicht geladen werden:", e);
+        debugConsole.warn("Eskalationsvorschläge konnten nicht geladen werden:", e);
       }
 
       const visibleItems = ((data || []) as any[])
@@ -174,7 +175,7 @@ export function MyWorkCaseItemsTab() {
       }, {});
       setSelectedCaseFileByItemId(initialSelection);
     } catch (error) {
-      console.error("Error loading case items:", error);
+      debugConsole.error("Error loading case items:", error);
     } finally {
       setLoading(false);
     }
@@ -224,7 +225,7 @@ export function MyWorkCaseItemsTab() {
 
       await loadCaseItems();
     } catch (error) {
-      console.error("Error escalating case item:", error);
+      debugConsole.error("Error escalating case item:", error);
       toast({
         title: "Fehler",
         description: "Eskalation konnte nicht verarbeitet werden.",
@@ -319,7 +320,7 @@ export function MyWorkCaseItemsTab() {
       toast({ title: "Archiviert", description: "Vorgang wurde archiviert." });
       await loadCaseItems();
     } catch (e) {
-      console.error("Error archiving case item:", e);
+      debugConsole.error("Error archiving case item:", e);
       toast({ title: "Fehler", description: "Vorgang konnte nicht archiviert werden.", variant: "destructive" });
     }
   };

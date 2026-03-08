@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { debugConsole } from "@/utils/debugConsole";
 import { Plus, GripVertical, Pencil, Trash2, TestTube, AlertCircle } from "lucide-react";
 import { DragDropContext, Droppable, Draggable, DropResult } from "@hello-pangea/dnd";
 import { Button } from "@/components/ui/button";
@@ -72,7 +73,7 @@ export function RSSSourceManager() {
 
     if (error) {
       toast.error("Fehler beim Laden der RSS-Quellen");
-      console.error(error);
+      debugConsole.error(error);
     } else {
       setSources(data || []);
     }
@@ -127,7 +128,7 @@ export function RSSSourceManager() {
       setEditingSource(null);
     } catch (error: unknown) {
       toast.error(error instanceof Error ? error.message : "Fehler beim Speichern");
-      console.error(error);
+      debugConsole.error(error);
     }
   };
 
@@ -139,7 +140,7 @@ export function RSSSourceManager() {
 
     if (error) {
       toast.error("Fehler beim Aktualisieren des Status");
-      console.error(error);
+      debugConsole.error(error);
     } else {
       toast.success(source.is_active ? "Quelle deaktiviert" : "Quelle aktiviert");
       loadSources();
@@ -156,7 +157,7 @@ export function RSSSourceManager() {
 
     if (error) {
       toast.error("Fehler beim Löschen");
-      console.error(error);
+      debugConsole.error(error);
     } else {
       toast.success("RSS-Quelle gelöscht");
       loadSources();

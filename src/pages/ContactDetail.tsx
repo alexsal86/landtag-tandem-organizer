@@ -10,6 +10,7 @@ import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { ActivityTimeline, type Activity } from "@/components/contacts/ActivityTimeline";
+import { debugConsole } from "@/utils/debugConsole";
 
 interface Contact {
   id: string;
@@ -71,7 +72,7 @@ export default function ContactDetail() {
         });
       }
     } catch (error) {
-      console.error('Error fetching contact:', error);
+      debugConsole.error('Error fetching contact:', error);
       toast({
         title: "Fehler",
         description: "Kontakt konnte nicht geladen werden.",
@@ -110,7 +111,7 @@ export default function ContactDetail() {
       
       setActivities(formattedActivities);
     } catch (error) {
-      console.error("Error fetching activities:", error);
+      debugConsole.error("Error fetching activities:", error);
       toast({
         title: "Fehler",
         description: "Aktivitäten konnten nicht geladen werden.",
@@ -221,7 +222,7 @@ export default function ContactDetail() {
       });
       navigate("/");
     } catch (error) {
-      console.error('Error deleting contact:', error);
+      debugConsole.error('Error deleting contact:', error);
       toast({
         title: "Fehler",
         description: "Kontakt konnte nicht gelöscht werden.",

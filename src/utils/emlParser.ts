@@ -1,4 +1,5 @@
 import PostalMime from 'postal-mime';
+import { debugConsole } from '@/utils/debugConsole';
 
 export interface EmailMetadata {
   subject: string;
@@ -197,7 +198,7 @@ export function buildEmlFromOutlookHtml(html: string): File | null {
     const safeName = subject.replace(/[^a-zA-Z0-9äöüÄÖÜß _-]/g, '').slice(0, 80) || 'email';
     return new File([blob], `${safeName}.eml`, { type: 'message/rfc822', lastModified: Date.now() });
   } catch (e) {
-    console.error('buildEmlFromOutlookHtml error:', e);
+    debugConsole.error('buildEmlFromOutlookHtml error:', e);
     return null;
   }
 }

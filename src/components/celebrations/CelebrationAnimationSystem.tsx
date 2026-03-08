@@ -1,6 +1,7 @@
 import React, { useEffect, useState, useCallback } from 'react';
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
+import { debugConsole } from "@/utils/debugConsole";
 import { UnicornAnimation } from './UnicornAnimation';
 import { ConfettiAnimation } from './ConfettiAnimation';
 import { FireworksAnimation } from './FireworksAnimation';
@@ -70,7 +71,7 @@ export function CelebrationAnimationSystem({
         .single();
 
       if (error && error.code !== 'PGRST116') {
-        console.error('Error loading celebration settings:', error);
+        debugConsole.error('Error loading celebration settings:', error);
       }
 
       if (data) {
@@ -94,7 +95,7 @@ export function CelebrationAnimationSystem({
         });
       }
     } catch (error) {
-      console.error('Error loading celebration settings:', error);
+      debugConsole.error('Error loading celebration settings:', error);
       setSettings({
         enabled: true,
         mode: 'random',

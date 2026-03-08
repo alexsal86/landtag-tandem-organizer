@@ -224,7 +224,7 @@ export const loadElectoralDistrictsGeoJson = async (): Promise<GeoJsonData> => {
       } else if (contentType.includes('application/json') || path.endsWith('.geojson') || path.endsWith('.json')) {
         fc = await res.json();
       } else if (contentType.includes('text/html')) {
-        console.warn('Received HTML for', path, 'skipping');
+        debugConsole.warn('Received HTML for', path, 'skipping');
         continue;
       } else {
         // Try as text then JSON
@@ -232,13 +232,13 @@ export const loadElectoralDistrictsGeoJson = async (): Promise<GeoJsonData> => {
           const txt = await res.text();
           fc = JSON.parse(txt);
         } catch {
-          console.warn('Unknown content-type for', path, 'skipping');
+          debugConsole.warn('Unknown content-type for', path, 'skipping');
           continue;
         }
       }
 
       if (!fc || fc.type !== 'FeatureCollection' || !Array.isArray(fc.features)) {
-        console.warn('Invalid GeoJSON structure from', path);
+        debugConsole.warn('Invalid GeoJSON structure from', path);
         continue;
       }
 
@@ -247,12 +247,12 @@ export const loadElectoralDistrictsGeoJson = async (): Promise<GeoJsonData> => {
       return data;
     } catch (e) {
       lastError = e;
-      console.warn('Failed to load from', path, e);
+      debugConsole.warn('Failed to load from', path, e);
       continue;
     }
   }
 
-  console.error('All GeoJSON sources failed');
+  debugConsole.error('All GeoJSON sources failed');
   if (lastError) throw lastError;
   throw new Error('Unable to load any GeoJSON source');
 };

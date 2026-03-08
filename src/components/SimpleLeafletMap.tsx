@@ -1,4 +1,5 @@
 import React, { useEffect, useRef } from 'react';
+import { debugConsole } from '@/utils/debugConsole';
 import 'leaflet/dist/leaflet.css';
 import '@/styles/leaflet-overrides.css';
 import * as L from 'leaflet';
@@ -290,17 +291,17 @@ const SimpleLeafletMap: React.FC<LeafletKarlsruheMapProps> = ({
     if (showPartyAssociations && associations.length > 0) {
       
       associations.forEach((association) => {
-        console.log(`Processing association: ${association.name}, has boundary_districts:`, !!association.boundary_districts?.length);
+        debugConsole.log(`Processing association: ${association.name}, has boundary_districts:`, !!association.boundary_districts?.length);
         
         // Use boundary_districts directly from associations, independent of the districts array
         association.boundary_districts?.forEach((boundaryDistrict) => {
           if (!boundaryDistrict.center_coordinates) {
-            console.warn(`No center_coordinates for district: ${boundaryDistrict.district_number}`);
+            debugConsole.warn(`No center_coordinates for district: ${boundaryDistrict.district_number}`);
             return;
           }
           
           // Debug logging to see the actual structure
-          console.log('Party association boundary district coordinates:', boundaryDistrict.center_coordinates);
+          debugConsole.log('Party association boundary district coordinates:', boundaryDistrict.center_coordinates);
           
           // Handle GeoJSON Point format: { "type": "Point", "coordinates": [lng, lat] }
           let lat: number, lng: number;
@@ -316,7 +317,7 @@ const SimpleLeafletMap: React.FC<LeafletKarlsruheMapProps> = ({
               // GeoJSON format: coordinates[0] = longitude, coordinates[1] = latitude
               lng = boundaryDistrict.center_coordinates.coordinates[0];
               lat = boundaryDistrict.center_coordinates.coordinates[1];
-              console.log(`Parsed GeoJSON Point: lng=${lng}, lat=${lat}`);
+              debugConsole.log(`Parsed GeoJSON Point: lng=${lng}, lat=${lat}`);
               
             } else if ('lat' in boundaryDistrict.center_coordinates && 'lng' in boundaryDistrict.center_coordinates) {
               lat = boundaryDistrict.center_coordinates.lat;
@@ -329,16 +330,16 @@ const SimpleLeafletMap: React.FC<LeafletKarlsruheMapProps> = ({
               lat = boundaryDistrict.center_coordinates[0];
               lng = boundaryDistrict.center_coordinates[1];
             } else {
-              console.warn('Unable to parse coordinates for party association:', boundaryDistrict);
+              debugConsole.warn('Unable to parse coordinates for party association:', boundaryDistrict);
               return;
             }
           } else {
-            console.warn('center_coordinates is not an object:', boundaryDistrict.center_coordinates);
+            debugConsole.warn('center_coordinates is not an object:', boundaryDistrict.center_coordinates);
             return;
           }
           
           if (lat === undefined || lng === undefined || isNaN(lat) || isNaN(lng)) {
-            console.warn('Invalid coordinates for party association:', { lat, lng, boundaryDistrict });
+            debugConsole.warn('Invalid coordinates for party association:', { lat, lng, boundaryDistrict });
             return;
           }
           

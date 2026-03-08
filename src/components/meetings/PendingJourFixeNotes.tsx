@@ -9,6 +9,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { format } from 'date-fns';
 import { de } from 'date-fns/locale';
 import { cn } from '@/lib/utils';
+import { debugConsole } from '@/utils/debugConsole';
 
 interface PendingNote {
   id: string;
@@ -52,7 +53,7 @@ export function PendingJourFixeNotes({ className, onNotesLinked }: PendingJourFi
       if (error) throw error;
       setNotes(data || []);
     } catch (error) {
-      console.error('Error loading pending notes:', error);
+      debugConsole.error('Error loading pending notes:', error);
     } finally {
       setLoading(false);
     }

@@ -15,6 +15,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { supabase } from "@/integrations/supabase/client";
 import { useTenant } from "@/hooks/useTenant";
 import { useToast } from "@/hooks/use-toast";
+import { debugConsole } from "@/utils/debugConsole";
 
 interface ArchivedItem {
   id: string;
@@ -67,7 +68,7 @@ export function CaseItemsArchiveSheet({ open, onOpenChange, onRestore }: CaseIte
       if (error) throw error;
       setItems((data ?? []) as ArchivedItem[]);
     } catch (e) {
-      console.error("Error loading archived case items:", e);
+      debugConsole.error("Error loading archived case items:", e);
     } finally {
       setLoading(false);
     }
@@ -91,7 +92,7 @@ export function CaseItemsArchiveSheet({ open, onOpenChange, onRestore }: CaseIte
       setItems((prev) => prev.filter((i) => i.id !== id));
       onRestore?.();
     } catch (e) {
-      console.error("Error restoring case item:", e);
+      debugConsole.error("Error restoring case item:", e);
       toast({ title: "Fehler", description: "Vorgang konnte nicht wiederhergestellt werden.", variant: "destructive" });
     } finally {
       setRestoringId(null);

@@ -8,6 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { useTenant } from "@/hooks/useTenant";
+import { debugConsole } from "@/utils/debugConsole";
 import { Clock, Save } from "lucide-react";
 
 export function CalendarSyncSettings() {
@@ -55,7 +56,7 @@ export function CalendarSyncSettings() {
         if (insertError) throw insertError;
       }
     } catch (error) {
-      console.error('Error loading sync settings:', error);
+      debugConsole.error('Error loading sync settings:', error);
       toast.error('Fehler beim Laden der Einstellungen');
     }
   };
@@ -79,7 +80,7 @@ export function CalendarSyncSettings() {
 
       toast.success('Einstellungen erfolgreich gespeichert');
     } catch (error) {
-      console.error('Error saving sync settings:', error);
+      debugConsole.error('Error saving sync settings:', error);
       toast.error('Fehler beim Speichern der Einstellungen');
     } finally {
       setIsLoading(false);

@@ -1,5 +1,6 @@
 import '@/styles/lexical-editor.css';
 import React, { useCallback, useEffect, useRef } from 'react';
+import { debugConsole } from '@/utils/debugConsole';
 import { LexicalComposer } from '@lexical/react/LexicalComposer';
 import { RichTextPlugin } from '@lexical/react/LexicalRichTextPlugin';
 import { ContentEditable } from '@lexical/react/LexicalContentEditable';
@@ -386,7 +387,7 @@ const SimpleRichTextEditor: React.FC<SimpleRichTextEditorProps> = ({
       MentionNode,
     ],
     onError: (error: Error) => {
-      console.error('Lexical Error:', error);
+      debugConsole.error('Lexical Error:', error);
     },
   };
 

@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { debugConsole } from "@/utils/debugConsole";
 
 interface Tag {
   id: string;
@@ -29,13 +30,13 @@ export const useTags = () => {
         .order('order_index');
 
       if (error) {
-        console.error('Error fetching tags:', error);
+        debugConsole.error('Error fetching tags:', error);
         return;
       }
 
       setTags(data || []);
     } catch (error) {
-      console.error('Error in fetchTags:', error);
+      debugConsole.error('Error in fetchTags:', error);
     } finally {
       setLoading(false);
     }

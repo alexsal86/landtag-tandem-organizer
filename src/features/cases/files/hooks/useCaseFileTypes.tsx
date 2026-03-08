@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/components/ui/use-toast";
 import { useTenant } from "@/hooks/useTenant";
+import { debugConsole } from "@/utils/debugConsole";
 
 export interface CaseFileType {
   id: string;
@@ -32,7 +33,7 @@ export const useCaseFileTypes = () => {
       if (error) throw error;
       setCaseFileTypes(data || []);
     } catch (error) {
-      console.error('Error fetching case file types:', error);
+      debugConsole.error('Error fetching case file types:', error);
       toast({
         title: "Fehler",
         description: "Fallakten-Typen konnten nicht geladen werden.",
@@ -66,7 +67,7 @@ export const useCaseFileTypes = () => {
       await fetchCaseFileTypes();
       return true;
     } catch (error) {
-      console.error('Error creating case file type:', error);
+      debugConsole.error('Error creating case file type:', error);
       toast({
         title: "Fehler",
         description: "Fallakten-Typ konnte nicht erstellt werden.",
@@ -101,7 +102,7 @@ export const useCaseFileTypes = () => {
       await fetchCaseFileTypes();
       return true;
     } catch (error) {
-      console.error('Error updating case file type:', error);
+      debugConsole.error('Error updating case file type:', error);
       toast({
         title: "Fehler",
         description: "Fallakten-Typ konnte nicht aktualisiert werden.",
@@ -128,7 +129,7 @@ export const useCaseFileTypes = () => {
       await fetchCaseFileTypes();
       return true;
     } catch (error) {
-      console.error('Error deleting case file type:', error);
+      debugConsole.error('Error deleting case file type:', error);
       toast({
         title: "Fehler",
         description: "Fallakten-Typ konnte nicht gelöscht werden.",
@@ -155,7 +156,7 @@ export const useCaseFileTypes = () => {
       await fetchCaseFileTypes();
       return true;
     } catch (error) {
-      console.error('Error toggling case file type:', error);
+      debugConsole.error('Error toggling case file type:', error);
       toast({
         title: "Fehler",
         description: "Status konnte nicht geändert werden.",
@@ -176,7 +177,7 @@ export const useCaseFileTypes = () => {
       setCaseFileTypes(items);
       return true;
     } catch (error) {
-      console.error('Error updating order:', error);
+      debugConsole.error('Error updating order:', error);
       toast({
         title: "Fehler",
         description: "Reihenfolge konnte nicht gespeichert werden.",

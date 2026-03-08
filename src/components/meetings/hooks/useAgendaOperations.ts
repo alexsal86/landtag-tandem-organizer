@@ -2,6 +2,7 @@ import { supabase } from "@/integrations/supabase/client";
 import type { AgendaItem } from "@/components/meetings/types";
 import type { MeetingsDataReturn } from "./useMeetingsData";
 import type { DropResult } from "@hello-pangea/dnd";
+import { debugConsole } from "@/utils/debugConsole";
 
 type AgendaOpsDeps = Pick<MeetingsDataReturn,
   'selectedMeeting' | 'activeMeeting' | 'agendaItems' | 'setAgendaItems' | 'setActiveMeeting' |

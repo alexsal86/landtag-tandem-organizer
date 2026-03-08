@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
+import { debugConsole } from "@/utils/debugConsole";
 import { useTenant } from "@/hooks/useTenant";
 
 const DEBOUNCE_MS = 500;
@@ -52,7 +53,7 @@ export function useUserPreference<T>(key: string, defaultValue: T) {
         if (cancelled) return;
 
         if (error) {
-          console.error("useUserPreference: load error", error);
+          debugConsole.error("useUserPreference: load error", error);
           return;
         }
 
@@ -89,7 +90,7 @@ export function useUserPreference<T>(key: string, defaultValue: T) {
 
         dbSynced.current = true;
       } catch (e) {
-        console.error("useUserPreference: unexpected error", e);
+        debugConsole.error("useUserPreference: unexpected error", e);
       }
     };
 
@@ -120,7 +121,7 @@ export function useUserPreference<T>(key: string, defaultValue: T) {
             { onConflict: "user_id,tenant_id,key" }
           );
         } catch (e) {
-          console.error("useUserPreference: save error", e);
+          debugConsole.error("useUserPreference: save error", e);
         }
       }, DEBOUNCE_MS);
     },

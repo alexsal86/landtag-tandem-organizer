@@ -13,6 +13,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { useTenant } from "@/hooks/useTenant";
 import { ImageCropper } from "@/components/ui/ImageCropper";
 import { ActiveSessionsCard } from "@/components/account/ActiveSessionsCard";
+import { debugConsole } from "@/utils/debugConsole";
 
 interface ProfileData {
   display_name: string;
@@ -65,7 +66,7 @@ export function EditProfile() {
         });
       }
     } catch (error) {
-      console.error('Error fetching profile:', error);
+      debugConsole.error('Error fetching profile:', error);
       toast({
         title: "Fehler",
         description: "Profil konnte nicht geladen werden.",
@@ -169,7 +170,7 @@ export function EditProfile() {
       });
 
     } catch (error: unknown) {
-      console.error('Error uploading file:', error);
+      debugConsole.error('Error uploading file:', error);
       const msg = error instanceof Error ? error.message : '';
       const errorMessage = msg?.includes('bucket') || msg?.includes('Bucket')
         ? "Der Avatar-Speicher ist nicht konfiguriert. Bitte kontaktieren Sie den Administrator."
@@ -247,7 +248,7 @@ export function EditProfile() {
       
       navigate("/");
     } catch (error) {
-      console.error('Error updating profile:', error);
+      debugConsole.error('Error updating profile:', error);
       toast({
         title: "Fehler",
         description: "Profil konnte nicht aktualisiert werden. Bitte versuchen Sie es erneut.",

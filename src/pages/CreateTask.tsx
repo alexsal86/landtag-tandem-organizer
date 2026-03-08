@@ -13,6 +13,7 @@ import { useTenant } from "@/hooks/useTenant";
 import { MultiSelect } from "@/components/ui/multi-select-simple";
 import { TopicSelector } from "@/components/topics/TopicSelector";
 import { useCreateTaskWithTopics } from "@/hooks/useTaskTopics";
+import { debugConsole } from "@/utils/debugConsole";
 
 export default function CreateTask() {
   const navigate = useNavigate();
@@ -39,7 +40,7 @@ export default function CreateTask() {
     topicIds: [] as string[],
   });
 
-  console.log('🔍 CreateTask component render - formData:', formData);
+  debugConsole.log('🔍 CreateTask component render - formData:', formData);
 
   // Load user profiles and task configurations
   useEffect(() => {
@@ -83,7 +84,7 @@ export default function CreateTask() {
           setFormData(prev => ({ ...prev, category: categories[0].name }));
         }
       } catch (error) {
-        console.error('Error loading data:', error);
+        debugConsole.error('Error loading data:', error);
       }
     };
 
@@ -94,9 +95,9 @@ export default function CreateTask() {
     e.preventDefault();
     setLoading(true);
 
-      console.log('📝 Starting task creation process');
-      console.log('📝 Current tenant:', currentTenant);
-      console.log('📝 Form data:', formData);
+      debugConsole.log('📝 Starting task creation process');
+      debugConsole.log('📝 Current tenant:', currentTenant);
+      debugConsole.log('📝 Form data:', formData);
 
       try {
         // Validate required fields
@@ -111,10 +112,10 @@ export default function CreateTask() {
 
         // Get current user
         const { data: { user }, error: userError } = await supabase.auth.getUser();
-        console.log('📝 User auth check:', { user: user?.id, error: userError });
+        debugConsole.log('📝 User auth check:', { user: user?.id, error: userError });
         
         if (userError || !user) {
-          console.error('❌ Auth error:', userError);
+          debugConsole.error('❌ Auth error:', userError);
           toast({
             title: "Fehler",
             description: "Sie müssen angemeldet sein, um Aufgaben zu erstellen.",
@@ -125,7 +126,7 @@ export default function CreateTask() {
 
         // Validate tenant
         if (!currentTenant?.id) {
-          console.error('❌ No tenant available:', currentTenant);
+          debugConsole.error('❌ No tenant available:', currentTenant);
           toast({
             title: "Fehler", 
             description: "Kein Tenant ausgewählt. Bitte laden Sie die Seite neu.",
@@ -147,7 +148,7 @@ export default function CreateTask() {
           assigned_to: formData.assignedTo.length > 0 ? formData.assignedTo.join(', ') : null
         };
 
-        console.log('📝 Inserting task with assigned_to field:', taskData);
+        debugConsole.log('📝 Inserting task with assigned_to field:', taskData);
 
         // Insert task
         const { data: insertedTask, error: insertError } = await supabase
@@ -157,8 +158,8 @@ export default function CreateTask() {
           .single();
 
         if (insertError) {
-          console.error('❌ Task creation error:', insertError);
-          console.error('❌ Error details:', {
+          debugConsole.error('❌ Task creation error:', insertError);
+          debugConsole.error('❌ Error details:', {
             message: insertError.message,
             details: insertError.details,
             hint: insertError.hint,
@@ -168,7 +169,7 @@ export default function CreateTask() {
           throw new Error(insertError.message);
         }
 
-        console.log('✅ Task created successfully:', insertedTask);
+        debugConsole.log('✅ Task created successfully:', insertedTask);
         
         // Save topics if any selected
         if (formData.topicIds.length > 0) {
@@ -193,7 +194,7 @@ export default function CreateTask() {
 
         navigate("/tasks");
     } catch (error) {
-      console.error('❌ Error creating task:', error);
+      debugConsole.error('❌ Error creating task:', error);
       toast({
         title: "Fehler",
         description: `Aufgabe konnte nicht erstellt werden: ${error instanceof Error ? error.message : 'Unbekannter Fehler'}`,

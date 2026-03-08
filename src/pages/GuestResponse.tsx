@@ -9,6 +9,7 @@ import { Separator } from "@/components/ui/separator";
 import { CheckCircle, XCircle, Calendar, MapPin, Clock, User } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+import { debugConsole } from "@/utils/debugConsole";
 
 interface AppointmentData {
   id: string;
@@ -94,7 +95,7 @@ function GuestResponse() {
       }
 
     } catch (error: unknown) {
-      console.error('Error fetching guest data:', error);
+      debugConsole.error('Error fetching guest data:', error);
       setError('Fehler beim Laden der Einladung');
     } finally {
       setLoading(false);
@@ -127,7 +128,7 @@ function GuestResponse() {
       fetchGuestData();
 
     } catch (error: unknown) {
-      console.error('Error submitting response:', error);
+      debugConsole.error('Error submitting response:', error);
       toast.error('Fehler beim Übermitteln der Antwort');
     } finally {
       setSubmitting(false);

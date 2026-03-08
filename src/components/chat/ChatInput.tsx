@@ -3,6 +3,7 @@ import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Send, Loader2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { debugConsole } from '@/utils/debugConsole';
 
 interface ChatInputProps {
   onSendMessage: (message: string) => Promise<void>;
@@ -70,7 +71,7 @@ export function ChatInput({ onSendMessage, onTyping, disabled, placeholder }: Ch
       await onSendMessage(trimmedMessage);
       setMessage('');
     } catch (error) {
-      console.error('Error sending message:', error);
+      debugConsole.error('Error sending message:', error);
     } finally {
       setIsSending(false);
       sendLockRef.current = false;

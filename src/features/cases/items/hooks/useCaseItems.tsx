@@ -4,6 +4,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { useTenant } from "@/hooks/useTenant";
 import { useToast } from "@/components/ui/use-toast";
 import type { CaseItemIntakePayload } from "@/features/cases/items/types";
+import { debugConsole } from "@/utils/debugConsole";
 
 export interface CaseItem {
   id: string;
@@ -104,7 +105,7 @@ export const useCaseItems = () => {
       if (error) throw error;
       setCaseItems((data ?? []) as unknown as CaseItem[]);
     } catch (error) {
-      console.error("Error fetching case items:", error);
+      debugConsole.error("Error fetching case items:", error);
       toast({
         title: "Fehler",
         description: "Vorgänge konnten nicht geladen werden.",
@@ -173,14 +174,14 @@ export const useCaseItems = () => {
           priority_param: "medium",
           data_param: JSON.stringify({ case_item_id: inserted?.id }),
         }).then(({ error: nErr }) => {
-          if (nErr) console.warn("Notification error (case_item_assigned):", nErr);
+          if (nErr) debugConsole.warn("Notification error (case_item_assigned):", nErr);
         });
       }
 
       await fetchCaseItems();
       return (inserted ?? { id: "new" }) as unknown as CaseItem;
     } catch (error: unknown) {
-      console.error("Error creating case item:", error);
+      debugConsole.error("Error creating case item:", error);
       const detail = error instanceof Error ? error.message : String(error);
       toast({
         title: "Fehler beim Erstellen",
@@ -224,7 +225,7 @@ export const useCaseItems = () => {
             priority_param: "medium",
             data_param: JSON.stringify({ case_item_id: id, new_status: data.status }),
           }).then(({ error: nErr }) => {
-            if (nErr) console.warn("Notification error (case_item_status_changed):", nErr);
+            if (nErr) debugConsole.warn("Notification error (case_item_status_changed):", nErr);
           });
         }
       }
@@ -239,14 +240,14 @@ export const useCaseItems = () => {
           priority_param: "medium",
           data_param: JSON.stringify({ case_item_id: id }),
         }).then(({ error: nErr }) => {
-          if (nErr) console.warn("Notification error (case_item_assigned):", nErr);
+          if (nErr) debugConsole.warn("Notification error (case_item_assigned):", nErr);
         });
       }
 
       await fetchCaseItems();
       return true;
     } catch (error) {
-      console.error("Error updating case item:", error);
+      debugConsole.error("Error updating case item:", error);
       toast({
         title: "Fehler",
         description: "Vorgang konnte nicht aktualisiert werden.",
@@ -270,7 +271,7 @@ export const useCaseItems = () => {
       await fetchCaseItems();
       return true;
     } catch (error) {
-      console.error("Error deleting case item:", error);
+      debugConsole.error("Error deleting case item:", error);
       toast({
         title: "Fehler",
         description: "Vorgang konnte nicht gelöscht werden.",
@@ -316,14 +317,14 @@ export const useCaseItems = () => {
             priority_param: "medium",
             data_param: JSON.stringify({ case_item_id: caseItem.id }),
           }).then(({ error: nErr }) => {
-            if (nErr) console.warn("Notification error (case_item_comment):", nErr);
+            if (nErr) debugConsole.warn("Notification error (case_item_comment):", nErr);
           });
         }
       }
 
       return interaction as unknown as CaseItemInteraction;
     } catch (error) {
-      console.error("Error creating case item interaction:", error);
+      debugConsole.error("Error creating case item interaction:", error);
       toast({
         title: "Fehler",
         description: "Interaktion konnte nicht gespeichert werden.",
@@ -348,7 +349,7 @@ export const useCaseItems = () => {
         if (error) throw error;
         return (data ?? []) as unknown as CaseItemInteraction[];
       } catch (error) {
-        console.error("Error fetching case item interactions:", error);
+        debugConsole.error("Error fetching case item interactions:", error);
         toast({
           title: "Fehler",
           description: "Interaktionen konnten nicht geladen werden.",
