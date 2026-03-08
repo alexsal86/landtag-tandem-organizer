@@ -487,7 +487,7 @@ export const useNotifications = () => {
             filter: `user_id=eq.${user.id}`,
           },
           async (payload) => {
-            console.log('📥 New notification received via realtime:', payload);
+            debugConsole.log('📥 New notification received via realtime:', payload);
             
             const { data: fullNotification } = await supabase
               .from('notifications')
