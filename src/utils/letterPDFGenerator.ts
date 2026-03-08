@@ -562,7 +562,7 @@ export const generateLetterPDF = async (letter: Letter): Promise<{ blob: Blob; f
         case 'custom':
           if (informationBlock.block_data?.custom_content) {
             const customLines = informationBlock.block_data.custom_content.split('\n');
-            customLines.forEach(line => {
+            customLines.forEach((line: string) => {
               if (infoYPos < addressFieldTop + addressFieldHeight - 5) {
                 pdf.text(line, infoBlockLeft, infoYPos);
                 infoYPos += 4;

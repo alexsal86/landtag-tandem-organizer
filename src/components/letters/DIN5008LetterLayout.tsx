@@ -639,7 +639,7 @@ export const DIN5008LetterLayout: React.FC<DIN5008LetterLayoutProps> = ({
                 </div>
               ) : senderInfo?.return_address_line ? (
                 <div style={{ fontSize: `${returnAddressFontSizePt}pt`, lineHeight: '1.0', maxWidth: '75mm' }}>
-                  {senderInfo.return_address_line.split('\n').filter((line) => line.trim()).map((line, index, arr) => (
+                  {senderInfo.return_address_line.split('\n').filter((line: string) => line.trim()).map((line: string, index: number, arr: string[]) => (
                     <div key={`${line}-${index}`}>
                       <span style={index === arr.length - 1 ? { display: 'inline-block', borderBottom: '0.5pt solid #000', paddingBottom: '0.3mm' } : { display: 'inline-block' }}>
                         {line}

@@ -239,12 +239,13 @@ export function useEmployeesData() {
           .gte("start_date", startOfYear(new Date()).toISOString()).lte("start_date", endOfYear(new Date()).toISOString());
 
         (fullLeaveData || []).forEach((lr: any) => {
+          const leaveType = lr.type as LeaveType;
           const workingDays = lr.end_date ? calculateWorkingDays(lr.start_date, lr.end_date) : 1;
-          if (lr.status === "approved") agg.approved[lr.type] += workingDays;
-          if (lr.status === "pending") agg.pending[lr.type] += workingDays;
-          agg.counts[lr.type] += workingDays;
-          const curr = agg.lastDates[lr.type];
-          if (!curr || new Date(lr.start_date) > new Date(curr)) agg.lastDates[lr.type] = lr.start_date;
+          if (lr.status === "approved") agg.approved[leaveType] += workingDays;
+          if (lr.status === "pending") agg.pending[leaveType] += workingDays;
+          agg.counts[leaveType] += workingDays;
+          const curr = agg.lastDates[leaveType];
+          if (!curr || new Date(lr.start_date) > new Date(curr)) agg.lastDates[leaveType] = lr.start_date;
         });
         setSelfLeaveAgg(agg);
       } catch (e: any) {
