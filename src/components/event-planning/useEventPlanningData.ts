@@ -909,7 +909,7 @@ export function useEventPlanningData() {
       loadItemComments(selectedItemId);
       loadAllItemCounts();
       toast({ title: "Kommentar hinzugefügt", description: "Ihr Kommentar wurde erfolgreich hinzugefügt." });
-    } catch (error) { debugConsole.error('Error adding comment:', error); toast({ title: "Fehler", description: "Kommentar konnte nicht hinzugefügt werden.", variant: "destructive" }); }
+    } catch (error) { handleAppError(error, { context: 'addItemComment', toast: { fn: toast, title: 'Fehler', description: 'Kommentar konnte nicht hinzugefügt werden.' } }); }
   };
 
   const addItemSubtask = async (description?: string, assignedTo?: string, dueDate?: string, itemId?: string) => {
