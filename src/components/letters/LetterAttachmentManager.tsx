@@ -232,10 +232,10 @@ const LetterAttachmentManager: React.FC<LetterAttachmentManagerProps> = ({
         title: "Datei gelöscht",
         description: `${attachment.file_name} wurde erfolgreich gelöscht.`,
       });
-    } catch (error: any) {
+    } catch (error: unknown) {
       toast({
         title: "Lösch-Fehler",
-        description: error.message,
+        description: error instanceof Error ? error.message : String(error),
         variant: "destructive",
       });
     }
