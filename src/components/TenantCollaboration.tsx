@@ -80,7 +80,7 @@ export function TenantCollaboration() {
         .eq("is_active", true);
 
       if (error) {
-        console.error("Error fetching tenants:", error);
+        debugConsole.error("Error fetching tenants:", error);
         return;
       }
 
