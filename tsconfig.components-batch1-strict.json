@@ -1,0 +1,24 @@
+{
+  "extends": "./tsconfig.app.json",
+  "compilerOptions": {
+    "strict": false,
+    "strictNullChecks": true,
+    "noImplicitAny": false,
+    "noUnusedLocals": false,
+    "noUnusedParameters": false
+  },
+  "include": [
+    "src/components/*.tsx",
+    "src/components/*.ts",
+    "src/components/ui/**/*.tsx",
+    "src/components/ui/**/*.ts",
+    "src/components/shared/**/*.tsx",
+    "src/components/shared/**/*.ts",
+    "src/components/layout/**/*.tsx",
+    "src/components/layout/**/*.ts",
+    "src/components/navigation/**/*.tsx",
+    "src/components/navigation/**/*.ts",
+    "src/components/widgets/**/*.tsx",
+    "src/components/widgets/**/*.ts"
+  ]
+}
