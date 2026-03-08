@@ -109,7 +109,7 @@ const UserAssignmentDialog: React.FC<UserAssignmentDialogProps> = ({
 
       setSelectedUsers(data?.map(c => c.user_id) || []);
     } catch (error) {
-      console.error('Error fetching collaborators:', error);
+      debugConsole.error('Error fetching collaborators:', error);
     }
   };
 
