@@ -1,5 +1,6 @@
 import { useState, useRef } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { debugConsole } from "@/utils/debugConsole";
 import { startOfDay, endOfDay, addDays } from "date-fns";
 import type {
   LinkedQuickNote,
