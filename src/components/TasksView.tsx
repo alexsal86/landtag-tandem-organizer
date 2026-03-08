@@ -529,7 +529,7 @@ export function TasksView() {
         
         if (planningSubtasksData) {
           for (const subtask of planningSubtasksData) {
-            console.log('📝 Processing planning subtask:', subtask.id, 'assigned_to:', subtask.assigned_to);
+            
             
             try {
               const resolvedAssignedTo = await resolveUserNamesAsync([subtask.assigned_to]);
