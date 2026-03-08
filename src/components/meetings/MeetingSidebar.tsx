@@ -214,7 +214,7 @@ export function MeetingSidebar({
                       </div>
                       <div>
                         <label className="text-xs font-medium text-muted-foreground">Uhrzeit</label>
-                        <TimePickerCombobox value={(editingMeeting.meeting_time || '10:00').substring(0, 5)} onChange={(time) => onSetEditingMeeting({ ...editingMeeting, meeting_time: time })} />
+                        <TimePickerCombobox value={(editingMeeting!.meeting_time || '10:00').substring(0, 5)} onChange={(time) => onSetEditingMeeting({ ...editingMeeting!, meeting_time: time } as Meeting)} />
                       </div>
                     </div>
                     <div>
