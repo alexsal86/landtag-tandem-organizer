@@ -514,9 +514,19 @@ export function AutomationRulesManager() {
                       </div>
                     </div>
                   </div>
-                  <div className="flex gap-2">
+                  <div className="flex gap-2 flex-wrap">
                     <Button size="sm" variant="outline" onClick={() => startEdit(rule)}>
                       Bearbeiten
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => {
+                        setVersionsRuleId(rule.id);
+                        setVersionsRuleName(rule.name);
+                      }}
+                    >
+                      <Clock className="h-4 w-4" />
                     </Button>
                     <Button
                       size="sm"
