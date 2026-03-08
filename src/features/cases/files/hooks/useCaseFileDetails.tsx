@@ -758,7 +758,7 @@ export const useCaseFileDetails = (caseFileId: string | null) => {
     try {
       const { error } = await supabase
         .from('case_files')
-        .update({ risks_and_opportunities: data } as any)
+        .update({ risks_and_opportunities: data as unknown as import('@/integrations/supabase/types').Json })
         .eq('id', caseFileId);
 
       if (error) throw error;

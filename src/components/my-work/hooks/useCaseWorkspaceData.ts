@@ -106,7 +106,7 @@ export const useCaseWorkspaceData = ({ tenantId, userId }: { tenantId?: string; 
   const fetchItemsPage = useCallback(async (offset: number) => {
     if (!tenantId) return [] as CaseItem[];
     const { data, error } = await supabase
-      .from("case_items" as any)
+      .from("case_items")
       .select("id, subject, summary, resolution_summary, source_channel, source_received_at, status, completion_note, completed_at, priority, due_at, case_file_id, user_id, owner_user_id, intake_payload, updated_at")
       .eq("tenant_id", tenantId)
       .order("updated_at", { ascending: false, nullsFirst: false })

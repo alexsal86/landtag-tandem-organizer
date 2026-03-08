@@ -313,7 +313,7 @@ export function AnnualTasksView() {
       }, result ? 2000 : 500);
 
     } catch (error: any) {
-      console.error("Error completing task:", error);
+      debugConsole.error("Error completing task:", error);
       toast({ title: "Fehler", description: error.message, variant: "destructive" });
     } finally {
       setCompleting(false);

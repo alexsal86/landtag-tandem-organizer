@@ -399,7 +399,7 @@ export function AutomationRulesManager() {
   };
 
   const deleteRule = async (ruleId: string) => {
-    const { error } = await supabase.from("automation_rules" as any).delete().eq("id", ruleId);
+    const { error } = await supabase.from("automation_rules").delete().eq("id", ruleId);
     if (error) {
       toast({ title: "Löschen fehlgeschlagen", description: error.message, variant: "destructive" });
       return;

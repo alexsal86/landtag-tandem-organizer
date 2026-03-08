@@ -182,7 +182,7 @@ export function CaseFileNextSteps({
           tenant_id: resolvedTenantId,
           assigned_to: assignedTo || user.id,
           parent_task_id: parentTaskId,
-        } as any)
+        })
         .select()
         .single();
 
