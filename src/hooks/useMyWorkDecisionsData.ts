@@ -100,7 +100,7 @@ export function useMyWorkDecisionsData(userId?: string) {
       const creatorData = creatorResult.data || [];
       const publicData = publicResult.data || [];
 
-      const participantDecisions: MyWorkDecision[] = participantData.map((item: any) => {
+      const participantDecisions: MyWorkDecision[] = participantData.map((item) => {
         const attInfo = computeAttachmentInfo(item.task_decisions.task_decision_attachments);
         return {
           id: item.task_decisions.id,
