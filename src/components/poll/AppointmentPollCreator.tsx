@@ -235,7 +235,7 @@ export const AppointmentPollCreator = ({ onClose }: { onClose: () => void }) => 
         .insert(participantData);
 
       if (participantsError) {
-        console.error('Error creating participants:', participantsError);
+        debugConsole.error('Error creating participants:', participantsError);
         throw new Error(`Teilnehmer konnten nicht erstellt werden: ${participantsError.message}`);
       }
       
