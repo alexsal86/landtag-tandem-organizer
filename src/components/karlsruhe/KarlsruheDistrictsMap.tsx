@@ -357,7 +357,7 @@ export const KarlsruheDistrictsMap = ({
   useEffect(() => {
     if (!mapReady) return;
 
-    console.log('Setting up realtime subscription for contacts');
+    debugConsole.log('Setting up realtime subscription for contacts');
 
     const channel = supabase
       .channel('contacts_map_changes')
