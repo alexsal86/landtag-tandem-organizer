@@ -321,7 +321,7 @@ async function expandBirthdayEvents(event: any, startDate: Date, endDate: Date):
     const startYear = startDate.getFullYear();
     const endYear = Math.min(endDate.getFullYear(), maxYear);
 
-    const instances = [];
+    const instances: any[] = [];
     for (let year = startYear; year <= endYear; year++) {
       if (year === originalDate.getFullYear()) continue;
       const bd = new Date(originalDate);
