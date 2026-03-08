@@ -189,7 +189,7 @@ export function useAgendaOperations(deps: AgendaOpsDeps) {
         await loadAgendaItems(selectedMeeting.id);
       }
     } catch (error: unknown) {
-      console.error('Error saving agenda:', error);
+      debugConsole.error('Error saving agenda:', error);
       const msg = error instanceof Error ? error.message : '';
       let errorMessage = 'Die Agenda konnte nicht gespeichert werden.';
       if (msg.includes('invalid input syntax for type json')) errorMessage = 'Ungültiges Datenformat. Bitte prüfen Sie die Eingaben.';
