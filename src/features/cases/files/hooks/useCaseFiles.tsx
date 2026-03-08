@@ -191,7 +191,7 @@ export const useCaseFiles = () => {
 
       toast({
         title: "Erfolgreich",
-        description: "FallAkte wurde erstellt.",
+        description: "Fallakte wurde erstellt.",
       });
 
       await fetchCaseFiles();
