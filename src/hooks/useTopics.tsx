@@ -20,6 +20,7 @@ export const useTopics = () => {
   const [topics, setTopics] = useState<Topic[]>([]);
   const [loading, setLoading] = useState(true);
   const { toast } = useToast();
+  const { currentTenant } = useTenant();
 
   const fetchTopics = async () => {
     try {
