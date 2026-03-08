@@ -28,10 +28,10 @@ export interface ElectionDistrict {
   population?: number | null;
   area_km2?: number | null;
   contact_info?: any;
-  website_url?: string;
-  district_type?: string;
-  major_cities?: string[];
-  rural_percentage?: number;
+  website_url?: string | null;
+  district_type?: string | null;
+  major_cities?: string[] | null;
+  rural_percentage?: number | null;
   representatives?: ElectionRepresentative[];
   created_at: string;
   updated_at: string;
