@@ -116,7 +116,7 @@ export const PomodoroWidget: React.FC<PomodoroWidgetProps> = ({
       ).length || 0;
       setWorkSessionsCompleted(completedWorkSessions);
     } catch (error) {
-      console.error('Error loading sessions:', error);
+      debugConsole.error('Error loading sessions:', error);
     }
   };
 
