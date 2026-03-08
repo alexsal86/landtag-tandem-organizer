@@ -325,7 +325,7 @@ export function AgendaEditorPanel({
                                                       const { data, error } = await supabase.storage.from('documents').download(doc.file_path);
                                                       if (error) throw error;
                                                       const url = URL.createObjectURL(data); const a = document.createElement('a'); a.href = url; a.download = doc.file_name; a.click(); URL.revokeObjectURL(url);
-                                                    } catch (error) { console.error('Download error:', error); toast({ title: "Download-Fehler", description: "Datei konnte nicht heruntergeladen werden.", variant: "destructive" }); }
+                                                    } catch (error) { debugConsole.error('Download error:', error); toast({ title: "Download-Fehler", description: "Datei konnte nicht heruntergeladen werden.", variant: "destructive" }); }
                                                   }}>
                                                   <Download className="h-4 w-4" />
                                                 </Button>
