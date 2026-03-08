@@ -36,6 +36,7 @@ export function MyWorkJourFixeTab() {
     meetingTasks,
     meetingDecisions,
     meetingBirthdays,
+    meetingCaseItems,
     userProfiles,
     loadMeetingSystemData,
     setMounted,
