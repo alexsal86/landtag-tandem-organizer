@@ -130,7 +130,7 @@ export function VacationHistoryDialog({
                         {(entry.carry_over_from_previous ?? 0) > 0 ? (
                           <Badge variant="outline" className="font-mono">
                             <TrendingUp className="h-3 w-3 mr-1 text-green-600" />
-                            +{entry.carry_over_from_previous}
+                            +{entry.carry_over_from_previous ?? 0}
                           </Badge>
                         ) : (
                           <span className="text-muted-foreground font-mono">0</span>
