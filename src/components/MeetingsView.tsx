@@ -1313,6 +1313,7 @@ export function MeetingsView() {
       await loadAgendaItems(meeting.id);
       await loadLinkedQuickNotes(meeting.id);
       await loadMeetingLinkedTasks(meeting.id);
+      await loadMeetingLinkedCaseItems(meeting.id);
       await loadMeetingRelevantDecisions();
       await loadMeetingUpcomingAppointments(meeting.id, meeting.meeting_date);
       await loadStarredAppointments(meeting.id);
