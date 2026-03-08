@@ -68,7 +68,7 @@ export const TaskDecisionList = () => {
   }, [user?.id]);
 
   const loadDecisionRequests = async (currentUserId: string) => {
-    console.log('Loading decision requests for user:', currentUserId);
+    
 
     try {
       // Load decisions where user is a participant
