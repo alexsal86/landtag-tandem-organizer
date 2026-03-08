@@ -4371,6 +4371,54 @@ export function MeetingsView() {
                                             <p className="text-sm text-muted-foreground pl-4">Keine relevanten Entscheidungen vorhanden.</p>
                                           )}
                                         </div>
+                                      ) : subItem.system_type === 'case_items' ? (
+                                        <div className="space-y-2">
+                                          <div className="flex items-center gap-2 mb-2">
+                                            <span className="text-xs font-medium text-muted-foreground">
+                                              {index + 1}.{subIndex + 1}
+                                            </span>
+                                            <Briefcase className="h-4 w-4 text-teal-500" />
+                                            <span className="text-sm font-medium">Vorgänge</span>
+                                          </div>
+                                          {meetingLinkedCaseItems.length > 0 ? (
+                                            (() => {
+                                              const caseItemResults = (() => {
+                                                try { return JSON.parse(subItem.result_text || '{}'); } catch { return {}; }
+                                              })();
+                                              return meetingLinkedCaseItems.map((ci: any, ciIdx: number) => (
+                                                <div key={ci.id} className="pl-4 border-l-2 border-muted space-y-2 ml-4">
+                                                  <div className="flex items-center gap-2">
+                                                    <span className="text-xs font-medium text-muted-foreground">
+                                                      {String.fromCharCode(97 + ciIdx)})
+                                                    </span>
+                                                    <Briefcase className="h-3.5 w-3.5 text-teal-500" />
+                                                    <span className="text-sm font-medium">{ci.subject || '(Kein Betreff)'}</span>
+                                                    <Badge variant="outline" className="text-xs">{ci.status}</Badge>
+                                                  </div>
+                                                  {ci.due_at && (
+                                                    <p className="text-xs text-muted-foreground">
+                                                      Frist: {format(new Date(ci.due_at), "dd.MM.yyyy", { locale: de })}
+                                                    </p>
+                                                  )}
+                                                  <div>
+                                                    <label className="text-xs font-medium mb-1 block text-muted-foreground">Ergebnis</label>
+                                                    <Textarea
+                                                      value={caseItemResults[ci.id] || ''}
+                                                      onChange={(e) => {
+                                                        const newResults = { ...caseItemResults, [ci.id]: e.target.value };
+                                                        updateAgendaItemResult(subItem.id!, 'result_text', JSON.stringify(newResults));
+                                                      }}
+                                                      placeholder="Ergebnis für diesen Vorgang..."
+                                                      className="min-h-[60px] text-xs"
+                                                    />
+                                                  </div>
+                                                </div>
+                                              ));
+                                            })()
+                                          ) : (
+                                            <p className="text-sm text-muted-foreground pl-4">Keine Vorgänge vorhanden.</p>
+                                          )}
+                                        </div>
                                       ) : subItem.system_type === 'birthdays' ? (
                                         <div className="space-y-2">
                                           <div className="flex items-center gap-2 mb-2">
