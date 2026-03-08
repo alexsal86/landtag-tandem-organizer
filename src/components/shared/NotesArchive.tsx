@@ -220,7 +220,7 @@ export function NotesArchive({ refreshTrigger, onRestore }: NotesArchiveProps) {
       setConfirmDeleteNote(null);
       loadDeletedNotes();
     } catch (error) {
-      console.error("Error permanently deleting note:", error);
+      debugConsole.error("Error permanently deleting note:", error);
       toast.error("Fehler beim Löschen");
     }
   };
