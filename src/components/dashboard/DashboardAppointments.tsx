@@ -82,7 +82,7 @@ export const DashboardAppointments = ({ data }: Props) => {
       )}
 
       {/* Separator zwischen Kontext und Terminliste */}
-      {(roleLine || contextMessage || specialDayHint) && <Separator className="my-2" />}
+      {(contextMessage || specialDayHint) && <Separator className="my-2" />}
 
       {/* Termine */}
       <div>
