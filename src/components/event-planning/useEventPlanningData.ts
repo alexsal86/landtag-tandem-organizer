@@ -280,8 +280,7 @@ export function useEventPlanningData() {
       fetchPlannings();
       fetchArchivedPlannings();
     } catch (error) {
-      debugConsole.error('Error restoring planning:', error);
-      toast({ title: "Fehler", description: "Planung konnte nicht wiederhergestellt werden.", variant: "destructive" });
+      handleAppError(error, { context: 'restorePlanning', toast: { fn: toast, title: 'Fehler', description: 'Planung konnte nicht wiederhergestellt werden.' } });
     }
   };
 
