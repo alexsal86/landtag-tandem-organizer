@@ -26,6 +26,7 @@ const DecisionOverview = lazyWithRetry(() => import("@/components/task-decisions
 const DrucksachenView = lazyWithRetry(() => import("@/components/DrucksachenView").then(m => ({ default: m.DrucksachenView })));
 const CaseFilesView = lazyWithRetry(() => import("@/components/CaseFilesView").then(m => ({ default: m.CaseFilesView })));
 const MatrixChatView = lazyWithRetry(() => import("@/components/chat/MatrixChatView").then(m => ({ default: m.MatrixChatView })));
+const MatrixClientProvider = lazyWithRetry(() => import("@/contexts/MatrixClientContext").then(m => ({ default: m.MatrixClientProvider })));
 const MyWorkView = lazyWithRetry(() => import("@/components/MyWorkView").then(m => ({ default: m.MyWorkView })));
 const CallsView = lazyWithRetry(() => import("@/components/CallsView").then(m => ({ default: m.CallsView })));
 const DataView = lazyWithRetry(() => import("@/components/DataView").then(m => ({ default: m.DataView })));
