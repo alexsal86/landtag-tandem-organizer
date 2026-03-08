@@ -19,8 +19,8 @@ import { AppointmentPollCreator } from './AppointmentPollCreator';
 interface Poll {
   id: string;
   title: string;
-  description?: string;
-  deadline?: string;
+  description?: string | null;
+  deadline?: string | null;
   status: string;
   created_at: string;
   participant_count: number;

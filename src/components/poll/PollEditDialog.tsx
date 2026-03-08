@@ -201,7 +201,7 @@ export const PollEditDialog = ({
 
       // Add new participants
       if (newParticipants.length > 0) {
-        const participantData = [];
+        const participantData: Array<{ poll_id: string; email: string; name: string | null; is_external: boolean; token: string | null }> = [];
         for (const p of newParticipants) {
           if (p.is_external) {
             const { data: tokenData } = await supabase.rpc('generate_participant_token');

@@ -546,7 +546,7 @@ export function CommentPlugin({ documentId }: { documentId?: string }) {
             
             // Find the text node that contains our text
             let currentOffset = 0;
-            let targetNode = null;
+            let targetNode: any = null;
             let startOffset = 0;
             let endOffset = 0;
             

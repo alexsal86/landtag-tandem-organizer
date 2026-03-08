@@ -191,7 +191,7 @@ export const PollResultsDashboard = ({ pollId, onConfirmSlot }: PollResultsDashb
       const { data: appointment, error: appointmentError } = await supabase
         .from('appointments')
         .insert([{
-          user_id: poll?.user_id,
+          user_id: poll?.user_id ?? '',
           poll_id: pollId,
           start_time: slot.start_time,
           end_time: slot.end_time,

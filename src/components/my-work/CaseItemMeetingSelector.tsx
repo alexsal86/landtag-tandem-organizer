@@ -86,7 +86,7 @@ export function CaseItemMeetingSelector({
     }
   };
 
-  const formatMeetingDate = (dateStr: string, time?: string) => {
+  const formatMeetingDate = (dateStr: string, time?: string | null) => {
     const date = new Date(dateStr);
     const dateFormatted = format(date, "EEEE, d. MMM", { locale: de });
     if (time) {

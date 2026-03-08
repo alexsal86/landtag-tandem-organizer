@@ -90,7 +90,7 @@ export const PollResponseInterface = ({ pollId, token, participantId, isPreview 
         setTimeSlots(slotsData || []);
 
         // Load or create participant
-        let currentParticipant = null;
+        let currentParticipant: Participant | null = null;
         
         if (participantId) {
           // Internal participant

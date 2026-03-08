@@ -183,9 +183,9 @@ export function CommentThread({
           )}
           <AvatarFallback
             className="text-[9px]"
-            style={{ backgroundColor: comment.profile?.badge_color || undefined }}
+            style={{ backgroundColor: comment.profile?.badge_color ?? undefined }}
           >
-            {getInitials(comment.profile?.display_name)}
+            {getInitials(comment.profile?.display_name ?? null)}
           </AvatarFallback>
         </Avatar>
 
