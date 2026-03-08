@@ -602,7 +602,7 @@ export const DIN5008LetterLayout: React.FC<DIN5008LetterLayoutProps> = ({
               ))}
             </div>
           ) : template?.letterhead_html ? (
-            <div dangerouslySetInnerHTML={{ __html: template.letterhead_html }} />
+            <div dangerouslySetInnerHTML={{ __html: sanitizeRichHtml(template.letterhead_html) }} />
           ) : null}
         </div>
       )}
