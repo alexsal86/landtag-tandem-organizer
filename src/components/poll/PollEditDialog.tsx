@@ -168,7 +168,7 @@ export const PollEditDialog = ({
           description: currentDescription,
           deadline: currentDeadline,
           changes_summary: changes.join('; '),
-          created_by: (await supabase.auth.getUser()).data.user?.id
+          created_by: (await supabase.auth.getUser()).data.user?.id ?? ''
         }]);
 
       // Update poll
