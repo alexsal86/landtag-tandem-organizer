@@ -129,7 +129,7 @@ export function BirthdayAgendaItem({
         birthdayContacts.sort((a, b) => a.nextBirthday.getTime() - b.nextBirthday.getTime());
         setContacts(birthdayContacts);
       } catch (error) {
-        console.error('Error loading birthday contacts:', error);
+        debugConsole.error('Error loading birthday contacts:', error);
       } finally {
         setLoading(false);
       }

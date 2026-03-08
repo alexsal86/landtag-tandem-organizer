@@ -410,7 +410,7 @@ export function useMeetingsData() {
       setAgendaDocuments(prev => ({ ...prev, [agendaItemId]: [...(prev[agendaItemId] || []), document] }));
       return document;
     } catch (error) {
-      console.error('Error uploading agenda document:', error);
+      debugConsole.error('Error uploading agenda document:', error);
       throw error;
     }
   };

@@ -247,7 +247,7 @@ export function useEmployeesData() {
         });
         setSelfLeaveAgg(agg);
       } catch (e: any) {
-        console.error(e);
+        debugConsole.error(e);
         toast({ title: "Fehler beim Laden", description: e?.message ?? "Eigene Daten konnten nicht geladen werden.", variant: "destructive" });
       } finally {
         setLoading(false);

@@ -365,7 +365,7 @@ export function AgendaEditorPanel({
                                                 await onUploadAgendaDocument(itemId!, file);
                                                 toast({ title: "Dokument hochgeladen", description: "Das Dokument wurde erfolgreich hinzugefügt." });
                                               } catch (error) {
-                                                console.error('Upload error:', error);
+                                                debugConsole.error('Upload error:', error);
                                                 toast({ title: "Upload-Fehler", description: "Dokument konnte nicht hochgeladen werden.", variant: "destructive" });
                                               }
                                             }

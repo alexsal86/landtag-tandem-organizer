@@ -132,7 +132,7 @@ export function EmailHistory() {
       if (error) throw error;
       setScheduledEmails(data || []);
     } catch (error: unknown) {
-      console.error("Error fetching scheduled emails:", error);
+      debugConsole.error("Error fetching scheduled emails:", error);
     }
   };
 

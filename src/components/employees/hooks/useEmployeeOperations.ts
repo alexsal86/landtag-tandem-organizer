@@ -173,7 +173,7 @@ export function useEmployeeOperations({
       setEmployees(prev => prev.map(emp => emp.user_id === userId ? { ...emp, employment_start_date: newDate } : emp));
       toast({ title: "Gespeichert", description: "Startdatum wurde aktualisiert." });
     } catch (e: any) {
-      console.error(e); toast({ title: "Fehler", description: e?.message ?? "Startdatum konnte nicht aktualisiert werden.", variant: "destructive" });
+      debugConsole.error(e); toast({ title: "Fehler", description: e?.message ?? "Startdatum konnte nicht aktualisiert werden.", variant: "destructive" });
     }
   };
 
