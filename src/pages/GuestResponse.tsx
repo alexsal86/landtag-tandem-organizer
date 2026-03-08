@@ -128,7 +128,7 @@ function GuestResponse() {
       fetchGuestData();
 
     } catch (error: unknown) {
-      console.error('Error submitting response:', error);
+      debugConsole.error('Error submitting response:', error);
       toast.error('Fehler beim Übermitteln der Antwort');
     } finally {
       setSubmitting(false);

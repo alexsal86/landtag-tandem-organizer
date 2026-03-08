@@ -248,7 +248,7 @@ export function EditProfile() {
       
       navigate("/");
     } catch (error) {
-      console.error('Error updating profile:', error);
+      debugConsole.error('Error updating profile:', error);
       toast({
         title: "Fehler",
         description: "Profil konnte nicht aktualisiert werden. Bitte versuchen Sie es erneut.",

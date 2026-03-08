@@ -9,7 +9,7 @@ const NotFound = () => {
   const navigate = useNavigate();
 
   useEffect(() => {
-    console.error(
+    debugConsole.error(
       "404 Error: User attempted to access non-existent route:",
       location.pathname
     );

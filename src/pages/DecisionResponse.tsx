@@ -145,7 +145,7 @@ export default function DecisionResponse() {
       setResult({ ...result, commentAdded: true });
       setComment("");
     } catch (err: any) {
-      console.error('Error adding comment:', err);
+      debugConsole.error('Error adding comment:', err);
       setError(err.message || "Fehler beim Speichern des Kommentars");
     } finally {
       setIsLoading(false);

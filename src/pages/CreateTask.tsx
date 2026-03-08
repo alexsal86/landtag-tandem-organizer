@@ -194,7 +194,7 @@ export default function CreateTask() {
 
         navigate("/tasks");
     } catch (error) {
-      console.error('❌ Error creating task:', error);
+      debugConsole.error('❌ Error creating task:', error);
       toast({
         title: "Fehler",
         description: `Aufgabe konnte nicht erstellt werden: ${error instanceof Error ? error.message : 'Unbekannter Fehler'}`,

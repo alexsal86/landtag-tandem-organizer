@@ -222,7 +222,7 @@ export default function ContactDetail() {
       });
       navigate("/");
     } catch (error) {
-      console.error('Error deleting contact:', error);
+      debugConsole.error('Error deleting contact:', error);
       toast({
         title: "Fehler",
         description: "Kontakt konnte nicht gelöscht werden.",

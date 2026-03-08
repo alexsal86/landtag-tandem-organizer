@@ -51,7 +51,7 @@ export default function EmployeeMeetingDetail() {
           navigate("/employee");
         }
       } catch (error: unknown) {
-        console.error("Error checking access:", error);
+        debugConsole.error("Error checking access:", error);
         toast({
           title: "Fehler",
           description: "Gespräch konnte nicht geladen werden.",

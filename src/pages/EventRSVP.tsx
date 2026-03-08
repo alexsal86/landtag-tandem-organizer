@@ -92,7 +92,7 @@ export default function EventRSVP() {
         description: status === 'accepted' ? 'Sie haben zugesagt.' : status === 'declined' ? 'Sie haben abgesagt.' : 'Sie haben unter Vorbehalt zugesagt.',
       });
     } catch (error) {
-      console.error('Error saving response:', error);
+      debugConsole.error('Error saving response:', error);
       toast({ title: "Fehler", description: "Antwort konnte nicht gespeichert werden.", variant: "destructive" });
     } finally {
       setSaving(false);

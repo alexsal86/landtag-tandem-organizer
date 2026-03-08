@@ -379,7 +379,7 @@ const [editingChild, setEditingChild] = useState<{ parentIndex: number; childInd
 
       toast({ title: "Gespeichert", description: "Rolle erfolgreich aktualisiert." });
     } catch (e: any) {
-      console.error(e);
+      debugConsole.error(e);
       toast({ title: "Fehler", description: e?.message ?? "Änderung fehlgeschlagen.", variant: "destructive" });
     } finally {
       setBusyUserId(null);
