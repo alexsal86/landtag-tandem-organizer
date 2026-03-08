@@ -49,7 +49,7 @@ export function TodoCreateDialog({ open, onOpenChange, onTodoCreated }: TodoCrea
 
   const loadCategories = async () => {
     try {
-      console.log('Loading categories...');
+      debugConsole.log('Loading categories...');
       const { data, error } = await supabase
         .from('todo_categories')
         .select('id, label, color')
