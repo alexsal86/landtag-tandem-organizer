@@ -395,11 +395,6 @@ export function MyWorkJourFixeTab() {
                                     ))}
                                   </ul>
                                 )}
-                              </li>
-                            );
-                          })}
-                        </ul>
-                                )}
                                 {subItem.system_type === 'case_items' && caseItems.length > 0 && (
                                   <ul className="ml-8 mt-0.5 space-y-0.5">
                                     {caseItems.map((ci) => (
