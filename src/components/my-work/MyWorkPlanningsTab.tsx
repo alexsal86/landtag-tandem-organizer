@@ -230,7 +230,7 @@ export function MyWorkPlanningsTab() {
       toast({ title: "Checklisten-Eintrag hinzugefügt" });
       await loadPlannings();
     } catch (error) {
-      console.error("Error adding checklist item:", error);
+      debugConsole.error("Error adding checklist item:", error);
       toast({ title: "Fehler beim Hinzufügen", variant: "destructive" });
     }
   };
