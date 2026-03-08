@@ -206,7 +206,7 @@ const Index = () => {
       case "casefiles":
         return <CaseFilesView />;
       case "chat":
-        return <MatrixChatView />;
+        return <Suspense fallback={null}><MatrixClientProvider><MatrixChatView /></MatrixClientProvider></Suspense>;
       case "calls":
         return <CallsView />;
       case "daten":
