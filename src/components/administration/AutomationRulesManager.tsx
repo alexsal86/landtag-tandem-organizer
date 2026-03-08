@@ -8,7 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/components/ui/use-toast";
-import { AlertTriangle, Loader2, Pause, Play, Plus, Trash2, Zap } from "lucide-react";
+import { AlertTriangle, Clock, Download, Loader2, Pause, Play, Plus, Trash2, Upload, Zap } from "lucide-react";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { formatDistanceToNow } from "date-fns";
 import { de } from "date-fns/locale";
