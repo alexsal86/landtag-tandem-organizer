@@ -112,7 +112,7 @@ export function useEmployeeOperations({
       toast({ title: approve ? "Stornierung genehmigt" : "Stornierung abgelehnt", description: approve ? "Die Urlaubsstornierung wurde genehmigt und der Kalendereintrag entfernt." : "Die Stornierung wurde abgelehnt. Der Urlaub bleibt bestehen." });
       window.location.reload();
     } catch (e: any) {
-      console.error(e);
+      debugConsole.error(e);
       toast({ title: "Fehler", description: e?.message ?? "Stornierungsanfrage konnte nicht verarbeitet werden.", variant: "destructive" });
     }
   };
