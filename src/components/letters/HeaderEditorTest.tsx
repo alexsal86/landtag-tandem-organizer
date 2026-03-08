@@ -4,6 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 
 import { Badge } from "@/components/ui/badge";
 import { Play, CheckCircle, XCircle } from 'lucide-react';
+import { debugConsole } from '@/utils/debugConsole';
 
 interface TestResult {
   name: string;
