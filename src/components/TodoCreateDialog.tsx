@@ -36,7 +36,7 @@ export function TodoCreateDialog({ open, onOpenChange, onTodoCreated }: TodoCrea
   const [categoryId, setCategoryId] = useState("");
   const [dueDate, setDueDate] = useState("");
   const [assignedTo, setAssignedTo] = useState<string[]>([]);
-  const [users, setUsers] = useState<Array<{ user_id: string; display_name?: string }>>([]);
+  const [users, setUsers] = useState<Array<{ user_id: string; display_name?: string | null }>>([]);
 
   debugConsole.log('TodoCreateDialog render - open:', open, 'user:', user?.id);
 
