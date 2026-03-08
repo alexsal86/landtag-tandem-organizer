@@ -183,11 +183,11 @@ export function TwoFactorSettings() {
       
       setShowDisableDialog(false);
       await loadMFAStatus();
-    } catch (error: any) {
+    } catch (error: unknown) {
       setError("Ungültiger Code oder Fehler beim Deaktivieren.");
       toast({
         title: "Fehler",
-        description: "2FA konnte nicht deaktiviert werden: " + error.message,
+        description: "2FA konnte nicht deaktiviert werden: " + (error instanceof Error ? error.message : String(error)),
         variant: "destructive"
       });
     } finally {

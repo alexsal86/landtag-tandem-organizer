@@ -97,8 +97,8 @@ export function PressTemplateManager() {
       await persistPressTemplates(currentTenant.id, nextTemplates);
       setTemplates(nextTemplates);
       return true;
-    } catch (error: any) {
-      toast({ title: 'Fehler', description: error.message, variant: 'destructive' });
+    } catch (error: unknown) {
+      toast({ title: 'Fehler', description: error instanceof Error ? error.message : 'Speichern fehlgeschlagen', variant: 'destructive' });
       return false;
     }
   };
