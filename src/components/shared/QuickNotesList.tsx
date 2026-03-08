@@ -1027,7 +1027,7 @@ export function QuickNotesList({
 
       // Only throw if it's a real error
       if (noteError) {
-        console.warn('Note update warning:', noteError);
+        debugConsole.warn('Note update warning:', noteError);
         // Still consider success if the link was effectively removed
       }
       
