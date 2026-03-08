@@ -140,7 +140,7 @@ export function useLetterTemplateData() {
       resetForm();
       fetchTemplates();
     } catch (error) {
-      console.error('Error creating template:', error);
+      debugConsole.error('Error creating template:', error);
       toast({ title: "Fehler", description: "Template konnte nicht erstellt werden.", variant: "destructive" });
     }
   };
