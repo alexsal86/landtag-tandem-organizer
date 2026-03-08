@@ -137,7 +137,7 @@ export function ChecklistItemEmailDialog({
 
       onSaved();
       onOpenChange(false);
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Error saving email action:", error);
       toast({
         title: "Fehler",
