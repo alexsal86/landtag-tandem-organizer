@@ -762,16 +762,13 @@ export function TasksView() {
 
   const loadUsers = async () => {
     try {
-      console.log('Loading users...');
       const { data, error } = await supabase
         .from('profiles')
         .select('user_id, display_name')
         .order('display_name');
 
       if (error) throw error;
-      console.log('Loaded users for UUID resolution:', data);
       setUsers(data || []);
-      console.log('Users state updated with', (data || []).length, 'users');
     } catch (error) {
       console.error('Error loading users:', error);
     }
