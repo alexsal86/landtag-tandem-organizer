@@ -77,7 +77,7 @@ function reprojectGeometry(geometry: GeoJsonFeature['geometry'], sourceDef: stri
         const [lon, lat] = proj4(sourceDef, wgs84, [x, y]);
         return [lon, lat];
       } catch (e) {
-        console.warn('Failed to transform coordinate:', [x, y], e);
+        debugConsole.warn('Failed to transform coordinate:', [x, y], e);
         return [0, 0]; // fallback
       }
     }))) as AnyCoords;
