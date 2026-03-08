@@ -122,7 +122,7 @@ export function DecisionFileUpload({
 
       setFiles(formattedFiles);
     } catch (error) {
-      console.error('Error loading files:', error);
+      debugConsole.error('Error loading files:', error);
     }
   };
 
