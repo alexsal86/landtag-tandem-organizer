@@ -95,6 +95,7 @@ export function FocusModeView({
   profiles,
   linkedQuickNotes = [],
   linkedTasks = [],
+  linkedCaseItems = [],
   upcomingAppointments = [],
   starredAppointmentIds = new Set(),
   onToggleStar,
