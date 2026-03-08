@@ -33,7 +33,7 @@ export const useCaseFileTypes = () => {
       if (error) throw error;
       setCaseFileTypes(data || []);
     } catch (error) {
-      console.error('Error fetching case file types:', error);
+      debugConsole.error('Error fetching case file types:', error);
       toast({
         title: "Fehler",
         description: "Fallakten-Typen konnten nicht geladen werden.",
