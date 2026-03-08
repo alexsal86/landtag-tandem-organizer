@@ -377,7 +377,7 @@ export const EventRSVPManager = ({ eventPlanningId, eventTitle }: EventRSVPManag
       setNoteText('');
       loadRSVPs();
     } catch (error) {
-      console.error('Error sending note:', error);
+      debugConsole.error('Error sending note:', error);
       toast({ title: "Fehler", description: "Hinweis konnte nicht versendet werden.", variant: "destructive" });
     } finally {
       setSendingNote(false);
