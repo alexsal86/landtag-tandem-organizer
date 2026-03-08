@@ -201,7 +201,7 @@ export function SuperadminTenantManagement() {
       resetTenantForm();
       loadTenants();
     } catch (error: unknown) {
-      console.error("Save tenant error:", error);
+      debugConsole.error("Save tenant error:", error);
       toast({ title: "Fehler", description: error instanceof Error ? error.message : "Speichern fehlgeschlagen", variant: "destructive" });
     }
   };
