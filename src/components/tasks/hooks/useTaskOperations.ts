@@ -119,7 +119,7 @@ export function useTaskOperations({
           ? "Aufgabe wurde als erledigt markiert und archiviert."
           : "Aufgabe wurde als offen markiert."
       });
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Error updating task:', error);
       const isNetworkError = error?.message?.includes('Failed to fetch') || error?.message?.includes('NetworkError');
       if (isNetworkError) {
