@@ -721,7 +721,7 @@ export const DecisionOverview = () => {
       toast({ title: "Erfolgreich", description: "Entscheidung wurde wiederhergestellt." });
       if (user?.id) loadDecisionRequests(user.id);
     } catch (error) {
-      console.error('Error restoring decision:', error);
+      debugConsole.error('Error restoring decision:', error);
       toast({ title: "Fehler", description: "Entscheidung konnte nicht wiederhergestellt werden.", variant: "destructive" });
     }
   };
