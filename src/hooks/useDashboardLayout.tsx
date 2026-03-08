@@ -420,7 +420,7 @@ export function useDashboardLayout() {
       return true;
       
     } catch (error) {
-      console.error('Save error:', error);
+      
       
       // Fallback: save to localStorage only
       try {
