@@ -813,7 +813,7 @@ export const useCaseFileDetails = (caseFileId: string | null) => {
     try {
       const { error } = await supabase
         .from('case_files')
-        .update({ processing_statuses: statuses } as any)
+        .update({ processing_statuses: statuses })
         .eq('id', caseFileId);
 
       if (error) throw error;
