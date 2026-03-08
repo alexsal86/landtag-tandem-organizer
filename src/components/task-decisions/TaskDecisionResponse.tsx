@@ -163,7 +163,7 @@ export const TaskDecisionResponse = ({
           .eq('id', existingResponse.id);
 
         if (error) {
-          console.error('Error updating response:', error);
+          debugConsole.error('Error updating response:', error);
           throw new Error('Antwort konnte nicht aktualisiert werden');
         }
       } else {
