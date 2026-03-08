@@ -166,7 +166,7 @@ export const EventRSVPManager = ({ eventPlanningId, eventTitle }: EventRSVPManag
       toast({ title: `${added} Kontakt(e) hinzugefügt` });
       setSelectedDistList('');
     } catch (e) {
-      console.error('Error loading distribution list members:', e);
+      debugConsole.error('Error loading distribution list members:', e);
     }
   };
 
