@@ -1,10 +1,11 @@
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate, useParams, useSearchParams } from "react-router-dom";
 import { ThemeProvider } from "next-themes";
-import { ArrowLeft, Briefcase, CalendarClock, CheckSquare, Clock3, Loader2, MessageSquareText } from "lucide-react";
+import { Archive, ArrowLeft, Briefcase, CalendarClock, CheckSquare, Clock3, Loader2, MessageSquareText, RotateCcw } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { useTenant } from "@/hooks/useTenant";
+import { useToast } from "@/hooks/use-toast";
 import { classifyCaseScale } from "@/features/cases/shared/utils";
 import { useCaseFileDetails } from "@/features/cases/files/hooks";
 import {
@@ -33,7 +34,7 @@ type CaseScale = "small" | "large";
 type CaseItemRecord = {
   id: string;
   source_channel: "phone" | "email" | "social" | "in_person" | "other";
-  status: "neu" | "in_klaerung" | "antwort_ausstehend" | "erledigt";
+  status: "neu" | "in_klaerung" | "antwort_ausstehend" | "erledigt" | "archiviert";
   owner_user_id: string | null;
   due_at: string | null;
   follow_up_at: string | null;
@@ -57,6 +58,7 @@ const CASE_ITEM_STATUS_META: Record<CaseItemRecord["status"], { label: string; c
   in_klaerung: { label: "In Klärung", className: "border-amber-500/40 text-amber-700 bg-amber-500/10" },
   antwort_ausstehend: { label: "Antwort ausstehend", className: "border-violet-500/40 text-violet-700 bg-violet-500/10" },
   erledigt: { label: "Erledigt", className: "border-emerald-500/40 text-emerald-700 bg-emerald-500/10" },
+  archiviert: { label: "Archiviert", className: "border-slate-400/40 text-slate-600 bg-slate-400/10" },
 };
 
 const CaseItemDetail = () => {
@@ -65,6 +67,7 @@ const CaseItemDetail = () => {
   const [searchParams, setSearchParams] = useSearchParams();
   const { user, loading: authLoading } = useAuth();
   const { currentTenant, loading: tenantLoading } = useTenant();
+  const { toast } = useToast();
 
   const [caseItem, setCaseItem] = useState<CaseItemRecord | null>(null);
   const [caseFile, setCaseFile] = useState<CaseFileRecord | null>(null);
@@ -274,7 +277,26 @@ const CaseItemDetail = () => {
               </Card>
             ) : (
               <div className="max-w-5xl mx-auto space-y-4">
-                <Button variant="outline" onClick={() => navigate("/mywork")}> <ArrowLeft className="h-4 w-4 mr-2" /> Zurück</Button>
+                <div className="flex items-center gap-2">
+                  <Button variant="outline" onClick={() => navigate("/mywork")}> <ArrowLeft className="h-4 w-4 mr-2" /> Zurück</Button>
+                  {caseItem.status === "archiviert" ? (
+                    <Button variant="outline" onClick={async () => {
+                      await supabase.from("case_items").update({ status: "neu" } as any).eq("id", caseItem.id);
+                      toast({ title: "Wiederhergestellt", description: "Vorgang wurde wiederhergestellt." });
+                      loadData();
+                    }}>
+                      <RotateCcw className="h-4 w-4 mr-2" /> Wiederherstellen
+                    </Button>
+                  ) : (
+                    <Button variant="outline" onClick={async () => {
+                      await supabase.from("case_items").update({ status: "archiviert" } as any).eq("id", caseItem.id);
+                      toast({ title: "Archiviert", description: "Vorgang wurde archiviert." });
+                      navigate("/mywork");
+                    }}>
+                      <Archive className="h-4 w-4 mr-2" /> Archivieren
+                    </Button>
+                  )}
+                </div>
 
                 <Card>
                   <CardHeader className="flex flex-row items-center justify-between">

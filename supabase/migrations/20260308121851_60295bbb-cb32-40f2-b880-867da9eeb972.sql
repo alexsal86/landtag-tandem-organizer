@@ -1,0 +1,1 @@
+ALTER TYPE public.case_item_status ADD VALUE IF NOT EXISTS 'archiviert';
