@@ -316,7 +316,7 @@ export function useMeetingsData() {
       });
       setTaskDocuments(docsByTaskId);
     } catch (error) {
-      debugConsole.error('Error loading task documents:', error);
+      handleAppError(error, { context: 'loadTaskDocuments' });
     }
   };
 
