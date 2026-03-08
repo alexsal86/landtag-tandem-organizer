@@ -325,7 +325,7 @@ export const TaskDecisionList = () => {
       
       // Then reload decisions
       if (user?.id) {
-        console.log('Reloading decisions after creator response');
+        
         await loadDecisionRequests(user.id);
       }
     } catch (error) {
