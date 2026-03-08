@@ -208,7 +208,7 @@ export const HabitsWidget: React.FC<HabitsWidgetProps> = ({
       setShowAddForm(false);
       toast.success('Gewohnheit erstellt');
     } catch (error) {
-      console.error('Error creating habit:', error);
+      debugConsole.error('Error creating habit:', error);
       toast.error('Fehler beim Erstellen der Gewohnheit');
     }
   };
