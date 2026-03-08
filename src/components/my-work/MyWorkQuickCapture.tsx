@@ -270,7 +270,7 @@ export function MyWorkQuickCapture({ onNoteSaved }: MyWorkQuickCaptureProps) {
           showToolbar={false}
           autoFocus
         />
-        <div className="min-h-[120px]">
+        <div className="min-h-[120px]" ref={contentEditorRef}>
           <SimpleRichTextEditor
             key={editorResetKey}
             initialContent={toEditorHtml(content)}
