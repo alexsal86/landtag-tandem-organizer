@@ -107,7 +107,7 @@ export function CreateContact() {
     const { data, error } = await supabase
       .from("contacts")
       .select("id, name")
-      .eq("tenant_id", currentTenant.id)
+      .eq("tenant_id", currentTenant!.id)
       .eq("contact_type", "organization")
       .order("name");
 
@@ -118,7 +118,7 @@ export function CreateContact() {
     const { data, error } = await supabase
       .from("contacts")
       .select("id, name, email, phone, organization, organization_id")
-      .eq("tenant_id", currentTenant.id)
+      .eq("tenant_id", currentTenant!.id)
       .order("name");
 
     if (error) return;
@@ -127,9 +127,9 @@ export function CreateContact() {
       data?.map((contact) => ({
         id: contact.id,
         name: contact.name,
-        email: contact.email,
-        phone: contact.phone,
-        organization: contact.organization,
+        email: contact.email ?? undefined,
+        phone: contact.phone ?? undefined,
+        organization: contact.organization ?? undefined,
         organization_id: contact.organization_id,
       })) || [],
     );
@@ -139,7 +139,7 @@ export function CreateContact() {
     const { data, error } = await supabase
       .from("contacts")
       .select("tags")
-      .eq("tenant_id", currentTenant.id)
+      .eq("tenant_id", currentTenant!.id)
       .not("tags", "is", null);
     if (error) return;
 

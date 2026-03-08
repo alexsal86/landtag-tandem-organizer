@@ -370,7 +370,7 @@ const [editingChild, setEditingChild] = useState<{ parentIndex: number; childInd
       if (role !== "none") {
         const { error: insErr } = await supabase
           .from("user_roles")
-          .insert([{ user_id: targetUserId, role, assigned_by: user.id }]);
+          .insert([{ user_id: targetUserId, role, assigned_by: user!.id }]);
         if (insErr) throw insErr;
       }
 
@@ -1227,22 +1227,22 @@ const [editingChild, setEditingChild] = useState<{ parentIndex: number; childInd
                               {editingTemplateName?.id === selectedTemplate.id ? (
                                 <>
                                   <Input
-                                    value={editingTemplateName.value}
-                                    onChange={(e) => setEditingTemplateName({ ...editingTemplateName, value: e.target.value })}
+                                    value={editingTemplateName!.value}
+                                    onChange={(e) => setEditingTemplateName({ id: editingTemplateName!.id, value: e.target.value })}
                                     className="flex-1 h-8 text-sm"
                                   />
                                   <Button size="sm" className="h-8 w-8 p-0" onClick={async () => {
                                     try {
                                       const { error } = await supabase
                                         .from('meeting_templates')
-                                        .update({ name: editingTemplateName.value })
+                                        .update({ name: editingTemplateName!.value })
                                         .eq('id', selectedTemplate.id);
                                       if (error) throw error;
                                       
                                       // Update local state first (before loadData to avoid losing selection)
                                       setSelectedTemplate({
                                         ...selectedTemplate,
-                                        name: editingTemplateName.value
+                                        name: editingTemplateName!.value
                                       });
                                       
                                       await loadData();
@@ -1865,15 +1865,15 @@ const [editingChild, setEditingChild] = useState<{ parentIndex: number; childInd
                     {editingPlanningTemplateName?.id === selectedPlanningTemplate.id ? (
                       <>
                         <Input
-                          value={editingPlanningTemplateName.value}
-                          onChange={(e) => setEditingPlanningTemplateName({ ...editingPlanningTemplateName, value: e.target.value })}
+                          value={editingPlanningTemplateName!.value}
+                          onChange={(e) => setEditingPlanningTemplateName({ id: editingPlanningTemplateName!.id, value: e.target.value })}
                           className="flex-1"
                         />
                         <Button size="sm" onClick={async () => {
                           try {
                             const { error } = await supabase
                               .from('planning_templates')
-                              .update({ name: editingPlanningTemplateName.value })
+                              .update({ name: editingPlanningTemplateName!.value })
                               .eq('id', selectedPlanningTemplate.id);
                             if (error) throw error;
                             await loadData();

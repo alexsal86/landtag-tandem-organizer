@@ -44,10 +44,10 @@ import { useTenant } from '@/hooks/useTenant';
 interface Contact {
   id: string;
   name: string;
-  email?: string;
-  phone?: string;
-  category?: string;
-  tags?: string[];
+  email?: string | null;
+  phone?: string | null;
+  category?: string | null;
+  tags?: string[] | null;
 }
 
 interface BulkActionsToolbarProps {

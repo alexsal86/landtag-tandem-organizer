@@ -13,7 +13,7 @@ import { debugConsole } from "@/utils/debugConsole";
 interface Contact {
   id: string;
   name: string;
-  email?: string;
+  email?: string | null;
 }
 
 interface StakeholderToDistributionDialogProps {

@@ -14,10 +14,10 @@ import { debugConsole } from "@/utils/debugConsole";
 interface AppointmentData {
   id: string;
   title: string;
-  description?: string;
+  description?: string | null;
   start_time: string;
   end_time: string;
-  location?: string;
+  location?: string | null;
 }
 
 interface GuestData {
@@ -72,7 +72,7 @@ function GuestResponse() {
         return;
       }
 
-      setGuest(guestData);
+      setGuest(guestData as unknown as GuestData);
       
       // Get appointment separately since the relation might not work
       const { data: appointmentData, error: appointmentError } = await supabase

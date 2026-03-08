@@ -15,16 +15,16 @@ import { debugConsole } from "@/utils/debugConsole";
 interface Contact {
   id: string;
   name: string;
-  role?: string;
-  organization?: string;
-  email?: string;
-  phone?: string;
-  location?: string;
-  category?: "citizen" | "colleague" | "lobbyist" | "media" | "business";
-  priority?: "low" | "medium" | "high";
-  last_contact?: string;
-  avatar_url?: string;
-  notes?: string;
+  role?: string | null;
+  organization?: string | null;
+  email?: string | null;
+  phone?: string | null;
+  location?: string | null;
+  category?: "citizen" | "colleague" | "lobbyist" | "media" | "business" | null;
+  priority?: "low" | "medium" | "high" | null;
+  last_contact?: string | null;
+  avatar_url?: string | null;
+  notes?: string | null;
 }
 
 export default function ContactDetail() {
@@ -50,7 +50,7 @@ export default function ContactDetail() {
       const { data, error } = await supabase
         .from('contacts')
         .select('id, name, role, organization, email, phone, location, category, priority, last_contact, avatar_url, notes')
-        .eq('id', id)
+        .eq('id', id!)
         .eq('user_id', user!.id)
         .single();
 
@@ -273,7 +273,7 @@ export default function ContactDetail() {
                 <div className="flex items-start justify-between">
                   <div className="flex items-center gap-4">
                     <Avatar className="h-16 w-16">
-                      <AvatarImage src={contact.avatar_url} />
+                      <AvatarImage src={contact.avatar_url ?? undefined} />
                       <AvatarFallback className="bg-primary text-primary-foreground text-xl">
                         {getInitials(contact.name)}
                       </AvatarFallback>

@@ -24,21 +24,21 @@ import { SidebarProvider } from "@/components/ui/sidebar";
 
 interface Contact {
   id: string;
-  contact_type?: "person" | "organization";
+  contact_type?: "person" | "organization" | null;
   name: string;
-  role?: string;
-  organization_id?: string;
-  organization?: string;
-  email?: string;
-  phone?: string;
-  website?: string;
-  address?: string;
-  category?: "citizen" | "colleague" | "lobbyist" | "media" | "business";
-  priority?: "low" | "medium" | "high";
-  notes?: string;
-  industry?: string;
-  main_contact_person?: string;
-  avatar_url?: string;
+  role?: string | null;
+  organization_id?: string | null;
+  organization?: string | null;
+  email?: string | null;
+  phone?: string | null;
+  website?: string | null;
+  address?: string | null;
+  category?: "citizen" | "colleague" | "lobbyist" | "media" | "business" | null;
+  priority?: "low" | "medium" | "high" | null;
+  notes?: string | null;
+  industry?: string | null;
+  main_contact_person?: string | null;
+  avatar_url?: string | null;
 }
 
 export default function EditContact() {
@@ -82,7 +82,7 @@ export default function EditContact() {
     const { data, error } = await supabase
       .from("contacts")
       .select("id, name")
-      .eq("tenant_id", currentTenant.id)
+      .eq("tenant_id", currentTenant!.id)
       .eq("contact_type", "organization")
       .order("name");
     if (!error) setOrganizations(data || []);
@@ -92,8 +92,8 @@ export default function EditContact() {
     const { data, error } = await supabase
       .from("contacts")
       .select("*")
-      .eq("id", id)
-      .eq("tenant_id", currentTenant.id)
+      .eq("id", id!)
+      .eq("tenant_id", currentTenant!.id)
       .single();
     if (error || !data) {
       toast({
@@ -213,7 +213,7 @@ export default function EditContact() {
           updated_at: new Date().toISOString(),
         })
         .eq("id", contact.id)
-        .eq("tenant_id", currentTenant.id);
+        .eq("tenant_id", currentTenant!.id);
 
       if (error) throw error;
 
@@ -269,7 +269,7 @@ export default function EditContact() {
                   <form onSubmit={handleSubmit} className="space-y-6">
                     <div className="flex items-center gap-4">
                       <Avatar className="h-20 w-20">
-                        <AvatarImage src={contact.avatar_url} />
+                        <AvatarImage src={contact.avatar_url ?? undefined} />
                         <AvatarFallback className="bg-primary text-primary-foreground text-xl">
                           {getInitials(contact.name || "U")}
                         </AvatarFallback>
@@ -439,7 +439,7 @@ export default function EditContact() {
                         <div>
                           <Label htmlFor="category">Kategorie</Label>
                           <Select
-                            value={contact.category}
+                            value={contact.category ?? undefined}
                             onValueChange={(value: any) =>
                               setContact({ ...contact, category: value })
                             }
@@ -461,7 +461,7 @@ export default function EditContact() {
                         <div>
                           <Label htmlFor="priority">Priorität</Label>
                           <Select
-                            value={contact.priority}
+                            value={contact.priority ?? undefined}
                             onValueChange={(value: any) =>
                               setContact({ ...contact, priority: value })
                             }

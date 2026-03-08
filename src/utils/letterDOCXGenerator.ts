@@ -33,10 +33,10 @@ interface LetterTemplate {
 interface SenderInfo {
   id: string;
   name: string;
-  address?: string;
-  phone?: string;
-  email?: string;
-  website?: string;
+  address?: string | null;
+  phone?: string | null;
+  email?: string | null;
+  website?: string | null;
 }
 
 interface InformationBlock {

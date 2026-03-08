@@ -92,8 +92,8 @@ export const useYjsCollaboration = ({
 
     return () => {
       ydoc.current?.destroy();
-      ydoc.current = undefined;
-      ytext.current = undefined;
+      ydoc.current = null;
+      ytext.current = null;
     };
   }, [documentId, onContentChange]);
 
@@ -141,7 +141,7 @@ export const useYjsCollaboration = ({
         isAuthenticated: false
       };
     }
-  }, [authUser?.id, userProfiles[authUser?.id]]);
+  }, [authUser?.id, authUser?.id ? userProfiles[authUser.id] : undefined]);
 
   // Connect to Yjs collaboration
   const connect = useCallback(async () => {

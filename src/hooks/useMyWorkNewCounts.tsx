@@ -69,7 +69,7 @@ const isMissingRpcError = (error: unknown): boolean => {
   const maybeError = error as { code?: string; message?: string };
   return (
     maybeError.code === 'PGRST202'
-    || maybeError.message?.includes('get_my_work_new_counts')
+    || (maybeError.message?.includes('get_my_work_new_counts') ?? false)
   );
 };
 
@@ -108,7 +108,7 @@ export function useMyWorkNewCounts(): MyWorkNewCountsResult {
     try {
       const { data, error } = await supabase.rpc('get_my_work_new_counts', {
         p_user_id: user.id,
-        p_contexts: contexts && contexts.length > 0 ? contexts : null,
+        p_contexts: contexts && contexts.length > 0 ? (contexts as string[]) : undefined,
       });
 
       if (error) {

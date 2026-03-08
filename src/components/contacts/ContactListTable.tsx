@@ -67,7 +67,7 @@ export function ContactListTable({
                 <TableCell>
                   <div className="relative">
                     <Avatar className="h-8 w-8">
-                      <AvatarImage src={contact.avatar_url} />
+                      <AvatarImage src={contact.avatar_url ?? undefined} />
                       <AvatarFallback className="bg-primary text-primary-foreground text-xs">{getInitials(contact.name)}</AvatarFallback>
                     </Avatar>
                     <Button variant="ghost" size="icon"
@@ -77,7 +77,7 @@ export function ContactListTable({
                     </Button>
                   </div>
                 </TableCell>
-                <TableCell><Badge variant="outline" className="text-xs">{contact.contact_type === "organization" ? "Org." : getGenderLabel(contact.gender) || "–"}</Badge></TableCell>
+                <TableCell><Badge variant="outline" className="text-xs">{contact.contact_type === "organization" ? "Org." : getGenderLabel(contact.gender ?? undefined) || "–"}</Badge></TableCell>
                 <TableCell>
                   <div className="flex flex-col">
                     <span className="font-medium">{contact.name}</span>
@@ -87,7 +87,7 @@ export function ContactListTable({
                   </div>
                 </TableCell>
                 <TableCell>
-                  <Badge variant="outline" className="text-xs">{contact.contact_type === "organization" ? "Org." : getGenderLabel(contact.gender) || "–"}</Badge>
+                  <Badge variant="outline" className="text-xs">{contact.contact_type === "organization" ? "Org." : getGenderLabel(contact.gender ?? undefined) || "–"}</Badge>
                 </TableCell>
                 <TableCell>
                   <div className="flex flex-col">
