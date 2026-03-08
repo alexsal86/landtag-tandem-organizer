@@ -513,7 +513,7 @@ export const TaskDecisionList = () => {
                                 <Button
                                   size="sm"
                                   onClick={() => {
-                                    console.log('Sending creator response for responseId:', latestResponse.id, 'Text:', creatorResponses[latestResponse.id]);
+                                    
                                     sendCreatorResponse(latestResponse.id);
                                   }}
                                   disabled={isLoading || !creatorResponses[latestResponse.id]?.trim()}

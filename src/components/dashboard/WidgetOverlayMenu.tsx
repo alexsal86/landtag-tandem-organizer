@@ -139,7 +139,7 @@ export const WidgetOverlayMenu: React.FC<WidgetOverlayMenuProps> = ({
                   onClick={(e) => {
                     e.stopPropagation();
                     e.nativeEvent.stopImmediatePropagation();
-                    console.log('Size button clicked:', size.value, 'for widget:', widget.id);
+                    
                     onResize(widget.id, size.value);
                   }}
                   className={menuSize.compact ? "text-xs px-1 py-0.5" : "text-xs"}

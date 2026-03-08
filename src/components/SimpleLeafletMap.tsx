@@ -288,7 +288,7 @@ const SimpleLeafletMap: React.FC<LeafletKarlsruheMapProps> = ({
 
     // Add party association markers if enabled (independent of districts)
     if (showPartyAssociations && associations.length > 0) {
-      console.log('Processing party associations:', associations.length);
+      
       associations.forEach((association) => {
         console.log(`Processing association: ${association.name}, has boundary_districts:`, !!association.boundary_districts?.length);
         
