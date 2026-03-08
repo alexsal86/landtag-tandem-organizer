@@ -307,7 +307,7 @@ const LetterAttachmentManager: React.FC<LetterAttachmentManagerProps> = ({
       });
 
       setShowDocumentSelector(false);
-    } catch (error: any) {
+    } catch (error: unknown) {
       toast({
         title: "Fehler",
         description: "Das Dokument konnte nicht hinzugefügt werden.",
