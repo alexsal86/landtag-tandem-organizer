@@ -53,7 +53,7 @@ export function PendingJourFixeNotes({ className, onNotesLinked }: PendingJourFi
       if (error) throw error;
       setNotes(data || []);
     } catch (error) {
-      console.error('Error loading pending notes:', error);
+      debugConsole.error('Error loading pending notes:', error);
     } finally {
       setLoading(false);
     }

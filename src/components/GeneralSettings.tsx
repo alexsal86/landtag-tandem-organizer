@@ -261,7 +261,7 @@ export function GeneralSettings() {
                   className="max-h-16 max-w-16 object-contain"
                   crossOrigin="anonymous"
                   onError={(e) => {
-                    console.error("Logo konnte nicht geladen werden:", logoPreviewUrl, e);
+                    debugConsole.error("Logo konnte nicht geladen werden:", logoPreviewUrl, e);
                     setLogoLoadFailed(true);
                   }}
                 />

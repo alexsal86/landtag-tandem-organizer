@@ -92,7 +92,7 @@ export function CaseItemsArchiveSheet({ open, onOpenChange, onRestore }: CaseIte
       setItems((prev) => prev.filter((i) => i.id !== id));
       onRestore?.();
     } catch (e) {
-      console.error("Error restoring case item:", e);
+      debugConsole.error("Error restoring case item:", e);
       toast({ title: "Fehler", description: "Vorgang konnte nicht wiederhergestellt werden.", variant: "destructive" });
     } finally {
       setRestoringId(null);

@@ -338,7 +338,7 @@ const SimpleLeafletMap: React.FC<LeafletKarlsruheMapProps> = ({
           }
           
           if (lat === undefined || lng === undefined || isNaN(lat) || isNaN(lng)) {
-            console.warn('Invalid coordinates for party association:', { lat, lng, boundaryDistrict });
+            debugConsole.warn('Invalid coordinates for party association:', { lat, lng, boundaryDistrict });
             return;
           }
           

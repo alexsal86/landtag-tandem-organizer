@@ -80,7 +80,7 @@ export function CalendarSyncSettings() {
 
       toast.success('Einstellungen erfolgreich gespeichert');
     } catch (error) {
-      console.error('Error saving sync settings:', error);
+      debugConsole.error('Error saving sync settings:', error);
       toast.error('Fehler beim Speichern der Einstellungen');
     } finally {
       setIsLoading(false);

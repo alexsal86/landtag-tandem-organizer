@@ -177,7 +177,7 @@ export const useCaseFileTypes = () => {
       setCaseFileTypes(items);
       return true;
     } catch (error) {
-      console.error('Error updating order:', error);
+      debugConsole.error('Error updating order:', error);
       toast({
         title: "Fehler",
         description: "Reihenfolge konnte nicht gespeichert werden.",

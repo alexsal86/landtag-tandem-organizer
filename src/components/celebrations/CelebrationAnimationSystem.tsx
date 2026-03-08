@@ -95,7 +95,7 @@ export function CelebrationAnimationSystem({
         });
       }
     } catch (error) {
-      console.error('Error loading celebration settings:', error);
+      debugConsole.error('Error loading celebration settings:', error);
       setSettings({
         enabled: true,
         mode: 'random',

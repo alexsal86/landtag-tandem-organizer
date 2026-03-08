@@ -386,7 +386,7 @@ const SimpleRichTextEditor: React.FC<SimpleRichTextEditorProps> = ({
       MentionNode,
     ],
     onError: (error: Error) => {
-      console.error('Lexical Error:', error);
+      debugConsole.error('Lexical Error:', error);
     },
   };
 

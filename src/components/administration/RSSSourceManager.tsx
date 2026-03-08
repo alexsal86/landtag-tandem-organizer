@@ -156,7 +156,7 @@ export function RSSSourceManager() {
 
     if (error) {
       toast.error("Fehler beim Löschen");
-      console.error(error);
+      debugConsole.error(error);
     } else {
       toast.success("RSS-Quelle gelöscht");
       loadSources();

@@ -71,7 +71,7 @@ export function ChatInput({ onSendMessage, onTyping, disabled, placeholder }: Ch
       await onSendMessage(trimmedMessage);
       setMessage('');
     } catch (error) {
-      console.error('Error sending message:', error);
+      debugConsole.error('Error sending message:', error);
     } finally {
       setIsSending(false);
       sendLockRef.current = false;

@@ -349,7 +349,7 @@ export const useCaseItems = () => {
         if (error) throw error;
         return (data ?? []) as unknown as CaseItemInteraction[];
       } catch (error) {
-        console.error("Error fetching case item interactions:", error);
+        debugConsole.error("Error fetching case item interactions:", error);
         toast({
           title: "Fehler",
           description: "Interaktionen konnten nicht geladen werden.",

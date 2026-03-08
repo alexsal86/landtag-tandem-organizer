@@ -320,7 +320,7 @@ export function MyWorkCaseItemsTab() {
       toast({ title: "Archiviert", description: "Vorgang wurde archiviert." });
       await loadCaseItems();
     } catch (e) {
-      console.error("Error archiving case item:", e);
+      debugConsole.error("Error archiving case item:", e);
       toast({ title: "Fehler", description: "Vorgang konnte nicht archiviert werden.", variant: "destructive" });
     }
   };

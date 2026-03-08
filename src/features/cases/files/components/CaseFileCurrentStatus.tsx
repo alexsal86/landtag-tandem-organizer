@@ -86,7 +86,7 @@ export function CaseFileCurrentStatus({ caseFile, onUpdate, onUpdateProcessingSt
           user_display_name: profile?.display_name || null,
         });
       } catch (error) {
-        console.error('Error saving history:', error);
+        debugConsole.error('Error saving history:', error);
       }
     }
 

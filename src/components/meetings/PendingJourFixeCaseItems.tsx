@@ -56,7 +56,7 @@ export function PendingJourFixeCaseItems({ className }: PendingJourFixeCaseItems
       if (error) throw error;
       setItems((data || []) as PendingCaseItem[]);
     } catch (error) {
-      console.error('Error loading pending case items:', error);
+      debugConsole.error('Error loading pending case items:', error);
     } finally {
       setLoading(false);
     }
