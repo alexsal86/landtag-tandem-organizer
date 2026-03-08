@@ -1,4 +1,4 @@
-import { CalendarEvent } from "@/components/CalendarView";
+import { CalendarEvent } from "@/components/calendar/types";
 
 export function formatTimeRange(startTime: string, endTime?: Date | string, duration?: string): string {
   const start = startTime;

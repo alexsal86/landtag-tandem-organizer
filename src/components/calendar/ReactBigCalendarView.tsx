@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { CalendarEvent } from '../CalendarView';
+import { CalendarEvent } from './types';
 import { CalendarEventComponent } from './CalendarEventComponent';
 import { EnhancedCalendarGrid } from './EnhancedCalendarGrid';
 import { Card } from '@/components/ui/card';

@@ -1,6 +1,6 @@
 import React from "react";
 import { Calendar } from "@/components/ui/calendar";
-import { CalendarEvent } from "../CalendarView";
+import { CalendarEvent } from "./types";
 import { Badge } from "@/components/ui/badge";
 import { formatEventDisplay } from "@/lib/timeUtils";
 

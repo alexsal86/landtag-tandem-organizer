@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from "react";
-import { CalendarEvent } from "../CalendarView";
+import { CalendarEvent } from "./types";
 import { formatEventDisplay, isMultiDayEvent, getEventDays } from "@/lib/timeUtils";
 import { FileText, Users } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";

@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { CalendarEvent } from '../CalendarView';
+import { CalendarEvent } from './types';
 import { ReactBigCalendarView } from './ReactBigCalendarView';
 import { EnhancedCalendarGrid } from './EnhancedCalendarGrid';
 import { CalendarEventComponent } from './CalendarEventComponent';

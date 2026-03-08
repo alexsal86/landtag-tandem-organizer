@@ -1,5 +1,5 @@
 import React from 'react';
-import { CalendarEvent } from '../CalendarView';
+import { CalendarEvent } from './types';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Clock, MapPin, Users, AlertCircle, ListTodo } from 'lucide-react';
