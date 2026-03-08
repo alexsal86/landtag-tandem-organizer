@@ -7,12 +7,12 @@ import { Separator } from "@/components/ui/separator";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { MultiSelect } from "@/components/ui/multi-select-simple";
 import SimpleRichTextEditor from "@/components/ui/SimpleRichTextEditor";
-import { useTaskDetailData } from "./useTaskDetailData";
-import { SubtasksSection } from "./SubtasksSection";
-import { DocumentsSection } from "./DocumentsSection";
-import { CommentsSection } from "./CommentsSection";
-import { getPriorityColor, getCategoryColor, formatDate } from "./types";
-import type { Task, TaskDetailSidebarProps } from "./types";
+import { useTaskDetailData } from "./task-detail/useTaskDetailData";
+import { SubtasksSection } from "./task-detail/SubtasksSection";
+import { DocumentsSection } from "./task-detail/DocumentsSection";
+import { CommentsSection } from "./task-detail/CommentsSection";
+import { getPriorityColor, getCategoryColor, formatDate } from "./task-detail/types";
+import type { Task, TaskDetailSidebarProps } from "./task-detail/types";
 
 export function TaskDetailSidebar({ task, isOpen, onClose, onTaskUpdate, onTaskRestored, taskCategories, taskStatuses }: TaskDetailSidebarProps) {
   const d = useTaskDetailData(task);
