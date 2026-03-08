@@ -264,7 +264,7 @@ export const CallLogWidget: React.FC<CallLogWidgetProps> = ({
       resetForm();
       toast.success('Anruf protokolliert');
     } catch (error) {
-      console.error('Error creating call log:', error);
+      debugConsole.error('Error creating call log:', error);
       toast.error('Fehler beim Protokollieren des Anrufs');
     }
   };
