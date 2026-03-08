@@ -154,7 +154,7 @@ export async function generateLetterDOCX(letter: Letter): Promise<{ blob: Blob; 
     if (letter.information_block_ids && letter.information_block_ids.length > 0) {
       const { data: blocksData } = await supabase
         .from('information_blocks')
-        .select('*')
+        .select('id, block_type, block_data')
         .in('id', letter.information_block_ids);
       informationBlocks = blocksData || [];
     }
