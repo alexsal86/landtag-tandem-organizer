@@ -106,7 +106,7 @@ export const CallLogWidget: React.FC<CallLogWidgetProps> = ({
       if (error) throw error;
       setCallLogs((data || []) as CallLog[]);
     } catch (error) {
-      console.error('Error loading call logs:', error);
+      debugConsole.error('Error loading call logs:', error);
       toast.error('Fehler beim Laden der Anrufliste');
     } finally {
       setLoading(false);
