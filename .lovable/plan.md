@@ -1,61 +1,64 @@
 
-Ziel: Rückmeldungs-Feed stabil sichtbar machen und gleichzeitig die aktuellen Build-Blocker entfernen, damit die Fixes überhaupt wieder ausgeliefert werden.
 
-1) Diagnose (aus Code + DB)
-- Do I know what the issue is? Ja.
-- Es gibt aktuell 2 Ebenen von Problemen:
-  1. Build ist kaputt (TypeScript):
-     - `src/components/ui/calendar.tsx`: doppelte Keys im `classNames`-Objekt (`caption_label`, `dropdowns`, `dropdown`) → TS1117.
-     - `src/components/task-decisions/DecisionOverview.tsx`: `ResponseOption`-Typ ohne `requires_comment` → TS2339.
-  2. Feed-Logik ist instabil/zu restriktiv:
-     - `src/components/my-work/MyWorkFeedbackFeedTab.tsx` übergibt `completedTo: new Date().toISOString()` bei jedem Render.
-       Dadurch ändert sich der React-Query-Key permanent (`useTeamFeedbackFeed`), was zu dauerndem Neu-Laden bzw. instabilem Feed führt.
-     - `useTeamFeedbackFeed` filtert hart auf `.not('notes','is',null)`. Damit verschwinden abgeschlossene Rückmeldungen ohne Notiz (z. B. nur Anhang/Aufgabe), obwohl sie fachlich oft relevant sind.
-- DB-Check:
-  - `appointment_feedback` hat Daten (u. a. completed in den letzten 7 Tagen vorhanden).
-  - RLS auf `appointment_feedback` erlaubt tenant-basiertes Lesen (`tenant_id = ANY(get_user_tenant_ids(auth.uid()))`), also kein offensichtlicher RLS-Blocker für Team-Feed im Tenant.
+# Matrix-Provider aus der App-Hülle herauslösen
 
-2) Umsetzungsplan (in Reihenfolge)
-A. Build sofort reparieren (Blocker)
-- `calendar.tsx`: doppelte Objekt-Keys entfernen, nur eine konsistente Definition für `caption_label`, `dropdowns`, `dropdown` behalten.
-- `DecisionOverview.tsx`: lokalen `ResponseOption`-Typ um `requires_comment?: boolean` ergänzen (oder auf den zentralen Typ aus `decisionTemplates` umstellen).
+## Analyse
 
-B. Feed-Query stabilisieren
-- `MyWorkFeedbackFeedTab.tsx`:
-  - `completedTo` nicht mehr bei jedem Render neu erzeugen.
-  - Entweder:
-    - `completedTo` ganz weglassen (nur `completedFrom` + order/limit), oder
-    - `completedTo` per `useMemo/useState` nur bei Filterwechsel neu setzen.
-- `useTeamFeedbackFeed.ts`:
-  - Query-Key nur mit stabilen Filterwerten.
-  - Zeitfilter robust halten (kein per-render Drift).
+Der `MatrixClientProvider` (1.671 Zeilen) umschließt die gesamte App in `App.tsx`. Er wird aktuell von **4 Komponenten** konsumiert:
 
-C. Sichtbarkeit der Rückmeldungen fachlich korrigieren
-- `useTeamFeedbackFeed.ts`:
-  - Notiz-Pflicht entfernen oder erweitern:
-    - statt nur `notes is not null` auch Einträge mit `has_documents = true` oder `has_tasks = true` zulassen.
-  - Ergebnis: auch „abgeschlossen ohne Notiz, aber mit Anhang/Aufgabe“ erscheint im Feed.
+| Komponente | Was sie nutzt |
+|---|---|
+| `Navigation.tsx` | nur `totalUnreadCount` |
+| `AppNavigation.tsx` | nur `totalUnreadCount` |
+| `MatrixChatView.tsx` | Voller Client (Räume, Nachrichten, Senden, E2EE) |
+| `MatrixLoginForm.tsx` | connect, disconnect, Verifizierung |
 
-D. Fehler nicht mehr als „keine Daten“ maskieren
-- `MyWorkFeedbackFeedTab.tsx`:
-  - `isError` + `error` aus Query auslesen.
-  - Bei Fehler einen klaren Error-State anzeigen (statt „Keine passenden Rückmeldungen gefunden“), inkl. Retry-Button (`refetch`).
+**Das Problem**: Der Provider startet beim App-Mount automatisch eine WebSocket-Verbindung zum Matrix-Homeserver (`matrix-js-sdk` Sync-Loop), hält alle Räume, Nachrichten und Crypto-State im Speicher – auch wenn der Nutzer nie den Chat öffnet.
 
-E. Quercheck auf Seiteneffekte
-- `useMyWorkNewCounts.tsx` zählt derzeit ebenfalls nur `completed + notes not null`; ggf. auf dieselbe fachliche Logik angleichen, damit Badge und Feed konsistent sind.
+## Lösung: Zwei getrennte Kontexte
 
-3) Validierung nach Umsetzung
-- Build grün ohne TS-Fehler.
-- Im Tab „Meine Arbeit > Rückmeldungen“:
-  - Keine Endlos-Ladeanzeige.
-  - Team-Einträge der letzten 7/14 Tage sichtbar.
-  - Filter (Sicht/Zeitraum/Anhänge/Aufgaben) funktionieren.
-  - Bei absichtlichem Query-Fehler erscheint Error-State statt Empty-State.
-- Schneller Datenabgleich:
-  - Feed-Anzahl grob konsistent mit SQL-Count für completed im Zeitraum (unter Berücksichtigung der Filter).
+```text
+┌─ App.tsx ──────────────────────────────────┐
+│  MatrixUnreadProvider (leichtgewichtig)     │  ← Nur Unread-Count
+│    ├── Navigation  (liest unreadCount)      │
+│    ├── AppNavigation (liest unreadCount)    │
+│    └── Routes                               │
+│         └── /chat                           │
+│              └── MatrixClientProvider       │  ← Voller Client, nur bei Chat
+│                   ├── MatrixChatView        │
+│                   └── MatrixLoginForm       │
+└─────────────────────────────────────────────┘
+```
 
-4) Warum das den aktuellen Zustand löst
-- Solange Build fehlschlägt, werden vorherige Fixes teils nicht wirksam.
-- Selbst bei laufendem Build kann der Feed durch den „beweglichen“ `completedTo`-Key instabil bleiben.
-- Zusätzlich blendet der harte Notiz-Filter valide Rückmeldungen aus.
-- Mit den vier Korrekturen (Build, stabiler Query-Key, fachlich korrekter Filter, echter Error-State) wird die Ursachekette vollständig geschlossen.
+### 1. `MatrixUnreadProvider` (neuer, leichter Context)
+
+- Prüft ob Matrix-Credentials vorhanden sind (Supabase-Query auf `profiles`)
+- Wenn ja: Pollt den Unread-Count alle 30s über einen simplen `/sync`-API-Call mit Filter (kein voller SDK-Client nötig) **oder** cached den letzten bekannten Wert aus `localStorage`
+- Exponiert nur `{ totalUnreadCount: number, hasCredentials: boolean }`
+- Kein `matrix-js-sdk` Import, kein WebSocket, kein Crypto
+- ~50-80 Zeilen Code
+
+### 2. `MatrixClientProvider` nur um Chat-Route
+
+- Wird in `Index.tsx` (oder der Chat-Section) gerendert, **nicht** in `App.tsx`
+- Initialisiert den vollen Matrix-Client erst wenn Chat betreten wird
+- Beim Verlassen: Client bleibt verbunden (optional: Disconnect nach Timeout)
+- Aktualisiert den Unread-Count des leichten Providers bei Sync-Events
+
+### 3. Migration der Consumer
+
+- `Navigation.tsx` + `AppNavigation.tsx`: `useMatrixClient()` → `useMatrixUnread()`
+- `MatrixChatView.tsx` + `MatrixLoginForm.tsx`: Bleiben bei `useMatrixClient()`, werden aber innerhalb des Chat-Bereichs gerendert
+
+## Vorteile
+
+- **Kein Matrix-SDK-Load** beim App-Start (Code-Splitting wirkt jetzt tatsächlich)
+- **Keine WebSocket-Verbindung** wenn Chat nicht genutzt wird
+- **Weniger Speicherverbrauch** (kein Room/Message-Cache außerhalb von Chat)
+- Navigation-Badge funktioniert weiterhin über leichtgewichtiges Polling
+
+## Risiko
+
+- Unread-Count ist nicht mehr in Echtzeit (30s Polling statt WebSocket-Sync). Für einen Badge-Counter ist das akzeptabel.
+- Wenn der Nutzer von Chat wegnavigiert und zurückkommt, muss der Client ggf. neu syncen (kurze Ladezeit). Dies kann durch Beibehalten des Clients im Hintergrund (mit Timeout) gemildert werden.
+
