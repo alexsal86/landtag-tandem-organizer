@@ -265,7 +265,7 @@ export const EventRSVPManager = ({ eventPlanningId, eventTitle }: EventRSVPManag
             .in('id', idsToSend);
 
         } catch (emailError) {
-          console.error('Email sending failed:', emailError);
+          debugConsole.error('Email sending failed:', emailError);
         }
       }
 
