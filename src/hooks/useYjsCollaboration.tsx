@@ -224,7 +224,7 @@ export const useYjsCollaboration = ({
       });
 
       setConnectionState('connected');
-      console.log('[Yjs] Connected successfully');
+      
 
     } catch (error) {
       console.error('[Yjs] Connection failed:', error);
