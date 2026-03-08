@@ -42,6 +42,8 @@ interface TaskListRowProps {
   depth?: number;
   className?: string;
   highlightRef?: (el: HTMLElement | null) => void;
+  isHighlighted?: (taskId: string) => boolean;
+  getHighlightRef?: (taskId: string) => (el: HTMLElement | null) => void;
   onComplete: (taskId: string) => void;
   onSubtaskComplete: (subtaskId: string) => void;
   onNavigate: (taskId: string) => void;
@@ -72,6 +74,8 @@ export function TaskListRow({
   depth = 0,
   className,
   highlightRef,
+  isHighlighted,
+  getHighlightRef,
   onComplete,
   onSubtaskComplete,
   onNavigate,
@@ -153,7 +157,7 @@ export function TaskListRow({
   };
 
   return (
-    <div ref={highlightRef} className={className}>
+    <div ref={getHighlightRef ? getHighlightRef(task.id) : highlightRef} className={cn(className, isHighlighted?.(task.id) && "notification-highlight")}>
       <div
         className="flex items-center gap-2 px-3 py-2 hover:bg-muted/50 transition-colors border-b"
         style={{ paddingLeft: `${12 + depth * 20}px` }}
@@ -273,6 +277,8 @@ export function TaskListRow({
             <TaskListRow
               key={childTask.id}
               task={childTask}
+              isHighlighted={isHighlighted}
+              getHighlightRef={getHighlightRef}
               subtasks={getChildTasks ? getChildTasks(childTask.id) : []}
               resolveAssigneeName={resolveAssigneeName}
               hasMeetingLink={!!(childTask.meeting_id || childTask.pending_for_jour_fixe)}

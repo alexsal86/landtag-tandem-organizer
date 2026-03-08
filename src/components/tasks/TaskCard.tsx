@@ -45,6 +45,8 @@ interface TaskCardProps {
   isLastChild?: boolean;
   className?: string;
   highlightRef?: (el: HTMLElement | null) => void;
+  isHighlighted?: (taskId: string) => boolean;
+  getHighlightRef?: (taskId: string) => (el: HTMLElement | null) => void;
   onComplete: (taskId: string) => void;
   onSubtaskComplete: (subtaskId: string) => void;
   onNavigate: (taskId: string) => void;
@@ -77,6 +79,8 @@ export function TaskCard({
   isLastChild = false,
   className,
   highlightRef,
+  isHighlighted,
+  getHighlightRef,
   onComplete,
   onSubtaskComplete,
   onNavigate,
@@ -183,11 +187,12 @@ export function TaskCard({
 
   return (
     <div
-      ref={highlightRef}
+      ref={getHighlightRef ? getHighlightRef(task.id) : highlightRef}
       className={cn(
         "border border-border relative",
         isChildTask ? "rounded-none bg-muted/40" : "rounded-lg bg-card",
         isChildTask && isLastChild && "rounded-br-lg",
+        isHighlighted?.(task.id) && "notification-highlight",
         className,
       )}
     >
@@ -336,6 +341,8 @@ export function TaskCard({
             <TaskCard
               key={childTask.id}
               task={childTask}
+              isHighlighted={isHighlighted}
+              getHighlightRef={getHighlightRef}
               subtasks={getChildTasks ? getChildTasks(childTask.id) : []}
               resolveAssigneeName={resolveAssigneeName}
               hasMeetingLink={!!(childTask.meeting_id || childTask.pending_for_jour_fixe)}
