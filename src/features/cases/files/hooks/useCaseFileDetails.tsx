@@ -304,7 +304,7 @@ export const useCaseFileDetails = (caseFileId: string | null) => {
     try {
       const { data, error } = await supabase
         .from('case_file_timeline')
-        .select('*')
+        .select('id, case_file_id, event_date, event_type, title, description, source_type, source_id, created_by, created_at')
         .eq('case_file_id', caseFileId)
         .order('event_date', { ascending: false });
 
