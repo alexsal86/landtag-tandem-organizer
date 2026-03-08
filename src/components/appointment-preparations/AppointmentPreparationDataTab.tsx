@@ -123,13 +123,13 @@ export function AppointmentPreparationDataTab({
           title: data.title,
           start: data.start_time,
           end: data.end_time,
-          description: data.description,
-          location: data.location,
-          category: data.category,
-          priority: data.priority,
-          status: data.status,
-          meeting_link: data.meeting_link,
-          meeting_details: data.meeting_details
+          description: data.description ?? undefined,
+          location: data.location ?? undefined,
+          category: data.category ?? undefined,
+          priority: data.priority ?? undefined,
+          status: data.status ?? undefined,
+          meeting_link: data.meeting_link ?? undefined,
+          meeting_details: data.meeting_details ?? undefined
         });
       }
     } catch (error) {
