@@ -219,7 +219,7 @@ export const LetterStatusWorkflow: React.FC<LetterStatusWorkflowProps> = ({
               // TODO: Call send-document-email edge function with PDF
             }
           } catch (emailErr) {
-            console.error('Email send failed:', emailErr);
+            debugConsole.error('Email send failed:', emailErr);
           }
         }
 
