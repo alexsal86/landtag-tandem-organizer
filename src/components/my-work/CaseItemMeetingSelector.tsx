@@ -70,7 +70,7 @@ export function CaseItemMeetingSelector({
             p.meetings &&
             !ownIds.has(p.meeting_id) &&
             p.meetings.status !== "archived" &&
-            new Date(p.meetings.meeting_date) >= startOfToday
+            p.meetings.meeting_date >= todayStr
         )
         .map((p: any) => p.meetings as Meeting);
 
