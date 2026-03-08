@@ -296,7 +296,7 @@ export function GlobalSearchCommand() {
       const { data } = await supabase
         .from('meetings')
         .select('id, title, meeting_date, description, location')
-        .eq('tenant_id', currentTenant!.id)
+        .eq('tenant_id', currentTenant?.id ?? '')
         .or(`title.ilike.%${searchQuery}%,description.ilike.%${searchQuery}%,location.ilike.%${searchQuery}%`)
         .order('meeting_date', { ascending: false })
         .limit(10);
