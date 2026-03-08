@@ -126,7 +126,7 @@ export function useAppointmentPreparation(preparationId: string | undefined) {
 
       if (archiveError) throw archiveError;
     } catch (err) {
-      console.error('Error archiving preparation:', err);
+      debugConsole.error('Error archiving preparation:', err);
       throw err;
     }
   };

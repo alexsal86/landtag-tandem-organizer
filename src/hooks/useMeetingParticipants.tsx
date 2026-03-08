@@ -156,7 +156,7 @@ export function useMeetingParticipants(meetingId?: string) {
 
       setParticipants(prev => prev.filter(p => p.id !== participantId));
     } catch (error) {
-      console.error('Error removing participant:', error);
+      debugConsole.error('Error removing participant:', error);
       toast({
         title: "Fehler",
         description: "Teilnehmer konnte nicht entfernt werden.",

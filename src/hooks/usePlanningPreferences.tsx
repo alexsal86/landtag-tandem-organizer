@@ -93,7 +93,7 @@ export const usePlanningPreferences = () => {
 
       return true;
     } catch (error) {
-      console.error("Error saving planning preferences:", error);
+      debugConsole.error("Error saving planning preferences:", error);
       toast.error("Fehler beim Speichern der Voreinstellungen");
       return false;
     }

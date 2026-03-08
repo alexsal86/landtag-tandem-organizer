@@ -163,7 +163,7 @@ export function useMyWorkJourFixeMeetings(userId?: string) {
         setPastMeetings(past);
       }
     } catch (error) {
-      console.error("Error loading meetings:", error);
+      debugConsole.error("Error loading meetings:", error);
     } finally {
       if (isMountedRef.current) setLoading(false);
     }

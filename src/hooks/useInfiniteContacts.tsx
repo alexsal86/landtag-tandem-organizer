@@ -323,7 +323,7 @@ export const useInfiniteContacts = ({
           : "Kontakt aus Favoriten entfernt",
       });
     } catch (error) {
-      console.error('Error toggling favorite:', error);
+      debugConsole.error('Error toggling favorite:', error);
       toast({
         title: "Fehler",
         description: "Favorit konnte nicht aktualisiert werden.",
