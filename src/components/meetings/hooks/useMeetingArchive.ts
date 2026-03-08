@@ -47,7 +47,7 @@ export function useMeetingArchive(deps: ArchiveDeps) {
     const reviewParentId = await ensureReviewParentItem(targetMeetingId);
     const { data: existingChildren } = await supabase
       .from('meeting_agenda_items').select('title, source_meeting_id').eq('meeting_id', targetMeetingId).eq('parent_id', reviewParentId);
-    let existingSet = new Set((existingChildren || []).map((i: any) => `${i.source_meeting_id}::${i.title}`));
+    let existingSet = new Set((existingChildren || []).map(i => `${i.source_meeting_id}::${i.title}`));
 
     const { data: maxOrderData } = await supabase
       .from('meeting_agenda_items').select('order_index').eq('meeting_id', targetMeetingId).eq('parent_id', reviewParentId)
