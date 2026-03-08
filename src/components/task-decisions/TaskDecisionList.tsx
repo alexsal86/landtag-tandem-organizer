@@ -493,10 +493,6 @@ export const TaskDecisionList = () => {
                             </div>
                             <p className="text-muted-foreground">{latestResponse.comment}</p>
                             
-                            {(() => {
-                              console.log('Response data for participant:', participant.id, 'Latest response:', latestResponse);
-                              return null;
-                            })()}
                             
                             {latestResponse.creator_response ? (
                               <div className="bg-white p-2 rounded border">
