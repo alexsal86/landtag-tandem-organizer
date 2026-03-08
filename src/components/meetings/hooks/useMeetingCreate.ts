@@ -76,7 +76,7 @@ export function useMeetingCreate(deps: UseMeetingCreateDeps) {
             end_time: localEndTime.toISOString(), category: 'meeting', status: 'planned',
             user_id: user.id, tenant_id: currentTenant.id, meeting_id: data.id
           });
-        } catch (e) { console.error('Error creating appointment for meeting:', e); }
+        } catch (e) { debugConsole.error('Error creating appointment for meeting:', e); }
       }
 
       // Add participants
