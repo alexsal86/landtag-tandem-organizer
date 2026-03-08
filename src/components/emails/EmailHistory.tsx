@@ -110,9 +110,9 @@ export function EmailHistory() {
       })) as EmailLog[];
       
       setEmailLogs(typedData);
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Error fetching email logs:", error);
-      toast({ title: "Fehler beim Laden", description: error.message, variant: "destructive" });
+      toast({ title: "Fehler beim Laden", description: error instanceof Error ? error.message : String(error), variant: "destructive" });
     } finally {
       setLoading(false);
     }
