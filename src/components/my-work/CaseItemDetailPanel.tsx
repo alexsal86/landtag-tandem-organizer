@@ -288,8 +288,8 @@ export function CaseItemDetailPanel({
                     return (
                       <div key={entry.id} className="relative">
                         {/* Vertical line */}
-                        {!isLastEntry && <span className="absolute -left-[17px] top-6 bottom-[-16px] w-0.5 bg-border" />}
-                        {/* Circle — vertically centered to the date line */}
+                        {!isLastEntry && <span className="absolute -left-[17px] top-[12px] bottom-[-16px] w-0.5 bg-border" />}
+                        {/* Circle — vertically aligned to the date text */}
                         <span className={`absolute -left-[27px] top-[2px] h-5 w-5 rounded-full ${entry.accentClass} flex items-center justify-center text-white`}>
                           {entry.icon ? <entry.icon className="h-3 w-3" /> : null}
                         </span>
