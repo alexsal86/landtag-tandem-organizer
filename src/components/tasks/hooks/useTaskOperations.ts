@@ -165,7 +165,7 @@ export function useTaskOperations({
       loadTaskSnoozes();
       toast({ title: "Wiedervorlage gesetzt", description: `Aufgabe wird bis ${new Date(snoozeUntil).toLocaleDateString('de-DE')} ausgeblendet.` });
     } catch (error: unknown) {
-      console.error('Error snoozing task:', error);
+      debugConsole.error('Error snoozing task:', error);
       toast({ title: "Fehler", description: "Wiedervorlage konnte nicht gesetzt werden.", variant: "destructive" });
     }
   };
