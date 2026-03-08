@@ -67,7 +67,7 @@ export function ContactListTable({
                 <TableCell>
                   <div className="relative">
                     <Avatar className="h-8 w-8">
-                      <AvatarImage src={contact.avatar_url} />
+                      <AvatarImage src={contact.avatar_url ?? undefined} />
                       <AvatarFallback className="bg-primary text-primary-foreground text-xs">{getInitials(contact.name)}</AvatarFallback>
                     </Avatar>
                     <Button variant="ghost" size="icon"
