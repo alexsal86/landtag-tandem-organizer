@@ -382,8 +382,8 @@ export function AutomationRulesManager() {
     };
 
     const query = editingRuleId
-      ? supabase.from("automation_rules" as any).update(payload).eq("id", editingRuleId)
-      : supabase.from("automation_rules" as any).insert({ ...payload, created_by: user.id });
+      ? supabase.from("automation_rules").update(payload).eq("id", editingRuleId)
+      : supabase.from("automation_rules").insert({ ...payload, created_by: user.id });
 
     const { error } = await query;
 
