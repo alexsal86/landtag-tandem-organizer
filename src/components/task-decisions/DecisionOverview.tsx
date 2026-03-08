@@ -562,13 +562,13 @@ export const DecisionOverview = () => {
 
               const { error: insertError } = await supabase
                 .from('task_decision_responses')
-                .insert({
+                .insert([{
                   decision_id: data.decision_id,
                   participant_id: data.participant_id,
                   response_type: 'question',
                   comment: text.trim(),
                   parent_response_id: responseId,
-                });
+                }]);
 
               return insertError;
             }));
