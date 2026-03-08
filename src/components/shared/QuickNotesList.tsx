@@ -895,7 +895,7 @@ export function QuickNotesList({
         toast.success(destLevel > 0 ? `Level ${destLevel} gesetzt` : "Priorität entfernt");
       }
     } catch (error) {
-      console.error("Error in drag handler:", error);
+      debugConsole.error("Error in drag handler:", error);
       loadNotes();
     }
   };
