@@ -119,7 +119,7 @@ export default function DecisionResponse() {
       setResult({ ...data, selectedOption: option });
       setIsSubmitted(true);
     } catch (err: any) {
-      console.error('Error submitting response:', err);
+      debugConsole.error('Error submitting response:', err);
       setError(err.message || "Fehler beim Speichern der Antwort");
     } finally {
       setIsLoading(false);
