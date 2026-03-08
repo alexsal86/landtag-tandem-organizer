@@ -381,7 +381,7 @@ export const useNotifications = () => {
           throw new Error('Invalid subscription keys');
         }
 
-        console.log('🔑 Subscription keys extracted successfully');
+        
 
         // Convert keys to base64
         const p256dhBase64 = btoa(String.fromCharCode(...new Uint8Array(p256dh)));
