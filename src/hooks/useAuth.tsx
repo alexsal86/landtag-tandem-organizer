@@ -36,12 +36,12 @@ const trackSession = async (userId: string) => {
       // Insert new session
       await supabase
         .from('user_sessions')
-        .insert({
+        .insert([{
           user_id: userId,
           device_info: deviceInfo,
           is_current: true,
           last_active_at: new Date().toISOString(),
-        });
+        }]);
     }
   } catch (error) {
     debugConsole.error('Error tracking session:', error);

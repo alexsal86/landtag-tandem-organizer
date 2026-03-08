@@ -84,7 +84,7 @@ export const useLetterArchiving = () => {
       // Create document record in database
       const { data: documentData, error: dbError } = await supabase
         .from('documents')
-        .insert({
+        .insert([{
           user_id: user.id,
           tenant_id: currentTenant.id,
           title: `Archivierter Brief: ${letter.title}`,
@@ -98,7 +98,7 @@ export const useLetterArchiving = () => {
           document_type: 'archived_letter',
           source_letter_id: letter.id,
           archived_attachments: attachments || []
-        })
+        }])
         .select()
         .single();
 

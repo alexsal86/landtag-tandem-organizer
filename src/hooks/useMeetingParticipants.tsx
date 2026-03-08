@@ -72,12 +72,12 @@ export function useMeetingParticipants(meetingId?: string) {
     try {
       const { data, error } = await supabase
         .from('meeting_participants')
-        .insert({
+        .insert([{
           meeting_id: meetingId,
           user_id: userId,
           role,
           status: 'pending'
-        })
+        }])
         .select(`
           *,
           user:profiles(user_id, display_name, avatar_url)

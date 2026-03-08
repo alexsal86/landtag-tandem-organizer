@@ -160,11 +160,11 @@ export function useElectionDistrictNotes(districtId?: string) {
     try {
       const { data, error } = await supabase
         .from("election_district_notes")
-        .insert({
+        .insert([{
           ...noteData,
           user_id: user.id,
           tenant_id: currentTenant.id,
-        })
+        }])
         .select()
         .single();
 
