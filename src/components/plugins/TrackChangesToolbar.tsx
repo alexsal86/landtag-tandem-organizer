@@ -2,7 +2,7 @@
  * TrackChangesToolbar – Banner for review mode + accept/reject controls.
  */
 
-import React, { useState, useCallback, useEffect } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import { useLexicalComposerContext } from '@lexical/react/LexicalComposerContext';
 import { $getRoot } from 'lexical';
 import { Button } from '@/components/ui/button';
