@@ -567,15 +567,15 @@ export function CaseItemDetailPanel({
       </div>
 
 
-      {/* Delete action */}
-      {onDelete && (
-        <div className="mt-6 pt-4 border-t border-dashed">
+      <div className="mt-4 pt-4 border-t border-dashed flex items-center justify-between">
+        <Button disabled={!editableCaseItem.category} onClick={onSave}>Speichern</Button>
+        {onDelete && (
           <Button variant="ghost" size="sm" className="text-destructive hover:text-destructive hover:bg-destructive/10" onClick={onDelete}>
             <Trash2 className="mr-2 h-3.5 w-3.5" />
             Vorgang löschen
           </Button>
-        </div>
-      )}
+        )}
+      </div>
     </div>
   );
 }
