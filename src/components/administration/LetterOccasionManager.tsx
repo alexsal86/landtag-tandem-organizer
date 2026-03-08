@@ -109,7 +109,7 @@ export function LetterOccasionManager() {
       .eq('tenant_id', currentTenant.id)
       .order('sort_order');
     if (error) {
-      console.error('Error loading occasions:', error);
+      debugConsole.error('Error loading occasions:', error);
       setLoading(false);
       return;
     }
