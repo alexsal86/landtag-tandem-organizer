@@ -579,7 +579,7 @@ export const useNotifications = () => {
     // Listen for storage events for cross-tab synchronization
     const handleStorageChange = (e: StorageEvent) => {
       if (e.key === `notifications-update-${user.id}` && e.newValue) {
-        console.log('🔄 Cross-tab notification update detected');
+        debugConsole.log('🔄 Cross-tab notification update detected');
         loadNotifications();
       }
     };
