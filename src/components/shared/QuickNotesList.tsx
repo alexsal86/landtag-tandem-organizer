@@ -997,7 +997,7 @@ export function QuickNotesList({
       toast.success("Aufgabe erstellt");
       loadNotes();
     } catch (error) {
-      console.error('Error creating task from note:', error);
+      debugConsole.error('Error creating task from note:', error);
       toast.error("Fehler beim Erstellen der Aufgabe");
     }
   };
