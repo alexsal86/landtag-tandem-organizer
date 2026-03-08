@@ -140,7 +140,7 @@ export function useTimeTrackingOperations({
   const handleReportSick = async () => {
     if (!userId || !sickStartDate || !sickEndDate) { toast.error("Bitte beide Felder"); return; }
     if (sickEndDate < sickStartDate) { toast.error("Das Enddatum darf nicht vor dem Startdatum liegen"); return; }
-    try { await supabase.from("leave_requests").insert({ user_id: userId, type: "sick", start_date: sickStartDate, end_date: sickEndDate, reason: sickNotes || null, status: "pending" }); toast.success("Krankmeldung eingereicht"); setSickStartDate(""); setSickEndDate(""); setSickNotes(""); loadData(); } catch (error: unknown) { toast.error(error instanceof Error ? error.message : "Fehler"); }
+    try { await supabase.from("leave_requests").insert([{ user_id: userId, type: "sick", start_date: sickStartDate, end_date: sickEndDate, reason: sickNotes || null, status: "pending" }]); toast.success("Krankmeldung eingereicht"); setSickStartDate(""); setSickEndDate(""); setSickNotes(""); loadData(); } catch (error: unknown) { toast.error(error instanceof Error ? error.message : "Fehler"); }
   };
 
   const handleReportMedical = async () => {
