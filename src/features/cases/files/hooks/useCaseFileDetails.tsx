@@ -529,11 +529,11 @@ export const useCaseFileDetails = (caseFileId: string | null) => {
     try {
       const { error } = await supabase
         .from('case_file_appointments')
-        .insert({
+        .insert([{
           case_file_id: caseFileId,
           appointment_id: appointmentId,
           notes,
-        });
+        }]);
 
       if (error) throw error;
       await fetchAppointments();
