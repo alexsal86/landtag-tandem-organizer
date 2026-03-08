@@ -45,7 +45,7 @@ export const DashboardDefaultCover = () => {
         attributionData?.setting_value ? JSON.parse(attributionData.setting_value) : null
       );
     } catch (error) {
-      console.error("Error loading default cover:", error);
+      debugConsole.error("Error loading default cover:", error);
       toast({
         title: "Fehler",
         description: "Standard-Cover konnte nicht geladen werden",
