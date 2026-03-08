@@ -280,7 +280,7 @@ export const StandaloneDecisionCreator = ({
         case_item_id: caseItemId || null,
       };
       
-      console.log('Creating standalone decision with data:', insertData);
+      
       
       // Create the decision
       const { data: decision, error: decisionError } = await supabase
