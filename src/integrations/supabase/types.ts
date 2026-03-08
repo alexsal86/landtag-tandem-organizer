@@ -2875,6 +2875,41 @@ export type Database = {
         }
         Relationships: []
       }
+      day_slips: {
+        Row: {
+          data: Json
+          day_key: string
+          id: string
+          tenant_id: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          data?: Json
+          day_key: string
+          id?: string
+          tenant_id?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          data?: Json
+          day_key?: string
+          id?: string
+          tenant_id?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "day_slips_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       decision_archive_settings: {
         Row: {
           auto_archive_days: number | null
