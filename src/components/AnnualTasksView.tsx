@@ -165,10 +165,10 @@ export function AnnualTasksView() {
 
     try {
       const { data: tasksData, error: tasksError } = await supabase
-        .from("annual_tasks" as any)
+        .from("annual_tasks")
         .select("*")
         .eq("tenant_id", currentTenant.id)
-        .order("due_month", { ascending: true }) as { data: AnnualTask[] | null; error: any };
+        .order("due_month", { ascending: true });
 
       if (tasksError) throw tasksError;
 
