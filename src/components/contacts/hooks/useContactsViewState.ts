@@ -133,7 +133,7 @@ export function useContactsViewState() {
       toast({ title: "Kontakt gelöscht", description: `${contactName} wurde erfolgreich gelöscht.` });
       refreshContacts();
     } catch (error) {
-      console.error('Error deleting contact:', error);
+      debugConsole.error('Error deleting contact:', error);
       toast({ title: "Fehler", description: "Kontakt konnte nicht gelöscht werden.", variant: "destructive" });
     }
   };

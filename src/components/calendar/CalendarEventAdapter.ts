@@ -281,7 +281,7 @@ export class CalendarEventAdapter {
       const normalizedEnd = new Date(startTime);
       normalizedEnd.setHours(23, 59, 59, 999);
       
-      console.log('🔧 CalendarEventAdapter: Normalized external all-day end time:', {
+      debugConsole.log('🔧 CalendarEventAdapter: Normalized external all-day end time:', {
         original: endTime.toISOString(),
         normalized: normalizedEnd.toISOString(),
         startDay: startTime.toDateString(),

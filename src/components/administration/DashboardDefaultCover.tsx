@@ -125,7 +125,7 @@ export const DashboardDefaultCover = () => {
         description: "Standard-Cover wurde entfernt",
       });
     } catch (error) {
-      console.error("Error removing default cover:", error);
+      debugConsole.error("Error removing default cover:", error);
       toast({
         title: "Fehler",
         description: "Standard-Cover konnte nicht entfernt werden",

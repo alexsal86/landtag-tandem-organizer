@@ -83,7 +83,7 @@ export function AppointmentDocumentList({
         description: `${document.file_name} wurde gelöscht.`,
       });
     } catch (error) {
-      console.error('Delete error:', error);
+      debugConsole.error('Delete error:', error);
       toast({
         title: "Löschung fehlgeschlagen",
         description: "Die Datei konnte nicht gelöscht werden.",

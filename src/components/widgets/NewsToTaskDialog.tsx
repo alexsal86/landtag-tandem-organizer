@@ -145,7 +145,7 @@ export const NewsToTaskDialog: React.FC<NewsToTaskDialogProps> = ({
       setPriority('medium');
       onOpenChange(false);
     } catch (error) {
-      console.error('Error creating task:', error);
+      debugConsole.error('Error creating task:', error);
       toast.error('Fehler beim Erstellen der Aufgabe');
     } finally {
       setLoading(false);
