@@ -15,7 +15,7 @@ export interface Meeting {
   meeting_time?: string | null;
   status: string;
   description?: string | null;
-  is_public?: boolean;
+  is_public?: boolean | null;
   user_id?: string;
 }
 

@@ -7,15 +7,15 @@ interface LoginCustomization {
   tenant_id: string;
   logo_url: string | null;
   background_image_url: string | null;
-  background_position: string;
-  primary_color: string;
-  accent_color: string;
-  tagline: string;
-  welcome_text: string;
-  footer_text: string;
-  social_login_enabled: boolean;
-  registration_enabled: boolean;
-  password_reset_enabled: boolean;
+  background_position: string | null;
+  primary_color: string | null;
+  accent_color: string | null;
+  tagline: string | null;
+  welcome_text: string | null;
+  footer_text: string | null;
+  social_login_enabled: boolean | null;
+  registration_enabled: boolean | null;
+  password_reset_enabled: boolean | null;
   background_attribution: any;
 }
 
