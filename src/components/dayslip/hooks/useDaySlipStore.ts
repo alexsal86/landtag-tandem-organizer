@@ -134,11 +134,11 @@ export function useDaySlipStore(userId?: string, tenantId?: string) {
 
   // ─── Persist store (localStorage + DB) ─────────────────────────────────
   useEffect(() => {
-    clearTimeout(saveTimeoutRef.current);
+    if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current);
     saveTimeoutRef.current = setTimeout(() => {
       try { localStorage.setItem(STORAGE_KEY, JSON.stringify(store)); } catch {}
     }, SAVE_DEBOUNCE_MS);
-    return () => clearTimeout(saveTimeoutRef.current);
+    return () => { if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current); };
   }, [store]);
 
   // Debounced DB save for dirty days
