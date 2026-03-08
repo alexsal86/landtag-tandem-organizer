@@ -95,7 +95,7 @@ function GuestResponse() {
       }
 
     } catch (error: unknown) {
-      console.error('Error fetching guest data:', error);
+      debugConsole.error('Error fetching guest data:', error);
       setError('Fehler beim Laden der Einladung');
     } finally {
       setLoading(false);
