@@ -244,7 +244,7 @@ export function AdminTimeTrackingView() {
       setCorrections(correctionsRes.data || []);
       setHolidays(holidaysRes.data || []);
     } catch (error) {
-      console.error("Error loading month data:", error);
+      debugConsole.error("Error loading month data:", error);
     }
   };
 
