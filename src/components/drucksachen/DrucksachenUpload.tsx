@@ -1,4 +1,5 @@
 import React, { useState, useRef } from 'react';
+import { debugConsole } from '@/utils/debugConsole';
 import { useAuth } from '@/hooks/useAuth';
 import { useTenant } from '@/hooks/useTenant';
 import { supabase } from '@/integrations/supabase/client';
