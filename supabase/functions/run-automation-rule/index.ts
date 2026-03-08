@@ -291,6 +291,70 @@ serve(async (req) => {
         }
       }
 
+      if (action.type === "send_push_notification") {
+        const payload = action.payload ?? {};
+        const targetUserId = String(payload.target_user_id ?? payload.target ?? "");
+        const title = String(payload.title ?? `Automation: ${rule.name}`);
+        const body = String(payload.message ?? "Automatische Regel ausgelöst.");
+
+        if (!targetUserId) {
+          await supabaseAdmin.from("automation_rule_run_steps").insert({
+            run_id: run.id,
+            tenant_id: rule.tenant_id,
+            step_order: stepOrder,
+            step_type: action.type,
+            status: "skipped",
+            input_payload: action,
+            result_payload: { reason: "missing_target_user_id" },
+          });
+          stepOrder += 1;
+          continue;
+        }
+
+        // Get user's push subscriptions
+        const { data: subscriptions, error: subError } = await supabaseAdmin
+          .from("push_subscriptions")
+          .select("id")
+          .eq("user_id", targetUserId);
+
+        if (subError) {
+          throw subError;
+        }
+
+        if (!subscriptions || subscriptions.length === 0) {
+          await supabaseAdmin.from("automation_rule_run_steps").insert({
+            run_id: run.id,
+            tenant_id: rule.tenant_id,
+            step_order: stepOrder,
+            step_type: action.type,
+            status: "skipped",
+            input_payload: action,
+            result_payload: { reason: "no_push_subscriptions" },
+          });
+          stepOrder += 1;
+          continue;
+        }
+
+        // Create notification which triggers push via DB trigger
+        const { error: notificationError } = await supabaseAdmin.rpc("create_notification", {
+          user_id_param: targetUserId,
+          type_name: "automation_push",
+          title_param: title,
+          message_param: body,
+          data_param: JSON.stringify({
+            source: "automation_rule",
+            rule_id: rule.id,
+            run_id: run.id,
+            push: true,
+          }),
+          priority_param: "high",
+        });
+
+        if (notificationError) {
+          throw notificationError;
+        }
+      }
+
       if (action.type === "create_task") {
         const payload = action.payload ?? {};
         const title = String(payload.title ?? "").trim();
