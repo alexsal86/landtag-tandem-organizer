@@ -629,7 +629,7 @@ export function AutomationRuleWizard({
       case 0:
         return form.name.trim().length >= 3;
       case 1:
-        return form.triggerType === "schedule" || form.triggerType === "manual" || form.triggerValue.trim().length > 0;
+        return form.triggerType === "schedule" || form.triggerType === "manual" || form.triggerType === "webhook" || form.triggerValue.trim().length > 0;
       case 2:
         return form.conditions.length > 0 && form.conditions.every((c) => c.value.trim().length > 0);
       case 3: {
