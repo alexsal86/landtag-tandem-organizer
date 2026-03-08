@@ -1,0 +1,164 @@
+import '@/styles/lexical-editor.css';
+import { memo, useCallback, useEffect, useRef, useState, type DragEvent, type MouseEvent } from "react";
+import { LexicalComposer } from "@lexical/react/LexicalComposer";
+import { RichTextPlugin } from "@lexical/react/LexicalRichTextPlugin";
+import { ContentEditable } from "@lexical/react/LexicalContentEditable";
+import { HistoryPlugin } from "@lexical/react/LexicalHistoryPlugin";
+import { OnChangePlugin } from "@lexical/react/LexicalOnChangePlugin";
+import { LexicalErrorBoundary } from "@lexical/react/LexicalErrorBoundary";
+import { useLexicalComposerContext } from "@lexical/react/LexicalComposerContext";
+import { HorizontalRulePlugin } from "@lexical/react/LexicalHorizontalRulePlugin";
+import {
+  $createTextNode,
+  $getRoot,
+  $getSelection,
+  $isRangeSelection,
+  COMMAND_PRIORITY_CRITICAL,
+  type EditorState,
+  type LexicalEditor,
+  KEY_ENTER_COMMAND,
+} from "lexical";
+import { $createHorizontalRuleNode } from "@lexical/react/LexicalHorizontalRuleNode";
+import { BLUR_COMMAND, FOCUS_COMMAND } from "lexical";
+import { $generateNodesFromDOM } from "@lexical/html";
+import FloatingTextFormatToolbar from "@/components/FloatingTextFormatToolbar";
+import { $createDaySlipLineNode } from "@/components/DaySlipLineNode";
+import { $createLabeledHorizontalRuleNode } from "@/components/LabeledHorizontalRuleNode";
+import { parseRuleLine } from "./dayslipTypes";
+
+// ─── Lexical Plugins ─────────────────────────────────────────────────────────
+
+function InitialContentPlugin({ initialHtml, initialNodes, dayKey }: { initialHtml: string; initialNodes?: string; dayKey: string }) {
+  const [editor] = useLexicalComposerContext();
+  const loadedForDayRef = useRef<string | null>(null);
+
+  useEffect(() => {
+    if (loadedForDayRef.current === dayKey) return;
+    loadedForDayRef.current = dayKey;
+    editor.update(() => {
+      const root = $getRoot();
+      root.clear();
+      if (initialNodes?.trim()) {
+        try { const parsed = editor.parseEditorState(initialNodes); editor.setEditorState(parsed); return; } catch (e) { console.warn("Failed to parse saved nodes, falling back to HTML", e); }
+      }
+      if (initialHtml.trim()) {
+        const parser = new DOMParser();
+        const dom = parser.parseFromString(initialHtml, "text/html");
+        const nodes = $generateNodesFromDOM(editor, dom);
+        root.append(...nodes);
+        return;
+      }
+      root.append($createDaySlipLineNode());
+    });
+  }, [dayKey, editor, initialHtml, initialNodes]);
+
+  return null;
+}
+
+function DaySlipEnterBehaviorPlugin() {
+  const [editor] = useLexicalComposerContext();
+  useEffect(() => {
+    return editor.registerCommand(KEY_ENTER_COMMAND, (event) => {
+      if (event?.shiftKey) return false;
+      let currentText = "";
+      let hasRangeSelection = false;
+      editor.getEditorState().read(() => {
+        const sel = $getSelection();
+        if ($isRangeSelection(sel)) { hasRangeSelection = true; currentText = sel.anchor.getNode().getTopLevelElementOrThrow().getTextContent().trim(); }
+      });
+      if (!hasRangeSelection) return false;
+      const ruleParsed = parseRuleLine(currentText);
+      event?.preventDefault();
+      editor.update(() => {
+        const selection = $getSelection();
+        if (!$isRangeSelection(selection)) return;
+        const topLevel = selection.anchor.getNode().getTopLevelElementOrThrow();
+        if (ruleParsed.isRule) {
+          const hrNode = ruleParsed.label ? $createLabeledHorizontalRuleNode(ruleParsed.label) : $createHorizontalRuleNode();
+          const newParagraph = $createDaySlipLineNode();
+          topLevel.replace(hrNode);
+          hrNode.insertAfter(newParagraph);
+          newParagraph.select();
+          return;
+        }
+        const newParagraph = $createDaySlipLineNode();
+        newParagraph.append($createTextNode(""));
+        topLevel.insertAfter(newParagraph);
+        newParagraph.select();
+      });
+      return true;
+    }, COMMAND_PRIORITY_CRITICAL);
+  }, [editor]);
+  return null;
+}
+
+function FocusPlugin({ onFocusChange }: { onFocusChange: (focused: boolean) => void }) {
+  const [editor] = useLexicalComposerContext();
+  useEffect(() => {
+    const unregFocus = editor.registerCommand(FOCUS_COMMAND, () => { onFocusChange(true); return false; }, COMMAND_PRIORITY_CRITICAL);
+    const unregBlur = editor.registerCommand(BLUR_COMMAND, () => { onFocusChange(false); return false; }, COMMAND_PRIORITY_CRITICAL);
+    return () => { unregFocus(); unregBlur(); };
+  }, [editor, onFocusChange]);
+  return null;
+}
+
+function EditorEditablePlugin({ editable }: { editable: boolean }) {
+  const [editor] = useLexicalComposerContext();
+  useEffect(() => { editor.setEditable(editable); }, [editor, editable]);
+  return null;
+}
+
+// ─── DaySlipEditor Component ─────────────────────────────────────────────────
+
+export interface DaySlipEditorProps {
+  initialHtml: string;
+  initialNodes?: string;
+  dayKey: string;
+  resolveMode: boolean;
+  editorConfig: Parameters<typeof LexicalComposer>[0]["initialConfig"];
+  onEditorChange: (editorState: EditorState, editor: LexicalEditor) => void;
+  onEditorReady: (editor: LexicalEditor) => void;
+  onEditorClick: (e: MouseEvent<HTMLDivElement>) => void;
+  onEditorContextMenu: (e: MouseEvent<HTMLDivElement>) => void;
+  onDrop: (e: DragEvent<HTMLElement>) => void;
+  hidden?: boolean;
+}
+
+export const DaySlipLexicalEditor = memo(function DaySlipLexicalEditor(props: DaySlipEditorProps) {
+  const { initialHtml, initialNodes, dayKey, resolveMode, editorConfig, onEditorChange, onEditorReady, onEditorClick, onEditorContextMenu, onDrop, hidden } = props;
+  const [isFocused, setIsFocused] = useState(false);
+  const handleFocusChange = useCallback((focused: boolean) => setIsFocused(focused), []);
+
+  return (
+    <div
+      className={`relative flex-1 border-b border-border/60${hidden ? " hidden" : ""}`}
+      onClick={onEditorClick}
+      onContextMenu={onEditorContextMenu}
+      onDragOver={(event) => event.preventDefault()}
+      onDrop={onDrop}
+    >
+      <LexicalComposer initialConfig={editorConfig}>
+        <EditorEditablePlugin editable={!resolveMode} />
+        <div className="relative h-full">
+          <RichTextPlugin
+            contentEditable={<ContentEditable className="editor-input h-full min-h-[340px] p-4 text-sm focus:outline-none" />}
+            placeholder={
+              <div className={`pointer-events-none absolute left-4 top-4 whitespace-pre-line text-base italic text-muted-foreground transition-opacity duration-200 ${isFocused ? "opacity-0" : "opacity-100"}`}>
+                {"Was steht heute an? Einfach drauflos schreiben …\n\n— Rückruf Joschka\n— Pressemitteilung Schulgesetz abstimmen\n— Unterlagen Ausschusssitzung"}
+              </div>
+            }
+            ErrorBoundary={LexicalErrorBoundary}
+          />
+          <FloatingTextFormatToolbar />
+        </div>
+        <OnChangePlugin onChange={onEditorChange} />
+        <OnChangePlugin onChange={(_, editor) => { onEditorReady(editor); }} ignoreSelectionChange />
+        <HistoryPlugin />
+        <HorizontalRulePlugin />
+        <DaySlipEnterBehaviorPlugin />
+        <FocusPlugin onFocusChange={handleFocusChange} />
+        <InitialContentPlugin initialHtml={initialHtml} initialNodes={initialNodes} dayKey={dayKey} />
+      </LexicalComposer>
+    </div>
+  );
+});
