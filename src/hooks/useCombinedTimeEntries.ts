@@ -322,7 +322,7 @@ export function useCombinedTimeEntries({
 
       // IMPORTANT: Skip work entries on holidays/leave days
       if (holidayDates.has(dateStr)) {
-        console.warn(`Arbeitseintrag an Feiertag ignoriert: ${dateStr}`);
+        debugConsole.warn(`Arbeitseintrag an Feiertag ignoriert: ${dateStr}`);
         return;
       }
       if (sickDates.has(dateStr)) {
