@@ -186,14 +186,14 @@ export function useMeetingArchive(deps: ArchiveDeps) {
           const { data: existingTask } = await supabase.from('tasks').select('id, user_id, assigned_to, tenant_id').eq('id', item.task_id).maybeSingle();
           if (existingTask) {
             const meetingContext = `Ergebnis aus Besprechung "${meeting.title}" vom ${format(new Date(meeting.meeting_date), 'dd.MM.yyyy', { locale: de })}`;
-            await supabase.from('tasks').insert({
+            await supabase.from('tasks').insert([{
               user_id: user.id, tenant_id: existingTask.tenant_id || currentTenant?.id || '',
               parent_task_id: existingTask.id, title: item.result_text!.substring(0, 200),
               description: `**${meetingContext}**\n\n${item.result_text}`,
               assigned_to: existingTask.assigned_to || existingTask.user_id || user.id,
               status: 'todo', priority: 'medium', category: 'meeting',
               due_date: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),
-            });
+            }]);
           }
         } catch (e) { debugConsole.error('Error creating child task for linked item (non-fatal):', e); }
       }
