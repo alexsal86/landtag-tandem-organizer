@@ -661,7 +661,7 @@ export function CommentPlugin({ documentId }: { documentId?: string }) {
         description: "The comment has been marked as resolved.",
       });
     } catch (error) {
-      console.error('Error resolving comment:', error);
+      debugConsole.error('Error resolving comment:', error);
       toast({
         title: "Error",
         description: "Failed to resolve comment. Please try again.",
