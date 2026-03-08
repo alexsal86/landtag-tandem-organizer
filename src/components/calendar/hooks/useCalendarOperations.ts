@@ -1,5 +1,6 @@
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
+import { handleAppError } from "@/utils/errorHandler";
 import type { CalendarEvent } from "../types";
 
 export function useCalendarOperations(refreshAppointments: () => void) {
