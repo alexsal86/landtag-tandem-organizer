@@ -131,6 +131,7 @@ export function MyWorkJourFixeTab() {
     const tasks = meetingTasks[meeting.id] || [];
     const decisions = meetingDecisions[meeting.id] || [];
     const birthdays = meetingBirthdays[meeting.id] || [];
+    const caseItems = meetingCaseItems[meeting.id] || [];
     
     // Get only main items (no parent)
     const mainItems = meetingAgenda
