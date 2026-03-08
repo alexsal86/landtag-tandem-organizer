@@ -570,7 +570,7 @@ export function QuickNotesList({
       toast.success(note.is_pinned ? "Notiz losgelöst" : "Notiz angepinnt");
       loadNotes();
     } catch (error) {
-      console.error("Error toggling pin:", error);
+      debugConsole.error("Error toggling pin:", error);
       toast.error("Fehler beim Ändern");
     }
   };
