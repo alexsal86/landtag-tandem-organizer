@@ -17,13 +17,13 @@ export interface UserStatus {
   id: string;
   user_id: string;
   status_type: 'online' | 'meeting' | 'break' | 'away' | 'offline' | 'custom';
-  custom_message?: string;
-  emoji?: string;
-  color?: string;
+  custom_message?: string | null;
+  emoji?: string | null;
+  color?: string | null;
   notifications_enabled: boolean;
   auto_away_enabled: boolean;
   last_activity: string;
-  status_until?: string;
+  status_until?: string | null;
 }
 
 export interface UserWithStatus {
