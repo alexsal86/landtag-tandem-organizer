@@ -667,8 +667,8 @@ const LetterEditor: React.FC<LetterEditorProps> = ({ letter, isOpen, onClose, on
                   onSubjectChange={(value) => setEditedLetter(prev => ({ ...prev, subject: value, title: value }))}
                   onRecipientNameChange={(value) => setEditedLetter(prev => ({ ...prev, recipient_name: value }))}
                   onRecipientAddressChange={(value) => setEditedLetter(prev => ({ ...prev, recipient_address: value }))}
-                  onRecipientContactSelect={(contact) => {
-                    const recipientAddress = (contact as any).formatted_address || contact.address || '';
+                   onRecipientContactSelect={(contact) => {
+                    const recipientAddress = ('formatted_address' in contact ? (contact as { formatted_address?: string }).formatted_address : undefined) || contact.address || '';
                     setEditedLetter(prev => ({ ...prev, contact_id: contact.id, recipient_name: contact.name, recipient_address: recipientAddress }));
                   }}
                   onSenderChange={(value) => setEditedLetter(prev => ({ ...prev, sender_info_id: value || undefined }))}
