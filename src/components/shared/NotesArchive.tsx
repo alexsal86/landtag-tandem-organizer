@@ -168,7 +168,7 @@ export function NotesArchive({ refreshTrigger, onRestore }: NotesArchiveProps) {
       toast.success("Notiz wiederhergestellt");
       onRestore?.();
     } catch (error) {
-      console.error("Error restoring note:", error);
+      debugConsole.error("Error restoring note:", error);
       toast.error("Fehler beim Wiederherstellen");
       loadDeletedNotes();
     }
