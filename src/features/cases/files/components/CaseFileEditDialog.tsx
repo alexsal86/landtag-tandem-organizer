@@ -91,7 +91,7 @@ export function CaseFileEditDialog({ caseFile, open, onOpenChange }: CaseFileEdi
       setProfiles(data || []);
       setProfilesLoaded(true);
     } catch (error) {
-      console.error('Error loading profiles:', error);
+      debugConsole.error('Error loading profiles:', error);
       setProfilesLoaded(true);
     }
   };
