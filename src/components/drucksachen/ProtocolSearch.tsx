@@ -99,7 +99,7 @@ export function ProtocolSearch({ protocolId, onResultSelect }: ProtocolSearchPro
             type: 'agenda_item',
             title: item.title,
             content: item.description || '',
-            page_number: item.page_number,
+            page_number: item.page_number ?? undefined,
             protocol_id: item.protocol_id,
             protocol_title: item.parliament_protocols.original_filename,
             protocol_date: item.parliament_protocols.protocol_date
