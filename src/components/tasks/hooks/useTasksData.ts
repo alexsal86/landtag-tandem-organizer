@@ -208,7 +208,7 @@ export function useTasksData() {
       (data || []).forEach(doc => { counts[doc.task_id] = (counts[doc.task_id] || 0) + 1; });
       setTaskDocuments(counts);
     } catch (error) {
-      console.error('Error loading task document counts:', error);
+      debugConsole.error('Error loading task document counts:', error);
     }
   };
 
