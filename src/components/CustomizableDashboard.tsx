@@ -168,7 +168,7 @@ export const CustomizableDashboard: React.FC = () => {
 
   // Handle manual resize from widget overlay
   const handleWidgetResize = (widgetId: string, newSize: string) => {
-    console.log('Manual resize:', widgetId, newSize);
+    
     updateWidget(widgetId, { widgetSize: newSize } as any);
   };
 
