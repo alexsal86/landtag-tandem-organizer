@@ -155,7 +155,7 @@ export function useMyWorkJourFixeSystemData(userId?: string, tenantId?: string) 
       }
 
       if (contactsResult.error) {
-        console.error("Error loading birthdays for meeting:", { meetingId, error: contactsResult.error });
+        debugConsole.error("Error loading birthdays for meeting:", { meetingId, error: contactsResult.error });
         setMeetingBirthdays((prev) => ({ ...prev, [meetingId]: [] }));
       } else {
         const contacts = contactsResult.data || [];
