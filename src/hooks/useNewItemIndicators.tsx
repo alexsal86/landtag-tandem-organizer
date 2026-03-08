@@ -35,7 +35,7 @@ export const useNewItemIndicators = (context: string): NewItemIndicatorsHook => 
           .maybeSingle();
 
         if (error) {
-          console.error('Error loading last visited:', error);
+          debugConsole.error('Error loading last visited:', error);
           return;
         }
 
