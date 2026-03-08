@@ -31,7 +31,7 @@ export async function createLetterApprovalDecision(
       .single();
 
     if (decisionError) {
-      console.error('Error creating approval decision:', decisionError);
+      debugConsole.error('Error creating approval decision:', decisionError);
       return null;
     }
 
