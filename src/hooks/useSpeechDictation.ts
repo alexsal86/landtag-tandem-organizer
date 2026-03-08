@@ -1,7 +1,8 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { $createTextNode, $getNodeByKey, $getSelection, $isRangeSelection, TextNode, type LexicalEditor } from 'lexical';
 import { WebSpeechToTextAdapter, type SpeechToTextError, type SpeechToTextState } from '@/lib/speechToTextAdapter';
-import { formatDictatedText, parseSpeechInput, type SpeechCommand } from '@/lib/speechCommandUtils';
+import { formatDictatedText, getSpeechCommandLabel, parseSpeechInput, type SpeechCommand } from '@/lib/speechCommandUtils';
+import { playTone } from '@/lib/speechAudioFeedback';
 
 export type SpeechDictationInsertText = (text: string) => void;
 export type SpeechDictationCommandDispatch = (command: SpeechCommand) => void;
@@ -17,16 +18,31 @@ export const useSpeechDictation = ({ editor, insertText, dispatchCommand }: UseS
   const [speechError, setSpeechError] = useState<SpeechToTextError | null>(null);
   const [interimTranscript, setInterimTranscript] = useState('');
 
+  // Command feedback state
+  const [lastRecognizedCommand, setLastRecognizedCommand] = useState<string | null>(null);
+  const commandFeedbackTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // Session statistics
+  const [sessionStartTime, setSessionStartTime] = useState<number | null>(null);
+  const [sessionWordCount, setSessionWordCount] = useState(0);
+
   const interimNodeKeyRef = useRef<string | null>(null);
   const lastInsertedSegmentRef = useRef('');
 
-  // Stabilize callbacks via refs so the setup effect doesn't re-run on every render
   const insertTextRef = useRef(insertText);
   insertTextRef.current = insertText;
   const dispatchCommandRef = useRef(dispatchCommand);
   dispatchCommandRef.current = dispatchCommand;
 
   const speechAdapter = useMemo(() => new WebSpeechToTextAdapter(), []);
+
+  const showCommandFeedback = useCallback((command: SpeechCommand) => {
+    const label = getSpeechCommandLabel(command);
+    setLastRecognizedCommand(label);
+    if (commandFeedbackTimerRef.current) clearTimeout(commandFeedbackTimerRef.current);
+    commandFeedbackTimerRef.current = setTimeout(() => setLastRecognizedCommand(null), 1200);
+    playTone('command');
+  }, []);
 
   const removeInterimNode = useCallback(() => {
     const interimNodeKey = interimNodeKeyRef.current;
@@ -77,6 +93,12 @@ export const useSpeechDictation = ({ editor, insertText, dispatchCommand }: UseS
   const commitContentText = useCallback((contentText: string) => {
     const formattedText = formatDictatedText(contentText);
 
+    // Count words for session stats
+    if (formattedText) {
+      const wordCount = formattedText.split(/\s+/).filter(Boolean).length;
+      setSessionWordCount((prev) => prev + wordCount);
+    }
+
     editor.update(() => {
       const shouldAddTrailingSpace =
         !!formattedText && !formattedText.endsWith('\n') && !/[,.;:!?]$/.test(formattedText);
@@ -104,9 +126,19 @@ export const useSpeechDictation = ({ editor, insertText, dispatchCommand }: UseS
     setInterimTranscript('');
   }, [editor, removeInterimNode]);
 
-  // Setup effect: only depends on stable references (editor, speechAdapter, memoized callbacks)
+  // Setup effect
   useEffect(() => {
-    speechAdapter.onStateChange = setSpeechState;
+    speechAdapter.onStateChange = (state) => {
+      setSpeechState(state);
+      if (state === 'listening') {
+        playTone('start');
+        setSessionStartTime(Date.now());
+        setSessionWordCount(0);
+      } else if (state === 'idle') {
+        playTone('stop');
+        setSessionStartTime(null);
+      }
+    };
     speechAdapter.onError = setSpeechError;
 
     speechAdapter.onInterimTranscript = (text) => {
@@ -131,6 +163,8 @@ export const useSpeechDictation = ({ editor, insertText, dispatchCommand }: UseS
       const { command, contentText } = parseSpeechInput(text);
 
       if (command) {
+        showCommandFeedback(command);
+
         if (contentText) {
           commitContentText(contentText);
         } else {
@@ -160,8 +194,9 @@ export const useSpeechDictation = ({ editor, insertText, dispatchCommand }: UseS
 
     return () => {
       speechAdapter.destroy();
+      if (commandFeedbackTimerRef.current) clearTimeout(commandFeedbackTimerRef.current);
     };
-  }, [commitContentText, editor, removeInterimNode, speechAdapter, updateInterimNode]);
+  }, [commitContentText, editor, removeInterimNode, showCommandFeedback, speechAdapter, updateInterimNode]);
 
   const startSpeechRecognition = useCallback(() => {
     if (!speechAdapter.supported) return;
@@ -196,6 +231,9 @@ export const useSpeechDictation = ({ editor, insertText, dispatchCommand }: UseS
     interimTranscript,
     isListening: speechState === 'listening',
     speechSupported: speechAdapter.supported,
+    lastRecognizedCommand,
+    sessionStartTime,
+    sessionWordCount,
     startSpeechRecognition,
     stopSpeechRecognition,
     toggleSpeechRecognition,
