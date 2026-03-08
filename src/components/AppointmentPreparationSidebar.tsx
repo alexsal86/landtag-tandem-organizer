@@ -159,7 +159,7 @@ export default function AppointmentPreparationSidebar({
           appointment_id: appointmentId,
           template_id: selectedTemplate,
           tenant_id: currentTenant.id,
-          created_by: (await supabase.auth.getUser()).data.user?.id,
+          created_by: (await supabase.auth.getUser()).data.user?.id ?? '',
           title: `Vorbereitung: ${appointmentTitle || 'Termin'}`,
           status: 'draft',
           preparation_data: preparationData,
