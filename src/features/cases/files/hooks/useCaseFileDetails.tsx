@@ -358,7 +358,7 @@ export const useCaseFileDetails = (caseFileId: string | null) => {
     if (!caseFileId || !user) return;
     
     try {
-      await supabase.from('case_file_timeline').insert({
+      await supabase.from('case_file_timeline').insert([{
         case_file_id: caseFileId,
         event_date: new Date().toISOString(),
         event_type: eventType,
@@ -366,7 +366,7 @@ export const useCaseFileDetails = (caseFileId: string | null) => {
         source_type: sourceType,
         source_id: sourceId,
         created_by: user.id,
-      });
+      }]);
       await fetchTimeline();
     } catch (error) {
       debugConsole.error('Error creating timeline entry:', error);
