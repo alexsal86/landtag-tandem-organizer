@@ -1,5 +1,6 @@
 import { useState, useEffect, useMemo } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { debugConsole } from '@/utils/debugConsole';
 import { useCombinedTimeEntries } from "@/hooks/useCombinedTimeEntries";
 import { useYearlyBalance } from "@/hooks/useYearlyBalance";
 import { calculateVacationBalance } from "@/utils/vacationCalculations";
