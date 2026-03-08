@@ -152,7 +152,7 @@ export const LetterTemplateSettings: React.FC<LetterTemplateSettingsProps> = ({ 
         }));
       }
     } catch (error) {
-      console.error('Error fetching settings:', error);
+      debugConsole.error('Error fetching settings:', error);
     } finally {
       setLoading(false);
     }
