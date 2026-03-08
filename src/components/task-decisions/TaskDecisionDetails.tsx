@@ -469,7 +469,7 @@ export const TaskDecisionDetails = ({ decisionId, isOpen, onClose, onArchived, h
       toast({ title: 'Kommentar aktualisiert' });
       await loadDecisionDetails();
     } catch (error) {
-      console.error('Error updating comment:', error);
+      debugConsole.error('Error updating comment:', error);
       toast({
         title: 'Fehler',
         description: 'Kommentar konnte nicht bearbeitet werden.',
