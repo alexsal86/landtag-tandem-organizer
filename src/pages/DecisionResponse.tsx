@@ -65,7 +65,7 @@ export default function DecisionResponse() {
         .single();
 
       if (participantError || !participant) {
-        console.error('Error loading participant:', participantError);
+        debugConsole.error('Error loading participant:', participantError);
         setIsLoadingOptions(false);
         return;
       }
