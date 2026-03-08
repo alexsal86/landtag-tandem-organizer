@@ -326,7 +326,7 @@ export function TagAdminSettings() {
                               ) : (
                                 <span
                                   className="inline-block w-8 h-8 rounded border border-border cursor-pointer"
-                                  style={{ backgroundColor: tag.color }}
+                                  style={{ backgroundColor: tag.color ?? undefined }}
                                 />
                               )}
                             </TableCell>
