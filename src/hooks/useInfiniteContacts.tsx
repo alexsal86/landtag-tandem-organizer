@@ -152,7 +152,7 @@ export const useInfiniteContacts = ({
 
       return true;
     } catch (error) {
-      console.error('Error inserting sample contacts:', error);
+      debugConsole.error('Error inserting sample contacts:', error);
       toast({
         title: "Fehler",
         description: "Beispielkontakte konnten nicht erstellt werden.",
