@@ -361,8 +361,8 @@ export function useAgendaOperations(deps: AgendaOpsDeps) {
       allItems.splice(destination.index, 0, draggedItem);
       children.reverse().forEach((child, index) => { allItems.splice(destination.index + 1 + index, 0, child); });
     } else {
-      let newParentItem = null;
-      let newParentKey = null;
+      let newParentItem: typeof allItems[number] | null = null;
+      let newParentKey: string | null | undefined = null;
       for (let i = destination.index - 1; i >= 0; i--) {
         const potentialParent = allItems[i];
         if (!potentialParent.parent_id && !potentialParent.parentLocalKey) {
@@ -373,7 +373,7 @@ export function useAgendaOperations(deps: AgendaOpsDeps) {
       }
       if (newParentItem) {
         draggedItem.parent_id = newParentItem.id || null;
-        draggedItem.parentLocalKey = newParentKey;
+        draggedItem.parentLocalKey = newParentKey ?? undefined;
       } else {
         draggedItem.parent_id = null;
         draggedItem.parentLocalKey = undefined;
