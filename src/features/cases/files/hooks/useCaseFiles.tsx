@@ -145,7 +145,7 @@ export const useCaseFiles = () => {
 
       setCaseFiles(caseFilesWithCounts);
     } catch (error) {
-      console.error('Error fetching case files:', error);
+      debugConsole.error('Error fetching case files:', error);
       toast({
         title: "Fehler",
         description: "FallAkten konnten nicht geladen werden.",
