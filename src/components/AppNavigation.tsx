@@ -7,7 +7,7 @@ import {
   UserCog,
   HelpCircle
 } from "lucide-react";
-import { useMatrixClient } from "@/contexts/MatrixClientContext";
+import { useMatrixUnread } from "@/contexts/MatrixUnreadContext";
 import { useNavigationNotifications } from "@/hooks/useNavigationNotifications";
 import { useAuth } from "@/hooks/useAuth";
 import { useAppSettings } from "@/hooks/useAppSettings";
