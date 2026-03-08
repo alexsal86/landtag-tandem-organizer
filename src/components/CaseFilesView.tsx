@@ -431,7 +431,7 @@ classifyCaseScale({ explicitScale: cf.case_scale, caseType: cf.case_type }) === 
                             className="w-4 h-4 rounded-full"
                             style={{ backgroundColor: typeConfig?.color || '#6b7280' }}
                           />
-                          {TypeIcon && <TypeIcon className="h-5 w-5" style={{ color: typeConfig?.color }} />}
+                          {TypeIcon && <TypeIcon className="h-5 w-5" style={{ color: typeConfig?.color ?? undefined }} />}
                           <CardTitle className="text-lg">
                             {typeConfig?.label || typeName}
                           </CardTitle>

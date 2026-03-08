@@ -183,9 +183,9 @@ export function CaseFileCreateDialog({ open, onOpenChange, onSuccess }: CaseFile
                           <div className="flex items-center gap-2">
                             <span 
                               className="w-2 h-2 rounded-full" 
-                              style={{ backgroundColor: type.color }}
+                              style={{ backgroundColor: type.color ?? undefined }}
                             />
-                            {TypeIcon && <TypeIcon className="h-3 w-3" style={{ color: type.color }} />}
+                            {TypeIcon && <TypeIcon className="h-3 w-3" style={{ color: type.color ?? undefined }} />}
                             {type.label}
                           </div>
                         </SelectItem>

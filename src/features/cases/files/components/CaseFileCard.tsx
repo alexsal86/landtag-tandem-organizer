@@ -150,8 +150,8 @@ export function CaseFileCard({ caseFile, viewMode, onClick, caseFileTypes = [] }
           <Badge 
             variant="outline"
             style={{ 
-              borderColor: typeConfig?.color,
-              color: typeConfig?.color
+              borderColor: typeConfig?.color ?? undefined,
+              color: typeConfig?.color ?? undefined
             }}
           >
             {TypeIcon && <TypeIcon className="h-3 w-3 mr-1" />}

@@ -265,7 +265,7 @@ export function CaseFileTypeSettings() {
                                 ) : (
                                   <>
                                     <Button
-                                      onClick={() => setEditingType({ id: type.id, label: type.label, color: type.color, icon: type.icon || undefined })}
+                                      onClick={() => setEditingType({ id: type.id, label: type.label, color: type.color ?? '#6b7280', icon: type.icon || undefined })}
                                       size="sm"
                                       variant="outline"
                                       className="h-8 w-8 p-0"

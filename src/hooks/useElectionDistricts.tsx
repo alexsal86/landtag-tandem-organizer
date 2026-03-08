@@ -48,7 +48,7 @@ export interface ElectionDistrictNote {
   category: string | null;
   due_date?: string | null;
   is_completed: boolean;
-  tags?: string[];
+  tags?: string[] | null;
   created_at: string;
   updated_at: string;
 }
