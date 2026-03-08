@@ -28,9 +28,10 @@ interface Poll {
 
 interface Participant {
   id: string;
-  name: string;
+  name: string | null;
   email: string;
   is_external?: boolean;
+  token?: string | null;
 }
 
 interface Response {
