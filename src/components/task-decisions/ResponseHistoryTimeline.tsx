@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Check, X, MessageCircle } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
+import { debugConsole } from "@/utils/debugConsole";
 import { RichTextDisplay } from "@/components/ui/RichTextDisplay";
 
 interface ResponseHistoryEntry {
