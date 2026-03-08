@@ -237,7 +237,7 @@ export function DashboardWidget({ widget, isDragging, isEditMode, onResize, onDe
       // Load child tasks as subtasks
       const { data: childTasksData } = await supabase
         .from('tasks')
-        .select('*')
+        .select('id, title, description, parent_task_id, assigned_to, due_date, status')
         .not('parent_task_id', 'is', null)
         .neq('status', 'completed')
         .order('due_date', { ascending: true, nullsFirst: false });
