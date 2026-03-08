@@ -7,7 +7,7 @@ import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { format, startOfDay, endOfDay, addDays } from "date-fns";
 import { de } from "date-fns/locale";
-import type { RecurrenceData, NewMeetingParticipant, AgendaItem, Meeting, MeetingTemplate, Profile } from "@/components/meetings/types";
+import type { RecurrenceData, NewMeetingParticipant, AgendaItem, Meeting, MeetingTemplate, Profile, LinkedQuickNote, LinkedTask, LinkedCaseItem, RelevantDecision, MeetingUpcomingAppointment, MeetingParticipant, AgendaDocument } from "@/components/meetings/types";
 
 export function useMeetingsData() {
   const [searchParams, setSearchParams] = useSearchParams();
@@ -20,15 +20,15 @@ export function useMeetingsData() {
   const [agendaItems, setAgendaItems] = useState<AgendaItem[]>([]);
   const [activeMeetingItems, setActiveMeetingItems] = useState<AgendaItem[]>([]);
   const [profiles, setProfiles] = useState<Profile[]>([]);
-  const [tasks, setTasks] = useState<any[]>([]);
-  const [taskDocuments, setTaskDocuments] = useState<Record<string, any[]>>({});
-  const [agendaDocuments, setAgendaDocuments] = useState<Record<string, any[]>>({});
+  const [tasks, setTasks] = useState<LinkedTask[]>([]);
+  const [taskDocuments, setTaskDocuments] = useState<Record<string, AgendaDocument[]>>({});
+  const [agendaDocuments, setAgendaDocuments] = useState<Record<string, AgendaDocument[]>>({});
   const [meetingTemplates, setMeetingTemplates] = useState<MeetingTemplate[]>([]);
-  const [linkedQuickNotes, setLinkedQuickNotes] = useState<any[]>([]);
-  const [meetingLinkedTasks, setMeetingLinkedTasks] = useState<any[]>([]);
-  const [meetingRelevantDecisions, setMeetingRelevantDecisions] = useState<any[]>([]);
-  const [meetingLinkedCaseItems, setMeetingLinkedCaseItems] = useState<any[]>([]);
-  const [meetingUpcomingAppointments, setMeetingUpcomingAppointments] = useState<any[]>([]);
+  const [linkedQuickNotes, setLinkedQuickNotes] = useState<LinkedQuickNote[]>([]);
+  const [meetingLinkedTasks, setMeetingLinkedTasks] = useState<LinkedTask[]>([]);
+  const [meetingRelevantDecisions, setMeetingRelevantDecisions] = useState<RelevantDecision[]>([]);
+  const [meetingLinkedCaseItems, setMeetingLinkedCaseItems] = useState<LinkedCaseItem[]>([]);
+  const [meetingUpcomingAppointments, setMeetingUpcomingAppointments] = useState<MeetingUpcomingAppointment[]>([]);
   const [isNewMeetingOpen, setIsNewMeetingOpen] = useState(false);
   const [newMeeting, setNewMeeting] = useState<Meeting>({
     title: "",
@@ -52,7 +52,7 @@ export function useMeetingsData() {
   const [activeMeetingId, setActiveMeetingId] = useState<string | null>(null);
   const [showArchive, setShowArchive] = useState(false);
   const [isFocusMode, setIsFocusMode] = useState(false);
-  const [meetingParticipants, setMeetingParticipants] = useState<any[]>([]);
+  const [meetingParticipants, setMeetingParticipants] = useState<MeetingParticipant[]>([]);
   const [currentUserIsParticipant, setCurrentUserIsParticipant] = useState(false);
   const updateTimeouts = useRef<Record<string, NodeJS.Timeout>>({});
   const [starredAppointmentIds, setStarredAppointmentIds] = useState<Set<string>>(new Set());
@@ -363,7 +363,7 @@ export function useMeetingsData() {
       const { data, error } = await supabase
         .from('meeting_agenda_documents').select('*').in('meeting_agenda_item_id', agendaItemIds);
       if (error) throw error;
-      const docsByItemId: Record<string, any[]> = {};
+      const docsByItemId: Record<string, AgendaDocument[]> = {};
       data?.forEach(doc => {
         if (!docsByItemId[doc.meeting_agenda_item_id]) docsByItemId[doc.meeting_agenda_item_id] = [];
         docsByItemId[doc.meeting_agenda_item_id].push(doc);
@@ -497,11 +497,11 @@ export function useMeetingsData() {
         .from('external_events').select('id, title, start_time, end_time, location, external_calendars!inner(name, color, tenant_id)')
         .eq('external_calendars.tenant_id', currentTenant.id).gte('start_time', start.toISOString()).lte('start_time', end.toISOString());
 
-      const all = [
-        ...(internalData || []).map(a => ({ ...a, isExternal: false })),
-        ...(externalData || []).map((e: any) => ({
+      const all: MeetingUpcomingAppointment[] = [
+        ...(internalData || []).map(a => ({ ...a, isExternal: false as const })),
+        ...(externalData || []).map((e: { id: string; title: string; start_time: string; end_time: string; location?: string | null; external_calendars?: { name?: string; color?: string } }) => ({
           id: e.id, title: e.title, start_time: e.start_time, end_time: e.end_time,
-          location: e.location, isExternal: true,
+          location: e.location, isExternal: true as const,
           calendarName: e.external_calendars?.name, calendarColor: e.external_calendars?.color
         }))
       ].sort((a, b) => new Date(a.start_time).getTime() - new Date(b.start_time).getTime());

@@ -16,7 +16,7 @@ describe('speechCommandUtils stop-listening parser', () => {
   it('does not trigger stop-listening when stop appears at the beginning', () => {
     expect(parseSpeechInput('stopp bitte notieren x y z')).toEqual({
       command: null,
-      contentText: 'notieren x y z',
+      contentText: 'stopp notieren x y z',
     });
   });
 

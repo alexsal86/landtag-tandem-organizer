@@ -45,6 +45,115 @@ export interface AgendaItem {
   parentLocalKey?: string;
 }
 
+/** A quick note linked to a meeting (from quick_notes table) */
+export interface LinkedQuickNote {
+  id: string;
+  content: string;
+  title?: string | null;
+  category?: string | null;
+  color?: string | null;
+  color_full_card?: boolean | null;
+  is_pinned?: boolean | null;
+  meeting_id?: string | null;
+  meeting_result?: string | null;
+  meeting_archived_info?: unknown;
+  user_id: string;
+  created_at: string;
+  updated_at: string;
+  tags?: string[] | null;
+  priority_level?: number | null;
+  follow_up_date?: string | null;
+  task_id?: string | null;
+  decision_id?: string | null;
+  pending_for_jour_fixe?: boolean | null;
+  added_to_meeting_at?: string | null;
+  is_archived?: boolean | null;
+  archived_at?: string | null;
+  deleted_at?: string | null;
+  permanent_delete_at?: string | null;
+  task_archived_info?: unknown;
+  decision_archived_info?: unknown;
+}
+
+/** A task linked to a meeting (select subset from tasks table) */
+export interface LinkedTask {
+  id: string;
+  title: string;
+  description?: string | null;
+  due_date?: string | null;
+  priority: string;
+  status: string;
+  user_id: string;
+}
+
+/** A case item linked to a meeting (select subset from case_items table) */
+export interface LinkedCaseItem {
+  id: string;
+  subject: string;
+  status: string;
+  priority?: string | null;
+  due_at?: string | null;
+  owner_user_id?: string | null;
+  meeting_result?: string;
+}
+
+/** A task decision relevant to a meeting */
+export interface RelevantDecision {
+  id: string;
+  title: string;
+  description?: string | null;
+  response_deadline?: string | null;
+  priority?: number | null;
+  created_by: string;
+  status: string;
+}
+
+/** An upcoming appointment for the meeting sidebar */
+export interface MeetingUpcomingAppointment {
+  id: string;
+  title: string;
+  start_time: string;
+  end_time: string;
+  location?: string | null;
+  category?: string | null;
+  status?: string | null;
+  isExternal: boolean;
+  calendarName?: string;
+  calendarColor?: string;
+}
+
+/** A participant in a meeting */
+export interface MeetingParticipant {
+  id: string;
+  meeting_id: string;
+  user_id: string;
+  role: string;
+  created_at?: string;
+}
+
+/** An agenda document attached to an agenda item */
+export interface AgendaDocument {
+  id: string;
+  meeting_agenda_item_id: string;
+  user_id: string;
+  file_name: string;
+  file_path: string;
+  file_type?: string | null;
+  file_size?: number | null;
+  created_at?: string;
+}
+
+/** A template item inside a meeting template */
+export interface MeetingTemplateItem {
+  title: string;
+  description?: string;
+  is_recurring?: boolean;
+  is_optional?: boolean;
+  is_visible?: boolean;
+  system_type?: string | null;
+  children?: MeetingTemplateItem[];
+}
+
 export interface Meeting {
   id?: string;
   tenant_id?: string;
@@ -66,9 +175,9 @@ export interface MeetingTemplate {
   id: string;
   name: string;
   description?: string;
-  template_items: any;
-  default_participants?: string[];
-  default_recurrence?: any;
+  template_items: MeetingTemplateItem[] | unknown;
+  default_participants?: string[] | null;
+  default_recurrence?: RecurrenceData | unknown;
   is_default?: boolean;
   auto_create_count?: number;
 }
