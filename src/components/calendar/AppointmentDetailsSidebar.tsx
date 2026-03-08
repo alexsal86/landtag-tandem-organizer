@@ -257,7 +257,7 @@ export function AppointmentDetailsSidebar({
           .eq('appointment_id', appointment.id);
 
         if (deleteError) {
-          console.error('Error deleting existing guests:', deleteError);
+          debugConsole.error('Error deleting existing guests:', deleteError);
         }
 
         // Insert updated guests with tokens
