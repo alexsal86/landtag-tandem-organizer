@@ -19,7 +19,9 @@ import { loadPressTemplates, persistPressTemplates, type PressTemplateConfig } f
 
 type EditorTab = 'canvas-designer' | 'header-designer' | 'footer-designer' | 'block-address' | 'block-info' | 'block-subject' | 'layout-settings' | 'general';
 type BlockKey = 'addressField' | 'infoBlock' | 'subject';
-type CanvasElement = Record<string, unknown>;
+// CanvasElement is HeaderElement from the canvas engine
+import type { HeaderElement } from '@/components/canvas-engine/types';
+type CanvasElement = HeaderElement;
 
 type PressTemplate = PressTemplateConfig;
 
