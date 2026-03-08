@@ -4,6 +4,7 @@ import { useAuth } from './useAuth';
 import { useTenant } from './useTenant';
 import { supabase } from '@/integrations/supabase/client';
 import { getGridColumns, getGridRows, findAvailablePosition } from './useDashboardGrid';
+import { debugConsole } from '@/utils/debugConsole';
 
 export type WidgetSize = 
   | '1x1' | '2x1' | '1x2' | '2x2' | '3x1' | '1x3' | '3x2' | '2x3' | '3x3' 
