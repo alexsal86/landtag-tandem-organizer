@@ -458,7 +458,7 @@ export function FocusModeView({
           e.preventDefault();
           // Toggle star on current appointment
           if (currentNavigable?.sourceType === 'appointment' && onToggleStar && currentNavigable.sourceData) {
-            onToggleStar(currentNavigable.sourceData);
+            onToggleStar(currentNavigable.sourceData as MeetingUpcomingAppointment);
           }
           break;
         case 'n':
