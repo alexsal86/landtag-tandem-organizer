@@ -143,7 +143,7 @@ export async function generateLetterDOCX(letter: Letter): Promise<{ blob: Blob; 
     if (letter.sender_info_id) {
       const { data: senderData } = await supabase
         .from('sender_information')
-        .select('id, name, address, phone, email, website')
+        .select('*')
         .eq('id', letter.sender_info_id)
         .single();
       senderInfo = senderData;
