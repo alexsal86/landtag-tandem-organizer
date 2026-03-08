@@ -96,7 +96,7 @@ export function useLetterData({ isOpen, tenantId, letterId }: UseLetterDataOptio
       if (error) throw error;
       setAttachments(data || []);
     } catch (error) {
-      console.error('Error fetching attachments:', error);
+      debugConsole.error('Error fetching attachments:', error);
     }
   }, [letterId]);
 
