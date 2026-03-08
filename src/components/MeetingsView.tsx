@@ -3183,6 +3183,7 @@ export function MeetingsView() {
         profiles={profiles}
         linkedQuickNotes={linkedQuickNotes}
         linkedTasks={meetingLinkedTasks}
+        linkedCaseItems={meetingLinkedCaseItems}
         upcomingAppointments={meetingUpcomingAppointments}
         starredAppointmentIds={starredAppointmentIds}
         onToggleStar={toggleStarAppointment}
