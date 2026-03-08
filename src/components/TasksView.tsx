@@ -826,7 +826,7 @@ export function TasksView() {
 
         if (fallbackError) throw fallbackError;
 
-        console.log('Fallback comment data:', fallbackData);
+        
         
         const commentsMap: { [taskId: string]: TaskComment[] } = {};
         (fallbackData || []).forEach(comment => {
