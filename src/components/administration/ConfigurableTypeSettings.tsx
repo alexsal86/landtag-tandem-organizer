@@ -111,7 +111,7 @@ export function ConfigurableTypeSettings({
       const insertData: any = {
         name: newItem.label.toLowerCase().replace(/\s+/g, '_'),
         label: newItem.label,
-        order_index: Math.max(...items.map(i => i.order_index), -1) + 1
+        order_index: Math.max(...items.map(i => i.order_index ?? 0), -1) + 1
       };
 
       if (hasColor) {
