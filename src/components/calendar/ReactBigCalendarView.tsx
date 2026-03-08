@@ -189,11 +189,11 @@ export function ReactBigCalendarView({
     const startDate = new Date(monthStart);
     startDate.setDate(startDate.getDate() - monthStart.getDay() + 1);
     
-    const weeks = [];
+    const weeks: Date[][] = [];
     const currentDate = new Date(startDate);
     
     while (currentDate <= monthEnd || weeks.length < 6) {
-      const week = [];
+      const week: Date[] = [];
       for (let i = 0; i < 7; i++) {
         week.push(new Date(currentDate));
         currentDate.setDate(currentDate.getDate() + 1);

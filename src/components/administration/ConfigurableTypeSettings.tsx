@@ -393,7 +393,7 @@ export function ConfigurableTypeSettings({
                             )}
                             <TableCell>
                               <Button
-                                onClick={() => toggleActive(item.id, item.is_active)}
+                                onClick={() => toggleActive(item.id, item.is_active ?? true)}
                                 size="sm"
                                 variant={item.is_active ? "default" : "secondary"}
                                 className="h-6 px-2 text-xs"

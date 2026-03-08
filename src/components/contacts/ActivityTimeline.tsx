@@ -196,7 +196,7 @@ export function ActivityTimeline({ activities, loading = false }: ActivityTimeli
                           {activity.description}
                         </p>
                       </CollapsibleContent>
-                      {activity.description.length > 100 && (
+                      {(activity.description?.length ?? 0) > 100 && (
                         <CollapsibleTrigger asChild>
                           <Button
                             variant="ghost"

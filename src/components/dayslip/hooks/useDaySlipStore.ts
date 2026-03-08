@@ -165,9 +165,9 @@ export function useDaySlipStore(userId?: string, tenantId?: string) {
 
   useEffect(() => {
     if (!userId || dirtyDaysRef.current.size === 0) return;
-    clearTimeout(dbSaveTimeoutRef.current);
+    if (dbSaveTimeoutRef.current) clearTimeout(dbSaveTimeoutRef.current);
     dbSaveTimeoutRef.current = setTimeout(flushDirtyDays, DB_SAVE_DEBOUNCE_MS);
-    return () => clearTimeout(dbSaveTimeoutRef.current);
+    return () => { if (dbSaveTimeoutRef.current) clearTimeout(dbSaveTimeoutRef.current); };
   }, [store, flushDirtyDays, userId]);
 
   // Mark day as dirty when store changes

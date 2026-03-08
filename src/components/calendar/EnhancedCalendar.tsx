@@ -57,7 +57,7 @@ export function EnhancedCalendar({
 
   // Time slots for week/day view (every 30 minutes)
   const timeSlots = useMemo(() => {
-    const slots = [];
+    const slots: Array<{ hour: number; minute: number; label: string }> = [];
     for (let hour = 0; hour < 24; hour++) {
       slots.push({ hour, minute: 0, label: `${hour.toString().padStart(2, '0')}:00` });
       slots.push({ hour, minute: 30, label: `${hour.toString().padStart(2, '0')}:30` });

@@ -80,8 +80,8 @@ export function ContactFundingsList({ contactId, isExpanded, onToggle }: Contact
                     </p>
                   )}
                 </div>
-                <Badge variant="secondary" className={getStatusColor(funding.status)}>
-                  {getStatusLabel(funding.status)}
+                <Badge variant="secondary" className={getStatusColor(funding.status ?? 'pending')}>
+                  {getStatusLabel(funding.status ?? 'pending')}
                 </Badge>
               </div>
 

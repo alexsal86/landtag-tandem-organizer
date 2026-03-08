@@ -16,20 +16,20 @@ export interface DocumentFolder {
 export interface Document {
   id: string;
   title: string;
-  description?: string;
+  description?: string | null;
   file_name: string;
   file_path: string;
-  file_size?: number;
-  file_type?: string;
-  category: string;
-  tags?: string[];
+  file_size?: number | null;
+  file_type?: string | null;
+  category: string | null;
+  tags?: string[] | null;
   status: string;
   created_at: string;
   updated_at: string;
-  document_type?: string;
-  source_letter_id?: string;
+  document_type?: string | null;
+  source_letter_id?: string | null;
   archived_attachments?: any[];
-  folder_id?: string;
+  folder_id?: string | null;
 }
 
 export interface Letter {

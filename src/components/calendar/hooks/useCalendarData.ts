@@ -191,7 +191,7 @@ export function useCalendarData(currentDate: Date, view: string) {
         .select(`*, event_plannings (title, user_id)`)
         .gte("date_time", startDate.toISOString())
         .lte("date_time", endDate.toISOString())
-        .eq("event_plannings.user_id", currentUserId);
+        .eq("event_plannings.user_id", currentUserId ?? '');
 
       if (eventPlanningData) {
         for (const eventDate of eventPlanningData) {
