@@ -461,7 +461,7 @@ export default function EditContact() {
                         <div>
                           <Label htmlFor="priority">Priorität</Label>
                           <Select
-                            value={contact.priority}
+                            value={contact.priority ?? undefined}
                             onValueChange={(value: any) =>
                               setContact({ ...contact, priority: value })
                             }

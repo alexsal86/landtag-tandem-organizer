@@ -273,7 +273,7 @@ export default function ContactDetail() {
                 <div className="flex items-start justify-between">
                   <div className="flex items-center gap-4">
                     <Avatar className="h-16 w-16">
-                      <AvatarImage src={contact.avatar_url} />
+                      <AvatarImage src={contact.avatar_url ?? undefined} />
                       <AvatarFallback className="bg-primary text-primary-foreground text-xl">
                         {getInitials(contact.name)}
                       </AvatarFallback>

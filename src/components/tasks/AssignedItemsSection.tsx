@@ -68,7 +68,7 @@ interface AssignedItemsSectionProps {
     description: string;
     priority: "low" | "medium" | "high";
     status: "todo" | "in-progress" | "completed";
-    dueDate: string;
+    dueDate: string | null;
     category: string;
     assignedTo?: string;
     user_id?: string;

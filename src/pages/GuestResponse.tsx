@@ -14,10 +14,10 @@ import { debugConsole } from "@/utils/debugConsole";
 interface AppointmentData {
   id: string;
   title: string;
-  description?: string;
+  description?: string | null;
   start_time: string;
   end_time: string;
-  location?: string;
+  location?: string | null;
 }
 
 interface GuestData {
