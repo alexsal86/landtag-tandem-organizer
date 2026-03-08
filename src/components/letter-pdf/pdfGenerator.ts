@@ -515,7 +515,7 @@ export async function generatePDF(options: GeneratePDFOptions): Promise<{ blob: 
       const attachment = attachments[i];
       try {
         const { data: fileData, error: fileError } = await supabase.storage.from('documents').download(attachment.file_path);
-        if (fileError) { console.error('Error downloading attachment:', fileError); continue; }
+        if (fileError) { debugConsole.error('Error downloading attachment:', fileError); continue; }
         
         pdf.addPage();
         currentPage++;
