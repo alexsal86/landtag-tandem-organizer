@@ -198,7 +198,7 @@ export function InlineMeetingParticipantsEditor({ meetingId }: InlineMeetingPart
       return;
     }
     
-    console.log('✅ Participant removed:', participant?.user?.display_name);
+    
     toast({
       title: "Teilnehmer entfernt",
       description: `${participant?.user?.display_name || 'Teilnehmer'} wurde entfernt.`,
