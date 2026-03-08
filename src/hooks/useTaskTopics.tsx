@@ -60,7 +60,7 @@ export const useTaskTopics = (taskId: string | undefined) => {
       setAssignedTopics(prev => prev.filter(id => id !== topicId));
       return true;
     } catch (error) {
-      console.error('Error removing topic:', error);
+      debugConsole.error('Error removing topic:', error);
       return false;
     }
   };
