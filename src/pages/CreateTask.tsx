@@ -148,7 +148,7 @@ export default function CreateTask() {
           assigned_to: formData.assignedTo.length > 0 ? formData.assignedTo.join(', ') : null
         };
 
-        console.log('📝 Inserting task with assigned_to field:', taskData);
+        debugConsole.log('📝 Inserting task with assigned_to field:', taskData);
 
         // Insert task
         const { data: insertedTask, error: insertError } = await supabase
