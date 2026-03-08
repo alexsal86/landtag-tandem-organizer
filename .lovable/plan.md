@@ -1,61 +1,68 @@
 
-Ziel: Rückmeldungs-Feed stabil sichtbar machen und gleichzeitig die aktuellen Build-Blocker entfernen, damit die Fixes überhaupt wieder ausgeliefert werden.
 
-1) Diagnose (aus Code + DB)
-- Do I know what the issue is? Ja.
-- Es gibt aktuell 2 Ebenen von Problemen:
-  1. Build ist kaputt (TypeScript):
-     - `src/components/ui/calendar.tsx`: doppelte Keys im `classNames`-Objekt (`caption_label`, `dropdowns`, `dropdown`) → TS1117.
-     - `src/components/task-decisions/DecisionOverview.tsx`: `ResponseOption`-Typ ohne `requires_comment` → TS2339.
-  2. Feed-Logik ist instabil/zu restriktiv:
-     - `src/components/my-work/MyWorkFeedbackFeedTab.tsx` übergibt `completedTo: new Date().toISOString()` bei jedem Render.
-       Dadurch ändert sich der React-Query-Key permanent (`useTeamFeedbackFeed`), was zu dauerndem Neu-Laden bzw. instabilem Feed führt.
-     - `useTeamFeedbackFeed` filtert hart auf `.not('notes','is',null)`. Damit verschwinden abgeschlossene Rückmeldungen ohne Notiz (z. B. nur Anhang/Aufgabe), obwohl sie fachlich oft relevant sind.
-- DB-Check:
-  - `appointment_feedback` hat Daten (u. a. completed in den letzten 7 Tagen vorhanden).
-  - RLS auf `appointment_feedback` erlaubt tenant-basiertes Lesen (`tenant_id = ANY(get_user_tenant_ids(auth.uid()))`), also kein offensichtlicher RLS-Blocker für Team-Feed im Tenant.
+# Vorgaenge (Case Items) in Meetings integrieren
 
-2) Umsetzungsplan (in Reihenfolge)
-A. Build sofort reparieren (Blocker)
-- `calendar.tsx`: doppelte Objekt-Keys entfernen, nur eine konsistente Definition für `caption_label`, `dropdowns`, `dropdown` behalten.
-- `DecisionOverview.tsx`: lokalen `ResponseOption`-Typ um `requires_comment?: boolean` ergänzen (oder auf den zentralen Typ aus `decisionTemplates` umstellen).
+## Ueberblick
 
-B. Feed-Query stabilisieren
-- `MyWorkFeedbackFeedTab.tsx`:
-  - `completedTo` nicht mehr bei jedem Render neu erzeugen.
-  - Entweder:
-    - `completedTo` ganz weglassen (nur `completedFrom` + order/limit), oder
-    - `completedTo` per `useMemo/useState` nur bei Filterwechsel neu setzen.
-- `useTeamFeedbackFeed.ts`:
-  - Query-Key nur mit stabilen Filterwerten.
-  - Zeitfilter robust halten (kein per-render Drift).
+Vorgaenge sollen als neuer System-Typ `case_items` in Meeting-Agendas erscheinen -- analog zu Aufgaben, Entscheidungen und Quick Notes. Dazu braucht es DB-Aenderungen, Daten-Laden, UI-Rendering und die Moeglichkeit, Vorgaenge fuer den naechsten Jour Fixe vorzumerken.
 
-C. Sichtbarkeit der Rückmeldungen fachlich korrigieren
-- `useTeamFeedbackFeed.ts`:
-  - Notiz-Pflicht entfernen oder erweitern:
-    - statt nur `notes is not null` auch Einträge mit `has_documents = true` oder `has_tasks = true` zulassen.
-  - Ergebnis: auch „abgeschlossen ohne Notiz, aber mit Anhang/Aufgabe“ erscheint im Feed.
+## Technische Aenderungen
 
-D. Fehler nicht mehr als „keine Daten“ maskieren
-- `MyWorkFeedbackFeedTab.tsx`:
-  - `isError` + `error` aus Query auslesen.
-  - Bei Fehler einen klaren Error-State anzeigen (statt „Keine passenden Rückmeldungen gefunden“), inkl. Retry-Button (`refetch`).
+### 1. Datenbank-Migration
 
-E. Quercheck auf Seiteneffekte
-- `useMyWorkNewCounts.tsx` zählt derzeit ebenfalls nur `completed + notes not null`; ggf. auf dieselbe fachliche Logik angleichen, damit Badge und Feed konsistent sind.
+Zwei neue Spalten auf `case_items`:
+- `meeting_id uuid REFERENCES meetings(id) ON DELETE SET NULL` -- Verknuepfung mit einem konkreten Meeting
+- `pending_for_jour_fixe boolean DEFAULT false` -- Vormerkung fuer den naechsten Jour Fixe
 
-3) Validierung nach Umsetzung
-- Build grün ohne TS-Fehler.
-- Im Tab „Meine Arbeit > Rückmeldungen“:
-  - Keine Endlos-Ladeanzeige.
-  - Team-Einträge der letzten 7/14 Tage sichtbar.
-  - Filter (Sicht/Zeitraum/Anhänge/Aufgaben) funktionieren.
-  - Bei absichtlichem Query-Fehler erscheint Error-State statt Empty-State.
-- Schneller Datenabgleich:
-  - Feed-Anzahl grob konsistent mit SQL-Count für completed im Zeitraum (unter Berücksichtigung der Filter).
+### 2. Daten laden (`useMyWorkJourFixeSystemData.ts`)
 
-4) Warum das den aktuellen Zustand löst
-- Solange Build fehlschlägt, werden vorherige Fixes teils nicht wirksam.
-- Selbst bei laufendem Build kann der Feed durch den „beweglichen“ `completedTo`-Key instabil bleiben.
-- Zusätzlich blendet der harte Notiz-Filter valide Rückmeldungen aus.
-- Mit den vier Korrekturen (Build, stabiler Query-Key, fachlich korrekter Filter, echter Error-State) wird die Ursachekette vollständig geschlossen.
+- Neuen State `meetingCaseItems` hinzufuegen (analog zu `meetingTasks`)
+- In `loadMeetingSystemData`: wenn Agenda `system_type === 'case_items'` enthaelt, `case_items` mit `meeting_id = meetingId` laden (Spalten: `id, subject, status, priority, due_at, owner_user_id`)
+- Im Return-Objekt zurueckgeben
+
+### 3. `SystemAgendaItem.tsx` erweitern
+
+- Neuen `systemType: 'case_items'` unterstuetzen mit:
+  - Farbe: Teal (`border-l-teal-500`, Icon `Briefcase`)
+  - Titel: "Vorgaenge"
+  - Rendering: Liste der verknuepften Case Items mit Subject, Status-Badge und Frist
+- Neue Prop `linkedCaseItems` hinzufuegen
+
+### 4. `MeetingsView.tsx` erweitern
+
+- Neuer State `meetingLinkedCaseItems`
+- Neue Funktion `loadMeetingLinkedCaseItems(meetingId)` -- laedt `case_items` mit `meeting_id = meetingId`
+- Bei Meeting-Auswahl mitladen (wie `loadMeetingLinkedTasks`)
+- `addSystemAgendaItem` Typ erweitern um `'case_items'`
+- Neuer Button "Vorgaenge" in der System-Agenda-Auswahl (beide Stellen: Top-Level + Sub-Items)
+- Rendering-Block fuer `item.system_type === 'case_items'` (analog zum Tasks-Block) mit Ergebnis-Textarea pro Vorgang
+- `SystemAgendaItem` Aufruf um `linkedCaseItems` erweitern
+
+### 5. Vorgaenge vormerken / verknuepfen
+
+Im Vorgangs-Tab (CaseItems-Bereich) das bestehende Kontextmenue um zwei Optionen erweitern:
+- "Fuer Jour Fixe vormerken" -- setzt `pending_for_jour_fixe = true`
+- "Einem Meeting zuordnen" -- setzt `meeting_id`
+
+Analog zum bestehenden Pattern bei Tasks und Quick Notes.
+
+### 6. `PendingJourFixeNotes.tsx`-Aequivalent
+
+Im Meeting-Vorbereitungsbereich die vorgemerkten Vorgaenge (`pending_for_jour_fixe = true`) anzeigen, damit sie beim Erstellen der Agenda zugeordnet werden koennen.
+
+### 7. Archivierung
+
+Beim Archivieren eines Meetings (`archiveMeeting`): Ergebnisse der Vorgaenge-System-Items verarbeiten -- Ergebnis-Text als Timeline-Event oder Kommentar am Vorgang speichern (analog zur Task-Archivierung).
+
+## Betroffene Dateien
+
+| Datei | Aenderung |
+|-------|-----------|
+| Migration SQL | `meeting_id` + `pending_for_jour_fixe` auf `case_items` |
+| `useMyWorkJourFixeSystemData.ts` | Case Items laden |
+| `SystemAgendaItem.tsx` | Neuer Typ `case_items` |
+| `MeetingsView.tsx` | State, Laden, Buttons, Rendering |
+| `FocusModeView.tsx` | `linkedCaseItems` Prop durchreichen |
+| `Administration.tsx` | Vorlagen-Editor: neuer System-Typ |
+| Vorgangs-Kontextmenue | Jour-Fixe-Vormerkung + Meeting-Zuordnung |
+
