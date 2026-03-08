@@ -57,7 +57,7 @@ export function FeatureImagePicker({ value, onChange, disabled }: FeatureImagePi
         .limit(50);
       setDocuments(data || []);
     } catch (e) {
-      console.error('Failed to load image documents:', e);
+      debugConsole.error('Failed to load image documents:', e);
     } finally {
       setLoading(false);
     }
