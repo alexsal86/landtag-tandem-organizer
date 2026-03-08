@@ -221,12 +221,12 @@ export function useAgendaOperations(deps: AgendaOpsDeps) {
       const taskOwner = task.assigned_to || task.user_id || user?.id;
 
       const { data: taskData, error: taskError } = await supabase
-        .from('meeting_agenda_items').insert({
+        .from('meeting_agenda_items').insert([{
           meeting_id: selectedMeeting.id, title: task.title, description: task.description || null,
           task_id: task.id, parent_id: parentId, order_index: parentIndex + 1,
           is_completed: false, is_recurring: false, file_path: documentPath,
           assigned_to: taskOwner ? [taskOwner] : null,
-        }).select().single();
+        }]).select().single();
       if (taskError) throw taskError;
 
       const newSubItem: AgendaItem = { ...taskData, localKey: taskData.id, parentLocalKey: parentId };
