@@ -531,7 +531,7 @@ export function CommentPlugin({ documentId }: { documentId?: string }) {
 
       // Create highlight in editor
       editor.update(() => {
-        console.log('Applying comment mark for text:', selectedText);
+        debugConsole.log('Applying comment mark for text:', selectedText);
         
         // Since we can't reliably restore selection after dialog,
         // we'll search for the text in the editor and mark it
