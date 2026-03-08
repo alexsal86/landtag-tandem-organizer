@@ -135,17 +135,11 @@ export const EnhancedLexicalToolbar: React.FC<EnhancedLexicalToolbarProps> = ({
           editor.update(() => {
             const selection = $getSelection();
             if ($isRangeSelection(selection)) {
-              const anchor = selection.anchor;
-              const node = anchor.getNode();
-              if (node instanceof $createTextNode('').constructor) {
-                const text = node.getTextContent();
-                const trimmed = text.trimEnd();
-                const lastSpace = trimmed.lastIndexOf(' ');
-                if (lastSpace >= 0) {
-                  (node as import('lexical').TextNode).setTextContent(trimmed.slice(0, lastSpace + 1));
-                } else {
-                  (node as import('lexical').TextNode).setTextContent('');
-                }
+              const node = selection.anchor.getNode();
+              if ($isTextNode(node)) {
+                const text = node.getTextContent().trimEnd();
+                const lastSpace = text.lastIndexOf(' ');
+                node.setTextContent(lastSpace >= 0 ? text.slice(0, lastSpace + 1) : '');
               }
             }
           });
@@ -155,22 +149,16 @@ export const EnhancedLexicalToolbar: React.FC<EnhancedLexicalToolbarProps> = ({
             const selection = $getSelection();
             if ($isRangeSelection(selection)) {
               const node = selection.anchor.getNode();
-              const text = node.getTextContent();
-              const lastSentenceEnd = Math.max(text.lastIndexOf('. '), text.lastIndexOf('! '), text.lastIndexOf('? '));
-              if (lastSentenceEnd >= 0 && node instanceof $createTextNode('').constructor) {
-                (node as import('lexical').TextNode).setTextContent(text.slice(0, lastSentenceEnd + 2));
-              } else if (node instanceof $createTextNode('').constructor) {
-                (node as import('lexical').TextNode).setTextContent('');
+              if ($isTextNode(node)) {
+                const text = node.getTextContent();
+                const lastEnd = Math.max(text.lastIndexOf('. '), text.lastIndexOf('! '), text.lastIndexOf('? '));
+                node.setTextContent(lastEnd >= 0 ? text.slice(0, lastEnd + 2) : '');
               }
             }
           });
           break;
         case 'select-all':
-          editor.update(() => {
-            const root = $getRoot();
-            root.selectStart();
-            $selectAll();
-          });
+          editor.dispatchCommand(SELECT_ALL_COMMAND, undefined);
           break;
         case 'insert-heading':
           editor.update(() => {
@@ -193,11 +181,12 @@ export const EnhancedLexicalToolbar: React.FC<EnhancedLexicalToolbarProps> = ({
             const selection = $getSelection();
             if ($isRangeSelection(selection)) {
               const node = selection.anchor.getNode();
-              const text = node.getTextContent();
-              if (node instanceof $createTextNode('').constructor && text.toLowerCase().includes(command.search.toLowerCase())) {
+              if ($isTextNode(node)) {
+                const text = node.getTextContent();
                 const idx = text.toLowerCase().indexOf(command.search.toLowerCase());
-                const newText = text.slice(0, idx) + command.replacement + text.slice(idx + command.search.length);
-                (node as import('lexical').TextNode).setTextContent(newText);
+                if (idx >= 0) {
+                  node.setTextContent(text.slice(0, idx) + command.replacement + text.slice(idx + command.search.length));
+                }
               }
             }
           });
