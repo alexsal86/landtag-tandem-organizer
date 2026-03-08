@@ -213,7 +213,7 @@ export function CaseFileSelector({
       setShowCreateNew(false);
     },
     onError: () => {
-      toast({ title: "Fehler beim Erstellen der FallAkte", variant: "destructive" });
+      toast({ title: "Fehler beim Erstellen der Fallakte", variant: "destructive" });
     },
   });
 
