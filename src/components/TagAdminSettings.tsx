@@ -123,7 +123,7 @@ export function TagAdminSettings() {
       
       await loadTags();
       toast({ title: "Erfolg", description: `Tag wurde ${!isActive ? 'aktiviert' : 'deaktiviert'}.` });
-    } catch (error: any) {
+    } catch (error: unknown) {
       debugConsole.error('Error toggling tag:', error);
       toast({ title: "Fehler", description: "Status konnte nicht geändert werden.", variant: "destructive" });
     }

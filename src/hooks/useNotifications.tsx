@@ -227,13 +227,14 @@ export const useNotifications = () => {
       // Also trigger navigation notifications update
       localStorage.setItem('notifications_marked_read', Date.now().toString());
       localStorage.removeItem('notifications_marked_read');
-    } catch (error: any) {
+    } catch (error: unknown) {
       debugConsole.error('Error marking all notifications as read:', error);
       
       // Check if it's a network error - the operation may have succeeded
-      const isNetworkError = error?.message?.includes('Failed to fetch') || 
-                             error?.message?.includes('NetworkError') ||
-                             error?.message?.includes('fetch');
+      const msg = error instanceof Error ? error.message : '';
+      const isNetworkError = msg.includes('Failed to fetch') || 
+                             msg.includes('NetworkError') ||
+                             msg.includes('fetch');
       
       if (isNetworkError) {
         // Don't revert - operation likely succeeded, reload to confirm

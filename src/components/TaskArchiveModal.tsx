@@ -273,10 +273,11 @@ export function TaskArchiveModal({ isOpen, onClose, onTaskRestored }: TaskArchiv
         title: "Aufgabe wiederhergestellt",
         description: "Die Aufgabe wurde erfolgreich aktiviert und ist wieder in der Aufgabenliste verfügbar.",
       });
-    } catch (error: any) {
-      const isNetworkError = error?.message?.includes('Failed to fetch') || 
-                             error?.message?.includes('NetworkError') ||
-                             error?.message?.includes('TypeError');
+    } catch (error: unknown) {
+      const msg = error instanceof Error ? error.message : '';
+      const isNetworkError = msg.includes('Failed to fetch') || 
+                             msg.includes('NetworkError') ||
+                             msg.includes('TypeError');
       
       if (isNetworkError) {
         // Bei Netzwerkfehler: Nach Verzoegerung verifizieren

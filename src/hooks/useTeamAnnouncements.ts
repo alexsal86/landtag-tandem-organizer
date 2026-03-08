@@ -269,14 +269,16 @@ export function useTeamAnnouncements() {
       toast.success("Mitteilung aktualisiert");
       await fetchAnnouncements();
       return true;
-    } catch (error: any) {
+    } catch (error: unknown) {
+      const msg = error instanceof Error ? error.message : 'Unbekannter Fehler';
+      const code = error instanceof Error ? (error as any).code : undefined;
       debugConsole.error("Error updating announcement:", error);
-      debugConsole.error("Error code:", error?.code);
-      debugConsole.error("Error message:", error?.message);
+      debugConsole.error("Error code:", code);
+      debugConsole.error("Error message:", msg);
       
       setAnnouncements(previousAnnouncements);
       setActiveAnnouncements(previousActiveAnnouncements);
-      toast.error(`Fehler: ${error?.message || 'Unbekannter Fehler'}`);
+      toast.error(`Fehler: ${msg}`);
       return false;
     }
   };

@@ -127,11 +127,11 @@ export const useTopics = () => {
       setTopics(prev => prev.filter(t => t.id !== id));
       toast({ title: "Thema gelöscht" });
       return true;
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Error deleting topic:', error);
       toast({ 
         title: "Fehler", 
-        description: error.message || "Thema konnte nicht gelöscht werden.", 
+        description: error instanceof Error ? error.message : "Thema konnte nicht gelöscht werden.", 
         variant: "destructive" 
       });
       return false;
