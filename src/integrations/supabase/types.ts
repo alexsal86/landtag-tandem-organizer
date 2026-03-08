@@ -1055,6 +1055,44 @@ export type Database = {
           },
         ]
       }
+      automation_rate_limits: {
+        Row: {
+          action_count: number
+          action_type: string
+          created_at: string
+          id: string
+          max_per_hour: number
+          tenant_id: string
+          window_start: string
+        }
+        Insert: {
+          action_count?: number
+          action_type: string
+          created_at?: string
+          id?: string
+          max_per_hour?: number
+          tenant_id: string
+          window_start?: string
+        }
+        Update: {
+          action_count?: number
+          action_type?: string
+          created_at?: string
+          id?: string
+          max_per_hour?: number
+          tenant_id?: string
+          window_start?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "automation_rate_limits_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       automation_rule_run_steps: {
         Row: {
           created_at: string
@@ -1118,7 +1156,10 @@ export type Database = {
           id: string
           idempotency_key: string | null
           input_payload: Json
+          max_retries: number
+          next_retry_at: string | null
           result_payload: Json | null
+          retry_count: number
           rule_id: string
           started_at: string
           status: string
@@ -1133,7 +1174,10 @@ export type Database = {
           id?: string
           idempotency_key?: string | null
           input_payload?: Json
+          max_retries?: number
+          next_retry_at?: string | null
           result_payload?: Json | null
+          retry_count?: number
           rule_id: string
           started_at?: string
           status: string
@@ -1148,7 +1192,10 @@ export type Database = {
           id?: string
           idempotency_key?: string | null
           input_payload?: Json
+          max_retries?: number
+          next_retry_at?: string | null
           result_payload?: Json | null
+          retry_count?: number
           rule_id?: string
           started_at?: string
           status?: string
