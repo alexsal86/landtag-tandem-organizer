@@ -313,7 +313,7 @@ export const TaskDecisionList = () => {
         throw error;
       }
 
-      console.log('Updated response data:', data);
+      
 
       toast({
         title: "Erfolgreich",
