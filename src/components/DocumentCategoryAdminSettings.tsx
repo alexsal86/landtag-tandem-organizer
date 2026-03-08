@@ -90,7 +90,7 @@ export function DocumentCategoryAdminSettings() {
       await loadCategories();
       setEditingCategory(null);
       toast({ title: "Erfolg", description: "Kategorie wurde erfolgreich aktualisiert." });
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Error updating category:', error);
       toast({ title: "Fehler", description: "Kategorie konnte nicht aktualisiert werden.", variant: "destructive" });
     }
