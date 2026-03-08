@@ -34,7 +34,7 @@ export interface AgendaItem {
   parent_id?: string | null;
   file_path?: string | null;
   result_text?: string | null;
-  carry_over_to_next?: boolean;
+  carry_over_to_next?: boolean | null;
   sub_items?: AgendaItem[] | unknown;
   source_meeting_id?: string | null;
   carried_over_from?: string | null;
@@ -42,8 +42,8 @@ export interface AgendaItem {
   original_meeting_title?: string | null;
   carryover_notes?: string | null;
   system_type?: string | null;
-  is_optional?: boolean;
-  is_visible?: boolean;
+  is_optional?: boolean | null;
+  is_visible?: boolean | null;
   // lokale Hilfskeys für Hierarchie vor dem Speichern
   localKey?: string;
   parentLocalKey?: string;
