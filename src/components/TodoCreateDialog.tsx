@@ -37,7 +37,7 @@ export function TodoCreateDialog({ open, onOpenChange, onTodoCreated }: TodoCrea
   const [assignedTo, setAssignedTo] = useState<string[]>([]);
   const [users, setUsers] = useState<Array<{ user_id: string; display_name?: string }>>([]);
 
-  console.log('TodoCreateDialog render - open:', open, 'user:', user?.id);
+  debugConsole.log('TodoCreateDialog render - open:', open, 'user:', user?.id);
 
   useEffect(() => {
     if (open) {
