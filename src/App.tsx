@@ -110,8 +110,7 @@ const AppContent = () => {
               <Route path="*" element={<NotFound />} />
               </Routes>
             </Suspense>
-          </MatrixClientProvider>
-        </Suspense>
+          </MatrixUnreadProvider>
       </BrowserRouter>
       </>
     );

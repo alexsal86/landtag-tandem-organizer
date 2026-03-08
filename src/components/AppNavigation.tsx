@@ -39,7 +39,7 @@ export function AppNavigation({
 }: NavigationProps) {
   const { user } = useAuth();
   const { navigationCounts, markNavigationAsVisited } = useNavigationNotifications();
-  const { totalUnreadCount: matrixUnreadCount } = useMatrixClient();
+  const { totalUnreadCount: matrixUnreadCount } = useMatrixUnread();
   const appSettings = useAppSettings();
   useFavicon(appSettings.app_logo_url);
   

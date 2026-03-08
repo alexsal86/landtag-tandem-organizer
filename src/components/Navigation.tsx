@@ -36,7 +36,7 @@ export function Navigation({ activeSection, onSectionChange }: NavigationProps) 
   const { toast } = useToast();
   const { navigationCounts, hasNewSinceLastVisit, markNavigationAsVisited } = useNavigationNotifications();
   const { notifications } = useNotifications();
-  const { totalUnreadCount: matrixUnreadCount } = useMatrixClient();
+  const { totalUnreadCount: matrixUnreadCount } = useMatrixUnread();
   const appSettings = useAppSettings();
   
   const [isAdmin, setIsAdmin] = useState(false);
