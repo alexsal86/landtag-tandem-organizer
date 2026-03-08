@@ -240,7 +240,7 @@ export function AnnualTasksView() {
       
       setAffectedCount(count || 0);
     } catch (error) {
-      console.error("Error loading affected count:", error);
+      debugConsole.error("Error loading affected count:", error);
       setAffectedCount(null);
     }
   };
