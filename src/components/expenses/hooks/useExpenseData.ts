@@ -89,7 +89,7 @@ export function useExpenseData() {
     if (!newExpense.amount || !newExpense.category_id) { toast({ title: "Fehler", description: "Betrag und Kategorie sind erforderlich", variant: "destructive" }); return false; }
     let receiptPath = null;
     if (newExpense.receipt_file) { receiptPath = await uploadReceipt(newExpense.receipt_file); if (!receiptPath) return false; }
-    const { error } = await supabase.from("expenses").insert({ user_id: user?.id, tenant_id: currentTenant?.id, amount: parseFloat(newExpense.amount), expense_date: newExpense.expense_date, description: newExpense.description || null, notes: newExpense.notes || null, receipt_file_path: receiptPath, category_id: newExpense.category_id, recurring_type: newExpense.recurring_type });
+    const { error } = await supabase.from("expenses").insert([{ user_id: user?.id, tenant_id: currentTenant?.id, amount: parseFloat(newExpense.amount), expense_date: newExpense.expense_date, description: newExpense.description || null, notes: newExpense.notes || null, receipt_file_path: receiptPath, category_id: newExpense.category_id, recurring_type: newExpense.recurring_type }]);
     if (error) { toast({ title: "Fehler", description: "Ausgabe konnte nicht hinzugefügt werden", variant: "destructive" }); return false; }
     toast({ title: "Erfolg", description: "Ausgabe wurde hinzugefügt" }); loadExpenses(); return true;
   };
