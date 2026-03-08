@@ -627,16 +627,43 @@ const LetterEditor: React.FC<LetterEditorProps> = ({ letter, isOpen, onClose, on
                 )}
                 <LetterEditorCanvas
                   template={currentTemplate}
-                  editedLetter={editedLetter}
-                  senderInfos={senderInfos}
-                  informationBlocks={informationBlocks}
-                  contacts={contacts}
+                  subject={editedLetter.subject}
+                  salutation={editedLetter.salutation_override || computedSalutation}
+                  content={editedLetter.content_html || editedLetter.content || ''}
+                  contentNodes={editedLetter.content_nodes}
+                  recipientAddress={editedLetter.recipient_address ? { name: editedLetter.recipient_name, address: editedLetter.recipient_address } : undefined}
+                  letterDate={editedLetter.letter_date}
+                  referenceNumber={editedLetter.reference_number}
                   attachments={attachments}
                   showPagination={showPagination}
-                  computedSalutation={computedSalutation}
-                  substitutedBlocks={substitutedBlocks}
+                  senderInfo={senderInfos.find(s => s.id === editedLetter.sender_info_id)}
+                  informationBlock={informationBlocks.find(b => editedLetter.information_block_ids?.includes(b.id))}
+                  layoutSettings={(() => {
+                    const ls = currentTemplate?.layout_settings;
+                    if (!ls) return undefined;
+                    const closingFormula = editedLetter.closing_formula || ls.closing?.formula;
+                    const closingName = editedLetter.closing_name || ls.closing?.signatureName;
+                    if (closingFormula || closingName) return { ...ls, closing: { ...(ls.closing || {}), formula: closingFormula || '', signatureName: closingName || '' } };
+                    return ls;
+                  })()}
+                  displayContentHtml={editedLetter.content_html || editedLetter.content || ''}
+                  addressFieldElements={substitutedBlocks.canvasBlocks.addressField}
+                  returnAddressElements={substitutedBlocks.canvasBlocks.returnAddress}
+                  infoBlockElements={substitutedBlocks.canvasBlocks.infoBlock}
+                  subjectElements={substitutedBlocks.canvasBlocks.subject}
+                  attachmentElements={substitutedBlocks.canvasBlocks.attachments}
+                  footerTextElements={substitutedBlocks.canvasBlocks.footer}
+                  addressFieldLines={substitutedBlocks.lineBlocks.addressField}
+                  returnAddressLines={substitutedBlocks.lineBlocks.returnAddress}
+                  infoBlockLines={substitutedBlocks.lineBlocks.infoBlock}
+                  canEdit={canEdit}
+                  documentId={letter?.id}
+                  onContentChange={(content, nodes, html) => {
+                    setDraftContent(content || '');
+                    setDraftContentNodes(nodes && nodes.trim() !== '' ? nodes : null);
+                    setDraftContentHtml(html || null);
+                  }}
                   onSubjectChange={(value) => setEditedLetter(prev => ({ ...prev, subject: value, title: value }))}
-                  onLetterDateChange={(value) => setEditedLetter(prev => ({ ...prev, letter_date: value }))}
                   onRecipientNameChange={(value) => setEditedLetter(prev => ({ ...prev, recipient_name: value }))}
                   onRecipientAddressChange={(value) => setEditedLetter(prev => ({ ...prev, recipient_address: value }))}
                   onRecipientContactSelect={(contact) => {
@@ -648,6 +675,8 @@ const LetterEditor: React.FC<LetterEditorProps> = ({ letter, isOpen, onClose, on
                   onAttachmentNameChange={(attachmentId, displayName) =>
                     ops.handleAttachmentNameChange(attachmentId, displayName, attachments, () => fetchAttachments())
                   }
+                  senderInfos={senderInfos}
+                  informationBlocks={informationBlocks}
                   selectedSenderId={editedLetter.sender_info_id}
                   selectedRecipientContactId={editedLetter.contact_id}
                   selectedInfoBlockIds={editedLetter.information_block_ids || []}
