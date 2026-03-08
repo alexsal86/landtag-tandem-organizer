@@ -218,16 +218,35 @@ export const LetterEditorCanvas: React.FC<LetterEditorCanvasProps> = ({
   const flowMeasureRef = useRef<HTMLDivElement>(null);
   const [flowHeightMm, setFlowHeightMm] = useState(0);
 
-  // Measure the hidden flow container via ResizeObserver
+  // Measure the hidden flow container and extract block boundaries
   useEffect(() => {
     const el = flowMeasureRef.current;
     if (!el) return;
 
     const measure = () => {
       setFlowHeightMm(pxToMm(el.scrollHeight));
+
+      // Collect bottom-edge Y positions (in mm) of all direct block children
+      const breaks: number[] = [];
+      const children = el.children;
+      for (let i = 0; i < children.length; i++) {
+        const child = children[i] as HTMLElement;
+        // For the main content div, drill into its block children (p, div, etc.)
+        if (child.classList.contains('din5008-content-text')) {
+          const innerChildren = child.children;
+          for (let j = 0; j < innerChildren.length; j++) {
+            const inner = innerChildren[j] as HTMLElement;
+            breaks.push(pxToMm(inner.offsetTop + inner.offsetHeight));
+          }
+        } else {
+          breaks.push(pxToMm(child.offsetTop + child.offsetHeight));
+        }
+      }
+      // Also add the total height as final break
+      breaks.push(pxToMm(el.scrollHeight));
+      setBlockBreaks(breaks);
     };
 
-    // Initial measurement
     measure();
 
     const ro = new ResizeObserver(() => measure());
@@ -236,12 +255,50 @@ export const LetterEditorCanvas: React.FC<LetterEditorCanvasProps> = ({
     return () => ro.disconnect();
   }, [renderedHtml, closingFormula, closingName, attachments]);
 
-  // Calculate total pages from measured flow height
-  const totalPages = (() => {
-    if (flowHeightMm <= 0) return 1;
-    if (flowHeightMm <= page1BodyMm + lineHeightMm * 0.5) return 1;
-    return 1 + Math.ceil((flowHeightMm - page1BodyMm) / pageNBodyMm);
-  })();
+  // ── Compute page breaks from block boundaries ──
+  const computePageBreaks = useCallback(
+    (breaks: number[], p1Body: number, pNBody: number): number[] => {
+      if (breaks.length === 0) return [];
+      // pageOffsets[i] = the flow-offset (mm) where page i starts
+      const pageOffsets: number[] = [0];
+      let consumed = 0;
+
+      while (consumed < (breaks[breaks.length - 1] ?? 0)) {
+        const isFirst = pageOffsets.length === 1;
+        const capacity = isFirst ? p1Body : pNBody;
+        const limit = consumed + capacity;
+
+        // Find the last block break that fits within this page
+        let bestBreak = consumed; // fallback: no content fits
+        for (const b of breaks) {
+          if (b <= consumed) continue;
+          if (b <= limit + 0.1) {
+            bestBreak = b;
+          } else {
+            break;
+          }
+        }
+
+        // If no block fits (single block taller than page), force-advance
+        if (bestBreak <= consumed) {
+          bestBreak = limit;
+        }
+
+        // If remaining content after bestBreak is negligible, stop
+        const remaining = (breaks[breaks.length - 1] ?? 0) - bestBreak;
+        if (remaining < 2) break;
+
+        consumed = bestBreak;
+        pageOffsets.push(consumed);
+      }
+
+      return pageOffsets;
+    },
+    [],
+  );
+
+  const pageOffsets = computePageBreaks(blockBreaks, page1BodyMmRaw, pageNBodyMmRaw);
+  const totalPages = Math.max(1, pageOffsets.length);
 
   // ── overlay dimensions ──
   const addressFieldWidth: number = layout.addressField?.width ?? 85;
