@@ -150,9 +150,11 @@ export const useCaseItems = () => {
         tenant_id: currentTenant.id,
       };
 
-      const { error } = await supabase
+      const { data: inserted, error } = await supabase
         .from("case_items")
-        .insert(insertData as any);
+        .insert(insertData as any)
+        .select("id")
+        .single();
 
       if (error) throw error;
 
@@ -161,9 +163,22 @@ export const useCaseItems = () => {
         description: "Vorgang wurde erstellt.",
       });
 
+      // Notify assigned owner (if different from creator)
+      if (data.owner_user_id && data.owner_user_id !== user.id) {
+        supabase.rpc("create_notification", {
+          user_id_param: data.owner_user_id,
+          type_name: "case_item_assigned",
+          title_param: "Vorgang zugewiesen",
+          message_param: `Ihnen wurde der Vorgang "${data.subject || 'Ohne Betreff'}" zugewiesen.`,
+          priority_param: "medium",
+          data_param: JSON.stringify({ case_item_id: inserted?.id }),
+        }).then(({ error: nErr }) => {
+          if (nErr) console.warn("Notification error (case_item_assigned):", nErr);
+        });
+      }
+
       await fetchCaseItems();
-      // Return a placeholder; the real item is now in caseItems state
-      return { id: "new" } as unknown as CaseItem;
+      return (inserted ?? { id: "new" }) as unknown as CaseItem;
     } catch (error: unknown) {
       console.error("Error creating case item:", error);
       const detail = error instanceof Error ? error.message : String(error);
