@@ -409,7 +409,7 @@ export function useMeetingArchive(deps: ArchiveDeps) {
             }
           }
         }
-      } catch (e) { console.error('Error creating starred appointments tasks (non-fatal):', e); }
+      } catch (e) { debugConsole.error('Error creating starred appointments tasks (non-fatal):', e); }
 
       // Step 5e: Clear completed carryover buffer
       await clearCompletedCarryoverBuffer(meeting);
