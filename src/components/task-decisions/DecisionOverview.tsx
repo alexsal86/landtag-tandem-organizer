@@ -531,7 +531,7 @@ export const DecisionOverview = () => {
 
       setDecisions(allDecisionsList);
     } catch (error) {
-      console.error('Error loading decision requests:', error);
+      debugConsole.error('Error loading decision requests:', error);
     }
   };
 
