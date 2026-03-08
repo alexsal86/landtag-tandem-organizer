@@ -40,6 +40,7 @@ type RunRow = {
   dry_run?: boolean;
   trigger_source: string;
   started_at: string;
+  finished_at: string | null;
   error_message: string | null;
 };
 
