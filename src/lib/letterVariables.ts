@@ -50,7 +50,7 @@ interface InfoBlockData {
 }
 
 interface AttachmentData {
-  display_name?: string;
+  display_name?: string | null;
   file_name?: string;
 }
 

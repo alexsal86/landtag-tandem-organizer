@@ -38,7 +38,7 @@ export function MobileHeader() {
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
   const [showMobileSearch, setShowMobileSearch] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
-  const [userProfile, setUserProfile] = useState<{ display_name?: string; avatar_url?: string } | null>(null);
+  const [userProfile, setUserProfile] = useState<{ display_name?: string | null; avatar_url?: string | null } | null>(null);
 
   useEffect(() => {
     const loadSettings = async () => {

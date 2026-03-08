@@ -136,8 +136,8 @@ export function MessageSystem() {
       // For authored messages, fetch detailed recipient and confirmation data
       const sentMessagesWithDetails = await Promise.all(
         (authoredMessages || []).map(async (msg) => {
-          let recipients = [];
-          let confirmations = [];
+          let recipients: any[] = [];
+          let confirmations: any[] = [];
 
           if (msg.is_for_all_users) {
             // Fetch confirmations for "all users" messages using basic query without relations

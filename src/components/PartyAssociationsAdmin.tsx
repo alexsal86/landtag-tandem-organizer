@@ -31,7 +31,7 @@ import { useTenant } from '@/hooks/useTenant';
 interface District {
   id: string;
   district_name: string;
-  district_type: string;
+  district_type: string | null;
   region: string;
 }
 

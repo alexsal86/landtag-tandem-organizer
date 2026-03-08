@@ -12,9 +12,9 @@ export interface PartyAssociation {
   name: string;
   party_name: string;
   party_type: string;
-  phone?: string;
-  website?: string;
-  email?: string;
+  phone?: string | null;
+  website?: string | null;
+  email?: string | null;
   social_media?: any;
   address_street?: string;
   address_number?: string;

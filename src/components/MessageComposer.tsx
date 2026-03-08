@@ -48,7 +48,7 @@ export function MessageComposer({ onClose, onSent }: MessageComposerProps) {
       const { data: currentProfile } = await supabase
         .from('profiles')
         .select('user_id, display_name, avatar_url')
-        .eq('user_id', user?.id)
+        .eq('user_id', user?.id ?? '')
         .single();
       
       setCurrentUserProfile(currentProfile);
