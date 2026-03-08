@@ -74,7 +74,7 @@ function PdfPreview({ url, fileName }: { url: string; fileName: string }) {
         if (!ctx) return;
         await page.render({ canvasContext: ctx, viewport, canvas } as any).promise;
       } catch (e) {
-        console.error("PDF render error:", e);
+        debugConsole.error("PDF render error:", e);
         if (!cancelled) setError(true);
       } finally {
         if (!cancelled) setLoading(false);
