@@ -561,7 +561,7 @@ export const useNotifications = () => {
             if (retryCount < maxRetries) {
               retryCount++;
               const delay = Math.min(1000 * Math.pow(2, retryCount), 30000);
-              console.log(`🔄 Retrying subscription in ${delay}ms (attempt ${retryCount}/${maxRetries})`);
+              debugConsole.log(`🔄 Retrying subscription in ${delay}ms (attempt ${retryCount}/${maxRetries})`);
               retryTimeout = setTimeout(setupChannel, delay);
             }
           } else if (status === 'CLOSED') {
