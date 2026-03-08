@@ -10,6 +10,15 @@ export interface AgendaItem {
   system_type?: string | null;
 }
 
+export interface CaseItemData {
+  id: string;
+  subject: string | null;
+  status: string;
+  priority: string;
+  due_at: string | null;
+  owner_user_id: string | null;
+}
+
 export interface SystemItemData {
   id: string;
   title: string;
