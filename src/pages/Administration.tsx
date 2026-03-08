@@ -1227,8 +1227,8 @@ const [editingChild, setEditingChild] = useState<{ parentIndex: number; childInd
                               {editingTemplateName?.id === selectedTemplate.id ? (
                                 <>
                                   <Input
-                                    value={editingTemplateName.value}
-                                    onChange={(e) => setEditingTemplateName({ ...editingTemplateName, value: e.target.value })}
+                                    value={editingTemplateName!.value}
+                                    onChange={(e) => setEditingTemplateName({ id: editingTemplateName!.id, value: e.target.value })}
                                     className="flex-1 h-8 text-sm"
                                   />
                                   <Button size="sm" className="h-8 w-8 p-0" onClick={async () => {
