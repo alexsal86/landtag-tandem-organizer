@@ -83,6 +83,7 @@ const BASE_TABS: TabConfig[] = [
 const LEGACY_TAB_MAP: Record<string, TabValue> = {
   caseitems: "cases",
   casefiles: "cases",
+  appointmentfeedback: "feedbackfeed",
 };
 
 const ALLOWED_TABS = new Set<TabValue>(BASE_TABS.map((tab) => tab.value));
