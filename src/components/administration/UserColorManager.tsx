@@ -131,7 +131,7 @@ export const UserColorManager = () => {
         description: `${users.length} Benutzern wurden automatisch Farben zugewiesen.`,
       });
     } catch (error) {
-      console.error('Error auto-assigning colors:', error);
+      debugConsole.error('Error auto-assigning colors:', error);
       toast({
         title: "Fehler",
         description: "Automatische Farbzuweisung fehlgeschlagen.",
