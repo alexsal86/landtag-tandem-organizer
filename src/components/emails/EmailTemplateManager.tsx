@@ -79,7 +79,7 @@ export function EmailTemplateManager() {
         category: (t as any).category || 'general',
         variables: Array.isArray(t.variables) ? t.variables : []
       })) as EmailTemplate[]);
-    } catch (error: any) {
+    } catch (error: unknown) {
       toast({
         title: "Fehler beim Laden",
         description: error.message,
