@@ -235,6 +235,7 @@ export function MyWorkCasesWorkspace() {
   const [searchParams, setSearchParams] = useSearchParams();
   const { createCaseItem } = useCaseItems();
   const { caseFileTypes } = useCaseFileTypes();
+  const { isHighlighted, highlightRef } = useNotificationHighlight();
 
   const {
     caseItems,
