@@ -70,6 +70,7 @@ export function useMyWorkJourFixeSystemData(userId?: string, tenantId?: string) 
       const hasTasks = items.some((i) => i.system_type === "tasks");
       const hasDecisions = items.some((i) => i.system_type === "decisions");
       const hasBirthdays = items.some((i) => i.system_type === "birthdays");
+      const hasCaseItems = items.some((i) => i.system_type === "case_items");
       const encounteredUserIds = new Set<string>();
 
       const nowDate = new Date();
