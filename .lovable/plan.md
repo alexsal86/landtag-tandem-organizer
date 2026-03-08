@@ -1,122 +1,61 @@
 
+Ziel: Rückmeldungs-Feed stabil sichtbar machen und gleichzeitig die aktuellen Build-Blocker entfernen, damit die Fixes überhaupt wieder ausgeliefert werden.
 
-# Refactoring: Alle 7 verbleibenden grossen Dateien
+1) Diagnose (aus Code + DB)
+- Do I know what the issue is? Ja.
+- Es gibt aktuell 2 Ebenen von Problemen:
+  1. Build ist kaputt (TypeScript):
+     - `src/components/ui/calendar.tsx`: doppelte Keys im `classNames`-Objekt (`caption_label`, `dropdowns`, `dropdown`) → TS1117.
+     - `src/components/task-decisions/DecisionOverview.tsx`: `ResponseOption`-Typ ohne `requires_comment` → TS2339.
+  2. Feed-Logik ist instabil/zu restriktiv:
+     - `src/components/my-work/MyWorkFeedbackFeedTab.tsx` übergibt `completedTo: new Date().toISOString()` bei jedem Render.
+       Dadurch ändert sich der React-Query-Key permanent (`useTeamFeedbackFeed`), was zu dauerndem Neu-Laden bzw. instabilem Feed führt.
+     - `useTeamFeedbackFeed` filtert hart auf `.not('notes','is',null)`. Damit verschwinden abgeschlossene Rückmeldungen ohne Notiz (z. B. nur Anhang/Aufgabe), obwohl sie fachlich oft relevant sind.
+- DB-Check:
+  - `appointment_feedback` hat Daten (u. a. completed in den letzten 7 Tagen vorhanden).
+  - RLS auf `appointment_feedback` erlaubt tenant-basiertes Lesen (`tenant_id = ANY(get_user_tenant_ids(auth.uid()))`), also kein offensichtlicher RLS-Blocker für Team-Feed im Tenant.
 
-## 1. LetterTemplateManager.tsx (1.134 → ~150 Zeilen)
+2) Umsetzungsplan (in Reihenfolge)
+A. Build sofort reparieren (Blocker)
+- `calendar.tsx`: doppelte Objekt-Keys entfernen, nur eine konsistente Definition für `caption_label`, `dropdowns`, `dropdown` behalten.
+- `DecisionOverview.tsx`: lokalen `ResponseOption`-Typ um `requires_comment?: boolean` ergänzen (oder auf den zentralen Typ aus `decisionTemplates` umstellen).
 
-### `src/components/letter-templates/types.ts`
-- Interfaces: LetterTemplate, SenderInformation, InformationBlock, GalleryImage, TabRect, MarginKey
-- Hilfsfunktionen: extractStoragePathFromUrl, normalizeImageItem, normalizeLayoutBlockContentImages, createDefaultAttachmentElements
+B. Feed-Query stabilisieren
+- `MyWorkFeedbackFeedTab.tsx`:
+  - `completedTo` nicht mehr bei jedem Render neu erzeugen.
+  - Entweder:
+    - `completedTo` ganz weglassen (nur `completedFrom` + order/limit), oder
+    - `completedTo` per `useMemo/useState` nur bei Filterwechsel neu setzen.
+- `useTeamFeedbackFeed.ts`:
+  - Query-Key nur mit stabilen Filterwerten.
+  - Zeitfilter robust halten (kein per-render Drift).
 
-### `src/components/letter-templates/hooks/useLetterTemplateData.ts`
-- State: templates, senderInfos, infoBlocks, formData, editingTemplate, galleryImages
-- Daten laden: fetchTemplates, fetchSenderInfos, fetchInformationBlocks
-- CRUD: handleCreateTemplate, handleUpdateTemplate, handleDeleteTemplate
-- Form-Logik: resetForm, startEditing, cancelEditing, stripBlobUrls
+C. Sichtbarkeit der Rückmeldungen fachlich korrigieren
+- `useTeamFeedbackFeed.ts`:
+  - Notiz-Pflicht entfernen oder erweitern:
+    - statt nur `notes is not null` auch Einträge mit `has_documents = true` oder `has_tasks = true` zulassen.
+  - Ergebnis: auch „abgeschlossen ohne Notiz, aber mit Anhang/Aufgabe“ erscheint im Feed.
 
-### `src/components/letter-templates/TemplateFormTabs.tsx`
-- renderTabsNavigation + renderCommonTabsContent (Zeilen 597-1028)
-- Canvas, Header, Footer, Address, Info, Subject, Attachments, Layout, General Tabs
+D. Fehler nicht mehr als „keine Daten“ maskieren
+- `MyWorkFeedbackFeedTab.tsx`:
+  - `isError` + `error` aus Query auslesen.
+  - Bei Fehler einen klaren Error-State anzeigen (statt „Keine passenden Rückmeldungen gefunden“), inkl. Retry-Button (`refetch`).
 
-### `src/components/letter-templates/TemplateGrid.tsx`
-- Template-Karten-Liste mit Preview-Dialog (Zeilen 1074-1104)
+E. Quercheck auf Seiteneffekte
+- `useMyWorkNewCounts.tsx` zählt derzeit ebenfalls nur `completed + notes not null`; ggf. auf dieselbe fachliche Logik angleichen, damit Badge und Feed konsistent sind.
 
-### Shell: `LetterTemplateManager.tsx` (~150 Zeilen)
-- Orchestriert Settings-View, Create-View, Edit-View, Template-Liste
+3) Validierung nach Umsetzung
+- Build grün ohne TS-Fehler.
+- Im Tab „Meine Arbeit > Rückmeldungen“:
+  - Keine Endlos-Ladeanzeige.
+  - Team-Einträge der letzten 7/14 Tage sichtbar.
+  - Filter (Sicht/Zeitraum/Anhänge/Aufgaben) funktionieren.
+  - Bei absichtlichem Query-Fehler erscheint Error-State statt Empty-State.
+- Schneller Datenabgleich:
+  - Feed-Anzahl grob konsistent mit SQL-Count für completed im Zeitraum (unter Berücksichtigung der Filter).
 
----
-
-## 2. ContactImport.tsx (1.060 → ~120 Zeilen)
-
-### `src/components/contact-import/types.ts`
-- Interfaces: ImportData, FieldMapping
-- Konstanten: FIELD_MAPPINGS, TARGET_FIELDS
-
-### `src/components/contact-import/hooks/useContactImport.ts`
-- Gesamte Import-Logik: Datei-Upload, Parsing (CSV/XLSX/VCF), Field-Mapping, Row-Processing, Duplikat-Handling
-
-### `src/components/contact-import/ImportSteps.tsx`
-- Step-UI-Komponenten: UploadStep, MappingStep, PreviewStep, ImportingStep, CompleteStep
-
-### Shell: `ContactImport.tsx` (~120 Zeilen)
-
----
-
-## 3. LetterPDFExport.tsx (1.033 → ~80 Zeilen)
-
-### `src/components/letter-pdf/types.ts`
-- Interfaces: Letter, LetterTemplate, LetterPDFExportProps
-
-### `src/components/letter-pdf/usePDFData.ts`
-- useEffect fuer Template, SenderInfo, InformationBlock, Attachments laden
-
-### `src/components/letter-pdf/pdfGenerator.ts`
-- convertHtmlToText, exportWithDIN5008Features, drawDebugGuides
-- Gesamte PDF-Generierungslogik (Zeilen 132-1000+)
-
-### Shell: `LetterPDFExport.tsx` (~80 Zeilen)
-
----
-
-## 4. StakeholderView.tsx (993 → ~150 Zeilen)
-
-### `src/components/stakeholders/hooks/useStakeholderTopics.ts`
-- Topic-Loading, Local-Updates, Save/Cancel-Logik (Zeilen 68-195)
-
-### `src/components/stakeholders/StakeholderGridView.tsx`
-- Grid-Karten-Ansicht (Zeilen 352-700+)
-
-### `src/components/stakeholders/StakeholderListView.tsx`
-- Tabellen-Ansicht mit SortableTableHead (Zeilen 700-993)
-
-### Shell: `StakeholderView.tsx` (~150 Zeilen)
-- Helpers (getInitials, getCategoryColor), sortedStakeholders-Memo, View-Switch
-
----
-
-## 5. ExpenseManagement.tsx (915 → ~120 Zeilen)
-
-### `src/components/expenses/hooks/useExpenseData.ts`
-- State + Daten laden: categories, expenses, budgets
-- CRUD: addExpense, addCategory, setBudget, uploadReceipt, deleteExpense
-- Berechnungen: getCurrentBudget, getTotalExpenses, getBalance, getCategoryExpenses
-
-### `src/components/expenses/ExpenseSummaryCards.tsx`
-- 3 Karten: Budget, Ausgaben, Saldo (Zeilen 425-468)
-
-### `src/components/expenses/ExpenseTabContent.tsx`
-- Tabs: Ausgaben-Tabelle, Kategorien, Budget, Uebersicht (Zeilen 470-915)
-
-### Shell: `ExpenseManagement.tsx` (~120 Zeilen)
-
----
-
-## 6. KnowledgeBaseView.tsx (897 → ~130 Zeilen)
-
-### `src/components/knowledge/hooks/useKnowledgeData.ts`
-- State + Daten laden: documents, documentTopicsMap, tenantId
-- Realtime-Subscription, CRUD: create, save, delete, toggleLock
-- Hydration: fetchCreatorNames, hydrateDocuments
-
-### `src/components/knowledge/KnowledgeDocumentList.tsx`
-- Sidebar-Dokumentliste mit Suche und Topic-Filter
-
-### `src/components/knowledge/KnowledgeEditor.tsx`
-- Editor-Bereich mit EnhancedLexicalEditor, Topic-Selector, Lock-Toggle
-
-### Shell: `KnowledgeBaseView.tsx` (~130 Zeilen)
-
----
-
-## 7. CreateAppointmentDialog.tsx (808 → ~120 Zeilen)
-
-### `src/components/appointments/hooks/useCreateAppointment.ts`
-- Form-Setup (Zod-Schema, useForm), Daten laden (categories, statuses, locations)
-- Submit-Logik: onSubmit mit Kontakten, Gaesten, Recurrence, Files, Topics
-
-### `src/components/appointments/AppointmentFormFields.tsx`
-- Formular-Felder: Titel, Datum/Zeit, Ort, Prioritaet, Kategorie, Status, Ganztaegig, Kontakte, Gaeste, Recurrence, Topics
-
-### Shell: `CreateAppointmentDialog.tsx` (~120 Zeilen)
-- Dialog-Wrapper, orchestriert Hook + FormFields
-
+4) Warum das den aktuellen Zustand löst
+- Solange Build fehlschlägt, werden vorherige Fixes teils nicht wirksam.
+- Selbst bei laufendem Build kann der Feed durch den „beweglichen“ `completedTo`-Key instabil bleiben.
+- Zusätzlich blendet der harte Notiz-Filter valide Rückmeldungen aus.
+- Mit den vier Korrekturen (Build, stabiler Query-Key, fachlich korrekter Filter, echter Error-State) wird die Ursachekette vollständig geschlossen.

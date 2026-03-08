@@ -1,0 +1,270 @@
+import { useState, useEffect, useRef, useCallback } from 'react';
+import { supabase } from '@/integrations/supabase/client';
+import { useTenant } from '@/hooks/useTenant';
+import { useAuth } from '@/hooks/useAuth';
+import { useToast } from '@/hooks/use-toast';
+import { DEFAULT_DIN5008_LAYOUT, LetterLayoutSettings } from '@/types/letterLayout';
+import { parseFooterLinesForEditor, toFooterLineData } from '@/components/letters/footerBlockUtils';
+import {
+  LetterTemplate, SenderInformation, InformationBlock, GalleryImage,
+  normalizeImageItem, normalizeLayoutBlockContentImages, createDefaultAttachmentElements,
+  MarginKey, TabRect,
+} from '../types';
+
+export function useLetterTemplateData() {
+  const { currentTenant } = useTenant();
+  const { user } = useAuth();
+  const { toast } = useToast();
+
+  const [templates, setTemplates] = useState<LetterTemplate[]>([]);
+  const [senderInfos, setSenderInfos] = useState<SenderInformation[]>([]);
+  const [infoBlocks, setInfoBlocks] = useState<InformationBlock[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [editingTemplate, setEditingTemplate] = useState<LetterTemplate | null>(null);
+  const [showCreateDialog, setShowCreateDialog] = useState(false);
+  const [activeTab, setActiveTab] = useState('canvas-designer');
+  const [selectedBlockItem, setSelectedBlockItem] = useState<Record<string, string | null>>({});
+  const [showBlockRuler, setShowBlockRuler] = useState<Record<string, boolean>>({});
+  const [showPreview, setShowPreview] = useState<string | null>(null);
+  const [selectedGalleryImage, setSelectedGalleryImage] = useState<Record<string, GalleryImage | null>>({});
+  const [showSettings, setShowSettings] = useState(false);
+  const [galleryImages, setGalleryImages] = useState<GalleryImage[]>([]);
+  const [galleryLoading, setGalleryLoading] = useState(false);
+  const galleryBlobUrlsRef = useRef<Map<string, string>>(new Map());
+  const [formData, setFormData] = useState({
+    name: '',
+    letterhead_html: '',
+    letterhead_css: '',
+    response_time_days: 21,
+    default_sender_id: '',
+    default_info_blocks: [] as string[],
+    header_elements: [] as any[],
+    footer_blocks: [] as any[],
+    layout_settings: DEFAULT_DIN5008_LAYOUT as LetterLayoutSettings,
+  });
+
+  useEffect(() => {
+    if (currentTenant) {
+      fetchTemplates();
+      fetchSenderInfos();
+      fetchInformationBlocks();
+    }
+  }, [currentTenant]);
+
+  const fetchTemplates = async () => {
+    if (!currentTenant) return;
+    setLoading(true);
+    try {
+      const { data, error } = await supabase
+        .from('letter_templates').select('*').eq('tenant_id', currentTenant.id)
+        .eq('is_active', true).order('is_default', { ascending: false }).order('name');
+      if (error) throw error;
+      setTemplates(data || []);
+    } catch (error) {
+      console.error('Error fetching templates:', error);
+      toast({ title: "Fehler", description: "Templates konnten nicht geladen werden.", variant: "destructive" });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const fetchSenderInfos = async () => {
+    if (!currentTenant) return;
+    try {
+      const { data, error } = await supabase.from('sender_information').select('id, name, organization, is_default').eq('tenant_id', currentTenant.id).eq('is_active', true).order('is_default', { ascending: false });
+      if (error) throw error;
+      setSenderInfos(data || []);
+    } catch (error) { console.error('Error fetching sender infos:', error); }
+  };
+
+  const fetchInformationBlocks = async () => {
+    if (!currentTenant) return;
+    try {
+      const { data, error } = await supabase.from('information_blocks').select('id, name, label, is_default').eq('tenant_id', currentTenant.id).eq('is_active', true).order('is_default', { ascending: false });
+      if (error) throw error;
+      setInfoBlocks(data || []);
+    } catch (error) { console.error('Error fetching info blocks:', error); }
+  };
+
+  const stripBlobUrls = (elements: any): any => {
+    if (Array.isArray(elements)) return elements.map(({ blobUrl, ...rest }) => rest);
+    if (elements && typeof elements === 'object' && (elements as any).mode === 'lines' && Array.isArray((elements as any).lines)) {
+      return { ...elements, lines: (elements as any).lines.map(({ blobUrl, ...rest }: any) => rest) };
+    }
+    if (elements && typeof elements === 'object' && Array.isArray((elements as any).blocks)) {
+      return {
+        ...elements,
+        blocks: (elements as any).blocks.map((block: any) => ({
+          ...block, lines: Array.isArray(block?.lines) ? block.lines.map(({ blobUrl, ...rest }: any) => rest) : [],
+        })),
+      };
+    }
+    return elements;
+  };
+
+  const stripBlobUrlsFromLayoutSettings = (settings: any): any => {
+    if (!settings || typeof settings !== 'object') return settings;
+    const cleaned = { ...settings };
+    if (cleaned.blockContent && typeof cleaned.blockContent === 'object') {
+      const cleanedBlocks: any = {};
+      for (const [key, items] of Object.entries(cleaned.blockContent)) {
+        if (key === 'header') continue;
+        cleanedBlocks[key] = Array.isArray(items) ? stripBlobUrls(items) : items;
+      }
+      cleaned.blockContent = cleanedBlocks;
+    }
+    return cleaned;
+  };
+
+  const handleCreateTemplate = async () => {
+    if (!currentTenant || !user || !formData.name.trim()) return;
+    const cleanedHeaderElements = stripBlobUrls(formData.header_elements);
+    const cleanedFooterBlocks = stripBlobUrls(formData.footer_blocks);
+    const cleanedLayoutSettings = stripBlobUrlsFromLayoutSettings(normalizeLayoutBlockContentImages(formData.layout_settings));
+    try {
+      const { error } = await supabase.from('letter_templates').insert({
+        name: formData.name.trim(), letterhead_html: formData.letterhead_html, letterhead_css: formData.letterhead_css,
+        response_time_days: formData.response_time_days, tenant_id: currentTenant.id, created_by: user.id,
+        is_default: false, is_active: true, default_sender_id: formData.default_sender_id || null,
+        default_info_blocks: formData.default_info_blocks.length > 0 ? formData.default_info_blocks : null,
+        header_layout_type: cleanedHeaderElements.length > 0 ? 'structured' : 'html',
+        header_text_elements: cleanedHeaderElements.length > 0 ? cleanedHeaderElements : null,
+        footer_blocks: Array.isArray(cleanedFooterBlocks) ? (cleanedFooterBlocks.length > 0 ? cleanedFooterBlocks : null) : cleanedFooterBlocks,
+        layout_settings: cleanedLayoutSettings as any,
+      });
+      if (error) throw error;
+      toast({ title: "Template erstellt" });
+      setShowCreateDialog(false);
+      setActiveTab('canvas-designer');
+      resetForm();
+      fetchTemplates();
+    } catch (error) {
+      console.error('Error creating template:', error);
+      toast({ title: "Fehler", description: "Template konnte nicht erstellt werden.", variant: "destructive" });
+    }
+  };
+
+  const handleUpdateTemplate = async () => {
+    if (!editingTemplate) return;
+    const cleanedHeaderElements = stripBlobUrls(formData.header_elements);
+    const cleanedFooterBlocks = stripBlobUrls(formData.footer_blocks);
+    const cleanedLayoutSettings = stripBlobUrlsFromLayoutSettings(normalizeLayoutBlockContentImages(formData.layout_settings));
+    try {
+      const { error } = await supabase.from('letter_templates').update({
+        name: formData.name.trim(), letterhead_html: formData.letterhead_html, letterhead_css: formData.letterhead_css,
+        response_time_days: formData.response_time_days, default_sender_id: formData.default_sender_id || null,
+        default_info_blocks: formData.default_info_blocks.length > 0 ? formData.default_info_blocks : null,
+        header_layout_type: cleanedHeaderElements.length > 0 ? 'structured' : 'html',
+        header_text_elements: cleanedHeaderElements.length > 0 ? cleanedHeaderElements : null,
+        footer_blocks: Array.isArray(cleanedFooterBlocks) ? (cleanedFooterBlocks.length > 0 ? cleanedFooterBlocks : null) : cleanedFooterBlocks,
+        layout_settings: cleanedLayoutSettings as any, updated_at: new Date().toISOString(),
+      }).eq('id', editingTemplate.id);
+      if (error) throw error;
+      toast({ title: "Template aktualisiert" });
+      setEditingTemplate(null); resetForm(); fetchTemplates();
+    } catch (error) {
+      console.error('Error updating template:', error);
+      toast({ title: "Fehler", description: "Template konnte nicht aktualisiert werden.", variant: "destructive" });
+    }
+  };
+
+  const handleDeleteTemplate = async (template: LetterTemplate) => {
+    if (!confirm(`Möchten Sie das Template "${template.name}" wirklich löschen?`)) return;
+    try {
+      const { error } = await supabase.from('letter_templates').update({ is_active: false }).eq('id', template.id);
+      if (error) throw error;
+      toast({ title: "Template gelöscht" });
+      fetchTemplates();
+    } catch (error) {
+      console.error('Error deleting template:', error);
+      toast({ title: "Fehler", description: "Template konnte nicht gelöscht werden.", variant: "destructive" });
+    }
+  };
+
+  const resetForm = () => {
+    setFormData({
+      name: '', letterhead_html: '', letterhead_css: '', response_time_days: 21,
+      default_sender_id: '', default_info_blocks: [], header_elements: [], footer_blocks: [],
+      layout_settings: {
+        ...DEFAULT_DIN5008_LAYOUT,
+        blockContent: { ...((DEFAULT_DIN5008_LAYOUT as any).blockContent || {}), attachments: createDefaultAttachmentElements() },
+      } as any,
+    });
+  };
+
+  const startEditing = (template: LetterTemplate) => {
+    setEditingTemplate(template);
+    setActiveTab('canvas-designer');
+    let headerElements: any[] = [];
+    if (template.header_text_elements) {
+      if (typeof template.header_text_elements === 'string') { try { headerElements = JSON.parse(template.header_text_elements); } catch { headerElements = []; } }
+      else if (Array.isArray(template.header_text_elements)) { headerElements = template.header_text_elements; }
+    }
+    let rawFooterBlocks: any = [];
+    if ((template as any).footer_blocks) {
+      if (typeof (template as any).footer_blocks === 'string') { try { rawFooterBlocks = JSON.parse((template as any).footer_blocks); } catch { rawFooterBlocks = []; } }
+      else { rawFooterBlocks = (template as any).footer_blocks; }
+    }
+    const footerLines = parseFooterLinesForEditor(rawFooterBlocks);
+    const normalizedLayoutSettings = normalizeLayoutBlockContentImages(template.layout_settings || DEFAULT_DIN5008_LAYOUT);
+    const legacyHeaderElements = (((normalizedLayoutSettings as any).blockContent || {}).header || []) as any[];
+    const headerSource = headerElements.length > 0 ? headerElements : (Array.isArray(legacyHeaderElements) ? legacyHeaderElements : []);
+    const normalizedHeader = headerSource.map(normalizeImageItem);
+    const normalizedFooter = footerLines.map(normalizeImageItem);
+    const cleanedBlockContent = { ...(((normalizedLayoutSettings as any).blockContent || {}) as Record<string, any[]>) };
+    delete cleanedBlockContent.header;
+    if (!Array.isArray(cleanedBlockContent.attachments) || cleanedBlockContent.attachments.length === 0) {
+      cleanedBlockContent.attachments = createDefaultAttachmentElements();
+    }
+    const footerData = toFooterLineData(normalizedFooter);
+    setFormData({
+      name: template.name, letterhead_html: template.letterhead_html, letterhead_css: template.letterhead_css,
+      response_time_days: template.response_time_days, default_sender_id: template.default_sender_id || '',
+      default_info_blocks: template.default_info_blocks || [], header_elements: normalizedHeader,
+      footer_blocks: footerData as any,
+      layout_settings: { ...normalizedLayoutSettings, blockContent: { ...cleanedBlockContent, footer: footerData } as any },
+    });
+  };
+
+  const cancelEditing = () => { setEditingTemplate(null); setActiveTab('canvas-designer'); resetForm(); };
+
+  const updateLayoutSettings = (updater: (layout: LetterLayoutSettings) => LetterLayoutSettings) => {
+    setFormData((prev) => ({ ...prev, layout_settings: updater(prev.layout_settings) }));
+  };
+
+  type BlockEditorKey = 'addressField' | 'returnAddress' | 'infoBlock' | 'subject' | 'attachments' | 'footer';
+
+  const getBlockItems = (blockKey: BlockEditorKey) => {
+    const content = ((formData.layout_settings as any).blockContent || {}) as Record<string, any[]>;
+    return content[blockKey] || [];
+  };
+
+  const setBlockItems = (blockKey: BlockEditorKey, items: any[]) => {
+    updateLayoutSettings((layout) => {
+      const current = ((layout as any).blockContent || {}) as Record<string, any[]>;
+      return { ...layout, blockContent: { ...current, [blockKey]: items } } as LetterLayoutSettings;
+    });
+  };
+
+  return {
+    templates, senderInfos, infoBlocks, loading,
+    editingTemplate, setEditingTemplate,
+    showCreateDialog, setShowCreateDialog,
+    activeTab, setActiveTab,
+    selectedBlockItem, setSelectedBlockItem,
+    showBlockRuler, setShowBlockRuler,
+    showPreview, setShowPreview,
+    selectedGalleryImage, setSelectedGalleryImage,
+    showSettings, setShowSettings,
+    galleryImages, setGalleryImages,
+    galleryLoading, setGalleryLoading,
+    galleryBlobUrlsRef,
+    formData, setFormData,
+    currentTenant, user, toast,
+    fetchTemplates,
+    handleCreateTemplate, handleUpdateTemplate, handleDeleteTemplate,
+    resetForm, startEditing, cancelEditing,
+    updateLayoutSettings, getBlockItems, setBlockItems,
+    stripBlobUrls,
+  };
+}
