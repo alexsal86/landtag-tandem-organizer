@@ -26,7 +26,7 @@ export const CreateDemoUsers = () => {
       const { data, error } = await supabase.functions.invoke('create-demo-users');
       
       if (error) {
-        console.error('Error creating demo users:', error);
+        debugConsole.error('Error creating demo users:', error);
         toast.error('Fehler beim Erstellen der Demo-Benutzer');
         return;
       }
