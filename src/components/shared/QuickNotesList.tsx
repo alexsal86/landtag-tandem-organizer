@@ -1166,7 +1166,7 @@ export function QuickNotesList({
       toast.success("Vormerkung entfernt");
       loadNotes();
     } catch (error) {
-      console.error('Error removing from Jour Fixe queue:', error);
+      debugConsole.error('Error removing from Jour Fixe queue:', error);
       toast.error("Fehler beim Entfernen der Vormerkung");
     }
   };
