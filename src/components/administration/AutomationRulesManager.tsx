@@ -185,7 +185,7 @@ export function AutomationRulesManager() {
         .order("updated_at", { ascending: false }),
       supabase
         .from("automation_rule_runs")
-        .select("id, rule_id, status, dry_run, trigger_source, started_at, error_message")
+        .select("id, rule_id, status, dry_run, trigger_source, started_at, finished_at, error_message")
         .eq("tenant_id", currentTenant.id)
         .order("started_at", { ascending: false })
         .limit(30),
