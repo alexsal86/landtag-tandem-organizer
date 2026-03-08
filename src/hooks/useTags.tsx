@@ -41,27 +41,7 @@ export const useTags = () => {
     }
   };
 
-  // Listen for changes to tags
-  useEffect(() => {
-    const channel = supabase
-      .channel('tags-changes')
-      .on(
-        'postgres_changes',
-        {
-          event: '*',
-          schema: 'public',
-          table: 'tags',
-        },
-        () => {
-          fetchTags();
-        }
-      )
-      .subscribe();
-
-    return () => {
-      supabase.removeChannel(channel);
-    };
-  }, []);
+  // Tags change rarely - no realtime needed, use refreshTags() when needed
 
   return { 
     tags, 
