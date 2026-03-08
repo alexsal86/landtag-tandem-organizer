@@ -92,7 +92,7 @@ export function useDaySlipStore(userId?: string, tenantId?: string) {
                   await supabase.from("day_slips").upsert(batch as any, { onConflict: "user_id,day_key" });
                 }
               }
-            } catch {}
+            } catch (e) { debugConsole.warn("useDaySlipStore: localStorage migration to DB failed", e); }
           }
         }
 
@@ -342,7 +342,7 @@ export function useDaySlipStore(userId?: string, tenantId?: string) {
           { onConflict: "user_id,tenant_id,key" }
         ).then();
       }
-    } catch {}
+    } catch (e) { debugConsole.warn("useDaySlipStore: syncResolveExport failed", e); }
   }, [todayKey, userId, tenantId]);
 
   const toggleResolveLine = useCallback((lineId: string, line: string, target: ResolveTarget) => {

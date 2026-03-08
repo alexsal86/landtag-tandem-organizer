@@ -36,8 +36,9 @@ export function useContactImport() {
   }, [user, currentTenant]);
 
   const fetchExistingContacts = async () => {
+    if (!currentTenant) return;
     try {
-      const { data, error } = await supabase.from("contacts").select("id, name, email, phone, organization, organization_id").eq("tenant_id", currentTenant!.id).order("name");
+      const { data, error } = await supabase.from("contacts").select("id, name, email, phone, organization, organization_id").eq("tenant_id", currentTenant.id).order("name");
       if (error) throw error;
       setExistingContacts(data?.map((c) => ({ id: c.id, name: c.name, email: c.email, phone: c.phone, organization: c.organization, organization_id: c.organization_id })) || []);
     } catch (error) { debugConsole.error("Error fetching existing contacts:", error); }
@@ -144,10 +145,11 @@ export function useContactImport() {
   };
 
   const importContact = async (rowIndex: number) => {
+    if (!user || !currentTenant) return;
     const row = data[rowIndex];
     const validMappings = fieldMappings.filter((m) => m.targetField);
     try {
-      const contactData: any = { user_id: user!.id, tenant_id: currentTenant!.id };
+      const contactData: any = { user_id: user.id, tenant_id: currentTenant.id };
       validMappings.forEach((m) => { const v = row[m.sourceField]; if (v && v.trim()) contactData[m.targetField] = v.trim(); });
       if ((contactData.first_name || contactData.last_name) && !contactData.name) contactData.name = `${contactData.first_name || ""} ${contactData.last_name || ""}`.trim();
       if (contactData.organization?.trim()) {
@@ -155,8 +157,8 @@ export function useContactImport() {
         let existingOrg = existingContacts.find((c) => c.organization === orgName || (c.name === orgName && !c.organization));
         if (!existingOrg) {
           try {
-            const { data: newOrg, error: orgError } = await supabase.from("contacts").insert([{ user_id: user!.id, tenant_id: currentTenant!.id, name: orgName, contact_type: "organization", category: "organization" }]).select("id, name").single();
-            if (!orgError && newOrg) { contactData.organization_id = newOrg.id; existingContacts.push({ id: newOrg.id, name: newOrg.name, email: null, phone: null, organization: null }); }
+            const { data: newOrg, error: orgError } = await supabase.from("contacts").insert([{ user_id: user.id, tenant_id: currentTenant.id, name: orgName, contact_type: "organization", category: "organization" }]).select("id, name").single();
+            if (!orgError && newOrg) { contactData.organization_id = newOrg.id; setExistingContacts((prev) => [...prev, { id: newOrg.id, name: newOrg.name, email: null, phone: null, organization: null }]); }
           } catch (e) { debugConsole.warn("Could not create organization:", e); }
         } else { contactData.organization_id = existingOrg.id; }
       }

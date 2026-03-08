@@ -8,7 +8,7 @@ interface JSONProtocolStructure {
   };
   speeches: Array<{
     index: number;
-    speaker: string;
+    speaker: string | { name: string; role?: string; party?: string };
     role?: string;
     party?: string;
     text: string;
@@ -156,10 +156,11 @@ export function parseJSONProtocol(jsonData: JSONProtocolStructure): ParsedJSONPr
 
   // Parse speeches - speaker, role, party are on same level in JSON
   const speeches = jsonData.speeches.map(speech => {
+    const speakerObj = typeof speech.speaker === 'object' ? speech.speaker : null;
     return {
-      speaker_name: speech.speaker,
-      speaker_party: speech.party,
-      speaker_role: speech.role,
+      speaker_name: speakerObj ? speakerObj.name : speech.speaker as string,
+      speaker_party: speech.party || speakerObj?.party,
+      speaker_role: speech.role || speakerObj?.role,
       speech_content: speech.text,
       page_number: speech.page_number || speech.start_page,
       speech_type: speech.speech_type || 'main',

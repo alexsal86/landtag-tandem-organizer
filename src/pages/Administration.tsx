@@ -367,10 +367,10 @@ const [editingChild, setEditingChild] = useState<{ parentIndex: number; childInd
       const { error: delErr } = await supabase.from("user_roles").delete().eq("user_id", targetUserId);
       if (delErr) throw delErr;
 
-      if (role !== "none") {
+      if (role !== "none" && user) {
         const { error: insErr } = await supabase
           .from("user_roles")
-          .insert([{ user_id: targetUserId, role, assigned_by: user!.id }]);
+          .insert([{ user_id: targetUserId, role, assigned_by: user.id }]);
         if (insErr) throw insErr;
       }
 

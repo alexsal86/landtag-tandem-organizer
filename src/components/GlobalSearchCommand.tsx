@@ -173,7 +173,7 @@ export function GlobalSearchCommand() {
       let query = supabase
         .from('contacts')
         .select('id, name, organization, avatar_url, category, company, email, phone, mobile_phone, role, position')
-        .eq('tenant_id', currentTenant!.id);
+        .eq('tenant_id', currentTenant?.id ?? '');
       
       // Fuzzy search using pg_trgm similarity
       query = query.or(`name.ilike.%${searchQuery}%,organization.ilike.%${searchQuery}%,company.ilike.%${searchQuery}%,email.ilike.%${searchQuery}%,phone.ilike.%${searchQuery}%,mobile_phone.ilike.%${searchQuery}%,role.ilike.%${searchQuery}%,position.ilike.%${searchQuery}%`);
@@ -195,7 +195,7 @@ export function GlobalSearchCommand() {
       let query = supabase
         .from('appointments')
         .select('id, title, start_time, location, category, description, meeting_details')
-        .eq('tenant_id', currentTenant!.id)
+        .eq('tenant_id', currentTenant?.id ?? '')
         .or(`title.ilike.%${searchQuery}%,location.ilike.%${searchQuery}%,description.ilike.%${searchQuery}%,meeting_details.ilike.%${searchQuery}%`);
       
       if (filters.dateFrom) {
@@ -224,7 +224,7 @@ export function GlobalSearchCommand() {
       let query = supabase
         .from('tasks')
         .select('id, title, due_date, status, priority, category')
-        .eq('tenant_id', currentTenant!.id)
+        .eq('tenant_id', currentTenant?.id ?? '')
         .or(`title.ilike.%${searchQuery}%,description.ilike.%${searchQuery}%,category.ilike.%${searchQuery}%,status.ilike.%${searchQuery}%`);
       
       if (filters.status && filters.status !== 'completed') {
@@ -255,7 +255,7 @@ export function GlobalSearchCommand() {
       let query = supabase
         .from('documents')
         .select('id, title, description, category, status, file_name, document_type, file_type, tags')
-        .eq('tenant_id', currentTenant!.id)
+        .eq('tenant_id', currentTenant?.id ?? '')
         .or(`title.ilike.%${searchQuery}%,description.ilike.%${searchQuery}%,file_name.ilike.%${searchQuery}%,document_type.ilike.%${searchQuery}%,file_type.ilike.%${searchQuery}%`);
       
       if (filters.category) {
@@ -280,7 +280,7 @@ export function GlobalSearchCommand() {
       const { data } = await supabase
         .from('letters')
         .select('id, title, recipient_name, letter_date, subject, subject_line, reference_number')
-        .eq('tenant_id', currentTenant!.id)
+        .eq('tenant_id', currentTenant?.id ?? '')
         .or(`title.ilike.%${searchQuery}%,recipient_name.ilike.%${searchQuery}%,subject.ilike.%${searchQuery}%,subject_line.ilike.%${searchQuery}%,reference_number.ilike.%${searchQuery}%`)
         .order('letter_date', { ascending: false })
         .limit(10);
@@ -296,7 +296,7 @@ export function GlobalSearchCommand() {
       const { data } = await supabase
         .from('meetings')
         .select('id, title, meeting_date, description, location')
-        .eq('tenant_id', currentTenant!.id)
+        .eq('tenant_id', currentTenant?.id ?? '')
         .or(`title.ilike.%${searchQuery}%,description.ilike.%${searchQuery}%,location.ilike.%${searchQuery}%`)
         .order('meeting_date', { ascending: false })
         .limit(10);
@@ -312,7 +312,7 @@ export function GlobalSearchCommand() {
       const { data } = await supabase
         .from('case_files')
         .select('id, title, reference_number, status, case_type, tags, current_status_note, processing_status, priority')
-        .eq('tenant_id', currentTenant!.id)
+        .eq('tenant_id', currentTenant?.id ?? '')
         .or(`title.ilike.%${searchQuery}%,description.ilike.%${searchQuery}%,reference_number.ilike.%${searchQuery}%,current_status_note.ilike.%${searchQuery}%,case_type.ilike.%${searchQuery}%,processing_status.ilike.%${searchQuery}%,status.ilike.%${searchQuery}%,priority.ilike.%${searchQuery}%`)
         .order('updated_at', { ascending: false })
         .limit(10);
@@ -329,7 +329,7 @@ export function GlobalSearchCommand() {
       const { data } = await supabase
         .from('archived_tasks')
         .select('id, title, description, completed_at, category, priority')
-        .eq('user_id', user!.id)
+        .eq('user_id', user?.id ?? '')
         .or(`title.ilike.%${searchQuery}%,description.ilike.%${searchQuery}%,category.ilike.%${searchQuery}%,priority.ilike.%${searchQuery}%`)
         .order('archived_at', { ascending: false })
         .limit(10);
