@@ -64,7 +64,7 @@ export const UserColorManager = () => {
       if (error) throw error;
       setUsers(data || []);
     } catch (error) {
-      console.error('Error loading users:', error);
+      debugConsole.error('Error loading users:', error);
       toast({
         title: "Fehler beim Laden",
         description: "Benutzer konnten nicht geladen werden.",
