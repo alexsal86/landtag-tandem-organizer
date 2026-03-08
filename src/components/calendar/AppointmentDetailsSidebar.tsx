@@ -136,16 +136,8 @@ export function AppointmentDetailsSidebar({
 
   const sendInvitations = async () => {
     if (!appointment || !appointment.id || !guests.length || appointment.id.startsWith('blocked-')) {
-      console.log('Cannot send invitations:', { 
-        hasAppointment: !!appointment, 
-        hasId: !!appointment?.id,
-        guestsCount: guests.length, 
-        isBlocked: appointment?.id?.startsWith('blocked-') 
-      });
       return;
     }
-    
-    console.log('Sending invitations for appointment:', appointment.id, 'to guests:', guests);
     setIsSendingInvitations(true);
     try {
       const { data, error } = await supabase.functions.invoke('send-appointment-invitation', {
