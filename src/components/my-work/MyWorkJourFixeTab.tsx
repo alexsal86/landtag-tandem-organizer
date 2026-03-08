@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { ChevronDown, ChevronRight, Calendar, ExternalLink, Clock, List, StickyNote, Users, ListTodo, Globe, Cake, Scale } from "lucide-react";
+import { ChevronDown, ChevronRight, Calendar, ExternalLink, Clock, List, StickyNote, Users, ListTodo, Globe, Cake, Scale, Briefcase } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { useTenant } from "@/hooks/useTenant";
