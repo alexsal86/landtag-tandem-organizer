@@ -268,8 +268,7 @@ export function useEventPlanningData() {
       toast({ title: isCompleted ? "Planung als erledigt markiert" : "Markierung entfernt" });
       fetchPlannings();
     } catch (error) {
-      debugConsole.error('Error toggling completed:', error);
-      toast({ title: "Fehler", variant: "destructive" });
+      handleAppError(error, { context: 'togglePlanningCompleted', toast: { fn: toast, title: 'Fehler' } });
     }
   };
 
