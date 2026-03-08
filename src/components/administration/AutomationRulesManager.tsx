@@ -73,10 +73,38 @@ export function AutomationRulesManager() {
     return runs.filter((run) => run.status === runStatusFilter && !run.dry_run);
   }, [runs, runStatusFilter]);
 
+  const toggleAutomationsPaused = async () => {
+    if (!currentTenant) return;
+    setTogglingPause(true);
+    const newVal = !automationsPaused;
+    const { error } = await supabase
+      .from("tenants")
+      .update({ automations_paused: newVal } as any)
+      .eq("id", currentTenant.id);
+    setTogglingPause(false);
+    if (error) {
+      toast({ title: "Fehler", description: error.message, variant: "destructive" });
+      return;
+    }
+    setAutomationsPaused(newVal);
+    toast({ title: newVal ? "Alle Automations pausiert" : "Automations reaktiviert" });
+  };
+
   const loadData = async () => {
     if (!currentTenant) return;
 
     setLoading(true);
+
+    // Load pause state from tenant
+    const { data: tenantData } = await supabase
+      .from("tenants")
+      .select("automations_paused")
+      .eq("id", currentTenant.id)
+      .maybeSingle();
+    if (tenantData) {
+      setAutomationsPaused(!!(tenantData as any).automations_paused);
+    }
+
     const [{ data: rulesData, error: rulesError }, { data: runData, error: runsError }] = await Promise.all([
       supabase
         .from("automation_rules")
