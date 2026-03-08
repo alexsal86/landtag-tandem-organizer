@@ -45,7 +45,7 @@ export async function createLetterApprovalDecision(
         });
 
       if (participantError) {
-        console.error('Error adding decision participant:', participantError);
+        debugConsole.error('Error adding decision participant:', participantError);
       }
     }
 
