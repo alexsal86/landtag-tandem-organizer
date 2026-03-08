@@ -573,7 +573,7 @@ export function useEventPlanningData() {
           }, 500);
           return;
         }
-        console.error("Checklist update error:", error);
+        debugConsole.error("Checklist update error:", error);
         setChecklistItems(previousItems);
         toast({ title: "Fehler", description: "Checkliste konnte nicht aktualisiert werden.", variant: "destructive" });
         return;
