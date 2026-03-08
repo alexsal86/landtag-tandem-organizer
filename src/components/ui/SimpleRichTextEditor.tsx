@@ -419,6 +419,7 @@ const SimpleRichTextEditor: React.FC<SimpleRichTextEditorProps> = ({
         <ListPlugin />
         <MentionsPlugin onMentionInsert={onMentionInsert} />
         <InitialContentPlugin initialContent={initialContent} />
+        {autoFocus && <AutoFocusPlugin />}
       </LexicalComposer>
     </div>
   );
