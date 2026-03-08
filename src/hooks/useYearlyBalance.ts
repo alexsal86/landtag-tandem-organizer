@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { format, endOfMonth, eachDayOfInterval, parseISO } from "date-fns";
+import { debugConsole } from "@/utils/debugConsole";
 import { MonthlyBreakdown, YearlyBalanceResult, EmployeeSettingsBase } from "@/types/timeTracking";
 
 /**
