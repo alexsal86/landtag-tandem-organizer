@@ -284,8 +284,8 @@ export function PressTemplateManager() {
 
               <TabsContent value="footer-designer" className="space-y-4 pt-4">
                 <StructuredHeaderEditor
-                  initialElements={form.footer_elements as any}
-                  onElementsChange={(elements) => setForm((prev) => ({ ...prev, footer_elements: elements as any[] }))}
+                  initialElements={form.footer_elements}
+                  onElementsChange={(elements) => setForm((prev) => ({ ...prev, footer_elements: elements }))}
                   layoutSettings={form.layout_settings}
                   canvasWidthMm={form.layout_settings.pageWidth}
                   canvasHeightMm={form.layout_settings.footer.height}
