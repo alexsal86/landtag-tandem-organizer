@@ -26,7 +26,7 @@ export const AppRouter = () => {
             fallback={<div className="min-h-screen bg-gradient-subtle flex items-center justify-center" />}
           >
             <Routes>
-              <AppRoutes />
+              {AppRoutes()}
             </Routes>
           </Suspense>
         </MatrixUnreadProvider>
