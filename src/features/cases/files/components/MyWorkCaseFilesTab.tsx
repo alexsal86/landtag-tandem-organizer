@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { debugConsole } from '@/utils/debugConsole';
 import { useSearchParams, useNavigate } from "react-router-dom";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
