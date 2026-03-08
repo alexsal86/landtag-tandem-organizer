@@ -125,7 +125,7 @@ export async function generateLetterDOCX(letter: Letter): Promise<{ blob: Blob; 
     if (letter.template_id) {
       const { data: templateData } = await supabase
         .from('letter_templates')
-        .select('*')
+        .select('id, name, letterhead_html, letterhead_css, response_time_days, layout_settings')
         .eq('id', letter.template_id)
         .single();
       
