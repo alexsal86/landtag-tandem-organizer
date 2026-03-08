@@ -232,7 +232,7 @@ export function InlineMeetingParticipantsEditor({ meetingId }: InlineMeetingPart
             excludeUserIds={participants.map(p => p.user_id)}
           />
         </div>
-        <Select value={selectedRole} onValueChange={(v) => setSelectedRole(v as any)}>
+        <Select value={selectedRole} onValueChange={(v) => setSelectedRole(v as ParticipantRole)}>
           <SelectTrigger className="w-28 h-9">
             <SelectValue />
           </SelectTrigger>
