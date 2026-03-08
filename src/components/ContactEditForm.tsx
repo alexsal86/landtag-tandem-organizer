@@ -217,7 +217,7 @@ export function ContactEditForm({ contact, onSuccess, onCancel }: ContactEditFor
     const duplicates = checkForDuplicates(currentContactData);
     
     if (duplicates.length > 0 && !showDuplicateWarning) {
-      console.log('Duplicate warning shown');
+      debugConsole.log('Duplicate warning shown');
       setShowDuplicateWarning(true);
       return;
     }
