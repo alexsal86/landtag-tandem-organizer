@@ -234,7 +234,7 @@ export function useEmailComposer() {
       const { data, error } = await supabase.from("contacts").select("id, name, email, organization, avatar_url, phone").eq("tenant_id", currentTenant!.id).not("email", "is", null).order("name");
       if (error) throw error;
       setContacts(data || []);
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Error fetching contacts:", error);
     }
   };
