@@ -224,7 +224,7 @@ export function GlobalSearchCommand() {
       let query = supabase
         .from('tasks')
         .select('id, title, due_date, status, priority, category')
-        .eq('tenant_id', currentTenant!.id)
+        .eq('tenant_id', currentTenant?.id ?? '')
         .or(`title.ilike.%${searchQuery}%,description.ilike.%${searchQuery}%,category.ilike.%${searchQuery}%,status.ilike.%${searchQuery}%`);
       
       if (filters.status && filters.status !== 'completed') {
