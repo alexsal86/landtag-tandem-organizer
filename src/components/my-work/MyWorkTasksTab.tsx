@@ -509,7 +509,7 @@ export function MyWorkTasksTab() {
       
       toast({ title: "Aufgabe für nächsten Jour Fixe vorgemerkt" });
     } catch (error: any) {
-      console.error('Error marking task for next jour fixe:', error);
+      debugConsole.error('Error marking task for next jour fixe:', error);
       toast({ title: "Fehler", description: error.message, variant: "destructive" });
     } finally {
       setMeetingTaskId(null);
