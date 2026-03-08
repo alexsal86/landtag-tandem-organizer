@@ -54,16 +54,16 @@ export function useTaskOperations({
               setTasks(prev => prev.filter(t => t.id !== taskId));
               setShowCelebration(true);
             } else if (freshTask.status === 'completed' && newStatus === 'completed') {
-              const { data: existingArchive } = await supabase.from('archived_tasks').select('id').eq('task_id', taskId).maybeSingle();
-              if (!existingArchive) {
-                await supabase.from('archived_tasks').insert({
-                  task_id: taskId, user_id: user.id, title: freshTask.title,
-                  description: freshTask.description, priority: freshTask.priority,
-                  category: freshTask.category, assigned_to: freshTask.assigned_to || '',
-                  progress: 100, due_date: freshTask.due_date,
-                  completed_at: new Date().toISOString(), auto_delete_after_days: null,
-                } as any);
-                await supabase.from('tasks').delete().eq('id', taskId);
+                const { data: existingArchive } = await supabase.from('archived_tasks').select('id').eq('task_id', taskId).maybeSingle();
+                if (!existingArchive) {
+                  await supabase.from('archived_tasks').insert({
+                    task_id: taskId, user_id: user.id, title: freshTask.title,
+                    description: freshTask.description, priority: freshTask.priority,
+                    category: freshTask.category, assigned_to: freshTask.assigned_to || '',
+                    progress: 100, due_date: freshTask.due_date,
+                    completed_at: new Date().toISOString(),
+                  });
+                  await supabase.from('tasks').delete().eq('id', taskId);
               }
               setTasks(prev => prev.filter(t => t.id !== taskId));
               setShowCelebration(true);
