@@ -131,7 +131,7 @@ export const PollEditDialog = ({
     setSaving(true);
     
     try {
-      const changes = [];
+      const changes: string[] = [];
       if (title !== currentTitle) changes.push(`Titel geändert von "${currentTitle}" zu "${title}"`);
       if (description !== currentDescription) changes.push(`Beschreibung ${currentDescription ? 'geändert' : 'hinzugefügt'}`);
       if (deadline?.toISOString() !== currentDeadline) {
