@@ -1,6 +1,6 @@
 import React, { useState, useCallback, useEffect, useRef } from 'react';
 import { useLexicalComposerContext } from '@lexical/react/LexicalComposerContext';
-import { $getSelection, $isRangeSelection, $createParagraphNode, $createTextNode, $isTextNode, FORMAT_TEXT_COMMAND, FORMAT_ELEMENT_COMMAND, UNDO_COMMAND, REDO_COMMAND, TextFormatType, ElementFormatType, $insertNodes } from 'lexical';
+import { $getSelection, $isRangeSelection, $createParagraphNode, $createTextNode, $isTextNode, $getRoot, $selectAll, FORMAT_TEXT_COMMAND, FORMAT_ELEMENT_COMMAND, UNDO_COMMAND, REDO_COMMAND, TextFormatType, ElementFormatType, $insertNodes } from 'lexical';
 import {
   $createHeadingNode,
   $createQuoteNode,
