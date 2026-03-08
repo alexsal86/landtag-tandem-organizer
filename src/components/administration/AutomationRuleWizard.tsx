@@ -278,7 +278,20 @@ export type WizardForm = {
   enabled: boolean;
 };
 
-export const DEFAULT_CONDITION_GROUP: ConditionGroup = {
+/** Recursively validate that all conditions in a group have non-empty values */
+export function validateConditionGroup(group: ConditionGroup): boolean {
+  const hasItems = group.conditions.length > 0 || group.groups.length > 0;
+  if (!hasItems) return false;
+  const conditionsValid = group.conditions.every((c) => c.value.trim().length > 0);
+  const groupsValid = group.groups.every((g) => validateConditionGroup(g));
+  return conditionsValid && groupsValid;
+}
+
+/** Count total conditions in a group tree */
+export function countConditions(group: ConditionGroup): number {
+  return group.conditions.length + group.groups.reduce((sum, g) => sum + countConditions(g), 0);
+}
+
   logic: "all",
   conditions: [{ ...DEFAULT_CONDITION }],
   groups: [],
