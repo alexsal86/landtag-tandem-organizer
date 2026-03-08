@@ -16,11 +16,11 @@ export interface PartyAssociation {
   website?: string | null;
   email?: string | null;
   social_media?: any;
-  address_street?: string;
-  address_number?: string;
-  address_postal_code?: string;
-  address_city?: string;
-  full_address?: string;
+  address_street?: string | null;
+  address_number?: string | null;
+  address_postal_code?: string | null;
+  address_city?: string | null;
+  full_address?: string | null;
   coverage_areas?: any;
   administrative_boundaries?: any;
   contact_info?: any;
