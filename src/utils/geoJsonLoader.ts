@@ -232,7 +232,7 @@ export const loadElectoralDistrictsGeoJson = async (): Promise<GeoJsonData> => {
           const txt = await res.text();
           fc = JSON.parse(txt);
         } catch {
-          console.warn('Unknown content-type for', path, 'skipping');
+          debugConsole.warn('Unknown content-type for', path, 'skipping');
           continue;
         }
       }
