@@ -207,7 +207,7 @@ export function MyWorkTasksTab() {
       toast({ title: "Unteraufgabe erledigt" });
     } catch (error) {
       setSubtasks(previousSubtasks);
-      console.error("Error completing subtask:", error);
+      debugConsole.error("Error completing subtask:", error);
       toast({ title: "Fehler", variant: "destructive" });
     }
   };
