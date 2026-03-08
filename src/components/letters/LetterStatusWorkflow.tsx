@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { debugConsole } from '@/utils/debugConsole';
 import { ArrowRight, CheckCircle, Clock, Edit3, Send, AlertCircle, User, RotateCcw } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
