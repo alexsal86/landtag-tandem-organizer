@@ -224,7 +224,7 @@ export const loadElectoralDistrictsGeoJson = async (): Promise<GeoJsonData> => {
       } else if (contentType.includes('application/json') || path.endsWith('.geojson') || path.endsWith('.json')) {
         fc = await res.json();
       } else if (contentType.includes('text/html')) {
-        console.warn('Received HTML for', path, 'skipping');
+        debugConsole.warn('Received HTML for', path, 'skipping');
         continue;
       } else {
         // Try as text then JSON
