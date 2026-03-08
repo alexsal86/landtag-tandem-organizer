@@ -204,8 +204,8 @@ export const useCaseFiles = () => {
       toast({
         title: "Fehler",
         description: participantsRollbackError
-          ? "FallAkte-Erstellung wurde zurückgerollt, da Teilnehmer nicht gespeichert werden konnten."
-          : "FallAkte konnte nicht erstellt werden.",
+          ? "Fallakte-Erstellung wurde zurückgerollt, da Teilnehmer nicht gespeichert werden konnten."
+          : "Fallakte konnte nicht erstellt werden.",
         variant: "destructive",
       });
       return null;
