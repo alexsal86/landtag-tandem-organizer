@@ -5,6 +5,7 @@ import type { HeaderElement, TextElement, ShapeElement } from '@/components/canv
 import { type BlockLine, type BlockLineData, getBlockLineFontStack, isLineMode } from '@/components/letters/BlockLineEditor';
 import { buildFooterBlocksFromStored } from '@/components/letters/footerBlockUtils';
 import { SunflowerSVG, LionSVG, WappenSVG } from '@/components/letters/elements/shapeSVGs';
+import { sanitizeRichHtml, sanitizeCss } from '@/utils/htmlSanitizer';
 
 interface DIN5008LetterLayoutProps {
   template?: any;
