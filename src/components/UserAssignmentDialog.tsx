@@ -58,7 +58,7 @@ const UserAssignmentDialog: React.FC<UserAssignmentDialogProps> = ({
         .neq('user_id', user?.id);
 
       if (tenantError) {
-        console.error('Error fetching tenant users:', tenantError);
+        debugConsole.error('Error fetching tenant users:', tenantError);
         throw tenantError;
       }
 
