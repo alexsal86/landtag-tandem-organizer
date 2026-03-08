@@ -88,7 +88,7 @@ export function DayView({ date, events, onAppointmentClick, onPreparationClick }
         });
         setGuestCounts(guestCountsTemp);
       } catch (error) {
-        console.error('Error fetching counts:', error);
+        debugConsole.error('Error fetching counts:', error);
       }
     };
 
