@@ -95,7 +95,7 @@ export function InlineMeetingParticipantsEditor({ meetingId }: InlineMeetingPart
 
   const handleAddParticipant = async (user: { id: string; display_name: string }) => {
     if (!meetingId) {
-      console.error('❌ InlineMeetingParticipantsEditor: No meetingId provided!');
+      debugConsole.error('❌ InlineMeetingParticipantsEditor: No meetingId provided!');
       toast({
         title: "Fehler",
         description: "Keine Meeting-ID vorhanden",
