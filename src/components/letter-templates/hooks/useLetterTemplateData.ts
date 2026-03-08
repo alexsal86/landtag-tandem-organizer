@@ -192,8 +192,8 @@ export function useLetterTemplateData() {
       default_sender_id: '', default_info_blocks: [], header_elements: [], footer_blocks: [],
       layout_settings: {
         ...DEFAULT_DIN5008_LAYOUT,
-        blockContent: { ...((DEFAULT_DIN5008_LAYOUT as any).blockContent || {}), attachments: createDefaultAttachmentElements() },
-      } as any,
+        blockContent: { ...(DEFAULT_DIN5008_LAYOUT.blockContent || {}), attachments: createDefaultAttachmentElements() },
+      } as LetterLayoutSettings,
     });
   };
 
