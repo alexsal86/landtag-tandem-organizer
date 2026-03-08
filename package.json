@@ -17,7 +17,8 @@
     "typecheck:quicknotes": "tsc -p tsconfig.quicknotes-strict.json --noEmit",
     "typecheck:notifications": "tsc -p tsconfig.notifications-strict.json --noEmit",
     "typecheck:dashboard": "tsc -p tsconfig.dashboard-strict.json --noEmit",
-    "typecheck:strict-all": "npm run typecheck:knowledge && npm run typecheck:auth && npm run typecheck:quicknotes && npm run typecheck:notifications && npm run typecheck:dashboard",
+    "typecheck:strict-all": "npm run typecheck:knowledge && npm run typecheck:auth && npm run typecheck:quicknotes && npm run typecheck:notifications && npm run typecheck:dashboard && npm run typecheck:utils",
+    "typecheck:utils": "tsc -p tsconfig.strict-utils.json --noEmit",
     "report:bundle-size": "node scripts/report-bundle-size.mjs"
   },
   "dependencies": {
