@@ -200,23 +200,24 @@ export function useLetterTemplateData() {
   const startEditing = (template: LetterTemplate) => {
     setEditingTemplate(template);
     setActiveTab('canvas-designer');
-    let headerElements: any[] = [];
+    let headerElements: unknown[] = [];
     if (template.header_text_elements) {
       if (typeof template.header_text_elements === 'string') { try { headerElements = JSON.parse(template.header_text_elements); } catch { headerElements = []; } }
       else if (Array.isArray(template.header_text_elements)) { headerElements = template.header_text_elements; }
     }
-    let rawFooterBlocks: any = [];
-    if ((template as any).footer_blocks) {
-      if (typeof (template as any).footer_blocks === 'string') { try { rawFooterBlocks = JSON.parse((template as any).footer_blocks); } catch { rawFooterBlocks = []; } }
-      else { rawFooterBlocks = (template as any).footer_blocks; }
+    let rawFooterBlocks: unknown = [];
+    if (template.footer_blocks) {
+      if (typeof template.footer_blocks === 'string') { try { rawFooterBlocks = JSON.parse(template.footer_blocks); } catch { rawFooterBlocks = []; } }
+      else { rawFooterBlocks = template.footer_blocks; }
     }
     const footerLines = parseFooterLinesForEditor(rawFooterBlocks);
     const normalizedLayoutSettings = normalizeLayoutBlockContentImages(template.layout_settings || DEFAULT_DIN5008_LAYOUT);
-    const legacyHeaderElements = (((normalizedLayoutSettings as any).blockContent || {}).header || []) as any[];
+    const bc = ((normalizedLayoutSettings as unknown as Record<string, unknown>).blockContent || {}) as Record<string, unknown[]>;
+    const legacyHeaderElements = (bc.header || []) as unknown[];
     const headerSource = headerElements.length > 0 ? headerElements : (Array.isArray(legacyHeaderElements) ? legacyHeaderElements : []);
     const normalizedHeader = headerSource.map(normalizeImageItem);
     const normalizedFooter = footerLines.map(normalizeImageItem);
-    const cleanedBlockContent = { ...(((normalizedLayoutSettings as any).blockContent || {}) as Record<string, any[]>) };
+    const cleanedBlockContent = { ...bc };
     delete cleanedBlockContent.header;
     if (!Array.isArray(cleanedBlockContent.attachments) || cleanedBlockContent.attachments.length === 0) {
       cleanedBlockContent.attachments = createDefaultAttachmentElements();
@@ -225,9 +226,9 @@ export function useLetterTemplateData() {
     setFormData({
       name: template.name, letterhead_html: template.letterhead_html, letterhead_css: template.letterhead_css,
       response_time_days: template.response_time_days, default_sender_id: template.default_sender_id || '',
-      default_info_blocks: template.default_info_blocks || [], header_elements: normalizedHeader,
-      footer_blocks: footerData as any,
-      layout_settings: { ...normalizedLayoutSettings, blockContent: { ...cleanedBlockContent, footer: footerData } as any },
+      default_info_blocks: template.default_info_blocks || [], header_elements: normalizedHeader as unknown[],
+      footer_blocks: footerData as unknown[],
+      layout_settings: { ...normalizedLayoutSettings, blockContent: { ...cleanedBlockContent, footer: footerData } } as LetterLayoutSettings,
     });
   };
 
