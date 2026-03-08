@@ -72,7 +72,7 @@ export const HabitsWidget: React.FC<HabitsWidgetProps> = ({
     try {
       const { data, error } = await supabase
         .from('habits')
-        .select('*')
+        .select('id, name, description, color, frequency, target_count, category, is_active, created_at')
         .eq('user_id', user.id)
         .eq('is_active', true)
         .order('created_at', { ascending: false });
