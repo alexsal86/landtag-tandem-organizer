@@ -184,6 +184,26 @@ export function FocusModeView({
         });
       });
     }
+    if (systemItem.system_type === 'case_items' && linkedCaseItems.length > 0) {
+      linkedCaseItems.forEach((ci: any, i: number) => {
+        result.push({
+          item: {
+            id: `caseitem-${ci.id}`,
+            title: ci.subject || `Vorgang ${i + 1}`,
+            is_completed: false,
+            order_index: systemItem.order_index + i + 1,
+            system_type: 'case_item_item',
+          } as AgendaItem,
+          isSubItem: true,
+          parentItem: parentForChildren,
+          globalIndex: -1,
+          isSystemSubItem: true,
+          sourceId: ci.id,
+          sourceType: 'task',
+          sourceData: ci
+        });
+      });
+    }
   };
     
     // Get main items (no parent)
