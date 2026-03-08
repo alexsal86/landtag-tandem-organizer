@@ -600,7 +600,7 @@ export function CommentPlugin({ documentId }: { documentId?: string }) {
               }
             }
           } catch (error) {
-            console.error('Error applying comment mark:', error);
+            debugConsole.error('Error applying comment mark:', error);
           }
         }
       });
