@@ -150,7 +150,7 @@ export function MyWorkTasksTab() {
 
       await supabase
         .from('archived_tasks')
-        .insert({
+        .insert([{
           task_id: taskId,
           user_id: user.id,
           title: task.title,
@@ -162,7 +162,7 @@ export function MyWorkTasksTab() {
           due_date: task.due_date,
           completed_at: new Date().toISOString(),
           auto_delete_after_days: null,
-        });
+        }]);
 
       await supabase.from('tasks').delete().eq('id', taskId);
       
