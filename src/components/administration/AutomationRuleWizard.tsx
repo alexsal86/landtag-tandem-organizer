@@ -649,8 +649,8 @@ function ConditionGroupEditor({
     onChange({ ...group, logic: group.logic === "all" ? "any" : "all" });
   };
 
-  const borderColor = depth === 0 ? "border-border" : group.logic === "all" ? "border-primary/30" : "border-orange-400/30";
-  const bgColor = depth === 0 ? "" : group.logic === "all" ? "bg-primary/5" : "bg-orange-400/5";
+  const borderColor = depth === 0 ? "border-border" : group.logic === "all" ? "border-primary/30" : "border-accent/50";
+  const bgColor = depth === 0 ? "" : group.logic === "all" ? "bg-primary/5" : "bg-accent/10";
 
   return (
     <div className={cn("rounded-lg border p-3 space-y-2", borderColor, bgColor)}>
