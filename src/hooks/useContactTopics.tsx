@@ -19,7 +19,7 @@ export const useContactTopics = (contactId: string | undefined) => {
       if (error) throw error;
       setAssignedTopics(data?.map(t => t.topic_id) || []);
     } catch (error) {
-      console.error('Error fetching contact topics:', error);
+      debugConsole.error('Error fetching contact topics:', error);
     } finally {
       setLoading(false);
     }
