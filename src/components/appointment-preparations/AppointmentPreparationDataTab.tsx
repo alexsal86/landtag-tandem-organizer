@@ -609,7 +609,7 @@ export function AppointmentPreparationDataTab({
                       <div key={field.key} className="space-y-2">
                         <label className="text-sm font-medium">{field.label}</label>
                         
-                        {field.type === "select" ? (
+                        {(field as any).type === "select" ? (
                           <div className="space-y-2">
                             <Select
                               value={editData[field.key] || ""}
