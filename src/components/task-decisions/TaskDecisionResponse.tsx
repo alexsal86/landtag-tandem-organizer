@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from "react";
+import { debugConsole } from '@/utils/debugConsole';
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
