@@ -1046,7 +1046,7 @@ export function useEventPlanningData() {
       loadItemSubtasks(itemId);
       loadAllItemCounts();
       if (isCompleted) toast({ title: "Unteraufgabe abgeschlossen", description: "Die Unteraufgabe wurde erfolgreich als erledigt markiert." });
-    } catch (error) { debugConsole.error('Error updating subtask:', error); toast({ title: "Fehler", description: "Unteraufgabe konnte nicht aktualisiert werden.", variant: "destructive" }); }
+    } catch (error) { handleAppError(error, { context: 'handleSubtaskComplete', toast: { fn: toast, title: 'Fehler', description: 'Unteraufgabe konnte nicht aktualisiert werden.' } }); }
   };
 
   const updateItemComment = async (commentId: string, newContent: string) => {
