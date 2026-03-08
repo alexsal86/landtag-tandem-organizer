@@ -67,7 +67,7 @@ export const useCaseFileTypes = () => {
       await fetchCaseFileTypes();
       return true;
     } catch (error) {
-      console.error('Error creating case file type:', error);
+      debugConsole.error('Error creating case file type:', error);
       toast({
         title: "Fehler",
         description: "Fallakten-Typ konnte nicht erstellt werden.",
