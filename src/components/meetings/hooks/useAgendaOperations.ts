@@ -94,11 +94,11 @@ export function useAgendaOperations(deps: AgendaOpsDeps) {
       }
 
       const { data: savedItem, error } = await supabase
-        .from('meeting_agenda_items').insert({
+        .from('meeting_agenda_items').insert([{
           meeting_id: selectedMeeting.id, title: titles[systemType], description: null,
           system_type: systemType, parent_id: parentId, order_index: insertIndex,
           is_completed: false, is_recurring: false, is_visible: true,
-        }).select().single();
+        }]).select().single();
       if (error) throw error;
 
       const newItem: AgendaItem = { ...savedItem, localKey: savedItem.id, parentLocalKey: parentId || undefined };
