@@ -61,7 +61,7 @@ async function logMatrixSkip(
   roomId: string | null,
   message: string,
 ) {
-  const { error } = await supabase.from("matrix_bot_logs").insert({
+  const { error } = await supabase.from("matrix_bot_logs").insert([{
     event_type: "news_message_skipped",
     user_id: userId,
     room_id: roomId,
@@ -71,7 +71,7 @@ async function logMatrixSkip(
     message_type: "news",
     sent_date: new Date().toISOString().split("T")[0],
     metadata: { reason: "matrix_enabled_false" },
-  });
+  }]);
 
   if (error) {
     console.error(`❌ Could not write skip log for user ${userId}:`, error);

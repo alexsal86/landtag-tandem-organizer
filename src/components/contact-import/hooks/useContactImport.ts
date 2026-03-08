@@ -163,7 +163,7 @@ export function useContactImport() {
       if (!contactData.contact_type) contactData.contact_type = "person";
       if (!contactData.category) contactData.category = "citizen";
       if (!contactData.priority) contactData.priority = "medium";
-      const { error } = await supabase.from("contacts").insert(contactData);
+      const { error } = await supabase.from("contacts").insert([contactData]);
       if (error) { setErrors((prev) => [...prev, `Zeile ${rowIndex + 1}: ${error.message}`]); }
       else { setImportedCount((prev) => prev + 1); setExistingContacts((prev) => [...prev, { id: "temp-" + rowIndex, name: contactData.name, email: contactData.email, phone: contactData.phone, organization: contactData.organization }]); }
     } catch { setErrors((prev) => [...prev, `Zeile ${rowIndex + 1}: Unbekannter Fehler`]); }

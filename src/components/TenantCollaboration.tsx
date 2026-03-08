@@ -96,13 +96,13 @@ export function TenantCollaboration() {
     try {
       const { data, error } = await supabase
         .from("tenant_collaborations")
-        .insert({
+        .insert([{
           tenant_a_id: currentTenant.id,
           tenant_b_id: selectedTenantId,
           approved_by_a: user.id,
           collaboration_type: "project_sharing",
           is_active: false,
-        })
+        }])
         .select()
         .single();
 

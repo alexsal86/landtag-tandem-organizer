@@ -618,14 +618,14 @@ export function AdminTimeTrackingView() {
 
         const { error: insertError } = await supabase
           .from("leave_requests")
-          .insert({
+          .insert([{
             user_id: selectedUserId,
             type: newType,
             start_date: entry.work_date,
             end_date: entry.work_date,
             status: "approved",
             reason: `Admin-Umwandlung: ${reason}`,
-          });
+          }]);
         
         if (insertError && !insertError.message?.includes('fetch')) {
           throw insertError;

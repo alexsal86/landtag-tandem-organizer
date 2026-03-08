@@ -299,11 +299,11 @@ export function useTaskOperations({
     const task = tasks.find(t => t.id === taskId);
     if (!task) return;
     try {
-      const { error } = await supabase.from('quick_notes').insert({
+      const { error } = await supabase.from('quick_notes').insert([{
         user_id: user.id, title: `Task Note: ${task.title}`,
         content: content.trim(), category: 'task', color: '#3b82f6',
         is_pinned: false, tags: ['task', task.category]
-      });
+      }]);
       if (error) throw error;
       toast({ title: "Notiz erstellt", description: "Quick Note wurde erfolgreich erstellt." });
       return true;

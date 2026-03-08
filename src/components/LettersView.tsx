@@ -237,7 +237,7 @@ const LettersView: React.FC = () => {
 
         if (error) throw error;
       } else {
-        const { error } = await supabase.from('tasks').insert({
+        const { error } = await supabase.from('tasks').insert([{
           user_id: user.id,
           tenant_id: currentTenant.id,
           parent_task_id: parentTaskId,
@@ -249,7 +249,7 @@ const LettersView: React.FC = () => {
           priority: 'medium',
           category: 'personal',
           assigned_to: user.id,
-        });
+        }]);
 
         if (error) throw error;
       }
