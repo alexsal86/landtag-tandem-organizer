@@ -25,7 +25,7 @@ export const useDecisionTopics = (decisionId: string | undefined) => {
 
       setAssignedTopics(data?.map(item => item.topic_id) || []);
     } catch (error) {
-      console.error('Error fetching decision topics:', error);
+      debugConsole.error('Error fetching decision topics:', error);
     } finally {
       setLoading(false);
     }
