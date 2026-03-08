@@ -368,10 +368,10 @@ export const KarlsruheDistrictsMap = ({
         filter: `contact_type=eq.organization`
       }, (payload) => {
         const updated = payload.new as any;
-        console.log('Contact updated via realtime:', updated);
+        debugConsole.log('Contact updated via realtime:', updated);
         
         if (updated.coordinates) {
-          console.log('Coordinates found, reloading stakeholders...');
+          debugConsole.log('Coordinates found, reloading stakeholders...');
           loadStakeholders();
         }
       })
