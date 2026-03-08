@@ -180,7 +180,7 @@ export function useTaskDetailData(task: Task | null) {
   const addComment = async () => {
     if (!newComment.trim() || !task || !user) return;
     try {
-      const { error } = await supabase.from("task_comments").insert({ task_id: task.id, user_id: user.id, content: newComment.trim() });
+      const { error } = await supabase.from("task_comments").insert([{ task_id: task.id, user_id: user.id, content: newComment.trim() }]);
       if (error) throw error;
       setNewComment("");
       setNewCommentEditorKey((p) => p + 1);
