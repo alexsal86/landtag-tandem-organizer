@@ -61,7 +61,7 @@ export const MatrixMorningSettings: React.FC = () => {
           });
         }
       } catch (error) {
-        console.error('Error loading settings:', error);
+        debugConsole.error('Error loading settings:', error);
       }
     };
 
