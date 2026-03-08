@@ -288,8 +288,8 @@ export function usePressReleaseEditor({ pressReleaseId, initialDraft, onBack }: 
       setShowGhostDialog(false);
       toast({ title: "Veröffentlicht!", description: "Die Pressemitteilung wurde erfolgreich auf Ghost veröffentlicht." });
       await loadPressRelease(pressRelease.id);
-    } catch (error: any) {
-      toast({ title: "Fehler bei der Veröffentlichung", description: error.message, variant: "destructive" });
+    } catch (error: unknown) {
+      toast({ title: "Fehler bei der Veröffentlichung", description: error instanceof Error ? error.message : String(error), variant: "destructive" });
     } finally {
       setIsPublishing(false);
     }

@@ -15,6 +15,8 @@ interface UseDocumentOperationsProps {
   letters: Letter[];
 }
 
+const errMsg = (error: unknown) => error instanceof Error ? error.message : String(error);
+
 export function useDocumentOperations({
   user, currentTenant, fetchDocuments, fetchFolders, fetchLetters, activeTab, letters
 }: UseDocumentOperationsProps) {
@@ -40,8 +42,8 @@ export function useDocumentOperations({
       link.href = url; link.download = document.file_name;
       window.document.body.appendChild(link); link.click();
       URL.revokeObjectURL(url); window.document.body.removeChild(link);
-    } catch (error: any) {
-      toast({ title: "Download-Fehler", description: error.message, variant: "destructive" });
+    } catch (error: unknown) {
+      toast({ title: "Download-Fehler", description: errMsg(error), variant: "destructive" });
     }
   };
 
@@ -56,8 +58,8 @@ export function useDocumentOperations({
       if (dbError) throw dbError;
       toast({ title: "Dokument gelöscht", description: "Das Dokument wurde erfolgreich entfernt." });
       if (activeTab === 'documents') fetchDocuments();
-    } catch (error: any) {
-      toast({ title: "Lösch-Fehler", description: error.message, variant: "destructive" });
+    } catch (error: unknown) {
+      toast({ title: "Lösch-Fehler", description: errMsg(error), variant: "destructive" });
     }
   };
 
@@ -97,8 +99,8 @@ export function useDocumentOperations({
       toast({ title: "Dokument hochgeladen", description: "Das Dokument wurde erfolgreich gespeichert." });
       onSuccess();
       if (activeTab === 'documents') { fetchDocuments(); fetchFolders(); }
-    } catch (error: any) {
-      toast({ title: "Upload-Fehler", description: error.message, variant: "destructive" });
+    } catch (error: unknown) {
+      toast({ title: "Upload-Fehler", description: errMsg(error), variant: "destructive" });
     } finally {
       setLoading(false);
     }
@@ -119,8 +121,8 @@ export function useDocumentOperations({
       toast({ title: "Dokument aktualisiert" });
       onSuccess();
       fetchDocuments();
-    } catch (error: any) {
-      toast({ title: "Fehler", description: error.message, variant: "destructive" });
+    } catch (error: unknown) {
+      toast({ title: "Fehler", description: errMsg(error), variant: "destructive" });
     }
   };
 
@@ -139,8 +141,8 @@ export function useDocumentOperations({
       toast({ title: "Ordner erstellt", description: `Der Ordner "${folderName}" wurde erfolgreich erstellt.` });
       onSuccess();
       fetchFolders();
-    } catch (error: any) {
-      toast({ title: "Fehler", description: error.message, variant: "destructive" });
+    } catch (error: unknown) {
+      toast({ title: "Fehler", description: errMsg(error), variant: "destructive" });
     }
   };
 
@@ -157,8 +159,8 @@ export function useDocumentOperations({
       if (error) throw error;
       toast({ title: "Ordner gelöscht" });
       fetchFolders();
-    } catch (error: any) {
-      toast({ title: "Fehler", description: error.message, variant: "destructive" });
+    } catch (error: unknown) {
+      toast({ title: "Fehler", description: errMsg(error), variant: "destructive" });
     }
   };
 
@@ -170,8 +172,8 @@ export function useDocumentOperations({
       toast({ title: "Dokument verschoben" });
       onSuccess();
       fetchDocuments(); fetchFolders();
-    } catch (error: any) {
-      toast({ title: "Fehler", description: error.message, variant: "destructive" });
+    } catch (error: unknown) {
+      toast({ title: "Fehler", description: errMsg(error), variant: "destructive" });
     }
   };
 
@@ -185,7 +187,7 @@ export function useDocumentOperations({
       if (error) throw error;
       toast({ title: "Brief gelöscht" });
       fetchLetters();
-    } catch (error: any) {
+    } catch (error: unknown) {
       toast({ title: "Fehler", description: "Der Brief konnte nicht gelöscht werden.", variant: "destructive" });
     }
   };
@@ -205,7 +207,7 @@ export function useDocumentOperations({
       if (error) throw error;
       toast({ title: "Brief wiederhergestellt" });
       fetchLetters();
-    } catch (error: any) {
+    } catch (error: unknown) {
       toast({ title: "Fehler", description: "Der Brief konnte nicht wiederhergestellt werden.", variant: "destructive" });
     }
   };
