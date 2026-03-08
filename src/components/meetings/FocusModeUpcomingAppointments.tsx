@@ -8,6 +8,7 @@ import { useTenant } from '@/hooks/useTenant';
 import { useAuth } from '@/hooks/useAuth';
 import { format, addDays, startOfDay, endOfDay, isSameWeek, addWeeks } from 'date-fns';
 import { de } from 'date-fns/locale';
+import { debugConsole } from '@/utils/debugConsole';
 import { cn } from '@/lib/utils';
 
 interface Appointment {
