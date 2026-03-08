@@ -342,10 +342,16 @@ export function MyWorkCaseItemsTab() {
                 className="pl-9"
               />
             </div>
-            <Button onClick={() => setCreateOpen(true)}>
-              <Plus className="mr-2 h-4 w-4" />
-              Neues Anliegen
-            </Button>
+            <div className="flex gap-2">
+              <Button variant="outline" size="sm" onClick={() => setArchiveOpen(true)}>
+                <Archive className="mr-2 h-4 w-4" />
+                Archiv
+              </Button>
+              <Button onClick={() => setCreateOpen(true)}>
+                <Plus className="mr-2 h-4 w-4" />
+                Neues Anliegen
+              </Button>
+            </div>
           </div>
 
           <div className="flex flex-wrap gap-2">
