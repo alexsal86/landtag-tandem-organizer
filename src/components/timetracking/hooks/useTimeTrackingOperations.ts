@@ -175,7 +175,7 @@ export function useTimeTrackingOperations({
       const { data: userProfile } = await supabase.from("profiles").select("display_name").eq("user_id", userId).single();
       const userName = userProfile?.display_name || "Mitarbeiter";
       await supabase.from("appointments").delete().eq("category", type).ilike("title", `%${userName}%`).gte("start_time", new Date(leave.start_date).toISOString());
-    } catch (error) { console.error("Error removing calendar entry:", error); }
+    } catch (error) { debugConsole.error("Error removing calendar entry:", error); }
   };
 
   const performCancelLeave = async (leaveId: string, leaves: LeaveRow[], type: "vacation" | "medical" | "overtime_reduction", successMsg: string) => {
