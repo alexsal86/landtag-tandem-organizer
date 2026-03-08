@@ -109,7 +109,7 @@ export const useTopics = () => {
       toast({ title: "Thema aktualisiert" });
       return data;
     } catch (error: unknown) {
-      console.error('Error updating topic:', error);
+      debugConsole.error('Error updating topic:', error);
       toast({ 
         title: "Fehler", 
         description: error instanceof Error ? error.message : "Thema konnte nicht aktualisiert werden.", 
