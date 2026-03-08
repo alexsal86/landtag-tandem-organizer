@@ -137,7 +137,7 @@ export const PollListView = () => {
 
       setPolls(sortedPolls);
     } catch (error) {
-      console.error('Error loading polls:', error);
+      debugConsole.error('Error loading polls:', error);
       toast({
         title: "Fehler",
         description: "Die Abstimmungen konnten nicht geladen werden.",
