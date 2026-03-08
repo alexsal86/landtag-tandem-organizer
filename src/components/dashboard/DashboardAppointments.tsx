@@ -2,6 +2,7 @@ import { useMemo } from 'react';
 import { format } from 'date-fns';
 import { de } from 'date-fns/locale';
 import { useNavigate } from 'react-router-dom';
+import { icons } from 'lucide-react';
 import { getCurrentTimeSlot, getCurrentDayOfWeek } from '@/utils/dashboard/timeUtils';
 import { selectMessage } from '@/utils/dashboard/messageGenerator';
 import { getSpecialDayHint } from '@/utils/dashboard/specialDays';
@@ -88,6 +89,11 @@ export const DashboardAppointments = ({ data }: Props) => {
 
   if (isLoading) return <div className="animate-pulse h-32 bg-muted rounded-lg" />;
 
+  // Resolve the icon component for the special day hint
+  const HintIcon = specialDayHint?.icon
+    ? icons[specialDayHint.icon as keyof typeof icons]
+    : null;
+
   return (
     <div className="space-y-4">
       {/* Rollenbasierte Zeile + kontextuelle Nachricht */}
@@ -100,12 +106,13 @@ export const DashboardAppointments = ({ data }: Props) => {
 
       {/* Special Day */}
       {specialDayHint && (
-        <div className="bg-amber-50 dark:bg-amber-950/30 border-l-2 border-amber-400 px-3 py-1.5 rounded text-sm text-foreground">
-          {specialDayHint}
+        <div className="bg-amber-50 dark:bg-amber-950/30 border-l-2 border-amber-400 px-3 py-1.5 rounded text-sm text-foreground flex items-start gap-2">
+          {HintIcon && <HintIcon className="h-4 w-4 mt-0.5 shrink-0 text-amber-600 dark:text-amber-400" />}
+          <span>{specialDayHint.text}</span>
         </div>
       )}
 
-      {/* Termine – kein Limit mehr */}
+      {/* Termine */}
       <div>
         <h3 className="text-sm font-semibold text-foreground mb-2">
           📅 {isShowingTomorrow ? 'Deine Termine morgen' : 'Deine Termine heute'}
@@ -129,7 +136,6 @@ export const DashboardAppointments = ({ data }: Props) => {
                   }`}
                   onClick={() => navigate(`/calendar?date=${aptDate}&event=${apt.id}`)}
                 >
-                  {/* Puls-Indikator für laufenden Termin */}
                   {active && (
                     <span className="relative flex h-2 w-2 shrink-0">
                       <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-primary opacity-75" />

@@ -1,5 +1,5 @@
 import { useMemo } from 'react';
-import { GripVertical } from 'lucide-react';
+import { GripVertical, icons } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { format } from 'date-fns';
 import { de } from 'date-fns/locale';
@@ -7,7 +7,7 @@ import { de } from 'date-fns/locale';
 import { getCurrentTimeSlot, getCurrentDayOfWeek, getGreeting } from '@/utils/dashboard/timeUtils';
 import { selectMessage } from '@/utils/dashboard/messageGenerator';
 import { getWeatherHint, WeatherToggle } from '@/components/dashboard/DashboardWeather';
-import { getSpecialDayHint } from '@/utils/dashboard/specialDays';
+import { getSpecialDayHint, type SpecialDayHint } from '@/utils/dashboard/specialDays';
 import { type DashboardData } from '@/hooks/useDashboardData';
 
 interface Props {
@@ -35,6 +35,8 @@ export const DashboardGreetingSection = ({ data }: Props) => {
     event.dataTransfer.setDragImage(ghost, 12, 12);
     requestAnimationFrame(() => ghost.remove());
   };
+
+  const specialDayHint = useMemo(() => getSpecialDayHint(new Date(), specialDays), [specialDays]);
 
   const fullText = useMemo(() => {
     if (isLoading) return '';
@@ -85,8 +87,7 @@ export const DashboardGreetingSection = ({ data }: Props) => {
     if (roleLine) text += `${roleLine}\n\n`;
     text += `${message.text}\n\n`;
 
-    const specialDayHint = getSpecialDayHint(new Date(), specialDays);
-    if (specialDayHint) text += `${specialDayHint}\n\n`;
+    if (specialDayHint) text += `{{SPECIAL_DAY_PLACEHOLDER}}\n\n`;
 
     text += '✅ **Aufgabenstatus:**\n';
     text += '{{TASK_LIST_PLACEHOLDER}}\n';
@@ -101,10 +102,9 @@ export const DashboardGreetingSection = ({ data }: Props) => {
       });
     }
     return text;
-  }, [isLoading, userName, userRole, appointments, isShowingTomorrow, openTasksCount, completedTasksToday, specialDays]);
+  }, [isLoading, userName, userRole, appointments, isShowingTomorrow, openTasksCount, completedTasksToday, specialDayHint]);
 
   const parsedContent = useMemo(() => {
-    const sections = fullText.split('{{TASK_LIST_PLACEHOLDER}}\n');
     const parseTextSection = (text: string) => {
       const parts = text.split(/(\*\*.*?\*\*)/g);
       return parts.map((part, index) => {
@@ -112,10 +112,43 @@ export const DashboardGreetingSection = ({ data }: Props) => {
         return part;
       });
     };
-    if (sections.length < 2) return parseTextSection(fullText.replace('{{TASK_LIST_PLACEHOLDER}}\n', ''));
+
+    // Replace special day placeholder with icon + text inline
+    const renderSpecialDay = () => {
+      if (!specialDayHint) return null;
+      const HintIcon = specialDayHint.icon
+        ? icons[specialDayHint.icon as keyof typeof icons]
+        : null;
+      return (
+        <span className="flex items-start gap-2 my-1">
+          {HintIcon && <HintIcon className="h-5 w-5 mt-0.5 shrink-0 text-amber-600 dark:text-amber-400" />}
+          <span>{parseTextSection(specialDayHint.text)}</span>
+        </span>
+      );
+    };
+
+    // Split by both placeholders
+    let textWithoutSpecial = fullText;
+    const hasSpecialPlaceholder = fullText.includes('{{SPECIAL_DAY_PLACEHOLDER}}');
+    if (hasSpecialPlaceholder) {
+      textWithoutSpecial = fullText.replace('{{SPECIAL_DAY_PLACEHOLDER}}\n\n', '{{SPECIAL_DAY_PLACEHOLDER}}');
+    }
+
+    const specialParts = textWithoutSpecial.split('{{SPECIAL_DAY_PLACEHOLDER}}');
+    const beforeSpecial = specialParts[0] || '';
+    const afterSpecial = specialParts.length > 1 ? specialParts[1] : '';
+
+    const combinedAfter = afterSpecial;
+    const sections = combinedAfter.split('{{TASK_LIST_PLACEHOLDER}}\n');
+
+    const beforeTasks = sections[0] || '';
+    const afterTasks = sections.length > 1 ? sections[1] : combinedAfter.replace('{{TASK_LIST_PLACEHOLDER}}\n', '');
+
     return (
       <>
-        {parseTextSection(sections[0])}
+        {parseTextSection(beforeSpecial)}
+        {hasSpecialPlaceholder && renderSpecialDay()}
+        {parseTextSection(beforeTasks)}
         {openTaskTitles.length > 0 && (
           <span className="block">
             {openTaskTitles.map((task, index) => (
@@ -128,10 +161,10 @@ export const DashboardGreetingSection = ({ data }: Props) => {
             ))}
           </span>
         )}
-        {parseTextSection(sections[1])}
+        {parseTextSection(afterTasks)}
       </>
     );
-  }, [fullText, openTaskTitles, navigate]);
+  }, [fullText, openTaskTitles, navigate, specialDayHint]);
 
   if (tenantLoading) return <div className="animate-pulse h-32 bg-muted rounded-lg mb-6" />;
   if (!hasTenant) return null;

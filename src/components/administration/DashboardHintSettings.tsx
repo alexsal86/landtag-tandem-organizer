@@ -1,15 +1,17 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Loader2, Plus, RotateCcw, Save, Trash2 } from 'lucide-react';
+import { icons, Loader2, Plus, RotateCcw, Save, Trash2 } from 'lucide-react';
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { useTenant } from '@/hooks/useTenant';
 import {
+  AVAILABLE_HINT_ICONS,
   DEFAULT_SPECIAL_DAYS,
   isValidSpecialDayDate,
   parseSpecialDaysSetting,
@@ -18,7 +20,13 @@ import {
 
 const SETTINGS_KEY = 'dashboard_special_day_hints';
 
-const emptyEntry = (): SpecialDay => ({ month: 1, day: 1, name: '', hint: '' });
+const emptyEntry = (): SpecialDay => ({ month: 1, day: 1, name: '', hint: '', icon: 'CalendarHeart' });
+
+const HintIconPreview = ({ iconName }: { iconName: string }) => {
+  const Icon = icons[iconName as keyof typeof icons];
+  if (!Icon) return <span className="text-muted-foreground text-xs">–</span>;
+  return <Icon className="h-4 w-4 text-foreground" />;
+};
 
 export const DashboardHintSettings = () => {
   const { currentTenant } = useTenant();
@@ -130,7 +138,8 @@ export const DashboardHintSettings = () => {
         month: Number(entry.month),
         day: Number(entry.day),
         name: entry.name.trim(),
-        hint: entry.hint.trim()
+        hint: entry.hint.trim(),
+        icon: entry.icon || 'CalendarHeart',
       }));
 
       const settingValue = JSON.stringify(normalizedEntries);
@@ -188,16 +197,17 @@ export const DashboardHintSettings = () => {
       </CardHeader>
       <CardContent className="space-y-4">
         <div className="space-y-3">
-          <div className="grid grid-cols-[88px_88px_1fr_1.5fr_48px] gap-2 text-xs font-medium text-muted-foreground">
+          <div className="grid grid-cols-[88px_88px_56px_1fr_1.5fr_48px] gap-2 text-xs font-medium text-muted-foreground">
             <span>Monat</span>
             <span>Tag</span>
+            <span>Icon</span>
             <span>Name</span>
             <span>Hinweistext</span>
             <span className="text-right">&nbsp;</span>
           </div>
 
           {entries.map((entry, index) => (
-            <div key={`${index}-${entry.month}-${entry.day}-${entry.name}`} className="grid grid-cols-[88px_88px_1fr_1.5fr_48px] gap-2">
+            <div key={`${index}-${entry.month}-${entry.day}-${entry.name}`} className="grid grid-cols-[88px_88px_56px_1fr_1.5fr_48px] gap-2 items-center">
               <Input
                 type="number"
                 min={1}
@@ -212,6 +222,27 @@ export const DashboardHintSettings = () => {
                 value={entry.day}
                 onChange={(event) => handleChange(index, 'day', Number(event.target.value || 0))}
               />
+              <Select
+                value={entry.icon || 'CalendarHeart'}
+                onValueChange={(value) => handleChange(index, 'icon', value)}
+              >
+                <SelectTrigger className="h-9 w-14 px-2">
+                  <HintIconPreview iconName={entry.icon || 'CalendarHeart'} />
+                </SelectTrigger>
+                <SelectContent>
+                  {AVAILABLE_HINT_ICONS.map((opt) => {
+                    const OptIcon = icons[opt.name as keyof typeof icons];
+                    return (
+                      <SelectItem key={opt.name} value={opt.name}>
+                        <span className="flex items-center gap-2">
+                          {OptIcon && <OptIcon className="h-4 w-4" />}
+                          <span className="text-xs">{opt.label}</span>
+                        </span>
+                      </SelectItem>
+                    );
+                  })}
+                </SelectContent>
+              </Select>
               <Input
                 value={entry.name}
                 placeholder="z. B. Internationaler Frauentag"
