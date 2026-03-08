@@ -37,7 +37,7 @@ class ErrorBoundary extends React.Component<
   }
 
   componentDidCatch(error: Error, errorInfo: React.ErrorInfo) {
-    console.error('Leaflet map error:', error, errorInfo);
+    debugConsole.error('Leaflet map error:', error, errorInfo);
     this.props.onError();
   }
 
