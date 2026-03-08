@@ -116,7 +116,7 @@ export function MeetingCreateDialog({
                         });
                     }
                     if (template.default_recurrence) {
-                      onRecurrenceChange(template.default_recurrence);
+                      onRecurrenceChange(template.default_recurrence as RecurrenceData);
                     }
                   }
                 }
