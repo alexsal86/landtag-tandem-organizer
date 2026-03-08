@@ -89,7 +89,7 @@ export function CaseFileDetail({ caseFileId, onBack }: CaseFileDetailProps) {
         </Button>
         <Card>
           <CardContent className="py-12 text-center">
-            <p className="text-muted-foreground">FallAkte nicht gefunden</p>
+            <p className="text-muted-foreground">Fallakte nicht gefunden</p>
           </CardContent>
         </Card>
       </div>
