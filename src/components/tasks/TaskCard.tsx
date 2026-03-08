@@ -341,6 +341,9 @@ export function TaskCard({
             <TaskCard
               key={childTask.id}
               task={childTask}
+              className={className}
+              isHighlighted={isHighlighted}
+              getHighlightRef={getHighlightRef}
               subtasks={getChildTasks ? getChildTasks(childTask.id) : []}
               resolveAssigneeName={resolveAssigneeName}
               hasMeetingLink={!!(childTask.meeting_id || childTask.pending_for_jour_fixe)}
