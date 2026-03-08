@@ -8,12 +8,14 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/components/ui/use-toast";
-import { AlertTriangle, Loader2, Pause, Play, Plus, Trash2, Zap } from "lucide-react";
+import { AlertTriangle, Clock, Download, Loader2, Pause, Play, Plus, Trash2, Upload, Zap } from "lucide-react";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { formatDistanceToNow } from "date-fns";
 import { de } from "date-fns/locale";
 import { AutomationRuleWizard, DEFAULT_FORM, DEFAULT_ACTION, RULE_TEMPLATES, type WizardForm, type ActionItem, type ConditionItem } from "./AutomationRuleWizard";
 import { AutomationTemplateGallery } from "./AutomationTemplateGallery";
+import { AutomationRuleVersions } from "./AutomationRuleVersions";
+import { AutomationRuleExportDialog, AutomationRuleImportDialog } from "./AutomationRuleImportExport";
 
 type RuleRow = {
   id: string;
@@ -66,6 +68,10 @@ export function AutomationRulesManager() {
   const [runStatusFilter, setRunStatusFilter] = useState<string>("all");
   const [automationsPaused, setAutomationsPaused] = useState(false);
   const [togglingPause, setTogglingPause] = useState(false);
+  const [versionsRuleId, setVersionsRuleId] = useState<string | null>(null);
+  const [versionsRuleName, setVersionsRuleName] = useState("");
+  const [exportOpen, setExportOpen] = useState(false);
+  const [importOpen, setImportOpen] = useState(false);
 
   const filteredRuns = useMemo(() => {
     if (runStatusFilter === "all") return runs;
@@ -457,9 +463,17 @@ export function AutomationRulesManager() {
               <CardTitle>Automations-Regeln</CardTitle>
               <CardDescription>{rules.length} Regeln im Tenant</CardDescription>
             </div>
-            <Button onClick={openNewWizard}>
-              <Plus className="h-4 w-4 mr-2" /> Neue Regel
-            </Button>
+            <div className="flex gap-2">
+              <Button variant="outline" onClick={() => setExportOpen(true)}>
+                <Download className="h-4 w-4 mr-2" /> Export
+              </Button>
+              <Button variant="outline" onClick={() => setImportOpen(true)}>
+                <Upload className="h-4 w-4 mr-2" /> Import
+              </Button>
+              <Button onClick={openNewWizard}>
+                <Plus className="h-4 w-4 mr-2" /> Neue Regel
+              </Button>
+            </div>
           </div>
         </CardHeader>
         <CardContent className="space-y-3">
@@ -500,9 +514,19 @@ export function AutomationRulesManager() {
                       </div>
                     </div>
                   </div>
-                  <div className="flex gap-2">
+                  <div className="flex gap-2 flex-wrap">
                     <Button size="sm" variant="outline" onClick={() => startEdit(rule)}>
                       Bearbeiten
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => {
+                        setVersionsRuleId(rule.id);
+                        setVersionsRuleName(rule.name);
+                      }}
+                    >
+                      <Clock className="h-4 w-4" />
                     </Button>
                     <Button
                       size="sm"
@@ -614,6 +638,31 @@ export function AutomationRulesManager() {
           )}
         </CardContent>
       </Card>
+
+      {/* Version History Dialog */}
+      {versionsRuleId && (
+        <AutomationRuleVersions
+          ruleId={versionsRuleId}
+          ruleName={versionsRuleName}
+          open={!!versionsRuleId}
+          onOpenChange={(open) => { if (!open) setVersionsRuleId(null); }}
+          onRestore={loadData}
+        />
+      )}
+
+      {/* Export Dialog */}
+      <AutomationRuleExportDialog
+        rules={rules}
+        open={exportOpen}
+        onOpenChange={setExportOpen}
+      />
+
+      {/* Import Dialog */}
+      <AutomationRuleImportDialog
+        open={importOpen}
+        onOpenChange={setImportOpen}
+        onImported={loadData}
+      />
     </div>
   );
 }
