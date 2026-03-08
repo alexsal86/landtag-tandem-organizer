@@ -56,7 +56,7 @@ export function BlackBoard() {
 
       setMessages(relevantMessages);
     } catch (error) {
-      console.error('Error fetching public messages:', error);
+      debugConsole.error('Error fetching public messages:', error);
     } finally {
       setLoading(false);
     }
