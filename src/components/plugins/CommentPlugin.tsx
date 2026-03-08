@@ -696,7 +696,7 @@ export function CommentPlugin({ documentId }: { documentId?: string }) {
         description: "Ihre Antwort wurde gespeichert.",
       });
     } catch (error) {
-      console.error('Error saving reply:', error);
+      debugConsole.error('Error saving reply:', error);
       toast({
         title: "Fehler",
         description: "Antwort konnte nicht gespeichert werden.",
