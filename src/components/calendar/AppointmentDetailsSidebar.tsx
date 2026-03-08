@@ -263,7 +263,7 @@ export function AppointmentDetailsSidebar({
         // Insert updated guests with tokens
         const guestEntries = guests.map(guest => ({
           appointment_id: appointment.id,
-          tenant_id: currentTenant?.id,
+          tenant_id: currentTenant!.id,
           name: guest.name,
           email: guest.email,
           status: 'pending' as const,
