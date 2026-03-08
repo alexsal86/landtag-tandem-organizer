@@ -74,9 +74,10 @@ export async function parsePDFFile(file: File): Promise<ParsedProtocol> {
       metadata
     };
     
-  } catch (error) {
+  } catch (error: unknown) {
     debugConsole.error('PDF parsing error:', error);
-    throw new Error(`Fehler beim Parsen der PDF: ${error.message}`);
+    const message = error instanceof Error ? error.message : String(error);
+    throw new Error(`Fehler beim Parsen der PDF: ${message}`);
   }
 }
 
