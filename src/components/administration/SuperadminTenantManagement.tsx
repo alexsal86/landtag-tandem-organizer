@@ -91,7 +91,7 @@ export function SuperadminTenantManagement() {
       setRoleCheckLoading(true);
       const { data, error } = await supabase.rpc('is_superadmin', { _user_id: user.id });
       if (error) {
-        console.error('Error checking platform role:', error);
+        debugConsole.error('Error checking platform role:', error);
         setIsPlatformAdmin(false);
       } else {
         setIsPlatformAdmin(Boolean(data));
