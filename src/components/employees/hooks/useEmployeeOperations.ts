@@ -21,7 +21,7 @@ export function useEmployeeOperations({
   const createLeaveCalendarEntry = async (leaveRequest: PendingLeaveRequest, userId: string, leaveType: LeaveType) => {
     try {
       const { data: userProfile } = await supabase.from("profiles").select("display_name").eq("user_id", userId).single();
-      const { data: tenantData } = await supabase.from("user_tenant_memberships").select("tenant_id").eq("user_id", user?.id).eq("is_active", true).limit(1).single();
+      const { data: tenantData } = await supabase.from("user_tenant_memberships").select("tenant_id").eq("user_id", user?.id ?? '').eq("is_active", true).limit(1).single();
       if (!tenantData) return;
 
       const userName = userProfile?.display_name || "Mitarbeiter";
