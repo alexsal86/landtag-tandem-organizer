@@ -53,7 +53,7 @@ export class CalendarEventAdapter {
 
     // Validate the extracted dates
     if (!this.isValidDate(startTime)) {
-      console.error('❌ Invalid start date for event:', event.id, startTime);
+      debugConsole.error('❌ Invalid start date for event:', event.id, startTime);
       startTime = new Date(); // Fallback to current time
     }
     
