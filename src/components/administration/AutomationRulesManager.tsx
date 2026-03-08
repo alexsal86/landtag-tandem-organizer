@@ -88,6 +88,46 @@ export function AutomationRulesManager() {
     return runs.filter((run) => run.status === runStatusFilter && !run.dry_run);
   }, [runs, runStatusFilter]);
 
+  // --- Feature: Rule statistics (success rate, avg duration) ---
+  const ruleStats = useMemo(() => {
+    const statsMap: Record<string, { total: number; success: number; totalDurationMs: number; withDuration: number }> = {};
+    for (const run of runs) {
+      if (run.dry_run) continue;
+      if (!statsMap[run.rule_id]) {
+        statsMap[run.rule_id] = { total: 0, success: 0, totalDurationMs: 0, withDuration: 0 };
+      }
+      const s = statsMap[run.rule_id];
+      s.total += 1;
+      if (run.status === "success") s.success += 1;
+      if (run.finished_at && run.started_at) {
+        const dur = new Date(run.finished_at).getTime() - new Date(run.started_at).getTime();
+        if (dur > 0) {
+          s.totalDurationMs += dur;
+          s.withDuration += 1;
+        }
+      }
+    }
+    return statsMap;
+  }, [runs]);
+
+  // --- Feature: Next scheduled run time ---
+  const getNextRunTime = (rule: RuleRow): Date | null => {
+    if (rule.trigger_type !== "schedule") return null;
+    const interval = Number(rule.trigger_config?.minutes_interval);
+    if (!interval || interval <= 0) return null;
+    const ruleRuns = runs.filter((r) => r.rule_id === rule.id && !r.dry_run);
+    const lastRun = ruleRuns[0]; // already sorted desc by started_at
+    const base = lastRun ? new Date(lastRun.started_at) : new Date();
+    return addMinutes(base, interval);
+  };
+
+  // --- Feature: Duplicate rule ---
+  const duplicateRule = (rule: RuleRow) => {
+    startEdit(rule);
+    setEditingRuleId(null);
+    setForm((prev) => ({ ...prev, name: `${prev.name} (Kopie)` }));
+  };
+
   const toggleAutomationsPaused = async () => {
     if (!currentTenant) return;
     setTogglingPause(true);
