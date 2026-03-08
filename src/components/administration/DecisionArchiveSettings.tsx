@@ -91,7 +91,7 @@ export const DecisionArchiveSettings = () => {
       };
 
       const { error } = await supabase
-        .from('decision_archive_settings' as any)
+        .from('decision_archive_settings')
         .upsert(settings, {
           onConflict: 'user_id,tenant_id'
         });

@@ -103,7 +103,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     if (user?.id) {
       try {
         await supabase
-          .from('user_sessions' as any)
+          .from('user_sessions')
           .delete()
           .eq('user_id', user.id)
           .eq('device_info', navigator.userAgent);

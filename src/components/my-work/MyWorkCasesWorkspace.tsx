@@ -1075,7 +1075,7 @@ export function MyWorkCasesWorkspace() {
                                             </ContextMenuItem>
                                             <ContextMenuSeparator />
                                             <ContextMenuItem onClick={() => runAsync(async () => {
-                                              const { error } = await supabase.from("case_items" as any).update({ pending_for_jour_fixe: true }).eq("id", item.id);
+                                              const { error } = await supabase.from("case_items").update({ pending_for_jour_fixe: true }).eq("id", item.id);
                                               if (error) { toast.error("Fehler beim Vormerken."); return; }
                                               toast.success("Vorgang für Jour Fixe vorgemerkt.");
                                             })}>

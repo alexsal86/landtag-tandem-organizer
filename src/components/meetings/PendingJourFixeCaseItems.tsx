@@ -45,7 +45,7 @@ export function PendingJourFixeCaseItems({ className }: PendingJourFixeCaseItems
     try {
       setLoading(true);
       const { data, error } = await supabase
-        .from('case_items' as any)
+        .from('case_items')
         .select('id, subject, status, priority, created_at')
         .eq('tenant_id', currentTenant.id)
         .eq('pending_for_jour_fixe', true)
@@ -53,7 +53,7 @@ export function PendingJourFixeCaseItems({ className }: PendingJourFixeCaseItems
         .order('created_at', { ascending: false });
 
       if (error) throw error;
-      setItems((data || []) as unknown as PendingCaseItem[]);
+      setItems((data || []) as PendingCaseItem[]);
     } catch (error) {
       console.error('Error loading pending case items:', error);
     } finally {

@@ -269,12 +269,12 @@ export function LetterLayoutCanvasDesigner({ layoutSettings, onLayoutChange, onJ
       }
 
       const { data } = await supabase
-        .from('letter_template_settings' as any)
+        .from('letter_template_settings')
         .select('variable_defaults')
         .eq('tenant_id', currentTenant.id)
         .maybeSingle();
 
-      setTemplateDefaults(((data as any)?.variable_defaults || {}) as Record<string, string>);
+      setTemplateDefaults((data?.variable_defaults as Record<string, string>) || {});
     };
 
     fetchTemplateDefaults();

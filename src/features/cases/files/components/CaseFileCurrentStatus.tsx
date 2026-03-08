@@ -79,7 +79,7 @@ export function CaseFileCurrentStatus({ caseFile, onUpdate, onUpdateProcessingSt
           .eq('user_id', (await supabase.auth.getUser()).data.user?.id || '')
           .single();
 
-        await supabase.from('case_file_status_history' as any).insert({
+        await supabase.from('case_file_status_history').insert({
           case_file_id: caseFile.id,
           content: caseFile.current_status_note,
           user_id: (await supabase.auth.getUser()).data.user?.id,

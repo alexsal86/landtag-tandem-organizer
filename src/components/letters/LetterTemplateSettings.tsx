@@ -162,28 +162,28 @@ export const LetterTemplateSettings: React.FC<LetterTemplateSettingsProps> = ({ 
     setSaving(true);
     try {
       const { data: existing } = await supabase
-        .from('letter_template_settings' as any)
+        .from('letter_template_settings')
         .select('id')
         .eq('tenant_id', currentTenant.id)
         .maybeSingle();
 
       if (existing) {
         const { error } = await supabase
-          .from('letter_template_settings' as any)
+          .from('letter_template_settings')
           .update({
             variable_defaults: variableDefaults,
             din5008_defaults: din5008Defaults,
-          } as any)
-          .eq('id', (existing as any).id);
+          })
+          .eq('id', existing.id);
         if (error) throw error;
       } else {
         const { error } = await supabase
-          .from('letter_template_settings' as any)
+          .from('letter_template_settings')
           .insert({
             tenant_id: currentTenant.id,
             variable_defaults: variableDefaults,
             din5008_defaults: din5008Defaults,
-          } as any);
+          });
         if (error) throw error;
       }
 
