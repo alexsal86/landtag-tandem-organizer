@@ -1,43 +1,102 @@
 
-## Code-Qualität — Status
 
-### Erledigt
+# Speech-Diktat auf Profi-Niveau — Analyse und Plan
 
-- **strictNullChecks: true** — aktiviert, alle Build-Fehler behoben
-- **noImplicitAny: true** — aktiviert, alle Build-Fehler behoben
-- **DOMPurify** als zentraler HTML-Sanitizer — alle `dangerouslySetInnerHTML` nutzen jetzt `sanitizeRichHtml()`
-- **Tenant-Access Guard** für Edge Functions — existiert in `supabase/functions/_shared/tenant-access.ts`
-- **ESLint `no-unused-vars: warn`** — aktiviert mit `argsIgnorePattern: '^_'`, erste Bereinigungsrunde in Pages/Hooks abgeschlossen
-- **Standalone `React`-Imports entfernt** — ~60 Dateien bereinigt
-- **State-Mutation fix** — `existingContacts.push()` → immutables Update in `useContactImport.ts`
-- **Non-null Assertion Guards** — `user!.id` / `currentTenant!.id` durch Early-Return-Guards ersetzt (~11 Dateien)
-- **Leere catch-Blöcke** — kritische Stellen in MatrixContext & DaySlipStore mit `debugConsole.warn` versehen
-- **JSON-Protocol Speaker-Normalisierung** — `speaker: string | { name }` korrekt normalisiert
+## Ist-Zustand
 
-### Noch offen
+Das System ist bereits solide aufgebaut:
+- Web Speech API Adapter mit Session-Reconnect und Delta-Deduplication
+- Interim-Nodes (halbtransparent, kursiv) als Live-Preview im Editor
+- Sprachbefehle: Formatierung (fett/kursiv/unterstrichen), Listen, Undo/Redo, Neue Zeile, Stopp
+- Zeichensetzung per Sprache (Punkt, Komma, Fragezeichen etc.)
+- Push-to-Talk (Strg+Shift+M) und Toggle-Klick
+- Filler-Wort-Filterung (ähm, äh, hm, bitte, okay...)
+- Unit-Tests für Adapter und Command-Parser
 
-1. **`strict: true` aktivieren** — beinhaltet `strictBindCallApply`, `strictFunctionTypes`, `strictPropertyInitialization`, `noImplicitThis`, `alwaysStrict`
-2. **Tote Imports weiter bereinigen** — ~65 standalone `React`-Imports in Components prüfen, weitere lucide-Icons und ungenutzte Variablen entfernen (ESLint-Regel zeigt Warnungen)
-3. **`no-explicit-any` schrittweise einführen** — nach Abschluss der `no-unused-vars`-Bereinigung
-4. **Edge Functions `verify_jwt`-Audit** — ~20 Functions mit `verify_jwt = false` klassifizieren und absichern
-5. **CORS einschränken** — `Access-Control-Allow-Origin: *` durch Allowlist ersetzen für sensible Operationen
+## Was fehlt für Profi-Niveau
 
----
+### 1. Erweiterte Sprachbefehle
+Aktuell nur 8 Befehle. Für professionelles Diktieren fehlen:
+- **"Alles markieren"** / **"Markierung aufheben"** — `select-all` / `deselect`
+- **"Letztes Wort löschen"** / **"Letzten Satz löschen"** — gezieltes Korrigieren per Sprache
+- **"Überschrift 1/2/3"** — Heading-Formatierung
+- **"Zitat einfügen"** — Block-Quote
+- **"Leerzeichen"** — explizites Whitespace (für Fälle wo Punkt+Leerzeichen nicht reicht)
+- **"Bindestrich"** / **"Gedankenstrich"** — Sonderzeichen per Sprache
+- **"Klammer auf"** / **"Klammer zu"** — `(` / `)`
+- **"Anführungszeichen"** / **"Anführungszeichen zu"** — `„` / `"`
 
-## No-Code Automations-Hub — Status
+### 2. Audio-Feedback / Bestätigungstöne
+Professionelle Diktiersoftware gibt akustisches Feedback:
+- Kurzer Ton beim Start der Aufnahme
+- Kurzer Ton beim Stopp
+- Optionaler Bestätigungston bei erkanntem Befehl
+- Implementierung: Kleine Audio-Dateien oder `AudioContext.oscillator` für synthetische Töne
 
-### Erledigt
+### 3. Sprachbefehl-Bestätigung in der UI
+Wenn ein Befehl erkannt wird (z.B. "fett"), fehlt visuelles Feedback:
+- Kurze Toast-artige Einblendung "✓ Fett" in der Toolbar-Nähe
+- Dauer: ~1s, dann ausblenden
+- Hilft dem Nutzer zu verstehen, dass der Befehl angekommen ist
 
-- 4-Step Wizard (Grundlagen → Trigger → Bedingungen → Aktionen)
-- 10 Templates, Template-Galerie mit Suche/Filter
-- Kill-Switch, Dry-Run, Run-Now, Run-Historie mit Step-Logs
-- Error-Dashboard mit Retry, Regel-Versionierung, Import/Export
-- Rate Limiting, Idempotency, Audit-Trail
-- 5 Action-Typen, 5 Condition-Operators, 4 Trigger-Typen (inkl. Webhook)
-- Rollenbasierte Zugriffskontrolle
-- **Regel duplizieren** — Copy-Button pro Regel-Karte
-- **Nächste geplante Ausführung** — Badge für schedule-Regeln
-- **Regel-Statistiken** — Erfolgsrate (%) + Ø Laufzeit als Tooltip-Badge
-- **Notification-Kontext** — `rule_name`, `trigger_reason`, `run_id` in Notification-Payload
-- **Webhook-Trigger** — neue Edge Function `automation-webhook`, Secret-Authentifizierung, URL-Anzeige im Wizard
-- **Verschachtelte Condition-Gruppen** — rekursives AND/OR-Nesting bis 3 Ebenen im Wizard, backward-kompatible DB-Serialisierung
+### 4. "Ersetze X durch Y"-Befehl
+Profi-Diktiersoftware erlaubt Korrekturen per Sprache:
+- "Ersetze [Wort] durch [Wort]" — sucht im letzten Absatz und ersetzt
+- Neuer Command-Typ `replace-text` mit `search` und `replacement` Feldern
+- Pattern: `/^ersetze\s+(.+?)\s+durch\s+(.+)$/`
+
+### 5. Automatische Großschreibung nach Satzzeichen (verbessert)
+`formatDictatedText` macht bereits Uppercase nach Punkt. Fehlt:
+- Großschreibung nach `!` und `?`
+- Großschreibung nach `\n` (Absatzanfang)
+- Nomen-Erkennung ist unrealistisch ohne NLP, aber Satzanfänge sind machbar
+
+### 6. Sprachkommando-Palette / Cheat-Sheet Dialog
+Der Tooltip mit Befehlen ist klein. Professionelle Lösung:
+- Ein aufrufbarer Dialog (über `?`-Button oder Sprachbefehl "Hilfe") mit allen verfügbaren Befehlen
+- Gruppiert nach Kategorie (Navigation, Formatierung, Satzzeichen, Korrektur)
+- Durchsuchbar
+
+### 7. Diktat-Session-Statistik
+Kleines Widget während der Aufnahme:
+- Dauer der aktuellen Session (Timer)
+- Anzahl erkannter Wörter
+- Zeigt dem Nutzer, dass das System aktiv arbeitet
+
+## Priorisierter Implementierungsplan
+
+| Prio | Feature | Aufwand | Dateien |
+|------|---------|---------|---------|
+| 1 | Erweiterte Sprachbefehle (Sonderzeichen, Löschen, Headings) | Klein | `speechCommandUtils.ts`, beide Toolbars |
+| 2 | Visuelles Befehl-Feedback ("✓ Fett") | Klein | `useSpeechDictation.ts`, beide Toolbars |
+| 3 | Audio-Feedback (Start/Stopp-Töne) | Klein | `speechToTextAdapter.ts` oder neues `speechAudioFeedback.ts` |
+| 4 | "Ersetze X durch Y" | Mittel | `speechCommandUtils.ts`, `useSpeechDictation.ts` |
+| 5 | Verbessertes Auto-Capitalize (nach !, ?, Absatz) | Klein | `speechCommandUtils.ts` |
+| 6 | Sprachbefehl-Dialog statt Tooltip | Klein | Neue Komponente `SpeechCommandsDialog.tsx` |
+| 7 | Session-Timer / Wort-Zähler | Klein | `useSpeechDictation.ts`, beide Toolbars |
+
+### Technische Details
+
+**Erweiterte Befehle** — Neue Einträge in `COMMAND_MATCHERS` und `PUNCTUATION_REPLACEMENTS`:
+```text
+SpeechCommand union erweitern um:
+  | { type: 'delete-last-word' }
+  | { type: 'delete-last-sentence' }
+  | { type: 'select-all' }
+  | { type: 'insert-heading'; level: 1 | 2 | 3 }
+  | { type: 'insert-quote' }
+  | { type: 'replace-text'; search: string; replacement: string }
+```
+
+**Audio-Feedback** — Neues Utility `speechAudioFeedback.ts`:
+```text
+playTone('start')  → 440Hz, 100ms
+playTone('stop')   → 330Hz, 100ms
+playTone('command') → 520Hz, 80ms
+```
+Aufgerufen im Adapter bei `onStateChange('listening')` und `onStateChange('idle')`.
+
+**Befehl-Feedback** — Neuer State `lastRecognizedCommand` im Hook, der nach 1.2s auf `null` zurückgesetzt wird. In den Toolbars als Badge neben dem Mikrofon angezeigt.
+
+**Replace-Befehl** — Neuer Regex-Matcher in `parseSpeechInput`, der vor den normalen Befehlen geprüft wird. `dispatchCommand` im Editor sucht rückwärts im aktuellen Paragraph-Node nach dem Suchtext.
+
