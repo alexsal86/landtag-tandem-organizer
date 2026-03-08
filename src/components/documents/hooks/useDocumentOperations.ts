@@ -53,7 +53,7 @@ export function useDocumentOperations({
     try {
       if (document.document_type !== 'archived_letter') {
         const { error: storageError } = await supabase.storage.from('documents').remove([document.file_path]);
-        if (storageError) console.warn('Storage deletion error:', storageError);
+        if (storageError) debugConsole.warn('Storage deletion error:', storageError);
       }
       const { error: dbError } = await supabase.from('documents').delete().eq('id', document.id);
       if (dbError) throw dbError;

@@ -119,7 +119,7 @@ export function CaseItemCreateDialog({ open, onOpenChange, onCreated, createCase
       if (requestId !== contactSearchRequestId.current) return;
 
       if (error) {
-        console.error("Error searching contacts:", error);
+        debugConsole.error("Error searching contacts:", error);
         setSearchResults([]);
       } else {
         setSearchResults((data ?? []) as ContactSearchResult[]);

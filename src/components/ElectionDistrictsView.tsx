@@ -73,7 +73,7 @@ export const ElectionDistrictsView = () => {
   };
 
   const handleMapError = () => {
-    console.error('Leaflet map failed to load, switching to fallback');
+    debugConsole.error('Leaflet map failed to load, switching to fallback');
     setUseMapFallback(true);
   };
 

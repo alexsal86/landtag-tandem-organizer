@@ -111,7 +111,7 @@ export const DecisionEmailTemplates = () => {
         description: "E-Mail-Template wurde erfolgreich aktualisiert.",
       });
     } catch (error) {
-      console.error('Error saving template:', error);
+      debugConsole.error('Error saving template:', error);
       toast({
         title: "Fehler",
         description: "E-Mail-Template konnte nicht gespeichert werden.",

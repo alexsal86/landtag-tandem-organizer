@@ -288,7 +288,7 @@ export function DecisionAttachmentPreviewDialog({
       document.body.removeChild(a);
       URL.revokeObjectURL(url);
     } catch (e) {
-      console.error('Error downloading preview file:', e);
+      debugConsole.error('Error downloading preview file:', e);
       setError('Datei konnte nicht heruntergeladen werden.');
     }
   };

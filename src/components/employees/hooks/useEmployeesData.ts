@@ -181,7 +181,7 @@ export function useEmployeesData() {
         }));
         setPendingLeaves(pendingWithNames);
       } catch (e: any) {
-        console.error(e);
+        debugConsole.error(e);
         toast({ title: "Fehler beim Laden", description: e?.message ?? "Daten konnten nicht geladen werden.", variant: "destructive" });
       } finally {
         setLoading(false);

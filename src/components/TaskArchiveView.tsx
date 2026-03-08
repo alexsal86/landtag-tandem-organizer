@@ -238,7 +238,7 @@ export function TaskArchiveView() {
         description: "Die archivierte Entscheidung wurde endgültig gelöscht.",
       });
     } catch (error) {
-      console.error('Error deleting archived decision:', error);
+      debugConsole.error('Error deleting archived decision:', error);
       toast({
         title: "Fehler",
         description: "Entscheidung konnte nicht gelöscht werden.",

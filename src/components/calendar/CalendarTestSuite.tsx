@@ -70,7 +70,7 @@ export function CalendarTestSuite() {
       
       setTestResults(results);
     } catch (error) {
-      console.error('Test execution failed:', error);
+      debugConsole.error('Test execution failed:', error);
     } finally {
       setIsRunning(false);
     }

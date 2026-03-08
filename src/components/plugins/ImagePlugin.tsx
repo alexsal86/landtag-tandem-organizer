@@ -45,7 +45,7 @@ const ImageUploadDialog: React.FC<ImageUploadDialogProps> = ({ onInsert, onCance
         description: "Bild erfolgreich hochgeladen",
       });
     } catch (error) {
-      console.error('Error uploading image:', error);
+      debugConsole.error('Error uploading image:', error);
       toast({
         title: "Fehler",
         description: "Fehler beim Hochladen des Bildes",

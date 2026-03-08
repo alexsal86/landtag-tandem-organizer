@@ -256,7 +256,7 @@ export const UpcomingAppointmentsSection: React.FC<UpcomingAppointmentsSectionPr
         .eq('user_id', user.id)
         .or(`appointment_id.eq.${aptId},external_event_id.eq.${aptId}`);
     } catch (error) {
-      console.error('Error updating starred assignment:', error);
+      debugConsole.error('Error updating starred assignment:', error);
     }
   };
 
