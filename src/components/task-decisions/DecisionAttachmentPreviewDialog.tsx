@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Download, FileImage, FileSpreadsheet, FileText, FileIcon } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import * as XLSX from "xlsx";
+import { debugConsole } from '@/utils/debugConsole';
 
 interface DecisionAttachmentPreviewDialogProps {
   open: boolean;
