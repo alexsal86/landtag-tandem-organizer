@@ -6,6 +6,7 @@ import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
 import { Switch } from '@/components/ui/switch';
 import { supabase } from '@/integrations/supabase/client';
+import { debugConsole } from '@/utils/debugConsole';
 import { toast } from 'sonner';
 import { Mail, Send, Loader2 } from 'lucide-react';
 import { MultiSelect } from '@/components/ui/multi-select';
