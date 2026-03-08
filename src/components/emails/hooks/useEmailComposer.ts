@@ -246,7 +246,7 @@ export function useEmailComposer() {
       if (error) throw error;
       setDocuments(data || []);
     } catch (error: unknown) {
-      console.error("Error fetching documents:", error);
+      debugConsole.error("Error fetching documents:", error);
     }
   };
 
