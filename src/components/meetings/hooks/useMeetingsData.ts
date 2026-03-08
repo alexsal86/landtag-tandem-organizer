@@ -188,7 +188,7 @@ export function useMeetingsData() {
           }
         }
       } catch (error) {
-        debugConsole.error('Error syncing task changes:', error);
+        handleAppError(error, { context: 'syncTaskChanges' });
       }
     };
     if (tasks.length > 0) syncTaskChanges();
