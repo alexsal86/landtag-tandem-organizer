@@ -216,7 +216,7 @@ const Index = () => {
       case "profile-edit":
         return <EditProfile />;
       default:
-        return <Dashboard />;
+        return <NotFound />;
     }
   };
 
