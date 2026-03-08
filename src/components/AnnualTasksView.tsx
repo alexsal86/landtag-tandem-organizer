@@ -278,7 +278,7 @@ export function AnnualTasksView() {
       // Update auto_execute setting if changed
       if (selectedTask.is_system_task && enableAutoExecute !== selectedTask.auto_execute) {
         await supabase
-          .from("annual_tasks" as any)
+          .from("annual_tasks")
           .update({ auto_execute: enableAutoExecute })
           .eq("id", selectedTask.id);
       }
