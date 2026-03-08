@@ -204,11 +204,11 @@ export function MeetingSidebar({
                         <Popover>
                           <PopoverTrigger asChild>
                             <Button variant="outline" size="sm" className="w-full justify-start text-left font-normal text-xs">
-                              {format(new Date(editingMeeting.meeting_date), "dd.MM.yy", { locale: de })}
+                              {format(new Date(editingMeeting!.meeting_date), "dd.MM.yy", { locale: de })}
                             </Button>
                           </PopoverTrigger>
                           <PopoverContent className="w-auto p-0" align="start">
-                            <Calendar mode="single" selected={new Date(editingMeeting.meeting_date)} onSelect={(date) => date && onSetEditingMeeting({ ...editingMeeting, meeting_date: date })} initialFocus />
+                            <Calendar mode="single" selected={new Date(editingMeeting!.meeting_date)} onSelect={(date) => date && onSetEditingMeeting({ ...editingMeeting!, meeting_date: date } as Meeting)} initialFocus />
                           </PopoverContent>
                         </Popover>
                       </div>
