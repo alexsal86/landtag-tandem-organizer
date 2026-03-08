@@ -116,7 +116,7 @@ export const getSpecialDayHint = (
   const today = specialDays.find((specialDay) => specialDay.month === month && specialDay.day === day);
   if (today) {
     return {
-      text: `**Heute ist ${today.name}.** ${today.hint}`,
+      text: `**Heute ist ${today.name}.**\n${today.hint}`,
       icon: today.icon,
     };
   }
@@ -149,7 +149,7 @@ export const getSpecialDayHint = (
   }
 
   return {
-    text: `**Hinweis:** In ${upcoming.daysUntil} Tag${upcoming.daysUntil === 1 ? '' : 'en'} ist ${upcoming.name} (${format(upcoming.targetDate, 'dd.MM.')}).`,
+    text: `**Hinweis:** In ${upcoming.daysUntil} Tag${upcoming.daysUntil === 1 ? '' : 'en'} ist ${upcoming.name} (${format(upcoming.targetDate, 'dd.MM.')}).\n${upcoming.hint}`,
     icon: upcoming.icon,
   };
 };
