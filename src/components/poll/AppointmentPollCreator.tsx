@@ -228,7 +228,7 @@ export const AppointmentPollCreator = ({ onClose }: { onClose: () => void }) => 
         }
       }
       
-      console.log('Inserting participant data:', participantData);
+      
       const { error: participantsError } = await supabase
         .from('poll_participants')
         .insert(participantData);
