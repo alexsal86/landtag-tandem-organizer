@@ -294,7 +294,7 @@ export const StandaloneDecisionCreator = ({
         throw decisionError;
       }
 
-      console.log('Decision created successfully:', decision);
+      
 
       // Upload files if any were selected
       if (selectedFiles.length > 0) {
