@@ -25,8 +25,8 @@ export interface ElectionDistrict {
   region: string;
   boundaries?: any;
   center_coordinates?: any;
-  population?: number;
-  area_km2?: number;
+  population?: number | null;
+  area_km2?: number | null;
   contact_info?: any;
   website_url?: string;
   district_type?: string;
