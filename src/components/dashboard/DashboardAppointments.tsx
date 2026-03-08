@@ -66,10 +66,9 @@ export const DashboardAppointments = ({ data }: Props) => {
 
   return (
     <div className="space-y-4">
-      {/* Rollenbasierte Zeile + kontextuelle Nachricht */}
-      {(roleLine || contextMessage) && (
-        <div className="text-sm text-muted-foreground space-y-1">
-          {roleLine && <p className="italic">{roleLine}</p>}
+      {/* Kontextuelle Nachricht */}
+      {contextMessage && (
+        <div className="text-sm text-muted-foreground">
           <p>{contextMessage.text}</p>
         </div>
       )}
