@@ -28,7 +28,7 @@ export const VapidKeyTest: React.FC = () => {
       });
 
       // Test GET endpoint for VAPID public key
-      console.log('🔗 Teste GET-Endpoint für VAPID Public Key...');
+      debugConsole.log('🔗 Teste GET-Endpoint für VAPID Public Key...');
       const response = await fetch(`https://wawofclbehbkebjivdte.supabase.co/functions/v1/send-push-notification`, {
         method: 'GET',
         headers: {
