@@ -121,14 +121,15 @@ export function useTaskOperations({
       });
     } catch (error: unknown) {
       console.error('Error updating task:', error);
-      const isNetworkError = error?.message?.includes('Failed to fetch') || error?.message?.includes('NetworkError');
+      const msg = error instanceof Error ? error.message : String(error);
+      const isNetworkError = msg?.includes('Failed to fetch') || msg?.includes('NetworkError');
       if (isNetworkError) {
         setTimeout(() => loadTasks(), 500);
         setProcessingTaskIds(prev => { const next = new Set(prev); next.delete(taskId); return next; });
         return;
       }
       setTasks(prev => prev.map(t => t.id === taskId ? { ...t, status: originalStatus } : t));
-      toast({ title: "Fehler", description: error.message || "Status konnte nicht aktualisiert werden.", variant: "destructive" });
+      toast({ title: "Fehler", description: msg || "Status konnte nicht aktualisiert werden.", variant: "destructive" });
     } finally {
       setProcessingTaskIds(prev => { const next = new Set(prev); next.delete(taskId); return next; });
     }
