@@ -25,6 +25,7 @@ type DocumentCategory = {
 
 export function DocumentCategoryAdminSettings() {
   const { toast } = useToast();
+  const { currentTenant } = useTenant();
   const [categories, setCategories] = useState<DocumentCategory[]>([]);
   const [loading, setLoading] = useState(true);
   const [editingCategory, setEditingCategory] = useState<{ id: string; label: string; color: string; icon?: string } | null>(null);
