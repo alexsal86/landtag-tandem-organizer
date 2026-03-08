@@ -156,7 +156,7 @@ function WordPreview({ url }: { url: string }) {
         const result = await mammoth.convertToHtml({ arrayBuffer });
         if (!cancelled) setHtml(result.value);
       } catch (e) {
-        console.error("Word render error:", e);
+        debugConsole.error("Word render error:", e);
         if (!cancelled) setError(true);
       } finally {
         if (!cancelled) setLoading(false);
