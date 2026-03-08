@@ -1150,7 +1150,7 @@ export function QuickNotesList({
       toast.success("Notiz für nächsten Jour Fixe vorgemerkt");
       loadNotes();
     } catch (error) {
-      console.error('Error marking for Jour Fixe:', error);
+      debugConsole.error('Error marking for Jour Fixe:', error);
       toast.error("Fehler beim Vormerken");
     }
   };
