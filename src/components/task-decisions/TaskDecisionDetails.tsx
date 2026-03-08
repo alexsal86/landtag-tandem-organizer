@@ -304,7 +304,7 @@ export const TaskDecisionDetails = ({ decisionId, isOpen, onClose, onArchived, h
       setDecision({ ...decisionData, topicIds });
       setParticipants(formattedParticipants);
     } catch (error) {
-      console.error('Error loading decision details:', error);
+      debugConsole.error('Error loading decision details:', error);
       toast({
         title: "Fehler",
         description: "Entscheidungsdetails konnten nicht geladen werden.",
