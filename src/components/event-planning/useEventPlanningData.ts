@@ -453,7 +453,7 @@ export function useEventPlanningData() {
       if (isNaN(hours) || isNaN(minutes)) throw new Error("Ungültiges Zeitformat");
       dateTime.setHours(hours, minutes, 0, 0);
 
-      const { data, error } = await supabase.from("event_planning_dates").insert({ event_planning_id: selectedPlanning.id, date_time: dateTime.toISOString() }).select().single();
+      const { data, error } = await supabase.from("event_planning_dates").insert([{ event_planning_id: selectedPlanning.id, date_time: dateTime.toISOString() }]).select().single();
       if (error) throw error;
 
       const { data: appointment, error: appointmentError } = await supabase.from("appointments").insert({

@@ -108,14 +108,14 @@ export const NewsEmailTemplateManager: React.FC = () => {
         // Create new
         const { data, error } = await supabase
           .from('news_email_templates')
-          .insert({
+          .insert([{
             tenant_id: memberships.tenant_id,
             subject: template.subject,
             greeting: template.greeting,
             introduction: template.introduction,
             closing: template.closing,
             signature: template.signature
-          })
+          }])
           .select()
           .single();
 

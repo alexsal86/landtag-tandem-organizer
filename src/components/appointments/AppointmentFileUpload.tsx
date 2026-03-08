@@ -86,14 +86,14 @@ export function AppointmentFileUpload({
         // Save to database
         const { data: docData, error: dbError } = await supabase
           .from('appointment_documents')
-          .insert({
+          .insert([{
             appointment_id: appointmentId!,
             file_path: data.path,
             file_name: fileData.file.name,
             file_size: fileData.file.size,
             file_type: fileData.file.type,
             uploaded_by: (await supabase.auth.getUser()).data.user?.id!
-          })
+          }])
           .select()
           .single();
 

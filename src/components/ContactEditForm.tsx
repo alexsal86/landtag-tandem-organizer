@@ -264,13 +264,13 @@ export function ContactEditForm({ contact, onSuccess, onCancel }: ContactEditFor
           // Create new organization
           const { data: newOrg, error: orgError } = await supabase
             .from('contacts')
-            .insert({
+            .insert([{
               user_id: user.id,
               tenant_id: currentTenant.id,
               name: formData.organization.trim(),
               contact_type: 'organization',
               category: 'business'
-            })
+            }])
             .select('id')
             .single();
 

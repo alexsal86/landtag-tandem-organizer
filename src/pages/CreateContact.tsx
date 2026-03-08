@@ -251,7 +251,7 @@ export function CreateContact() {
               ?.name || null
           : null;
 
-      const { error } = await supabase.from("contacts").insert({
+      const { error } = await supabase.from("contacts").insert([{
         user_id: user.id,
         tenant_id: currentTenant.id,
         contact_type: formData.contact_type,
@@ -272,7 +272,7 @@ export function CreateContact() {
         main_contact_person: formData.main_contact_person || null,
         added_reason: formData.added_reason || null,
         added_at: formData.added_at || new Date().toISOString(),
-      });
+      }]);
 
       if (error) throw error;
 

@@ -46,12 +46,12 @@ export function CalendarSyncSettings() {
         // Create default settings if none exist
         const { error: insertError } = await supabase
           .from('calendar_sync_settings')
-          .insert({
+          .insert([{
             tenant_id: currentTenant.id,
             sync_interval_hours: 24,
             sync_time: '06:00:00',
             is_enabled: true
-          });
+          }]);
         
         if (insertError) throw insertError;
       }

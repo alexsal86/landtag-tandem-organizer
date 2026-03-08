@@ -402,7 +402,7 @@ export function useMeetingsData() {
 
       const { data: document, error: dbError } = await supabase
         .from('meeting_agenda_documents')
-        .insert({ meeting_agenda_item_id: agendaItemId, user_id: user.id, file_name: file.name, file_path: fileName, file_type: file.type, file_size: file.size })
+        .insert([{ meeting_agenda_item_id: agendaItemId, user_id: user.id, file_name: file.name, file_path: fileName, file_type: file.type, file_size: file.size }])
         .select().single();
       if (dbError) throw dbError;
 

@@ -142,7 +142,7 @@ export function LetterOccasionManager() {
     const insertedOccasions: LetterOccasion[] = [];
     for (let i = 0; i < DEFAULT_OCCASIONS.length; i++) {
       const o = DEFAULT_OCCASIONS[i];
-      const { data, error } = await supabase.from('letter_occasions').insert({
+      const { data, error } = await supabase.from('letter_occasions').insert([{
         tenant_id: currentTenant.id,
         key: o.key,
         label: o.label,
@@ -152,7 +152,7 @@ export function LetterOccasionManager() {
         sort_order: i,
         template_match_patterns: o.patterns,
         is_active: true,
-      }).select().maybeSingle();
+      }]).select().maybeSingle();
       if (data) insertedOccasions.push(data);
       if (error) debugConsole.error('Seed error for', o.key, error);
     }

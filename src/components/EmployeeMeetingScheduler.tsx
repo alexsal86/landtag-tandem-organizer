@@ -139,7 +139,7 @@ export function EmployeeMeetingScheduler({
 
         const { error: calendarError } = await supabase
           .from("appointments")
-          .insert({
+          .insert([{
             user_id: user.id,
             tenant_id: currentTenant.id,
             title: `Mitarbeitergespräch mit ${employeeName}`,
@@ -152,7 +152,7 @@ export function EmployeeMeetingScheduler({
             end_time: endTime.toISOString(),
             status: "planned",
             priority: "high",
-          });
+          }]);
 
         if (calendarError) {
           debugConsole.error("Calendar entry error:", calendarError);
