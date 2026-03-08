@@ -50,7 +50,7 @@ export const useAllPersonContacts = () => {
           .range(from, to);
 
         if (error) {
-          console.error("Error fetching person contacts:", error);
+          debugConsole.error("Error fetching person contacts:", error);
           return;
         }
 
