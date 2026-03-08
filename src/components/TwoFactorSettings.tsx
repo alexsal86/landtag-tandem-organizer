@@ -123,11 +123,11 @@ export function TwoFactorSettings() {
       });
       
       await loadMFAStatus();
-    } catch (error: any) {
+    } catch (error: unknown) {
       setError("Ungültiger Code. Bitte versuchen Sie es erneut.");
       toast({
         title: "Fehler",
-        description: "Code konnte nicht verifiziert werden: " + error.message,
+        description: "Code konnte nicht verifiziert werden: " + (error instanceof Error ? error.message : String(error)),
         variant: "destructive"
       });
     } finally {
