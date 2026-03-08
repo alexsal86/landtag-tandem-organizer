@@ -128,7 +128,7 @@ export const useCaseFileTypes = () => {
       console.error('Error deleting case file type:', error);
       toast({
         title: "Fehler",
-        description: "FallAkten-Typ konnte nicht gelöscht werden.",
+        description: "Fallakten-Typ konnte nicht gelöscht werden.",
         variant: "destructive",
       });
       return false;
