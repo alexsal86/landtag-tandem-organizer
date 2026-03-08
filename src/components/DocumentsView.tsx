@@ -354,7 +354,7 @@ export function DocumentsView() {
                 {currentFolderSubfolders.map(folder => (
                   <Card key={folder.id} className="hover:shadow-lg cursor-pointer transition-shadow overflow-hidden" onClick={() => setCurrentFolder(folder.id)}>
                     <CardContent className="p-4"><div className="flex items-center gap-3 min-w-0">
-                      <Folder className="h-8 w-8 flex-shrink-0" style={{ color: folder.color }} />
+                      <Folder className="h-8 w-8 flex-shrink-0" style={{ color: folder.color ?? undefined }} />
                       <div className="flex-1 min-w-0 overflow-hidden"><h3 className="font-semibold truncate">{folder.name}</h3><p className="text-xs text-muted-foreground">{folder.documentCount || 0} Dokument{folder.documentCount !== 1 ? 'e' : ''}</p></div>
                       <DropdownMenu><DropdownMenuTrigger asChild onClick={e => e.stopPropagation()}><Button variant="ghost" size="sm" className="h-8 w-8 p-0"><MoreVertical className="h-4 w-4" /></Button></DropdownMenuTrigger><DropdownMenuContent onClick={e => e.stopPropagation()}><DropdownMenuItem onClick={e => { e.stopPropagation(); ops.handleDeleteFolder(folder.id, data.folders); }}><Trash2 className="h-4 w-4 mr-2" />Löschen</DropdownMenuItem></DropdownMenuContent></DropdownMenu>
                     </div>{folder.description && <p className="text-xs text-muted-foreground mt-2 line-clamp-2">{folder.description}</p>}</CardContent>
