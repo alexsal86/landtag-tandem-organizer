@@ -228,7 +228,7 @@ export function useEventPlanningData() {
         catch (collabError) { debugConsole.error('Error fetching collaborators:', collabError); }
       }
     } catch (err) {
-      console.error('Unexpected error in fetchPlannings:', err);
+      debugConsole.error('Unexpected error in fetchPlannings:', err);
       toast({ title: "Fehler", description: "Ein unerwarteter Fehler ist aufgetreten beim Laden der Planungen.", variant: "destructive" });
     } finally {
       setLoading(false);
