@@ -140,7 +140,7 @@ export function EmployeeMeetingHistory({ employeeId, showFilters = true }: Emplo
     try {
       // Delete related data first
       await supabase.from("employee_meeting_action_items").delete().eq("meeting_id", meetingId);
-      await supabase.from("employee_meeting_ratings").delete().eq("meeting_id", meetingId);
+      
       
       const { error } = await supabase
         .from("employee_meetings")
@@ -164,6 +164,7 @@ export function EmployeeMeetingHistory({ employeeId, showFilters = true }: Emplo
     }
   };
 
+  const getMeetingTypeLabel = (type: string) => {
     const labels: Record<string, string> = {
       regular: "Regulär",
       probation: "Probezeit",
