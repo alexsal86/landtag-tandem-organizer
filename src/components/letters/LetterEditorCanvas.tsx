@@ -191,19 +191,12 @@ export const LetterEditorCanvas: React.FC<LetterEditorCanvasProps> = ({
     + salutationHeightMm
     + gapAfterSalutationMm;
 
-  // ── line-height snapping to avoid cutting lines ──
-  const lineHeightMm = contentFontSizePt * 0.3528 * 1.2;
-  const snapToLine = (mm: number) => {
-    if (lineHeightMm <= 0) return mm;
-    const lines = mm / lineHeightMm;
-    const rounded = Math.round(lines);
-    const snapped = Math.abs(lines - rounded) < 0.01 ? rounded : Math.floor(lines);
-    return snapped * lineHeightMm;
-  };
+  // ── available body height per page (raw, no snapping) ──
+  const page1BodyMmRaw = contentBottomMm - contentStartMm;
+  const pageNBodyMmRaw = page2BottomMm - page2TopMm;
 
-  // ── available body height per page (snapped to line height) ──
-  const page1BodyMm = Math.max(lineHeightMm, snapToLine(contentBottomMm - contentStartMm));
-  const pageNBodyMm = Math.max(lineHeightMm, snapToLine(page2BottomMm - page2TopMm));
+  // ── Measurement-based block breaks ──
+  const [blockBreaks, setBlockBreaks] = useState<number[]>([]);
 
   // ── closing metadata ──
   const closingFormula: string | undefined = layout.closing?.formula;
