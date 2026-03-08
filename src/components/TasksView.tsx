@@ -655,7 +655,7 @@ export function TasksView() {
               assigned_to_names: resolvedAssignedTo
             });
             
-            console.log('✅ Added call follow-up task:', followupTask.id);
+            
           } catch (resolveError) {
             console.error('❌ Error resolving names for call follow-up:', followupTask.id, resolveError);
             // Add without resolved names as fallback
