@@ -558,6 +558,9 @@ export function MyWorkCasesWorkspace() {
       interactionDateTime: "",
       interactionNote: "",
       contactPerson: [getContactName(item.intake_payload), getContactDetail(item.intake_payload)].filter(Boolean).join(" · "),
+      contactEmail: (item.intake_payload as Record<string, unknown>)?.contact_email as string || "",
+      contactPhone: (item.intake_payload as Record<string, unknown>)?.contact_phone as string || "",
+      selectedContactId: ((item.intake_payload as Record<string, unknown>)?.matched_contact_id as string) || (item as Record<string, unknown>).contact_id as string || null,
     });
   };
 
