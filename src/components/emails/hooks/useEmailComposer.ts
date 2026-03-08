@@ -195,7 +195,7 @@ export function useEmailComposer() {
       if (defaultSender) setSelectedSender(defaultSender.id);
       else if (data && data.length > 0) setSelectedSender(data[0].id);
     } catch (error) {
-      console.error("Error fetching sender infos:", error);
+      debugConsole.error("Error fetching sender infos:", error);
     }
   };
 
