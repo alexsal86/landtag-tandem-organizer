@@ -739,7 +739,7 @@ export const useCaseFileDetails = (caseFileId: string | null) => {
         .update({
           current_status_note: note,
           current_status_updated_at: new Date().toISOString(),
-        } as any)
+        })
         .eq('id', caseFileId);
 
       if (error) throw error;
