@@ -189,7 +189,7 @@ const formatDateSafe = (
   if (Number.isNaN(parsedDate.getTime())) {
     if (options?.warnKey && !loggedInvalidDateWarnings.has(options.warnKey)) {
       loggedInvalidDateWarnings.add(options.warnKey);
-      console.warn("Invalid date in case workspace item", {
+      debugConsole.warn("Invalid date in case workspace item", {
         itemId: options.warnItemId,
         field: options.warnField,
         value,
