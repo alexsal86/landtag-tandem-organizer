@@ -160,7 +160,7 @@ export function useCombinedTimeEntries({
           type_class: config.holiday.className,
         });
       } catch (e) {
-        console.error('Error processing holiday:', e);
+        debugConsole.error('Error processing holiday:', e);
       }
     });
 
