@@ -125,8 +125,8 @@ export function RSSSourceManager() {
       setDialogOpen(false);
       form.reset();
       setEditingSource(null);
-    } catch (error: any) {
-      toast.error(error.message || "Fehler beim Speichern");
+    } catch (error: unknown) {
+      toast.error(error instanceof Error ? error.message : "Fehler beim Speichern");
       console.error(error);
     }
   };
