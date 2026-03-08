@@ -219,7 +219,7 @@ export function DashboardWidget({ widget, isDragging, isEditMode, onResize, onDe
       // Load tasks
       const { data: tasksData } = await supabase
         .from('tasks')
-        .select('*')
+        .select('id, title, description, priority, status, due_date, category, assigned_to, progress, created_at, updated_at, user_id, call_log_id')
         .neq('status', 'completed')
         .order('due_date', { ascending: true, nullsFirst: false });
 
