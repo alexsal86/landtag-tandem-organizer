@@ -133,7 +133,7 @@ export const UserSelector: React.FC<UserSelectorProps> = ({
       onClick={() => handleUserSelect(user)}
     >
       <Avatar className="h-8 w-8">
-        <AvatarImage src={user.avatar_url} />
+        <AvatarImage src={user.avatar_url ?? undefined} />
         <AvatarFallback>
           {getInitials(user.display_name)}
         </AvatarFallback>
