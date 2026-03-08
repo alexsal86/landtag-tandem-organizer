@@ -320,8 +320,8 @@ export function ContactEditForm({ contact, onSuccess, onCancel }: ContactEditFor
         .select();
 
       if (error) {
-        console.error('Supabase update error:', error);
-        console.error('Error details:', {
+        debugConsole.error('Supabase update error:', error);
+        debugConsole.error('Error details:', {
           message: error.message,
           details: error.details,
           hint: error.hint,
