@@ -635,7 +635,7 @@ export function AppointmentPreparationDataTab({
                               />
                             )}
                           </div>
-                        ) : field.multiline ? (
+                        ) : (field as any).multiline ? (
                           <Textarea
                             value={editData[field.key] || ""}
                             onChange={(e) => handleFieldChange(field.key, e.target.value)}

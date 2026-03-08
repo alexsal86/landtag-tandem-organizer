@@ -135,7 +135,7 @@ export function MessageSystem() {
       
       // For authored messages, fetch detailed recipient and confirmation data
       const sentMessagesWithDetails = await Promise.all(
-        (authoredMessages || []).map(async (msg) => {
+        (authoredMessages || []).map(async (msg: any) => {
           let recipients: any[] = [];
           let confirmations: any[] = [];
 

@@ -41,7 +41,7 @@ export function BlackBoard() {
       // 1. Unread "An alle" messages (including own)
       // 2. Unread personal messages addressed to the user
       const relevantMessages = (data || [])
-        .filter(msg => {
+        .filter((msg: any) => {
           // Unread "An alle" messages (from anyone including self)
           if (msg.is_for_all_users && !msg.has_read) {
             return true;

@@ -128,7 +128,7 @@ export function TaskArchiveView() {
         if (!acc[decisionId]) {
           acc[decisionId] = { yes: 0, no: 0, question: 0 };
         }
-        acc[decisionId][response.response_type]++;
+        (acc as Record<string, { yes: number; no: number; question: number }>)[response.response_type]++;
         return acc;
       }, {} as Record<string, { yes: number; no: number; question: number }>);
 

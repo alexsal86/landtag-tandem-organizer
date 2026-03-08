@@ -161,12 +161,13 @@ export function useEmployeesData() {
 
         (fullLeaveData || []).forEach((lr: any) => {
           if (!agg[lr.user_id]) agg[lr.user_id] = initLeaveAgg();
+          const leaveType = lr.type as LeaveType;
           const workingDays = lr.end_date ? calculateWorkingDays(lr.start_date, lr.end_date) : 1;
-          if (lr.status === "approved") agg[lr.user_id].approved[lr.type] += workingDays;
-          if (lr.status === "pending") agg[lr.user_id].pending[lr.type] += workingDays;
-          agg[lr.user_id].counts[lr.type] += workingDays;
-          const curr = agg[lr.user_id].lastDates[lr.type];
-          if (!curr || new Date(lr.start_date) > new Date(curr)) agg[lr.user_id].lastDates[lr.type] = lr.start_date;
+          if (lr.status === "approved") agg[lr.user_id].approved[leaveType] += workingDays;
+          if (lr.status === "pending") agg[lr.user_id].pending[leaveType] += workingDays;
+          agg[lr.user_id].counts[leaveType] += workingDays;
+          const curr = agg[lr.user_id].lastDates[leaveType];
+          if (!curr || new Date(lr.start_date) > new Date(curr)) agg[lr.user_id].lastDates[leaveType] = lr.start_date;
         });
         setLeaves(agg);
 
