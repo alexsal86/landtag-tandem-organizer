@@ -645,12 +645,12 @@ export function DashboardWidget({ widget, isDragging, isEditMode, onResize, onDe
             isVisible={showOverlayMenu}
             onClose={() => setShowOverlayMenu(false)}
             onResize={(widgetId, newSize) => {
-              console.log('Overlay menu resize called:', widgetId, newSize);
+              debugConsole.log('Overlay menu resize called:', widgetId, newSize);
               if (onResize) {
                 onResize(widgetId, newSize);
                 setShowOverlayMenu(false);
               } else {
-                console.warn('No onResize function provided to DashboardWidget');
+                debugConsole.warn('No onResize function provided to DashboardWidget');
               }
             }}
             onMinimize={() => {}}
