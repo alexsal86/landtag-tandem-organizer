@@ -289,7 +289,7 @@ export function CaseItemDetailPanel({
                         <span className={`absolute -left-[27px] top-[2px] h-5 w-5 rounded-full ${entry.accentClass} flex items-center justify-center text-white`}>
                           {entry.icon ? <entry.icon className="h-3 w-3" /> : null}
                         </span>
-                        <div className={cn("group py-1 text-xs", isFrist && "rounded-sm bg-amber-50/70 dark:bg-amber-950/20 px-2 py-1.5 -mx-1")}>
+                        <div className="group py-1 text-xs">
                           <p className="text-[10px] font-medium text-muted-foreground">
                             {formatTimelineDateOnly(entry.timestamp)}
                             <span className="ml-1.5 opacity-0 transition-opacity duration-200 ease-out group-hover:opacity-100 group-focus-within:opacity-100">{formatTimelineTimeOnly(entry.timestamp)} Uhr</span>
