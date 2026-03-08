@@ -351,11 +351,14 @@ serve(async (req) => {
           type_name: "system_update",
           title_param: title,
           message_param: message,
-          data_param: {
+          data_param: JSON.stringify({
             source: "automation_rule",
             rule_id: rule.id,
+            rule_name: rule.name,
             run_id: run.id,
-          },
+            trigger_reason: `Regel „${rule.name}" ausgelöst`,
+            navigation_context: "admin/automation",
+          }),
           priority_param: "medium",
         });
 

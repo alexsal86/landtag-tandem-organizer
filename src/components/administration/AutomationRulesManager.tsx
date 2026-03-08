@@ -8,9 +8,10 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/components/ui/use-toast";
-import { AlertTriangle, Clock, Download, Loader2, Pause, Play, Plus, ShieldAlert, Trash2, Upload, Zap } from "lucide-react";
+import { AlertTriangle, Clock, Copy, Download, Loader2, Pause, Play, Plus, ShieldAlert, Trash2, Upload, Zap } from "lucide-react";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { formatDistanceToNow } from "date-fns";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import { formatDistanceToNow, addMinutes } from "date-fns";
 import { de } from "date-fns/locale";
 import { AutomationRuleWizard, DEFAULT_FORM, DEFAULT_ACTION, RULE_TEMPLATES, type WizardForm, type ActionItem, type ConditionItem } from "./AutomationRuleWizard";
 import { AutomationTemplateGallery } from "./AutomationTemplateGallery";
@@ -24,7 +25,7 @@ type RuleRow = {
   name: string;
   description: string | null;
   module: string;
-  trigger_type: "record_changed" | "schedule" | "manual";
+  trigger_type: "record_changed" | "schedule" | "manual" | "webhook";
   trigger_config: Record<string, string>;
   conditions: { all?: Array<{ field: string; operator: string; value: string }>; any?: Array<{ field: string; operator: string; value: string }> };
   actions: Array<{ type: string; payload?: Record<string, string> }>;
@@ -39,6 +40,7 @@ type RunRow = {
   dry_run?: boolean;
   trigger_source: string;
   started_at: string;
+  finished_at: string | null;
   error_message: string | null;
 };
 
@@ -85,6 +87,46 @@ export function AutomationRulesManager() {
     if (runStatusFilter === "dry_run") return runs.filter((run) => run.dry_run);
     return runs.filter((run) => run.status === runStatusFilter && !run.dry_run);
   }, [runs, runStatusFilter]);
+
+  // --- Feature: Rule statistics (success rate, avg duration) ---
+  const ruleStats = useMemo(() => {
+    const statsMap: Record<string, { total: number; success: number; totalDurationMs: number; withDuration: number }> = {};
+    for (const run of runs) {
+      if (run.dry_run) continue;
+      if (!statsMap[run.rule_id]) {
+        statsMap[run.rule_id] = { total: 0, success: 0, totalDurationMs: 0, withDuration: 0 };
+      }
+      const s = statsMap[run.rule_id];
+      s.total += 1;
+      if (run.status === "success") s.success += 1;
+      if (run.finished_at && run.started_at) {
+        const dur = new Date(run.finished_at).getTime() - new Date(run.started_at).getTime();
+        if (dur > 0) {
+          s.totalDurationMs += dur;
+          s.withDuration += 1;
+        }
+      }
+    }
+    return statsMap;
+  }, [runs]);
+
+  // --- Feature: Next scheduled run time ---
+  const getNextRunTime = (rule: RuleRow): Date | null => {
+    if (rule.trigger_type !== "schedule") return null;
+    const interval = Number(rule.trigger_config?.minutes_interval);
+    if (!interval || interval <= 0) return null;
+    const ruleRuns = runs.filter((r) => r.rule_id === rule.id && !r.dry_run);
+    const lastRun = ruleRuns[0]; // already sorted desc by started_at
+    const base = lastRun ? new Date(lastRun.started_at) : new Date();
+    return addMinutes(base, interval);
+  };
+
+  // --- Feature: Duplicate rule ---
+  const duplicateRule = (rule: RuleRow) => {
+    startEdit(rule);
+    setEditingRuleId(null);
+    setForm((prev) => ({ ...prev, name: `${prev.name} (Kopie)` }));
+  };
 
   const toggleAutomationsPaused = async () => {
     if (!currentTenant) return;
@@ -143,7 +185,7 @@ export function AutomationRulesManager() {
         .order("updated_at", { ascending: false }),
       supabase
         .from("automation_rule_runs")
-        .select("id, rule_id, status, dry_run, trigger_source, started_at, error_message")
+        .select("id, rule_id, status, dry_run, trigger_source, started_at, finished_at, error_message")
         .eq("tenant_id", currentTenant.id)
         .order("started_at", { ascending: false })
         .limit(30),
@@ -580,7 +622,13 @@ export function AutomationRulesManager() {
           {rules.length === 0 ? (
             <p className="text-sm text-muted-foreground">Noch keine Regeln vorhanden.</p>
           ) : (
-            rules.map((rule) => (
+            rules.map((rule) => {
+              const stats = ruleStats[rule.id];
+              const successRate = stats && stats.total > 0 ? Math.round((stats.success / stats.total) * 100) : null;
+              const avgDuration = stats && stats.withDuration > 0 ? Math.round(stats.totalDurationMs / stats.withDuration / 1000) : null;
+              const nextRun = getNextRunTime(rule);
+
+              return (
               <div key={rule.id} className="border rounded-lg p-3">
                 <div className="flex items-start justify-between gap-4">
                   <div className="flex items-start gap-3">
@@ -599,12 +647,36 @@ export function AutomationRulesManager() {
                         {rule.conditions?.any && (
                           <Badge variant="secondary" className="text-[10px]">ODER</Badge>
                         )}
+                        {successRate !== null && (
+                          <TooltipProvider>
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <Badge variant={successRate >= 80 ? "default" : successRate >= 50 ? "secondary" : "destructive"} className="text-[10px]">
+                                  {successRate}% Erfolg
+                                </Badge>
+                              </TooltipTrigger>
+                              <TooltipContent>
+                                {stats.success}/{stats.total} Runs erfolgreich
+                                {avgDuration !== null && ` · Ø ${avgDuration}s`}
+                              </TooltipContent>
+                            </Tooltip>
+                          </TooltipProvider>
+                        )}
+                        {nextRun && rule.enabled && (
+                          <Badge variant="outline" className="text-[10px] gap-1">
+                            <Clock className="h-3 w-3" />
+                            Nächster Run: {formatDistanceToNow(nextRun, { addSuffix: true, locale: de })}
+                          </Badge>
+                        )}
                       </div>
                     </div>
                   </div>
                   <div className="flex gap-2 flex-wrap">
                     <Button size="sm" variant="outline" onClick={() => startEdit(rule)} disabled={!canEdit}>
                       Bearbeiten
+                    </Button>
+                    <Button size="sm" variant="outline" onClick={() => duplicateRule(rule)} disabled={!canEdit} title="Regel duplizieren">
+                      <Copy className="h-4 w-4" />
                     </Button>
                     <Button
                       size="sm"
@@ -644,7 +716,8 @@ export function AutomationRulesManager() {
                   Aktualisiert {formatDistanceToNow(new Date(rule.updated_at), { addSuffix: true, locale: de })}
                 </p>
               </div>
-            ))
+              );
+            })
           )}
         </CardContent>
       </Card>

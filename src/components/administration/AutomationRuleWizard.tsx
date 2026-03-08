@@ -55,6 +55,7 @@ const TRIGGER_TYPES = [
   { value: "record_changed", label: "Bei Datenänderung" },
   { value: "schedule", label: "Zeitgesteuert" },
   { value: "manual", label: "Manuell (Button)" },
+  { value: "webhook", label: "Webhook (extern)" },
 ] as const;
 
 const FIELD_OPTIONS_BY_MODULE: Record<string, Array<{ value: string; label: string }>> = {
@@ -628,7 +629,7 @@ export function AutomationRuleWizard({
       case 0:
         return form.name.trim().length >= 3;
       case 1:
-        return form.triggerType === "schedule" || form.triggerType === "manual" || form.triggerValue.trim().length > 0;
+        return form.triggerType === "schedule" || form.triggerType === "manual" || form.triggerType === "webhook" || form.triggerValue.trim().length > 0;
       case 2:
         return form.conditions.length > 0 && form.conditions.every((c) => c.value.trim().length > 0);
       case 3: {
@@ -829,6 +830,23 @@ export function AutomationRuleWizard({
               <div className="rounded-md border border-dashed p-3 text-sm text-muted-foreground">
                 <Zap className="inline h-4 w-4 mr-1" />
                 Manuelle Regeln werden per Button in der Regel-Liste ausgelöst.
+              </div>
+            )}
+
+            {form.triggerType === "webhook" && (
+              <div className="rounded-md border border-dashed p-3 text-sm space-y-2">
+                <p className="text-muted-foreground">
+                  <Zap className="inline h-4 w-4 mr-1" />
+                  Webhook-Regeln werden durch einen externen HTTP-Aufruf ausgelöst. Nach dem Speichern wird die Webhook-URL in den Regel-Details angezeigt.
+                </p>
+                {editingRuleId && (
+                  <div className="bg-muted rounded p-2">
+                    <p className="text-xs font-medium mb-1">Webhook-URL:</p>
+                    <code className="text-xs break-all select-all">
+                      {`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/automation-webhook?ruleId=${editingRuleId}`}
+                    </code>
+                  </div>
+                )}
               </div>
             )}
 
