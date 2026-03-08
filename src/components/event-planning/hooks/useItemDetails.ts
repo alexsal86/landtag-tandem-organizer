@@ -106,7 +106,7 @@ export function useItemDetails({
     try {
       const currentSubtasks = itemSubtasks[planningItemId] || [];
       const nextOrderIndex = Math.max(...currentSubtasks.map(s => s.order_index), -1) + 1;
-      const { error } = await supabase.from('planning_item_subtasks').insert({ planning_item_id: planningItemId, user_id: user.id, description: desc, assigned_to: assigned === 'unassigned' ? null : assigned, due_date: due || null, order_index: nextOrderIndex });
+      const { error } = await supabase.from('planning_item_subtasks').insert([{ planning_item_id: planningItemId, user_id: user.id, description: desc, assigned_to: assigned === 'unassigned' ? null : assigned, due_date: due || null, order_index: nextOrderIndex }]);
       if (error) throw error;
       setNewSubtask({ description: '', assigned_to: 'unassigned', due_date: '' });
       loadItemSubtasks(planningItemId);
