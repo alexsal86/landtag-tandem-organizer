@@ -257,7 +257,7 @@ export const ContactSelector: React.FC<ContactSelectorProps> = ({
         setContacts(mergeWithUsageStats(searchData || [], usageData));
       }
     } catch (error) {
-      console.error('Error fetching contacts:', error);
+      debugConsole.error('Error fetching contacts:', error);
     } finally {
       setLoading(false);
     }
