@@ -12,6 +12,7 @@ import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { MultiSelect } from "@/components/ui/multi-select-simple";
 import { supabase } from "@/integrations/supabase/client";
+import { debugConsole } from "@/utils/debugConsole";
 import { useDefaultDecisionSettings } from "@/hooks/useDefaultDecisionSettings";
 import { DecisionTabId, DEFAULT_DECISION_TAB_ORDER } from "@/hooks/useMyWorkSettings";
 import { useToast } from "@/hooks/use-toast";
