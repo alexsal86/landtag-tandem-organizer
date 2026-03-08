@@ -137,7 +137,7 @@ export function useKnowledgeData() {
       setIsSidebarCollapsed(false);
       navigate(`/knowledge/${data.id}`, { replace: true });
     } catch (error) {
-      console.error('Error creating document:', error);
+      debugConsole.error('Error creating document:', error);
       toast({ title: "Fehler beim Erstellen", description: "Das Dokument konnte nicht erstellt werden.", variant: "destructive" });
     }
   };
