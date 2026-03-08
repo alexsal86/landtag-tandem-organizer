@@ -246,7 +246,7 @@ export function MyWorkPlanningsTab() {
 
       await loadPlannings();
     } catch (error) {
-      console.error("Error toggling checklist item:", error);
+      debugConsole.error("Error toggling checklist item:", error);
       toast({ title: "Fehler beim Aktualisieren", variant: "destructive" });
     }
   };
