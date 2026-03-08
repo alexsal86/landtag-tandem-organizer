@@ -178,7 +178,7 @@ export function TaskArchiveModal({ isOpen, onClose, onTaskRestored }: TaskArchiv
       // First, check if the original task still exists and update it, or create a new one with the original ID
       const { data: existingTask, error: checkError } = await supabase
         .from('tasks')
-        .select('*')
+        .select('id')
         .eq('id', task.task_id)
         .maybeSingle();
 
