@@ -202,7 +202,7 @@ export function DrucksachenUpload({ onUploadSuccess, onProtocolsRefresh }: Druck
         // Show preview to user
         toast.success(`PDF analysiert: ${structuredData.agendaItems.length} Tagesordnungspunkte, ${structuredData.speeches.length} Reden gefunden`);
       } catch (parseError) {
-        console.error('Local PDF parsing failed:', parseError);
+        debugConsole.error('Local PDF parsing failed:', parseError);
         toast.error(`PDF-Analyse fehlgeschlagen: ${parseError.message}`);
         throw parseError;
       }
