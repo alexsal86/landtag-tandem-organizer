@@ -830,8 +830,8 @@ export function MatrixClientProvider({ children }: { children: ReactNode }) {
         if (eventType === 'm.reaction') {
           const relatesTo = event.getContent()['m.relates_to'];
           if (relatesTo?.rel_type === 'm.annotation') {
-            const targetEventId = relatesTo.event_id;
-            const emoji = relatesTo.key;
+            const targetEventId = relatesTo.event_id as string;
+            const emoji = relatesTo.key as string;
 
             setMessages(prev => {
               const roomMessages = prev.get(room.roomId);

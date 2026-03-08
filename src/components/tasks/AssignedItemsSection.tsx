@@ -411,7 +411,7 @@ export function AssignedItemsSection({
               type="subtask"
               title={subtask.title || subtask.description || ''}
               description={subtask.title ? subtask.description : undefined}
-              priority={subtask.priority}
+              priority={subtask.priority ?? undefined}
               dueDate={subtask.due_date}
               isCompleted={subtask.is_completed}
               isSnoozed={isSnoozed}

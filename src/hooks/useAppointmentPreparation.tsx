@@ -96,7 +96,7 @@ export function useAppointmentPreparation(preparationId: string | undefined) {
       const { error: updateError } = await supabase
         .from('appointment_preparations')
         .update({
-          ...updates,
+          ...(updates as any),
           updated_at: new Date().toISOString()
         })
         .eq('id', preparationId);

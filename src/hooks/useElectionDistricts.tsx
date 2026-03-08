@@ -43,10 +43,10 @@ export interface ElectionDistrictNote {
   tenant_id: string;
   district_id: string;
   title: string;
-  content?: string;
+  content?: string | null;
   priority: string;
-  category: string;
-  due_date?: string;
+  category: string | null;
+  due_date?: string | null;
   is_completed: boolean;
   tags?: string[];
   created_at: string;

@@ -10,8 +10,8 @@ interface AnimationDefinition {
   name: string;
   type: string;
   animation_key: string;
-  is_active: boolean;
-  order_index: number;
+  is_active: boolean | null;
+  order_index: number | null;
 }
 
 const DEFAULT_SETTINGS: CelebrationSettings = {
