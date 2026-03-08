@@ -13,6 +13,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { useTenant } from '@/hooks/useTenant';
 import { useToast } from '@/hooks/use-toast';
+import { debugConsole } from '@/utils/debugConsole';
 import { useViewPreference } from '@/hooks/useViewPreference';
 import LetterEditor from './LetterEditor';
 import { LetterWizard } from './letters/LetterWizard';
