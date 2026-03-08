@@ -427,7 +427,7 @@ export function GlobalSearchCommand() {
     { label: "Terminkalender", icon: Calendar, path: "/?section=calendar" },
     { label: "Kontakte", icon: Users, path: "/?section=contacts" },
     { label: "Aufgaben", icon: CheckSquare, path: "/?section=tasks" },
-    { label: "FallAkten", icon: Briefcase, path: "/?section=casefiles" },
+    { label: "Fallakten", icon: Briefcase, path: "/?section=casefiles" },
     { label: "Entscheidungen", icon: Vote, path: "/?section=decisions" },
     { label: "Jour fixe", icon: MessageSquare, path: "/?section=meetings" },
     { label: "Planungen", icon: CalendarPlus, path: "/?section=eventplanning" },
