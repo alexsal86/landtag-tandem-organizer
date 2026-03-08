@@ -325,7 +325,7 @@ export function useMeetingsData() {
       const { data, error } = await supabase
         .from('meeting_templates').select('*').order('is_default', { ascending: false }).order('name');
       if (error) throw error;
-      setMeetingTemplates(data || []);
+      setMeetingTemplates((data || []) as MeetingTemplate[]);
 
       const defaultTemplate = data?.find(t => t.is_default);
       if (defaultTemplate) {
