@@ -360,7 +360,7 @@ export const useNotifications = () => {
             userVisibleOnly: true,
             applicationServerKey: urlBase64ToUint8Array(vapidPublicKey),
           });
-          console.log('✅ New subscription created');
+          
         } catch (error) {
           console.error('❌ Failed to get VAPID key or create subscription:', error);
           throw error;
