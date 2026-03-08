@@ -124,7 +124,7 @@ export function TenantCollaboration() {
       setIsCreateDialogOpen(false);
       fetchCollaborations();
     } catch (error) {
-      console.error("Error requesting collaboration:", error);
+      debugConsole.error("Error requesting collaboration:", error);
     }
   };
 
