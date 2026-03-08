@@ -559,14 +559,14 @@ export function FocusModeView({
 
       const updateSubItemResult = (value: string) => {
         if (sourceType === 'quick_note' && onUpdateNoteResult) {
-          onUpdateNoteResult(sourceData.id, value);
+          onUpdateNoteResult(src.id as string, value);
         } else if ((sourceType === 'task' || sourceType === 'appointment') && parentItem?.id) {
           try {
             const results = JSON.parse(parentItem.result_text || '{}');
-            results[sourceData.id] = value;
+            results[src.id as string] = value;
             onUpdateResult(parentItem.id, 'result_text', JSON.stringify(results));
           } catch {
-            onUpdateResult(parentItem.id, 'result_text', JSON.stringify({ [sourceData.id]: value }));
+            onUpdateResult(parentItem.id, 'result_text', JSON.stringify({ [src.id as string]: value }));
           }
         }
       };
