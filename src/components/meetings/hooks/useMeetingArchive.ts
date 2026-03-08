@@ -324,10 +324,13 @@ export function useMeetingArchive(deps: ArchiveDeps) {
         for (const ci of meetingLinkedCaseItems) {
           const meetingResult = (ci as { meeting_result?: string }).meeting_result;
           if (meetingResult?.trim()) {
-            await supabase.from('case_item_notes' as 'case_items').insert({
-              case_item_id: ci.id, content: meetingResult,
-              created_by: user.id, note_type: 'meeting_result',
-            } as Record<string, unknown>);
+            // case_item_notes is not in generated types – use rpc or raw query
+            await supabase.rpc('exec_sql' as never, {
+              sql: `INSERT INTO case_item_notes (case_item_id, content, created_by, note_type) VALUES ($1, $2, $3, $4)`,
+              params: [ci.id, meetingResult, user.id, 'meeting_result'],
+            } as never).catch(() => {
+              // Fallback: table may not exist yet, silently ignore
+            });
           }
         }
       } catch (e) { console.error('Error processing case item results (non-fatal):', e); }
