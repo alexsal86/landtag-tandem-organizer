@@ -404,7 +404,7 @@ export const useUserStatus = () => {
         await updateStatus(
           'custom',
           statusName,
-          statusOption?.emoji || null,
+          statusOption?.emoji || undefined,
           undefined,
           true
         );
