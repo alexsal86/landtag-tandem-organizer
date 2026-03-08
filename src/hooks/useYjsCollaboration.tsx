@@ -92,8 +92,8 @@ export const useYjsCollaboration = ({
 
     return () => {
       ydoc.current?.destroy();
-      ydoc.current = undefined;
-      ytext.current = undefined;
+      ydoc.current = null;
+      ytext.current = null;
     };
   }, [documentId, onContentChange]);
 
