@@ -136,7 +136,7 @@ const ProperReactBigCalendar: React.FC<ProperReactBigCalendarProps> = ({
     });
     
     if (!events || events.length === 0) {
-      console.log('❌ REACT BIG CALENDAR - No events provided!');
+      debugConsole.log('❌ REACT BIG CALENDAR - No events provided!');
       return [];
     }
 
