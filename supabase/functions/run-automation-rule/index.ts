@@ -1,5 +1,6 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.56.1";
+import { Resend } from "npm:resend@2.0.0";
 
 const CORS_HEADERS = {
   "Access-Control-Allow-Origin": "*",
@@ -13,7 +14,7 @@ type Condition = {
 };
 
 type Action = {
-  type: "create_notification" | "update_record_status" | "create_task";
+  type: "create_notification" | "update_record_status" | "create_task" | "send_push_notification" | "send_email_template";
   payload?: Record<string, unknown>;
 };
 
@@ -394,6 +395,96 @@ serve(async (req) => {
 
         if (taskError) {
           throw taskError;
+        }
+      }
+
+      if (action.type === "send_email_template") {
+        const payload = action.payload ?? {};
+        const templateId = String(payload.template_id ?? "").trim();
+        const recipientEmail = String(payload.recipient_email ?? "").trim();
+        const recipientName = String(payload.recipient_name ?? "").trim();
+
+        if (!templateId || !recipientEmail) {
+          await supabaseAdmin.from("automation_rule_run_steps").insert({
+            run_id: run.id,
+            tenant_id: rule.tenant_id,
+            step_order: stepOrder,
+            step_type: action.type,
+            status: "skipped",
+            input_payload: action,
+            result_payload: { reason: "missing_template_id_or_recipient_email" },
+          });
+          stepOrder += 1;
+          continue;
+        }
+
+        // Fetch the email template
+        const { data: emailTemplate, error: tplError } = await supabaseAdmin
+          .from("email_templates")
+          .select("name, subject, body_html, variables")
+          .eq("id", templateId)
+          .eq("tenant_id", rule.tenant_id)
+          .eq("is_active", true)
+          .maybeSingle();
+
+        if (tplError || !emailTemplate) {
+          await supabaseAdmin.from("automation_rule_run_steps").insert({
+            run_id: run.id,
+            tenant_id: rule.tenant_id,
+            step_order: stepOrder,
+            step_type: action.type,
+            status: "failed",
+            input_payload: action,
+            error_message: tplError?.message ?? "Email template not found or inactive",
+          });
+          stepOrder += 1;
+          continue;
+        }
+
+        // Fetch default sender for tenant
+        const { data: sender } = await supabaseAdmin
+          .from("sender_information")
+          .select("name, wahlkreis_email, landtag_email")
+          .eq("tenant_id", rule.tenant_id)
+          .eq("is_default", true)
+          .eq("is_active", true)
+          .maybeSingle();
+
+        const senderEmail = sender?.wahlkreis_email || sender?.landtag_email || "noreply@gruene.landtag-bw.de";
+        const senderName = sender?.name || "Automation";
+
+        // Simple variable replacement in subject and body
+        let subject = emailTemplate.subject;
+        let body = emailTemplate.body_html;
+        const vars: Record<string, string> = {
+          empfaenger_name: recipientName || recipientEmail,
+          empfaenger_email: recipientEmail,
+          regel_name: rule.name,
+          ...(sourcePayload as Record<string, string>),
+        };
+
+        for (const [key, val] of Object.entries(vars)) {
+          const placeholder = new RegExp(`\\{\\{${key}\\}\\}`, "gi");
+          subject = subject.replace(placeholder, String(val));
+          body = body.replace(placeholder, String(val));
+        }
+
+        // Send via Resend
+        const resendApiKey = Deno.env.get("RESEND_API_KEY");
+        if (!resendApiKey) {
+          throw new Error("RESEND_API_KEY not configured");
+        }
+
+        const resend = new Resend(resendApiKey);
+        const { error: emailError } = await resend.emails.send({
+          from: `${senderName} <${senderEmail}>`,
+          to: [recipientEmail],
+          subject,
+          html: body,
+        });
+
+        if (emailError) {
+          throw new Error(`Email send failed: ${JSON.stringify(emailError)}`);
         }
       }
 

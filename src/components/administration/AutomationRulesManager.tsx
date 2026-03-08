@@ -158,6 +158,9 @@ export function AutomationRulesManager() {
       table: (a.payload?.table as string) || "tasks",
       recordId: (a.payload?.record_id as string) || "",
       status: (a.payload?.status as string) || "",
+      emailTemplateId: (a.payload?.template_id as string) || "",
+      emailRecipient: (a.payload?.recipient_email as string) || "",
+      emailRecipientName: (a.payload?.recipient_name as string) || "",
     }));
     if (actions.length === 0) actions.push({ ...DEFAULT_ACTION });
 
@@ -232,6 +235,9 @@ export function AutomationRulesManager() {
           table: a.table,
           record_id: a.recordId,
           status: a.status,
+          template_id: a.emailTemplateId,
+          recipient_email: a.emailRecipient,
+          recipient_name: a.emailRecipientName,
         },
       })),
       enabled: form.enabled,

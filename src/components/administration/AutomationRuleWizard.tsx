@@ -1,4 +1,6 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import { supabase } from "@/integrations/supabase/client";
+import { useTenant } from "@/hooks/useTenant";
 import { TenantUserSelect } from "./TenantUserSelect";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
@@ -32,6 +34,7 @@ const ACTION_TYPES = [
   { value: "create_task", label: "Aufgabe erzeugen" },
   { value: "update_record_status", label: "Status aktualisieren" },
   { value: "send_push_notification", label: "Push senden" },
+  { value: "send_email_template", label: "E-Mail-Template senden" },
 ] as const;
 
 const STATUS_TABLE_OPTIONS = ["tasks", "decisions", "knowledge_documents", "casefiles"] as const;
@@ -68,6 +71,13 @@ const FIELD_OPTIONS_BY_MODULE: Record<string, Array<{ value: string; label: stri
   ],
 };
 
+// Used by templates before full DEFAULT_ACTION is defined
+const DEFAULT_ACTION_INIT = {
+  targetUserId: "", title: "", message: "", taskPriority: "medium", taskCategory: "personal",
+  taskDueDate: "", taskAssignees: "", table: "tasks", recordId: "", status: "",
+  emailTemplateId: "", emailRecipient: "", emailRecipientName: "",
+};
+
 export const RULE_TEMPLATES = [
   {
     id: "tasks-overdue",
@@ -78,19 +88,7 @@ export const RULE_TEMPLATES = [
     triggerField: "status",
     triggerValue: "overdue",
     conditions: [{ field: "priority", operator: "equals", value: "high" }],
-    actions: [{
-      type: "create_notification",
-      targetUserId: "",
-      title: "Überfällige Aufgabe",
-      message: "Eine priorisierte Aufgabe ist überfällig.",
-      taskPriority: "medium",
-      taskCategory: "personal",
-      taskDueDate: "",
-      taskAssignees: "",
-      table: "tasks",
-      recordId: "",
-      status: "",
-    }],
+    actions: [{ ...DEFAULT_ACTION_INIT, type: "create_notification", title: "Überfällige Aufgabe", message: "Eine priorisierte Aufgabe ist überfällig.", table: "tasks" }],
   },
   {
     id: "knowledge-review",
@@ -101,19 +99,7 @@ export const RULE_TEMPLATES = [
     triggerField: "updated_at",
     triggerValue: "90_days",
     conditions: [{ field: "status", operator: "equals", value: "published" }],
-    actions: [{
-      type: "update_record_status",
-      targetUserId: "",
-      title: "",
-      message: "",
-      taskPriority: "medium",
-      taskCategory: "personal",
-      taskDueDate: "",
-      taskAssignees: "",
-      table: "knowledge_documents",
-      recordId: "",
-      status: "review",
-    }],
+    actions: [{ ...DEFAULT_ACTION_INIT, type: "update_record_status", table: "knowledge_documents", status: "review" }],
   },
   {
     id: "meeting-reminder-48h",
@@ -124,19 +110,7 @@ export const RULE_TEMPLATES = [
     triggerField: "start_time",
     triggerValue: "48_hours_before",
     conditions: [{ field: "has_preparation", operator: "equals", value: "false" }],
-    actions: [{
-      type: "create_notification",
-      targetUserId: "",
-      title: "Meeting-Vorbereitung fehlt",
-      message: "Ihr Meeting findet in 48 Stunden statt, aber es wurde noch keine Vorbereitung erstellt.",
-      taskPriority: "medium",
-      taskCategory: "personal",
-      taskDueDate: "",
-      taskAssignees: "",
-      table: "appointments",
-      recordId: "",
-      status: "",
-    }],
+    actions: [{ ...DEFAULT_ACTION_INIT, type: "create_notification", title: "Meeting-Vorbereitung fehlt", message: "Ihr Meeting findet in 48 Stunden statt, aber es wurde noch keine Vorbereitung erstellt.", table: "appointments" }],
   },
   {
     id: "decision-accepted-task",
@@ -147,19 +121,7 @@ export const RULE_TEMPLATES = [
     triggerField: "status",
     triggerValue: "accepted",
     conditions: [{ field: "assigned_to", operator: "not_equals", value: "" }],
-    actions: [{
-      type: "create_task",
-      targetUserId: "",
-      title: "Umsetzung: Entscheidung umsetzen",
-      message: "Bitte die angenommene Entscheidung umsetzen.",
-      taskPriority: "medium",
-      taskCategory: "personal",
-      taskDueDate: "",
-      taskAssignees: "",
-      table: "decisions",
-      recordId: "",
-      status: "",
-    }],
+    actions: [{ ...DEFAULT_ACTION_INIT, type: "create_task", title: "Umsetzung: Entscheidung umsetzen", message: "Bitte die angenommene Entscheidung umsetzen.", table: "decisions" }],
   },
   {
     id: "casefile-critical-alert",
@@ -170,19 +132,7 @@ export const RULE_TEMPLATES = [
     triggerField: "priority",
     triggerValue: "critical",
     conditions: [{ field: "status", operator: "not_equals", value: "closed" }],
-    actions: [{
-      type: "create_notification",
-      targetUserId: "",
-      title: "Kritischer Vorgang",
-      message: "Ein Vorgang wurde als kritisch eingestuft und erfordert sofortige Aufmerksamkeit.",
-      taskPriority: "medium",
-      taskCategory: "personal",
-      taskDueDate: "",
-      taskAssignees: "",
-      table: "case_files",
-      recordId: "",
-      status: "",
-    }],
+    actions: [{ ...DEFAULT_ACTION_INIT, type: "create_notification", title: "Kritischer Vorgang", message: "Ein Vorgang wurde als kritisch eingestuft und erfordert sofortige Aufmerksamkeit.", table: "case_files" }],
   },
 ] as const;
 
@@ -204,6 +154,9 @@ export type ActionItem = {
   table: string;
   recordId: string;
   status: string;
+  emailTemplateId: string;
+  emailRecipient: string;
+  emailRecipientName: string;
 };
 
 export const DEFAULT_ACTION: ActionItem = {
@@ -218,6 +171,9 @@ export const DEFAULT_ACTION: ActionItem = {
   table: "tasks",
   recordId: "",
   status: "",
+  emailTemplateId: "",
+  emailRecipient: "",
+  emailRecipientName: "",
 };
 
 export const DEFAULT_CONDITION: ConditionItem = {
@@ -355,6 +311,24 @@ function ActionCard({
   const isNotification = action.type === "create_notification" || action.type === "send_push_notification";
   const isStatus = action.type === "update_record_status";
   const isTask = action.type === "create_task";
+  const isEmail = action.type === "send_email_template";
+
+  // Load email templates for the email action
+  const { currentTenant } = useTenant();
+  const [emailTemplates, setEmailTemplates] = useState<Array<{ id: string; name: string; subject: string }>>([]);
+
+  useEffect(() => {
+    if (!isEmail || !currentTenant?.id) return;
+    supabase
+      .from("email_templates")
+      .select("id, name, subject")
+      .eq("tenant_id", currentTenant.id)
+      .eq("is_active", true)
+      .order("name")
+      .then(({ data }) => {
+        if (data) setEmailTemplates(data);
+      });
+  }, [isEmail, currentTenant?.id]);
 
   return (
     <div className="rounded-md border bg-muted/20 p-3 space-y-3">
@@ -473,6 +447,40 @@ function ActionCard({
           </div>
         </div>
       )}
+
+      {isEmail && (
+        <div className="space-y-3">
+          <div className="space-y-1">
+            <Label className="text-xs">E-Mail-Template *</Label>
+            {emailTemplates.length === 0 ? (
+              <p className="text-xs text-muted-foreground italic">Keine aktiven Templates vorhanden. Erstelle Templates unter E-Mail → Vorlagen.</p>
+            ) : (
+              <Select value={action.emailTemplateId} onValueChange={(v) => onChange(index, { emailTemplateId: v })}>
+                <SelectTrigger className="h-8 text-xs">
+                  <SelectValue placeholder="Template wählen…" />
+                </SelectTrigger>
+                <SelectContent>
+                  {emailTemplates.map((t) => (
+                    <SelectItem key={t.id} value={t.id}>
+                      {t.name} — {t.subject}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            )}
+          </div>
+          <div className="grid gap-3 sm:grid-cols-2">
+            <div className="space-y-1">
+              <Label className="text-xs">Empfänger-E-Mail *</Label>
+              <Input className="h-8 text-xs" value={action.emailRecipient} onChange={(e) => onChange(index, { emailRecipient: e.target.value })} placeholder="empfaenger@example.com" />
+            </div>
+            <div className="space-y-1">
+              <Label className="text-xs">Empfänger-Name</Label>
+              <Input className="h-8 text-xs" value={action.emailRecipientName} onChange={(e) => onChange(index, { emailRecipientName: e.target.value })} placeholder="Optional" />
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
@@ -556,9 +564,11 @@ export function AutomationRuleWizard({
           const isNotif = a.type === "create_notification" || a.type === "send_push_notification";
           const isStat = a.type === "update_record_status";
           const isTask = a.type === "create_task";
+          const isEmail = a.type === "send_email_template";
           if (isNotif) return a.targetUserId.trim().length > 0;
           if (isStat) return a.recordId.trim().length > 0 && a.status.trim().length > 0;
           if (isTask) return a.title.trim().length > 0;
+          if (isEmail) return a.emailTemplateId.trim().length > 0 && a.emailRecipient.trim().length > 0;
           return true;
         });
       }
