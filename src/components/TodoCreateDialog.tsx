@@ -125,11 +125,11 @@ export function TodoCreateDialog({ open, onOpenChange, onTodoCreated }: TodoCrea
       setAssignedTo([]);
       onTodoCreated();
       onOpenChange(false);
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Error creating todo:', error);
       toast({
         title: "Fehler", 
-        description: error.message || "ToDo konnte nicht erstellt werden.",
+        description: error instanceof Error ? error.message : "ToDo konnte nicht erstellt werden.",
         variant: "destructive"
       });
     } finally {

@@ -89,7 +89,7 @@ export const archiveLetter = async (letter: Letter, userId: string): Promise<boo
     
     return true;
 
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('Error archiving letter:', error);
     return false;
   }

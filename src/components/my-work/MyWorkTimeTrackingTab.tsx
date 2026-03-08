@@ -290,8 +290,8 @@ export function MyWorkTimeTrackingTab() {
       setPauseMinutes("30");
       setNotes("");
       checkRoleAndLoad();
-    } catch (error: any) {
-      toast.error(error.message);
+    } catch (error: unknown) {
+      toast.error(error instanceof Error ? error.message : "Fehler beim Speichern");
     } finally {
       setIsSubmitting(false);
     }

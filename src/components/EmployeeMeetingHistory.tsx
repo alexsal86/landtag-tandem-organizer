@@ -122,7 +122,7 @@ export function EmployeeMeetingHistory({ employeeId, showFilters = true }: Emplo
       }));
 
       setMeetings(enrichedMeetings);
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Error loading meetings:", error);
       toast({
         title: "Fehler",

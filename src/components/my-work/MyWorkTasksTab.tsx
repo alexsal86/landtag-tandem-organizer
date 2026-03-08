@@ -508,9 +508,9 @@ export function MyWorkTasksTab() {
       }
       
       toast({ title: "Aufgabe für nächsten Jour Fixe vorgemerkt" });
-    } catch (error: any) {
+    } catch (error: unknown) {
       debugConsole.error('Error marking task for next jour fixe:', error);
-      toast({ title: "Fehler", description: error.message, variant: "destructive" });
+      toast({ title: "Fehler", description: error instanceof Error ? error.message : "Unbekannter Fehler", variant: "destructive" });
     } finally {
       setMeetingTaskId(null);
     }

@@ -261,9 +261,9 @@ export const PollResultsDashboard = ({ pollId, onConfirmSlot }: PollResultsDashb
         description: `Eine Erinnerung wurde erfolgreich an ${participantEmail} gesendet.`,
       });
 
-    } catch (error: any) {
+    } catch (error: unknown) {
       debugConsole.error('Error resending invitation:', error);
-      const errorMessage = error?.message || 'Unbekannter Fehler';
+      const errorMessage = error instanceof Error ? error.message : 'Unbekannter Fehler';
       toast({
         title: "Fehler",
         description: `Die Einladung konnte nicht erneut gesendet werden: ${errorMessage}`,
