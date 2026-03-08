@@ -8,6 +8,7 @@ import { TwoFactorSettings } from "./TwoFactorSettings";
 import { SenderInformationManager } from "./administration/SenderInformationManager";
 import { AutoStatusDetection } from "./AutoStatusDetection";
 import { useMyWorkSettings, BadgeDisplayMode } from "@/hooks/useMyWorkSettings";
+import { debugConsole } from "@/utils/debugConsole";
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
