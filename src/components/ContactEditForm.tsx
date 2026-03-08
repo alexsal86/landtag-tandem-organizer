@@ -249,7 +249,7 @@ export function ContactEditForm({ contact, onSuccess, onCancel }: ContactEditFor
       return;
     }
 
-    console.log('Starting update for contact:', contact.id, 'User:', user.id, 'Tenant:', currentTenant.id);
+    debugConsole.log('Starting update for contact:', contact.id, 'User:', user.id, 'Tenant:', currentTenant.id);
     
     setLoading(true);
 
