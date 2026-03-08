@@ -42,7 +42,6 @@ import {
   Superscript,
   RemoveFormatting,
   Mic,
-  CircleHelp,
 } from 'lucide-react';
 import {
   DropdownMenu,
