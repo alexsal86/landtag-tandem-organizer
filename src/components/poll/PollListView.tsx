@@ -13,6 +13,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { useToast } from '@/hooks/use-toast';
 import { PollResultsDashboard } from './PollResultsDashboard';
 import { PollEditDialog } from './PollEditDialog';
+import { debugConsole } from '@/utils/debugConsole';
 import { AppointmentPollCreator } from './AppointmentPollCreator';
 
 interface Poll {
