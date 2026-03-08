@@ -43,6 +43,8 @@ interface TaskCardProps {
   commentCount?: number;
   depth?: number;
   isLastChild?: boolean;
+  className?: string;
+  highlightRef?: (el: HTMLElement | null) => void;
   onComplete: (taskId: string) => void;
   onSubtaskComplete: (subtaskId: string) => void;
   onNavigate: (taskId: string) => void;
