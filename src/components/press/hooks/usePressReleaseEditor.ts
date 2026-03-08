@@ -273,8 +273,8 @@ export function usePressReleaseEditor({ pressReleaseId, initialDraft, onBack }: 
       setShowRevisionDialog(false);
       toast({ title: "Zurückgewiesen mit Kommentar" });
       await loadPressRelease(pressRelease.id);
-    } catch (error: any) {
-      toast({ title: "Fehler", description: error.message, variant: "destructive" });
+    } catch (error: unknown) {
+      toast({ title: "Fehler", description: error instanceof Error ? error.message : String(error), variant: "destructive" });
     }
   };
 
