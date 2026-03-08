@@ -1205,7 +1205,7 @@ export function MatrixClientProvider({ children }: { children: ReactNode }) {
     const cachedById = new Map(cached.map((message) => [message.eventId, message]));
     for (const message of timelineMessages) {
       const existing = cachedById.get(message.eventId);
-      const shouldReplace = Boolean(existing) && (
+      const shouldReplace = existing != null && (
         (existing.type === 'm.bad.encrypted' && message.type !== 'm.bad.encrypted') ||
         (existing.type === 'm.room.encrypted' && message.type !== 'm.room.encrypted' && message.type !== 'm.bad.encrypted') ||
         (existing.content === '[Encrypted]' && message.content !== '[Encrypted]')

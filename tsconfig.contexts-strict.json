@@ -1,0 +1,16 @@
+{
+  "extends": "./tsconfig.app.json",
+  "compilerOptions": {
+    "strict": false,
+    "strictNullChecks": true,
+    "noImplicitAny": false,
+    "noUnusedLocals": false,
+    "noUnusedParameters": false
+  },
+  "include": [
+    "src/contexts/NotificationContext.tsx",
+    "src/contexts/MatrixUnreadContext.tsx",
+    "src/contexts/MatrixClientContext.tsx",
+    "src/providers/AppProviders.tsx"
+  ]
+}
