@@ -1,143 +1,32 @@
-import { useEffect, useState, useMemo } from 'react';
+import { useMemo } from 'react';
 import { format } from 'date-fns';
 import { de } from 'date-fns/locale';
-import { useAuth } from '@/hooks/useAuth';
-import { useTenant } from '@/hooks/useTenant';
-import { useAppointmentFeedback } from '@/hooks/useAppointmentFeedback';
-import { supabase } from '@/integrations/supabase/client';
 import { useNavigate } from 'react-router-dom';
 import { getCurrentTimeSlot, getCurrentDayOfWeek } from '@/utils/dashboard/timeUtils';
 import { selectMessage } from '@/utils/dashboard/messageGenerator';
-import {
-  DEFAULT_SPECIAL_DAYS,
-  getSpecialDayHint,
-  parseSpecialDaysSetting,
-  SpecialDay,
-} from '@/utils/dashboard/specialDays';
+import { getSpecialDayHint } from '@/utils/dashboard/specialDays';
+import { type DashboardData } from '@/hooks/useDashboardData';
 
-interface AppointmentData {
-  id: string;
-  title: string;
-  start_time: string;
-  end_time?: string;
-  is_all_day: boolean;
+interface Props {
+  data: DashboardData;
 }
 
-export const DashboardAppointments = () => {
-  const { user } = useAuth();
-  const { currentTenant } = useTenant();
+/** Check if an appointment is currently happening */
+const isCurrentlyActive = (apt: { start_time: string; end_time?: string; is_all_day: boolean }) => {
+  if (apt.is_all_day) return false;
+  const now = new Date();
+  const start = new Date(apt.start_time);
+  const end = apt.end_time ? new Date(apt.end_time) : new Date(start.getTime() + 3600000);
+  return start <= now && now < end;
+};
+
+export const DashboardAppointments = ({ data }: Props) => {
   const navigate = useNavigate();
-  const { appointments: feedbackAppointments, settings: feedbackSettings } = useAppointmentFeedback();
-
-  const [userRole, setUserRole] = useState('');
-  const [appointments, setAppointments] = useState<AppointmentData[]>([]);
-  const [openTasksCount, setOpenTasksCount] = useState(0);
-  const [completedTasksToday, setCompletedTasksToday] = useState(0);
-  const [isShowingTomorrow, setIsShowingTomorrow] = useState(false);
-  const [specialDays, setSpecialDays] = useState<SpecialDay[]>(DEFAULT_SPECIAL_DAYS);
-  const [isLoading, setIsLoading] = useState(true);
-
-  const feedbackReminderVisible = useMemo(() => {
-    if (!feedbackSettings?.reminder_start_time) return false;
-    const currentTime = format(new Date(), 'HH:mm:ss');
-    if (currentTime < feedbackSettings.reminder_start_time) return false;
-    return (feedbackAppointments?.filter(a => a.feedback?.feedback_status === 'pending').length ?? 0) > 0;
-  }, [feedbackSettings, feedbackAppointments]);
-
-  const pendingFeedbackCount = useMemo(() => {
-    return feedbackAppointments?.filter(a => a.feedback?.feedback_status === 'pending').length ?? 0;
-  }, [feedbackAppointments]);
-
-  useEffect(() => {
-    if (!user?.id) return;
-    supabase.from('user_roles').select('role').eq('user_id', user.id).maybeSingle()
-      .then(({ data }) => setUserRole(data?.role || ''));
-  }, [user]);
-
-  useEffect(() => {
-    if (!user?.id) return;
-    const today = new Date(); today.setHours(0, 0, 0, 0);
-    Promise.all([
-      supabase.from('tasks').select('*', { count: 'exact', head: true })
-        .or(`assigned_to.eq.${user.id},assigned_to.ilike.%${user.id}%,user_id.eq.${user.id}`)
-        .neq('status', 'completed'),
-      supabase.from('tasks').select('*', { count: 'exact', head: true })
-        .or(`assigned_to.eq.${user.id},assigned_to.ilike.%${user.id}%,user_id.eq.${user.id}`)
-        .eq('status', 'completed').gte('updated_at', today.toISOString()),
-    ]).then(([open, completed]) => {
-      setOpenTasksCount(open.count || 0);
-      setCompletedTasksToday(completed.count || 0);
-    });
-  }, [user]);
-
-  useEffect(() => {
-    const load = async () => {
-      try {
-        let query = supabase.from('app_settings').select('setting_value')
-          .eq('setting_key', 'dashboard_special_day_hints').limit(1);
-        query = currentTenant?.id ? query.eq('tenant_id', currentTenant.id) : query.is('tenant_id', null);
-        const { data } = await query.maybeSingle();
-        setSpecialDays(parseSpecialDaysSetting(data?.setting_value) || DEFAULT_SPECIAL_DAYS);
-      } catch { setSpecialDays(DEFAULT_SPECIAL_DAYS); }
-    };
-    load();
-  }, [currentTenant?.id]);
-
-  useEffect(() => {
-    const load = async () => {
-      if (!user?.id || !currentTenant?.id) return;
-      const now = new Date();
-      const today = new Date(); today.setHours(0, 0, 0, 0);
-      const dayAfterTomorrow = new Date(today); dayAfterTomorrow.setDate(dayAfterTomorrow.getDate() + 2);
-      const yesterday = new Date(today); yesterday.setDate(yesterday.getDate() - 1);
-      const threeDaysAhead = new Date(today); threeDaysAhead.setDate(threeDaysAhead.getDate() + 3);
-
-      const [{ data: normal }, { data: allDay }] = await Promise.all([
-        supabase.from('appointments').select('id, title, start_time, end_time, is_all_day')
-          .eq('tenant_id', currentTenant.id).eq('is_all_day', false)
-          .gte('start_time', today.toISOString()).lt('start_time', dayAfterTomorrow.toISOString())
-          .order('start_time', { ascending: true }),
-        supabase.from('appointments').select('id, title, start_time, end_time, is_all_day')
-          .eq('tenant_id', currentTenant.id).eq('is_all_day', true)
-          .gte('start_time', yesterday.toISOString()).lt('start_time', threeDaysAhead.toISOString())
-          .order('start_time', { ascending: true }),
-      ]);
-
-      const externalResult = await (supabase as any).from('external_events')
-        .select('id, title, start_time, end_time, all_day, external_calendars!inner(tenant_id)')
-        .eq('external_calendars.tenant_id', currentTenant.id)
-        .gte('start_time', yesterday.toISOString()).lt('start_time', threeDaysAhead.toISOString())
-        .order('start_time', { ascending: true });
-
-      const external: AppointmentData[] = (externalResult.data || []).map((e: any) => ({
-        id: e.id, title: e.title, start_time: e.start_time, end_time: e.end_time, is_all_day: e.all_day ?? false
-      }));
-
-      const all = [...(normal || []), ...(allDay || []), ...external];
-
-      const todayUpcoming = all.filter(event => {
-        const localDate = new Date(new Date(event.start_time).toLocaleString('en-US', { timeZone: 'Europe/Berlin' }));
-        if (localDate.toDateString() !== today.toDateString()) return false;
-        if (event.is_all_day) return true;
-        const endTime = event.end_time ? new Date(event.end_time) : new Date(new Date(event.start_time).getTime() + 3600000);
-        return endTime > now;
-      });
-
-      if (todayUpcoming.length === 0) {
-        const tomorrowDate = new Date(today); tomorrowDate.setDate(tomorrowDate.getDate() + 1);
-        setAppointments(all.filter(e => {
-          const ld = new Date(new Date(e.start_time).toLocaleString('en-US', { timeZone: 'Europe/Berlin' }));
-          return ld.toDateString() === tomorrowDate.toDateString();
-        }).sort((a, b) => new Date(a.start_time).getTime() - new Date(b.start_time).getTime()).slice(0, 4));
-        setIsShowingTomorrow(true);
-      } else {
-        setAppointments(todayUpcoming.sort((a, b) => new Date(a.start_time).getTime() - new Date(b.start_time).getTime()).slice(0, 4));
-        setIsShowingTomorrow(false);
-      }
-      setIsLoading(false);
-    };
-    load();
-  }, [user, currentTenant]);
+  const {
+    userRole, appointments, isShowingTomorrow,
+    openTasksCount, completedTasksToday,
+    specialDays, feedbackReminderVisible, pendingFeedbackCount, isLoading,
+  } = data;
 
   const timeSlot = getCurrentTimeSlot();
   const isLateDay = timeSlot === 'evening' || timeSlot === 'night';
@@ -216,7 +105,7 @@ export const DashboardAppointments = () => {
         </div>
       )}
 
-      {/* Termine */}
+      {/* Termine – kein Limit mehr */}
       <div>
         <h3 className="text-sm font-semibold text-foreground mb-2">
           📅 {isShowingTomorrow ? 'Deine Termine morgen' : 'Deine Termine heute'}
@@ -229,16 +118,30 @@ export const DashboardAppointments = () => {
           <div className="space-y-1.5">
             {appointments.map(apt => {
               const aptDate = format(new Date(apt.start_time), 'yyyy-MM-dd');
+              const active = !isShowingTomorrow && isCurrentlyActive(apt);
               return (
                 <div
                   key={apt.id}
-                  className="flex items-center gap-2 text-sm cursor-pointer hover:bg-muted/40 rounded px-1 py-0.5 transition-colors"
+                  className={`flex items-center gap-2 text-sm cursor-pointer rounded px-1 py-0.5 transition-colors ${
+                    active
+                      ? 'bg-primary/10 ring-1 ring-primary/30'
+                      : 'hover:bg-muted/40'
+                  }`}
                   onClick={() => navigate(`/calendar?date=${aptDate}&event=${apt.id}`)}
                 >
+                  {/* Puls-Indikator für laufenden Termin */}
+                  {active && (
+                    <span className="relative flex h-2 w-2 shrink-0">
+                      <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-primary opacity-75" />
+                      <span className="relative inline-flex h-2 w-2 rounded-full bg-primary" />
+                    </span>
+                  )}
                   <span className="text-muted-foreground font-mono text-xs w-12 shrink-0">
                     {apt.is_all_day ? 'Ganzt.' : format(new Date(apt.start_time), 'HH:mm', { locale: de })}
                   </span>
-                  <span className="text-foreground truncate hover:underline">{apt.title}</span>
+                  <span className={`truncate hover:underline ${active ? 'text-foreground font-medium' : 'text-foreground'}`}>
+                    {apt.title}
+                  </span>
                 </div>
               );
             })}

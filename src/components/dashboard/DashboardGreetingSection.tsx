@@ -1,70 +1,33 @@
-import { useEffect, useState, useMemo } from 'react';
+import { useMemo } from 'react';
 import { GripVertical } from 'lucide-react';
-import { supabase } from '@/integrations/supabase/client';
 import { useNavigate } from 'react-router-dom';
-
-import { useAuth } from '@/hooks/useAuth';
-import { useTenant } from '@/hooks/useTenant';
-import { useAppointmentFeedback } from '@/hooks/useAppointmentFeedback';
-import { getCurrentTimeSlot, getCurrentDayOfWeek, getGreeting } from '@/utils/dashboard/timeUtils';
-import { selectMessage } from '@/utils/dashboard/messageGenerator';
-import { getWeather, translateCondition, getWeatherIcon } from '@/utils/dashboard/weatherApi';
-import {
-  DEFAULT_SPECIAL_DAYS,
-  getSpecialDayHint,
-  parseSpecialDaysSetting,
-  SpecialDay
-} from '@/utils/dashboard/specialDays';
 import { format } from 'date-fns';
 import { de } from 'date-fns/locale';
 
-interface AppointmentData {
-  id: string;
-  title: string;
-  start_time: string;
-  end_time?: string;
-  is_all_day: boolean;
+import { getCurrentTimeSlot, getCurrentDayOfWeek, getGreeting } from '@/utils/dashboard/timeUtils';
+import { selectMessage } from '@/utils/dashboard/messageGenerator';
+import { getWeatherHint, WeatherToggle } from '@/components/dashboard/DashboardWeather';
+import { getSpecialDayHint } from '@/utils/dashboard/specialDays';
+import { type DashboardData } from '@/hooks/useDashboardData';
+
+interface Props {
+  data: DashboardData;
 }
 
-export const DashboardGreetingSection = () => {
-  const { user } = useAuth();
-  const { currentTenant, loading: tenantLoading } = useTenant();
+export const DashboardGreetingSection = ({ data }: Props) => {
   const navigate = useNavigate();
-  const { appointments: feedbackAppointments, settings: feedbackSettings } = useAppointmentFeedback();
-
-  const [userName, setUserName] = useState<string>('');
-  const [userRole, setUserRole] = useState<string>('');
-  const [weatherKarlsruhe, setWeatherKarlsruhe] = useState<{ temp: number; condition: string; icon: string } | null>(null);
-  const [weatherStuttgart, setWeatherStuttgart] = useState<{ temp: number; condition: string; icon: string } | null>(null);
-  const [appointments, setAppointments] = useState<AppointmentData[]>([]);
-  const [openTasksCount, setOpenTasksCount] = useState(0);
-  const [completedTasksToday, setCompletedTasksToday] = useState(0);
-  const [openTaskTitles, setOpenTaskTitles] = useState<{id: string; title: string}[]>([]);
-  const [isShowingTomorrow, setIsShowingTomorrow] = useState(false);
-  const [showWeather, setShowWeather] = useState(false);
-  const [isLoading, setIsLoading] = useState(true);
-  const [specialDays, setSpecialDays] = useState<SpecialDay[]>(DEFAULT_SPECIAL_DAYS);
-
-  // Feedback-Reminder: zeitgesteuert + offene Feedbacks
-  const feedbackReminderVisible = useMemo(() => {
-    if (!feedbackSettings?.reminder_start_time) return false;
-    const currentTime = format(new Date(), 'HH:mm:ss');
-    if (currentTime < feedbackSettings.reminder_start_time) return false;
-    return (feedbackAppointments?.filter(a => a.feedback?.feedback_status === 'pending').length ?? 0) > 0;
-  }, [feedbackSettings, feedbackAppointments]);
-
-  const pendingFeedbackCount = useMemo(() => {
-    return feedbackAppointments?.filter(a => a.feedback?.feedback_status === 'pending').length ?? 0;
-  }, [feedbackAppointments]);
+  const {
+    userName, userRole, appointments, isShowingTomorrow,
+    openTasksCount, completedTasksToday, openTaskTitles,
+    specialDays, feedbackReminderVisible, pendingFeedbackCount,
+    isLoading, tenantLoading, hasTenant,
+  } = data;
 
   const handleTaskTitleDragStart = (event: React.DragEvent<HTMLElement>, taskTitle: string, taskId?: string) => {
     event.dataTransfer.effectAllowed = 'copy';
     event.dataTransfer.setData('text/plain', taskTitle);
     event.dataTransfer.setData('application/x-mywork-task-title', taskTitle);
-    if (taskId) {
-      event.dataTransfer.setData('application/x-mywork-task-id', taskId);
-    }
-
+    if (taskId) event.dataTransfer.setData('application/x-mywork-task-id', taskId);
     const ghost = document.createElement('div');
     ghost.className = 'pointer-events-none bg-transparent px-0 py-0 text-lg font-medium text-foreground';
     ghost.textContent = taskTitle;
@@ -73,293 +36,19 @@ export const DashboardGreetingSection = () => {
     requestAnimationFrame(() => ghost.remove());
   };
 
-  // Load user name
-  useEffect(() => {
-    const loadUserName = async () => {
-      if (!user?.id) return;
-      
-      const { data } = await supabase
-        .from('profiles')
-        .select('display_name')
-        .eq('user_id', user.id)
-        .maybeSingle();
-
-      const { data: roleData } = await supabase
-        .from('user_roles')
-        .select('role')
-        .eq('user_id', user.id)
-        .maybeSingle();
-      
-      setUserName(data?.display_name || user.email?.split('@')[0] || 'Nutzer');
-      setUserRole(roleData?.role || '');
-    };
-    
-    loadUserName();
-  }, [user]);
-
-  // Load weather data
-  useEffect(() => {
-    const loadWeather = async () => {
-      const karlsruhe = await getWeather(49.0069, 8.4037); // Karlsruhe
-      const stuttgart = await getWeather(48.7758, 9.1829); // Stuttgart
-      
-      if (karlsruhe) {
-        setWeatherKarlsruhe({
-          temp: karlsruhe.temperature,
-          condition: karlsruhe.condition,
-          icon: karlsruhe.icon
-        });
-      }
-      
-      if (stuttgart) {
-        setWeatherStuttgart({
-          temp: stuttgart.temperature,
-          condition: stuttgart.condition,
-          icon: stuttgart.icon
-        });
-      }
-    };
-    
-    loadWeather();
-  }, []);
-
-  useEffect(() => {
-    const loadSpecialDays = async () => {
-      try {
-        let query = supabase
-          .from('app_settings')
-          .select('setting_value')
-          .eq('setting_key', 'dashboard_special_day_hints')
-          .limit(1);
-
-        query = currentTenant?.id
-          ? query.eq('tenant_id', currentTenant.id)
-          : query.is('tenant_id', null);
-
-        const { data } = await query.maybeSingle();
-
-        const parsedDays = parseSpecialDaysSetting(data?.setting_value);
-        setSpecialDays(parsedDays || DEFAULT_SPECIAL_DAYS);
-      } catch (error) {
-        console.error('Error loading dashboard special day hints:', error);
-        setSpecialDays(DEFAULT_SPECIAL_DAYS);
-      }
-    };
-
-    loadSpecialDays();
-  }, [currentTenant?.id]);
-
-  // Load task stats for contextual greeting
-  useEffect(() => {
-    const loadTaskStats = async () => {
-      if (!user?.id) return;
-
-      const today = new Date();
-      today.setHours(0, 0, 0, 0);
-
-      const [{ count: openCount }, { count: completedTodayCount }, { data: openTasks }] = await Promise.all([
-        supabase
-          .from('tasks')
-          .select('*', { count: 'exact', head: true })
-          .or(`assigned_to.eq.${user.id},assigned_to.ilike.%${user.id}%,user_id.eq.${user.id}`)
-          .neq('status', 'completed'),
-        supabase
-          .from('tasks')
-          .select('*', { count: 'exact', head: true })
-          .or(`assigned_to.eq.${user.id},assigned_to.ilike.%${user.id}%,user_id.eq.${user.id}`)
-          .eq('status', 'completed')
-          .gte('updated_at', today.toISOString()),
-        supabase
-          .from('tasks')
-          .select('id, title')
-          .or(`assigned_to.eq.${user.id},assigned_to.ilike.%${user.id}%,user_id.eq.${user.id}`)
-          .neq('status', 'completed')
-          .order('due_date', { ascending: true, nullsFirst: false })
-
-      ]);
-
-      setOpenTasksCount(openCount || 0);
-      setCompletedTasksToday(completedTodayCount || 0);
-      setOpenTaskTitles(
-        (openTasks || [])
-          .filter((task) => Boolean(task.title?.trim()))
-          .map((task) => ({ id: task.id, title: task.title!.trim() }))
-      );
-    };
-
-    loadTaskStats();
-  }, [user]);
-
-  // Load today's and tomorrow's appointments
-  useEffect(() => {
-    const loadAppointments = async () => {
-      if (!user?.id || !currentTenant?.id) return;
-      
-      const now = new Date();
-      const today = new Date();
-      today.setHours(0, 0, 0, 0);
-      const tomorrow = new Date(today);
-      tomorrow.setDate(tomorrow.getDate() + 1);
-      const dayAfterTomorrow = new Date(today);
-      dayAfterTomorrow.setDate(dayAfterTomorrow.getDate() + 2);
-      
-      // Erweiterte Zeitfenster für Ganztagstermine (UTC-Probleme)
-      const yesterday = new Date(today);
-      yesterday.setDate(yesterday.getDate() - 1);
-      const threeDaysAhead = new Date(today);
-      threeDaysAhead.setDate(threeDaysAhead.getDate() + 3);
-      
-      // Normale Termine für heute und morgen
-      const { data: normalAppointments } = await supabase
-        .from('appointments')
-        .select('id, title, start_time, end_time, is_all_day')
-        .eq('tenant_id', currentTenant.id)
-        .eq('is_all_day', false)
-        .gte('start_time', today.toISOString())
-        .lt('start_time', dayAfterTomorrow.toISOString())
-        .order('start_time', { ascending: true });
-      
-      // Ganztagstermine (größeres Zeitfenster wegen UTC)
-      const { data: allDayAppointments } = await supabase
-        .from('appointments')
-        .select('id, title, start_time, end_time, is_all_day')
-        .eq('tenant_id', currentTenant.id)
-        .eq('is_all_day', true)
-        .gte('start_time', yesterday.toISOString())
-        .lt('start_time', threeDaysAhead.toISOString())
-        .order('start_time', { ascending: true });
-      
-      // Externe Kalender-Events (type-safe cast to avoid deep instantiation)
-      const externalEventsResult = await (supabase as any)
-        .from('external_events')
-        .select(`
-          id,
-          title,
-          start_time,
-          end_time,
-          all_day,
-          external_calendars!inner(tenant_id)
-        `)
-        .eq('external_calendars.tenant_id', currentTenant.id)
-        .gte('start_time', yesterday.toISOString())
-        .lt('start_time', threeDaysAhead.toISOString())
-        .order('start_time', { ascending: true });
-      
-      // Map external events to AppointmentData type
-      const externalEventsFormatted: AppointmentData[] = (externalEventsResult.data || []).map((e: any) => ({
-        id: e.id as string,
-        title: e.title as string,
-        start_time: e.start_time as string,
-        end_time: e.end_time as string | undefined,
-        is_all_day: (e.all_day as boolean) ?? false
-      }));
-      
-      // Alle Events kombinieren
-      const allEvents: AppointmentData[] = [
-        ...(normalAppointments || []),
-        ...(allDayAppointments || []),
-        ...externalEventsFormatted
-      ];
-      
-      // Schritt 1: Kommende Termine von heute finden
-      const todayUpcoming = allEvents.filter(event => {
-        const eventDate = new Date(event.start_time);
-        const localDate = new Date(eventDate.toLocaleString('en-US', { timeZone: 'Europe/Berlin' }));
-        
-        // Muss heute sein
-        if (localDate.toDateString() !== today.toDateString()) return false;
-        
-        // Für Ganztagstermine: Immer anzeigen
-        if (event.is_all_day) return true;
-        
-        // Für normale Termine: Nur wenn noch nicht vorbei
-        // Event gilt als "vorbei" wenn end_time < jetzt (oder start_time + 1h falls keine end_time)
-        const endTime = event.end_time 
-          ? new Date(event.end_time) 
-          : new Date(new Date(event.start_time).getTime() + 60 * 60 * 1000); // +1h default
-        
-        return endTime > now;
-      });
-      
-      // Schritt 2: Falls keine kommenden Termine heute, nehme Termine von morgen
-      let finalAppointments: AppointmentData[];
-      let showingTomorrow = false;
-      
-      if (todayUpcoming.length === 0) {
-        // Zeige Termine von morgen
-        const tomorrowDate = new Date(today);
-        tomorrowDate.setDate(tomorrowDate.getDate() + 1);
-        
-        finalAppointments = allEvents
-          .filter(event => {
-            const eventDate = new Date(event.start_time);
-            const localDate = new Date(eventDate.toLocaleString('en-US', { timeZone: 'Europe/Berlin' }));
-            return localDate.toDateString() === tomorrowDate.toDateString();
-          })
-          .sort((a, b) => new Date(a.start_time).getTime() - new Date(b.start_time).getTime())
-          .slice(0, 2);
-        
-        showingTomorrow = true;
-      } else {
-        // Zeige heutige kommende Termine
-        finalAppointments = todayUpcoming
-          .sort((a, b) => new Date(a.start_time).getTime() - new Date(b.start_time).getTime())
-          .slice(0, 2);
-      }
-      
-      setAppointments(finalAppointments);
-      setIsShowingTomorrow(showingTomorrow);
-      setIsLoading(false);
-    };
-    
-    loadAppointments();
-  }, [user, currentTenant]);
-
-  // Generate weather hints
-  const getWeatherHint = (condition: string, temp: number): string => {
-    const lowerCondition = condition.toLowerCase();
-    
-    if (lowerCondition.includes('regen') || lowerCondition.includes('rain')) {
-      return '☔ Regenschirm nicht vergessen!';
-    } else if (lowerCondition.includes('schnee') || lowerCondition.includes('snow')) {
-      return '❄️ Warme Kleidung empfohlen!';
-    } else if (lowerCondition.includes('sonne') || lowerCondition.includes('clear') || lowerCondition.includes('heiter')) {
-      return '☀️ Perfektes Wetter für Außentermine!';
-    } else if (temp > 25) {
-      return '🌡️ Heute wird es warm!';
-    } else if (temp < 5) {
-      return '🧥 Zieh dich warm an!';
-    } else if (lowerCondition.includes('bewölkt') || lowerCondition.includes('cloud')) {
-      return '☁️ Ein bewölkter Tag erwartet uns.';
-    }
-    
-    return '';
-  };
-
-  // Build complete text
   const fullText = useMemo(() => {
     if (isLoading) return '';
-    
     const timeSlot = getCurrentTimeSlot();
     const greeting = getGreeting(timeSlot);
-    
-    // Keyword-Detection für Plenum, Ausschuss, AK
-    const hasPlenum = appointments.some(apt => 
-      apt.title.toLowerCase().includes('plenum')
-    );
-    
-    const hasCommittee = appointments.some(apt => 
-      apt.title.toLowerCase().match(/ausschuss|ak\s/i)
-    );
+    const isLateDay = timeSlot === 'evening' || timeSlot === 'night';
+    const useTomorrowTone = isShowingTomorrow || isLateDay;
 
-    const multipleSessions = (hasPlenum && hasCommittee) || 
-      (appointments.filter(apt => 
-        apt.title.toLowerCase().includes('plenum') || 
-        apt.title.toLowerCase().match(/ausschuss|ak\s/i)
-      ).length >= 2);
-    
-    // Get contextual message
-    const context = {
+    const hasPlenum = appointments.some(a => a.title.toLowerCase().includes('plenum'));
+    const hasCommittee = appointments.some(a => a.title.toLowerCase().match(/ausschuss|ak\s/i));
+    const multipleSessions = (hasPlenum && hasCommittee) ||
+      (appointments.filter(a => a.title.toLowerCase().includes('plenum') || a.title.toLowerCase().match(/ausschuss|ak\s/i)).length >= 2);
+
+    const message = selectMessage({
       timeSlot,
       dayOfWeek: getCurrentDayOfWeek(),
       appointmentsCount: appointments.length,
@@ -370,177 +59,68 @@ export const DashboardGreetingSection = () => {
       userRole,
       hasPlenum,
       hasCommittee,
-      multipleSessions
-    };
-    
-    const message = selectMessage(context);
-    
-    const isLateDay = timeSlot === 'evening' || timeSlot === 'night';
-    const useTomorrowTone = isShowingTomorrow || isLateDay;
+      multipleSessions,
+    });
 
     const getRoleLeadLine = () => {
       if (userRole === 'abgeordneter') {
-        if (hasPlenum || hasCommittee || multipleSessions) {
-          return useTomorrowTone
-            ? 'Für morgen stehen zentrale politische Termine und klare Entscheidungen im Fokus.'
-            : 'Heute stehen zentrale politische Termine und klare Entscheidungen im Fokus.';
-        }
-
-        if (appointments.length === 0) {
-          return useTomorrowTone
-            ? 'Für morgen gibt es Raum für strategische Vorbereitung und Gespräche im Wahlkreis.'
-            : 'Heute gibt es Raum für strategische Vorbereitung und Gespräche im Wahlkreis.';
-        }
-
-        return useTomorrowTone
-          ? 'Für morgen liegt der Schwerpunkt auf Abstimmungen, Austausch und politischer Präsenz.'
-          : 'Heute liegt der Schwerpunkt auf Abstimmungen, Austausch und politischer Präsenz.';
+        if (hasPlenum || hasCommittee || multipleSessions)
+          return useTomorrowTone ? 'Für morgen stehen zentrale politische Termine und klare Entscheidungen im Fokus.' : 'Heute stehen zentrale politische Termine und klare Entscheidungen im Fokus.';
+        if (appointments.length === 0)
+          return useTomorrowTone ? 'Für morgen gibt es Raum für strategische Vorbereitung und Gespräche im Wahlkreis.' : 'Heute gibt es Raum für strategische Vorbereitung und Gespräche im Wahlkreis.';
+        return useTomorrowTone ? 'Für morgen liegt der Schwerpunkt auf Abstimmungen, Austausch und politischer Präsenz.' : 'Heute liegt der Schwerpunkt auf Abstimmungen, Austausch und politischer Präsenz.';
       }
-
       if (userRole === 'mitarbeiter') {
-        if (appointments.length >= 4) {
-          return useTomorrowTone
-            ? 'Für morgen zählt ein guter Takt zwischen Terminen, Rückmeldungen und Umsetzung.'
-            : 'Heute zählt ein guter Takt zwischen Terminen, Rückmeldungen und Umsetzung.';
-        }
-
-        if (openTasksCount >= 8) {
-          return useTomorrowTone
-            ? 'Für morgen lohnt sich ein klarer Fokus auf Prioritäten und verlässliche Übergaben.'
-            : 'Heute lohnt sich ein klarer Fokus auf Prioritäten und verlässliche Übergaben.';
-        }
-
-        return useTomorrowTone
-          ? 'Für morgen geht es um saubere Umsetzung und verlässliche Abstimmung im Alltag.'
-          : 'Heute geht es um saubere Umsetzung und verlässliche Abstimmung im Alltag.';
+        if (appointments.length >= 4) return useTomorrowTone ? 'Für morgen zählt ein guter Takt zwischen Terminen, Rückmeldungen und Umsetzung.' : 'Heute zählt ein guter Takt zwischen Terminen, Rückmeldungen und Umsetzung.';
+        if (openTasksCount >= 8) return useTomorrowTone ? 'Für morgen lohnt sich ein klarer Fokus auf Prioritäten und verlässliche Übergaben.' : 'Heute lohnt sich ein klarer Fokus auf Prioritäten und verlässliche Übergaben.';
+        return useTomorrowTone ? 'Für morgen geht es um saubere Umsetzung und verlässliche Abstimmung im Alltag.' : 'Heute geht es um saubere Umsetzung und verlässliche Abstimmung im Alltag.';
       }
-
-      if (userRole === 'bueroleitung') {
-        return useTomorrowTone
-          ? 'Für morgen zählt ein klarer Überblick über Team, Fristen und Prioritäten.'
-          : 'Heute zählt ein klarer Überblick über Team, Fristen und Prioritäten.';
-      }
-
-      if (userRole === 'praktikant') {
-        return useTomorrowTone
-          ? 'Morgen ist ein guter Tag, um dazuzulernen und Verantwortung zu übernehmen.'
-          : 'Heute ist ein guter Tag, um dazuzulernen und Verantwortung zu übernehmen.';
-      }
-
+      if (userRole === 'bueroleitung') return useTomorrowTone ? 'Für morgen zählt ein klarer Überblick über Team, Fristen und Prioritäten.' : 'Heute zählt ein klarer Überblick über Team, Fristen und Prioritäten.';
+      if (userRole === 'praktikant') return useTomorrowTone ? 'Morgen ist ein guter Tag, um dazuzulernen und Verantwortung zu übernehmen.' : 'Heute ist ein guter Tag, um dazuzulernen und Verantwortung zu übernehmen.';
       return undefined;
     };
 
     const roleLine = getRoleLeadLine();
-
     let text = `${greeting}, ${userName}!\n\n`;
-    if (roleLine) {
-      text += `${roleLine}\n\n`;
-    }
-
+    if (roleLine) text += `${roleLine}\n\n`;
     text += `${message.text}\n\n`;
 
     const specialDayHint = getSpecialDayHint(new Date(), specialDays);
-    if (specialDayHint) {
-      text += `${specialDayHint}\n\n`;
-    }
-    
-    // Task summary section
+    if (specialDayHint) text += `${specialDayHint}\n\n`;
+
     text += '✅ **Aufgabenstatus:**\n';
     text += '{{TASK_LIST_PLACEHOLDER}}\n';
-    if (showWeather) {
-      text += '\n☀️ **Das Wetter heute (optional):**\n';
-      if (weatherKarlsruhe) {
-        const translatedCondition = translateCondition(weatherKarlsruhe.condition);
-        const hint = getWeatherHint(weatherKarlsruhe.condition, weatherKarlsruhe.temp);
-        text += `${getWeatherIcon(weatherKarlsruhe.icon)} Karlsruhe: ${Math.round(weatherKarlsruhe.temp)}°C, ${translatedCondition}`;
-        if (hint) text += ` ${hint}`;
-        text += '\n';
-      }
-      if (weatherStuttgart) {
-        const translatedCondition = translateCondition(weatherStuttgart.condition);
-        const hint = getWeatherHint(weatherStuttgart.condition, weatherStuttgart.temp);
-        text += `${getWeatherIcon(weatherStuttgart.icon)} Stuttgart: ${Math.round(weatherStuttgart.temp)}°C, ${translatedCondition}`;
-        if (hint) text += ` ${hint}`;
-        text += '\n';
-      }
-    }
-    
-    // Appointments section mit dynamischer Überschrift
-    text += isShowingTomorrow 
-      ? '\n📅 **Deine Termine morgen:**\n' 
-      : '\n📅 **Deine Termine heute:**\n';
-    
+
+    text += isShowingTomorrow ? '\n📅 **Deine Termine morgen:**\n' : '\n📅 **Deine Termine heute:**\n';
     if (appointments.length === 0) {
-      text += isShowingTomorrow 
-        ? 'Keine Termine morgen.\n'
-        : 'Keine Termine heute.\n';
+      text += isShowingTomorrow ? 'Keine Termine morgen.\n' : 'Keine Termine heute.\n';
     } else {
       appointments.forEach(apt => {
-        const time = apt.is_all_day 
-          ? 'Ganztägig' 
-          : format(new Date(apt.start_time), 'HH:mm', { locale: de });
+        const time = apt.is_all_day ? 'Ganztägig' : format(new Date(apt.start_time), 'HH:mm', { locale: de });
         text += `${time} - ${apt.title}\n`;
       });
     }
-    
     return text;
-  }, [
-    isLoading,
-    userName,
-    userRole,
-    weatherKarlsruhe,
-    weatherStuttgart,
-    appointments,
-    isShowingTomorrow,
-    openTasksCount,
-    completedTasksToday,
-    openTaskTitles,
-    showWeather,
-    specialDays
-  ]);
+  }, [isLoading, userName, userRole, appointments, isShowingTomorrow, openTasksCount, completedTasksToday, specialDays]);
 
-  // Parse text for bold markers (**text**) and task list placeholder
   const parsedContent = useMemo(() => {
-    // Split by task list placeholder first
     const sections = fullText.split('{{TASK_LIST_PLACEHOLDER}}\n');
-    
     const parseTextSection = (text: string) => {
       const parts = text.split(/(\*\*.*?\*\*)/g);
       return parts.map((part, index) => {
-        if (part.startsWith('**') && part.endsWith('**')) {
-          const boldText = part.slice(2, -2);
-          return <strong key={index} className="font-bold">{boldText}</strong>;
-        }
+        if (part.startsWith('**') && part.endsWith('**')) return <strong key={index} className="font-bold">{part.slice(2, -2)}</strong>;
         return part;
       });
     };
-
-    if (sections.length < 2) {
-      return parseTextSection(fullText.replace('{{TASK_LIST_PLACEHOLDER}}\n', ''));
-    }
-
+    if (sections.length < 2) return parseTextSection(fullText.replace('{{TASK_LIST_PLACEHOLDER}}\n', ''));
     return (
       <>
         {parseTextSection(sections[0])}
         {openTaskTitles.length > 0 && (
           <span className="block">
             {openTaskTitles.map((task, index) => (
-              <span
-                key={`${task.id}-${index}`}
-                className="flex items-center gap-1.5 rounded px-1 py-0.5 text-foreground/90 cursor-pointer hover:bg-muted/40 transition-colors"
-                onClick={() => navigate('/mywork?tab=tasks')}
-                title="Klicken um zur Aufgabe zu gehen, oder per Handle in den Tageszettel ziehen"
-              >
-                <span
-                  draggable
-                  onDragStart={(event) => {
-                    event.stopPropagation();
-                    handleTaskTitleDragStart(event, task.title, task.id);
-                  }}
-                  className="cursor-grab rounded p-0.5 text-muted-foreground transition-colors hover:bg-muted/60 hover:text-foreground active:cursor-grabbing"
-                  aria-label="Aufgabe in den Tageszettel ziehen"
-                  onClick={(e) => e.stopPropagation()}
-                >
+              <span key={`${task.id}-${index}`} className="flex items-center gap-1.5 rounded px-1 py-0.5 text-foreground/90 cursor-pointer hover:bg-muted/40 transition-colors" onClick={() => navigate('/mywork?tab=tasks')} title="Klicken um zur Aufgabe zu gehen, oder per Handle in den Tageszettel ziehen">
+                <span draggable onDragStart={(e) => { e.stopPropagation(); handleTaskTitleDragStart(e, task.title, task.id); }} className="cursor-grab rounded p-0.5 text-muted-foreground transition-colors hover:bg-muted/60 hover:text-foreground active:cursor-grabbing" onClick={(e) => e.stopPropagation()}>
                   <GripVertical className="h-4 w-4" />
                 </span>
                 <span className="flex-1">{task.title}</span>
@@ -551,17 +131,10 @@ export const DashboardGreetingSection = () => {
         {parseTextSection(sections[1])}
       </>
     );
-  }, [fullText, openTaskTitles, navigate, handleTaskTitleDragStart]);
+  }, [fullText, openTaskTitles, navigate]);
 
-  // Show skeleton while tenant is loading
-  if (tenantLoading) {
-    return <div className="animate-pulse h-32 bg-muted rounded-lg mb-6" />;
-  }
-
-  // Don't render without tenant
-  if (!currentTenant?.id) {
-    return null;
-  }
+  if (tenantLoading) return <div className="animate-pulse h-32 bg-muted rounded-lg mb-6" />;
+  if (!hasTenant) return null;
 
   return (
     <div>
@@ -570,24 +143,12 @@ export const DashboardGreetingSection = () => {
       </span>
       {feedbackReminderVisible && (
         <div className="mt-3">
-          <button
-            type="button"
-            onClick={() => navigate('/mywork?tab=appointmentfeedback')}
-            className="text-sm text-primary hover:underline flex items-center gap-1"
-          >
+          <button type="button" onClick={() => navigate('/mywork?tab=appointmentfeedback')} className="text-sm text-primary hover:underline flex items-center gap-1">
             🔔 {pendingFeedbackCount} offene{pendingFeedbackCount === 1 ? 's' : ''} Termin-Feedback{pendingFeedbackCount !== 1 ? 's' : ''} – jetzt bearbeiten
           </button>
         </div>
       )}
-      <div className="mt-4">
-        <button
-          type="button"
-          onClick={() => setShowWeather((prev) => !prev)}
-          className="text-sm text-muted-foreground hover:text-foreground underline-offset-2 hover:underline"
-        >
-          {showWeather ? 'Wetter ausblenden' : 'Wetter anzeigen (optional)'}
-        </button>
-      </div>
+      <WeatherToggle />
     </div>
   );
 };
