@@ -276,7 +276,7 @@ export const useCaseFileDetails = (caseFileId: string | null) => {
       if (error) throw error;
       setLetters((data || []) as CaseFileLetter[]);
     } catch (error) {
-      console.error('Error fetching letters:', error);
+      debugConsole.error('Error fetching letters:', error);
     }
   }, [caseFileId]);
 
