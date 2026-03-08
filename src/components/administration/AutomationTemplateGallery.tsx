@@ -13,6 +13,7 @@ const MODULE_LABELS: Record<string, string> = {
   knowledge: "Wissen",
   cases: "Fallakten",
   casefiles: "Fallakten",
+  contacts: "Kontakte",
 };
 
 const ACTION_LABELS: Record<string, string> = {
