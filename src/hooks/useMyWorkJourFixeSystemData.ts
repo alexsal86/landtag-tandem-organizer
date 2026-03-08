@@ -119,7 +119,7 @@ export function useMyWorkJourFixeSystemData(userId?: string, tenantId?: string) 
       if (!isCurrentRequest()) return;
 
       if (notesResult.error) {
-        console.error("Error loading quick notes for meeting:", { meetingId, error: notesResult.error });
+        debugConsole.error("Error loading quick notes for meeting:", { meetingId, error: notesResult.error });
       } else {
         const notes = notesResult.data || [];
         notes.forEach((note) => note.user_id && encounteredUserIds.add(note.user_id));
