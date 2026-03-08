@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
+import { debugConsole } from '@/utils/debugConsole';
 import { 
   $getSelection, 
   $isRangeSelection,
