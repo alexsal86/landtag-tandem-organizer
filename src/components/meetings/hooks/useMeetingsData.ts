@@ -284,7 +284,7 @@ export function useMeetingsData() {
       const otherProfiles = data?.filter(p => p.user_id !== user?.id) || [];
       setProfiles(currentUserProfile ? [currentUserProfile, ...otherProfiles] : otherProfiles);
     } catch (error) {
-      debugConsole.error('Error loading profiles:', error);
+      handleAppError(error, { context: 'loadProfiles' });
     }
   };
 
