@@ -102,7 +102,7 @@ export function DistributionListForm({ distributionListId, onSuccess, onBack }: 
       if (membersError) throw membersError;
       setSelectedContactIds(members?.map(m => m.contact_id) || []);
     } catch (error) {
-      console.error('Error fetching distribution list:', error);
+      debugConsole.error('Error fetching distribution list:', error);
       toast({
         title: "Fehler",
         description: "Verteiler konnte nicht geladen werden.",
