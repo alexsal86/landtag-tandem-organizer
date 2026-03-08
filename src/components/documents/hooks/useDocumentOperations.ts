@@ -134,10 +134,10 @@ export function useDocumentOperations({
   ) => {
     if (!folderName || !user || !currentTenant) return;
     try {
-      const { error } = await supabase.from('document_folders').insert({
+      const { error } = await supabase.from('document_folders').insert([{
         user_id: user.id, tenant_id: currentTenant.id, name: folderName,
         description: folderDescription, parent_folder_id: currentFolder, color: folderColor,
-      });
+      }]);
       if (error) throw error;
       toast({ title: "Ordner erstellt", description: `Der Ordner "${folderName}" wurde erfolgreich erstellt.` });
       onSuccess();
