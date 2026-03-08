@@ -70,7 +70,7 @@ export function TagAdminSettings() {
       setNewTag(null);
       toast({ title: "Erfolg", description: "Tag wurde erfolgreich hinzugefügt." });
     } catch (error: any) {
-      console.error('Error adding tag:', error);
+      debugConsole.error('Error adding tag:', error);
       toast({ title: "Fehler", description: "Tag konnte nicht hinzugefügt werden.", variant: "destructive" });
     }
   };
