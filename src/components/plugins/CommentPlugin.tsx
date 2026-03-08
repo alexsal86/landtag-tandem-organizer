@@ -596,7 +596,7 @@ export function CommentPlugin({ documentId }: { documentId?: string }) {
                 currentSelection.removeText();
                 currentSelection.insertNodes([commentMark]);
                 
-                console.log('Comment mark applied successfully');
+                debugConsole.log('Comment mark applied successfully');
               }
             }
           } catch (error) {
