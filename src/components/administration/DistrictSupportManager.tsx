@@ -109,7 +109,7 @@ export const DistrictSupportManager = () => {
       setNotes('');
     },
     onError: (error) => {
-      console.error('Error adding support assignment:', error);
+      debugConsole.error('Error adding support assignment:', error);
       toast({
         title: "Fehler",
         description: "Die Zuordnung konnte nicht erstellt werden.",
