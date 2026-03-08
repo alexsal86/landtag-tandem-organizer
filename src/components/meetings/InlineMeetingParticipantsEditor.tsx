@@ -163,7 +163,7 @@ export function InlineMeetingParticipantsEditor({ meetingId }: InlineMeetingPart
       .eq('id', participantId);
 
     if (error) {
-      console.error('❌ Error updating participant role:', error);
+      debugConsole.error('❌ Error updating participant role:', error);
       // Revert on error
       setParticipants(prev => prev.map(p => 
         p.id === participantId ? { ...p, role: previousRole } : p
