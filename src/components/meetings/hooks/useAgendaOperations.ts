@@ -101,7 +101,7 @@ export function useAgendaOperations(deps: AgendaOpsDeps) {
         }]).select().single();
       if (error) throw error;
 
-      const newItem: AgendaItem = { ...savedItem, localKey: savedItem.id, parentLocalKey: parentId || undefined };
+      const newItem: AgendaItem = { ...savedItem, carry_over_to_next: savedItem.carry_over_to_next ?? undefined, localKey: savedItem.id, parentLocalKey: parentId || undefined };
       const next = [...agendaItems];
       next.splice(insertIndex, 0, newItem);
       const reindexed = next.map((it, idx) => ({ ...it, order_index: idx }));
