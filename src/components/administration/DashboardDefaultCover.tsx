@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { ImageIcon, X } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 import { UnsplashImagePicker, UnsplashAttribution } from "@/components/dashboard/UnsplashImagePicker";
+import { debugConsole } from '@/utils/debugConsole';
 
 export const DashboardDefaultCover = () => {
   const [defaultCoverUrl, setDefaultCoverUrl] = useState<string | null>(null);
