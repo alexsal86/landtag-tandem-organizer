@@ -388,7 +388,7 @@ export function useMeetingsData() {
       });
       setAgendaDocuments(docsByItemId);
     } catch (error) {
-      debugConsole.error('Error loading agenda documents:', error);
+      handleAppError(error, { context: 'loadAgendaDocuments' });
     }
   };
 
