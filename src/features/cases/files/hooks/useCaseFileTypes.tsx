@@ -19,6 +19,7 @@ export const useCaseFileTypes = () => {
   const [caseFileTypes, setCaseFileTypes] = useState<CaseFileType[]>([]);
   const [loading, setLoading] = useState(true);
   const { toast } = useToast();
+  const { currentTenant } = useTenant();
 
   const fetchCaseFileTypes = useCallback(async () => {
     try {
