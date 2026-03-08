@@ -10,6 +10,15 @@ export interface AgendaItem {
   system_type?: string | null;
 }
 
+export interface CaseItemData {
+  id: string;
+  subject: string | null;
+  status: string;
+  priority: string;
+  due_at: string | null;
+  owner_user_id: string | null;
+}
+
 export interface SystemItemData {
   id: string;
   title: string;
@@ -40,6 +49,7 @@ export function useMyWorkJourFixeSystemData(userId?: string, tenantId?: string) 
   const [meetingTasks, setMeetingTasks] = useState<Record<string, SystemItemData[]>>({});
   const [meetingDecisions, setMeetingDecisions] = useState<Record<string, SystemItemData[]>>({});
   const [meetingBirthdays, setMeetingBirthdays] = useState<Record<string, BirthdayItemData[]>>({});
+  const [meetingCaseItems, setMeetingCaseItems] = useState<Record<string, CaseItemData[]>>({});
   const [userProfiles, setUserProfiles] = useState<Record<string, UserProfileData>>({});
   const isMountedRef = useRef(true);
   const requestVersionRef = useRef(0);
@@ -61,13 +71,14 @@ export function useMyWorkJourFixeSystemData(userId?: string, tenantId?: string) 
       const hasTasks = items.some((i) => i.system_type === "tasks");
       const hasDecisions = items.some((i) => i.system_type === "decisions");
       const hasBirthdays = items.some((i) => i.system_type === "birthdays");
+      const hasCaseItems = items.some((i) => i.system_type === "case_items");
       const encounteredUserIds = new Set<string>();
 
       const nowDate = new Date();
       const now = nowDate.toISOString();
       const in7Days = addDays(nowDate, 7).toISOString();
 
-      const [notesResult, tasksResult, decisionsResult, contactsResult] = await Promise.all([
+      const [notesResult, tasksResult, decisionsResult, contactsResult, caseItemsResult] = await Promise.all([
         hasNotes
           ? supabase
               .from("quick_notes")
@@ -95,6 +106,13 @@ export function useMyWorkJourFixeSystemData(userId?: string, tenantId?: string) 
               .eq("tenant_id", tenantId)
               .not("birthday", "is", null)
           : Promise.resolve({ data: [] as Array<{ id: string; name: string; birthday: string | null }>, error: null }),
+        hasCaseItems && tenantId
+          ? supabase
+              .from("case_items" as any)
+              .select("id, subject, status, priority, due_at, owner_user_id")
+              .eq("meeting_id", meetingId)
+              .neq("status", "erledigt")
+          : Promise.resolve({ data: [] as CaseItemData[], error: null }),
       ]);
 
       if (!isCurrentRequest()) return;
@@ -176,6 +194,15 @@ export function useMyWorkJourFixeSystemData(userId?: string, tenantId?: string) 
         }
       }
 
+      if (caseItemsResult.error) {
+        console.error("Error loading case items for meeting:", { meetingId, error: caseItemsResult.error });
+        setMeetingCaseItems((prev) => ({ ...prev, [meetingId]: [] }));
+      } else {
+        const items = (caseItemsResult.data || []) as CaseItemData[];
+        items.forEach((ci) => ci.owner_user_id && encounteredUserIds.add(ci.owner_user_id));
+        setMeetingCaseItems((prev) => ({ ...prev, [meetingId]: items }));
+      }
+
       if (encounteredUserIds.size === 0) return;
 
       try {
@@ -207,6 +234,7 @@ export function useMyWorkJourFixeSystemData(userId?: string, tenantId?: string) 
     meetingTasks,
     meetingDecisions,
     meetingBirthdays,
+    meetingCaseItems,
     userProfiles,
     loadMeetingSystemData,
     setMounted,

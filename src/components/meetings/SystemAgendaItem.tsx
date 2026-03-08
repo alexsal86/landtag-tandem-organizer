@@ -1,7 +1,7 @@
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { CalendarDays, StickyNote, ListTodo, Trash, Cake, Scale } from 'lucide-react';
+import { CalendarDays, StickyNote, ListTodo, Trash, Cake, Scale, Briefcase } from 'lucide-react';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { UpcomingAppointmentsSection } from './UpcomingAppointmentsSection';
 import { BirthdayAgendaItem } from './BirthdayAgendaItem';
@@ -34,14 +34,24 @@ interface LinkedDecision {
   priority?: number | null;
 }
 
+interface LinkedCaseItem {
+  id: string;
+  subject: string | null;
+  status: string;
+  priority: string;
+  due_at: string | null;
+  owner_user_id: string | null;
+}
+
 interface SystemAgendaItemProps {
-  systemType: 'upcoming_appointments' | 'quick_notes' | 'tasks' | 'birthdays' | 'decisions';
+  systemType: 'upcoming_appointments' | 'quick_notes' | 'tasks' | 'birthdays' | 'decisions' | 'case_items';
   meetingDate?: string | Date;
   meetingId?: string;
   allowStarring?: boolean;
   linkedQuickNotes?: any[];
   linkedTasks?: LinkedTask[];
   linkedDecisions?: LinkedDecision[];
+  linkedCaseItems?: LinkedCaseItem[];
   profiles?: ProfileInfo[];
   resultText?: string | null;
   onUpdateNoteResult?: (noteId: string, result: string) => void;
@@ -79,6 +89,7 @@ export function SystemAgendaItem({
   linkedQuickNotes = [],
   linkedTasks = [],
   linkedDecisions = [],
+  linkedCaseItems = [],
   profiles,
   resultText,
   onUpdateNoteResult,
@@ -96,6 +107,7 @@ export function SystemAgendaItem({
       case 'tasks': return 'border-l-green-500';
       case 'birthdays': return 'border-l-pink-500';
       case 'decisions': return 'border-l-violet-500';
+      case 'case_items': return 'border-l-teal-500';
       default: return 'border-l-muted';
     }
   };
@@ -107,6 +119,7 @@ export function SystemAgendaItem({
       case 'tasks': return 'bg-green-50 text-green-700 border-green-200 dark:bg-green-950 dark:text-green-300 dark:border-green-800';
       case 'birthdays': return 'bg-pink-50 text-pink-700 border-pink-200 dark:bg-pink-950 dark:text-pink-300 dark:border-pink-800';
       case 'decisions': return 'bg-violet-50 text-violet-700 border-violet-200 dark:bg-violet-950 dark:text-violet-300 dark:border-violet-800';
+      case 'case_items': return 'bg-teal-50 text-teal-700 border-teal-200 dark:bg-teal-950 dark:text-teal-300 dark:border-teal-800';
       default: return '';
     }
   };
@@ -118,6 +131,7 @@ export function SystemAgendaItem({
       case 'tasks': return <ListTodo className="h-4 w-4 text-green-500" />;
       case 'birthdays': return <Cake className="h-4 w-4 text-pink-500" />;
       case 'decisions': return <Scale className="h-4 w-4 text-violet-500" />;
+      case 'case_items': return <Briefcase className="h-4 w-4 text-teal-500" />;
       default: return null;
     }
   };
@@ -129,6 +143,7 @@ export function SystemAgendaItem({
       case 'tasks': return 'Aufgaben';
       case 'birthdays': return 'Geburtstage';
       case 'decisions': return 'Entscheidungen';
+      case 'case_items': return 'Vorgänge';
       default: return '';
     }
   };
@@ -140,6 +155,7 @@ export function SystemAgendaItem({
       case 'tasks': return <ListTodo className="h-3 w-3 mr-1" />;
       case 'birthdays': return <Cake className="h-3 w-3 mr-1" />;
       case 'decisions': return <Scale className="h-3 w-3 mr-1" />;
+      case 'case_items': return <Briefcase className="h-3 w-3 mr-1" />;
       default: return null;
     }
   };
@@ -292,6 +308,58 @@ export function SystemAgendaItem({
           ) : (
             <p className="text-sm text-muted-foreground">
               Keine relevanten Entscheidungen für dieses Meeting vorhanden.
+            </p>
+          )}
+        </CardContent>
+      </Card>
+    );
+  }
+
+  if (systemType === 'case_items') {
+    const priorityColors: Record<string, string> = {
+      dringend: 'text-red-600',
+      hoch: 'text-orange-500',
+      mittel: 'text-yellow-600',
+      niedrig: 'text-green-600',
+    };
+    const statusLabels: Record<string, string> = {
+      offen: 'Offen',
+      in_bearbeitung: 'In Bearbeitung',
+      wartend: 'Wartend',
+      entscheidung_abwartend: 'Entscheidung abw.',
+      geloest: 'Gelöst',
+      geschlossen: 'Geschlossen',
+    };
+
+    return (
+      <Card className={cn("border-l-4", getBorderColor(), className)}>
+        {renderHeader(
+          linkedCaseItems.length > 0 ? <Badge variant="secondary">{linkedCaseItems.length}</Badge> : undefined
+        )}
+        <CardContent className="px-3 pb-2 pt-0">
+          {linkedCaseItems.length > 0 ? (
+            <div className="space-y-2">
+              {linkedCaseItems.map((ci) => (
+                <div key={ci.id} className="p-3 bg-muted/50 rounded-md">
+                  <h4 className="font-semibold text-sm mb-1">{ci.subject || '(Kein Betreff)'}</h4>
+                  <div className="flex flex-wrap gap-2 text-xs text-muted-foreground mt-1">
+                    <Badge variant="outline" className="text-xs">
+                      {statusLabels[ci.status] || ci.status}
+                    </Badge>
+                    <span className={cn("font-medium", priorityColors[ci.priority] || '')}>
+                      {ci.priority}
+                    </span>
+                    {ci.due_at && (
+                      <span>Frist: {format(new Date(ci.due_at), "dd.MM.yyyy", { locale: de })}</span>
+                    )}
+                  </div>
+                  <ProfileBadge userId={ci.owner_user_id || undefined} profiles={profiles} />
+                </div>
+              ))}
+            </div>
+          ) : (
+            <p className="text-sm text-muted-foreground">
+              Keine Vorgänge für dieses Meeting vorhanden.
             </p>
           )}
         </CardContent>

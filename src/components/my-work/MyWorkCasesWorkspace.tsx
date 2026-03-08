@@ -2,7 +2,7 @@ import { type KeyboardEvent, useCallback, useEffect, useMemo, useState } from "r
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { format, type Locale } from "date-fns";
 import { de } from "date-fns/locale";
-import { ArrowDown, ArrowUp, Briefcase, CheckCircle2, Circle, Clock, FileText, FolderOpen, Gavel, GripVertical, Inbox, Link2, Mail, MessageSquare, Phone, Plus, Search, Timer, UserRound, Users, Vote } from "lucide-react";
+import { ArrowDown, ArrowUp, Briefcase, CalendarDays, CheckCircle2, Circle, Clock, FileText, FolderOpen, Gavel, GripVertical, Inbox, Link2, Mail, MessageSquare, Phone, Plus, Search, Timer, UserRound, Users, Vote } from "lucide-react";
 import { DragDropContext, Droppable, Draggable, type DropResult } from "@hello-pangea/dnd";
 import DOMPurify from "dompurify";
 
@@ -1072,6 +1072,15 @@ export function MyWorkCasesWorkspace() {
                                             }}>
                                               <Vote className="mr-2 h-3 w-3" />
                                               Entscheidung stellen
+                                            </ContextMenuItem>
+                                            <ContextMenuSeparator />
+                                            <ContextMenuItem onClick={() => runAsync(async () => {
+                                              const { error } = await supabase.from("case_items" as any).update({ pending_for_jour_fixe: true }).eq("id", item.id);
+                                              if (error) { toast.error("Fehler beim Vormerken."); return; }
+                                              toast.success("Vorgang für Jour Fixe vorgemerkt.");
+                                            })}>
+                                              <CalendarDays className="mr-2 h-3 w-3" />
+                                              Für Jour Fixe vormerken
                                             </ContextMenuItem>
                                           </ContextMenuContent>
                                         </ContextMenu>

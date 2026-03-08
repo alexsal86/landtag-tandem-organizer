@@ -14,7 +14,7 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, Di
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 
-import { CalendarIcon, CalendarDays, Plus, Save, Clock, Users, CheckCircle, Circle, GripVertical, Trash, ListTodo, Upload, FileText, Edit, Check, X, Download, Repeat, StickyNote, Eye, EyeOff, MapPin, Archive, Maximize2, Globe, Star, MessageSquarePlus, ChevronRight, Cake, Scale } from "lucide-react";
+import { CalendarIcon, CalendarDays, Plus, Save, Clock, Users, CheckCircle, Circle, GripVertical, Trash, ListTodo, Upload, FileText, Edit, Check, X, Download, Repeat, StickyNote, Eye, EyeOff, MapPin, Archive, Maximize2, Globe, Star, MessageSquarePlus, ChevronRight, Cake, Scale, Briefcase } from "lucide-react";
 import { ResizablePanelGroup, ResizablePanel, ResizableHandle } from "@/components/ui/resizable";
 import { RichTextDisplay } from "@/components/ui/RichTextDisplay";
 import { format, startOfDay, endOfDay, addDays } from "date-fns";
@@ -34,6 +34,7 @@ import { InlineMeetingParticipantsEditor } from "@/components/meetings/InlineMee
 import { MeetingParticipantAvatars } from "@/components/meetings/MeetingParticipantAvatars";
 import { UpcomingAppointmentsSection } from "@/components/meetings/UpcomingAppointmentsSection";
 import { PendingJourFixeNotes } from "@/components/meetings/PendingJourFixeNotes";
+import { PendingJourFixeCaseItems } from "@/components/meetings/PendingJourFixeCaseItems";
 import { SystemAgendaItem } from "@/components/meetings/SystemAgendaItem";
 import { BirthdayAgendaItem } from "@/components/meetings/BirthdayAgendaItem";
 import { FocusModeView } from "@/components/meetings/FocusModeView";
@@ -139,6 +140,7 @@ export function MeetingsView() {
   const [linkedQuickNotes, setLinkedQuickNotes] = useState<any[]>([]);
   const [meetingLinkedTasks, setMeetingLinkedTasks] = useState<any[]>([]);
   const [meetingRelevantDecisions, setMeetingRelevantDecisions] = useState<any[]>([]);
+  const [meetingLinkedCaseItems, setMeetingLinkedCaseItems] = useState<any[]>([]);
   const [meetingUpcomingAppointments, setMeetingUpcomingAppointments] = useState<any[]>([]);
   const [isNewMeetingOpen, setIsNewMeetingOpen] = useState(false);
   const [newMeeting, setNewMeeting] = useState<Meeting>({
@@ -191,6 +193,7 @@ export function MeetingsView() {
         loadAgendaItems(urlMeetingId);
         loadLinkedQuickNotes(urlMeetingId);
         loadMeetingLinkedTasks(urlMeetingId);
+        loadMeetingLinkedCaseItems(urlMeetingId);
         loadMeetingRelevantDecisions();
         if (meetingFromUrl?.meeting_date) loadMeetingUpcomingAppointments(urlMeetingId, meetingFromUrl.meeting_date);
         loadStarredAppointments(urlMeetingId);
@@ -233,6 +236,7 @@ export function MeetingsView() {
           loadAgendaItems(nextMeeting.id);
           loadLinkedQuickNotes(nextMeeting.id);
           loadMeetingLinkedTasks(nextMeeting.id);
+          loadMeetingLinkedCaseItems(nextMeeting.id);
           loadMeetingRelevantDecisions();
           loadMeetingUpcomingAppointments(nextMeeting.id, nextMeeting.meeting_date);
           loadStarredAppointments(nextMeeting.id);
@@ -246,6 +250,7 @@ export function MeetingsView() {
     if (selectedMeeting?.id && !activeMeeting) {
       loadLinkedQuickNotes(selectedMeeting.id);
       loadMeetingLinkedTasks(selectedMeeting.id);
+      loadMeetingLinkedCaseItems(selectedMeeting.id);
       loadMeetingRelevantDecisions();
       if (selectedMeeting.meeting_date) loadMeetingUpcomingAppointments(selectedMeeting.id, selectedMeeting.meeting_date);
       loadStarredAppointments(selectedMeeting.id);
@@ -1103,6 +1108,23 @@ export function MeetingsView() {
     }
   };
 
+  const loadMeetingLinkedCaseItems = async (meetingId: string) => {
+    if (!currentTenant?.id) return;
+    try {
+      const { data, error } = await supabase
+        .from('case_items' as any)
+        .select('id, subject, status, priority, due_at, owner_user_id')
+        .eq('meeting_id', meetingId)
+        .neq('status', 'erledigt');
+
+      if (error) throw error;
+      setMeetingLinkedCaseItems(data || []);
+    } catch (error) {
+      console.error('Error loading meeting linked case items:', error);
+      setMeetingLinkedCaseItems([]);
+    }
+  };
+
 
 
   const loadMeetingRelevantDecisions = async () => {
@@ -1292,6 +1314,7 @@ export function MeetingsView() {
       await loadAgendaItems(meeting.id);
       await loadLinkedQuickNotes(meeting.id);
       await loadMeetingLinkedTasks(meeting.id);
+      await loadMeetingLinkedCaseItems(meeting.id);
       await loadMeetingRelevantDecisions();
       await loadMeetingUpcomingAppointments(meeting.id, meeting.meeting_date);
       await loadStarredAppointments(meeting.id);
@@ -1623,6 +1646,35 @@ export function MeetingsView() {
         }
       } catch (taskResultError) {
         console.error('Error processing task results (non-fatal):', taskResultError);
+      }
+
+      // Step 5c2: Process case item results - save as timeline events
+      try {
+        const caseItemSystemItems = agendaItemsData?.filter(item => item.system_type === 'case_items') || [];
+        for (const ciItem of caseItemSystemItems) {
+          if (!ciItem.result_text?.trim()) continue;
+          
+          try {
+            const ciResults = JSON.parse(ciItem.result_text);
+            for (const [caseItemId, resultText] of Object.entries(ciResults)) {
+              if (!resultText || !(resultText as string).trim()) continue;
+              
+              const meetingContext = `Aus Besprechung "${meeting.title}" vom ${format(new Date(meeting.meeting_date), 'dd.MM.yyyy', { locale: de })}`;
+              await supabase.from('case_item_timeline').insert({
+                case_item_id: caseItemId,
+                event_type: 'meeting_result',
+                title: `Ergebnis: ${meeting.title}`,
+                description: `${meetingContext}\n\n${resultText}`,
+                created_by: user.id,
+                tenant_id: currentTenant?.id || '',
+              });
+            }
+          } catch (e) {
+            console.error('Error processing case item results:', e);
+          }
+        }
+      } catch (ciResultError) {
+        console.error('Error processing case item results (non-fatal):', ciResultError);
       }
 
       // Step 5d: Create tasks for starred appointments with per-appointment assignment
@@ -2166,7 +2218,7 @@ export function MeetingsView() {
     setAgendaItems(next);
   };
 
-  const addSystemAgendaItem = async (systemType: 'upcoming_appointments' | 'quick_notes' | 'tasks' | 'birthdays' | 'decisions', parentItem?: AgendaItem) => {
+  const addSystemAgendaItem = async (systemType: 'upcoming_appointments' | 'quick_notes' | 'tasks' | 'birthdays' | 'decisions' | 'case_items', parentItem?: AgendaItem) => {
     if (!selectedMeeting?.id) return;
     
     // Check if already exists
@@ -2184,7 +2236,8 @@ export function MeetingsView() {
       'quick_notes': 'Meine Notizen',
       'tasks': 'Aufgaben',
       'birthdays': 'Geburtstage',
-      'decisions': 'Entscheidungen'
+      'decisions': 'Entscheidungen',
+      'case_items': 'Vorgänge'
     };
 
     try {
@@ -3160,6 +3213,7 @@ export function MeetingsView() {
         profiles={profiles}
         linkedQuickNotes={linkedQuickNotes}
         linkedTasks={meetingLinkedTasks}
+        linkedCaseItems={meetingLinkedCaseItems}
         upcomingAppointments={meetingUpcomingAppointments}
         starredAppointmentIds={starredAppointmentIds}
         onToggleStar={toggleStarAppointment}
@@ -3979,6 +4033,49 @@ export function MeetingsView() {
                         </div>
                       )}
 
+                      {item.system_type === 'case_items' && (
+                        <div className="ml-12 mb-4 space-y-3">
+                          {meetingLinkedCaseItems.length > 0 ? (
+                            (() => {
+                              const caseItemResults = (() => {
+                                try { return JSON.parse(item.result_text || '{}'); } catch { return {}; }
+                              })();
+                              return meetingLinkedCaseItems.map((ci: any, ciIdx: number) => (
+                                <div key={ci.id} className="pl-4 border-l-2 border-muted space-y-2">
+                                  <div className="flex items-center gap-2">
+                                    <span className="text-xs font-medium text-muted-foreground">
+                                      {String.fromCharCode(97 + ciIdx)})
+                                    </span>
+                                    <Briefcase className="h-3.5 w-3.5 text-teal-500" />
+                                    <span className="text-sm font-medium">{ci.subject || '(Kein Betreff)'}</span>
+                                    <Badge variant="outline" className="text-xs">{ci.status}</Badge>
+                                  </div>
+                                  {ci.due_at && (
+                                    <p className="text-xs text-muted-foreground">
+                                      Frist: {format(new Date(ci.due_at), "dd.MM.yyyy", { locale: de })}
+                                    </p>
+                                  )}
+                                  <div>
+                                    <label className="text-xs font-medium mb-1 block text-muted-foreground">Ergebnis</label>
+                                    <Textarea
+                                      value={caseItemResults[ci.id] || ''}
+                                      onChange={(e) => {
+                                        const newResults = { ...caseItemResults, [ci.id]: e.target.value };
+                                        updateAgendaItemResult(item.id!, 'result_text', JSON.stringify(newResults));
+                                      }}
+                                      placeholder="Ergebnis für diesen Vorgang..."
+                                      className="min-h-[60px] text-xs"
+                                    />
+                                  </div>
+                                </div>
+                              ));
+                            })()
+                          ) : (
+                            <p className="text-sm text-muted-foreground pl-4">Keine Vorgänge vorhanden.</p>
+                          )}
+                        </div>
+                      )}
+
                       {/* Note: Removed fallback for "Aktuelles aus dem Landtag" - system_type should be used exclusively */}
 
                       {/* Display notes if available */}
@@ -4302,6 +4399,54 @@ export function MeetingsView() {
                                             })()
                                           ) : (
                                             <p className="text-sm text-muted-foreground pl-4">Keine relevanten Entscheidungen vorhanden.</p>
+                                          )}
+                                        </div>
+                                      ) : subItem.system_type === 'case_items' ? (
+                                        <div className="space-y-2">
+                                          <div className="flex items-center gap-2 mb-2">
+                                            <span className="text-xs font-medium text-muted-foreground">
+                                              {index + 1}.{subIndex + 1}
+                                            </span>
+                                            <Briefcase className="h-4 w-4 text-teal-500" />
+                                            <span className="text-sm font-medium">Vorgänge</span>
+                                          </div>
+                                          {meetingLinkedCaseItems.length > 0 ? (
+                                            (() => {
+                                              const caseItemResults = (() => {
+                                                try { return JSON.parse(subItem.result_text || '{}'); } catch { return {}; }
+                                              })();
+                                              return meetingLinkedCaseItems.map((ci: any, ciIdx: number) => (
+                                                <div key={ci.id} className="pl-4 border-l-2 border-muted space-y-2 ml-4">
+                                                  <div className="flex items-center gap-2">
+                                                    <span className="text-xs font-medium text-muted-foreground">
+                                                      {String.fromCharCode(97 + ciIdx)})
+                                                    </span>
+                                                    <Briefcase className="h-3.5 w-3.5 text-teal-500" />
+                                                    <span className="text-sm font-medium">{ci.subject || '(Kein Betreff)'}</span>
+                                                    <Badge variant="outline" className="text-xs">{ci.status}</Badge>
+                                                  </div>
+                                                  {ci.due_at && (
+                                                    <p className="text-xs text-muted-foreground">
+                                                      Frist: {format(new Date(ci.due_at), "dd.MM.yyyy", { locale: de })}
+                                                    </p>
+                                                  )}
+                                                  <div>
+                                                    <label className="text-xs font-medium mb-1 block text-muted-foreground">Ergebnis</label>
+                                                    <Textarea
+                                                      value={caseItemResults[ci.id] || ''}
+                                                      onChange={(e) => {
+                                                        const newResults = { ...caseItemResults, [ci.id]: e.target.value };
+                                                        updateAgendaItemResult(subItem.id!, 'result_text', JSON.stringify(newResults));
+                                                      }}
+                                                      placeholder="Ergebnis für diesen Vorgang..."
+                                                      className="min-h-[60px] text-xs"
+                                                    />
+                                                  </div>
+                                                </div>
+                                              ));
+                                            })()
+                                          ) : (
+                                            <p className="text-sm text-muted-foreground pl-4">Keine Vorgänge vorhanden.</p>
                                           )}
                                         </div>
                                       ) : subItem.system_type === 'birthdays' ? (
@@ -4681,6 +4826,15 @@ export function MeetingsView() {
                           <Scale className="h-4 w-4 mr-2" />
                           Entscheidungen
                         </Button>
+                        <Button 
+                          variant="outline" 
+                          className="w-full justify-start border-teal-200 text-teal-700 dark:border-teal-800 dark:text-teal-400"
+                          onClick={() => addSystemAgendaItem('case_items')}
+                          disabled={agendaItems.some(i => i.system_type === 'case_items')}
+                        >
+                          <Briefcase className="h-4 w-4 mr-2" />
+                          Vorgänge
+                        </Button>
                       </div>
                     </PopoverContent>
                   </Popover>
@@ -4729,13 +4883,14 @@ export function MeetingsView() {
                                     </div>
                                     <div className="flex-1">
                                       <SystemAgendaItem 
-                                        systemType={item.system_type as 'upcoming_appointments' | 'quick_notes' | 'tasks' | 'birthdays' | 'decisions'}
+                                        systemType={item.system_type as 'upcoming_appointments' | 'quick_notes' | 'tasks' | 'birthdays' | 'decisions' | 'case_items'}
                                         meetingDate={selectedMeeting?.meeting_date}
                                         meetingId={selectedMeeting?.id}
                                         allowStarring={true}
                                         linkedQuickNotes={linkedQuickNotes}
                                         linkedTasks={meetingLinkedTasks}
                                         linkedDecisions={meetingRelevantDecisions}
+                                        linkedCaseItems={meetingLinkedCaseItems}
                                         profiles={profiles}
                                         resultText={item.result_text}
                                         onUpdateResult={item.system_type === 'birthdays' ? (result: string) => updateAgendaItem(index, 'result_text', result) : undefined}
@@ -4866,6 +5021,15 @@ export function MeetingsView() {
                                                     >
                                                       <Scale className="h-4 w-4 mr-2" />
                                                       Entscheidungen
+                                                    </Button>
+                                                    <Button 
+                                                      variant="outline" 
+                                                      className="w-full justify-start border-teal-200 text-teal-700 dark:border-teal-800 dark:text-teal-400"
+                                                      onClick={() => addSystemAgendaItem('case_items', item)}
+                                                      disabled={agendaItems.some(i => i.system_type === 'case_items')}
+                                                    >
+                                                      <Briefcase className="h-4 w-4 mr-2" />
+                                                      Vorgänge
                                                     </Button>
                                                   </div>
                                                 </div>
@@ -5153,6 +5317,7 @@ export function MeetingsView() {
 
               {/* Pending Jour Fixe Notes Preview */}
               <PendingJourFixeNotes className="mt-4" />
+              <PendingJourFixeCaseItems className="mt-4" />
 
               {/* Upcoming Appointments Preview - NUR wenn nicht bereits in Agenda */}
               {!agendaItems.some(item => item.system_type === 'upcoming_appointments') && (
