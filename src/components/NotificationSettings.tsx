@@ -193,7 +193,7 @@ export const NotificationSettings: React.FC = () => {
         .limit(1);
       setHasActiveSubscription(!!data && data.length > 0);
     } catch (error) {
-      console.error('Error checking active subscription:', error);
+      debugConsole.error('Error checking active subscription:', error);
       setHasActiveSubscription(false);
     }
   }, [user]);
