@@ -139,6 +139,7 @@ export function MeetingsView() {
   const [linkedQuickNotes, setLinkedQuickNotes] = useState<any[]>([]);
   const [meetingLinkedTasks, setMeetingLinkedTasks] = useState<any[]>([]);
   const [meetingRelevantDecisions, setMeetingRelevantDecisions] = useState<any[]>([]);
+  const [meetingLinkedCaseItems, setMeetingLinkedCaseItems] = useState<any[]>([]);
   const [meetingUpcomingAppointments, setMeetingUpcomingAppointments] = useState<any[]>([]);
   const [isNewMeetingOpen, setIsNewMeetingOpen] = useState(false);
   const [newMeeting, setNewMeeting] = useState<Meeting>({
