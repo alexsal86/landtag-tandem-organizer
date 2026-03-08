@@ -111,7 +111,7 @@ export function TagAdminSettings() {
       await loadTags();
       toast({ title: "Erfolg", description: "Tag wurde erfolgreich gelöscht." });
     } catch (error: any) {
-      console.error('Error deleting tag:', error);
+      debugConsole.error('Error deleting tag:', error);
       toast({ title: "Fehler", description: "Tag konnte nicht gelöscht werden.", variant: "destructive" });
     }
   };
