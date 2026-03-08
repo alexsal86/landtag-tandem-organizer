@@ -96,7 +96,7 @@ export const TaskDecisionList = () => {
         .eq('user_id', currentUserId)
         .eq('task_decisions.status', 'active');
 
-      console.log('Participant decisions query result:', { participantDecisions, participantError });
+      
 
       if (participantError) throw participantError;
 
