@@ -155,7 +155,7 @@ export const ExpenseManagement = () => {
   };
 
   const uploadReceipt = async (file: File): Promise<string | null> => {
-    console.log('Starting receipt upload for file:', file.name, 'Size:', file.size);
+    
     
     const fileExt = file.name.split('.').pop();
     const fileName = `${Date.now()}.${fileExt}`;
