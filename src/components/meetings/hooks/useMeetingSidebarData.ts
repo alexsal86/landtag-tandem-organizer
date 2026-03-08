@@ -222,7 +222,7 @@ export function useMeetingSidebarData(deps: UseMeetingSidebarDataDeps) {
         await supabase.from("starred_appointments").insert(insertData);
       }
     } catch (error) {
-      console.error("Error toggling star:", error);
+      debugConsole.error("Error toggling star:", error);
       setStarredAppointmentIds((prev) => {
         const newSet = new Set(prev);
         if (isCurrentlyStarred) newSet.add(appt.id);
