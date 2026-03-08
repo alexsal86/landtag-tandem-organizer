@@ -303,7 +303,7 @@ export const ContactSelector: React.FC<ContactSelectorProps> = ({
         p_tenant_id: currentTenant?.id
       });
     } catch (error) {
-      console.error('Error tracking contact usage:', error);
+      debugConsole.error('Error tracking contact usage:', error);
     }
 
     onSelect({ ...contact, formatted_address: formatContactAddress(contact) });

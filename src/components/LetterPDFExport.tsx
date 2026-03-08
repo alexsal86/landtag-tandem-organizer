@@ -44,7 +44,7 @@ const LetterPDFExport: React.FC<LetterPDFExportProps> = ({
         if (blobResult) onPDFGenerated(blobResult.blob, blobResult.filename);
       }
     } catch (error) {
-      console.error('Error exporting PDF:', error);
+      debugConsole.error('Error exporting PDF:', error);
       toast({
         title: "Export-Fehler",
         description: "Der Brief konnte nicht als PDF exportiert werden.",

@@ -458,7 +458,7 @@ export function ContactEditForm({ contact, onSuccess, onCancel }: ContactEditFor
         description: "Profilbild wurde hochgeladen.",
       });
     } catch (error: unknown) {
-      console.error('Error uploading avatar:', error);
+      debugConsole.error('Error uploading avatar:', error);
       toast({
         title: "Fehler",
         description: `Profilbild konnte nicht hochgeladen werden: ${error instanceof Error ? error.message : 'Unbekannter Fehler'}`,

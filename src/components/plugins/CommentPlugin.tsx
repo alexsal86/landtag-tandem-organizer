@@ -769,7 +769,7 @@ export function CommentPlugin({ documentId }: { documentId?: string }) {
     const unregisterTransform = editor.registerNodeTransform(CommentMarkNode, (node) => {
       const commentId = node.getCommentId();
       if (commentId) {
-        console.log(`[CommentPlugin] Transforming comment node: ${commentId}`);
+        debugConsole.log(`[CommentPlugin] Transforming comment node: ${commentId}`);
         // The node's createDOM method will handle the styling
       }
     });

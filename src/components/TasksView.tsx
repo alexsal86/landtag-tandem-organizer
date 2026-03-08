@@ -265,7 +265,7 @@ export function TasksView() {
                                           data.loadSubtasksForTask(task.id);
                                           if (isChecked) ops.setShowCelebration(true);
                                           toast({ title: isChecked ? "Unteraufgabe erledigt" : "Unteraufgabe wieder geöffnet" });
-                                        } catch (error) { console.error('Error:', error); toast({ title: "Fehler", variant: "destructive" }); }
+                                        } catch (error) { debugConsole.error('Error:', error); toast({ title: "Fehler", variant: "destructive" }); }
                                       }} onClick={(e) => e.stopPropagation()} className="mt-0.5" />
                                       <div className="flex-1 min-w-0">
                                         <span className={`text-sm ${subtask.is_completed ? 'line-through text-muted-foreground' : ''}`}>{cleanSubtaskTitle || subtask.title}</span>

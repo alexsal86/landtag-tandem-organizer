@@ -163,7 +163,7 @@ export function ProtocolsList({ protocols, onProtocolSelect, onProtocolsRefresh 
       toast.success('Protokoll wird erneut verarbeitet');
       onProtocolsRefresh();
     } catch (error) {
-      console.error('Error reprocessing protocol:', error);
+      debugConsole.error('Error reprocessing protocol:', error);
       toast.error('Fehler beim erneuten Verarbeiten');
     }
   };

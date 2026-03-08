@@ -428,7 +428,7 @@ export const StructuredHeaderEditor: React.FC<StructuredHeaderEditorProps> = ({ 
       await loadGalleryImages();
       return { publicUrl, storagePath: filePath, blobUrl };
     } catch (error) {
-      console.error('Upload error:', error);
+      debugConsole.error('Upload error:', error);
       toast({ title: 'Fehler', description: 'Bild konnte nicht hochgeladen werden', variant: 'destructive' });
       return null;
     }

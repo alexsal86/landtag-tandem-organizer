@@ -97,7 +97,7 @@ export function EmployeeMeetingScheduler({
         })
         .eq("user_id", employeeId);
 
-      if (updateError) console.error("Error updating employee settings:", updateError);
+      if (updateError) debugConsole.error("Error updating employee settings:", updateError);
 
       // Create notification for employee
       await supabase.rpc("create_notification", {

@@ -497,7 +497,7 @@ export const TaskDecisionCreator = ({
       setUploadStatus(null);
     } catch (error) {
       setUploadStatus(null);
-      console.error('Error creating decision:', error);
+      debugConsole.error('Error creating decision:', error);
       toast({
         title: "Fehler",
         description: error instanceof Error ? error.message : "Entscheidungsanfrage konnte nicht erstellt werden.",

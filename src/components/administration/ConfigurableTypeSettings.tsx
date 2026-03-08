@@ -182,7 +182,7 @@ export function ConfigurableTypeSettings({
       await loadItems();
       toast({ title: "Erfolg", description: `${entityName} wurde erfolgreich gelöscht.` });
     } catch (error: unknown) {
-      console.error(`Error deleting ${entityName}:`, error);
+      debugConsole.error(`Error deleting ${entityName}:`, error);
       toast({ title: "Fehler", description: `${entityName} konnte nicht gelöscht werden.`, variant: "destructive" });
     }
   };

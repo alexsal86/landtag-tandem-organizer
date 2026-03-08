@@ -127,7 +127,7 @@ export function MessageComposer({ onClose, onSent }: MessageComposerProps) {
 
       onSent();
     } catch (error) {
-      console.error('Error sending message:', error);
+      debugConsole.error('Error sending message:', error);
       toast({
         title: "Fehler",
         description: "Die Nachricht konnte nicht gesendet werden.",
