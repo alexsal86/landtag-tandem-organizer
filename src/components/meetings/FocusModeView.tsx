@@ -257,7 +257,7 @@ export function FocusModeView({
     });
     
     return result;
-  }, [agendaItems, linkedQuickNotes, upcomingAppointments, linkedTasks]);
+  }, [agendaItems, linkedQuickNotes, upcomingAppointments, linkedTasks, linkedCaseItems]);
 
   // Get current focused navigable item
   const currentNavigable = allNavigableItems[flatFocusIndex];
