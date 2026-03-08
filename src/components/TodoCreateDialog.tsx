@@ -79,7 +79,7 @@ export function TodoCreateDialog({ open, onOpenChange, onTodoCreated }: TodoCrea
         .order('display_name');
 
       if (error) throw error;
-      console.log('Users loaded for TodoCreateDialog:', data);
+      debugConsole.log('Users loaded for TodoCreateDialog:', data);
       setUsers(data || []);
     } catch (error) {
       console.error('Error loading users:', error);
