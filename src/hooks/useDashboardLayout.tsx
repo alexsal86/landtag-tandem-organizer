@@ -327,7 +327,7 @@ export function useDashboardLayout() {
     }
 
     if (!user?.id) {
-      console.log('❌ No user ID available');
+      
       toast.error('Benutzer nicht angemeldet oder User-ID fehlt');
       return false;
     }
