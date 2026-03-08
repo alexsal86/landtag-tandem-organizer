@@ -1,4 +1,3 @@
-import React from 'react';
 import { useParams, useSearchParams } from 'react-router-dom';
 import { PollResponseInterface } from '@/components/poll/PollResponseInterface';
 

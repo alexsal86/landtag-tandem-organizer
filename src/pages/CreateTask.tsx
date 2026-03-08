@@ -27,9 +27,9 @@ export default function CreateTask() {
     user_id: string;
     isCurrentUser: boolean;
   }>>([]);
-  const [currentUserId, setCurrentUserId] = useState<string | null>(null);
+  const [_currentUserId, setCurrentUserId] = useState<string | null>(null);
   const [taskCategories, setTaskCategories] = useState<Array<{ name: string; label: string }>>([]);
-  const [taskStatuses, setTaskStatuses] = useState<Array<{ name: string; label: string }>>([]);
+  const [_taskStatuses, setTaskStatuses] = useState<Array<{ name: string; label: string }>>([]);
   const [formData, setFormData] = useState({
     title: "",
     description: "",
