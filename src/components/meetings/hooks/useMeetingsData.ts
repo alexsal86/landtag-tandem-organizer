@@ -20,15 +20,15 @@ export function useMeetingsData() {
   const [agendaItems, setAgendaItems] = useState<AgendaItem[]>([]);
   const [activeMeetingItems, setActiveMeetingItems] = useState<AgendaItem[]>([]);
   const [profiles, setProfiles] = useState<Profile[]>([]);
-  const [tasks, setTasks] = useState<any[]>([]);
-  const [taskDocuments, setTaskDocuments] = useState<Record<string, any[]>>({});
-  const [agendaDocuments, setAgendaDocuments] = useState<Record<string, any[]>>({});
+  const [tasks, setTasks] = useState<LinkedTask[]>([]);
+  const [taskDocuments, setTaskDocuments] = useState<Record<string, AgendaDocument[]>>({});
+  const [agendaDocuments, setAgendaDocuments] = useState<Record<string, AgendaDocument[]>>({});
   const [meetingTemplates, setMeetingTemplates] = useState<MeetingTemplate[]>([]);
-  const [linkedQuickNotes, setLinkedQuickNotes] = useState<any[]>([]);
-  const [meetingLinkedTasks, setMeetingLinkedTasks] = useState<any[]>([]);
-  const [meetingRelevantDecisions, setMeetingRelevantDecisions] = useState<any[]>([]);
-  const [meetingLinkedCaseItems, setMeetingLinkedCaseItems] = useState<any[]>([]);
-  const [meetingUpcomingAppointments, setMeetingUpcomingAppointments] = useState<any[]>([]);
+  const [linkedQuickNotes, setLinkedQuickNotes] = useState<LinkedQuickNote[]>([]);
+  const [meetingLinkedTasks, setMeetingLinkedTasks] = useState<LinkedTask[]>([]);
+  const [meetingRelevantDecisions, setMeetingRelevantDecisions] = useState<RelevantDecision[]>([]);
+  const [meetingLinkedCaseItems, setMeetingLinkedCaseItems] = useState<LinkedCaseItem[]>([]);
+  const [meetingUpcomingAppointments, setMeetingUpcomingAppointments] = useState<MeetingUpcomingAppointment[]>([]);
   const [isNewMeetingOpen, setIsNewMeetingOpen] = useState(false);
   const [newMeeting, setNewMeeting] = useState<Meeting>({
     title: "",
