@@ -190,7 +190,7 @@ export const useSpeechDictation = ({ editor, insertText, dispatchCommand }: UseS
           commitContentText(contentText);
         } else {
           editor.update(() => {
-            removeInterimNode();
+            clearInterimNode();
           });
           setInterimTranscript('');
         }
