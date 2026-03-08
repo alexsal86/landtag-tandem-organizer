@@ -437,6 +437,21 @@ export function MyWorkCasesWorkspace() {
     );
   }, [allCaseFiles, fileFilterQuery]);
 
+  const { recentCaseFiles, groupedCaseFiles } = useMemo(() => {
+    const sorted = [...filteredCaseFiles].sort((a, b) =>
+      new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime()
+    );
+    const recent = sorted.slice(0, 5);
+    const rest = sorted.slice(5);
+    const groups: Record<string, CaseFile[]> = {};
+    for (const cf of rest) {
+      const key = cf.case_type || "sonstige";
+      if (!groups[key]) groups[key] = [];
+      groups[key].push(cf);
+    }
+    return { recentCaseFiles: recent, groupedCaseFiles: groups };
+  }, [filteredCaseFiles]);
+
   const linkedItemsCountByFile = useMemo(() => {
     const counts: Record<string, number> = {};
     for (const item of caseItems) {
