@@ -164,7 +164,7 @@ export function MyWorkView() {
     setSearchParams({ tab });
     
     // Mark tab as visited when switching
-    const tabToContexts: Record<TabValue, readonly string[]> = {
+    const tabToContexts: Record<string, string[]> = {
       dashboard: [],
       capture: [],
       tasks: ['mywork_tasks'],
@@ -177,12 +177,12 @@ export function MyWorkView() {
       feedbackfeed: ['mywork_feedbackfeed'],
     };
 
-    const contexts = tabToContexts[tab];
+    const contexts = tabToContexts[tab] || [];
     if (contexts.length > 0) {
       contexts.forEach((context) => {
-        markTabAsVisited(context);
+        markTabAsVisited(context as Parameters<typeof markTabAsVisited>[0]);
       });
-      refreshCounts(contexts);
+      refreshCounts(contexts as Parameters<typeof refreshCounts>[0]);
     }
   };
 
