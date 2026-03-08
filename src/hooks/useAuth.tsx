@@ -111,7 +111,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
           .eq('user_id', user.id)
           .eq('device_info', navigator.userAgent);
       } catch (e) {
-        console.error('Error removing session:', e);
+        debugConsole.error('Error removing session:', e);
       }
     }
     

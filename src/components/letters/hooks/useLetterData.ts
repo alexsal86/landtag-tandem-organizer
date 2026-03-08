@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import type { Contact, LetterTemplate, LetterCollaborator, Letter } from '../types';
+import { debugConsole } from '@/utils/debugConsole';
 
 interface UseLetterDataOptions {
   isOpen: boolean;
