@@ -47,7 +47,7 @@ export function useLetterOperations(opts: UseLetterOperationsOptions) {
     const contentNodesToSave = immediateContentNodes !== undefined ? immediateContentNodes : latestContentRef.current.contentNodes || editedLetter.content_nodes;
 
     if (contentToSave && contentToSave.includes('{"root":{"children"') && contentToSave.split('{"root":{"children"').length > 2) {
-      console.error('Detected corrupted content, aborting save');
+      debugConsole.error('Detected corrupted content, aborting save');
       toast({ title: 'Inhalt beschädigt', description: 'Der Inhalt scheint beschädigt zu sein. Bitte laden Sie die Seite neu.', variant: 'destructive', duration: 5000 });
       return;
     }
