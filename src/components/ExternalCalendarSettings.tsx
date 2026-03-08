@@ -72,7 +72,7 @@ export function ExternalCalendarSettings() {
       if (error) throw error;
       setCalendars((data as unknown) as ExternalCalendar[] || []);
     } catch (error) {
-      console.error('Error fetching calendars:', error);
+      debugConsole.error('Error fetching calendars:', error);
       toast.error('Fehler beim Laden der externen Kalender');
     } finally {
       setIsLoading(false);
