@@ -240,14 +240,14 @@ export function useLetterTemplateData() {
 
   type BlockEditorKey = 'addressField' | 'returnAddress' | 'infoBlock' | 'subject' | 'attachments' | 'footer';
 
-  const getBlockItems = (blockKey: BlockEditorKey) => {
-    const content = ((formData.layout_settings as any).blockContent || {}) as Record<string, any[]>;
+  const getBlockItems = (blockKey: BlockEditorKey): unknown[] => {
+    const content = ((formData.layout_settings as unknown as Record<string, unknown>).blockContent || {}) as Record<string, unknown[]>;
     return content[blockKey] || [];
   };
 
-  const setBlockItems = (blockKey: BlockEditorKey, items: any[]) => {
+  const setBlockItems = (blockKey: BlockEditorKey, items: unknown[]) => {
     updateLayoutSettings((layout) => {
-      const current = ((layout as any).blockContent || {}) as Record<string, any[]>;
+      const current = ((layout as unknown as Record<string, unknown>).blockContent || {}) as Record<string, unknown[]>;
       return { ...layout, blockContent: { ...current, [blockKey]: items } } as LetterLayoutSettings;
     });
   };
