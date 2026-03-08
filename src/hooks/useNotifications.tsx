@@ -409,7 +409,7 @@ export const useNotifications = () => {
           throw error;
         }
 
-        console.log('✅ Subscription saved to database successfully');
+        
 
         toast({
           title: 'Erfolgreich',
