@@ -152,7 +152,7 @@ export const ContactSelector: React.FC<ContactSelectorProps> = ({
       .eq('id', selectedContactId)
       .single()
       .then(({ data }) => {
-        if (data) setSelectedContact({ ...data, contact_type: data.contact_type as 'person' | 'organization' });
+        if (data) setSelectedContact({ ...data, contact_type: data.contact_type as 'person' | 'organization' } as Contact);
       });
   }, [selectedContactId, currentTenant]);
 

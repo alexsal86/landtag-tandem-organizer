@@ -17,10 +17,10 @@ import { debugConsole } from "@/utils/debugConsole";
 interface Contact {
   id: string;
   name: string;
-  email?: string;
-  organization?: string;
-  avatar_url?: string;
-  category?: string;
+  email?: string | null;
+  organization?: string | null;
+  avatar_url?: string | null;
+  category?: string | null;
 }
 
 interface DistributionListFormProps {

@@ -31,7 +31,7 @@ interface HistoryRow {
   valid_from: string;
   valid_until: string | null;
   change_reason: string | null;
-  created_at: string;
+  created_at: string | null;
 }
 
 interface EmployeeInfoTabProps {
