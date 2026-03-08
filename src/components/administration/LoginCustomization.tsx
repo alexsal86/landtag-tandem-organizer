@@ -69,7 +69,7 @@ export function LoginCustomization() {
         setCustomization({
           background_image_url: customData.background_image_url || customization.background_image_url,
           background_position: customData.background_position || 'center',
-          background_attribution: customData.background_attribution,
+          background_attribution: customData.background_attribution as UnsplashAttribution | null,
           primary_color: customData.primary_color || '#57ab27',
           accent_color: customData.accent_color || '#E6007E',
           tagline: customData.tagline || customization.tagline,
