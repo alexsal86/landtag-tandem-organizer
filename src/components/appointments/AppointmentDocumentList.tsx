@@ -50,7 +50,7 @@ export function AppointmentDocumentList({
         description: `${document.file_name} wird heruntergeladen.`,
       });
     } catch (error) {
-      console.error('Download error:', error);
+      debugConsole.error('Download error:', error);
       toast({
         title: "Download fehlgeschlagen",
         description: "Die Datei konnte nicht heruntergeladen werden.",
