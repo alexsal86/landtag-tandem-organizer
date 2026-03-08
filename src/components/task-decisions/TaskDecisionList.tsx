@@ -63,7 +63,7 @@ export const TaskDecisionList = () => {
     if (user?.id) {
       loadDecisionRequests(user.id);
     } else {
-      console.log('No user yet, skipping loadDecisionRequests');
+      
     }
   }, [user?.id]);
 
