@@ -51,7 +51,7 @@ export function useTaskDetailData(task: Task | null) {
       setSubtasks(
         (data || []).map((s, i) => ({
           id: s.id,
-          task_id: s.parent_task_id,
+          task_id: s.parent_task_id ?? '',
           user_id: s.user_id,
           title: s.title,
           description: s.title || s.description || "",
