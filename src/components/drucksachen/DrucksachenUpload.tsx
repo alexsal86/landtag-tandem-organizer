@@ -398,7 +398,7 @@ export function DrucksachenUpload({ onUploadSuccess, onProtocolsRefresh }: Druck
           toast.warning('JSON importiert, aber Fehler bei der Datenverteilung');
         }
       } catch (error) {
-        console.warn('Analysis function error:', error);
+        debugConsole.warn('Analysis function error:', error);
       }
 
       // Update status to completed
