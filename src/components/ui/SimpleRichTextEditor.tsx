@@ -60,6 +60,9 @@ const Toolbar = () => {
     interimTranscript,
     isListening,
     speechSupported,
+    lastRecognizedCommand,
+    sessionStartTime,
+    sessionWordCount,
     toggleSpeechRecognition,
     startSpeechRecognition,
     stopSpeechRecognition,
@@ -91,12 +94,13 @@ const Toolbar = () => {
           editor.dispatchCommand(REDO_COMMAND, undefined);
           break;
         case 'insert-newline':
-          editor.update(() => {
-            const selection = $getSelection();
-            if ($isRangeSelection(selection)) {
-              selection.insertText('\n');
-            }
-          });
+        case 'delete-last-word':
+        case 'delete-last-sentence':
+        case 'select-all':
+        case 'insert-heading':
+        case 'insert-quote':
+        case 'replace-text':
+          // SimpleRichTextEditor does not support these advanced commands
           break;
         case 'stop-listening':
           break;
