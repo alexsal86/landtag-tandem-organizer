@@ -167,7 +167,7 @@ export function useMeetingSidebarData(deps: UseMeetingSidebarDataDeps) {
       ].sort((a, b) => new Date(a.start_time).getTime() - new Date(b.start_time).getTime());
       setMeetingUpcomingAppointments(all);
     } catch (error) {
-      console.error("Error loading upcoming appointments:", error);
+      debugConsole.error("Error loading upcoming appointments:", error);
       setMeetingUpcomingAppointments([]);
     }
   };
