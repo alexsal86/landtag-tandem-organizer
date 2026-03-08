@@ -271,7 +271,7 @@ export function CaseFileSelector({
             ) : (
               <div className="text-center py-8 text-muted-foreground">
                 <Briefcase className="h-10 w-10 mx-auto mb-2 opacity-50" />
-                <p>Keine FallAkten gefunden</p>
+                <p>Keine Fallakten gefunden</p>
               </div>
             )}
           </ScrollArea>
