@@ -383,7 +383,7 @@ export function DayView({ date, events, onAppointmentClick, onPreparationClick }
                 const height = event.durationInMinutes;
                 const isPast = isPastEvent(event);
                 
-                console.log(`Rendering event: ${event.title}, Position: ${topPosition}px, Column: ${column}/${totalColumns-1}, Width: ${widthPercentage}%`);
+                debugConsole.log(`Rendering event: ${event.title}, Position: ${topPosition}px, Column: ${column}/${totalColumns-1}, Width: ${widthPercentage}%`);
                 
                 return (
                   <div

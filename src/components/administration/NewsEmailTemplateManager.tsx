@@ -125,7 +125,7 @@ export const NewsEmailTemplateManager: React.FC = () => {
 
       toast.success('Vorlage erfolgreich gespeichert');
     } catch (error) {
-      console.error('Error saving template:', error);
+      debugConsole.error('Error saving template:', error);
       toast.error('Fehler beim Speichern der Vorlage');
     } finally {
       setSaving(false);

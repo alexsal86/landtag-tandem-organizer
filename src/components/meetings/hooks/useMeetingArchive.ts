@@ -434,7 +434,7 @@ export function useMeetingArchive(deps: ArchiveDeps) {
               priority_param: 'medium',
               data_param: JSON.stringify({ meeting_id: meeting.id, meeting_title: meeting.title, meeting_date: meeting.meeting_date }),
             });
-          } catch (e) { console.error(`Notification to ${recipientId} failed (non-fatal):`, e); }
+          } catch (e) { debugConsole.error(`Notification to ${recipientId} failed (non-fatal):`, e); }
         }
       } catch (e) { console.error('Error sending archive notifications (non-fatal):', e); }
 

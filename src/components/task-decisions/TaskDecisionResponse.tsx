@@ -264,7 +264,7 @@ export const TaskDecisionResponse = ({
       setShowEdit(false);
       onResponseSubmitted();
     } catch (error: unknown) {
-      console.error('Error submitting response:', error);
+      debugConsole.error('Error submitting response:', error);
       toast({
         title: "Fehler",
         description: error instanceof Error ? error.message : "Antwort konnte nicht gespeichert werden.",

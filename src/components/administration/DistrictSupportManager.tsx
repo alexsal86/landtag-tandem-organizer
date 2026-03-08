@@ -136,7 +136,7 @@ export const DistrictSupportManager = () => {
       });
     },
     onError: (error) => {
-      console.error('Error removing support assignment:', error);
+      debugConsole.error('Error removing support assignment:', error);
       toast({
         title: "Fehler",
         description: "Die Zuordnung konnte nicht entfernt werden.",

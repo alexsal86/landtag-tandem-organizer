@@ -256,7 +256,7 @@ export const DecisionEditDialog = ({ decisionId, isOpen, onClose, onUpdated }: D
       onUpdated();
       onClose();
     } catch (error) {
-      console.error('Error updating decision:', error);
+      debugConsole.error('Error updating decision:', error);
       toast({
         title: "Fehler",
         description: "Entscheidung konnte nicht aktualisiert werden.",

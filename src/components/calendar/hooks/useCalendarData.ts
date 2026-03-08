@@ -246,7 +246,7 @@ export function useCalendarData(currentDate: Date, view: string) {
 
       setAppointments(formattedEvents);
     } catch (error) {
-      console.error("Error processing appointments:", error);
+      debugConsole.error("Error processing appointments:", error);
       setAppointments([]);
     }
   };

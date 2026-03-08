@@ -91,7 +91,7 @@ export const PartyDistrictMappingManager = () => {
 
     if (error) {
       toast.error('Fehler beim Entfernen der Zuordnung');
-      console.error(error);
+      debugConsole.error(error);
     } else {
       toast.success('Zuordnung erfolgreich entfernt');
       await fetchData();

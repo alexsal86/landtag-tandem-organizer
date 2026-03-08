@@ -166,7 +166,7 @@ export const DashboardHintSettings = () => {
 
       toast({ title: 'Gespeichert', description: 'Dashboard-Hinweise wurden aktualisiert.' });
     } catch (error) {
-      console.error('Error saving dashboard hint settings:', error);
+      debugConsole.error('Error saving dashboard hint settings:', error);
       toast({
         title: 'Fehler',
         description: 'Dashboard-Hinweise konnten nicht gespeichert werden.',

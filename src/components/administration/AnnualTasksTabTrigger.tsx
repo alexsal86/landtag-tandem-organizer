@@ -53,7 +53,7 @@ export function AnnualTasksTabTrigger({ tenantId }: AnnualTasksTabTriggerProps) 
 
       setCount(pendingCount);
     } catch (error) {
-      console.error("Error loading annual tasks count:", error);
+      debugConsole.error("Error loading annual tasks count:", error);
     }
   };
 

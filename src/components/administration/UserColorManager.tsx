@@ -159,7 +159,7 @@ export const UserColorManager = () => {
         description: "Alle Benutzerfarben wurden entfernt.",
       });
     } catch (error) {
-      console.error('Error resetting colors:', error);
+      debugConsole.error('Error resetting colors:', error);
       toast({
         title: "Fehler",
         description: "Farben konnten nicht zurückgesetzt werden.",

@@ -273,7 +273,7 @@ export function MatrixLoginForm() {
       setTestResult('success');
       toast({ title: 'Test erfolgreich', description: 'Verbindung zu Matrix wurde hergestellt' });
     } catch (error) {
-      console.error('Matrix connection test failed:', error);
+      debugConsole.error('Matrix connection test failed:', error);
       setTestResult('error');
       toast({
         title: 'Test fehlgeschlagen',

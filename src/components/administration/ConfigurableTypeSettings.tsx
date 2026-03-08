@@ -65,7 +65,7 @@ export function ConfigurableTypeSettings({
       if (error) throw error;
       setItems(data || []);
     } catch (error) {
-      console.error(`Error loading ${tableName}:`, error);
+      debugConsole.error(`Error loading ${tableName}:`, error);
       toast({ title: "Fehler", description: `${title} konnten nicht geladen werden.`, variant: "destructive" });
     } finally {
       setLoading(false);

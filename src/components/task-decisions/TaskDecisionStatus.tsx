@@ -148,7 +148,7 @@ export const TaskDecisionStatus = ({ taskId, createdBy }: TaskDecisionStatusProp
 
       loadDecisions();
     } catch (error) {
-      console.error('Error archiving decision:', error);
+      debugConsole.error('Error archiving decision:', error);
       toast({
         title: "Fehler",
         description: "Entscheidung konnte nicht archiviert werden.",

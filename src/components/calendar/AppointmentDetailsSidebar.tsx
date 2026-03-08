@@ -359,7 +359,7 @@ export function AppointmentDetailsSidebar({
       onUpdate();
       onClose();
     } catch (error) {
-      console.error('Error deleting appointment:', error);
+      debugConsole.error('Error deleting appointment:', error);
       toast({
         title: "Fehler",
         description: "Der Termin konnte nicht gelöscht werden.",

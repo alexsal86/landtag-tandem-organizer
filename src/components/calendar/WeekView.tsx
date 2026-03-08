@@ -70,7 +70,7 @@ export function WeekView({ weekStart, events, onAppointmentClick, onPreparationC
         });
         setGuestCounts(guestCountsTemp);
       } catch (error) {
-        console.error('Error fetching counts:', error);
+        debugConsole.error('Error fetching counts:', error);
       }
     };
 

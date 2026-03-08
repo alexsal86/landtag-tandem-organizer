@@ -117,7 +117,7 @@ export function DecisionCardActivity({ participants = [], maxItems = 2, isCreato
       setReplyText("");
       setReplyingTo(null);
     } catch (e) {
-      console.error('Reply failed:', e);
+      debugConsole.error('Reply failed:', e);
     } finally {
       setIsSending(false);
     }
