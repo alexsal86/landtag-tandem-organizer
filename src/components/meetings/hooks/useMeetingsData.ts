@@ -293,7 +293,7 @@ export function useMeetingsData() {
     try {
       const { data: allTenantTasks, error } = await supabase
         .from('tasks').select('*').eq('tenant_id', currentTenant.id).eq('status', 'todo').order('created_at', { ascending: false });
-      if (error) { console.error('Error loading tasks:', error); return; }
+      if (error) { debugConsole.error('Error loading tasks:', error); return; }
 
       const filteredTasks = (allTenantTasks || []).filter(task => 
         task.user_id === user.id || (task.assigned_to && task.assigned_to.includes(user.id))
