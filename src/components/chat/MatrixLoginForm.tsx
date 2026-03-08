@@ -249,7 +249,7 @@ export function MatrixLoginForm() {
         deviceId: deviceId.trim() || undefined,
       });
     } catch (error) {
-      console.error('Error saving Matrix credentials:', error);
+      debugConsole.error('Error saving Matrix credentials:', error);
       toast({ title: 'Fehler', description: 'Zugangsdaten konnten nicht gespeichert werden', variant: 'destructive' });
     } finally {
       setIsSaving(false);
