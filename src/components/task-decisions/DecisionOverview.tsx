@@ -765,7 +765,7 @@ export const DecisionOverview = () => {
       setCreatingTaskFromDecisionId(null);
       loadDecisionRequests(user.id);
     } catch (error) {
-      console.error('Error creating task from decision:', error);
+      debugConsole.error('Error creating task from decision:', error);
       toast({ title: "Fehler", description: "Aufgabe konnte nicht erstellt werden.", variant: "destructive" });
       setCreatingTaskFromDecisionId(null);
     }
