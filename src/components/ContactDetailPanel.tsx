@@ -13,6 +13,7 @@ import { ContactEditForm } from "./ContactEditForm";
 import { CallLogWidget } from "@/components/widgets/CallLogWidget";
 import { formatGermanDate } from "@/lib/utils";
 import { ActivityTimeline } from "./contacts/ActivityTimeline";
+import { debugConsole } from "@/utils/debugConsole";
 import { ContactDocumentList } from "./contacts/ContactDocumentList";
 import { useContactDocuments } from "@/hooks/useContactDocuments";
 import { FundingDialog } from "./contacts/FundingDialog";
