@@ -127,7 +127,7 @@ export function useMyWorkJourFixeSystemData(userId?: string, tenantId?: string) 
       }
 
       if (tasksResult.error) {
-        console.error("Error loading tasks for meeting:", { meetingId, error: tasksResult.error });
+        debugConsole.error("Error loading tasks for meeting:", { meetingId, error: tasksResult.error });
       } else {
         const tasks = tasksResult.data || [];
         tasks.forEach((task) => task.user_id && encounteredUserIds.add(task.user_id));
