@@ -126,7 +126,7 @@ export default function CreateTask() {
 
         // Validate tenant
         if (!currentTenant?.id) {
-          console.error('❌ No tenant available:', currentTenant);
+          debugConsole.error('❌ No tenant available:', currentTenant);
           toast({
             title: "Fehler", 
             description: "Kein Tenant ausgewählt. Bitte laden Sie die Seite neu.",
