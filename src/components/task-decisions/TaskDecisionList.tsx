@@ -59,7 +59,7 @@ export const TaskDecisionList = () => {
   
 
   useEffect(() => {
-    console.log('TaskDecisionList useEffect triggered - user from hook:', user?.id);
+    
     if (user?.id) {
       loadDecisionRequests(user.id);
     } else {
