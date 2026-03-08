@@ -154,8 +154,8 @@ export function useLetterTemplateData() {
   const handleUpdateTemplate = async () => {
     if (!editingTemplate) return;
     const cleanedHeaderElements = stripBlobUrls(formData.header_elements);
+    const cleanedHeaderElements = stripBlobUrls(formData.header_elements) as unknown[];
     const cleanedFooterBlocks = stripBlobUrls(formData.footer_blocks);
-    const cleanedLayoutSettings = stripBlobUrlsFromLayoutSettings(normalizeLayoutBlockContentImages(formData.layout_settings));
     try {
       const { error } = await supabase.from('letter_templates').update({
         name: formData.name.trim(), letterhead_html: formData.letterhead_html, letterhead_css: formData.letterhead_css,
