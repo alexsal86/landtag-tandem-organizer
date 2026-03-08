@@ -776,7 +776,7 @@ export function TasksView() {
 
   const loadTaskComments = async () => {
     try {
-      console.log('Loading task comments...');
+      
       const { data, error } = await supabase
         .from('task_comments')
         .select(`
