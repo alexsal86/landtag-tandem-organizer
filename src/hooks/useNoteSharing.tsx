@@ -108,7 +108,7 @@ export const useNoteSharing = (noteId?: string) => {
         .eq("id", shareId)
         .single();
 
-      console.log("Share data for unshare:", shareData);
+      
 
       const { data, error } = await supabase
         .from("quick_note_shares")
