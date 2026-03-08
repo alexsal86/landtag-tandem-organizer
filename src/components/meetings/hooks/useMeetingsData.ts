@@ -263,7 +263,7 @@ export function useMeetingsData() {
       const allMeetings = [...(ownMeetings || []), ...participantMeetingsData];
       setMeetings(allMeetings.map(meeting => ({ ...meeting, meeting_date: new Date(meeting.meeting_date) })));
     } catch (error) {
-      console.error('Error in loadMeetings:', error);
+      debugConsole.error('Error in loadMeetings:', error);
       toast({ title: "Fehler beim Laden der Meetings", description: "Die Meetings konnten nicht geladen werden.", variant: "destructive" });
     }
   };
