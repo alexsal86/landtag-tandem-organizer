@@ -92,7 +92,7 @@ export default function AppointmentPreparationSidebar({
         });
       }
     } catch (error) {
-      console.error('Error fetching preparation:', error);
+      debugConsole.error('Error fetching preparation:', error);
       toast({
         title: 'Fehler',
         description: 'Vorbereitung konnte nicht geladen werden.',
