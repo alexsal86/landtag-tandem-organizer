@@ -12,15 +12,21 @@ interface DecisionsCacheEntry {
 
 const decisionsCache = new Map<string, DecisionsCacheEntry>();
 
-const computeAttachmentInfo = (attachments: any[]) => {
+interface DecisionAttachment {
+  id: string;
+  file_name: string;
+  file_path: string;
+}
+
+const computeAttachmentInfo = (attachments: DecisionAttachment[]) => {
   const all = attachments || [];
-  const emails = all.filter((a: any) => isEmailFile(a.file_name));
-  const files = all.filter((a: any) => !isEmailFile(a.file_name));
+  const emails = all.filter((a) => isEmailFile(a.file_name));
+  const files = all.filter((a) => !isEmailFile(a.file_name));
   return {
     attachmentCount: all.length,
     emailAttachmentCount: emails.length,
-    emailAttachments: emails.map((a: any) => ({ id: a.id, file_name: a.file_name, file_path: a.file_path })),
-    fileAttachments: files.map((a: any) => ({ id: a.id, file_name: a.file_name, file_path: a.file_path })),
+    emailAttachments: emails.map((a) => ({ id: a.id, file_name: a.file_name, file_path: a.file_path })),
+    fileAttachments: files.map((a) => ({ id: a.id, file_name: a.file_name, file_path: a.file_path })),
   };
 };
 
