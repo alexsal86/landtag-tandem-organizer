@@ -85,7 +85,7 @@ export function DistributionListForm({ distributionListId, onSuccess, onBack }: 
       const { data: distributionList, error: listError } = await supabase
         .from('distribution_lists')
         .select('id, name, description, topic')
-        .eq('id', distributionListId)
+        .eq('id', distributionListId!)
         .single();
 
       if (listError) throw listError;
