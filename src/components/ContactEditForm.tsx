@@ -230,7 +230,7 @@ export function ContactEditForm({ contact, onSuccess, onCancel }: ContactEditFor
   const performUpdate = async () => {
     // Early validation
     if (!user) {
-      console.error('No user available');
+      debugConsole.error('No user available');
       toast({
         title: "Fehler",
         description: "Benutzer nicht authentifiziert. Bitte melden Sie sich erneut an.",
