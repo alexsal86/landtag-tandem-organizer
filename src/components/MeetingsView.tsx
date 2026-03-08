@@ -39,7 +39,12 @@ import { SystemAgendaItem } from "@/components/meetings/SystemAgendaItem";
 import { BirthdayAgendaItem } from "@/components/meetings/BirthdayAgendaItem";
 import { FocusModeView } from "@/components/meetings/FocusModeView";
 import { MultiUserAssignSelect } from "@/components/meetings/MultiUserAssignSelect";
+import { MeetingCreateDialog } from "@/components/meetings/MeetingCreateDialog";
+import { CarryoverBufferDialog } from "@/components/meetings/CarryoverBufferDialog";
+import { ActiveMeetingPanel } from "@/components/meetings/ActiveMeetingPanel";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import type { RecurrenceData, NewMeetingParticipant, AgendaItem, Meeting, MeetingTemplate, Profile } from "@/components/meetings/types";
+import { SUBPOINT_OPTIONS } from "@/components/meetings/types";
 
 interface RecurrenceData {
   enabled: boolean;
