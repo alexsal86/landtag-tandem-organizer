@@ -65,7 +65,7 @@ interface NavigableItem {
   isSystemSubItem?: boolean;
   sourceId?: string;
   sourceType?: 'quick_note' | 'appointment' | 'task';
-  sourceData?: LinkedQuickNote | LinkedTask | MeetingUpcomingAppointment;
+  sourceData?: unknown;
 }
 
 interface FocusModeViewProps {
