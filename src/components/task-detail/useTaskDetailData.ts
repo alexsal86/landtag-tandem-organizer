@@ -85,7 +85,7 @@ export function useTaskDetailData(task: Task | null) {
       if (error) throw error;
       setUsers(data || []);
     } catch (e) {
-      console.error("Error loading users:", e);
+      debugConsole.error("Error loading users:", e);
     }
   };
 
