@@ -201,7 +201,7 @@ export function AdminTimeTrackingView() {
         setSelectedUserId(emps[0].user_id);
       }
     } catch (error) {
-      console.error("Error loading employees:", error);
+      debugConsole.error("Error loading employees:", error);
     } finally {
       setLoading(false);
     }
