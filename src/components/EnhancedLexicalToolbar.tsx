@@ -158,7 +158,10 @@ export const EnhancedLexicalToolbar: React.FC<EnhancedLexicalToolbarProps> = ({
           });
           break;
         case 'select-all':
-          editor.dispatchCommand(SELECT_ALL_COMMAND, undefined);
+          editor.update(() => {
+            const root = $getRoot();
+            root.select(0, root.getChildrenSize());
+          });
           break;
         case 'insert-heading':
           editor.update(() => {
