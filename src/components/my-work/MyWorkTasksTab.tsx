@@ -742,6 +742,8 @@ export function MyWorkTasksTab() {
           <TaskListRow
             key={task.id}
             task={task}
+            className={isHighlighted(task.id) ? 'notification-highlight' : undefined}
+            highlightRef={highlightRef(task.id)}
             subtasks={subtasks[task.id]}
             resolveAssigneeName={resolveAssigneeName}
             hasMeetingLink={!!(task.meeting_id || task.pending_for_jour_fixe)}
