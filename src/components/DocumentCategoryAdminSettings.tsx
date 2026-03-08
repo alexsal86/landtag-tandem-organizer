@@ -11,6 +11,7 @@ import { icons, LucideIcon } from "lucide-react";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { DragDropContext, Droppable, Draggable } from "@hello-pangea/dnd";
 import { TagIconPicker } from "@/components/contacts/TagIconPicker";
+import { useTenant } from "@/hooks/useTenant";
 
 type DocumentCategory = {
   id: string;
@@ -24,6 +25,7 @@ type DocumentCategory = {
 
 export function DocumentCategoryAdminSettings() {
   const { toast } = useToast();
+  const { currentTenant } = useTenant();
   const [categories, setCategories] = useState<DocumentCategory[]>([]);
   const [loading, setLoading] = useState(true);
   const [editingCategory, setEditingCategory] = useState<{ id: string; label: string; color: string; icon?: string } | null>(null);
@@ -60,7 +62,8 @@ export function DocumentCategoryAdminSettings() {
         label,
         color,
         icon: icon || null,
-        order_index: Math.max(...categories.map(c => c.order_index), -1) + 1
+        order_index: Math.max(...categories.map(c => c.order_index), -1) + 1,
+        tenant_id: currentTenant!.id,
       });
       
       if (error) throw error;

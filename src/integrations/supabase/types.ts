@@ -23,6 +23,7 @@ export type Database = {
           is_active: boolean
           name: string
           sort_order: number
+          tenant_id: string
           updated_at: string
         }
         Insert: {
@@ -33,6 +34,7 @@ export type Database = {
           is_active?: boolean
           name: string
           sort_order?: number
+          tenant_id: string
           updated_at?: string
         }
         Update: {
@@ -43,9 +45,18 @@ export type Database = {
           is_active?: boolean
           name?: string
           sort_order?: number
+          tenant_id?: string
           updated_at?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "admin_status_options_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       annual_task_completions: {
         Row: {
@@ -180,6 +191,7 @@ export type Database = {
           label: string
           name: string
           order_index: number
+          tenant_id: string
           updated_at: string
         }
         Insert: {
@@ -191,6 +203,7 @@ export type Database = {
           label: string
           name: string
           order_index?: number
+          tenant_id: string
           updated_at?: string
         }
         Update: {
@@ -202,9 +215,18 @@ export type Database = {
           label?: string
           name?: string
           order_index?: number
+          tenant_id?: string
           updated_at?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "appointment_categories_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       appointment_contacts: {
         Row: {
@@ -469,6 +491,7 @@ export type Database = {
           label: string | null
           name: string
           order_index: number
+          tenant_id: string
           updated_at: string
         }
         Insert: {
@@ -482,6 +505,7 @@ export type Database = {
           label?: string | null
           name: string
           order_index?: number
+          tenant_id: string
           updated_at?: string
         }
         Update: {
@@ -495,9 +519,18 @@ export type Database = {
           label?: string | null
           name?: string
           order_index?: number
+          tenant_id?: string
           updated_at?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "appointment_locations_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       appointment_polls: {
         Row: {
@@ -717,6 +750,7 @@ export type Database = {
           label: string
           name: string
           order_index: number
+          tenant_id: string
           updated_at: string
         }
         Insert: {
@@ -728,6 +762,7 @@ export type Database = {
           label: string
           name: string
           order_index?: number
+          tenant_id: string
           updated_at?: string
         }
         Update: {
@@ -739,9 +774,18 @@ export type Database = {
           label?: string
           name?: string
           order_index?: number
+          tenant_id?: string
           updated_at?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "appointment_statuses_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       appointment_topics: {
         Row: {
@@ -1586,6 +1630,7 @@ export type Database = {
           label: string
           name: string
           order_index: number | null
+          tenant_id: string
           updated_at: string
         }
         Insert: {
@@ -1597,6 +1642,7 @@ export type Database = {
           label: string
           name: string
           order_index?: number | null
+          tenant_id: string
           updated_at?: string
         }
         Update: {
@@ -1608,9 +1654,18 @@ export type Database = {
           label?: string
           name?: string
           order_index?: number | null
+          tenant_id?: string
           updated_at?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "case_file_processing_statuses_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       case_file_status_history: {
         Row: {
@@ -1779,6 +1834,7 @@ export type Database = {
           label: string
           name: string
           order_index: number
+          tenant_id: string
           updated_at: string
         }
         Insert: {
@@ -1790,6 +1846,7 @@ export type Database = {
           label: string
           name: string
           order_index?: number
+          tenant_id: string
           updated_at?: string
         }
         Update: {
@@ -1801,9 +1858,18 @@ export type Database = {
           label?: string
           name?: string
           order_index?: number
+          tenant_id?: string
           updated_at?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "case_file_types_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       case_files: {
         Row: {
@@ -3260,6 +3326,7 @@ export type Database = {
           label: string
           name: string
           order_index: number
+          tenant_id: string
           updated_at: string
         }
         Insert: {
@@ -3271,6 +3338,7 @@ export type Database = {
           label: string
           name: string
           order_index?: number
+          tenant_id: string
           updated_at?: string
         }
         Update: {
@@ -3282,9 +3350,18 @@ export type Database = {
           label?: string
           name?: string
           order_index?: number
+          tenant_id?: string
           updated_at?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "document_categories_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       document_contacts: {
         Row: {
@@ -7113,6 +7190,7 @@ export type Database = {
           is_active: boolean
           label: string
           name: string
+          tenant_id: string
           updated_at: string
         }
         Insert: {
@@ -7123,6 +7201,7 @@ export type Database = {
           is_active?: boolean
           label: string
           name: string
+          tenant_id: string
           updated_at?: string
         }
         Update: {
@@ -7133,9 +7212,18 @@ export type Database = {
           is_active?: boolean
           label?: string
           name?: string
+          tenant_id?: string
           updated_at?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "notification_types_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       notifications: {
         Row: {
@@ -8088,6 +8176,7 @@ export type Database = {
           is_nationwide: boolean | null
           name: string
           state: string | null
+          tenant_id: string
           updated_at: string
         }
         Insert: {
@@ -8097,6 +8186,7 @@ export type Database = {
           is_nationwide?: boolean | null
           name: string
           state?: string | null
+          tenant_id: string
           updated_at?: string
         }
         Update: {
@@ -8106,9 +8196,18 @@ export type Database = {
           is_nationwide?: boolean | null
           name?: string
           state?: string | null
+          tenant_id?: string
           updated_at?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "public_holidays_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       push_subscriptions: {
         Row: {
@@ -8819,6 +8918,7 @@ export type Database = {
           label: string
           name: string
           order_index: number
+          tenant_id: string
           updated_at: string
         }
         Insert: {
@@ -8830,6 +8930,7 @@ export type Database = {
           label: string
           name: string
           order_index?: number
+          tenant_id: string
           updated_at?: string
         }
         Update: {
@@ -8841,9 +8942,18 @@ export type Database = {
           label?: string
           name?: string
           order_index?: number
+          tenant_id?: string
           updated_at?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "tags_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       task_archive_settings: {
         Row: {
@@ -8879,6 +8989,7 @@ export type Database = {
           label: string
           name: string
           order_index: number
+          tenant_id: string
           updated_at: string
         }
         Insert: {
@@ -8890,6 +9001,7 @@ export type Database = {
           label: string
           name: string
           order_index?: number
+          tenant_id: string
           updated_at?: string
         }
         Update: {
@@ -8901,9 +9013,18 @@ export type Database = {
           label?: string
           name?: string
           order_index?: number
+          tenant_id?: string
           updated_at?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "task_categories_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       task_comments: {
         Row: {
@@ -10001,6 +10122,7 @@ export type Database = {
           label: string
           name: string
           order_index: number
+          tenant_id: string
           updated_at: string
         }
         Insert: {
@@ -10013,6 +10135,7 @@ export type Database = {
           label: string
           name: string
           order_index?: number
+          tenant_id: string
           updated_at?: string
         }
         Update: {
@@ -10025,9 +10148,18 @@ export type Database = {
           label?: string
           name?: string
           order_index?: number
+          tenant_id?: string
           updated_at?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "topics_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       user_mywork_settings: {
         Row: {
@@ -10683,11 +10815,16 @@ export type Database = {
         Args: { _note_id: string; _user_id: string }
         Returns: boolean
       }
+      is_same_tenant_leader: {
+        Args: { _target_user_id: string }
+        Returns: boolean
+      }
       is_superadmin: { Args: { _user_id: string }; Returns: boolean }
       is_tenant_admin: {
         Args: { _tenant_id: string; _user_id: string }
         Returns: boolean
       }
+      is_tenant_config_admin: { Args: { _tenant_id: string }; Returns: boolean }
       log_collaboration_event: {
         Args: {
           details?: Json
@@ -10723,6 +10860,7 @@ export type Database = {
         Args: { p_contact_id: string; p_tenant_id?: string; p_user_id?: string }
         Returns: undefined
       }
+      user_belongs_to_tenant: { Args: { _tenant_id: string }; Returns: boolean }
       user_can_access_case_item: {
         Args: { _case_item_id: string; _user_id: string }
         Returns: boolean

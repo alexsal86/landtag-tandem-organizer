@@ -12,6 +12,7 @@ import { icons, LucideIcon } from "lucide-react";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { DragDropContext, Droppable, Draggable } from "@hello-pangea/dnd";
 import { TagIconPicker } from "@/components/contacts/TagIconPicker";
+import { useTenant } from "@/hooks/useTenant";
 
 type Tag = {
   id: string;
@@ -25,6 +26,7 @@ type Tag = {
 
 export function TagAdminSettings() {
   const { toast } = useToast();
+  const { currentTenant } = useTenant();
   const [tags, setTags] = useState<Tag[]>([]);
   const [loading, setLoading] = useState(true);
   const [editingTag, setEditingTag] = useState<{ id: string; label: string; color: string; icon?: string } | null>(null);
@@ -61,7 +63,8 @@ export function TagAdminSettings() {
         label,
         color,
         icon: icon || null,
-        order_index: Math.max(...tags.map(t => t.order_index), -1) + 1
+        order_index: Math.max(...tags.map(t => t.order_index), -1) + 1,
+        tenant_id: currentTenant!.id,
       });
       
       if (error) throw error;

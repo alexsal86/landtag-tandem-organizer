@@ -26,8 +26,10 @@ import { Plus, Edit, Trash2, GripVertical, Palette } from 'lucide-react';
 import { StatusOption } from '@/hooks/useUserStatus';
 import { EmojiPicker } from './EmojiPicker';
 import { debugConsole } from '@/utils/debugConsole';
+import { useTenant } from "@/hooks/useTenant";
 
 export const StatusAdminSettings: React.FC = () => {
+  const { currentTenant } = useTenant();
   const [statusOptions, setStatusOptions] = useState<StatusOption[]>([]);
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
   const [editingOption, setEditingOption] = useState<StatusOption | null>(null);
@@ -94,7 +96,7 @@ export const StatusAdminSettings: React.FC = () => {
         toast.success('Status-Option aktualisiert');
       } else {
         debugConsole.log('Creating new status option');
-        const { error } = await supabase.from('admin_status_options').insert(statusData);
+        const { error } = await supabase.from('admin_status_options').insert({ ...statusData, tenant_id: currentTenant!.id });
         if (error) { debugConsole.error('Insert error:', error); throw error; }
         toast.success('Status-Option erstellt');
       }

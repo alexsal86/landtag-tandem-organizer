@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/components/ui/use-toast";
+import { useTenant } from "@/hooks/useTenant";
 
 export interface Topic {
   id: string;
@@ -19,6 +20,7 @@ export const useTopics = () => {
   const [topics, setTopics] = useState<Topic[]>([]);
   const [loading, setLoading] = useState(true);
   const { toast } = useToast();
+  const { currentTenant } = useTenant();
 
   const fetchTopics = async () => {
     try {
@@ -70,6 +72,7 @@ export const useTopics = () => {
           description: topicData.description,
           order_index: maxOrderIndex,
           is_active: true,
+          tenant_id: currentTenant!.id,
         })
         .select()
         .single();

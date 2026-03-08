@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/components/ui/use-toast";
+import { useTenant } from "@/hooks/useTenant";
 
 export interface CaseFileType {
   id: string;
@@ -18,6 +19,7 @@ export const useCaseFileTypes = () => {
   const [caseFileTypes, setCaseFileTypes] = useState<CaseFileType[]>([]);
   const [loading, setLoading] = useState(true);
   const { toast } = useToast();
+  const { currentTenant } = useTenant();
 
   const fetchCaseFileTypes = useCallback(async () => {
     try {
@@ -51,6 +53,7 @@ export const useCaseFileTypes = () => {
           icon: data.icon || 'Folder',
           color: data.color || '#3b82f6',
           order_index: Math.max(...caseFileTypes.map(t => t.order_index), -1) + 1,
+          tenant_id: currentTenant!.id,
         });
 
       if (error) throw error;
