@@ -13,6 +13,7 @@ import { useTenant } from "@/hooks/useTenant";
 import { MultiSelect } from "@/components/ui/multi-select-simple";
 import { TopicSelector } from "@/components/topics/TopicSelector";
 import { useCreateTaskWithTopics } from "@/hooks/useTaskTopics";
+import { debugConsole } from "@/utils/debugConsole";
 
 export default function CreateTask() {
   const navigate = useNavigate();
