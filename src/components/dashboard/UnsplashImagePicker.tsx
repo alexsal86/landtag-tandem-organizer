@@ -75,7 +75,7 @@ export function UnsplashImagePicker({
 
       setImages(data.results);
     } catch (error) {
-      console.error("Error searching Unsplash:", error);
+      debugConsole.error("Error searching Unsplash:", error);
       toast({
         title: "Suchfehler",
         description: "Die Unsplash-Suche konnte nicht durchgeführt werden.",
