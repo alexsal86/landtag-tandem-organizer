@@ -6,6 +6,7 @@ import { useTenant } from "@/hooks/useTenant";
 import { useToast } from "@/hooks/use-toast";
 import { format } from "date-fns";
 import { de } from "date-fns/locale";
+import { debugConsole } from '@/utils/debugConsole';
 
 // ── Types ────────────────────────────────────────────────────
 export interface Contact {
