@@ -156,7 +156,7 @@ export const useTopics = () => {
       }
       await fetchTopics();
     } catch (error) {
-      console.error('Error updating order:', error);
+      debugConsole.error('Error updating order:', error);
     }
   };
 
