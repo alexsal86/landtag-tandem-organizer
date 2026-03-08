@@ -16,6 +16,8 @@ import { DropdownMenu, DropdownMenuCheckboxItem, DropdownMenuContent, DropdownMe
 import { Input } from "@/components/ui/input";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { CaseFileDetail, CaseFileCreateDialog } from "@/features/cases/files/components";
+import { useCaseFileTypes } from "@/features/cases/files/hooks/useCaseFileTypes";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { CaseItemCreateDialog } from "@/components/my-work/CaseItemCreateDialog";
 import { StandaloneDecisionCreator } from "@/components/task-decisions/StandaloneDecisionCreator";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
