@@ -8,6 +8,7 @@ import { isEmailFile, isEmlFile, isMsgFile, parseEmlFile, parseMsgFile, buildEml
 import { useDecisionAttachmentUpload } from '@/hooks/useDecisionAttachmentUpload';
 import { EmailPreviewCard } from './EmailPreviewCard';
 import { EmailPreviewDialog } from './EmailPreviewDialog';
+import { debugConsole } from '@/utils/debugConsole';
 
 interface UploadedFile {
   id?: string;
