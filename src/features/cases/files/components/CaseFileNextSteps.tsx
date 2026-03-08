@@ -193,7 +193,7 @@ export function CaseFileNextSteps({
       setQuickTaskTitle("");
       onRefresh();
     } catch (error) {
-      console.error("Error creating quick task:", error);
+      debugConsole.error("Error creating quick task:", error);
       toast({
         title: "Schnellaufgabe konnte nicht erstellt werden",
         variant: "destructive",
