@@ -198,7 +198,7 @@ export function MeetingCreateDialog({
                       value={p.role} 
                       onValueChange={(v) => {
                         const updated = [...participants];
-                        updated[idx] = { ...p, role: v as any };
+                        updated[idx] = { ...p, role: v as ParticipantRole };
                         onParticipantsChange(updated);
                       }}
                     >

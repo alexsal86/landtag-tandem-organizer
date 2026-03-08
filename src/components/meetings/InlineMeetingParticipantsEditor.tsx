@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import type { ParticipantRole } from '@/components/meetings/types';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';

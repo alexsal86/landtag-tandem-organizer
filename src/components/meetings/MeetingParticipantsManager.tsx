@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import type { ParticipantRole } from '@/components/meetings/types';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
