@@ -340,7 +340,7 @@ export function useMeetingArchive(deps: ArchiveDeps) {
           if (starredAppts && starredAppts.length > 0) {
             const starredAssignmentMap = new Map<string, string[] | null>();
             const appointmentIds = starredAppts.filter(s => s.appointment_id).map(s => {
-              starredAssignmentMap.set(s.appointment_id!, (s as any).assigned_to || null);
+              starredAssignmentMap.set(s.appointment_id!, s.assigned_to || null);
               return s.appointment_id;
             });
             const externalEventIds = starredAppts.filter(s => s.external_event_id).map(s => {
