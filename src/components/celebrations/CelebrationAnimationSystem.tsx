@@ -71,7 +71,7 @@ export function CelebrationAnimationSystem({
         .single();
 
       if (error && error.code !== 'PGRST116') {
-        console.error('Error loading celebration settings:', error);
+        debugConsole.error('Error loading celebration settings:', error);
       }
 
       if (data) {
