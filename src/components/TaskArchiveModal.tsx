@@ -67,7 +67,7 @@ export function TaskArchiveModal({ isOpen, onClose, onTaskRestored }: TaskArchiv
     try {
       const { data, error } = await supabase
         .from('archived_tasks')
-        .select('*')
+        .select('id, task_id, title, description, priority, category, assigned_to, progress, due_date, completed_at, archived_at, auto_delete_after_days')
         .order('archived_at', { ascending: false });
 
       if (error) throw error;
