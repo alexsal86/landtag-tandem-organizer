@@ -140,7 +140,7 @@ export function useLetterData({ isOpen, tenantId, letterId }: UseLetterDataOptio
         setCollaborators([]);
       }
     } catch (error) {
-      console.error('Error fetching collaborators:', error);
+      debugConsole.error('Error fetching collaborators:', error);
     }
   }, [letterId]);
 
