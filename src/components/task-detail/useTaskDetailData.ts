@@ -224,7 +224,7 @@ export function useTaskDetailData(task: Task | null) {
       const filePath = `${user.id}/${task.id}/${Date.now()}.${ext}`;
       const { error: ue } = await supabase.storage.from("task-documents").upload(filePath, file);
       if (ue) throw ue;
-      const { error: de } = await supabase.from("task_documents").insert({ task_id: task.id, user_id: user.id, file_name: file.name, file_path: filePath, file_size: file.size, file_type: file.type });
+      const { error: de } = await supabase.from("task_documents").insert([{ task_id: task.id, user_id: user.id, file_name: file.name, file_path: filePath, file_size: file.size, file_type: file.type }]);
       if (de) throw de;
       loadTaskDocuments(task.id);
       toast({ title: "Dokument hochgeladen" });
