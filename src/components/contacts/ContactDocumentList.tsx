@@ -80,7 +80,7 @@ export function ContactDocumentList({ documents, type, contactTags = [], onRemov
         description: `${document.file_name} wird heruntergeladen.`,
       });
     } catch (error) {
-      console.error('Error downloading document:', error);
+      debugConsole.error('Error downloading document:', error);
       toast({
         title: "Fehler",
         description: "Dokument konnte nicht heruntergeladen werden.",
