@@ -192,6 +192,7 @@ export function MeetingsView() {
         loadAgendaItems(urlMeetingId);
         loadLinkedQuickNotes(urlMeetingId);
         loadMeetingLinkedTasks(urlMeetingId);
+        loadMeetingLinkedCaseItems(urlMeetingId);
         loadMeetingRelevantDecisions();
         if (meetingFromUrl?.meeting_date) loadMeetingUpcomingAppointments(urlMeetingId, meetingFromUrl.meeting_date);
         loadStarredAppointments(urlMeetingId);
