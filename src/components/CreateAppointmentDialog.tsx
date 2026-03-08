@@ -60,7 +60,7 @@ export const CreateAppointmentDialog = ({ open, onOpenChange }: CreateAppointmen
                   <CollapsibleContent className="space-y-6 mt-6">
                     <div className="space-y-4"><h3 className="text-lg font-medium">Teilnehmer</h3><ContactSelector onSelect={hook.addContact} />{hook.selectedContacts.length > 0 && <div className="space-y-2"><h4 className="font-medium">Ausgewählte Kontakte:</h4><div className="flex flex-wrap gap-2">{hook.selectedContacts.map(c => <Badge key={c.id} variant="secondary" className="gap-2">{c.first_name} {c.last_name}<X className="h-3 w-3 cursor-pointer" onClick={() => hook.removeContact(c.id)} /></Badge>)}</div></div>}</div>
                     <div className="space-y-4"><h3 className="text-lg font-medium">Externe Gäste</h3><GuestManager guests={hook.appointmentGuests} onGuestsChange={hook.setAppointmentGuests} /></div>
-                    <div className="space-y-4"><h3 className="text-lg font-medium">Dateien</h3><AppointmentFileUpload onFilesChange={hook.setUploadedFiles} appointmentId={null} /></div>
+                    <div className="space-y-4"><h3 className="text-lg font-medium">Dateien</h3><AppointmentFileUpload onFilesChange={hook.setUploadedFiles} appointmentId={undefined} /></div>
                     <div className="space-y-4"><h3 className="text-lg font-medium flex items-center gap-2"><Tag className="h-4 w-4" />Themen</h3><TopicSelector selectedTopicIds={hook.selectedTopicIds} onTopicsChange={hook.setSelectedTopicIds} placeholder="Themen zuweisen..." /></div>
                   </CollapsibleContent>
                 </Collapsible>
