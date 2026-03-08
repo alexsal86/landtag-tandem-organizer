@@ -4944,6 +4944,15 @@ export function MeetingsView() {
                                                       <Scale className="h-4 w-4 mr-2" />
                                                       Entscheidungen
                                                     </Button>
+                                                    <Button 
+                                                      variant="outline" 
+                                                      className="w-full justify-start border-teal-200 text-teal-700 dark:border-teal-800 dark:text-teal-400"
+                                                      onClick={() => addSystemAgendaItem('case_items', item)}
+                                                      disabled={agendaItems.some(i => i.system_type === 'case_items')}
+                                                    >
+                                                      <Briefcase className="h-4 w-4 mr-2" />
+                                                      Vorgänge
+                                                    </Button>
                                                   </div>
                                                 </div>
                                               </PopoverContent>
