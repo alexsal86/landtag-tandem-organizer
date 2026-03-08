@@ -62,7 +62,7 @@ export async function parsePDFFile(file: File): Promise<ParsedProtocol> {
         fullText += pageText + '\n\n';
         
       } catch (pageError) {
-        console.error(`Error processing page ${pageNum}:`, pageError);
+        debugConsole.error(`Error processing page ${pageNum}:`, pageError);
       }
     }
     
