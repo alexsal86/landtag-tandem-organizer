@@ -379,12 +379,6 @@ export function useDashboardLayout() {
         throw new Error('Tenant ID is missing');
       }
 
-      console.log('🚀 Saving to Supabase:', {
-        layoutId: layoutToSave.id,
-        userId: user.id,
-        tenantId: tenantId,
-        widgetCount: cleanWidgets.length
-      });
 
       // Save to Supabase with validated data
       const { data, error } = await supabase
