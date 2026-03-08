@@ -182,7 +182,7 @@ export function DrucksachenUpload({ onUploadSuccess, onProtocolsRefresh }: Druck
       let parsedData = null;
       let pdfMetadata = null;
       try {
-        console.log('Starting local PDF analysis...');
+        debugConsole.log('Starting local PDF analysis...');
         const pdfData = await parsePDFFile(fileData.file);
         const structuredData = analyzeProtocolStructure(pdfData.text);
         parsedData = {
