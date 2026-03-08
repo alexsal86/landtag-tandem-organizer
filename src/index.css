@@ -275,45 +275,6 @@ All colors MUST be HSL.
     padding: 0.25rem 0 0.25rem 0.25rem !important;
   }
 
-  /* Leaflet popup z-index fixes */
-  .leaflet-map-pane {
-    z-index: 1 !important;
-  }
-  
-  .leaflet-popup-pane {
-    z-index: 99999 !important;
-  }
-  
-  .leaflet-popup {
-    z-index: 99999 !important;
-  }
-  
-  .leaflet-popup-content-wrapper {
-    z-index: 400 !important;
-  }
-  
-  .leaflet-popup-tip {
-    z-index: 399 !important;
-  }
-  
-  .leaflet-tooltip-pane {
-    z-index: 398 !important;
-  }
-  
-  .leaflet-control-container {
-    z-index: 397 !important;
-  }
-  
-  /* Additional popup visibility fixes */
-  .leaflet-popup-content {
-    margin: 0 !important;
-    line-height: 1.4 !important;
-  }
-  
-  .leaflet-container {
-    z-index: 1 !important;
-  }
-}
 
 /* Lexical Editor Styles */
 .editor-container {
