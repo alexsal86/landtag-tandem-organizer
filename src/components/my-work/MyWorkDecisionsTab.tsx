@@ -190,13 +190,13 @@ export function MyWorkDecisionsTab() {
 
       const { error } = await supabase
         .from('task_decision_responses')
-        .insert({
+        .insert([{
           decision_id: parentResponse.decision_id,
           participant_id: parentResponse.participant_id,
           response_type: 'question',
           comment: text.trim(),
           parent_response_id: responseId,
-        });
+        }]);
 
       if (error) {
         toast({ title: "Fehler", description: "Antwort konnte nicht gesendet werden.", variant: "destructive" });
