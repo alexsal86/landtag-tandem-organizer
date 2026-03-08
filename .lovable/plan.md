@@ -1,37 +1,19 @@
 
+## Benachrichtigungen & Badges für Vorgänge — Umgesetzt
 
-## Plan: Termine-Card mit Titel und Separator
+### Was wurde gemacht:
 
-### Was sich ändert
+1. **DB: Neue `notification_types` für Kategorie `cases`** (alle 3 Tenants)
+   - `case_item_created`, `case_item_assigned`, `case_item_status_changed`, `case_item_comment`
 
-1. **`src/components/MyWorkView.tsx`** (Zeilen 463-466): Die Card bekommt `CardHeader` mit `CardTitle` "Deine Termine heute/morgen" (mit 📅 Emoji), und der Inhalt kommt in `CardContent`.
+2. **DB: `notification_navigation_mapping`** — alle 4 Typen auf `navigation_context = 'mywork'` gemappt, damit Sidebar-Badge korrekt zählt.
 
-2. **`src/components/dashboard/DashboardAppointments.tsx`**: 
-   - Die `<h3>` Überschrift "Deine Termine heute" (Zeile 117-119) wird entfernt, da sie jetzt als Card-Titel im Parent sitzt.
-   - Eine `<Separator />` wird zwischen dem Special-Day-Hinweis / den kontextuellen Nachrichten und der Terminliste eingefügt, um die Bereiche visuell zu trennen.
-   - Der Titel (heute/morgen) wird als Prop oder direkt aus `data.isShowingTomorrow` im Parent genutzt.
+3. **UI: `NotificationSettings.tsx`** — Kategorie `cases` / "Vorgänge" mit Icon 📋 eingefügt (Order 3).
 
-### Konkreter Aufbau der Card
+4. **Code: `useCaseItems.tsx`** — `create_notification` RPC-Aufrufe bei:
+   - Vorgang erstellen → Benachrichtigung an zugewiesenen Owner
+   - Status-Änderung → Benachrichtigung an Ersteller + Owner
+   - Zuweisung-Änderung → Benachrichtigung an neuen Owner
+   - Kommentar/Interaktion → Benachrichtigung an Ersteller + Owner
 
-```text
-┌─ CardHeader ──────────────────────────┐
-│ 📅 Deine Termine heute               │
-├─ CardContent ─────────────────────────┤
-│ Rollenzeile (italic)                  │
-│ Kontextuelle Nachricht                │
-│                                       │
-│ [Special Day Hinweis]                 │
-│                                       │
-│ ── Separator ──────────────────────── │
-│                                       │
-│ Ganzt.  Termin 1                      │
-│ 18:00   Termin 2                      │
-│                                       │
-│ [Feedback Reminder]                   │
-└───────────────────────────────────────┘
-```
-
-### Dateien
-- `src/components/MyWorkView.tsx` — Card mit CardHeader/CardTitle/CardContent wrappen
-- `src/components/dashboard/DashboardAppointments.tsx` — h3 entfernen, Separator einfügen
-
+5. **Badge-System**: Sidebar-Badge für "Meine Arbeit" zählt nun auch Vorgang-Benachrichtigungen (via `navigation_context = 'mywork'` Trigger). Interne Tab-Badges bleiben über `useMyWorkNewCounts` (Zeitstempel-basiert).

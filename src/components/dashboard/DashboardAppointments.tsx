@@ -3,6 +3,7 @@ import { format } from 'date-fns';
 import { de } from 'date-fns/locale';
 import { useNavigate } from 'react-router-dom';
 import { icons } from 'lucide-react';
+import { Separator } from '@/components/ui/separator';
 import { getCurrentTimeSlot, getCurrentDayOfWeek } from '@/utils/dashboard/timeUtils';
 import { selectMessage } from '@/utils/dashboard/messageGenerator';
 import { getSpecialDayHint } from '@/utils/dashboard/specialDays';
@@ -112,11 +113,11 @@ export const DashboardAppointments = ({ data }: Props) => {
         </div>
       )}
 
+      {/* Separator zwischen Kontext und Terminliste */}
+      {(roleLine || contextMessage || specialDayHint) && <Separator className="my-2" />}
+
       {/* Termine */}
       <div>
-        <h3 className="text-sm font-semibold text-foreground mb-2">
-          📅 {isShowingTomorrow ? 'Deine Termine morgen' : 'Deine Termine heute'}
-        </h3>
         {appointments.length === 0 ? (
           <p className="text-sm text-muted-foreground">
             {isShowingTomorrow ? 'Keine Termine morgen.' : 'Keine Termine heute.'}
