@@ -79,6 +79,8 @@ export function TaskCard({
   isLastChild = false,
   className,
   highlightRef,
+  isHighlighted,
+  getHighlightRef,
   onComplete,
   onSubtaskComplete,
   onNavigate,
