@@ -49,7 +49,7 @@ export function InlineMeetingParticipantsEditor({ meetingId }: InlineMeetingPart
     }
     
     setLoading(true);
-    console.log('Loading participants for meeting:', meetingId);
+    
     
     const { data: participantsData, error: participantsError } = await supabase
       .from('meeting_participants')
