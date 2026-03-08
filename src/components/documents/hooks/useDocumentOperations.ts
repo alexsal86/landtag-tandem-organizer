@@ -81,12 +81,12 @@ export function useDocumentOperations({
       const { error: uploadError } = await supabase.storage.from('documents').upload(fileName, uploadFile);
       if (uploadError) throw uploadError;
 
-      const { data: documentData, error: dbError } = await supabase.from('documents').insert({
+      const { data: documentData, error: dbError } = await supabase.from('documents').insert([{
         user_id: user.id, tenant_id: currentTenant?.id || '', title: uploadTitle,
         description: uploadDescription, file_name: uploadFile.name, file_path: fileName,
         file_size: uploadFile.size, file_type: uploadFile.type, category: uploadCategory,
         tags: uploadTags, status: uploadStatus, folder_id: uploadFolderId || null,
-      }).select().single();
+      }]).select().single();
       if (dbError) throw dbError;
 
       if (uploadContacts.length > 0 && documentData) {
