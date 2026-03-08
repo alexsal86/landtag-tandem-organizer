@@ -231,7 +231,7 @@ export function useMeetingArchive(deps: ArchiveDeps) {
             assigned_to: assignedUserId, tenant_id: currentTenant?.id || '',
             due_date: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString()
           });
-        } catch (e) { console.error('Error creating task for assigned item (non-fatal):', e); }
+        } catch (e) { debugConsole.error('Error creating task for assigned item (non-fatal):', e); }
       }
 
       // Step 3c: Birthday follow-up tasks
