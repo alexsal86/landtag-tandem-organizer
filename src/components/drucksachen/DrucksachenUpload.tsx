@@ -232,16 +232,16 @@ export function DrucksachenUpload({ onUploadSuccess, onProtocolsRefresh }: Druck
 
       const { data: protocolData, error: dbError } = await supabase
         .from('parliament_protocols')
-        .insert({
+        .insert([{
           tenant_id: currentTenant.id,
           uploaded_by: user.id,
           original_filename: fileData.file.name,
           file_path: filePath,
           file_size: fileData.file.size,
           processing_status: 'processing',
-          raw_text: parsedData?.raw_text?.slice(0, 50000), // Truncate for storage
+          raw_text: parsedData?.raw_text?.slice(0, 50000),
           ...protocolMetadata
-        })
+        }])
         .select()
         .single();
 
