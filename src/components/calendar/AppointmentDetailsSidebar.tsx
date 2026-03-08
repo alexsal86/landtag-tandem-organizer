@@ -287,7 +287,7 @@ export function AppointmentDetailsSidebar({
             });
 
             if (invitationError) {
-              console.error('Error sending invitations:', invitationError);
+              debugConsole.error('Error sending invitations:', invitationError);
               toast({
                 title: "Warnung",
                 description: "Gäste wurden gespeichert, aber Einladungen konnten nicht versendet werden.",
