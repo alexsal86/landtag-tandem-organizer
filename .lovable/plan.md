@@ -1,19 +1,69 @@
 
-## Benachrichtigungen & Badges für Vorgänge — Umgesetzt
+# Automations No-Code Rule Engine — Status & Nächste Schritte
 
-### Was wurde gemacht:
+## Aktuelle Situation: Phase 1 ist bereits größtenteils umgesetzt!
 
-1. **DB: Neue `notification_types` für Kategorie `cases`** (alle 3 Tenants)
-   - `case_item_created`, `case_item_assigned`, `case_item_status_changed`, `case_item_comment`
+Die Analyse zeigt, dass das Fundament bereits besteht:
 
-2. **DB: `notification_navigation_mapping`** — alle 4 Typen auf `navigation_context = 'mywork'` gemappt, damit Sidebar-Badge korrekt zählt.
+### ✅ Was bereits existiert
 
-3. **UI: `NotificationSettings.tsx`** — Kategorie `cases` / "Vorgänge" mit Icon 📋 eingefügt (Order 3).
+| Komponente | Status |
+|------------|--------|
+| **Tabellen** `automation_rules`, `automation_rule_runs`, `automation_rule_run_steps` | ✅ Mit RLS, Indizes, Update-Trigger |
+| **Edge Function** `run-automation-rule` | ✅ Executor mit Idempotenz, Tenant-Isolation, Dry-Run |
+| **Edge Function** `run-scheduled-automation-rules` | ✅ Scheduler für zeitgesteuerte Regeln |
+| **UI: Regel-Builder** | ✅ `AutomationRulesManager.tsx` (856 Zeilen) mit Formular |
+| **UI: Regel-Liste** | ✅ Mit Enable/Disable, Bearbeiten, Löschen |
+| **UI: Run-Historie** | ✅ Mit Step-Details und Filter |
+| **Actions**: `create_notification`, `create_task`, `update_record_status` | ✅ Implementiert |
+| **Trigger-Typen**: `record_changed`, `schedule`, `manual` | ✅ Konfigurierbar |
+| **Templates**: 2 vordefinierte | ✅ Überfällige Aufgaben, Wissensartikel-Review |
 
-4. **Code: `useCaseItems.tsx`** — `create_notification` RPC-Aufrufe bei:
-   - Vorgang erstellen → Benachrichtigung an zugewiesenen Owner
-   - Status-Änderung → Benachrichtigung an Ersteller + Owner
-   - Zuweisung-Änderung → Benachrichtigung an neuen Owner
-   - Kommentar/Interaktion → Benachrichtigung an Ersteller + Owner
+---
 
-5. **Badge-System**: Sidebar-Badge für "Meine Arbeit" zählt nun auch Vorgang-Benachrichtigungen (via `navigation_context = 'mywork'` Trigger). Interne Tab-Badges bleiben über `useMyWorkNewCounts` (Zeitstempel-basiert).
+## ⚠️ Was fehlt / verbessert werden kann (Phase 1 → Phase 2 Übergang)
+
+### 1. **Schnell-Toggle in der Regel-Liste**
+Aktuell muss man zum Bearbeiten → Formular → Switch klicken. Ein direkter Toggle-Switch in der Listenzeile wäre nutzerfreundlicher.
+
+### 2. **`automation_rule_run_steps` Tabelle fehlt im Schema**
+Die Tabelle wird im Code verwendet (`loadRunSteps`), aber existiert möglicherweise nicht oder fehlt in der TypeScript-Typen-Generierung. Migration prüfen/erstellen.
+
+### 3. **Scheduler-Cron-Job nicht aktiviert**
+Die `run-scheduled-automation-rules` Function existiert, aber ohne Cron-Trigger in `supabase/config.toml` wird sie nicht automatisch ausgeführt.
+
+### 4. **`send_push_notification` Action nicht implementiert**
+Im UI auswählbar (`ACTION_TYPES`), aber nicht in der Edge Function implementiert.
+
+### 5. **User-Picker statt UUID-Eingabe**
+Aktuell: manuelle UUID-Eingabe für `target_user_id`. Besser: Dropdown mit Tenant-Nutzern.
+
+---
+
+## Empfohlener Umsetzungsplan
+
+### Paket A: Quick-Toggle & UX (30 min)
+- Direkter Enable/Disable Switch in Regel-Karte
+- Optimistische UI-Aktualisierung
+
+### Paket B: Schema-Vervollständigung (20 min)
+- `automation_rule_run_steps` Tabelle prüfen/migrieren
+- RLS-Policies ergänzen
+
+### Paket C: Scheduler aktivieren (10 min)
+- Cron-Job in `supabase/config.toml` konfigurieren (z.B. alle 5 Minuten)
+- Secret `AUTOMATION_CRON_SECRET` dokumentieren
+
+### Paket D: Fehlende Action implementieren (30 min)
+- `send_push_notification` in `run-automation-rule` ergänzen
+- Nutzt vorhandene Push-Infrastruktur
+
+### Paket E: User-Picker (45 min)
+- Tenant-Nutzer laden
+- Combobox/Select statt UUID-Input
+
+---
+
+## Zusammenfassung
+
+**Phase 1 ist zu ~90% fertig.** Die offenen Punkte sind primär UX-Verbesserungen und ein fehlendes Schema-Element. Soll ich mit Paket A (Quick-Toggle) oder Paket B (Schema-Vervollständigung) starten?
