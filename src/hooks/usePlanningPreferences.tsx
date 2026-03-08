@@ -3,6 +3,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { useTenant } from "@/hooks/useTenant";
 import { toast } from "sonner";
+import { debugConsole } from '@/utils/debugConsole';
 
 export interface DefaultCollaborator {
   user_id: string;
