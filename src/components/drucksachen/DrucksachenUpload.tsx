@@ -274,7 +274,7 @@ export function DrucksachenUpload({ onUploadSuccess, onProtocolsRefresh }: Druck
           toast.success('PDF erfolgreich analysiert und gespeichert');
         }
       } catch (error) {
-        console.warn('Analysis function error:', error);
+        debugConsole.warn('Analysis function error:', error);
         toast.warning('PDF hochgeladen, aber Analyse-Service nicht verfügbar');
       }
 
