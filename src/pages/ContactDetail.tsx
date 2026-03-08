@@ -10,6 +10,7 @@ import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { ActivityTimeline, type Activity } from "@/components/contacts/ActivityTimeline";
+import { debugConsole } from "@/utils/debugConsole";
 
 interface Contact {
   id: string;
