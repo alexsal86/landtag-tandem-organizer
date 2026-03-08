@@ -65,7 +65,7 @@ export function useTaskDetailData(task: Task | null) {
         }))
       );
     } catch (e) {
-      console.error("Error loading subtasks:", e);
+      debugConsole.error("Error loading subtasks:", e);
     }
   };
 
