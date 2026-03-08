@@ -1,31 +1,19 @@
 
+## Benachrichtigungen & Badges für Vorgänge — Umgesetzt
 
-## Problem
+### Was wurde gemacht:
 
-Die RPC-Funktion `get_my_work_new_counts` zählt für den Team-Tab **alle** ungelesen Benachrichtigungen (`notifications`), unabhängig vom `navigation_context`. Zeile 148:
+1. **DB: Neue `notification_types` für Kategorie `cases`** (alle 3 Tenants)
+   - `case_item_created`, `case_item_assigned`, `case_item_status_changed`, `case_item_comment`
 
-```sql
-SELECT count(*) FROM notifications n 
-WHERE n.user_id = p_user_id 
-  AND n.is_read = false 
-  AND n.created_at > v_team_last_visit
-```
+2. **DB: `notification_navigation_mapping`** — alle 4 Typen auf `navigation_context = 'mywork'` gemappt, damit Sidebar-Badge korrekt zählt.
 
-Das bedeutet: Jede neue Benachrichtigung (Aufgaben, Entscheidungen, etc.) die nach dem letzten Besuch des Team-Tabs erstellt wurde, erhöht den Team-Badge — auch wenn sie nichts mit Team zu tun hat.
+3. **UI: `NotificationSettings.tsx`** — Kategorie `cases` / "Vorgänge" mit Icon 📋 eingefügt (Order 3).
 
-## Lösung
+4. **Code: `useCaseItems.tsx`** — `create_notification` RPC-Aufrufe bei:
+   - Vorgang erstellen → Benachrichtigung an zugewiesenen Owner
+   - Status-Änderung → Benachrichtigung an Ersteller + Owner
+   - Zuweisung-Änderung → Benachrichtigung an neuen Owner
+   - Kommentar/Interaktion → Benachrichtigung an Ersteller + Owner
 
-Die SQL-Query muss auf `navigation_context = 'mywork_team'` filtern, damit nur Team-relevante Benachrichtigungen gezählt werden:
-
-```sql
-SELECT count(*) FROM notifications n 
-WHERE n.user_id = p_user_id 
-  AND n.is_read = false 
-  AND n.navigation_context = 'mywork_team'
-  AND n.created_at > v_team_last_visit
-```
-
-### Änderung
-
-**RPC `get_my_work_new_counts`** (Supabase-Migration): Zeile 148 um `AND n.navigation_context = 'mywork_team'` ergänzen. Die Bedingung `n.created_at > v_team_last_visit` kann dabei entfallen, da `is_read = false` bereits ausreicht und konsistenter ist — aber optional beibehalten werden kann als zusätzlicher Filter.
-
+5. **Badge-System**: Sidebar-Badge für "Meine Arbeit" zählt nun auch Vorgang-Benachrichtigungen (via `navigation_context = 'mywork'` Trigger). Interne Tab-Badges bleiben über `useMyWorkNewCounts` (Zeitstempel-basiert).
