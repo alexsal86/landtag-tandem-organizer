@@ -240,7 +240,7 @@ export function TasksView() {
                                     try {
                                       const tenantId = task.tenant_id || data.currentTenant?.id;
                                       if (!tenantId) throw new Error('Missing tenant_id');
-                                      const { error } = await supabase.from('tasks').insert({ title, description: null, status: 'todo', priority: task.priority || 'medium', category: task.category || 'personal', user_id: data.user.id, tenant_id: tenantId, assigned_to: task.assignedTo || data.user.id, parent_task_id: task.id });
+                                      const { data: authData } = await supabase.auth.getUser(); const userId = authData.user!.id; const { error } = await supabase.from('tasks').insert([{ title, description: null, status: 'todo', priority: task.priority || 'medium', category: task.category || 'personal', user_id: userId, tenant_id: tenantId, assigned_to: task.assignedTo || userId, parent_task_id: task.id }]);
                                       if (error) throw error;
                                       data.loadSubtasksForTask(task.id);
                                       data.loadSubtaskCounts();
