@@ -150,7 +150,7 @@ export function useEmployeeOperations({
       setEmployees(prev => prev.map(emp => emp.user_id === userId ? { ...emp, days_per_month: newDays } : emp));
       toast({ title: "Gespeichert", description: "Tage pro Monat wurden aktualisiert." });
     } catch (e: any) {
-      console.error(e); toast({ title: "Fehler", description: e?.message ?? "Tage konnten nicht aktualisiert werden.", variant: "destructive" });
+      debugConsole.error(e); toast({ title: "Fehler", description: e?.message ?? "Tage konnten nicht aktualisiert werden.", variant: "destructive" });
     }
   };
 
