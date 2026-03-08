@@ -57,7 +57,7 @@ export function GeoDataImport() {
       if (error) throw error;
       toast({ title: 'Import erfolgreich', description: data?.message || 'Abgeordnete erfolgreich importiert' });
     } catch (e: any) {
-      console.error(e);
+      debugConsole.error(e);
       toast({ title: 'Import fehlgeschlagen', description: e.message ?? 'Bitte erneut versuchen.', variant: 'destructive' });
     } finally {
       setImporting(false);
