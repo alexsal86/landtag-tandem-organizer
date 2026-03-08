@@ -158,7 +158,7 @@ const UserAssignmentDialog: React.FC<UserAssignmentDialogProps> = ({
       onAssignmentComplete();
       onClose();
     } catch (error) {
-      console.error('Error saving collaborators:', error);
+      debugConsole.error('Error saving collaborators:', error);
       toast({
         title: "Fehler",
         description: "Prüfer konnten nicht zugewiesen werden.",

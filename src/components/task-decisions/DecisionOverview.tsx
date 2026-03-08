@@ -1147,7 +1147,7 @@ export const DecisionOverview = () => {
       .order('created_at', { ascending: false });
 
     if (error) {
-      console.error('Error loading attachment files:', error);
+      debugConsole.error('Error loading attachment files:', error);
       toast({ title: 'Fehler', description: 'Anhänge konnten nicht geladen werden.', variant: 'destructive' });
       return;
     }

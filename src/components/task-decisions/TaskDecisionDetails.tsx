@@ -548,7 +548,7 @@ export const TaskDecisionDetails = ({ decisionId, isOpen, onClose, onArchived, h
         debugConsole.warn('Notifications update failed:', e);
       }
     } catch (error) {
-      console.error('Error archiving decision:', error);
+      debugConsole.error('Error archiving decision:', error);
       toast({
         title: "Fehler",
         description: "Entscheidung konnte nicht archiviert werden.",
