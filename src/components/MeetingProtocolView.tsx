@@ -91,8 +91,8 @@ export function MeetingProtocolView({ meetingId, onBack }: MeetingProtocolViewPr
 
       const starredList: StarredAppointment[] = [];
       if (starredData && starredData.length > 0) {
-        const appointmentIds = starredData.filter(s => s.appointment_id).map(s => s.appointment_id);
-        const externalEventIds = starredData.filter(s => s.external_event_id).map(s => s.external_event_id);
+        const appointmentIds = starredData.filter(s => s.appointment_id).map(s => s.appointment_id!);
+        const externalEventIds = starredData.filter(s => s.external_event_id).map(s => s.external_event_id!);
 
         if (appointmentIds.length > 0) {
           const { data: appointments } = await supabase
