@@ -13,6 +13,7 @@ import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
+import { debugConsole } from "@/utils/debugConsole";
 import { supabase } from "@/integrations/supabase/client";
 import { MatrixMorningSettings } from "./MatrixMorningSettings";
 import { MatrixLoginForm } from "./chat/MatrixLoginForm";
