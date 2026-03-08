@@ -150,7 +150,7 @@ export function CaseFileSelector({
         letter: `Brief verknüpft: ${itemTitle || 'Unbekannt'}`,
       };
       
-      const { error: timelineError } = await supabase.from('case_file_timeline').insert({
+      const { error: timelineError } = await supabase.from('case_file_timeline').insert([{
         case_file_id: caseFileId,
         event_date: new Date().toISOString(),
         event_type: eventTypeMap[itemType],
@@ -158,7 +158,7 @@ export function CaseFileSelector({
         source_type: itemType,
         source_id: itemId,
         created_by: user.id,
-      });
+      }]);
 
       if (timelineError) {
         debugConsole.error('Error creating timeline entry for case file link:', timelineError);
