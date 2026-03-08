@@ -68,10 +68,10 @@ export function useMeetingArchive(deps: ArchiveDeps) {
           original_meeting_title: sourceMeeting.title,
           carryover_notes: `Übertragen von: ${sourceMeeting.title} (${sourceMeeting.meeting_date})`
         });
-        if (error) console.error('Error transferring item:', error);
+        if (error) debugConsole.error('Error transferring item:', error);
         else existingSet.add(dedupeKey);
       } catch (error) {
-        console.error('Error transferring agenda item:', item.title, error);
+        debugConsole.error('Error transferring agenda item:', item.title, error);
       }
     }
   };
