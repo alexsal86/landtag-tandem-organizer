@@ -38,8 +38,8 @@ export const VapidKeyTest: React.FC = () => {
         }
       });
 
-      console.log('📡 Response status:', response.status);
-      console.log('📡 Response headers:', Object.fromEntries(response.headers.entries()));
+      debugConsole.log('📡 Response status:', response.status);
+      debugConsole.log('📡 Response headers:', Object.fromEntries(response.headers.entries()));
 
       if (!response.ok) {
         setTestResult({
