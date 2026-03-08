@@ -51,6 +51,7 @@ export function useMeetingsData() {
   const [currentUserIsParticipant, setCurrentUserIsParticipant] = useState(false);
   const [showCarryoverBuffer, setShowCarryoverBuffer] = useState(false);
   const [carryoverBufferItems, setCarryoverBufferItems] = useState<AgendaItem[]>([]);
+  const deepLinkIdRef = useRef<string | null>(searchParams.get('id'));
 
   // Delegate sidebar data management to sub-hook
   const sidebar = useMeetingSidebarData({
