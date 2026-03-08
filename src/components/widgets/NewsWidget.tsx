@@ -209,7 +209,7 @@ export const NewsWidget: React.FC<NewsWidgetProps> = ({ widgetId, compact = fals
                         className="font-medium text-sm line-clamp-2 hover:text-primary cursor-pointer flex-1"
                         onClick={() => window.open(article.link, '_blank')}
                       >
-                        {article.title}
+                        {decodeHtmlEntities(article.title)}
                       </h4>
                       <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
                         <Button
