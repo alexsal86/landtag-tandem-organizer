@@ -174,7 +174,7 @@ function WordPreview({ url }: { url: string }) {
     <div className="h-full w-full overflow-auto p-6 bg-background/70">
       <div
         className="prose prose-sm max-w-none dark:prose-invert"
-        dangerouslySetInnerHTML={{ __html: html }}
+        dangerouslySetInnerHTML={{ __html: sanitizeRichHtml(html) }}
       />
     </div>
   );

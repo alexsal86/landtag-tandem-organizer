@@ -314,7 +314,7 @@ export function TwoFactorSettings() {
               {qrCode && (
                 <div 
                   className="flex justify-center p-4 bg-white rounded-lg"
-                  dangerouslySetInnerHTML={{ __html: qrCode }}
+                  dangerouslySetInnerHTML={{ __html: sanitizeRichHtml(qrCode) }}
                 />
               )}
               

@@ -194,7 +194,7 @@ export function EmailComposer() {
                 <div className="text-sm text-muted-foreground"><strong>Von:</strong> {hook.senderInfos.find((s) => s.id === hook.selectedSender)?.landtag_email || "Kein Absender"}</div>
                 <div className="text-sm text-muted-foreground"><strong>An:</strong> {hook.previewContact?.email || "Beispiel Empfänger"}</div>
                 <div className="font-bold mt-4">{hook.replaceVariables(hook.subject, hook.previewContact) || "(Kein Betreff)"}</div>
-                <div className="mt-2 text-sm" dangerouslySetInnerHTML={{ __html: hook.replaceVariables(hook.bodyHtml, hook.previewContact) }} />
+                <div className="mt-2 text-sm" dangerouslySetInnerHTML={{ __html: sanitizeRichHtml(hook.replaceVariables(hook.bodyHtml, hook.previewContact)) }} />
               </div>
             </DialogContent>
           </Dialog>

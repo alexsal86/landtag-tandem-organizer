@@ -907,7 +907,7 @@ export const DIN5008LetterLayout: React.FC<DIN5008LetterLayoutProps> = ({
 
       {/* Custom CSS from template */}
       {template?.letterhead_css && (
-        <style dangerouslySetInnerHTML={{ __html: template.letterhead_css }} />
+        <style dangerouslySetInnerHTML={{ __html: sanitizeCss(template.letterhead_css) }} />
       )}
 
       {/* Debug Mode Overlays - Enhanced with precise measurements */}
