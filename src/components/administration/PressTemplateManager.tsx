@@ -148,9 +148,9 @@ export function PressTemplateManager() {
     }));
   };
 
-  const setBlockItems = (blockKey: BlockKey, items: any[]) => {
+  const setBlockItems = (blockKey: BlockKey, items: CanvasElement[]) => {
     updateLayoutSettings((layout) => {
-      const current = ((layout as any).blockContent || {}) as Record<string, any[]>;
+      const current = (layout.blockContent || {}) as Record<string, CanvasElement[]>;
       return { ...layout, blockContent: { ...current, [blockKey]: items } } as LetterLayoutSettings;
     });
   };
