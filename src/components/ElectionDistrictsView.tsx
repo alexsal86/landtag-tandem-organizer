@@ -8,6 +8,7 @@ import { DistrictDetailDialog } from "./DistrictDetailDialog";
 import SimpleLeafletMap from "./SimpleLeafletMap";
 import LeafletMapFallback from "./LeafletMapFallback";
 import { useToast } from "@/components/ui/use-toast";
+import { debugConsole } from '@/utils/debugConsole';
 
 const getPartyColor = (party?: string): string => {
   switch (party?.toLowerCase()) {
