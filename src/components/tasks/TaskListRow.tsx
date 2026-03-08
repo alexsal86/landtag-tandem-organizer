@@ -74,6 +74,8 @@ export function TaskListRow({
   depth = 0,
   className,
   highlightRef,
+  isHighlighted,
+  getHighlightRef,
   onComplete,
   onSubtaskComplete,
   onNavigate,
