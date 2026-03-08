@@ -1,61 +1,32 @@
 
-Ziel: Rückmeldungs-Feed stabil sichtbar machen und gleichzeitig die aktuellen Build-Blocker entfernen, damit die Fixes überhaupt wieder ausgeliefert werden.
 
-1) Diagnose (aus Code + DB)
-- Do I know what the issue is? Ja.
-- Es gibt aktuell 2 Ebenen von Problemen:
-  1. Build ist kaputt (TypeScript):
-     - `src/components/ui/calendar.tsx`: doppelte Keys im `classNames`-Objekt (`caption_label`, `dropdowns`, `dropdown`) → TS1117.
-     - `src/components/task-decisions/DecisionOverview.tsx`: `ResponseOption`-Typ ohne `requires_comment` → TS2339.
-  2. Feed-Logik ist instabil/zu restriktiv:
-     - `src/components/my-work/MyWorkFeedbackFeedTab.tsx` übergibt `completedTo: new Date().toISOString()` bei jedem Render.
-       Dadurch ändert sich der React-Query-Key permanent (`useTeamFeedbackFeed`), was zu dauerndem Neu-Laden bzw. instabilem Feed führt.
-     - `useTeamFeedbackFeed` filtert hart auf `.not('notes','is',null)`. Damit verschwinden abgeschlossene Rückmeldungen ohne Notiz (z. B. nur Anhang/Aufgabe), obwohl sie fachlich oft relevant sind.
-- DB-Check:
-  - `appointment_feedback` hat Daten (u. a. completed in den letzten 7 Tagen vorhanden).
-  - RLS auf `appointment_feedback` erlaubt tenant-basiertes Lesen (`tenant_id = ANY(get_user_tenant_ids(auth.uid()))`), also kein offensichtlicher RLS-Blocker für Team-Feed im Tenant.
+## Plan: Kontaktsuche im Vorgangs-Detailpanel (Von/Gesprächspartner)
 
-2) Umsetzungsplan (in Reihenfolge)
-A. Build sofort reparieren (Blocker)
-- `calendar.tsx`: doppelte Objekt-Keys entfernen, nur eine konsistente Definition für `caption_label`, `dropdowns`, `dropdown` behalten.
-- `DecisionOverview.tsx`: lokalen `ResponseOption`-Typ um `requires_comment?: boolean` ergänzen (oder auf den zentralen Typ aus `decisionTemplates` umstellen).
+### Ist-Zustand
+Im **CaseItemDetailPanel** sind die Felder "Von / Gesprächspartner" einfache `Input`-Felder (Name + E-Mail/Telefon als Freitexte). Bei Erstellung (`CaseItemCreateDialog`) gibt es dagegen eine Kontaktsuche mit Dropdown, die aus der `contacts`-Tabelle sucht und E-Mail/Telefon automatisch ausfüllt.
 
-B. Feed-Query stabilisieren
-- `MyWorkFeedbackFeedTab.tsx`:
-  - `completedTo` nicht mehr bei jedem Render neu erzeugen.
-  - Entweder:
-    - `completedTo` ganz weglassen (nur `completedFrom` + order/limit), oder
-    - `completedTo` per `useMemo/useState` nur bei Filterwechsel neu setzen.
-- `useTeamFeedbackFeed.ts`:
-  - Query-Key nur mit stabilen Filterwerten.
-  - Zeitfilter robust halten (kein per-render Drift).
+### Änderungen
 
-C. Sichtbarkeit der Rückmeldungen fachlich korrigieren
-- `useTeamFeedbackFeed.ts`:
-  - Notiz-Pflicht entfernen oder erweitern:
-    - statt nur `notes is not null` auch Einträge mit `has_documents = true` oder `has_tasks = true` zulassen.
-  - Ergebnis: auch „abgeschlossen ohne Notiz, aber mit Anhang/Aufgabe“ erscheint im Feed.
+**1. `EditableCaseItem` erweitern** (`useCaseItemEdit.ts`)
+- Neues Feld `selectedContactId: string | null` hinzufügen, um eine Kontaktverknüpfung beim Bearbeiten zu tracken.
 
-D. Fehler nicht mehr als „keine Daten“ maskieren
-- `MyWorkFeedbackFeedTab.tsx`:
-  - `isError` + `error` aus Query auslesen.
-  - Bei Fehler einen klaren Error-State anzeigen (statt „Keine passenden Rückmeldungen gefunden“), inkl. Retry-Button (`refetch`).
+**2. `CaseItemDetailPanel` umbauen** (`CaseItemDetailPanel.tsx`)
+- Das "Name"-Input durch eine Kontaktsuche ersetzen (gleiche Logik wie im CreateDialog: ab 2 Zeichen in `contacts` suchen, Dropdown mit Ergebnissen anzeigen).
+- Bei Auswahl eines Kontakts: Name, E-Mail und Telefon automatisch befüllen.
+- **E-Mail und Telefon als separate Felder** anzeigen (statt eines kombinierten "E-Mail / Telefon"-Feldes) — analog zum CreateDialog.
+- Kontaktinfo (Organisation, E-Mail, Telefon) im Suchergebnis-Dropdown anzeigen.
+- "Kontakt verknüpft"-Hinweis anzeigen, wenn ein Kontakt aus der Suche gewählt wurde.
 
-E. Quercheck auf Seiteneffekte
-- `useMyWorkNewCounts.tsx` zählt derzeit ebenfalls nur `completed + notes not null`; ggf. auf dieselbe fachliche Logik angleichen, damit Badge und Feed konsistent sind.
+**3. Props-Anpassung** (`CaseItemDetailPanel.tsx`)
+- `contactPerson: string` und `onContactPersonChange` werden erweitert um `contactEmail`, `contactPhone`, `selectedContactId`, und deren Change-Handler — oder alternativ wird die gesamte Kontaktlogik intern im Panel verwaltet und nur beim Save nach oben gegeben.
+- Pragmatischerer Ansatz: Die Kontaktsuche und -selektion direkt im `CaseItemDetailPanel` implementieren (analog zum CreateDialog), und `onContactPersonChange` so aufrufen, dass Name, E-Mail und Telefon korrekt im `contactPerson`-String kodiert werden.
 
-3) Validierung nach Umsetzung
-- Build grün ohne TS-Fehler.
-- Im Tab „Meine Arbeit > Rückmeldungen“:
-  - Keine Endlos-Ladeanzeige.
-  - Team-Einträge der letzten 7/14 Tage sichtbar.
-  - Filter (Sicht/Zeitraum/Anhänge/Aufgaben) funktionieren.
-  - Bei absichtlichem Query-Fehler erscheint Error-State statt Empty-State.
-- Schneller Datenabgleich:
-  - Feed-Anzahl grob konsistent mit SQL-Count für completed im Zeitraum (unter Berücksichtigung der Filter).
+**4. Save-Logik erweitern** (`MyWorkCasesWorkspace.tsx`)
+- Beim Speichern zusätzlich `contact_id` und `reporter_name`/`reporter_contact` im Update-Patch setzen (aktuell wird nur `intake_payload` geschrieben, `contact_id` wird ignoriert).
+- `intake_payload` um `contact_email`, `contact_phone`, `matched_contact_id` erweitern (wie beim Create).
 
-4) Warum das den aktuellen Zustand löst
-- Solange Build fehlschlägt, werden vorherige Fixes teils nicht wirksam.
-- Selbst bei laufendem Build kann der Feed durch den „beweglichen“ `completedTo`-Key instabil bleiben.
-- Zusätzlich blendet der harte Notiz-Filter valide Rückmeldungen aus.
-- Mit den vier Korrekturen (Build, stabiler Query-Key, fachlich korrekter Filter, echter Error-State) wird die Ursachekette vollständig geschlossen.
+### Technische Details
+- Kontaktsuche: Supabase-Query auf `contacts`-Tabelle mit `ilike` auf Name, gefiltert nach `tenant_id`, `neq contact_type archive`, Limit 8, 250ms Debounce.
+- Die Suchlogik wird direkt im `CaseItemDetailPanel` implementiert (lokaler State für `searchResults`, `searchingContacts`, `showSearchResults`), da die Komponente bereits die nötige Komplexität kapselt.
+- E-Mail und Telefon werden als zwei separate `Input`-Felder dargestellt, jeweils mit eigenem Label.
+
