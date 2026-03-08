@@ -442,14 +442,11 @@ const [editingChild, setEditingChild] = useState<{ parentIndex: number; childInd
         
       if (error) throw error;
       // Silent save - no toast on success
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Save error:', error);
-      // Extended network error detection
       const isNetworkError = 
-        error.message?.includes('Failed to fetch') ||
-        error.name === 'TypeError' ||
-        error.message?.includes('NetworkError') ||
-        error.message?.includes('network') ||
+        (error instanceof Error && (error.message?.includes('Failed to fetch') || error.message?.includes('NetworkError') || error.message?.includes('network'))) ||
+        (error instanceof TypeError) ||
         !navigator.onLine;
         
       if (retryCount < 2 && isNetworkError) {
