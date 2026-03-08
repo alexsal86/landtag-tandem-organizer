@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import type { Letter, LetterTemplate } from './types';
+import { debugConsole } from '@/utils/debugConsole';
 
 export function usePDFData(letter: Letter) {
   const [template, setTemplate] = useState<LetterTemplate | null>(null);
