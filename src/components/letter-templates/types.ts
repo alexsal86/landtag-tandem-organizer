@@ -14,10 +14,11 @@ export interface LetterTemplate {
   updated_at: string;
   tenant_id: string;
   default_sender_id?: string | null;
-  default_info_blocks?: any;
-  header_layout_type?: any;
-  header_text_elements?: any;
-  layout_settings?: any;
+  default_info_blocks?: string[] | null;
+  header_layout_type?: string | null;
+  header_text_elements?: unknown;
+  footer_blocks?: unknown;
+  layout_settings?: LetterLayoutSettings | null;
 }
 
 export interface SenderInformation {
