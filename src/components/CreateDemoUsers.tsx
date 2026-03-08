@@ -5,6 +5,7 @@ import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+import { debugConsole } from '@/utils/debugConsole';
 import { Users, Copy, Eye, EyeOff } from "lucide-react";
 
 interface DemoUser {
