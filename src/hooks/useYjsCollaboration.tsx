@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useAuth } from './useAuth';
 import { supabase } from '@/integrations/supabase/client';
+import { debugConsole } from '@/utils/debugConsole';
 import * as Y from 'yjs';
 import { WebsocketProvider } from 'y-websocket';
 
