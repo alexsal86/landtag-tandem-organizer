@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo } from "react";
+import { debugConsole } from '@/utils/debugConsole';
 import { useSearchParams } from "react-router-dom";
 import { useNotificationHighlight } from "@/hooks/useNotificationHighlight";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
