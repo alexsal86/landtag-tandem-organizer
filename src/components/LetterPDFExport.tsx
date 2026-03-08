@@ -1,4 +1,5 @@
 import React from 'react';
+import { debugConsole } from '@/utils/debugConsole';
 import { Download } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
