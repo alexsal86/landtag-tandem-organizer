@@ -124,7 +124,7 @@ export function useMeetingArchive(deps: ArchiveDeps) {
     for (const item of carriedItems) {
       await supabase.from('carryover_items').delete()
         .eq('user_id', user.id).eq('template_id', meeting.template_id!)
-        .eq('title', item.title).eq('original_meeting_id', item.source_meeting_id);
+        .eq('title', item.title).eq('original_meeting_id', item.source_meeting_id!);
     }
     await loadCarryoverBufferItems();
   };
