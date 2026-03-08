@@ -285,7 +285,7 @@ export function DocumentCategoryAdminSettings() {
                                     style={{ backgroundColor: category.color ?? undefined }}
                                   />
                                   {(() => {
-                                    const Icon = getIconComponent(category.icon);
+                                     const Icon = getIconComponent(category.icon ?? undefined);
                                     return Icon ? <Icon className="h-3.5 w-3.5" /> : null;
                                   })()}
                                   {category.label}
