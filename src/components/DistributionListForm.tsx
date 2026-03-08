@@ -284,7 +284,7 @@ export function DistributionListForm({ distributionListId, onSuccess, onBack }: 
                   <div key={contact.id} className="flex items-center space-x-3 p-3 rounded-lg border border-border hover:bg-muted/50 transition-colors">
                     <Checkbox id={contact.id} checked={selectedContactIds.includes(contact.id)} onCheckedChange={() => handleContactToggle(contact.id)} />
                     <Avatar className="h-8 w-8">
-                      <AvatarImage src={contact.avatar_url} />
+                      <AvatarImage src={contact.avatar_url ?? undefined} />
                       <AvatarFallback className="bg-primary text-primary-foreground text-xs">{getInitials(contact.name)}</AvatarFallback>
                     </Avatar>
                     <div className="flex-1 min-w-0">

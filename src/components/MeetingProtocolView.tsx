@@ -123,9 +123,9 @@ export function MeetingProtocolView({ meetingId, onBack }: MeetingProtocolViewPr
         }
       }
 
-      setMeeting(meetingData);
-      setAgendaItems(agendaData || []);
-      setProfiles(profilesData || []);
+      setMeeting(meetingData as Meeting);
+      setAgendaItems((agendaData || []) as AgendaItem[]);
+      setProfiles((profilesData || []) as Profile[]);
       setStarredAppointments(starredList);
     } catch (error) {
       debugConsole.error('Error loading meeting protocol:', error);
