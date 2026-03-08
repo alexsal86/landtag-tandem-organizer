@@ -22,14 +22,14 @@ interface LetterTemplate {
   letterhead_html: string;
   letterhead_css: string;
   response_time_days: number;
-  is_default: boolean;
-  is_active: boolean;
+  is_default: boolean | null;
+  is_active: boolean | null;
   created_by: string;
   created_at: string;
   updated_at: string;
   tenant_id: string;
-  default_sender_id?: string;
-  default_info_blocks?: string[];
+  default_sender_id?: string | null;
+  default_info_blocks?: string[] | null;
 }
 
 interface LetterTemplateSelectorProps {

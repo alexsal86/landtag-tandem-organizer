@@ -187,8 +187,8 @@ const LetterEditor: React.FC<LetterEditorProps> = ({ letter, isOpen, onClose, on
     try {
       const { data, error } = await supabase.from('letter_templates').select('*').eq('id', templateId).single();
       if (error) throw error;
-      setCurrentTemplate(data);
-      if (data) ops.applyTemplateDefaults(data);
+      setCurrentTemplate(data as LetterTemplate);
+      if (data) ops.applyTemplateDefaults(data as LetterTemplate);
     } catch (error) {
       debugConsole.error('Error fetching current template:', error);
     }
@@ -264,12 +264,12 @@ const LetterEditor: React.FC<LetterEditorProps> = ({ letter, isOpen, onClose, on
         name: sender.name, organization: sender.organization,
         street: (sender as any).street, house_number: (sender as any).house_number,
         postal_code: (sender as any).postal_code, city: (sender as any).city,
-        wahlkreis_street: sender.wahlkreis_street, wahlkreis_house_number: sender.wahlkreis_house_number,
-        wahlkreis_postal_code: sender.wahlkreis_postal_code, wahlkreis_city: sender.wahlkreis_city,
-        landtag_street: sender.landtag_street, landtag_house_number: sender.landtag_house_number,
-        landtag_postal_code: sender.landtag_postal_code, landtag_city: sender.landtag_city,
-        phone: sender.phone, email: (sender as any).email,
-        wahlkreis_email: sender.wahlkreis_email, landtag_email: sender.landtag_email,
+        wahlkreis_street: sender.wahlkreis_street ?? undefined, wahlkreis_house_number: sender.wahlkreis_house_number ?? undefined,
+        wahlkreis_postal_code: sender.wahlkreis_postal_code ?? undefined, wahlkreis_city: sender.wahlkreis_city ?? undefined,
+        landtag_street: sender.landtag_street ?? undefined, landtag_house_number: sender.landtag_house_number ?? undefined,
+        landtag_postal_code: sender.landtag_postal_code ?? undefined, landtag_city: sender.landtag_city ?? undefined,
+        phone: sender.phone ?? undefined, email: (sender as any).email,
+        wahlkreis_email: sender.wahlkreis_email ?? undefined, landtag_email: sender.landtag_email ?? undefined,
       } : null,
       recipientData,
       infoBlock ? { reference: (infoBlock.block_data as any)?.reference_pattern, handler: (infoBlock.block_data as any)?.contact_name, our_reference: '' } : null,
@@ -348,7 +348,7 @@ const LetterEditor: React.FC<LetterEditorProps> = ({ letter, isOpen, onClose, on
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end" className="w-[420px] p-3">
                 {letter?.id ? (
-                  <LetterAttachmentManager letterId={letter.id} attachments={attachments} onAttachmentUpdate={fetchAttachments} readonly={!canEdit} />
+                  <LetterAttachmentManager letterId={letter.id} attachments={attachments as any} onAttachmentUpdate={fetchAttachments} readonly={!canEdit} />
                 ) : (
                   <div className="p-4 text-center text-muted-foreground border border-dashed rounded-lg">
                     <FileText className="h-8 w-8 mx-auto mb-2 opacity-50" />

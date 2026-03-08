@@ -10,25 +10,25 @@ import { debugConsole } from "@/utils/debugConsole";
 interface AgendaItem {
   id: string;
   title: string;
-  description?: string;
-  notes?: string;
-  result_text?: string;
-  assigned_to?: string[];
+  description?: string | null;
+  notes?: string | null;
+  result_text?: string | null;
+  assigned_to?: string[] | null;
   order_index: number;
 }
 
 interface Meeting {
   id: string;
   title: string;
-  description?: string;
+  description?: string | null;
   meeting_date: string;
-  location?: string;
+  location?: string | null;
   status: string;
 }
 
 interface Profile {
   user_id: string;
-  display_name: string;
+  display_name: string | null;
 }
 
 interface StarredAppointment {
@@ -91,8 +91,8 @@ export function MeetingProtocolView({ meetingId, onBack }: MeetingProtocolViewPr
 
       const starredList: StarredAppointment[] = [];
       if (starredData && starredData.length > 0) {
-        const appointmentIds = starredData.filter(s => s.appointment_id).map(s => s.appointment_id);
-        const externalEventIds = starredData.filter(s => s.external_event_id).map(s => s.external_event_id);
+        const appointmentIds = starredData.filter(s => s.appointment_id).map(s => s.appointment_id!);
+        const externalEventIds = starredData.filter(s => s.external_event_id).map(s => s.external_event_id!);
 
         if (appointmentIds.length > 0) {
           const { data: appointments } = await supabase
@@ -123,9 +123,9 @@ export function MeetingProtocolView({ meetingId, onBack }: MeetingProtocolViewPr
         }
       }
 
-      setMeeting(meetingData);
-      setAgendaItems(agendaData || []);
-      setProfiles(profilesData || []);
+      setMeeting(meetingData as Meeting);
+      setAgendaItems((agendaData || []) as AgendaItem[]);
+      setProfiles((profilesData || []) as Profile[]);
       setStarredAppointments(starredList);
     } catch (error) {
       debugConsole.error('Error loading meeting protocol:', error);

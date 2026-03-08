@@ -282,10 +282,10 @@ export function DocumentCategoryAdminSettings() {
                                 <div className="flex items-center gap-2">
                                   <span
                                     className="inline-block w-3 h-3 rounded-full"
-                                    style={{ backgroundColor: category.color }}
+                                    style={{ backgroundColor: category.color ?? undefined }}
                                   />
                                   {(() => {
-                                    const Icon = getIconComponent(category.icon);
+                                     const Icon = getIconComponent(category.icon ?? undefined);
                                     return Icon ? <Icon className="h-3.5 w-3.5" /> : null;
                                   })()}
                                   {category.label}
@@ -300,7 +300,7 @@ export function DocumentCategoryAdminSettings() {
                                 />
                               ) : (
                                 (() => {
-                                  const Icon = getIconComponent(category.icon);
+                                  const Icon = getIconComponent(category.icon ?? undefined);
                                   return Icon ? (
                                     <div className="flex items-center justify-center w-8 h-8">
                                       <Icon className="h-4 w-4" />
@@ -324,7 +324,7 @@ export function DocumentCategoryAdminSettings() {
                               ) : (
                                 <span
                                   className="inline-block w-8 h-8 rounded border border-border cursor-pointer"
-                                  style={{ backgroundColor: category.color }}
+                                  style={{ backgroundColor: category.color ?? undefined }}
                                 />
                               )}
                             </TableCell>
@@ -362,7 +362,7 @@ export function DocumentCategoryAdminSettings() {
                                 ) : (
                                   <>
                                     <Button
-                                      onClick={() => setEditingCategory({ id: category.id, label: category.label, color: category.color, icon: category.icon })}
+                                      onClick={() => setEditingCategory({ id: category.id, label: category.label, color: category.color ?? '', icon: category.icon ?? undefined })}
                                       size="sm"
                                       variant="outline"
                                       className="h-8 w-8 p-0"

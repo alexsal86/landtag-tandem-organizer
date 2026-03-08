@@ -54,7 +54,7 @@ export function MeetingArchiveView({ onBack }: MeetingArchiveViewProps) {
       const { data: ownMeetings, error: ownError } = await supabase
         .from('meetings')
         .select('id, title, description, meeting_date, location, status, created_at, updated_at, user_id, is_public')
-        .eq('user_id', user?.id)
+        .eq('user_id', user?.id ?? '')
         .eq('status', 'archived')
         .order('meeting_date', { ascending: false });
 
@@ -63,7 +63,7 @@ export function MeetingArchiveView({ onBack }: MeetingArchiveViewProps) {
       const { data: participantMeetings, error: participantError } = await supabase
         .from('meeting_participants')
         .select('meeting_id, meetings(id, title, description, meeting_date, location, status, created_at, updated_at, user_id, is_public)')
-        .eq('user_id', user?.id);
+        .eq('user_id', user?.id ?? '');
 
       if (participantError) {
         debugConsole.error('Error loading participant meetings:', participantError);
