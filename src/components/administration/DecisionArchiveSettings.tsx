@@ -45,7 +45,7 @@ export const DecisionArchiveSettings = () => {
       if (!user) return;
 
       const { data, error } = await supabase
-        .from('decision_archive_settings' as any)
+        .from('decision_archive_settings')
         .select('auto_archive_on_completion, auto_archive_days, auto_delete_after_days')
         .eq('user_id', user.id)
         .eq('tenant_id', currentTenant.id)
