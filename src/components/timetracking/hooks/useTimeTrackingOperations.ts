@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import type { Database } from "@/integrations/supabase/types";
 import { toast } from "sonner";
 import { format, parseISO, eachDayOfInterval } from "date-fns";
 import type { TimeEntryRow, LeaveRow } from "../types";
