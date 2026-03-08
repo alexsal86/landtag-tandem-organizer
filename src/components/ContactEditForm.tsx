@@ -259,7 +259,7 @@ export function ContactEditForm({ contact, onSuccess, onCancel }: ContactEditFor
       // Handle organization creation if needed
       if (formData.contact_type === 'person' && !formData.organization_id && formData.organization && formData.organization.trim()) {
         try {
-          console.log('Creating new organization:', formData.organization.trim());
+          debugConsole.log('Creating new organization:', formData.organization.trim());
           
           // Create new organization
           const { data: newOrg, error: orgError } = await supabase
