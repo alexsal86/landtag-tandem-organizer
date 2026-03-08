@@ -333,7 +333,7 @@ const SimpleLeafletMap: React.FC<LeafletKarlsruheMapProps> = ({
               return;
             }
           } else {
-            console.warn('center_coordinates is not an object:', boundaryDistrict.center_coordinates);
+            debugConsole.warn('center_coordinates is not an object:', boundaryDistrict.center_coordinates);
             return;
           }
           
