@@ -10,6 +10,7 @@ import { useTenant } from "@/hooks/useTenant";
 import { supabase } from "@/integrations/supabase/client";
 import { format, addMonths, startOfDay } from "date-fns";
 import { de } from "date-fns/locale";
+import { debugConsole } from "@/utils/debugConsole";
 
 interface EmployeeMeetingSchedulerProps {
   employeeId: string;
@@ -125,7 +126,7 @@ export function EmployeeMeetingScheduler({
         .eq("status", "pending");
 
       if (requestUpdateError) {
-        console.error("Error auto-resolving meeting requests:", requestUpdateError);
+        debugConsole.error("Error auto-resolving meeting requests:", requestUpdateError);
       }
 
       // Create calendar entry if checkbox is active
@@ -154,7 +155,7 @@ export function EmployeeMeetingScheduler({
           });
 
         if (calendarError) {
-          console.error("Calendar entry error:", calendarError);
+          debugConsole.error("Calendar entry error:", calendarError);
           toast({
             title: "Hinweis",
             description: "Gespräch erstellt, aber Kalendereintrag konnte nicht angelegt werden",
@@ -179,7 +180,7 @@ export function EmployeeMeetingScheduler({
       // Navigate to meeting protocol
       navigate(`/employee-meeting/${meeting.id}`);
     } catch (error: unknown) {
-      console.error("Error scheduling meeting:", error);
+      debugConsole.error("Error scheduling meeting:", error);
       toast({
         title: "Fehler",
         description: error instanceof Error ? error.message : "Gespräch konnte nicht geplant werden",

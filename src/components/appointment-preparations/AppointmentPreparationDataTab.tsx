@@ -1,4 +1,5 @@
 import { useState, useCallback, useEffect } from "react";
+import { debugConsole } from "@/utils/debugConsole";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -132,7 +133,7 @@ export function AppointmentPreparationDataTab({
         });
       }
     } catch (error) {
-      console.error("Error fetching appointment details:", error);
+      debugConsole.error("Error fetching appointment details:", error);
     }
   };
 
@@ -149,7 +150,7 @@ export function AppointmentPreparationDataTab({
       if (error) throw error;
       setContacts(data || []);
     } catch (error) {
-      console.error("Error fetching contacts:", error);
+      debugConsole.error("Error fetching contacts:", error);
     }
   };
 
@@ -179,7 +180,7 @@ export function AppointmentPreparationDataTab({
         description: "Terminvorbereitung wurde erfolgreich gespeichert.",
       });
     } catch (error) {
-      console.error("Error saving preparation:", error);
+      debugConsole.error("Error saving preparation:", error);
       toast({
         title: "Fehler",
         description: "Fehler beim Speichern der Terminvorbereitung.",
@@ -266,7 +267,7 @@ export function AppointmentPreparationDataTab({
           description: "Änderungen wurden automatisch gespeichert.",
         });
       } catch (error) {
-        console.error("Error saving preparation data:", error);
+        debugConsole.error("Error saving preparation data:", error);
         toast({
           title: "Fehler",
           description: "Fehler beim Speichern der Änderungen.",

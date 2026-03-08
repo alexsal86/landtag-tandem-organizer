@@ -6,6 +6,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Badge } from "@/components/ui/badge";
 import { CheckSquareIcon, PlusIcon, TrashIcon, SaveIcon } from "lucide-react";
 import { AppointmentPreparation } from "@/hooks/useAppointmentPreparation";
+import { debugConsole } from "@/utils/debugConsole";
 
 interface AppointmentPreparationChecklistTabProps {
   preparation: AppointmentPreparation;
@@ -30,7 +31,7 @@ export function AppointmentPreparationChecklistTab({
       setSaving(true);
       await onUpdate({ checklist_items: updatedItems });
     } catch (error) {
-      console.error("Error updating checklist item:", error);
+      debugConsole.error("Error updating checklist item:", error);
       // Revert on error
       setChecklistItems(preparation.checklist_items || []);
     } finally {
@@ -55,7 +56,7 @@ export function AppointmentPreparationChecklistTab({
       setSaving(true);
       await onUpdate({ checklist_items: updatedItems });
     } catch (error) {
-      console.error("Error adding checklist item:", error);
+      debugConsole.error("Error adding checklist item:", error);
       // Revert on error
       setChecklistItems(preparation.checklist_items || []);
       setNewItemLabel(newItem.label);
@@ -72,7 +73,7 @@ export function AppointmentPreparationChecklistTab({
       setSaving(true);
       await onUpdate({ checklist_items: updatedItems });
     } catch (error) {
-      console.error("Error deleting checklist item:", error);
+      debugConsole.error("Error deleting checklist item:", error);
       // Revert on error
       setChecklistItems(preparation.checklist_items || []);
     } finally {

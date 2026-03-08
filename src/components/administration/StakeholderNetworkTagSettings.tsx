@@ -6,6 +6,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
+import { debugConsole } from "@/utils/debugConsole";
 
 const SETTINGS_KEY = "stakeholder_network_tag_synonyms";
 
@@ -99,7 +100,7 @@ export function StakeholderNetworkTagSettings() {
 
       toast({ title: "Gespeichert", description: "Tag-Synonyme wurden aktualisiert." });
     } catch (error) {
-      console.error("Error saving stakeholder network tag synonyms:", error);
+      debugConsole.error("Error saving stakeholder network tag synonyms:", error);
       toast({
         title: "Fehler",
         description: "Tag-Synonyme konnten nicht gespeichert werden.",

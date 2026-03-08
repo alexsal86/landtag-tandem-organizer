@@ -10,6 +10,7 @@ import { MessageCircle, Bell, Send, Reply } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+import { debugConsole } from "@/utils/debugConsole";
 import { SidebarDiscussionComment } from "./types";
 import { formatDistanceToNow } from "date-fns";
 import { de } from "date-fns/locale";
@@ -109,7 +110,7 @@ export function MyWorkDecisionSidebar({
       setRespondingTo(null);
       onResponseSent?.();
     } catch (error) {
-      console.error('Error sending response:', error);
+      debugConsole.error('Error sending response:', error);
       toast.error("Fehler beim Senden");
     } finally {
       setIsLoading(false);

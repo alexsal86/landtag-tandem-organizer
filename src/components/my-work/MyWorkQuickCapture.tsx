@@ -8,6 +8,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { useTenant } from "@/hooks/useTenant";
 import { useToast } from "@/hooks/use-toast";
+import { debugConsole } from "@/utils/debugConsole";
 import { cn } from "@/lib/utils";
 import SimpleRichTextEditor from "@/components/ui/SimpleRichTextEditor";
 import { MentionSharePromptDialog } from "@/components/shared/MentionSharePromptDialog";
@@ -107,7 +108,7 @@ export function MyWorkQuickCapture({ onNoteSaved }: MyWorkQuickCaptureProps) {
       resetQuickCaptureForm();
       onNoteSaved?.();
     } catch (error) {
-      console.error("Error saving note:", error);
+      debugConsole.error("Error saving note:", error);
       toast({ title: "Fehler beim Speichern", variant: "destructive" });
     } finally {
       setSaving(false);
@@ -162,7 +163,7 @@ export function MyWorkQuickCapture({ onNoteSaved }: MyWorkQuickCaptureProps) {
       resetQuickCaptureForm();
       onNoteSaved?.();
     } catch (error) {
-      console.error("Error saving as task:", error);
+      debugConsole.error("Error saving as task:", error);
       toast({ title: "Fehler beim Speichern", variant: "destructive" });
     } finally {
       setSavingAsTask(false);

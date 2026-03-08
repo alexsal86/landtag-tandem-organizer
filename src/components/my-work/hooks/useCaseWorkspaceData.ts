@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import { supabase } from "@/integrations/supabase/client";
+import { debugConsole } from "@/utils/debugConsole";
 import type { CaseItemIntakePayload } from "@/features/cases/items/types";
 
 export type CaseItem = {
@@ -156,7 +157,7 @@ export const useCaseWorkspaceData = ({ tenantId, userId }: { tenantId?: string; 
         hasMoreFiles: files.length === PAGE_SIZE,
       });
     } catch (error) {
-      console.error("Failed to refresh case workspace data:", error);
+      debugConsole.error("Failed to refresh case workspace data:", error);
       setCaseItems([]);
       setCaseFiles([]);
       setTeamUsers([]);

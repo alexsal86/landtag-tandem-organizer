@@ -5,6 +5,7 @@
  */
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
+import { debugConsole } from '@/utils/debugConsole';
 import * as React from 'react';
 import * as ReactDOM from 'react-dom';
 import { useLexicalComposerContext } from '@lexical/react/LexicalComposerContext';
@@ -152,7 +153,7 @@ export function MentionsPlugin({ onMentionInsert }: MentionsPluginProps = {}): R
           })),
         );
       } catch (error) {
-        console.error('Error fetching users for mentions:', error);
+        debugConsole.error('Error fetching users for mentions:', error);
       }
     };
 

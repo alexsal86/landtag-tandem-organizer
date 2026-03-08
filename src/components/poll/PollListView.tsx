@@ -13,6 +13,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { useToast } from '@/hooks/use-toast';
 import { PollResultsDashboard } from './PollResultsDashboard';
 import { PollEditDialog } from './PollEditDialog';
+import { debugConsole } from '@/utils/debugConsole';
 import { AppointmentPollCreator } from './AppointmentPollCreator';
 
 interface Poll {
@@ -136,7 +137,7 @@ export const PollListView = () => {
 
       setPolls(sortedPolls);
     } catch (error) {
-      console.error('Error loading polls:', error);
+      debugConsole.error('Error loading polls:', error);
       toast({
         title: "Fehler",
         description: "Die Abstimmungen konnten nicht geladen werden.",
@@ -201,7 +202,7 @@ export const PollListView = () => {
 
       loadPolls();
     } catch (error) {
-      console.error('Error restoring poll:', error);
+      debugConsole.error('Error restoring poll:', error);
       toast({
         title: "Fehler",
         description: "Die Abstimmung konnte nicht wiederhergestellt werden.",
@@ -230,7 +231,7 @@ export const PollListView = () => {
 
       loadPolls();
     } catch (error) {
-      console.error('Error permanently deleting poll:', error);
+      debugConsole.error('Error permanently deleting poll:', error);
       toast({
         title: "Fehler",
         description: "Die Abstimmung konnte nicht gelöscht werden.",
@@ -248,7 +249,7 @@ export const PollListView = () => {
         description: "Der Abstimmungslink wurde in die Zwischenablage kopiert.",
       });
     } catch (error) {
-      console.error('Error copying poll link:', error);
+      debugConsole.error('Error copying poll link:', error);
       toast({
         title: "Fehler",
         description: "Der Link konnte nicht kopiert werden.",
@@ -287,7 +288,7 @@ export const PollListView = () => {
       // Reload polls
       loadPolls();
     } catch (error) {
-      console.error('Error deleting poll:', error);
+      debugConsole.error('Error deleting poll:', error);
       toast({
         title: "Fehler",
         description: "Die Abstimmung konnte nicht gelöscht werden.",

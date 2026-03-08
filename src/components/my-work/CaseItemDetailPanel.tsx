@@ -13,6 +13,7 @@ import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/component
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
 import SimpleRichTextEditor from "@/components/ui/SimpleRichTextEditor";
+import { debugConsole } from "@/utils/debugConsole";
 import type { EditableCaseItem, TimelineInteractionType } from "@/components/my-work/hooks/useCaseItemEdit";
 
 type TimelineEntry = {
@@ -144,7 +145,7 @@ export function CaseItemDetailPanel({
       if (requestId !== contactSearchRef.current) return;
 
       if (error) {
-        console.error("Error searching contacts:", error);
+        debugConsole.error("Error searching contacts:", error);
         setContactSearchResults([]);
       } else {
         setContactSearchResults((data ?? []) as Array<{ id: string; name: string; email: string | null; phone: string | null; organization: string | null }>);

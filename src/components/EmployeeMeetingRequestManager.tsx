@@ -13,6 +13,7 @@ import { formatDistanceToNow } from "date-fns";
 import { de } from "date-fns/locale";
 import { Calendar, CheckCircle2, Loader2, X, AlertCircle } from "lucide-react";
 import { EmployeeMeetingScheduler } from "./EmployeeMeetingScheduler";
+import { debugConsole } from "@/utils/debugConsole";
 
 interface MeetingRequestManagerProps {
   onPendingCountChange?: (count: number) => void;
@@ -132,7 +133,7 @@ export function EmployeeMeetingRequestManager({ onPendingCountChange }: MeetingR
       setRequests(enrichedRequests);
       onPendingCountChange?.(enrichedRequests.length);
     } catch (error: unknown) {
-      console.error("Error loading requests:", error);
+      debugConsole.error("Error loading requests:", error);
       toast({
         title: "Fehler",
         description: "Anfragen konnten nicht geladen werden",
@@ -215,7 +216,7 @@ export function EmployeeMeetingRequestManager({ onPendingCountChange }: MeetingR
       setSelectedRequest(null);
       loadRequests();
     } catch (error: unknown) {
-      console.error("Error declining request:", error);
+      debugConsole.error("Error declining request:", error);
       toast({
         title: "Fehler",
         description: "Anfrage konnte nicht abgelehnt werden",
@@ -245,7 +246,7 @@ export function EmployeeMeetingRequestManager({ onPendingCountChange }: MeetingR
 
       loadRequests();
     } catch (error: unknown) {
-      console.error("Error marking as completed:", error);
+      debugConsole.error("Error marking as completed:", error);
       toast({
         title: "Fehler",
         description: "Status konnte nicht aktualisiert werden",

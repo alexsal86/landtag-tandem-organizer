@@ -13,6 +13,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { useTenant } from '@/hooks/useTenant';
 import { useToast } from '@/hooks/use-toast';
+import { debugConsole } from '@/utils/debugConsole';
 import { useViewPreference } from '@/hooks/useViewPreference';
 import LetterEditor from './LetterEditor';
 import { LetterWizard } from './letters/LetterWizard';
@@ -88,7 +89,7 @@ const LettersView: React.FC = () => {
       if (error) throw error;
       setLetters(data as any || []);
     } catch (error) {
-      console.error('Error fetching letters:', error);
+      debugConsole.error('Error fetching letters:', error);
       toast({
         title: "Fehler",
         description: "Briefe konnten nicht geladen werden.",
@@ -175,7 +176,7 @@ const LettersView: React.FC = () => {
         if (error) throw error;
         setAvailableParentTasks((data || []) as ParentTaskOption[]);
       } catch (error) {
-        console.error('Error fetching parent tasks:', error);
+        debugConsole.error('Error fetching parent tasks:', error);
         setAvailableParentTasks([]);
         toast({
           title: 'Fehler',
@@ -261,7 +262,7 @@ const LettersView: React.FC = () => {
       });
       closeTaskDialog();
     } catch (error) {
-      console.error('Error creating task from letter:', error);
+      debugConsole.error('Error creating task from letter:', error);
       toast({
         title: 'Fehler',
         description: taskDialogMode === 'task'
@@ -292,7 +293,7 @@ const LettersView: React.FC = () => {
 
       fetchLetters();
     } catch (error) {
-      console.error('Error deleting letter:', error);
+      debugConsole.error('Error deleting letter:', error);
       toast({
         title: "Fehler",
         description: "Der Brief konnte nicht gelöscht werden.",

@@ -8,6 +8,7 @@ import { History, RotateCcw, Eye, Clock } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
+import { debugConsole } from '@/utils/debugConsole';
 
 interface DocumentVersion {
   id: string;
@@ -211,7 +212,7 @@ export function VersionHistoryPlugin({
 
       setVersions(versionsData);
     } catch (error) {
-      console.error('Error loading versions:', error);
+      debugConsole.error('Error loading versions:', error);
     }
   };
 
@@ -231,7 +232,7 @@ export function VersionHistoryPlugin({
         }
       }).then(({ data, error }) => {
         if (error) {
-          console.error('Error creating snapshot:', error);
+          debugConsole.error('Error creating snapshot:', error);
         } else {
           if (type === 'manual') {
             toast({
@@ -269,7 +270,7 @@ export function VersionHistoryPlugin({
       setShowHistory(false);
       setShowPreview(false);
     } catch (error) {
-      console.error('Error restoring version:', error);
+      debugConsole.error('Error restoring version:', error);
       toast({
         title: "Fehler",
         description: "Fehler beim Wiederherstellen der Version",

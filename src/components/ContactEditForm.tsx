@@ -13,6 +13,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { useTenant } from "@/hooks/useTenant";
 import { isValidEmail, findPotentialDuplicates, DuplicateMatch, type Contact as UtilContact } from "@/lib/utils";
 import { DuplicateWarning } from "@/components/DuplicateWarning";
+import { debugConsole } from "@/utils/debugConsole";
 import { TagInput } from "@/components/ui/tag-input";
 
 interface Contact {
@@ -106,7 +107,7 @@ export function ContactEditForm({ contact, onSuccess, onCancel }: ContactEditFor
       if (error) throw error;
       setOrganizations(data || []);
     } catch (error) {
-      console.error('Error fetching organizations:', error);
+      debugConsole.error('Error fetching organizations:', error);
     }
   };
 
@@ -127,7 +128,7 @@ export function ContactEditForm({ contact, onSuccess, onCancel }: ContactEditFor
         organization: c.organization,
       })) || []);
     } catch (error) {
-      console.error('Error fetching existing contacts:', error);
+      debugConsole.error('Error fetching existing contacts:', error);
     }
   };
 
@@ -148,7 +149,7 @@ export function ContactEditForm({ contact, onSuccess, onCancel }: ContactEditFor
       });
       setAllTags(Array.from(tagsSet));
     } catch (error) {
-      console.error('Error fetching tags:', error);
+      debugConsole.error('Error fetching tags:', error);
     }
   };
 
@@ -169,7 +170,7 @@ export function ContactEditForm({ contact, onSuccess, onCancel }: ContactEditFor
       
       setInheritedTags((data?.tags as string[]) || []);
     } catch (error) {
-      console.error('Error fetching inherited tags:', error);
+      debugConsole.error('Error fetching inherited tags:', error);
       setInheritedTags([]);
     }
   };
@@ -198,11 +199,11 @@ export function ContactEditForm({ contact, onSuccess, onCancel }: ContactEditFor
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    console.log('Form submitted with data:', formData);
-    console.log('User:', user?.id, 'Tenant:', currentTenant?.id);
+    debugConsole.log('Form submitted with data:', formData);
+    debugConsole.log('User:', user?.id, 'Tenant:', currentTenant?.id);
     
     if (formData.email && !validateEmail(formData.email)) {
-      console.log('Email validation failed');
+      debugConsole.log('Email validation failed');
       return;
     }
 
@@ -216,12 +217,12 @@ export function ContactEditForm({ contact, onSuccess, onCancel }: ContactEditFor
     const duplicates = checkForDuplicates(currentContactData);
     
     if (duplicates.length > 0 && !showDuplicateWarning) {
-      console.log('Duplicate warning shown');
+      debugConsole.log('Duplicate warning shown');
       setShowDuplicateWarning(true);
       return;
     }
 
-    console.log('Proceeding with update');
+    debugConsole.log('Proceeding with update');
     await performUpdate();
   };
 

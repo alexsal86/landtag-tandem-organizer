@@ -71,7 +71,7 @@ export function CaseFileNextSteps({
       .neq("status", "cancelled");
 
     if (error) {
-      console.error("Error checking child tasks before completion:", error);
+      debugConsole.error("Error checking child tasks before completion:", error);
       toast({
         title: "Aufgabe konnte nicht abgeschlossen werden",
         description: "Bitte versuchen Sie es erneut.",

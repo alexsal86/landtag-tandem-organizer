@@ -13,6 +13,7 @@ import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
+import { debugConsole } from "@/utils/debugConsole";
 import { supabase } from "@/integrations/supabase/client";
 import { MatrixMorningSettings } from "./MatrixMorningSettings";
 import { MatrixLoginForm } from "./chat/MatrixLoginForm";
@@ -59,7 +60,7 @@ export const MatrixSettings: React.FC = () => {
           .order("created_at", { ascending: false });
 
         if (subsError) {
-          console.error("Error loading Matrix subscriptions:", subsError);
+          debugConsole.error("Error loading Matrix subscriptions:", subsError);
         } else {
           setSubscriptions(subs || []);
         }
@@ -73,14 +74,14 @@ export const MatrixSettings: React.FC = () => {
           .single();
 
         if (settingsError && settingsError.code !== "PGRST116") {
-          console.error("Error loading Matrix settings:", settingsError);
+          debugConsole.error("Error loading Matrix settings:", settingsError);
         } else {
           setSettings({
             matrix_enabled: userSettings?.matrix_enabled || false,
           });
         }
       } catch (error) {
-        console.error("Error loading Matrix data:", error);
+        debugConsole.error("Error loading Matrix data:", error);
         toast({
           title: "Fehler",
           description: "Matrix-Einstellungen konnten nicht geladen werden.",
@@ -128,7 +129,7 @@ export const MatrixSettings: React.FC = () => {
         .single();
 
       if (error) {
-        console.error("Error adding Matrix subscription:", error);
+        debugConsole.error("Error adding Matrix subscription:", error);
         toast({
           title: "Fehler",
           description:
@@ -148,7 +149,7 @@ export const MatrixSettings: React.FC = () => {
         description: "Matrix-Abonnement wurde hinzugefügt.",
       });
     } catch (error) {
-      console.error("Error adding subscription:", error);
+      debugConsole.error("Error adding subscription:", error);
       toast({
         title: "Fehler",
         description: "Ein unerwarteter Fehler ist aufgetreten.",
@@ -169,7 +170,7 @@ export const MatrixSettings: React.FC = () => {
         .eq("id", subscriptionId);
 
       if (error) {
-        console.error("Error removing subscription:", error);
+        debugConsole.error("Error removing subscription:", error);
         toast({
           title: "Fehler",
           description: "Abonnement konnte nicht entfernt werden.",
@@ -186,7 +187,7 @@ export const MatrixSettings: React.FC = () => {
         description: "Matrix-Abonnement wurde entfernt.",
       });
     } catch (error) {
-      console.error("Error removing subscription:", error);
+      debugConsole.error("Error removing subscription:", error);
       toast({
         title: "Fehler",
         description: "Ein unerwarteter Fehler ist aufgetreten.",
@@ -210,7 +211,7 @@ export const MatrixSettings: React.FC = () => {
         .eq("id", subscriptionId);
 
       if (error) {
-        console.error("Error updating subscription:", error);
+        debugConsole.error("Error updating subscription:", error);
         toast({
           title: "Fehler",
           description: "Abonnement-Status konnte nicht geändert werden.",
@@ -230,7 +231,7 @@ export const MatrixSettings: React.FC = () => {
         description: `Matrix-Abonnement wurde ${isActive ? "aktiviert" : "deaktiviert"}.`,
       });
     } catch (error) {
-      console.error("Error updating subscription:", error);
+      debugConsole.error("Error updating subscription:", error);
       toast({
         title: "Fehler",
         description: "Ein unerwarteter Fehler ist aufgetreten.",
@@ -264,7 +265,7 @@ export const MatrixSettings: React.FC = () => {
         );
 
       if (error) {
-        console.error("Error updating Matrix settings:", error);
+        debugConsole.error("Error updating Matrix settings:", error);
         toast({
           title: "Fehler",
           description: "Matrix-Einstellungen konnten nicht gespeichert werden.",
@@ -279,7 +280,7 @@ export const MatrixSettings: React.FC = () => {
         description: `Matrix-Benachrichtigungen wurden ${enabled ? "aktiviert" : "deaktiviert"}.`,
       });
     } catch (error) {
-      console.error("Error updating settings:", error);
+      debugConsole.error("Error updating settings:", error);
       toast({
         title: "Fehler",
         description: "Ein unerwarteter Fehler ist aufgetreten.",
@@ -325,7 +326,7 @@ export const MatrixSettings: React.FC = () => {
       );
 
       if (error) {
-        console.error("Error testing Matrix:", error);
+        debugConsole.error("Error testing Matrix:", error);
         toast({
           title: "Test fehlgeschlagen",
           description:
@@ -341,7 +342,7 @@ export const MatrixSettings: React.FC = () => {
           data.message || "Matrix-Test wurde erfolgreich durchgeführt!",
       });
     } catch (error) {
-      console.error("Error testing Matrix:", error);
+      debugConsole.error("Error testing Matrix:", error);
       toast({
         title: "Test fehlgeschlagen",
         description: "Ein unerwarteter Fehler ist aufgetreten.",
