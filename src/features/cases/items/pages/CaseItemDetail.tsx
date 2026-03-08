@@ -202,14 +202,14 @@ const CaseItemDetail = () => {
 
     const { data } = await supabase
       .from("case_files")
-      .insert({
+      .insert([{
         tenant_id: currentTenant.id,
         user_id: user.id,
         title: newCaseFileTitle.trim(),
         status: "active",
         case_type: "general",
         case_scale: "large",
-      })
+      }])
       .select("id")
       .single();
 

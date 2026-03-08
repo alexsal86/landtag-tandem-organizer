@@ -192,13 +192,13 @@ export function CaseFileSelector({
       // Create new case file
       const { data: newCaseFile, error: createError } = await supabase
         .from('case_files')
-        .insert({
+        .insert([{
           title: newTitle.trim(),
           tenant_id: currentTenant.id,
           user_id: user.id,
           status: 'active',
           case_type: 'general',
-        })
+        }])
         .select('id')
         .single();
       
