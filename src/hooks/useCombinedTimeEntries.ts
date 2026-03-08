@@ -241,7 +241,7 @@ export function useCombinedTimeEntries({
               });
             });
         } catch (e) {
-          console.error('Error processing vacation leave:', e);
+          debugConsole.error('Error processing vacation leave:', e);
         }
       });
 
