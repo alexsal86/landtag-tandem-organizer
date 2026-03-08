@@ -106,7 +106,7 @@ export function useAppointmentPreparation(preparationId: string | undefined) {
       // Refresh data after update
       await fetchPreparation();
     } catch (err) {
-      console.error('Error updating preparation:', err);
+      debugConsole.error('Error updating preparation:', err);
       throw err;
     }
   };
