@@ -292,7 +292,7 @@ export function useAgendaOperations(deps: AgendaOpsDeps) {
       }
       toast({ title: "Unterpunkt hinzugefügt", description: `Unterpunkt wurde zu "${parent.title}" hinzugefügt.` });
     } catch (error) {
-      console.error('Error saving sub-item:', error);
+      debugConsole.error('Error saving sub-item:', error);
       toast({ title: "Fehler", description: "Unterpunkt konnte nicht gespeichert werden.", variant: "destructive" });
     }
   };
