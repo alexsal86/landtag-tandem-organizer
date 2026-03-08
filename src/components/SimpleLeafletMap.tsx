@@ -290,7 +290,7 @@ const SimpleLeafletMap: React.FC<LeafletKarlsruheMapProps> = ({
     if (showPartyAssociations && associations.length > 0) {
       
       associations.forEach((association) => {
-        console.log(`Processing association: ${association.name}, has boundary_districts:`, !!association.boundary_districts?.length);
+        debugConsole.log(`Processing association: ${association.name}, has boundary_districts:`, !!association.boundary_districts?.length);
         
         // Use boundary_districts directly from associations, independent of the districts array
         association.boundary_districts?.forEach((boundaryDistrict) => {
