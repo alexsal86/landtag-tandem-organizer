@@ -234,7 +234,7 @@ export function MyWorkCasesWorkspace() {
   const tenantId = currentTenant?.id;
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
-  const { createCaseItem } = useCaseItems();
+  const { createCaseItem, deleteCaseItem } = useCaseItems();
   const { caseFileTypes } = useCaseFileTypes();
   const { isHighlighted, highlightRef } = useNotificationHighlight();
 
