@@ -202,7 +202,7 @@ export function TasksView() {
       // Load assigned subtasks last, after users are loaded
       await loadAssignedSubtasks();
       
-      console.log('All data loaded');
+      
     };
     
     loadAllData();
