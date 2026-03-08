@@ -411,7 +411,7 @@ export function useTasksData() {
               title: checklistItemData?.title || subtask.description || 'Unterpunkt',
               task_title: planningTitle, source_type: 'planning' as const,
               checklist_item_title: checklistItemData?.title ?? null, planning_item_id: subtask.planning_item_id,
-              assigned_to_names: resolvedAssignedTo, assigned_to: [subtask.assigned_to]
+              assigned_to_names: resolvedAssignedTo, assigned_to: [subtask.assigned_to].filter(Boolean) as string[]
             });
           } catch {
             allSubtasks.push({
