@@ -456,7 +456,7 @@ export function MyWorkView() {
       {activeTab === "dashboard" && (
         <div className="space-y-6">
           <DashboardHeader />
-          <div className="grid grid-cols-1 lg:grid-cols-[3fr_2fr] 2xl:grid-cols-[3fr_2fr_2fr] gap-6 max-w-7xl items-start">
+          <div className="grid grid-cols-1 lg:grid-cols-[3fr_2fr] 2xl:grid-cols-[3fr_2fr_2fr] gap-6 items-start">
             <Card>
               <CardHeader className="pb-3">
                 <CardTitle className="text-base font-semibold">📋 Fristen</CardTitle>
