@@ -3,6 +3,8 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
 import type { CelebrationSettings } from '@/components/celebrations';
+import { debugConsole } from '@/utils/debugConsole';
+import type { CelebrationSettings } from '@/components/celebrations';
 
 interface AnimationDefinition {
   id: string;
