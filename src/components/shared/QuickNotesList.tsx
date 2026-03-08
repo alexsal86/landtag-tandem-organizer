@@ -455,7 +455,7 @@ export function QuickNotesList({
           });
           newNotified.push(note.id);
         } catch (e) {
-          console.error('Follow-up notification error:', e);
+          debugConsole.error('Follow-up notification error:', e);
         }
       });
       
