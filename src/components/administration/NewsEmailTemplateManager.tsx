@@ -67,7 +67,7 @@ export const NewsEmailTemplateManager: React.FC = () => {
         setTemplate(data);
       }
     } catch (error) {
-      console.error('Error loading template:', error);
+      debugConsole.error('Error loading template:', error);
       toast.error('Fehler beim Laden der Vorlage');
     } finally {
       setLoading(false);
