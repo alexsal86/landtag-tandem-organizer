@@ -307,8 +307,8 @@ export function SuperadminTenantManagement() {
       toast({ title: "Gelöscht", description: `${userToDelete.display_name} wurde entfernt` });
       loadTenants();
       loadAllUsers();
-    } catch (error: any) {
-      toast({ title: "Fehler", description: error.message, variant: "destructive" });
+    } catch (error: unknown) {
+      toast({ title: "Fehler", description: error instanceof Error ? error.message : "Löschen fehlgeschlagen", variant: "destructive" });
     }
   };
 
