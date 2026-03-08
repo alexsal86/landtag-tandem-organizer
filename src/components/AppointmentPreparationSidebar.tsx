@@ -118,7 +118,7 @@ export default function AppointmentPreparationSidebar({
         template_data: Array.isArray(template.template_data) ? template.template_data : []
       })));
     } catch (error) {
-      console.error('Error fetching templates:', error);
+      debugConsole.error('Error fetching templates:', error);
     }
   };
 
