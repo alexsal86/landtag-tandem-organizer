@@ -84,7 +84,7 @@ export function useTimeTrackingOperations({
     if (pause > MAX_PAUSE_MINUTES) { toast.error(`Die Pause darf maximal ${MAX_PAUSE_MINUTES} Minuten betragen`); return; }
     try {
       await validateDailyLimit(entryDate, gross);
-      await supabase.from("time_entries").insert({ user_id: userId, work_date: entryDate, started_at: start.toISOString(), ended_at: end.toISOString(), minutes: gross - pause, pause_minutes: pause, notes: notes || null });
+      await supabase.from("time_entries").insert([{ user_id: userId, work_date: entryDate, started_at: start.toISOString(), ended_at: end.toISOString(), minutes: gross - pause, pause_minutes: pause, notes: notes || null }]);
       toast.success("Gespeichert"); resetEntryForm(); loadData();
     } catch (error: unknown) { toast.error(error instanceof Error ? error.message : "Fehler beim Speichern"); }
   };
