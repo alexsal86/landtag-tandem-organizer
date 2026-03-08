@@ -322,7 +322,7 @@ export function useTasksData() {
         }))
       ]);
     } catch (error) {
-      console.error('Error loading all snoozes:', error);
+      debugConsole.error('Error loading all snoozes:', error);
     }
   };
 
