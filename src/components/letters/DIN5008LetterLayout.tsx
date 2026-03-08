@@ -830,7 +830,7 @@ export const DIN5008LetterLayout: React.FC<DIN5008LetterLayoutProps> = ({
               backgroundColor: debugMode ? 'rgba(0,255,0,0.02)' : 'transparent',
               overflow: 'hidden'
             }}
-            dangerouslySetInnerHTML={{ __html: content }}
+            dangerouslySetInnerHTML={{ __html: sanitizeRichHtml(content) }}
             className="din5008-content-text"
           />
         </>
