@@ -58,7 +58,7 @@ export function usePDFData(letter: Letter) {
           setAttachments(data || []);
         }
       } catch (error) {
-        console.error('Error fetching data:', error);
+        debugConsole.error('Error fetching data:', error);
       }
     };
 

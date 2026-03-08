@@ -33,7 +33,7 @@ export function useDecisionComments(decisionIds: string[]) {
 
       setCommentCounts(counts);
     } catch (error) {
-      console.error('Error loading comment counts:', error);
+      debugConsole.error('Error loading comment counts:', error);
     } finally {
       setIsLoading(false);
     }

@@ -91,7 +91,7 @@ export const useContactDocumentCounts = (contactIds: string[]) => {
 
         setCounts(finalCounts);
       } catch (error) {
-        console.error('Error fetching document counts:', error);
+        debugConsole.error('Error fetching document counts:', error);
         setCounts({});
       } finally {
         setLoading(false);

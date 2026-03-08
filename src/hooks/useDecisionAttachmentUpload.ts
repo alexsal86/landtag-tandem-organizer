@@ -124,7 +124,7 @@ async function uploadOneFile(
     try {
       emailMeta = (await parseMsgFile(file)).metadata;
     } catch (error) {
-      console.error('MSG parse error during upload:', error);
+      debugConsole.error('MSG parse error during upload:', error);
     }
   }
 

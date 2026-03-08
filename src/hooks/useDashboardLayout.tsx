@@ -251,7 +251,7 @@ export function useDashboardLayout() {
           setLayouts([defaultLayout]);
         }
       } catch (localError) {
-        console.warn('Failed to load from localStorage fallback:', localError);
+        debugConsole.warn('Failed to load from localStorage fallback:', localError);
         setCurrentLayout(defaultLayout);
         setLayouts([defaultLayout]);
       }

@@ -2,6 +2,16 @@ import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import type { Contact, LetterTemplate, LetterCollaborator, Letter } from '../types';
 import { debugConsole } from '@/utils/debugConsole';
+import type { Database } from '@/integrations/supabase/types';
+
+type SenderInformation = Database['public']['Tables']['sender_information']['Row'];
+type InformationBlock = Database['public']['Tables']['information_blocks']['Row'];
+type LetterAttachment = Database['public']['Tables']['letter_attachments']['Row'];
+type LetterCommentRow = Database['public']['Tables']['letter_comments']['Row'];
+
+interface LetterComment extends Pick<LetterCommentRow, 'id' | 'content' | 'text_position' | 'text_length' | 'resolved' | 'comment_type' | 'created_at' | 'user_id'> {
+  profiles?: { display_name: string } | null;
+}
 
 interface UseLetterDataOptions {
   isOpen: boolean;
@@ -12,11 +22,11 @@ interface UseLetterDataOptions {
 export function useLetterData({ isOpen, tenantId, letterId }: UseLetterDataOptions) {
   const [contacts, setContacts] = useState<Contact[]>([]);
   const [templates, setTemplates] = useState<LetterTemplate[]>([]);
-  const [senderInfos, setSenderInfos] = useState<any[]>([]);
-  const [informationBlocks, setInformationBlocks] = useState<any[]>([]);
-  const [attachments, setAttachments] = useState<any[]>([]);
+  const [senderInfos, setSenderInfos] = useState<SenderInformation[]>([]);
+  const [informationBlocks, setInformationBlocks] = useState<InformationBlock[]>([]);
+  const [attachments, setAttachments] = useState<LetterAttachment[]>([]);
   const [collaborators, setCollaborators] = useState<LetterCollaborator[]>([]);
-  const [comments, setComments] = useState<any[]>([]);
+  const [comments, setComments] = useState<LetterComment[]>([]);
   const [userProfiles, setUserProfiles] = useState<Record<string, { display_name: string; avatar_url?: string }>>({});
 
   const fetchContacts = useCallback(async () => {
