@@ -171,7 +171,7 @@ export default function AppointmentPreparationTemplateAdmin() {
       await supabase
         .from('appointment_preparation_templates')
         .update({ is_default: false })
-        .eq('tenant_id', currentTenant?.id);
+        .eq('tenant_id', currentTenant?.id ?? '');
 
       // Then set the new default
       const { error } = await supabase
