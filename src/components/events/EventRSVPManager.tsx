@@ -106,7 +106,7 @@ export const EventRSVPManager = ({ eventPlanningId, eventTitle }: EventRSVPManag
         notes_sent: (r.notes_sent as any[]) ?? [],
       })));
     } catch (error) {
-      console.error('Error loading RSVPs:', error);
+      debugConsole.error('Error loading RSVPs:', error);
     } finally {
       setLoading(false);
     }
