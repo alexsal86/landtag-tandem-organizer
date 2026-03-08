@@ -275,7 +275,7 @@ export function AppointmentDetailsSidebar({
           .insert(guestEntries);
 
         if (guestsError) {
-          console.error('Error saving guests:', guestsError);
+          debugConsole.error('Error saving guests:', guestsError);
         } else {
           // Automatically send invitations to all guests
           try {
