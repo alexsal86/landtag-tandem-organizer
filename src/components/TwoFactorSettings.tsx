@@ -79,11 +79,12 @@ export function TwoFactorSettings() {
         setSetupStep("qr");
         setShowSetupDialog(true);
       }
-    } catch (error: any) {
-      setError(error.message);
+    } catch (error: unknown) {
+      const msg = error instanceof Error ? error.message : String(error);
+      setError(msg);
       toast({
         title: "Fehler",
-        description: "2FA-Setup konnte nicht gestartet werden: " + error.message,
+        description: "2FA-Setup konnte nicht gestartet werden: " + msg,
         variant: "destructive"
       });
     } finally {
