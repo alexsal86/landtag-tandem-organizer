@@ -345,7 +345,7 @@ export function AdminTimeTrackingView() {
 
         const netMinutes = grossMinutes - pause;
         
-        const { error } = await supabase.from("time_entries").insert({
+        const { error } = await supabase.from("time_entries").insert([{
           user_id: selectedUserId,
           work_date: newEntryDate,
           started_at: start.toISOString(),
@@ -356,7 +356,7 @@ export function AdminTimeTrackingView() {
           edited_by: user.id,
           edited_at: new Date().toISOString(),
           edit_reason: newEntryReason || "Admin-Eintrag",
-        });
+        }]);
         
         if (error) throw error;
         toast.success("Zeiteintrag erstellt");
