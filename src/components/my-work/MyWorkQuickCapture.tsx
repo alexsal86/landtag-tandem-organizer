@@ -69,14 +69,14 @@ export function MyWorkQuickCapture({ onNoteSaved }: MyWorkQuickCaptureProps) {
     
     setSaving(true);
     try {
-      const { data, error } = await supabase.from("quick_notes").insert({
+      const { data, error } = await supabase.from("quick_notes").insert([{
         user_id: user.id,
         title: title.trim() || null,
         content: stripHtml(content) ? content.trim() : "",
         color: selectedColor,
         is_pinned: isPinned,
         category: "general",
-      })
+      }])
       .select("id")
       .single();
 
