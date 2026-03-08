@@ -188,7 +188,7 @@ export function useMeetingSidebarData(deps: UseMeetingSidebarDataDeps) {
       });
       setStarredAppointmentIds(ids);
     } catch (error) {
-      console.error("Error loading starred appointments:", error);
+      debugConsole.error("Error loading starred appointments:", error);
     }
   };
 
