@@ -29,8 +29,6 @@ export function MultiSelect({
   const [open, setOpen] = React.useState(false)
   const [search, setSearch] = React.useState("")
 
-  console.log('🔍 MultiSelect Simple render:', { options, selected, placeholder });
-
   const handleUnselect = (item: string) => {
     onChange((selected || []).filter((i) => i !== item))
   }

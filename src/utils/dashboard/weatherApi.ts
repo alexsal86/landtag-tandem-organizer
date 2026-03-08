@@ -40,15 +40,11 @@ export const getWeather = async (lat: number, lon: number): Promise<WeatherData 
     
     const data: BrightSkyResponse = await response.json();
     
-    console.log('🌤️ Weather API Response:', data.weather);
-    
     const weatherData: WeatherData = {
       temperature: Math.round(data.weather.temperature),
       condition: data.weather.condition,
       icon: data.weather.icon
     };
-    
-    console.log('🌤️ Weather Data prepared:', weatherData);
     
     weatherCache.set(cacheKey, { data: weatherData, timestamp: Date.now() });
     
@@ -79,16 +75,12 @@ export const getWeatherIcon = (condition: string): string => {
 };
 
 export const translateCondition = (condition: string): string => {
-  console.log('🌤️ Translating condition:', condition);
-  
   const translations: Record<string, string> = {
-    // Icon-based conditions (from icon field)
     'clear-day': 'Sonnig',
     'clear-night': 'Klar',
     'partly-cloudy-day': 'Teilweise bewölkt',
     'partly-cloudy-night': 'Teilweise bewölkt',
     'cloudy': 'Bewölkt',
-    // DWD Bright Sky API conditions (from condition field)
     'dry': 'Trocken',
     'fog': 'Nebel',
     'wind': 'Windig',
@@ -97,7 +89,6 @@ export const translateCondition = (condition: string): string => {
     'snow': 'Schnee',
     'hail': 'Hagel',
     'thunderstorm': 'Gewitter',
-    // Additional common weather states
     'mist': 'Nebel',
     'drizzle': 'Nieselregen',
     'showers': 'Schauer',
@@ -109,9 +100,5 @@ export const translateCondition = (condition: string): string => {
   };
   
   const normalizedCondition = condition.toLowerCase().trim();
-  const translated = translations[normalizedCondition] || 'Unbekannt';
-  
-  console.log('🌤️ Normalized:', normalizedCondition, '→ Translated:', translated);
-  
-  return translated;
+  return translations[normalizedCondition] || 'Unbekannt';
 };
