@@ -261,9 +261,7 @@ export function useDashboardLayout() {
 
   // Update widget position/size with improved persistence
   const updateWidget = (widgetId: string, updates: Partial<DashboardWidget>) => {
-    console.log('🔧 updateWidget called:', { widgetId, updates });
     if (!currentLayout) {
-      console.log('❌ No current layout available');
       return;
     }
 
