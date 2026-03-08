@@ -9,8 +9,8 @@ import { Label } from "@/components/ui/label";
 
 interface SnoozeItem {
   id: string;
-  task_id?: string;
-  subtask_id?: string;
+  task_id?: string | null;
+  subtask_id?: string | null;
   snoozed_until: string;
   task_title?: string;
   subtask_description?: string;
