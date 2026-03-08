@@ -233,6 +233,7 @@ export function useMyWorkJourFixeSystemData(userId?: string, tenantId?: string) 
     meetingTasks,
     meetingDecisions,
     meetingBirthdays,
+    meetingCaseItems,
     userProfiles,
     loadMeetingSystemData,
     setMounted,
