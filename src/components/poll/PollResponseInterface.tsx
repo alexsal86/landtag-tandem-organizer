@@ -95,7 +95,7 @@ export const PollResponseInterface = ({ pollId, token, participantId, isPreview 
           // Internal participant
           const { data: participantData, error: participantError } = await supabase
             .from('poll_participants')
-            .select('*')
+            .select('id, name, email, is_external, token')
             .eq('id', participantId)
             .single();
 
