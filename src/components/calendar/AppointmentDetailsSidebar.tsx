@@ -147,8 +147,6 @@ export function AppointmentDetailsSidebar({
         }
       });
 
-      console.log('Invitation response:', { data, error });
-
       if (error) throw error;
 
       // Update last invitation sent timestamp
