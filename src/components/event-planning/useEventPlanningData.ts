@@ -194,9 +194,9 @@ export function useEventPlanningData() {
   }, [selectedPlanning]);
 
   const fetchPlannings = async () => {
-    console.log('fetchPlannings called, user:', user, 'currentTenant:', currentTenant);
-    if (!user) { console.log('No user found, returning early'); return; }
-    if (!currentTenant || !currentTenant.id) { console.log('No currentTenant or currentTenant.id found, returning early'); return; }
+    debugConsole.log('fetchPlannings called, user:', user, 'currentTenant:', currentTenant);
+    if (!user) { debugConsole.log('No user found, returning early'); return; }
+    if (!currentTenant || !currentTenant.id) { debugConsole.log('No currentTenant or currentTenant.id found, returning early'); return; }
 
     try {
       setLoading(true);
