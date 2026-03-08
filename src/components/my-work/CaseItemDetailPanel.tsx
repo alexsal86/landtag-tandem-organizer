@@ -273,25 +273,26 @@ export function CaseItemDetailPanel({
 
           <div className="rounded-md border bg-background p-3">
             <p className="font-bold mb-3">Zeitstrahl</p>
-            <div className="relative space-y-5 pl-7">
+            <div className="relative space-y-4 pl-8">
               {timelineEntries.length === 0 ? (
                 <p className="text-xs text-muted-foreground">Noch keine Einträge im Zeitstrahl.</p>
               ) : (
                 <>
                   {timelineEntries.map((entry, index) => {
                     const isLastEntry = index === timelineEntries.length - 1;
+                    const isFrist = entry.title === "Frist";
                     return (
                       <div key={entry.id} className="relative">
-                        {!isLastEntry ? <span className="absolute -left-[14px] top-7 bottom-[-20px] w-0.5 bg-border" /> : null}
-                        <span className={`absolute -left-[24px] top-9 h-5 w-5 rounded-full ${entry.accentClass} flex items-center justify-center text-white`}>
+                        {/* Vertical line */}
+                        {!isLastEntry && <span className="absolute -left-[17px] top-6 bottom-[-16px] w-0.5 bg-border" />}
+                        {/* Circle — vertically centered to the date line */}
+                        <span className={`absolute -left-[27px] top-[2px] h-5 w-5 rounded-full ${entry.accentClass} flex items-center justify-center text-white`}>
                           {entry.icon ? <entry.icon className="h-3 w-3" /> : null}
                         </span>
-                        <div className={cn("group rounded border p-2 text-xs", entry.title === "Frist" && "border-amber-400/60 bg-amber-50/70 dark:border-amber-500/50 dark:bg-amber-950/20")}>
+                        <div className={cn("group py-1 text-xs", isFrist && "rounded-sm bg-amber-50/70 dark:bg-amber-950/20 px-2 py-1.5 -mx-1")}>
                           <p className="text-[10px] font-medium text-muted-foreground">{formatTimelineDateOnly(entry.timestamp)}</p>
                           <div className="flex items-start justify-between gap-2">
-                            <div>
-                              <p className="font-bold leading-4">{entry.title}</p>
-                            </div>
+                            <p className={cn("font-bold leading-4", isFrist && "text-amber-700 dark:text-amber-400")}>{entry.title}</p>
                             {entry.canDelete && entry.onDelete ? (
                               <TooltipProvider>
                                 <Tooltip>
@@ -327,7 +328,7 @@ export function CaseItemDetailPanel({
                             ) : null}
                           </div>
                           {entry.safeNoteHtml && <div className="mt-1 font-normal text-muted-foreground" dangerouslySetInnerHTML={{ __html: entry.safeNoteHtml }} />}
-                          <div className="mt-1 flex justify-end gap-1 text-[10px] text-muted-foreground/80">
+                          <div className="mt-0.5 flex justify-end gap-1 text-[10px] text-muted-foreground/80">
                             <span className="opacity-0 transition-opacity duration-200 ease-out group-hover:opacity-100 group-focus-within:opacity-100">{formatTimelineTimeOnly(entry.timestamp)} Uhr</span>
                           </div>
                         </div>
