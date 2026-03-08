@@ -1,4 +1,5 @@
 import { useState, useCallback, useEffect } from "react";
+import { debugConsole } from "@/utils/debugConsole";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
