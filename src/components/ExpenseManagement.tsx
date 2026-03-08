@@ -114,7 +114,7 @@ export const ExpenseManagement = () => {
     const lastDay = new Date(year, month, 0).getDate(); // Get actual last day of month
     const endDate = `${year}-${month.toString().padStart(2, '0')}-${lastDay.toString().padStart(2, '0')}`;
     
-    console.log('Loading expenses for date range:', startDate, 'to', endDate);
+    
     
     const { data, error } = await supabase
       .from("expenses")
