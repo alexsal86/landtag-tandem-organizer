@@ -192,7 +192,7 @@ export const AppointmentPollCreator = ({ onClose }: { onClose: () => void }) => 
       const creatorName = profile?.display_name || user.email || 'Unbekannt';
 
       // Create participants with improved error handling
-      console.log('Creating participants for poll:', poll.id);
+      
       const participantData = [];
       
       // Process each participant individually to avoid conflicts
