@@ -131,7 +131,7 @@ export const ExpenseManagement = () => {
       console.error('Error loading expenses:', error);
       toast({ title: "Fehler", description: "Ausgaben konnten nicht geladen werden", variant: "destructive" });
     } else {
-      console.log('Loaded expenses:', data?.length || 0);
+      
       setExpenses((data as Expense[]) || []);
     }
   };
