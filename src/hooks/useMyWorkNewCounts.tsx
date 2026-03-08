@@ -150,7 +150,7 @@ export function useMyWorkNewCounts(): MyWorkNewCountsResult {
         };
       });
     } catch (error) {
-      console.error('Error loading new counts via RPC:', error);
+      debugConsole.error('Error loading new counts via RPC:', error);
     } finally {
       if (isMountedRef.current) {
         setIsLoading(false);
