@@ -177,7 +177,7 @@ export function NoteDecisionCreator({
         }
       }
     } catch (error) {
-      console.error('Error loading profiles:', error);
+      debugConsole.error('Error loading profiles:', error);
       toast.error("Fehler beim Laden der Benutzer");
     } finally {
       setProfilesLoading(false);
