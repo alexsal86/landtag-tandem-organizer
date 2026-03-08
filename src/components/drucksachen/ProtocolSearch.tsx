@@ -59,8 +59,8 @@ export function ProtocolSearch({ protocolId, onResultSelect }: ProtocolSearchPro
       const speakers = [...new Set(data?.map(d => d.speaker_name).filter(Boolean) || [])];
       const parties = [...new Set(data?.map(d => d.speaker_party).filter(Boolean) || [])];
 
-      setAvailableSpeakers(speakers.sort());
-      setAvailableParties(parties.sort());
+      setAvailableSpeakers(speakers.filter((s): s is string => s !== null).sort());
+      setAvailableParties(parties.filter((p): p is string => p !== null).sort());
     } catch (error) {
       debugConsole.error('Error loading filter options:', error);
     }
