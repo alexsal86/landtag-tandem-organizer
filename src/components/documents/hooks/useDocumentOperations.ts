@@ -4,6 +4,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { useLetterArchiving } from "@/hooks/useLetterArchiving";
 import type { Document, Letter, ParentTaskOption } from "../types";
+import { debugConsole } from '@/utils/debugConsole';
 
 interface UseDocumentOperationsProps {
   user: any;
