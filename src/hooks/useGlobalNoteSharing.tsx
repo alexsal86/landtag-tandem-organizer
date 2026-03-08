@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { toast } from "sonner";
+import { debugConsole } from "@/utils/debugConsole";
 
 export interface GlobalNoteShare {
   id: string;
@@ -33,7 +34,6 @@ export const useGlobalNoteSharing = () => {
 
       if (error) throw error;
 
-      // Load user profiles for shared users
       if (data && data.length > 0) {
         const userIds = data.map((s) => s.shared_with_user_id);
         const { data: profiles } = await supabase
@@ -52,7 +52,7 @@ export const useGlobalNoteSharing = () => {
         setGlobalShares([]);
       }
     } catch (error) {
-      console.error("Error loading global shares:", error);
+      debugConsole.error("Error loading global shares:", error);
     } finally {
       setLoading(false);
     }
@@ -88,7 +88,7 @@ export const useGlobalNoteSharing = () => {
       loadGlobalShares();
       return true;
     } catch (error) {
-      console.error("Error adding global share:", error);
+      debugConsole.error("Error adding global share:", error);
       toast.error("Fehler beim Freigeben");
       return false;
     }
@@ -96,18 +96,18 @@ export const useGlobalNoteSharing = () => {
 
   const removeGlobalShare = async (shareId: string) => {
     if (!shareId) {
-      console.error("No share ID provided for removal");
+      debugConsole.error("No share ID provided for removal");
       toast.error("Fehler: Keine Freigabe-ID");
       return false;
     }
 
     if (!user) {
-      console.error("No user authenticated for share removal");
+      debugConsole.error("No user authenticated for share removal");
       toast.error("Fehler: Nicht authentifiziert");
       return false;
     }
 
-    console.log("Attempting to remove global share:", shareId);
+    debugConsole.log("Attempting to remove global share:", shareId);
     
     try {
       const { error, data } = await supabase
@@ -118,14 +118,14 @@ export const useGlobalNoteSharing = () => {
         .select();
 
       if (error) {
-        console.error("Supabase delete error:", error);
+        debugConsole.error("Supabase delete error:", error);
         throw error;
       }
 
-      console.log("Deleted share result:", data);
+      debugConsole.log("Deleted share result:", data);
       
       if (!data || data.length === 0) {
-        console.warn("No share found with ID:", shareId);
+        debugConsole.warn("No share found with ID:", shareId);
         toast.error("Freigabe nicht gefunden");
         return false;
       }
@@ -134,7 +134,7 @@ export const useGlobalNoteSharing = () => {
       loadGlobalShares();
       return true;
     } catch (error) {
-      console.error("Error removing global share:", error);
+      debugConsole.error("Error removing global share:", error);
       toast.error("Fehler beim Entfernen der Freigabe");
       return false;
     }
@@ -146,7 +146,7 @@ export const useGlobalNoteSharing = () => {
       return false;
     }
 
-    console.log("Updating global permission:", { shareId, permissionType, userId: user.id });
+    debugConsole.log("Updating global permission:", { shareId, permissionType, userId: user.id });
 
     try {
       const { data, error } = await supabase
@@ -156,23 +156,22 @@ export const useGlobalNoteSharing = () => {
         .eq("user_id", user.id)
         .select();
 
-      console.log("Update result:", { data, error });
+      debugConsole.log("Update result:", { data, error });
 
       if (error) {
-        console.error("Supabase update error:", error);
+        debugConsole.error("Supabase update error:", error);
         throw error;
       }
 
       if (!data || data.length === 0) {
-        console.warn("No rows updated - checking if share exists");
-        // Prüfe ob die Freigabe existiert
+        debugConsole.warn("No rows updated - checking if share exists");
         const { data: existingShare } = await supabase
           .from("quick_note_global_shares")
           .select("*")
           .eq("id", shareId)
           .single();
         
-        console.log("Existing share:", existingShare);
+        debugConsole.log("Existing share:", existingShare);
         
         if (!existingShare) {
           toast.error("Freigabe nicht gefunden");
@@ -184,7 +183,6 @@ export const useGlobalNoteSharing = () => {
           return false;
         }
         
-        // Berechtigung ist bereits gesetzt
         if (existingShare.permission_type === permissionType) {
           toast.success("Berechtigung bereits gesetzt");
           loadGlobalShares();
@@ -196,7 +194,7 @@ export const useGlobalNoteSharing = () => {
       loadGlobalShares();
       return true;
     } catch (error) {
-      console.error("Error updating permission:", error);
+      debugConsole.error("Error updating permission:", error);
       toast.error("Fehler beim Aktualisieren der Berechtigung");
       return false;
     }

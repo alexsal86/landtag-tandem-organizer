@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import type { Contact, LetterTemplate, LetterCollaborator, Letter } from '../types';
+import { debugConsole } from '@/utils/debugConsole';
 
 interface UseLetterDataOptions {
   isOpen: boolean;
@@ -29,7 +30,7 @@ export function useLetterData({ isOpen, tenantId, letterId }: UseLetterDataOptio
       if (error) throw error;
       setContacts(data || []);
     } catch (error) {
-      console.error('Error fetching contacts:', error);
+      debugConsole.error('Error fetching contacts:', error);
     }
   }, [tenantId]);
 
@@ -46,7 +47,7 @@ export function useLetterData({ isOpen, tenantId, letterId }: UseLetterDataOptio
       if (error) throw error;
       setTemplates(data || []);
     } catch (error) {
-      console.error('Error fetching templates:', error);
+      debugConsole.error('Error fetching templates:', error);
     }
   }, [tenantId]);
 
@@ -63,7 +64,7 @@ export function useLetterData({ isOpen, tenantId, letterId }: UseLetterDataOptio
       if (error) throw error;
       setSenderInfos(data || []);
     } catch (error) {
-      console.error('Error fetching sender infos:', error);
+      debugConsole.error('Error fetching sender infos:', error);
     }
   }, [tenantId]);
 
@@ -80,7 +81,7 @@ export function useLetterData({ isOpen, tenantId, letterId }: UseLetterDataOptio
       if (error) throw error;
       setInformationBlocks(data || []);
     } catch (error) {
-      console.error('Error fetching information blocks:', error);
+      debugConsole.error('Error fetching information blocks:', error);
     }
   }, [tenantId]);
 
@@ -95,7 +96,7 @@ export function useLetterData({ isOpen, tenantId, letterId }: UseLetterDataOptio
       if (error) throw error;
       setAttachments(data || []);
     } catch (error) {
-      console.error('Error fetching attachments:', error);
+      debugConsole.error('Error fetching attachments:', error);
     }
   }, [letterId]);
 
@@ -110,7 +111,7 @@ export function useLetterData({ isOpen, tenantId, letterId }: UseLetterDataOptio
       if (error) throw error;
       setComments(data || []);
     } catch (error) {
-      console.error('Error fetching comments:', error);
+      debugConsole.error('Error fetching comments:', error);
     }
   }, [letterId]);
 
@@ -139,7 +140,7 @@ export function useLetterData({ isOpen, tenantId, letterId }: UseLetterDataOptio
         setCollaborators([]);
       }
     } catch (error) {
-      console.error('Error fetching collaborators:', error);
+      debugConsole.error('Error fetching collaborators:', error);
     }
   }, [letterId]);
 
@@ -159,14 +160,14 @@ export function useLetterData({ isOpen, tenantId, letterId }: UseLetterDataOptio
         .from('profiles')
         .select('user_id, display_name, avatar_url')
         .in('user_id', userIds);
-      if (error) { console.error('Error fetching user profiles:', error); return; }
+      if (error) { debugConsole.error('Error fetching user profiles:', error); return; }
       const profilesMap = profiles?.reduce((acc, profile) => {
         acc[profile.user_id] = { display_name: profile.display_name || 'Unbekannter Benutzer', avatar_url: profile.avatar_url };
         return acc;
       }, {} as Record<string, { display_name: string; avatar_url?: string }>) || {};
       setUserProfiles(profilesMap);
     } catch (error) {
-      console.error('Error fetching workflow user profiles:', error);
+      debugConsole.error('Error fetching workflow user profiles:', error);
     }
   }, []);
 

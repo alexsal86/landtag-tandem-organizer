@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
+import { debugConsole } from '@/utils/debugConsole';
 
 // Import ElectionDistrict type
 import type { ElectionDistrict } from './useElectionDistricts';
@@ -25,7 +26,6 @@ export interface PartyAssociation {
   contact_info?: any;
   created_at: string;
   updated_at: string;
-  // Populated from administrative_boundaries lookup
   boundary_districts?: ElectionDistrict[];
 }
 
@@ -42,12 +42,11 @@ export function usePartyAssociations() {
         .order('name');
 
       if (error) {
-        console.error('Error fetching party associations:', error);
+        debugConsole.error('Error fetching party associations:', error);
         toast.error('Fehler beim Laden der Partei-Verbände');
         return;
       }
 
-      // Fetch linked administrative boundary districts
       const associationsWithBoundaries = await Promise.all(
         (data || []).map(async (association) => {
           const boundaries = association.administrative_boundaries;
@@ -58,7 +57,7 @@ export function usePartyAssociations() {
               .in('id', boundaries as string[]);
 
             if (boundaryError) {
-              console.error('Error fetching boundary districts:', boundaryError);
+              debugConsole.error('Error fetching boundary districts:', boundaryError);
               return association;
             }
 
@@ -73,7 +72,7 @@ export function usePartyAssociations() {
 
       setAssociations(associationsWithBoundaries);
     } catch (error) {
-      console.error('Error in fetchAssociations:', error);
+      debugConsole.error('Error in fetchAssociations:', error);
       toast.error('Fehler beim Laden der Partei-Verbände');
     } finally {
       setLoading(false);

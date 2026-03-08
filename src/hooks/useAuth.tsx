@@ -2,6 +2,7 @@ import React, { useState, useEffect, createContext, useContext } from "react";
 import { User, Session } from "@supabase/supabase-js";
 import { supabase } from "@/integrations/supabase/client";
 import { logAuditEvent, AuditActions } from "@/hooks/useAuditLog";
+import { debugConsole } from "@/utils/debugConsole";
 
 interface AuthContextType {
   user: User | null;
@@ -43,7 +44,7 @@ const trackSession = async (userId: string) => {
         } as any);
     }
   } catch (error) {
-    console.error('Error tracking session:', error);
+    debugConsole.error('Error tracking session:', error);
   }
 };
 
@@ -107,7 +108,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
           .eq('user_id', user.id)
           .eq('device_info', navigator.userAgent);
       } catch (e) {
-        console.error('Error removing session:', e);
+        debugConsole.error('Error removing session:', e);
       }
     }
     

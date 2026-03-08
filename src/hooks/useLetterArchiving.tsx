@@ -3,6 +3,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { useTenant } from '@/hooks/useTenant';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
+import { debugConsole } from '@/utils/debugConsole';
 
 interface Letter {
   id: string;
@@ -123,7 +124,7 @@ export const useLetterArchiving = () => {
       return true;
 
     } catch (error: any) {
-      console.error('Error archiving letter:', error);
+      debugConsole.error('Error archiving letter:', error);
       toast({
         title: "Archivierungsfehler",
         description: error.message || "Der Brief konnte nicht archiviert werden.",

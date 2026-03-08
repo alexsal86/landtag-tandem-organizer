@@ -3,6 +3,7 @@ import { RealtimePostgresChangesPayload } from "@supabase/supabase-js";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { useTenant } from "@/hooks/useTenant";
+import { debugConsole } from "@/utils/debugConsole";
 
 interface Contact {
   id: string;
@@ -89,7 +90,7 @@ export const useStakeholderPreload = (searchTerm?: string) => {
         const { data, error } = await query;
 
         if (error) {
-          console.error("Error fetching stakeholders:", error);
+          debugConsole.error("Error fetching stakeholders:", error);
           return;
         }
 
@@ -105,7 +106,7 @@ export const useStakeholderPreload = (searchTerm?: string) => {
 
       setStakeholders(allStakeholders);
     } catch (error) {
-      console.error("Error in fetchStakeholders:", error);
+      debugConsole.error("Error in fetchStakeholders:", error);
     } finally {
       setLoading(false);
     }
@@ -130,7 +131,7 @@ export const useStakeholderPreload = (searchTerm?: string) => {
       const { data, error } = await query.maybeSingle();
 
       if (error) {
-        console.error("Error refreshing stakeholder by id:", error);
+        debugConsole.error("Error refreshing stakeholder by id:", error);
         return;
       }
 

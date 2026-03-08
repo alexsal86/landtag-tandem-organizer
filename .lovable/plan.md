@@ -1,103 +1,61 @@
 
+Ziel: Rückmeldungs-Feed stabil sichtbar machen und gleichzeitig die aktuellen Build-Blocker entfernen, damit die Fixes überhaupt wieder ausgeliefert werden.
 
-# Code-Qualitaetsanalyse: Staerken und Nachholbedarf
+1) Diagnose (aus Code + DB)
+- Do I know what the issue is? Ja.
+- Es gibt aktuell 2 Ebenen von Problemen:
+  1. Build ist kaputt (TypeScript):
+     - `src/components/ui/calendar.tsx`: doppelte Keys im `classNames`-Objekt (`caption_label`, `dropdowns`, `dropdown`) → TS1117.
+     - `src/components/task-decisions/DecisionOverview.tsx`: `ResponseOption`-Typ ohne `requires_comment` → TS2339.
+  2. Feed-Logik ist instabil/zu restriktiv:
+     - `src/components/my-work/MyWorkFeedbackFeedTab.tsx` übergibt `completedTo: new Date().toISOString()` bei jedem Render.
+       Dadurch ändert sich der React-Query-Key permanent (`useTeamFeedbackFeed`), was zu dauerndem Neu-Laden bzw. instabilem Feed führt.
+     - `useTeamFeedbackFeed` filtert hart auf `.not('notes','is',null)`. Damit verschwinden abgeschlossene Rückmeldungen ohne Notiz (z. B. nur Anhang/Aufgabe), obwohl sie fachlich oft relevant sind.
+- DB-Check:
+  - `appointment_feedback` hat Daten (u. a. completed in den letzten 7 Tagen vorhanden).
+  - RLS auf `appointment_feedback` erlaubt tenant-basiertes Lesen (`tenant_id = ANY(get_user_tenant_ids(auth.uid()))`), also kein offensichtlicher RLS-Blocker für Team-Feed im Tenant.
 
-## Gesamtbewertung: Solide Basis, aber systematische Schwaechen
+2) Umsetzungsplan (in Reihenfolge)
+A. Build sofort reparieren (Blocker)
+- `calendar.tsx`: doppelte Objekt-Keys entfernen, nur eine konsistente Definition für `caption_label`, `dropdowns`, `dropdown` behalten.
+- `DecisionOverview.tsx`: lokalen `ResponseOption`-Typ um `requires_comment?: boolean` ergänzen (oder auf den zentralen Typ aus `decisionTemplates` umstellen).
 
-Das Projekt ist funktional umfangreich und die juengsten Refactorings (12+ Dateien) haben die Struktur deutlich verbessert. Es gibt aber klar identifizierbare Bereiche mit Nachholbedarf.
+B. Feed-Query stabilisieren
+- `MyWorkFeedbackFeedTab.tsx`:
+  - `completedTo` nicht mehr bei jedem Render neu erzeugen.
+  - Entweder:
+    - `completedTo` ganz weglassen (nur `completedFrom` + order/limit), oder
+    - `completedTo` per `useMemo/useState` nur bei Filterwechsel neu setzen.
+- `useTeamFeedbackFeed.ts`:
+  - Query-Key nur mit stabilen Filterwerten.
+  - Zeitfilter robust halten (kein per-render Drift).
 
----
+C. Sichtbarkeit der Rückmeldungen fachlich korrigieren
+- `useTeamFeedbackFeed.ts`:
+  - Notiz-Pflicht entfernen oder erweitern:
+    - statt nur `notes is not null` auch Einträge mit `has_documents = true` oder `has_tasks = true` zulassen.
+  - Ergebnis: auch „abgeschlossen ohne Notiz, aber mit Anhang/Aufgabe“ erscheint im Feed.
 
-## Was bereits gut ist
+D. Fehler nicht mehr als „keine Daten“ maskieren
+- `MyWorkFeedbackFeedTab.tsx`:
+  - `isError` + `error` aus Query auslesen.
+  - Bei Fehler einen klaren Error-State anzeigen (statt „Keine passenden Rückmeldungen gefunden“), inkl. Retry-Button (`refetch`).
 
-- **Modulare Struktur**: Nach dem Refactoring saubere Trennung in Hooks, UI-Komponenten, Types
-- **ErrorBoundary-Nutzung**: Zentrale ErrorBoundary in Index.tsx und MyWorkView.tsx vorhanden
-- **UI-Bibliothek**: Konsistente Nutzung von Radix/shadcn-Komponenten
-- **Supabase-Types**: Automatisch generierte Types-Datei (10.885 Zeilen) als solide Grundlage
-- **debugConsole-Utility**: Gutes Pattern fuer kontrolliertes Logging vorhanden
+E. Quercheck auf Seiteneffekte
+- `useMyWorkNewCounts.tsx` zählt derzeit ebenfalls nur `completed + notes not null`; ggf. auf dieselbe fachliche Logik angleichen, damit Badge und Feed konsistent sind.
 
----
+3) Validierung nach Umsetzung
+- Build grün ohne TS-Fehler.
+- Im Tab „Meine Arbeit > Rückmeldungen“:
+  - Keine Endlos-Ladeanzeige.
+  - Team-Einträge der letzten 7/14 Tage sichtbar.
+  - Filter (Sicht/Zeitraum/Anhänge/Aufgaben) funktionieren.
+  - Bei absichtlichem Query-Fehler erscheint Error-State statt Empty-State.
+- Schneller Datenabgleich:
+  - Feed-Anzahl grob konsistent mit SQL-Count für completed im Zeitraum (unter Berücksichtigung der Filter).
 
-## Nachholbedarf nach Prioritaet
-
-### 1. TypeScript-Qualitaet (HOCH)
-
-| Problem | Umfang |
-|---|---|
-| `as any` Casts | **1.579 Vorkommen in 122 Dateien** |
-| `: any` Typ-Annotationen | **5.259 Vorkommen in 305 Dateien** |
-| `catch (error: any)` | **870 Vorkommen in 73 Dateien** |
-| `supabase.from(... as any)` | **81 Vorkommen in 9 Dateien** |
-
-Das Projekt nutzt TypeScript, aber behandelt es de facto wie JavaScript. Fast jede Datei hat `any`-Types. Die Supabase-Types sind generiert und koennten typsicher genutzt werden -- stattdessen wird ueberall gecastet. Das untergräbt den gesamten Nutzen von TypeScript.
-
-**Empfehlung**: Schrittweise `any` durch echte Typen ersetzen, angefangen bei den Supabase-Queries (die Types sind ja da). `catch (error: any)` durch `catch (error: unknown)` mit Type-Guards ersetzen.
-
-### 2. console.log-Migration (MITTEL)
-
-| Problem | Umfang |
-|---|---|
-| Verbleibende `console.log()` | **924 Aufrufe in 38 Dateien** |
-| `console.error()` in catch-Bloecken | **~3.720 Aufrufe in 258 Dateien** |
-
-Die Migration zu `debugConsole` ist erst teilweise abgeschlossen. Besonders `PushNotificationTest.tsx` (~40 Aufrufe) und `useEventPlanningData.ts` (~196 Aufrufe) sind stark betroffen.
-
-**Status**: In Arbeit, ~11 Dateien bereits migriert, ~27 ausstehend.
-
-### 3. select('*') Optimierung (MITTEL)
-
-| Problem | Umfang |
-|---|---|
-| `select('*')` Queries | **736 Vorkommen in 90 Dateien** |
-
-Jede Supabase-Query laedt alle Spalten. Bei Tabellen mit vielen Spalten (letters, contacts, meetings) ist das unnoetig und verschlechtert Performance und Sicherheit.
-
-**Status**: Noch nicht gestartet.
-
-### 4. Fehlende Tests (HOCH)
-
-| Problem | Umfang |
-|---|---|
-| Unit-/Integration-Tests | **0 Testdateien gefunden** |
-
-Das Projekt hat **keine einzige Testdatei**. Bei der Groesse und Komplexitaet (50+ Edge Functions, 100+ Komponenten, 80+ Hooks) ist das ein erhebliches Risiko. Jedes Refactoring oder Feature kann unbemerkt bestehende Funktionalitaet brechen.
-
-**Empfehlung**: Mindestens kritische Hooks (useAuth, useTenant, useNotifications) und Utility-Funktionen (letterArchiving, pdfGenerator) mit Tests abdecken.
-
-### 5. localStorage als Datenspeicher (NIEDRIG-MITTEL)
-
-| Problem | Umfang |
-|---|---|
-| localStorage Nutzung | **496 Aufrufe in 34 Dateien** |
-
-Einige Stellen nutzen localStorage fuer Daten, die besser in Supabase gehoeren (z.B. Decision-Settings, View-Preferences). Nicht kritisch, aber fuehrt zu Datenverlust bei Geraetewechsel.
-
-### 6. Fehlende zentrale Error-Handling-Strategie (MITTEL)
-
-Die 3.720 `catch (error) {` Bloecke folgen keinem einheitlichen Pattern. Manche loggen nur, manche zeigen Toasts, manche tun beides, manche nichts. Ein zentraler Error-Handler (z.B. `handleError(error, { toast: true, context: '...' })`) wuerde Konsistenz schaffen.
-
-### 7. Edge Functions ohne Typen (NIEDRIG)
-
-Die 53 Edge Functions nutzen rohes Deno/TypeScript ohne geteilte Typen mit dem Frontend. Request/Response-Formate sind nicht typisiert.
-
----
-
-## Zusammenfassung
-
-```text
-Bereich                    | Status      | Dringlichkeit
----------------------------|-------------|---------------
-Modulare Dateistruktur     | ✅ Gut      | -
-UI-Konsistenz (shadcn)     | ✅ Gut      | -
-ErrorBoundary              | ✅ Vorhanden| -
-TypeScript-Strenge         | ❌ Schlecht | HOCH
-Tests                      | ❌ Keine    | HOCH
-console.log-Migration      | 🔄 30%     | MITTEL
-select('*') Optimierung    | ❌ 0%      | MITTEL
-Error-Handling-Strategie   | ❌ Inkonsist| MITTEL
-localStorage-Nutzung       | ⚠️ Teilweise| NIEDRIG
-Edge Function Types        | ⚠️ Fehlen   | NIEDRIG
-```
-
-**Die zwei groessten Schwaechen sind die fehlenden Tests und die exzessive `any`-Nutzung.** Beides zusammen bedeutet: Der Code ist weder zur Compile-Zeit (TypeScript) noch zur Laufzeit (Tests) abgesichert.
-
+4) Warum das den aktuellen Zustand löst
+- Solange Build fehlschlägt, werden vorherige Fixes teils nicht wirksam.
+- Selbst bei laufendem Build kann der Feed durch den „beweglichen“ `completedTo`-Key instabil bleiben.
+- Zusätzlich blendet der harte Notiz-Filter valide Rückmeldungen aus.
+- Mit den vier Korrekturen (Build, stabiler Query-Key, fachlich korrekter Filter, echter Error-State) wird die Ursachekette vollständig geschlossen.
