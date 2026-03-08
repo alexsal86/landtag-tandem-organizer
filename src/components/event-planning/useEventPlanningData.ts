@@ -398,10 +398,11 @@ export function useEventPlanningData() {
   };
 
   const archivePlanning = async (planningId: string) => {
+    if (!user?.id) return;
     const planning = plannings.find(p => p.id === planningId);
-    if (planning?.user_id !== user?.id) { toast({ title: "Keine Berechtigung", description: "Nur der Ersteller kann diese Planung archivieren.", variant: "destructive" }); return; }
+    if (planning?.user_id !== user.id) { toast({ title: "Keine Berechtigung", description: "Nur der Ersteller kann diese Planung archivieren.", variant: "destructive" }); return; }
     try {
-      const { data, error } = await supabase.from("event_plannings").update({ is_archived: true, archived_at: new Date().toISOString() }).eq("id", planningId).eq("user_id", user?.id).select();
+      const { data, error } = await supabase.from("event_plannings").update({ is_archived: true, archived_at: new Date().toISOString() }).eq("id", planningId).eq("user_id", user.id).select();
       if (error || !data || data.length === 0) throw error || new Error("Update failed");
       toast({ title: "Planung archiviert", description: "Die Veranstaltungsplanung wurde ins Archiv verschoben." });
       if (selectedPlanning?.id === planningId) setSelectedPlanning(null);
