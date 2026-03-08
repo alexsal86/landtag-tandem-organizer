@@ -10,7 +10,7 @@ import { BlackBoard } from "./BlackBoard";
 import { MessageSystem } from "./MessageSystem";
 
 interface CombinedMessagesWidgetProps {
-  configuration?: any;
+  configuration?: Record<string, unknown>;
 }
 
 export function CombinedMessagesWidget({ configuration }: CombinedMessagesWidgetProps) {
