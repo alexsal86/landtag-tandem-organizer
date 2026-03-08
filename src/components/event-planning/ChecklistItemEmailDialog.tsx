@@ -139,7 +139,7 @@ export function ChecklistItemEmailDialog({
       onSaved();
       onOpenChange(false);
     } catch (error: unknown) {
-      console.error("Error saving email action:", error);
+      debugConsole.error("Error saving email action:", error);
       toast({
         title: "Fehler",
         description: "E-Mail-Automatisierung konnte nicht gespeichert werden.",
