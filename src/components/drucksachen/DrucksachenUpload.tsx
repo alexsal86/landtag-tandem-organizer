@@ -287,18 +287,18 @@ export function DrucksachenUpload({ onUploadSuccess, onProtocolsRefresh }: Druck
       onProtocolsRefresh(); // Refresh the list
       
     } catch (error) {
-      console.error('Upload error:', error);
+      debugConsole.error('Upload error:', error);
       
       // Cleanup on error: remove uploaded file if database insert failed
       if (uploadedFilePath && !protocolId) {
-        console.log('Cleaning up uploaded file due to database error...');
+        debugConsole.log('Cleaning up uploaded file due to database error...');
         try {
           await supabase.storage
             .from('parliament-protocols')
             .remove([uploadedFilePath]);
-          console.log('Successfully cleaned up orphaned file');
+          debugConsole.log('Successfully cleaned up orphaned file');
         } catch (cleanupError) {
-          console.error('Failed to cleanup file after error:', cleanupError);
+          debugConsole.error('Failed to cleanup file after error:', cleanupError);
         }
       }
 
