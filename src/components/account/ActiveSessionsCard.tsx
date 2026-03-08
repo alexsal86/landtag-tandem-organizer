@@ -54,13 +54,13 @@ export function ActiveSessionsCard() {
     if (!user?.id) return;
     try {
       const { data, error } = await supabase
-        .from('user_sessions' as any)
-        .select('*')
+        .from('user_sessions')
+        .select('id, device_info, ip_address, last_active_at, created_at, is_current')
         .eq('user_id', user.id)
         .order('last_active_at', { ascending: false });
 
       if (error) throw error;
-      setSessions((data || []) as unknown as UserSession[]);
+      setSessions((data || []) as UserSession[]);
     } catch (error) {
       console.error('Error loading sessions:', error);
     } finally {
