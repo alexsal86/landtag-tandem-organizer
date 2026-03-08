@@ -1,3 +1,5 @@
+import { debugConsole } from '@/utils/debugConsole';
+
 export interface WeatherData {
   temperature: number;
   condition: string;
