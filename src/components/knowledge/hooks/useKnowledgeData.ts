@@ -141,7 +141,7 @@ export function useKnowledgeData() {
     }
   };
 
-  const handleSaveDocument = async (topicIds: string[], setTopicsFn: (ids: string[]) => Promise<void>) => {
+  const handleSaveDocument = async (topicIds: string[], setTopicsFn: (ids: string[]) => Promise<any>) => {
     if (!selectedDocument || !user) return;
     try {
       const { error } = await supabase.from('knowledge_documents').update({ content: editorContent, updated_at: new Date().toISOString() }).eq('id', selectedDocument.id);
