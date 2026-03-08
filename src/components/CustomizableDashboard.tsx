@@ -193,7 +193,7 @@ export const CustomizableDashboard: React.FC = () => {
     
     const widgetInfo = availableWidgets.find(w => w.type === widgetType);
     if (!widgetInfo) {
-      console.error('❌ Widget type not found:', widgetType);
+      debugConsole.error('❌ Widget type not found:', widgetType);
       toast.error('Widget-Typ nicht gefunden');
       return;
     }

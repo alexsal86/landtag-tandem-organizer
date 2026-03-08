@@ -83,7 +83,7 @@ export function MyWorkJourFixeTab() {
       // Load system item data if needed
       await loadMeetingSystemData({ meetingId, items, meetingDate });
     } catch (error) {
-      console.error('Error loading agenda:', error);
+      debugConsole.error('Error loading agenda:', error);
     } finally {
       if (isMountedRef.current) setLoadingAgenda(null);
     }

@@ -145,7 +145,7 @@ export function useMeetingCreate(deps: UseMeetingCreateDeps) {
             }
             toast({ title: "Wiederkehrende Meetings erstellt", description: `${toCreate} zukünftige Meeting(s) wurden automatisch erstellt.` });
           }
-        } catch (e) { console.error('Error creating recurring meetings:', e); }
+        } catch (e) { debugConsole.error('Error creating recurring meetings:', e); }
       }
 
       // Load agenda and apply carryover

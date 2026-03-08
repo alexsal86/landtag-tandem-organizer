@@ -127,7 +127,7 @@ export function TodoCreateDialog({ open, onOpenChange, onTodoCreated }: TodoCrea
       onTodoCreated();
       onOpenChange(false);
     } catch (error: unknown) {
-      console.error('Error creating todo:', error);
+      debugConsole.error('Error creating todo:', error);
       toast({
         title: "Fehler", 
         description: error instanceof Error ? error.message : "ToDo konnte nicht erstellt werden.",

@@ -199,7 +199,7 @@ export const QuickNotesWidget: React.FC<QuickNotesWidgetProps> = ({
       setRefreshTrigger(prev => prev + 1);
       toast.success('Notiz erstellt');
     } catch (error) {
-      console.error('Error creating note:', error);
+      debugConsole.error('Error creating note:', error);
       toast.error('Fehler beim Erstellen der Notiz');
     }
   };
