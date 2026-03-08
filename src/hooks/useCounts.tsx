@@ -50,7 +50,7 @@ export function useCounts(): CountsData {
         .eq('contact_type', 'organization');
 
       if (stakeholdersError) {
-        console.error('Error fetching stakeholders count:', stakeholdersError);
+        debugConsole.error('Error fetching stakeholders count:', stakeholdersError);
       }
 
       // Get archived contacts count (grouped by phone number)
