@@ -218,7 +218,7 @@ export const loadElectoralDistrictsGeoJson = async (): Promise<GeoJsonData> => {
           const text = await entry.async('text');
           fc = JSON.parse(text);
         } catch (e) {
-          console.warn('ZIP parsing failed for', path, e);
+          debugConsole.warn('ZIP parsing failed for', path, e);
           continue;
         }
       } else if (contentType.includes('application/json') || path.endsWith('.geojson') || path.endsWith('.json')) {

@@ -329,7 +329,7 @@ export function analyzeProtocolStructure(text: string): {
   }
   
   if (agendaItems.length === 0 && speeches.length === 0 && sessions.length === 0) {
-    console.warn('No structured data found in protocol text');
+    debugConsole.warn('No structured data found in protocol text');
   }
   
   return { agendaItems, speeches, sessions };

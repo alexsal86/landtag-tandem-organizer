@@ -98,7 +98,7 @@ export function playNotificationSound(soundName: SoundName, volume: number = 0.5
         playPing(ctx, gainNode);
     }
   } catch (e) {
-    console.error('Error playing notification sound:', e);
+    debugConsole.error('Error playing notification sound:', e);
   }
 }
 
