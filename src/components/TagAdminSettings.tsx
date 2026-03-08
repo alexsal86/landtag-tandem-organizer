@@ -26,6 +26,7 @@ type Tag = {
 
 export function TagAdminSettings() {
   const { toast } = useToast();
+  const { currentTenant } = useTenant();
   const [tags, setTags] = useState<Tag[]>([]);
   const [loading, setLoading] = useState(true);
   const [editingTag, setEditingTag] = useState<{ id: string; label: string; color: string; icon?: string } | null>(null);
