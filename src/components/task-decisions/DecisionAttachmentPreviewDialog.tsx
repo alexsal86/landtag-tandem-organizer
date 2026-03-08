@@ -244,7 +244,7 @@ export function DecisionAttachmentPreviewDialog({
         const blobUrl = URL.createObjectURL(blobData);
         setSignedUrl(blobUrl);
       } catch (e: any) {
-        console.error('Error loading preview:', e, 'path:', normalizedFilePath, 'raw:', filePath);
+        debugConsole.error('Error loading preview:', e, 'path:', normalizedFilePath, 'raw:', filePath);
         setError(`Vorschau konnte nicht geladen werden. (${e?.message || 'Unbekannter Fehler'})`);
       } finally {
         setLoading(false);
