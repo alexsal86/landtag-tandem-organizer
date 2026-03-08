@@ -110,7 +110,7 @@ export function useTaskDetailData(task: Task | null) {
         }))
       );
     } catch (e) {
-      console.error("Error loading task comments:", e);
+      debugConsole.error("Error loading task comments:", e);
     }
   };
 
