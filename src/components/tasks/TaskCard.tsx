@@ -183,10 +183,12 @@ export function TaskCard({
 
   return (
     <div
+      ref={highlightRef}
       className={cn(
         "border border-border relative",
         isChildTask ? "rounded-none bg-muted/40" : "rounded-lg bg-card",
-        isChildTask && isLastChild && "rounded-br-lg"
+        isChildTask && isLastChild && "rounded-br-lg",
+        className,
       )}
     >
       <div

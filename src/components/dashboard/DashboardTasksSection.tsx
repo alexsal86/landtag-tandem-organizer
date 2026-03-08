@@ -118,7 +118,7 @@ export const DashboardTasksSection = () => {
       <div
         key={`${item.type}-${item.id}`}
         className="flex items-center gap-1.5 rounded px-1 py-0.5 text-sm text-foreground/90 cursor-pointer hover:bg-muted/40 transition-colors"
-        onClick={() => navigate(cfg.tab)}
+        onClick={() => navigate(`${cfg.tabBase}&highlight=${item.id}`)}
         title={`${cfg.label} – Klicken zum Öffnen, oder per Handle in den Tageszettel ziehen`}
       >
         <span
