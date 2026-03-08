@@ -71,7 +71,7 @@ export function EmployeeYearlyStatsView({ isOpen, onClose }: EmployeeYearlyStats
         }
       }
     } catch (error) {
-      console.error("Error loading years:", error);
+      debugConsole.error("Error loading years:", error);
     }
   };
 
