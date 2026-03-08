@@ -463,9 +463,17 @@ export function AutomationRulesManager() {
               <CardTitle>Automations-Regeln</CardTitle>
               <CardDescription>{rules.length} Regeln im Tenant</CardDescription>
             </div>
-            <Button onClick={openNewWizard}>
-              <Plus className="h-4 w-4 mr-2" /> Neue Regel
-            </Button>
+            <div className="flex gap-2">
+              <Button variant="outline" onClick={() => setExportOpen(true)}>
+                <Download className="h-4 w-4 mr-2" /> Export
+              </Button>
+              <Button variant="outline" onClick={() => setImportOpen(true)}>
+                <Upload className="h-4 w-4 mr-2" /> Import
+              </Button>
+              <Button onClick={openNewWizard}>
+                <Plus className="h-4 w-4 mr-2" /> Neue Regel
+              </Button>
+            </div>
           </div>
         </CardHeader>
         <CardContent className="space-y-3">
