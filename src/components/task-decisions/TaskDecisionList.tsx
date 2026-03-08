@@ -285,8 +285,6 @@ export const TaskDecisionList = () => {
         });
       }
 
-      console.log('Final decisions list:', allDecisions);
-      console.log('Total decisions found:', allDecisions.length);
 
       setDecisions(allDecisions);
     } catch (error) {
