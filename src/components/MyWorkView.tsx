@@ -164,7 +164,7 @@ export function MyWorkView() {
     setSearchParams({ tab });
     
     // Mark tab as visited when switching
-    const tabToContexts: Record<TabValue, ContextType[]> = {
+    const tabToContexts: Record<TabValue, readonly string[]> = {
       dashboard: [],
       capture: [],
       tasks: ['mywork_tasks'],
