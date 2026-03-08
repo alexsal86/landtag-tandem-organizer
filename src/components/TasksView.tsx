@@ -794,7 +794,7 @@ export function TasksView() {
         throw error;
       }
 
-      console.log('Raw comment data:', data);
+      
 
       const commentsMap: { [taskId: string]: TaskComment[] } = {};
       (data || []).forEach(comment => {
