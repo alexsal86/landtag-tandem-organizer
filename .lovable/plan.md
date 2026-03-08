@@ -1,38 +1,19 @@
 
-## Problem
+## Benachrichtigungen & Badges für Vorgänge — Umgesetzt
 
-Die Logo-Abfrage in `LoginCustomization.tsx` (Zeile 51-55) filtert nicht nach `tenant_id`. Wenn mehrere Einträge für `app_logo_url` existieren (z.B. ein globaler und ein mandantenspezifischer), gibt `.maybeSingle()` einen Fehler zurück und das Logo wird nicht angezeigt.
+### Was wurde gemacht:
 
-## Lösung
+1. **DB: Neue `notification_types` für Kategorie `cases`** (alle 3 Tenants)
+   - `case_item_created`, `case_item_assigned`, `case_item_status_changed`, `case_item_comment`
 
-Die Abfrage in `loadData()` anpassen: Zuerst den mandantenspezifischen `app_logo_url` laden (`.eq('tenant_id', currentTenant.id)`). Falls nicht vorhanden, Fallback auf den globalen Eintrag (`.is('tenant_id', null)`).
+2. **DB: `notification_navigation_mapping`** — alle 4 Typen auf `navigation_context = 'mywork'` gemappt, damit Sidebar-Badge korrekt zählt.
 
-**Datei:** `src/components/administration/LoginCustomization.tsx`, Zeilen 50-58
+3. **UI: `NotificationSettings.tsx`** — Kategorie `cases` / "Vorgänge" mit Icon 📋 eingefügt (Order 3).
 
-```typescript
-// 1. Try tenant-specific logo
-const { data: tenantLogoData } = await supabase
-  .from('app_settings')
-  .select('setting_value')
-  .eq('setting_key', 'app_logo_url')
-  .eq('tenant_id', currentTenant.id)
-  .maybeSingle();
+4. **Code: `useCaseItems.tsx`** — `create_notification` RPC-Aufrufe bei:
+   - Vorgang erstellen → Benachrichtigung an zugewiesenen Owner
+   - Status-Änderung → Benachrichtigung an Ersteller + Owner
+   - Zuweisung-Änderung → Benachrichtigung an neuen Owner
+   - Kommentar/Interaktion → Benachrichtigung an Ersteller + Owner
 
-if (tenantLogoData?.setting_value) {
-  setLogoUrl(tenantLogoData.setting_value);
-} else {
-  // 2. Fallback to global logo
-  const { data: globalLogoData } = await supabase
-    .from('app_settings')
-    .select('setting_value')
-    .eq('setting_key', 'app_logo_url')
-    .is('tenant_id', null)
-    .maybeSingle();
-
-  if (globalLogoData?.setting_value) {
-    setLogoUrl(globalLogoData.setting_value);
-  }
-}
-```
-
-Zusätzlich `crossOrigin="anonymous"` auf das `<img>`-Tag setzen, falls das Logo von einem externen Storage kommt (analog zu `GeneralSettings.tsx`).
+5. **Badge-System**: Sidebar-Badge für "Meine Arbeit" zählt nun auch Vorgang-Benachrichtigungen (via `navigation_context = 'mywork'` Trigger). Interne Tab-Badges bleiben über `useMyWorkNewCounts` (Zeitstempel-basiert).

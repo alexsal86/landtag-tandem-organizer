@@ -47,15 +47,27 @@ export function LoginCustomization() {
     try {
       setLoading(true);
 
-      // Load logo from app_settings
-      const { data: logoData } = await supabase
+      // Load logo from app_settings (tenant-specific first, then global fallback)
+      const { data: tenantLogoData } = await supabase
         .from('app_settings')
         .select('setting_value')
         .eq('setting_key', 'app_logo_url')
+        .eq('tenant_id', currentTenant.id)
         .maybeSingle();
 
-      if (logoData?.setting_value) {
-        setLogoUrl(logoData.setting_value);
+      if (tenantLogoData?.setting_value) {
+        setLogoUrl(tenantLogoData.setting_value);
+      } else {
+        const { data: globalLogoData } = await supabase
+          .from('app_settings')
+          .select('setting_value')
+          .eq('setting_key', 'app_logo_url')
+          .is('tenant_id', null)
+          .maybeSingle();
+
+        if (globalLogoData?.setting_value) {
+          setLogoUrl(globalLogoData.setting_value);
+        }
       }
 
       // Load login customization
