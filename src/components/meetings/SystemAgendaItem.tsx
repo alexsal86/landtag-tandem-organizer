@@ -32,7 +32,7 @@ interface SystemAgendaItemProps {
   allProfiles?: Profile[];
 }
 
-function ProfileBadge({ userId, profiles }: { userId?: string; profiles?: ProfileInfo[] }) {
+function ProfileBadge({ userId, profiles }: { userId?: string; profiles?: Profile[] }) {
   if (!userId || !profiles) return null;
   const profile = profiles.find(p => p.user_id === userId);
   if (!profile) return null;
