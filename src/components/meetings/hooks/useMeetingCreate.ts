@@ -1,4 +1,5 @@
 import { supabase } from "@/integrations/supabase/client";
+import { debugConsole } from "@/utils/debugConsole";
 import { format } from "date-fns";
 import type { RecurrenceData, NewMeetingParticipant, AgendaItem, Meeting, MeetingTemplate, Profile } from "@/components/meetings/types";
 
