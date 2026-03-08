@@ -301,7 +301,7 @@ export function EmployeeMeetingProtocol({ meetingId, onBack }: EmployeeMeetingPr
       if (actionError) throw actionError;
       setActionItems((actionData || []) as ActionItem[]);
     } catch (error: unknown) {
-      console.error("Error loading meeting:", error);
+      debugConsole.error("Error loading meeting:", error);
       toast({ title: "Fehler", description: "Besprechungsdaten konnten nicht geladen werden", variant: "destructive" });
     } finally {
       setLoading(false);
