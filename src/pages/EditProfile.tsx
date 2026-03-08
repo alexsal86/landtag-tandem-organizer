@@ -170,7 +170,7 @@ export function EditProfile() {
       });
 
     } catch (error: unknown) {
-      console.error('Error uploading file:', error);
+      debugConsole.error('Error uploading file:', error);
       const msg = error instanceof Error ? error.message : '';
       const errorMessage = msg?.includes('bucket') || msg?.includes('Bucket')
         ? "Der Avatar-Speicher ist nicht konfiguriert. Bitte kontaktieren Sie den Administrator."
