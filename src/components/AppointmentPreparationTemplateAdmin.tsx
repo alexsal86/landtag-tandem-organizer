@@ -60,7 +60,7 @@ export default function AppointmentPreparationTemplateAdmin() {
       const { data, error } = await supabase
         .from('appointment_preparation_templates')
         .select('*')
-        .eq('tenant_id', currentTenant?.id)
+        .eq('tenant_id', currentTenant?.id ?? '')
         .order('created_at', { ascending: false });
 
       if (error) throw error;
