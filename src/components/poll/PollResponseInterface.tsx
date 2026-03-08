@@ -116,7 +116,7 @@ export const PollResponseInterface = ({ pollId, token, participantId, isPreview 
           // Try to find participant without token (fallback for old links)
           const { data: participantData, error: participantError } = await supabase
             .from('poll_participants')
-            .select('*')
+            .select('id, name, email, is_external, token')
             .eq('poll_id', pollId)
             .eq('is_external', true)
             .maybeSingle();
