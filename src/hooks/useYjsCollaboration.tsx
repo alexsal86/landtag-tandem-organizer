@@ -116,7 +116,7 @@ export const useYjsCollaboration = ({
         setUserProfiles(prev => ({ ...prev, ...profilesMap }));
       }
     } catch (error) {
-      console.error('Error loading user profiles:', error);
+      debugConsole.error('Error loading user profiles:', error);
     }
   }, []);
 
