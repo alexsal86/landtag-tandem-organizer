@@ -292,6 +292,10 @@ export function MyWorkCasesWorkspace() {
   const [linkedDecisions, setLinkedDecisions] = useState<Record<string, Array<{ id: string; title: string; status: string; created_at: string; response_deadline: string | null }>>>({});
   const [loadingDecisions, setLoadingDecisions] = useState(false);
 
+  // Jour Fixe meeting selector state
+  const [isMeetingSelectorOpen, setIsMeetingSelectorOpen] = useState(false);
+  const [meetingSelectorItemId, setMeetingSelectorItemId] = useState<string | null>(null);
+
   const getItemSubject = useCallback((item: CaseItem) => item.subject || item.summary || item.resolution_summary || "Ohne Titel", []);
   const getItemDescription = useCallback((item: CaseItem) => richTextToPlain(item.summary || item.resolution_summary || ""), []);
 
