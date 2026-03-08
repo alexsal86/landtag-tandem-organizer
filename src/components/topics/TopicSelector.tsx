@@ -109,9 +109,9 @@ export const TopicSelector: React.FC<TopicSelectorProps> = ({
                   >
                     <div 
                       className="w-4 h-4 rounded-full flex items-center justify-center"
-                      style={{ backgroundColor: `${topic.color}30` }}
+                      style={{ backgroundColor: `${topic.color ?? '#3b82f6'}30` }}
                     >
-                      {getIconComponent(topic.icon, "h-2.5 w-2.5")}
+                      {getIconComponent(topic.icon ?? '', "h-2.5 w-2.5")}
                     </div>
                     <span className="flex-1">{topic.label}</span>
                     {selectedTopicIds.includes(topic.id) && (
