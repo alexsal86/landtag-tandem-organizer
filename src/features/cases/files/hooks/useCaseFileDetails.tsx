@@ -317,11 +317,11 @@ export const useCaseFileDetails = (caseFileId: string | null) => {
 
   const fetchInteractions = useCallback(async () => {
     if (!caseFileId) return;
-    const { data, error } = await (supabase
+    const { data, error } = await supabase
       .from("case_item_interactions")
       .select("*")
       .eq("case_file_id", caseFileId)
-      .order("created_at", { ascending: false }) as any);
+      .order("created_at", { ascending: false });
 
     if (error) {
       debugConsole.error("Error fetching interactions:", error);
