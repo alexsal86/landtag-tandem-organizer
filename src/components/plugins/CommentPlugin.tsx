@@ -678,7 +678,7 @@ export function CommentPlugin({ documentId }: { documentId?: string }) {
         .from('letter_comments')
         .insert([{
           letter_id: documentId,
-          user_id: (await supabase.auth.getUser()).data.user?.id,
+          user_id: (await supabase.auth.getUser()).data.user?.id ?? '',
           content: text,
           parent_comment_id: commentId,
           comment_type: 'reply'

@@ -363,7 +363,7 @@ export function useMeetingsData() {
         sortedItems.push({ ...main, localKey: main.id, parentLocalKey: undefined });
         const children = (data || []).filter(item => item.parent_id === main.id).sort((a, b) => a.order_index - b.order_index);
         children.forEach(child => {
-          sortedItems.push({ ...child, localKey: child.id, parentLocalKey: child.parent_id });
+          sortedItems.push({ ...child, localKey: child.id, parentLocalKey: child.parent_id ?? undefined });
         });
       });
       setAgendaItems(sortedItems);

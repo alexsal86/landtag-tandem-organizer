@@ -17,7 +17,7 @@ import { ContactSelector } from '@/components/ContactSelector';
 
 interface PollParticipant {
   id: string;
-  name: string;
+  name: string | null;
   email: string;
   is_external: boolean;
   isNew?: boolean;

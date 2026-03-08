@@ -178,12 +178,12 @@ export interface Meeting {
 export interface MeetingTemplate {
   id: string;
   name: string;
-  description?: string;
+  description?: string | null;
   template_items: MeetingTemplateItem[] | unknown;
   default_participants?: string[] | null;
   default_recurrence?: RecurrenceData | unknown;
-  is_default?: boolean;
-  auto_create_count?: number;
+  is_default?: boolean | null;
+  auto_create_count?: number | null;
 }
 
 export interface Profile {

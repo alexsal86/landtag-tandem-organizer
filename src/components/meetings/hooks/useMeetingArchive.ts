@@ -359,11 +359,11 @@ export function useMeetingArchive(deps: ArchiveDeps) {
             const starredAssignmentMap = new Map<string, string[] | null>();
             const appointmentIds = starredAppts.filter(s => s.appointment_id).map(s => {
               starredAssignmentMap.set(s.appointment_id!, s.assigned_to || null);
-              return s.appointment_id;
+              return s.appointment_id!;
             });
             const externalEventIds = starredAppts.filter(s => s.external_event_id).map(s => {
               starredAssignmentMap.set(s.external_event_id!, s.assigned_to || null);
-              return s.external_event_id;
+              return s.external_event_id!;
             });
 
             const allAppointments: Array<{ id: string; title: string; start_time: string }> = [];
