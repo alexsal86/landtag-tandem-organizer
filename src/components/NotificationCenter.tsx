@@ -188,12 +188,26 @@ const NotificationItem: React.FC<{
         </p>
         
         <div className="flex items-center justify-between mt-2">
-          <span className="text-xs text-muted-foreground">
-            {formatDistanceToNow(new Date(notification.created_at), {
-              addSuffix: true,
-              locale: de,
-            })}
-          </span>
+          <div className="flex flex-col gap-0.5">
+            <span className="text-xs text-muted-foreground">
+              {formatDistanceToNow(new Date(notification.created_at), {
+                addSuffix: true,
+                locale: de,
+              })}
+            </span>
+            {notification.data?.source === 'automation_rule' && notification.data?.rule_id && (
+              <button
+                className="text-xs text-muted-foreground underline hover:text-primary text-left"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  navigate(`/admin?tab=automation&highlight=${notification.data.run_id || notification.data.rule_id}`);
+                  onClose?.();
+                }}
+              >
+                Warum diese Benachrichtigung?
+              </button>
+            )}
+          </div>
           
           {notification.priority !== 'medium' && (
             <Badge 

@@ -489,11 +489,24 @@ export function NotificationsPage() {
                               </div>
                             </div>
                             <p className="text-sm text-muted-foreground mt-1">{notification.message}</p>
-                            <span className="text-xs text-muted-foreground mt-2 block">
-                              {format(new Date(notification.created_at), "dd.MM.yyyy 'um' HH:mm", { locale: de })}
-                              {' · '}
-                              {formatDistanceToNow(new Date(notification.created_at), { addSuffix: true, locale: de })}
-                            </span>
+                            <div className="flex flex-col gap-0.5 mt-2">
+                              <span className="text-xs text-muted-foreground">
+                                {format(new Date(notification.created_at), "dd.MM.yyyy 'um' HH:mm", { locale: de })}
+                                {' · '}
+                                {formatDistanceToNow(new Date(notification.created_at), { addSuffix: true, locale: de })}
+                              </span>
+                              {notification.data?.source === 'automation_rule' && notification.data?.rule_id && (
+                                <button
+                                  className="text-xs text-muted-foreground underline hover:text-primary text-left"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    navigate(`/admin?tab=automation&highlight=${notification.data.run_id || notification.data.rule_id}`);
+                                  }}
+                                >
+                                  Warum diese Benachrichtigung?
+                                </button>
+                              )}
+                            </div>
                           </div>
                         </div>
                       );
