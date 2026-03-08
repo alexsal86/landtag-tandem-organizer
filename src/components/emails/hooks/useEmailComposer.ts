@@ -270,7 +270,7 @@ export function useEmailComposer() {
     const templateName = prompt("Template-Name eingeben:");
     if (!templateName) return;
     try {
-      const { error } = await supabase.from("email_templates").insert({ tenant_id: currentTenant!.id, created_by: user!.id, name: templateName, subject, body_html: bodyHtml, is_active: true });
+      const { error } = await supabase.from("email_templates").insert([{ tenant_id: currentTenant!.id, created_by: user!.id, name: templateName, subject, body_html: bodyHtml, is_active: true }]);
       if (error) throw error;
       toast({ title: "Template gespeichert", description: `"${templateName}" wurde erstellt` });
       fetchEmailTemplates();
