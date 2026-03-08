@@ -79,11 +79,11 @@ export const useTopics = () => {
       setTopics(prev => [...prev, data]);
       toast({ title: "Thema erstellt", description: `"${topicData.label}" wurde hinzugefügt.` });
       return data;
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Error creating topic:', error);
       toast({ 
         title: "Fehler", 
-        description: error.message || "Thema konnte nicht erstellt werden.", 
+        description: error instanceof Error ? error.message : "Thema konnte nicht erstellt werden.", 
         variant: "destructive" 
       });
       return null;
