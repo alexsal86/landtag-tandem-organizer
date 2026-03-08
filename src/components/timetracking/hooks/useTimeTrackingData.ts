@@ -103,7 +103,7 @@ export function useTimeTrackingData(userId: string | null, selectedMonth: Date) 
         eachDayOfInterval({ start: parseISO(leave.start_date), end: parseISO(leave.end_date) })
           .filter(d => d >= monthStart && d <= monthEnd && d.getDay() !== 0 && d.getDay() !== 6)
           .forEach(d => vacationDates.add(format(d, "yyyy-MM-dd")));
-      } catch (e) { console.error("Error processing vacation dates:", e); }
+      } catch (e) { debugConsole.error("Error processing vacation dates:", e); }
     });
     const overtimeDates = new Set<string>();
     overtimeLeaves.filter(l => l.status === "approved").forEach(leave => {
