@@ -292,6 +292,7 @@ export function countConditions(group: ConditionGroup): number {
   return group.conditions.length + group.groups.reduce((sum, g) => sum + countConditions(g), 0);
 }
 
+export const DEFAULT_CONDITION_GROUP: ConditionGroup = {
   logic: "all",
   conditions: [{ ...DEFAULT_CONDITION }],
   groups: [],
