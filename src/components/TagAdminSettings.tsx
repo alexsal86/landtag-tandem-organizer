@@ -287,7 +287,7 @@ export function TagAdminSettings() {
                                     style={{ backgroundColor: tag.color ?? undefined }}
                                   />
                                   {(() => {
-                                    const Icon = getIconComponent(tag.icon);
+                                    const Icon = getIconComponent(tag.icon ?? undefined);
                                     return Icon ? <Icon className="h-3.5 w-3.5" /> : null;
                                   })()}
                                   {tag.label}
