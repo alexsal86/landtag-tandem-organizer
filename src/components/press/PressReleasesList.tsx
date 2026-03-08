@@ -161,10 +161,10 @@ export function PressReleasesList({ onCreateNew, onSelect }: PressReleasesListPr
         });
         setProfiles(profileMap);
       }
-    } catch (error: any) {
+    } catch (error: unknown) {
       toast({
         title: "Fehler beim Laden",
-        description: error.message,
+        description: error instanceof Error ? error.message : "Unbekannter Fehler",
         variant: "destructive",
       });
     } finally {

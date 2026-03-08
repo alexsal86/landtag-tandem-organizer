@@ -89,10 +89,10 @@ export function ActiveSessionsCard() {
       
       // Reload sessions
       await loadSessions();
-    } catch (error: any) {
+    } catch (error: unknown) {
       toast({
         title: "Fehler",
-        description: "Abmeldung fehlgeschlagen: " + (error.message || "Unbekannter Fehler"),
+        description: "Abmeldung fehlgeschlagen: " + (error instanceof Error ? error.message : "Unbekannter Fehler"),
         variant: "destructive",
       });
     } finally {
