@@ -157,8 +157,8 @@ export function PressTemplateManager() {
 
   const renderBlockEditor = (blockKey: BlockKey, canvasWidthMm: number, canvasHeightMm: number) => (
     <StructuredHeaderEditor
-      initialElements={getBlockItems(form.layout_settings, blockKey) as any}
-      onElementsChange={(elements) => setBlockItems(blockKey, elements as any[])}
+      initialElements={getBlockItems(form.layout_settings, blockKey)}
+      onElementsChange={(elements) => setBlockItems(blockKey, elements)}
       layoutSettings={form.layout_settings}
       canvasWidthMm={canvasWidthMm}
       canvasHeightMm={canvasHeightMm}
