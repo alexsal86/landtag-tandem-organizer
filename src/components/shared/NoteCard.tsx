@@ -76,7 +76,8 @@ export function NoteCard({
   return (
     <div
       key={note.id}
-      className="p-3 pb-12 rounded-lg border transition-all hover:shadow-sm border-l-4 group relative"
+      ref={highlightRef}
+      className={cn("p-3 pb-12 rounded-lg border transition-all hover:shadow-sm border-l-4 group relative", className)}
       style={{
         borderLeftColor: note.color || "#3b82f6",
         backgroundColor: note.color && note.color_full_card === true
