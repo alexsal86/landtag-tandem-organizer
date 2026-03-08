@@ -5,6 +5,7 @@ import { Download, FileImage, FileSpreadsheet, FileText, FileIcon } from "lucide
 import { supabase } from "@/integrations/supabase/client";
 import * as XLSX from "xlsx";
 import { debugConsole } from '@/utils/debugConsole';
+import { sanitizeRichHtml } from '@/utils/htmlSanitizer';
 
 interface DecisionAttachmentPreviewDialogProps {
   open: boolean;
