@@ -211,7 +211,7 @@ export function MessageSystem() {
       setSentMessages(activeSent);
       setArchivedMessages([...archivedSent, ...readMessages]); // Combine archived sent and read received messages
     } catch (error) {
-      console.error('Error fetching messages:', error);
+      debugConsole.error('Error fetching messages:', error);
     } finally {
       setLoading(false);
     }
