@@ -1247,7 +1247,7 @@ const [editingChild, setEditingChild] = useState<{ parentIndex: number; childInd
                                       await loadData();
                                       setEditingTemplateName(null);
                                       toast({ title: "Gespeichert", description: "Template-Name aktualisiert." });
-                                    } catch (error: any) {
+                                    } catch (error: unknown) {
                                       toast({ title: "Fehler", description: "Fehler beim Speichern.", variant: "destructive" });
                                     }
                                   }}>
