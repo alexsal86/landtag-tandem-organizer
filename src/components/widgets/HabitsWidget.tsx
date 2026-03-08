@@ -108,7 +108,7 @@ export const HabitsWidget: React.FC<HabitsWidgetProps> = ({
 
       const { data, error } = await supabase
         .from('habit_completions')
-        .select('*')
+        .select('id, habit_id, completion_date, count, notes')
         .eq('user_id', user.id)
         .gte('completion_date', thirtyDaysAgo.toISOString().split('T')[0])
         .order('completion_date', { ascending: false });
