@@ -170,7 +170,7 @@ export const QuickNotesWidget: React.FC<QuickNotesWidgetProps> = ({
         setSubtasks(groupedSubtasks);
       }
     } catch (error) {
-      console.error('Error loading tasks:', error);
+      debugConsole.error('Error loading tasks:', error);
     }
   };
 
