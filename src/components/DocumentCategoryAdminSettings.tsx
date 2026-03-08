@@ -114,7 +114,7 @@ export function DocumentCategoryAdminSettings() {
       await loadCategories();
       toast({ title: "Erfolg", description: "Kategorie wurde erfolgreich gelöscht." });
     } catch (error: unknown) {
-      console.error('Error deleting category:', error);
+      debugConsole.error('Error deleting category:', error);
       toast({ title: "Fehler", description: "Kategorie konnte nicht gelöscht werden.", variant: "destructive" });
     }
   };
