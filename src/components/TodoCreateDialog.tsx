@@ -56,7 +56,7 @@ export function TodoCreateDialog({ open, onOpenChange, onTodoCreated }: TodoCrea
         .eq('is_active', true)
         .order('order_index');
 
-      console.log('Categories result:', { data, error });
+      debugConsole.log('Categories result:', { data, error });
       
       if (error) throw error;
       setCategories(data || []);
