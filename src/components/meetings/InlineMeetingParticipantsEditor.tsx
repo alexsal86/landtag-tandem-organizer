@@ -125,7 +125,7 @@ export function InlineMeetingParticipantsEditor({ meetingId }: InlineMeetingPart
       .single();
 
     if (error) {
-      console.error('❌ Error adding participant:', error);
+      debugConsole.error('❌ Error adding participant:', error);
       toast({
         title: "Fehler beim Hinzufügen",
         description: error.message || "Teilnehmer konnte nicht hinzugefügt werden.",
