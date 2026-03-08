@@ -286,7 +286,7 @@ export const useCaseFileDetails = (caseFileId: string | null) => {
     try {
       const { data, error } = await supabase
         .from('case_file_notes')
-        .select('*')
+        .select('id, case_file_id, user_id, content, is_pinned, created_at, updated_at')
         .eq('case_file_id', caseFileId)
         .order('is_pinned', { ascending: false })
         .order('created_at', { ascending: false });
