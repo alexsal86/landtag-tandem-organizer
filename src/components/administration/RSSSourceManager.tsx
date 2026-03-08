@@ -72,7 +72,7 @@ export function RSSSourceManager() {
 
     if (error) {
       toast.error("Fehler beim Laden der RSS-Quellen");
-      console.error(error);
+      debugConsole.error(error);
     } else {
       setSources(data || []);
     }
