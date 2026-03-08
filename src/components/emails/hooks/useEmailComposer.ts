@@ -226,7 +226,7 @@ export function useEmailComposer() {
       );
       setDistributionLists(listsWithCounts);
     } catch (error: unknown) {
-      console.error("Error fetching distribution lists:", error);
+      debugConsole.error("Error fetching distribution lists:", error);
     }
   };
 
