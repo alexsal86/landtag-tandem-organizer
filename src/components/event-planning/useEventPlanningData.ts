@@ -420,8 +420,9 @@ export function useEventPlanningData() {
   };
 
   const restorePlanning = async (planningId: string) => {
+    if (!user?.id) return;
     try {
-      const { data, error } = await supabase.from("event_plannings").update({ is_archived: false, archived_at: null }).eq("id", planningId).eq("user_id", user?.id).select();
+      const { data, error } = await supabase.from("event_plannings").update({ is_archived: false, archived_at: null }).eq("id", planningId).eq("user_id", user.id).select();
       if (error || !data || data.length === 0) throw error || new Error("Update failed");
       toast({ title: "Planung wiederhergestellt", description: "Die Veranstaltungsplanung wurde aus dem Archiv geholt." });
       fetchPlannings();
