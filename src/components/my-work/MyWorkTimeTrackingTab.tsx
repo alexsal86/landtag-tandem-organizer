@@ -143,6 +143,7 @@ export function MyWorkTimeTrackingTab() {
     const now = format(new Date(), "HH:mm");
     setEndTime(now);
     toast.success(`Feierabend um ${now} - Bitte Eintrag speichern`);
+  };
 
   const today = new Date();
   const weekStart = startOfWeek(today, { weekStartsOn: 1 });
