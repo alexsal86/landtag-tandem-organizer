@@ -20,8 +20,8 @@ interface InformationBlock {
   label: string;
   block_data: any;
   block_type: string;
-  is_default: boolean;
-  is_active: boolean;
+  is_default: boolean | null;
+  is_active: boolean | null;
 }
 
 export const InformationBlockManager: React.FC = () => {
