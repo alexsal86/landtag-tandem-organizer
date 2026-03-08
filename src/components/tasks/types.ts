@@ -4,15 +4,15 @@ export interface Task {
   description: string;
   priority: "low" | "medium" | "high";
   status: "todo" | "in-progress" | "completed";
-  dueDate: string;
+  dueDate: string | null;
   category: "legislation" | "constituency" | "committee" | "personal" | "call_followup" | "call_follow_up";
   assignedTo?: string;
   progress?: number;
   created_at?: string;
   updated_at?: string;
   user_id?: string;
-  call_log_id?: string;
-  tenant_id?: string;
+  call_log_id?: string | null;
+  tenant_id?: string | null;
   source_type?: string | null;
   source_id?: string | null;
 }
