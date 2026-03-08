@@ -1,4 +1,5 @@
 import { CalendarEvent } from "./types";
+import { debugConsole } from '@/utils/debugConsole';
 
 // React Big Calendar event interface
 export interface RBCEvent {
