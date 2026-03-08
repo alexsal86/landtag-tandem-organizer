@@ -435,7 +435,7 @@ export const NotificationSettings: React.FC = () => {
       await subscribeToPush();
       await checkActiveSubscription();
     } catch (error) {
-      console.error('Error renewing push subscription:', error);
+      debugConsole.error('Error renewing push subscription:', error);
     }
   };
 
