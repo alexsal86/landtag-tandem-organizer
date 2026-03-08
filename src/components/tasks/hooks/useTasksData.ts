@@ -404,13 +404,15 @@ export function useTasksData() {
               planningTitle = planningData?.title || 'Unbekannte Planung';
             }
             allSubtasks.push({
-              ...subtask, task_title: planningTitle, source_type: 'planning',
+              ...subtask, task_id: subtask.planning_item_id || subtask.id, title: subtask.title || checklistItemData?.title || 'Unterpunkt',
+              task_title: planningTitle, source_type: 'planning' as const,
               checklist_item_title: checklistItemData?.title, planning_item_id: subtask.planning_item_id,
               assigned_to_names: resolvedAssignedTo, assigned_to: [subtask.assigned_to]
             });
           } catch {
             allSubtasks.push({
-              ...subtask, task_title: 'Unbekannte Planung', source_type: 'planning',
+              ...subtask, task_id: subtask.planning_item_id || subtask.id, title: subtask.title || 'Unterpunkt',
+              task_title: 'Unbekannte Planung', source_type: 'planning' as const,
               planning_item_id: subtask.planning_item_id,
               assigned_to_names: resolveUserNames([subtask.assigned_to]),
               assigned_to: [subtask.assigned_to]
