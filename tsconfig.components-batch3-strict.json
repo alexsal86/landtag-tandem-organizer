@@ -1,0 +1,30 @@
+{
+  "extends": "./tsconfig.app.json",
+  "compilerOptions": {
+    "strict": false,
+    "strictNullChecks": true,
+    "noImplicitAny": false,
+    "noUnusedLocals": false,
+    "noUnusedParameters": false
+  },
+  "include": [
+    "src/components/letters/**/*.ts",
+    "src/components/letters/**/*.tsx",
+    "src/components/letter-templates/**/*.ts",
+    "src/components/letter-templates/**/*.tsx",
+    "src/components/letter-pdf/**/*.ts",
+    "src/components/letter-pdf/**/*.tsx",
+    "src/components/meetings/**/*.ts",
+    "src/components/meetings/**/*.tsx",
+    "src/components/chat/**/*.ts",
+    "src/components/chat/**/*.tsx",
+    "src/components/emails/**/*.ts",
+    "src/components/emails/**/*.tsx",
+    "src/components/dashboard/**/*.ts",
+    "src/components/dashboard/**/*.tsx",
+    "src/components/admin/**/*.ts",
+    "src/components/admin/**/*.tsx",
+    "src/components/administration/**/*.ts",
+    "src/components/administration/**/*.tsx"
+  ]
+}
