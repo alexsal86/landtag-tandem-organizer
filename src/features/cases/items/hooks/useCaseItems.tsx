@@ -192,7 +192,12 @@ export const useCaseItems = () => {
   };
 
   const updateCaseItem = async (id: string, data: Partial<CaseItemFormData>) => {
+    if (!user || !currentTenant) return false;
+
     try {
+      // Fetch existing item to detect changes
+      const existing = caseItems.find(ci => ci.id === id);
+
       const updateData = { ...data, intake_payload: data.intake_payload as any };
       const { error } = await supabase.from("case_items").update(updateData as any).eq("id", id);
 
@@ -202,6 +207,41 @@ export const useCaseItems = () => {
         title: "Erfolgreich",
         description: "Vorgang wurde aktualisiert.",
       });
+
+      const subject = data.subject ?? existing?.subject ?? "Ohne Betreff";
+
+      // Notify on status change
+      if (data.status && existing && data.status !== existing.status) {
+        const notifyIds = new Set<string>();
+        if (existing.user_id && existing.user_id !== user.id) notifyIds.add(existing.user_id);
+        if (existing.owner_user_id && existing.owner_user_id !== user.id) notifyIds.add(existing.owner_user_id);
+        for (const recipientId of notifyIds) {
+          supabase.rpc("create_notification", {
+            user_id_param: recipientId,
+            type_name: "case_item_status_changed",
+            title_param: "Vorgang-Status geändert",
+            message_param: `Der Status von "${subject}" wurde auf "${data.status}" geändert.`,
+            priority_param: "medium",
+            data_param: JSON.stringify({ case_item_id: id, new_status: data.status }),
+          }).then(({ error: nErr }) => {
+            if (nErr) console.warn("Notification error (case_item_status_changed):", nErr);
+          });
+        }
+      }
+
+      // Notify on assignment change
+      if (data.owner_user_id && data.owner_user_id !== user.id && data.owner_user_id !== existing?.owner_user_id) {
+        supabase.rpc("create_notification", {
+          user_id_param: data.owner_user_id,
+          type_name: "case_item_assigned",
+          title_param: "Vorgang zugewiesen",
+          message_param: `Ihnen wurde der Vorgang "${subject}" zugewiesen.`,
+          priority_param: "medium",
+          data_param: JSON.stringify({ case_item_id: id }),
+        }).then(({ error: nErr }) => {
+          if (nErr) console.warn("Notification error (case_item_assigned):", nErr);
+        });
+      }
 
       await fetchCaseItems();
       return true;
