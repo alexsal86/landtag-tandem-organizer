@@ -102,7 +102,7 @@ export const StandaloneDecisionCreator = ({
       // Get current user's tenant
       const { data: userData } = await supabase.auth.getUser();
       if (!userData.user) {
-        console.log("No user found");
+        
         return;
       }
 
