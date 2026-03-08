@@ -1,0 +1,503 @@
+import { useState, useEffect } from "react";
+import { useSearchParams } from "react-router-dom";
+import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/hooks/useAuth";
+import { useTenant } from "@/hooks/useTenant";
+import type { Task, TaskComment, Subtask, TodoItem, SnoozeEntry } from "../types";
+
+export function useTasksData() {
+  const { user } = useAuth();
+  const { currentTenant } = useTenant();
+  const [searchParams] = useSearchParams();
+
+  const [tasks, setTasks] = useState<Task[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [taskComments, setTaskComments] = useState<{ [taskId: string]: TaskComment[] }>({});
+  const [taskCategories, setTaskCategories] = useState<Array<{ name: string; label: string }>>([]);
+  const [taskStatuses, setTaskStatuses] = useState<Array<{ name: string; label: string }>>([]);
+  const [users, setUsers] = useState<Array<{ user_id: string; display_name?: string }>>([]);
+  const [taskDocuments, setTaskDocuments] = useState<{ [taskId: string]: number }>({});
+  const [taskDocumentDetails, setTaskDocumentDetails] = useState<{ [taskId: string]: any[] }>({});
+  const [subtaskCounts, setSubtaskCounts] = useState<{ [taskId: string]: number }>({});
+  const [subtasks, setSubtasks] = useState<{ [taskId: string]: Subtask[] }>({});
+  const [assignedSubtasks, setAssignedSubtasks] = useState<Array<Subtask & { task_title: string }>>([]);
+  const [taskSnoozes, setTaskSnoozes] = useState<{ [taskId: string]: string }>({});
+  const [subtaskSnoozes, setSubtaskSnoozes] = useState<{ [subtaskId: string]: string }>({});
+  const [allSnoozes, setAllSnoozes] = useState<SnoozeEntry[]>([]);
+  const [todos, setTodos] = useState<TodoItem[]>([]);
+
+  // Synchronous helper that uses cached user data
+  const resolveUserNames = (assignedToField: string | string[] | null): string => {
+    if (!assignedToField) return '';
+    let cleanField = assignedToField;
+    if (typeof assignedToField === 'string') {
+      cleanField = assignedToField.replace(/[{}]/g, '').trim();
+    }
+    const userIds = Array.isArray(cleanField)
+      ? cleanField
+      : typeof cleanField === 'string'
+        ? cleanField.split(',').map(id => id.trim()).filter(id => id)
+        : [];
+    return userIds
+      .map(userId => {
+        const u = users.find(u => u.user_id === userId);
+        return u?.display_name || userId;
+      })
+      .join(', ');
+  };
+
+  // Async helper
+  const resolveUserNamesAsync = async (assignedToField: string | string[] | null): Promise<string> => {
+    if (!assignedToField) return '';
+    let cleanField = assignedToField;
+    if (typeof assignedToField === 'string') {
+      cleanField = assignedToField.replace(/[{}]/g, '').trim();
+    }
+    const userIds = Array.isArray(cleanField)
+      ? cleanField
+      : typeof cleanField === 'string'
+        ? cleanField.split(',').map(id => id.trim()).filter(id => id)
+        : [];
+    if (userIds.length === 0) return '';
+    try {
+      const { data, error } = await supabase
+        .from('profiles')
+        .select('user_id, display_name')
+        .in('user_id', userIds);
+      if (error) throw error;
+      const nameMap = new Map(data?.map(profile => [profile.user_id, profile.display_name]) || []);
+      return userIds.map(userId => nameMap.get(userId) || userId).join(', ');
+    } catch {
+      return userIds.join(', ');
+    }
+  };
+
+  const loadUsers = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('profiles')
+        .select('user_id, display_name')
+        .order('display_name');
+      if (error) throw error;
+      setUsers(data || []);
+    } catch (error) {
+      console.error('Error loading users:', error);
+    }
+  };
+
+  const loadTasks = async () => {
+    if (!user) return;
+    try {
+      const { data, error } = await supabase
+        .from('tasks')
+        .select('*')
+        .is('parent_task_id', null)
+        .or(`user_id.eq.${user.id},assigned_to.eq.${user.id},assigned_to.ilike.%${user.id}%`)
+        .order('created_at', { ascending: false });
+      if (error) throw error;
+      const transformedTasks: Task[] = (data || []).map(task => ({
+        id: task.id,
+        title: task.title,
+        description: task.description || '',
+        priority: task.priority as Task['priority'],
+        status: task.status as Task['status'],
+        dueDate: task.due_date,
+        category: task.category as Task['category'],
+        assignedTo: Array.isArray(task.assigned_to) ? task.assigned_to.join(',') : (task.assigned_to || ''),
+        progress: task.progress,
+        created_at: task.created_at,
+        updated_at: task.updated_at,
+        user_id: task.user_id,
+        call_log_id: task.call_log_id,
+        tenant_id: task.tenant_id,
+        source_type: task.source_type,
+        source_id: task.source_id
+      }));
+      setTasks(transformedTasks);
+      setLoading(false);
+      await loadTaskComments();
+    } catch (error) {
+      console.error('Error loading tasks:', error);
+      setLoading(false);
+    }
+  };
+
+  const loadTaskConfiguration = async () => {
+    try {
+      const [categoriesRes, statusesRes] = await Promise.all([
+        supabase.from('task_categories').select('name, label').eq('is_active', true).order('order_index'),
+        supabase.from('task_statuses').select('name, label').eq('is_active', true).order('order_index')
+      ]);
+      if (categoriesRes.data) setTaskCategories(categoriesRes.data);
+      if (statusesRes.data) setTaskStatuses(statusesRes.data);
+    } catch (error) {
+      console.error('Error loading task configuration:', error);
+    }
+  };
+
+  const loadTaskComments = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('task_comments')
+        .select(`id, task_id, content, user_id, created_at, profiles!inner(display_name)`)
+        .order('created_at', { ascending: true });
+      if (error) throw error;
+      const commentsMap: { [taskId: string]: TaskComment[] } = {};
+      (data || []).forEach(comment => {
+        if (!commentsMap[comment.task_id]) commentsMap[comment.task_id] = [];
+        commentsMap[comment.task_id].push({
+          id: comment.id,
+          taskId: comment.task_id,
+          content: comment.content,
+          userId: comment.user_id,
+          userName: (comment.profiles as any)?.display_name || 'Unbekannter Benutzer',
+          createdAt: comment.created_at
+        });
+      });
+      setTaskComments(commentsMap);
+    } catch {
+      try {
+        const { data: fallbackData, error: fallbackError } = await supabase
+          .from('task_comments')
+          .select('id, task_id, content, user_id, created_at')
+          .order('created_at', { ascending: true });
+        if (fallbackError) throw fallbackError;
+        const commentsMap: { [taskId: string]: TaskComment[] } = {};
+        (fallbackData || []).forEach(comment => {
+          if (!commentsMap[comment.task_id]) commentsMap[comment.task_id] = [];
+          commentsMap[comment.task_id].push({
+            id: comment.id,
+            taskId: comment.task_id,
+            content: comment.content,
+            userId: comment.user_id,
+            userName: 'Benutzer',
+            createdAt: comment.created_at
+          });
+        });
+        setTaskComments(commentsMap);
+      } catch (fallbackError) {
+        console.error('Fallback query also failed:', fallbackError);
+      }
+    }
+  };
+
+  const loadTaskDocuments = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('task_documents')
+        .select('*')
+        .order('created_at', { ascending: false });
+      if (error) throw error;
+      const detailsMap: { [taskId: string]: any[] } = {};
+      (data || []).forEach(doc => {
+        if (!detailsMap[doc.task_id]) detailsMap[doc.task_id] = [];
+        detailsMap[doc.task_id].push(doc);
+      });
+      setTaskDocumentDetails(detailsMap);
+    } catch (error) {
+      console.error('Error loading task documents:', error);
+    }
+  };
+
+  const loadTaskDocumentCounts = async () => {
+    try {
+      const { data, error } = await supabase.from('task_documents').select('task_id, id');
+      if (error) throw error;
+      const counts: { [taskId: string]: number } = {};
+      (data || []).forEach(doc => { counts[doc.task_id] = (counts[doc.task_id] || 0) + 1; });
+      setTaskDocuments(counts);
+    } catch (error) {
+      console.error('Error loading task document counts:', error);
+    }
+  };
+
+  const loadSubtaskCounts = async () => {
+    try {
+      const { data: childTasks, error } = await supabase
+        .from('tasks')
+        .select('id, parent_task_id')
+        .not('parent_task_id', 'is', null);
+      if (error) throw error;
+      const counts: { [taskId: string]: number } = {};
+      (childTasks || []).forEach(task => {
+        if (!task.parent_task_id) return;
+        counts[task.parent_task_id] = (counts[task.parent_task_id] || 0) + 1;
+      });
+      setSubtaskCounts(counts);
+    } catch (error) {
+      console.error('Error loading subtask counts:', error);
+    }
+  };
+
+  const loadSubtasksForTask = async (taskId: string) => {
+    try {
+      const { data: childTasks, error } = await supabase
+        .from('tasks')
+        .select('*')
+        .eq('parent_task_id', taskId)
+        .order('created_at', { ascending: true });
+      if (error) throw error;
+      const mappedChildTasks = (childTasks || []).map((task, index) => ({
+        id: task.id,
+        task_id: taskId,
+        title: task.title,
+        description: task.description || '',
+        is_completed: task.status === 'completed',
+        assigned_to: Array.isArray(task.assigned_to)
+          ? task.assigned_to
+          : (task.assigned_to ? String(task.assigned_to).split(',').map(item => item.trim()).filter(Boolean) : []),
+        due_date: task.due_date,
+        order_index: index,
+        completed_at: task.status === 'completed' ? task.updated_at : null,
+        source_type: 'task_child' as const,
+        created_at: task.created_at,
+        updated_at: task.updated_at,
+        priority: task.priority,
+      }));
+      setSubtasks(prev => ({ ...prev, [taskId]: mappedChildTasks as any }));
+    } catch (error) {
+      console.error('Error loading subtasks:', error);
+    }
+  };
+
+  const loadTaskSnoozes = async () => {
+    if (!user) return;
+    try {
+      const { data, error } = await supabase
+        .from('task_snoozes')
+        .select('*')
+        .eq('user_id', user.id)
+        .gt('snoozed_until', new Date().toISOString());
+      if (error) throw error;
+      const taskSnoozeMap: { [taskId: string]: string } = {};
+      const subtaskSnoozeMap: { [subtaskId: string]: string } = {};
+      (data || []).forEach(snooze => {
+        if (snooze.task_id) taskSnoozeMap[snooze.task_id] = snooze.snoozed_until;
+        else if (snooze.subtask_id) subtaskSnoozeMap[snooze.subtask_id] = snooze.snoozed_until;
+      });
+      setTaskSnoozes(taskSnoozeMap);
+      setSubtaskSnoozes(subtaskSnoozeMap);
+    } catch (error) {
+      console.error('Error loading task snoozes:', error);
+    }
+  };
+
+  const loadAllSnoozes = async () => {
+    if (!user) return;
+    try {
+      const { data: taskSnoozesData, error: taskError } = await supabase
+        .from('task_snoozes')
+        .select('id, task_id, snoozed_until')
+        .eq('user_id', user.id)
+        .not('task_id', 'is', null);
+      if (taskError) throw taskError;
+
+      const { data: subtaskSnoozesData } = await supabase
+        .from('task_snoozes')
+        .select('id, subtask_id, snoozed_until')
+        .eq('user_id', user.id)
+        .not('subtask_id', 'is', null);
+
+      const taskTitles: { [taskId: string]: string } = {};
+      if (taskSnoozesData && taskSnoozesData.length > 0) {
+        const taskIds = taskSnoozesData.map(s => s.task_id);
+        const { data: tasksData } = await supabase.from('tasks').select('id, title').in('id', taskIds);
+        tasksData?.forEach(task => { taskTitles[task.id] = task.title; });
+      }
+
+      setAllSnoozes([
+        ...(taskSnoozesData || []).map(snooze => ({
+          id: snooze.id,
+          task_id: snooze.task_id,
+          snoozed_until: snooze.snoozed_until,
+          task_title: taskTitles[snooze.task_id] || 'Unbekannte Aufgabe',
+        })),
+        ...(subtaskSnoozesData || []).map(snooze => ({
+          id: snooze.id,
+          subtask_id: snooze.subtask_id,
+          snoozed_until: snooze.snoozed_until,
+          subtask_description: 'Unteraufgabe',
+          task_title: 'Aufgabe',
+        }))
+      ]);
+    } catch (error) {
+      console.error('Error loading all snoozes:', error);
+    }
+  };
+
+  const loadTodos = async () => {
+    if (!user) return;
+    try {
+      const { data, error } = await supabase
+        .from('todos')
+        .select(`id, title, assigned_to, due_date, is_completed, todo_categories!inner(label, color)`)
+        .eq('user_id', user.id)
+        .eq('is_completed', false);
+      if (error) throw error;
+      setTodos((data || []).map(todo => ({
+        id: todo.id,
+        title: todo.title,
+        category_label: todo.todo_categories.label,
+        category_color: todo.todo_categories.color,
+        assigned_to: Array.isArray(todo.assigned_to) ? todo.assigned_to.join(',') : (todo.assigned_to || ''),
+        due_date: todo.due_date,
+        is_completed: todo.is_completed
+      })));
+    } catch (error) {
+      console.error('Error loading todos:', error);
+    }
+  };
+
+  const loadAssignedSubtasks = async () => {
+    if (!user) return;
+    setAssignedSubtasks([]);
+    try {
+      const allSubtasks: Array<Subtask & { task_title: string }> = [];
+
+      // 1. Task-child subtasks
+      const { data: childTasksData } = await supabase
+        .from('tasks')
+        .select('id, title, description, parent_task_id, assigned_to, due_date, status, created_at, updated_at, priority')
+        .not('parent_task_id', 'is', null)
+        .neq('status', 'completed');
+
+      for (const childTask of childTasksData || []) {
+        const assignees = Array.isArray(childTask.assigned_to)
+          ? childTask.assigned_to
+          : (childTask.assigned_to || '').split(',').map(item => item.trim()).filter(Boolean);
+        if (!assignees.includes(user.id)) continue;
+
+        let parentTitle = 'Unbekannte Aufgabe';
+        if (childTask.parent_task_id) {
+          const { data: parentTask } = await supabase.from('tasks').select('title').eq('id', childTask.parent_task_id).single();
+          parentTitle = parentTask?.title || parentTitle;
+        }
+        allSubtasks.push({
+          id: childTask.id, title: childTask.title, description: childTask.description || '',
+          task_id: childTask.parent_task_id, task_title: parentTitle, source_type: 'task_child',
+          assigned_to: assignees, assigned_to_names: resolveUserNames(assignees),
+          due_date: childTask.due_date, is_completed: childTask.status === 'completed',
+          created_at: childTask.created_at, updated_at: childTask.updated_at,
+          priority: childTask.priority, order_index: 0,
+        });
+      }
+
+      // 2. Planning subtasks
+      const { data: planningSubtasksData } = await supabase
+        .from('planning_item_subtasks')
+        .select('*')
+        .eq('assigned_to', user.id)
+        .eq('is_completed', false);
+
+      if (planningSubtasksData) {
+        for (const subtask of planningSubtasksData) {
+          try {
+            const resolvedAssignedTo = await resolveUserNamesAsync([subtask.assigned_to]);
+            const { data: checklistItemData } = await supabase
+              .from('event_planning_checklist_items')
+              .select('title, event_planning_id')
+              .eq('id', subtask.planning_item_id)
+              .single();
+            let planningTitle = 'Unbekannte Planung';
+            if (checklistItemData?.event_planning_id) {
+              const { data: planningData } = await supabase.from('event_plannings').select('title').eq('id', checklistItemData.event_planning_id).single();
+              planningTitle = planningData?.title || 'Unbekannte Planung';
+            }
+            allSubtasks.push({
+              ...subtask, task_title: planningTitle, source_type: 'planning',
+              checklist_item_title: checklistItemData?.title, planning_item_id: subtask.planning_item_id,
+              assigned_to_names: resolvedAssignedTo, assigned_to: [subtask.assigned_to]
+            });
+          } catch {
+            allSubtasks.push({
+              ...subtask, task_title: 'Unbekannte Planung', source_type: 'planning',
+              planning_item_id: subtask.planning_item_id,
+              assigned_to_names: resolveUserNames([subtask.assigned_to]),
+              assigned_to: [subtask.assigned_to]
+            });
+          }
+        }
+      }
+
+      // 3. Call follow-up tasks
+      const { data: callFollowupData } = await supabase
+        .from('tasks')
+        .select('*')
+        .eq('category', 'call_follow_up')
+        .neq('status', 'completed');
+
+      const userCallFollowups = (callFollowupData || []).filter(task => {
+        const assignees = Array.isArray(task.assigned_to)
+          ? task.assigned_to
+          : (task.assigned_to || '').split(',').map(a => a.trim());
+        return assignees.includes(user.id) || assignees.includes(user.email || '') || task.user_id === user.id;
+      });
+
+      for (const followupTask of userCallFollowups) {
+        try {
+          const assignees = Array.isArray(followupTask.assigned_to)
+            ? followupTask.assigned_to
+            : (followupTask.assigned_to || '').split(',').map(a => a.trim());
+          const resolvedAssignedTo = await resolveUserNamesAsync(assignees);
+          let contactName = 'Unbekannter Kontakt';
+          if (followupTask.call_log_id) {
+            const { data: callLogData } = await supabase.from('call_logs').select('contact_id').eq('id', followupTask.call_log_id).single();
+            if (callLogData?.contact_id) {
+              const { data: contactData } = await supabase.from('contacts').select('name').eq('id', callLogData.contact_id).single();
+              contactName = contactData?.name || contactName;
+            }
+          }
+          allSubtasks.push({
+            id: followupTask.id, title: followupTask.title, description: followupTask.description,
+            task_id: followupTask.id, task_title: `Follow-Up: ${contactName}`, source_type: 'call_followup',
+            assigned_to: followupTask.assigned_to, due_date: followupTask.due_date,
+            is_completed: followupTask.status === 'completed', created_at: followupTask.created_at,
+            updated_at: followupTask.updated_at, priority: followupTask.priority,
+            call_log_id: followupTask.call_log_id, contact_name: contactName,
+            order_index: 0, assigned_to_names: resolvedAssignedTo
+          });
+        } catch {
+          const assignees = Array.isArray(followupTask.assigned_to)
+            ? followupTask.assigned_to
+            : (followupTask.assigned_to || '').split(',').map(a => a.trim());
+          allSubtasks.push({
+            id: followupTask.id, title: followupTask.title, description: followupTask.description,
+            task_id: followupTask.id, task_title: `Follow-Up: Unbekannter Kontakt`, source_type: 'call_followup',
+            assigned_to: followupTask.assigned_to, due_date: followupTask.due_date,
+            is_completed: followupTask.status === 'completed', created_at: followupTask.created_at,
+            updated_at: followupTask.updated_at, priority: followupTask.priority,
+            call_log_id: followupTask.call_log_id, contact_name: 'Unbekannter Kontakt',
+            order_index: 0, assigned_to_names: resolveUserNames(assignees)
+          });
+        }
+      }
+
+      setAssignedSubtasks(allSubtasks);
+    } catch (error) {
+      console.error('Critical error loading assigned subtasks:', error);
+    }
+  };
+
+  // Initial load
+  useEffect(() => {
+    const loadAllData = async () => {
+      await loadUsers();
+      await Promise.all([
+        loadTasks(), loadTaskConfiguration(), loadTaskDocumentCounts(),
+        loadSubtaskCounts(), loadTaskSnoozes(), loadTodos(), loadTaskComments()
+      ]);
+      await loadAssignedSubtasks();
+    };
+    loadAllData();
+  }, []);
+
+  return {
+    tasks, setTasks, loading, taskComments, taskCategories, taskStatuses,
+    users, taskDocuments, taskDocumentDetails, subtaskCounts, subtasks,
+    assignedSubtasks, taskSnoozes, subtaskSnoozes, allSnoozes, todos,
+    resolveUserNames, loadTasks, loadTaskComments, loadTaskDocuments,
+    loadTaskDocumentCounts, loadSubtaskCounts, loadSubtasksForTask,
+    loadTaskSnoozes, loadAllSnoozes, loadTodos, loadAssignedSubtasks,
+    user, currentTenant,
+  };
+}
