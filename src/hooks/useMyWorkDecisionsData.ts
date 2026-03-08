@@ -150,11 +150,11 @@ export function useMyWorkDecisionsData(userId?: string) {
 
       const participantDecisionIds = new Set(participantDecisions.map((d) => d.id));
       const publicDecisions: MyWorkDecision[] = publicData
-        .filter((item: any) => !participantDecisionIds.has(item.id))
-        .map((item: any) => {
+        .filter((item) => !participantDecisionIds.has(item.id))
+        .map((item) => {
           const participants = item.task_decision_participants || [];
-          const userParticipant = participants.find((p: any) => p.user_id === userId);
-          const pendingCount = participants.filter((p: any) => !p.task_decision_responses || p.task_decision_responses.length === 0).length;
+          const userParticipant = participants.find((p) => p.user_id === userId);
+          const pendingCount = participants.filter((p) => !p.task_decision_responses || p.task_decision_responses.length === 0).length;
           const attInfo = computeAttachmentInfo(item.task_decision_attachments);
 
           return {
