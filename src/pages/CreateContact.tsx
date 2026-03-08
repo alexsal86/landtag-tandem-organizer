@@ -127,9 +127,9 @@ export function CreateContact() {
       data?.map((contact) => ({
         id: contact.id,
         name: contact.name,
-        email: contact.email,
-        phone: contact.phone,
-        organization: contact.organization,
+        email: contact.email ?? undefined,
+        phone: contact.phone ?? undefined,
+        organization: contact.organization ?? undefined,
         organization_id: contact.organization_id,
       })) || [],
     );
