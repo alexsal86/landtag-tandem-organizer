@@ -67,7 +67,7 @@ export const PollResponseInterface = ({ pollId, token, participantId, isPreview 
           .maybeSingle();
 
         if (pollError) {
-          console.error('Poll loading error:', pollError);
+          debugConsole.error('Poll loading error:', pollError);
           throw new Error('Abstimmung nicht gefunden oder ungültiger Link.');
         }
         if (!pollData) {
