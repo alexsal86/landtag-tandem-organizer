@@ -76,7 +76,7 @@ export function useKnowledgeData() {
   const fetchDocuments = useCallback(async () => {
     if (!user) { setLoading(false); return; }
     try {
-      const { data, error } = await supabase.from('knowledge_documents').select('*').order('updated_at', { ascending: false });
+      const { data, error } = await supabase.from('knowledge_documents').select('id, title, content, category, created_by, created_at, updated_at, is_published, is_locked').order('updated_at', { ascending: false });
       if (error) throw error;
       const rows = (data ?? []) as KnowledgeDocumentRow[];
       if (rows.length > 0) {
