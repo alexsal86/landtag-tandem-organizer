@@ -34,6 +34,7 @@ import { InlineMeetingParticipantsEditor } from "@/components/meetings/InlineMee
 import { MeetingParticipantAvatars } from "@/components/meetings/MeetingParticipantAvatars";
 import { UpcomingAppointmentsSection } from "@/components/meetings/UpcomingAppointmentsSection";
 import { PendingJourFixeNotes } from "@/components/meetings/PendingJourFixeNotes";
+import { PendingJourFixeCaseItems } from "@/components/meetings/PendingJourFixeCaseItems";
 import { SystemAgendaItem } from "@/components/meetings/SystemAgendaItem";
 import { BirthdayAgendaItem } from "@/components/meetings/BirthdayAgendaItem";
 import { FocusModeView } from "@/components/meetings/FocusModeView";
