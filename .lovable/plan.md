@@ -1,61 +1,68 @@
 
-Ziel: Rückmeldungs-Feed stabil sichtbar machen und gleichzeitig die aktuellen Build-Blocker entfernen, damit die Fixes überhaupt wieder ausgeliefert werden.
 
-1) Diagnose (aus Code + DB)
-- Do I know what the issue is? Ja.
-- Es gibt aktuell 2 Ebenen von Problemen:
-  1. Build ist kaputt (TypeScript):
-     - `src/components/ui/calendar.tsx`: doppelte Keys im `classNames`-Objekt (`caption_label`, `dropdowns`, `dropdown`) → TS1117.
-     - `src/components/task-decisions/DecisionOverview.tsx`: `ResponseOption`-Typ ohne `requires_comment` → TS2339.
-  2. Feed-Logik ist instabil/zu restriktiv:
-     - `src/components/my-work/MyWorkFeedbackFeedTab.tsx` übergibt `completedTo: new Date().toISOString()` bei jedem Render.
-       Dadurch ändert sich der React-Query-Key permanent (`useTeamFeedbackFeed`), was zu dauerndem Neu-Laden bzw. instabilem Feed führt.
-     - `useTeamFeedbackFeed` filtert hart auf `.not('notes','is',null)`. Damit verschwinden abgeschlossene Rückmeldungen ohne Notiz (z. B. nur Anhang/Aufgabe), obwohl sie fachlich oft relevant sind.
-- DB-Check:
-  - `appointment_feedback` hat Daten (u. a. completed in den letzten 7 Tagen vorhanden).
-  - RLS auf `appointment_feedback` erlaubt tenant-basiertes Lesen (`tenant_id = ANY(get_user_tenant_ids(auth.uid()))`), also kein offensichtlicher RLS-Blocker für Team-Feed im Tenant.
+# Aktualisierte Prioritaetenliste nach Refactoring
 
-2) Umsetzungsplan (in Reihenfolge)
-A. Build sofort reparieren (Blocker)
-- `calendar.tsx`: doppelte Objekt-Keys entfernen, nur eine konsistente Definition für `caption_label`, `dropdowns`, `dropdown` behalten.
-- `DecisionOverview.tsx`: lokalen `ResponseOption`-Typ um `requires_comment?: boolean` ergänzen (oder auf den zentralen Typ aus `decisionTemplates` umstellen).
+## Status der bisherigen Arbeit
 
-B. Feed-Query stabilisieren
-- `MyWorkFeedbackFeedTab.tsx`:
-  - `completedTo` nicht mehr bei jedem Render neu erzeugen.
-  - Entweder:
-    - `completedTo` ganz weglassen (nur `completedFrom` + order/limit), oder
-    - `completedTo` per `useMemo/useState` nur bei Filterwechsel neu setzen.
-- `useTeamFeedbackFeed.ts`:
-  - Query-Key nur mit stabilen Filterwerten.
-  - Zeitfilter robust halten (kein per-render Drift).
+Die 6 groessten Dateien wurden erfolgreich aufgeteilt:
 
-C. Sichtbarkeit der Rückmeldungen fachlich korrigieren
-- `useTeamFeedbackFeed.ts`:
-  - Notiz-Pflicht entfernen oder erweitern:
-    - statt nur `notes is not null` auch Einträge mit `has_documents = true` oder `has_tasks = true` zulassen.
-  - Ergebnis: auch „abgeschlossen ohne Notiz, aber mit Anhang/Aufgabe“ erscheint im Feed.
+| Datei | Vorher | Nachher | Status |
+|-------|--------|---------|--------|
+| MeetingsView.tsx | 5.383 | 4.011 | Teilweise (noch gross!) |
+| TasksView.tsx | 2.719 | 406 | Erledigt |
+| DocumentsView.tsx | 2.564 | 478 | Erledigt |
+| LetterEditor.tsx | 2.261 | 732 | Erledigt |
+| GlobalDaySlipPanel.tsx | 1.977 | 434 | Erledigt |
+| TimeTrackingView.tsx | 1.836 | 391 | Erledigt |
 
-D. Fehler nicht mehr als „keine Daten“ maskieren
-- `MyWorkFeedbackFeedTab.tsx`:
-  - `isError` + `error` aus Query auslesen.
-  - Bei Fehler einen klaren Error-State anzeigen (statt „Keine passenden Rückmeldungen gefunden“), inkl. Retry-Button (`refetch`).
+## Aktuelles Ranking (alle Dateien > 700 Zeilen)
 
-E. Quercheck auf Seiteneffekte
-- `useMyWorkNewCounts.tsx` zählt derzeit ebenfalls nur `completed + notes not null`; ggf. auf dieselbe fachliche Logik angleichen, damit Badge und Feed konsistent sind.
+| # | Datei | Zeilen | Prioritaet |
+|---|-------|--------|-----------|
+| 1 | **MeetingsView.tsx** | **4.011** | KRITISCH -- Refactoring war unvollstaendig |
+| 2 | **EmployeesView.tsx** | **1.763** | HOCH |
+| 3 | **ContactsView.tsx** | **1.397** | HOCH |
+| 4 | **CalendarView.tsx** | **1.330** | HOCH |
+| 5 | **TaskDetailSidebar.tsx** | **1.235** | HOCH |
+| 6 | **LetterTemplateManager.tsx** | **1.134** | MITTEL |
+| 7 | **ContactImport.tsx** | **1.060** | MITTEL |
+| 8 | **LetterPDFExport.tsx** | **1.033** | MITTEL |
+| 9 | **StakeholderView.tsx** | **993** | MITTEL |
+| 10 | **ExpenseManagement.tsx** | **915** | MITTEL |
+| 11 | **KnowledgeBaseView.tsx** | **897** | MITTEL |
+| 12 | **CreateAppointmentDialog.tsx** | **808** | MITTEL |
+| 13 | **LetterEditor.tsx** | **732** | OK (koennte weiter) |
+| 14 | **ContactDetailPanel.tsx** | **692** | OK |
+| 15 | **LettersView.tsx** | **677** | OK |
 
-3) Validierung nach Umsetzung
-- Build grün ohne TS-Fehler.
-- Im Tab „Meine Arbeit > Rückmeldungen“:
-  - Keine Endlos-Ladeanzeige.
-  - Team-Einträge der letzten 7/14 Tage sichtbar.
-  - Filter (Sicht/Zeitraum/Anhänge/Aufgaben) funktionieren.
-  - Bei absichtlichem Query-Fehler erscheint Error-State statt Empty-State.
-- Schneller Datenabgleich:
-  - Feed-Anzahl grob konsistent mit SQL-Count für completed im Zeitraum (unter Berücksichtigung der Filter).
+Dazu kommen durch das Refactoring neu entstandene groessere Dateien:
+- ActiveMeetingPanel.tsx: 551 (aus MeetingsView extrahiert, OK)
+- tasks/hooks/useTasksData.ts: 507 (OK)
 
-4) Warum das den aktuellen Zustand löst
-- Solange Build fehlschlägt, werden vorherige Fixes teils nicht wirksam.
-- Selbst bei laufendem Build kann der Feed durch den „beweglichen“ `completedTo`-Key instabil bleiben.
-- Zusätzlich blendet der harte Notiz-Filter valide Rückmeldungen aus.
-- Mit den vier Korrekturen (Build, stabiler Query-Key, fachlich korrekter Filter, echter Error-State) wird die Ursachekette vollständig geschlossen.
+## Empfohlene naechste Schritte
+
+### Runde 1 -- KRITISCH
+
+**MeetingsView.tsx (4.011 Zeilen)** muss nochmal angefasst werden. Beim ersten Refactoring wurden nur ~1.400 Zeilen extrahiert. Hier fehlt noch die Aufteilung der Agenda-Editor-Logik, System-Item-Rendering und Archivierungs-Code.
+
+### Runde 2 -- HOCH (je ~1.200-1.800 Zeilen)
+
+1. **EmployeesView.tsx** (1.763) -- Mitarbeiterverwaltung mit vermutlich Tabelle, Formularen, Rollen
+2. **ContactsView.tsx** (1.397) -- Kontaktliste mit Filter, Suche, Import-Verknuepfung
+3. **CalendarView.tsx** (1.330) -- Kalender-Shell mit diversen Ansichten
+4. **TaskDetailSidebar.tsx** (1.235) -- Task-Detail mit Kommentaren, Attachments, Subtasks
+
+### Runde 3 -- MITTEL (je ~900-1.134 Zeilen)
+
+5. LetterTemplateManager.tsx (1.134)
+6. ContactImport.tsx (1.060)
+7. LetterPDFExport.tsx (1.033)
+8. StakeholderView.tsx (993)
+9. ExpenseManagement.tsx (915)
+10. KnowledgeBaseView.tsx (897)
+11. CreateAppointmentDialog.tsx (808)
+
+### Empfehlung
+
+Mit **MeetingsView.tsx** weitermachen (ist immer noch bei 4.011 Zeilen und damit doppelt so gross wie die naechste Datei), dann EmployeesView und ContactsView.
+
