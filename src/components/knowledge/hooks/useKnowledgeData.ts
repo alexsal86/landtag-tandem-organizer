@@ -85,7 +85,7 @@ export function useKnowledgeData() {
         await fetchAllDocumentTopics(docs.map(d => d.id));
       } else { setDocuments([]); }
     } catch (error) {
-      console.error('Error fetching documents:', error);
+      debugConsole.error('Error fetching documents:', error);
       toast({ title: "Fehler beim Laden der Dokumente", description: "Die Dokumente konnten nicht geladen werden.", variant: "destructive" });
     } finally { setLoading(false); }
   }, [user, hydrateDocuments, fetchAllDocumentTopics, toast]);
