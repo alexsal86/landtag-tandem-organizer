@@ -382,7 +382,7 @@ export function AssignedItemsSection({
         
         {/* Tasks */}
         {filteredTasks.map((task) => {
-          const isSnoozed = taskSnoozes[task.id] && new Date(taskSnoozes[task.id]) > new Date();
+          const isSnoozed = !!(taskSnoozes[task.id] && new Date(taskSnoozes[task.id]) > new Date());
           return (
             <ItemCard
               key={`task-${task.id}`}
