@@ -132,22 +132,25 @@ export function GlobalDaySlipPanel() {
     event.preventDefault();
     const droppedTaskTitle = event.dataTransfer.getData("application/x-mywork-task-title").trim();
     const droppedTaskId = event.dataTransfer.getData("application/x-mywork-task-id").trim();
+    const droppedItemType = event.dataTransfer.getData("application/x-mywork-item-type").trim();
     const droppedPlainText = event.dataTransfer.getData("text/plain").trim();
     const rawValue = droppedTaskTitle || droppedPlainText;
     if (!rawValue) return;
-    const withTaskIcon = droppedTaskTitle && !rawValue.startsWith("✅") ? `✅ ${rawValue}` : rawValue;
+    const typeIcons: Record<string, string> = { task: "✅", note: "📝", case: "💼", decision: "🗳️" };
+    const icon = (droppedItemType && typeIcons[droppedItemType]) || (droppedTaskTitle ? "✅" : "");
+    const withIcon = icon && !rawValue.startsWith(icon) ? `${icon} ${rawValue}` : rawValue;
     if (droppedTaskId && ds.editorRef.current) {
       ds.editorRef.current.update(() => {
         const root = $getRoot();
         const existing = new Set(root.getChildren().map((n) => normalizeLineText(n.getTextContent())).filter((l) => l.length > 0));
-        const normalized = normalizeLineText(withTaskIcon);
+        const normalized = normalizeLineText(withIcon);
         if (!normalized || existing.has(normalized)) return;
         const paragraph = $createDaySlipLineNode(undefined, droppedTaskId);
-        paragraph.append($createTextNode(withTaskIcon));
+        paragraph.append($createTextNode(withIcon));
         root.append(paragraph);
       });
     } else {
-      ds.appendLinesToToday([withTaskIcon]);
+      ds.appendLinesToToday([withIcon]);
     }
     setOpen(true); ds.setResolveMode(false); setShowArchive(false); setShowSettings(false);
   }, [ds.appendLinesToToday]);

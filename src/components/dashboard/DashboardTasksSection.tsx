@@ -28,11 +28,12 @@ export const DashboardTasksSection = () => {
   const [items, setItems] = useState<DeadlineItem[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
-  const handleDragStart = (event: React.DragEvent<HTMLElement>, title: string, id?: string) => {
+  const handleDragStart = (event: React.DragEvent<HTMLElement>, title: string, id?: string, type?: string) => {
     event.dataTransfer.effectAllowed = 'copy';
     event.dataTransfer.setData('text/plain', title);
     event.dataTransfer.setData('application/x-mywork-task-title', title);
     if (id) event.dataTransfer.setData('application/x-mywork-task-id', id);
+    if (type) event.dataTransfer.setData('application/x-mywork-item-type', type);
     const ghost = document.createElement('div');
     ghost.className = 'pointer-events-none bg-transparent px-0 py-0 text-lg font-medium text-foreground';
     ghost.textContent = title;
@@ -122,7 +123,7 @@ export const DashboardTasksSection = () => {
       >
         <span
           draggable
-          onDragStart={(e) => { e.stopPropagation(); handleDragStart(e, item.title, item.id); }}
+          onDragStart={(e) => { e.stopPropagation(); handleDragStart(e, item.title, item.id, item.type); }}
           className="cursor-grab rounded p-0.5 text-muted-foreground transition-colors hover:bg-muted/60 hover:text-foreground active:cursor-grabbing"
           onClick={(e) => e.stopPropagation()}
         >
