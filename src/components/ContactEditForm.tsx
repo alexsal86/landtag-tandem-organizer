@@ -430,7 +430,7 @@ export function ContactEditForm({ contact, onSuccess, onCancel }: ContactEditFor
       const fileName = `avatar-${Date.now()}.${fileExt}`;
       const filePath = `${user.id}/${fileName}`;
 
-      console.log('Uploading avatar to:', filePath);
+      debugConsole.log('Uploading avatar to:', filePath);
 
       // Upload to Supabase Storage
       const { error: uploadError } = await supabase.storage
