@@ -165,7 +165,7 @@ export function ContactDetailSheet({ contactId, isOpen, onClose, onContactUpdate
 
       setCallLogs((data || []) as CallLog[]);
     } catch (error) {
-      console.error('Error fetching call logs:', error);
+      debugConsole.error('Error fetching call logs:', error);
     } finally {
       setLoadingCallLogs(false);
     }
