@@ -253,7 +253,7 @@ export function useMeetingsData() {
 
       const { data: participantMeetings, error: participantError } = await supabase
         .from('meeting_participants').select('meeting_id, meetings(*)').eq('user_id', user?.id);
-      if (participantError) console.error('Error loading participant meetings:', participantError);
+      if (participantError) debugConsole.error('Error loading participant meetings:', participantError);
 
       const ownMeetingIds = new Set((ownMeetings || []).map(m => m.id));
       const participantMeetingsData = (participantMeetings || [])
