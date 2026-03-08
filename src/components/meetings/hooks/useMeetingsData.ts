@@ -52,7 +52,7 @@ export function useMeetingsData() {
   const [activeMeetingId, setActiveMeetingId] = useState<string | null>(null);
   const [showArchive, setShowArchive] = useState(false);
   const [isFocusMode, setIsFocusMode] = useState(false);
-  const [meetingParticipants, setMeetingParticipants] = useState<any[]>([]);
+  const [meetingParticipants, setMeetingParticipants] = useState<MeetingParticipant[]>([]);
   const [currentUserIsParticipant, setCurrentUserIsParticipant] = useState(false);
   const updateTimeouts = useRef<Record<string, NodeJS.Timeout>>({});
   const [starredAppointmentIds, setStarredAppointmentIds] = useState<Set<string>>(new Set());
