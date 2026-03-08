@@ -129,7 +129,7 @@ export const TaskDecisionResponse = ({
         });
       }
     } catch (error) {
-      console.error('Error loading current response:', error);
+      debugConsole.error('Error loading current response:', error);
     }
   };
 
