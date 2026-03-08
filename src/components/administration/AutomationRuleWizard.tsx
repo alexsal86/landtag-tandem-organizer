@@ -69,6 +69,13 @@ const FIELD_OPTIONS_BY_MODULE: Record<string, Array<{ value: string; label: stri
   ],
 };
 
+// Used by templates before full DEFAULT_ACTION is defined
+const DEFAULT_ACTION_INIT = {
+  targetUserId: "", title: "", message: "", taskPriority: "medium", taskCategory: "personal",
+  taskDueDate: "", taskAssignees: "", table: "tasks", recordId: "", status: "",
+  emailTemplateId: "", emailRecipient: "", emailRecipientName: "",
+};
+
 export const RULE_TEMPLATES = [
   {
     id: "tasks-overdue",
