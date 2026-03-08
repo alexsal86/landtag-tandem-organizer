@@ -1630,6 +1630,11 @@ export function MatrixClientProvider({ children }: { children: ReactNode }) {
 
   const totalUnreadCount = rooms.reduce((sum, room) => sum + room.unreadCount, 0);
 
+  // Sync live count to the lightweight MatrixUnreadProvider
+  useEffect(() => {
+    setLiveUnreadCount(totalUnreadCount);
+  }, [totalUnreadCount, setLiveUnreadCount]);
+
   const value: MatrixClientContextType = {
     client,
     isConnected,
