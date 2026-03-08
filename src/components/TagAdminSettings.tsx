@@ -63,7 +63,8 @@ export function TagAdminSettings() {
         label,
         color,
         icon: icon || null,
-        order_index: Math.max(...tags.map(t => t.order_index), -1) + 1
+        order_index: Math.max(...tags.map(t => t.order_index), -1) + 1,
+        tenant_id: currentTenant!.id,
       });
       
       if (error) throw error;

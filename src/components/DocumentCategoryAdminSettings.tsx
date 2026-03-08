@@ -62,7 +62,8 @@ export function DocumentCategoryAdminSettings() {
         label,
         color,
         icon: icon || null,
-        order_index: Math.max(...categories.map(c => c.order_index), -1) + 1
+        order_index: Math.max(...categories.map(c => c.order_index), -1) + 1,
+        tenant_id: currentTenant!.id,
       });
       
       if (error) throw error;

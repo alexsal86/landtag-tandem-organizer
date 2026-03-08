@@ -72,6 +72,7 @@ export const useTopics = () => {
           description: topicData.description,
           order_index: maxOrderIndex,
           is_active: true,
+          tenant_id: currentTenant!.id,
         })
         .select()
         .single();
