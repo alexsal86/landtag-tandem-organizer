@@ -308,7 +308,7 @@ classifyCaseScale({ explicitScale: cf.case_scale, caseType: cf.case_type }) === 
                       <div className="flex items-center gap-2">
                         <span 
                           className="w-2 h-2 rounded-full" 
-                          style={{ backgroundColor: type.color }}
+                          style={{ backgroundColor: type.color ?? undefined }}
                         />
                         {type.label}
                       </div>
