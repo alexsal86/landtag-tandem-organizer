@@ -86,7 +86,7 @@ export function InlineMeetingParticipantsEditor({ meetingId }: InlineMeetingPart
       user: profiles?.find(prof => prof.user_id === p.user_id) || undefined
     }));
 
-    console.log('Loaded participants:', enrichedParticipants);
+    
     setParticipants(enrichedParticipants);
     setLoading(false);
   };
