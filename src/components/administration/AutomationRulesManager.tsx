@@ -8,9 +8,10 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/components/ui/use-toast";
-import { AlertTriangle, Clock, Download, Loader2, Pause, Play, Plus, ShieldAlert, Trash2, Upload, Zap } from "lucide-react";
+import { AlertTriangle, Clock, Copy, Download, Loader2, Pause, Play, Plus, ShieldAlert, Trash2, Upload, Zap } from "lucide-react";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { formatDistanceToNow } from "date-fns";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import { formatDistanceToNow, addMinutes } from "date-fns";
 import { de } from "date-fns/locale";
 import { AutomationRuleWizard, DEFAULT_FORM, DEFAULT_ACTION, RULE_TEMPLATES, type WizardForm, type ActionItem, type ConditionItem } from "./AutomationRuleWizard";
 import { AutomationTemplateGallery } from "./AutomationTemplateGallery";
