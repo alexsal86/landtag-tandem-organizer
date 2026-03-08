@@ -106,16 +106,17 @@ export function useLetterTemplateData() {
     return elements;
   };
 
-  const stripBlobUrlsFromLayoutSettings = (settings: any): any => {
+  const stripBlobUrlsFromLayoutSettings = (settings: LetterLayoutSettings): LetterLayoutSettings => {
     if (!settings || typeof settings !== 'object') return settings;
     const cleaned = { ...settings };
-    if (cleaned.blockContent && typeof cleaned.blockContent === 'object') {
-      const cleanedBlocks: any = {};
-      for (const [key, items] of Object.entries(cleaned.blockContent)) {
+    const bc = (cleaned as unknown as Record<string, unknown>).blockContent;
+    if (bc && typeof bc === 'object') {
+      const cleanedBlocks: Record<string, unknown> = {};
+      for (const [key, items] of Object.entries(bc as Record<string, unknown>)) {
         if (key === 'header') continue;
         cleanedBlocks[key] = Array.isArray(items) ? stripBlobUrls(items) : items;
       }
-      cleaned.blockContent = cleanedBlocks;
+      (cleaned as unknown as Record<string, unknown>).blockContent = cleanedBlocks;
     }
     return cleaned;
   };
