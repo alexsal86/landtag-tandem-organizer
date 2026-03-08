@@ -60,7 +60,7 @@ export function useMyWorkSettings(): MyWorkSettingsResult {
         .maybeSingle();
       
       if (error) {
-        console.error('Error loading mywork settings:', error);
+        debugConsole.error('Error loading mywork settings:', error);
       } else if (data) {
         setBadgeDisplayMode(data.badge_display_mode as BadgeDisplayMode);
       }
