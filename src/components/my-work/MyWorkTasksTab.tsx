@@ -420,7 +420,7 @@ export function MyWorkTasksTab() {
       setAssignTaskId(null);
       setAssignSelectedUserIds([]);
     } catch (error) {
-      console.error("Error updating assignee:", error);
+      debugConsole.error("Error updating assignee:", error);
       toast({ title: "Fehler", variant: "destructive" });
     }
   };
