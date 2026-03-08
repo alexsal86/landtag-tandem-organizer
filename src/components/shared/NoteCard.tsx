@@ -61,6 +61,7 @@ interface NoteCardProps {
 export function NoteCard({
   note, userId, showFollowUpBadge = false, dragHandleProps,
   isExpanded, isDetailsExpanded, colorModeUpdating,
+  className, highlightRef,
   onNoteClick, onToggleExpand, onToggleDetailsExpand,
   onTogglePin, onDelete, onArchive, onSetPriority, onSetColor, onSetColorMode,
   onSetFollowUp, onOpenDatePicker, onCreateTask, onRemoveTask,
