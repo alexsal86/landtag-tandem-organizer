@@ -138,7 +138,7 @@ export const useNoteSharing = (noteId?: string) => {
   const updatePermission = async (shareId: string, permissionType: "view" | "edit") => {
     if (!user) return false;
 
-    console.log("Updating individual note permission:", { shareId, permissionType });
+    
 
     try {
       // First get the note_id for the share (helps RLS policy evaluate correctly)
