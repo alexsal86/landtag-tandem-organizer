@@ -107,7 +107,7 @@ export const StatusAdminSettings: React.FC = () => {
     } catch (error) {
       debugConsole.error('Error saving status option:', error);
       debugConsole.error('Error details:', JSON.stringify(error, null, 2));
-      toast.error(`Fehler beim Speichern der Status-Option: ${error.message || 'Unbekannter Fehler'}`);
+      toast.error(`Fehler beim Speichern der Status-Option: ${error instanceof Error ? error.message : 'Unbekannter Fehler'}`);
     }
   };
 

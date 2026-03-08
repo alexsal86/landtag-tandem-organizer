@@ -13,10 +13,10 @@ interface VacationHistoryEntry {
   id: string;
   year: number;
   annual_entitlement: number;
-  carry_over_from_previous: number;
-  total_taken: number;
-  carry_over_to_next: number;
-  expired_days: number;
+  carry_over_from_previous: number | null;
+  total_taken: number | null;
+  carry_over_to_next: number | null;
+  expired_days: number | null;
   notes: string | null;
 }
 
@@ -110,8 +110,8 @@ export function VacationHistoryDialog({
               </TableHeader>
               <TableBody>
                 {history.map((entry) => {
-                  const total = entry.annual_entitlement + entry.carry_over_from_previous;
-                  const remaining = total - entry.total_taken - entry.expired_days;
+                  const total = entry.annual_entitlement + (entry.carry_over_from_previous ?? 0);
+                  const remaining = total - (entry.total_taken ?? 0) - (entry.expired_days ?? 0);
                   
                   return (
                     <TableRow key={entry.id}>
@@ -127,10 +127,10 @@ export function VacationHistoryDialog({
                         {entry.annual_entitlement}
                       </TableCell>
                       <TableCell className="text-right">
-                        {entry.carry_over_from_previous > 0 ? (
+                        {(entry.carry_over_from_previous ?? 0) > 0 ? (
                           <Badge variant="outline" className="font-mono">
                             <TrendingUp className="h-3 w-3 mr-1 text-green-600" />
-                            +{entry.carry_over_from_previous}
+                            +{entry.carry_over_from_previous ?? 0}
                           </Badge>
                         ) : (
                           <span className="text-muted-foreground font-mono">0</span>
@@ -140,22 +140,22 @@ export function VacationHistoryDialog({
                         {total}
                       </TableCell>
                       <TableCell className="text-right font-mono">
-                        {entry.total_taken}
+                        {entry.total_taken ?? 0}
                       </TableCell>
                       <TableCell className="text-right">
-                        {entry.expired_days > 0 ? (
+                        {(entry.expired_days ?? 0) > 0 ? (
                           <Badge variant="destructive" className="font-mono">
                             <TrendingDown className="h-3 w-3 mr-1" />
-                            -{entry.expired_days}
+                            -{entry.expired_days ?? 0}
                           </Badge>
                         ) : (
                           <span className="text-muted-foreground font-mono">0</span>
                         )}
                       </TableCell>
                       <TableCell className="text-right">
-                        {entry.carry_over_to_next > 0 ? (
+                        {(entry.carry_over_to_next ?? 0) > 0 ? (
                           <Badge variant="secondary" className="font-mono bg-blue-50 text-blue-700 border-blue-200">
-                            {entry.carry_over_to_next}
+                            {entry.carry_over_to_next ?? 0}
                           </Badge>
                         ) : (
                           <span className="text-muted-foreground font-mono">0</span>

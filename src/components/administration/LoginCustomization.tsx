@@ -351,7 +351,7 @@ export function LoginCustomization() {
               ...customization,
               background_image_url: url,
               background_position: position as string,
-              background_attribution: attribution
+              background_attribution: attribution ?? null
             });
             setImagePickerOpen(false);
           }}

@@ -212,7 +212,7 @@ export const TopicSettings = () => {
 
                         <div
                           className="flex items-center justify-center w-8 h-8 rounded"
-                          style={{ backgroundColor: topic.color + '20', color: topic.color }}
+                          style={{ backgroundColor: (topic.color ?? '#3b82f6') + '20', color: topic.color ?? undefined }}
                         >
                           {getIconComponent(topic.icon || 'Tag')}
                         </div>

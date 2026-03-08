@@ -15,24 +15,24 @@ interface ArchivedTask {
   id: string;
   task_id: string;
   title: string;
-  description: string;
+  description: string | null;
   priority: "low" | "medium" | "high";
   category: "legislation" | "constituency" | "committee" | "personal";
-  assigned_to?: string;
-  progress?: number;
-  due_date: string;
+  assigned_to?: string | null;
+  progress?: number | null;
+  due_date: string | null;
   completed_at: string;
   archived_at: string;
-  auto_delete_after_days?: number;
+  auto_delete_after_days?: number | null;
 }
 
 interface ArchiveSettings {
-  auto_delete_after_days?: number;
+  auto_delete_after_days?: number | null;
 }
 
 interface ArchivedDecision {
   id: string;
-  task_id: string;
+  task_id: string | null;
   title: string;
   description: string | null;
   created_at: string;

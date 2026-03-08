@@ -107,8 +107,8 @@ export default function AppointmentPreparationTemplateAdmin() {
           .from('appointment_preparation_templates')
           .insert([{
             tenant_id: currentTenant?.id ?? '',
-            name: templateData.name,
-            description: templateData.description,
+            name: templateData.name!,
+            description: templateData.description ?? null,
             template_data: templateData.template_data || [],
             is_default: templateData.is_default || false,
             is_active: true,

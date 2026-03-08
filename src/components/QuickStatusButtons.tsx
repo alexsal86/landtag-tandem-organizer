@@ -44,7 +44,7 @@ export const QuickStatusButtons: React.FC = () => {
     }
   ];
 
-  const currentDisplay = getStatusDisplay(currentStatus);
+  const currentDisplay = getStatusDisplay(currentStatus ?? undefined);
 
   return (
     <TooltipProvider>

@@ -20,8 +20,8 @@ interface InformationBlock {
   label: string;
   block_data: any;
   block_type: string;
-  is_default: boolean;
-  is_active: boolean;
+  is_default: boolean | null;
+  is_active: boolean | null;
 }
 
 export const InformationBlockManager: React.FC = () => {
@@ -58,7 +58,7 @@ export const InformationBlockManager: React.FC = () => {
       const { data, error } = await supabase
         .from('information_blocks')
         .select('*')
-        .eq('tenant_id', currentTenant?.id)
+        .eq('tenant_id', currentTenant?.id ?? '')
         .eq('is_active', true)
         .order('is_default', { ascending: false });
 

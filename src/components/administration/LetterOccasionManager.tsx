@@ -23,7 +23,7 @@ interface LetterOccasion {
   color: string | null;
   sort_order: number;
   default_template_id: string | null;
-  template_match_patterns: string[];
+  template_match_patterns: string[] | null;
   is_active: boolean;
 }
 

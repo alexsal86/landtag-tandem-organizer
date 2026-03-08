@@ -59,7 +59,7 @@ const ReviewAssignmentDialog: React.FC<ReviewAssignmentDialogProps> = ({
         .select('user_id')
         .eq('tenant_id', currentTenant.id)
         .eq('is_active', true)
-        .neq('user_id', user?.id);
+        .neq('user_id', user?.id ?? '');
 
       if (tenantError) {
         debugConsole.error('Error fetching tenant users:', tenantError);

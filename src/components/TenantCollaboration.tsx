@@ -18,8 +18,8 @@ interface TenantCollaboration {
   tenant_a_id: string;
   tenant_b_id: string;
   is_active: boolean;
-  approved_by_a?: string;
-  approved_by_b?: string;
+  approved_by_a?: string | null;
+  approved_by_b?: string | null;
   collaboration_type: string;
   created_at: string;
   tenant_a?: { name: string };

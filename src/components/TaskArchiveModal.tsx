@@ -15,19 +15,19 @@ interface ArchivedTask {
   id: string;
   task_id: string;
   title: string;
-  description: string;
+  description: string | null;
   priority: "low" | "medium" | "high";
   category: "legislation" | "constituency" | "committee" | "personal";
   assigned_to?: string[];
-  progress?: number;
-  due_date: string;
+  progress?: number | null;
+  due_date: string | null;
   completed_at: string;
   archived_at: string;
-  auto_delete_after_days?: number;
+  auto_delete_after_days?: number | null;
 }
 
 interface ArchiveSettings {
-  auto_delete_after_days?: number;
+  auto_delete_after_days?: number | null;
 }
 
 interface TaskArchiveModalProps {
@@ -42,9 +42,9 @@ interface Task {
   description: string;
   priority: "low" | "medium" | "high";
   status: "todo" | "in-progress" | "completed";
-  dueDate: string;
+  dueDate: string | null;
   category: "legislation" | "constituency" | "committee" | "personal";
-  assignedTo?: string; // Changed from string[] to string
+  assignedTo?: string;
   progress?: number;
 }
 
@@ -255,7 +255,7 @@ export function TaskArchiveModal({ isOpen, onClose, onTaskRestored }: TaskArchiv
       const restoredTask: Task = {
         id: task.task_id,
         title: task.title,
-        description: task.description,
+        description: task.description || '',
         priority: task.priority,
         status: 'todo',
         dueDate: task.due_date,
@@ -296,7 +296,7 @@ export function TaskArchiveModal({ isOpen, onClose, onTaskRestored }: TaskArchiv
             const restored: Task = {
               id: task.task_id,
               title: task.title,
-              description: task.description,
+              description: task.description || '',
               priority: task.priority,
               status: 'todo',
               dueDate: task.due_date,

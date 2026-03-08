@@ -11,7 +11,7 @@ import { debugConsole } from '@/utils/debugConsole';
 interface User {
   id: string;
   display_name: string;
-  avatar_url?: string;
+  avatar_url?: string | null;
 }
 
 interface UserSelectorProps {
@@ -133,7 +133,7 @@ export const UserSelector: React.FC<UserSelectorProps> = ({
       onClick={() => handleUserSelect(user)}
     >
       <Avatar className="h-8 w-8">
-        <AvatarImage src={user.avatar_url} />
+        <AvatarImage src={user.avatar_url ?? undefined} />
         <AvatarFallback>
           {getInitials(user.display_name)}
         </AvatarFallback>
@@ -164,7 +164,7 @@ export const UserSelector: React.FC<UserSelectorProps> = ({
         {selectedUser ? (
           <div className="flex items-center gap-2">
             <Avatar className="h-6 w-6">
-              <AvatarImage src={selectedUser.avatar_url} />
+              <AvatarImage src={selectedUser.avatar_url ?? undefined} />
               <AvatarFallback className="text-xs">
                 {getInitials(selectedUser.display_name)}
               </AvatarFallback>

@@ -15,7 +15,7 @@ import { MultiSelect } from "@/components/ui/multi-select-simple";
 interface TodoCategory {
   id: string;
   label: string;
-  color: string;
+  color: string | null;
 }
 
 interface TodoCreateDialogProps {
@@ -36,7 +36,7 @@ export function TodoCreateDialog({ open, onOpenChange, onTodoCreated }: TodoCrea
   const [categoryId, setCategoryId] = useState("");
   const [dueDate, setDueDate] = useState("");
   const [assignedTo, setAssignedTo] = useState<string[]>([]);
-  const [users, setUsers] = useState<Array<{ user_id: string; display_name?: string }>>([]);
+  const [users, setUsers] = useState<Array<{ user_id: string; display_name?: string | null }>>([]);
 
   debugConsole.log('TodoCreateDialog render - open:', open, 'user:', user?.id);
 
@@ -104,14 +104,14 @@ export function TodoCreateDialog({ open, onOpenChange, onTodoCreated }: TodoCrea
     setLoading(true);
     
     try {
-      const { error } = await supabase.from('todos').insert({
-        user_id: user?.id,
-        tenant_id: currentTenant?.id || '', // Use current tenant ID
+      const { error } = await supabase.from('todos').insert([{
+        user_id: user?.id ?? '',
+        tenant_id: currentTenant?.id || '',
         category_id: categoryId,
         title: title.trim(),
         assigned_to: assignedTo.length > 0 ? assignedTo : null,
         due_date: dueDate || null
-      });
+      }]);
       
       if (error) throw error;
 
@@ -168,7 +168,7 @@ export function TodoCreateDialog({ open, onOpenChange, onTodoCreated }: TodoCrea
                     <div className="flex items-center gap-2">
                       <div 
                         className="w-3 h-3 rounded-full" 
-                        style={{ backgroundColor: category.color }}
+                        style={{ backgroundColor: category.color ?? undefined }}
                       />
                       {category.label}
                     </div>

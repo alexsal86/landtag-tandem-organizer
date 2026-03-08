@@ -8,7 +8,7 @@ import { debugConsole } from '@/utils/debugConsole';
 export interface StatusOption {
   id: string;
   name: string;
-  emoji?: string;
+  emoji?: string | null;
   color: string;
   sort_order: number;
 }

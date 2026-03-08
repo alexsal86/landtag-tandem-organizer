@@ -15,8 +15,8 @@ import { toast } from "@/hooks/use-toast";
 
 interface Profile {
   user_id: string;
-  display_name: string;
-  avatar_url?: string;
+  display_name: string | null;
+  avatar_url: string | null;
 }
 
 interface MessageComposerProps {
@@ -40,7 +40,7 @@ export function MessageComposer({ onClose, onSent }: MessageComposerProps) {
       const { data } = await supabase
         .from('profiles')
         .select('user_id, display_name, avatar_url')
-        .neq('user_id', user?.id);
+        .neq('user_id', user?.id ?? '');
       
       setProfiles(data || []);
 
@@ -48,7 +48,7 @@ export function MessageComposer({ onClose, onSent }: MessageComposerProps) {
       const { data: currentProfile } = await supabase
         .from('profiles')
         .select('user_id, display_name, avatar_url')
-        .eq('user_id', user?.id)
+        .eq('user_id', user?.id ?? '')
         .single();
       
       setCurrentUserProfile(currentProfile);
@@ -195,7 +195,7 @@ export function MessageComposer({ onClose, onSent }: MessageComposerProps) {
                         onCheckedChange={() => handleRecipientToggle(profile.user_id)}
                       />
                       <Avatar className="h-6 w-6">
-                        <AvatarImage src={profile.avatar_url} />
+                        <AvatarImage src={profile.avatar_url ?? undefined} />
                         <AvatarFallback className="text-xs">
                           {profile.display_name?.charAt(0) || 'U'}
                         </AvatarFallback>

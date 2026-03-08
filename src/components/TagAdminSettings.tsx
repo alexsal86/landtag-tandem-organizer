@@ -18,8 +18,8 @@ type Tag = {
   id: string;
   name: string;
   label: string;
-  color: string;
-  icon?: string;
+  color: string | null;
+  icon?: string | null;
   is_active: boolean;
   order_index: number;
 };
@@ -284,10 +284,10 @@ export function TagAdminSettings() {
                                 <div className="flex items-center gap-2">
                                   <span
                                     className="inline-block w-3 h-3 rounded-full"
-                                    style={{ backgroundColor: tag.color }}
+                                    style={{ backgroundColor: tag.color ?? undefined }}
                                   />
                                   {(() => {
-                                    const Icon = getIconComponent(tag.icon);
+                                    const Icon = getIconComponent(tag.icon ?? undefined);
                                     return Icon ? <Icon className="h-3.5 w-3.5" /> : null;
                                   })()}
                                   {tag.label}
@@ -302,7 +302,7 @@ export function TagAdminSettings() {
                                 />
                               ) : (
                                 (() => {
-                                  const Icon = getIconComponent(tag.icon);
+                                  const Icon = getIconComponent(tag.icon ?? undefined);
                                   return Icon ? (
                                     <div className="flex items-center justify-center w-8 h-8">
                                       <Icon className="h-4 w-4" />
@@ -326,7 +326,7 @@ export function TagAdminSettings() {
                               ) : (
                                 <span
                                   className="inline-block w-8 h-8 rounded border border-border cursor-pointer"
-                                  style={{ backgroundColor: tag.color }}
+                                  style={{ backgroundColor: tag.color ?? undefined }}
                                 />
                               )}
                             </TableCell>
@@ -364,7 +364,7 @@ export function TagAdminSettings() {
                                 ) : (
                                   <>
                                     <Button
-                                      onClick={() => setEditingTag({ id: tag.id, label: tag.label, color: tag.color, icon: tag.icon })}
+                                      onClick={() => setEditingTag({ id: tag.id, label: tag.label, color: tag.color ?? '#3b82f6', icon: tag.icon ?? undefined })}
                                       size="sm"
                                       variant="outline"
                                       className="h-8 w-8 p-0"
