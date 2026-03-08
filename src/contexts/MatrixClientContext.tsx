@@ -680,7 +680,7 @@ export function MatrixClientProvider({ children }: { children: ReactNode }) {
             });
             clientRef.current = matrixClient;
           }
-        } catch {}
+        } catch (e) { matrixLogger.warn('Device validation fetch failed:', e); }
       }
 
       const updateRuntimeDiagnostics = (
