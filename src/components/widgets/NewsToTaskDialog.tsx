@@ -87,7 +87,7 @@ export const NewsToTaskDialog: React.FC<NewsToTaskDialogProps> = ({
 
       setUsers(profiles || []);
     } catch (error) {
-      console.error('Error loading data:', error);
+      debugConsole.error('Error loading data:', error);
     }
   };
 
