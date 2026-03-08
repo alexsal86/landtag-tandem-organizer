@@ -162,8 +162,8 @@ export function useLetterTemplateData() {
         header_layout_type: cleanedHeaderElements.length > 0 ? 'structured' : 'html',
         header_text_elements: cleanedHeaderElements.length > 0 ? cleanedHeaderElements : null,
         footer_blocks: Array.isArray(cleanedFooterBlocks) ? (cleanedFooterBlocks.length > 0 ? cleanedFooterBlocks : null) : cleanedFooterBlocks,
-        layout_settings: cleanedLayoutSettings as any, updated_at: new Date().toISOString(),
-      }).eq('id', editingTemplate.id);
+        layout_settings: cleanedLayoutSettings as unknown as Record<string, unknown>, updated_at: new Date().toISOString(),
+      } as Record<string, unknown>).eq('id', editingTemplate.id);
       if (error) throw error;
       toast({ title: "Template aktualisiert" });
       setEditingTemplate(null); resetForm(); fetchTemplates();
