@@ -330,7 +330,7 @@ export function useEventPlanningData() {
   const fetchAvailableContacts = async () => {
     if (!user) return;
     const { data, error } = await supabase.from("contacts").select("id, name, email, phone, role, organization").eq("user_id", user.id).order("name");
-    if (error) { console.error("Error fetching contacts:", error); return; }
+    if (error) { debugConsole.error("Error fetching contacts:", error); return; }
     setAvailableContacts(data || []);
   };
 
