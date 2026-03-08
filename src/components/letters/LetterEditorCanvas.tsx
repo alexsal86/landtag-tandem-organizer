@@ -401,11 +401,8 @@ export const LetterEditorCanvas: React.FC<LetterEditorCanvasProps> = ({
     const localTopMm = isFirst ? contentStartMm : page2TopMm;
     const bodyHeightMm = isFirst ? page1BodyMm : pageNBodyMm;
 
-    // Calculate the vertical offset into the flow for this page (line-snapped)
-    const rawOffset = isFirst
-      ? 0
-      : page1BodyMm + (pageIndex - 1) * pageNBodyMm;
-    const offsetMm = isFirst ? 0 : snapToLine(rawOffset);
+    // Offset directly from snapped values — no re-snapping needed
+    const offsetMm = isFirst ? 0 : page1BodyMm + (pageIndex - 1) * pageNBodyMm;
 
     return (
       <div
