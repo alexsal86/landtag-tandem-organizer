@@ -127,7 +127,7 @@ export default function AppointmentPreparationTemplateAdmin() {
       setEditingTemplate(null);
       fetchTemplates();
     } catch (error) {
-      console.error('Error saving template:', error);
+      debugConsole.error('Error saving template:', error);
       toast({
         title: 'Fehler',
         description: 'Template konnte nicht gespeichert werden.',
