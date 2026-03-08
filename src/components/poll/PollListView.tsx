@@ -231,7 +231,7 @@ export const PollListView = () => {
 
       loadPolls();
     } catch (error) {
-      console.error('Error permanently deleting poll:', error);
+      debugConsole.error('Error permanently deleting poll:', error);
       toast({
         title: "Fehler",
         description: "Die Abstimmung konnte nicht gelöscht werden.",
