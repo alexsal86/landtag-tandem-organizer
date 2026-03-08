@@ -147,7 +147,7 @@ export const FocusModeUpcomingAppointments = forwardRef<
 
       setAppointments(allAppointments);
     } catch (error) {
-      console.error('Error loading appointments:', error);
+      debugConsole.error('Error loading appointments:', error);
     } finally {
       setLoading(false);
     }
