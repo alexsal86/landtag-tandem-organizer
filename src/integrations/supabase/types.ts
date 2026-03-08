@@ -1172,6 +1172,72 @@ export type Database = {
           },
         ]
       }
+      automation_rule_versions: {
+        Row: {
+          actions: Json
+          conditions: Json
+          created_at: string
+          created_by: string | null
+          description: string | null
+          enabled: boolean
+          id: string
+          module: string
+          name: string
+          rule_id: string
+          tenant_id: string
+          trigger_config: Json
+          trigger_type: string
+          version_number: number
+        }
+        Insert: {
+          actions?: Json
+          conditions?: Json
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          enabled?: boolean
+          id?: string
+          module: string
+          name: string
+          rule_id: string
+          tenant_id: string
+          trigger_config?: Json
+          trigger_type: string
+          version_number: number
+        }
+        Update: {
+          actions?: Json
+          conditions?: Json
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          enabled?: boolean
+          id?: string
+          module?: string
+          name?: string
+          rule_id?: string
+          tenant_id?: string
+          trigger_config?: Json
+          trigger_type?: string
+          version_number?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "automation_rule_versions_rule_id_fkey"
+            columns: ["rule_id"]
+            isOneToOne: false
+            referencedRelation: "automation_rules"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "automation_rule_versions_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       automation_rules: {
         Row: {
           actions: Json
