@@ -269,7 +269,7 @@ export default function EditContact() {
                   <form onSubmit={handleSubmit} className="space-y-6">
                     <div className="flex items-center gap-4">
                       <Avatar className="h-20 w-20">
-                        <AvatarImage src={contact.avatar_url} />
+                        <AvatarImage src={contact.avatar_url ?? undefined} />
                         <AvatarFallback className="bg-primary text-primary-foreground text-xl">
                           {getInitials(contact.name || "U")}
                         </AvatarFallback>
