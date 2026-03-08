@@ -140,7 +140,7 @@ export function VacationHistoryDialog({
                         {total}
                       </TableCell>
                       <TableCell className="text-right font-mono">
-                        {entry.total_taken}
+                        {entry.total_taken ?? 0}
                       </TableCell>
                       <TableCell className="text-right">
                         {entry.expired_days > 0 ? (
