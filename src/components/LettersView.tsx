@@ -223,7 +223,7 @@ const LettersView: React.FC = () => {
 
     try {
       if (taskDialogMode === 'task') {
-        const { error } = await supabase.from('tasks').insert({
+        const { error } = await supabase.from('tasks').insert([{
           user_id: user.id,
           tenant_id: currentTenant.id,
           title: taskTitle.trim(),
@@ -233,7 +233,7 @@ const LettersView: React.FC = () => {
           status: 'todo',
           priority: 'medium',
           category: 'personal',
-        });
+        }]);
 
         if (error) throw error;
       } else {
