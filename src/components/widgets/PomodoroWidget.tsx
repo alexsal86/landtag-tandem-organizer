@@ -143,7 +143,7 @@ export const PomodoroWidget: React.FC<PomodoroWidgetProps> = ({
         toast.success(`${getSessionTypeName(sessionType)} gestartet!`);
       }
     } catch (error) {
-      console.error('Error starting session:', error);
+      debugConsole.error('Error starting session:', error);
       toast.error('Fehler beim Starten der Session');
     }
   };
