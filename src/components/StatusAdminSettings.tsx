@@ -29,6 +29,7 @@ import { debugConsole } from '@/utils/debugConsole';
 import { useTenant } from "@/hooks/useTenant";
 
 export const StatusAdminSettings: React.FC = () => {
+  const { currentTenant } = useTenant();
   const [statusOptions, setStatusOptions] = useState<StatusOption[]>([]);
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
   const [editingOption, setEditingOption] = useState<StatusOption | null>(null);
