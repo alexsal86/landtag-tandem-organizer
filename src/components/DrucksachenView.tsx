@@ -51,7 +51,7 @@ export function DrucksachenView() {
       if (error) throw error;
       setProtocols(data || []);
     } catch (error) {
-      console.error('Error loading protocols:', error);
+      debugConsole.error('Error loading protocols:', error);
       toast.error('Fehler beim Laden der Protokolle');
     } finally {
       setLoading(false);

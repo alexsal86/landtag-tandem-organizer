@@ -293,7 +293,7 @@ const LettersView: React.FC = () => {
 
       fetchLetters();
     } catch (error) {
-      console.error('Error deleting letter:', error);
+      debugConsole.error('Error deleting letter:', error);
       toast({
         title: "Fehler",
         description: "Der Brief konnte nicht gelöscht werden.",

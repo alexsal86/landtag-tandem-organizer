@@ -78,7 +78,7 @@ export default function AppointmentPreparationDetail() {
           // Redirect to the new preparation
           navigate(`/appointment-preparation/${data.id}`, { replace: true });
         } catch (error) {
-          console.error('Error creating preparation:', error);
+          debugConsole.error('Error creating preparation:', error);
           toast({
             title: "Fehler",
             description: "Terminplanung konnte nicht erstellt werden.",

@@ -222,7 +222,7 @@ export function ContactEditForm({ contact, onSuccess, onCancel }: ContactEditFor
       return;
     }
 
-    console.log('Proceeding with update');
+    debugConsole.log('Proceeding with update');
     await performUpdate();
   };
 

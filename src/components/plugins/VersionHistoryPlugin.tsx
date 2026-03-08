@@ -270,7 +270,7 @@ export function VersionHistoryPlugin({
       setShowHistory(false);
       setShowPreview(false);
     } catch (error) {
-      console.error('Error restoring version:', error);
+      debugConsole.error('Error restoring version:', error);
       toast({
         title: "Fehler",
         description: "Fehler beim Wiederherstellen der Version",
