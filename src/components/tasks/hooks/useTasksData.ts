@@ -452,7 +452,7 @@ export function useTasksData() {
           allSubtasks.push({
             id: followupTask.id, title: followupTask.title, description: followupTask.description,
             task_id: followupTask.id, task_title: `Follow-Up: ${contactName}`, source_type: 'call_followup',
-            assigned_to: followupTask.assigned_to, due_date: followupTask.due_date,
+            assigned_to: assignees, due_date: followupTask.due_date,
             is_completed: followupTask.status === 'completed', created_at: followupTask.created_at,
             updated_at: followupTask.updated_at, priority: followupTask.priority,
             call_log_id: followupTask.call_log_id, contact_name: contactName,
@@ -465,7 +465,7 @@ export function useTasksData() {
           allSubtasks.push({
             id: followupTask.id, title: followupTask.title, description: followupTask.description,
             task_id: followupTask.id, task_title: `Follow-Up: Unbekannter Kontakt`, source_type: 'call_followup',
-            assigned_to: followupTask.assigned_to, due_date: followupTask.due_date,
+            assigned_to: assignees, due_date: followupTask.due_date,
             is_completed: followupTask.status === 'completed', created_at: followupTask.created_at,
             updated_at: followupTask.updated_at, priority: followupTask.priority,
             call_log_id: followupTask.call_log_id, contact_name: 'Unbekannter Kontakt',
