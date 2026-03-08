@@ -278,39 +278,18 @@ const Toolbar = () => {
           <span className="absolute -top-0.5 -right-0.5 h-2.5 w-2.5 rounded-full bg-destructive border-2 border-background animate-pulse" />
         )}
       </Button>
-      <TooltipProvider>
-        <Tooltip>
-          <TooltipTrigger asChild>
-            <Button
-              type="button"
-              variant="ghost"
-              size="sm"
-              className="h-8 w-8 p-0 text-muted-foreground"
-              aria-label="Sprachbefehle anzeigen"
-              onMouseDown={(event) => event.preventDefault()}
-            >
-              <CircleHelp className="h-4 w-4" />
-            </Button>
-          </TooltipTrigger>
-          <TooltipContent side="bottom" align="start" className="max-w-[320px]">
-            <div className="space-y-2 text-xs">
-              <p className="font-medium">Diktat</p>
-              <p>Klicke den Mikrofon-Button zum Starten und erneut zum Stoppen. Alternativ <span className="font-medium">Strg + Shift + M</span> gedrückt halten (Push-to-talk).</p>
-              <p className="font-medium">Sprachbefehle</p>
-              <ul className="list-disc pl-4 space-y-1">
-                {SPEECH_COMMAND_HINTS.map((commandHint) => (
-                  <li key={commandHint}>{commandHint}</li>
-                ))}
-              </ul>
-            </div>
-          </TooltipContent>
-        </Tooltip>
-      </TooltipProvider>
+      <SpeechCommandsDialog />
+      {lastRecognizedCommand && (
+        <span className="text-xs font-medium text-primary bg-primary/10 rounded px-1.5 py-0.5 animate-in fade-in-0 zoom-in-95">
+          ✓ {lastRecognizedCommand}
+        </span>
+      )}
       {isListening && (
         <span className="text-xs text-destructive font-medium pl-1 animate-pulse">
           Aufnahme läuft…
         </span>
       )}
+      <SpeechSessionStats sessionStartTime={sessionStartTime} wordCount={sessionWordCount} isListening={isListening} />
       {speechError && (
         <span className="text-xs text-destructive pl-1" title={speechError.code}>
           {speechError.message}
