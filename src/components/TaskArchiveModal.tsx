@@ -161,7 +161,7 @@ export function TaskArchiveModal({ isOpen, onClose, onTaskRestored }: TaskArchiv
         description: "Die archivierte Aufgabe wurde endgültig gelöscht.",
       });
     } catch (error) {
-      console.error('Error deleting archived task:', error);
+      debugConsole.error('Error deleting archived task:', error);
       toast({
         title: "Fehler",
         description: "Aufgabe konnte nicht gelöscht werden.",
