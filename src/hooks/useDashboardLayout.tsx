@@ -285,12 +285,9 @@ export function useDashboardLayout() {
     }
     
     saveTimeoutRef.current = setTimeout(async () => {
-      console.log('⏰ Auto-saving layout after debounce...');
       try {
-        const success = await saveCurrentLayout();
-        console.log('💾 Auto-save result:', success);
+        await saveCurrentLayout();
       } catch (error) {
-        console.error('Failed to save to Supabase:', error);
         toast.error('Änderungen konnten nicht gespeichert werden - lokal gespeichert');
       }
     }, 1000);
