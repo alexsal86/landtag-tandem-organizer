@@ -87,7 +87,7 @@ const UserAssignmentDialog: React.FC<UserAssignmentDialogProps> = ({
 
       setUsers(formattedUsers);
     } catch (error) {
-      console.error('Error fetching tenant users:', error);
+      debugConsole.error('Error fetching tenant users:', error);
       toast({
         title: "Fehler",
         description: "Benutzer konnten nicht geladen werden.",
