@@ -60,7 +60,7 @@ const SimpleLeafletMap: React.FC<LeafletKarlsruheMapProps> = ({
     if (!mapEl.current) return;
     if (mapRef.current) return; // init once
 
-    console.log('Initializing map...');
+    
 
     // Responsive initial zoom based on screen size
     const initialZoom = window.innerWidth < 768 ? 7 : 8;
