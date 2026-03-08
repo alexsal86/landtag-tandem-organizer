@@ -71,9 +71,10 @@ export const extractStoragePathFromUrl = (value?: string | null): string | null 
   }
 };
 
-export const normalizeImageItem = <T extends Record<string, unknown>>(item: T): T => {
-  if (!item || (item as Record<string, unknown>).type !== 'image') return item;
-  const storagePath = (item as Record<string, unknown>).storagePath as string | undefined || extractStoragePathFromUrl((item as Record<string, unknown>).imageUrl as string | undefined);
+export const normalizeImageItem = <T>(item: T): T => {
+  if (!item || typeof item !== 'object' || (item as Record<string, unknown>).type !== 'image') return item;
+  const rec = item as Record<string, unknown>;
+  const storagePath = rec.storagePath as string | undefined || extractStoragePathFromUrl(rec.imageUrl as string | undefined);
   if (!storagePath) return item;
   const { data: { publicUrl } } = supabase.storage.from('letter-assets').getPublicUrl(storagePath);
   return { ...item, storagePath, imageUrl: publicUrl };
