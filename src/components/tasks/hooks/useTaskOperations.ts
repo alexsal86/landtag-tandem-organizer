@@ -143,7 +143,7 @@ export function useTaskOperations({
       await loadTaskComments();
       toast({ title: "Kommentar hinzugefügt" });
       return true;
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Error adding comment:', error);
       toast({ title: "Fehler", description: "Kommentar konnte nicht hinzugefügt werden.", variant: "destructive" });
       return false;
