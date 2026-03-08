@@ -232,7 +232,6 @@ export function useDashboardLayout() {
             setLayouts([defaultLayout]);
           }
         } catch (localError) {
-          console.warn('Failed to load from localStorage:', localError);
           setCurrentLayout(defaultLayout);
           setLayouts([defaultLayout]);
         }
