@@ -118,7 +118,7 @@ export function MeetingsView() {
         <ResizableHandle withHandle />
 
         <ResizablePanel defaultSize={72}>
-          <div className="h-full pl-4 overflow-y-auto">
+          <div className="pl-4">
             {/* Active Meeting View */}
             {data.activeMeeting && (
               <ActiveMeetingPanel
