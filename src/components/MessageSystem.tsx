@@ -108,8 +108,8 @@ export function MessageSystem() {
 
       // Convert received messages to the Message interface format, excluding own authored messages
       const convertedReceivedMessages: Message[] = (receivedMessages || [])
-        .filter(msg => msg.author_id !== user.id) // Exclude own messages
-        .map(msg => ({
+        .filter((msg: any) => msg.author_id !== user.id) // Exclude own messages
+        .map((msg: any) => ({
           id: msg.id,
           title: msg.title,
           content: msg.content,
