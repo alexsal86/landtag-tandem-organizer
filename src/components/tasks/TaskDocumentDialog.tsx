@@ -97,7 +97,7 @@ export function TaskDocumentDialog({
       await loadDocuments();
       toast({ title: "Dokument hochgeladen" });
     } catch (error) {
-      console.error("Error uploading document:", error);
+      debugConsole.error("Error uploading document:", error);
       toast({ title: "Fehler beim Hochladen", variant: "destructive" });
     } finally {
       setUploading(false);
