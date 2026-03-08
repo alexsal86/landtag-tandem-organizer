@@ -353,13 +353,13 @@ export const TaskDecisionDetails = ({ decisionId, isOpen, onClose, onArchived, h
     try {
       const { error } = await supabase
         .from('task_decision_responses')
-        .insert({
+        .insert([{
           decision_id: decisionId,
           participant_id: participantId,
           response_type: 'question',
           comment: replyText.trim(),
           parent_response_id: parentResponseId,
-        });
+        }]);
 
       if (error) throw error;
 
