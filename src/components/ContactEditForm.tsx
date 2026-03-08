@@ -128,7 +128,7 @@ export function ContactEditForm({ contact, onSuccess, onCancel }: ContactEditFor
         organization: c.organization,
       })) || []);
     } catch (error) {
-      console.error('Error fetching existing contacts:', error);
+      debugConsole.error('Error fetching existing contacts:', error);
     }
   };
 
