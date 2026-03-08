@@ -208,7 +208,7 @@ const mapMatrixEventToMessage = (room: sdk.Room, event: sdk.MatrixEvent): Matrix
     }
   }
 
-  const isMedia = ['m.image', 'm.video', 'm.audio', 'm.file'].includes(content.msgtype);
+  const isMedia = ['m.image', 'm.video', 'm.audio', 'm.file'].includes(content.msgtype ?? '');
 
   return {
     eventId: event.getId() || '',
