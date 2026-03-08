@@ -250,7 +250,7 @@ const [editingChild, setEditingChild] = useState<{ parentIndex: number; childInd
       
       setAnnualTasksBadge(pendingCount);
     } catch (error) {
-      console.error('Error loading annual tasks badge:', error);
+      debugConsole.error('Error loading annual tasks badge:', error);
     }
   };
 
