@@ -189,7 +189,7 @@ export const NewsShareDialog: React.FC<NewsShareDialogProps> = ({
         const failedNotifications = notificationResults.filter((result) => result.status === 'rejected');
 
         if (failedNotifications.length > 0) {
-          console.warn('Some in-app notifications for shared news could not be created', {
+          debugConsole.warn('Some in-app notifications for shared news could not be created', {
             attempted: selectedUserIds.length,
             failed: failedNotifications.length,
           });
