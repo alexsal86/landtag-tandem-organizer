@@ -282,7 +282,7 @@ export function useEventPlanningData() {
       fetchPlannings();
       fetchArchivedPlannings();
     } catch (error) {
-      console.error('Error restoring planning:', error);
+      debugConsole.error('Error restoring planning:', error);
       toast({ title: "Fehler", description: "Planung konnte nicht wiederhergestellt werden.", variant: "destructive" });
     }
   };
