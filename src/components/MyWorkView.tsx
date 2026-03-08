@@ -461,8 +461,15 @@ export function MyWorkView() {
               <DashboardTasksSection />
             </Card>
             <div className="space-y-6">
-              <Card className="p-5">
-                <DashboardAppointments data={dashboardData} />
+              <Card>
+                <CardHeader className="pb-3">
+                  <CardTitle className="text-base font-semibold">
+                    📅 {dashboardData.isShowingTomorrow ? 'Deine Termine morgen' : 'Deine Termine heute'}
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <DashboardAppointments data={dashboardData} />
+                </CardContent>
               </Card>
               <Card className="p-5">
                 <NewsWidget compact />

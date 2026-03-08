@@ -113,11 +113,11 @@ export const DashboardAppointments = ({ data }: Props) => {
         </div>
       )}
 
+      {/* Separator zwischen Kontext und Terminliste */}
+      {(roleLine || contextMessage || specialDayHint) && <Separator className="my-2" />}
+
       {/* Termine */}
       <div>
-        <h3 className="text-sm font-semibold text-foreground mb-2">
-          📅 {isShowingTomorrow ? 'Deine Termine morgen' : 'Deine Termine heute'}
-        </h3>
         {appointments.length === 0 ? (
           <p className="text-sm text-muted-foreground">
             {isShowingTomorrow ? 'Keine Termine morgen.' : 'Keine Termine heute.'}
