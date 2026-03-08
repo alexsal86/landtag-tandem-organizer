@@ -16,10 +16,10 @@ import { useTenant } from '@/hooks/useTenant';
 interface Contact {
   id: string;
   name: string;
-  email?: string;
-  phone?: string;
-  organization?: string;
-  contact_type?: string;
+  email?: string | null;
+  phone?: string | null;
+  organization?: string | null;
+  contact_type?: string | null;
 }
 
 interface DuplicateMatch {
