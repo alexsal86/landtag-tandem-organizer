@@ -312,7 +312,7 @@ export function CaseFileSelector({
                 onClick={() => setShowCreateNew(true)}
               >
                 <FolderPlus className="h-4 w-4 mr-2" />
-                Neue FallAkte erstellen
+                Neue Fallakte erstellen
               </Button>
             )}
           </div>

@@ -388,7 +388,7 @@ classifyCaseScale({ explicitScale: cf.case_scale, caseType: cf.case_type }) === 
             {!searchTerm && statusFilter === "all" && typeFilter === "all" && scopeFilter === "all" && (
               <Button className="mt-4" onClick={() => setCreateDialogOpen(true)}>
                 <Plus className="mr-2 h-4 w-4" />
-                Erste FallAkte erstellen
+                Erste Fallakte erstellen
               </Button>
             )}
           </CardContent>
