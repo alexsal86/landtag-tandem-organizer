@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { debugConsole } from '@/utils/debugConsole';
 import { supabase } from "@/integrations/supabase/client";
 import { TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
