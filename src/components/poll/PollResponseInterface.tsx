@@ -132,7 +132,7 @@ export const PollResponseInterface = ({ pollId, token, participantId, isPreview 
         if (currentParticipant) {
           const { data: responsesData, error: responsesError } = await supabase
             .from('poll_responses')
-            .select('*')
+            .select('id, time_slot_id, status, comment')
             .eq('poll_id', pollId)
             .eq('participant_id', currentParticipant.id);
 
