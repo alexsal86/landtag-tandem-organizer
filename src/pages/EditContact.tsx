@@ -24,21 +24,21 @@ import { SidebarProvider } from "@/components/ui/sidebar";
 
 interface Contact {
   id: string;
-  contact_type?: "person" | "organization";
+  contact_type?: "person" | "organization" | null;
   name: string;
-  role?: string;
-  organization_id?: string;
-  organization?: string;
-  email?: string;
-  phone?: string;
-  website?: string;
-  address?: string;
-  category?: "citizen" | "colleague" | "lobbyist" | "media" | "business";
-  priority?: "low" | "medium" | "high";
-  notes?: string;
-  industry?: string;
-  main_contact_person?: string;
-  avatar_url?: string;
+  role?: string | null;
+  organization_id?: string | null;
+  organization?: string | null;
+  email?: string | null;
+  phone?: string | null;
+  website?: string | null;
+  address?: string | null;
+  category?: "citizen" | "colleague" | "lobbyist" | "media" | "business" | null;
+  priority?: "low" | "medium" | "high" | null;
+  notes?: string | null;
+  industry?: string | null;
+  main_contact_person?: string | null;
+  avatar_url?: string | null;
 }
 
 export default function EditContact() {
