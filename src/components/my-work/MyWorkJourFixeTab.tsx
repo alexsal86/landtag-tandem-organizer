@@ -110,6 +110,7 @@ export function MyWorkJourFixeTab() {
     if (systemType === 'tasks') return <ListTodo className="h-3 w-3 text-green-500" />;
     if (systemType === 'decisions') return <Scale className="h-3 w-3 text-violet-500" />;
     if (systemType === 'birthdays') return <Cake className="h-3 w-3 text-pink-500" />;
+    if (systemType === 'case_items') return <Briefcase className="h-3 w-3 text-teal-500" />;
     return null;
   };
 
