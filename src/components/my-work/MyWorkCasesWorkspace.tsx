@@ -1214,7 +1214,7 @@ export function MyWorkCasesWorkspace() {
                                   >
                                     <div className="flex items-center gap-2">
                                       <p className="text-sm font-medium line-clamp-1 flex-1">{cf.title}</p>
-                                      {caseFileStatusBadge(cf.status)}
+                                      
                                     </div>
                                     <div className="mt-1.5 flex items-center justify-between text-xs text-muted-foreground">
                                       {cf.reference_number && <span>{cf.reference_number}</span>}
