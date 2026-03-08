@@ -1079,76 +1079,22 @@ export function AutomationRuleWizard({
           </div>
         )}
 
-        {/* Step 3: Bedingungen (multi) with AND/OR toggle */}
+        {/* Step 3: Nested Condition Groups */}
         {currentStep === 2 && (
           <div className="space-y-3 py-2">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm font-medium">Bedingungen</p>
-                <p className="text-xs text-muted-foreground">
-                  {form.conditionLogic === "all"
-                    ? "Alle Bedingungen müssen erfüllt sein (UND-Verknüpfung)."
-                    : "Mindestens eine Bedingung muss erfüllt sein (ODER-Verknüpfung)."}
-                </p>
-              </div>
-              <Button variant="outline" size="sm" onClick={addCondition} className="gap-1">
-                <Plus className="h-3.5 w-3.5" /> Bedingung
-              </Button>
+            <div>
+              <p className="text-sm font-medium">Bedingungen</p>
+              <p className="text-xs text-muted-foreground">
+                Erstelle Bedingungsgruppen mit UND/ODER-Verknüpfung. Verschachtele Gruppen für komplexe Logik.
+              </p>
             </div>
 
-            {/* AND/OR Toggle */}
-            <div className="flex items-center gap-2 rounded-md border p-2">
-              <span className="text-xs font-medium text-muted-foreground">Verknüpfung:</span>
-              <div className="flex rounded-md border overflow-hidden">
-                <button
-                  type="button"
-                  onClick={() => setForm((prev) => ({ ...prev, conditionLogic: "all" }))}
-                  className={cn(
-                    "px-3 py-1 text-xs font-medium transition-colors",
-                    form.conditionLogic === "all"
-                      ? "bg-primary text-primary-foreground"
-                      : "bg-background text-muted-foreground hover:bg-muted"
-                  )}
-                >
-                  UND
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setForm((prev) => ({ ...prev, conditionLogic: "any" }))}
-                  className={cn(
-                    "px-3 py-1 text-xs font-medium transition-colors",
-                    form.conditionLogic === "any"
-                      ? "bg-primary text-primary-foreground"
-                      : "bg-background text-muted-foreground hover:bg-muted"
-                  )}
-                >
-                  ODER
-                </button>
-              </div>
-              <Badge variant="outline" className="text-[10px]">
-                {form.conditionLogic === "all" ? "Alle müssen zutreffen" : "Mindestens eine"}
-              </Badge>
-            </div>
-
-            {form.conditions.map((condition, i) => (
-              <div key={i}>
-                {i > 0 && (
-                  <div className="flex items-center justify-center py-1">
-                    <Badge variant="secondary" className="text-[10px]">
-                      {form.conditionLogic === "all" ? "UND" : "ODER"}
-                    </Badge>
-                  </div>
-                )}
-                <ConditionCard
-                  condition={condition}
-                  index={i}
-                  fieldOptions={fieldOptions}
-                  onChange={updateCondition}
-                  onRemove={removeCondition}
-                  canRemove={form.conditions.length > 1}
-                />
-              </div>
-            ))}
+            <ConditionGroupEditor
+              group={form.conditionGroup}
+              onChange={updateConditionGroup}
+              fieldOptions={fieldOptions}
+              depth={0}
+            />
           </div>
         )}
 
