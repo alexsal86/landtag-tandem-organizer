@@ -64,7 +64,7 @@ export function InlineMeetingParticipantsEditor({ meetingId }: InlineMeetingPart
     }
     
     if (!participantsData || participantsData.length === 0) {
-      console.log('No participants found for meeting:', meetingId);
+      
       setParticipants([]);
       setLoading(false);
       return;
