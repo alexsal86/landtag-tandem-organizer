@@ -157,7 +157,7 @@ export function useLetterOperations(opts: UseLetterOperationsOptions) {
               data_param: JSON.stringify({ documentId: letter?.id, documentType: 'letter' }),
               priority_param: 'medium',
             });
-          } catch (e) { console.error('Failed to send mention notification:', e); }
+          } catch (e) { debugConsole.error('Failed to send mention notification:', e); }
         });
         await Promise.allSettled(mentionPromises);
         pendingMentionsRef.current.clear();
