@@ -61,12 +61,12 @@ export const TopicSelector: React.FC<TopicSelectorProps> = ({
               variant="secondary"
               className="gap-1 pr-1"
               style={{ 
-                backgroundColor: `${topic.color}20`,
-                borderColor: topic.color,
-                color: topic.color 
+                backgroundColor: `${topic.color ?? '#3b82f6'}20`,
+                borderColor: topic.color ?? undefined,
+                color: topic.color ?? undefined 
               }}
             >
-              {getIconComponent(topic.icon)}
+              {getIconComponent(topic.icon ?? '')}
               <span className="text-xs">{topic.label}</span>
               <button
                 onClick={(e) => removeTopic(topic.id, e)}
