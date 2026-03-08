@@ -41,7 +41,7 @@ export const useNewItemIndicators = (context: string): NewItemIndicatorsHook => 
 
         setLastVisited(data ? new Date(data.last_visited_at) : null);
       } catch (error) {
-        console.error('Error in loadLastVisited:', error);
+        debugConsole.error('Error in loadLastVisited:', error);
       }
     };
 
