@@ -10,6 +10,7 @@ import { Plus, X, Mail, User } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useTenant } from "@/hooks/useTenant";
 import { toast } from "sonner";
+import { debugConsole } from "@/utils/debugConsole";
 
 interface Guest {
   id?: string;
@@ -74,7 +75,7 @@ export const GuestManager: React.FC<GuestManagerProps> = ({
     try {
       const { data, error } = await supabase
         .from('default_appointment_guests')
-        .select('*')
+        .select('id, name, email, is_active')
         .eq('tenant_id', currentTenant.id)
         .eq('is_active', true)
         .order('order_index');
@@ -82,7 +83,7 @@ export const GuestManager: React.FC<GuestManagerProps> = ({
       if (error) throw error;
       setDefaultGuests(data || []);
     } catch (error: any) {
-      console.error('Error fetching default guests:', error);
+      debugConsole.error('Error fetching default guests:', error);
       toast.error('Fehler beim Laden der Standard-Gäste');
     }
   };

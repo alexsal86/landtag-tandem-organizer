@@ -19,6 +19,7 @@ import { Input } from "@/components/ui/input";
 import { Checkbox } from "@/components/ui/checkbox";
 import { useNoteSharing } from "@/hooks/useNoteSharing";
 import { supabase } from "@/integrations/supabase/client";
+import { debugConsole } from "@/utils/debugConsole";
 import { useTenant } from "@/hooks/useTenant";
 import { useAuth } from "@/hooks/useAuth";
 import { Trash2, Users, Loader2, Search } from "lucide-react";
@@ -70,7 +71,7 @@ export const NoteShareDialog = ({
         .eq("is_active", true);
 
       if (memberError || !memberships) {
-        console.error("Error loading memberships:", memberError);
+        debugConsole.error("Error loading memberships:", memberError);
         return;
       }
 
@@ -92,7 +93,7 @@ export const NoteShareDialog = ({
         .in("user_id", userIds);
 
       if (profileError) {
-        console.error("Error loading profiles:", profileError);
+        debugConsole.error("Error loading profiles:", profileError);
         return;
       }
 
@@ -104,7 +105,7 @@ export const NoteShareDialog = ({
 
       setTeamMembers(members);
     } catch (error) {
-      console.error("Error loading team members:", error);
+      debugConsole.error("Error loading team members:", error);
     } finally {
       setLoadingMembers(false);
     }

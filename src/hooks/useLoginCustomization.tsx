@@ -59,7 +59,7 @@ export const useLoginCustomization = () => {
 
       const { data: customData } = await supabase
         .from('login_customization')
-        .select('*')
+        .select('id, tenant_id, logo_url, background_image_url, background_position, background_attribution, primary_color, accent_color, tagline, welcome_text, footer_text, social_login_enabled, registration_enabled, password_reset_enabled')
         .limit(1)
         .maybeSingle();
 

@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
+import { debugConsole } from '@/utils/debugConsole';
 import { useToast } from '@/hooks/use-toast';
 import { Contact } from '@/hooks/useInfiniteContacts';
 
@@ -19,7 +20,7 @@ export function useStakeholderTopics(stakeholders: Contact[], onRefresh?: () => 
         .select('contact_id, topic_id')
         .in('contact_id', ids);
       
-      if (error) { console.error('Error loading stakeholder topics:', error); return; }
+      if (error) { debugConsole.error('Error loading stakeholder topics:', error); return; }
       
       const topicsMap: Record<string, string[]> = {};
       data?.forEach(item => {
@@ -53,7 +54,7 @@ export function useStakeholderTopics(stakeholders: Contact[], onRefresh?: () => 
       toast({ title: "Erfolg", description: "Themen wurden erfolgreich gespeichert." });
       setEditingTopics(null);
     } catch (error) {
-      console.error('Error saving topics:', error);
+      debugConsole.error('Error saving topics:', error);
       setLocalTopicUpdates(prev => { const s = { ...prev }; delete s[stakeholderId]; return s; });
       toast({ title: "Fehler", description: "Themen konnten nicht gespeichert werden.", variant: "destructive" });
     }

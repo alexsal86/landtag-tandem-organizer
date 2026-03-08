@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { useAuth } from "@/hooks/useAuth";
 import { useTenant } from "@/hooks/useTenant";
 import { supabase } from "@/integrations/supabase/client";
+import { debugConsole } from "@/utils/debugConsole";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -68,7 +69,7 @@ export function EmailTemplateManager() {
     try {
       const { data, error } = await supabase
         .from('email_templates')
-        .select('*')
+        .select('id, tenant_id, name, subject, body_html, variables, is_active, created_at, updated_at')
         .eq('tenant_id', currentTenant.id)
         .order('created_at', { ascending: false });
 
@@ -76,7 +77,7 @@ export function EmailTemplateManager() {
       setTemplates((data || []).map(t => ({
         ...t,
         category: (t as any).category || 'general',
-        variables: Array.isArray((t as any).variables) ? (t as any).variables : []
+        variables: Array.isArray(t.variables) ? t.variables : []
       })) as EmailTemplate[]);
     } catch (error: any) {
       toast({

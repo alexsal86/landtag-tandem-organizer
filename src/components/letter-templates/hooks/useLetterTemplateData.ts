@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
+import { debugConsole } from '@/utils/debugConsole';
 import { useTenant } from '@/hooks/useTenant';
 import { useAuth } from '@/hooks/useAuth';
 import { useToast } from '@/hooks/use-toast';
@@ -56,12 +57,12 @@ export function useLetterTemplateData() {
     setLoading(true);
     try {
       const { data, error } = await supabase
-        .from('letter_templates').select('*').eq('tenant_id', currentTenant.id)
+        .from('letter_templates').select('id, name, letterhead_html, letterhead_css, response_time_days, is_default, is_active, tenant_id, created_by, default_sender_id, default_info_blocks, header_layout_type, header_text_elements, footer_blocks, layout_settings, created_at, updated_at').eq('tenant_id', currentTenant.id)
         .eq('is_active', true).order('is_default', { ascending: false }).order('name');
       if (error) throw error;
       setTemplates(data || []);
     } catch (error) {
-      console.error('Error fetching templates:', error);
+      debugConsole.error('Error fetching templates:', error);
       toast({ title: "Fehler", description: "Templates konnten nicht geladen werden.", variant: "destructive" });
     } finally {
       setLoading(false);
@@ -74,7 +75,7 @@ export function useLetterTemplateData() {
       const { data, error } = await supabase.from('sender_information').select('id, name, organization, is_default').eq('tenant_id', currentTenant.id).eq('is_active', true).order('is_default', { ascending: false });
       if (error) throw error;
       setSenderInfos(data || []);
-    } catch (error) { console.error('Error fetching sender infos:', error); }
+    } catch (error) { debugConsole.error('Error fetching sender infos:', error); }
   };
 
   const fetchInformationBlocks = async () => {
@@ -83,7 +84,7 @@ export function useLetterTemplateData() {
       const { data, error } = await supabase.from('information_blocks').select('id, name, label, is_default').eq('tenant_id', currentTenant.id).eq('is_active', true).order('is_default', { ascending: false });
       if (error) throw error;
       setInfoBlocks(data || []);
-    } catch (error) { console.error('Error fetching info blocks:', error); }
+    } catch (error) { debugConsole.error('Error fetching info blocks:', error); }
   };
 
   const stripBlobUrls = (elements: any): any => {
@@ -139,7 +140,7 @@ export function useLetterTemplateData() {
       resetForm();
       fetchTemplates();
     } catch (error) {
-      console.error('Error creating template:', error);
+      debugConsole.error('Error creating template:', error);
       toast({ title: "Fehler", description: "Template konnte nicht erstellt werden.", variant: "destructive" });
     }
   };
@@ -163,7 +164,7 @@ export function useLetterTemplateData() {
       toast({ title: "Template aktualisiert" });
       setEditingTemplate(null); resetForm(); fetchTemplates();
     } catch (error) {
-      console.error('Error updating template:', error);
+      debugConsole.error('Error updating template:', error);
       toast({ title: "Fehler", description: "Template konnte nicht aktualisiert werden.", variant: "destructive" });
     }
   };
@@ -176,7 +177,7 @@ export function useLetterTemplateData() {
       toast({ title: "Template gelöscht" });
       fetchTemplates();
     } catch (error) {
-      console.error('Error deleting template:', error);
+      debugConsole.error('Error deleting template:', error);
       toast({ title: "Fehler", description: "Template konnte nicht gelöscht werden.", variant: "destructive" });
     }
   };

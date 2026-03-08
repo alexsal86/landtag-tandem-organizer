@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { useSearchParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
+import { debugConsole } from "@/utils/debugConsole";
 import { useAuth } from "@/hooks/useAuth";
 import { useTenant } from "@/hooks/useTenant";
 import type { Task, TaskComment, Subtask, TodoItem, SnoozeEntry } from "../types";
@@ -81,7 +82,7 @@ export function useTasksData() {
       if (error) throw error;
       setUsers(data || []);
     } catch (error) {
-      console.error('Error loading users:', error);
+      debugConsole.error('Error loading users:', error);
     }
   };
 
@@ -90,7 +91,7 @@ export function useTasksData() {
     try {
       const { data, error } = await supabase
         .from('tasks')
-        .select('*')
+        .select('id, title, description, priority, status, due_date, category, assigned_to, progress, created_at, updated_at, user_id, call_log_id, tenant_id, source_type, source_id')
         .is('parent_task_id', null)
         .or(`user_id.eq.${user.id},assigned_to.eq.${user.id},assigned_to.ilike.%${user.id}%`)
         .order('created_at', { ascending: false });
@@ -117,7 +118,7 @@ export function useTasksData() {
       setLoading(false);
       await loadTaskComments();
     } catch (error) {
-      console.error('Error loading tasks:', error);
+      debugConsole.error('Error loading tasks:', error);
       setLoading(false);
     }
   };
@@ -131,7 +132,7 @@ export function useTasksData() {
       if (categoriesRes.data) setTaskCategories(categoriesRes.data);
       if (statusesRes.data) setTaskStatuses(statusesRes.data);
     } catch (error) {
-      console.error('Error loading task configuration:', error);
+      debugConsole.error('Error loading task configuration:', error);
     }
   };
 
@@ -176,7 +177,7 @@ export function useTasksData() {
         });
         setTaskComments(commentsMap);
       } catch (fallbackError) {
-        console.error('Fallback query also failed:', fallbackError);
+        debugConsole.error('Fallback query also failed:', fallbackError);
       }
     }
   };
@@ -185,7 +186,7 @@ export function useTasksData() {
     try {
       const { data, error } = await supabase
         .from('task_documents')
-        .select('*')
+        .select('id, task_id, file_name, file_path, file_size, file_type, created_at')
         .order('created_at', { ascending: false });
       if (error) throw error;
       const detailsMap: { [taskId: string]: any[] } = {};
@@ -195,7 +196,7 @@ export function useTasksData() {
       });
       setTaskDocumentDetails(detailsMap);
     } catch (error) {
-      console.error('Error loading task documents:', error);
+      debugConsole.error('Error loading task documents:', error);
     }
   };
 
@@ -207,7 +208,7 @@ export function useTasksData() {
       (data || []).forEach(doc => { counts[doc.task_id] = (counts[doc.task_id] || 0) + 1; });
       setTaskDocuments(counts);
     } catch (error) {
-      console.error('Error loading task document counts:', error);
+      debugConsole.error('Error loading task document counts:', error);
     }
   };
 
@@ -225,7 +226,7 @@ export function useTasksData() {
       });
       setSubtaskCounts(counts);
     } catch (error) {
-      console.error('Error loading subtask counts:', error);
+      debugConsole.error('Error loading subtask counts:', error);
     }
   };
 
@@ -233,7 +234,7 @@ export function useTasksData() {
     try {
       const { data: childTasks, error } = await supabase
         .from('tasks')
-        .select('*')
+        .select('id, title, description, parent_task_id, assigned_to, due_date, status, created_at, updated_at, priority')
         .eq('parent_task_id', taskId)
         .order('created_at', { ascending: true });
       if (error) throw error;
@@ -256,7 +257,7 @@ export function useTasksData() {
       }));
       setSubtasks(prev => ({ ...prev, [taskId]: mappedChildTasks as any }));
     } catch (error) {
-      console.error('Error loading subtasks:', error);
+      debugConsole.error('Error loading subtasks:', error);
     }
   };
 
@@ -265,7 +266,7 @@ export function useTasksData() {
     try {
       const { data, error } = await supabase
         .from('task_snoozes')
-        .select('*')
+        .select('id, task_id, subtask_id, snoozed_until')
         .eq('user_id', user.id)
         .gt('snoozed_until', new Date().toISOString());
       if (error) throw error;
@@ -278,7 +279,7 @@ export function useTasksData() {
       setTaskSnoozes(taskSnoozeMap);
       setSubtaskSnoozes(subtaskSnoozeMap);
     } catch (error) {
-      console.error('Error loading task snoozes:', error);
+      debugConsole.error('Error loading task snoozes:', error);
     }
   };
 
@@ -321,7 +322,7 @@ export function useTasksData() {
         }))
       ]);
     } catch (error) {
-      console.error('Error loading all snoozes:', error);
+      debugConsole.error('Error loading all snoozes:', error);
     }
   };
 
@@ -344,7 +345,7 @@ export function useTasksData() {
         is_completed: todo.is_completed
       })));
     } catch (error) {
-      console.error('Error loading todos:', error);
+      debugConsole.error('Error loading todos:', error);
     }
   };
 
@@ -385,7 +386,7 @@ export function useTasksData() {
       // 2. Planning subtasks
       const { data: planningSubtasksData } = await supabase
         .from('planning_item_subtasks')
-        .select('*')
+        .select('id, description, assigned_to, due_date, is_completed, planning_item_id, order_index, created_at, updated_at')
         .eq('assigned_to', user.id)
         .eq('is_completed', false);
 
@@ -426,7 +427,7 @@ export function useTasksData() {
       // 3. Call follow-up tasks
       const { data: callFollowupData } = await supabase
         .from('tasks')
-        .select('*')
+        .select('id, title, description, assigned_to, due_date, status, created_at, updated_at, priority, call_log_id, user_id')
         .eq('category', 'call_follow_up')
         .neq('status', 'completed');
 
@@ -478,7 +479,7 @@ export function useTasksData() {
 
       setAssignedSubtasks(allSubtasks);
     } catch (error) {
-      console.error('Critical error loading assigned subtasks:', error);
+      debugConsole.error('Critical error loading assigned subtasks:', error);
     }
   };
 

@@ -7,6 +7,7 @@ import { Progress } from '@/components/ui/progress';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
+import { debugConsole } from '@/utils/debugConsole';
 
 interface Habit {
   id: string;
@@ -71,7 +72,7 @@ export const HabitsWidget: React.FC<HabitsWidgetProps> = ({
     try {
       const { data, error } = await supabase
         .from('habits')
-        .select('*')
+        .select('id, name, description, color, frequency, target_count, category, is_active, created_at')
         .eq('user_id', user.id)
         .eq('is_active', true)
         .order('created_at', { ascending: false });
@@ -90,7 +91,7 @@ export const HabitsWidget: React.FC<HabitsWidgetProps> = ({
       
       setHabits(habitsWithStats);
     } catch (error) {
-      console.error('Error loading habits:', error);
+      debugConsole.error('Error loading habits:', error);
       toast.error('Fehler beim Laden der Gewohnheiten');
     } finally {
       setLoading(false);
@@ -107,7 +108,7 @@ export const HabitsWidget: React.FC<HabitsWidgetProps> = ({
 
       const { data, error } = await supabase
         .from('habit_completions')
-        .select('*')
+        .select('id, habit_id, completion_date, count, notes')
         .eq('user_id', user.id)
         .gte('completion_date', thirtyDaysAgo.toISOString().split('T')[0])
         .order('completion_date', { ascending: false });
@@ -117,7 +118,7 @@ export const HabitsWidget: React.FC<HabitsWidgetProps> = ({
       setCompletions(data || []);
       calculateHabitStats(data || []);
     } catch (error) {
-      console.error('Error loading completions:', error);
+      debugConsole.error('Error loading completions:', error);
     }
   };
 
@@ -207,7 +208,7 @@ export const HabitsWidget: React.FC<HabitsWidgetProps> = ({
       setShowAddForm(false);
       toast.success('Gewohnheit erstellt');
     } catch (error) {
-      console.error('Error creating habit:', error);
+      debugConsole.error('Error creating habit:', error);
       toast.error('Fehler beim Erstellen der Gewohnheit');
     }
   };
@@ -264,7 +265,7 @@ export const HabitsWidget: React.FC<HabitsWidgetProps> = ({
         toast.success(`${habit.name} markiert (${habit.todayCount + 1}/${habit.target_count})`);
       }
     } catch (error) {
-      console.error('Error completing habit:', error);
+      debugConsole.error('Error completing habit:', error);
       toast.error('Fehler beim Markieren der Gewohnheit');
     }
   };

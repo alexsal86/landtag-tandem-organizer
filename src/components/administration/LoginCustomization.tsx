@@ -8,6 +8,7 @@ import { Switch } from '@/components/ui/switch';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useToast } from '@/components/ui/use-toast';
 import { supabase } from '@/integrations/supabase/client';
+import { debugConsole } from '@/utils/debugConsole';
 import { useTenant } from '@/hooks/useTenant';
 import { UnsplashImagePicker } from '@/components/dashboard/UnsplashImagePicker';
 import { Palette, Type, Settings as SettingsIcon } from 'lucide-react';
@@ -59,7 +60,7 @@ export function LoginCustomization() {
       // Load login customization
       const { data: customData } = await supabase
         .from('login_customization')
-        .select('*')
+        .select('background_image_url, background_position, background_attribution, primary_color, accent_color, tagline, welcome_text, footer_text, social_login_enabled, registration_enabled, password_reset_enabled')
         .eq('tenant_id', currentTenant.id)
         .maybeSingle();
 
@@ -79,7 +80,7 @@ export function LoginCustomization() {
         });
       }
     } catch (error) {
-      console.error('Error loading data:', error);
+      debugConsole.error('Error loading data:', error);
       toast({
         title: 'Fehler',
         description: 'Daten konnten nicht geladen werden.',
@@ -114,7 +115,7 @@ export function LoginCustomization() {
         description: 'Login-Anpassungen wurden erfolgreich gespeichert.'
       });
     } catch (error: any) {
-      console.error('Error saving:', error);
+      debugConsole.error('Error saving:', error);
       toast({
         title: 'Fehler',
         description: error.message || 'Speichern fehlgeschlagen.',

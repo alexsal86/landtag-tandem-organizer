@@ -11,6 +11,7 @@ import { icons, LucideIcon } from "lucide-react";
 import { format } from "date-fns";
 import { de } from "date-fns/locale";
 import { supabase } from "@/integrations/supabase/client";
+import { debugConsole } from "@/utils/debugConsole";
 import { cn } from "@/lib/utils";
 
 interface StatusHistoryEntry {
@@ -54,7 +55,7 @@ export function CaseFileCurrentStatus({ caseFile, onUpdate, onUpdateProcessingSt
     try {
       const { data, error } = await supabase
         .from('case_file_status_history' as any)
-        .select('*')
+        .select('id, case_file_id, content, user_id, user_display_name, created_at')
         .eq('case_file_id', caseFile.id)
         .order('created_at', { ascending: false })
         .limit(10);
@@ -62,7 +63,7 @@ export function CaseFileCurrentStatus({ caseFile, onUpdate, onUpdateProcessingSt
       if (error) throw error;
       setHistory((data || []) as unknown as StatusHistoryEntry[]);
     } catch (error) {
-      console.error('Error loading status history:', error);
+      debugConsole.error('Error loading status history:', error);
     }
   };
 

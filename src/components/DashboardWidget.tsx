@@ -9,6 +9,7 @@ import { DashboardWidget as WidgetType } from '@/hooks/useDashboardLayout';
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
+import { debugConsole } from "@/utils/debugConsole";
 import { MessageSystem } from './MessageSystem';
 import { BlackBoard } from './BlackBoard';
 import { CombinedMessagesWidget } from './CombinedMessagesWidget';
@@ -218,7 +219,7 @@ export function DashboardWidget({ widget, isDragging, isEditMode, onResize, onDe
       // Load tasks
       const { data: tasksData } = await supabase
         .from('tasks')
-        .select('*')
+        .select('id, title, description, priority, status, due_date, category, assigned_to, progress, created_at, updated_at, user_id, call_log_id')
         .neq('status', 'completed')
         .order('due_date', { ascending: true, nullsFirst: false });
 
@@ -236,7 +237,7 @@ export function DashboardWidget({ widget, isDragging, isEditMode, onResize, onDe
       // Load child tasks as subtasks
       const { data: childTasksData } = await supabase
         .from('tasks')
-        .select('*')
+        .select('id, title, description, parent_task_id, assigned_to, due_date, status')
         .not('parent_task_id', 'is', null)
         .neq('status', 'completed')
         .order('due_date', { ascending: true, nullsFirst: false });
@@ -266,7 +267,7 @@ export function DashboardWidget({ widget, isDragging, isEditMode, onResize, onDe
       // Load snoozes
       const { data: snoozesData } = await supabase
         .from('task_snoozes')
-        .select('*')
+        .select('id, task_id, subtask_id, snoozed_until')
         .eq('user_id', user.id)
         .gte('snoozed_until', new Date().toISOString());
 
@@ -287,7 +288,7 @@ export function DashboardWidget({ widget, isDragging, isEditMode, onResize, onDe
         setSubtaskSnoozes(subtaskSnoozesMap);
       }
     } catch (error) {
-      console.error('Error loading assigned tasks and subtasks:', error);
+      debugConsole.error('Error loading assigned tasks and subtasks:', error);
     }
   };
 
@@ -345,7 +346,7 @@ export function DashboardWidget({ widget, isDragging, isEditMode, onResize, onDe
             configuration={widget.configuration}
             onConfigurationChange={(config) => {
               // Update widget configuration if we have an update function
-              console.log('Configuration changed for quickactions widget:', config);
+              debugConsole.log('Configuration changed for quickactions widget:', config);
             }}
           />
         );
@@ -490,7 +491,7 @@ export function DashboardWidget({ widget, isDragging, isEditMode, onResize, onDe
                                     description: `${isTask ? 'Aufgabe' : 'Unteraufgabe'} wird bis ${new Date(snoozeDate).toLocaleDateString('de-DE')} ausgeblendet.`
                                   });
                                 } catch (error) {
-                                  console.error('Error setting snooze:', error);
+                                  debugConsole.error('Error setting snooze:', error);
                                 }
                               }
                             }}
@@ -644,17 +645,17 @@ export function DashboardWidget({ widget, isDragging, isEditMode, onResize, onDe
             isVisible={showOverlayMenu}
             onClose={() => setShowOverlayMenu(false)}
             onResize={(widgetId, newSize) => {
-              console.log('Overlay menu resize called:', widgetId, newSize);
+              debugConsole.log('Overlay menu resize called:', widgetId, newSize);
               if (onResize) {
                 onResize(widgetId, newSize);
                 setShowOverlayMenu(false);
               } else {
-                console.warn('No onResize function provided to DashboardWidget');
+                debugConsole.warn('No onResize function provided to DashboardWidget');
               }
             }}
             onMinimize={() => {}}
             onHide={() => {}}
-            onDelete={onDelete || (() => console.log('Delete function not provided'))}
+            onDelete={onDelete || (() => debugConsole.log('Delete function not provided'))}
             onConfigure={() => {}}
           />
         )}
@@ -708,18 +709,18 @@ export function DashboardWidget({ widget, isDragging, isEditMode, onResize, onDe
           widgetSize={typeof widget.widgetSize === 'string' ? widget.widgetSize : typeof widget.size === 'string' ? widget.size : '2x2'}
           isVisible={showOverlayMenu}
           onClose={() => setShowOverlayMenu(false)}
-          onResize={(widgetId, newSize) => {
-            console.log('Card overlay menu resize called:', widgetId, newSize);
-            if (onResize) {
-              onResize(widgetId, newSize);
-              setShowOverlayMenu(false);
-            } else {
-              console.warn('No onResize function provided to DashboardWidget');
+            onResize={(widgetId, newSize) => {
+              debugConsole.log('Card overlay menu resize called:', widgetId, newSize);
+              if (onResize) {
+                onResize(widgetId, newSize);
+                setShowOverlayMenu(false);
+              } else {
+                debugConsole.warn('No onResize function provided to DashboardWidget');
             }
           }}
           onMinimize={() => {}}
           onHide={() => {}}
-          onDelete={onDelete || (() => console.log('Delete function not provided'))}
+          onDelete={onDelete || (() => debugConsole.log('Delete function not provided'))}
           onConfigure={() => {}}
         />
       )}

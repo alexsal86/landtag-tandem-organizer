@@ -6,6 +6,7 @@ import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
+import { debugConsole } from '@/utils/debugConsole';
 import { useTenant } from '@/hooks/useTenant';
 import { Loader2, Archive, Trash2, CheckCircle, AlertCircle } from 'lucide-react';
 import { Alert, AlertDescription } from '@/components/ui/alert';
@@ -45,7 +46,7 @@ export const DecisionArchiveSettings = () => {
 
       const { data, error } = await supabase
         .from('decision_archive_settings' as any)
-        .select('*')
+        .select('auto_archive_on_completion, auto_archive_days, auto_delete_after_days')
         .eq('user_id', user.id)
         .eq('tenant_id', currentTenant.id)
         .maybeSingle();
@@ -61,7 +62,7 @@ export const DecisionArchiveSettings = () => {
         setAutoDeleteDays(settings.auto_delete_after_days?.toString() ?? '');
       }
     } catch (error: any) {
-      console.error('Error loading settings:', error);
+      debugConsole.error('Error loading settings:', error);
       toast({
         title: 'Fehler',
         description: 'Einstellungen konnten nicht geladen werden.',
@@ -102,7 +103,7 @@ export const DecisionArchiveSettings = () => {
         description: 'Archivierungseinstellungen wurden erfolgreich gespeichert.'
       });
     } catch (error: any) {
-      console.error('Error saving settings:', error);
+      debugConsole.error('Error saving settings:', error);
       toast({
         title: 'Fehler',
         description: 'Einstellungen konnten nicht gespeichert werden.',

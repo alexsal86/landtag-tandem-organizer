@@ -12,6 +12,7 @@ import { X, Users, Save, Search, ArrowLeft } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
+import { debugConsole } from "@/utils/debugConsole";
 
 interface Contact {
   id: string;
@@ -68,7 +69,7 @@ export function DistributionListForm({ distributionListId, onSuccess, onBack }: 
       setContacts(data || []);
       setFilteredContacts(data || []);
     } catch (error) {
-      console.error('Error fetching contacts:', error);
+      debugConsole.error('Error fetching contacts:', error);
       toast({
         title: "Fehler",
         description: "Kontakte konnten nicht geladen werden.",
@@ -83,7 +84,7 @@ export function DistributionListForm({ distributionListId, onSuccess, onBack }: 
     try {
       const { data: distributionList, error: listError } = await supabase
         .from('distribution_lists')
-        .select('*')
+        .select('id, name, description, topic')
         .eq('id', distributionListId)
         .single();
 
@@ -101,7 +102,7 @@ export function DistributionListForm({ distributionListId, onSuccess, onBack }: 
       if (membersError) throw membersError;
       setSelectedContactIds(members?.map(m => m.contact_id) || []);
     } catch (error) {
-      console.error('Error fetching distribution list:', error);
+      debugConsole.error('Error fetching distribution list:', error);
       toast({
         title: "Fehler",
         description: "Verteiler konnte nicht geladen werden.",
@@ -179,7 +180,7 @@ export function DistributionListForm({ distributionListId, onSuccess, onBack }: 
 
       onSuccess?.();
     } catch (error) {
-      console.error('Error saving distribution list:', error);
+      debugConsole.error('Error saving distribution list:', error);
       toast({ title: "Fehler", description: "Verteiler konnte nicht gespeichert werden.", variant: "destructive" });
     } finally {
       setLoading(false);

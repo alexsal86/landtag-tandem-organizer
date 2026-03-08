@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { debugConsole } from "@/utils/debugConsole";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
@@ -38,13 +39,13 @@ export function TagAdminSettings() {
       setLoading(true);
       const { data, error } = await supabase
         .from('tags')
-        .select('*')
+        .select('id, name, label, color, icon, is_active, order_index')
         .order('order_index');
 
       if (error) throw error;
       setTags(data || []);
     } catch (error) {
-      console.error('Error loading tags:', error);
+      debugConsole.error('Error loading tags:', error);
       toast({ title: "Fehler", description: "Tags konnten nicht geladen werden.", variant: "destructive" });
     } finally {
       setLoading(false);
@@ -69,7 +70,7 @@ export function TagAdminSettings() {
       setNewTag(null);
       toast({ title: "Erfolg", description: "Tag wurde erfolgreich hinzugefügt." });
     } catch (error: any) {
-      console.error('Error adding tag:', error);
+      debugConsole.error('Error adding tag:', error);
       toast({ title: "Fehler", description: "Tag konnte nicht hinzugefügt werden.", variant: "destructive" });
     }
   };
@@ -91,7 +92,7 @@ export function TagAdminSettings() {
       setEditingTag(null);
       toast({ title: "Erfolg", description: "Tag wurde erfolgreich aktualisiert." });
     } catch (error: any) {
-      console.error('Error updating tag:', error);
+      debugConsole.error('Error updating tag:', error);
       toast({ title: "Fehler", description: "Tag konnte nicht aktualisiert werden.", variant: "destructive" });
     }
   };
@@ -110,7 +111,7 @@ export function TagAdminSettings() {
       await loadTags();
       toast({ title: "Erfolg", description: "Tag wurde erfolgreich gelöscht." });
     } catch (error: any) {
-      console.error('Error deleting tag:', error);
+      debugConsole.error('Error deleting tag:', error);
       toast({ title: "Fehler", description: "Tag konnte nicht gelöscht werden.", variant: "destructive" });
     }
   };
@@ -123,7 +124,7 @@ export function TagAdminSettings() {
       await loadTags();
       toast({ title: "Erfolg", description: `Tag wurde ${!isActive ? 'aktiviert' : 'deaktiviert'}.` });
     } catch (error: any) {
-      console.error('Error toggling tag:', error);
+      debugConsole.error('Error toggling tag:', error);
       toast({ title: "Fehler", description: "Status konnte nicht geändert werden.", variant: "destructive" });
     }
   };
@@ -150,7 +151,7 @@ export function TagAdminSettings() {
       }
       toast({ title: "Erfolg", description: "Reihenfolge wurde gespeichert." });
     } catch (error) {
-      console.error('Error updating order:', error);
+      debugConsole.error('Error updating order:', error);
       toast({ title: "Fehler", description: "Reihenfolge konnte nicht gespeichert werden.", variant: "destructive" });
       loadTags(); // Reload on error
     }
