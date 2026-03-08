@@ -599,7 +599,7 @@ export function FocusModeView({
                     variant="ghost"
                     size="sm"
                     className="h-6 w-6 p-0 shrink-0"
-                    onClick={(e) => { e.stopPropagation(); onToggleStar(sourceData); }}
+                    onClick={(e) => { e.stopPropagation(); onToggleStar(sourceData as MeetingUpcomingAppointment); }}
                   >
                     <Star className={cn("h-3.5 w-3.5", starredAppointmentIds.has(sourceData.id) ? "fill-amber-400 text-amber-400" : "text-muted-foreground")} />
                   </Button>
