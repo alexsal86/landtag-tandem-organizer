@@ -116,7 +116,7 @@ export const useNoteSharing = (noteId?: string) => {
         .eq("id", shareId)
         .select();
 
-      console.log("Delete result:", { data, error });
+      
 
       if (error) throw error;
 
