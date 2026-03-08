@@ -73,7 +73,7 @@ export function DocumentCategoryAdminSettings() {
       setNewCategory(null);
       toast({ title: "Erfolg", description: "Kategorie wurde erfolgreich hinzugefügt." });
     } catch (error: unknown) {
-      console.error('Error adding category:', error);
+      debugConsole.error('Error adding category:', error);
       toast({ title: "Fehler", description: "Kategorie konnte nicht hinzugefügt werden.", variant: "destructive" });
     }
   };
