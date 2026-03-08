@@ -97,7 +97,7 @@ export function NotesArchive({ refreshTrigger, onRestore }: NotesArchiveProps) {
       if (error) throw error;
       setArchivedNotes((data || []) as ArchivedNote[]);
     } catch (error) {
-      console.error("Error loading archived notes:", error);
+      debugConsole.error("Error loading archived notes:", error);
     } finally {
       setLoading(false);
     }
