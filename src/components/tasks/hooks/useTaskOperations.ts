@@ -211,7 +211,7 @@ export function useTaskOperations({
       loadTaskSnoozes();
       toast({ title: "Erfolgreich", description: "Wiedervorlage wurde gelöscht." });
     } catch (error) {
-      console.error('Error deleting snooze:', error);
+      debugConsole.error('Error deleting snooze:', error);
       toast({ title: "Fehler", description: "Wiedervorlage konnte nicht gelöscht werden.", variant: "destructive" });
     }
   };
