@@ -111,7 +111,7 @@ export default function ContactDetail() {
       
       setActivities(formattedActivities);
     } catch (error) {
-      console.error("Error fetching activities:", error);
+      debugConsole.error("Error fetching activities:", error);
       toast({
         title: "Fehler",
         description: "Aktivitäten konnten nicht geladen werden.",
