@@ -1,19 +1,16 @@
 
-## Benachrichtigungen & Badges für Vorgänge — Umgesetzt
+## Code-Qualität — Status
 
-### Was wurde gemacht:
+### Erledigt
 
-1. **DB: Neue `notification_types` für Kategorie `cases`** (alle 3 Tenants)
-   - `case_item_created`, `case_item_assigned`, `case_item_status_changed`, `case_item_comment`
+- **strictNullChecks: true** — aktiviert, alle Build-Fehler behoben
+- **noImplicitAny: true** — aktiviert, alle Build-Fehler behoben
+- **DOMPurify** als zentraler HTML-Sanitizer — alle `dangerouslySetInnerHTML` nutzen jetzt `sanitizeRichHtml()`
+- **Tenant-Access Guard** für Edge Functions — existiert in `supabase/functions/_shared/tenant-access.ts`
 
-2. **DB: `notification_navigation_mapping`** — alle 4 Typen auf `navigation_context = 'mywork'` gemappt, damit Sidebar-Badge korrekt zählt.
+### Noch offen
 
-3. **UI: `NotificationSettings.tsx`** — Kategorie `cases` / "Vorgänge" mit Icon 📋 eingefügt (Order 3).
-
-4. **Code: `useCaseItems.tsx`** — `create_notification` RPC-Aufrufe bei:
-   - Vorgang erstellen → Benachrichtigung an zugewiesenen Owner
-   - Status-Änderung → Benachrichtigung an Ersteller + Owner
-   - Zuweisung-Änderung → Benachrichtigung an neuen Owner
-   - Kommentar/Interaktion → Benachrichtigung an Ersteller + Owner
-
-5. **Badge-System**: Sidebar-Badge für "Meine Arbeit" zählt nun auch Vorgang-Benachrichtigungen (via `navigation_context = 'mywork'` Trigger). Interne Tab-Badges bleiben über `useMyWorkNewCounts` (Zeitstempel-basiert).
+1. **`strict: true` aktivieren** — beinhaltet `strictBindCallApply`, `strictFunctionTypes`, `strictPropertyInitialization`, `noImplicitThis`, `alwaysStrict`
+2. **Lint-Regeln verschärfen** — `no-unused-vars` auf `warn` setzen, tote Importe entfernen; dann `no-explicit-any` schrittweise einführen
+3. **Edge Functions `verify_jwt`-Audit** — ~20 Functions mit `verify_jwt = false` klassifizieren und absichern
+4. **CORS einschränken** — `Access-Control-Allow-Origin: *` durch Allowlist ersetzen für sensible Operationen
