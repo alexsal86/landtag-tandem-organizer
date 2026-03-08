@@ -175,7 +175,7 @@ export function useEmailComposer() {
       }
 
       toast({ title: "Presse-E-Mail vorbereitet", description: `Daten aus "${pr.title}" wurden geladen.` });
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Error loading press release for email:", error);
       toast({ title: "Fehler", description: "Pressemitteilung konnte nicht geladen werden.", variant: "destructive" });
     }
