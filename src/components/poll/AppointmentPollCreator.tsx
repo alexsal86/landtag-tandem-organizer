@@ -203,7 +203,7 @@ export const AppointmentPollCreator = ({ onClose }: { onClose: () => void }) => 
             // Generate token for external participants
             const { data: tokenData, error: tokenError } = await supabase.rpc('generate_participant_token');
             if (tokenError) {
-              console.error('Error generating token for', p.email, ':', tokenError);
+              debugConsole.error('Error generating token for', p.email, ':', tokenError);
               throw new Error(`Token-Generierung fehlgeschlagen für ${p.email}`);
             }
 
