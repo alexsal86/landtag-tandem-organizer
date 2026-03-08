@@ -324,7 +324,7 @@ export const NotificationSettings: React.FC = () => {
       setSettings(prev => prev.map(s =>
         s.notification_type_id === typeId ? { ...s, [field]: !value } : s
       ));
-      console.error('Error updating setting:', error);
+      debugConsole.error('Error updating setting:', error);
       toast({
         title: 'Fehler',
         description: 'Einstellung konnte nicht gespeichert werden.',
