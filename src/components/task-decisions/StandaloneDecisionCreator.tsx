@@ -97,7 +97,7 @@ export const StandaloneDecisionCreator = ({
   };
 
   const loadProfiles = useCallback(async () => {
-    console.log("Loading profiles for decision creator...");
+    
     try {
       // Get current user's tenant
       const { data: userData } = await supabase.auth.getUser();
