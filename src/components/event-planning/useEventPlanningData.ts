@@ -932,7 +932,7 @@ export function useEventPlanningData() {
       loadItemSubtasks(planningItemId);
       loadAllItemCounts();
       toast({ title: "Unteraufgabe hinzugefügt", description: "Die Unteraufgabe wurde erfolgreich erstellt." });
-    } catch (error) { console.error('Error adding subtask:', error); toast({ title: "Fehler", description: "Unteraufgabe konnte nicht hinzugefügt werden.", variant: "destructive" }); }
+    } catch (error) { debugConsole.error('Error adding subtask:', error); toast({ title: "Fehler", description: "Unteraufgabe konnte nicht hinzugefügt werden.", variant: "destructive" }); }
   };
 
   const addItemCommentForItem = async (itemId: string, comment: string) => {
