@@ -69,7 +69,7 @@ export function TagAdminSettings() {
       await loadTags();
       setNewTag(null);
       toast({ title: "Erfolg", description: "Tag wurde erfolgreich hinzugefügt." });
-    } catch (error: any) {
+    } catch (error: unknown) {
       debugConsole.error('Error adding tag:', error);
       toast({ title: "Fehler", description: "Tag konnte nicht hinzugefügt werden.", variant: "destructive" });
     }
