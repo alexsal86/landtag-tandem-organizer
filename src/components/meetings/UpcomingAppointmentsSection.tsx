@@ -142,7 +142,7 @@ export const UpcomingAppointmentsSection: React.FC<UpcomingAppointmentsSectionPr
 
       setAppointments(allAppointments);
     } catch (error) {
-      console.error('Error loading appointments:', error);
+      debugConsole.error('Error loading appointments:', error);
     } finally {
       setLoading(false);
     }
