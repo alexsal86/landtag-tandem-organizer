@@ -121,7 +121,7 @@ export function useContactImport() {
             return d;
           });
           setData(parsed); autoMapFields(Object.keys(parsed[0] || {})); setStep("mapping");
-        } catch (error) { console.error("VCF parse error:", error); toast({ title: "Fehler beim VCF-Import", description: "Die VCF-Datei konnte nicht gelesen werden", variant: "destructive" }); }
+        } catch (error) { debugConsole.error("VCF parse error:", error); toast({ title: "Fehler beim VCF-Import", description: "Die VCF-Datei konnte nicht gelesen werden", variant: "destructive" }); }
       };
       reader.readAsText(uploadedFile);
     } else {
