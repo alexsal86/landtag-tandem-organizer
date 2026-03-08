@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { debugConsole } from '@/utils/debugConsole';
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
