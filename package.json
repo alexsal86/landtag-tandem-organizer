@@ -84,6 +84,7 @@
     "dompurify": "^3.2.6",
     "embla-carousel-react": "^8.6.0",
     "framer-motion": "^12.23.12",
+    "globals": "^17.4.0",
     "input-otp": "^1.4.2",
     "jsdom": "^20.0.3",
     "jspdf": "^3.0.2",
