@@ -66,7 +66,7 @@ export function ProtocolExport({ protocolId, protocolTitle }: ProtocolExportProp
 
       toast.success('JSON-Export erfolgreich erstellt');
     } catch (error) {
-      console.error('Error exporting JSON:', error);
+      debugConsole.error('Error exporting JSON:', error);
       toast.error('Fehler beim JSON-Export');
     } finally {
       setIsExporting(false);
