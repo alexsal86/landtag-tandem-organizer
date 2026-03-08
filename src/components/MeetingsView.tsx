@@ -2535,40 +2535,6 @@ export function MeetingsView() {
     }
   };
 
-  // Vordefinierte Unterpunkte für bestimmte Hauptpunkte
-  const SUBPOINT_OPTIONS: Record<string, string[]> = {
-    'Aktuelles aus dem Landtag': [
-      'Rückblick auf vergangene Plenarsitzungen, Ausschusssitzungen, Fraktionssitzungen',
-      'Wichtige Beschlüsse, Gesetze, Debatten',
-      'Anstehende Termine und Fraktionspositionen',
-      'Offene Punkte, bei denen Handlungsbedarf besteht',
-    ],
-    'Politische Schwerpunktthemen & Projekte': [
-      'Laufende politische Initiativen (z. B. Gesetzesvorhaben, Anträge, Kleine Anfragen)',
-      'Vorbereitung auf anstehende Reden, Stellungnahmen, Medienbeiträge',
-      'Strategische Planung zu Kernthemen des Abgeordneten',
-      'Recherche- und Hintergrundaufträge an Mitarbeiter',
-    ],
-    'Wahlkreisarbeit': [
-      'Aktuelle Anliegen aus dem Wahlkreis (Bürgeranfragen, Vereine, Unternehmen, Kommunen)',
-      'Geplante Wahlkreisbesuche und Gesprächstermine',
-      'Veranstaltungen im Wahlkreis (Planung, Teilnahme, Redeinhalte)',
-      'Presse- und Öffentlichkeitsarbeit vor Ort',
-    ],
-    'Kommunikation & Öffentlichkeitsarbeit': [
-      'Social Media: Planung und Freigabe von Beiträgen, Abstimmung von Inhalten',
-      'Pressearbeit: Pressemeldungen, Interviews, Pressegespräche',
-      'Newsletter, Website-Updates',
-      'Abstimmung mit Fraktions-Pressestelle',
-    ],
-    'Organisation & Bürointerna': [
-      'Aufgabenverteilung im Team',
-      'Rückmeldung zu laufenden Projekten und Deadlines',
-      'Büroorganisation, Urlaubsplanung, Vertretungsregelungen',
-      'Technische und administrative Fragen',
-    ],
-  };
-
   const makeLocalKey = () => `local-${Date.now()}-${Math.random().toString(36).slice(2,8)}`;
 
   const addSubItem = async (parent: AgendaItem, title: string) => {
