@@ -69,7 +69,7 @@ const isMissingRpcError = (error: unknown): boolean => {
   const maybeError = error as { code?: string; message?: string };
   return (
     maybeError.code === 'PGRST202'
-    || maybeError.message?.includes('get_my_work_new_counts')
+    || (maybeError.message?.includes('get_my_work_new_counts') ?? false)
   );
 };
 
