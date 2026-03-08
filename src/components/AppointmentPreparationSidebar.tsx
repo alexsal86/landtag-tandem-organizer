@@ -13,6 +13,7 @@ import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
 import { FileText, Download, Save, Archive, Plus } from 'lucide-react';
+import { debugConsole } from '@/utils/debugConsole';
 import { format } from 'date-fns';
 import { de } from 'date-fns/locale';
 import jsPDF from 'jspdf';
@@ -91,7 +92,7 @@ export default function AppointmentPreparationSidebar({
         });
       }
     } catch (error) {
-      console.error('Error fetching preparation:', error);
+      debugConsole.error('Error fetching preparation:', error);
       toast({
         title: 'Fehler',
         description: 'Vorbereitung konnte nicht geladen werden.',
@@ -117,7 +118,7 @@ export default function AppointmentPreparationSidebar({
         template_data: Array.isArray(template.template_data) ? template.template_data : []
       })));
     } catch (error) {
-      console.error('Error fetching templates:', error);
+      debugConsole.error('Error fetching templates:', error);
     }
   };
 
@@ -181,7 +182,7 @@ export default function AppointmentPreparationSidebar({
         description: 'Terminvorbereitung wurde erstellt.',
       });
     } catch (error) {
-      console.error('Error creating preparation:', error);
+      debugConsole.error('Error creating preparation:', error);
       toast({
         title: 'Fehler',
         description: 'Vorbereitung konnte nicht erstellt werden.',
@@ -212,7 +213,7 @@ export default function AppointmentPreparationSidebar({
         description: 'Vorbereitung wurde gespeichert.',
       });
     } catch (error) {
-      console.error('Error saving preparation:', error);
+      debugConsole.error('Error saving preparation:', error);
       toast({
         title: 'Fehler',
         description: 'Vorbereitung konnte nicht gespeichert werden.',
@@ -339,7 +340,7 @@ export default function AppointmentPreparationSidebar({
         description: 'PDF wurde erfolgreich erstellt und heruntergeladen.',
       });
     } catch (error) {
-      console.error('Error generating PDF:', error);
+      debugConsole.error('Error generating PDF:', error);
       toast({
         title: 'Fehler',
         description: 'PDF konnte nicht erstellt werden.',

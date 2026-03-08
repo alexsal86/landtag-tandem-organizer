@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { useTenant } from "@/hooks/useTenant";
+import { debugConsole } from "@/utils/debugConsole";
 import {
   Dialog,
   DialogContent,
@@ -70,7 +71,7 @@ export function EmployeeYearlyStatsView({ isOpen, onClose }: EmployeeYearlyStats
         }
       }
     } catch (error) {
-      console.error("Error loading years:", error);
+      debugConsole.error("Error loading years:", error);
     }
   };
 
@@ -105,7 +106,7 @@ export function EmployeeYearlyStatsView({ isOpen, onClose }: EmployeeYearlyStats
 
       setStats(enrichedStats);
     } catch (error) {
-      console.error("Error loading stats:", error);
+      debugConsole.error("Error loading stats:", error);
     } finally {
       setLoading(false);
     }

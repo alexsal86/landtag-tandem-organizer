@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { debugConsole } from "@/utils/debugConsole";
 import { useTenant } from "@/hooks/useTenant";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
@@ -57,7 +58,7 @@ export function FeatureImagePicker({ value, onChange, disabled }: FeatureImagePi
         .limit(50);
       setDocuments(data || []);
     } catch (e) {
-      console.error('Failed to load image documents:', e);
+      debugConsole.error('Failed to load image documents:', e);
     } finally {
       setLoading(false);
     }
@@ -89,7 +90,7 @@ export function FeatureImagePicker({ value, onChange, disabled }: FeatureImagePi
       if (error) throw error;
       setUnsplashImages(data?.results || []);
     } catch (e) {
-      console.error("Unsplash search failed:", e);
+      debugConsole.error("Unsplash search failed:", e);
     } finally {
       setUnsplashLoading(false);
     }

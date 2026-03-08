@@ -37,11 +37,11 @@ export function TodoCreateDialog({ open, onOpenChange, onTodoCreated }: TodoCrea
   const [assignedTo, setAssignedTo] = useState<string[]>([]);
   const [users, setUsers] = useState<Array<{ user_id: string; display_name?: string }>>([]);
 
-  console.log('TodoCreateDialog render - open:', open, 'user:', user?.id);
+  debugConsole.log('TodoCreateDialog render - open:', open, 'user:', user?.id);
 
   useEffect(() => {
     if (open) {
-      console.log('Dialog opened, loading categories...');
+      debugConsole.log('Dialog opened, loading categories...');
       loadCategories();
       loadUsers();
     }
@@ -49,19 +49,19 @@ export function TodoCreateDialog({ open, onOpenChange, onTodoCreated }: TodoCrea
 
   const loadCategories = async () => {
     try {
-      console.log('Loading categories...');
+      debugConsole.log('Loading categories...');
       const { data, error } = await supabase
         .from('todo_categories')
         .select('id, label, color')
         .eq('is_active', true)
         .order('order_index');
 
-      console.log('Categories result:', { data, error });
+      debugConsole.log('Categories result:', { data, error });
       
       if (error) throw error;
       setCategories(data || []);
     } catch (error) {
-      console.error('Error loading categories:', error);
+      debugConsole.error('Error loading categories:', error);
       toast({
         title: "Fehler",
         description: "Kategorien konnten nicht geladen werden.",
@@ -72,17 +72,17 @@ export function TodoCreateDialog({ open, onOpenChange, onTodoCreated }: TodoCrea
 
   const loadUsers = async () => {
     try {
-      console.log('Loading users for TodoCreateDialog...');
+      debugConsole.log('Loading users for TodoCreateDialog...');
       const { data, error } = await supabase
         .from('profiles')
         .select('user_id, display_name')
         .order('display_name');
 
       if (error) throw error;
-      console.log('Users loaded for TodoCreateDialog:', data);
+      debugConsole.log('Users loaded for TodoCreateDialog:', data);
       setUsers(data || []);
     } catch (error) {
-      console.error('Error loading users:', error);
+      debugConsole.error('Error loading users:', error);
       setUsers([]); // Ensure users is always an array
     }
   };

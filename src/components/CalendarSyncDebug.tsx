@@ -7,6 +7,7 @@ import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Loader2, RefreshCw, CheckCircle, XCircle, AlertTriangle } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
+import { debugConsole } from '@/utils/debugConsole';
 
 interface ValidationResult {
   icsEventCount: number;
@@ -41,7 +42,7 @@ export function CalendarSyncDebug() {
       setValidationResult(data);
       toast.success('Kalender-Validierung abgeschlossen');
     } catch (error) {
-      console.error('Validation error:', error);
+      debugConsole.error('Validation error:', error);
       toast.error('Fehler bei der Validierung: ' + (error as Error).message);
     } finally {
       setLoading(false);
@@ -67,7 +68,7 @@ export function CalendarSyncDebug() {
         validateCalendar();
       }, 2000);
     } catch (error) {
-      console.error('Force resync error:', error);
+      debugConsole.error('Force resync error:', error);
       toast.error('Fehler beim Neuaufbau: ' + (error as Error).message);
     } finally {
       setSyncLoading(false);

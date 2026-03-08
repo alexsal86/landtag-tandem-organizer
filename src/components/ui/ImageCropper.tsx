@@ -3,6 +3,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "
 import { Button } from "@/components/ui/button";
 import { Slider } from "@/components/ui/slider";
 import { ZoomIn, ZoomOut, Move } from "lucide-react";
+import { debugConsole } from "@/utils/debugConsole";
 
 interface ImageCropperProps {
   imageSrc: string;
@@ -188,7 +189,7 @@ export function ImageCropper({ imageSrc, onCropComplete, onCancel, open }: Image
         0.9
       );
     } catch (error) {
-      console.error("Error cropping image:", error);
+      debugConsole.error("Error cropping image:", error);
       setIsProcessing(false);
     }
   }, [image, zoom, position, onCropComplete]);

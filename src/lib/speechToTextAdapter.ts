@@ -1,3 +1,5 @@
+import { debugConsole } from "@/utils/debugConsole";
+
 export type SpeechToTextState = 'idle' | 'listening' | 'stopping' | 'unsupported';
 
 export interface SpeechToTextError {
@@ -181,7 +183,7 @@ export class WebSpeechToTextAdapter implements SpeechToTextAdapter {
       this.recognition = recognition;
       this.onStateChange?.('listening');
     } catch (err) {
-      console.error('SpeechRecognition.start() failed:', err);
+      debugConsole.error('SpeechRecognition.start() failed:', err);
       this.recognition = null;
       this.shouldListen = false;
       const message = err instanceof DOMException && err.name === 'NotAllowedError'

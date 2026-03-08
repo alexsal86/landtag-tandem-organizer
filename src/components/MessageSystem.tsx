@@ -11,6 +11,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { useMessagesRealtime } from "@/hooks/useMessagesRealtime";
 import { MessageComposer } from "./MessageComposer";
 import { toast } from "@/hooks/use-toast";
+import { debugConsole } from "@/utils/debugConsole";
 
 interface ReceivedMessage {
   id: string;
@@ -91,7 +92,7 @@ export function MessageSystem() {
       const { data: receivedMessages, error: receivedError } = receivedResponse;
 
       if (receivedError) {
-        console.error('Error fetching received messages:', receivedError);
+        debugConsole.error('Error fetching received messages:', receivedError);
         return;
       }
 
@@ -101,7 +102,7 @@ export function MessageSystem() {
       const { data: authoredMessages, error: authoredError } = authoredResponse;
 
       if (authoredError) {
-        console.error('Error fetching authored messages:', authoredError);
+        debugConsole.error('Error fetching authored messages:', authoredError);
         return;
       }
 
@@ -210,7 +211,7 @@ export function MessageSystem() {
       setSentMessages(activeSent);
       setArchivedMessages([...archivedSent, ...readMessages]); // Combine archived sent and read received messages
     } catch (error) {
-      console.error('Error fetching messages:', error);
+      debugConsole.error('Error fetching messages:', error);
     } finally {
       setLoading(false);
     }
@@ -243,7 +244,7 @@ export function MessageSystem() {
 
       fetchMessages();
     } catch (error) {
-      console.error('Error marking message as read:', error);
+      debugConsole.error('Error marking message as read:', error);
       toast({
         title: "Fehler",
         description: "Die Nachricht konnte nicht als gelesen markiert werden.",

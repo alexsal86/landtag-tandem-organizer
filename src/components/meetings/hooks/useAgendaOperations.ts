@@ -26,7 +26,7 @@ export function useAgendaOperations(deps: AgendaOpsDeps) {
         try {
           await supabase.from('meeting_agenda_items').update({ [field]: value }).eq('id', itemId);
         } catch (error) {
-          console.error('Error updating agenda item:', error);
+          debugConsole.error('Error updating agenda item:', error);
           toast({ title: "Fehler", description: "Die Änderung konnte nicht gespeichert werden.", variant: "destructive" });
         }
       }, 500);
@@ -34,7 +34,7 @@ export function useAgendaOperations(deps: AgendaOpsDeps) {
       try {
         await supabase.from('meeting_agenda_items').update({ [field]: value }).eq('id', itemId);
       } catch (error) {
-        console.error('Error updating agenda item:', error);
+        debugConsole.error('Error updating agenda item:', error);
         toast({ title: "Fehler", description: "Die Änderung konnte nicht gespeichert werden.", variant: "destructive" });
       }
     }
@@ -114,7 +114,7 @@ export function useAgendaOperations(deps: AgendaOpsDeps) {
       }
       toast({ title: "Dynamischer Punkt hinzugefügt", description: `"${titles[systemType]}" wurde zur Agenda hinzugefügt.` });
     } catch (error) {
-      console.error('Error saving system agenda item:', error);
+      debugConsole.error('Error saving system agenda item:', error);
       toast({ title: "Fehler", description: "Der dynamische Punkt konnte nicht gespeichert werden.", variant: "destructive" });
     }
   };
@@ -138,7 +138,7 @@ export function useAgendaOperations(deps: AgendaOpsDeps) {
           loadAgendaItems(selectedMeeting.id);
         }
       } catch (error) {
-        console.error('Auto-save error:', error);
+        debugConsole.error('Auto-save error:', error);
       }
     }
   };
@@ -189,7 +189,7 @@ export function useAgendaOperations(deps: AgendaOpsDeps) {
         await loadAgendaItems(selectedMeeting.id);
       }
     } catch (error: unknown) {
-      console.error('Error saving agenda:', error);
+      debugConsole.error('Error saving agenda:', error);
       const msg = error instanceof Error ? error.message : '';
       let errorMessage = 'Die Agenda konnte nicht gespeichert werden.';
       if (msg.includes('invalid input syntax for type json')) errorMessage = 'Ungültiges Datenformat. Bitte prüfen Sie die Eingaben.';
@@ -245,7 +245,7 @@ export function useAgendaOperations(deps: AgendaOpsDeps) {
       }
       toast({ title: "Aufgabe hinzugefügt", description: `"${task.title}" wurde als Unterpunkt zu "${parentItem.title}" hinzugefügt.` });
     } catch (error) {
-      console.error('Error saving task to agenda:', error);
+      debugConsole.error('Error saving task to agenda:', error);
       toast({ title: "Fehler", description: "Aufgabe konnte nicht gespeichert werden.", variant: "destructive" });
     }
   };
@@ -292,7 +292,7 @@ export function useAgendaOperations(deps: AgendaOpsDeps) {
       }
       toast({ title: "Unterpunkt hinzugefügt", description: `Unterpunkt wurde zu "${parent.title}" hinzugefügt.` });
     } catch (error) {
-      console.error('Error saving sub-item:', error);
+      debugConsole.error('Error saving sub-item:', error);
       toast({ title: "Fehler", description: "Unterpunkt konnte nicht gespeichert werden.", variant: "destructive" });
     }
   };
@@ -339,7 +339,7 @@ export function useAgendaOperations(deps: AgendaOpsDeps) {
         description: newVisibility ? "Der optionale Punkt wird nun angezeigt." : "Der optionale Punkt wurde ausgeblendet.",
       });
     } catch (error) {
-      console.error('Error toggling visibility:', error);
+      debugConsole.error('Error toggling visibility:', error);
       toast({ title: "Fehler", description: "Sichtbarkeit konnte nicht geändert werden.", variant: "destructive" });
     }
   };
@@ -407,7 +407,7 @@ export function useAgendaOperations(deps: AgendaOpsDeps) {
           loadAgendaItems(selectedMeeting.id);
         }
       } catch (error) {
-        console.error('Error updating order:', error);
+        debugConsole.error('Error updating order:', error);
         toast({ title: "Fehler", description: "Die neue Reihenfolge konnte nicht gespeichert werden.", variant: "destructive" });
       }
     }

@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { debugConsole } from "@/utils/debugConsole";
 import {
   Dialog,
   DialogContent,
@@ -67,7 +68,7 @@ export const GlobalNoteShareDialog = ({
         .eq("is_active", true);
 
       if (memberError || !memberships) {
-        console.error("Error loading memberships:", memberError);
+        debugConsole.error("Error loading memberships:", memberError);
         return;
       }
 
@@ -89,7 +90,7 @@ export const GlobalNoteShareDialog = ({
         .in("user_id", userIds);
 
       if (profileError) {
-        console.error("Error loading profiles:", profileError);
+        debugConsole.error("Error loading profiles:", profileError);
         return;
       }
 
@@ -101,7 +102,7 @@ export const GlobalNoteShareDialog = ({
 
       setTeamMembers(members);
     } catch (error) {
-      console.error("Error loading team members:", error);
+      debugConsole.error("Error loading team members:", error);
     } finally {
       setLoadingMembers(false);
     }

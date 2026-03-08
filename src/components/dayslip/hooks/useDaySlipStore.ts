@@ -4,6 +4,7 @@ import { $generateHtmlFromNodes } from "@lexical/html";
 import { $createHorizontalRuleNode, HorizontalRuleNode } from "@lexical/react/LexicalHorizontalRuleNode";
 import { ParagraphNode } from "lexical";
 import { supabase } from "@/integrations/supabase/client";
+import { debugConsole } from "@/utils/debugConsole";
 import { DaySlipLineNode, $createDaySlipLineNode } from "@/components/DaySlipLineNode";
 import { LabeledHorizontalRuleNode, $createLabeledHorizontalRuleNode } from "@/components/LabeledHorizontalRuleNode";
 import { getWeekPlanForDay } from "@/components/dayslip/WeekPlanningBanner";
@@ -123,7 +124,7 @@ export function useDaySlipStore(userId?: string, tenantId?: string) {
 
         dbLoadedRef.current = true;
       } catch (e) {
-        console.error("useDaySlipStore: DB load error", e);
+        debugConsole.error("useDaySlipStore: DB load error", e);
       }
     };
 

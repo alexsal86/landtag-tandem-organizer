@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Check, X, MessageCircle } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
+import { debugConsole } from "@/utils/debugConsole";
 import { RichTextDisplay } from "@/components/ui/RichTextDisplay";
 
 interface ResponseHistoryEntry {
@@ -45,7 +46,7 @@ export const ResponseHistoryTimeline = ({ participantId, decisionId }: ResponseH
         .order('created_at', { ascending: false });
 
       if (error) {
-        console.error('Error loading history:', error);
+        debugConsole.error('Error loading history:', error);
       } else if (data) {
         // Type assertion after validating data structure
         setHistory(data.map(item => ({
@@ -54,7 +55,7 @@ export const ResponseHistoryTimeline = ({ participantId, decisionId }: ResponseH
         })));
       }
     } catch (error) {
-      console.error('Error loading history:', error);
+      debugConsole.error('Error loading history:', error);
     } finally {
       setIsLoading(false);
     }

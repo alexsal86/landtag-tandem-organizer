@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
+import { debugConsole } from "@/utils/debugConsole";
 import { useAuth } from "@/hooks/useAuth";
 import type { Task, TaskComment, TaskDocument, Subtask } from "./types";
 
@@ -64,7 +65,7 @@ export function useTaskDetailData(task: Task | null) {
         }))
       );
     } catch (e) {
-      console.error("Error loading subtasks:", e);
+      debugConsole.error("Error loading subtasks:", e);
     }
   };
 
@@ -74,7 +75,7 @@ export function useTaskDetailData(task: Task | null) {
       if (error) throw error;
       setTaskDocuments(data || []);
     } catch (e) {
-      console.error("Error loading task documents:", e);
+      debugConsole.error("Error loading task documents:", e);
     }
   };
 
@@ -84,7 +85,7 @@ export function useTaskDetailData(task: Task | null) {
       if (error) throw error;
       setUsers(data || []);
     } catch (e) {
-      console.error("Error loading users:", e);
+      debugConsole.error("Error loading users:", e);
     }
   };
 
@@ -109,7 +110,7 @@ export function useTaskDetailData(task: Task | null) {
         }))
       );
     } catch (e) {
-      console.error("Error loading task comments:", e);
+      debugConsole.error("Error loading task comments:", e);
     }
   };
 
@@ -169,7 +170,7 @@ export function useTaskDetailData(task: Task | null) {
         setSaving(false);
         return;
       }
-      console.error("Error saving task:", error);
+      debugConsole.error("Error saving task:", error);
       toast({ title: "Fehler", description: "Aufgabe konnte nicht gespeichert werden.", variant: "destructive" });
     } finally {
       setSaving(false);

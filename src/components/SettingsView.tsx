@@ -8,6 +8,7 @@ import { TwoFactorSettings } from "./TwoFactorSettings";
 import { SenderInformationManager } from "./administration/SenderInformationManager";
 import { AutoStatusDetection } from "./AutoStatusDetection";
 import { useMyWorkSettings, BadgeDisplayMode } from "@/hooks/useMyWorkSettings";
+import { debugConsole } from "@/utils/debugConsole";
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -119,7 +120,7 @@ export function SettingsView() {
       setNewPassword("");
       setConfirmPassword("");
     } catch (error: unknown) {
-      console.error('Password change error:', error);
+      debugConsole.error('Password change error:', error);
       toast({
         title: "Fehler",
         description: error instanceof Error ? error.message : "Passwort konnte nicht geändert werden.",

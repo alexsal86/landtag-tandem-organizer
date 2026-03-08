@@ -370,7 +370,7 @@ export function AnnualTasksView() {
         description: `${result.affected_employees || 0} Mitarbeiter wurden aktualisiert.`
       });
     } catch (error: unknown) {
-      console.error("Error generating stats:", error);
+      debugConsole.error("Error generating stats:", error);
       toast({ 
         title: "Fehler", 
         description: error instanceof Error ? error.message : String(error), 
@@ -399,7 +399,7 @@ export function AnnualTasksView() {
         description: `${result.affected_employees || 0} Mitarbeiter wurden archiviert.`
       });
     } catch (error: unknown) {
-      console.error("Error generating previous year stats:", error);
+      debugConsole.error("Error generating previous year stats:", error);
       toast({ 
         title: "Fehler", 
         description: error instanceof Error ? error.message : String(error), 

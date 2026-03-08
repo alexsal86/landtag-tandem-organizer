@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
+import { debugConsole } from "@/utils/debugConsole";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
@@ -63,7 +64,7 @@ export function VacationHistoryDialog({
       const years = (data || []).map(h => h.year);
       setAvailableYears([...new Set(years)].sort((a, b) => b - a));
     } catch (error) {
-      console.error("Error loading vacation history:", error);
+      debugConsole.error("Error loading vacation history:", error);
     } finally {
       setLoading(false);
     }

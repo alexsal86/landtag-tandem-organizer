@@ -1,5 +1,6 @@
 import { useState, useEffect, useMemo } from "react";
 import { useYearlyBalance } from "@/hooks/useYearlyBalance";
+import { debugConsole } from "@/utils/debugConsole";
 import { ConfirmDialog } from "@/components/shared/ConfirmDialog";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Alert, AlertDescription } from "@/components/ui/alert";
@@ -200,7 +201,7 @@ export function AdminTimeTrackingView() {
         setSelectedUserId(emps[0].user_id);
       }
     } catch (error) {
-      console.error("Error loading employees:", error);
+      debugConsole.error("Error loading employees:", error);
     } finally {
       setLoading(false);
     }
@@ -243,7 +244,7 @@ export function AdminTimeTrackingView() {
       setCorrections(correctionsRes.data || []);
       setHolidays(holidaysRes.data || []);
     } catch (error) {
-      console.error("Error loading month data:", error);
+      debugConsole.error("Error loading month data:", error);
     }
   };
 
@@ -674,7 +675,7 @@ export function AdminTimeTrackingView() {
       setTimeout(() => loadMonthData(), 500);
       
     } catch (error: unknown) {
-      console.error("Type change error:", error);
+      debugConsole.error("Type change error:", error);
       const msg = error instanceof Error ? error.message : '';
       toast.error(msg || "Fehler bei der Typänderung");
       // On network errors, still reload data to verify

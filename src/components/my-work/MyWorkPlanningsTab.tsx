@@ -8,6 +8,7 @@ import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/component
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { CalendarPlus, ExternalLink, MapPin, CheckSquare, Calendar, CheckCircle, Archive, ChevronDown, ChevronUp, Clock, Plus, Square } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
+import { debugConsole } from "@/utils/debugConsole";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
 import { format } from "date-fns";
@@ -189,7 +190,7 @@ export function MyWorkPlanningsTab() {
       });
       setPlannings(sorted);
     } catch (error) {
-      console.error("Error loading plannings:", error);
+      debugConsole.error("Error loading plannings:", error);
     } finally {
       setLoading(false);
     }
@@ -229,7 +230,7 @@ export function MyWorkPlanningsTab() {
       toast({ title: "Checklisten-Eintrag hinzugefügt" });
       await loadPlannings();
     } catch (error) {
-      console.error("Error adding checklist item:", error);
+      debugConsole.error("Error adding checklist item:", error);
       toast({ title: "Fehler beim Hinzufügen", variant: "destructive" });
     }
   };
@@ -245,7 +246,7 @@ export function MyWorkPlanningsTab() {
 
       await loadPlannings();
     } catch (error) {
-      console.error("Error toggling checklist item:", error);
+      debugConsole.error("Error toggling checklist item:", error);
       toast({ title: "Fehler beim Aktualisieren", variant: "destructive" });
     }
   };
@@ -266,7 +267,7 @@ export function MyWorkPlanningsTab() {
       toast({ title: isCompleted ? "Planung als erledigt markiert" : "Markierung entfernt" });
       loadPlannings();
     } catch (error) {
-      console.error('Error toggling completed:', error);
+      debugConsole.error('Error toggling completed:', error);
       toast({ title: "Fehler", variant: "destructive" });
     }
   };
@@ -287,7 +288,7 @@ export function MyWorkPlanningsTab() {
       toast({ title: "Planung archiviert" });
       loadPlannings();
     } catch (error) {
-      console.error('Error archiving planning:', error);
+      debugConsole.error('Error archiving planning:', error);
       toast({ title: "Fehler", variant: "destructive" });
     }
   };

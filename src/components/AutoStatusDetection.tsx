@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { useUserStatus } from '@/hooks/useUserStatus';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
+import { debugConsole } from '@/utils/debugConsole';
 import { toast } from 'sonner';
 import { Activity, Clock, Settings2, Zap } from 'lucide-react';
 
@@ -51,7 +52,7 @@ export const AutoStatusDetection: React.FC = () => {
 
       toast.success('Einstellungen gespeichert');
     } catch (error) {
-      console.error('Error updating auto status settings:', error);
+      debugConsole.error('Error updating auto status settings:', error);
       toast.error('Fehler beim Speichern der Einstellungen');
     }
   };
@@ -81,7 +82,7 @@ export const AutoStatusDetection: React.FC = () => {
 
       return false;
     } catch (error) {
-      console.error('Error detecting meeting:', error);
+      debugConsole.error('Error detecting meeting:', error);
       return false;
     }
   };

@@ -1,4 +1,5 @@
 import { useState, useMemo } from "react";
+import { debugConsole } from "@/utils/debugConsole";
 import {
   CaseFileTimelineEntry,
   CaseFileNote,
@@ -108,7 +109,7 @@ export function CaseFileUnifiedTimeline({
         }
       }
     } catch (error) {
-      console.error('Error opening document:', error);
+      debugConsole.error('Error opening document:', error);
     }
   };
 

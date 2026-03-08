@@ -13,6 +13,7 @@ import { ContactEditForm } from "./ContactEditForm";
 import { CallLogWidget } from "@/components/widgets/CallLogWidget";
 import { formatGermanDate } from "@/lib/utils";
 import { ActivityTimeline } from "./contacts/ActivityTimeline";
+import { debugConsole } from "@/utils/debugConsole";
 import { ContactDocumentList } from "./contacts/ContactDocumentList";
 import { useContactDocuments } from "@/hooks/useContactDocuments";
 import { FundingDialog } from "./contacts/FundingDialog";
@@ -149,7 +150,7 @@ export function ContactDetailPanel({ contactId, onClose, onContactUpdate }: Cont
       if (error) throw error;
       setCallLogs((data || []) as CallLog[]);
     } catch (error) {
-      console.error('Error fetching call logs:', error);
+      debugConsole.error('Error fetching call logs:', error);
     } finally {
       setLoadingCallLogs(false);
     }
@@ -167,7 +168,7 @@ export function ContactDetailPanel({ contactId, onClose, onContactUpdate }: Cont
       if (error) throw error;
       setActivities(data || []);
     } catch (error) {
-      console.error("Error fetching activities:", error);
+      debugConsole.error("Error fetching activities:", error);
     } finally {
       setActivitiesLoading(false);
     }
@@ -204,7 +205,7 @@ export function ContactDetailPanel({ contactId, onClose, onContactUpdate }: Cont
       }
       setAllTags({ direct: data.tags || [], inherited: inheritedTags });
     } catch (error) {
-      console.error('Error fetching contact:', error);
+      debugConsole.error('Error fetching contact:', error);
       toast({ title: "Fehler", description: "Kontakt konnte nicht geladen werden.", variant: "destructive" });
     } finally {
       setLoading(false);
@@ -220,7 +221,7 @@ export function ContactDetailPanel({ contactId, onClose, onContactUpdate }: Cont
       onContactUpdate();
       onClose();
     } catch (error) {
-      console.error('Error deleting contact:', error);
+      debugConsole.error('Error deleting contact:', error);
       toast({ title: "Fehler", description: "Kontakt konnte nicht gelöscht werden.", variant: "destructive" });
     }
   };

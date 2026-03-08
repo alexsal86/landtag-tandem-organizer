@@ -3,6 +3,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { CheckCircle2, XCircle, Clock, Key } from 'lucide-react';
+import { debugConsole } from '@/utils/debugConsole';
 
 interface VapidTestResult {
   step: string;
@@ -16,7 +17,7 @@ export const VapidKeyTest: React.FC = () => {
   const [isRunning, setIsRunning] = useState(false);
 
   const testVapidConfiguration = async () => {
-    console.log('🔑 === VAPID KEY TEST GESTARTET ===');
+    debugConsole.log('🔑 === VAPID KEY TEST GESTARTET ===');
     setIsRunning(true);
     
     try {
@@ -27,7 +28,7 @@ export const VapidKeyTest: React.FC = () => {
       });
 
       // Test GET endpoint for VAPID public key
-      console.log('🔗 Teste GET-Endpoint für VAPID Public Key...');
+      debugConsole.log('🔗 Teste GET-Endpoint für VAPID Public Key...');
       const response = await fetch(`https://wawofclbehbkebjivdte.supabase.co/functions/v1/send-push-notification`, {
         method: 'GET',
         headers: {
@@ -37,8 +38,8 @@ export const VapidKeyTest: React.FC = () => {
         }
       });
 
-      console.log('📡 Response status:', response.status);
-      console.log('📡 Response headers:', Object.fromEntries(response.headers.entries()));
+      debugConsole.log('📡 Response status:', response.status);
+      debugConsole.log('📡 Response headers:', Object.fromEntries(response.headers.entries()));
 
       if (!response.ok) {
         setTestResult({
@@ -51,7 +52,7 @@ export const VapidKeyTest: React.FC = () => {
       }
 
       const data = await response.json();
-      console.log('📊 Response data:', data);
+      debugConsole.log('📊 Response data:', data);
 
       if (data.success && data.publicKey) {
         // Validate the public key format
@@ -61,7 +62,7 @@ export const VapidKeyTest: React.FC = () => {
                             publicKey.length > 60 && // VAPID keys are typically 87+ characters
                             publicKey.startsWith('B'); // VAPID keys typically start with 'B'
 
-        console.log('🔑 Public key validation:', {
+        debugConsole.log('🔑 Public key validation:', {
           length: publicKey.length,
           startsWithB: publicKey.startsWith('B'),
           isValid: isValidFormat
@@ -96,7 +97,7 @@ export const VapidKeyTest: React.FC = () => {
       }
 
     } catch (error) {
-      console.error('❌ VAPID test error:', error);
+      debugConsole.error('❌ VAPID test error:', error);
       setTestResult({
         step: 'VAPID-Test fehlgeschlagen',
         status: 'error',
@@ -107,7 +108,7 @@ export const VapidKeyTest: React.FC = () => {
       setIsRunning(false);
     }
 
-    console.log('🔑 === VAPID KEY TEST BEENDET ===');
+    debugConsole.log('🔑 === VAPID KEY TEST BEENDET ===');
   };
 
   const getStatusIcon = (status: 'pending' | 'success' | 'error') => {

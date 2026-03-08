@@ -13,6 +13,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { CheckSquare, Vote, Briefcase, CalendarPlus, Users, StickyNote, Calendar, Clock, Plus, Home, CheckCircle2, MessageSquare } from "lucide-react";
 import { PageHelpButton } from "@/components/shared/PageHelpButton";
+import { debugConsole } from "@/utils/debugConsole";
 import { MYWORK_HELP_CONTENT } from "@/config/helpContent";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
@@ -243,7 +244,7 @@ export function MyWorkView() {
       });
       setRealtimeStatus("connected");
     } catch (error) {
-      console.error("Error loading counts:", error);
+      debugConsole.error("Error loading counts:", error);
       setCountLoadError("Counts konnten nicht aktualisiert werden.");
       setRealtimeStatus("degraded");
     } finally {

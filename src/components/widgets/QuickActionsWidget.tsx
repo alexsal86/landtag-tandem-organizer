@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
+import { debugConsole } from '@/utils/debugConsole';
 import { 
   Plus, Calendar, CheckSquare, MessageSquare, Users, FileText, 
   Calendar as CalendarIcon, Clock, Settings, Edit3, X, Save,
@@ -195,7 +196,7 @@ export const QuickActionsWidget: React.FC<QuickActionsWidgetProps> = ({
         setTempButtonSize(parsed.buttonSize || 'md');
         setTempGlobalIconSize(parsed.globalIconSize || 'md');
       } catch (error) {
-        console.error('Failed to load QuickActions configuration:', error);
+        debugConsole.error('Failed to load QuickActions configuration:', error);
       }
     }
   }, [user?.id]);

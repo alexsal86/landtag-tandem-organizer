@@ -1,5 +1,6 @@
 import { useState, useRef } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { debugConsole } from "@/utils/debugConsole";
 import { startOfDay, endOfDay, addDays } from "date-fns";
 import type {
   LinkedQuickNote,
@@ -36,12 +37,12 @@ export function useMeetingSidebarData(deps: UseMeetingSidebarDataDeps) {
         .eq("meeting_id", meetingId)
         .order("created_at", { ascending: false });
       if (error) {
-        console.error("Error loading linked quick notes:", error);
+        debugConsole.error("Error loading linked quick notes:", error);
         return;
       }
       setLinkedQuickNotes(data || []);
     } catch (error) {
-      console.error("Error loading linked quick notes:", error);
+      debugConsole.error("Error loading linked quick notes:", error);
     }
   };
 
@@ -55,7 +56,7 @@ export function useMeetingSidebarData(deps: UseMeetingSidebarDataDeps) {
       if (error) throw error;
       setMeetingLinkedTasks(data || []);
     } catch (error) {
-      console.error("Error loading meeting linked tasks:", error);
+      debugConsole.error("Error loading meeting linked tasks:", error);
       setMeetingLinkedTasks([]);
     }
   };
@@ -72,7 +73,7 @@ export function useMeetingSidebarData(deps: UseMeetingSidebarDataDeps) {
       if (error) throw error;
       setMeetingLinkedCaseItems(data || []);
     } catch (error) {
-      console.error("Error loading meeting linked case items:", error);
+      debugConsole.error("Error loading meeting linked case items:", error);
       setMeetingLinkedCaseItems([]);
     }
   };
@@ -113,7 +114,7 @@ export function useMeetingSidebarData(deps: UseMeetingSidebarDataDeps) {
       );
       setMeetingRelevantDecisions(relevant);
     } catch (error) {
-      console.error("Error loading meeting relevant decisions:", error);
+      debugConsole.error("Error loading meeting relevant decisions:", error);
       setMeetingRelevantDecisions([]);
     }
   };
@@ -166,7 +167,7 @@ export function useMeetingSidebarData(deps: UseMeetingSidebarDataDeps) {
       ].sort((a, b) => new Date(a.start_time).getTime() - new Date(b.start_time).getTime());
       setMeetingUpcomingAppointments(all);
     } catch (error) {
-      console.error("Error loading upcoming appointments:", error);
+      debugConsole.error("Error loading upcoming appointments:", error);
       setMeetingUpcomingAppointments([]);
     }
   };
@@ -187,7 +188,7 @@ export function useMeetingSidebarData(deps: UseMeetingSidebarDataDeps) {
       });
       setStarredAppointmentIds(ids);
     } catch (error) {
-      console.error("Error loading starred appointments:", error);
+      debugConsole.error("Error loading starred appointments:", error);
     }
   };
 
@@ -221,7 +222,7 @@ export function useMeetingSidebarData(deps: UseMeetingSidebarDataDeps) {
         await supabase.from("starred_appointments").insert(insertData);
       }
     } catch (error) {
-      console.error("Error toggling star:", error);
+      debugConsole.error("Error toggling star:", error);
       setStarredAppointmentIds((prev) => {
         const newSet = new Set(prev);
         if (isCurrentlyStarred) newSet.add(appt.id);
@@ -245,7 +246,7 @@ export function useMeetingSidebarData(deps: UseMeetingSidebarDataDeps) {
           .eq("id", noteId);
         if (error) throw error;
       } catch (error) {
-        console.error("Error updating quick note result:", error);
+        debugConsole.error("Error updating quick note result:", error);
         toast({
           title: "Fehler",
           description: "Das Ergebnis konnte nicht gespeichert werden.",

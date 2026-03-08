@@ -8,6 +8,7 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
+import { debugConsole } from "@/utils/debugConsole";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { useTenant } from "@/hooks/useTenant";
@@ -71,7 +72,7 @@ export function ExternalCalendarSettings() {
       if (error) throw error;
       setCalendars((data as unknown) as ExternalCalendar[] || []);
     } catch (error) {
-      console.error('Error fetching calendars:', error);
+      debugConsole.error('Error fetching calendars:', error);
       toast.error('Fehler beim Laden der externen Kalender');
     } finally {
       setIsLoading(false);
@@ -118,7 +119,7 @@ export function ExternalCalendarSettings() {
       });
       fetchCalendars();
     } catch (error) {
-      console.error('Error adding calendar:', error);
+      debugConsole.error('Error adding calendar:', error);
       toast.error('Fehler beim Hinzufügen des Kalenders');
     }
   };
@@ -136,7 +137,7 @@ export function ExternalCalendarSettings() {
       toast.success('Kalender erfolgreich synchronisiert');
       fetchCalendars(); // Refresh to update last_sync time
     } catch (error) {
-      console.error('Error syncing calendar:', error);
+      debugConsole.error('Error syncing calendar:', error);
       toast.error('Fehler bei der Synchronisation');
     } finally {
       setSyncingCalendars(prev => {
@@ -161,7 +162,7 @@ export function ExternalCalendarSettings() {
       toast.success('Kalender erfolgreich entfernt');
       fetchCalendars();
     } catch (error) {
-      console.error('Error deleting calendar:', error);
+      debugConsole.error('Error deleting calendar:', error);
       toast.error('Fehler beim Entfernen des Kalenders');
     }
   };
@@ -178,7 +179,7 @@ export function ExternalCalendarSettings() {
       toast.success(enabled ? 'Synchronisation aktiviert' : 'Synchronisation deaktiviert');
       fetchCalendars();
     } catch (error) {
-      console.error('Error toggling sync:', error);
+      debugConsole.error('Error toggling sync:', error);
       toast.error('Fehler beim Ändern der Synchronisation');
     }
   };

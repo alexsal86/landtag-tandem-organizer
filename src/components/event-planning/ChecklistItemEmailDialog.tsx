@@ -8,6 +8,7 @@ import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
 import { X } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
+import { debugConsole } from "@/utils/debugConsole";
 import { useToast } from "@/hooks/use-toast";
 
 interface ChecklistItemEmailDialogProps {
@@ -52,7 +53,7 @@ export function ChecklistItemEmailDialog({
       .maybeSingle();
 
     if (error) {
-      console.error("Error loading email action:", error);
+      debugConsole.error("Error loading email action:", error);
       return;
     }
 
@@ -138,7 +139,7 @@ export function ChecklistItemEmailDialog({
       onSaved();
       onOpenChange(false);
     } catch (error: unknown) {
-      console.error("Error saving email action:", error);
+      debugConsole.error("Error saving email action:", error);
       toast({
         title: "Fehler",
         description: "E-Mail-Automatisierung konnte nicht gespeichert werden.",
@@ -169,7 +170,7 @@ export function ChecklistItemEmailDialog({
       onSaved();
       onOpenChange(false);
     } catch (error: unknown) {
-      console.error("Error deleting email action:", error);
+      debugConsole.error("Error deleting email action:", error);
       toast({
         title: "Fehler",
         description: "E-Mail-Automatisierung konnte nicht gelöscht werden.",
