@@ -1193,8 +1193,8 @@ export function MyWorkCasesWorkspace() {
                     <div className="space-y-1.5">
                       {filteredCaseFiles.length === 0 ? (
                         <div className="rounded-md border border-dashed p-4 text-sm text-muted-foreground space-y-3">
-                          <p>Keine FallAkten gefunden.</p>
-                          <Button size="sm" onClick={() => handleCreateCaseFile()}>FallAkte erstellen</Button>
+                          <p>Keine Fallakten gefunden.</p>
+                          <Button size="sm" onClick={() => handleCreateCaseFile()}>Fallakte erstellen</Button>
                         </div>
                       ) : (
                         filteredCaseFiles.map((cf) => {
