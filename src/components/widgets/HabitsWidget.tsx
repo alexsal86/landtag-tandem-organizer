@@ -91,7 +91,7 @@ export const HabitsWidget: React.FC<HabitsWidgetProps> = ({
       
       setHabits(habitsWithStats);
     } catch (error) {
-      console.error('Error loading habits:', error);
+      debugConsole.error('Error loading habits:', error);
       toast.error('Fehler beim Laden der Gewohnheiten');
     } finally {
       setLoading(false);
