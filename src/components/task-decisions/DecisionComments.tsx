@@ -8,6 +8,7 @@ import { Send, MessageSquare } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
+import { debugConsole } from "@/utils/debugConsole";
 
 const DELETED_COMMENT_TEXT = "Dieser Kommentar wurde gelöscht.";
 
