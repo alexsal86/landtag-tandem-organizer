@@ -82,7 +82,7 @@ export function useAppointmentPreparation(preparationId: string | undefined) {
         });
       }
     } catch (err) {
-      console.error('Error fetching preparation:', err);
+      debugConsole.error('Error fetching preparation:', err);
       setError(err instanceof Error ? err.message : 'Unknown error');
     } finally {
       setLoading(false);
