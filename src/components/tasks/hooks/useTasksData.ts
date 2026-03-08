@@ -132,7 +132,7 @@ export function useTasksData() {
       if (categoriesRes.data) setTaskCategories(categoriesRes.data);
       if (statusesRes.data) setTaskStatuses(statusesRes.data);
     } catch (error) {
-      console.error('Error loading task configuration:', error);
+      debugConsole.error('Error loading task configuration:', error);
     }
   };
 
