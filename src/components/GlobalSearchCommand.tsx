@@ -123,13 +123,13 @@ export function GlobalSearchCommand() {
       resultTypes: string[] 
     }) => {
       if (!user || !currentTenant) return;
-      await supabase.from('search_analytics').insert({
+      await supabase.from('search_analytics').insert([{
         user_id: user.id,
         tenant_id: currentTenant.id,
         search_query: query,
         result_count: resultCount,
         result_types: resultTypes
-      });
+      }]);
     }
   });
 

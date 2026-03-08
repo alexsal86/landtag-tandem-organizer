@@ -528,7 +528,7 @@ export function MyWorkTasksTab() {
     try {
       const { data, error } = await supabase
         .from("tasks")
-        .insert({
+        .insert([{
           user_id: user.id,
           tenant_id: parentTask.tenant_id,
           parent_task_id: parentTaskId,
@@ -538,7 +538,7 @@ export function MyWorkTasksTab() {
           priority: "medium",
           category: parentTask.category || "personal",
           assigned_to: user.id,
-        })
+        }])
         .select("id, title, description, priority, status, due_date, assigned_to, user_id, created_at, category, meeting_id, pending_for_jour_fixe, parent_task_id, tenant_id")
         .single();
 

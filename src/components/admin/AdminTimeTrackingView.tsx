@@ -749,13 +749,13 @@ export function AdminTimeTrackingView() {
         // Create new
         const { error } = await supabase
           .from("time_entry_corrections")
-          .insert({
+          .insert([{
             user_id: selectedUserId,
             correction_date: yearStart,
             correction_minutes: minutes,
             reason: `Übertrag aus Vorjahr ${getYear(currentMonth) - 1}`,
             created_by: user.id,
-          });
+          }]);
         if (error) throw error;
       }
 

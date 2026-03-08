@@ -161,7 +161,7 @@ export function useItemDetails({
       const filePath = `${currentTenantId}/planning-items/${itemId}/${fileName}`;
       const { error: uploadError } = await supabase.storage.from('planning-documents').upload(filePath, file);
       if (uploadError) throw uploadError;
-      const { error: dbError } = await supabase.from('planning_item_documents').insert({ planning_item_id: itemId, user_id: user.id, tenant_id: currentTenantId, file_name: file.name, file_path: filePath, file_size: file.size, file_type: file.type });
+      const { error: dbError } = await supabase.from('planning_item_documents').insert([{ planning_item_id: itemId, user_id: user.id, tenant_id: currentTenantId, file_name: file.name, file_path: filePath, file_size: file.size, file_type: file.type }]);
       if (dbError) throw dbError;
       loadItemDocuments(itemId);
       loadAllItemCounts();

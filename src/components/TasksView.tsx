@@ -297,7 +297,7 @@ export function TasksView() {
                                 input.onchange = async (event) => {
                                   const file = (event.target as HTMLInputElement).files?.[0];
                                   if (file && data.user) {
-                                    try { await supabase.from('task_documents').insert({ task_id: task.id, user_id: data.user.id, file_name: file.name, file_path: `tasks/${task.id}/${file.name}`, file_type: file.type, file_size: file.size }); data.loadTaskDocuments(); data.loadTaskDocumentCounts(); toast({ title: "Dokument hinzugefügt" }); } catch { toast({ title: "Fehler", variant: "destructive" }); }
+                                    try { await supabase.from('task_documents').insert([{ task_id: task.id, user_id: data.user.id, file_name: file.name, file_path: `tasks/${task.id}/${file.name}`, file_type: file.type, file_size: file.size }]); data.loadTaskDocuments(); data.loadTaskDocumentCounts(); toast({ title: "Dokument hinzugefügt" }); } catch { toast({ title: "Fehler", variant: "destructive" }); }
                                   }
                                 }; input.click();
                               }}><Plus className="h-4 w-4" />Dokument hinzufügen</Button>

@@ -372,7 +372,7 @@ export function useEmailComposer() {
       };
 
       if (isScheduled && scheduledFor) {
-        const { error } = await supabase.from("scheduled_emails").insert({ ...emailData, scheduled_for: scheduledFor.toISOString(), status: "scheduled" });
+        const { error } = await supabase.from("scheduled_emails").insert([{ ...emailData, scheduled_for: scheduledFor.toISOString(), status: "scheduled" }]);
         if (error) throw error;
         toast({ title: "E-Mail geplant", description: `E-Mail wird am ${format(scheduledFor, "dd.MM.yyyy 'um' HH:mm", { locale: de })} versendet.` });
       } else {
