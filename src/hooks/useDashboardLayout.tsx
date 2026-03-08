@@ -295,15 +295,13 @@ export function useDashboardLayout() {
 
   // Update entire layout (for batch updates)
   const updateLayout = (updatedLayout: DashboardLayout) => {
-    console.log('🔄 Updating entire layout:', updatedLayout);
     setCurrentLayout(updatedLayout);
     
     // Immediate local storage backup
     try {
       localStorage.setItem(`dashboard-layout-${user?.id || 'anonymous'}`, JSON.stringify(updatedLayout));
-      console.log('✅ Saved to localStorage');
     } catch (error) {
-      console.warn('Failed to save to localStorage:', error);
+      // silently fail
     }
     
     // Clear existing timeout and set new one for debounced save
@@ -312,12 +310,9 @@ export function useDashboardLayout() {
     }
     
     saveTimeoutRef.current = setTimeout(async () => {
-      console.log('⏰ Auto-saving layout after debounce...');
       try {
-        const success = await saveCurrentLayout();
-        console.log('💾 Auto-save result:', success);
+        await saveCurrentLayout();
       } catch (error) {
-        console.error('Failed to save to Supabase:', error);
         toast.error('Änderungen konnten nicht gespeichert werden - lokal gespeichert');
       }
     }, 1000);
