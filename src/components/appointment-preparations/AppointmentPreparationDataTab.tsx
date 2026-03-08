@@ -267,7 +267,7 @@ export function AppointmentPreparationDataTab({
           description: "Änderungen wurden automatisch gespeichert.",
         });
       } catch (error) {
-        console.error("Error saving preparation data:", error);
+        debugConsole.error("Error saving preparation data:", error);
         toast({
           title: "Fehler",
           description: "Fehler beim Speichern der Änderungen.",
