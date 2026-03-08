@@ -206,33 +206,35 @@ export function CaseItemDetailPanel({
     <div className="mx-2 mb-3 rounded-md border bg-muted/20 p-3 space-y-4">
       <div className="grid gap-4 lg:grid-cols-[minmax(230px,1fr)_minmax(0,2.8fr)]">
         <div className="space-y-3">
-          <div className="space-y-3 rounded-md border bg-background p-3 text-sm">
+          <div className="space-y-2 rounded-md border bg-background p-3 text-sm">
             <Label className="font-bold" htmlFor="detail-contact-name">Von / Gesprächspartner</Label>
-            <div className="space-y-1.5 relative" ref={searchContainerRef}>
-              <Label className="text-xs text-muted-foreground" htmlFor="detail-contact-name">Name</Label>
-              <div className="relative">
-                <Input
-                  id="detail-contact-name"
-                  value={contactPerson}
-                  placeholder={contactDisplay || "Name eingeben zum Suchen…"}
-                  onChange={(event) => {
-                    onContactPersonChange(event.target.value);
-                    if (selectedContactId) handleClearContact();
-                  }}
-                  onFocus={() => { if (contactSearchResults.length > 0) setShowSearchResults(true); }}
-                  className="pr-8"
-                />
-                {searchingContacts && <Loader2 className="absolute right-2.5 top-1/2 -translate-y-1/2 h-4 w-4 animate-spin text-muted-foreground" />}
-                {!searchingContacts && !selectedContactId && contactPerson.length >= 2 && <Search className="absolute right-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />}
+            <div className="relative" ref={searchContainerRef}>
+              <div className="flex items-center gap-2">
+                <Label className="text-xs font-semibold text-muted-foreground shrink-0 w-14" htmlFor="detail-contact-name">Name</Label>
+                <div className="relative flex-1">
+                  <Input
+                    id="detail-contact-name"
+                    value={contactPerson}
+                    placeholder={contactDisplay || "Suchen…"}
+                    onChange={(event) => {
+                      onContactPersonChange(event.target.value);
+                      if (selectedContactId) handleClearContact();
+                    }}
+                    onFocus={() => { if (contactSearchResults.length > 0) setShowSearchResults(true); }}
+                    className="pr-8 h-8"
+                  />
+                  {searchingContacts && <Loader2 className="absolute right-2.5 top-1/2 -translate-y-1/2 h-4 w-4 animate-spin text-muted-foreground" />}
+                  {!searchingContacts && !selectedContactId && contactPerson.length >= 2 && <Search className="absolute right-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />}
+                </div>
               </div>
               {selectedContactId && (
-                <p className="flex items-center gap-1 text-xs text-emerald-600">
+                <p className="flex items-center gap-1 text-xs text-emerald-600 mt-1 ml-16">
                   <Check className="h-3 w-3" />
                   Kontakt verknüpft
                 </p>
               )}
               {showSearchResults && contactSearchResults.length > 0 && (
-                <div className="absolute left-0 right-0 top-full z-50 mt-1 max-h-56 overflow-y-auto rounded-md border bg-popover shadow-lg">
+                <div className="absolute left-14 right-0 top-full z-50 mt-1 max-h-56 overflow-y-auto rounded-md border bg-popover shadow-lg">
                   {contactSearchResults.map((result) => (
                     <button
                       key={result.id}
@@ -249,24 +251,26 @@ export function CaseItemDetailPanel({
                 </div>
               )}
             </div>
-            <div className="space-y-1.5">
-              <Label className="text-xs text-muted-foreground" htmlFor="detail-contact-email">E-Mail</Label>
+            <div className="flex items-center gap-2">
+              <Label className="text-xs font-semibold text-muted-foreground shrink-0 w-14" htmlFor="detail-contact-email">E-Mail</Label>
               <Input
                 id="detail-contact-email"
                 type="email"
                 value={contactEmail}
                 placeholder="name@beispiel.de"
                 onChange={(event) => onContactEmailChange(event.target.value)}
+                className="h-8"
               />
             </div>
-            <div className="space-y-1.5">
-              <Label className="text-xs text-muted-foreground" htmlFor="detail-contact-phone">Telefon</Label>
+            <div className="flex items-center gap-2">
+              <Label className="text-xs font-semibold text-muted-foreground shrink-0 w-14" htmlFor="detail-contact-phone">Telefon</Label>
               <Input
                 id="detail-contact-phone"
                 type="tel"
                 value={contactPhone}
                 placeholder="+49 …"
                 onChange={(event) => onContactPhoneChange(event.target.value)}
+                className="h-8"
               />
             </div>
           </div>
