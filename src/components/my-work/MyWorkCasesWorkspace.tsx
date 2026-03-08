@@ -231,6 +231,7 @@ export function MyWorkCasesWorkspace() {
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
   const { createCaseItem } = useCaseItems();
+  const { caseFileTypes } = useCaseFileTypes();
 
   const {
     caseItems,
