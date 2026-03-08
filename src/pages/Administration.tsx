@@ -444,7 +444,7 @@ const [editingChild, setEditingChild] = useState<{ parentIndex: number; childInd
       if (error) throw error;
       // Silent save - no toast on success
     } catch (error: unknown) {
-      console.error('Save error:', error);
+      debugConsole.error('Save error:', error);
       const isNetworkError = 
         (error instanceof Error && (error.message?.includes('Failed to fetch') || error.message?.includes('NetworkError') || error.message?.includes('network'))) ||
         (error instanceof TypeError) ||
