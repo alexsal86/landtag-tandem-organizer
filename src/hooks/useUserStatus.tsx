@@ -106,7 +106,7 @@ export const useUserStatus = () => {
     const loadStatusOptions = async () => {
       const { data, error } = await supabase
         .from('admin_status_options')
-        .select('*')
+        .select('id, name, emoji, color, sort_order')
         .eq('is_active', true)
         .order('sort_order');
 
