@@ -1343,7 +1343,7 @@ export function QuickNotesList({
       setVersionHistoryOpen(false);
       loadNotes();
     } catch (error) {
-      console.error("Error restoring version:", error);
+      debugConsole.error("Error restoring version:", error);
       toast.error("Fehler beim Wiederherstellen");
     }
   };
