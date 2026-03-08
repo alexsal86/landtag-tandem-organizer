@@ -152,7 +152,7 @@ const Auth = () => {
       });
       
       navigate("/");
-    } catch (error: any) {
+    } catch (error: unknown) {
       // Log failed MFA attempt
       logAuditEvent({ 
         action: AuditActions.MFA_FAILED, 
