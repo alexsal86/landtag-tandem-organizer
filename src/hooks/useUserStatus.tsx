@@ -129,7 +129,7 @@ export const useUserStatus = () => {
       setLoading(true);
       const { data, error } = await supabase
         .from('user_status')
-        .select('*')
+        .select('id, user_id, status_type, custom_message, emoji, color, notifications_enabled, auto_away_enabled, last_activity, status_until')
         .eq('user_id', user.id)
         .single();
 
