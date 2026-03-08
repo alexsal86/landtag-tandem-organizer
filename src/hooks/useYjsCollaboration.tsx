@@ -141,7 +141,7 @@ export const useYjsCollaboration = ({
         isAuthenticated: false
       };
     }
-  }, [authUser?.id, userProfiles[authUser?.id]]);
+  }, [authUser?.id, authUser?.id ? userProfiles[authUser.id] : undefined]);
 
   // Connect to Yjs collaboration
   const connect = useCallback(async () => {

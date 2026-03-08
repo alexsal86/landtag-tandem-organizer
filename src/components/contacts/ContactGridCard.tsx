@@ -38,7 +38,7 @@ export function ContactGridCard({
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
             <Avatar>
-              <AvatarImage src={contact.avatar_url} />
+              <AvatarImage src={contact.avatar_url ?? undefined} />
               <AvatarFallback className="bg-primary text-primary-foreground">{getInitials(contact.name)}</AvatarFallback>
             </Avatar>
             <div className="flex-1">

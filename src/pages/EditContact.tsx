@@ -213,7 +213,7 @@ export default function EditContact() {
           updated_at: new Date().toISOString(),
         })
         .eq("id", contact.id)
-        .eq("tenant_id", currentTenant.id);
+        .eq("tenant_id", currentTenant!.id);
 
       if (error) throw error;
 

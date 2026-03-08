@@ -11,8 +11,8 @@ import {
 interface Contact {
   id: string;
   name: string;
-  email?: string;
-  phone?: string;
+  email?: string | null;
+  phone?: string | null;
 }
 
 interface ContactQuickActionsProps {

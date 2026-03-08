@@ -139,7 +139,7 @@ export function CreateContact() {
     const { data, error } = await supabase
       .from("contacts")
       .select("tags")
-      .eq("tenant_id", currentTenant.id)
+      .eq("tenant_id", currentTenant!.id)
       .not("tags", "is", null);
     if (error) return;
 

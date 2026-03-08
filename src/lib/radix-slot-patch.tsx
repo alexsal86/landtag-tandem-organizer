@@ -91,7 +91,7 @@ const SlotClone = React.forwardRef<any, any>((props, forwardedRef) => {
     const childrenRef = getElementRef(children);
     // FIX: Use memoized useComposedRefs instead of raw composeRefs
     const composedRef = useComposedRefs(forwardedRef, childrenRef);
-    const mergedProps = mergeProps(slotProps, children.props);
+    const mergedProps = mergeProps(slotProps, children.props as Record<string, any>);
     if (children.type !== React.Fragment) {
       mergedProps.ref = forwardedRef ? composedRef : childrenRef;
     }

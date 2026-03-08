@@ -1873,7 +1873,7 @@ const [editingChild, setEditingChild] = useState<{ parentIndex: number; childInd
                           try {
                             const { error } = await supabase
                               .from('planning_templates')
-                              .update({ name: editingPlanningTemplateName.value })
+                              .update({ name: editingPlanningTemplateName!.value })
                               .eq('id', selectedPlanningTemplate.id);
                             if (error) throw error;
                             await loadData();

@@ -50,7 +50,7 @@ export default function ContactDetail() {
       const { data, error } = await supabase
         .from('contacts')
         .select('id, name, role, organization, email, phone, location, category, priority, last_contact, avatar_url, notes')
-        .eq('id', id)
+        .eq('id', id!)
         .eq('user_id', user!.id)
         .single();
 

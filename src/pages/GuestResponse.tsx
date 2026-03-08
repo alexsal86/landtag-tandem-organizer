@@ -72,7 +72,7 @@ function GuestResponse() {
         return;
       }
 
-      setGuest(guestData);
+      setGuest(guestData as unknown as GuestData);
       
       // Get appointment separately since the relation might not work
       const { data: appointmentData, error: appointmentError } = await supabase

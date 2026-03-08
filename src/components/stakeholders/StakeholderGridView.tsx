@@ -140,7 +140,7 @@ export function StakeholderGridView({
                           <Card key={contact.id} className="bg-muted/50 cursor-pointer hover:bg-muted transition-colors" onClick={() => onContactClick(contact.id)}>
                             <CardContent className="p-4">
                               <div className="flex items-start gap-3">
-                                <Avatar className="h-10 w-10 flex-shrink-0"><AvatarImage src={contact.avatar_url} /><AvatarFallback className="bg-primary text-primary-foreground text-sm">{getInitials(contact.name)}</AvatarFallback></Avatar>
+                                <Avatar className="h-10 w-10 flex-shrink-0"><AvatarImage src={contact.avatar_url ?? undefined} /><AvatarFallback className="bg-primary text-primary-foreground text-sm">{getInitials(contact.name)}</AvatarFallback></Avatar>
                                 <div className="min-w-0 flex-1">
                                   <h5 className="font-medium text-sm truncate">{contact.name}</h5>
                                   {contact.role && <p className="text-xs text-muted-foreground truncate">{contact.role}</p>}

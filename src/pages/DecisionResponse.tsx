@@ -60,8 +60,8 @@ export default function DecisionResponse() {
       const { data: participant, error: participantError } = await supabase
         .from('task_decision_participants')
         .select('decision_id')
-        .eq('id', participantId)
-        .eq('token', token)
+        .eq('id', participantId!)
+        .eq('token', token!)
         .single();
 
       if (participantError || !participant) {
