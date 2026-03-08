@@ -424,7 +424,7 @@ export function useMeetingsData() {
       setAgendaDocuments(prev => ({ ...prev, [agendaItemId]: (prev[agendaItemId] || []).filter(doc => doc.id !== documentId) }));
       toast({ title: "Dokument entfernt", description: "Das Dokument wurde erfolgreich entfernt." });
     } catch (error) {
-      console.error('Error deleting agenda document:', error);
+      debugConsole.error('Error deleting agenda document:', error);
       toast({ title: "Fehler", description: "Dokument konnte nicht entfernt werden.", variant: "destructive" });
     }
   };
@@ -437,7 +437,7 @@ export function useMeetingsData() {
       if (error) throw error;
       setCarryoverBufferItems((data || []).map(d => ({ ...d, is_completed: false, is_recurring: false })));
     } catch (error) {
-      console.error('Error loading carryover buffer:', error);
+      debugConsole.error('Error loading carryover buffer:', error);
     }
   };
 
@@ -517,12 +517,12 @@ export function useMeetingsData() {
     try {
       const { data: agendaItemIds, error: agendaFetchError } = await supabase
         .from('meeting_agenda_items').select('id').eq('meeting_id', meetingId);
-      if (agendaFetchError) console.error('Error fetching agenda items:', agendaFetchError);
+      if (agendaFetchError) debugConsole.error('Error fetching agenda items:', agendaFetchError);
 
       if (agendaItemIds && agendaItemIds.length > 0) {
         const { error: docError } = await supabase
           .from('meeting_agenda_documents').delete().in('meeting_agenda_item_id', agendaItemIds.map(i => i.id));
-        if (docError) console.error('Error deleting agenda docs:', docError);
+        if (docError) debugConsole.error('Error deleting agenda docs:', docError);
       }
 
       await supabase.from('meeting_agenda_items').delete().eq('meeting_id', meetingId);
@@ -538,7 +538,7 @@ export function useMeetingsData() {
       if (activeMeetingId === meetingId) { setActiveMeeting(null); setActiveMeetingId(null); sidebar.setLinkedQuickNotes([]); }
       toast({ title: "Meeting gelöscht", description: "Das Meeting wurde erfolgreich gelöscht." });
     } catch (error: unknown) {
-      console.error('Delete meeting error:', error);
+      debugConsole.error('Delete meeting error:', error);
       const msg = error instanceof Error ? error.message : '';
       let errorMessage = 'Das Meeting konnte nicht gelöscht werden.';
       if (msg.includes('violates foreign key constraint')) {

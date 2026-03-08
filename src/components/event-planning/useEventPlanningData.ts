@@ -564,7 +564,7 @@ export function useEventPlanningData() {
       if (error) {
         const isNetworkError = error.message?.includes("Failed to fetch") || error.message?.includes("NetworkError") || error.message?.includes("TypeError");
         if (isNetworkError) {
-          console.warn("Network interruption detected, verifying server state...", error);
+          debugConsole.warn("Network interruption detected, verifying server state...", error);
           setTimeout(async () => {
             if (selectedPlanning) {
               const { data: freshItems } = await supabase.from("event_planning_checklist_items").select("*").eq("event_planning_id", selectedPlanning.id).order("order_index", { ascending: true });
@@ -573,7 +573,7 @@ export function useEventPlanningData() {
           }, 500);
           return;
         }
-        console.error("Checklist update error:", error);
+        debugConsole.error("Checklist update error:", error);
         setChecklistItems(previousItems);
         toast({ title: "Fehler", description: "Checkliste konnte nicht aktualisiert werden.", variant: "destructive" });
         return;
@@ -587,10 +587,10 @@ export function useEventPlanningData() {
             await supabase.functions.invoke("send-checklist-email", { body: { actionId: emailAction.id, checklistItemId: itemId } });
             toast({ title: "E-Mail versendet", description: "Benachrichtigung wurde automatisch versendet." });
           }
-        } catch (emailError) { console.error("Error sending email:", emailError); }
+        } catch (emailError) { debugConsole.error("Error sending email:", emailError); }
       }
     } catch (fetchError) {
-      console.warn("Network error during checklist update, verifying state...", fetchError);
+      debugConsole.warn("Network error during checklist update, verifying state...", fetchError);
       setTimeout(async () => {
         if (selectedPlanning) {
           const { data: freshItems } = await supabase.from("event_planning_checklist_items").select("*").eq("event_planning_id", selectedPlanning.id).order("order_index", { ascending: true });
@@ -627,7 +627,7 @@ export function useEventPlanningData() {
       setChecklistItems(items => items.filter(item => item.id !== itemId));
       toast({ title: "Erfolg", description: "Checklisten-Punkt wurde gelöscht." });
     } catch (error) {
-      console.error('Error deleting checklist item:', error);
+      debugConsole.error('Error deleting checklist item:', error);
       toast({ title: "Fehler", description: "Checklisten-Punkt konnte nicht gelöscht werden.", variant: "destructive" });
     }
   };
@@ -859,7 +859,7 @@ export function useEventPlanningData() {
         await supabase.from("event_planning_checklist_items").update({ order_index: update.order_index }).eq("id", update.id);
       }
     } catch (error) {
-      console.error('Error updating item order:', error);
+      debugConsole.error('Error updating item order:', error);
       toast({ title: "Fehler", description: "Reihenfolge konnte nicht gespeichert werden.", variant: "destructive" });
       fetchPlanningDetails(selectedPlanning!.id);
     }
@@ -885,7 +885,7 @@ export function useEventPlanningData() {
       }
       const formattedComments: PlanningComment[] = (comments || []).map(comment => ({ id: comment.id, planning_item_id: comment.planning_item_id, user_id: comment.user_id, content: comment.content, created_at: comment.created_at, profile: profiles.find(p => p.user_id === comment.user_id) || null }));
       setItemComments(prev => ({ ...prev, [itemId]: formattedComments }));
-    } catch (error) { console.error('Error loading item comments:', error); }
+    } catch (error) { debugConsole.error('Error loading item comments:', error); }
   };
 
   const loadItemSubtasks = async (itemId: string) => {
@@ -893,7 +893,7 @@ export function useEventPlanningData() {
       const { data, error } = await supabase.from('planning_item_subtasks').select('*').eq('planning_item_id', itemId).order('order_index', { ascending: true });
       if (error) throw error;
       setItemSubtasks(prev => ({ ...prev, [itemId]: data || [] }));
-    } catch (error) { console.error('Error loading item subtasks:', error); }
+    } catch (error) { debugConsole.error('Error loading item subtasks:', error); }
   };
 
   const loadItemDocuments = async (itemId: string) => {
@@ -901,7 +901,7 @@ export function useEventPlanningData() {
       const { data, error } = await supabase.from('planning_item_documents').select('*').eq('planning_item_id', itemId).order('created_at', { ascending: false });
       if (error) throw error;
       setItemDocuments(prev => ({ ...prev, [itemId]: data || [] }));
-    } catch (error) { console.error('Error loading item documents:', error); }
+    } catch (error) { debugConsole.error('Error loading item documents:', error); }
   };
 
   const addItemComment = async () => {
@@ -913,7 +913,7 @@ export function useEventPlanningData() {
       loadItemComments(selectedItemId);
       loadAllItemCounts();
       toast({ title: "Kommentar hinzugefügt", description: "Ihr Kommentar wurde erfolgreich hinzugefügt." });
-    } catch (error) { console.error('Error adding comment:', error); toast({ title: "Fehler", description: "Kommentar konnte nicht hinzugefügt werden.", variant: "destructive" }); }
+    } catch (error) { debugConsole.error('Error adding comment:', error); toast({ title: "Fehler", description: "Kommentar konnte nicht hinzugefügt werden.", variant: "destructive" }); }
   };
 
   const addItemSubtask = async (description?: string, assignedTo?: string, dueDate?: string, itemId?: string) => {
@@ -932,7 +932,7 @@ export function useEventPlanningData() {
       loadItemSubtasks(planningItemId);
       loadAllItemCounts();
       toast({ title: "Unteraufgabe hinzugefügt", description: "Die Unteraufgabe wurde erfolgreich erstellt." });
-    } catch (error) { console.error('Error adding subtask:', error); toast({ title: "Fehler", description: "Unteraufgabe konnte nicht hinzugefügt werden.", variant: "destructive" }); }
+    } catch (error) { debugConsole.error('Error adding subtask:', error); toast({ title: "Fehler", description: "Unteraufgabe konnte nicht hinzugefügt werden.", variant: "destructive" }); }
   };
 
   const addItemCommentForItem = async (itemId: string, comment: string) => {
@@ -943,7 +943,7 @@ export function useEventPlanningData() {
       loadItemComments(itemId);
       loadAllItemCounts();
       toast({ title: "Kommentar hinzugefügt", description: "Ihr Kommentar wurde erfolgreich hinzugefügt." });
-    } catch (error) { console.error('Error adding comment:', error); toast({ title: "Fehler", description: "Kommentar konnte nicht hinzugefügt werden.", variant: "destructive" }); }
+    } catch (error) { debugConsole.error('Error adding comment:', error); toast({ title: "Fehler", description: "Kommentar konnte nicht hinzugefügt werden.", variant: "destructive" }); }
   };
 
   const loadAllItemCounts = async (items?: ChecklistItem[]) => {
@@ -982,7 +982,7 @@ export function useEventPlanningData() {
         documentsMap[doc.planning_item_id].push({ ...doc, user_id: doc.user_id || user?.id || '' });
       });
       setItemDocuments(documentsMap);
-    } catch (error) { console.error('Error loading item counts:', error); }
+    } catch (error) { debugConsole.error('Error loading item counts:', error); }
   };
 
   const handleItemFileUpload = async (event: React.ChangeEvent<HTMLInputElement>, itemId: string) => {
@@ -1014,7 +1014,7 @@ export function useEventPlanningData() {
       loadItemDocuments(selectedItemId!);
       loadAllItemCounts();
       toast({ title: "Dokument gelöscht", description: "Das Dokument wurde erfolgreich entfernt." });
-    } catch (error) { console.error('Error deleting document:', error); toast({ title: "Fehler", description: "Das Dokument konnte nicht gelöscht werden.", variant: "destructive" }); }
+    } catch (error) { debugConsole.error('Error deleting document:', error); toast({ title: "Fehler", description: "Das Dokument konnte nicht gelöscht werden.", variant: "destructive" }); }
   };
 
   const downloadItemDocument = async (doc: PlanningDocument) => {
@@ -1026,7 +1026,7 @@ export function useEventPlanningData() {
       a.href = url; a.download = doc.file_name;
       document.body.appendChild(a); a.click();
       document.body.removeChild(a); URL.revokeObjectURL(url);
-    } catch (error) { console.error('Error downloading document:', error); toast({ title: "Fehler", description: "Das Dokument konnte nicht heruntergeladen werden.", variant: "destructive" }); }
+    } catch (error) { debugConsole.error('Error downloading document:', error); toast({ title: "Fehler", description: "Das Dokument konnte nicht heruntergeladen werden.", variant: "destructive" }); }
   };
 
   const deleteItemComment = async (comment: PlanningComment) => {
@@ -1037,7 +1037,7 @@ export function useEventPlanningData() {
       loadItemComments(comment.planning_item_id);
       loadAllItemCounts();
       toast({ title: "Kommentar gelöscht", description: "Der Kommentar wurde erfolgreich entfernt." });
-    } catch (error) { console.error('Error deleting comment:', error); toast({ title: "Fehler", description: "Kommentar konnte nicht gelöscht werden.", variant: "destructive" }); }
+    } catch (error) { debugConsole.error('Error deleting comment:', error); toast({ title: "Fehler", description: "Kommentar konnte nicht gelöscht werden.", variant: "destructive" }); }
   };
 
   const handleSubtaskComplete = async (subtaskId: string, isCompleted: boolean, result: string, itemId: string) => {
@@ -1050,7 +1050,7 @@ export function useEventPlanningData() {
       loadItemSubtasks(itemId);
       loadAllItemCounts();
       if (isCompleted) toast({ title: "Unteraufgabe abgeschlossen", description: "Die Unteraufgabe wurde erfolgreich als erledigt markiert." });
-    } catch (error) { console.error('Error updating subtask:', error); toast({ title: "Fehler", description: "Unteraufgabe konnte nicht aktualisiert werden.", variant: "destructive" }); }
+    } catch (error) { debugConsole.error('Error updating subtask:', error); toast({ title: "Fehler", description: "Unteraufgabe konnte nicht aktualisiert werden.", variant: "destructive" }); }
   };
 
   const updateItemComment = async (commentId: string, newContent: string) => {
@@ -1062,7 +1062,7 @@ export function useEventPlanningData() {
       if (comment) { loadItemComments(comment.planning_item_id); loadAllItemCounts(); }
       setEditingComment(prev => ({ ...prev, [commentId]: '' }));
       toast({ title: "Kommentar aktualisiert", description: "Der Kommentar wurde erfolgreich bearbeitet." });
-    } catch (error) { console.error('Error updating comment:', error); toast({ title: "Fehler", description: "Kommentar konnte nicht bearbeitet werden.", variant: "destructive" }); }
+    } catch (error) { debugConsole.error('Error updating comment:', error); toast({ title: "Fehler", description: "Kommentar konnte nicht bearbeitet werden.", variant: "destructive" }); }
   };
 
   return {
