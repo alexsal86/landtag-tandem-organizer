@@ -75,7 +75,7 @@ export async function parsePDFFile(file: File): Promise<ParsedProtocol> {
     };
     
   } catch (error) {
-    console.error('PDF parsing error:', error);
+    debugConsole.error('PDF parsing error:', error);
     throw new Error(`Fehler beim Parsen der PDF: ${error.message}`);
   }
 }
