@@ -230,8 +230,8 @@ export function DashboardWidget({ widget, isDragging, isEditMode, onResize, onDe
           if (!task.assigned_to) return false;
           const assignees = task.assigned_to.split(',').map((id: string) => id.trim());
           return assignees.includes(user.id) || 
-                 assignees.includes(user.email) ||
-                 assignees.includes(user.email?.toLowerCase());
+                 assignees.includes(user.email ?? '') ||
+                 assignees.includes(user.email?.toLowerCase() ?? '');
         });
         setAssignedTasks(userAssignedTasks as Task[]);
       }
