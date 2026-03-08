@@ -251,7 +251,7 @@ export const LetterTemplateIntegration: React.FC<LetterTemplateIntegrationProps>
       setIsDialogOpen(false);
       fetchTemplates();
     } catch (error) {
-      console.error('Error saving template:', error);
+      debugConsole.error('Error saving template:', error);
       toast({
         title: "Fehler",
         description: "Vorlage konnte nicht gespeichert werden.",
