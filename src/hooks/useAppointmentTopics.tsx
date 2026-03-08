@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { debugConsole } from '@/utils/debugConsole';
 
 export const useAppointmentTopics = (appointmentId: string | undefined) => {
   const [assignedTopics, setAssignedTopics] = useState<string[]>([]);
