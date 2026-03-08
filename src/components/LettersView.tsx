@@ -176,7 +176,7 @@ const LettersView: React.FC = () => {
         if (error) throw error;
         setAvailableParentTasks((data || []) as ParentTaskOption[]);
       } catch (error) {
-        console.error('Error fetching parent tasks:', error);
+        debugConsole.error('Error fetching parent tasks:', error);
         setAvailableParentTasks([]);
         toast({
           title: 'Fehler',
