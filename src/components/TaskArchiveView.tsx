@@ -148,7 +148,7 @@ export function TaskArchiveView() {
 
       setArchivedDecisions(formattedDecisions);
     } catch (error) {
-      console.error('Error loading archived decisions:', error);
+      debugConsole.error('Error loading archived decisions:', error);
     }
   };
 
