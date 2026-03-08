@@ -1,4 +1,5 @@
 import React, { createContext, useContext, useState, useEffect, useCallback, useRef, ReactNode } from 'react';
+import { useMatrixUnread } from '@/contexts/MatrixUnreadContext';
 import * as sdk from 'matrix-js-sdk';
 import { CryptoEvent } from 'matrix-js-sdk';
 import { VerifierEvent, VerificationPhase, type Verifier } from 'matrix-js-sdk/lib/crypto-api/verification';
