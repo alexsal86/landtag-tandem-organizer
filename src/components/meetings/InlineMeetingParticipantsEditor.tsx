@@ -109,7 +109,7 @@ export function InlineMeetingParticipantsEditor({ meetingId }: InlineMeetingPart
       return;
     }
 
-    console.log('🔄 Adding participant:', user.id, 'to meeting:', meetingId, 'with role:', selectedRole);
+    
     
     const { data, error } = await supabase
       .from('meeting_participants')
