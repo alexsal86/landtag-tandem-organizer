@@ -427,7 +427,7 @@ export function ConfigurableTypeSettings({
                                     <Button
                                       onClick={() => setEditingItem({ 
                                         id: item.id, 
-                                        label: item.label, 
+                                        label: item.label ?? '', 
                                         color: item.color ?? defaultColor, 
                                         icon: item.icon || undefined 
                                       })}

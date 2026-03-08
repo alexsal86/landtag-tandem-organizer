@@ -43,7 +43,7 @@ export function useEmployeeOperations({
         await supabase.from("appointments").update({ title: typeConfig.title, description: typeConfig.description, category: typeConfig.category, status: "confirmed" }).eq("id", existingEntry.id);
       } else {
         await supabase.from("appointments").insert([{
-          user_id: user?.id, tenant_id: tenantData.tenant_id,
+          user_id: user?.id ?? '', tenant_id: tenantData.tenant_id,
           start_time: new Date(leaveRequest.start_date).toISOString(),
           end_time: new Date(leaveRequest.end_date + "T23:59:59").toISOString(),
           title: typeConfig.title, description: typeConfig.description, category: typeConfig.category,

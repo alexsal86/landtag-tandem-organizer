@@ -136,9 +136,9 @@ export function ProtocolSearch({ protocolId, onResultSelect }: ProtocolSearchPro
             type: 'speech',
             title: `${speech.speaker_name} (${speech.speaker_party})`,
             content: speech.speech_content,
-            speaker: speech.speaker_name,
-            party: speech.speaker_party,
-            page_number: speech.page_number,
+            speaker: speech.speaker_name ?? undefined,
+            party: speech.speaker_party ?? undefined,
+            page_number: speech.page_number ?? undefined,
             protocol_id: speech.protocol_id,
             protocol_title: speech.parliament_protocols.original_filename,
             protocol_date: speech.parliament_protocols.protocol_date

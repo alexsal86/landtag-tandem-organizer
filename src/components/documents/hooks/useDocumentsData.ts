@@ -53,7 +53,7 @@ export function useDocumentsData(activeTab: string) {
           .eq('folder_id', folder.id);
         return { ...folder, documentCount: count || 0 };
       }));
-      setFolders(foldersWithCounts);
+      setFolders(foldersWithCounts as DocumentFolder[]);
     } catch (error: unknown) {
       debugConsole.error('Error fetching folders:', error);
     }
