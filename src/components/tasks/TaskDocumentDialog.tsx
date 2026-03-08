@@ -54,7 +54,7 @@ export function TaskDocumentDialog({
     try {
       const { data, error } = await supabase
         .from('task_documents')
-        .select('*')
+        .select('id, task_id, file_name, file_path, file_size, file_type, user_id, created_at')
         .eq('task_id', taskId)
         .order('created_at', { ascending: false });
 
