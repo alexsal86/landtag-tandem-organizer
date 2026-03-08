@@ -201,7 +201,7 @@ export function useDashboardLayout() {
         .single();
 
       if (error && error.code !== 'PGRST116') {
-        console.error('Database query error:', error);
+        debugConsole.error('Database query error:', error);
         throw error;
       }
 
