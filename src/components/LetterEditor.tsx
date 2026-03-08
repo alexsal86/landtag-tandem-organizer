@@ -23,6 +23,7 @@ import type { BlockLine } from '@/components/letters/BlockLineEditor';
 
 import { useLetterData } from './letters/hooks/useLetterData';
 import { useLetterOperations } from './letters/hooks/useLetterOperations';
+import { debugConsole } from '@/utils/debugConsole';
 import LetterBriefDetails from './letters/LetterBriefDetails';
 import LetterCommentDialog from './letters/LetterCommentDialog';
 import {
