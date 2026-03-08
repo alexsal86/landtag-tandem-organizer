@@ -8,6 +8,7 @@ import { getCurrentTimeSlot, getCurrentDayOfWeek } from '@/utils/dashboard/timeU
 import { selectMessage } from '@/utils/dashboard/messageGenerator';
 import { getSpecialDayHint } from '@/utils/dashboard/specialDays';
 import { type DashboardData } from '@/hooks/useDashboardData';
+import { sanitizeRichHtml } from '@/utils/htmlSanitizer';
 
 interface Props {
   data: DashboardData;
