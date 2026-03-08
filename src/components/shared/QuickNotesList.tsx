@@ -97,6 +97,8 @@ export function QuickNotesList({
     isExpanded: hook.expandedNotes.has(note.id),
     isDetailsExpanded: hook.expandedDetails.has(note.id),
     colorModeUpdating: hook.colorModeUpdating,
+    className: isHighlighted(note.id) ? 'notification-highlight' : undefined,
+    highlightRef: isHighlighted(note.id) ? highlightRef(note.id) : undefined,
     onNoteClick,
     onToggleExpand: hook.toggleNoteExpand,
     onToggleDetailsExpand: hook.toggleDetailsExpand,
