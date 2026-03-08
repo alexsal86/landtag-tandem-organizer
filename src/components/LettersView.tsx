@@ -89,7 +89,7 @@ const LettersView: React.FC = () => {
       if (error) throw error;
       setLetters(data as any || []);
     } catch (error) {
-      console.error('Error fetching letters:', error);
+      debugConsole.error('Error fetching letters:', error);
       toast({
         title: "Fehler",
         description: "Briefe konnten nicht geladen werden.",
