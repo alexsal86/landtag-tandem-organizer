@@ -17,7 +17,7 @@ export const VapidKeyTest: React.FC = () => {
   const [isRunning, setIsRunning] = useState(false);
 
   const testVapidConfiguration = async () => {
-    console.log('🔑 === VAPID KEY TEST GESTARTET ===');
+    debugConsole.log('🔑 === VAPID KEY TEST GESTARTET ===');
     setIsRunning(true);
     
     try {
