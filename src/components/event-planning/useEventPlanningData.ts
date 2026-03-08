@@ -182,7 +182,7 @@ export function useEventPlanningData() {
   const fetchPlanningTemplates = async () => {
     if (!user) return;
     const { data, error } = await supabase.from("planning_templates").select("*").order("name");
-    if (error) { console.error("Error fetching planning templates:", error); return; }
+    if (error) { debugConsole.error("Error fetching planning templates:", error); return; }
     setPlanningTemplates(data || []);
   };
 
