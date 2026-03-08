@@ -73,7 +73,7 @@ export function useTaskDetailData(task: Task | null) {
     try {
       const { data, error } = await supabase.from("task_documents").select("*").eq("task_id", taskId).order("created_at", { ascending: false });
       if (error) throw error;
-      setTaskDocuments(data || []);
+      setTaskDocuments((data || []).map(d => ({ ...d, file_size: d.file_size ?? undefined, file_type: d.file_type ?? undefined })));
     } catch (e) {
       debugConsole.error("Error loading task documents:", e);
     }

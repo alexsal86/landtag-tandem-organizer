@@ -621,7 +621,7 @@ export const TaskDecisionDetails = ({ decisionId, isOpen, onClose, onArchived, h
                     <AvatarImage src={thread.participant_profile.avatar_url} />
                   )}
                   <AvatarFallback className="text-[7px]" style={{ backgroundColor: thread.participant_profile?.badge_color || undefined }}>
-                    {getInitials(thread.participant_profile?.display_name)}
+                    {getInitials(thread.participant_profile?.display_name ?? null)}
                   </AvatarFallback>
                 </Avatar>
                 <span className="text-xs font-medium text-foreground">

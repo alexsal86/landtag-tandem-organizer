@@ -65,7 +65,7 @@ export const DecisionEmailTemplates = () => {
       const { data: userProfile } = await supabase
         .from('profiles')
         .select('tenant_id')
-        .eq('user_id', (await supabase.auth.getUser()).data.user?.id)
+        .eq('user_id', (await supabase.auth.getUser()).data.user?.id ?? '')
         .single();
 
       if (!userProfile?.tenant_id) return;

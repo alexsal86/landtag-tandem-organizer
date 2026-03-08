@@ -482,7 +482,7 @@ export function DecisionFileUpload({
           </Button>
           {file.uploaded_by && (
             <Button type="button" variant="ghost" size="sm" onClick={async () => {
-              if (await canDelete(file.uploaded_by)) {
+              if (await canDelete(file.uploaded_by!)) {
                 removeFile(file.id!, file.file_path);
               } else {
                 toast({ title: 'Keine Berechtigung', description: 'Sie können nur Ihre eigenen Dateien löschen.', variant: 'destructive' });

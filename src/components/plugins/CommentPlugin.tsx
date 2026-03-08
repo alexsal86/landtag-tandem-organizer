@@ -194,7 +194,7 @@ const CommentThread: React.FC<{
       <div className="flex items-start justify-between">
         <div className="flex items-center space-x-2">
           <Avatar className="h-6 w-6">
-            <AvatarImage src={comment.avatarUrl} />
+            <AvatarImage src={comment.avatarUrl ?? undefined} />
             <AvatarFallback className="text-xs">
               {comment.authorName.charAt(0).toUpperCase()}
             </AvatarFallback>

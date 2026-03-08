@@ -472,8 +472,8 @@ export const PollListView = () => {
                       <PollEditDialog
                         pollId={poll.id}
                         currentTitle={poll.title}
-                        currentDescription={poll.description}
-                        currentDeadline={poll.deadline}
+                        currentDescription={poll.description ?? undefined}
+                        currentDeadline={poll.deadline ?? undefined}
                         onUpdate={loadPolls}
                       />
                       <Button
