@@ -56,7 +56,7 @@ export function AppointmentPreparationChecklistTab({
       setSaving(true);
       await onUpdate({ checklist_items: updatedItems });
     } catch (error) {
-      console.error("Error adding checklist item:", error);
+      debugConsole.error("Error adding checklist item:", error);
       // Revert on error
       setChecklistItems(preparation.checklist_items || []);
       setNewItemLabel(newItem.label);
