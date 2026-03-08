@@ -212,7 +212,7 @@ const [editingChild, setEditingChild] = useState<{ parentIndex: number; childInd
       setIsAdmin(roleData?.role === 'abgeordneter' || roleData?.role === 'bueroleitung');
       setIsSuperAdmin(roleData?.role === 'abgeordneter');
     } catch (error) {
-      console.error('Error checking admin status:', error);
+      debugConsole.error('Error checking admin status:', error);
     } finally {
       setCheckingAdmin(false);
     }
