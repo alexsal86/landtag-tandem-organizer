@@ -29,7 +29,7 @@ export function CalendarSyncSettings() {
     try {
       const { data, error } = await supabase
         .from('calendar_sync_settings')
-        .select('*')
+        .select('id, sync_interval_hours, sync_time, is_enabled')
         .eq('tenant_id', currentTenant.id)
         .maybeSingle();
 

@@ -297,7 +297,7 @@ const [editingChild, setEditingChild] = useState<{ parentIndex: number; childInd
       }
       
     } catch (error) {
-      console.error('Error loading data:', error);
+      debugConsole.error('Error loading data:', error);
       toast({ title: "Fehler", description: "Daten konnten nicht geladen werden.", variant: "destructive" });
     } finally {
       setLoadingData(false);

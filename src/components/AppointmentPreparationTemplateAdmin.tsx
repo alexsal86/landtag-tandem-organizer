@@ -69,7 +69,7 @@ export default function AppointmentPreparationTemplateAdmin() {
         template_data: Array.isArray(template.template_data) ? template.template_data : []
       })));
     } catch (error) {
-      console.error('Error fetching templates:', error);
+      debugConsole.error('Error fetching templates:', error);
       toast({
         title: 'Fehler',
         description: 'Templates konnten nicht geladen werden.',

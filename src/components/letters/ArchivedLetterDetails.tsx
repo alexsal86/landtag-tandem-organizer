@@ -117,7 +117,7 @@ export const ArchivedLetterDetails: React.FC<ArchivedLetterDetailsProps> = ({
       setAttachments(attachmentDocs || []);
 
     } catch (error: any) {
-      console.error('Error fetching letter details:', error);
+      debugConsole.error('Error fetching letter details:', error);
       toast({
         title: "Fehler",
         description: "Brief-Details konnten nicht geladen werden.",

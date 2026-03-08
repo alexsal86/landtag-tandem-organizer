@@ -82,7 +82,7 @@ export function AppSettingsProvider({ children }: { children: ReactNode }) {
           });
         }
       } catch (error) {
-        console.error('Error loading app settings:', error);
+        debugConsole.error('Error loading app settings:', error);
         setSettings(prev => ({ ...prev, isLoading: false }));
       }
     };

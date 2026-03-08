@@ -220,7 +220,7 @@ export const PollResponseInterface = ({ pollId, token, participantId, isPreview 
       });
 
     } catch (error) {
-      console.error('Error saving responses:', error);
+      debugConsole.error('Error saving responses:', error);
       toast({
         title: "Fehler",
         description: "Die Antworten konnten nicht gespeichert werden.",

@@ -228,7 +228,7 @@ export const useYjsCollaboration = ({
       
 
     } catch (error) {
-      console.error('[Yjs] Connection failed:', error);
+      debugConsole.error('[Yjs] Connection failed:', error);
       setConnectionState('disconnected');
     }
   }, [connectionState, documentId, currentUser, userProfiles, loadUserProfiles]);

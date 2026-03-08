@@ -246,7 +246,7 @@ export const LetterStatusWorkflow: React.FC<LetterStatusWorkflowProps> = ({
       setRevisionComment('');
       setSelectedReviewer('');
     } catch (error) {
-      console.error('Error changing status:', error);
+      debugConsole.error('Error changing status:', error);
       toast({ title: 'Fehler', description: 'Status konnte nicht geändert werden.', variant: 'destructive' });
     }
   };

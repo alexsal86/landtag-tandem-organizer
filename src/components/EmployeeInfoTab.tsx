@@ -63,7 +63,7 @@ export function EmployeeInfoTab({ employeeSettings }: EmployeeInfoTabProps) {
       if (error) throw error;
       setHistory(data || []);
     } catch (error) {
-      console.error('Error loading history:', error);
+      debugConsole.error('Error loading history:', error);
     } finally {
       setLoading(false);
     }

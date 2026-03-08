@@ -319,7 +319,7 @@ export const InformationBlockManager: React.FC = () => {
       });
       fetchBlocks();
     } catch (error) {
-      console.error('Fehler beim Löschen:', error);
+      debugConsole.error('Fehler beim Löschen:', error);
       toast({
         title: "Fehler",
         description: "Informationsblock konnte nicht gelöscht werden.",

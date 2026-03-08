@@ -369,7 +369,7 @@ export const useCaseFileDetails = (caseFileId: string | null) => {
       });
       await fetchTimeline();
     } catch (error) {
-      console.error('Error creating timeline entry:', error);
+      debugConsole.error('Error creating timeline entry:', error);
     }
   };
 

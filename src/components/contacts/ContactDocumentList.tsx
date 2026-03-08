@@ -100,7 +100,7 @@ export function ContactDocumentList({ documents, type, contactTags = [], onRemov
       });
       setRemovingDocId(null);
     } catch (error) {
-      console.error('Error removing document link:', error);
+      debugConsole.error('Error removing document link:', error);
       toast({
         title: "Fehler",
         description: "Verknüpfung konnte nicht entfernt werden.",

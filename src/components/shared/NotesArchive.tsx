@@ -237,7 +237,7 @@ export function NotesArchive({ refreshTrigger, onRestore }: NotesArchiveProps) {
       setDatePickerNote(null);
       loadDeletedNotes();
     } catch (error) {
-      console.error("Error updating delete date:", error);
+      debugConsole.error("Error updating delete date:", error);
       toast.error("Fehler beim Ändern des Löschdatums");
     }
   };
