@@ -147,7 +147,7 @@ export const ArchivedLetterDetails: React.FC<ArchivedLetterDetailsProps> = ({
     } catch (error: unknown) {
       toast({
         title: "Download-Fehler",
-        description: error.message,
+        description: error instanceof Error ? error.message : String(error),
         variant: "destructive",
       });
     }

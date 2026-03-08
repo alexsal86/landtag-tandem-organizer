@@ -160,7 +160,7 @@ export function EmailTemplateManager() {
     } catch (error: unknown) {
       toast({
         title: "Fehler beim Löschen",
-        description: error.message,
+        description: error instanceof Error ? error.message : String(error),
         variant: "destructive",
       });
     }
