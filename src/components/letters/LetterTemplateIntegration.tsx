@@ -86,7 +86,7 @@ export const LetterTemplateIntegration: React.FC<LetterTemplateIntegrationProps>
       })) as LetterTemplate[];
       setTemplates(typedTemplates);
     } catch (error) {
-      console.error('Error fetching templates:', error);
+      debugConsole.error('Error fetching templates:', error);
       toast({
         title: "Fehler",
         description: "Vorlagen konnten nicht geladen werden.",
