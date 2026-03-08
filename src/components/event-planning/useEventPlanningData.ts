@@ -497,7 +497,7 @@ export function useEventPlanningData() {
       fetchPlanningDetails(selectedPlanning.id);
       toast({ title: "Erfolg", description: "Termin wurde hinzugefügt und im Kalender geblockt." });
     } catch (error: any) {
-      console.error('Error in addPlanningDate:', error);
+      debugConsole.error('Error in addPlanningDate:', error);
       toast({ title: "Fehler", description: error.message || "Termin konnte nicht hinzugefügt werden.", variant: "destructive" });
     } finally {
       setSelectedDate(undefined);
