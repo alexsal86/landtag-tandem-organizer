@@ -46,7 +46,7 @@ export function useAutoSave({
         lastSavedContentRef.current = contentToSave;
       }
     } catch (error) {
-      console.error('Error in auto-save:', error);
+      debugConsole.error('Error in auto-save:', error);
       toast({
         title: "Fehler beim Speichern",
         description: "Ein unerwarteter Fehler ist aufgetreten.",

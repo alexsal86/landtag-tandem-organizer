@@ -227,7 +227,7 @@ export function useMyWorkNewCounts(): MyWorkNewCountsResult {
         timestamp: now,
       }));
     } catch (error) {
-      console.error('Error marking tab as visited:', error);
+      debugConsole.error('Error marking tab as visited:', error);
     }
   }, [user]);
 

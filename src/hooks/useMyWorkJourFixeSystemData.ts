@@ -223,7 +223,7 @@ export function useMyWorkJourFixeSystemData(userId?: string, tenantId?: string) 
         });
       } catch (error) {
         if (isCurrentRequest()) {
-          console.error("Error loading profiles for meeting system data:", { meetingId, error });
+          debugConsole.error("Error loading profiles for meeting system data:", { meetingId, error });
         }
       }
     },

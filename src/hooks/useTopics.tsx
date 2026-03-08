@@ -261,7 +261,7 @@ export const useCaseFileTopics = (caseFileId: string | undefined) => {
       setAssignedTopics(topicIds);
       return true;
     } catch (error) {
-      console.error('Error setting topics:', error);
+      debugConsole.error('Error setting topics:', error);
       return false;
     }
   };

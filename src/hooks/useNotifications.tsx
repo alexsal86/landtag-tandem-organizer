@@ -630,7 +630,7 @@ export const useNotifications = () => {
           await subscribeToPush();
         }
       } catch (error) {
-        console.error('Error checking/renewing push subscription:', error);
+        debugConsole.error('Error checking/renewing push subscription:', error);
       }
     };
 
