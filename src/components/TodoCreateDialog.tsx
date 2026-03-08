@@ -90,7 +90,7 @@ export function TodoCreateDialog({ open, onOpenChange, onTodoCreated }: TodoCrea
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    console.log('Form submitted:', { title, categoryId });
+    debugConsole.log('Form submitted:', { title, categoryId });
     
     if (!title.trim() || !categoryId) {
       toast({
