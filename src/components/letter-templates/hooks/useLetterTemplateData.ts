@@ -63,8 +63,7 @@ export function useLetterTemplateData() {
       if (error) throw error;
       setTemplates((data || []) as unknown as LetterTemplate[]);
     } catch (error) {
-      debugConsole.error('Error fetching templates:', error);
-      toast({ title: "Fehler", description: "Templates konnten nicht geladen werden.", variant: "destructive" });
+      handleAppError(error, { context: 'fetchTemplates', toast: { fn: toast, title: 'Fehler', description: 'Templates konnten nicht geladen werden.' } });
     } finally {
       setLoading(false);
     }
