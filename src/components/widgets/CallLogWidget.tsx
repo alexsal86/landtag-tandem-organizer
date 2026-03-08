@@ -34,8 +34,8 @@ interface CallLog {
 interface Contact {
   id: string;
   name: string;
-  phone?: string;
-  email?: string;
+  phone?: string | null;
+  email?: string | null;
 }
 
 interface CallLogWidgetProps {
