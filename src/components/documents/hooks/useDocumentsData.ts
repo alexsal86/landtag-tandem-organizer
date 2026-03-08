@@ -30,8 +30,8 @@ export function useDocumentsData(activeTab: string) {
         ...doc,
         archived_attachments: Array.isArray(doc.archived_attachments) ? doc.archived_attachments : []
       })));
-    } catch (error: any) {
-      toast({ title: "Fehler beim Laden", description: error.message, variant: "destructive" });
+    } catch (error: unknown) {
+      toast({ title: "Fehler beim Laden", description: error instanceof Error ? error.message : String(error), variant: "destructive" });
     } finally {
       setLoading(false);
     }
