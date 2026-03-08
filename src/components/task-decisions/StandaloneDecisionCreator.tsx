@@ -113,7 +113,7 @@ export const StandaloneDecisionCreator = ({
         .eq('is_active', true)
         .single();
 
-      console.log("Tenant ID:", tenantData?.tenant_id);
+      
 
       if (!tenantData?.tenant_id) {
         setProfiles([]);
