@@ -253,7 +253,7 @@ export const HabitsWidget: React.FC<HabitsWidgetProps> = ({
 
         if (error) throw error;
 
-        setCompletions(prev => [data, ...prev]);
+        setCompletions(prev => [{ ...data, count: data.count ?? 1, notes: data.notes ?? undefined }, ...prev]);
       }
 
       // Recalculate stats
