@@ -123,11 +123,11 @@ export const useLetterArchiving = () => {
 
       return true;
 
-    } catch (error: any) {
+    } catch (error: unknown) {
       debugConsole.error('Error archiving letter:', error);
       toast({
         title: "Archivierungsfehler",
-        description: error.message || "Der Brief konnte nicht archiviert werden.",
+        description: error instanceof Error ? error.message : "Der Brief konnte nicht archiviert werden.",
         variant: "destructive",
       });
       return false;

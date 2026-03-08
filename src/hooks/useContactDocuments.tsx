@@ -126,7 +126,7 @@ export const useContactDocuments = (contactId?: string, contactTags?: string[]) 
 
       if (error) throw error;
       await fetchDocuments();
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Error removing document link:', error);
       throw error;
     }

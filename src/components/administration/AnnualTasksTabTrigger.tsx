@@ -26,9 +26,9 @@ export function AnnualTasksTabTrigger({ tenantId }: AnnualTasksTabTriggerProps) 
     try {
       // Load annual tasks for tenant
       const { data: tasks } = await supabase
-        .from("annual_tasks" as any)
+        .from("annual_tasks")
         .select("id, due_month")
-        .eq("tenant_id", tenantId) as { data: { id: string; due_month: number }[] | null; error: any };
+        .eq("tenant_id", tenantId);
 
       if (!tasks || tasks.length === 0) {
         setCount(0);
@@ -37,10 +37,10 @@ export function AnnualTasksTabTrigger({ tenantId }: AnnualTasksTabTriggerProps) 
 
       // Load completions for current year
       const { data: completions } = await supabase
-        .from("annual_task_completions" as any)
+        .from("annual_task_completions")
         .select("annual_task_id")
         .in("annual_task_id", tasks.map(t => t.id))
-        .eq("year", currentYear) as { data: { annual_task_id: string }[] | null; error: any };
+        .eq("year", currentYear);
 
       const completedIds = new Set((completions || []).map(c => c.annual_task_id));
 

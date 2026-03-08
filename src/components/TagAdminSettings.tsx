@@ -69,7 +69,7 @@ export function TagAdminSettings() {
       await loadTags();
       setNewTag(null);
       toast({ title: "Erfolg", description: "Tag wurde erfolgreich hinzugefügt." });
-    } catch (error: any) {
+    } catch (error: unknown) {
       debugConsole.error('Error adding tag:', error);
       toast({ title: "Fehler", description: "Tag konnte nicht hinzugefügt werden.", variant: "destructive" });
     }
@@ -91,7 +91,7 @@ export function TagAdminSettings() {
       await loadTags();
       setEditingTag(null);
       toast({ title: "Erfolg", description: "Tag wurde erfolgreich aktualisiert." });
-    } catch (error: any) {
+    } catch (error: unknown) {
       debugConsole.error('Error updating tag:', error);
       toast({ title: "Fehler", description: "Tag konnte nicht aktualisiert werden.", variant: "destructive" });
     }
@@ -110,7 +110,7 @@ export function TagAdminSettings() {
       
       await loadTags();
       toast({ title: "Erfolg", description: "Tag wurde erfolgreich gelöscht." });
-    } catch (error: any) {
+    } catch (error: unknown) {
       debugConsole.error('Error deleting tag:', error);
       toast({ title: "Fehler", description: "Tag konnte nicht gelöscht werden.", variant: "destructive" });
     }
@@ -123,7 +123,7 @@ export function TagAdminSettings() {
       
       await loadTags();
       toast({ title: "Erfolg", description: `Tag wurde ${!isActive ? 'aktiviert' : 'deaktiviert'}.` });
-    } catch (error: any) {
+    } catch (error: unknown) {
       debugConsole.error('Error toggling tag:', error);
       toast({ title: "Fehler", description: "Status konnte nicht geändert werden.", variant: "destructive" });
     }

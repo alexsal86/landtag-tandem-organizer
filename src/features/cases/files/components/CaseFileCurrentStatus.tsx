@@ -54,14 +54,14 @@ export function CaseFileCurrentStatus({ caseFile, onUpdate, onUpdateProcessingSt
   const loadHistory = async () => {
     try {
       const { data, error } = await supabase
-        .from('case_file_status_history' as any)
+        .from('case_file_status_history')
         .select('id, case_file_id, content, user_id, user_display_name, created_at')
         .eq('case_file_id', caseFile.id)
         .order('created_at', { ascending: false })
         .limit(10);
 
       if (error) throw error;
-      setHistory((data || []) as unknown as StatusHistoryEntry[]);
+      setHistory((data || []) as StatusHistoryEntry[]);
     } catch (error) {
       debugConsole.error('Error loading status history:', error);
     }
@@ -79,7 +79,7 @@ export function CaseFileCurrentStatus({ caseFile, onUpdate, onUpdateProcessingSt
           .eq('user_id', (await supabase.auth.getUser()).data.user?.id || '')
           .single();
 
-        await supabase.from('case_file_status_history' as any).insert({
+        await supabase.from('case_file_status_history').insert({
           case_file_id: caseFile.id,
           content: caseFile.current_status_note,
           user_id: (await supabase.auth.getUser()).data.user?.id,

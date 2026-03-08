@@ -19,13 +19,21 @@ export const useCaseFileProcessingStatuses = () => {
     const load = async () => {
       try {
         const { data, error } = await supabase
-          .from('case_file_processing_statuses' as any)
+          .from('case_file_processing_statuses')
           .select('*')
           .eq('is_active', true)
           .order('order_index');
 
         if (error) throw error;
-        setStatuses((data || []) as unknown as CaseFileProcessingStatus[]);
+        setStatuses((data || []).map(d => ({
+          id: d.id,
+          name: d.name,
+          label: d.label,
+          icon: d.icon,
+          color: d.color,
+          order_index: d.order_index ?? 0,
+          is_active: d.is_active ?? true,
+        })));
       } catch (error) {
         console.error('Error loading processing statuses:', error);
       } finally {

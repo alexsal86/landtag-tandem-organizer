@@ -101,7 +101,7 @@ export function useCelebrationSettings() {
         }, { onConflict: 'user_id' });
 
       if (error) throw error;
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Error updating celebration settings:', error);
       toast({
         title: "Fehler",

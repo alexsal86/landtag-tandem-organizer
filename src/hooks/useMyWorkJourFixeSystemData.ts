@@ -108,7 +108,7 @@ export function useMyWorkJourFixeSystemData(userId?: string, tenantId?: string) 
           : Promise.resolve({ data: [] as Array<{ id: string; name: string; birthday: string | null }>, error: null }),
         hasCaseItems && tenantId
           ? supabase
-              .from("case_items" as any)
+              .from("case_items")
               .select("id, subject, status, priority, due_at, owner_user_id")
               .eq("meeting_id", meetingId)
               .neq("status", "erledigt")

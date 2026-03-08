@@ -45,7 +45,7 @@ export const DecisionArchiveSettings = () => {
       if (!user) return;
 
       const { data, error } = await supabase
-        .from('decision_archive_settings' as any)
+        .from('decision_archive_settings')
         .select('auto_archive_on_completion, auto_archive_days, auto_delete_after_days')
         .eq('user_id', user.id)
         .eq('tenant_id', currentTenant.id)
@@ -56,12 +56,12 @@ export const DecisionArchiveSettings = () => {
       }
 
       if (data) {
-        const settings = data as unknown as ArchiveSettings;
+        const settings = data;
         setAutoArchiveOnCompletion(settings.auto_archive_on_completion ?? true);
         setAutoArchiveDays(settings.auto_archive_days?.toString() ?? '');
         setAutoDeleteDays(settings.auto_delete_after_days?.toString() ?? '');
       }
-    } catch (error: any) {
+    } catch (error: unknown) {
       debugConsole.error('Error loading settings:', error);
       toast({
         title: 'Fehler',
@@ -91,7 +91,7 @@ export const DecisionArchiveSettings = () => {
       };
 
       const { error } = await supabase
-        .from('decision_archive_settings' as any)
+        .from('decision_archive_settings')
         .upsert(settings, {
           onConflict: 'user_id,tenant_id'
         });
@@ -102,7 +102,7 @@ export const DecisionArchiveSettings = () => {
         title: 'Gespeichert',
         description: 'Archivierungseinstellungen wurden erfolgreich gespeichert.'
       });
-    } catch (error: any) {
+    } catch (error: unknown) {
       debugConsole.error('Error saving settings:', error);
       toast({
         title: 'Fehler',

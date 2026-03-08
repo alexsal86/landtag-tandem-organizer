@@ -388,8 +388,8 @@ export function AdminTimeTrackingView() {
       resetNewEntryForm();
       loadMonthData();
       refetchYearlyBalance();
-    } catch (error: any) {
-      toast.error(error.message || "Fehler beim Erstellen");
+    } catch (error: unknown) {
+      toast.error(error instanceof Error ? error.message : "Fehler beim Erstellen");
     } finally {
       setIsSaving(false);
     }
@@ -567,8 +567,8 @@ export function AdminTimeTrackingView() {
       toast.success("Zeiteintrag aktualisiert");
       setEditingEntry(null);
       loadMonthData();
-    } catch (error: any) {
-      toast.error(error.message || "Fehler beim Speichern");
+    } catch (error: unknown) {
+      toast.error(error instanceof Error ? error.message : "Fehler beim Speichern");
     } finally {
       setIsSaving(false);
     }
@@ -673,11 +673,12 @@ export function AdminTimeTrackingView() {
       // Delayed reload for resilient handling
       setTimeout(() => loadMonthData(), 500);
       
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Type change error:", error);
-      toast.error(error.message || "Fehler bei der Typänderung");
+      const msg = error instanceof Error ? error.message : '';
+      toast.error(msg || "Fehler bei der Typänderung");
       // On network errors, still reload data to verify
-      if (error.message?.includes('fetch')) {
+      if (msg.includes('fetch')) {
         setTimeout(() => loadMonthData(), 500);
       }
     } finally {
@@ -711,8 +712,8 @@ export function AdminTimeTrackingView() {
       setCorrectionMinutes("");
       setCorrectionReason("");
       loadMonthData();
-    } catch (error: any) {
-      toast.error(error.message || "Fehler beim Speichern der Korrektur");
+    } catch (error: unknown) {
+      toast.error(error instanceof Error ? error.message : "Fehler beim Speichern der Korrektur");
     }
   };
 
@@ -762,8 +763,8 @@ export function AdminTimeTrackingView() {
       setInitialBalanceMinutes("");
       loadMonthData();
       refetchYearlyBalance();
-    } catch (error: any) {
-      toast.error(error.message || "Fehler beim Speichern");
+    } catch (error: unknown) {
+      toast.error(error instanceof Error ? error.message : "Fehler beim Speichern");
     }
   };
 

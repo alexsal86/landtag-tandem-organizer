@@ -323,7 +323,7 @@ export function useMeetingArchive(deps: ArchiveDeps) {
       try {
         for (const ci of meetingLinkedCaseItems) {
           if ((ci as any).meeting_result?.trim()) {
-            await supabase.from('case_item_notes' as any).insert({
+            await supabase.from('case_item_notes' as any).insert({ // case_item_notes not in generated types
               case_item_id: ci.id, content: (ci as any).meeting_result,
               created_by: user.id, note_type: 'meeting_result',
             });

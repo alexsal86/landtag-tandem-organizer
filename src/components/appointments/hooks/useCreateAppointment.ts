@@ -150,8 +150,8 @@ export function useCreateAppointment(open: boolean, onOpenChange: (open: boolean
       toast({ title: "Termin erstellt", description: "Der Termin wurde erfolgreich gespeichert." });
       onOpenChange(false);
       navigate("/calendar");
-    } catch (error: any) {
-      toast({ title: "Fehler beim Erstellen", description: error.message || "Ein Fehler ist aufgetreten.", variant: "destructive" });
+    } catch (error: unknown) {
+      toast({ title: "Fehler beim Erstellen", description: error instanceof Error ? error.message : "Ein Fehler ist aufgetreten.", variant: "destructive" });
     } finally { setLoading(false); }
   };
 

@@ -152,9 +152,10 @@ export function useMeetingCreate(deps: UseMeetingCreateDeps) {
       setNewMeetingParticipants([]);
       setNewMeetingRecurrence({ enabled: false, frequency: 'weekly', interval: 1, weekdays: [] });
       toast({ title: "Meeting erstellt", description: "Das Meeting wurde mit vordefinierter Agenda erstellt." });
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Error creating meeting:', error);
-      toast({ title: "Fehler beim Erstellen", description: `Supabase Fehler: ${error.message || error.toString()}`, variant: "destructive" });
+      const msg = error instanceof Error ? error.message : String(error);
+      toast({ title: "Fehler beim Erstellen", description: `Supabase Fehler: ${msg}`, variant: "destructive" });
     }
   };
 

@@ -51,11 +51,11 @@ export function EmployeeMeetingRequestDialog() {
       setOpen(false);
       setReason("");
       setUrgency("medium");
-    } catch (error: any) {
+    } catch (error: unknown) {
       debugConsole.error("Error creating meeting request:", error);
       toast({
         title: "Fehler",
-        description: error.message || "Gesprächswunsch konnte nicht erstellt werden",
+        description: error instanceof Error ? error.message : "Gesprächswunsch konnte nicht erstellt werden",
         variant: "destructive",
       });
     } finally {

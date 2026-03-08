@@ -80,11 +80,11 @@ async function checkMissingEntries(userId: string, softDays: number, hardDays: n
 
     if (missingDates.length >= hardDays) {
       try {
-        await supabase.rpc("create_notification" as any, {
+        await supabase.rpc("create_notification", {
           user_id_param: userId,
           title_param: "Fehlende Zeiteinträge",
           message_param: `Du hast ${missingDates.length} Arbeitstage ohne Zeiteintrag. Bitte trage deine Arbeitszeiten nach.`,
-          type_param: "time_tracking",
+          type_name: "time_tracking",
           priority_param: "high",
           data_param: JSON.stringify({ missing_dates: missingDates.slice(0, 10) }),
         });

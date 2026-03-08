@@ -99,7 +99,7 @@ export function MyWorkCaseItemsTab() {
 
       const [{ data, error }, { data: caseFileData, error: caseFilesError }] = await Promise.all([
         supabase
-          .from("case_items" as any)
+          .from("case_items")
           .select("*")
           .eq("tenant_id", currentTenant.id)
           .order("updated_at", { ascending: false, nullsFirst: false })

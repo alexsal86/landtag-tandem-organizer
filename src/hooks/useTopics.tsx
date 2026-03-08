@@ -79,11 +79,11 @@ export const useTopics = () => {
       setTopics(prev => [...prev, data]);
       toast({ title: "Thema erstellt", description: `"${topicData.label}" wurde hinzugefügt.` });
       return data;
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Error creating topic:', error);
       toast({ 
         title: "Fehler", 
-        description: error.message || "Thema konnte nicht erstellt werden.", 
+        description: error instanceof Error ? error.message : "Thema konnte nicht erstellt werden.", 
         variant: "destructive" 
       });
       return null;
@@ -104,11 +104,11 @@ export const useTopics = () => {
       setTopics(prev => prev.map(t => t.id === id ? data : t));
       toast({ title: "Thema aktualisiert" });
       return data;
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Error updating topic:', error);
       toast({ 
         title: "Fehler", 
-        description: error.message || "Thema konnte nicht aktualisiert werden.", 
+        description: error instanceof Error ? error.message : "Thema konnte nicht aktualisiert werden.", 
         variant: "destructive" 
       });
       return null;
@@ -127,11 +127,11 @@ export const useTopics = () => {
       setTopics(prev => prev.filter(t => t.id !== id));
       toast({ title: "Thema gelöscht" });
       return true;
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Error deleting topic:', error);
       toast({ 
         title: "Fehler", 
-        description: error.message || "Thema konnte nicht gelöscht werden.", 
+        description: error instanceof Error ? error.message : "Thema konnte nicht gelöscht werden.", 
         variant: "destructive" 
       });
       return false;

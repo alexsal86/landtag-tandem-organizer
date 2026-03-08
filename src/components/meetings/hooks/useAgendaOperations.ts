@@ -187,11 +187,12 @@ export function useAgendaOperations(deps: AgendaOpsDeps) {
       if (activeMeeting && activeMeeting.id === selectedMeeting.id) {
         await loadAgendaItems(selectedMeeting.id);
       }
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Error saving agenda:', error);
+      const msg = error instanceof Error ? error.message : '';
       let errorMessage = 'Die Agenda konnte nicht gespeichert werden.';
-      if (error.message?.includes('invalid input syntax for type json')) errorMessage = 'Ungültiges Datenformat. Bitte prüfen Sie die Eingaben.';
-      else if (error.message?.includes('Failed to fetch')) errorMessage = 'Netzwerkfehler. Die Änderungen werden beim nächsten Laden synchronisiert.';
+      if (msg.includes('invalid input syntax for type json')) errorMessage = 'Ungültiges Datenformat. Bitte prüfen Sie die Eingaben.';
+      else if (msg.includes('Failed to fetch')) errorMessage = 'Netzwerkfehler. Die Änderungen werden beim nächsten Laden synchronisiert.';
       toast({ title: 'Fehler beim Speichern', description: errorMessage, variant: 'destructive' });
     }
   };
@@ -315,8 +316,8 @@ export function useAgendaOperations(deps: AgendaOpsDeps) {
           }
         }
         toast({ title: "Punkt gelöscht", description: "Der Agenda-Punkt wurde erfolgreich gelöscht." });
-      } catch (error: any) {
-        const errorMessage = error?.message || '';
+      } catch (error: unknown) {
+        const errorMessage = error instanceof Error ? error.message : '';
         const isNetworkError = errorMessage.includes('Failed to fetch') || errorMessage.includes('NetworkError') || errorMessage.includes('TypeError');
         if (!isNetworkError) {
           setAgendaItems(previousItems);

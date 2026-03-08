@@ -116,16 +116,17 @@ export const LetterTemplateSettings: React.FC<LetterTemplateSettingsProps> = ({ 
     setLoading(true);
     try {
       const { data, error } = await supabase
-        .from('letter_template_settings' as any)
+        .from('letter_template_settings')
         .select('*')
         .eq('tenant_id', currentTenant.id)
         .maybeSingle();
 
       if (error) throw error;
       if (data) {
-        setVariableDefaults((data as any).variable_defaults || {});
-        if ((data as any).din5008_defaults && Object.keys((data as any).din5008_defaults).length > 0) {
-          setDin5008Defaults((data as any).din5008_defaults);
+        setVariableDefaults((data.variable_defaults as Record<string, string>) || {});
+        const din = data.din5008_defaults as Record<string, unknown> | null;
+        if (din && Object.keys(din).length > 0) {
+          setDin5008Defaults(din as any);
         }
       }
 
@@ -161,28 +162,28 @@ export const LetterTemplateSettings: React.FC<LetterTemplateSettingsProps> = ({ 
     setSaving(true);
     try {
       const { data: existing } = await supabase
-        .from('letter_template_settings' as any)
+        .from('letter_template_settings')
         .select('id')
         .eq('tenant_id', currentTenant.id)
         .maybeSingle();
 
       if (existing) {
         const { error } = await supabase
-          .from('letter_template_settings' as any)
+          .from('letter_template_settings')
           .update({
             variable_defaults: variableDefaults,
             din5008_defaults: din5008Defaults,
-          } as any)
-          .eq('id', (existing as any).id);
+          })
+          .eq('id', existing.id);
         if (error) throw error;
       } else {
         const { error } = await supabase
-          .from('letter_template_settings' as any)
+          .from('letter_template_settings')
           .insert({
             tenant_id: currentTenant.id,
             variable_defaults: variableDefaults,
             din5008_defaults: din5008Defaults,
-          } as any);
+          });
         if (error) throw error;
       }
 

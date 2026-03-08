@@ -20,7 +20,7 @@ const trackSession = async (userId: string) => {
     
     // Check if a session with this device already exists
     const { data: existing } = await supabase
-      .from('user_sessions' as any)
+      .from('user_sessions')
       .select('id')
       .eq('user_id', userId)
       .eq('device_info', deviceInfo)
@@ -29,19 +29,19 @@ const trackSession = async (userId: string) => {
     if (existing && existing.length > 0) {
       // Update last_active_at
       await supabase
-        .from('user_sessions' as any)
-        .update({ last_active_at: new Date().toISOString(), is_current: true } as any)
-        .eq('id', (existing[0] as any).id);
+        .from('user_sessions')
+        .update({ last_active_at: new Date().toISOString(), is_current: true })
+        .eq('id', existing[0].id);
     } else {
       // Insert new session
       await supabase
-        .from('user_sessions' as any)
+        .from('user_sessions')
         .insert({
           user_id: userId,
           device_info: deviceInfo,
           is_current: true,
           last_active_at: new Date().toISOString(),
-        } as any);
+        });
     }
   } catch (error) {
     debugConsole.error('Error tracking session:', error);
@@ -103,7 +103,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     if (user?.id) {
       try {
         await supabase
-          .from('user_sessions' as any)
+          .from('user_sessions')
           .delete()
           .eq('user_id', user.id)
           .eq('device_info', navigator.userAgent);
