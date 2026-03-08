@@ -174,7 +174,7 @@ export const ExpenseManagement = () => {
       return null;
     }
 
-    console.log('Upload successful, file path:', filePath);
+    
     return filePath;
   };
 
