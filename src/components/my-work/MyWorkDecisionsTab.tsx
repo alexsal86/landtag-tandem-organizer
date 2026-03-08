@@ -261,7 +261,7 @@ export function MyWorkDecisionsTab() {
       setDeletingDecisionId(null);
     } catch (error) {
       setDecisions(previousDecisions);
-      console.error('Error deleting:', error);
+      debugConsole.error('Error deleting:', error);
       toast({ title: "Fehler", description: "Löschen fehlgeschlagen.", variant: "destructive" });
     }
   };
