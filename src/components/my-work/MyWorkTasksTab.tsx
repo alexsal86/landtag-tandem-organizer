@@ -259,7 +259,7 @@ export function MyWorkTasksTab() {
       });
       toast({ title: "Beschreibung aktualisiert" });
     } catch (error) {
-      console.error("Error updating description:", error);
+      debugConsole.error("Error updating description:", error);
       toast({ title: "Fehler beim Speichern", variant: "destructive" });
     }
   };
