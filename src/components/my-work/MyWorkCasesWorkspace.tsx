@@ -878,7 +878,7 @@ export function MyWorkCasesWorkspace() {
                       </div>
                     </div>
                   </div>
-                  <p className="text-xs text-muted-foreground mt-1">Vorgänge per Drag & Drop auf eine FallAkte ziehen zum Verknüpfen</p>
+                  <p className="text-xs text-muted-foreground mt-1">Vorgänge per Drag & Drop auf eine Fallakte ziehen zum Verknüpfen</p>
                 </CardHeader>
                 <CardContent className="space-y-3 pt-5">
                   <Droppable droppableId="case-items-list" isDropDisabled>
