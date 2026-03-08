@@ -95,7 +95,7 @@ export function useMyWorkSettings(): MyWorkSettingsResult {
       setBadgeDisplayMode(mode);
       return true;
     } catch (error) {
-      console.error('Error in updateBadgeDisplayMode:', error);
+      debugConsole.error('Error in updateBadgeDisplayMode:', error);
       return false;
     }
   }, [user]);
