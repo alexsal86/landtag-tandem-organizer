@@ -79,13 +79,13 @@ export function useTaskOperations({
       }
 
       if (newStatus === "completed") {
-        const { error: archiveError } = await supabase.from('archived_tasks').insert({
+        const { error: archiveError } = await supabase.from('archived_tasks').insert([{
           task_id: taskId, user_id: user.id, title: task.title,
           description: task.description, priority: task.priority,
           category: task.category, assigned_to: task.assignedTo || '',
           progress: 100, due_date: task.dueDate,
           completed_at: new Date().toISOString(),
-        });
+        }]);
 
         if (archiveError) {
           const isNetworkError = archiveError.message?.includes('Failed to fetch') || archiveError.message?.includes('NetworkError');
