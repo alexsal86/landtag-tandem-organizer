@@ -124,9 +124,9 @@ export function ContactEditForm({ contact, onSuccess, onCancel }: ContactEditFor
       setExistingContacts(data?.map(c => ({
         id: c.id,
         name: c.name,
-        email: c.email,
-        phone: c.phone,
-        organization: c.organization,
+        email: c.email ?? undefined,
+        phone: c.phone ?? undefined,
+        organization: c.organization ?? undefined,
       })) || []);
     } catch (error) {
       debugConsole.error('Error fetching existing contacts:', error);
