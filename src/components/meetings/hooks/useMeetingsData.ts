@@ -522,7 +522,7 @@ export function useMeetingsData() {
       if (agendaItemIds && agendaItemIds.length > 0) {
         const { error: docError } = await supabase
           .from('meeting_agenda_documents').delete().in('meeting_agenda_item_id', agendaItemIds.map(i => i.id));
-        if (docError) console.error('Error deleting agenda docs:', docError);
+        if (docError) debugConsole.error('Error deleting agenda docs:', docError);
       }
 
       await supabase.from('meeting_agenda_items').delete().eq('meeting_id', meetingId);
