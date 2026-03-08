@@ -1,5 +1,6 @@
 import { useState, useEffect, useMemo } from "react";
 import { useYearlyBalance } from "@/hooks/useYearlyBalance";
+import { debugConsole } from "@/utils/debugConsole";
 import { ConfirmDialog } from "@/components/shared/ConfirmDialog";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Alert, AlertDescription } from "@/components/ui/alert";
