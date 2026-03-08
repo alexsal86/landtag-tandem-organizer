@@ -188,7 +188,7 @@ export const ExpenseManagement = () => {
 
     let receiptPath = null;
     if (newExpense.receipt_file) {
-      console.log('Receipt file selected, starting upload...');
+      
       receiptPath = await uploadReceipt(newExpense.receipt_file);
       if (!receiptPath) {
         console.error('Receipt upload failed, aborting expense creation');
