@@ -11,7 +11,7 @@ import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { cn } from "@/lib/utils";
-import { ArrowLeft, ArrowRight, Check, Clock, Filter, Loader2, Play, Plus, Save, Trash2, Zap } from "lucide-react";
+import { ArrowLeft, ArrowRight, Check, Clock, Filter, FolderPlus, Loader2, Play, Plus, Save, Trash2, Zap } from "lucide-react";
 
 const MODULE_OPTIONS = [
   { value: "tasks", label: "Aufgaben" },
