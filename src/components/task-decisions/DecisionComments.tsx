@@ -181,7 +181,7 @@ export function DecisionComments({
       loadComments();
       onCommentAdded?.();
     } catch (error) {
-      console.error('Error submitting comment:', error);
+      debugConsole.error('Error submitting comment:', error);
       toast({
         title: "Fehler",
         description: "Kommentar konnte nicht gespeichert werden.",
