@@ -127,8 +127,8 @@ export function SenderInformationManager() {
       toast({ title: "Absender gelöscht" });
       setDeleteConfirmId(null);
       fetchSenderInfos();
-    } catch (error: any) {
-      toast({ title: "Fehler", description: error.message, variant: "destructive" });
+    } catch (error: unknown) {
+      toast({ title: "Fehler", description: error instanceof Error ? error.message : String(error), variant: "destructive" });
     }
   };
 
