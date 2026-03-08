@@ -282,7 +282,7 @@ export function useCombinedTimeEntries({
               });
             });
         } catch (e) {
-          console.error('Error processing overtime leave:', e);
+          debugConsole.error('Error processing overtime leave:', e);
         }
       });
 
