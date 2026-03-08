@@ -456,11 +456,11 @@ export function useEventPlanningData() {
       const { data, error } = await supabase.from("event_planning_dates").insert([{ event_planning_id: selectedPlanning.id, date_time: dateTime.toISOString() }]).select().single();
       if (error) throw error;
 
-      const { data: appointment, error: appointmentError } = await supabase.from("appointments").insert({
+      const { data: appointment, error: appointmentError } = await supabase.from("appointments").insert([{
         user_id: user?.id, tenant_id: currentTenant.id, title: `Geplant: ${selectedPlanning.title}`,
         start_time: dateTime.toISOString(), end_time: new Date(dateTime.getTime() + 2 * 60 * 60 * 1000).toISOString(),
         category: "blocked", status: "planned",
-      }).select().single();
+      }]).select().single();
 
       if (!appointmentError && appointment) {
         await supabase.from("event_planning_dates").update({ appointment_id: appointment.id }).eq("id", data.id);
