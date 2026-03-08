@@ -449,7 +449,7 @@ export function TasksView() {
       .map(userId => {
         const user = users.find(u => u.user_id === userId);
         const result = user?.display_name || userId;
-        console.log(`📝 User ${userId} resolved to: ${result}`);
+        
         return result;
       })
       .join(', ');
