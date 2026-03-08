@@ -198,7 +198,7 @@ export const LetterStatusWorkflow: React.FC<LetterStatusWorkflowProps> = ({
             await archiveLetter(fullLetter, currentUserId);
           }
         } catch (archiveErr) {
-          console.error('Archive failed:', archiveErr);
+          debugConsole.error('Archive failed:', archiveErr);
         }
 
         // Handle email sending
