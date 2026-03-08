@@ -51,8 +51,8 @@ export function AppointmentPreparationFileUpload({
         id: doc.id,
         file_name: doc.file_name,
         file_path: doc.file_path,
-        file_size: doc.file_size,
-        file_type: doc.file_type,
+        file_size: doc.file_size ?? 0,
+        file_type: doc.file_type ?? undefined,
         uploaded: true,
         uploading: false
       }));

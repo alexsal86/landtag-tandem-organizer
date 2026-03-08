@@ -1367,7 +1367,7 @@ export function AdminTimeTrackingView() {
                           </TableCell>
                           <TableCell>{corr.reason}</TableCell>
                           <TableCell className="text-muted-foreground">
-                            {format(parseISO(corr.created_at), "dd.MM.yyyy HH:mm")}
+                            {format(parseISO(corr.created_at ?? new Date().toISOString()), "dd.MM.yyyy HH:mm")}
                           </TableCell>
                         </TableRow>
                       ))}

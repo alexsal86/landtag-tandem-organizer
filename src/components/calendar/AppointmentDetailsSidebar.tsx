@@ -34,14 +34,14 @@ export function AppointmentDetailsSidebar({
   const navigate = useNavigate();
   const [isDeleting, setIsDeleting] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
-  const [appointmentCategories, setAppointmentCategories] = useState<Array<{ name: string; label: string; color: string }>>([]);
+  const [appointmentCategories, setAppointmentCategories] = useState<Array<{ name: string; label: string; color: string | null }>>([]);
   const [guests, setGuests] = useState<Array<{
     id: string;
     name: string;
     email: string;
     status: string;
-    responded_at?: string;
-    response_note?: string;
+    responded_at?: string | null;
+    response_note?: string | null;
   }>>([]);
   const [isLoadingGuests, setIsLoadingGuests] = useState(false);
   const [isSendingInvitations, setIsSendingInvitations] = useState(false);

@@ -428,7 +428,7 @@ export function ConfigurableTypeSettings({
                                       onClick={() => setEditingItem({ 
                                         id: item.id, 
                                         label: item.label, 
-                                        color: item.color || defaultColor, 
+                                        color: item.color ?? defaultColor, 
                                         icon: item.icon || undefined 
                                       })}
                                       size="sm"
