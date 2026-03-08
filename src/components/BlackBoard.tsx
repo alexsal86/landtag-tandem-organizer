@@ -33,7 +33,7 @@ export function BlackBoard() {
         .rpc('get_user_messages', { user_id_param: user.id });
 
       if (error) {
-        console.error('Error fetching public messages:', error);
+        debugConsole.error('Error fetching public messages:', error);
         return;
       }
 
