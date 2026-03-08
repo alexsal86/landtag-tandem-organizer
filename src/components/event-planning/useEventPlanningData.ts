@@ -10,6 +10,7 @@ import { DropResult } from "@hello-pangea/dnd";
 import { format } from "date-fns";
 import { de } from "date-fns/locale";
 import { debugConsole } from '@/utils/debugConsole';
+import { handleAppError } from '@/utils/errorHandler';
 import type {
   EventPlanning,
   EventPlanningContact,
@@ -228,8 +229,7 @@ export function useEventPlanningData() {
         catch (collabError) { debugConsole.error('Error fetching collaborators:', collabError); }
       }
     } catch (err) {
-      debugConsole.error('Unexpected error in fetchPlannings:', err);
-      toast({ title: "Fehler", description: "Ein unerwarteter Fehler ist aufgetreten beim Laden der Planungen.", variant: "destructive" });
+      handleAppError(err, { context: 'fetchPlannings', toast: { fn: toast, title: 'Fehler', description: 'Ein unerwarteter Fehler ist aufgetreten beim Laden der Planungen.' } });
     } finally {
       setLoading(false);
     }
@@ -241,7 +241,7 @@ export function useEventPlanningData() {
       const { data, error } = await supabase.from("event_plannings").select("*").eq("tenant_id", currentTenant.id).eq("is_archived", true).order("archived_at", { ascending: false });
       if (error) throw error;
       setArchivedPlannings(data || []);
-    } catch (error) { debugConsole.error('Error fetching archived plannings:', error); }
+    } catch (error) { handleAppError(error, { context: 'fetchArchivedPlannings' }); }
   };
 
   const archivePlanning = async (planningId: string) => {
@@ -257,8 +257,7 @@ export function useEventPlanningData() {
       if (selectedPlanning?.id === planningId) setSelectedPlanning(null);
       fetchPlannings();
     } catch (error) {
-      debugConsole.error('Error archiving planning:', error);
-      toast({ title: "Fehler", description: "Planung konnte nicht archiviert werden.", variant: "destructive" });
+      handleAppError(error, { context: 'archivePlanning', toast: { fn: toast, title: 'Fehler', description: 'Planung konnte nicht archiviert werden.' } });
     }
   };
 
@@ -269,8 +268,7 @@ export function useEventPlanningData() {
       toast({ title: isCompleted ? "Planung als erledigt markiert" : "Markierung entfernt" });
       fetchPlannings();
     } catch (error) {
-      debugConsole.error('Error toggling completed:', error);
-      toast({ title: "Fehler", variant: "destructive" });
+      handleAppError(error, { context: 'togglePlanningCompleted', toast: { fn: toast, title: 'Fehler' } });
     }
   };
 
@@ -282,8 +280,7 @@ export function useEventPlanningData() {
       fetchPlannings();
       fetchArchivedPlannings();
     } catch (error) {
-      debugConsole.error('Error restoring planning:', error);
-      toast({ title: "Fehler", description: "Planung konnte nicht wiederhergestellt werden.", variant: "destructive" });
+      handleAppError(error, { context: 'restorePlanning', toast: { fn: toast, title: 'Fehler', description: 'Planung konnte nicht wiederhergestellt werden.' } });
     }
   };
 
@@ -294,8 +291,7 @@ export function useEventPlanningData() {
       toast({ title: "Terminplanung archiviert", description: "Die Terminplanung wurde ins Archiv verschoben." });
       fetchAppointmentPreparations();
     } catch (error) {
-      debugConsole.error('Error archiving preparation:', error);
-      toast({ title: "Fehler", description: "Terminplanung konnte nicht archiviert werden.", variant: "destructive" });
+      handleAppError(error, { context: 'archivePreparation', toast: { fn: toast, title: 'Fehler', description: 'Terminplanung konnte nicht archiviert werden.' } });
     }
   };
 
@@ -324,7 +320,7 @@ export function useEventPlanningData() {
       const { data: profiles, error: profileError } = await supabase.from("profiles").select("user_id, display_name, avatar_url").in("user_id", userIds);
       if (profileError) { debugConsole.error("Error fetching profiles:", profileError); return; }
       setAllProfiles(profiles || []);
-    } catch (error) { debugConsole.error("Error in fetchAllProfiles:", error); }
+    } catch (error) { handleAppError(error, { context: 'fetchAllProfiles' }); }
   };
 
   const fetchAvailableContacts = async () => {
@@ -344,7 +340,7 @@ export function useEventPlanningData() {
       const { data: archivedData, error: archivedError } = await supabase.from("appointment_preparations").select("*").eq("is_archived", true).order("archived_at", { ascending: false });
       if (archivedError) debugConsole.error("Error fetching archived preparations:", archivedError);
       else setArchivedPreparations(archivedData || []);
-    } catch (error) { debugConsole.error("Error in fetchAppointmentPreparations:", error); }
+    } catch (error) { handleAppError(error, { context: 'fetchAppointmentPreparations' }); }
   };
 
   const handlePreparationClick = (preparation: AppointmentPreparation) => {
@@ -878,14 +874,14 @@ export function useEventPlanningData() {
       const { data: comments, error } = await supabase.from('planning_item_comments').select('*').eq('planning_item_id', itemId).order('created_at', { ascending: true });
       if (error) throw error;
       const userIds = [...new Set(comments?.map(c => c.user_id) || [])];
-      let profiles: any[] = [];
+      let profiles: Array<{ user_id: string; display_name: string | null; avatar_url: string | null }> = [];
       if (userIds.length > 0) {
         const { data: profilesData } = await supabase.from('profiles').select('user_id, display_name, avatar_url').in('user_id', userIds);
         profiles = profilesData || [];
       }
       const formattedComments: PlanningComment[] = (comments || []).map(comment => ({ id: comment.id, planning_item_id: comment.planning_item_id, user_id: comment.user_id, content: comment.content, created_at: comment.created_at, profile: profiles.find(p => p.user_id === comment.user_id) || null }));
       setItemComments(prev => ({ ...prev, [itemId]: formattedComments }));
-    } catch (error) { debugConsole.error('Error loading item comments:', error); }
+    } catch (error) { handleAppError(error, { context: 'loadItemComments' }); }
   };
 
   const loadItemSubtasks = async (itemId: string) => {
@@ -893,7 +889,7 @@ export function useEventPlanningData() {
       const { data, error } = await supabase.from('planning_item_subtasks').select('*').eq('planning_item_id', itemId).order('order_index', { ascending: true });
       if (error) throw error;
       setItemSubtasks(prev => ({ ...prev, [itemId]: data || [] }));
-    } catch (error) { debugConsole.error('Error loading item subtasks:', error); }
+    } catch (error) { handleAppError(error, { context: 'loadItemSubtasks' }); }
   };
 
   const loadItemDocuments = async (itemId: string) => {
@@ -901,7 +897,7 @@ export function useEventPlanningData() {
       const { data, error } = await supabase.from('planning_item_documents').select('*').eq('planning_item_id', itemId).order('created_at', { ascending: false });
       if (error) throw error;
       setItemDocuments(prev => ({ ...prev, [itemId]: data || [] }));
-    } catch (error) { debugConsole.error('Error loading item documents:', error); }
+    } catch (error) { handleAppError(error, { context: 'loadItemDocuments' }); }
   };
 
   const addItemComment = async () => {
@@ -913,7 +909,7 @@ export function useEventPlanningData() {
       loadItemComments(selectedItemId);
       loadAllItemCounts();
       toast({ title: "Kommentar hinzugefügt", description: "Ihr Kommentar wurde erfolgreich hinzugefügt." });
-    } catch (error) { debugConsole.error('Error adding comment:', error); toast({ title: "Fehler", description: "Kommentar konnte nicht hinzugefügt werden.", variant: "destructive" }); }
+    } catch (error) { handleAppError(error, { context: 'addItemComment', toast: { fn: toast, title: 'Fehler', description: 'Kommentar konnte nicht hinzugefügt werden.' } }); }
   };
 
   const addItemSubtask = async (description?: string, assignedTo?: string, dueDate?: string, itemId?: string) => {
@@ -932,7 +928,7 @@ export function useEventPlanningData() {
       loadItemSubtasks(planningItemId);
       loadAllItemCounts();
       toast({ title: "Unteraufgabe hinzugefügt", description: "Die Unteraufgabe wurde erfolgreich erstellt." });
-    } catch (error) { debugConsole.error('Error adding subtask:', error); toast({ title: "Fehler", description: "Unteraufgabe konnte nicht hinzugefügt werden.", variant: "destructive" }); }
+    } catch (error) { handleAppError(error, { context: 'addItemSubtask', toast: { fn: toast, title: 'Fehler', description: 'Unteraufgabe konnte nicht hinzugefügt werden.' } }); }
   };
 
   const addItemCommentForItem = async (itemId: string, comment: string) => {
@@ -943,7 +939,7 @@ export function useEventPlanningData() {
       loadItemComments(itemId);
       loadAllItemCounts();
       toast({ title: "Kommentar hinzugefügt", description: "Ihr Kommentar wurde erfolgreich hinzugefügt." });
-    } catch (error) { debugConsole.error('Error adding comment:', error); toast({ title: "Fehler", description: "Kommentar konnte nicht hinzugefügt werden.", variant: "destructive" }); }
+    } catch (error) { handleAppError(error, { context: 'addItemCommentForItem', toast: { fn: toast, title: 'Fehler', description: 'Kommentar konnte nicht hinzugefügt werden.' } }); }
   };
 
   const loadAllItemCounts = async (items?: ChecklistItem[]) => {
@@ -963,7 +959,7 @@ export function useEventPlanningData() {
 
       const { data: commentsData } = await supabase.from('planning_item_comments').select('planning_item_id, id, content, user_id, created_at').in('planning_item_id', itemIds);
       const userIds = [...new Set(commentsData?.map(c => c.user_id) || [])];
-      let profiles: any[] = [];
+      let profiles: Array<{ user_id: string; display_name: string | null; avatar_url: string | null }> = [];
       if (userIds.length > 0) {
         const { data: profilesData } = await supabase.from('profiles').select('user_id, display_name, avatar_url').in('user_id', userIds);
         profiles = profilesData || [];
@@ -982,7 +978,7 @@ export function useEventPlanningData() {
         documentsMap[doc.planning_item_id].push({ ...doc, user_id: doc.user_id || user?.id || '' });
       });
       setItemDocuments(documentsMap);
-    } catch (error) { debugConsole.error('Error loading item counts:', error); }
+    } catch (error) { handleAppError(error, { context: 'loadAllItemCounts' }); }
   };
 
   const handleItemFileUpload = async (event: React.ChangeEvent<HTMLInputElement>, itemId: string) => {
@@ -1014,7 +1010,7 @@ export function useEventPlanningData() {
       loadItemDocuments(selectedItemId!);
       loadAllItemCounts();
       toast({ title: "Dokument gelöscht", description: "Das Dokument wurde erfolgreich entfernt." });
-    } catch (error) { debugConsole.error('Error deleting document:', error); toast({ title: "Fehler", description: "Das Dokument konnte nicht gelöscht werden.", variant: "destructive" }); }
+    } catch (error) { handleAppError(error, { context: 'deleteItemDocument', toast: { fn: toast, title: 'Fehler', description: 'Das Dokument konnte nicht gelöscht werden.' } }); }
   };
 
   const downloadItemDocument = async (doc: PlanningDocument) => {
@@ -1026,7 +1022,7 @@ export function useEventPlanningData() {
       a.href = url; a.download = doc.file_name;
       document.body.appendChild(a); a.click();
       document.body.removeChild(a); URL.revokeObjectURL(url);
-    } catch (error) { debugConsole.error('Error downloading document:', error); toast({ title: "Fehler", description: "Das Dokument konnte nicht heruntergeladen werden.", variant: "destructive" }); }
+    } catch (error) { handleAppError(error, { context: 'downloadItemDocument', toast: { fn: toast, title: 'Fehler', description: 'Das Dokument konnte nicht heruntergeladen werden.' } }); }
   };
 
   const deleteItemComment = async (comment: PlanningComment) => {
@@ -1037,7 +1033,7 @@ export function useEventPlanningData() {
       loadItemComments(comment.planning_item_id);
       loadAllItemCounts();
       toast({ title: "Kommentar gelöscht", description: "Der Kommentar wurde erfolgreich entfernt." });
-    } catch (error) { debugConsole.error('Error deleting comment:', error); toast({ title: "Fehler", description: "Kommentar konnte nicht gelöscht werden.", variant: "destructive" }); }
+    } catch (error) { handleAppError(error, { context: 'deleteItemComment', toast: { fn: toast, title: 'Fehler', description: 'Kommentar konnte nicht gelöscht werden.' } }); }
   };
 
   const handleSubtaskComplete = async (subtaskId: string, isCompleted: boolean, result: string, itemId: string) => {
@@ -1050,7 +1046,7 @@ export function useEventPlanningData() {
       loadItemSubtasks(itemId);
       loadAllItemCounts();
       if (isCompleted) toast({ title: "Unteraufgabe abgeschlossen", description: "Die Unteraufgabe wurde erfolgreich als erledigt markiert." });
-    } catch (error) { debugConsole.error('Error updating subtask:', error); toast({ title: "Fehler", description: "Unteraufgabe konnte nicht aktualisiert werden.", variant: "destructive" }); }
+    } catch (error) { handleAppError(error, { context: 'handleSubtaskComplete', toast: { fn: toast, title: 'Fehler', description: 'Unteraufgabe konnte nicht aktualisiert werden.' } }); }
   };
 
   const updateItemComment = async (commentId: string, newContent: string) => {
@@ -1062,7 +1058,7 @@ export function useEventPlanningData() {
       if (comment) { loadItemComments(comment.planning_item_id); loadAllItemCounts(); }
       setEditingComment(prev => ({ ...prev, [commentId]: '' }));
       toast({ title: "Kommentar aktualisiert", description: "Der Kommentar wurde erfolgreich bearbeitet." });
-    } catch (error) { debugConsole.error('Error updating comment:', error); toast({ title: "Fehler", description: "Kommentar konnte nicht bearbeitet werden.", variant: "destructive" }); }
+    } catch (error) { handleAppError(error, { context: 'updateItemComment', toast: { fn: toast, title: 'Fehler', description: 'Kommentar konnte nicht bearbeitet werden.' } }); }
   };
 
   return {

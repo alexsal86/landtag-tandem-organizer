@@ -1,5 +1,6 @@
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
+import { handleAppError } from "@/utils/errorHandler";
 import type { CalendarEvent } from "../types";
 
 export function useCalendarOperations(refreshAppointments: () => void) {
@@ -16,7 +17,7 @@ export function useCalendarOperations(refreshAppointments: () => void) {
       refreshAppointments();
       toast({ title: "Termin verschoben", description: `${event.title} wurde erfolgreich verschoben.` });
     } catch {
-      toast({ title: "Fehler", description: "Der Termin konnte nicht verschoben werden.", variant: "destructive" });
+      handleAppError(new Error('Termin konnte nicht verschoben werden'), { context: 'handleEventDrop', toast: { fn: toast, title: 'Fehler', description: 'Der Termin konnte nicht verschoben werden.' } });
     }
   };
 
@@ -30,7 +31,7 @@ export function useCalendarOperations(refreshAppointments: () => void) {
       refreshAppointments();
       toast({ title: "Termin angepasst", description: "Die Terminlänge wurde erfolgreich angepasst." });
     } catch {
-      toast({ title: "Fehler", description: "Der Termin konnte nicht angepasst werden.", variant: "destructive" });
+      handleAppError(new Error('Termin konnte nicht angepasst werden'), { context: 'handleEventResize', toast: { fn: toast, title: 'Fehler', description: 'Der Termin konnte nicht angepasst werden.' } });
     }
   };
 

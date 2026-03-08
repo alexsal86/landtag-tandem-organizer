@@ -1,5 +1,6 @@
 import { useState, useEffect, useMemo, useRef } from "react";
 import { debugConsole } from '@/utils/debugConsole';
+import { handleAppError } from '@/utils/errorHandler';
 import { useSearchParams } from "react-router-dom";
 import { useNotificationHighlight } from "@/hooks/useNotificationHighlight";
 import { useAuth } from "@/hooks/useAuth";
@@ -187,7 +188,7 @@ export function useMeetingsData() {
           }
         }
       } catch (error) {
-        debugConsole.error('Error syncing task changes:', error);
+        handleAppError(error, { context: 'syncTaskChanges' });
       }
     };
     if (tasks.length > 0) syncTaskChanges();
@@ -263,8 +264,7 @@ export function useMeetingsData() {
       const allMeetings = [...(ownMeetings || []), ...participantMeetingsData];
       setMeetings(allMeetings.map(meeting => ({ ...meeting, meeting_date: new Date(meeting.meeting_date) })));
     } catch (error) {
-      debugConsole.error('Error in loadMeetings:', error);
-      toast({ title: "Fehler beim Laden der Meetings", description: "Die Meetings konnten nicht geladen werden.", variant: "destructive" });
+      handleAppError(error, { context: 'loadMeetings', toast: { fn: toast, title: 'Fehler beim Laden der Meetings', description: 'Die Meetings konnten nicht geladen werden.' } });
     }
   };
 
@@ -284,7 +284,7 @@ export function useMeetingsData() {
       const otherProfiles = data?.filter(p => p.user_id !== user?.id) || [];
       setProfiles(currentUserProfile ? [currentUserProfile, ...otherProfiles] : otherProfiles);
     } catch (error) {
-      debugConsole.error('Error loading profiles:', error);
+      handleAppError(error, { context: 'loadProfiles' });
     }
   };
 
@@ -301,7 +301,7 @@ export function useMeetingsData() {
       setTasks(filteredTasks);
       if (filteredTasks.length > 0) await loadTaskDocuments(filteredTasks.map(task => task.id));
     } catch (error) {
-      debugConsole.error('Error loading tasks:', error);
+      handleAppError(error, { context: 'loadTasks' });
     }
   };
 
@@ -316,7 +316,7 @@ export function useMeetingsData() {
       });
       setTaskDocuments(docsByTaskId);
     } catch (error) {
-      debugConsole.error('Error loading task documents:', error);
+      handleAppError(error, { context: 'loadTaskDocuments' });
     }
   };
 
@@ -347,7 +347,7 @@ export function useMeetingsData() {
         }
       }
     } catch (error) {
-      debugConsole.error('Error loading meeting templates:', error);
+      handleAppError(error, { context: 'loadMeetingTemplates' });
     }
   };
 
@@ -372,8 +372,7 @@ export function useMeetingsData() {
         await loadAgendaDocuments(sortedItems.map(item => item.id!).filter(Boolean));
       }
     } catch (error) {
-      debugConsole.error('Error loading agenda items:', error);
-      toast({ title: "Fehler beim Laden der Agenda", description: "Die Agenda-Punkte konnten nicht geladen werden.", variant: "destructive" });
+      handleAppError(error, { context: 'loadAgendaItems', toast: { fn: toast, title: 'Fehler beim Laden der Agenda', description: 'Die Agenda-Punkte konnten nicht geladen werden.' } });
     }
   };
 
@@ -389,7 +388,7 @@ export function useMeetingsData() {
       });
       setAgendaDocuments(docsByItemId);
     } catch (error) {
-      debugConsole.error('Error loading agenda documents:', error);
+      handleAppError(error, { context: 'loadAgendaDocuments' });
     }
   };
 
@@ -410,8 +409,8 @@ export function useMeetingsData() {
       setAgendaDocuments(prev => ({ ...prev, [agendaItemId]: [...(prev[agendaItemId] || []), document] }));
       return document;
     } catch (error) {
-      debugConsole.error('Error uploading agenda document:', error);
-      throw error;
+      handleAppError(error, { context: 'uploadAgendaDocument', rethrow: true });
+      throw error; // unreachable but satisfies TS
     }
   };
 
@@ -424,8 +423,7 @@ export function useMeetingsData() {
       setAgendaDocuments(prev => ({ ...prev, [agendaItemId]: (prev[agendaItemId] || []).filter(doc => doc.id !== documentId) }));
       toast({ title: "Dokument entfernt", description: "Das Dokument wurde erfolgreich entfernt." });
     } catch (error) {
-      debugConsole.error('Error deleting agenda document:', error);
-      toast({ title: "Fehler", description: "Dokument konnte nicht entfernt werden.", variant: "destructive" });
+      handleAppError(error, { context: 'deleteAgendaDocument', toast: { fn: toast, title: 'Fehler', description: 'Dokument konnte nicht entfernt werden.' } });
     }
   };
 

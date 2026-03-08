@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { debugConsole } from '@/utils/debugConsole';
+import { handleAppError } from '@/utils/errorHandler';
 import { useTenant } from '@/hooks/useTenant';
 import { useAuth } from '@/hooks/useAuth';
 import { useToast } from '@/hooks/use-toast';
@@ -62,8 +63,7 @@ export function useLetterTemplateData() {
       if (error) throw error;
       setTemplates((data || []) as unknown as LetterTemplate[]);
     } catch (error) {
-      debugConsole.error('Error fetching templates:', error);
-      toast({ title: "Fehler", description: "Templates konnten nicht geladen werden.", variant: "destructive" });
+      handleAppError(error, { context: 'fetchTemplates', toast: { fn: toast, title: 'Fehler', description: 'Templates konnten nicht geladen werden.' } });
     } finally {
       setLoading(false);
     }
@@ -75,7 +75,7 @@ export function useLetterTemplateData() {
       const { data, error } = await supabase.from('sender_information').select('id, name, organization, is_default').eq('tenant_id', currentTenant.id).eq('is_active', true).order('is_default', { ascending: false });
       if (error) throw error;
       setSenderInfos(data || []);
-    } catch (error) { debugConsole.error('Error fetching sender infos:', error); }
+    } catch (error) { handleAppError(error, { context: 'fetchSenderInfos' }); }
   };
 
   const fetchInformationBlocks = async () => {
@@ -84,7 +84,7 @@ export function useLetterTemplateData() {
       const { data, error } = await supabase.from('information_blocks').select('id, name, label, is_default').eq('tenant_id', currentTenant.id).eq('is_active', true).order('is_default', { ascending: false });
       if (error) throw error;
       setInfoBlocks(data || []);
-    } catch (error) { debugConsole.error('Error fetching info blocks:', error); }
+    } catch (error) { handleAppError(error, { context: 'fetchInformationBlocks' }); }
   };
 
   const stripBlobUrls = (elements: unknown): unknown => {
@@ -146,8 +146,7 @@ export function useLetterTemplateData() {
       resetForm();
       fetchTemplates();
     } catch (error) {
-      debugConsole.error('Error creating template:', error);
-      toast({ title: "Fehler", description: "Template konnte nicht erstellt werden.", variant: "destructive" });
+      handleAppError(error, { context: 'handleCreateTemplate', toast: { fn: toast, title: 'Fehler', description: 'Template konnte nicht erstellt werden.' } });
     }
   };
 
@@ -171,8 +170,7 @@ export function useLetterTemplateData() {
       toast({ title: "Template aktualisiert" });
       setEditingTemplate(null); resetForm(); fetchTemplates();
     } catch (error) {
-      debugConsole.error('Error updating template:', error);
-      toast({ title: "Fehler", description: "Template konnte nicht aktualisiert werden.", variant: "destructive" });
+      handleAppError(error, { context: 'handleUpdateTemplate', toast: { fn: toast, title: 'Fehler', description: 'Template konnte nicht aktualisiert werden.' } });
     }
   };
 
@@ -184,8 +182,7 @@ export function useLetterTemplateData() {
       toast({ title: "Template gelöscht" });
       fetchTemplates();
     } catch (error) {
-      debugConsole.error('Error deleting template:', error);
-      toast({ title: "Fehler", description: "Template konnte nicht gelöscht werden.", variant: "destructive" });
+      handleAppError(error, { context: 'handleDeleteTemplate', toast: { fn: toast, title: 'Fehler', description: 'Template konnte nicht gelöscht werden.' } });
     }
   };
 
