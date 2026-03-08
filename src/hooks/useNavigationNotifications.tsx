@@ -85,7 +85,7 @@ export const useNavigationNotifications = (): NavigationNotifications => {
         .eq('user_id', user.id);
 
       if (visitsError) {
-        console.error('Error loading visits:', visitsError);
+        debugConsole.error('Error loading visits:', visitsError);
         return;
       }
 
