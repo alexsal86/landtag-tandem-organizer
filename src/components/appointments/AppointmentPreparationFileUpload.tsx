@@ -1,4 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
+import { debugConsole } from '@/utils/debugConsole';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Upload, X, File, AlertCircle, Download } from 'lucide-react';
