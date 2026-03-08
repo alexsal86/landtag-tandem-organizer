@@ -627,7 +627,7 @@ export function useEventPlanningData() {
       setChecklistItems(items => items.filter(item => item.id !== itemId));
       toast({ title: "Erfolg", description: "Checklisten-Punkt wurde gelöscht." });
     } catch (error) {
-      console.error('Error deleting checklist item:', error);
+      debugConsole.error('Error deleting checklist item:', error);
       toast({ title: "Fehler", description: "Checklisten-Punkt konnte nicht gelöscht werden.", variant: "destructive" });
     }
   };
