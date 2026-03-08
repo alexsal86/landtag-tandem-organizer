@@ -131,10 +131,10 @@ export function DrucksachenUpload({ onUploadSuccess, onProtocolsRefresh }: Druck
       await supabase.storage
         .from('parliament-protocols')
         .remove([filePath]);
-      console.log('Cleaned up orphaned file:', filePath);
+      debugConsole.log('Cleaned up orphaned file:', filePath);
       return true;
     } catch (error) {
-      console.error('Failed to cleanup orphaned file:', error);
+      debugConsole.error('Failed to cleanup orphaned file:', error);
       return false;
     }
   };
