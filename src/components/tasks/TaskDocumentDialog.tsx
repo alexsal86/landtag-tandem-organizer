@@ -61,7 +61,7 @@ export function TaskDocumentDialog({
       if (error) throw error;
       setDocuments(data || []);
     } catch (error) {
-      console.error("Error loading documents:", error);
+      debugConsole.error("Error loading documents:", error);
     } finally {
       setLoading(false);
     }
