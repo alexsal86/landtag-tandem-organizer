@@ -105,7 +105,7 @@ export const PollResponseInterface = ({ pollId, token, participantId, isPreview 
           // External participant with token
           const { data: participantData, error: participantError } = await supabase
             .from('poll_participants')
-            .select('*')
+            .select('id, name, email, is_external, token')
             .eq('poll_id', pollId)
             .eq('token', token)
             .maybeSingle();
