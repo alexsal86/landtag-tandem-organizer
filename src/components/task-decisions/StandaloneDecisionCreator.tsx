@@ -227,12 +227,12 @@ export const StandaloneDecisionCreator = ({
       // Get current user first and validate
       const { data: userData, error: userError } = await supabase.auth.getUser();
       if (userError) {
-        console.error('Auth error:', userError);
+        debugConsole.error('Auth error:', userError);
         throw new Error(`Authentication error: ${userError.message}`);
       }
       
       if (!userData.user) {
-        console.error('No user found');
+        debugConsole.error('No user found');
         throw new Error('User not authenticated');
       }
 
