@@ -174,7 +174,7 @@ export const UpcomingAppointmentsSection: React.FC<UpcomingAppointmentsSectionPr
       setStarredIds(ids);
       setStarredAssignments(assignments);
     } catch (error) {
-      console.error('Error loading starred appointments:', error);
+      debugConsole.error('Error loading starred appointments:', error);
     }
   };
 
