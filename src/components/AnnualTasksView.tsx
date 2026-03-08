@@ -49,14 +49,14 @@ interface AnnualTask {
   category: string;
   due_month: number;
   due_day: number | null;
-  is_system_task: boolean;
-  auto_execute: boolean;
+  is_system_task: boolean | null;
+  auto_execute: boolean | null;
   execute_function: string | null;
 }
 
 interface AnnualTaskCompletion {
   id: string;
-  annual_task_id: string;
+  annual_task_id: string | null;
   year: number;
   completed_at: string | null;
   completed_by: string | null;

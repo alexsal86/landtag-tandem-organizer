@@ -18,7 +18,7 @@ import { Switch } from '@/components/ui/switch';
 interface Template {
   id: string;
   name: string;
-  description: string;
+  description: string | null;
   template_data: any[];
   is_default: boolean;
   is_active: boolean;
@@ -60,7 +60,7 @@ export default function AppointmentPreparationTemplateAdmin() {
       const { data, error } = await supabase
         .from('appointment_preparation_templates')
         .select('*')
-        .eq('tenant_id', currentTenant?.id)
+        .eq('tenant_id', currentTenant?.id ?? '')
         .order('created_at', { ascending: false });
 
       if (error) throw error;
@@ -106,13 +106,13 @@ export default function AppointmentPreparationTemplateAdmin() {
         const { error } = await supabase
           .from('appointment_preparation_templates')
           .insert({
-            tenant_id: currentTenant?.id,
+            tenant_id: currentTenant?.id ?? '',
             name: templateData.name,
             description: templateData.description,
             template_data: templateData.template_data || [],
             is_default: templateData.is_default || false,
             is_active: true,
-            created_by: (await supabase.auth.getUser()).data.user?.id,
+            created_by: (await supabase.auth.getUser()).data.user?.id ?? '',
           });
 
         if (error) throw error;
@@ -171,7 +171,7 @@ export default function AppointmentPreparationTemplateAdmin() {
       await supabase
         .from('appointment_preparation_templates')
         .update({ is_default: false })
-        .eq('tenant_id', currentTenant?.id);
+        .eq('tenant_id', currentTenant?.id ?? '');
 
       // Then set the new default
       const { error } = await supabase

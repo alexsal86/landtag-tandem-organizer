@@ -218,7 +218,7 @@ export function ContactDetailSheet({ contactId, isOpen, onClose, onContactUpdate
         priority: data.priority as Contact["priority"],
         tags: data.tags || [],
         coordinates: data.coordinates as { lat: number; lng: number } | undefined,
-      });
+      } as Contact);
       
       // Tags direkt hier laden, nachdem contact gesetzt wurde
       let inheritedTags: string[] = [];

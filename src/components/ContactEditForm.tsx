@@ -124,9 +124,9 @@ export function ContactEditForm({ contact, onSuccess, onCancel }: ContactEditFor
       setExistingContacts(data?.map(c => ({
         id: c.id,
         name: c.name,
-        email: c.email,
-        phone: c.phone,
-        organization: c.organization,
+        email: c.email ?? undefined,
+        phone: c.phone ?? undefined,
+        organization: c.organization ?? undefined,
       })) || []);
     } catch (error) {
       debugConsole.error('Error fetching existing contacts:', error);
@@ -290,8 +290,8 @@ export function ContactEditForm({ contact, onSuccess, onCancel }: ContactEditFor
 
       // Clear organization fields if no organization is selected
       if (formData.contact_type === 'person' && !formData.organization_id && !formData.organization) {
-        updateData.organization_id = null;
-        updateData.organization = null;
+        updateData.organization_id = null as any;
+        updateData.organization = null as any;
       }
 
       // Clean date fields - convert empty strings to null for database
