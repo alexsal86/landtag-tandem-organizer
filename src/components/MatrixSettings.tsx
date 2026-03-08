@@ -74,7 +74,7 @@ export const MatrixSettings: React.FC = () => {
           .single();
 
         if (settingsError && settingsError.code !== "PGRST116") {
-          console.error("Error loading Matrix settings:", settingsError);
+          debugConsole.error("Error loading Matrix settings:", settingsError);
         } else {
           setSettings({
             matrix_enabled: userSettings?.matrix_enabled || false,
