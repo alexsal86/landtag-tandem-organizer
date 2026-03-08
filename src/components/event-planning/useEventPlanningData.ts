@@ -291,8 +291,7 @@ export function useEventPlanningData() {
       toast({ title: "Terminplanung archiviert", description: "Die Terminplanung wurde ins Archiv verschoben." });
       fetchAppointmentPreparations();
     } catch (error) {
-      debugConsole.error('Error archiving preparation:', error);
-      toast({ title: "Fehler", description: "Terminplanung konnte nicht archiviert werden.", variant: "destructive" });
+      handleAppError(error, { context: 'archivePreparation', toast: { fn: toast, title: 'Fehler', description: 'Terminplanung konnte nicht archiviert werden.' } });
     }
   };
 
