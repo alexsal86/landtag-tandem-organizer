@@ -81,7 +81,7 @@ export function useLetterData({ isOpen, tenantId, letterId }: UseLetterDataOptio
       if (error) throw error;
       setInformationBlocks(data || []);
     } catch (error) {
-      console.error('Error fetching information blocks:', error);
+      debugConsole.error('Error fetching information blocks:', error);
     }
   }, [tenantId]);
 
