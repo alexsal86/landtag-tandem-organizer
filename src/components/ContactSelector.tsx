@@ -6,6 +6,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Badge } from '@/components/ui/badge';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { supabase } from '@/integrations/supabase/client';
+import { debugConsole } from '@/utils/debugConsole';
 import { useTenant } from '@/hooks/useTenant';
 import { debounce } from '@/utils/debounce';
 
@@ -256,7 +257,7 @@ export const ContactSelector: React.FC<ContactSelectorProps> = ({
         setContacts(mergeWithUsageStats(searchData || [], usageData));
       }
     } catch (error) {
-      console.error('Error fetching contacts:', error);
+      debugConsole.error('Error fetching contacts:', error);
     } finally {
       setLoading(false);
     }
@@ -302,7 +303,7 @@ export const ContactSelector: React.FC<ContactSelectorProps> = ({
         p_tenant_id: currentTenant?.id
       });
     } catch (error) {
-      console.error('Error tracking contact usage:', error);
+      debugConsole.error('Error tracking contact usage:', error);
     }
 
     onSelect({ ...contact, formatted_address: formatContactAddress(contact) });

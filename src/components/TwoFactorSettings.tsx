@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { debugConsole } from '@/utils/debugConsole';
 import { Shield, QrCode, Key, Download, Copy, Check, AlertTriangle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -55,7 +56,7 @@ export function TwoFactorSettings() {
         setIsEnabled(hasVerifiedFactor);
       }
     } catch (error: unknown) {
-      console.error("Error loading MFA status:", error);
+      debugConsole.error("Error loading MFA status:", error);
     } finally {
       setLoading(false);
     }

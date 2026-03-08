@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { debugConsole } from '@/utils/debugConsole';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { TopicDisplay } from "@/components/topics/TopicSelector";
 import { Badge } from "@/components/ui/badge";
@@ -303,7 +304,7 @@ export const TaskDecisionDetails = ({ decisionId, isOpen, onClose, onArchived, h
       setDecision({ ...decisionData, topicIds });
       setParticipants(formattedParticipants);
     } catch (error) {
-      console.error('Error loading decision details:', error);
+      debugConsole.error('Error loading decision details:', error);
       toast({
         title: "Fehler",
         description: "Entscheidungsdetails konnten nicht geladen werden.",
@@ -333,7 +334,7 @@ export const TaskDecisionDetails = ({ decisionId, isOpen, onClose, onArchived, h
       setCreatorResponses(prev => ({ ...prev, [responseId]: '' }));
       loadDecisionDetails();
     } catch (error) {
-      console.error('Error sending creator response:', error);
+      debugConsole.error('Error sending creator response:', error);
       toast({
         title: "Fehler",
         description: "Antwort konnte nicht gesendet werden.",
@@ -367,7 +368,7 @@ export const TaskDecisionDetails = ({ decisionId, isOpen, onClose, onArchived, h
       setReplyingToId(null);
       loadDecisionDetails();
     } catch (error) {
-      console.error('Error sending participant reply:', error);
+      debugConsole.error('Error sending participant reply:', error);
       toast({ title: "Fehler", description: "Antwort konnte nicht gesendet werden.", variant: "destructive" });
     } finally {
       setIsLoading(false);
@@ -438,7 +439,7 @@ export const TaskDecisionDetails = ({ decisionId, isOpen, onClose, onArchived, h
       setNewCommentEditorKey((prev) => prev + 1);
       await loadDecisionDetails();
     } catch (error) {
-      console.error('Error submitting comment:', error);
+      debugConsole.error('Error submitting comment:', error);
       toast({
         title: 'Fehler',
         description: 'Kommentar konnte nicht gespeichert werden.',
@@ -468,7 +469,7 @@ export const TaskDecisionDetails = ({ decisionId, isOpen, onClose, onArchived, h
       toast({ title: 'Kommentar aktualisiert' });
       await loadDecisionDetails();
     } catch (error) {
-      console.error('Error updating comment:', error);
+      debugConsole.error('Error updating comment:', error);
       toast({
         title: 'Fehler',
         description: 'Kommentar konnte nicht bearbeitet werden.',
@@ -502,7 +503,7 @@ export const TaskDecisionDetails = ({ decisionId, isOpen, onClose, onArchived, h
       toast({ title: hasReplies ? 'Kommentar als gelöscht markiert' : 'Kommentar gelöscht' });
       await loadDecisionDetails();
     } catch (error) {
-      console.error('Error deleting comment:', error);
+      debugConsole.error('Error deleting comment:', error);
       toast({
         title: 'Fehler',
         description: 'Kommentar konnte nicht gelöscht werden.',
@@ -544,10 +545,10 @@ export const TaskDecisionDetails = ({ decisionId, isOpen, onClose, onArchived, h
           .eq('user_id', currentUserId)
           .eq('navigation_context', 'decisions');
       } catch (e) {
-        console.warn('Notifications update failed:', e);
+        debugConsole.warn('Notifications update failed:', e);
       }
     } catch (error) {
-      console.error('Error archiving decision:', error);
+      debugConsole.error('Error archiving decision:', error);
       toast({
         title: "Fehler",
         description: "Entscheidung konnte nicht archiviert werden.",

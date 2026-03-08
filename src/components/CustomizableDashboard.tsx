@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { cn } from '@/lib/utils';
+import { debugConsole } from '@/utils/debugConsole';
 import { Responsive, WidthProvider, Layout } from 'react-grid-layout';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -192,7 +193,7 @@ export const CustomizableDashboard: React.FC = () => {
     
     const widgetInfo = availableWidgets.find(w => w.type === widgetType);
     if (!widgetInfo) {
-      console.error('❌ Widget type not found:', widgetType);
+      debugConsole.error('❌ Widget type not found:', widgetType);
       toast.error('Widget-Typ nicht gefunden');
       return;
     }

@@ -457,7 +457,7 @@ export const StandaloneDecisionCreator = ({
             }
           }
         } catch (emailError: any) {
-          console.error('Error sending decision emails:', emailError);
+          debugConsole.error('Error sending decision emails:', emailError);
           toast({
             title: "E-Mail-Fehler",
             description: `Unerwarteter Fehler beim E-Mail-Versand: ${emailError.message}`,
@@ -493,7 +493,7 @@ export const StandaloneDecisionCreator = ({
       if (onCreatedWithId && decision?.id) onCreatedWithId(decision.id);
     } catch (error) {
       setUploadStatus(null);
-      console.error('Error creating decision:', error);
+      debugConsole.error('Error creating decision:', error);
       toast({
         title: "Fehler",
         description: error instanceof Error ? error.message : "Entscheidungsanfrage konnte nicht erstellt werden.",

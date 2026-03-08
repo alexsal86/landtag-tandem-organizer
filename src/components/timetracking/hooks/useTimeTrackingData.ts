@@ -1,5 +1,6 @@
 import { useState, useEffect, useMemo } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { debugConsole } from '@/utils/debugConsole';
 import { useCombinedTimeEntries } from "@/hooks/useCombinedTimeEntries";
 import { useYearlyBalance } from "@/hooks/useYearlyBalance";
 import { calculateVacationBalance } from "@/utils/vacationCalculations";
@@ -94,7 +95,7 @@ export function useTimeTrackingData(userId: string | null, selectedMonth: Date) 
         eachDayOfInterval({ start: parseISO(leave.start_date), end: parseISO(leave.end_date) })
           .filter(d => d >= monthStart && d <= monthEnd && d.getDay() !== 0 && d.getDay() !== 6)
           .forEach(d => sickDates.add(format(d, "yyyy-MM-dd")));
-      } catch (e) { console.error("Error processing sick dates:", e); }
+      } catch (e) { debugConsole.error("Error processing sick dates:", e); }
     });
     const vacationDates = new Set<string>();
     vacationLeaves.filter(l => l.status === "approved").forEach(leave => {
@@ -102,7 +103,7 @@ export function useTimeTrackingData(userId: string | null, selectedMonth: Date) 
         eachDayOfInterval({ start: parseISO(leave.start_date), end: parseISO(leave.end_date) })
           .filter(d => d >= monthStart && d <= monthEnd && d.getDay() !== 0 && d.getDay() !== 6)
           .forEach(d => vacationDates.add(format(d, "yyyy-MM-dd")));
-      } catch (e) { console.error("Error processing vacation dates:", e); }
+      } catch (e) { debugConsole.error("Error processing vacation dates:", e); }
     });
     const overtimeDates = new Set<string>();
     overtimeLeaves.filter(l => l.status === "approved").forEach(leave => {
@@ -110,7 +111,7 @@ export function useTimeTrackingData(userId: string | null, selectedMonth: Date) 
         eachDayOfInterval({ start: parseISO(leave.start_date), end: parseISO(leave.end_date) })
           .filter(d => d >= monthStart && d <= monthEnd && d.getDay() !== 0 && d.getDay() !== 6)
           .forEach(d => overtimeDates.add(format(d, "yyyy-MM-dd")));
-      } catch (e) { console.error("Error processing overtime dates:", e); }
+      } catch (e) { debugConsole.error("Error processing overtime dates:", e); }
     });
 
     const worked = entries.reduce((s, e) => {

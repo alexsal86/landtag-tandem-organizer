@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { debugConsole } from '@/utils/debugConsole';
 import { useSearchParams } from "react-router-dom";
 import { useNotificationHighlight } from "@/hooks/useNotificationHighlight";
 import { Plus, Filter, Archive, AlarmClock, Calendar, User, ChevronDown, ChevronRight, ListTodo, Paperclip, StickyNote, MessageCircle, Edit2, Trash2, Check, X, Send, Download } from "lucide-react";
@@ -244,7 +245,7 @@ export function TasksView() {
                                       data.loadSubtasksForTask(task.id);
                                       data.loadSubtaskCounts();
                                       toast({ title: "Unteraufgabe hinzugefügt" });
-                                    } catch (error) { console.error('Error adding subtask:', error); toast({ title: "Fehler", description: "Unteraufgabe konnte nicht hinzugefügt werden.", variant: "destructive" }); }
+                                    } catch (error) { debugConsole.error('Error adding subtask:', error); toast({ title: "Fehler", description: "Unteraufgabe konnte nicht hinzugefügt werden.", variant: "destructive" }); }
                                   })();
                                 }
                               }}><Plus className="h-4 w-4" />Unteraufgabe hinzufügen</Button>
@@ -264,7 +265,7 @@ export function TasksView() {
                                           data.loadSubtasksForTask(task.id);
                                           if (isChecked) ops.setShowCelebration(true);
                                           toast({ title: isChecked ? "Unteraufgabe erledigt" : "Unteraufgabe wieder geöffnet" });
-                                        } catch (error) { console.error('Error:', error); toast({ title: "Fehler", variant: "destructive" }); }
+                                        } catch (error) { debugConsole.error('Error:', error); toast({ title: "Fehler", variant: "destructive" }); }
                                       }} onClick={(e) => e.stopPropagation()} className="mt-0.5" />
                                       <div className="flex-1 min-w-0">
                                         <span className={`text-sm ${subtask.is_completed ? 'line-through text-muted-foreground' : ''}`}>{cleanSubtaskTitle || subtask.title}</span>

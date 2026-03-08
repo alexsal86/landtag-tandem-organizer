@@ -1,4 +1,5 @@
 import React, { useRef, useState, useEffect, useCallback } from 'react';
+import { debugConsole } from '@/utils/debugConsole';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -323,13 +324,13 @@ export const StructuredHeaderEditor: React.FC<StructuredHeaderEditorProps> = ({ 
           if (!urlData?.publicUrl) continue;
           blobUrlMapRef.current.set(filePath, urlData.publicUrl);
           loaded.push({ name: file.name, path: filePath, blobUrl: urlData.publicUrl });
-        } catch (e) { console.error('Error downloading', file.name, e); }
+        } catch (e) { debugConsole.error('Error downloading', file.name, e); }
       }
       setGalleryImages((previous) => {
         previous.forEach((img) => URL.revokeObjectURL(img.blobUrl));
         return loaded;
       });
-    } catch (error) { console.error('Error loading gallery:', error); }
+    } catch (error) { debugConsole.error('Error loading gallery:', error); }
     finally { setGalleryLoading(false); }
   }, [currentTenant?.id]);
 
@@ -427,7 +428,7 @@ export const StructuredHeaderEditor: React.FC<StructuredHeaderEditorProps> = ({ 
       await loadGalleryImages();
       return { publicUrl, storagePath: filePath, blobUrl };
     } catch (error) {
-      console.error('Upload error:', error);
+      debugConsole.error('Upload error:', error);
       toast({ title: 'Fehler', description: 'Bild konnte nicht hochgeladen werden', variant: 'destructive' });
       return null;
     }

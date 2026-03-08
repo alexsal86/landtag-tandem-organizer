@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from "react";
+import { debugConsole } from '@/utils/debugConsole';
 import { useSearchParams, useNavigate } from "react-router-dom";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -82,7 +83,7 @@ export function MyWorkJourFixeTab() {
       // Load system item data if needed
       await loadMeetingSystemData({ meetingId, items, meetingDate });
     } catch (error) {
-      console.error('Error loading agenda:', error);
+      debugConsole.error('Error loading agenda:', error);
     } finally {
       if (isMountedRef.current) setLoadingAgenda(null);
     }

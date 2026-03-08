@@ -6,6 +6,7 @@ import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
+import { debugConsole } from '@/utils/debugConsole';
 import { useAuth } from '@/hooks/useAuth';
 
 interface PomodoroSession {
@@ -115,7 +116,7 @@ export const PomodoroWidget: React.FC<PomodoroWidgetProps> = ({
       ).length || 0;
       setWorkSessionsCompleted(completedWorkSessions);
     } catch (error) {
-      console.error('Error loading sessions:', error);
+      debugConsole.error('Error loading sessions:', error);
     }
   };
 
@@ -142,7 +143,7 @@ export const PomodoroWidget: React.FC<PomodoroWidgetProps> = ({
         toast.success(`${getSessionTypeName(sessionType)} gestartet!`);
       }
     } catch (error) {
-      console.error('Error starting session:', error);
+      debugConsole.error('Error starting session:', error);
       toast.error('Fehler beim Starten der Session');
     }
   };
@@ -200,11 +201,11 @@ export const PomodoroWidget: React.FC<PomodoroWidgetProps> = ({
         
         // Play completion sound
         if (audioRef.current) {
-          audioRef.current.play().catch(console.error);
+          audioRef.current.play().catch(debugConsole.error);
         }
 
       } catch (error) {
-        console.error('Error completing session:', error);
+        debugConsole.error('Error completing session:', error);
       }
     }
 

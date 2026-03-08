@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
+import { debugConsole } from '@/utils/debugConsole';
 import { 
   $getSelection, 
   $isRangeSelection,
@@ -336,7 +337,7 @@ export function CommentPlugin({ documentId }: { documentId?: string }) {
           .in('user_id', userIds);
 
         if (profilesError) {
-          console.warn('Could not load user profiles:', profilesError);
+          debugConsole.warn('Could not load user profiles:', profilesError);
         } else {
           profilesData = profiles || [];
         }
@@ -386,7 +387,7 @@ export function CommentPlugin({ documentId }: { documentId?: string }) {
       // Add highlights for existing comments
       highlightExistingComments(commentsWithProfiles);
     } catch (error) {
-      console.error('Error loading comments:', error);
+      debugConsole.error('Error loading comments:', error);
       toast({
         title: "Fehler",
         description: "Kommentare konnten nicht geladen werden.",
@@ -398,7 +399,7 @@ export function CommentPlugin({ documentId }: { documentId?: string }) {
   const highlightExistingComments = (commentsList: Comment[]) => {
     if (commentsList.length === 0) return;
     
-    console.log(`Highlighting ${commentsList.length} existing comments`);
+    debugConsole.log(`Highlighting ${commentsList.length} existing comments`);
     
     // Since we can't reliably map old text positions, we'll register a node transform
     // to handle existing comment marks when they're encountered in the editor
@@ -454,14 +455,14 @@ export function CommentPlugin({ documentId }: { documentId?: string }) {
             const commentId = node.getAttribute('data-comment-id');
             if (commentId && node.classList.contains('comment-highlight')) {
               // Comment mark was removed from editor - delete from database
-              console.log('[CommentPlugin] Deleting orphaned comment:', commentId);
+              debugConsole.log('[CommentPlugin] Deleting orphaned comment:', commentId);
               supabase
                 .from('letter_comments')
                 .delete()
                 .eq('id', commentId)
                 .then(({ error }) => {
                   if (error) {
-                    console.error('[CommentPlugin] Error deleting orphaned comment:', error);
+                    debugConsole.error('[CommentPlugin] Error deleting orphaned comment:', error);
                   } else {
                     // Refresh comments list
                     loadComments();
@@ -530,7 +531,7 @@ export function CommentPlugin({ documentId }: { documentId?: string }) {
 
       // Create highlight in editor
       editor.update(() => {
-        console.log('Applying comment mark for text:', selectedText);
+        debugConsole.log('Applying comment mark for text:', selectedText);
         
         // Since we can't reliably restore selection after dialog,
         // we'll search for the text in the editor and mark it
@@ -595,11 +596,11 @@ export function CommentPlugin({ documentId }: { documentId?: string }) {
                 currentSelection.removeText();
                 currentSelection.insertNodes([commentMark]);
                 
-                console.log('Comment mark applied successfully');
+                debugConsole.log('Comment mark applied successfully');
               }
             }
           } catch (error) {
-            console.error('Error applying comment mark:', error);
+            debugConsole.error('Error applying comment mark:', error);
           }
         }
       });
@@ -629,7 +630,7 @@ export function CommentPlugin({ documentId }: { documentId?: string }) {
         description: "Your comment has been saved successfully.",
       });
     } catch (error) {
-      console.error('Error saving comment:', error);
+      debugConsole.error('Error saving comment:', error);
       toast({
         title: "Error",
         description: "Failed to save comment. Please try again.",
@@ -660,7 +661,7 @@ export function CommentPlugin({ documentId }: { documentId?: string }) {
         description: "The comment has been marked as resolved.",
       });
     } catch (error) {
-      console.error('Error resolving comment:', error);
+      debugConsole.error('Error resolving comment:', error);
       toast({
         title: "Error",
         description: "Failed to resolve comment. Please try again.",
@@ -695,7 +696,7 @@ export function CommentPlugin({ documentId }: { documentId?: string }) {
         description: "Ihre Antwort wurde gespeichert.",
       });
     } catch (error) {
-      console.error('Error saving reply:', error);
+      debugConsole.error('Error saving reply:', error);
       toast({
         title: "Fehler",
         description: "Antwort konnte nicht gespeichert werden.",
@@ -734,7 +735,7 @@ export function CommentPlugin({ documentId }: { documentId?: string }) {
         description: "The comment has been removed.",
       });
     } catch (error) {
-      console.error('Error deleting comment:', error);
+      debugConsole.error('Error deleting comment:', error);
       toast({
         title: "Error",
         description: "Failed to delete comment. Please try again.",
@@ -768,7 +769,7 @@ export function CommentPlugin({ documentId }: { documentId?: string }) {
     const unregisterTransform = editor.registerNodeTransform(CommentMarkNode, (node) => {
       const commentId = node.getCommentId();
       if (commentId) {
-        console.log(`[CommentPlugin] Transforming comment node: ${commentId}`);
+        debugConsole.log(`[CommentPlugin] Transforming comment node: ${commentId}`);
         // The node's createDOM method will handle the styling
       }
     });

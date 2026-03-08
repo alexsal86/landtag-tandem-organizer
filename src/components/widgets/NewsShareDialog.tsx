@@ -6,6 +6,7 @@ import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
 import { Switch } from '@/components/ui/switch';
 import { supabase } from '@/integrations/supabase/client';
+import { debugConsole } from '@/utils/debugConsole';
 import { toast } from 'sonner';
 import { Mail, Send, Loader2 } from 'lucide-react';
 import { MultiSelect } from '@/components/ui/multi-select';
@@ -89,7 +90,7 @@ export const NewsShareDialog: React.FC<NewsShareDialogProps> = ({
 
       setUsers(profiles || []);
     } catch (error) {
-      console.error('Error loading users:', error);
+      debugConsole.error('Error loading users:', error);
       setUsers([]);
     }
   };
@@ -188,7 +189,7 @@ export const NewsShareDialog: React.FC<NewsShareDialogProps> = ({
         const failedNotifications = notificationResults.filter((result) => result.status === 'rejected');
 
         if (failedNotifications.length > 0) {
-          console.warn('Some in-app notifications for shared news could not be created', {
+          debugConsole.warn('Some in-app notifications for shared news could not be created', {
             attempted: selectedUserIds.length,
             failed: failedNotifications.length,
           });
@@ -205,7 +206,7 @@ export const NewsShareDialog: React.FC<NewsShareDialogProps> = ({
       setSendViaMatrix(false);
       onOpenChange(false);
     } catch (error) {
-      console.error('Error sharing news:', error);
+      debugConsole.error('Error sharing news:', error);
       toast.error('Fehler beim Versenden der News');
     } finally {
       setLoading(false);

@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useTenant } from "@/hooks/useTenant";
+import { debugConsole } from '@/utils/debugConsole';
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/components/ui/use-toast";
 import {
@@ -160,7 +161,7 @@ export function CaseFileSelector({
       });
 
       if (timelineError) {
-        console.error('Error creating timeline entry for case file link:', timelineError);
+        debugConsole.error('Error creating timeline entry for case file link:', timelineError);
       }
 
       return { caseFileId, timelineFailed: Boolean(timelineError) };

@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { debugConsole } from '@/utils/debugConsole';
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
@@ -124,7 +125,7 @@ export function EmployeeMeetingHistory({ employeeId, showFilters = true }: Emplo
 
       setMeetings(enrichedMeetings);
     } catch (error: unknown) {
-      console.error("Error loading meetings:", error);
+      debugConsole.error("Error loading meetings:", error);
       toast({
         title: "Fehler",
         description: "Meetings konnten nicht geladen werden",
@@ -155,7 +156,7 @@ export function EmployeeMeetingHistory({ employeeId, showFilters = true }: Emplo
         description: "Das Mitarbeitergespräch wurde erfolgreich entfernt.",
       });
     } catch (error) {
-      console.error("Error deleting meeting:", error);
+      debugConsole.error("Error deleting meeting:", error);
       toast({
         title: "Fehler",
         description: "Das Gespräch konnte nicht gelöscht werden.",

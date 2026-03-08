@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { StickyNote, Keyboard, Loader2, Info } from "lucide-react";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { supabase } from "@/integrations/supabase/client";
+import { debugConsole } from '@/utils/debugConsole';
 import { useAuth } from "@/hooks/useAuth";
 import { useTenant } from "@/hooks/useTenant";
 import { toast } from "sonner";
@@ -81,7 +82,7 @@ export function GlobalQuickNoteDialog({ open, onOpenChange }: GlobalQuickNoteDia
         .single();
 
       if (error) {
-        console.error("Supabase error:", error);
+        debugConsole.error("Supabase error:", error);
         throw error;
       }
       
@@ -116,7 +117,7 @@ export function GlobalQuickNoteDialog({ open, onOpenChange }: GlobalQuickNoteDia
       
       onOpenChange(false);
     } catch (error: unknown) {
-      console.error("Error creating quick note:", error);
+      debugConsole.error("Error creating quick note:", error);
       toast.error(`Fehler: ${error instanceof Error ? error.message : 'Unbekannter Fehler'}`);
     } finally {
       savingRef.current = false;

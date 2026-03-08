@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
+import { debugConsole } from '@/utils/debugConsole';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -130,7 +131,7 @@ export function ProtocolsList({ protocols, onProtocolSelect, onProtocolsRefresh 
       toast.success('Protokoll erfolgreich gelöscht');
       onProtocolsRefresh();
     } catch (error) {
-      console.error('Error deleting protocol:', error);
+      debugConsole.error('Error deleting protocol:', error);
       toast.error('Fehler beim Löschen des Protokolls');
     }
   };
@@ -156,13 +157,13 @@ export function ProtocolsList({ protocols, onProtocolSelect, onProtocolsRefresh 
           body: { protocolId }
         });
       } catch (error) {
-        console.warn('Protocol analysis function not available:', error);
+        debugConsole.warn('Protocol analysis function not available:', error);
       }
       
       toast.success('Protokoll wird erneut verarbeitet');
       onProtocolsRefresh();
     } catch (error) {
-      console.error('Error reprocessing protocol:', error);
+      debugConsole.error('Error reprocessing protocol:', error);
       toast.error('Fehler beim erneuten Verarbeiten');
     }
   };

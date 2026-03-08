@@ -7,6 +7,7 @@ import { CalendarDays, Star } from "lucide-react";
 import { format } from "date-fns";
 import { de } from "date-fns/locale";
 import { supabase } from "@/integrations/supabase/client";
+import { debugConsole } from '@/utils/debugConsole';
 import { useAuth } from "@/hooks/useAuth";
 
 interface Meeting {
@@ -79,7 +80,7 @@ export function CaseItemMeetingSelector({
 
       setMeetings(allMeetings);
     } catch (error) {
-      console.error("Error loading meetings:", error);
+      debugConsole.error("Error loading meetings:", error);
     } finally {
       setLoading(false);
     }

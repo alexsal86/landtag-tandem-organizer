@@ -127,7 +127,7 @@ export default function AppointmentPreparationTemplateAdmin() {
       setEditingTemplate(null);
       fetchTemplates();
     } catch (error) {
-      console.error('Error saving template:', error);
+      debugConsole.error('Error saving template:', error);
       toast({
         title: 'Fehler',
         description: 'Template konnte nicht gespeichert werden.',
@@ -156,7 +156,7 @@ export default function AppointmentPreparationTemplateAdmin() {
 
       fetchTemplates();
     } catch (error) {
-      console.error('Error deleting template:', error);
+      debugConsole.error('Error deleting template:', error);
       toast({
         title: 'Fehler',
         description: 'Template konnte nicht gelöscht werden.',
@@ -188,7 +188,7 @@ export default function AppointmentPreparationTemplateAdmin() {
 
       fetchTemplates();
     } catch (error) {
-      console.error('Error setting default template:', error);
+      debugConsole.error('Error setting default template:', error);
       toast({
         title: 'Fehler',
         description: 'Standard-Template konnte nicht gesetzt werden.',

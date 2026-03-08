@@ -380,7 +380,7 @@ export function useDaySlipStore(userId?: string, tenantId?: string) {
         if (item.target === "note") await supabase.from("quick_notes").insert({ user_id: userId, title: item.text, content: `Aus Tageszettel (${todayKey})` });
         else if (item.target === "task" && tenantId) await supabase.from("tasks").insert({ user_id: userId, tenant_id: tenantId, title: item.text, description: `Aus Tageszettel (${todayKey})`, status: "open", priority: "medium", category: "allgemein" });
         else if (item.target === "decision") await supabase.from("task_decisions").insert({ created_by: userId, title: item.text, description: `Aus Tageszettel (${todayKey})`, status: "open" });
-      } catch (err) { console.error(`Failed to persist resolved item (${item.target}):`, err); }
+      } catch (err) { debugConsole.error(`Failed to persist resolved item (${item.target}):`, err); }
     }
   }, [userId, tenantId, store, todayKey]);
 
@@ -444,7 +444,7 @@ export function useDaySlipStore(userId?: string, tenantId?: string) {
       horizontalRule: "my-4 border-border/80",
     },
     nodes: [HorizontalRuleNode, LabeledHorizontalRuleNode, DaySlipLineNode, { replace: ParagraphNode, with: () => $createDaySlipLineNode() }],
-    onError: (error: Error) => console.error("DaySlip Lexical error", error),
+    onError: (error: Error) => debugConsole.error("DaySlip Lexical error", error),
   }), []);
 
   return {

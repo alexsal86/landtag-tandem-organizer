@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { debugConsole } from '@/utils/debugConsole';
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -13,7 +14,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { useTenant } from "@/hooks/useTenant";
 import { isValidEmail, findPotentialDuplicates, DuplicateMatch, type Contact as UtilContact } from "@/lib/utils";
 import { DuplicateWarning } from "@/components/DuplicateWarning";
-import { debugConsole } from "@/utils/debugConsole";
+
 import { TagInput } from "@/components/ui/tag-input";
 
 interface Contact {
@@ -229,7 +230,7 @@ export function ContactEditForm({ contact, onSuccess, onCancel }: ContactEditFor
   const performUpdate = async () => {
     // Early validation
     if (!user) {
-      console.error('No user available');
+      debugConsole.error('No user available');
       toast({
         title: "Fehler",
         description: "Benutzer nicht authentifiziert. Bitte melden Sie sich erneut an.",
@@ -239,7 +240,7 @@ export function ContactEditForm({ contact, onSuccess, onCancel }: ContactEditFor
     }
 
     if (!currentTenant) {
-      console.error('No tenant available');
+      debugConsole.error('No tenant available');
       toast({
         title: "Fehler", 
         description: "Mandant nicht verfügbar. Bitte wählen Sie einen Mandanten aus.",
@@ -248,7 +249,7 @@ export function ContactEditForm({ contact, onSuccess, onCancel }: ContactEditFor
       return;
     }
 
-    console.log('Starting update for contact:', contact.id, 'User:', user.id, 'Tenant:', currentTenant.id);
+    debugConsole.log('Starting update for contact:', contact.id, 'User:', user.id, 'Tenant:', currentTenant.id);
     
     setLoading(true);
 
@@ -258,7 +259,7 @@ export function ContactEditForm({ contact, onSuccess, onCancel }: ContactEditFor
       // Handle organization creation if needed
       if (formData.contact_type === 'person' && !formData.organization_id && formData.organization && formData.organization.trim()) {
         try {
-          console.log('Creating new organization:', formData.organization.trim());
+          debugConsole.log('Creating new organization:', formData.organization.trim());
           
           // Create new organization
           const { data: newOrg, error: orgError } = await supabase
@@ -274,16 +275,16 @@ export function ContactEditForm({ contact, onSuccess, onCancel }: ContactEditFor
             .single();
 
           if (orgError) {
-            console.error('Error creating organization:', orgError);
+            debugConsole.error('Error creating organization:', orgError);
           } else if (newOrg) {
-            console.log('Organization created successfully:', newOrg.id);
+            debugConsole.log('Organization created successfully:', newOrg.id);
             updateData.organization_id = newOrg.id;
             updateData.organization = formData.organization.trim();
             // Refresh organizations list
             fetchOrganizations();
           }
         } catch (orgError) {
-          console.warn('Could not create organization:', orgError);
+          debugConsole.warn('Could not create organization:', orgError);
         }
       }
 
@@ -310,7 +311,7 @@ export function ContactEditForm({ contact, onSuccess, onCancel }: ContactEditFor
         updated_at: new Date().toISOString()
       };
 
-      console.log('Updating contact with final data:', finalUpdateData);
+      debugConsole.log('Updating contact with final data:', finalUpdateData);
 
       const { error, data } = await supabase
         .from('contacts')
@@ -319,8 +320,8 @@ export function ContactEditForm({ contact, onSuccess, onCancel }: ContactEditFor
         .select();
 
       if (error) {
-        console.error('Supabase update error:', error);
-        console.error('Error details:', {
+        debugConsole.error('Supabase update error:', error);
+        debugConsole.error('Error details:', {
           message: error.message,
           details: error.details,
           hint: error.hint,
@@ -335,7 +336,7 @@ export function ContactEditForm({ contact, onSuccess, onCancel }: ContactEditFor
         return;
       }
 
-      console.log('Contact updated successfully:', data);
+      debugConsole.log('Contact updated successfully:', data);
 
       toast({
         title: "Kontakt aktualisiert",
@@ -351,16 +352,16 @@ export function ContactEditForm({ contact, onSuccess, onCancel }: ContactEditFor
           body: { contactId: contact.id }
         }).then(({ data, error }) => {
           if (!error && data?.coordinates) {
-            console.log('✅ Geocoding erfolgreich:', data.coordinates);
+            debugConsole.log('✅ Geocoding erfolgreich:', data.coordinates);
           } else if (error) {
-            console.error('❌ Geocoding fehlgeschlagen:', error);
+            debugConsole.error('❌ Geocoding fehlgeschlagen:', error);
           }
         });
       }
 
       onSuccess();
     } catch (error) {
-      console.error('Error updating contact:', error);
+      debugConsole.error('Error updating contact:', error);
       toast({
         title: "Fehler",
         description: "Kontakt konnte nicht aktualisiert werden.",
@@ -429,7 +430,7 @@ export function ContactEditForm({ contact, onSuccess, onCancel }: ContactEditFor
       const fileName = `avatar-${Date.now()}.${fileExt}`;
       const filePath = `${user.id}/${fileName}`;
 
-      console.log('Uploading avatar to:', filePath);
+      debugConsole.log('Uploading avatar to:', filePath);
 
       // Upload to Supabase Storage
       const { error: uploadError } = await supabase.storage
@@ -440,7 +441,7 @@ export function ContactEditForm({ contact, onSuccess, onCancel }: ContactEditFor
         });
 
       if (uploadError) {
-        console.error('Upload error:', uploadError);
+        debugConsole.error('Upload error:', uploadError);
         throw uploadError;
       }
 
@@ -449,7 +450,7 @@ export function ContactEditForm({ contact, onSuccess, onCancel }: ContactEditFor
         .from('avatars')
         .getPublicUrl(filePath);
 
-      console.log('Avatar uploaded successfully:', publicUrl);
+      debugConsole.log('Avatar uploaded successfully:', publicUrl);
       setFormData(prev => ({ ...prev, avatar_url: publicUrl }));
       
       toast({
@@ -457,7 +458,7 @@ export function ContactEditForm({ contact, onSuccess, onCancel }: ContactEditFor
         description: "Profilbild wurde hochgeladen.",
       });
     } catch (error: unknown) {
-      console.error('Error uploading avatar:', error);
+      debugConsole.error('Error uploading avatar:', error);
       toast({
         title: "Fehler",
         description: `Profilbild konnte nicht hochgeladen werden: ${error instanceof Error ? error.message : 'Unbekannter Fehler'}`,

@@ -98,7 +98,7 @@ export function ConfigurableTypeSettings({
       }
       toast({ title: "Erfolg", description: "Reihenfolge wurde gespeichert." });
     } catch (error) {
-      console.error('Error updating order:', error);
+      debugConsole.error('Error updating order:', error);
       toast({ title: "Fehler", description: "Reihenfolge konnte nicht gespeichert werden.", variant: "destructive" });
       loadItems();
     }
@@ -128,7 +128,7 @@ export function ConfigurableTypeSettings({
       setNewItem(null);
       toast({ title: "Erfolg", description: `${entityName} wurde erfolgreich hinzugefügt.` });
     } catch (error: unknown) {
-      console.error(`Error adding ${entityName}:`, error);
+      debugConsole.error(`Error adding ${entityName}:`, error);
       toast({ title: "Fehler", description: `${entityName} konnte nicht hinzugefügt werden.`, variant: "destructive" });
     }
   };
@@ -169,7 +169,7 @@ export function ConfigurableTypeSettings({
 
       toast({ title: "Erfolg", description: `${entityName} wurde erfolgreich aktualisiert.` });
     } catch (error: unknown) {
-      console.error(`Error updating ${entityName}:`, error);
+      debugConsole.error(`Error updating ${entityName}:`, error);
       toast({ title: "Fehler", description: `${entityName} konnte nicht aktualisiert werden.`, variant: "destructive" });
     }
   };
@@ -182,7 +182,7 @@ export function ConfigurableTypeSettings({
       await loadItems();
       toast({ title: "Erfolg", description: `${entityName} wurde erfolgreich gelöscht.` });
     } catch (error: unknown) {
-      console.error(`Error deleting ${entityName}:`, error);
+      debugConsole.error(`Error deleting ${entityName}:`, error);
       toast({ title: "Fehler", description: `${entityName} konnte nicht gelöscht werden.`, variant: "destructive" });
     }
   };

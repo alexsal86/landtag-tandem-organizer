@@ -415,7 +415,7 @@ const [editingChild, setEditingChild] = useState<{ parentIndex: number; childInd
       
       toast({ title: "Template erstellt", description: "Neues Meeting-Template wurde angelegt." });
     } catch (error: unknown) {
-      console.error('Error creating template:', error);
+      debugConsole.error('Error creating template:', error);
       toast({ title: "Fehler", description: "Template konnte nicht erstellt werden.", variant: "destructive" });
     }
   };
@@ -444,7 +444,7 @@ const [editingChild, setEditingChild] = useState<{ parentIndex: number; childInd
       if (error) throw error;
       // Silent save - no toast on success
     } catch (error: unknown) {
-      console.error('Save error:', error);
+      debugConsole.error('Save error:', error);
       const isNetworkError = 
         (error instanceof Error && (error.message?.includes('Failed to fetch') || error.message?.includes('NetworkError') || error.message?.includes('network'))) ||
         (error instanceof TypeError) ||
@@ -541,7 +541,7 @@ const [editingChild, setEditingChild] = useState<{ parentIndex: number; childInd
         toast({ title: "Gespeichert", description: "Template erfolgreich aktualisiert." });
       }
     } catch (error: unknown) {
-      console.error(error);
+      debugConsole.error(error);
       toast({ title: "Fehler", description: "Fehler beim Speichern.", variant: "destructive" });
     }
   };

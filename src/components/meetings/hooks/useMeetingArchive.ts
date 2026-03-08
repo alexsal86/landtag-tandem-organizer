@@ -436,7 +436,7 @@ export function useMeetingArchive(deps: ArchiveDeps) {
             });
           } catch (e) { debugConsole.error(`Notification to ${recipientId} failed (non-fatal):`, e); }
         }
-      } catch (e) { console.error('Error sending archive notifications (non-fatal):', e); }
+      } catch (e) { debugConsole.error('Error sending archive notifications (non-fatal):', e); }
 
       // Step 7: Reset state
       setActiveMeeting(null);
@@ -449,7 +449,7 @@ export function useMeetingArchive(deps: ArchiveDeps) {
       await loadMeetings();
       toast({ title: "Besprechung archiviert", description: "Die Besprechung wurde erfolgreich archiviert und Aufgaben wurden erstellt. Teilnehmer wurden benachrichtigt." });
     } catch (error) {
-      console.error('Archive meeting error:', error);
+      debugConsole.error('Archive meeting error:', error);
       const errorMessage = error instanceof Error ? error.message : (typeof error === 'string' ? error : JSON.stringify(error));
       toast({ title: "Fehler", description: `Die Besprechung konnte nicht archiviert werden: ${errorMessage}`, variant: "destructive" });
     }

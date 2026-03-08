@@ -9,6 +9,7 @@ import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { toast } from 'sonner';
+import { debugConsole } from '@/utils/debugConsole';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { useTenant } from '@/hooks/useTenant';
@@ -110,7 +111,7 @@ export const QuickNotesWidget: React.FC<QuickNotesWidgetProps> = ({
           const settings = JSON.parse(saved);
           setShowDeleteConfirmation(settings.showDeleteConfirmation ?? true);
         } catch (error) {
-          console.error('Error loading settings:', error);
+          debugConsole.error('Error loading settings:', error);
         }
       }
     }
@@ -169,7 +170,7 @@ export const QuickNotesWidget: React.FC<QuickNotesWidgetProps> = ({
         setSubtasks(groupedSubtasks);
       }
     } catch (error) {
-      console.error('Error loading tasks:', error);
+      debugConsole.error('Error loading tasks:', error);
     }
   };
 
@@ -198,7 +199,7 @@ export const QuickNotesWidget: React.FC<QuickNotesWidgetProps> = ({
       setRefreshTrigger(prev => prev + 1);
       toast.success('Notiz erstellt');
     } catch (error) {
-      console.error('Error creating note:', error);
+      debugConsole.error('Error creating note:', error);
       toast.error('Fehler beim Erstellen der Notiz');
     }
   };

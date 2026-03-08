@@ -1,6 +1,7 @@
 import { useState, useCallback, useEffect } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
+import { debugConsole } from '@/utils/debugConsole';
 import { useAuth } from "@/hooks/useAuth";
 import { useTenant } from "@/hooks/useTenant";
 import Papa from "papaparse";
@@ -39,7 +40,7 @@ export function useContactImport() {
       const { data, error } = await supabase.from("contacts").select("id, name, email, phone, organization, organization_id").eq("tenant_id", currentTenant!.id).order("name");
       if (error) throw error;
       setExistingContacts(data?.map((c) => ({ id: c.id, name: c.name, email: c.email, phone: c.phone, organization: c.organization, organization_id: c.organization_id })) || []);
-    } catch (error) { console.error("Error fetching existing contacts:", error); }
+    } catch (error) { debugConsole.error("Error fetching existing contacts:", error); }
   };
 
   const autoMapFields = (sourceFields: string[]) => {
@@ -120,7 +121,7 @@ export function useContactImport() {
             return d;
           });
           setData(parsed); autoMapFields(Object.keys(parsed[0] || {})); setStep("mapping");
-        } catch (error) { console.error("VCF parse error:", error); toast({ title: "Fehler beim VCF-Import", description: "Die VCF-Datei konnte nicht gelesen werden", variant: "destructive" }); }
+        } catch (error) { debugConsole.error("VCF parse error:", error); toast({ title: "Fehler beim VCF-Import", description: "Die VCF-Datei konnte nicht gelesen werden", variant: "destructive" }); }
       };
       reader.readAsText(uploadedFile);
     } else {
@@ -156,7 +157,7 @@ export function useContactImport() {
           try {
             const { data: newOrg, error: orgError } = await supabase.from("contacts").insert({ user_id: user!.id, tenant_id: currentTenant!.id, name: orgName, contact_type: "organization", category: "organization" }).select("id, name").single();
             if (!orgError && newOrg) { contactData.organization_id = newOrg.id; existingContacts.push({ id: newOrg.id, name: newOrg.name, email: null, phone: null, organization: null }); }
-          } catch (e) { console.warn("Could not create organization:", e); }
+          } catch (e) { debugConsole.warn("Could not create organization:", e); }
         } else { contactData.organization_id = existingOrg.id; }
       }
       if (!contactData.contact_type) contactData.contact_type = "person";

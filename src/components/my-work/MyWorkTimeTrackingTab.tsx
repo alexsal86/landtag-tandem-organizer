@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo, useCallback } from "react";
+import { debugConsole } from '@/utils/debugConsole';
 import { useUserPreference } from "@/hooks/useUserPreference";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -192,7 +193,7 @@ export function MyWorkTimeTrackingTab() {
       setEmployeeSettings(settingsRes.data);
       setEntries(weekEntriesRes.data || []);
     } catch (error) {
-      console.error("Error loading time tracking data:", error);
+      debugConsole.error("Error loading time tracking data:", error);
     } finally {
       setLoading(false);
     }

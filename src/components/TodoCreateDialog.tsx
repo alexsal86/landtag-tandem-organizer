@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { debugConsole } from '@/utils/debugConsole';
 import { useAuth } from "@/hooks/useAuth";
 import { useTenant } from "@/hooks/useTenant";
 import { useToast } from "@/hooks/use-toast";
@@ -9,7 +10,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { MultiSelect } from "@/components/ui/multi-select-simple";
-import { debugConsole } from "@/utils/debugConsole";
+
 
 interface TodoCategory {
   id: string;
@@ -89,7 +90,7 @@ export function TodoCreateDialog({ open, onOpenChange, onTodoCreated }: TodoCrea
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    console.log('Form submitted:', { title, categoryId });
+    debugConsole.log('Form submitted:', { title, categoryId });
     
     if (!title.trim() || !categoryId) {
       toast({
@@ -126,7 +127,7 @@ export function TodoCreateDialog({ open, onOpenChange, onTodoCreated }: TodoCrea
       onTodoCreated();
       onOpenChange(false);
     } catch (error: unknown) {
-      console.error('Error creating todo:', error);
+      debugConsole.error('Error creating todo:', error);
       toast({
         title: "Fehler", 
         description: error instanceof Error ? error.message : "ToDo konnte nicht erstellt werden.",

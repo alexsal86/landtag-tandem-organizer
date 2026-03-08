@@ -1,4 +1,5 @@
 import React from 'react';
+import { debugConsole } from '@/utils/debugConsole';
 import { Button } from '@/components/ui/button';
 import { AlertTriangle } from 'lucide-react';
 
@@ -24,7 +25,7 @@ export class ErrorBoundary extends React.Component<ErrorBoundaryProps, ErrorBoun
   }
 
   componentDidCatch(error: Error, errorInfo: React.ErrorInfo) {
-    console.error('ErrorBoundary caught:', error, errorInfo);
+    debugConsole.error('ErrorBoundary caught:', error, errorInfo);
   }
 
   render() {

@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo } from "react";
+import { debugConsole } from '@/utils/debugConsole';
 import { useSearchParams } from "react-router-dom";
 import { useNotificationHighlight } from "@/hooks/useNotificationHighlight";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -530,7 +531,7 @@ export const DecisionOverview = () => {
 
       setDecisions(allDecisionsList);
     } catch (error) {
-      console.error('Error loading decision requests:', error);
+      debugConsole.error('Error loading decision requests:', error);
     }
   };
 
@@ -616,13 +617,13 @@ export const DecisionOverview = () => {
           }
         }
       } catch (notifError) {
-        console.warn('Notification send failed (non-critical):', notifError);
+        debugConsole.warn('Notification send failed (non-critical):', notifError);
       }
 
       // Liste neu laden
       if (user?.id) await loadDecisionRequests(user.id);
     } catch (error) {
-      console.error('Error sending creator response:', error);
+      debugConsole.error('Error sending creator response:', error);
       toast({
         title: "Fehler",
         description: "Antwort konnte nicht gesendet werden.",
@@ -684,7 +685,7 @@ export const DecisionOverview = () => {
       toast({ title: "Archiviert", description: "Entscheidung wurde archiviert." });
       loadDecisionRequests(user.id);
     } catch (error) {
-      console.error('Error archiving decision:', error);
+      debugConsole.error('Error archiving decision:', error);
       toast({ title: "Fehler", description: "Entscheidung konnte nicht archiviert werden.", variant: "destructive" });
     }
   };
@@ -704,7 +705,7 @@ export const DecisionOverview = () => {
       setDeletingDecisionId(null);
       if (user?.id) loadDecisionRequests(user.id);
     } catch (error) {
-      console.error('Error deleting decision:', error);
+      debugConsole.error('Error deleting decision:', error);
       toast({ title: "Fehler", description: "Entscheidung konnte nicht gelöscht werden.", variant: "destructive" });
     }
   };
@@ -720,7 +721,7 @@ export const DecisionOverview = () => {
       toast({ title: "Erfolgreich", description: "Entscheidung wurde wiederhergestellt." });
       if (user?.id) loadDecisionRequests(user.id);
     } catch (error) {
-      console.error('Error restoring decision:', error);
+      debugConsole.error('Error restoring decision:', error);
       toast({ title: "Fehler", description: "Entscheidung konnte nicht wiederhergestellt werden.", variant: "destructive" });
     }
   };
@@ -764,7 +765,7 @@ export const DecisionOverview = () => {
       setCreatingTaskFromDecisionId(null);
       loadDecisionRequests(user.id);
     } catch (error) {
-      console.error('Error creating task from decision:', error);
+      debugConsole.error('Error creating task from decision:', error);
       toast({ title: "Fehler", description: "Aufgabe konnte nicht erstellt werden.", variant: "destructive" });
       setCreatingTaskFromDecisionId(null);
     }
@@ -1146,7 +1147,7 @@ export const DecisionOverview = () => {
       .order('created_at', { ascending: false });
 
     if (error) {
-      console.error('Error loading attachment files:', error);
+      debugConsole.error('Error loading attachment files:', error);
       toast({ title: 'Fehler', description: 'Anhänge konnten nicht geladen werden.', variant: 'destructive' });
       return;
     }

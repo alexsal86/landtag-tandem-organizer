@@ -76,7 +76,7 @@ export function useMeetingCreate(deps: UseMeetingCreateDeps) {
             end_time: localEndTime.toISOString(), category: 'meeting', status: 'planned',
             user_id: user.id, tenant_id: currentTenant.id, meeting_id: data.id
           });
-        } catch (e) { console.error('Error creating appointment for meeting:', e); }
+        } catch (e) { debugConsole.error('Error creating appointment for meeting:', e); }
       }
 
       // Add participants
@@ -104,7 +104,7 @@ export function useMeetingCreate(deps: UseMeetingCreateDeps) {
             toast({ title: "Notizen verknüpft", description: `${pendingNotes.length} vorgemerkte Notiz(en) wurden automatisch hinzugefügt.` });
           }
         }
-      } catch (e) { console.error('Error processing pending notes:', e); }
+      } catch (e) { debugConsole.error('Error processing pending notes:', e); }
 
       // Auto-create future recurring meetings
       if (newMeetingRecurrence.enabled && newMeeting.template_id) {
@@ -145,7 +145,7 @@ export function useMeetingCreate(deps: UseMeetingCreateDeps) {
             }
             toast({ title: "Wiederkehrende Meetings erstellt", description: `${toCreate} zukünftige Meeting(s) wurden automatisch erstellt.` });
           }
-        } catch (e) { console.error('Error creating recurring meetings:', e); }
+        } catch (e) { debugConsole.error('Error creating recurring meetings:', e); }
       }
 
       // Load agenda and apply carryover

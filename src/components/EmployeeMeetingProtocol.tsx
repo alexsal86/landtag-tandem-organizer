@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from "react";
+import { debugConsole } from '@/utils/debugConsole';
 import { useAuth } from "@/hooks/useAuth";
 import { useTenant } from "@/hooks/useTenant";
 import { supabase } from "@/integrations/supabase/client";
@@ -300,7 +301,7 @@ export function EmployeeMeetingProtocol({ meetingId, onBack }: EmployeeMeetingPr
       if (actionError) throw actionError;
       setActionItems((actionData || []) as ActionItem[]);
     } catch (error: unknown) {
-      console.error("Error loading meeting:", error);
+      debugConsole.error("Error loading meeting:", error);
       toast({ title: "Fehler", description: "Besprechungsdaten konnten nicht geladen werden", variant: "destructive" });
     } finally {
       setLoading(false);
@@ -351,7 +352,7 @@ export function EmployeeMeetingProtocol({ meetingId, onBack }: EmployeeMeetingPr
         toast({ title: "Gespeichert", description: "Protokoll wurde gespeichert" });
       }
     } catch (error: unknown) {
-      console.error("Error saving protocol:", error);
+      debugConsole.error("Error saving protocol:", error);
       setSaveState("unsaved");
       if (!isAutoSave) {
         toast({ title: "Fehler", description: "Protokoll konnte nicht gespeichert werden", variant: "destructive" });
@@ -369,7 +370,7 @@ export function EmployeeMeetingProtocol({ meetingId, onBack }: EmployeeMeetingPr
       setSharedDuringMeeting(true);
       toast({ title: "Vorbereitung geteilt", description: "Beide Parteien können jetzt die Vorbereitungen sehen" });
     } catch (error: unknown) {
-      console.error("Error sharing preparation:", error);
+      debugConsole.error("Error sharing preparation:", error);
       toast({ title: "Fehler", description: "Vorbereitung konnte nicht geteilt werden", variant: "destructive" });
     }
   };
@@ -386,7 +387,7 @@ export function EmployeeMeetingProtocol({ meetingId, onBack }: EmployeeMeetingPr
         data_param: JSON.stringify({ meeting_id: meetingId }),
       });
     } catch (e) {
-      console.error("Notification error:", e);
+      debugConsole.error("Notification error:", e);
     }
   };
 
@@ -411,7 +412,7 @@ export function EmployeeMeetingProtocol({ meetingId, onBack }: EmployeeMeetingPr
           .from("employee_settings")
           .update({ last_meeting_date: meeting.meeting_date })
           .eq("user_id", meeting.employee_id);
-        if (settingsError) console.error("Error updating employee_settings:", settingsError);
+        if (settingsError) debugConsole.error("Error updating employee_settings:", settingsError);
 
         sendMeetingNotification(meeting.employee_id, "Gespräch abgeschlossen", `Ihr Mitarbeitergespräch wurde abgeschlossen.`);
 
@@ -430,7 +431,7 @@ export function EmployeeMeetingProtocol({ meetingId, onBack }: EmployeeMeetingPr
 
       loadMeetingData();
     } catch (error: unknown) {
-      console.error("Error updating status:", error);
+      debugConsole.error("Error updating status:", error);
       toast({ title: "Fehler", description: "Status konnte nicht aktualisiert werden", variant: "destructive" });
     }
   };
@@ -457,7 +458,7 @@ export function EmployeeMeetingProtocol({ meetingId, onBack }: EmployeeMeetingPr
       toast({ title: "Abgesagt", description: "Gespräch wurde abgesagt" });
       loadMeetingData();
     } catch (error: unknown) {
-      console.error("Error cancelling meeting:", error);
+      debugConsole.error("Error cancelling meeting:", error);
       toast({ title: "Fehler", description: "Gespräch konnte nicht abgesagt werden", variant: "destructive" });
     }
   };
@@ -478,7 +479,7 @@ export function EmployeeMeetingProtocol({ meetingId, onBack }: EmployeeMeetingPr
 
       toast({ title: "Anfrage gesendet", description: "Umterminierungsanfrage wurde an den Vorgesetzten gesendet" });
     } catch (error: unknown) {
-      console.error("Error requesting reschedule:", error);
+      debugConsole.error("Error requesting reschedule:", error);
       toast({ title: "Fehler", description: "Anfrage konnte nicht gesendet werden", variant: "destructive" });
     }
   };
@@ -505,7 +506,7 @@ export function EmployeeMeetingProtocol({ meetingId, onBack }: EmployeeMeetingPr
       setNewActionItem({ description: "", owner: "employee", status: "open" });
       toast({ title: "Action Item hinzugefügt", description: "Neue Maßnahme wurde erfolgreich erstellt" });
     } catch (error: unknown) {
-      console.error("Error adding action item:", error);
+      debugConsole.error("Error adding action item:", error);
       toast({ title: "Fehler", description: "Action Item konnte nicht erstellt werden", variant: "destructive" });
     }
   };
@@ -517,7 +518,7 @@ export function EmployeeMeetingProtocol({ meetingId, onBack }: EmployeeMeetingPr
       setActionItems(actionItems.map(item => item.id === itemId ? { ...item, ...updates } : item));
       toast({ title: "Aktualisiert", description: "Action Item wurde aktualisiert" });
     } catch (error: unknown) {
-      console.error("Error updating action item:", error);
+      debugConsole.error("Error updating action item:", error);
       toast({ title: "Fehler", description: "Action Item konnte nicht aktualisiert werden", variant: "destructive" });
     }
   };
@@ -529,7 +530,7 @@ export function EmployeeMeetingProtocol({ meetingId, onBack }: EmployeeMeetingPr
       setActionItems(actionItems.filter(item => item.id !== itemId));
       toast({ title: "Gelöscht", description: "Action Item wurde entfernt" });
     } catch (error: unknown) {
-      console.error("Error deleting action item:", error);
+      debugConsole.error("Error deleting action item:", error);
       toast({ title: "Fehler", description: "Action Item konnte nicht gelöscht werden", variant: "destructive" });
     }
   };

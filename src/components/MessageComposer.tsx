@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { debugConsole } from '@/utils/debugConsole';
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -126,7 +127,7 @@ export function MessageComposer({ onClose, onSent }: MessageComposerProps) {
 
       onSent();
     } catch (error) {
-      console.error('Error sending message:', error);
+      debugConsole.error('Error sending message:', error);
       toast({
         title: "Fehler",
         description: "Die Nachricht konnte nicht gesendet werden.",

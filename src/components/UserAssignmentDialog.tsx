@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { debugConsole } from '@/utils/debugConsole';
 import { Users, X, Check } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
@@ -57,7 +58,7 @@ const UserAssignmentDialog: React.FC<UserAssignmentDialogProps> = ({
         .neq('user_id', user?.id);
 
       if (tenantError) {
-        console.error('Error fetching tenant users:', tenantError);
+        debugConsole.error('Error fetching tenant users:', tenantError);
         throw tenantError;
       }
 
@@ -75,7 +76,7 @@ const UserAssignmentDialog: React.FC<UserAssignmentDialogProps> = ({
         .in('user_id', userIds);
 
       if (error) {
-        console.error('Error fetching profiles:', error);
+        debugConsole.error('Error fetching profiles:', error);
         throw error;
       }
 
@@ -86,7 +87,7 @@ const UserAssignmentDialog: React.FC<UserAssignmentDialogProps> = ({
 
       setUsers(formattedUsers);
     } catch (error) {
-      console.error('Error fetching tenant users:', error);
+      debugConsole.error('Error fetching tenant users:', error);
       toast({
         title: "Fehler",
         description: "Benutzer konnten nicht geladen werden.",
@@ -108,7 +109,7 @@ const UserAssignmentDialog: React.FC<UserAssignmentDialogProps> = ({
 
       setSelectedUsers(data?.map(c => c.user_id) || []);
     } catch (error) {
-      console.error('Error fetching collaborators:', error);
+      debugConsole.error('Error fetching collaborators:', error);
     }
   };
 
@@ -157,7 +158,7 @@ const UserAssignmentDialog: React.FC<UserAssignmentDialogProps> = ({
       onAssignmentComplete();
       onClose();
     } catch (error) {
-      console.error('Error saving collaborators:', error);
+      debugConsole.error('Error saving collaborators:', error);
       toast({
         title: "Fehler",
         description: "Prüfer konnten nicht zugewiesen werden.",

@@ -1,4 +1,5 @@
 import { useState, useMemo, useEffect } from "react";
+import { debugConsole } from '@/utils/debugConsole';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -171,7 +172,7 @@ export const TaskDecisionCreator = ({
           }
         }
       } catch (e) {
-        console.error('Error loading default participants:', e);
+        debugConsole.error('Error loading default participants:', e);
       }
 
       if (defaultSettings) {
@@ -208,7 +209,7 @@ export const TaskDecisionCreator = ({
       setProfilesLoaded(true);
     } catch (error) {
       setUploadStatus(null);
-      console.error('Error loading profiles:', error);
+      debugConsole.error('Error loading profiles:', error);
       setProfilesLoaded(true);
     }
   };
@@ -238,12 +239,12 @@ export const TaskDecisionCreator = ({
       // Get current user first and validate
       const { data: userData, error: userError } = await supabase.auth.getUser();
       if (userError) {
-        console.error('Auth error:', userError);
+        debugConsole.error('Auth error:', userError);
         throw new Error(`Authentication error: ${userError.message}`);
       }
       
       if (!userData.user) {
-        console.error('No user found');
+        debugConsole.error('No user found');
         throw new Error('User not authenticated');
       }
 
@@ -256,7 +257,7 @@ export const TaskDecisionCreator = ({
         .single();
 
       if (tenantError || !tenantData) {
-        console.error('Tenant lookup error:', tenantError);
+        debugConsole.error('Tenant lookup error:', tenantError);
         throw new Error('Unable to determine user tenant');
       }
 
@@ -298,7 +299,7 @@ export const TaskDecisionCreator = ({
         .single();
 
       if (decisionError) {
-        console.error('Decision creation error:', decisionError);
+        debugConsole.error('Decision creation error:', decisionError);
         throw decisionError;
       }
 
@@ -338,7 +339,7 @@ export const TaskDecisionCreator = ({
           .insert(participants);
 
         if (participantsError) {
-          console.error('Participants creation error:', participantsError);
+          debugConsole.error('Participants creation error:', participantsError);
           throw participantsError;
         }
 
@@ -360,7 +361,7 @@ export const TaskDecisionCreator = ({
         });
 
         if (notificationError) {
-          console.error('Error creating notification for user:', userId, notificationError);
+          debugConsole.error('Error creating notification for user:', userId, notificationError);
         }
       }
 
@@ -383,7 +384,7 @@ export const TaskDecisionCreator = ({
           });
 
           if (matrixError) {
-            console.error('Error sending Matrix decisions:', matrixError);
+            debugConsole.error('Error sending Matrix decisions:', matrixError);
             toast({
               title: "Matrix-Fehler",
               description: `Matrix-Nachrichten konnten nicht versendet werden: ${matrixError.message}`,
@@ -407,7 +408,7 @@ export const TaskDecisionCreator = ({
             }
           }
         } catch (matrixError: any) {
-          console.error('Error sending Matrix decisions:', matrixError);
+          debugConsole.error('Error sending Matrix decisions:', matrixError);
           toast({
             title: "Matrix-Fehler",
             description: `Unerwarteter Fehler beim Matrix-Versand: ${matrixError.message}`,
@@ -436,7 +437,7 @@ export const TaskDecisionCreator = ({
           });
 
           if (emailError) {
-            console.error('Error sending decision emails:', emailError);
+            debugConsole.error('Error sending decision emails:', emailError);
             toast({
               title: "E-Mail-Fehler",
               description: `E-Mails konnten nicht versendet werden: ${emailError.message}`,
@@ -460,7 +461,7 @@ export const TaskDecisionCreator = ({
             }
           }
         } catch (emailError: any) {
-          console.error('Error sending decision emails:', emailError);
+          debugConsole.error('Error sending decision emails:', emailError);
           toast({
             title: "E-Mail-Fehler",
             description: `Unerwarteter Fehler beim E-Mail-Versand: ${emailError.message}`,
@@ -496,7 +497,7 @@ export const TaskDecisionCreator = ({
       setUploadStatus(null);
     } catch (error) {
       setUploadStatus(null);
-      console.error('Error creating decision:', error);
+      debugConsole.error('Error creating decision:', error);
       toast({
         title: "Fehler",
         description: error instanceof Error ? error.message : "Entscheidungsanfrage konnte nicht erstellt werden.",
