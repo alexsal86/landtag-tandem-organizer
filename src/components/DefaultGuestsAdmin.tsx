@@ -54,7 +54,7 @@ export const DefaultGuestsAdmin: React.FC = () => {
 
       if (error) throw error;
       setGuests(data || []);
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Error fetching default guests:', error);
       toast.error('Fehler beim Laden der Standard-Gäste');
     } finally {
