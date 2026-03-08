@@ -97,7 +97,7 @@ export const DefaultGuestsAdmin: React.FC = () => {
       setShowAddDialog(false);
       setAddForm({ name: '', email: '', is_active: true });
       fetchDefaultGuests();
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Error adding default guest:', error);
       toast.error('Fehler beim Hinzufügen des Standard-Gastes');
     }
