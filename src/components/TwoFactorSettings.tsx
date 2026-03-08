@@ -54,7 +54,7 @@ export function TwoFactorSettings() {
         const hasVerifiedFactor = data.all?.some((f: MFAFactor) => f.status === "verified");
         setIsEnabled(hasVerifiedFactor);
       }
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Error loading MFA status:", error);
     } finally {
       setLoading(false);
