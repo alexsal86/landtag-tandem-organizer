@@ -205,7 +205,7 @@ export function ContactDetailPanel({ contactId, onClose, onContactUpdate }: Cont
       }
       setAllTags({ direct: data.tags || [], inherited: inheritedTags });
     } catch (error) {
-      console.error('Error fetching contact:', error);
+      debugConsole.error('Error fetching contact:', error);
       toast({ title: "Fehler", description: "Kontakt konnte nicht geladen werden.", variant: "destructive" });
     } finally {
       setLoading(false);
