@@ -275,9 +275,8 @@ export function useDashboardLayout() {
     // Immediate local storage backup
     try {
       localStorage.setItem(`dashboard-layout-${user?.id || 'anonymous'}`, JSON.stringify(updatedLayout));
-      console.log('✅ Saved to localStorage');
     } catch (error) {
-      console.warn('Failed to save to localStorage:', error);
+      // silently fail
     }
     
     // Clear existing timeout and set new one for debounced save
