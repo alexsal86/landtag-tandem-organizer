@@ -104,7 +104,7 @@ export const normalizeLayoutBlockContentImages = (layoutSettings: LetterLayoutSe
     },
   });
 
-  const blockContent = ((layoutSettings as Record<string, unknown>).blockContent || {}) as Record<string, unknown[]>;
+  const blockContent = ((layoutSettings as unknown as Record<string, unknown>).blockContent || {}) as Record<string, unknown[]>;
   const normalizedContent = Object.fromEntries(
     Object.entries(blockContent).map(([key, items]) => {
       if (!Array.isArray(items)) return [key, items];

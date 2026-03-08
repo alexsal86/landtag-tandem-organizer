@@ -60,7 +60,7 @@ export function useLetterTemplateData() {
         .from('letter_templates').select('id, name, letterhead_html, letterhead_css, response_time_days, is_default, is_active, tenant_id, created_by, default_sender_id, default_info_blocks, header_layout_type, header_text_elements, footer_blocks, layout_settings, created_at, updated_at').eq('tenant_id', currentTenant.id)
         .eq('is_active', true).order('is_default', { ascending: false }).order('name');
       if (error) throw error;
-      setTemplates(data || []);
+      setTemplates((data || []) as unknown as LetterTemplate[]);
     } catch (error) {
       debugConsole.error('Error fetching templates:', error);
       toast({ title: "Fehler", description: "Templates konnten nicht geladen werden.", variant: "destructive" });
