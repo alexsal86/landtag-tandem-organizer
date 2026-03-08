@@ -179,7 +179,18 @@ export function MyWorkQuickCapture({ onNoteSaved }: MyWorkQuickCaptureProps) {
     }
   };
 
+  const contentEditorRef = useRef<HTMLDivElement>(null);
+
   const handleTitleKeyDown = (e: React.KeyboardEvent<HTMLDivElement>) => {
+    if (e.key === 'Tab' && !e.shiftKey) {
+      e.preventDefault();
+      // Focus the content editor
+      const contentEditable = contentEditorRef.current?.querySelector('[contenteditable="true"]');
+      if (contentEditable instanceof HTMLElement) {
+        contentEditable.focus();
+      }
+      return;
+    }
     if (e.key === "Enter" && !e.shiftKey && !e.nativeEvent.isComposing) {
       const mentionMenuOpen = !!document.querySelector('.mentions-menu');
       if (mentionMenuOpen) return;
