@@ -32,7 +32,7 @@ export const useTopics = () => {
         .order('order_index');
 
       if (error) {
-        console.error('Error fetching topics:', error);
+        debugConsole.error('Error fetching topics:', error);
         return;
       }
 
