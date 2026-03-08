@@ -70,8 +70,8 @@ export function useDocumentsData(activeTab: string) {
         .order('created_at', { ascending: false });
       if (error) throw error;
       setLetters((data || []) as Letter[]);
-    } catch (error: any) {
-      toast({ title: "Fehler beim Laden der Briefe", description: error.message, variant: "destructive" });
+    } catch (error: unknown) {
+      toast({ title: "Fehler beim Laden der Briefe", description: error instanceof Error ? error.message : String(error), variant: "destructive" });
     } finally {
       setLoading(false);
     }
