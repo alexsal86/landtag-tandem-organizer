@@ -65,7 +65,7 @@ export function useCalendarData(currentDate: Date, view: string) {
       ]);
 
       if (e1 || e2) {
-        console.error("Error fetching appointments:", e1 || e2);
+        debugConsole.error("Error fetching appointments:", e1 || e2);
         return;
       }
 
