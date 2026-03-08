@@ -132,7 +132,7 @@ export const useTopics = () => {
       toast({ title: "Thema gelöscht" });
       return true;
     } catch (error: unknown) {
-      console.error('Error deleting topic:', error);
+      debugConsole.error('Error deleting topic:', error);
       toast({ 
         title: "Fehler", 
         description: error instanceof Error ? error.message : "Thema konnte nicht gelöscht werden.", 
