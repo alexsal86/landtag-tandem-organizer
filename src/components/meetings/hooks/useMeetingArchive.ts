@@ -273,7 +273,7 @@ export function useMeetingArchive(deps: ArchiveDeps) {
       }
 
       // Step 4: Follow-up task with subtasks
-      let followUpTask = null;
+      let followUpTask: any = null;
       try {
         const { data: createdTask, error: taskError } = await supabase.from('tasks').insert([{
           user_id: user.id,
