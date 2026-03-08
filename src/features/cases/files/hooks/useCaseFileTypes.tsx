@@ -146,7 +146,7 @@ export const useCaseFileTypes = () => {
 
       toast({
         title: "Erfolgreich",
-        description: `FallAkten-Typ wurde ${!isActive ? 'aktiviert' : 'deaktiviert'}.`,
+        description: `Fallakten-Typ wurde ${!isActive ? 'aktiviert' : 'deaktiviert'}.`,
       });
 
       await fetchCaseFileTypes();
