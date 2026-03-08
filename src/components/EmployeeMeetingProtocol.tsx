@@ -504,7 +504,7 @@ export function EmployeeMeetingProtocol({ meetingId, onBack }: EmployeeMeetingPr
       setActionItems([data as ActionItem, ...actionItems]);
       setNewActionItem({ description: "", owner: "employee", status: "open" });
       toast({ title: "Action Item hinzugefügt", description: "Neue Maßnahme wurde erfolgreich erstellt" });
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Error adding action item:", error);
       toast({ title: "Fehler", description: "Action Item konnte nicht erstellt werden", variant: "destructive" });
     }
