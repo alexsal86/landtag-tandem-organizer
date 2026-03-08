@@ -97,7 +97,7 @@ export const VapidKeyTest: React.FC = () => {
       }
 
     } catch (error) {
-      console.error('❌ VAPID test error:', error);
+      debugConsole.error('❌ VAPID test error:', error);
       setTestResult({
         step: 'VAPID-Test fehlgeschlagen',
         status: 'error',
