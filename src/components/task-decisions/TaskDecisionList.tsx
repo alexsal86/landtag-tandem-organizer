@@ -294,7 +294,7 @@ export const TaskDecisionList = () => {
 
   const sendCreatorResponse = async (responseId: string) => {
     const responseText = creatorResponses[responseId];
-    console.log('sendCreatorResponse called with:', { responseId, responseText, creatorResponses });
+    
     
     if (!responseText?.trim()) return;
 
