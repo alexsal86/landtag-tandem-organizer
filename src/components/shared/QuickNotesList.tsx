@@ -377,7 +377,7 @@ export function QuickNotesList({
 
       setNotes([...ownWithDetails, ...sharedNotes].map(normalizeMeetingLink));
     } catch (error) {
-      console.error("Error loading notes:", error);
+      debugConsole.error("Error loading notes:", error);
     } finally {
       setLoading(false);
     }
