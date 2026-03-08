@@ -186,10 +186,10 @@ export const useTeamFeedbackFeed = (filters?: TeamFeedbackFeedFilters) => {
       });
 
       if (resolvedFilters.scope === 'team-plus-relevant') {
-        return (mappedEntries as any[]).filter((entry) => entry.is_relevant_to_me || entry.has_tasks || entry.has_documents);
+        return (mappedEntries as TeamFeedbackEntry[]).filter((entry) => entry.is_relevant_to_me || entry.has_tasks || entry.has_documents);
       }
 
-      return mappedEntries as any;
+      return mappedEntries as TeamFeedbackEntry[];
     },
     enabled: !!currentTenant?.id && !!user?.id,
   });

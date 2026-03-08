@@ -128,7 +128,7 @@ const LetterDetail = () => {
 
           <div className="h-[calc(100vh-12rem)] min-h-[600px]">
             <LetterEditor
-              letter={letter as any}
+              letter={letter}
               isOpen={true}
               onClose={() => navigate('/documents?tab=letters')}
               onSave={fetchLetter}

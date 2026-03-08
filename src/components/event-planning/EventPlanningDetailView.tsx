@@ -219,8 +219,8 @@ export function EventPlanningDetailView(data: EventPlanningDataReturn) {
             </Dialog>
 
             {(selectedPlanning.user_id === user?.id || uniquePlanningCollaborators.some(c => c.user_id === user?.id && c.can_edit)) && (
-              <Button variant={(selectedPlanning as any).is_completed ? "default" : "outline"} className={cn((selectedPlanning as any).is_completed && "bg-green-600 hover:bg-green-700")} onClick={() => togglePlanningCompleted(selectedPlanning.id, !(selectedPlanning as any).is_completed)}>
-                <CheckCircle className="mr-2 h-4 w-4" />{(selectedPlanning as any).is_completed ? "Erledigt" : "Als erledigt markieren"}
+              <Button variant={selectedPlanning.is_completed ? "default" : "outline"} className={cn(selectedPlanning.is_completed && "bg-green-600 hover:bg-green-700")} onClick={() => togglePlanningCompleted(selectedPlanning.id, !selectedPlanning.is_completed)}>
+                <CheckCircle className="mr-2 h-4 w-4" />{selectedPlanning.is_completed ? "Erledigt" : "Als erledigt markieren"}
               </Button>
             )}
             {selectedPlanning.user_id === user?.id && <Button variant="outline" onClick={() => archivePlanning(selectedPlanning.id)}><Archive className="mr-2 h-4 w-4" />Archivieren</Button>}
