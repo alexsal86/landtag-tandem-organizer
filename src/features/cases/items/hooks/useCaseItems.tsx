@@ -324,7 +324,7 @@ export const useCaseItems = () => {
 
       return interaction as unknown as CaseItemInteraction;
     } catch (error) {
-      console.error("Error creating case item interaction:", error);
+      debugConsole.error("Error creating case item interaction:", error);
       toast({
         title: "Fehler",
         description: "Interaktion konnte nicht gespeichert werden.",
