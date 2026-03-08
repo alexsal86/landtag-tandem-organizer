@@ -158,8 +158,8 @@ export default function CreateTask() {
           .single();
 
         if (insertError) {
-          console.error('❌ Task creation error:', insertError);
-          console.error('❌ Error details:', {
+          debugConsole.error('❌ Task creation error:', insertError);
+          debugConsole.error('❌ Error details:', {
             message: insertError.message,
             details: insertError.details,
             hint: insertError.hint,
