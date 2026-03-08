@@ -287,8 +287,8 @@ export function SuperadminTenantManagement() {
       setAssigningUser(null);
       loadTenants();
       loadAllUsers();
-    } catch (error: any) {
-      toast({ title: "Fehler", description: error.message, variant: "destructive" });
+    } catch (error: unknown) {
+      toast({ title: "Fehler", description: error instanceof Error ? error.message : "Zuweisung fehlgeschlagen", variant: "destructive" });
     }
   };
 
