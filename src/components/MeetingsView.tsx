@@ -1,4 +1,3 @@
-import React from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Users } from "lucide-react";
 import { ResizablePanelGroup, ResizablePanel, ResizableHandle } from "@/components/ui/resizable";

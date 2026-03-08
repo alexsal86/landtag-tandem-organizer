@@ -1,4 +1,3 @@
-import React from "react";
 import type { SystemAgendaType } from "@/components/meetings/types";
 import { debugConsole } from '@/utils/debugConsole';
 import { Button } from "@/components/ui/button";

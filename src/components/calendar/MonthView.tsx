@@ -1,4 +1,3 @@
-import React from "react";
 import { Calendar } from "@/components/ui/calendar";
 import { CalendarEvent } from "./types";
 import { Badge } from "@/components/ui/badge";

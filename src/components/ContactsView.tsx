@@ -1,4 +1,3 @@
-import React from "react";
 import { cn } from "@/lib/utils";
 import { Link, useNavigate } from "react-router-dom";
 import { Search, Plus, Building, User, Filter, Grid3X3, List, Users, Archive, ChevronUp, Tag, Network, CheckSquare, Square } from "lucide-react";

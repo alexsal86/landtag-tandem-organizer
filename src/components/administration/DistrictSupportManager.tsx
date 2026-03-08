@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { debugConsole } from '@/utils/debugConsole';
 import { useElectionDistricts } from '@/hooks/useElectionDistricts';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';

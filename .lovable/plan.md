@@ -8,6 +8,7 @@
 - **DOMPurify** als zentraler HTML-Sanitizer — alle `dangerouslySetInnerHTML` nutzen jetzt `sanitizeRichHtml()`
 - **Tenant-Access Guard** für Edge Functions — existiert in `supabase/functions/_shared/tenant-access.ts`
 - **ESLint `no-unused-vars: warn`** — aktiviert mit `argsIgnorePattern: '^_'`, erste Bereinigungsrunde in Pages/Hooks abgeschlossen
+- **Standalone `React`-Imports entfernt** — ~60 Dateien bereinigt (standalone `import React` und unnötiges `React, ` Prefix bei destructured imports)
 
 ### Noch offen
 

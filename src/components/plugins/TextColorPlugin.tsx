@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useEffect, useMemo } from 'react';
+import { useState, useCallback, useEffect, useMemo } from 'react';
 import { useLexicalComposerContext } from '@lexical/react/LexicalComposerContext';
 import { $getSelection, $isRangeSelection, SELECTION_CHANGE_COMMAND, COMMAND_PRIORITY_NORMAL } from 'lexical';
 import { $patchStyleText } from '@lexical/selection';

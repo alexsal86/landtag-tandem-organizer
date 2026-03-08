@@ -1,4 +1,3 @@
-import React from "react";
 import { ListTodo, Plus, Edit2, Check, X, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
