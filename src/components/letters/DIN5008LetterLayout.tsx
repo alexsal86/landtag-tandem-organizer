@@ -158,7 +158,7 @@ export const DIN5008LetterLayout: React.FC<DIN5008LetterLayoutProps> = ({
       // Check if this is the simple {name, address} format
       if (address.address && typeof address.address === 'string') {
         // Split address string into lines and filter empty lines
-        const addressLines = address.address.split('\n').filter(line => line.trim());
+        const addressLines = address.address.split('\n').filter((line: string) => line.trim());
         
         // Prevent duplication: skip first line if it matches the name
         if (addressLines.length > 0 && addressLines[0].trim() === address.name?.trim()) {
