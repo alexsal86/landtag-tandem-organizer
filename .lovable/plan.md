@@ -1,18 +1,19 @@
 
+## Benachrichtigungen & Badges für Vorgänge — Umgesetzt
 
-## Problem
+### Was wurde gemacht:
 
-Das Dashboard verwendet das NewsWidget im `compact`-Modus. Die Compact-Ansicht (Zeilen 119-143) rendert nur Titel und Quelle — keine Hover-Buttons für Teilen/Aufgabe erstellen. Diese existieren nur in der Full-Ansicht.
+1. **DB: Neue `notification_types` für Kategorie `cases`** (alle 3 Tenants)
+   - `case_item_created`, `case_item_assigned`, `case_item_status_changed`, `case_item_comment`
 
-## Lösung
+2. **DB: `notification_navigation_mapping`** — alle 4 Typen auf `navigation_context = 'mywork'` gemappt, damit Sidebar-Badge korrekt zählt.
 
-Die Compact-Ansicht um die gleichen Hover-Buttons erweitern wie in der Full-Ansicht:
+3. **UI: `NotificationSettings.tsx`** — Kategorie `cases` / "Vorgänge" mit Icon 📋 eingefügt (Order 3).
 
-### Änderungen in `src/components/widgets/NewsWidget.tsx`
+4. **Code: `useCaseItems.tsx`** — `create_notification` RPC-Aufrufe bei:
+   - Vorgang erstellen → Benachrichtigung an zugewiesenen Owner
+   - Status-Änderung → Benachrichtigung an Ersteller + Owner
+   - Zuweisung-Änderung → Benachrichtigung an neuen Owner
+   - Kommentar/Interaktion → Benachrichtigung an Ersteller + Owner
 
-Die Compact-Artikel-Items (Zeile 130-137) erhalten:
-- `group`-Klasse auf dem Container
-- Eine Zeile mit `Share2` und `CheckSquare` Buttons, die per `opacity-0 group-hover:opacity-100` beim Hover eingeblendet werden
-- Die gleichen Click-Handler wie in der Full-Ansicht (`setSelectedArticle` + Dialog öffnen)
-- Layout: Titel + Buttons in einer Flex-Row, damit die Buttons rechts erscheinen ohne den Titel zu verdrängen
-
+5. **Badge-System**: Sidebar-Badge für "Meine Arbeit" zählt nun auch Vorgang-Benachrichtigungen (via `navigation_context = 'mywork'` Trigger). Interne Tab-Badges bleiben über `useMyWorkNewCounts` (Zeitstempel-basiert).
