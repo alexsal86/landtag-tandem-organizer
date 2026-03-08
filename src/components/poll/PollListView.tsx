@@ -249,7 +249,7 @@ export const PollListView = () => {
         description: "Der Abstimmungslink wurde in die Zwischenablage kopiert.",
       });
     } catch (error) {
-      console.error('Error copying poll link:', error);
+      debugConsole.error('Error copying poll link:', error);
       toast({
         title: "Fehler",
         description: "Der Link konnte nicht kopiert werden.",
