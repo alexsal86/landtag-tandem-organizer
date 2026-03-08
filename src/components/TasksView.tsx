@@ -590,7 +590,7 @@ export function TasksView() {
       if (callFollowupError) {
         console.error('❌ Error loading call follow-up tasks:', callFollowupError);
       } else {
-        console.log('✅ Raw call follow-up data:', callFollowupData);
+        
         
         // Filter those assigned to current user
         const userCallFollowups = (callFollowupData || []).filter(task => {
