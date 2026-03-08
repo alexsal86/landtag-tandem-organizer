@@ -411,7 +411,7 @@ export function DrucksachenUpload({ onUploadSuccess, onProtocolsRefresh }: Druck
       onProtocolsRefresh();
       
     } catch (error) {
-      console.error('JSON upload error:', error);
+      debugConsole.error('JSON upload error:', error);
       setUploadFiles(prev => prev.map((f, i) => 
         i === index ? { 
           ...f, 
