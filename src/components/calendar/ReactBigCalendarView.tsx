@@ -53,7 +53,7 @@ export function ReactBigCalendarView({
         date: targetDate
       };
       
-      console.log('Event dropped:', draggedEvent.title, 'to', targetDate);
+      debugConsole.log('Event dropped:', draggedEvent.title, 'to', targetDate);
       // In a real implementation, this would update the database
     }
     

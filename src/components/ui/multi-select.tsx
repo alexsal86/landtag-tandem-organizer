@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem } from "@/components/ui/command"
 import { cn } from "@/lib/utils"
+import { debugConsole } from '@/utils/debugConsole'
 
 interface Option {
   value: string
@@ -26,7 +27,7 @@ export function MultiSelect({
   placeholder = "Auswählen...",
   className
 }: MultiSelectProps) {
-  console.log('🔍 MultiSelect render:', { options, selected, placeholder, optionsType: typeof options, optionsLength: options?.length });
+  debugConsole.log('🔍 MultiSelect render:', { options, selected, placeholder, optionsType: typeof options, optionsLength: options?.length });
   const [open, setOpen] = React.useState(false)
 
   const handleUnselect = (item: string) => {

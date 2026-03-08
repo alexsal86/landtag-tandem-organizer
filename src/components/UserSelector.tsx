@@ -6,6 +6,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { supabase } from '@/integrations/supabase/client';
 import { useTenant } from '@/hooks/useTenant';
+import { debugConsole } from '@/utils/debugConsole';
 
 interface User {
   id: string;
@@ -38,7 +39,7 @@ export const UserSelector: React.FC<UserSelectorProps> = ({
   const [selectedUser, setSelectedUser] = useState<User | null>(null);
 
   useEffect(() => {
-    console.log('UserSelector: Fetching users, tenant:', currentTenant?.id);
+    debugConsole.log('UserSelector: Fetching users, tenant:', currentTenant?.id);
     fetchUsers();
   }, [currentTenant?.id]);
 
@@ -50,17 +51,15 @@ export const UserSelector: React.FC<UserSelectorProps> = ({
   }, [selectedUserId, users]);
 
   const fetchUsers = async () => {
-    // Don't fetch if no tenant is available yet
     if (!currentTenant?.id) {
-      console.log('UserSelector: No tenant available yet, waiting...');
+      debugConsole.log('UserSelector: No tenant available yet, waiting...');
       setLoading(false);
       return;
     }
     
     setLoading(true);
-    console.log('UserSelector: Fetching users for tenant:', currentTenant.id);
+    debugConsole.log('UserSelector: Fetching users for tenant:', currentTenant.id);
     try {
-      // Step 1: Get all active tenant memberships (separate query - no join)
       const { data: memberships, error: membershipError } = await supabase
         .from('user_tenant_memberships')
         .select('user_id')
@@ -68,19 +67,18 @@ export const UserSelector: React.FC<UserSelectorProps> = ({
         .eq('is_active', true);
 
       if (membershipError) {
-        console.error('UserSelector: Error fetching memberships:', membershipError);
+        debugConsole.error('UserSelector: Error fetching memberships:', membershipError);
         throw membershipError;
       }
       
       if (!memberships || memberships.length === 0) {
-        console.log('UserSelector: No active memberships found');
+        debugConsole.log('UserSelector: No active memberships found');
         setUsers([]);
         return;
       }
 
-      // Step 2: Get profiles for these user IDs (separate query)
       const userIds = memberships.map(m => m.user_id);
-      console.log('UserSelector: Fetching profiles for user IDs:', userIds);
+      debugConsole.log('UserSelector: Fetching profiles for user IDs:', userIds);
       
       const { data: profilesData, error: profilesError } = await supabase
         .from('profiles')
@@ -88,7 +86,7 @@ export const UserSelector: React.FC<UserSelectorProps> = ({
         .in('user_id', userIds);
 
       if (profilesError) {
-        console.error('UserSelector: Error fetching profiles:', profilesError);
+        debugConsole.error('UserSelector: Error fetching profiles:', profilesError);
         throw profilesError;
       }
 
@@ -99,10 +97,10 @@ export const UserSelector: React.FC<UserSelectorProps> = ({
       }));
 
       usersData.sort((a, b) => a.display_name.localeCompare(b.display_name));
-      console.log('UserSelector: Loaded users:', usersData.length);
+      debugConsole.log('UserSelector: Loaded users:', usersData.length);
       setUsers(usersData);
     } catch (error) {
-      console.error('Error fetching users:', error);
+      debugConsole.error('Error fetching users:', error);
     } finally {
       setLoading(false);
     }

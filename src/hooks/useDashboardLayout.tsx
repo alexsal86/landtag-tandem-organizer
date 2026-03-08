@@ -322,7 +322,7 @@ export function useDashboardLayout() {
   // Save current layout to database with retry mechanism
   const saveCurrentLayout = async (name?: string) => {
     if (!currentLayout) {
-      console.log('❌ No currentLayout available');
+      debugConsole.log('❌ No currentLayout available');
       toast.error('Kein Layout zum Speichern verfügbar');
       return false;
     }

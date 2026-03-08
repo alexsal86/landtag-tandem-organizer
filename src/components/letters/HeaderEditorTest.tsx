@@ -84,7 +84,7 @@ export const HeaderEditorTest: React.FC = () => {
   };
 
   const handleSave = (headerData: any) => {
-    console.log('Header gespeichert:', headerData);
+    debugConsole.log('Header gespeichert:', headerData);
     alert('Header erfolgreich gespeichert! (Test Mode)');
     setShowEditor(false);
   };
