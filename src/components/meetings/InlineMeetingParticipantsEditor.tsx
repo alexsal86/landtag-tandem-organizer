@@ -59,7 +59,7 @@ export function InlineMeetingParticipantsEditor({ meetingId }: InlineMeetingPart
       .eq('meeting_id', meetingId);
 
     if (participantsError) {
-      console.error('Error loading participants:', participantsError);
+      debugConsole.error('Error loading participants:', participantsError);
       setParticipants([]);
       setLoading(false);
       return;
