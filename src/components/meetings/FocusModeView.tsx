@@ -551,7 +551,7 @@ export function FocusModeView({
         if (sourceType === 'task' && parentItem) {
           try {
             const results = JSON.parse(parentItem.result_text || '{}');
-            return results[sourceData.id] || '';
+            return results[src.id as string] || '';
           } catch { return ''; }
         }
         return '';
