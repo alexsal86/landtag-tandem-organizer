@@ -382,7 +382,7 @@ export function MyWorkTasksTab() {
         return next;
       });
     } catch (error) {
-      console.error("Error clearing snooze:", error);
+      debugConsole.error("Error clearing snooze:", error);
       toast({ title: "Fehler", variant: "destructive" });
     }
   };
