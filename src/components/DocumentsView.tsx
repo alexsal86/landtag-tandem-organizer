@@ -376,7 +376,7 @@ export function DocumentsView() {
                         <div className="flex items-center gap-2"><Folder className="h-4 w-4 flex-shrink-0" /><span className="truncate">{getCategoryLabel(doc.category ?? '')}</span></div>
                         <div className="flex items-center gap-2"><Calendar className="h-4 w-4 flex-shrink-0" /><span>{format(new Date(doc.created_at), "dd.MM.yyyy", { locale: de })}</span></div>
                         <div className="flex items-center gap-2"><FileType className="h-4 w-4 flex-shrink-0" /><span className="truncate">{doc.file_name}</span></div>
-                        <div><span>Größe: {formatFileSize(doc.file_size)}</span></div>
+                        <div><span>Größe: {formatFileSize(doc.file_size ?? undefined)}</span></div>
                       </div>
                       {doc.tags && doc.tags.length > 0 && <div className="flex flex-wrap gap-1">{doc.tags.map((tag, i) => <Badge key={i} variant="outline" className="text-xs"><Tag className="h-3 w-3 mr-1" />{tag}</Badge>)}</div>}
                       <DocumentContactManager documentId={doc.id} compact />
