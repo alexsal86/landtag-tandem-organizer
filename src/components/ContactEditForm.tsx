@@ -275,9 +275,9 @@ export function ContactEditForm({ contact, onSuccess, onCancel }: ContactEditFor
             .single();
 
           if (orgError) {
-            console.error('Error creating organization:', orgError);
+            debugConsole.error('Error creating organization:', orgError);
           } else if (newOrg) {
-            console.log('Organization created successfully:', newOrg.id);
+            debugConsole.log('Organization created successfully:', newOrg.id);
             updateData.organization_id = newOrg.id;
             updateData.organization = formData.organization.trim();
             // Refresh organizations list
