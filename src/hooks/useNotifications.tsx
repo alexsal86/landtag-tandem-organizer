@@ -3,6 +3,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from './useAuth';
 import { useToast } from './use-toast';
+import { debugConsole } from '@/utils/debugConsole';
 
 export interface Notification {
   id: string;
@@ -87,7 +88,7 @@ export const useNotifications = () => {
       const unread = data?.filter(n => !n.is_read).length || 0;
       setUnreadCount(unread);
     } catch (error) {
-      console.error('Error loading notifications:', error);
+      debugConsole.error('Error loading notifications:', error);
       toast({
         title: 'Fehler',
         description: 'Benachrichtigungen konnten nicht geladen werden.',
@@ -135,7 +136,7 @@ export const useNotifications = () => {
       }));
       localStorage.removeItem('notifications_marked_read');
     } catch (error) {
-      console.error('Error marking notification as read:', error);
+      debugConsole.error('Error marking notification as read:', error);
       // Revert optimistic update on error
       setNotifications(prev => 
         prev.map(n => 
@@ -166,7 +167,7 @@ export const useNotifications = () => {
 
       if (error) throw error;
     } catch (error) {
-      console.error('Error deleting notification:', error);
+      debugConsole.error('Error deleting notification:', error);
       // Reload to restore state
       loadNotifications();
     }
@@ -227,7 +228,7 @@ export const useNotifications = () => {
       localStorage.setItem('notifications_marked_read', Date.now().toString());
       localStorage.removeItem('notifications_marked_read');
     } catch (error: any) {
-      console.error('Error marking all notifications as read:', error);
+      debugConsole.error('Error marking all notifications as read:', error);
       
       // Check if it's a network error - the operation may have succeeded
       const isNetworkError = error?.message?.includes('Failed to fetch') || 
@@ -279,7 +280,7 @@ export const useNotifications = () => {
         return false;
       }
     } catch (error) {
-      console.error('Error requesting push permission:', error);
+      debugConsole.error('Error requesting push permission:', error);
       toast({
         title: 'Fehler',
         description: 'Berechtigung für Push-Benachrichtigungen konnte nicht angefordert werden.',
@@ -359,7 +360,7 @@ export const useNotifications = () => {
           });
           
         } catch (error) {
-          console.error('❌ Failed to get VAPID key or create subscription:', error);
+          debugConsole.error('❌ Failed to get VAPID key or create subscription:', error);
           throw error;
         }
       } else {
@@ -374,7 +375,7 @@ export const useNotifications = () => {
         const auth = subscription.getKey('auth');
 
         if (!p256dh || !auth) {
-          console.error('❌ Invalid subscription keys');
+          debugConsole.error('❌ Invalid subscription keys');
           throw new Error('Invalid subscription keys');
         }
 
@@ -402,7 +403,7 @@ export const useNotifications = () => {
           });
 
         if (error) {
-          console.error('❌ Database error:', error);
+          debugConsole.error('❌ Database error:', error);
           throw error;
         }
 
@@ -414,7 +415,7 @@ export const useNotifications = () => {
         });
       }
     } catch (error) {
-      console.error('❌ Error subscribing to push:', error);
+      debugConsole.error('❌ Error subscribing to push:', error);
       toast({
         title: 'Fehler',
         description: 'Push-Benachrichtigungen konnten nicht aktiviert werden.',
@@ -473,7 +474,7 @@ export const useNotifications = () => {
         supabase.removeChannel(currentChannel);
       }
 
-      console.log(`Setting up notifications realtime subscription for user: ${user.id} (attempt ${retryCount + 1})`);
+      debugConsole.log(`Setting up notifications realtime subscription for user: ${user.id} (attempt ${retryCount + 1})`);
 
       currentChannel = supabase
         .channel(`user-notifications:${user.id}:${Date.now()}`)
@@ -486,7 +487,7 @@ export const useNotifications = () => {
             filter: `user_id=eq.${user.id}`,
           },
           async (payload) => {
-            console.log('📥 New notification received via realtime:', payload);
+            debugConsole.log('📥 New notification received via realtime:', payload);
             
             const { data: fullNotification } = await supabase
               .from('notifications')
@@ -547,7 +548,7 @@ export const useNotifications = () => {
           }
         )
         .subscribe((status) => {
-          console.log('📡 Notifications realtime subscription status:', status);
+          debugConsole.log('📡 Notifications realtime subscription status:', status);
           if (status === 'SUBSCRIBED') {
             subscriptionHealthy = true;
             retryCount = 0; // Reset on successful connection
@@ -560,7 +561,7 @@ export const useNotifications = () => {
             if (retryCount < maxRetries) {
               retryCount++;
               const delay = Math.min(1000 * Math.pow(2, retryCount), 30000);
-              console.log(`🔄 Retrying subscription in ${delay}ms (attempt ${retryCount}/${maxRetries})`);
+              debugConsole.log(`🔄 Retrying subscription in ${delay}ms (attempt ${retryCount}/${maxRetries})`);
               retryTimeout = setTimeout(setupChannel, delay);
             }
           } else if (status === 'CLOSED') {
@@ -578,7 +579,7 @@ export const useNotifications = () => {
     // Listen for storage events for cross-tab synchronization
     const handleStorageChange = (e: StorageEvent) => {
       if (e.key === `notifications-update-${user.id}` && e.newValue) {
-        console.log('🔄 Cross-tab notification update detected');
+        debugConsole.log('🔄 Cross-tab notification update detected');
         loadNotifications();
       }
     };
@@ -586,7 +587,7 @@ export const useNotifications = () => {
     window.addEventListener('storage', handleStorageChange);
 
     return () => {
-      console.log('🧹 Cleaning up notifications realtime subscription');
+      debugConsole.log('🧹 Cleaning up notifications realtime subscription');
       if (retryTimeout) clearTimeout(retryTimeout);
       stopPollingFallback();
       if (currentChannel) supabase.removeChannel(currentChannel);

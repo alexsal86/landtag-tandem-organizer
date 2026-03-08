@@ -25,6 +25,7 @@ import { toast } from 'sonner';
 import { Plus, Edit, Trash2, GripVertical, Palette } from 'lucide-react';
 import { StatusOption } from '@/hooks/useUserStatus';
 import { EmojiPicker } from './EmojiPicker';
+import { debugConsole } from '@/utils/debugConsole';
 
 export const StatusAdminSettings: React.FC = () => {
   const [statusOptions, setStatusOptions] = useState<StatusOption[]>([]);
@@ -32,7 +33,6 @@ export const StatusAdminSettings: React.FC = () => {
   const [editingOption, setEditingOption] = useState<StatusOption | null>(null);
   const [loading, setLoading] = useState(true);
 
-  // Form state
   const [formData, setFormData] = useState({
     name: '',
     emoji: '',
@@ -52,7 +52,7 @@ export const StatusAdminSettings: React.FC = () => {
       .order('sort_order');
 
     if (error) {
-      console.error('Error loading status options:', error);
+      debugConsole.error('Error loading status options:', error);
       toast.error('Fehler beim Laden der Status-Optionen');
     } else {
       setStatusOptions(data || []);
@@ -61,39 +61,23 @@ export const StatusAdminSettings: React.FC = () => {
   };
 
   const resetForm = () => {
-    setFormData({
-      name: '',
-      emoji: '',
-      color: '#3b82f6',
-      is_active: true
-    });
+    setFormData({ name: '', emoji: '', color: '#3b82f6', is_active: true });
     setEditingOption(null);
   };
 
-  const openCreateDialog = () => {
-    resetForm();
-    setIsCreateDialogOpen(true);
-  };
+  const openCreateDialog = () => { resetForm(); setIsCreateDialogOpen(true); };
 
   const openEditDialog = (option: StatusOption) => {
-    setFormData({
-      name: option.name,
-      emoji: option.emoji || '',
-      color: option.color,
-      is_active: true // Will be loaded from DB
-    });
+    setFormData({ name: option.name, emoji: option.emoji || '', color: option.color, is_active: true });
     setEditingOption(option);
     setIsCreateDialogOpen(true);
   };
 
   const handleSubmit = async () => {
-    if (!formData.name.trim()) {
-      toast.error('Name ist erforderlich');
-      return;
-    }
+    if (!formData.name.trim()) { toast.error('Name ist erforderlich'); return; }
 
     try {
-      console.log('Attempting to save status option:', formData);
+      debugConsole.log('Attempting to save status option:', formData);
       const statusData = {
         name: formData.name.trim(),
         emoji: formData.emoji || null,
@@ -101,32 +85,17 @@ export const StatusAdminSettings: React.FC = () => {
         is_active: formData.is_active,
         sort_order: editingOption?.sort_order || statusOptions.length
       };
-      console.log('Status data to save:', statusData);
+      debugConsole.log('Status data to save:', statusData);
 
       if (editingOption) {
-        // Update existing option
-        console.log('Updating existing option with ID:', editingOption.id);
-        const { error } = await supabase
-          .from('admin_status_options')
-          .update(statusData)
-          .eq('id', editingOption.id);
-
-        if (error) {
-          console.error('Update error:', error);
-          throw error;
-        }
+        debugConsole.log('Updating existing option with ID:', editingOption.id);
+        const { error } = await supabase.from('admin_status_options').update(statusData).eq('id', editingOption.id);
+        if (error) { debugConsole.error('Update error:', error); throw error; }
         toast.success('Status-Option aktualisiert');
       } else {
-        // Create new option
-        console.log('Creating new status option');
-        const { error } = await supabase
-          .from('admin_status_options')
-          .insert(statusData);
-
-        if (error) {
-          console.error('Insert error:', error);
-          throw error;
-        }
+        debugConsole.log('Creating new status option');
+        const { error } = await supabase.from('admin_status_options').insert(statusData);
+        if (error) { debugConsole.error('Insert error:', error); throw error; }
         toast.success('Status-Option erstellt');
       }
 
@@ -134,69 +103,43 @@ export const StatusAdminSettings: React.FC = () => {
       resetForm();
       loadStatusOptions();
     } catch (error) {
-      console.error('Error saving status option:', error);
-      console.error('Error details:', JSON.stringify(error, null, 2));
+      debugConsole.error('Error saving status option:', error);
+      debugConsole.error('Error details:', JSON.stringify(error, null, 2));
       toast.error(`Fehler beim Speichern der Status-Option: ${error.message || 'Unbekannter Fehler'}`);
     }
   };
 
   const handleDelete = async (id: string) => {
-    if (!confirm('Sind Sie sicher, dass Sie diese Status-Option löschen möchten?')) {
-      return;
-    }
-
+    if (!confirm('Sind Sie sicher, dass Sie diese Status-Option löschen möchten?')) return;
     try {
-      const { error } = await supabase
-        .from('admin_status_options')
-        .delete()
-        .eq('id', id);
-
+      const { error } = await supabase.from('admin_status_options').delete().eq('id', id);
       if (error) throw error;
-
       toast.success('Status-Option gelöscht');
       loadStatusOptions();
     } catch (error) {
-      console.error('Error deleting status option:', error);
+      debugConsole.error('Error deleting status option:', error);
       toast.error('Fehler beim Löschen der Status-Option');
     }
   };
 
   const handleToggleActive = async (id: string, isActive: boolean) => {
     try {
-      const { error } = await supabase
-        .from('admin_status_options')
-        .update({ is_active: !isActive })
-        .eq('id', id);
-
+      const { error } = await supabase.from('admin_status_options').update({ is_active: !isActive }).eq('id', id);
       if (error) throw error;
-
       toast.success(`Status-Option ${!isActive ? 'aktiviert' : 'deaktiviert'}`);
       loadStatusOptions();
     } catch (error) {
-      console.error('Error toggling status option:', error);
+      debugConsole.error('Error toggling status option:', error);
       toast.error('Fehler beim Ändern der Status-Option');
     }
   };
 
-  const predefinedColors = [
-    '#3b82f6', // Blue
-    '#10b981', // Green
-    '#f59e0b', // Amber
-    '#ef4444', // Red
-    '#8b5cf6', // Purple
-    '#06b6d4', // Cyan
-    '#f97316', // Orange
-    '#84cc16', // Lime
-    '#ec4899', // Pink
-    '#6b7280'  // Gray
-  ];
+  const predefinedColors = ['#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#06b6d4', '#f97316', '#84cc16', '#ec4899', '#6b7280'];
 
   if (loading) {
     return (
       <Card>
-        <CardHeader>
-          <CardTitle>Status-Optionen verwalten</CardTitle>
-        </CardHeader>
+        <CardHeader><CardTitle>Status-Optionen verwalten</CardTitle></CardHeader>
         <CardContent>
           <div className="flex items-center justify-center py-8">
             <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
@@ -228,66 +171,30 @@ export const StatusAdminSettings: React.FC = () => {
               <div className="space-y-4">
                 <div>
                   <Label htmlFor="name">Name *</Label>
-                  <Input
-                    id="name"
-                    value={formData.name}
-                    onChange={(e) => setFormData(prev => ({ ...prev, name: e.target.value }))}
-                    placeholder="z.B. Online, In Besprechung"
-                  />
+                  <Input id="name" value={formData.name} onChange={(e) => setFormData(prev => ({ ...prev, name: e.target.value }))} placeholder="z.B. Online, In Besprechung" />
                 </div>
-
                 <div>
                   <Label htmlFor="emoji">Emoji</Label>
-                  <EmojiPicker
-                    value={formData.emoji}
-                    onEmojiSelect={(emoji) => setFormData(prev => ({ ...prev, emoji }))}
-                  />
+                  <EmojiPicker value={formData.emoji} onEmojiSelect={(emoji) => setFormData(prev => ({ ...prev, emoji }))} />
                 </div>
-
                 <div>
                   <Label htmlFor="color">Farbe</Label>
                   <div className="space-y-2">
-                    <Input
-                      id="color"
-                      type="color"
-                      value={formData.color}
-                      onChange={(e) => setFormData(prev => ({ ...prev, color: e.target.value }))}
-                      className="w-full h-10"
-                    />
+                    <Input id="color" type="color" value={formData.color} onChange={(e) => setFormData(prev => ({ ...prev, color: e.target.value }))} className="w-full h-10" />
                     <div className="flex gap-2 flex-wrap">
                       {predefinedColors.map((color) => (
-                        <button
-                          key={color}
-                          type="button"
-                          className="w-6 h-6 rounded border-2 border-gray-300 hover:border-gray-500 transition-colors"
-                          style={{ backgroundColor: color }}
-                          onClick={() => setFormData(prev => ({ ...prev, color }))}
-                        />
+                        <button key={color} type="button" className="w-6 h-6 rounded border-2 border-gray-300 hover:border-gray-500 transition-colors" style={{ backgroundColor: color }} onClick={() => setFormData(prev => ({ ...prev, color }))} />
                       ))}
                     </div>
                   </div>
                 </div>
-
                 <div className="flex items-center space-x-2">
-                  <Switch
-                    id="is_active"
-                    checked={formData.is_active}
-                    onCheckedChange={(checked) => setFormData(prev => ({ ...prev, is_active: checked }))}
-                  />
+                  <Switch id="is_active" checked={formData.is_active} onCheckedChange={(checked) => setFormData(prev => ({ ...prev, is_active: checked }))} />
                   <Label htmlFor="is_active">Aktiv</Label>
                 </div>
-
                 <div className="flex gap-2 pt-4">
-                  <Button 
-                    variant="outline" 
-                    onClick={() => setIsCreateDialogOpen(false)}
-                    className="flex-1"
-                  >
-                    Abbrechen
-                  </Button>
-                  <Button onClick={handleSubmit} className="flex-1">
-                    {editingOption ? 'Aktualisieren' : 'Erstellen'}
-                  </Button>
+                  <Button variant="outline" onClick={() => setIsCreateDialogOpen(false)} className="flex-1">Abbrechen</Button>
+                  <Button onClick={handleSubmit} className="flex-1">{editingOption ? 'Aktualisieren' : 'Erstellen'}</Button>
                 </div>
               </div>
             </DialogContent>
@@ -322,40 +229,20 @@ export const StatusAdminSettings: React.FC = () => {
                     </div>
                   </TableCell>
                   <TableCell className="font-medium">{option.name}</TableCell>
-                  <TableCell>
-                    <span className="text-lg">{option.emoji}</span>
-                  </TableCell>
+                  <TableCell><span className="text-lg">{option.emoji}</span></TableCell>
                   <TableCell>
                     <div className="flex items-center gap-2">
-                      <div 
-                        className="w-4 h-4 rounded border"
-                        style={{ backgroundColor: option.color }}
-                      />
+                      <div className="w-4 h-4 rounded border" style={{ backgroundColor: option.color }} />
                       <span className="text-xs font-mono">{option.color}</span>
                     </div>
                   </TableCell>
                   <TableCell>
-                    <Switch
-                      checked={true} // All loaded options are active
-                      onCheckedChange={() => handleToggleActive(option.id, true)}
-                    />
+                    <Switch checked={true} onCheckedChange={() => handleToggleActive(option.id, true)} />
                   </TableCell>
                   <TableCell>
                     <div className="flex gap-1">
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => openEditDialog(option)}
-                      >
-                        <Edit className="w-4 h-4" />
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => handleDelete(option.id)}
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </Button>
+                      <Button variant="ghost" size="sm" onClick={() => openEditDialog(option)}><Edit className="w-4 h-4" /></Button>
+                      <Button variant="ghost" size="sm" onClick={() => handleDelete(option.id)}><Trash2 className="w-4 h-4" /></Button>
                     </div>
                   </TableCell>
                 </TableRow>

@@ -9,6 +9,7 @@ import { usePlanningPreferences } from "@/hooks/usePlanningPreferences";
 import { DropResult } from "@hello-pangea/dnd";
 import { format } from "date-fns";
 import { de } from "date-fns/locale";
+import { debugConsole } from '@/utils/debugConsole';
 import type {
   EventPlanning,
   EventPlanningContact,
@@ -25,7 +26,7 @@ import type {
 } from "./types";
 
 export function useEventPlanningData() {
-  console.log('=== EventPlanningView component loaded ===');
+  debugConsole.log('=== EventPlanningView component loaded ===');
   const { user } = useAuth();
   const { currentTenant } = useTenant();
   const navigate = useNavigate();
@@ -112,9 +113,9 @@ export function useEventPlanningData() {
   }, [searchParams, setSearchParams]);
 
   useEffect(() => {
-    console.log('EventPlanningView mounted, user:', user, 'currentTenant:', currentTenant);
+    debugConsole.log('EventPlanningView mounted, user:', user, 'currentTenant:', currentTenant);
     if (!currentTenant || !user) {
-      console.log('No currentTenant or user available, skipping data fetching');
+      debugConsole.log('No currentTenant or user available, skipping data fetching');
       return;
     }
     
@@ -139,7 +140,7 @@ export function useEventPlanningData() {
         ]);
         loadViewPreferences();
       } catch (error) {
-        console.error('Error loading planning data:', error);
+        debugConsole.error('Error loading planning data:', error);
       }
     };
     
@@ -181,7 +182,7 @@ export function useEventPlanningData() {
   const fetchPlanningTemplates = async () => {
     if (!user) return;
     const { data, error } = await supabase.from("planning_templates").select("*").order("name");
-    if (error) { console.error("Error fetching planning templates:", error); return; }
+    if (error) { debugConsole.error("Error fetching planning templates:", error); return; }
     setPlanningTemplates(data || []);
   };
 
@@ -193,13 +194,13 @@ export function useEventPlanningData() {
   }, [selectedPlanning]);
 
   const fetchPlannings = async () => {
-    console.log('fetchPlannings called, user:', user, 'currentTenant:', currentTenant);
-    if (!user) { console.log('No user found, returning early'); return; }
-    if (!currentTenant || !currentTenant.id) { console.log('No currentTenant or currentTenant.id found, returning early'); return; }
+    debugConsole.log('fetchPlannings called, user:', user, 'currentTenant:', currentTenant);
+    if (!user) { debugConsole.log('No user found, returning early'); return; }
+    if (!currentTenant || !currentTenant.id) { debugConsole.log('No currentTenant or currentTenant.id found, returning early'); return; }
 
     try {
       setLoading(true);
-      const timeoutId = setTimeout(() => { console.error('Supabase query timeout'); setLoading(false); }, 10000);
+      const timeoutId = setTimeout(() => { debugConsole.error('Supabase query timeout'); setLoading(false); }, 10000);
 
       const { data, error } = await supabase
         .from("event_plannings")
@@ -211,7 +212,7 @@ export function useEventPlanningData() {
       clearTimeout(timeoutId);
 
       if (error) {
-        console.error('Error fetching plannings:', error);
+        debugConsole.error('Error fetching plannings:', error);
         toast({ title: "Fehler", description: `Planungen konnten nicht geladen werden: ${error.message}`, variant: "destructive" });
         return;
       }
@@ -224,10 +225,10 @@ export function useEventPlanningData() {
       
       if (data && data.length > 0) {
         try { await fetchAllCollaborators(data.map(p => p.id)); }
-        catch (collabError) { console.error('Error fetching collaborators:', collabError); }
+        catch (collabError) { debugConsole.error('Error fetching collaborators:', collabError); }
       }
     } catch (err) {
-      console.error('Unexpected error in fetchPlannings:', err);
+      debugConsole.error('Unexpected error in fetchPlannings:', err);
       toast({ title: "Fehler", description: "Ein unerwarteter Fehler ist aufgetreten beim Laden der Planungen.", variant: "destructive" });
     } finally {
       setLoading(false);
@@ -240,7 +241,7 @@ export function useEventPlanningData() {
       const { data, error } = await supabase.from("event_plannings").select("*").eq("tenant_id", currentTenant.id).eq("is_archived", true).order("archived_at", { ascending: false });
       if (error) throw error;
       setArchivedPlannings(data || []);
-    } catch (error) { console.error('Error fetching archived plannings:', error); }
+    } catch (error) { debugConsole.error('Error fetching archived plannings:', error); }
   };
 
   const archivePlanning = async (planningId: string) => {
@@ -256,7 +257,7 @@ export function useEventPlanningData() {
       if (selectedPlanning?.id === planningId) setSelectedPlanning(null);
       fetchPlannings();
     } catch (error) {
-      console.error('Error archiving planning:', error);
+      debugConsole.error('Error archiving planning:', error);
       toast({ title: "Fehler", description: "Planung konnte nicht archiviert werden.", variant: "destructive" });
     }
   };
@@ -268,7 +269,7 @@ export function useEventPlanningData() {
       toast({ title: isCompleted ? "Planung als erledigt markiert" : "Markierung entfernt" });
       fetchPlannings();
     } catch (error) {
-      console.error('Error toggling completed:', error);
+      debugConsole.error('Error toggling completed:', error);
       toast({ title: "Fehler", variant: "destructive" });
     }
   };
@@ -281,7 +282,7 @@ export function useEventPlanningData() {
       fetchPlannings();
       fetchArchivedPlannings();
     } catch (error) {
-      console.error('Error restoring planning:', error);
+      debugConsole.error('Error restoring planning:', error);
       toast({ title: "Fehler", description: "Planung konnte nicht wiederhergestellt werden.", variant: "destructive" });
     }
   };
@@ -293,7 +294,7 @@ export function useEventPlanningData() {
       toast({ title: "Terminplanung archiviert", description: "Die Terminplanung wurde ins Archiv verschoben." });
       fetchAppointmentPreparations();
     } catch (error) {
-      console.error('Error archiving preparation:', error);
+      debugConsole.error('Error archiving preparation:', error);
       toast({ title: "Fehler", description: "Terminplanung konnte nicht archiviert werden.", variant: "destructive" });
     }
   };
@@ -317,19 +318,19 @@ export function useEventPlanningData() {
     if (!currentTenant) return;
     try {
       const { data: memberships, error: memberError } = await supabase.from("user_tenant_memberships").select("user_id").eq("tenant_id", currentTenant.id).eq("is_active", true);
-      if (memberError) { console.error("Error fetching memberships:", memberError); return; }
+      if (memberError) { debugConsole.error("Error fetching memberships:", memberError); return; }
       if (!memberships || memberships.length === 0) { setAllProfiles([]); return; }
       const userIds = memberships.map(m => m.user_id);
       const { data: profiles, error: profileError } = await supabase.from("profiles").select("user_id, display_name, avatar_url").in("user_id", userIds);
-      if (profileError) { console.error("Error fetching profiles:", profileError); return; }
+      if (profileError) { debugConsole.error("Error fetching profiles:", profileError); return; }
       setAllProfiles(profiles || []);
-    } catch (error) { console.error("Error in fetchAllProfiles:", error); }
+    } catch (error) { debugConsole.error("Error in fetchAllProfiles:", error); }
   };
 
   const fetchAvailableContacts = async () => {
     if (!user) return;
     const { data, error } = await supabase.from("contacts").select("id, name, email, phone, role, organization").eq("user_id", user.id).order("name");
-    if (error) { console.error("Error fetching contacts:", error); return; }
+    if (error) { debugConsole.error("Error fetching contacts:", error); return; }
     setAvailableContacts(data || []);
   };
 
@@ -337,13 +338,13 @@ export function useEventPlanningData() {
     if (!user) return;
     try {
       const { data: activeData, error: activeError } = await supabase.from("appointment_preparations").select("*").eq("is_archived", false).order("created_at", { ascending: false });
-      if (activeError) console.error("Error fetching active preparations:", activeError);
+      if (activeError) debugConsole.error("Error fetching active preparations:", activeError);
       else setAppointmentPreparations(activeData || []);
 
       const { data: archivedData, error: archivedError } = await supabase.from("appointment_preparations").select("*").eq("is_archived", true).order("archived_at", { ascending: false });
-      if (archivedError) console.error("Error fetching archived preparations:", archivedError);
+      if (archivedError) debugConsole.error("Error fetching archived preparations:", archivedError);
       else setArchivedPreparations(archivedData || []);
-    } catch (error) { console.error("Error in fetchAppointmentPreparations:", error); }
+    } catch (error) { debugConsole.error("Error in fetchAppointmentPreparations:", error); }
   };
 
   const handlePreparationClick = (preparation: AppointmentPreparation) => {
@@ -441,7 +442,7 @@ export function useEventPlanningData() {
           await supabase.from("event_planning_collaborators").insert(collabsToInsert);
         }
       }
-    } catch (prefError) { console.error("Error adding default collaborators:", prefError); }
+    } catch (prefError) { debugConsole.error("Error adding default collaborators:", prefError); }
 
     setNewPlanningTitle("");
     setNewPlanningIsPrivate(false);
@@ -496,7 +497,7 @@ export function useEventPlanningData() {
       fetchPlanningDetails(selectedPlanning.id);
       toast({ title: "Erfolg", description: "Termin wurde hinzugefügt und im Kalender geblockt." });
     } catch (error: any) {
-      console.error('Error in addPlanningDate:', error);
+      debugConsole.error('Error in addPlanningDate:', error);
       toast({ title: "Fehler", description: error.message || "Termin konnte nicht hinzugefügt werden.", variant: "destructive" });
     } finally {
       setSelectedDate(undefined);

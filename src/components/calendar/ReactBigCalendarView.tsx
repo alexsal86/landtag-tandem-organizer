@@ -6,6 +6,7 @@ import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { format } from 'date-fns';
 import { de } from 'date-fns/locale';
+import { debugConsole } from '@/utils/debugConsole';
 
 export interface ReactBigCalendarViewProps {
   date: Date;
@@ -52,7 +53,7 @@ export function ReactBigCalendarView({
         date: targetDate
       };
       
-      console.log('Event dropped:', draggedEvent.title, 'to', targetDate);
+      debugConsole.log('Event dropped:', draggedEvent.title, 'to', targetDate);
       // In a real implementation, this would update the database
     }
     

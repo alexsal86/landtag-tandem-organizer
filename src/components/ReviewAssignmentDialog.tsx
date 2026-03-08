@@ -10,6 +10,7 @@ import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { useTenant } from '@/hooks/useTenant';
+import { debugConsole } from '@/utils/debugConsole';
 
 interface User {
   user_id: string;
@@ -44,7 +45,7 @@ const ReviewAssignmentDialog: React.FC<ReviewAssignmentDialogProps> = ({
   useEffect(() => {
     if (isOpen && currentTenant) {
       fetchTenantUsers();
-      setSelectedUsers([]); // Reset selected users for new letters
+      setSelectedUsers([]);
     }
   }, [isOpen, currentTenant]);
 
@@ -53,7 +54,6 @@ const ReviewAssignmentDialog: React.FC<ReviewAssignmentDialogProps> = ({
 
     setLoading(true);
     try {
-      // First get tenant user IDs
       const { data: tenantUsers, error: tenantError } = await supabase
         .from('user_tenant_memberships')
         .select('user_id')
@@ -62,7 +62,7 @@ const ReviewAssignmentDialog: React.FC<ReviewAssignmentDialogProps> = ({
         .neq('user_id', user?.id);
 
       if (tenantError) {
-        console.error('Error fetching tenant users:', tenantError);
+        debugConsole.error('Error fetching tenant users:', tenantError);
         throw tenantError;
       }
 
@@ -73,14 +73,13 @@ const ReviewAssignmentDialog: React.FC<ReviewAssignmentDialogProps> = ({
         return;
       }
 
-      // Then get profiles for those users
       const { data, error } = await supabase
         .from('profiles')
         .select('user_id, display_name')
         .in('user_id', userIds);
 
       if (error) {
-        console.error('Error fetching profiles:', error);
+        debugConsole.error('Error fetching profiles:', error);
         throw error;
       }
 
@@ -91,7 +90,7 @@ const ReviewAssignmentDialog: React.FC<ReviewAssignmentDialogProps> = ({
 
       setUsers(formattedUsers);
     } catch (error) {
-      console.error('Error fetching tenant users:', error);
+      debugConsole.error('Error fetching tenant users:', error);
       toast({
         title: "Fehler",
         description: "Benutzer konnten nicht geladen werden.",
@@ -111,10 +110,10 @@ const ReviewAssignmentDialog: React.FC<ReviewAssignmentDialogProps> = ({
   };
 
   const handleSubmit = async () => {
-    console.log('handleSubmit called with reviewOption:', reviewOption);
+    debugConsole.log('handleSubmit called with reviewOption:', reviewOption);
     
     if (reviewOption === 'skip') {
-      console.log('Skipping review, calling onSkipReview');
+      debugConsole.log('Skipping review, calling onSkipReview');
       onSkipReview();
       onClose();
       return;
@@ -131,10 +130,9 @@ const ReviewAssignmentDialog: React.FC<ReviewAssignmentDialogProps> = ({
 
     if (!user) return;
 
-    console.log('Starting assignment save with selectedUsers:', selectedUsers);
+    debugConsole.log('Starting assignment save with selectedUsers:', selectedUsers);
     setSaving(true);
     try {
-      // Remove existing collaborators
       const { error: deleteError } = await supabase
         .from('letter_collaborators')
         .delete()
@@ -142,7 +140,6 @@ const ReviewAssignmentDialog: React.FC<ReviewAssignmentDialogProps> = ({
 
       if (deleteError) throw deleteError;
 
-      // Add new collaborators
       const { error: insertError } = await supabase
         .from('letter_collaborators')
         .insert(
@@ -161,18 +158,18 @@ const ReviewAssignmentDialog: React.FC<ReviewAssignmentDialogProps> = ({
         description: `${selectedUsers.length} Prüfer wurden erfolgreich zugewiesen.`,
       });
 
-      console.log('Assignment successful, calling onReviewAssigned');
+      debugConsole.log('Assignment successful, calling onReviewAssigned');
       onReviewAssigned();
       onClose();
     } catch (error) {
-      console.error('Error saving collaborators:', error);
+      debugConsole.error('Error saving collaborators:', error);
       toast({
         title: "Fehler",
         description: "Prüfer konnten nicht zugewiesen werden.",
         variant: "destructive",
       });
     } finally {
-      console.log('Setting saving to false');
+      debugConsole.log('Setting saving to false');
       setSaving(false);
     }
   };

@@ -1,4 +1,5 @@
 import jsPDF from 'jspdf';
+import { debugConsole } from '@/utils/debugConsole';
 
 interface HeaderElement {
   id: string;
@@ -48,67 +49,64 @@ export class HeaderRenderer {
 
   async renderHeader(template: HeaderTemplate | null): Promise<void> {
     if (!template) {
-      console.log('HeaderRenderer: No template provided');
+      debugConsole.log('HeaderRenderer: No template provided');
       return;
     }
 
-    console.log('=== HEADER RENDERER START ===');
-    console.log('Template layout type:', template.header_layout_type);
-    console.log('Template elements:', template.header_text_elements);
-    console.log('Template HTML:', template.letterhead_html);
+    debugConsole.log('=== HEADER RENDERER START ===');
+    debugConsole.log('Template layout type:', template.header_layout_type);
+    debugConsole.log('Template elements:', template.header_text_elements);
+    debugConsole.log('Template HTML:', template.letterhead_html);
 
-    // Convert pixels to mm for jsPDF (1px = 0.264583mm at 96 DPI)
     const pxToMm = 0.264583;
 
     try {
       if (template.header_layout_type === 'structured') {
-        console.log('Rendering structured header');
+        debugConsole.log('Rendering structured header');
         await this.renderStructuredHeader(template, pxToMm);
       } else if (template.letterhead_html) {
-        console.log('Rendering HTML header');
+        debugConsole.log('Rendering HTML header');
         this.renderHtmlHeader(template);
       } else {
-        console.log('No valid header data found, using fallback');
+        debugConsole.log('No valid header data found, using fallback');
         this.renderFallbackHeader(template);
       }
     } catch (error) {
-      console.warn('Error rendering header:', error);
-      // Fallback to simple text header
+      debugConsole.warn('Error rendering header:', error);
       this.renderFallbackHeader(template);
     }
     
-    console.log('=== HEADER RENDERER END ===');
+    debugConsole.log('=== HEADER RENDERER END ===');
   }
 
   private async renderStructuredHeader(template: HeaderTemplate, pxToMm: number): Promise<void> {
-    console.log('=== RENDERING STRUCTURED HEADER ===');
+    debugConsole.log('=== RENDERING STRUCTURED HEADER ===');
     
-    // Parse header_text_elements if it's a string (JSON)
     let headerElements: any[] = [];
     if (template.header_text_elements) {
       if (typeof template.header_text_elements === 'string') {
         try {
           headerElements = JSON.parse(template.header_text_elements);
-          console.log('Parsed elements from JSON string:', headerElements);
+          debugConsole.log('Parsed elements from JSON string:', headerElements);
         } catch (e) {
-          console.warn('Failed to parse header_text_elements:', e);
+          debugConsole.warn('Failed to parse header_text_elements:', e);
           headerElements = [];
         }
       } else if (Array.isArray(template.header_text_elements)) {
         headerElements = template.header_text_elements;
-        console.log('Using array elements directly:', headerElements);
+        debugConsole.log('Using array elements directly:', headerElements);
       }
     }
     
-    console.log('Final elements to render:', headerElements);
+    debugConsole.log('Final elements to render:', headerElements);
     
     for (const element of headerElements) {
-      console.log('Processing element:', element);
+      debugConsole.log('Processing element:', element);
       if (element.type === 'text' && element.content) {
-        console.log('Rendering text element:', element);
+        debugConsole.log('Rendering text element:', element);
         this.renderTextElement(element, pxToMm);
       } else if (element.type === 'image' && element.imageUrl) {
-        console.log('Rendering image element:', element);
+        debugConsole.log('Rendering image element:', element);
         await this.renderImageElement(element.imageUrl, {
           x: element.x,
           y: element.y,
@@ -118,29 +116,25 @@ export class HeaderRenderer {
       }
     }
 
-    // Reset PDF state
     this.pdf.setTextColor(0, 0, 0);
     this.pdf.setDrawColor(0, 0, 0);
-    console.log('=== STRUCTURED HEADER RENDERED ===');
+    debugConsole.log('=== STRUCTURED HEADER RENDERED ===');
   }
 
   private renderTextElement(element: HeaderElement, pxToMm: number): void {
-    // Set font properties
     const fontSize = element.fontSize || 12;
     const fontFamily = element.fontFamily || 'helvetica';
     const fontWeight = element.fontWeight || 'normal';
     
-    console.log('=== TEXT ELEMENT FONT DEBUG ===');
-    console.log('Original fontSize from designer:', fontSize);
-    console.log('Font family:', fontFamily);
-    console.log('Font weight:', fontWeight);
-    console.log('Element content:', element.content);
+    debugConsole.log('=== TEXT ELEMENT FONT DEBUG ===');
+    debugConsole.log('Original fontSize from designer:', fontSize);
+    debugConsole.log('Font family:', fontFamily);
+    debugConsole.log('Font weight:', fontWeight);
+    debugConsole.log('Element content:', element.content);
     
     this.pdf.setFontSize(fontSize);
     
-    // Handle different font families - jsPDF has limited font support
-    // Map from StructuredHeaderEditor font names to jsPDF font names
-    let pdfFontFamily = 'helvetica'; // Default fallback
+    let pdfFontFamily = 'helvetica';
     
     switch (fontFamily) {
       case 'Arial':
@@ -154,7 +148,6 @@ export class HeaderRenderer {
         pdfFontFamily = 'courier';
         break;
       default:
-        // Fallback for unknown fonts
         if (fontFamily.toLowerCase().includes('times') || fontFamily.toLowerCase().includes('serif')) {
           pdfFontFamily = 'times';
         } else if (fontFamily.toLowerCase().includes('courier') || fontFamily.toLowerCase().includes('mono')) {
@@ -164,18 +157,14 @@ export class HeaderRenderer {
         }
     }
     
-    // Set font with proper weight
     const pdfFontWeight = fontWeight === 'bold' || fontWeight === '700' || fontWeight === '800' || fontWeight === '900' ? 'bold' : 'normal';
     this.pdf.setFont(pdfFontFamily, pdfFontWeight);
     
-    // Use direct mm coordinates from structured editor
     const xInMm = element.x || 0;
     const yInMm = element.y || 0;
+    const textYInMm = yInMm + (fontSize * 0.352778);
     
-    // Adjust text position - jsPDF positions text by baseline, we need to add font height
-    const textYInMm = yInMm + (fontSize * 0.352778); // Convert font size from points to mm and adjust for baseline
-    
-    console.log('Text element position and font:', { 
+    debugConsole.log('Text element position and font:', { 
       elementX: element.x, 
       elementY: element.y, 
       pdfX: xInMm, 
@@ -187,24 +176,19 @@ export class HeaderRenderer {
       content: element.content 
     });
     
-    // Render debug box around text element (shows the actual bounding box)
     this.renderDebugBox(xInMm, yInMm, fontSize, element.content || '');
     
-    // Set text color BEFORE debug rendering to avoid red text
     if (element.color && element.color.startsWith('#')) {
       const { r, g, b } = this.hexToRgb(element.color);
       this.pdf.setTextColor(r, g, b);
     } else {
-      this.pdf.setTextColor(0, 0, 0); // Default to black
+      this.pdf.setTextColor(0, 0, 0);
     }
     
-    // CRITICAL: Set font size again RIGHT BEFORE rendering text
-    // because other parts of the PDF generation might override it
-    console.log('Setting font size again RIGHT before text rendering:', fontSize);
+    debugConsole.log('Setting font size again RIGHT before text rendering:', fontSize);
     this.pdf.setFontSize(fontSize);
     this.pdf.setFont(pdfFontFamily, pdfFontWeight);
     
-    // Render text at adjusted position
     this.pdf.text(element.content || '', xInMm, textYInMm);
   }
 
@@ -214,22 +198,19 @@ export class HeaderRenderer {
     pxToMm: number
   ): Promise<void> {
     try {
-      console.log('Rendering image element:', { imageUrl, position });
+      debugConsole.log('Rendering image element:', { imageUrl, position });
       
-      // Use direct mm coordinates from structured editor
       const xInMm = position.x;
-      const yInMm = position.y; // No offset - use exact coordinates
+      const yInMm = position.y;
       const widthInMm = position.width;
       const heightInMm = position.height;
       
-      console.log('Image position in mm:', { xInMm, yInMm, widthInMm, heightInMm });
+      debugConsole.log('Image position in mm:', { xInMm, yInMm, widthInMm, heightInMm });
       
-      // Render debug box around image element
       this.renderDebugBox(xInMm, yInMm, widthInMm, heightInMm, true);
 
-      // Check if it's an SVG first (which jsPDF doesn't support directly)
       if (imageUrl.toLowerCase().includes('.svg')) {
-        console.log('SVG detected, using placeholder');
+        debugConsole.log('SVG detected, using placeholder');
         this.pdf.setDrawColor(100, 100, 100);
         this.pdf.setFillColor(245, 245, 245);
         this.pdf.rect(xInMm, yInMm, widthInMm, heightInMm, 'FD');
@@ -241,8 +222,7 @@ export class HeaderRenderer {
         return;
       }
 
-      // For JPG, PNG and other supported formats
-      console.log('Fetching image:', imageUrl);
+      debugConsole.log('Fetching image:', imageUrl);
       const response = await fetch(imageUrl);
       if (!response.ok) {
         throw new Error(`Failed to fetch image: ${response.statusText}`);
@@ -251,7 +231,6 @@ export class HeaderRenderer {
       const blob = await response.blob();
       const base64 = await this.blobToBase64(blob);
       
-      // Determine image format
       let format = 'JPEG';
       const mimeType = blob.type.toLowerCase();
       if (mimeType.includes('png')) {
@@ -260,16 +239,14 @@ export class HeaderRenderer {
         format = 'GIF';
       }
       
-      console.log('Adding image to PDF:', { format, mimeType, size: blob.size });
+      debugConsole.log('Adding image to PDF:', { format, mimeType, size: blob.size });
 
-      // Add the actual image to PDF
       this.pdf.addImage(base64, format, xInMm, yInMm, widthInMm, heightInMm);
-      console.log('Image successfully added to PDF');
+      debugConsole.log('Image successfully added to PDF');
 
     } catch (error) {
-      console.error('Error rendering image, using fallback:', error);
+      debugConsole.error('Error rendering image, using fallback:', error);
       
-      // Fallback: render a simple placeholder
       const xInMm = position.x;
       const yInMm = position.y;
       const widthInMm = position.width;
@@ -287,8 +264,6 @@ export class HeaderRenderer {
   }
 
   private renderHtmlHeader(template: HeaderTemplate): void {
-    // Simple fallback for HTML headers
-    // In a full implementation, you might parse simple HTML/CSS
     this.pdf.setFontSize(12);
     this.pdf.setFont('helvetica', 'bold');
     this.pdf.text(template.name || 'Briefkopf', this.leftMargin, 20);
@@ -326,29 +301,20 @@ export class HeaderRenderer {
       boxWidth = width as number;
       boxHeight = height as number;
     } else {
-      // For text elements, calculate dimensions properly in mm
-      const fontSize = width as number; // Font size in points
-      const content = height as string; // Text content
-      
-      // Convert font size from points to mm (1 point = 0.352778 mm)
+      const fontSize = width as number;
+      const content = height as string;
       const fontSizeMm = fontSize * 0.352778;
-      
-      // Estimate text width based on character count (rough approximation)
-      // Average character width is about 0.6 of font height for most fonts
       boxWidth = Math.max(content.length * fontSizeMm * 0.6, 10);
-      boxHeight = fontSizeMm * 1.2; // Font size with some padding
+      boxHeight = fontSizeMm * 1.2;
     }
     
-    // Draw debug rectangle with red border
-    this.pdf.setDrawColor(255, 0, 0); // Red border
-    this.pdf.rect(x, y, boxWidth, boxHeight, 'D'); // Draw outline only
+    this.pdf.setDrawColor(255, 0, 0);
+    this.pdf.rect(x, y, boxWidth, boxHeight, 'D');
     
-    // Add debug information text
     this.pdf.setFontSize(6);
-    this.pdf.setTextColor(255, 0, 0); // Red text
+    this.pdf.setTextColor(255, 0, 0);
     const debugText = `x:${x.toFixed(1)}mm y:${y.toFixed(1)}mm ${boxWidth.toFixed(1)}×${boxHeight.toFixed(1)}mm`;
     
-    // Position debug text above or below the element
     const debugY = y > 15 ? y - 2 : y + boxHeight + 8;
     this.pdf.text(debugText, x, debugY);
   }
