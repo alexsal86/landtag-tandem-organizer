@@ -106,7 +106,7 @@ export function BulkActionsToolbar({
       setNewTag('');
       onActionComplete();
     } catch (error) {
-      console.error('Error adding tags:', error);
+      debugConsole.error('Error adding tags:', error);
       toast({
         title: 'Fehler',
         description: 'Tags konnten nicht hinzugefügt werden',
