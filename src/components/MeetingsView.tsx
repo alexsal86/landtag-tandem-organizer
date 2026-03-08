@@ -4761,13 +4761,14 @@ export function MeetingsView() {
                                     </div>
                                     <div className="flex-1">
                                       <SystemAgendaItem 
-                                        systemType={item.system_type as 'upcoming_appointments' | 'quick_notes' | 'tasks' | 'birthdays' | 'decisions'}
+                                        systemType={item.system_type as 'upcoming_appointments' | 'quick_notes' | 'tasks' | 'birthdays' | 'decisions' | 'case_items'}
                                         meetingDate={selectedMeeting?.meeting_date}
                                         meetingId={selectedMeeting?.id}
                                         allowStarring={true}
                                         linkedQuickNotes={linkedQuickNotes}
                                         linkedTasks={meetingLinkedTasks}
                                         linkedDecisions={meetingRelevantDecisions}
+                                        linkedCaseItems={meetingLinkedCaseItems}
                                         profiles={profiles}
                                         resultText={item.result_text}
                                         onUpdateResult={item.system_type === 'birthdays' ? (result: string) => updateAgendaItem(index, 'result_text', result) : undefined}
