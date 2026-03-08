@@ -15,7 +15,7 @@ interface Meeting {
   id: string;
   title: string;
   meeting_date: string;
-  meeting_time?: string;
+  meeting_time?: string | null;
 }
 
 interface TaskMeetingSelectorProps {

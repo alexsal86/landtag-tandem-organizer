@@ -404,7 +404,7 @@ export function AssignedItemsSection({
 
         {/* Subtasks */}
         {filteredSubtasks.map((subtask) => {
-          const isSnoozed = subtaskSnoozes[subtask.id] && new Date(subtaskSnoozes[subtask.id]) > new Date();
+          const isSnoozed = !!(subtaskSnoozes[subtask.id] && new Date(subtaskSnoozes[subtask.id]) > new Date());
           return (
             <ItemCard
               key={`subtask-${subtask.id}`}
@@ -417,10 +417,9 @@ export function AssignedItemsSection({
               isSnoozed={isSnoozed}
               snoozeDate={isSnoozed ? subtaskSnoozes[subtask.id] : undefined}
               parentTitle={subtask.task_title}
-              assignedToNames={subtask.assigned_to_names || resolveUserNames(subtask.assigned_to)}
+              assignedToNames={subtask.assigned_to_names || resolveUserNames(subtask.assigned_to ?? null)}
               onToggleComplete={(checked) => {
                 if (checked) {
-                  // For now, complete without result text - the parent handles the dialog
                   onSubtaskToggleComplete(subtask.id, true);
                 } else {
                   onSubtaskToggleComplete(subtask.id, false);

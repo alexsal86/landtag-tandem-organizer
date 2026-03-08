@@ -341,7 +341,7 @@ export function useTasksData() {
         id: todo.id,
         title: todo.title,
         category_label: todo.todo_categories.label,
-        category_color: todo.todo_categories.color,
+        category_color: todo.todo_categories.color ?? '',
         assigned_to: Array.isArray(todo.assigned_to) ? todo.assigned_to.join(',') : (todo.assigned_to || ''),
         due_date: todo.due_date,
         is_completed: todo.is_completed

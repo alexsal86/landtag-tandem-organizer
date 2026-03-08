@@ -83,7 +83,7 @@ export function useTaskDetailData(task: Task | null) {
     try {
       const { data, error } = await supabase.from("profiles").select("user_id, display_name").order("display_name");
       if (error) throw error;
-      setUsers(data || []);
+      setUsers((data || []).map(u => ({ user_id: u.user_id, display_name: u.display_name ?? undefined })));
     } catch (e) {
       debugConsole.error("Error loading users:", e);
     }
