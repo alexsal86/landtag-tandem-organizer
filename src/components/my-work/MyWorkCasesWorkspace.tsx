@@ -794,12 +794,18 @@ export function MyWorkCasesWorkspace() {
       return;
     }
 
+    const { contactName: parsedName, contactDetail: parsedDetail } = parseContactPerson(editableCaseItem.contactPerson);
+
     const intakePayload: CaseItemIntakePayload = {
       ...(detailItem?.intake_payload || {}),
       category: editableCaseItem.category,
       assignee_ids: editableCaseItem.assigneeIds,
       timeline_events: editableCaseItem.timelineEvents,
-      ...parseContactPerson(editableCaseItem.contactPerson),
+      contact_name: parsedName,
+      contact_detail: parsedDetail,
+      contact_email: editableCaseItem.contactEmail.trim() || null,
+      contact_phone: editableCaseItem.contactPhone.trim() || null,
+      matched_contact_id: editableCaseItem.selectedContactId,
     };
 
     const patch = {
