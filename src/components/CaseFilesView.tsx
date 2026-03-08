@@ -211,7 +211,7 @@ classifyCaseScale({ explicitScale: cf.case_scale, caseType: cf.case_type }) === 
         <div>
           <h1 className="text-3xl font-bold flex items-center gap-2">
             <Briefcase className="h-8 w-8" />
-            FallAkten
+            Fallakten
           </h1>
           <p className="text-muted-foreground mt-1">
             Zentrale Verwaltung von Sachverhalten mit verknüpften Dokumenten, Kontakten und Aufgaben
