@@ -146,7 +146,7 @@ export function VacationHistoryDialog({
                         {(entry.expired_days ?? 0) > 0 ? (
                           <Badge variant="destructive" className="font-mono">
                             <TrendingDown className="h-3 w-3 mr-1" />
-                            -{entry.expired_days}
+                            -{entry.expired_days ?? 0}
                           </Badge>
                         ) : (
                           <span className="text-muted-foreground font-mono">0</span>
