@@ -47,7 +47,7 @@ export function useLetterData({ isOpen, tenantId, letterId }: UseLetterDataOptio
       if (error) throw error;
       setTemplates(data || []);
     } catch (error) {
-      console.error('Error fetching templates:', error);
+      debugConsole.error('Error fetching templates:', error);
     }
   }, [tenantId]);
 
