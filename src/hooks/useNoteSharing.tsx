@@ -72,12 +72,12 @@ export const useNoteSharing = (noteId?: string) => {
     if (!user) return false;
 
     try {
-      const { error } = await supabase.from("quick_note_shares").insert({
+      const { error } = await supabase.from("quick_note_shares").insert([{
         note_id: targetNoteId,
         shared_with_user_id: sharedWithUserId,
         shared_by_user_id: user.id,
         permission_type: permissionType,
-      });
+      }]);
 
       if (error) {
         if (error.code === "23505") {

@@ -69,11 +69,11 @@ export const useGlobalNoteSharing = () => {
     if (!user) return false;
 
     try {
-      const { error } = await supabase.from("quick_note_global_shares").insert({
+      const { error } = await supabase.from("quick_note_global_shares").insert([{
         user_id: user.id,
         shared_with_user_id: sharedWithUserId,
         permission_type: permissionType,
-      });
+      }]);
 
       if (error) {
         if (error.code === "23505") {

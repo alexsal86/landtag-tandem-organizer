@@ -69,13 +69,13 @@ export const useDocumentContacts = (documentId?: string) => {
     try {
       const { error } = await supabase
         .from('document_contacts')
-        .insert({
+        .insert([{
           document_id: documentId,
           contact_id: contactId,
           relationship_type: relationshipType,
           notes,
           created_by: user.id,
-        });
+        }]);
 
       if (error) throw error;
       await fetchDocumentContacts();

@@ -183,7 +183,7 @@ export const CallLogWidget: React.FC<CallLogWidgetProps> = ({
           // Create main task
           const { data: mainTaskData, error: mainTaskError } = await supabase
             .from('tasks')
-            .insert({
+            .insert([{
               user_id: user.id,
               title: 'Call Follow-ups',
               description: 'Sammlung aller Follow-ups aus Anrufprotokollen',
@@ -192,7 +192,7 @@ export const CallLogWidget: React.FC<CallLogWidgetProps> = ({
               category: 'call_follow_up',
               due_date: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
               tenant_id: currentTenant?.id || 'default-tenant-id'
-            })
+            }])
             .select('id')
             .single();
 
@@ -210,7 +210,7 @@ export const CallLogWidget: React.FC<CallLogWidgetProps> = ({
 
           const { data: subtaskData, error: subtaskError } = await supabase
             .from('tasks')
-            .insert({
+            .insert([{
               user_id: user.id,
               title: `Follow-up: ${contactName}`,
               description: `Grund: ${notes}\nTermin: ${followUpDate ? new Date(followUpDate).toLocaleDateString('de-DE') : 'Bald'}\nHauptaufgabe: Call Follow-ups`,
@@ -220,7 +220,7 @@ export const CallLogWidget: React.FC<CallLogWidgetProps> = ({
               due_date: followUpDate ? new Date(followUpDate).toISOString() : new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),
               call_log_id: data.id,
               tenant_id: currentTenant?.id || 'default-tenant-id'
-          })
+          }])
           .select('id')
           .single();
 
@@ -239,7 +239,7 @@ export const CallLogWidget: React.FC<CallLogWidgetProps> = ({
 
           const { error: appointmentError } = await supabase
             .from('appointments')
-            .insert({
+            .insert([{
               user_id: user.id,
               call_log_id: data.id,
               title: `Follow-up: ${contactName}`,
@@ -250,7 +250,7 @@ export const CallLogWidget: React.FC<CallLogWidgetProps> = ({
               priority: priority,
               status: 'planned',
               tenant_id: currentTenant?.id || 'default-tenant-id'
-            });
+            }]);
 
           if (appointmentError) {
             debugConsole.error('Error creating follow-up appointment:', appointmentError);
@@ -448,14 +448,14 @@ export const CallLogWidget: React.FC<CallLogWidgetProps> = ({
     try {
       const { data, error } = await supabase
         .from('contacts')
-        .insert({
+        .insert([{
           user_id: user?.id,
           name: callerName.trim(),
           phone: callerPhone.trim() || undefined,
         contact_type: 'person',
         category: 'citizen',
         tenant_id: currentTenant?.id || 'default-tenant-id'
-        })
+        }])
         .select()
         .single();
 

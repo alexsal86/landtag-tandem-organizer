@@ -610,12 +610,12 @@ export function useQuickNotes(refreshTrigger?: number) {
       };
       const { data: task, error: taskError } = await supabase
         .from('tasks')
-        .insert({
+        .insert([{
           user_id: user.id, tenant_id: currentTenant.id, title: taskTitle,
           description: note.content, category: 'personal', priority: mapPriority(note.priority_level),
           status: 'todo', due_date: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),
           assigned_to: user.id,
-        })
+        }])
         .select().single();
       if (taskError) throw taskError;
       await supabase.from("quick_notes").update({ task_id: task.id }).eq("id", note.id);
@@ -751,7 +751,7 @@ export function useQuickNotes(refreshTrigger?: number) {
     if (!editingNote || !user?.id) return;
     if (!stripHtml(editTitle) && !stripHtml(editContent)) { toast.error("Bitte Titel oder Inhalt eingeben"); return; }
     try {
-      await supabase.from("quick_note_versions").insert({ note_id: editingNote.id, title: editingNote.title, content: editingNote.content, user_id: user.id });
+      await supabase.from("quick_note_versions").insert([{ note_id: editingNote.id, title: editingNote.title, content: editingNote.content, user_id: user.id }]);
       let updateQuery = supabase.from("quick_notes").update({ title: editTitle.trim() || null, content: editContent.trim() }).eq("id", editingNote.id);
       if (editingNote.user_id === user.id) updateQuery = updateQuery.eq("user_id", user.id);
       const { data, error } = await updateQuery.select();
@@ -779,7 +779,7 @@ export function useQuickNotes(refreshTrigger?: number) {
   const restoreVersion = async (version: { title: string | null; content: string }) => {
     if (!versionHistoryNote || !user?.id) return;
     try {
-      await supabase.from("quick_note_versions").insert({ note_id: versionHistoryNote.id, title: versionHistoryNote.title, content: versionHistoryNote.content, user_id: user.id });
+      await supabase.from("quick_note_versions").insert([{ note_id: versionHistoryNote.id, title: versionHistoryNote.title, content: versionHistoryNote.content, user_id: user.id }]);
       const { error } = await supabase.from("quick_notes").update({ title: version.title, content: version.content }).eq("id", versionHistoryNote.id).eq("user_id", user.id);
       if (error) throw error;
       toast.success("Version wiederhergestellt");

@@ -162,11 +162,11 @@ export const useCaseFiles = () => {
     try {
       const { data: newCaseFile, error } = await supabase
         .from('case_files')
-        .insert({
+        .insert([{
           ...data,
           user_id: user.id,
           tenant_id: currentTenant.id,
-        })
+        }])
         .select()
         .single();
 

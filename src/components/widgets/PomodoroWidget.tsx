@@ -126,11 +126,11 @@ export const PomodoroWidget: React.FC<PomodoroWidgetProps> = ({
     try {
       const { data, error } = await supabase
         .from('pomodoro_sessions')
-        .insert({
+        .insert([{
           user_id: user.id,
           session_type: sessionType,
           duration_minutes: getSessionDuration(sessionType) / 60
-        })
+        }])
         .select()
         .single();
 

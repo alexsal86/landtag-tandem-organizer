@@ -358,7 +358,7 @@ export const useCaseFileDetails = (caseFileId: string | null) => {
     if (!caseFileId || !user) return;
     
     try {
-      await supabase.from('case_file_timeline').insert({
+      await supabase.from('case_file_timeline').insert([{
         case_file_id: caseFileId,
         event_date: new Date().toISOString(),
         event_type: eventType,
@@ -366,7 +366,7 @@ export const useCaseFileDetails = (caseFileId: string | null) => {
         source_type: sourceType,
         source_id: sourceId,
         created_by: user.id,
-      });
+      }]);
       await fetchTimeline();
     } catch (error) {
       debugConsole.error('Error creating timeline entry:', error);
@@ -380,12 +380,12 @@ export const useCaseFileDetails = (caseFileId: string | null) => {
     try {
       const { error } = await supabase
         .from('case_file_contacts')
-        .insert({
+        .insert([{
           case_file_id: caseFileId,
           contact_id: contactId,
           role,
           notes,
-        });
+        }]);
 
       if (error) throw error;
       await fetchContacts();
@@ -430,12 +430,12 @@ export const useCaseFileDetails = (caseFileId: string | null) => {
     try {
       const { error } = await supabase
         .from('case_file_documents')
-        .insert({
+        .insert([{
           case_file_id: caseFileId,
           document_id: documentId,
           relevance,
           notes,
-        });
+        }]);
 
       if (error) throw error;
       await fetchDocuments();
@@ -480,11 +480,11 @@ export const useCaseFileDetails = (caseFileId: string | null) => {
     try {
       const { error } = await supabase
         .from('case_file_tasks')
-        .insert({
+        .insert([{
           case_file_id: caseFileId,
           task_id: taskId,
           notes,
-        });
+        }]);
 
       if (error) throw error;
       await fetchTasks();
@@ -529,11 +529,11 @@ export const useCaseFileDetails = (caseFileId: string | null) => {
     try {
       const { error } = await supabase
         .from('case_file_appointments')
-        .insert({
+        .insert([{
           case_file_id: caseFileId,
           appointment_id: appointmentId,
           notes,
-        });
+        }]);
 
       if (error) throw error;
       await fetchAppointments();
@@ -578,11 +578,11 @@ export const useCaseFileDetails = (caseFileId: string | null) => {
     try {
       const { error } = await supabase
         .from('case_file_letters')
-        .insert({
+        .insert([{
           case_file_id: caseFileId,
           letter_id: letterId,
           notes,
-        });
+        }]);
 
       if (error) throw error;
       await fetchLetters();
@@ -627,11 +627,11 @@ export const useCaseFileDetails = (caseFileId: string | null) => {
     try {
       const { error } = await supabase
         .from('case_file_notes')
-        .insert({
+        .insert([{
           case_file_id: caseFileId,
           user_id: user.id,
           content,
-        });
+        }]);
 
       if (error) throw error;
       await fetchNotes();
@@ -681,11 +681,11 @@ export const useCaseFileDetails = (caseFileId: string | null) => {
     try {
       const { error } = await supabase
         .from('case_file_timeline')
-        .insert({
+        .insert([{
           ...entry,
           case_file_id: caseFileId,
           created_by: user.id,
-        });
+        }]);
 
       if (error) throw error;
       await fetchTimeline();

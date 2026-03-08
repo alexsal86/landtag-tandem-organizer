@@ -84,43 +84,43 @@ export function CaseFileSelector({
       
       switch (itemType) {
         case 'document': {
-          const docResult = await supabase.from('case_file_documents').insert({
+          const docResult = await supabase.from('case_file_documents').insert([{
             case_file_id: caseFileId,
             document_id: itemId,
-          });
+          }]);
           linkError = docResult.error;
           break;
         }
         case 'contact': {
-          const contactResult = await supabase.from('case_file_contacts').insert({
+          const contactResult = await supabase.from('case_file_contacts').insert([{
             case_file_id: caseFileId,
             contact_id: itemId,
             role: 'stakeholder',
-          });
+          }]);
           linkError = contactResult.error;
           break;
         }
         case 'task': {
-          const taskResult = await supabase.from('case_file_tasks').insert({
+          const taskResult = await supabase.from('case_file_tasks').insert([{
             case_file_id: caseFileId,
             task_id: itemId,
-          });
+          }]);
           linkError = taskResult.error;
           break;
         }
         case 'appointment': {
-          const apptResult = await supabase.from('case_file_appointments').insert({
+          const apptResult = await supabase.from('case_file_appointments').insert([{
             case_file_id: caseFileId,
             appointment_id: itemId,
-          });
+          }]);
           linkError = apptResult.error;
           break;
         }
         case 'letter': {
-          const letterResult = await supabase.from('case_file_letters').insert({
+          const letterResult = await supabase.from('case_file_letters').insert([{
             case_file_id: caseFileId,
             letter_id: itemId,
-          });
+          }]);
           linkError = letterResult.error;
           break;
         }
@@ -150,7 +150,7 @@ export function CaseFileSelector({
         letter: `Brief verknüpft: ${itemTitle || 'Unbekannt'}`,
       };
       
-      const { error: timelineError } = await supabase.from('case_file_timeline').insert({
+      const { error: timelineError } = await supabase.from('case_file_timeline').insert([{
         case_file_id: caseFileId,
         event_date: new Date().toISOString(),
         event_type: eventTypeMap[itemType],
@@ -158,7 +158,7 @@ export function CaseFileSelector({
         source_type: itemType,
         source_id: itemId,
         created_by: user.id,
-      });
+      }]);
 
       if (timelineError) {
         debugConsole.error('Error creating timeline entry for case file link:', timelineError);
@@ -192,13 +192,13 @@ export function CaseFileSelector({
       // Create new case file
       const { data: newCaseFile, error: createError } = await supabase
         .from('case_files')
-        .insert({
+        .insert([{
           title: newTitle.trim(),
           tenant_id: currentTenant.id,
           user_id: user.id,
           status: 'active',
           case_type: 'general',
-        })
+        }])
         .select('id')
         .single();
       

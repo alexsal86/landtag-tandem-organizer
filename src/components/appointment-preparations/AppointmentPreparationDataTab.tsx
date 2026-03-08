@@ -112,7 +112,7 @@ export function AppointmentPreparationDataTab({
       const { data, error } = await supabase
         .from('appointments')
         .select('*')
-        .eq('id', preparation.appointment_id)
+        .eq('id', preparation.appointment_id ?? '')
         .single();
 
       if (error) throw error;

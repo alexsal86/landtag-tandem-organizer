@@ -121,12 +121,12 @@ export function ChecklistItemEmailDialog({
         // Create new
         const { error } = await supabase
           .from("event_planning_item_actions")
-          .insert({
+          .insert([{
             checklist_item_id: checklistItemId,
             action_type: "email",
             action_config: actionConfig,
             is_enabled: isEnabled,
-          });
+          }]);
 
         if (error) throw error;
       }

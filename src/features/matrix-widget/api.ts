@@ -41,7 +41,7 @@ export async function saveWidgetMessageFeedback(params: {
   visitorMessage?: string;
   botReply: string;
 }) {
-  return supabase.from("matrix_widget_message_feedback").insert({
+  return supabase.from("matrix_widget_message_feedback").insert([{
     tenant_id: params.tenantId,
     conversation_id: params.conversationId,
     widget_message_id: params.widgetMessageId,
@@ -53,7 +53,7 @@ export async function saveWidgetMessageFeedback(params: {
       bot_reply: params.botReply,
       source: "matrix_widget_prototype",
     },
-  });
+  }]);
 }
 
 export async function fetchWidgetFeedbackStats(tenantId: string): Promise<WidgetFeedbackStats> {

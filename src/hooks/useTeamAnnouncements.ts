@@ -164,7 +164,7 @@ export function useTeamAnnouncements() {
     try {
       const { data: newAnnouncement, error } = await supabase
         .from("team_announcements")
-        .insert({
+        .insert([{
           tenant_id: currentTenant.id,
           author_id: user.id,
           title: data.title,
@@ -173,7 +173,7 @@ export function useTeamAnnouncements() {
           starts_at: data.starts_at || null,
           expires_at: data.expires_at || null,
           is_active: true,
-        })
+        }])
         .select()
         .single();
 

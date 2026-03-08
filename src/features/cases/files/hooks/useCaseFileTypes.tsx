@@ -48,14 +48,14 @@ export const useCaseFileTypes = () => {
     try {
       const { error } = await supabase
         .from('case_file_types')
-        .insert({
+        .insert([{
           name: data.label.toLowerCase().replace(/\s+/g, '_'),
           label: data.label,
           icon: data.icon || 'Folder',
           color: data.color || '#3b82f6',
           order_index: Math.max(...caseFileTypes.map(t => t.order_index), -1) + 1,
           tenant_id: currentTenant!.id,
-        });
+        }]);
 
       if (error) throw error;
 
