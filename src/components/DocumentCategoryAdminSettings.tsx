@@ -47,7 +47,7 @@ export function DocumentCategoryAdminSettings() {
       if (error) throw error;
       setCategories(data || []);
     } catch (error) {
-      console.error('Error loading document categories:', error);
+      debugConsole.error('Error loading document categories:', error);
       toast({ title: "Fehler", description: "Dokumenten-Kategorien konnten nicht geladen werden.", variant: "destructive" });
     } finally {
       setLoading(false);
