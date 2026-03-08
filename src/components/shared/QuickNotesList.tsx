@@ -10,6 +10,7 @@ import {
 import { DragDropContext, Droppable, Draggable } from "@hello-pangea/dnd";
 import { cn } from "@/lib/utils";
 import { useQuickNotes } from "@/hooks/useQuickNotes";
+import { useNotificationHighlight } from "@/hooks/useNotificationHighlight";
 import { NoteCard } from "@/components/shared/NoteCard";
 import { NoteDialogs } from "@/components/shared/NoteDialogs";
 
