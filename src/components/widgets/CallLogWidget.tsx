@@ -197,7 +197,7 @@ export const CallLogWidget: React.FC<CallLogWidgetProps> = ({
             .single();
 
           if (mainTaskError || !mainTaskData) {
-            console.error('Error creating main task:', mainTaskError);
+            debugConsole.error('Error creating main task:', mainTaskError);
             return;
           }
           mainTaskId = mainTaskData.id;
