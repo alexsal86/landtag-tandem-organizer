@@ -101,10 +101,10 @@ export function CaseFileSelector({
           break;
         }
         case 'task': {
-          const taskResult = await supabase.from('case_file_tasks').insert({
+          const taskResult = await supabase.from('case_file_tasks').insert([{
             case_file_id: caseFileId,
             task_id: itemId,
-          });
+          }]);
           linkError = taskResult.error;
           break;
         }
