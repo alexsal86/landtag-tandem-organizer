@@ -893,7 +893,7 @@ export function useEventPlanningData() {
       const { data, error } = await supabase.from('planning_item_subtasks').select('*').eq('planning_item_id', itemId).order('order_index', { ascending: true });
       if (error) throw error;
       setItemSubtasks(prev => ({ ...prev, [itemId]: data || [] }));
-    } catch (error) { console.error('Error loading item subtasks:', error); }
+    } catch (error) { debugConsole.error('Error loading item subtasks:', error); }
   };
 
   const loadItemDocuments = async (itemId: string) => {
