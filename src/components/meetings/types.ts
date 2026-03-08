@@ -160,16 +160,16 @@ export interface MeetingTemplateItem {
 
 export interface Meeting {
   id?: string;
-  tenant_id?: string;
-  user_id?: string;
+  tenant_id?: string | null;
+  user_id?: string | null;
   title: string;
-  description?: string;
+  description?: string | null;
   meeting_date: string | Date;
-  meeting_time?: string;
-  location?: string;
+  meeting_time?: string | null;
+  location?: string | null;
   status: string;
-  template_id?: string;
-  is_public?: boolean;
+  template_id?: string | null;
+  is_public?: boolean | null;
   created_at?: string;
   updated_at?: string;
   lastUpdate?: number;
