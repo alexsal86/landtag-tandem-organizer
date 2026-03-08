@@ -176,7 +176,7 @@ export const LetterValidation: React.FC<LetterValidationProps> = ({
       {/* Issues */}
       <div className="space-y-2">
         {issues.map((issue, index) => (
-          <Alert key={index} variant={getAlertVariant(issue.type) as any}>
+          <Alert key={index} variant={getAlertVariant(issue.type)}>
             {getIcon(issue.type)}
             <AlertDescription className="flex items-center justify-between">
               <span>{issue.message}</span>

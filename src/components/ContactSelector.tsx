@@ -305,7 +305,7 @@ export const ContactSelector: React.FC<ContactSelectorProps> = ({
       console.error('Error tracking contact usage:', error);
     }
 
-    onSelect({ ...contact, formatted_address: formatContactAddress(contact) } as any);
+    onSelect({ ...contact, formatted_address: formatContactAddress(contact) });
   };
 
   return (

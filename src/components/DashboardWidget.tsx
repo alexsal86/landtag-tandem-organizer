@@ -446,9 +446,9 @@ export function DashboardWidget({ widget, isDragging, isEditMode, onResize, onDe
                         {item.description && (
                           <p className="text-sm text-muted-foreground truncate">{item.description}</p>
                         )}
-                        {!isTask && ((item as any).assigned_to_names || (item as any).assigned_to) && (
+                        {item.type === 'subtask' && (item.assigned_to_names || item.assigned_to) && (
                           <div className="text-sm text-muted-foreground truncate">
-                            Zuständig: {(item as any).assigned_to_names || resolveUserNames((item as any).assigned_to)}
+                            Zuständig: {item.assigned_to_names || resolveUserNames(item.assigned_to)}
                           </div>
                         )}
                         {isSnoozed && (

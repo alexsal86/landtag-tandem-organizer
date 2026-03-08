@@ -717,7 +717,7 @@ const LetterEditor: React.FC<LetterEditorProps> = ({ letter, isOpen, onClose, on
         }}
         onSkipReview={async () => {
           setShowAssignmentDialog(false);
-          setEditedLetter(prev => ({ ...prev, status: 'approved' as any }));
+          setEditedLetter(prev => ({ ...prev, status: 'approved' }));
           setIsProofreadingMode(false);
           setSaving(true);
           try {
