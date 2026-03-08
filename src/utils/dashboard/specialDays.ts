@@ -5,25 +5,54 @@ export interface SpecialDay {
   day: number;
   name: string;
   hint: string;
+  icon?: string;
 }
 
+export interface SpecialDayHint {
+  text: string;
+  icon?: string;
+}
+
+export const AVAILABLE_HINT_ICONS = [
+  { name: 'Zap', label: 'Blitz' },
+  { name: 'Flame', label: 'Flamme' },
+  { name: 'Heart', label: 'Herz' },
+  { name: 'Users', label: 'Menschen' },
+  { name: 'Globe', label: 'Globus' },
+  { name: 'Flag', label: 'Flagge' },
+  { name: 'Star', label: 'Stern' },
+  { name: 'BookOpen', label: 'Buch' },
+  { name: 'TreePine', label: 'Baum' },
+  { name: 'HandHeart', label: 'Ehrenamt' },
+  { name: 'Baby', label: 'Kind' },
+  { name: 'Landmark', label: 'Gebäude' },
+  { name: 'Rainbow', label: 'Regenbogen' },
+  { name: 'CandlestickChart', label: 'Kerze' },
+  { name: 'Scale', label: 'Waage' },
+  { name: 'CalendarHeart', label: 'Kalender' },
+  { name: 'Megaphone', label: 'Megafon' },
+  { name: 'Shield', label: 'Schild' },
+  { name: 'Sparkles', label: 'Funken' },
+  { name: 'Sun', label: 'Sonne' },
+] as const;
+
 export const DEFAULT_SPECIAL_DAYS: SpecialDay[] = [
-  { month: 1, day: 11, name: 'Tag des Energiesparens', hint: 'Ein guter Zeitpunkt, um Energieeffizienz und Klimaschutz im Alltag sichtbar zu machen.' },
-  { month: 1, day: 27, name: 'Tag des Gedenkens an die Opfer des Nationalsozialismus', hint: 'Ein Moment für Erinnerung, Verantwortung und demokratisches Miteinander.' },
-  { month: 3, day: 8, name: 'Internationaler Frauentag', hint: 'Ein guter Anlass, Gleichstellung und Teilhabe aktiv mitzudenken.' },
-  { month: 3, day: 21, name: 'Internationaler Tag gegen Rassismus', hint: 'Setze heute ein sichtbares Zeichen für Vielfalt, Respekt und Zusammenhalt.' },
-  { month: 4, day: 22, name: 'Tag der Erde', hint: 'Nutze den Tag, um Klima- und Naturschutzthemen im Team und in Terminen zu platzieren.' },
-  { month: 5, day: 8, name: 'Tag der Befreiung', hint: 'Ein Tag der historischen Verantwortung und des Einsatzes für Freiheit.' },
-  { month: 5, day: 9, name: 'Europatag', hint: 'Ein guter Anlass, europäische Zusammenarbeit und demokratische Werte zu betonen.' },
-  { month: 5, day: 23, name: 'Tag des Grundgesetzes', hint: 'Ein guter Moment, den Wert unserer Verfassung sichtbar zu machen.' },
-  { month: 6, day: 5, name: 'Weltumwelttag', hint: 'Plane Gespräche rund um Umwelt- und Ressourcenschutz mit klaren nächsten Schritten.' },
-  { month: 9, day: 1, name: 'Antikriegstag', hint: 'Ein Impuls für Frieden, Verständigung und demokratische Konfliktlösung.' },
-  { month: 9, day: 20, name: 'Weltkindertag', hint: 'Ein Impuls, Kinderrechte, Bildungsgerechtigkeit und Teilhabe stärker mitzudenken.' },
-  { month: 10, day: 3, name: 'Tag der Deutschen Einheit', hint: 'Gemeinschaft, Zusammenhalt und demokratische Werte stehen im Mittelpunkt.' },
-  { month: 10, day: 11, name: 'Internationaler Coming-out-Tag', hint: 'Ein guter Moment, Sichtbarkeit, Vielfalt und gleiche Rechte aktiv zu unterstützen.' },
-  { month: 11, day: 9, name: 'Schicksalstag 9. November', hint: 'Ein historischer Tag mit Mahnung und Hoffnung zugleich.' },
-  { month: 12, day: 5, name: 'Tag des Ehrenamts', hint: 'Bedanke dich bei Engagierten und mache zivilgesellschaftliche Arbeit im Kalender sichtbar.' },
-  { month: 12, day: 10, name: 'Tag der Menschenrechte', hint: 'Ein guter Anlass, die Bedeutung von Grund- und Menschenrechten zu betonen.' }
+  { month: 1, day: 11, name: 'Tag des Energiesparens', hint: 'Ein guter Zeitpunkt, um Energieeffizienz und Klimaschutz im Alltag sichtbar zu machen.', icon: 'Zap' },
+  { month: 1, day: 27, name: 'Tag des Gedenkens an die Opfer des Nationalsozialismus', hint: 'Ein Moment für Erinnerung, Verantwortung und demokratisches Miteinander.', icon: 'Flame' },
+  { month: 3, day: 8, name: 'Internationaler Frauentag', hint: 'Ein guter Anlass, Gleichstellung und Teilhabe aktiv mitzudenken.', icon: 'Heart' },
+  { month: 3, day: 21, name: 'Internationaler Tag gegen Rassismus', hint: 'Setze heute ein sichtbares Zeichen für Vielfalt, Respekt und Zusammenhalt.', icon: 'Users' },
+  { month: 4, day: 22, name: 'Tag der Erde', hint: 'Nutze den Tag, um Klima- und Naturschutzthemen im Team und in Terminen zu platzieren.', icon: 'Globe' },
+  { month: 5, day: 8, name: 'Tag der Befreiung', hint: 'Ein Tag der historischen Verantwortung und des Einsatzes für Freiheit.', icon: 'Flag' },
+  { month: 5, day: 9, name: 'Europatag', hint: 'Ein guter Anlass, europäische Zusammenarbeit und demokratische Werte zu betonen.', icon: 'Star' },
+  { month: 5, day: 23, name: 'Tag des Grundgesetzes', hint: 'Ein guter Moment, den Wert unserer Verfassung sichtbar zu machen.', icon: 'BookOpen' },
+  { month: 6, day: 5, name: 'Weltumwelttag', hint: 'Plane Gespräche rund um Umwelt- und Ressourcenschutz mit klaren nächsten Schritten.', icon: 'TreePine' },
+  { month: 9, day: 1, name: 'Antikriegstag', hint: 'Ein Impuls für Frieden, Verständigung und demokratische Konfliktlösung.', icon: 'HandHeart' },
+  { month: 9, day: 20, name: 'Weltkindertag', hint: 'Ein Impuls, Kinderrechte, Bildungsgerechtigkeit und Teilhabe stärker mitzudenken.', icon: 'Baby' },
+  { month: 10, day: 3, name: 'Tag der Deutschen Einheit', hint: 'Gemeinschaft, Zusammenhalt und demokratische Werte stehen im Mittelpunkt.', icon: 'Landmark' },
+  { month: 10, day: 11, name: 'Internationaler Coming-out-Tag', hint: 'Ein guter Moment, Sichtbarkeit, Vielfalt und gleiche Rechte aktiv zu unterstützen.', icon: 'Rainbow' },
+  { month: 11, day: 9, name: 'Schicksalstag 9. November', hint: 'Ein historischer Tag mit Mahnung und Hoffnung zugleich.', icon: 'Flame' },
+  { month: 12, day: 5, name: 'Tag des Ehrenamts', hint: 'Bedanke dich bei Engagierten und mache zivilgesellschaftliche Arbeit im Kalender sichtbar.', icon: 'HandHeart' },
+  { month: 12, day: 10, name: 'Tag der Menschenrechte', hint: 'Ein guter Anlass, die Bedeutung von Grund- und Menschenrechten zu betonen.', icon: 'Scale' }
 ];
 
 const normalizeDate = (date: Date): Date => {
@@ -64,7 +93,14 @@ export const parseSpecialDaysSetting = (value: string | null | undefined): Speci
         && hint.trim().length > 0;
     });
 
-    return validDays.length > 0 ? validDays : null;
+    // Preserve icon field if present
+    return validDays.length > 0 ? validDays.map(d => ({
+      month: Number(d.month),
+      day: Number(d.day),
+      name: d.name,
+      hint: d.hint,
+      ...(d.icon && typeof d.icon === 'string' ? { icon: d.icon } : {}),
+    })) : null;
   } catch {
     return null;
   }
@@ -73,13 +109,16 @@ export const parseSpecialDaysSetting = (value: string | null | undefined): Speci
 export const getSpecialDayHint = (
   baseDate: Date = new Date(),
   specialDays: SpecialDay[] = DEFAULT_SPECIAL_DAYS
-): string | null => {
+): SpecialDayHint | null => {
   const month = baseDate.getMonth() + 1;
   const day = baseDate.getDate();
 
   const today = specialDays.find((specialDay) => specialDay.month === month && specialDay.day === day);
   if (today) {
-    return `🕯️ **Heute ist ${today.name}.** ${today.hint}`;
+    return {
+      text: `**Heute ist ${today.name}.** ${today.hint}`,
+      icon: today.icon,
+    };
   }
 
   const normalizedBaseDate = normalizeDate(baseDate);
@@ -109,5 +148,8 @@ export const getSpecialDayHint = (
     return null;
   }
 
-  return `🕯️ **Hinweis:** In ${upcoming.daysUntil} Tag${upcoming.daysUntil === 1 ? '' : 'en'} ist ${upcoming.name} (${format(upcoming.targetDate, 'dd.MM.')}).`;
+  return {
+    text: `**Hinweis:** In ${upcoming.daysUntil} Tag${upcoming.daysUntil === 1 ? '' : 'en'} ist ${upcoming.name} (${format(upcoming.targetDate, 'dd.MM.')}).`,
+    icon: upcoming.icon,
+  };
 };
