@@ -56,7 +56,7 @@ export function EmployeeInfoTab({ employeeSettings }: EmployeeInfoTabProps) {
     try {
       const { data, error } = await supabase
         .from('employee_settings_history')
-        .select('*')
+        .select('id, user_id, hours_per_week, days_per_week, hours_per_month, days_per_month, annual_vacation_days, valid_from, valid_until, changed_by, change_reason, created_at')
         .eq('user_id', employeeSettings.user_id)
         .order('valid_from', { ascending: false });
 
