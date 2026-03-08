@@ -92,7 +92,7 @@ export function TagAdminSettings() {
       setEditingTag(null);
       toast({ title: "Erfolg", description: "Tag wurde erfolgreich aktualisiert." });
     } catch (error: any) {
-      console.error('Error updating tag:', error);
+      debugConsole.error('Error updating tag:', error);
       toast({ title: "Fehler", description: "Tag konnte nicht aktualisiert werden.", variant: "destructive" });
     }
   };
