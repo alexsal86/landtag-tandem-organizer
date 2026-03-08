@@ -346,7 +346,7 @@ export function useDashboardLayout() {
 
       const tenantId = currentTenant.id;
 
-      console.log('🔧 Preparing layout data:', { layoutId, tenantId, userId: user.id });
+      
 
       const layoutToSave = name 
         ? { ...currentLayout, name, id: crypto.randomUUID() }
