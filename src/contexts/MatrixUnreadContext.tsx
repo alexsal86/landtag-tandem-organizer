@@ -30,7 +30,7 @@ export function MatrixUnreadProvider({ children }: { children: ReactNode }) {
   const [hasCredentials, setHasCredentials] = useState(false);
   const [credentials, setCredentials] = useState<{ accessToken: string; homeserverUrl: string } | null>(null);
   const liveOverrideRef = useRef(false);
-  const pollTimerRef = useRef<ReturnType<typeof setInterval>>();
+  const pollTimerRef = useRef<ReturnType<typeof setInterval>>(undefined);
 
   // Load credentials from profile
   useEffect(() => {
