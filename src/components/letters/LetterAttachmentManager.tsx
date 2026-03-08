@@ -271,7 +271,7 @@ const LetterAttachmentManager: React.FC<LetterAttachmentManagerProps> = ({
         title: "Anzeigename aktualisiert",
         description: "Der Anzeigename wurde erfolgreich geändert.",
       });
-    } catch (error: any) {
+    } catch (error: unknown) {
       toast({
         title: "Fehler",
         description: "Der Anzeigename konnte nicht geändert werden.",
