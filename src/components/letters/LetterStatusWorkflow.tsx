@@ -195,7 +195,7 @@ export const LetterStatusWorkflow: React.FC<LetterStatusWorkflowProps> = ({
 
           if (fullLetter) {
             const { archiveLetter } = await import('@/utils/letterArchiving');
-            await archiveLetter(fullLetter, currentUserId);
+            await archiveLetter(fullLetter as any, currentUserId);
           }
         } catch (archiveErr) {
           debugConsole.error('Archive failed:', archiveErr);

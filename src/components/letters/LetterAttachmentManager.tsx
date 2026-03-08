@@ -14,12 +14,15 @@ import { useAuth } from '@/hooks/useAuth';
 interface Attachment {
   id: string;
   file_name: string;
-  file_path: string;
-  file_type?: string;
-  file_size?: number;
-  uploaded_by: string;
+  file_path: string | null;
+  file_type?: string | null;
+  file_size?: number | null;
+  uploaded_by: string | null;
   created_at: string;
-  display_name?: string; // For customizable display in letter
+  display_name?: string | null;
+  letter_id?: string;
+  document_id?: string | null;
+  updated_at?: string | null;
 }
 
 interface LetterAttachmentManagerProps {

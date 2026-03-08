@@ -13,7 +13,7 @@ export interface KnowledgeDocument {
   created_by: string;
   created_at: string;
   updated_at: string;
-  is_published: boolean;
+  is_published: boolean | null;
   is_locked: boolean | null;
   creator_name?: string | null;
   content_html?: string | null;

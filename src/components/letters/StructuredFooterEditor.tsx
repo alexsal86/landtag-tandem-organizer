@@ -34,15 +34,15 @@ interface FooterBlock {
 interface SenderInfo {
   name: string;
   organization: string;
-  phone?: string;
-  fax?: string;
-  website?: string;
-  instagram_profile?: string;
-  facebook_profile?: string;
-  landtag_street?: string;
-  landtag_house_number?: string;
-  landtag_postal_code?: string;
-  landtag_city?: string;
+  phone?: string | null;
+  fax?: string | null;
+  website?: string | null;
+  instagram_profile?: string | null;
+  facebook_profile?: string | null;
+  landtag_street?: string | null;
+  landtag_house_number?: string | null;
+  landtag_postal_code?: string | null;
+  landtag_city?: string | null;
   landtag_email?: string;
   wahlkreis_street?: string;
   wahlkreis_house_number?: string;

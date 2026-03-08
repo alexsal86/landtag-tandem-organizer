@@ -590,7 +590,7 @@ export function useEventPlanningData() {
   // ── Speaker operations ──
   const addSpeaker = async () => {
     if (!selectedPlanning || !newSpeaker.name.trim()) return;
-    const maxOrder = Math.max(...speakers.map(speaker => speaker.order_index), -1);
+    const maxOrder = Math.max(...speakers.map(speaker => speaker.order_index ?? 0), -1);
     const { data, error } = await supabase.from("event_planning_speakers").insert([{ event_planning_id: selectedPlanning.id, name: newSpeaker.name, email: newSpeaker.email || null, phone: newSpeaker.phone || null, bio: newSpeaker.bio || null, topic: newSpeaker.topic || null, order_index: maxOrder + 1 }]).select().single();
     if (error) { toast({ title: "Fehler", description: "Referent konnte nicht hinzugefügt werden.", variant: "destructive" }); return; }
     setSpeakers([...speakers, data]);

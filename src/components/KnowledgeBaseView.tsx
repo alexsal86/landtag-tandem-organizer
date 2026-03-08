@@ -69,7 +69,7 @@ const KnowledgeBaseView = () => {
   }, [documentId, data.documents, navigate, data.loading]);
 
   const filteredDocuments = data.documents.filter(doc => {
-    const matchesSearch = doc.title.toLowerCase().includes(searchTerm.toLowerCase()) || doc.content.toLowerCase().includes(searchTerm.toLowerCase());
+    const matchesSearch = doc.title.toLowerCase().includes(searchTerm.toLowerCase()) || (doc.content || '').toLowerCase().includes(searchTerm.toLowerCase());
     const matchesTopic = !selectedTopicFilter || (data.documentTopicsMap[doc.id]?.includes(selectedTopicFilter));
     return matchesSearch && matchesTopic;
   });
