@@ -196,7 +196,7 @@ export function useTasksData() {
       });
       setTaskDocumentDetails(detailsMap);
     } catch (error) {
-      console.error('Error loading task documents:', error);
+      debugConsole.error('Error loading task documents:', error);
     }
   };
 
