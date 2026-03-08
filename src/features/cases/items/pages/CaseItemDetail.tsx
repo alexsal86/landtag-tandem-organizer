@@ -5,6 +5,7 @@ import { Archive, ArrowLeft, Briefcase, CalendarClock, CheckSquare, Clock3, Load
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { useTenant } from "@/hooks/useTenant";
+import { useToast } from "@/hooks/use-toast";
 import { classifyCaseScale } from "@/features/cases/shared/utils";
 import { useCaseFileDetails } from "@/features/cases/files/hooks";
 import {
