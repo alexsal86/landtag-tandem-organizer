@@ -517,7 +517,7 @@ export function useMeetingsData() {
     try {
       const { data: agendaItemIds, error: agendaFetchError } = await supabase
         .from('meeting_agenda_items').select('id').eq('meeting_id', meetingId);
-      if (agendaFetchError) console.error('Error fetching agenda items:', agendaFetchError);
+      if (agendaFetchError) debugConsole.error('Error fetching agenda items:', agendaFetchError);
 
       if (agendaItemIds && agendaItemIds.length > 0) {
         const { error: docError } = await supabase
