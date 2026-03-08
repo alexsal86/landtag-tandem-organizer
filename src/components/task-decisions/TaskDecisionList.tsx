@@ -56,7 +56,7 @@ export const TaskDecisionList = () => {
   const [creatorResponses, setCreatorResponses] = useState<{[key: string]: string}>({});
   const [isLoading, setIsLoading] = useState(false);
 
-  console.log('TaskDecisionList component rendered - user from useAuth:', user?.id);
+  
 
   useEffect(() => {
     console.log('TaskDecisionList useEffect triggered - user from hook:', user?.id);
