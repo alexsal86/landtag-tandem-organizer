@@ -170,8 +170,7 @@ export function useLetterTemplateData() {
       toast({ title: "Template aktualisiert" });
       setEditingTemplate(null); resetForm(); fetchTemplates();
     } catch (error) {
-      debugConsole.error('Error updating template:', error);
-      toast({ title: "Fehler", description: "Template konnte nicht aktualisiert werden.", variant: "destructive" });
+      handleAppError(error, { context: 'handleUpdateTemplate', toast: { fn: toast, title: 'Fehler', description: 'Template konnte nicht aktualisiert werden.' } });
     }
   };
 
