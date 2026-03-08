@@ -363,7 +363,7 @@ export function useMeetingsData() {
       const { data, error } = await supabase
         .from('meeting_agenda_documents').select('*').in('meeting_agenda_item_id', agendaItemIds);
       if (error) throw error;
-      const docsByItemId: Record<string, any[]> = {};
+      const docsByItemId: Record<string, AgendaDocument[]> = {};
       data?.forEach(doc => {
         if (!docsByItemId[doc.meeting_agenda_item_id]) docsByItemId[doc.meeting_agenda_item_id] = [];
         docsByItemId[doc.meeting_agenda_item_id].push(doc);
