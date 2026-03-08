@@ -147,6 +147,7 @@ export function MyWorkView() {
 
   useEffect(() => {
     const action = searchParams.get("action");
+    const highlight = searchParams.get("highlight");
     const hasRawTab = typeof rawTab === "string";
     const needsNormalization = !hasRawTab || rawTab !== activeTab;
 
@@ -155,6 +156,9 @@ export function MyWorkView() {
     const nextParams: Record<string, string> = { tab: activeTab };
     if (action) {
       nextParams.action = action;
+    }
+    if (highlight) {
+      nextParams.highlight = highlight;
     }
 
     setSearchParams(nextParams, { replace: true });
