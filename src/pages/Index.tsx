@@ -194,7 +194,7 @@ const Index = () => {
       case "knowledge":
         return <KnowledgeBaseView />;
       case "settings":
-        return <SettingsView />;
+        return <Suspense fallback={null}><MatrixClientProvider><SettingsView /></MatrixClientProvider></Suspense>;
       case "employee":
         return <EmployeesView />;
       case "employee-meeting":
