@@ -232,7 +232,7 @@ export function VersionHistoryPlugin({
         }
       }).then(({ data, error }) => {
         if (error) {
-          console.error('Error creating snapshot:', error);
+          debugConsole.error('Error creating snapshot:', error);
         } else {
           if (type === 'manual') {
             toast({
