@@ -64,6 +64,8 @@ export function AutomationRulesManager() {
   const [form, setForm] = useState<WizardForm>(DEFAULT_FORM);
   const [wizardOpen, setWizardOpen] = useState(false);
   const [runStatusFilter, setRunStatusFilter] = useState<string>("all");
+  const [automationsPaused, setAutomationsPaused] = useState(false);
+  const [togglingPause, setTogglingPause] = useState(false);
 
   const filteredRuns = useMemo(() => {
     if (runStatusFilter === "all") return runs;
