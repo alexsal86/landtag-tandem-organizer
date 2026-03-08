@@ -227,7 +227,7 @@ export function CaseFileTypeSettings() {
                               ) : (
                                 <span
                                   className="inline-block w-8 h-8 rounded border border-border cursor-pointer"
-                                  style={{ backgroundColor: type.color }}
+                                  style={{ backgroundColor: type.color ?? undefined }}
                                 />
                               )}
                             </TableCell>
