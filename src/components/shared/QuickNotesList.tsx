@@ -944,7 +944,7 @@ export function QuickNotesList({
       setDatePickerOpen(false);
       setNoteForDatePicker(null);
     } catch (error) {
-      console.error("Error setting follow-up:", error);
+      debugConsole.error("Error setting follow-up:", error);
       toast.error("Fehler beim Setzen der Wiedervorlage");
     }
   };
