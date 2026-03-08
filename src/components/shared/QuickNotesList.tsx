@@ -1413,7 +1413,7 @@ export function QuickNotesList({
       });
       loadNotes();
     } catch (error) {
-      console.error('Error splitting note:', error);
+      debugConsole.error('Error splitting note:', error);
       toast.error("Fehler beim Aufteilen der Notiz");
     }
   };
