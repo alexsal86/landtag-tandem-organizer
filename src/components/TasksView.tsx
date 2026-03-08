@@ -1657,24 +1657,14 @@ export function TasksView() {
   });
 
   const filteredAssignedSubtasks = assignedSubtasks.filter(subtask => {
-    console.log('🔍 Filtering subtask:', subtask.id, 'hideSnoozeSubtasks:', hideSnoozeSubtasks, 'snoozed:', !!subtaskSnoozes[subtask.id]);
-    
     if (hideSnoozeSubtasks) {
       const isSnoozed = subtaskSnoozes[subtask.id] && new Date(subtaskSnoozes[subtask.id]) > new Date();
       if (isSnoozed) {
-        console.log('❌ Hiding snoozed subtask:', subtask.id, 'until:', subtaskSnoozes[subtask.id]);
         return false;
       }
     }
-    
-    console.log('✅ Including subtask in filtered list:', subtask.id);
     return true;
   });
-
-  console.log('🎯 FILTERING RESULTS:');
-  console.log('  - Total assigned subtasks:', assignedSubtasks.length);
-  console.log('  - Filtered assigned subtasks:', filteredAssignedSubtasks.length);
-  console.log('  - Hide snooze subtasks enabled:', hideSnoozeSubtasks);
 
   const taskCounts = {
     all: filteredTasksWithSnooze.length,
