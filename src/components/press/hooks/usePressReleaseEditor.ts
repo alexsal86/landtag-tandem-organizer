@@ -206,7 +206,7 @@ export function usePressReleaseEditor({ pressReleaseId, initialDraft, onBack }: 
                 data_param: JSON.stringify({ documentId: pressRelease.id, documentType: "press_release" }),
                 priority_param: "medium",
               });
-            } catch (e) { console.error("Failed to send mention notification:", e); }
+            } catch (e) { debugConsole.error("Failed to send mention notification:", e); }
           });
           await Promise.allSettled(promises);
           pendingMentionsRef.current.clear();

@@ -206,7 +206,7 @@ export function ConfigurableTypeSettings({
 
       toast({ title: "Erfolg", description: `${entityName} wurde ${!isActive ? 'aktiviert' : 'deaktiviert'}.` });
     } catch (error: unknown) {
-      console.error(`Error toggling ${entityName}:`, error);
+      debugConsole.error(`Error toggling ${entityName}:`, error);
       toast({ title: "Fehler", description: "Status konnte nicht geändert werden.", variant: "destructive" });
     }
   };

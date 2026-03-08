@@ -859,7 +859,7 @@ export function useEventPlanningData() {
         await supabase.from("event_planning_checklist_items").update({ order_index: update.order_index }).eq("id", update.id);
       }
     } catch (error) {
-      console.error('Error updating item order:', error);
+      debugConsole.error('Error updating item order:', error);
       toast({ title: "Fehler", description: "Reihenfolge konnte nicht gespeichert werden.", variant: "destructive" });
       fetchPlanningDetails(selectedPlanning!.id);
     }

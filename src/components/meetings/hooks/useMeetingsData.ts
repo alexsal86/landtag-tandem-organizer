@@ -538,7 +538,7 @@ export function useMeetingsData() {
       if (activeMeetingId === meetingId) { setActiveMeeting(null); setActiveMeetingId(null); sidebar.setLinkedQuickNotes([]); }
       toast({ title: "Meeting gelöscht", description: "Das Meeting wurde erfolgreich gelöscht." });
     } catch (error: unknown) {
-      console.error('Delete meeting error:', error);
+      debugConsole.error('Delete meeting error:', error);
       const msg = error instanceof Error ? error.message : '';
       let errorMessage = 'Das Meeting konnte nicht gelöscht werden.';
       if (msg.includes('violates foreign key constraint')) {
