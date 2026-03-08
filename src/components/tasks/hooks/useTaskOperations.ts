@@ -121,7 +121,7 @@ export function useTaskOperations({
           : "Aufgabe wurde als offen markiert."
       });
     } catch (error: unknown) {
-      console.error('Error updating task:', error);
+      debugConsole.error('Error updating task:', error);
       const msg = error instanceof Error ? error.message : String(error);
       const isNetworkError = msg?.includes('Failed to fetch') || msg?.includes('NetworkError');
       if (isNetworkError) {
