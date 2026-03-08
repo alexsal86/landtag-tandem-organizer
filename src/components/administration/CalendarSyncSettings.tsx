@@ -8,6 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { useTenant } from "@/hooks/useTenant";
+import { debugConsole } from "@/utils/debugConsole";
 import { Clock, Save } from "lucide-react";
 
 export function CalendarSyncSettings() {
