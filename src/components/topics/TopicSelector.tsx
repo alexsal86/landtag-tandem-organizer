@@ -157,13 +157,13 @@ export const TopicDisplay: React.FC<TopicDisplayProps> = ({
           key={topic.id}
           variant="secondary"
           className="gap-1 text-xs"
-          style={{ 
-            backgroundColor: `${topic.color}20`,
-            borderColor: topic.color,
-            color: topic.color 
+           style={{ 
+            backgroundColor: `${topic.color ?? '#3b82f6'}20`,
+            borderColor: topic.color ?? undefined,
+            color: topic.color ?? undefined 
           }}
         >
-          {getIconComponent(topic.icon)}
+          {getIconComponent(topic.icon ?? '')}
           {topic.label}
         </Badge>
       ))}
