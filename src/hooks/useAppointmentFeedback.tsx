@@ -140,7 +140,7 @@ export const useAppointmentFeedback = () => {
       const eventIds = externalEventsRaw.map(e => e.id);
       const { data: feedbackData } = await supabase
         .from('appointment_feedback')
-        .select('*')
+        .select('id, external_event_id, appointment_id, feedback_status, notes, has_documents, has_tasks, completed_at, user_id, tenant_id, event_type, priority_score, reminder_dismissed')
         .in('external_event_id', eventIds);
 
       // 3. Finde Events ohne Feedback
