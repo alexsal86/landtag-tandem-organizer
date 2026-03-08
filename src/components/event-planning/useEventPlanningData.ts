@@ -1037,7 +1037,7 @@ export function useEventPlanningData() {
       loadItemComments(comment.planning_item_id);
       loadAllItemCounts();
       toast({ title: "Kommentar gelöscht", description: "Der Kommentar wurde erfolgreich entfernt." });
-    } catch (error) { console.error('Error deleting comment:', error); toast({ title: "Fehler", description: "Kommentar konnte nicht gelöscht werden.", variant: "destructive" }); }
+    } catch (error) { debugConsole.error('Error deleting comment:', error); toast({ title: "Fehler", description: "Kommentar konnte nicht gelöscht werden.", variant: "destructive" }); }
   };
 
   const handleSubtaskComplete = async (subtaskId: string, isCompleted: boolean, result: string, itemId: string) => {
