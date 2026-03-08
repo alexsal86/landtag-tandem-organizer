@@ -39,7 +39,7 @@ export function useCounts(): CountsData {
         .neq('name', 'Archivierter Kontakt');
 
       if (contactsError) {
-        console.error('Error fetching contacts count:', contactsError);
+        debugConsole.error('Error fetching contacts count:', contactsError);
       }
 
       // Get stakeholders count (organizations only)
