@@ -486,6 +486,7 @@ serve(async (req) => {
         if (emailError) {
           throw new Error(`Email send failed: ${JSON.stringify(emailError)}`);
         }
+      }
 
       await supabaseAdmin.from("automation_rule_run_steps").insert({
         run_id: run.id,
