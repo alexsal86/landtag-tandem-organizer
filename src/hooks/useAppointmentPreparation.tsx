@@ -7,9 +7,9 @@ export interface AppointmentPreparation {
   id: string;
   title: string;
   status: string;
-  notes?: string;
-  appointment_id?: string;
-  template_id?: string;
+  notes?: string | null;
+  appointment_id?: string | null;
+  template_id?: string | null;
   tenant_id: string;
   created_by: string;
   created_at: string;
