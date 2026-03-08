@@ -200,7 +200,7 @@ export function useCombinedTimeEntries({
               });
             });
         } catch (e) {
-          console.error('Error processing sick leave:', e);
+          debugConsole.error('Error processing sick leave:', e);
         }
       });
 
