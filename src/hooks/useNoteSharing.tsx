@@ -54,7 +54,7 @@ export const useNoteSharing = (noteId?: string) => {
         setShares([]);
       }
     } catch (error) {
-      console.error("Error loading shares:", error);
+      debugConsole.error("Error loading shares:", error);
     } finally {
       setLoading(false);
     }
