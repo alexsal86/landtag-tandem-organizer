@@ -388,8 +388,8 @@ export function AdminTimeTrackingView() {
       resetNewEntryForm();
       loadMonthData();
       refetchYearlyBalance();
-    } catch (error: any) {
-      toast.error(error.message || "Fehler beim Erstellen");
+    } catch (error: unknown) {
+      toast.error(error instanceof Error ? error.message : "Fehler beim Erstellen");
     } finally {
       setIsSaving(false);
     }
