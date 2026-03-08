@@ -165,7 +165,7 @@ export function useTimeTrackingOperations({
       const { error } = await supabase.from("leave_requests").insert({ user_id: userId, type: "overtime_reduction", start_date: overtimeStartDate, end_date: overtimeEndDate, reason: overtimeReason || null, status: "pending" }).select();
       if (error) throw error;
       toast.success("Überstundenabbau beantragt"); setOvertimeStartDate(""); setOvertimeEndDate(""); setOvertimeReason(""); loadData();
-    } catch (error: any) { console.error("Overtime reduction error:", error); toast.error(error.message); }
+    } catch (error: unknown) { console.error("Overtime reduction error:", error); toast.error(error instanceof Error ? error.message : "Fehler"); }
   };
 
   const removeLeaveCalendarEntry = async (leave: LeaveRow, type: string) => {
