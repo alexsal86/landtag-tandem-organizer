@@ -420,7 +420,7 @@ export function DecisionFileUpload({
     const { data: decision } = await supabase
       .from('task_decisions')
       .select('created_by')
-      .eq('id', decisionId)
+      .eq('id', decisionId!)
       .single();
     return decision?.created_by === user.id;
   };
