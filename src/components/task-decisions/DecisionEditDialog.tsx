@@ -83,7 +83,7 @@ export const DecisionEditDialog = ({ decisionId, isOpen, onClose, onUpdated }: D
       if (error) throw error;
       setProfiles(data || []);
     } catch (error) {
-      console.error('Error loading profiles:', error);
+      debugConsole.error('Error loading profiles:', error);
     }
   };
 
