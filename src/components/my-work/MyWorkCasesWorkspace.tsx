@@ -24,6 +24,7 @@ import { CaseItemCreateDialog } from "@/components/my-work/CaseItemCreateDialog"
 import { CaseItemMeetingSelector } from "@/components/my-work/CaseItemMeetingSelector";
 import { StandaloneDecisionCreator } from "@/components/task-decisions/StandaloneDecisionCreator";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { CaseItemDetailPanel } from "@/components/my-work/CaseItemDetailPanel";
 import { useCaseItems } from "@/features/cases/items/hooks";
 import type { CaseItemIntakePayload } from "@/features/cases/items/types";
