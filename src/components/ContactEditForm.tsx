@@ -199,11 +199,11 @@ export function ContactEditForm({ contact, onSuccess, onCancel }: ContactEditFor
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    console.log('Form submitted with data:', formData);
-    console.log('User:', user?.id, 'Tenant:', currentTenant?.id);
+    debugConsole.log('Form submitted with data:', formData);
+    debugConsole.log('User:', user?.id, 'Tenant:', currentTenant?.id);
     
     if (formData.email && !validateEmail(formData.email)) {
-      console.log('Email validation failed');
+      debugConsole.log('Email validation failed');
       return;
     }
 
