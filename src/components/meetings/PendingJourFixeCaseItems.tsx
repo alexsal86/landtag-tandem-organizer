@@ -8,6 +8,7 @@ import { useTenant } from '@/hooks/useTenant';
 import { format } from 'date-fns';
 import { de } from 'date-fns/locale';
 import { cn } from '@/lib/utils';
+import { debugConsole } from '@/utils/debugConsole';
 
 interface PendingCaseItem {
   id: string;
