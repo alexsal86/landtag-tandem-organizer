@@ -1062,7 +1062,7 @@ export function useEventPlanningData() {
       if (comment) { loadItemComments(comment.planning_item_id); loadAllItemCounts(); }
       setEditingComment(prev => ({ ...prev, [commentId]: '' }));
       toast({ title: "Kommentar aktualisiert", description: "Der Kommentar wurde erfolgreich bearbeitet." });
-    } catch (error) { console.error('Error updating comment:', error); toast({ title: "Fehler", description: "Kommentar konnte nicht bearbeitet werden.", variant: "destructive" }); }
+    } catch (error) { debugConsole.error('Error updating comment:', error); toast({ title: "Fehler", description: "Kommentar konnte nicht bearbeitet werden.", variant: "destructive" }); }
   };
 
   return {

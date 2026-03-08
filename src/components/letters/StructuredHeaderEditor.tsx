@@ -639,7 +639,7 @@ export const StructuredHeaderEditor: React.FC<StructuredHeaderEditorProps> = ({ 
         applyElements(prev => [...prev, el]);
         setSelectedElementId(el.id);
         setSelectedElementIds([el.id]);
-      } catch (e) { console.error('Error parsing gallery drop data:', e); }
+      } catch (e) { debugConsole.error('Error parsing gallery drop data:', e); }
     }
   };
 
