@@ -1109,7 +1109,7 @@ export function AutomationRuleWizard({
                 Wenn <span className="font-medium">{form.triggerField}</span> = „{form.triggerValue || "—"}"
               </p>
               <p className="text-sm text-muted-foreground">
-                {form.conditions.length} Bedingung{form.conditions.length !== 1 ? "en" : ""} ({form.conditionLogic === "all" ? "UND" : "ODER"}) · {form.actions.length} Aktion{form.actions.length !== 1 ? "en" : ""}
+                {countConditions(form.conditionGroup)} Bedingung{countConditions(form.conditionGroup) !== 1 ? "en" : ""} ({form.conditionGroup.groups.length > 0 ? "verschachtelt" : form.conditionGroup.logic === "all" ? "UND" : "ODER"}) · {form.actions.length} Aktion{form.actions.length !== 1 ? "en" : ""}
               </p>
             </div>
 
