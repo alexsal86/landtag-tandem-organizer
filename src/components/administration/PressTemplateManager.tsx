@@ -19,7 +19,7 @@ import { loadPressTemplates, persistPressTemplates, type PressTemplateConfig } f
 
 type EditorTab = 'canvas-designer' | 'header-designer' | 'footer-designer' | 'block-address' | 'block-info' | 'block-subject' | 'layout-settings' | 'general';
 type BlockKey = 'addressField' | 'infoBlock' | 'subject';
-type CanvasElement = any;
+type CanvasElement = Record<string, unknown>;
 
 type PressTemplate = PressTemplateConfig;
 
