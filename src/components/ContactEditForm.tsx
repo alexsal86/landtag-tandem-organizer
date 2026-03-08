@@ -107,7 +107,7 @@ export function ContactEditForm({ contact, onSuccess, onCancel }: ContactEditFor
       if (error) throw error;
       setOrganizations(data || []);
     } catch (error) {
-      console.error('Error fetching organizations:', error);
+      debugConsole.error('Error fetching organizations:', error);
     }
   };
 
