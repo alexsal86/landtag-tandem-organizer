@@ -429,7 +429,7 @@ export function EmployeeMeetingProtocol({ meetingId, onBack }: EmployeeMeetingPr
       }
 
       loadMeetingData();
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Error updating status:", error);
       toast({ title: "Fehler", description: "Status konnte nicht aktualisiert werden", variant: "destructive" });
     }
