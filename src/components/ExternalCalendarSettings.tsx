@@ -137,7 +137,7 @@ export function ExternalCalendarSettings() {
       toast.success('Kalender erfolgreich synchronisiert');
       fetchCalendars(); // Refresh to update last_sync time
     } catch (error) {
-      console.error('Error syncing calendar:', error);
+      debugConsole.error('Error syncing calendar:', error);
       toast.error('Fehler bei der Synchronisation');
     } finally {
       setSyncingCalendars(prev => {
