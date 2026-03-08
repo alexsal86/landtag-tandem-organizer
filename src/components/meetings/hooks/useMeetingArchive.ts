@@ -225,12 +225,12 @@ export function useMeetingArchive(deps: ArchiveDeps) {
 
           const taskDescription = `**Aus Besprechung:** ${meeting.title} vom ${format(new Date(meeting.meeting_date), 'dd.MM.yyyy', { locale: de })}${resultBlock}${detailsBlock}${notesBlock}${multiAssigneeNote}`;
 
-          await supabase.from('tasks').insert({
+          await supabase.from('tasks').insert([{
             user_id: user.id, title: item.title, description: taskDescription,
             priority: 'medium', category: 'meeting', status: 'todo',
             assigned_to: assignedUserId, tenant_id: currentTenant?.id || '',
             due_date: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString()
-          });
+          }]);
         } catch (e) { debugConsole.error('Error creating task for assigned item (non-fatal):', e); }
       }
 
