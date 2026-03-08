@@ -256,7 +256,7 @@ export const useCaseFileDetails = (caseFileId: string | null) => {
       if (error) throw error;
       setAppointments((data || []) as CaseFileAppointment[]);
     } catch (error) {
-      console.error('Error fetching appointments:', error);
+      debugConsole.error('Error fetching appointments:', error);
     }
   }, [caseFileId]);
 
