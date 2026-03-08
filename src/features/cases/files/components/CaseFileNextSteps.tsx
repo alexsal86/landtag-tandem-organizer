@@ -127,7 +127,7 @@ export function CaseFileNextSteps({
     // Create parent task
     const { data: parentTask, error } = await supabase
       .from("tasks")
-      .insert({
+      .insert([{
         title: normalizedCaseFileTitle,
         description: "Container-Aufgabe für Schnellaufgaben aus der Fallakte",
         status: "todo",
@@ -136,7 +136,7 @@ export function CaseFileNextSteps({
         user_id: user.id,
         tenant_id: resolvedTenantId,
         assigned_to: targetAssignee,
-      })
+      }])
       .select()
       .single();
 
