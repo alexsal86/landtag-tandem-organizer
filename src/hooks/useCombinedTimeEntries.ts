@@ -326,7 +326,7 @@ export function useCombinedTimeEntries({
         return;
       }
       if (sickDates.has(dateStr)) {
-        console.warn(`Arbeitseintrag an Krankheitstag ignoriert: ${dateStr}`);
+        debugConsole.warn(`Arbeitseintrag an Krankheitstag ignoriert: ${dateStr}`);
         return;
       }
       if (vacationDates.has(dateStr)) {
