@@ -297,7 +297,7 @@ export const useUserStatus = () => {
       const { data: statuses } = await supabase
         .from('user_status')
         .select('id, user_id, status_type, custom_message, emoji, color, notifications_enabled, auto_away_enabled, last_activity, status_until')
-        .eq('tenant_id', currentTenant?.id)
+        .eq('tenant_id', currentTenant?.id ?? '')
         .in('user_id', onlineUserIds);
 
       const usersWithStatusData = onlineUsersList.map(onlineUser => ({

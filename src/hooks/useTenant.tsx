@@ -97,22 +97,19 @@ export const TenantProvider = ({ children }: { children: React.ReactNode }) => {
 
       // Set current tenant from user-specific localStorage or default to first tenant
       const savedTenantId = localStorage.getItem(tenantStorageKey);
-      let currentTenantToSet = null;
+      let currentTenantToSet: Tenant | null = null;
 
       if (savedTenantId) {
-        // Only use if tenant exists in user's available tenants
         currentTenantToSet = tenantsData.find(t => t.id === savedTenantId) || null;
         
         if (currentTenantToSet) {
           debugConsole.log('🏢 Restored tenant from localStorage:', currentTenantToSet.name);
         } else {
-          // Stored tenant is not accessible - remove it
           debugConsole.warn('⚠️ Stored tenant not accessible for this user, clearing localStorage');
           localStorage.removeItem(tenantStorageKey);
         }
       }
 
-      // Fallback to first available tenant
       if (!currentTenantToSet && tenantsData.length > 0) {
         currentTenantToSet = tenantsData[0];
         debugConsole.log('🏢 Using first available tenant:', currentTenantToSet.name);
