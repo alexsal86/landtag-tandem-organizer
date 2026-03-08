@@ -48,17 +48,6 @@ interface SimpleRichTextEditorProps {
   showToolbar?: boolean;
 }
 
-const SPEECH_COMMAND_HINTS = [
-  'Fett',
-  'Kursiv',
-  'Unterstreichen',
-  'Aufzählung / Liste',
-  'Nummerierte Liste',
-  'Rückgängig',
-  'Wiederholen',
-  'Neue Zeile / Neuer Absatz',
-  'Stopp (beendet die Aufnahme)',
-] as const;
 
 // Toolbar Component
 const Toolbar = () => {
