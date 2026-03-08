@@ -1,0 +1,34 @@
+{
+  "extends": "./tsconfig.app.json",
+  "compilerOptions": {
+    "strict": false,
+    "strictNullChecks": true,
+    "noImplicitAny": true,
+    "noUnusedLocals": false,
+    "noUnusedParameters": false
+  },
+  "include": [
+    "src/hooks/useAuditLog.ts",
+    "src/hooks/useNavCollapse.ts",
+    "src/hooks/usePersistentState.ts",
+    "src/hooks/useTypewriter.tsx",
+    "src/hooks/useViewPreference.tsx",
+    "src/hooks/useFavicon.ts",
+    "src/hooks/useAutoSave.tsx",
+    "src/hooks/useSpeechDictation.ts",
+    "src/hooks/useCombinedTimeEntries.ts",
+    "src/hooks/useDecisionComments.ts",
+    "src/hooks/useTags.tsx",
+    "src/hooks/useAppointmentCategories.tsx",
+    "src/hooks/useUserDisplay.tsx",
+    "src/hooks/useNewItemIndicators.tsx",
+    "src/hooks/useLoginCustomization.tsx",
+    "src/hooks/useAppSettings.tsx",
+    "src/hooks/useNoteSharing.tsx",
+    "src/hooks/useGlobalNoteSharing.tsx",
+    "src/hooks/useCelebrationSettings.ts",
+    "src/hooks/useDecisionRefreshScheduler.ts",
+    "src/hooks/useNotificationDisplayPreferences.ts",
+    "src/hooks/useUserPreference.ts"
+  ]
+}
