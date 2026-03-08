@@ -164,7 +164,7 @@ export const UserSelector: React.FC<UserSelectorProps> = ({
         {selectedUser ? (
           <div className="flex items-center gap-2">
             <Avatar className="h-6 w-6">
-              <AvatarImage src={selectedUser.avatar_url} />
+              <AvatarImage src={selectedUser.avatar_url ?? undefined} />
               <AvatarFallback className="text-xs">
                 {getInitials(selectedUser.display_name)}
               </AvatarFallback>

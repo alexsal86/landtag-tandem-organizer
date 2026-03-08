@@ -75,7 +75,7 @@ interface Correction {
   correction_minutes: number;
   reason: string;
   created_by: string;
-  created_at: string;
+  created_at: string | null;
   creator_name?: string;
 }
 

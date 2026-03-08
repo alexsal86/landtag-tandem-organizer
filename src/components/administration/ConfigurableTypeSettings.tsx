@@ -16,7 +16,7 @@ import { TagIconPicker } from "@/components/contacts/TagIconPicker";
 type ConfigurableType = {
   id: string;
   name: string;
-  label: string;
+  label: string | null;
   color?: string | null;
   icon?: string | null;
   is_active: boolean;

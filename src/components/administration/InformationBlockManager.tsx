@@ -58,7 +58,7 @@ export const InformationBlockManager: React.FC = () => {
       const { data, error } = await supabase
         .from('information_blocks')
         .select('*')
-        .eq('tenant_id', currentTenant?.id)
+        .eq('tenant_id', currentTenant?.id ?? '')
         .eq('is_active', true)
         .order('is_default', { ascending: false });
 

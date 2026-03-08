@@ -168,7 +168,7 @@ export function TodoCreateDialog({ open, onOpenChange, onTodoCreated }: TodoCrea
                     <div className="flex items-center gap-2">
                       <div 
                         className="w-3 h-3 rounded-full" 
-                        style={{ backgroundColor: category.color }}
+                        style={{ backgroundColor: category.color ?? undefined }}
                       />
                       {category.label}
                     </div>
