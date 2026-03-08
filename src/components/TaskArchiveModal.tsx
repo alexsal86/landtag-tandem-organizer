@@ -255,7 +255,7 @@ export function TaskArchiveModal({ isOpen, onClose, onTaskRestored }: TaskArchiv
       const restoredTask: Task = {
         id: task.task_id,
         title: task.title,
-        description: task.description,
+        description: task.description || '',
         priority: task.priority,
         status: 'todo',
         dueDate: task.due_date,
