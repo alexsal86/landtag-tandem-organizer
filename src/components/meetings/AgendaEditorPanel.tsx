@@ -291,7 +291,7 @@ export function AgendaEditorPanel({
                                                   if (error) throw error;
                                                   const url = URL.createObjectURL(data);
                                                   const a = document.createElement('a'); a.href = url; a.download = doc.file_name || 'download'; a.click(); URL.revokeObjectURL(url);
-                                                } catch (error) { console.error('Download error:', error); toast({ title: "Download-Fehler", description: "Datei konnte nicht heruntergeladen werden.", variant: "destructive" }); }
+                                                 } catch (error) { debugConsole.error('Download error:', error); toast({ title: "Download-Fehler", description: "Datei konnte nicht heruntergeladen werden.", variant: "destructive" }); }
                                               }}>
                                               <Download className="h-3 w-3" />
                                             </Button>
