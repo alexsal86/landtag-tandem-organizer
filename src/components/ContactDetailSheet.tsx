@@ -192,7 +192,7 @@ export function ContactDetailSheet({ contactId, isOpen, onClose, onContactUpdate
 
       setActivities(data || []);
     } catch (error) {
-      console.error("Error fetching activities:", error);
+      debugConsole.error("Error fetching activities:", error);
     } finally {
       setActivitiesLoading(false);
     }
