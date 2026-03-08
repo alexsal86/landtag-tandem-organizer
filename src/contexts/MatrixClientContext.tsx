@@ -398,6 +398,7 @@ const MatrixClientContext = createContext<MatrixClientContextType>(defaultMatrix
 export function MatrixClientProvider({ children }: { children: ReactNode }) {
   const { user } = useAuth();
   const { currentTenant } = useTenant();
+  const { setLiveUnreadCount } = useMatrixUnread();
 
   // State
   const [client, setClient] = useState<sdk.MatrixClient | null>(null);
