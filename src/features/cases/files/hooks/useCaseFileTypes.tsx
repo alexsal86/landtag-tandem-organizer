@@ -66,7 +66,7 @@ export const useCaseFileTypes = () => {
       console.error('Error creating case file type:', error);
       toast({
         title: "Fehler",
-        description: "FallAkten-Typ konnte nicht erstellt werden.",
+        description: "Fallakten-Typ konnte nicht erstellt werden.",
         variant: "destructive",
       });
       return false;
