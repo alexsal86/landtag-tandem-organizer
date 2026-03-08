@@ -705,7 +705,7 @@ export const DecisionOverview = () => {
       setDeletingDecisionId(null);
       if (user?.id) loadDecisionRequests(user.id);
     } catch (error) {
-      console.error('Error deleting decision:', error);
+      debugConsole.error('Error deleting decision:', error);
       toast({ title: "Fehler", description: "Entscheidung konnte nicht gelöscht werden.", variant: "destructive" });
     }
   };
