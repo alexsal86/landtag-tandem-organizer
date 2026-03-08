@@ -329,7 +329,7 @@ const SimpleLeafletMap: React.FC<LeafletKarlsruheMapProps> = ({
               lat = boundaryDistrict.center_coordinates[0];
               lng = boundaryDistrict.center_coordinates[1];
             } else {
-              console.warn('Unable to parse coordinates for party association:', boundaryDistrict);
+              debugConsole.warn('Unable to parse coordinates for party association:', boundaryDistrict);
               return;
             }
           } else {
