@@ -56,7 +56,6 @@ export const DashboardAppointments = ({ data }: Props) => {
   const roleLine = null;
 
   const specialDayHint = getSpecialDayHint(new Date(), specialDays);
-  const roleLine = getRoleLeadLine();
 
   if (isLoading) return <div className="animate-pulse h-32 bg-muted rounded-lg" />;
 
