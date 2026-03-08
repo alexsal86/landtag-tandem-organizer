@@ -38,7 +38,7 @@ export function useMeetingArchive(deps: ArchiveDeps) {
 
     const { data: created, error: createError } = await supabase
       .from('meeting_agenda_items')
-      .insert({ meeting_id: meetingId, title: 'Rückblick', description: 'Übertragene Punkte aus vorherigen Besprechungen', order_index: 0, is_completed: false, is_recurring: false })
+      .insert([{ meeting_id: meetingId, title: 'Rückblick', description: 'Übertragene Punkte aus vorherigen Besprechungen', order_index: 0, is_completed: false, is_recurring: false }])
       .select('id').single();
     if (createError) throw createError;
     return created.id;
