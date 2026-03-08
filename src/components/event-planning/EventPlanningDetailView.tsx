@@ -204,7 +204,7 @@ export function EventPlanningDetailView(data: EventPlanningDataReturn) {
                   {availableProfilesToAdd.map((profile) => (
                     <div key={profile.user_id} className="flex items-center justify-between p-2 rounded-md hover:bg-muted/50">
                       <div className="flex items-center gap-2">
-                        <Avatar className="h-6 w-6"><AvatarImage src={profile.avatar_url} /><AvatarFallback>{profile.display_name?.charAt(0) || 'U'}</AvatarFallback></Avatar>
+                        <Avatar className="h-6 w-6"><AvatarImage src={profile.avatar_url ?? undefined} /><AvatarFallback>{profile.display_name?.charAt(0) || 'U'}</AvatarFallback></Avatar>
                         <span>{profile.display_name || 'Unbenannt'}</span>
                       </div>
                       <div className="space-x-2">

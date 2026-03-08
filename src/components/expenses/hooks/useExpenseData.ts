@@ -102,16 +102,16 @@ export function useExpenseData() {
   };
 
   const setBudgetAmount = async (amount: string) => {
-    if (!amount) { toast({ title: "Fehler", description: "Budget-Betrag ist erforderlich", variant: "destructive" }); return false; }
+    if (!amount || !user?.id || !currentTenant?.id) { toast({ title: "Fehler", description: "Budget-Betrag ist erforderlich", variant: "destructive" }); return false; }
     const parsedAmount = parseFloat(amount);
-    const { error } = await supabase.from("expense_budgets").upsert({ user_id: user?.id, tenant_id: currentTenant?.id, year: selectedYear, month: selectedMonth, budget_amount: parsedAmount });
+    const { error } = await supabase.from("expense_budgets").upsert({ user_id: user.id, tenant_id: currentTenant.id, year: selectedYear, month: selectedMonth, budget_amount: parsedAmount });
     if (error) { toast({ title: "Fehler", description: "Budget konnte nicht gesetzt werden", variant: "destructive" }); return false; }
     const currentDate = new Date(selectedYear, selectedMonth - 1);
-    const futureMonths = [];
+    const futureMonths: Array<{ user_id: string; tenant_id: string; year: number; month: number; budget_amount: number }> = [];
     for (let i = 1; i <= 12; i++) {
       const futureDate = new Date(currentDate); futureDate.setMonth(futureDate.getMonth() + i);
       const year = futureDate.getFullYear(); const month = futureDate.getMonth() + 1;
-      if (!budgets.find(b => b.year === year && b.month === month)) futureMonths.push({ user_id: user?.id, tenant_id: currentTenant?.id, year, month, budget_amount: parsedAmount });
+      if (!budgets.find(b => b.year === year && b.month === month)) futureMonths.push({ user_id: user.id, tenant_id: currentTenant.id, year, month, budget_amount: parsedAmount });
     }
     if (futureMonths.length > 0) await supabase.from("expense_budgets").insert(futureMonths);
     toast({ title: "Erfolg", description: `Budget wurde gesetzt und auf ${futureMonths.length} weitere Monate angewendet` }); loadBudgets(); return true;
