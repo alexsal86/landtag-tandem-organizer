@@ -141,7 +141,7 @@ export const DashboardTasksSection = () => {
     if (groupItems.length === 0) return null;
     return (
       <div key={label}>
-        <h4 className={`text-xs font-medium uppercase tracking-wide mb-1 ${headerClass || 'text-muted-foreground'}`}>{label}</h4>
+        <h4 className={`text-xs font-bold uppercase tracking-wide mb-1 ${headerClass || 'text-muted-foreground'}`}>{label}</h4>
         <div className="space-y-0.5">{groupItems.map(renderItem)}</div>
       </div>
     );
