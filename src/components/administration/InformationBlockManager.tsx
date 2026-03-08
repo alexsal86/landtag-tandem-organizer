@@ -289,7 +289,7 @@ export const InformationBlockManager: React.FC = () => {
       });
       fetchBlocks();
     } catch (error) {
-      console.error('Fehler beim Speichern:', error);
+      debugConsole.error('Fehler beim Speichern:', error);
       toast({
         title: "Fehler",
         description: "Informationsblock konnte nicht gespeichert werden.",
