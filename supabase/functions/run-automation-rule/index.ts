@@ -432,7 +432,7 @@ serve(async (req) => {
 
       const { data: runRow } = await supabaseAdmin
         .from("automation_rule_runs")
-        .select("tenant_id")
+        .select("tenant_id, rule_id")
         .eq("id", activeRunId)
         .maybeSingle();
 
@@ -446,6 +446,48 @@ serve(async (req) => {
           input_payload: {},
           error_message: message,
         });
+
+        // Notify tenant admins about the failed run
+        try {
+          const { data: ruleRow } = await supabaseAdmin
+            .from("automation_rules")
+            .select("name")
+            .eq("id", runRow.rule_id)
+            .maybeSingle();
+
+          const { data: admins } = await supabaseAdmin
+            .from("user_tenant_memberships")
+            .select("user_id")
+            .eq("tenant_id", runRow.tenant_id)
+            .eq("role", "abgeordneter")
+            .eq("is_active", true);
+
+          if (admins && admins.length > 0) {
+            const ruleName = ruleRow?.name ?? "Unbekannte Regel";
+            const shortError = message.length > 200 ? message.slice(0, 200) + "…" : message;
+
+            await Promise.allSettled(
+              admins.map((admin) =>
+                supabaseAdmin.rpc("create_notification", {
+                  user_id_param: admin.user_id,
+                  type_name: "automation_run_failed",
+                  title_param: `Automation fehlgeschlagen: ${ruleName}`,
+                  message_param: `Die Regel „${ruleName}" ist fehlgeschlagen: ${shortError}`,
+                  data_param: JSON.stringify({
+                    rule_id: runRow.rule_id,
+                    rule_name: ruleName,
+                    run_id: activeRunId,
+                    error_message: shortError,
+                    navigation_context: "admin/automation",
+                  }),
+                  priority_param: "high",
+                })
+              )
+            );
+          }
+        } catch (notifyError) {
+          console.error("Failed to notify admins about automation failure:", notifyError);
+        }
       }
     }
 
