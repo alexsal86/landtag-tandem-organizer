@@ -99,7 +99,7 @@ export const generateLetterPDF = async (letter: Letter): Promise<{ blob: Blob; f
     if (letter.information_block_ids && letter.information_block_ids.length > 0) {
       const { data: blockData, error: blockError } = await supabase
         .from('information_blocks')
-        .select('id, name, block_type, block_data, is_default, is_active')
+        .select('*')
         .eq('id', letter.information_block_ids[0])
         .single();
 
