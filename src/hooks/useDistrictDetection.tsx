@@ -83,7 +83,7 @@ export const useDistrictDetection = () => {
       });
 
       if (functionError) {
-        console.error('Function error:', functionError);
+        debugConsole.error('Function error:', functionError);
         throw new Error(functionError.message || 'Failed to detect district');
       }
 
