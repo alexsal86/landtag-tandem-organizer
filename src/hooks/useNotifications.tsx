@@ -587,7 +587,7 @@ export const useNotifications = () => {
     window.addEventListener('storage', handleStorageChange);
 
     return () => {
-      console.log('🧹 Cleaning up notifications realtime subscription');
+      debugConsole.log('🧹 Cleaning up notifications realtime subscription');
       if (retryTimeout) clearTimeout(retryTimeout);
       stopPollingFallback();
       if (currentChannel) supabase.removeChannel(currentChannel);
