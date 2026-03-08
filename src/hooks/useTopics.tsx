@@ -104,11 +104,11 @@ export const useTopics = () => {
       setTopics(prev => prev.map(t => t.id === id ? data : t));
       toast({ title: "Thema aktualisiert" });
       return data;
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Error updating topic:', error);
       toast({ 
         title: "Fehler", 
-        description: error.message || "Thema konnte nicht aktualisiert werden.", 
+        description: error instanceof Error ? error.message : "Thema konnte nicht aktualisiert werden.", 
         variant: "destructive" 
       });
       return null;
