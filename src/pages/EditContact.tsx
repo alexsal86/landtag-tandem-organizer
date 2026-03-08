@@ -82,7 +82,7 @@ export default function EditContact() {
     const { data, error } = await supabase
       .from("contacts")
       .select("id, name")
-      .eq("tenant_id", currentTenant.id)
+      .eq("tenant_id", currentTenant!.id)
       .eq("contact_type", "organization")
       .order("name");
     if (!error) setOrganizations(data || []);
