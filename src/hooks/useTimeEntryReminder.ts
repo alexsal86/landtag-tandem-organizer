@@ -2,6 +2,7 @@ import { useEffect, useRef } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { format, subDays, eachDayOfInterval, isWeekend, parseISO } from "date-fns";
 import { toast } from "sonner";
+import { debugConsole } from "@/utils/debugConsole";
 
 /**
  * Checks for missing time entries on workdays and notifies the user.
@@ -32,9 +33,8 @@ export function useTimeEntryReminder(
 async function checkMissingEntries(userId: string, softDays: number, hardDays: number) {
   try {
     const today = new Date();
-    const checkFrom = subDays(today, hardDays + 2); // extra buffer for weekends
+    const checkFrom = subDays(today, hardDays + 2);
 
-    // Get workdays in range (exclude weekends)
     const allDays = eachDayOfInterval({ start: checkFrom, end: subDays(today, 1) })
       .filter(d => !isWeekend(d));
 
@@ -42,7 +42,6 @@ async function checkMissingEntries(userId: string, softDays: number, hardDays: n
 
     const dateStrings = allDays.map(d => format(d, "yyyy-MM-dd"));
 
-    // Fetch existing entries and holidays in parallel
     const [entriesRes, holidaysRes, leavesRes] = await Promise.all([
       supabase
         .from("time_entries")
@@ -65,7 +64,6 @@ async function checkMissingEntries(userId: string, softDays: number, hardDays: n
     const entryDates = new Set((entriesRes.data || []).map(e => e.work_date));
     const holidayDates = new Set((holidaysRes.data || []).map(h => h.holiday_date));
 
-    // Build set of leave-covered dates
     const leaveDates = new Set<string>();
     (leavesRes.data || []).forEach(l => {
       try {
@@ -74,7 +72,6 @@ async function checkMissingEntries(userId: string, softDays: number, hardDays: n
       } catch { /* ignore */ }
     });
 
-    // Missing = workday with no entry, no holiday, no leave
     const missingDates = dateStrings.filter(
       d => !entryDates.has(d) && !holidayDates.has(d) && !leaveDates.has(d)
     );
@@ -82,7 +79,6 @@ async function checkMissingEntries(userId: string, softDays: number, hardDays: n
     if (missingDates.length === 0) return;
 
     if (missingDates.length >= hardDays) {
-      // Send persistent notification
       try {
         await supabase.rpc("create_notification" as any, {
           user_id_param: userId,
@@ -106,6 +102,6 @@ async function checkMissingEntries(userId: string, softDays: number, hardDays: n
       );
     }
   } catch (error) {
-    console.error("useTimeEntryReminder: Error checking missing entries:", error);
+    debugConsole.error("useTimeEntryReminder: Error checking missing entries:", error);
   }
 }

@@ -4,6 +4,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "./useAuth";
 import { useTenant } from "./useTenant";
 import { useToast } from "@/components/ui/use-toast";
+import { debugConsole } from "@/utils/debugConsole";
 
 interface ElectionRepresentative {
   id: string;
@@ -62,22 +63,13 @@ export function useElectionDistricts() {
       .select(`
         *,
         representatives:election_representatives(
-          id,
-          name,
-          party,
-          mandate_type,
-          order_index,
-          email,
-          phone,
-          office_address,
-          bio
+          id, name, party, mandate_type, order_index, email, phone, office_address, bio
         )
       `)
       .order("district_number");
 
     if (error) throw error;
 
-    // Sort representatives within each district (direct mandates first, then by order_index)
     return (data || []).map((district) => ({
       ...district,
       representatives: district.representatives
@@ -106,7 +98,7 @@ export function useElectionDistricts() {
 
   useEffect(() => {
     if (districtsError) {
-      console.error("Error fetching election districts:", districtsError);
+      debugConsole.error("Error fetching election districts:", districtsError);
       toast({
         title: "Fehler beim Laden der Wahlkreise",
         description: "Die Wahlkreisdaten konnten nicht geladen werden.",
@@ -143,7 +135,7 @@ export function useElectionDistrictNotes(districtId?: string) {
       if (error) throw error;
       setNotes(data || []);
     } catch (error) {
-      console.error("Error fetching district notes:", error);
+      debugConsole.error("Error fetching district notes:", error);
       toast({
         title: "Fehler beim Laden der Notizen",
         description: "Die Notizen konnten nicht geladen werden.",
@@ -186,7 +178,7 @@ export function useElectionDistrictNotes(districtId?: string) {
       
       return data;
     } catch (error) {
-      console.error("Error creating note:", error);
+      debugConsole.error("Error creating note:", error);
       toast({
         title: "Fehler beim Erstellen der Notiz",
         description: "Die Notiz konnte nicht erstellt werden.",
@@ -214,7 +206,7 @@ export function useElectionDistrictNotes(districtId?: string) {
       
       return data;
     } catch (error) {
-      console.error("Error updating note:", error);
+      debugConsole.error("Error updating note:", error);
       toast({
         title: "Fehler beim Aktualisieren der Notiz",
         description: "Die Notiz konnte nicht aktualisiert werden.",
@@ -238,7 +230,7 @@ export function useElectionDistrictNotes(districtId?: string) {
         description: "Die Notiz wurde erfolgreich gelöscht.",
       });
     } catch (error) {
-      console.error("Error deleting note:", error);
+      debugConsole.error("Error deleting note:", error);
       toast({
         title: "Fehler beim Löschen der Notiz",
         description: "Die Notiz konnte nicht gelöscht werden.",

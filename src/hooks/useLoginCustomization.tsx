@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
+import { debugConsole } from '@/utils/debugConsole';
 
 interface LoginCustomization {
   id: string;
@@ -46,7 +47,6 @@ export const useLoginCustomization = () => {
     try {
       setIsLoading(true);
 
-      // Load app logo from app_settings
       const { data: settingsData } = await supabase
         .from('app_settings')
         .select('setting_value')
@@ -57,8 +57,6 @@ export const useLoginCustomization = () => {
         setLogoFromSettings(settingsData.setting_value);
       }
 
-      // Try to load tenant-specific login customization
-      // Since we don't have tenant context here (public page), we load the first one
       const { data: customData } = await supabase
         .from('login_customization')
         .select('*')
@@ -69,18 +67,16 @@ export const useLoginCustomization = () => {
         setCustomization({
           ...DEFAULT_CUSTOMIZATION,
           ...customData,
-          // Override logo_url with app_settings if customData doesn't have one
           logo_url: customData.logo_url || logoFromSettings
         });
       } else {
-        // Use defaults with logo from settings
         setCustomization({
           ...DEFAULT_CUSTOMIZATION,
           logo_url: logoFromSettings
         });
       }
     } catch (error) {
-      console.error('Error loading login customization:', error);
+      debugConsole.error('Error loading login customization:', error);
       setCustomization({
         ...DEFAULT_CUSTOMIZATION,
         logo_url: logoFromSettings
