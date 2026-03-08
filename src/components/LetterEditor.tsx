@@ -707,7 +707,7 @@ const LetterEditor: React.FC<LetterEditorProps> = ({ letter, isOpen, onClose, on
         onReviewAssigned={async () => {
           fetchCollaborators();
           setShowAssignmentDialog(false);
-          setEditedLetter(prev => ({ ...prev, status: 'review' as any }));
+          setEditedLetter(prev => ({ ...prev, status: 'review' }));
           setIsProofreadingMode(true);
           setSaving(true);
           try {
