@@ -930,7 +930,7 @@ export function QuickNotesList({
         .eq("user_id", user.id)
         .select();
 
-      console.log("Follow-up result:", { data, error });
+      debugConsole.log("Follow-up result:", { data, error });
 
       if (error) throw error;
 
