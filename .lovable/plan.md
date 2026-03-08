@@ -1,61 +1,140 @@
 
-Ziel: Rückmeldungs-Feed stabil sichtbar machen und gleichzeitig die aktuellen Build-Blocker entfernen, damit die Fixes überhaupt wieder ausgeliefert werden.
 
-1) Diagnose (aus Code + DB)
-- Do I know what the issue is? Ja.
-- Es gibt aktuell 2 Ebenen von Problemen:
-  1. Build ist kaputt (TypeScript):
-     - `src/components/ui/calendar.tsx`: doppelte Keys im `classNames`-Objekt (`caption_label`, `dropdowns`, `dropdown`) → TS1117.
-     - `src/components/task-decisions/DecisionOverview.tsx`: `ResponseOption`-Typ ohne `requires_comment` → TS2339.
-  2. Feed-Logik ist instabil/zu restriktiv:
-     - `src/components/my-work/MyWorkFeedbackFeedTab.tsx` übergibt `completedTo: new Date().toISOString()` bei jedem Render.
-       Dadurch ändert sich der React-Query-Key permanent (`useTeamFeedbackFeed`), was zu dauerndem Neu-Laden bzw. instabilem Feed führt.
-     - `useTeamFeedbackFeed` filtert hart auf `.not('notes','is',null)`. Damit verschwinden abgeschlossene Rückmeldungen ohne Notiz (z. B. nur Anhang/Aufgabe), obwohl sie fachlich oft relevant sind.
-- DB-Check:
-  - `appointment_feedback` hat Daten (u. a. completed in den letzten 7 Tagen vorhanden).
-  - RLS auf `appointment_feedback` erlaubt tenant-basiertes Lesen (`tenant_id = ANY(get_user_tenant_ids(auth.uid()))`), also kein offensichtlicher RLS-Blocker für Team-Feed im Tenant.
+# Zu grosse Dateien -- Analyse und Aufteillungsplan
 
-2) Umsetzungsplan (in Reihenfolge)
-A. Build sofort reparieren (Blocker)
-- `calendar.tsx`: doppelte Objekt-Keys entfernen, nur eine konsistente Definition für `caption_label`, `dropdowns`, `dropdown` behalten.
-- `DecisionOverview.tsx`: lokalen `ResponseOption`-Typ um `requires_comment?: boolean` ergänzen (oder auf den zentralen Typ aus `decisionTemplates` umstellen).
+## Ranking der groessten Dateien
 
-B. Feed-Query stabilisieren
-- `MyWorkFeedbackFeedTab.tsx`:
-  - `completedTo` nicht mehr bei jedem Render neu erzeugen.
-  - Entweder:
-    - `completedTo` ganz weglassen (nur `completedFrom` + order/limit), oder
-    - `completedTo` per `useMemo/useState` nur bei Filterwechsel neu setzen.
-- `useTeamFeedbackFeed.ts`:
-  - Query-Key nur mit stabilen Filterwerten.
-  - Zeitfilter robust halten (kein per-render Drift).
+| Datei | Zeilen | Prioritaet |
+|-------|--------|-----------|
+| `supabase/types.ts` | 10.885 | auto-generiert, kein Handlungsbedarf |
+| **`MeetingsView.tsx`** | **5.383** | KRITISCH |
+| **`TasksView.tsx`** | **2.719** | KRITISCH |
+| **`DocumentsView.tsx`** | **2.564** | HOCH |
+| **`LetterEditor.tsx`** | **2.261** | HOCH |
+| **`GlobalDaySlipPanel.tsx`** | **1.977** | HOCH |
+| **`TimeTrackingView.tsx`** | **1.836** | HOCH |
+| **`EmployeesView.tsx`** | **1.763** | MITTEL |
+| **`ContactsView.tsx`** | **1.397** | MITTEL |
+| **`CalendarView.tsx`** | **1.330** | MITTEL |
+| `LetterTemplateManager.tsx` | 1.134 | MITTEL |
+| `LetterPDFExport.tsx` | 1.033 | MITTEL |
+| `StakeholderView.tsx` | 993 | MITTEL |
+| `AppointmentDetailsSidebar.tsx` | 962 | MITTEL |
+| `ExpenseManagement.tsx` | 915 | MITTEL |
+| `KnowledgeBaseView.tsx` | 897 | MITTEL |
+| `SuperadminTenantManagement.tsx` | 838 | MITTEL |
+| `CreateAppointmentDialog.tsx` | 808 | MITTEL |
 
-C. Sichtbarkeit der Rückmeldungen fachlich korrigieren
-- `useTeamFeedbackFeed.ts`:
-  - Notiz-Pflicht entfernen oder erweitern:
-    - statt nur `notes is not null` auch Einträge mit `has_documents = true` oder `has_tasks = true` zulassen.
-  - Ergebnis: auch „abgeschlossen ohne Notiz, aber mit Anhang/Aufgabe“ erscheint im Feed.
+## Empfohlene Aufteilung (Top 6 Prioritaeten)
 
-D. Fehler nicht mehr als „keine Daten“ maskieren
-- `MyWorkFeedbackFeedTab.tsx`:
-  - `isError` + `error` aus Query auslesen.
-  - Bei Fehler einen klaren Error-State anzeigen (statt „Keine passenden Rückmeldungen gefunden“), inkl. Retry-Button (`refetch`).
+### 1. `MeetingsView.tsx` (5.383 Zeilen) -- KRITISCH
 
-E. Quercheck auf Seiteneffekte
-- `useMyWorkNewCounts.tsx` zählt derzeit ebenfalls nur `completed + notes not null`; ggf. auf dieselbe fachliche Logik angleichen, damit Badge und Feed konsistent sind.
+Aktuell: Monolith mit Agenda-Editor, Archivierung, System-Items, Fokus-Modus, Voting, Notizen, Protokoll-Erstellung.
 
-3) Validierung nach Umsetzung
-- Build grün ohne TS-Fehler.
-- Im Tab „Meine Arbeit > Rückmeldungen“:
-  - Keine Endlos-Ladeanzeige.
-  - Team-Einträge der letzten 7/14 Tage sichtbar.
-  - Filter (Sicht/Zeitraum/Anhänge/Aufgaben) funktionieren.
-  - Bei absichtlichem Query-Fehler erscheint Error-State statt Empty-State.
-- Schneller Datenabgleich:
-  - Feed-Anzahl grob konsistent mit SQL-Count für completed im Zeitraum (unter Berücksichtigung der Filter).
+Vorgeschlagene Aufteilung:
 
-4) Warum das den aktuellen Zustand löst
-- Solange Build fehlschlägt, werden vorherige Fixes teils nicht wirksam.
-- Selbst bei laufendem Build kann der Feed durch den „beweglichen“ `completedTo`-Key instabil bleiben.
-- Zusätzlich blendet der harte Notiz-Filter valide Rückmeldungen aus.
-- Mit den vier Korrekturen (Build, stabiler Query-Key, fachlich korrekter Filter, echter Error-State) wird die Ursachekette vollständig geschlossen.
+```text
+src/components/meetings/
+  MeetingsView.tsx           (~300)  Shell + State-Orchestrierung
+  MeetingsList.tsx           (~200)  Meeting-Liste + Erstellung
+  MeetingAgendaEditor.tsx    (~600)  Agenda Items CRUD + Drag/Drop
+  MeetingSystemItems.tsx     (~400)  System-Agenda (Tasks, Decisions, CaseItems)
+  MeetingArchiving.tsx       (~300)  Archivierungs-Logik + Ergebnis-Speicherung
+  MeetingVoting.tsx          (~200)  Abstimmungs-UI + Logik
+  MeetingNotes.tsx           (~200)  Notizen-Panel
+  hooks/
+    useMeetingState.ts       (~400)  Zentraler Meeting-State-Hook
+    useMeetingAgenda.ts      (~300)  Agenda-CRUD-Operationen
+    useMeetingArchive.ts     (~200)  Archiv-Logik
+```
+
+### 2. `TasksView.tsx` (2.719 Zeilen) -- KRITISCH
+
+Aktuell: Aufgabenliste, Subtasks, Kommentare, Filter, Snooze, Archiv, UUID-Resolution in einer Datei.
+
+Vorgeschlagene Aufteilung:
+
+```text
+src/components/tasks/
+  TasksView.tsx              (~200)  Shell + Tab-Routing
+  TaskList.tsx               (~400)  Aufgaben-Tabelle + Filter
+  TaskDetailPanel.tsx        (~300)  Detail-Ansicht mit Kommentaren
+  TaskSubtasksList.tsx       (~300)  Zugewiesene Subtasks
+  TaskSnoozeManager.tsx      (~150)  Snooze-Logik
+  hooks/
+    useTasksData.ts          (~400)  Daten laden, Filter, Sort
+    useTaskComments.ts       (~200)  Kommentar-CRUD
+    useAssignedSubtasks.ts   (~300)  Subtask-Aggregation (Planning + Call Follow-ups)
+```
+
+### 3. `DocumentsView.tsx` (2.564 Zeilen) -- HOCH
+
+Vorgeschlagene Aufteilung:
+
+```text
+src/components/documents/
+  DocumentsView.tsx          (~200)  Shell
+  DocumentsList.tsx          (~400)  Liste/Grid + Filter
+  DocumentUploader.tsx       (~300)  Upload + Kategorisierung
+  DocumentDetailPanel.tsx    (~300)  Preview + Metadaten
+  DocumentTemplates.tsx      (~300)  Template-Verwaltung
+  hooks/
+    useDocumentsData.ts      (~400)  CRUD + Filter-Logik
+```
+
+### 4. `LetterEditor.tsx` (2.261 Zeilen) -- HOCH
+
+Vorgeschlagene Aufteilung:
+
+```text
+src/components/letters/
+  LetterEditor.tsx           (~300)  Editor-Shell
+  LetterMetadataForm.tsx     (~200)  Absender/Empfaenger-Formulare
+  LetterContentEditor.tsx    (~300)  Rich-Text-Bereich
+  LetterPreviewPanel.tsx     (~200)  Vorschau
+  LetterStatusBar.tsx        (~100)  Speicherstatus, Zusammenarbeit
+  LetterToolbar.tsx          (~200)  Aktions-Toolbar
+  hooks/
+    useLetterEditor.ts       (~400)  State + Auto-Save + Collaboration
+```
+
+### 5. `GlobalDaySlipPanel.tsx` (1.977 Zeilen) -- HOCH
+
+Vorgeschlagene Aufteilung:
+
+```text
+src/components/dayslip/
+  GlobalDaySlipPanel.tsx     (~200)  Panel-Shell
+  DaySlipEditor.tsx          (~400)  Editor-Kern
+  DaySlipToolbar.tsx         (~200)  Toolbar
+  DaySlipSidebar.tsx         (~200)  Sidebar mit Metadaten
+  hooks/
+    useDaySlipState.ts       (~300)  State-Management
+    useDaySlipPersistence.ts (~200)  Speichern/Laden
+```
+
+### 6. `TimeTrackingView.tsx` (1.836 Zeilen) -- HOCH
+
+Vorgeschlagene Aufteilung:
+
+```text
+src/components/time-tracking/
+  TimeTrackingView.tsx       (~200)  Shell + Tab-Routing
+  TimeEntryList.tsx          (~300)  Eintrags-Tabelle
+  TimeEntryForm.tsx          (~200)  Erfassungs-Formular
+  TimeTrackingSummary.tsx    (~200)  Zusammenfassungen/Charts
+  TimeTrackingExport.tsx     (~150)  PDF/Excel-Export
+  hooks/
+    useTimeTrackingData.ts   (~300)  Daten + Filter
+```
+
+## Vorgehen
+
+Jede Aufteilung folgt dem gleichen Muster:
+1. State und Logik in eigene Hooks extrahieren
+2. UI in thematische Sub-Komponenten aufteilen
+3. Urspruengliche Datei wird zur Shell/Orchestrierung (~200-300 Zeilen)
+4. Barrel-Exports (`index.ts`) fuer saubere Import-Pfade
+
+Ich empfehle, mit **MeetingsView** (5.383 Zeilen) zu beginnen, da sie die mit Abstand groesste Datei ist. Alternativ koennen wir mit 2-3 der mittleren Dateien anfangen, um das Muster zu etablieren.
+
