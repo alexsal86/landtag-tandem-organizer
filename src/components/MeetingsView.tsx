@@ -1104,6 +1104,23 @@ export function MeetingsView() {
     }
   };
 
+  const loadMeetingLinkedCaseItems = async (meetingId: string) => {
+    if (!currentTenant?.id) return;
+    try {
+      const { data, error } = await supabase
+        .from('case_items' as any)
+        .select('id, subject, status, priority, due_at, owner_user_id')
+        .eq('meeting_id', meetingId)
+        .neq('status', 'erledigt');
+
+      if (error) throw error;
+      setMeetingLinkedCaseItems(data || []);
+    } catch (error) {
+      console.error('Error loading meeting linked case items:', error);
+      setMeetingLinkedCaseItems([]);
+    }
+  };
+
 
 
   const loadMeetingRelevantDecisions = async () => {
