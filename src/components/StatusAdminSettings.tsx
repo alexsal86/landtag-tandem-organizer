@@ -26,6 +26,7 @@ import { Plus, Edit, Trash2, GripVertical, Palette } from 'lucide-react';
 import { StatusOption } from '@/hooks/useUserStatus';
 import { EmojiPicker } from './EmojiPicker';
 import { debugConsole } from '@/utils/debugConsole';
+import { useTenant } from "@/hooks/useTenant";
 
 export const StatusAdminSettings: React.FC = () => {
   const [statusOptions, setStatusOptions] = useState<StatusOption[]>([]);
