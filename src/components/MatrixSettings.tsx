@@ -187,7 +187,7 @@ export const MatrixSettings: React.FC = () => {
         description: "Matrix-Abonnement wurde entfernt.",
       });
     } catch (error) {
-      console.error("Error removing subscription:", error);
+      debugConsole.error("Error removing subscription:", error);
       toast({
         title: "Fehler",
         description: "Ein unerwarteter Fehler ist aufgetreten.",
