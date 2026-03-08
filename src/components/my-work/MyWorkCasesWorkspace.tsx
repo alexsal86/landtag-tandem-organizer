@@ -1,5 +1,6 @@
-import { type KeyboardEvent, useCallback, useEffect, useMemo, useState } from "react";
+import { type KeyboardEvent, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
+import { useNotificationHighlight } from "@/hooks/useNotificationHighlight";
 import { format, type Locale } from "date-fns";
 import { de } from "date-fns/locale";
 import { ArrowDown, ArrowUp, Briefcase, CalendarDays, CheckCircle2, ChevronRight, Circle, Clock, FileText, FolderOpen, Gavel, GripVertical, Inbox, Link2, Mail, MessageSquare, Phone, Plus, Search, Timer, UserRound, Users, Vote } from "lucide-react";
