@@ -86,7 +86,7 @@ export const useAllPersonContacts = () => {
         .maybeSingle();
 
       if (error) {
-        console.error("Error refreshing person contact by id:", error);
+        debugConsole.error("Error refreshing person contact by id:", error);
         return;
       }
 

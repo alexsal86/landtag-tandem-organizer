@@ -112,7 +112,7 @@ export function useMyWorkSettings(): MyWorkSettingsResult {
       setHiddenDecisionTabs(normalized.hiddenTabs);
       return true;
     } catch (error) {
-      console.error('Error in updateDecisionTabSettings:', error);
+      debugConsole.error('Error in updateDecisionTabSettings:', error);
       return false;
     }
   }, [sanitizeDecisionTabSettings, user]);

@@ -178,7 +178,7 @@ export const useNoteSharing = (noteId?: string) => {
       loadShares();
       return true;
     } catch (error) {
-      console.error("Error updating permission:", error);
+      debugConsole.error("Error updating permission:", error);
       toast.error("Fehler beim Aktualisieren der Berechtigung");
       return false;
     }

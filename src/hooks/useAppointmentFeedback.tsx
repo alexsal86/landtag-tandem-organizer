@@ -346,7 +346,7 @@ export const useAppointmentFeedback = () => {
       });
     },
     onError: (error) => {
-      console.error('Error updating settings:', error);
+      debugConsole.error('Error updating settings:', error);
       toast({
         title: 'Fehler',
         description: 'Einstellungen konnten nicht gespeichert werden.',

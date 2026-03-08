@@ -104,7 +104,7 @@ export function useCelebrationSettings() {
 
       if (error) throw error;
     } catch (error: unknown) {
-      console.error('Error updating celebration settings:', error);
+      debugConsole.error('Error updating celebration settings:', error);
       toast({
         title: "Fehler",
         description: "Einstellungen konnten nicht gespeichert werden.",
