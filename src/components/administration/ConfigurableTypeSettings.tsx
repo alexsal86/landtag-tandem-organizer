@@ -19,8 +19,8 @@ type ConfigurableType = {
   label: string | null;
   color?: string | null;
   icon?: string | null;
-  is_active: boolean;
-  order_index: number;
+  is_active: boolean | null;
+  order_index: number | null;
 };
 
 interface ConfigurableTypeSettingsProps {
