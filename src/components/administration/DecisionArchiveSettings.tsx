@@ -56,7 +56,7 @@ export const DecisionArchiveSettings = () => {
       }
 
       if (data) {
-        const settings = data as unknown as ArchiveSettings;
+        const settings = data;
         setAutoArchiveOnCompletion(settings.auto_archive_on_completion ?? true);
         setAutoArchiveDays(settings.auto_archive_days?.toString() ?? '');
         setAutoDeleteDays(settings.auto_delete_after_days?.toString() ?? '');
