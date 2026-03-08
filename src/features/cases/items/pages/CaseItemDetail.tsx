@@ -67,6 +67,7 @@ const CaseItemDetail = () => {
   const [searchParams, setSearchParams] = useSearchParams();
   const { user, loading: authLoading } = useAuth();
   const { currentTenant, loading: tenantLoading } = useTenant();
+  const { toast } = useToast();
 
   const [caseItem, setCaseItem] = useState<CaseItemRecord | null>(null);
   const [caseFile, setCaseFile] = useState<CaseFileRecord | null>(null);
