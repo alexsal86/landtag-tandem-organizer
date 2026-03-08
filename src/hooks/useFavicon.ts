@@ -1,5 +1,6 @@
 import { useEffect } from "react";
 import sunflowerSvg from "@/assets/sunflower.svg";
+import { debugConsole } from '@/utils/debugConsole';
 
 const DEFAULT_FAVICON_URL = "/favicon.svg";
 
