@@ -427,7 +427,7 @@ export function useTasksData() {
       // 3. Call follow-up tasks
       const { data: callFollowupData } = await supabase
         .from('tasks')
-        .select('*')
+        .select('id, title, description, assigned_to, due_date, status, created_at, updated_at, priority, call_log_id, user_id')
         .eq('category', 'call_follow_up')
         .neq('status', 'completed');
 
