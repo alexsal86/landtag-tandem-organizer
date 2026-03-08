@@ -302,7 +302,7 @@ export function NoteDecisionCreator({
           });
 
           if (notificationError) {
-            console.warn('Notification error for user:', userId, notificationError);
+            debugConsole.warn('Notification error for user:', userId, notificationError);
           }
 
           // Get participant token for email
