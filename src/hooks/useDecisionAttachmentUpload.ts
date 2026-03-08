@@ -118,7 +118,7 @@ async function uploadOneFile(
     try {
       emailMeta = (await parseEmlFile(file)).metadata;
     } catch (error) {
-      console.error('EML parse error during upload:', error);
+      debugConsole.error('EML parse error during upload:', error);
     }
   } else if (!emailMeta && isMsgFile(file)) {
     try {
