@@ -69,6 +69,7 @@ export const CustomizableDashboard: React.FC = () => {
   
   const { user } = useAuth();
   const { currentTenant, loading: tenantLoading } = useTenant();
+  const dashboardData = useDashboardData();
 
   const [isEditMode, setIsEditMode] = useState(false);
   const [showSaveDialog, setShowSaveDialog] = useState(false);
