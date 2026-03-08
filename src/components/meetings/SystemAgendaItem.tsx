@@ -143,6 +143,7 @@ export function SystemAgendaItem({
       case 'tasks': return 'Aufgaben';
       case 'birthdays': return 'Geburtstage';
       case 'decisions': return 'Entscheidungen';
+      case 'case_items': return 'Vorgänge';
       default: return '';
     }
   };
