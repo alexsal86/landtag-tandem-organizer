@@ -901,7 +901,7 @@ export function useEventPlanningData() {
       const { data, error } = await supabase.from('planning_item_documents').select('*').eq('planning_item_id', itemId).order('created_at', { ascending: false });
       if (error) throw error;
       setItemDocuments(prev => ({ ...prev, [itemId]: data || [] }));
-    } catch (error) { console.error('Error loading item documents:', error); }
+    } catch (error) { debugConsole.error('Error loading item documents:', error); }
   };
 
   const addItemComment = async () => {
