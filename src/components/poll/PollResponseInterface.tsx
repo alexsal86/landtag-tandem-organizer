@@ -83,7 +83,7 @@ export const PollResponseInterface = ({ pollId, token, participantId, isPreview 
           .order('order_index');
 
         if (slotsError) {
-          console.error('Time slots loading error:', slotsError);
+          debugConsole.error('Time slots loading error:', slotsError);
           throw slotsError;
         }
         setTimeSlots(slotsData || []);
