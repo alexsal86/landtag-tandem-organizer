@@ -155,6 +155,7 @@ export function SystemAgendaItem({
       case 'tasks': return <ListTodo className="h-3 w-3 mr-1" />;
       case 'birthdays': return <Cake className="h-3 w-3 mr-1" />;
       case 'decisions': return <Scale className="h-3 w-3 mr-1" />;
+      case 'case_items': return <Briefcase className="h-3 w-3 mr-1" />;
       default: return null;
     }
   };
