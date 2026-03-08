@@ -99,7 +99,7 @@ export const TaskDecisionResponse = ({
         .maybeSingle();
 
       if (error) {
-        console.error('Error loading decision options (using defaults):', error);
+        debugConsole.error('Error loading decision options (using defaults):', error);
         return;
       }
       if (data?.response_options && Array.isArray(data.response_options)) {
