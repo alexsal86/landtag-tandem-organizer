@@ -685,17 +685,6 @@ export function TasksView() {
         }
       }
 
-      console.log('🎯 FINAL RESULT - Total assigned subtasks found:', allSubtasks.length);
-      console.log('📊 Breakdown:');
-      console.log('  - Planning subtasks:', allSubtasks.filter(s => s.source_type === 'planning').length);  
-      console.log('  - Call follow-ups:', allSubtasks.filter(s => s.source_type === 'call_followup').length);
-      console.log('📋 All subtasks details:', allSubtasks.map(s => ({
-        id: s.id,
-        title: s.title,
-        source_type: s.source_type,
-        assigned_to: s.assigned_to,
-        assigned_to_names: s.assigned_to_names
-      })));
 
       setAssignedSubtasks(allSubtasks);
     } catch (error) {
