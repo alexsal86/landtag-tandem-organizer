@@ -52,7 +52,7 @@ export const AutoStatusDetection: React.FC = () => {
 
       toast.success('Einstellungen gespeichert');
     } catch (error) {
-      console.error('Error updating auto status settings:', error);
+      debugConsole.error('Error updating auto status settings:', error);
       toast.error('Fehler beim Speichern der Einstellungen');
     }
   };
