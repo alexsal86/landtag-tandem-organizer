@@ -176,8 +176,8 @@ export interface MeetingTemplate {
   name: string;
   description?: string;
   template_items: MeetingTemplateItem[] | unknown;
-  default_participants?: string[];
-  default_recurrence?: RecurrenceData | null;
+  default_participants?: string[] | null;
+  default_recurrence?: RecurrenceData | unknown;
   is_default?: boolean;
   auto_create_count?: number;
 }
