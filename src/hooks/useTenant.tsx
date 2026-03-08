@@ -6,7 +6,7 @@ import { debugConsole } from '@/utils/debugConsole';
 interface Tenant {
   id: string;
   name: string;
-  description?: string;
+  description?: string | null;
   settings: any; // Changed from Record<string, any> to any to match Json type
   created_at: string;
   updated_at: string;

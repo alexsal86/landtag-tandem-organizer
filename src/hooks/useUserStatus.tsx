@@ -396,7 +396,7 @@ export const useUserStatus = () => {
         await updateStatus(
           mappedStatusType,
           undefined,
-          statusOption?.emoji,
+          statusOption?.emoji ?? undefined,
           undefined,
           mappedStatusType !== 'meeting' && mappedStatusType !== 'break'
         );
