@@ -136,7 +136,7 @@ export function MeetingSidebar({
                   <div className="flex items-center gap-1">
                     {editingMeeting?.id === meeting.id ? (
                       <>
-                        <Button size="icon" variant="ghost" className="h-7 w-7" onClick={(e) => { e.stopPropagation(); onUpdateMeeting(meeting.id!, editingMeeting); onSetEditingMeeting(null); }}>
+                        <Button size="icon" variant="ghost" className="h-7 w-7" onClick={(e) => { e.stopPropagation(); onUpdateMeeting(meeting.id!, editingMeeting as Meeting); onSetEditingMeeting(null); }}>
                           <Check className="h-3.5 w-3.5" />
                         </Button>
                         <Button size="icon" variant="ghost" className="h-7 w-7" onClick={(e) => { e.stopPropagation(); onSetEditingMeeting(null); }}>
