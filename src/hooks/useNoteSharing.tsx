@@ -92,7 +92,7 @@ export const useNoteSharing = (noteId?: string) => {
       loadShares();
       return true;
     } catch (error) {
-      console.error("Error sharing note:", error);
+      debugConsole.error("Error sharing note:", error);
       toast.error("Fehler beim Freigeben der Notiz");
       return false;
     }
