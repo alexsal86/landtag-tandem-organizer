@@ -45,13 +45,13 @@ export function CaseItemMeetingSelector({
     setLoading(true);
     try {
       const now = new Date();
-      const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+      const todayStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
 
       const { data: ownMeetings, error: ownError } = await supabase
         .from("meetings")
         .select("id, title, meeting_date, meeting_time")
         .eq("user_id", user.id)
-        .gte("meeting_date", startOfToday.toISOString())
+        .gte("meeting_date", todayStr)
         .neq("status", "archived")
         .order("meeting_date", { ascending: true })
         .limit(10);
