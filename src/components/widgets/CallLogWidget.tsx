@@ -305,7 +305,7 @@ export const CallLogWidget: React.FC<CallLogWidgetProps> = ({
         .eq('call_log_id', id);
       
       if (taskError) {
-        console.error('Error updating task:', taskError);
+        debugConsole.error('Error updating task:', taskError);
       }
 
       // Update the associated appointment if it exists (add "Erledigt:" prefix instead of deleting)
