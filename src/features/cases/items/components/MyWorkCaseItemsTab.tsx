@@ -458,98 +458,111 @@ export function MyWorkCaseItemsTab() {
               const isOverdue = Boolean(dueDate && isPast(dueDate) && !isToday(dueDate));
 
               return (
-                <div
-                  key={item.id}
-                  className={cn(
-                    "rounded-lg border bg-card p-3 transition-colors hover:bg-muted/40",
-                    highlightedItemId === item.id && "border-primary bg-primary/10"
-                  )}
-                >
-                  <div className="flex items-start justify-between gap-3">
-                    <div className="min-w-0 space-y-1">
-                      <div className="flex flex-wrap items-center gap-2">
-                        <p className="truncate text-sm font-semibold">{item.title}</p>
-                        {item.status && (
-                          <Badge className={cn("text-xs", STATUS_STYLES[normalizedStatus] || "bg-slate-500 text-white")}>
-                            {STATUS_LABELS[normalizedStatus] || item.status}
-                          </Badge>
-                        )}
-                        {item.priority && (
-                          <Badge variant={normalizedPriority === "high" || normalizedPriority === "urgent" ? "destructive" : "secondary"} className="text-xs">
-                            {PRIORITY_LABELS[normalizedPriority] || item.priority}
-                          </Badge>
-                        )}
-                        {item.channel && (
-                          <Badge variant="outline" className="text-xs">{CHANNEL_LABELS[normalize(item.channel)] || item.channel}</Badge>
-                        )}
-                      </div>
-
-                      {item.description && (
-                        <p className="line-clamp-2 text-xs text-muted-foreground">{item.description}</p>
+                <ContextMenu key={item.id}>
+                  <ContextMenuTrigger asChild>
+                    <div
+                      className={cn(
+                        "rounded-lg border bg-card p-3 transition-colors hover:bg-muted/40",
+                        highlightedItemId === item.id && "border-primary bg-primary/10"
                       )}
+                    >
+                      <div className="flex items-start justify-between gap-3">
+                        <div className="min-w-0 space-y-1">
+                          <div className="flex flex-wrap items-center gap-2">
+                            <p className="truncate text-sm font-semibold">{item.title}</p>
+                            {item.status && (
+                              <Badge className={cn("text-xs", STATUS_STYLES[normalizedStatus] || "bg-slate-500 text-white")}>
+                                {STATUS_LABELS[normalizedStatus] || item.status}
+                              </Badge>
+                            )}
+                            {item.priority && (
+                              <Badge variant={normalizedPriority === "high" || normalizedPriority === "urgent" ? "destructive" : "secondary"} className="text-xs">
+                                {PRIORITY_LABELS[normalizedPriority] || item.priority}
+                              </Badge>
+                            )}
+                            {item.channel && (
+                              <Badge variant="outline" className="text-xs">{CHANNEL_LABELS[normalize(item.channel)] || item.channel}</Badge>
+                            )}
+                          </div>
 
-                      <div className="flex flex-wrap items-center gap-3 text-xs text-muted-foreground">
-                        {dueDate && (
-                          <span className={cn("inline-flex items-center gap-1", isOverdue && "text-destructive font-medium")}>
-                            <CalendarClock className="h-3 w-3" />
-                            Fällig: {format(dueDate, "dd.MM.yyyy", { locale: de })}
-                          </span>
-                        )}
-                        {followUpDate && (
-                          <span className="inline-flex items-center gap-1">
-                            <ArrowUpDown className="h-3 w-3" />
-                            Wiedervorlage: {format(followUpDate, "dd.MM.yyyy", { locale: de })}
-                          </span>
-                        )}
+                          {item.description && (
+                            <p className="line-clamp-2 text-xs text-muted-foreground">{item.description}</p>
+                          )}
+
+                          <div className="flex flex-wrap items-center gap-3 text-xs text-muted-foreground">
+                            {dueDate && (
+                              <span className={cn("inline-flex items-center gap-1", isOverdue && "text-destructive font-medium")}>
+                                <CalendarClock className="h-3 w-3" />
+                                Fällig: {format(dueDate, "dd.MM.yyyy", { locale: de })}
+                              </span>
+                            )}
+                            {followUpDate && (
+                              <span className="inline-flex items-center gap-1">
+                                <ArrowUpDown className="h-3 w-3" />
+                                Wiedervorlage: {format(followUpDate, "dd.MM.yyyy", { locale: de })}
+                              </span>
+                            )}
+                          </div>
+                        </div>
+
+                        <div className="flex shrink-0 items-center gap-1">
+                          {!item.case_file_id && (
+                            <>
+                              <Button
+                                size="sm"
+                                disabled={processingItemId === item.id}
+                                onClick={() => handleEscalation(item.id, "create")}
+                              >
+                                In Akte überführen
+                              </Button>
+                              <select
+                                className="h-9 rounded-md border bg-background px-2 text-sm"
+                                value={selectedCaseFileByItemId[item.id] ?? ""}
+                                onChange={(event) =>
+                                  setSelectedCaseFileByItemId((prev) => ({ ...prev, [item.id]: event.target.value }))
+                                }
+                                disabled={processingItemId === item.id}
+                              >
+                                <option value="">Bestehende Akte wählen</option>
+                                {caseFiles.map((caseFile) => (
+                                  <option key={caseFile.id} value={caseFile.id}>{caseFile.title}</option>
+                                ))}
+                              </select>
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                disabled={processingItemId === item.id || !selectedCaseFileByItemId[item.id]}
+                                onClick={() => handleEscalation(item.id, "assign")}
+                              >
+                                Bestehender Akte zuordnen
+                              </Button>
+                            </>
+                          )}
+                          <Button size="sm" variant="outline" onClick={() => navigate(`/?section=casefiles&caseItemId=${item.id}`)}>
+                            <ExternalLink className="mr-1 h-3.5 w-3.5" />
+                            Öffnen
+                          </Button>
+                          {item.case_file_id && (
+                            <Button size="sm" variant="ghost" onClick={() => navigate(`/casefiles?caseFileId=${item.case_file_id}`)}>
+                              <Briefcase className="mr-1 h-3.5 w-3.5" />
+                              In Akte öffnen
+                            </Button>
+                          )}
+                        </div>
                       </div>
                     </div>
-
-                    <div className="flex shrink-0 items-center gap-1">
-                      {!item.case_file_id && (
-                        <>
-                          <Button
-                            size="sm"
-                            disabled={processingItemId === item.id}
-                            onClick={() => handleEscalation(item.id, "create")}
-                          >
-                            In Akte überführen
-                          </Button>
-                          <select
-                            className="h-9 rounded-md border bg-background px-2 text-sm"
-                            value={selectedCaseFileByItemId[item.id] ?? ""}
-                            onChange={(event) =>
-                              setSelectedCaseFileByItemId((prev) => ({ ...prev, [item.id]: event.target.value }))
-                            }
-                            disabled={processingItemId === item.id}
-                          >
-                            <option value="">Bestehende Akte wählen</option>
-                            {caseFiles.map((caseFile) => (
-                              <option key={caseFile.id} value={caseFile.id}>{caseFile.title}</option>
-                            ))}
-                          </select>
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            disabled={processingItemId === item.id || !selectedCaseFileByItemId[item.id]}
-                            onClick={() => handleEscalation(item.id, "assign")}
-                          >
-                            Bestehender Akte zuordnen
-                          </Button>
-                        </>
-                      )}
-                      <Button size="sm" variant="outline" onClick={() => navigate(`/?section=casefiles&caseItemId=${item.id}`)}>
-                        <ExternalLink className="mr-1 h-3.5 w-3.5" />
-                        Öffnen
-                      </Button>
-                      {item.case_file_id && (
-                        <Button size="sm" variant="ghost" onClick={() => navigate(`/casefiles?caseFileId=${item.case_file_id}`)}>
-                          <Briefcase className="mr-1 h-3.5 w-3.5" />
-                          In Akte öffnen
-                        </Button>
-                      )}
-                    </div>
-                  </div>
-                </div>
+                  </ContextMenuTrigger>
+                  <ContextMenuContent>
+                    <ContextMenuItem onClick={() => navigate(`/?section=casefiles&caseItemId=${item.id}`)}>
+                      <ExternalLink className="mr-2 h-4 w-4" />
+                      Öffnen
+                    </ContextMenuItem>
+                    <ContextMenuItem onClick={() => handleArchive(item.id)}>
+                      <Archive className="mr-2 h-4 w-4" />
+                      Archivieren
+                    </ContextMenuItem>
+                  </ContextMenuContent>
+                </ContextMenu>
               );
             })
           )}

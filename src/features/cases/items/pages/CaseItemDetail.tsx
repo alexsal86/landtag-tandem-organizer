@@ -58,6 +58,7 @@ const CASE_ITEM_STATUS_META: Record<CaseItemRecord["status"], { label: string; c
   in_klaerung: { label: "In Klärung", className: "border-amber-500/40 text-amber-700 bg-amber-500/10" },
   antwort_ausstehend: { label: "Antwort ausstehend", className: "border-violet-500/40 text-violet-700 bg-violet-500/10" },
   erledigt: { label: "Erledigt", className: "border-emerald-500/40 text-emerald-700 bg-emerald-500/10" },
+  archiviert: { label: "Archiviert", className: "border-slate-400/40 text-slate-600 bg-slate-400/10" },
 };
 
 const CaseItemDetail = () => {
