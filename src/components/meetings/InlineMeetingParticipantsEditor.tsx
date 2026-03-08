@@ -45,7 +45,7 @@ export function InlineMeetingParticipantsEditor({ meetingId }: InlineMeetingPart
 
   const loadParticipants = async () => {
     if (!meetingId) {
-      console.error('InlineMeetingParticipantsEditor: No meetingId provided!');
+      debugConsole.error('InlineMeetingParticipantsEditor: No meetingId provided!');
       setLoading(false);
       return;
     }
