@@ -75,9 +75,16 @@ export function EmailTemplateManager() {
 
       if (error) throw error;
       setTemplates((data || []).map(t => ({
-        ...t,
-        category: (t as any).category || 'general',
-        variables: Array.isArray((t as any).variables) ? (t as any).variables : []
+        id: t.id,
+        tenant_id: t.tenant_id,
+        name: t.name,
+        subject: t.subject,
+        body_html: t.body_html,
+        category: t.category || 'general',
+        variables: Array.isArray(t.variables) ? t.variables : [],
+        is_active: t.is_active,
+        created_at: t.created_at,
+        updated_at: t.updated_at,
       })) as EmailTemplate[]);
     } catch (error: any) {
       toast({
