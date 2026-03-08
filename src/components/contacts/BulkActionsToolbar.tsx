@@ -195,7 +195,7 @@ export function BulkActionsToolbar({
       setDistributionListDescription('');
       onActionComplete();
     } catch (error) {
-      console.error('Error creating distribution list:', error);
+      debugConsole.error('Error creating distribution list:', error);
       toast({
         title: 'Fehler',
         description: 'Verteiler konnte nicht erstellt werden',
