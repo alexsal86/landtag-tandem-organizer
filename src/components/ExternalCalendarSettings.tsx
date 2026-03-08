@@ -162,7 +162,7 @@ export function ExternalCalendarSettings() {
       toast.success('Kalender erfolgreich entfernt');
       fetchCalendars();
     } catch (error) {
-      console.error('Error deleting calendar:', error);
+      debugConsole.error('Error deleting calendar:', error);
       toast.error('Fehler beim Entfernen des Kalenders');
     }
   };
