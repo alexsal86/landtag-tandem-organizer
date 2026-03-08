@@ -244,11 +244,11 @@ export function useDocumentOperations({
     setIsCreatingTask(true);
     try {
       if (taskDialogMode === 'task') {
-        const { error } = await supabase.from('tasks').insert({
+        const { error } = await supabase.from('tasks').insert([{
           user_id: user.id, tenant_id: currentTenant.id, title: taskTitle.trim(),
           description: [taskDescription.trim(), sourceLetterForTask.id ? `[[letter:${sourceLetterForTask.id}]]` : ''].filter(Boolean).join('\n\n'),
           status: 'todo', priority: 'medium', category: 'personal',
-        });
+        }]);
         if (error) throw error;
       } else {
         const { error } = await supabase.from('tasks').insert({
