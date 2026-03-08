@@ -56,7 +56,7 @@ export function useMeetingParticipants(meetingId?: string) {
       
       setParticipants(transformedData);
     } catch (error) {
-      console.error('Error loading participants:', error);
+      debugConsole.error('Error loading participants:', error);
     } finally {
       setLoading(false);
     }
