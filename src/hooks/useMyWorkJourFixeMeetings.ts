@@ -68,7 +68,7 @@ export function useMyWorkJourFixeMeetings(userId?: string) {
 
       if (isMountedRef.current) setMeetingParticipants(participantsByMeeting);
     } catch (error) {
-      console.error('Error loading participants:', error);
+      debugConsole.error('Error loading participants:', error);
     }
   }, []);
 
