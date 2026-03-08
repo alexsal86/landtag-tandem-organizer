@@ -174,7 +174,7 @@ export function InlineMeetingParticipantsEditor({ meetingId }: InlineMeetingPart
       return;
     }
     
-    console.log('✅ Role updated for', participant?.user?.display_name, 'to', newRole);
+    
     toast({
       title: "Rolle geändert",
       description: `${participant?.user?.display_name || 'Teilnehmer'} ist jetzt ${roleLabels[newRole].label}.`,
