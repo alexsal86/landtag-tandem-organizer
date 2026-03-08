@@ -288,7 +288,7 @@ export function DashboardWidget({ widget, isDragging, isEditMode, onResize, onDe
         setSubtaskSnoozes(subtaskSnoozesMap);
       }
     } catch (error) {
-      console.error('Error loading assigned tasks and subtasks:', error);
+      debugConsole.error('Error loading assigned tasks and subtasks:', error);
     }
   };
 
