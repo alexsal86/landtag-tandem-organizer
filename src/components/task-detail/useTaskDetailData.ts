@@ -75,7 +75,7 @@ export function useTaskDetailData(task: Task | null) {
       if (error) throw error;
       setTaskDocuments(data || []);
     } catch (e) {
-      console.error("Error loading task documents:", e);
+      debugConsole.error("Error loading task documents:", e);
     }
   };
 
