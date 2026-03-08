@@ -6,6 +6,7 @@ import { ArrowDown, ArrowUp, Briefcase, CalendarDays, CheckCircle2, ChevronRight
 import { DragDropContext, Droppable, Draggable, type DropResult } from "@hello-pangea/dnd";
 import DOMPurify from "dompurify";
 import { RichTextDisplay } from "@/components/ui/RichTextDisplay";
+import { debugConsole } from '@/utils/debugConsole';
 
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
