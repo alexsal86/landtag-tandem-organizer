@@ -1229,7 +1229,9 @@ export function MyWorkCasesWorkspace() {
                                       <p className="mt-1 text-xs text-blue-600 font-medium">Vorgang hier ablegen zum Verknüpfen</p>
                                     )}
                                     {cf.current_status_note && !dropSnapshot.isDraggingOver && (
-                                      <p className="mt-1 text-xs text-muted-foreground truncate">{cf.current_status_note}</p>
+                                      <div className="mt-1 [&_p]:line-clamp-1">
+                                        <RichTextDisplay content={cf.current_status_note} className="text-xs" />
+                                      </div>
                                     )}
                                   </button>
                                   {dropProvided.placeholder}
