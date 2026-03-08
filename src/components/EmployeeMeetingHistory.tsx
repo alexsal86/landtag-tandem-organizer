@@ -164,6 +164,7 @@ export function EmployeeMeetingHistory({ employeeId, showFilters = true }: Emplo
     }
   };
 
+  const getMeetingTypeLabel = (type: string) => {
     const labels: Record<string, string> = {
       regular: "Regulär",
       probation: "Probezeit",
