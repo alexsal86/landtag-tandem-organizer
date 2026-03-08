@@ -31,7 +31,7 @@ export function useCalendarOperations(refreshAppointments: () => void) {
       refreshAppointments();
       toast({ title: "Termin angepasst", description: "Die Terminlänge wurde erfolgreich angepasst." });
     } catch {
-      toast({ title: "Fehler", description: "Der Termin konnte nicht angepasst werden.", variant: "destructive" });
+      handleAppError(new Error('Termin konnte nicht angepasst werden'), { context: 'handleEventResize', toast: { fn: toast, title: 'Fehler', description: 'Der Termin konnte nicht angepasst werden.' } });
     }
   };
 
