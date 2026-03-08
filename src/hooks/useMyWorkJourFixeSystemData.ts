@@ -193,6 +193,15 @@ export function useMyWorkJourFixeSystemData(userId?: string, tenantId?: string) 
         }
       }
 
+      if (caseItemsResult.error) {
+        console.error("Error loading case items for meeting:", { meetingId, error: caseItemsResult.error });
+        setMeetingCaseItems((prev) => ({ ...prev, [meetingId]: [] }));
+      } else {
+        const items = (caseItemsResult.data || []) as CaseItemData[];
+        items.forEach((ci) => ci.owner_user_id && encounteredUserIds.add(ci.owner_user_id));
+        setMeetingCaseItems((prev) => ({ ...prev, [meetingId]: items }));
+      }
+
       if (encounteredUserIds.size === 0) return;
 
       try {
