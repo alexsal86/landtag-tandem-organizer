@@ -115,7 +115,7 @@ export const DecisionEditDialog = ({ decisionId, isOpen, onClose, onUpdated }: D
 
       setSelectedUsers(participants.map(p => p.user_id));
     } catch (error) {
-      console.error('Error loading decision data:', error);
+      debugConsole.error('Error loading decision data:', error);
       toast({
         title: "Fehler",
         description: "Entscheidungsdaten konnten nicht geladen werden.",
