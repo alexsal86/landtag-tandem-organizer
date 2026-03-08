@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
+import { debugConsole } from '@/utils/debugConsole';
 
 export interface AppointmentPreparation {
   id: string;
