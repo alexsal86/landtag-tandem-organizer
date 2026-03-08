@@ -182,7 +182,7 @@ export default function AppointmentPreparationSidebar({
         description: 'Terminvorbereitung wurde erstellt.',
       });
     } catch (error) {
-      console.error('Error creating preparation:', error);
+      debugConsole.error('Error creating preparation:', error);
       toast({
         title: 'Fehler',
         description: 'Vorbereitung konnte nicht erstellt werden.',
