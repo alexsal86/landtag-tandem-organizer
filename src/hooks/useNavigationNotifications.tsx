@@ -38,7 +38,7 @@ export const useNavigationNotifications = (): NavigationNotifications => {
         .eq('is_read', false);
 
       if (error) {
-        console.error('Error loading navigation counts:', error);
+        debugConsole.error('Error loading navigation counts:', error);
         return;
       }
 
