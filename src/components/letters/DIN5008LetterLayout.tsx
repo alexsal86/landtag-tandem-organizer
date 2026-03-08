@@ -199,7 +199,7 @@ export const DIN5008LetterLayout: React.FC<DIN5008LetterLayoutProps> = ({
 
   const formatSenderAddress = (sender: any) => {
     if (!sender) return '';
-    const parts = [];
+    const parts: string[] = [];
     if (sender.organization) parts.push(sender.organization);
     if (sender.name) parts.push(sender.name);
     if (sender.street && sender.house_number) {

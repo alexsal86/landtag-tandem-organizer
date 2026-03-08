@@ -223,7 +223,7 @@ const LetterAttachmentManager: React.FC<LetterAttachmentManagerProps> = ({
       // Delete from storage
       const { error: storageError } = await supabase.storage
         .from('documents')
-        .remove([attachment.file_path]);
+        .remove([attachment.file_path!]);
 
       if (storageError) {
         debugConsole.error('Storage deletion error:', storageError);

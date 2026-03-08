@@ -140,7 +140,7 @@ const KnowledgeBaseView = () => {
                               {doc.is_published && <Badge variant="outline" className="text-xs">Öffentlich</Badge>}
                             </div>
                             {data.documentTopicsMap[doc.id]?.length > 0 && <div className="mb-2"><TopicDisplay topicIds={data.documentTopicsMap[doc.id]} maxDisplay={3} /></div>}
-                            <p className="text-sm text-muted-foreground line-clamp-4 mb-3">{getPreviewText(doc.content, 300)}</p>
+                            <p className="text-sm text-muted-foreground line-clamp-4 mb-3">{getPreviewText(doc.content || '', 300)}</p>
                             <div className="flex items-center gap-4 text-xs text-muted-foreground"><div className="flex items-center gap-1"><User className="h-3 w-3" />{doc.creator_name}</div><div>{formatDate(doc.updated_at)}</div></div>
                           </div>
                           {doc.created_by === user?.id && <div onClick={(e) => e.stopPropagation()}><Button variant="ghost" size="sm" onClick={() => data.handleDeleteDocument(doc.id)}><Trash2 className="h-4 w-4" /></Button></div>}

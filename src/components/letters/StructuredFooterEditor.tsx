@@ -235,7 +235,7 @@ export const StructuredFooterEditor: React.FC<StructuredFooterEditorProps> = ({
 
   const generateGeneral = (): string => {
     if (!senderInfo) return '';
-    const parts = [];
+    const parts: string[] = [];
     if (senderInfo.name) parts.push(senderInfo.name);
     if (senderInfo.organization) parts.push(senderInfo.organization);
     return parts.join('\n');
