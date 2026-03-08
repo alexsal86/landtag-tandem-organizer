@@ -437,7 +437,7 @@ export const TaskDecisionCreator = ({
           });
 
           if (emailError) {
-            console.error('Error sending decision emails:', emailError);
+            debugConsole.error('Error sending decision emails:', emailError);
             toast({
               title: "E-Mail-Fehler",
               description: `E-Mails konnten nicht versendet werden: ${emailError.message}`,
