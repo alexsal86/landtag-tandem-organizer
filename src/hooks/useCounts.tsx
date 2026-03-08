@@ -61,7 +61,7 @@ export function useCounts(): CountsData {
         .eq('name', 'Archivierter Kontakt');
 
       if (archiveError) {
-        console.error('Error fetching archived contacts:', archiveError);
+        debugConsole.error('Error fetching archived contacts:', archiveError);
       }
 
       // Count unique phone numbers for archive
