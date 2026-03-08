@@ -50,7 +50,7 @@ export function DocumentContactAddDialog({ documentId, trigger, onContactAdded }
       setRelationshipType("related");
       setNotes("");
       onContactAdded?.();
-    } catch (error: any) {
+    } catch (error: unknown) {
       toast({
         title: "Fehler",
         description: error.message,

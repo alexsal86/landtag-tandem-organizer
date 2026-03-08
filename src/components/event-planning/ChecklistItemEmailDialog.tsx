@@ -168,7 +168,7 @@ export function ChecklistItemEmailDialog({
 
       onSaved();
       onOpenChange(false);
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Error deleting email action:", error);
       toast({
         title: "Fehler",

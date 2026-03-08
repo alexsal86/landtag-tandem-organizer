@@ -398,7 +398,7 @@ export function AnnualTasksView() {
         title: `Jahresstatistik ${currentYear - 1} erstellt`, 
         description: `${result.affected_employees || 0} Mitarbeiter wurden archiviert.`
       });
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Error generating previous year stats:", error);
       toast({ 
         title: "Fehler", 

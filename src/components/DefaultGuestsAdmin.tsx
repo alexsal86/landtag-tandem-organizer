@@ -177,7 +177,7 @@ export const DefaultGuestsAdmin: React.FC = () => {
 
       toast.success(!currentActive ? 'Standard-Gast aktiviert' : 'Standard-Gast deaktiviert');
       fetchDefaultGuests();
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Error toggling guest status:', error);
       toast.error('Fehler beim Ändern des Status');
     }
