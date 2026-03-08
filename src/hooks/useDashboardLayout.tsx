@@ -506,7 +506,7 @@ export function useDashboardLayout() {
       widgetSize: '2x2'
     };
     
-    console.log('✨ Creating new widget:', newWidget);
+    
     
     // Verwende React's setState callback pattern um sicherzustellen, dass das Update ankommt
     setCurrentLayout(prev => {
