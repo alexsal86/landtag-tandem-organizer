@@ -19,7 +19,7 @@ export const useTaskTopics = (taskId: string | undefined) => {
       if (error) throw error;
       setAssignedTopics(data?.map(t => t.topic_id) || []);
     } catch (error) {
-      console.error('Error fetching task topics:', error);
+      debugConsole.error('Error fetching task topics:', error);
     } finally {
       setLoading(false);
     }
