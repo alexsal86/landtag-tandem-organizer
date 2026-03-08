@@ -225,7 +225,7 @@ export const useCaseItems = () => {
             priority_param: "medium",
             data_param: JSON.stringify({ case_item_id: id, new_status: data.status }),
           }).then(({ error: nErr }) => {
-            if (nErr) console.warn("Notification error (case_item_status_changed):", nErr);
+            if (nErr) debugConsole.warn("Notification error (case_item_status_changed):", nErr);
           });
         }
       }
