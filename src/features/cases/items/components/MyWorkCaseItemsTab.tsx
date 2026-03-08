@@ -175,7 +175,7 @@ export function MyWorkCaseItemsTab() {
       }, {});
       setSelectedCaseFileByItemId(initialSelection);
     } catch (error) {
-      console.error("Error loading case items:", error);
+      debugConsole.error("Error loading case items:", error);
     } finally {
       setLoading(false);
     }
