@@ -280,7 +280,7 @@ export const MatrixSettings: React.FC = () => {
         description: `Matrix-Benachrichtigungen wurden ${enabled ? "aktiviert" : "deaktiviert"}.`,
       });
     } catch (error) {
-      console.error("Error updating settings:", error);
+      debugConsole.error("Error updating settings:", error);
       toast({
         title: "Fehler",
         description: "Ein unerwarteter Fehler ist aufgetreten.",
