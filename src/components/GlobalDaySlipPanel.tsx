@@ -143,14 +143,14 @@ export function GlobalDaySlipPanel() {
       ds.editorRef.current.update(() => {
         const root = $getRoot();
         const existing = new Set(root.getChildren().map((n) => normalizeLineText(n.getTextContent())).filter((l) => l.length > 0));
-        const normalized = normalizeLineText(withTaskIcon);
+        const normalized = normalizeLineText(withIcon);
         if (!normalized || existing.has(normalized)) return;
         const paragraph = $createDaySlipLineNode(undefined, droppedTaskId);
-        paragraph.append($createTextNode(withTaskIcon));
+        paragraph.append($createTextNode(withIcon));
         root.append(paragraph);
       });
     } else {
-      ds.appendLinesToToday([withTaskIcon]);
+      ds.appendLinesToToday([withIcon]);
     }
     setOpen(true); ds.setResolveMode(false); setShowArchive(false); setShowSettings(false);
   }, [ds.appendLinesToToday]);
