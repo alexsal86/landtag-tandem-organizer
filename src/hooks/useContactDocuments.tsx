@@ -103,7 +103,7 @@ export const useContactDocuments = (contactId?: string, contactTags?: string[]) 
           .order('created_at', { ascending: false });
 
         if (taggedError) {
-          console.error('Error fetching tagged documents:', taggedError);
+          debugConsole.error('Error fetching tagged documents:', taggedError);
           throw taggedError;
         }
         
