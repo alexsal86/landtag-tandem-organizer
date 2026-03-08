@@ -120,11 +120,14 @@ export const useSpeechDictation = ({ editor, insertText, dispatchCommand }: UseS
           : formattedText
         : '';
 
-      const interimNode = removeInterimNode();
+      // takeInterimNode leaves the node in the tree so replace() works
+      const interimNode = takeInterimNode();
       if (interimNode instanceof TextNode) {
         if (textToInsert) {
           interimNode.replace($createTextNode(textToInsert));
           lastInsertedSegmentRef.current = textToInsert;
+        } else {
+          interimNode.remove();
         }
         return;
       }
@@ -136,7 +139,7 @@ export const useSpeechDictation = ({ editor, insertText, dispatchCommand }: UseS
     });
 
     setInterimTranscript('');
-  }, [editor, removeInterimNode]);
+  }, [editor, takeInterimNode]);
 
   // Setup effect
   useEffect(() => {
