@@ -320,7 +320,7 @@ export function useEventPlanningData() {
       const { data: profiles, error: profileError } = await supabase.from("profiles").select("user_id, display_name, avatar_url").in("user_id", userIds);
       if (profileError) { debugConsole.error("Error fetching profiles:", profileError); return; }
       setAllProfiles(profiles || []);
-    } catch (error) { debugConsole.error("Error in fetchAllProfiles:", error); }
+    } catch (error) { handleAppError(error, { context: 'fetchAllProfiles' }); }
   };
 
   const fetchAvailableContacts = async () => {
