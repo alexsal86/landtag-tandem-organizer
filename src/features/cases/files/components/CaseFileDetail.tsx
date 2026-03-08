@@ -89,7 +89,7 @@ export function CaseFileDetail({ caseFileId, onBack }: CaseFileDetailProps) {
         </Button>
         <Card>
           <CardContent className="py-12 text-center">
-            <p className="text-muted-foreground">FallAkte nicht gefunden</p>
+            <p className="text-muted-foreground">Fallakte nicht gefunden</p>
           </CardContent>
         </Card>
       </div>
@@ -181,9 +181,9 @@ export function CaseFileDetail({ caseFileId, onBack }: CaseFileDetailProps) {
       <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>FallAkte löschen?</AlertDialogTitle>
+            <AlertDialogTitle>Fallakte löschen?</AlertDialogTitle>
             <AlertDialogDescription>
-              Diese Aktion kann nicht rückgängig gemacht werden. Die FallAkte und
+              Diese Aktion kann nicht rückgängig gemacht werden. Die Fallakte und
               alle Verknüpfungen werden permanent gelöscht.
             </AlertDialogDescription>
           </AlertDialogHeader>

@@ -167,7 +167,7 @@ export function CaseFileSelector({
     },
     onSuccess: ({ caseFileId, timelineFailed }) => {
       toast({
-        title: timelineFailed ? "Zur FallAkte hinzugefügt (ohne Chronologie-Eintrag)" : "Zur FallAkte hinzugefügt",
+        title: timelineFailed ? "Zur Fallakte hinzugefügt (ohne Chronologie-Eintrag)" : "Zur Fallakte hinzugefügt",
         variant: timelineFailed ? "destructive" : "default",
       });
       queryClient.invalidateQueries({ queryKey: ['case-files'] });
@@ -176,7 +176,7 @@ export function CaseFileSelector({
     },
     onError: (error: any) => {
       if (error.message === 'already_linked') {
-        toast({ title: "Bereits mit dieser FallAkte verknüpft", variant: "destructive" });
+        toast({ title: "Bereits mit dieser Fallakte verknüpft", variant: "destructive" });
       } else {
         toast({ title: "Fehler beim Hinzufügen", variant: "destructive" });
       }
@@ -213,7 +213,7 @@ export function CaseFileSelector({
       setShowCreateNew(false);
     },
     onError: () => {
-      toast({ title: "Fehler beim Erstellen der FallAkte", variant: "destructive" });
+      toast({ title: "Fehler beim Erstellen der Fallakte", variant: "destructive" });
     },
   });
 
@@ -227,7 +227,7 @@ export function CaseFileSelector({
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <Briefcase className="h-5 w-5" />
-            Zur FallAkte hinzufügen
+            Zur Fallakte hinzufügen
           </DialogTitle>
         </DialogHeader>
 
@@ -235,7 +235,7 @@ export function CaseFileSelector({
           <div className="relative">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
             <Input
-              placeholder="FallAkte suchen..."
+              placeholder="Fallakte suchen..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               className="pl-9"
@@ -271,7 +271,7 @@ export function CaseFileSelector({
             ) : (
               <div className="text-center py-8 text-muted-foreground">
                 <Briefcase className="h-10 w-10 mx-auto mb-2 opacity-50" />
-                <p>Keine FallAkten gefunden</p>
+                <p>Keine Fallakten gefunden</p>
               </div>
             )}
           </ScrollArea>
@@ -280,7 +280,7 @@ export function CaseFileSelector({
             {showCreateNew ? (
               <div className="space-y-2">
                 <Input
-                  placeholder="Titel der neuen FallAkte"
+                  placeholder="Titel der neuen Fallakte"
                   value={newTitle}
                   onChange={(e) => setNewTitle(e.target.value)}
                   autoFocus
@@ -312,7 +312,7 @@ export function CaseFileSelector({
                 onClick={() => setShowCreateNew(true)}
               >
                 <FolderPlus className="h-4 w-4 mr-2" />
-                Neue FallAkte erstellen
+                Neue Fallakte erstellen
               </Button>
             )}
           </div>

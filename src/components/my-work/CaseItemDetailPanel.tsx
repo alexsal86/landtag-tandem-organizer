@@ -536,7 +536,7 @@ export function CaseItemDetailPanel({
 
       {itemCaseFileId && caseFilesById[itemCaseFileId] ? (
         <div className="mt-1 space-y-2">
-          <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Verknüpfte FallAkte</p>
+          <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Verknüpfte Fallakte</p>
           <div className="rounded-md border bg-background p-3 text-sm">
             <p className="font-semibold">{caseFilesById[itemCaseFileId].title}</p>
             <ul className="mt-2 space-y-1 text-xs text-muted-foreground">

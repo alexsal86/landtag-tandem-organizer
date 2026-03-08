@@ -33,7 +33,7 @@ export const useCaseFileTypes = () => {
       console.error('Error fetching case file types:', error);
       toast({
         title: "Fehler",
-        description: "FallAkten-Typen konnten nicht geladen werden.",
+        description: "Fallakten-Typen konnten nicht geladen werden.",
         variant: "destructive",
       });
     } finally {
@@ -57,7 +57,7 @@ export const useCaseFileTypes = () => {
 
       toast({
         title: "Erfolgreich",
-        description: "FallAkten-Typ wurde erstellt.",
+        description: "Fallakten-Typ wurde erstellt.",
       });
 
       await fetchCaseFileTypes();
@@ -66,7 +66,7 @@ export const useCaseFileTypes = () => {
       console.error('Error creating case file type:', error);
       toast({
         title: "Fehler",
-        description: "FallAkten-Typ konnte nicht erstellt werden.",
+        description: "Fallakten-Typ konnte nicht erstellt werden.",
         variant: "destructive",
       });
       return false;
@@ -92,7 +92,7 @@ export const useCaseFileTypes = () => {
 
       toast({
         title: "Erfolgreich",
-        description: "FallAkten-Typ wurde aktualisiert.",
+        description: "Fallakten-Typ wurde aktualisiert.",
       });
 
       await fetchCaseFileTypes();
@@ -101,7 +101,7 @@ export const useCaseFileTypes = () => {
       console.error('Error updating case file type:', error);
       toast({
         title: "Fehler",
-        description: "FallAkten-Typ konnte nicht aktualisiert werden.",
+        description: "Fallakten-Typ konnte nicht aktualisiert werden.",
         variant: "destructive",
       });
       return false;
@@ -119,7 +119,7 @@ export const useCaseFileTypes = () => {
 
       toast({
         title: "Erfolgreich",
-        description: "FallAkten-Typ wurde gelöscht.",
+        description: "Fallakten-Typ wurde gelöscht.",
       });
 
       await fetchCaseFileTypes();
@@ -128,7 +128,7 @@ export const useCaseFileTypes = () => {
       console.error('Error deleting case file type:', error);
       toast({
         title: "Fehler",
-        description: "FallAkten-Typ konnte nicht gelöscht werden.",
+        description: "Fallakten-Typ konnte nicht gelöscht werden.",
         variant: "destructive",
       });
       return false;
@@ -146,7 +146,7 @@ export const useCaseFileTypes = () => {
 
       toast({
         title: "Erfolgreich",
-        description: `FallAkten-Typ wurde ${!isActive ? 'aktiviert' : 'deaktiviert'}.`,
+        description: `Fallakten-Typ wurde ${!isActive ? 'aktiviert' : 'deaktiviert'}.`,
       });
 
       await fetchCaseFileTypes();

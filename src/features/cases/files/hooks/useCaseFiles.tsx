@@ -148,7 +148,7 @@ export const useCaseFiles = () => {
       debugConsole.error('Error fetching case files:', error);
       toast({
         title: "Fehler",
-        description: "FallAkten konnten nicht geladen werden.",
+        description: "Fallakten konnten nicht geladen werden.",
         variant: "destructive",
       });
     } finally {
@@ -191,7 +191,7 @@ export const useCaseFiles = () => {
 
       toast({
         title: "Erfolgreich",
-        description: "FallAkte wurde erstellt.",
+        description: "Fallakte wurde erstellt.",
       });
 
       await fetchCaseFiles();
@@ -204,8 +204,8 @@ export const useCaseFiles = () => {
       toast({
         title: "Fehler",
         description: participantsRollbackError
-          ? "FallAkte-Erstellung wurde zurückgerollt, da Teilnehmer nicht gespeichert werden konnten."
-          : "FallAkte konnte nicht erstellt werden.",
+          ? "Fallakte-Erstellung wurde zurückgerollt, da Teilnehmer nicht gespeichert werden konnten."
+          : "Fallakte konnte nicht erstellt werden.",
         variant: "destructive",
       });
       return null;
@@ -223,7 +223,7 @@ export const useCaseFiles = () => {
 
       toast({
         title: "Erfolgreich",
-        description: "FallAkte wurde aktualisiert.",
+        description: "Fallakte wurde aktualisiert.",
       });
 
       await fetchCaseFiles();
@@ -235,7 +235,7 @@ export const useCaseFiles = () => {
         title: "Fehler",
         description: errorMessage.includes("Abschlussinteraktion")
           ? "Zum Abschließen ist mindestens eine dokumentierte Abschlussinteraktion erforderlich."
-          : "FallAkte konnte nicht aktualisiert werden.",
+          : "Fallakte konnte nicht aktualisiert werden.",
         variant: "destructive",
       });
       return false;
@@ -253,7 +253,7 @@ export const useCaseFiles = () => {
 
       toast({
         title: "Erfolgreich",
-        description: "FallAkte wurde gelöscht.",
+        description: "Fallakte wurde gelöscht.",
       });
 
       await fetchCaseFiles();
@@ -262,7 +262,7 @@ export const useCaseFiles = () => {
       debugConsole.error('Error deleting case file:', error);
       toast({
         title: "Fehler",
-        description: "FallAkte konnte nicht gelöscht werden.",
+        description: "Fallakte konnte nicht gelöscht werden.",
         variant: "destructive",
       });
       return false;

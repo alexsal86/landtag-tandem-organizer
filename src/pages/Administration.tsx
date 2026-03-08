@@ -1081,7 +1081,7 @@ const [editingChild, setEditingChild] = useState<{ parentIndex: number; childInd
           return (
             <div className="space-y-6">
               <ConfigurableTypeSettings
-                title="FallAkten-Typen"
+                title="Fallakten-Typen"
                 tableName="case_file_types"
                 entityName="Typ"
                 hasIcon={true}

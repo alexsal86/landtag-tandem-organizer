@@ -2,7 +2,7 @@ import { type KeyboardEvent, useCallback, useEffect, useMemo, useState } from "r
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { format, type Locale } from "date-fns";
 import { de } from "date-fns/locale";
-import { ArrowDown, ArrowUp, Briefcase, CalendarDays, CheckCircle2, Circle, Clock, FileText, FolderOpen, Gavel, GripVertical, Inbox, Link2, Mail, MessageSquare, Phone, Plus, Search, Timer, UserRound, Users, Vote } from "lucide-react";
+import { ArrowDown, ArrowUp, Briefcase, CalendarDays, CheckCircle2, ChevronRight, Circle, Clock, FileText, FolderOpen, Gavel, GripVertical, Inbox, Link2, Mail, MessageSquare, Phone, Plus, Search, Timer, UserRound, Users, Vote } from "lucide-react";
 import { DragDropContext, Droppable, Draggable, type DropResult } from "@hello-pangea/dnd";
 import DOMPurify from "dompurify";
 import { RichTextDisplay } from "@/components/ui/RichTextDisplay";
@@ -16,6 +16,8 @@ import { DropdownMenu, DropdownMenuCheckboxItem, DropdownMenuContent, DropdownMe
 import { Input } from "@/components/ui/input";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { CaseFileDetail, CaseFileCreateDialog } from "@/features/cases/files/components";
+import { useCaseFileTypes } from "@/features/cases/files/hooks/useCaseFileTypes";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { CaseItemCreateDialog } from "@/components/my-work/CaseItemCreateDialog";
 import { StandaloneDecisionCreator } from "@/components/task-decisions/StandaloneDecisionCreator";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
@@ -229,6 +231,7 @@ export function MyWorkCasesWorkspace() {
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
   const { createCaseItem } = useCaseItems();
+  const { caseFileTypes } = useCaseFileTypes();
 
   const {
     caseItems,
@@ -433,6 +436,21 @@ export function MyWorkCasesWorkspace() {
         .some((v) => v!.toLowerCase().includes(query)),
     );
   }, [allCaseFiles, fileFilterQuery]);
+
+  const { recentCaseFiles, groupedCaseFiles } = useMemo(() => {
+    const sorted = [...filteredCaseFiles].sort((a, b) =>
+      new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime()
+    );
+    const recent = sorted.slice(0, 5);
+    const rest = sorted.slice(5);
+    const groups: Record<string, CaseFile[]> = {};
+    for (const cf of rest) {
+      const key = cf.case_type || "sonstige";
+      if (!groups[key]) groups[key] = [];
+      groups[key].push(cf);
+    }
+    return { recentCaseFiles: recent, groupedCaseFiles: groups };
+  }, [filteredCaseFiles]);
 
   const linkedItemsCountByFile = useMemo(() => {
     const counts: Record<string, number> = {};
@@ -878,7 +896,7 @@ export function MyWorkCasesWorkspace() {
                       </div>
                     </div>
                   </div>
-                  <p className="text-xs text-muted-foreground mt-1">Vorgänge per Drag & Drop auf eine FallAkte ziehen zum Verknüpfen</p>
+                  <p className="text-xs text-muted-foreground mt-1">Vorgänge per Drag & Drop auf eine Fallakte ziehen zum Verknüpfen</p>
                 </CardHeader>
                 <CardContent className="space-y-3 pt-5">
                   <Droppable droppableId="case-items-list" isDropDisabled>
@@ -1163,13 +1181,13 @@ export function MyWorkCasesWorkspace() {
                 </CardContent>
               </Card>
 
-              {/* RIGHT: FallAkten */}
+              {/* RIGHT: Fallakten */}
               <Card>
                 <CardHeader className="pb-2">
                   <div className="flex items-center justify-between">
                     <CardTitle className="flex items-center gap-2 text-base">
                       <FolderOpen className="h-4 w-4" />
-                      FallAkten
+                      Fallakten
                     </CardTitle>
                     <div className="flex items-center gap-2">
                       <Button size="sm" onClick={() => handleCreateCaseFile()}>
@@ -1190,63 +1208,125 @@ export function MyWorkCasesWorkspace() {
                 </CardHeader>
                 <CardContent className="space-y-3">
                   <div className="space-y-1.5 pr-2">
-                    <div className="space-y-1.5">
-                      {filteredCaseFiles.length === 0 ? (
-                        <div className="rounded-md border border-dashed p-4 text-sm text-muted-foreground space-y-3">
-                          <p>Keine FallAkten gefunden.</p>
-                          <Button size="sm" onClick={() => handleCreateCaseFile()}>FallAkte erstellen</Button>
-                        </div>
-                      ) : (
-                        filteredCaseFiles.map((cf) => {
-                          const linkedCount = linkedItemsCountByFile[cf.id] || 0;
+                    {filteredCaseFiles.length === 0 ? (
+                      <div className="rounded-md border border-dashed p-4 text-sm text-muted-foreground space-y-3">
+                        <p>Keine Fallakten gefunden.</p>
+                        <Button size="sm" onClick={() => handleCreateCaseFile()}>Fallakte erstellen</Button>
+                      </div>
+                    ) : (
+                      <>
+                        {/* Zuletzt bearbeitet */}
+                        {recentCaseFiles.length > 0 && (
+                          <div className="space-y-1.5">
+                            <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide px-1">Zuletzt bearbeitet</p>
+                            {recentCaseFiles.map((cf) => {
+                              const linkedCount = linkedItemsCountByFile[cf.id] || 0;
+                              return (
+                                <Droppable key={cf.id} droppableId={`casefile-${cf.id}`}>
+                                  {(dropProvided, dropSnapshot) => (
+                                    <div ref={dropProvided.innerRef} {...dropProvided.droppableProps}>
+                                      <button
+                                        type="button"
+                                        className={cn(
+                                          "w-full border-b px-2 py-2 text-left transition-colors hover:bg-muted/40 rounded-md",
+                                          dropSnapshot.isDraggingOver && "ring-2 ring-blue-500 bg-blue-50 dark:bg-blue-950/20",
+                                        )}
+                                        onClick={() => handleSelectCaseFile(cf)}
+                                      >
+                                        <div className="flex items-center gap-2">
+                                          <p className="text-sm font-medium line-clamp-1 flex-1">{cf.title}</p>
+                                        </div>
+                                        <div className="mt-1.5 flex items-center justify-between text-xs text-muted-foreground">
+                                          {cf.reference_number && <span>{cf.reference_number}</span>}
+                                          {linkedCount > 0 && (
+                                            <span>
+                                              <FileText className="inline h-3 w-3 mr-0.5" />
+                                              {linkedCount} {linkedCount === 1 ? "Vorgang" : "Vorgänge"}
+                                            </span>
+                                          )}
+                                        </div>
+                                        {dropSnapshot.isDraggingOver && (
+                                          <p className="mt-1 text-xs text-blue-600 font-medium">Vorgang hier ablegen zum Verknüpfen</p>
+                                        )}
+                                        {cf.current_status_note && !dropSnapshot.isDraggingOver && (
+                                          <div className="mt-1 [&_p]:line-clamp-1">
+                                            <RichTextDisplay content={cf.current_status_note} className="text-xs" />
+                                          </div>
+                                        )}
+                                      </button>
+                                      {dropProvided.placeholder}
+                                    </div>
+                                  )}
+                                </Droppable>
+                              );
+                            })}
+                          </div>
+                        )}
+
+                        {/* Gruppiert nach Typ */}
+                        {Object.entries(groupedCaseFiles).map(([typeKey, files]) => {
+                          const typeConfig = caseFileTypes.find(t => t.name === typeKey);
+                          const label = typeConfig?.label || typeKey;
                           return (
-                            <Droppable key={cf.id} droppableId={`casefile-${cf.id}`}>
-                              {(dropProvided, dropSnapshot) => (
-                                <div
-                                  ref={dropProvided.innerRef}
-                                  {...dropProvided.droppableProps}
-                                >
-                                  <button
-                                    type="button"
-                                    className={cn(
-                                      "w-full border-b px-2 py-2 text-left transition-colors hover:bg-muted/40 rounded-md",
-                                      dropSnapshot.isDraggingOver && "ring-2 ring-blue-500 bg-blue-50 dark:bg-blue-950/20",
-                                    )}
-                                    onClick={() => handleSelectCaseFile(cf)}
-                                  >
-                                    <div className="flex items-center gap-2">
-                                      <p className="text-sm font-medium line-clamp-1 flex-1">{cf.title}</p>
-                                      
-                                    </div>
-                                    <div className="mt-1.5 flex items-center justify-between text-xs text-muted-foreground">
-                                      {cf.reference_number && <span>{cf.reference_number}</span>}
-                                      {linkedCount > 0 && (
-                                        <span>
-                                          <FileText className="inline h-3 w-3 mr-0.5" />
-                                          {linkedCount} {linkedCount === 1 ? "Vorgang" : "Vorgänge"}
-                                        </span>
+                            <Collapsible key={typeKey}>
+                              <CollapsibleTrigger className="flex items-center gap-1.5 w-full px-1 py-1.5 text-xs font-semibold text-muted-foreground uppercase tracking-wide hover:text-foreground transition-colors group">
+                                <ChevronRight className="h-3.5 w-3.5 transition-transform group-data-[state=open]:rotate-90" />
+                                {typeConfig?.color && (
+                                  <span className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: typeConfig.color }} />
+                                )}
+                                {label} ({files.length})
+                              </CollapsibleTrigger>
+                              <CollapsibleContent className="space-y-1.5 mt-1">
+                                {files.map((cf) => {
+                                  const linkedCount = linkedItemsCountByFile[cf.id] || 0;
+                                  return (
+                                    <Droppable key={cf.id} droppableId={`casefile-${cf.id}`}>
+                                      {(dropProvided, dropSnapshot) => (
+                                        <div ref={dropProvided.innerRef} {...dropProvided.droppableProps}>
+                                          <button
+                                            type="button"
+                                            className={cn(
+                                              "w-full border-b px-2 py-2 text-left transition-colors hover:bg-muted/40 rounded-md",
+                                              dropSnapshot.isDraggingOver && "ring-2 ring-blue-500 bg-blue-50 dark:bg-blue-950/20",
+                                            )}
+                                            onClick={() => handleSelectCaseFile(cf)}
+                                          >
+                                            <div className="flex items-center gap-2">
+                                              <p className="text-sm font-medium line-clamp-1 flex-1">{cf.title}</p>
+                                            </div>
+                                            <div className="mt-1.5 flex items-center justify-between text-xs text-muted-foreground">
+                                              {cf.reference_number && <span>{cf.reference_number}</span>}
+                                              {linkedCount > 0 && (
+                                                <span>
+                                                  <FileText className="inline h-3 w-3 mr-0.5" />
+                                                  {linkedCount} {linkedCount === 1 ? "Vorgang" : "Vorgänge"}
+                                                </span>
+                                              )}
+                                            </div>
+                                            {dropSnapshot.isDraggingOver && (
+                                              <p className="mt-1 text-xs text-blue-600 font-medium">Vorgang hier ablegen zum Verknüpfen</p>
+                                            )}
+                                            {cf.current_status_note && !dropSnapshot.isDraggingOver && (
+                                              <div className="mt-1 [&_p]:line-clamp-1">
+                                                <RichTextDisplay content={cf.current_status_note} className="text-xs" />
+                                              </div>
+                                            )}
+                                          </button>
+                                          {dropProvided.placeholder}
+                                        </div>
                                       )}
-                                    </div>
-                                    {dropSnapshot.isDraggingOver && (
-                                      <p className="mt-1 text-xs text-blue-600 font-medium">Vorgang hier ablegen zum Verknüpfen</p>
-                                    )}
-                                    {cf.current_status_note && !dropSnapshot.isDraggingOver && (
-                                      <div className="mt-1 [&_p]:line-clamp-1">
-                                        <RichTextDisplay content={cf.current_status_note} className="text-xs" />
-                                      </div>
-                                    )}
-                                  </button>
-                                  {dropProvided.placeholder}
-                                </div>
-                              )}
-                            </Droppable>
+                                    </Droppable>
+                                  );
+                                })}
+                              </CollapsibleContent>
+                            </Collapsible>
                           );
-                        })
-                      )}
-                    </div>
+                        })}
+                      </>
+                    )}
                     {hasMoreFiles && (
                       <Button type="button" variant="outline" size="sm" disabled={loadingMoreFiles} onClick={() => runAsync(loadMoreFiles)}>
-                        {loadingMoreFiles ? "Lade weitere FallAkten…" : "Weitere FallAkten laden"}
+                        {loadingMoreFiles ? "Lade weitere Fallakten…" : "Weitere Fallakten laden"}
                       </Button>
                     )}
                   </div>

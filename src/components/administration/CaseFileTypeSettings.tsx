@@ -65,7 +65,7 @@ export function CaseFileTypeSettings() {
     return (
       <Card>
         <CardHeader>
-          <CardTitle>FallAkten-Typen</CardTitle>
+          <CardTitle>Fallakten-Typen</CardTitle>
         </CardHeader>
         <CardContent>
           <div className="space-y-2">
@@ -82,7 +82,7 @@ export function CaseFileTypeSettings() {
     <Card>
       <CardHeader>
         <CardTitle className="flex items-center justify-between">
-          FallAkten-Typen
+          Fallakten-Typen
           <Button
             onClick={() => setNewType({ label: '', color: '#3b82f6', icon: 'Folder' })}
             size="sm"

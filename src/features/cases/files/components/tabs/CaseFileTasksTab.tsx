@@ -163,7 +163,7 @@ export function CaseFileTasksTab({ tasks, onAdd, onRemove }: CaseFileTasksTabPro
           <DialogHeader>
             <DialogTitle>Aufgabe verknüpfen</DialogTitle>
             <DialogDescription>
-              Wählen Sie eine Aufgabe aus, die mit dieser FallAkte verknüpft werden soll.
+              Wählen Sie eine Aufgabe aus, die mit dieser Fallakte verknüpft werden soll.
             </DialogDescription>
           </DialogHeader>
           <div className="grid gap-4 py-4">

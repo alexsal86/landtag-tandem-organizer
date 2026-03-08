@@ -29,6 +29,7 @@ export type CaseFile = {
   reference_number: string | null;
   current_status_note: string | null;
   case_type: string | null;
+  updated_at: string;
 };
 
 export type TeamUser = {
@@ -119,7 +120,7 @@ export const useCaseWorkspaceData = ({ tenantId, userId }: { tenantId?: string; 
     if (!tenantId) return [] as CaseFile[];
     const { data, error } = await supabase
       .from("case_files")
-      .select("id, title, status, reference_number, current_status_note, case_type")
+      .select("id, title, status, reference_number, current_status_note, case_type, updated_at")
       .eq("tenant_id", tenantId)
       .order("updated_at", { ascending: false })
       .range(offset, offset + PAGE_SIZE - 1);

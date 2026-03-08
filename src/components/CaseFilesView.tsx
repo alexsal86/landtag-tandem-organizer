@@ -211,7 +211,7 @@ classifyCaseScale({ explicitScale: cf.case_scale, caseType: cf.case_type }) === 
         <div>
           <h1 className="text-3xl font-bold flex items-center gap-2">
             <Briefcase className="h-8 w-8" />
-            FallAkten
+            Fallakten
           </h1>
           <p className="text-muted-foreground mt-1">
             Zentrale Verwaltung von Sachverhalten mit verknüpften Dokumenten, Kontakten und Aufgaben
@@ -219,7 +219,7 @@ classifyCaseScale({ explicitScale: cf.case_scale, caseType: cf.case_type }) === 
         </div>
         <Button onClick={() => setCreateDialogOpen(true)}>
           <Plus className="mr-2 h-4 w-4" />
-          Neue FallAkte
+          Neue Fallakte
         </Button>
       </div>
 
@@ -378,17 +378,17 @@ classifyCaseScale({ explicitScale: cf.case_scale, caseType: cf.case_type }) === 
         <Card>
           <CardContent className="flex flex-col items-center justify-center py-12">
             <Briefcase className="h-12 w-12 text-muted-foreground mb-4" />
-            <h3 className="text-lg font-semibold">Keine FallAkten gefunden</h3>
+            <h3 className="text-lg font-semibold">Keine Fallakten gefunden</h3>
             <p className="text-muted-foreground text-center mt-2">
               {searchTerm || statusFilter !== "all" || typeFilter !== "all"
                 || scopeFilter !== "all"
                 ? "Versuchen Sie andere Filterkriterien."
-                : "Erstellen Sie Ihre erste FallAkte, um Sachverhalte zentral zu verwalten."}
+                : "Erstellen Sie Ihre erste Fallakte, um Sachverhalte zentral zu verwalten."}
             </p>
             {!searchTerm && statusFilter === "all" && typeFilter === "all" && scopeFilter === "all" && (
               <Button className="mt-4" onClick={() => setCreateDialogOpen(true)}>
                 <Plus className="mr-2 h-4 w-4" />
-                Erste FallAkte erstellen
+                Erste Fallakte erstellen
               </Button>
             )}
           </CardContent>

@@ -1,57 +1,61 @@
 
+Ziel: Rückmeldungs-Feed stabil sichtbar machen und gleichzeitig die aktuellen Build-Blocker entfernen, damit die Fixes überhaupt wieder ausgeliefert werden.
 
-## Zwei Aufgaben
+1) Diagnose (aus Code + DB)
+- Do I know what the issue is? Ja.
+- Es gibt aktuell 2 Ebenen von Problemen:
+  1. Build ist kaputt (TypeScript):
+     - `src/components/ui/calendar.tsx`: doppelte Keys im `classNames`-Objekt (`caption_label`, `dropdowns`, `dropdown`) → TS1117.
+     - `src/components/task-decisions/DecisionOverview.tsx`: `ResponseOption`-Typ ohne `requires_comment` → TS2339.
+  2. Feed-Logik ist instabil/zu restriktiv:
+     - `src/components/my-work/MyWorkFeedbackFeedTab.tsx` übergibt `completedTo: new Date().toISOString()` bei jedem Render.
+       Dadurch ändert sich der React-Query-Key permanent (`useTeamFeedbackFeed`), was zu dauerndem Neu-Laden bzw. instabilem Feed führt.
+     - `useTeamFeedbackFeed` filtert hart auf `.not('notes','is',null)`. Damit verschwinden abgeschlossene Rückmeldungen ohne Notiz (z. B. nur Anhang/Aufgabe), obwohl sie fachlich oft relevant sind.
+- DB-Check:
+  - `appointment_feedback` hat Daten (u. a. completed in den letzten 7 Tagen vorhanden).
+  - RLS auf `appointment_feedback` erlaubt tenant-basiertes Lesen (`tenant_id = ANY(get_user_tenant_ids(auth.uid()))`), also kein offensichtlicher RLS-Blocker für Team-Feed im Tenant.
 
-### 1. Umbenennung: "FallAkte" → "Fallakte" (durchgehend)
+2) Umsetzungsplan (in Reihenfolge)
+A. Build sofort reparieren (Blocker)
+- `calendar.tsx`: doppelte Objekt-Keys entfernen, nur eine konsistente Definition für `caption_label`, `dropdowns`, `dropdown` behalten.
+- `DecisionOverview.tsx`: lokalen `ResponseOption`-Typ um `requires_comment?: boolean` ergänzen (oder auf den zentralen Typ aus `decisionTemplates` umstellen).
 
-Alle sichtbaren UI-Strings in **24 Dateien** ändern, in denen "FallAkte" oder "FallAkten" vorkommt. Beispiele:
+B. Feed-Query stabilisieren
+- `MyWorkFeedbackFeedTab.tsx`:
+  - `completedTo` nicht mehr bei jedem Render neu erzeugen.
+  - Entweder:
+    - `completedTo` ganz weglassen (nur `completedFrom` + order/limit), oder
+    - `completedTo` per `useMemo/useState` nur bei Filterwechsel neu setzen.
+- `useTeamFeedbackFeed.ts`:
+  - Query-Key nur mit stabilen Filterwerten.
+  - Zeitfilter robust halten (kein per-render Drift).
 
-- "FallAkten" → "Fallakten"
-- "FallAkte" → "Fallakte"
-- "FallAkten-Typen" → "Fallakten-Typen"
+C. Sichtbarkeit der Rückmeldungen fachlich korrigieren
+- `useTeamFeedbackFeed.ts`:
+  - Notiz-Pflicht entfernen oder erweitern:
+    - statt nur `notes is not null` auch Einträge mit `has_documents = true` oder `has_tasks = true` zulassen.
+  - Ergebnis: auch „abgeschlossen ohne Notiz, aber mit Anhang/Aufgabe“ erscheint im Feed.
 
-Betrifft unter anderem:
-- `navigationConfig.ts`, `Navigation.tsx`, `AppHeader.tsx`, `GlobalSearchCommand.tsx`
-- `AdminSidebar.tsx`, `TopicSettings.tsx`, `CaseFileTypeSettings.tsx`, `Administration.tsx`
-- `MyWorkCasesWorkspace.tsx`, `CaseItemDetailPanel.tsx`
-- `CaseFileCreateDialog.tsx`, `CaseFileEditDialog.tsx`, `CaseFileDetail.tsx`
-- `CaseFileNextSteps.tsx`, `CaseFileSelector.tsx`, `CaseFileCard.tsx`
-- `useCaseFiles.tsx`, `useCaseFileTypes.tsx`
-- `MyWorkCaseFilesTab.tsx`
-- und weitere
+D. Fehler nicht mehr als „keine Daten“ maskieren
+- `MyWorkFeedbackFeedTab.tsx`:
+  - `isError` + `error` aus Query auslesen.
+  - Bei Fehler einen klaren Error-State anzeigen (statt „Keine passenden Rückmeldungen gefunden“), inkl. Retry-Button (`refetch`).
 
-Nur UI-Strings (Labels, Toasts, Descriptions) — keine Code-Bezeichner (Variablennamen, Interfaces, etc.).
+E. Quercheck auf Seiteneffekte
+- `useMyWorkNewCounts.tsx` zählt derzeit ebenfalls nur `completed + notes not null`; ggf. auf dieselbe fachliche Logik angleichen, damit Badge und Feed konsistent sind.
 
-### 2. Rechte Spalte "Fallakten" in Vorgänge: Letzte 5 + Typ-Gruppierung
+3) Validierung nach Umsetzung
+- Build grün ohne TS-Fehler.
+- Im Tab „Meine Arbeit > Rückmeldungen“:
+  - Keine Endlos-Ladeanzeige.
+  - Team-Einträge der letzten 7/14 Tage sichtbar.
+  - Filter (Sicht/Zeitraum/Anhänge/Aufgaben) funktionieren.
+  - Bei absichtlichem Query-Fehler erscheint Error-State statt Empty-State.
+- Schneller Datenabgleich:
+  - Feed-Anzahl grob konsistent mit SQL-Count für completed im Zeitraum (unter Berücksichtigung der Filter).
 
-In `MyWorkCasesWorkspace.tsx` die Darstellung der `filteredCaseFiles` umstrukturieren:
-
-**Logik (neues `useMemo`):**
-1. Die gefilterten Akten nach `updated_at` sortieren
-2. Die ersten 5 als "Zuletzt bearbeitet"-Gruppe abtrennen
-3. Die restlichen nach `case_type` gruppieren (Map von Typ-Name → Akten-Array)
-
-**Darstellung:**
-1. **"Zuletzt bearbeitet"** — immer sichtbar, zeigt die 5 zuletzt geänderten Akten
-2. **Pro Typ eine Collapsible-Gruppe** — Header zeigt Typ-Label + Anzahl, per Klick auf-/zuklappbar (standardmäßig zugeklappt). Verwendet die bestehende `Collapsible`-Komponente.
-
-```text
-┌─ Fallakten ─────────── [+ Neu] [🔍 Filtern] ┐
-│                                               │
-│  Zuletzt bearbeitet                           │
-│  ├─ Akte A                                    │
-│  ├─ Akte B                                    │
-│  └─ ...                                       │
-│                                               │
-│  ▸ Beschwerde (3)                             │
-│  ▸ Anfrage (7)                                │
-│  ▸ Projekt (2)                                │
-└───────────────────────────────────────────────┘
-```
-
-Die `caseFileTypes` sind bereits über den Hook `useCaseFileTypes` verfügbar und liefern `label` und `color` pro Typ. Die CaseFile-Objekte haben `updated_at` und `case_type`.
-
-**Dateien:**
-- `MyWorkCasesWorkspace.tsx` — Gruppierungslogik + Collapsible-Rendering
-- Alle 24 Dateien — String-Umbenennung
-
+4) Warum das den aktuellen Zustand löst
+- Solange Build fehlschlägt, werden vorherige Fixes teils nicht wirksam.
+- Selbst bei laufendem Build kann der Feed durch den „beweglichen“ `completedTo`-Key instabil bleiben.
+- Zusätzlich blendet der harte Notiz-Filter valide Rückmeldungen aus.
+- Mit den vier Korrekturen (Build, stabiler Query-Key, fachlich korrekter Filter, echter Error-State) wird die Ursachekette vollständig geschlossen.

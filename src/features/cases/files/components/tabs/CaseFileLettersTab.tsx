@@ -157,7 +157,7 @@ export function CaseFileLettersTab({ letters, onAdd, onRemove }: CaseFileLetters
           <DialogHeader>
             <DialogTitle>Brief verknüpfen</DialogTitle>
             <DialogDescription>
-              Wählen Sie einen Brief aus, der mit dieser FallAkte verknüpft werden soll.
+              Wählen Sie einen Brief aus, der mit dieser Fallakte verknüpft werden soll.
             </DialogDescription>
           </DialogHeader>
           <div className="grid gap-4 py-4">

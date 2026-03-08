@@ -158,9 +158,9 @@ export function CaseFileEditDialog({ caseFile, open, onOpenChange }: CaseFileEdi
       <DialogContent className="sm:max-w-[500px] max-h-[90vh] overflow-y-auto">
         <form onSubmit={handleSubmit}>
           <DialogHeader>
-            <DialogTitle>FallAkte bearbeiten</DialogTitle>
+            <DialogTitle>Fallakte bearbeiten</DialogTitle>
             <DialogDescription>
-              Bearbeiten Sie die Eigenschaften der FallAkte.
+              Bearbeiten Sie die Eigenschaften der Fallakte.
             </DialogDescription>
           </DialogHeader>
 

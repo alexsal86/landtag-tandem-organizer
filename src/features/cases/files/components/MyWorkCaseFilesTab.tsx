@@ -120,7 +120,7 @@ export function MyWorkCaseFilesTab() {
         {caseFiles.length === 0 ? (
           <div className="text-center py-8 text-muted-foreground">
             <Briefcase className="h-10 w-10 mx-auto mb-2 opacity-50" />
-            <p>Keine aktiven FallAkten</p>
+            <p>Keine aktiven Fallakten</p>
           </div>
         ) : (
           caseFiles.map((caseFile) => (
