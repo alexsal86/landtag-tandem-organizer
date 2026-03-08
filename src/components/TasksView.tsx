@@ -562,7 +562,7 @@ export function TasksView() {
                 assigned_to: [subtask.assigned_to] // Convert single value to array for consistency
               });
               
-              console.log('✅ Added planning subtask:', subtask.id);
+              
             } catch (resolveError) {
               console.error('❌ Error resolving names for planning subtask:', subtask.id, resolveError);
               // Add without resolved names as fallback
