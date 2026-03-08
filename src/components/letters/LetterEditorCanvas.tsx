@@ -1,4 +1,5 @@
 import React, { useEffect, useState, useRef, useCallback } from 'react';
+import { sanitizeRichHtml } from '@/utils/htmlSanitizer';
 import { ZoomIn, ZoomOut, RotateCcw, Layout, Pencil } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
