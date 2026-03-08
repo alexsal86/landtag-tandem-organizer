@@ -33,6 +33,8 @@ interface NoteCardProps {
   isExpanded: boolean;
   isDetailsExpanded: boolean;
   colorModeUpdating: string | null;
+  className?: string;
+  highlightRef?: (el: HTMLElement | null) => void;
   onNoteClick?: (note: QuickNote) => void;
   onToggleExpand: (noteId: string, e: React.MouseEvent) => void;
   onToggleDetailsExpand: (noteId: string, e: React.MouseEvent) => void;
