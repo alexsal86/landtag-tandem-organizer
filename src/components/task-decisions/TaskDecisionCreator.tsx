@@ -239,7 +239,7 @@ export const TaskDecisionCreator = ({
       // Get current user first and validate
       const { data: userData, error: userError } = await supabase.auth.getUser();
       if (userError) {
-        console.error('Auth error:', userError);
+        debugConsole.error('Auth error:', userError);
         throw new Error(`Authentication error: ${userError.message}`);
       }
       
