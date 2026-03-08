@@ -1110,13 +1110,12 @@ export function MyWorkCasesWorkspace() {
                                               Entscheidung stellen
                                             </ContextMenuItem>
                                             <ContextMenuSeparator />
-                                            <ContextMenuItem onClick={() => runAsync(async () => {
-                                              const { error } = await supabase.from("case_items").update({ pending_for_jour_fixe: true }).eq("id", item.id);
-                                              if (error) { toast.error("Fehler beim Vormerken."); return; }
-                                              toast.success("Vorgang für Jour Fixe vorgemerkt.");
-                                            })}>
+                                            <ContextMenuItem onClick={() => {
+                                              setMeetingSelectorItemId(item.id);
+                                              setIsMeetingSelectorOpen(true);
+                                            }}>
                                               <CalendarDays className="mr-2 h-3 w-3" />
-                                              Für Jour Fixe vormerken
+                                              Zum Jour Fixe hinzufügen
                                             </ContextMenuItem>
                                           </ContextMenuContent>
                                         </ContextMenu>
