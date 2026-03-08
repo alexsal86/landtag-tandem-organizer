@@ -371,7 +371,7 @@ export function QuickNotesList({
           .eq("user_id", user.id);
 
         if (cleanupError) {
-          console.error("Error cleaning up inactive meeting links:", cleanupError);
+          debugConsole.error("Error cleaning up inactive meeting links:", cleanupError);
         }
       }
 
