@@ -9,6 +9,7 @@ import { TaskDecisionDetails } from "./TaskDecisionDetails";
 import { UserBadge } from "@/components/ui/user-badge";
 import { Check, X, MessageCircle, Send } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
+import { debugConsole } from "@/utils/debugConsole";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
 
