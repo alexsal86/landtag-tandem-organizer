@@ -88,7 +88,7 @@ export function useItemDetails({
   const addItemCommentForItem = async (itemId: string, comment: string) => {
     if (!comment.trim() || !user) return;
     try {
-      const { error } = await supabase.from('planning_item_comments').insert({ planning_item_id: itemId, user_id: user.id, content: comment.trim() });
+      const { error } = await supabase.from('planning_item_comments').insert([{ planning_item_id: itemId, user_id: user.id, content: comment.trim() }]);
       if (error) throw error;
       loadItemComments(itemId);
       loadAllItemCounts();
