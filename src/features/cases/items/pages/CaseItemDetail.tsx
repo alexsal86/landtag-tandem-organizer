@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate, useParams, useSearchParams } from "react-router-dom";
 import { ThemeProvider } from "next-themes";
-import { ArrowLeft, Briefcase, CalendarClock, CheckSquare, Clock3, Loader2, MessageSquareText } from "lucide-react";
+import { Archive, ArrowLeft, Briefcase, CalendarClock, CheckSquare, Clock3, Loader2, MessageSquareText, RotateCcw } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { useTenant } from "@/hooks/useTenant";
