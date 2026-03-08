@@ -50,7 +50,7 @@ export function AppointmentPreparationDataTab({
 }: AppointmentPreparationDataTabProps) {
   const extendedPreparation = preparation as ExtendedAppointmentPreparation;
   
-  const [editData, setEditData] = useState({
+  const [editData, setEditData] = useState<Record<string, string>>({
     ...preparation.preparation_data,
     contact_name: (extendedPreparation.contact_name || ""),
     contact_info: (extendedPreparation.contact_info || ""),
