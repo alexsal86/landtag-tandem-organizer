@@ -53,7 +53,7 @@ export function useUserPreference<T>(key: string, defaultValue: T) {
         if (cancelled) return;
 
         if (error) {
-          console.error("useUserPreference: load error", error);
+          debugConsole.error("useUserPreference: load error", error);
           return;
         }
 
