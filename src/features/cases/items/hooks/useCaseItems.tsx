@@ -4,6 +4,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { useTenant } from "@/hooks/useTenant";
 import { useToast } from "@/components/ui/use-toast";
 import type { CaseItemIntakePayload } from "@/features/cases/items/types";
+import { debugConsole } from "@/utils/debugConsole";
 
 export interface CaseItem {
   id: string;
