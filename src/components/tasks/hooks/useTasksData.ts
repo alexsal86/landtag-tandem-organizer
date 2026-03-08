@@ -118,7 +118,7 @@ export function useTasksData() {
       setLoading(false);
       await loadTaskComments();
     } catch (error) {
-      console.error('Error loading tasks:', error);
+      debugConsole.error('Error loading tasks:', error);
       setLoading(false);
     }
   };
