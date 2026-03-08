@@ -59,6 +59,7 @@ import { LineHeightPlugin } from './plugins/LineHeightPlugin';
 import { ImageUploadDialog } from './plugins/ImagePlugin';
 import { Input } from '@/components/ui/input';
 import { useSpeechDictation } from '@/hooks/useSpeechDictation';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { SpeechCommandsDialog } from '@/components/SpeechCommandsDialog';
 import { SpeechSessionStats } from '@/components/SpeechSessionStats';
 
