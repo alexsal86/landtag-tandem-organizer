@@ -16,6 +16,8 @@ import {
   toParagraphHtml, toRuleHtml, weekdayKey, normalizeDayTemplates,
 } from "../dayslipTypes";
 
+const DB_SAVE_DEBOUNCE_MS = 1000;
+
 export function useDaySlipStore(userId?: string, tenantId?: string) {
   const [store, setStore] = useState<DaySlipStore>(() => {
     try { const raw = localStorage.getItem(STORAGE_KEY); return raw ? JSON.parse(raw) : {}; } catch { return {}; }
@@ -38,20 +40,167 @@ export function useDaySlipStore(userId?: string, tenantId?: string) {
   const editorRef = useRef<LexicalEditor | null>(null);
   const [editorReadyVersion, setEditorReadyVersion] = useState(0);
   const saveTimeoutRef = useRef<ReturnType<typeof setTimeout>>(null);
+  const dbSaveTimeoutRef = useRef<ReturnType<typeof setTimeout>>(null);
+  const dirtyDaysRef = useRef<Set<string>>(new Set());
+  const dbLoadedRef = useRef(false);
   const [weekPlanInjected, setWeekPlanInjected] = useState(false);
 
   const todayKey = toDayKey(new Date());
   const todayData = store[todayKey] ?? { html: "", plainText: "", nodes: "", struckLineIds: [], lineTimestamps: {} };
 
-  // Persist store
+  // ─── DB Load & Migration ──────────────────────────────────────────────
+  useEffect(() => {
+    if (!userId || dbLoadedRef.current) return;
+    let cancelled = false;
+
+    const loadFromDb = async () => {
+      try {
+        const { data, error } = await supabase
+          .from("day_slips")
+          .select("day_key, data")
+          .eq("user_id", userId);
+
+        if (cancelled || error) return;
+
+        if (data && data.length > 0) {
+          // DB has data → merge into state (DB wins for existing keys)
+          const dbStore: DaySlipStore = {};
+          data.forEach((row: any) => { dbStore[row.day_key] = row.data as DaySlipDayData; });
+          setStore(prev => {
+            const merged = { ...prev, ...dbStore };
+            try { localStorage.setItem(STORAGE_KEY, JSON.stringify(merged)); } catch {}
+            return merged;
+          });
+        } else {
+          // No DB data → migrate localStorage to DB
+          const localRaw = localStorage.getItem(STORAGE_KEY);
+          if (localRaw) {
+            try {
+              const localStore: DaySlipStore = JSON.parse(localRaw);
+              const entries = Object.entries(localStore);
+              if (entries.length > 0) {
+                // Batch insert (max 100 at a time)
+                for (let i = 0; i < entries.length; i += 100) {
+                  const batch = entries.slice(i, i + 100).map(([dayKey, dayData]) => ({
+                    user_id: userId,
+                    tenant_id: tenantId || null,
+                    day_key: dayKey,
+                    data: dayData as any,
+                    updated_at: new Date().toISOString(),
+                  }));
+                  await supabase.from("day_slips").upsert(batch as any, { onConflict: "user_id,day_key" });
+                }
+              }
+            } catch {}
+          }
+        }
+
+        // Also migrate recurring items and templates
+        await migratePreference(userId, tenantId, "dayslip_recurring", RECURRING_STORAGE_KEY);
+        await migratePreference(userId, tenantId, "dayslip_day_templates", DAY_TEMPLATE_STORAGE_KEY);
+        await migratePreference(userId, tenantId, "dayslip_resolve_export", RESOLVE_EXPORT_KEY);
+
+        // Load recurring/templates from DB if available
+        const prefResult = await supabase
+          .from("user_preferences")
+          .select("key, value")
+          .eq("user_id", userId)
+          .in("key", ["dayslip_recurring", "dayslip_day_templates"]);
+
+        if (!cancelled && prefResult.data) {
+          prefResult.data.forEach((row: any) => {
+            if (row.key === "dayslip_recurring" && Array.isArray(row.value)) {
+              setRecurringItems(row.value as RecurringTemplate[]);
+              try { localStorage.setItem(RECURRING_STORAGE_KEY, JSON.stringify(row.value)); } catch {}
+            }
+            if (row.key === "dayslip_day_templates") {
+              const normalized = normalizeDayTemplates(row.value);
+              setDayTemplates(normalized);
+              try { localStorage.setItem(DAY_TEMPLATE_STORAGE_KEY, JSON.stringify(normalized)); } catch {}
+            }
+          });
+        }
+
+        dbLoadedRef.current = true;
+      } catch (e) {
+        console.error("useDaySlipStore: DB load error", e);
+      }
+    };
+
+    loadFromDb();
+    return () => { cancelled = true; };
+  }, [userId, tenantId]);
+
+  // ─── Persist store (localStorage + DB) ─────────────────────────────────
   useEffect(() => {
     clearTimeout(saveTimeoutRef.current);
-    saveTimeoutRef.current = setTimeout(() => { try { localStorage.setItem(STORAGE_KEY, JSON.stringify(store)); } catch {} }, SAVE_DEBOUNCE_MS);
+    saveTimeoutRef.current = setTimeout(() => {
+      try { localStorage.setItem(STORAGE_KEY, JSON.stringify(store)); } catch {}
+    }, SAVE_DEBOUNCE_MS);
     return () => clearTimeout(saveTimeoutRef.current);
   }, [store]);
 
-  useEffect(() => { try { localStorage.setItem(RECURRING_STORAGE_KEY, JSON.stringify(recurringItems)); } catch {} }, [recurringItems]);
-  useEffect(() => { try { localStorage.setItem(DAY_TEMPLATE_STORAGE_KEY, JSON.stringify(dayTemplates)); } catch {} }, [dayTemplates]);
+  // Debounced DB save for dirty days
+  const flushDirtyDays = useCallback(() => {
+    if (!userId || dirtyDaysRef.current.size === 0) return;
+    const dirtyKeys = Array.from(dirtyDaysRef.current);
+    dirtyDaysRef.current.clear();
+
+    const currentStore = store;
+    const rows = dirtyKeys
+      .filter(dk => currentStore[dk])
+      .map(dk => ({
+        user_id: userId,
+        tenant_id: tenantId || null,
+        day_key: dk,
+        data: currentStore[dk] as any,
+        updated_at: new Date().toISOString(),
+      }));
+
+    if (rows.length > 0) {
+      supabase.from("day_slips").upsert(rows as any, { onConflict: "user_id,day_key" }).then();
+    }
+  }, [userId, tenantId, store]);
+
+  useEffect(() => {
+    if (!userId || dirtyDaysRef.current.size === 0) return;
+    clearTimeout(dbSaveTimeoutRef.current);
+    dbSaveTimeoutRef.current = setTimeout(flushDirtyDays, DB_SAVE_DEBOUNCE_MS);
+    return () => clearTimeout(dbSaveTimeoutRef.current);
+  }, [store, flushDirtyDays, userId]);
+
+  // Mark day as dirty when store changes
+  const setStoreAndTrack = useCallback((updater: (prev: DaySlipStore) => DaySlipStore, ...dirtyKeys: string[]) => {
+    setStore(prev => {
+      const next = updater(prev);
+      dirtyKeys.forEach(k => dirtyDaysRef.current.add(k));
+      return next;
+    });
+  }, []);
+
+  // Persist recurring/templates to DB
+  useEffect(() => {
+    try { localStorage.setItem(RECURRING_STORAGE_KEY, JSON.stringify(recurringItems)); } catch {}
+    if (userId) {
+      supabase.from("user_preferences").upsert(
+        { user_id: userId, tenant_id: tenantId || null, key: "dayslip_recurring", value: recurringItems as any, updated_at: new Date().toISOString() } as any,
+        { onConflict: "user_id,tenant_id,key" }
+      ).then();
+    }
+  }, [recurringItems, userId, tenantId]);
+
+  useEffect(() => {
+    try { localStorage.setItem(DAY_TEMPLATE_STORAGE_KEY, JSON.stringify(dayTemplates)); } catch {}
+    if (userId) {
+      supabase.from("user_preferences").upsert(
+        { user_id: userId, tenant_id: tenantId || null, key: "dayslip_day_templates", value: dayTemplates as any, updated_at: new Date().toISOString() } as any,
+        { onConflict: "user_id,tenant_id,key" }
+      ).then();
+    }
+  }, [dayTemplates, userId, tenantId]);
+
+  // Flush on unmount
+  useEffect(() => () => { flushDirtyDays(); }, [flushDirtyDays]);
 
   const yesterdayKey = useMemo(() => { const d = new Date(); d.setDate(d.getDate() - 1); return toDayKey(d); }, []);
 
@@ -82,7 +231,7 @@ export function useDaySlipStore(userId?: string, tenantId?: string) {
   const archiveDays = useMemo(() => Object.keys(store).filter((key) => key !== todayKey).sort((a, b) => b.localeCompare(a)), [store, todayKey]);
 
   const toggleStrike = useCallback((lineId: string) => {
-    setStore((prev) => {
+    setStoreAndTrack((prev) => {
       const day = prev[todayKey] ?? { html: "", plainText: "", struckLineIds: [] };
       const struck = day.struckLineIds ?? day.struckLines ?? [];
       const isStruck = struck.includes(lineId);
@@ -92,8 +241,8 @@ export function useDaySlipStore(userId?: string, tenantId?: string) {
       if (isStruck) delete lineTimestamps[lineId].checkedAt;
       else lineTimestamps[lineId].checkedAt = now;
       return { ...prev, [todayKey]: { ...day, struckLineIds: isStruck ? struck.filter((l) => l !== lineId) : [...struck, lineId], lineTimestamps } };
-    });
-  }, [todayKey]);
+    }, todayKey);
+  }, [todayKey, setStoreAndTrack]);
 
   const appendLinesToToday = useCallback((lines: string[]) => {
     const normalizedLines = lines.map((l) => l.trim()).filter((l) => l.length > 0);
@@ -113,7 +262,7 @@ export function useDaySlipStore(userId?: string, tenantId?: string) {
       });
       return;
     }
-    setStore((prev) => {
+    setStoreAndTrack((prev) => {
       const day = prev[todayKey] ?? { html: "", plainText: "", nodes: "", struckLineIds: [] };
       const existingLines = extractLinesFromHtml(day.html);
       const existingTexts = new Set(existingLines.map((l) => normalizeLineText(l.text)));
@@ -121,14 +270,14 @@ export function useDaySlipStore(userId?: string, tenantId?: string) {
       if (toAppend.length === 0) return prev;
       const merged = [...existingLines, ...toAppend];
       return { ...prev, [todayKey]: { ...day, html: merged.map(toParagraphHtml).join(""), plainText: merged.map((e) => e.text).join("\n"), nodes: undefined } };
-    });
-  }, [todayKey]);
+    }, todayKey);
+  }, [todayKey, setStoreAndTrack]);
 
   const insertStructuredLines = useCallback((lines: string[]) => {
     const editor = editorRef.current;
     const editorMounted = Boolean(editor?.getRootElement());
     if (!editorMounted) {
-      setStore((prev) => {
+      setStoreAndTrack((prev) => {
         const day = prev[todayKey] ?? { html: "", plainText: "", struckLineIds: [] };
         const structuredHtml = lines.map((line) => {
           const parsed = parseRuleLine(line);
@@ -139,7 +288,7 @@ export function useDaySlipStore(userId?: string, tenantId?: string) {
         const extra = lines.map((text) => ({ id: crypto.randomUUID(), text }));
         const merged = [...existingLines, ...extra];
         return { ...prev, [todayKey]: { ...day, html: `${day.html ?? ""}${structuredHtml}`, plainText: merged.map((l) => l.text).join("\n"), nodes: undefined } };
-      });
+      }, todayKey);
       return;
     }
     editor!.update(() => {
@@ -156,7 +305,7 @@ export function useDaySlipStore(userId?: string, tenantId?: string) {
         root.append(paragraph);
       });
     });
-  }, [todayKey]);
+  }, [todayKey, setStoreAndTrack]);
 
   const deleteLine = useCallback((lineId: string) => {
     if (editorRef.current) {
@@ -167,15 +316,15 @@ export function useDaySlipStore(userId?: string, tenantId?: string) {
         });
       });
     }
-    setStore((prev) => {
+    setStoreAndTrack((prev) => {
       const day = prev[todayKey];
       if (!day) return prev;
       const lines = extractLinesFromHtml(day.html).filter((l) => l.id !== lineId);
       const lineTimestamps = { ...(day.lineTimestamps ?? {}) };
       delete lineTimestamps[lineId];
       return { ...prev, [todayKey]: { ...day, html: lines.map(toParagraphHtml).join(""), plainText: lines.map((l) => l.text).join("\n"), struckLineIds: (day.struckLineIds ?? day.struckLines ?? []).filter((id) => id !== lineId), resolved: (day.resolved ?? []).filter((item) => item.lineId !== lineId), lineTimestamps } };
-    });
-  }, [todayKey]);
+    }, todayKey);
+  }, [todayKey, setStoreAndTrack]);
 
   const syncResolveExport = useCallback((lineId: string, text: string, target: ResolveTarget, isUndo: boolean) => {
     if (target === "archived" || target === "snoozed") return;
@@ -185,11 +334,18 @@ export function useDaySlipStore(userId?: string, tenantId?: string) {
       const filtered = existing.filter((item: any) => !(item.sourceDayKey === todayKey && item.lineId === lineId));
       const next = isUndo ? filtered : [...filtered, { sourceDayKey: todayKey, lineId, text, target, createdAt: new Date().toISOString() }];
       localStorage.setItem(RESOLVE_EXPORT_KEY, JSON.stringify(next));
+      // Also sync to DB
+      if (userId) {
+        supabase.from("user_preferences").upsert(
+          { user_id: userId, tenant_id: tenantId || null, key: "dayslip_resolve_export", value: next as any, updated_at: new Date().toISOString() } as any,
+          { onConflict: "user_id,tenant_id,key" }
+        ).then();
+      }
     } catch {}
-  }, [todayKey]);
+  }, [todayKey, userId, tenantId]);
 
   const toggleResolveLine = useCallback((lineId: string, line: string, target: ResolveTarget) => {
-    setStore((prev) => {
+    setStoreAndTrack((prev) => {
       const day = prev[todayKey] ?? { html: "", plainText: "", struckLineIds: [] };
       const struck = day.struckLineIds ?? day.struckLines ?? [];
       const resolved = (day.resolved ?? []) as ResolvedItem[];
@@ -204,8 +360,8 @@ export function useDaySlipStore(userId?: string, tenantId?: string) {
       else lineTimestamps[lineId].checkedAt = now;
       syncResolveExport(lineId, line, target, isUndo);
       return { ...prev, [todayKey]: { ...day, struckLineIds: nextStruck, resolved: nextResolved, lineTimestamps } };
-    });
-  }, [todayKey, syncResolveExport]);
+    }, todayKey);
+  }, [todayKey, syncResolveExport, setStoreAndTrack]);
 
   const createFromLine = useCallback(async (lineText: string, target: "note" | "task") => {
     if (!userId || !lineText.trim()) return;
@@ -233,7 +389,7 @@ export function useDaySlipStore(userId?: string, tenantId?: string) {
       const html = $generateHtmlFromNodes(editor, null);
       let nodes: string | undefined;
       try { nodes = JSON.stringify(editorState.toJSON()); } catch { nodes = undefined; }
-      setStore((prev) => {
+      setStoreAndTrack((prev) => {
         const day: DaySlipDayData = prev[todayKey] ?? { html: '', plainText: '', resolved: [], struckLines: [] };
         const currentEntries = extractLinesFromHtml(html);
         const now = new Date().toISOString();
@@ -242,9 +398,9 @@ export function useDaySlipStore(userId?: string, tenantId?: string) {
         const validLineIds = new Set(currentEntries.map((e) => e.id));
         Object.keys(lineTimestamps).forEach((id) => { if (!validLineIds.has(id)) delete lineTimestamps[id]; });
         return { ...prev, [todayKey]: { ...day, plainText, html, nodes, lineTimestamps } };
-      });
+      }, todayKey);
     });
-  }, [todayKey]);
+  }, [todayKey, setStoreAndTrack]);
 
   const handleEditorReady = useCallback((editor: LexicalEditor) => {
     if (editorRef.current !== editor) { editorRef.current = editor; setEditorReadyVersion((prev) => prev + 1); }
@@ -255,14 +411,14 @@ export function useDaySlipStore(userId?: string, tenantId?: string) {
     const todayWeekday = weekdayKey(new Date());
     const recurringForToday = recurringItems.filter((item) => item.weekday === "all" || item.weekday === todayWeekday).map((item) => item.text);
     if (todayData.html.trim() || recurringForToday.length === 0 || todayData.recurringInjected) return;
-    setStore((prev) => {
+    setStoreAndTrack((prev) => {
       const day = prev[todayKey] ?? { html: "", plainText: "" };
       if (day.html.trim() || day.recurringInjected) return prev;
       const entries = recurringForToday.map((text) => ({ id: crypto.randomUUID(), text }));
       const html = entries.map(toParagraphHtml).join("");
       return { ...prev, [todayKey]: { ...day, html, plainText: recurringForToday.join("\n"), nodes: undefined, recurringInjected: true } };
-    });
-  }, [todayData.html, todayData.recurringInjected, recurringItems, todayKey]);
+    }, todayKey);
+  }, [todayData.html, todayData.recurringInjected, recurringItems, todayKey, setStoreAndTrack]);
 
   // Week plan injection
   useEffect(() => {
@@ -302,4 +458,27 @@ export function useDaySlipStore(userId?: string, tenantId?: string) {
     onEditorChange, handleEditorReady, handleApplyWeekPlan,
     editorConfig, weekPlanInjected, setWeekPlanInjected,
   };
+}
+
+// Helper: migrate a localStorage key to user_preferences if not yet in DB
+async function migratePreference(userId: string, tenantId: string | undefined, dbKey: string, localKey: string) {
+  try {
+    const { data } = await supabase
+      .from("user_preferences")
+      .select("id")
+      .eq("user_id", userId)
+      .eq("key", dbKey)
+      .maybeSingle();
+
+    if (data) return; // already in DB
+
+    const raw = localStorage.getItem(localKey);
+    if (!raw) return;
+
+    const parsed = JSON.parse(raw);
+    await supabase.from("user_preferences").upsert(
+      { user_id: userId, tenant_id: tenantId || null, key: dbKey, value: parsed, updated_at: new Date().toISOString() } as any,
+      { onConflict: "user_id,tenant_id,key" }
+    );
+  } catch {}
 }

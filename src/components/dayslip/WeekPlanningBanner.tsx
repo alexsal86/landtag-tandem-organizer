@@ -1,13 +1,12 @@
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { Calendar, Plus, Trash2, X } from "lucide-react";
+import { useUserPreference } from "@/hooks/useUserPreference";
 
 type RecurringTemplate = {
   id: string;
   text: string;
   weekday: string;
 };
-
-const WEEK_PLAN_KEY = "day-slip-week-plan-v1";
 
 interface WeekPlan {
   weekStartKey: string;
@@ -45,18 +44,8 @@ function addDays(dayKey: string, offset: number): string {
   return toDayKey(d);
 }
 
-function loadWeekPlan(): WeekPlan | null {
-  try {
-    const raw = localStorage.getItem(WEEK_PLAN_KEY);
-    return raw ? JSON.parse(raw) : null;
-  } catch { return null; }
-}
-
-function saveWeekPlan(plan: WeekPlan) {
-  try {
-    localStorage.setItem(WEEK_PLAN_KEY, JSON.stringify(plan));
-  } catch { /* ignore */ }
-}
+// Legacy localStorage fallback for getWeekPlanForDay (called outside React)
+const WEEK_PLAN_KEY = "day-slip-week-plan-v1";
 
 interface WeekPlanningBannerProps {
   recurringItems: RecurringTemplate[];
@@ -68,13 +57,13 @@ export function WeekPlanningBanner({ recurringItems, onApplyPlan }: WeekPlanning
   const isMonday = today.getDay() === 1;
   const mondayKey = getMondayKey(today);
 
-  const existingPlan = useMemo(() => loadWeekPlan(), []);
-  const alreadyHandled = existingPlan?.weekStartKey === mondayKey && (existingPlan.applied || existingPlan.dismissed);
+  const [weekPlan, setWeekPlan] = useUserPreference<WeekPlan | null>("dayslip_week_plan", null);
+
+  const alreadyHandled = weekPlan?.weekStartKey === mondayKey && (weekPlan.applied || weekPlan.dismissed);
 
   const [showBanner, setShowBanner] = useState(isMonday && !alreadyHandled);
   const [planningMode, setPlanningMode] = useState(false);
   const [planDays, setPlanDays] = useState<Record<string, string[]>>(() => {
-    // Pre-fill with recurring items
     const days: Record<string, string[]> = {};
     PLAN_DAYS.forEach(({ key, dayOffset }) => {
       const dayKey = addDays(mondayKey, dayOffset);
@@ -87,20 +76,29 @@ export function WeekPlanningBanner({ recurringItems, onApplyPlan }: WeekPlanning
   });
   const [newItemDrafts, setNewItemDrafts] = useState<Record<string, string>>({});
 
+  // Sync to localStorage for getWeekPlanForDay (called outside component tree)
+  useEffect(() => {
+    if (weekPlan) {
+      try { localStorage.setItem(WEEK_PLAN_KEY, JSON.stringify(weekPlan)); } catch {}
+    }
+  }, [weekPlan]);
+
   const dismiss = useCallback(() => {
     setShowBanner(false);
     setPlanningMode(false);
     const plan: WeekPlan = { weekStartKey: mondayKey, applied: false, dismissed: true, days: {} };
-    saveWeekPlan(plan);
-  }, [mondayKey]);
+    setWeekPlan(plan);
+  }, [mondayKey, setWeekPlan]);
 
   const applyPlan = useCallback(() => {
     const plan: WeekPlan = { weekStartKey: mondayKey, applied: true, dismissed: false, days: planDays };
-    saveWeekPlan(plan);
+    setWeekPlan(plan);
+    // Also write to localStorage for getWeekPlanForDay
+    try { localStorage.setItem(WEEK_PLAN_KEY, JSON.stringify(plan)); } catch {}
     onApplyPlan(planDays);
     setShowBanner(false);
     setPlanningMode(false);
-  }, [mondayKey, planDays, onApplyPlan]);
+  }, [mondayKey, planDays, onApplyPlan, setWeekPlan]);
 
   const addItem = (dayKey: string) => {
     const text = (newItemDrafts[dayKey] ?? "").trim();
@@ -215,7 +213,7 @@ export function WeekPlanningBanner({ recurringItems, onApplyPlan }: WeekPlanning
 
 /**
  * Check if the current day has a week plan to inject, and return lines for it.
- * Call this when opening a day to inject planned items.
+ * Uses localStorage as source since this is called outside the React tree.
  */
 export function getWeekPlanForDay(dayKey: string): string[] | null {
   try {
