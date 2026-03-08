@@ -1,5 +1,6 @@
 import { useState, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
+import { debugConsole } from '@/utils/debugConsole';
 
 export interface DistrictDetectionResult {
   coordinates: { lat: number; lng: number };
