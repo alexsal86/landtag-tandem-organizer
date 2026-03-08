@@ -281,7 +281,7 @@ export const CallLogWidget: React.FC<CallLogWidgetProps> = ({
       await loadCallLogs();
       toast.success('Anruf aus Liste entfernt');
     } catch (error) {
-      console.error('Error deleting call log:', error);
+      debugConsole.error('Error deleting call log:', error);
       toast.error('Fehler beim Entfernen des Anrufs');
     }
   };
