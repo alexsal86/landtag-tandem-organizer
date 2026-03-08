@@ -125,7 +125,7 @@ export function useEmployeeOperations({
       setEmployees(prev => prev.map(emp => emp.user_id === userId ? { ...emp, hours_per_week: newHours } : emp));
       toast({ title: "Gespeichert", description: "Stunden pro Woche wurden aktualisiert." });
     } catch (e: any) {
-      console.error(e);
+      debugConsole.error(e);
       toast({ title: "Fehler", description: e?.message ?? "Stunden konnten nicht aktualisiert werden.", variant: "destructive" });
     }
   };
