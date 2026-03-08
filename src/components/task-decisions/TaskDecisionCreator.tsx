@@ -408,7 +408,7 @@ export const TaskDecisionCreator = ({
             }
           }
         } catch (matrixError: any) {
-          console.error('Error sending Matrix decisions:', matrixError);
+          debugConsole.error('Error sending Matrix decisions:', matrixError);
           toast({
             title: "Matrix-Fehler",
             description: `Unerwarteter Fehler beim Matrix-Versand: ${matrixError.message}`,
