@@ -1235,7 +1235,7 @@ const [editingChild, setEditingChild] = useState<{ parentIndex: number; childInd
                                     try {
                                       const { error } = await supabase
                                         .from('meeting_templates')
-                                        .update({ name: editingTemplateName.value })
+                                        .update({ name: editingTemplateName!.value })
                                         .eq('id', selectedTemplate.id);
                                       if (error) throw error;
                                       
