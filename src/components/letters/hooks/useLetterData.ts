@@ -64,7 +64,7 @@ export function useLetterData({ isOpen, tenantId, letterId }: UseLetterDataOptio
       if (error) throw error;
       setSenderInfos(data || []);
     } catch (error) {
-      console.error('Error fetching sender infos:', error);
+      debugConsole.error('Error fetching sender infos:', error);
     }
   }, [tenantId]);
 
