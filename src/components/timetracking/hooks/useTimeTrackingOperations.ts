@@ -150,7 +150,7 @@ export function useTimeTrackingOperations({
     const minutesCounted = (endH * 60 + endM) - (startH * 60 + startM);
     if (minutesCounted <= 0) { toast.error("Endzeit muss nach Startzeit liegen"); return; }
     try {
-      const { error } = await supabase.from("leave_requests").insert({ user_id: userId, type: "medical", start_date: medicalDate, end_date: medicalDate, medical_reason: medicalReason, start_time: medicalStartTime, end_time: medicalEndTime, minutes_counted: minutesCounted, reason: medicalNotes || null, status: "pending" }).select();
+      const { error } = await supabase.from("leave_requests").insert([{ user_id: userId, type: "medical", start_date: medicalDate, end_date: medicalDate, medical_reason: medicalReason, start_time: medicalStartTime, end_time: medicalEndTime, minutes_counted: minutesCounted, reason: medicalNotes || null, status: "pending" }]).select();
       if (error) throw error;
       toast.success("Arzttermin eingereicht"); setMedicalDate(""); setMedicalStartTime(""); setMedicalEndTime(""); setMedicalReason("acute"); setMedicalNotes(""); loadData();
     } catch (error: unknown) { debugConsole.error("Medical appointment error:", error); toast.error(error instanceof Error ? error.message : "Fehler"); }
