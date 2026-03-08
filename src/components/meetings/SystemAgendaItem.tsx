@@ -44,7 +44,7 @@ interface LinkedCaseItem {
 }
 
 interface SystemAgendaItemProps {
-  systemType: 'upcoming_appointments' | 'quick_notes' | 'tasks' | 'birthdays' | 'decisions';
+  systemType: 'upcoming_appointments' | 'quick_notes' | 'tasks' | 'birthdays' | 'decisions' | 'case_items';
   meetingDate?: string | Date;
   meetingId?: string;
   allowStarring?: boolean;
