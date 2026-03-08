@@ -238,7 +238,7 @@ export const AppointmentPollCreator = ({ onClose }: { onClose: () => void }) => 
         throw new Error(`Teilnehmer konnten nicht erstellt werden: ${participantsError.message}`);
       }
       
-      console.log('Successfully created', participantData.length, 'participants');
+      
 
       // Send invitations to external participants
       const externalEmails = participants
