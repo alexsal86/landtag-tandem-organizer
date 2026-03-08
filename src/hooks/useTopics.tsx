@@ -65,7 +65,7 @@ export const useTopics = () => {
 
       const { data, error } = await supabase
         .from('topics')
-        .insert({
+        .insert([{
           name: topicData.name,
           label: topicData.label,
           icon: topicData.icon || 'Tag',
@@ -74,7 +74,7 @@ export const useTopics = () => {
           order_index: maxOrderIndex,
           is_active: true,
           tenant_id: currentTenant!.id,
-        })
+        }])
         .select()
         .single();
 
