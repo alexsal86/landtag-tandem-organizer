@@ -172,7 +172,7 @@ export function RealTimeSync({ currentLayout, onLayoutUpdate }: RealTimeSyncProp
       setLastSyncTime(new Date());
       toast.info(`Layout updated by ${payload.user_email}`);
     } catch (error) {
-      console.error('Failed to apply remote layout update:', error);
+      debugConsole.error('Failed to apply remote layout update:', error);
       setSyncErrors(prev => [...prev, 'Failed to apply layout update']);
     } finally {
       setIsSyncing(false);
