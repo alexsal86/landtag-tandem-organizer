@@ -135,7 +135,35 @@ export function EmployeeMeetingHistory({ employeeId, showFilters = true }: Emplo
     }
   };
 
-  const getMeetingTypeLabel = (type: string) => {
+  const handleDeleteMeeting = async (meetingId: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    try {
+      // Delete related data first
+      await supabase.from("employee_meeting_action_items").delete().eq("meeting_id", meetingId);
+      await supabase.from("employee_meeting_ratings").delete().eq("meeting_id", meetingId);
+      
+      const { error } = await supabase
+        .from("employee_meetings")
+        .delete()
+        .eq("id", meetingId);
+
+      if (error) throw error;
+
+      setMeetings((prev) => prev.filter((m) => m.id !== meetingId));
+      toast({
+        title: "Gespräch gelöscht",
+        description: "Das Mitarbeitergespräch wurde erfolgreich entfernt.",
+      });
+    } catch (error) {
+      console.error("Error deleting meeting:", error);
+      toast({
+        title: "Fehler",
+        description: "Das Gespräch konnte nicht gelöscht werden.",
+        variant: "destructive",
+      });
+    }
+  };
+
     const labels: Record<string, string> = {
       regular: "Regulär",
       probation: "Probezeit",
