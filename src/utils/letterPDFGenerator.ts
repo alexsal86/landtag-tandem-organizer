@@ -86,7 +86,7 @@ export const generateLetterPDF = async (letter: Letter): Promise<{ blob: Blob; f
     if (letter.sender_info_id) {
       const { data: senderData, error: senderError } = await supabase
         .from('sender_information')
-        .select('*')
+        .select('id, name, organization, street, house_number, postal_code, city, phone, email, website, wahlkreis_street, wahlkreis_house_number, wahlkreis_postal_code, wahlkreis_city, wahlkreis_email, landtag_street, landtag_house_number, landtag_postal_code, landtag_city, landtag_email, is_default, is_active')
         .eq('id', letter.sender_info_id)
         .single();
 
