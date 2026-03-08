@@ -46,7 +46,17 @@ interface SimpleRichTextEditorProps {
   onMentionInsert?: (userId: string, displayName: string) => void;
   onKeyDown?: React.KeyboardEventHandler<HTMLDivElement>;
   showToolbar?: boolean;
+  autoFocus?: boolean;
 }
+
+// AutoFocus Plugin
+const AutoFocusPlugin = () => {
+  const [editor] = useLexicalComposerContext();
+  useEffect(() => {
+    editor.focus();
+  }, [editor]);
+  return null;
+};
 
 
 // Toolbar Component
@@ -337,6 +347,7 @@ const SimpleRichTextEditor: React.FC<SimpleRichTextEditorProps> = ({
   onMentionInsert,
   onKeyDown,
   showToolbar = true,
+  autoFocus = false,
 }) => {
   const initialConfig = {
     namespace: 'SimpleRichTextEditor',
@@ -408,6 +419,7 @@ const SimpleRichTextEditor: React.FC<SimpleRichTextEditorProps> = ({
         <ListPlugin />
         <MentionsPlugin onMentionInsert={onMentionInsert} />
         <InitialContentPlugin initialContent={initialContent} />
+        {autoFocus && <AutoFocusPlugin />}
       </LexicalComposer>
     </div>
   );

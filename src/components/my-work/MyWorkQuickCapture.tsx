@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
@@ -179,7 +179,18 @@ export function MyWorkQuickCapture({ onNoteSaved }: MyWorkQuickCaptureProps) {
     }
   };
 
+  const contentEditorRef = useRef<HTMLDivElement>(null);
+
   const handleTitleKeyDown = (e: React.KeyboardEvent<HTMLDivElement>) => {
+    if (e.key === 'Tab' && !e.shiftKey) {
+      e.preventDefault();
+      // Focus the content editor
+      const contentEditable = contentEditorRef.current?.querySelector('[contenteditable="true"]');
+      if (contentEditable instanceof HTMLElement) {
+        contentEditable.focus();
+      }
+      return;
+    }
     if (e.key === "Enter" && !e.shiftKey && !e.nativeEvent.isComposing) {
       const mentionMenuOpen = !!document.querySelector('.mentions-menu');
       if (mentionMenuOpen) return;
@@ -257,8 +268,9 @@ export function MyWorkQuickCapture({ onNoteSaved }: MyWorkQuickCaptureProps) {
           placeholder="Titel (@ für Mentions)"
           minHeight="44px"
           showToolbar={false}
+          autoFocus
         />
-        <div className="min-h-[120px]">
+        <div className="min-h-[120px]" ref={contentEditorRef}>
           <SimpleRichTextEditor
             key={editorResetKey}
             initialContent={toEditorHtml(content)}
