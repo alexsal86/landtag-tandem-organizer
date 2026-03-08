@@ -87,18 +87,21 @@ export function useLetterTemplateData() {
     } catch (error) { debugConsole.error('Error fetching info blocks:', error); }
   };
 
-  const stripBlobUrls = (elements: any): any => {
-    if (Array.isArray(elements)) return elements.map(({ blobUrl, ...rest }) => rest);
-    if (elements && typeof elements === 'object' && (elements as any).mode === 'lines' && Array.isArray((elements as any).lines)) {
-      return { ...elements, lines: (elements as any).lines.map(({ blobUrl, ...rest }: any) => rest) };
-    }
-    if (elements && typeof elements === 'object' && Array.isArray((elements as any).blocks)) {
-      return {
-        ...elements,
-        blocks: (elements as any).blocks.map((block: any) => ({
-          ...block, lines: Array.isArray(block?.lines) ? block.lines.map(({ blobUrl, ...rest }: any) => rest) : [],
-        })),
-      };
+  const stripBlobUrls = (elements: unknown): unknown => {
+    if (Array.isArray(elements)) return elements.map(({ blobUrl, ...rest }: Record<string, unknown>) => rest);
+    if (elements && typeof elements === 'object') {
+      const obj = elements as Record<string, unknown>;
+      if (obj.mode === 'lines' && Array.isArray(obj.lines)) {
+        return { ...obj, lines: (obj.lines as Record<string, unknown>[]).map(({ blobUrl, ...rest }) => rest) };
+      }
+      if (Array.isArray(obj.blocks)) {
+        return {
+          ...obj,
+          blocks: (obj.blocks as Record<string, unknown>[]).map((block) => ({
+            ...block, lines: Array.isArray((block as Record<string, unknown>)?.lines) ? ((block as Record<string, unknown>).lines as Record<string, unknown>[]).map(({ blobUrl, ...rest }) => rest) : [],
+          })),
+        };
+      }
     }
     return elements;
   };
