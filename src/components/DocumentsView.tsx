@@ -181,7 +181,7 @@ export function DocumentsView() {
 
   const handleEditDocument = (doc: Document) => {
     setEditingDocument(doc); setEditTitle(doc.title); setEditDescription(doc.description || "");
-    setEditCategory(doc.category); setEditTags(doc.tags || []); setEditStatus(doc.status);
+    setEditCategory(doc.category ?? ''); setEditTags(doc.tags || []); setEditStatus(doc.status);
     setEditFolderId(doc.folder_id || ""); setShowEditDialog(true);
   };
 
