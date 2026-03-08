@@ -457,7 +457,7 @@ export const StandaloneDecisionCreator = ({
             }
           }
         } catch (emailError: any) {
-          console.error('Error sending decision emails:', emailError);
+          debugConsole.error('Error sending decision emails:', emailError);
           toast({
             title: "E-Mail-Fehler",
             description: `Unerwarteter Fehler beim E-Mail-Versand: ${emailError.message}`,
