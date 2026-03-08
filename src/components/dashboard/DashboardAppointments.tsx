@@ -53,7 +53,7 @@ export const DashboardAppointments = ({ data }: Props) => {
     });
   }, [appointments, openTasksCount, completedTasksToday, userRole, hasPlenum, hasCommittee, timeSlot]);
 
-  const roleLine = null;
+  
 
   const specialDayHint = getSpecialDayHint(new Date(), specialDays);
 
