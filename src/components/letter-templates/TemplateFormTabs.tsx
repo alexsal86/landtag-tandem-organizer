@@ -41,7 +41,7 @@ export const useTemplateFormTabs = ({
   editingTemplate, senderInfos, infoBlocks,
   handleCreateTemplate, resetForm, setShowCreateDialog,
   getBlockItems, setBlockItems, currentTenant, toast,
-}) => {
+}: TemplateFormTabsProps) => {
   const isMobile = useIsMobile();
 
   const getMarginsForRect = useCallback((rect: TabRect): MarginKey[] => {
