@@ -164,7 +164,7 @@ export function TasksView() {
   const [quickNoteContent, setQuickNoteContent] = useState("");
   const [showCelebration, setShowCelebration] = useState(false);
   
-  console.log('TodoCreateOpen state:', todoCreateOpen); // Debug log
+  
   
   const { toast } = useToast();
   const { isItemNew, clearAllIndicators } = useNewItemIndicators('tasks');
