@@ -166,7 +166,7 @@ export function useLetterOperations(opts: UseLetterOperationsOptions) {
       onSave();
       toast({ title: 'Brief gespeichert', description: 'Ihre Änderungen wurden erfolgreich gespeichert.' });
     } catch (error) {
-      console.error('Error saving letter:', error);
+      debugConsole.error('Error saving letter:', error);
       toast({ title: 'Fehler beim Speichern', description: 'Der Brief konnte nicht gespeichert werden.', variant: 'destructive' });
     } finally {
       setSaving(false);
