@@ -312,7 +312,7 @@ export function useCombinedTimeEntries({
             type_class: config.medical.className,
           });
         } catch (e) {
-          console.error('Error processing medical leave:', e);
+          debugConsole.error('Error processing medical leave:', e);
         }
       });
 
