@@ -185,7 +185,7 @@ const LetterEditor: React.FC<LetterEditorProps> = ({ letter, isOpen, onClose, on
     const templateId = editedLetter?.template_id || letter?.template_id;
     if (!templateId) return;
     try {
-      const { data, error } = await supabase.from('letter_templates').select('*').eq('id', templateId).single();
+      const { data, error } = await supabase.from('letter_templates').select('id, name, letterhead_html, letterhead_css, response_time_days, is_default, is_active, default_sender_id, default_information_block_ids, layout_settings, header_elements, footer_elements, header_layout_type, header_text_elements, header_image_url, header_image_position, footer_blocks, tenant_id').eq('id', templateId).single();
       if (error) throw error;
       setCurrentTemplate(data);
       if (data) ops.applyTemplateDefaults(data);
