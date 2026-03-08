@@ -6,7 +6,7 @@ import { useToast } from "@/hooks/use-toast";
 import { debugConsole } from '@/utils/debugConsole';
 import { startOfYear, endOfYear } from "date-fns";
 import {
-  Employee, EmployeeSettingsRow, Profile, LeaveAgg, PendingLeaveRequest,
+  Employee, EmployeeSettingsRow, Profile, LeaveAgg, LeaveType, PendingLeaveRequest,
   calculateWorkingDays, initLeaveAgg,
 } from "../types";
 
