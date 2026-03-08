@@ -60,7 +60,7 @@ export const MatrixSettings: React.FC = () => {
           .order("created_at", { ascending: false });
 
         if (subsError) {
-          console.error("Error loading Matrix subscriptions:", subsError);
+          debugConsole.error("Error loading Matrix subscriptions:", subsError);
         } else {
           setSubscriptions(subs || []);
         }
