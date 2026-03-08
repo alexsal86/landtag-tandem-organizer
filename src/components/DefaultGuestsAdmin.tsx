@@ -99,7 +99,7 @@ export const DefaultGuestsAdmin: React.FC = () => {
       setAddForm({ name: '', email: '', is_active: true });
       fetchDefaultGuests();
     } catch (error: unknown) {
-      console.error('Error adding default guest:', error);
+      debugConsole.error('Error adding default guest:', error);
       toast.error('Fehler beim Hinzufügen des Standard-Gastes');
     }
   };
