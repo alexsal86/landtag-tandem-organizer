@@ -258,9 +258,10 @@ export function usePressReleaseEditor({ pressReleaseId, initialDraft, onBack }: 
       if (error) throw error;
       toast({ title: "Pressemitteilung freigegeben" });
       await loadPressRelease(pressRelease.id);
-    } catch (error: any) {
-      if (error?.message?.includes("Failed to fetch") || error?.message?.includes("NetworkError")) { setTimeout(() => loadPressRelease(pressRelease.id), 500); toast({ title: "Pressemitteilung freigegeben" }); return; }
-      toast({ title: "Fehler", description: error.message, variant: "destructive" });
+    } catch (error: unknown) {
+      const msg = error instanceof Error ? error.message : String(error);
+      if (msg?.includes("Failed to fetch") || msg?.includes("NetworkError")) { setTimeout(() => loadPressRelease(pressRelease.id), 500); toast({ title: "Pressemitteilung freigegeben" }); return; }
+      toast({ title: "Fehler", description: msg, variant: "destructive" });
     }
   };
 
