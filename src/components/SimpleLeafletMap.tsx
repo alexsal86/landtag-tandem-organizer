@@ -60,7 +60,7 @@ const SimpleLeafletMap: React.FC<LeafletKarlsruheMapProps> = ({
     if (!mapEl.current) return;
     if (mapRef.current) return; // init once
 
-    console.log('Initializing map...');
+    
 
     // Responsive initial zoom based on screen size
     const initialZoom = window.innerWidth < 768 ? 7 : 8;
@@ -248,7 +248,7 @@ const SimpleLeafletMap: React.FC<LeafletKarlsruheMapProps> = ({
 
       geoLayer.addTo(districtLayerRef.current);
       renderedBounds = geoLayer.getBounds();
-      console.log(`Rendered ${allDistrictsToRender.length} districts (${districts.length} regular + ${allDistrictsToRender.length - districts.length} party boundaries)`);
+      
     }
 
     // Add markers with district numbers (only for election districts, not administrative boundaries)
@@ -288,7 +288,7 @@ const SimpleLeafletMap: React.FC<LeafletKarlsruheMapProps> = ({
 
     // Add party association markers if enabled (independent of districts)
     if (showPartyAssociations && associations.length > 0) {
-      console.log('Processing party associations:', associations.length);
+      
       associations.forEach((association) => {
         console.log(`Processing association: ${association.name}, has boundary_districts:`, !!association.boundary_districts?.length);
         

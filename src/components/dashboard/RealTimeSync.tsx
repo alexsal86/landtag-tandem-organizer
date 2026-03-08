@@ -79,12 +79,8 @@ export function RealTimeSync({ currentLayout, onLayoutUpdate }: RealTimeSyncProp
           }));
           setConnectedUsers(users);
         })
-        .on('presence', { event: 'join' }, ({ newPresences }) => {
-          console.log('User joined:', newPresences);
-        })
-        .on('presence', { event: 'leave' }, ({ leftPresences }) => {
-          console.log('User left:', leftPresences);
-        });
+        .on('presence', { event: 'join' }, () => {})
+        .on('presence', { event: 'leave' }, () => {});
 
       // Subscribe to dashboard changes
       channel
@@ -186,7 +182,6 @@ export function RealTimeSync({ currentLayout, onLayoutUpdate }: RealTimeSyncProp
     if (payload.user_id === user?.id) return;
     
     // Handle individual widget updates for better performance
-    console.log('Widget update received:', payload);
   };
 
   const handleCursorUpdate = (payload: any) => {

@@ -43,7 +43,6 @@ export function useAutoSave({
         });
       } else {
         lastSavedContentRef.current = contentToSave;
-        console.log('Document auto-saved successfully');
       }
     } catch (error) {
       console.error('Error in auto-save:', error);
@@ -57,25 +56,21 @@ export function useAutoSave({
     }
   }, [documentId, enabled, toast]);
 
-  // Auto-save when content changes
   useEffect(() => {
     if (!enabled || !content || content === lastSavedContentRef.current) {
       return;
     }
 
-    // Clear existing timeout
     if (saveTimeoutRef.current) {
       clearTimeout(saveTimeoutRef.current);
     }
 
-    // Set new timeout for debounced save
     saveTimeoutRef.current = setTimeout(() => {
       if (content !== lastSavedContentRef.current) {
         saveDocument(content);
       }
     }, debounceMs);
 
-    // Cleanup timeout on unmount or content change
     return () => {
       if (saveTimeoutRef.current) {
         clearTimeout(saveTimeoutRef.current);
@@ -83,7 +78,6 @@ export function useAutoSave({
     };
   }, [content, saveDocument, enabled, debounceMs]);
 
-  // Force save function
   const forceSave = useCallback(() => {
     if (saveTimeoutRef.current) {
       clearTimeout(saveTimeoutRef.current);
@@ -93,11 +87,9 @@ export function useAutoSave({
     }
   }, [content, saveDocument]);
 
-  // Save on page unload
   useEffect(() => {
     const handleBeforeUnload = () => {
       if (content !== lastSavedContentRef.current) {
-        // Use navigator.sendBeacon for reliable saving on page unload
         const payload = JSON.stringify({
           id: documentId,
           content: content,

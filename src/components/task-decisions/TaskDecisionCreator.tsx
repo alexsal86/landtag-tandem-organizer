@@ -235,8 +235,6 @@ export const TaskDecisionCreator = ({
 
     setIsLoading(true);
     try {
-      console.log('Starting decision creation...');
-      
       // Get current user first and validate
       const { data: userData, error: userError } = await supabase.auth.getUser();
       if (userError) {
@@ -248,8 +246,6 @@ export const TaskDecisionCreator = ({
         console.error('No user found');
         throw new Error('User not authenticated');
       }
-
-      console.log('User authenticated:', userData.user.id);
 
       // Get user's tenant
       const { data: tenantData, error: tenantError } = await supabase
@@ -294,16 +290,6 @@ export const TaskDecisionCreator = ({
         priority: priority ? 1 : 0,
       };
       
-      console.log('Creating decision with data:', insertData);
-      console.log('Current user ID:', userData.user.id);
-      console.log('User auth role:', userData.user.role);
-      
-      // Check if user is authenticated
-      const { data: { session } } = await supabase.auth.getSession();
-      console.log('Current session exists:', !!session);
-      console.log('Session user ID:', session?.user?.id);
-      console.log('Session user aud:', session?.user?.aud);
-
       // Create the decision
       const { data: decision, error: decisionError } = await supabase
         .from('task_decisions')
@@ -315,8 +301,6 @@ export const TaskDecisionCreator = ({
         console.error('Decision creation error:', decisionError);
         throw decisionError;
       }
-
-      console.log('Decision created successfully:', decision);
 
       // Upload files if any were selected
       if (selectedFiles.length > 0) {
@@ -349,8 +333,6 @@ export const TaskDecisionCreator = ({
           user_id: userId,
         }));
 
-        console.log('Adding participants:', participants);
-
         const { error: participantsError } = await supabase
           .from('task_decision_participants')
           .insert(participants);
@@ -360,7 +342,6 @@ export const TaskDecisionCreator = ({
           throw participantsError;
         }
 
-        console.log('Participants added successfully');
       }
 
       // Send notifications to participants

@@ -1,82 +1,61 @@
 
+Ziel: Rückmeldungs-Feed stabil sichtbar machen und gleichzeitig die aktuellen Build-Blocker entfernen, damit die Fixes überhaupt wieder ausgeliefert werden.
 
-# Code-Bereinigung
+1) Diagnose (aus Code + DB)
+- Do I know what the issue is? Ja.
+- Es gibt aktuell 2 Ebenen von Problemen:
+  1. Build ist kaputt (TypeScript):
+     - `src/components/ui/calendar.tsx`: doppelte Keys im `classNames`-Objekt (`caption_label`, `dropdowns`, `dropdown`) → TS1117.
+     - `src/components/task-decisions/DecisionOverview.tsx`: `ResponseOption`-Typ ohne `requires_comment` → TS2339.
+  2. Feed-Logik ist instabil/zu restriktiv:
+     - `src/components/my-work/MyWorkFeedbackFeedTab.tsx` übergibt `completedTo: new Date().toISOString()` bei jedem Render.
+       Dadurch ändert sich der React-Query-Key permanent (`useTeamFeedbackFeed`), was zu dauerndem Neu-Laden bzw. instabilem Feed führt.
+     - `useTeamFeedbackFeed` filtert hart auf `.not('notes','is',null)`. Damit verschwinden abgeschlossene Rückmeldungen ohne Notiz (z. B. nur Anhang/Aufgabe), obwohl sie fachlich oft relevant sind.
+- DB-Check:
+  - `appointment_feedback` hat Daten (u. a. completed in den letzten 7 Tagen vorhanden).
+  - RLS auf `appointment_feedback` erlaubt tenant-basiertes Lesen (`tenant_id = ANY(get_user_tenant_ids(auth.uid()))`), also kein offensichtlicher RLS-Blocker für Team-Feed im Tenant.
 
-Basierend auf der Analyse gibt es drei Hauptbereiche zum Bereinigen:
+2) Umsetzungsplan (in Reihenfolge)
+A. Build sofort reparieren (Blocker)
+- `calendar.tsx`: doppelte Objekt-Keys entfernen, nur eine konsistente Definition für `caption_label`, `dropdowns`, `dropdown` behalten.
+- `DecisionOverview.tsx`: lokalen `ResponseOption`-Typ um `requires_comment?: boolean` ergänzen (oder auf den zentralen Typ aus `decisionTemplates` umstellen).
 
----
+B. Feed-Query stabilisieren
+- `MyWorkFeedbackFeedTab.tsx`:
+  - `completedTo` nicht mehr bei jedem Render neu erzeugen.
+  - Entweder:
+    - `completedTo` ganz weglassen (nur `completedFrom` + order/limit), oder
+    - `completedTo` per `useMemo/useState` nur bei Filterwechsel neu setzen.
+- `useTeamFeedbackFeed.ts`:
+  - Query-Key nur mit stabilen Filterwerten.
+  - Zeitfilter robust halten (kein per-render Drift).
 
-## 1. Console.log-Statements entfernen (~2.640 in 77 src-Dateien)
+C. Sichtbarkeit der Rückmeldungen fachlich korrigieren
+- `useTeamFeedbackFeed.ts`:
+  - Notiz-Pflicht entfernen oder erweitern:
+    - statt nur `notes is not null` auch Einträge mit `has_documents = true` oder `has_tasks = true` zulassen.
+  - Ergebnis: auch „abgeschlossen ohne Notiz, aber mit Anhang/Aufgabe“ erscheint im Feed.
 
-Die groessten Verursacher im `src/`-Ordner:
+D. Fehler nicht mehr als „keine Daten“ maskieren
+- `MyWorkFeedbackFeedTab.tsx`:
+  - `isError` + `error` aus Query auslesen.
+  - Bei Fehler einen klaren Error-State anzeigen (statt „Keine passenden Rückmeldungen gefunden“), inkl. Retry-Button (`refetch`).
 
-| Datei | Anzahl (ca.) | Inhalt |
-|-------|-------------|--------|
-| `DocumentsView.tsx` | ~12 | Template-Debug-Logs |
-| `CustomizableDashboard.tsx` | ~8 | Layout/Widget-Debug |
-| `SimpleLeafletMap.tsx` | ~8 | Karten-Debug |
-| `ReviewAssignmentDialog.tsx` | ~6 | Assignment-Debug |
-| `InlineMeetingParticipantsEditor.tsx` | ~8 | Teilnehmer-Debug |
-| `shared/QuickNotesList.tsx` | ~6 | Archiv/Follow-up-Debug |
-| `useGlobalNoteSharing.tsx` | ~8 | Share-Debug |
-| `useNewItemIndicators.tsx` | ~4 | Indicator-Debug |
-| `useNotifications.tsx` | ~8 | Push-Debug |
-| `useAutoSave.tsx` | ~2 | Auto-Save-Debug |
-| `UserSelector.tsx` | ~2 | Fetch-Debug |
-| `ui/multi-select-simple.tsx` | ~1 | Render-Debug (besonders schlecht -- loggt bei jedem Render!) |
-| `dashboard/GridDebugOverlay.tsx` | ~2 | Grid-Debug |
-| `utils/pdfParser.ts` | ~40+ | PDF-Parsing-Debug |
-| `utils/dashboard/weatherApi.ts` | ~6 | Wetter-Debug |
+E. Quercheck auf Seiteneffekte
+- `useMyWorkNewCounts.tsx` zählt derzeit ebenfalls nur `completed + notes not null`; ggf. auf dieselbe fachliche Logik angleichen, damit Badge und Feed konsistent sind.
 
-**Vorgehen**: Alle `console.log` in `src/` entfernen oder durch `debugConsole` ersetzen. `console.error` und `console.warn` bei tatsaechlichen Fehlern beibehalten. In Edge Functions (`supabase/functions/`) bleiben die Logs -- dort sind sie fuer Server-Debugging nuetzlich.
+3) Validierung nach Umsetzung
+- Build grün ohne TS-Fehler.
+- Im Tab „Meine Arbeit > Rückmeldungen“:
+  - Keine Endlos-Ladeanzeige.
+  - Team-Einträge der letzten 7/14 Tage sichtbar.
+  - Filter (Sicht/Zeitraum/Anhänge/Aufgaben) funktionieren.
+  - Bei absichtlichem Query-Fehler erscheint Error-State statt Empty-State.
+- Schneller Datenabgleich:
+  - Feed-Anzahl grob konsistent mit SQL-Count für completed im Zeitraum (unter Berücksichtigung der Filter).
 
----
-
-## 2. Verbleibende `select('*')` optimieren (~240 in 29 Dateien)
-
-Die wichtigsten Kandidaten:
-
-| Datei | Tabelle | Aktion |
-|-------|---------|--------|
-| `ExpenseManagement.tsx` | `expense_categories`, `expense_budgets` | Explizite Spalten |
-| `SettingsView.tsx` | `profiles` | Explizite Spalten |
-| `EditContact.tsx` | `contacts` | Explizite Spalten |
-| `EmployeeYearlyStatsView.tsx` | `employee_yearly_stats` | Explizite Spalten |
-| `MatrixSettings.tsx` | `matrix_subscriptions` | Explizite Spalten |
-| `EmailHistory.tsx` | `email_logs`, `scheduled_emails` | Explizite Spalten |
-| `AdminTimeTrackingView.tsx` | `time_entries`, `time_entry_corrections` | Explizite Spalten |
-| `useCaseFileDetails.tsx` | `case_item_interactions` | Explizite Spalten |
-| `useTeamAnnouncements.ts` | `team_announcements` | Explizite Spalten |
-| `useNoteSharing.tsx` | `quick_note_shares` | Explizite Spalten |
-| `MyWorkCaseItemsTab.tsx` | `case_items` | Explizite Spalten |
-| `AnnualTasksView.tsx` | `annual_tasks` | Explizite Spalten |
-
----
-
-## 3. Test-/Debug-Komponenten bereinigen
-
-Folgende Dateien sind reine Test-/Debug-Komponenten, die in der Produktion nichts verloren haben:
-
-- `EventPlanningViewTest.tsx` -- Test-Variante der EventPlanningView
-- `UnicornAnimationTest.tsx` -- Einhorn-Animation-Test
-- `GridDebugOverlay.tsx` -- Debug-Overlay fuer Dashboard-Grid
-
-Diese sollten entweder entfernt oder hinter ein Debug-Flag gestellt werden (wie `debugConsole`).
-
-Die folgenden Test-Komponenten sind in der **Administration** eingebunden und dort sinnvoll (Push-Notification-Debugging):
-- `DirectPushTest.tsx`, `PushNotificationTest.tsx`, `VapidKeyTest.tsx` -- bleiben in Admin
-- `CalendarSyncDebug.tsx` -- bleibt als Admin-Debug-Tab
-- `CreateDemoUsers.tsx` -- bleibt als Admin-Tool
-
----
-
-## Zusammenfassung
-
-| Massnahme | Dateien | Effekt |
-|-----------|---------|--------|
-| Console.log entfernen/ersetzen | ~77 Dateien in src/ | Saubere Konsole, weniger Noise |
-| `select('*')` → explizite Spalten | ~12 Dateien | Weniger Egress, schnellere Queries |
-| Test-Komponenten bereinigen | 3 Dateien | Kleinerer Bundle |
-
-Alle Aenderungen sind funktionsneutral.
-
+4) Warum das den aktuellen Zustand löst
+- Solange Build fehlschlägt, werden vorherige Fixes teils nicht wirksam.
+- Selbst bei laufendem Build kann der Feed durch den „beweglichen“ `completedTo`-Key instabil bleiben.
+- Zusätzlich blendet der harte Notiz-Filter valide Rückmeldungen aus.
+- Mit den vier Korrekturen (Build, stabiler Query-Key, fachlich korrekter Filter, echter Error-State) wird die Ursachekette vollständig geschlossen.

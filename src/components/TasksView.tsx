@@ -164,7 +164,7 @@ export function TasksView() {
   const [quickNoteContent, setQuickNoteContent] = useState("");
   const [showCelebration, setShowCelebration] = useState(false);
   
-  console.log('TodoCreateOpen state:', todoCreateOpen); // Debug log
+  
   
   const { toast } = useToast();
   const { isItemNew, clearAllIndicators } = useNewItemIndicators('tasks');
@@ -182,7 +182,7 @@ export function TasksView() {
   // Load tasks from database
   useEffect(() => {
     const loadAllData = async () => {
-      console.log('Starting to load all data...');
+      
       
       // Load users first, since we need them for UUID resolution
       await loadUsers();
@@ -202,7 +202,7 @@ export function TasksView() {
       // Load assigned subtasks last, after users are loaded
       await loadAssignedSubtasks();
       
-      console.log('All data loaded');
+      
     };
     
     loadAllData();
@@ -443,13 +443,13 @@ export function TasksView() {
         ? cleanField.split(',').map(id => id.trim()).filter(id => id)
         : [];
     
-    console.log('🔍 Resolving user names for:', userIds, 'from original field:', assignedToField);
+    
     
     return userIds
       .map(userId => {
         const user = users.find(u => u.user_id === userId);
         const result = user?.display_name || userId;
-        console.log(`📝 User ${userId} resolved to: ${result}`);
+        
         return result;
       })
       .join(', ');
@@ -515,7 +515,7 @@ export function TasksView() {
       }
 
       // 2. Get planning subtasks assigned to this user
-      console.log('📅 Loading planning subtasks...');
+      
       const { data: planningSubtasksData, error: planningError } = await supabase
         .from('planning_item_subtasks')
         .select('*')
@@ -525,11 +525,11 @@ export function TasksView() {
       if (planningError) {
         console.error('❌ Error loading planning subtasks:', planningError);
       } else {
-        console.log('✅ Raw planning subtasks data:', planningSubtasksData);
+        
         
         if (planningSubtasksData) {
           for (const subtask of planningSubtasksData) {
-            console.log('📝 Processing planning subtask:', subtask.id, 'assigned_to:', subtask.assigned_to);
+            
             
             try {
               const resolvedAssignedTo = await resolveUserNamesAsync([subtask.assigned_to]);
@@ -562,7 +562,7 @@ export function TasksView() {
                 assigned_to: [subtask.assigned_to] // Convert single value to array for consistency
               });
               
-              console.log('✅ Added planning subtask:', subtask.id);
+              
             } catch (resolveError) {
               console.error('❌ Error resolving names for planning subtask:', subtask.id, resolveError);
               // Add without resolved names as fallback
@@ -580,7 +580,7 @@ export function TasksView() {
       }
 
       // 3. Get call follow-up tasks assigned to this user
-      console.log('📞 Loading call follow-up tasks...');
+      
       const { data: callFollowupData, error: callFollowupError } = await supabase
         .from('tasks')
         .select('*')
@@ -590,7 +590,7 @@ export function TasksView() {
       if (callFollowupError) {
         console.error('❌ Error loading call follow-up tasks:', callFollowupError);
       } else {
-        console.log('✅ Raw call follow-up data:', callFollowupData);
+        
         
         // Filter those assigned to current user
         const userCallFollowups = (callFollowupData || []).filter(task => {
@@ -602,14 +602,12 @@ export function TasksView() {
                            assignees.includes(user.email) || 
                            task.user_id === user.id;
           
-          console.log('📝 Checking call follow-up task:', task.id, 'assignees:', assignees, 'isAssigned:', isAssigned);
+          
           return isAssigned;
         });
 
-        console.log('📞 Filtered call follow-up tasks for user:', userCallFollowups.length);
 
         for (const followupTask of userCallFollowups) {
-          console.log('📝 Processing call follow-up task:', followupTask.id);
           
           try {
             const assignees = Array.isArray(followupTask.assigned_to) 
@@ -657,7 +655,7 @@ export function TasksView() {
               assigned_to_names: resolvedAssignedTo
             });
             
-            console.log('✅ Added call follow-up task:', followupTask.id);
+            
           } catch (resolveError) {
             console.error('❌ Error resolving names for call follow-up:', followupTask.id, resolveError);
             // Add without resolved names as fallback
@@ -687,17 +685,6 @@ export function TasksView() {
         }
       }
 
-      console.log('🎯 FINAL RESULT - Total assigned subtasks found:', allSubtasks.length);
-      console.log('📊 Breakdown:');
-      console.log('  - Planning subtasks:', allSubtasks.filter(s => s.source_type === 'planning').length);  
-      console.log('  - Call follow-ups:', allSubtasks.filter(s => s.source_type === 'call_followup').length);
-      console.log('📋 All subtasks details:', allSubtasks.map(s => ({
-        id: s.id,
-        title: s.title,
-        source_type: s.source_type,
-        assigned_to: s.assigned_to,
-        assigned_to_names: s.assigned_to_names
-      })));
 
       setAssignedSubtasks(allSubtasks);
     } catch (error) {
@@ -775,16 +762,13 @@ export function TasksView() {
 
   const loadUsers = async () => {
     try {
-      console.log('Loading users...');
       const { data, error } = await supabase
         .from('profiles')
         .select('user_id, display_name')
         .order('display_name');
 
       if (error) throw error;
-      console.log('Loaded users for UUID resolution:', data);
       setUsers(data || []);
-      console.log('Users state updated with', (data || []).length, 'users');
     } catch (error) {
       console.error('Error loading users:', error);
     }
@@ -792,7 +776,7 @@ export function TasksView() {
 
   const loadTaskComments = async () => {
     try {
-      console.log('Loading task comments...');
+      
       const { data, error } = await supabase
         .from('task_comments')
         .select(`
@@ -810,7 +794,7 @@ export function TasksView() {
         throw error;
       }
 
-      console.log('Raw comment data:', data);
+      
 
       const commentsMap: { [taskId: string]: TaskComment[] } = {};
       (data || []).forEach(comment => {
@@ -827,14 +811,14 @@ export function TasksView() {
         });
       });
 
-      console.log('Final comments map:', commentsMap);
+      
       setTaskComments(commentsMap);
     } catch (error) {
       console.error('Error loading task comments:', error);
       
       // Fallback: Try a simpler query without join
       try {
-        console.log('Trying fallback query...');
+        
         const { data: fallbackData, error: fallbackError } = await supabase
           .from('task_comments')
           .select('id, task_id, content, user_id, created_at')
@@ -842,7 +826,7 @@ export function TasksView() {
 
         if (fallbackError) throw fallbackError;
 
-        console.log('Fallback comment data:', fallbackData);
+        
         
         const commentsMap: { [taskId: string]: TaskComment[] } = {};
         (fallbackData || []).forEach(comment => {
@@ -1221,7 +1205,7 @@ export function TasksView() {
     if (!content || !user) return;
 
     try {
-      console.log('Adding comment for task:', taskId, 'Content:', content);
+      
       const { error } = await supabase
         .from('task_comments')
         .insert({
@@ -1673,24 +1657,14 @@ export function TasksView() {
   });
 
   const filteredAssignedSubtasks = assignedSubtasks.filter(subtask => {
-    console.log('🔍 Filtering subtask:', subtask.id, 'hideSnoozeSubtasks:', hideSnoozeSubtasks, 'snoozed:', !!subtaskSnoozes[subtask.id]);
-    
     if (hideSnoozeSubtasks) {
       const isSnoozed = subtaskSnoozes[subtask.id] && new Date(subtaskSnoozes[subtask.id]) > new Date();
       if (isSnoozed) {
-        console.log('❌ Hiding snoozed subtask:', subtask.id, 'until:', subtaskSnoozes[subtask.id]);
         return false;
       }
     }
-    
-    console.log('✅ Including subtask in filtered list:', subtask.id);
     return true;
   });
-
-  console.log('🎯 FILTERING RESULTS:');
-  console.log('  - Total assigned subtasks:', assignedSubtasks.length);
-  console.log('  - Filtered assigned subtasks:', filteredAssignedSubtasks.length);
-  console.log('  - Hide snooze subtasks enabled:', hideSnoozeSubtasks);
 
   const taskCounts = {
     all: filteredTasksWithSnooze.length,

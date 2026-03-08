@@ -56,19 +56,19 @@ export const TaskDecisionList = () => {
   const [creatorResponses, setCreatorResponses] = useState<{[key: string]: string}>({});
   const [isLoading, setIsLoading] = useState(false);
 
-  console.log('TaskDecisionList component rendered - user from useAuth:', user?.id);
+  
 
   useEffect(() => {
-    console.log('TaskDecisionList useEffect triggered - user from hook:', user?.id);
+    
     if (user?.id) {
       loadDecisionRequests(user.id);
     } else {
-      console.log('No user yet, skipping loadDecisionRequests');
+      
     }
   }, [user?.id]);
 
   const loadDecisionRequests = async (currentUserId: string) => {
-    console.log('Loading decision requests for user:', currentUserId);
+    
 
     try {
       // Load decisions where user is a participant
@@ -96,7 +96,7 @@ export const TaskDecisionList = () => {
         .eq('user_id', currentUserId)
         .eq('task_decisions.status', 'active');
 
-      console.log('Participant decisions query result:', { participantDecisions, participantError });
+      
 
       if (participantError) throw participantError;
 
@@ -125,9 +125,6 @@ export const TaskDecisionList = () => {
         `)
         .eq('status', 'active');
 
-      console.log('All task decisions before filtering:', { assignedTaskDecisions, assignedError });
-
-      console.log('Assigned task decisions query result:', { assignedTaskDecisions, assignedError });
 
       if (assignedError) throw assignedError;
 
@@ -156,7 +153,7 @@ export const TaskDecisionList = () => {
           const isParticipant = item.task_decision_participants.some(p => p.user_id === currentUserId);
           const isCreator = item.created_by === currentUserId;
           const shouldInclude = isAssigned || isParticipant || isCreator;
-          console.log('Task:', item.tasks?.title, 'assigned_to:', assignedTo, 'isAssigned:', isAssigned, 'isParticipant:', isParticipant, 'isCreator:', isCreator, 'shouldInclude:', shouldInclude);
+          
           return shouldInclude;
         })
         ?.map(item => {
@@ -177,7 +174,7 @@ export const TaskDecisionList = () => {
           };
         }) || [];
 
-      console.log('Formatted assigned data after filtering:', formattedAssignedData);
+      
 
       // Combine and deduplicate (participant decisions take priority)
       const allDecisions = [...formattedParticipantData];
@@ -288,8 +285,6 @@ export const TaskDecisionList = () => {
         });
       }
 
-      console.log('Final decisions list:', allDecisions);
-      console.log('Total decisions found:', allDecisions.length);
 
       setDecisions(allDecisions);
     } catch (error) {
@@ -299,13 +294,13 @@ export const TaskDecisionList = () => {
 
   const sendCreatorResponse = async (responseId: string) => {
     const responseText = creatorResponses[responseId];
-    console.log('sendCreatorResponse called with:', { responseId, responseText, creatorResponses });
+    
     
     if (!responseText?.trim()) return;
 
     setIsLoading(true);
     try {
-      console.log('Updating task_decision_responses with:', { responseId, responseText });
+      
       
       const { data, error } = await supabase
         .from('task_decision_responses')
@@ -318,7 +313,7 @@ export const TaskDecisionList = () => {
         throw error;
       }
 
-      console.log('Updated response data:', data);
+      
 
       toast({
         title: "Erfolgreich",
@@ -330,7 +325,7 @@ export const TaskDecisionList = () => {
       
       // Then reload decisions
       if (user?.id) {
-        console.log('Reloading decisions after creator response');
+        
         await loadDecisionRequests(user.id);
       }
     } catch (error) {
@@ -498,10 +493,6 @@ export const TaskDecisionList = () => {
                             </div>
                             <p className="text-muted-foreground">{latestResponse.comment}</p>
                             
-                            {(() => {
-                              console.log('Response data for participant:', participant.id, 'Latest response:', latestResponse);
-                              return null;
-                            })()}
                             
                             {latestResponse.creator_response ? (
                               <div className="bg-white p-2 rounded border">
@@ -522,7 +513,7 @@ export const TaskDecisionList = () => {
                                 <Button
                                   size="sm"
                                   onClick={() => {
-                                    console.log('Sending creator response for responseId:', latestResponse.id, 'Text:', creatorResponses[latestResponse.id]);
+                                    
                                     sendCreatorResponse(latestResponse.id);
                                   }}
                                   disabled={isLoading || !creatorResponses[latestResponse.id]?.trim()}

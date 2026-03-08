@@ -1133,7 +1133,7 @@ export function ContactsView() {
               viewMode={stakeholderViewMode}
               onToggleFavorite={toggleFavorite}
               onContactClick={(contactId) => {
-                console.log('ContactsView: Stakeholder contact clicked:', contactId);
+                
                 setSelectedContactId(contactId);
               }}
               onRefresh={refreshContacts}

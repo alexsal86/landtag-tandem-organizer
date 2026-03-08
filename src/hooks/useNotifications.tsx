@@ -236,7 +236,7 @@ export const useNotifications = () => {
       
       if (isNetworkError) {
         // Don't revert - operation likely succeeded, reload to confirm
-        console.log('Network error during markAllAsRead - reloading to verify state');
+        
         setTimeout(() => loadNotifications(), 1000);
       } else {
         // Revert optimistic update on real error
@@ -292,28 +292,21 @@ export const useNotifications = () => {
   // Subscribe to push notifications
   const subscribeToPush = useCallback(async () => {
     if (!user || !pushSupported || pushPermission !== 'granted') {
-      console.log('❌ Cannot subscribe - requirements not met:', {
-        user: !!user,
-        pushSupported,
-        pushPermission
-      });
       return;
     }
 
     try {
-      console.log('🔄 Starting push subscription process...');
-      
       // Use the already-registered root service worker (COOP/COEP worker at /coi-serviceworker.js)
       // Registering a second worker at scope '/' caused non-deterministic replacement and flaky push delivery.
       const registration = await navigator.serviceWorker.ready;
       if (!(registration as any).pushManager) {
         throw new Error('PushManager is not available on the active service worker registration');
       }
-      console.log('✅ Service worker ready for push (scope:', registration.scope, ')');
+      
 
       // Get existing subscription or create new one
       let subscription = await (registration as any).pushManager.getSubscription();
-      console.log('📋 Existing subscription:', !!subscription);
+      
       
       // Always check if we need to create a new subscription
       // Either no subscription exists OR the database subscription is inactive
@@ -329,17 +322,14 @@ export const useNotifications = () => {
           .single();
           
         if (!dbSubscription || !dbSubscription.is_active) {
-          console.log('🔄 Database subscription is inactive, creating new one...');
+          
           await subscription.unsubscribe();
           needNewSubscription = true;
         }
       }
       
       if (needNewSubscription) {
-        console.log('🔧 Creating new push subscription...');
-        
         // Fetch VAPID public key from Edge Function using GET request
-        console.log('🔑 Fetching VAPID public key from Edge Function...');
         try {
           const vapidResponse = await fetch(`https://wawofclbehbkebjivdte.supabase.co/functions/v1/send-push-notification`, {
             method: 'GET',
@@ -361,24 +351,23 @@ export const useNotifications = () => {
           }
           
           const vapidPublicKey = vapidData.publicKey;
-          console.log('🔑 Got VAPID public key from server');
+          
         
           subscription = await (registration as any).pushManager.subscribe({
             userVisibleOnly: true,
             applicationServerKey: urlBase64ToUint8Array(vapidPublicKey),
           });
-          console.log('✅ New subscription created');
+          
         } catch (error) {
           console.error('❌ Failed to get VAPID key or create subscription:', error);
           throw error;
         }
       } else {
-        console.log('ℹ️ Using existing active subscription');
+        
       }
 
       if (subscription) {
-        console.log('💾 Saving subscription to database...');
-        console.log('📋 Subscription endpoint:', subscription.endpoint);
+        // Extract keys from subscription
         
         // Extract keys from subscription
         const p256dh = subscription.getKey('p256dh');
@@ -389,16 +378,14 @@ export const useNotifications = () => {
           throw new Error('Invalid subscription keys');
         }
 
-        console.log('🔑 Subscription keys extracted successfully');
+        
 
         // Convert keys to base64
         const p256dhBase64 = btoa(String.fromCharCode(...new Uint8Array(p256dh)));
         const authBase64 = btoa(String.fromCharCode(...new Uint8Array(auth)));
 
-        console.log('🔑 Keys converted to base64:', {
-          p256dh_length: p256dhBase64.length,
-          auth_length: authBase64.length
-        });
+
+        // Save to database
 
         // Save to database
         const { error } = await supabase
@@ -419,7 +406,7 @@ export const useNotifications = () => {
           throw error;
         }
 
-        console.log('✅ Subscription saved to database successfully');
+        
 
         toast({
           title: 'Erfolgreich',

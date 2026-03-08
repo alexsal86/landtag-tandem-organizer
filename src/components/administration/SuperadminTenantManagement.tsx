@@ -183,7 +183,6 @@ export function SuperadminTenantManagement() {
 
         // Initialize tenant with default settings
         if (newTenant) {
-          console.log('Initializing new tenant:', newTenant.id);
           const { error: initError } = await supabase.functions.invoke('manage-tenant-user', {
             body: { action: 'initializeTenant', tenantId: newTenant.id }
           });

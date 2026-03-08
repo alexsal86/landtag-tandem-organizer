@@ -114,7 +114,7 @@ export const ExpenseManagement = () => {
     const lastDay = new Date(year, month, 0).getDate(); // Get actual last day of month
     const endDate = `${year}-${month.toString().padStart(2, '0')}-${lastDay.toString().padStart(2, '0')}`;
     
-    console.log('Loading expenses for date range:', startDate, 'to', endDate);
+    
     
     const { data, error } = await supabase
       .from("expenses")
@@ -131,7 +131,7 @@ export const ExpenseManagement = () => {
       console.error('Error loading expenses:', error);
       toast({ title: "Fehler", description: "Ausgaben konnten nicht geladen werden", variant: "destructive" });
     } else {
-      console.log('Loaded expenses:', data?.length || 0);
+      
       setExpenses((data as Expense[]) || []);
     }
   };
@@ -155,14 +155,14 @@ export const ExpenseManagement = () => {
   };
 
   const uploadReceipt = async (file: File): Promise<string | null> => {
-    console.log('Starting receipt upload for file:', file.name, 'Size:', file.size);
+    
     
     const fileExt = file.name.split('.').pop();
     const fileName = `${Date.now()}.${fileExt}`;
     // Korrigiere den Pfad: user_id/receipts/filename statt receipts/user_id-filename
     const filePath = `${user?.id}/receipts/${fileName}`;
 
-    console.log('Uploading to path:', filePath);
+    
 
     const { error: uploadError } = await supabase.storage
       .from('documents')
@@ -174,12 +174,12 @@ export const ExpenseManagement = () => {
       return null;
     }
 
-    console.log('Upload successful, file path:', filePath);
+    
     return filePath;
   };
 
   const addExpense = async () => {
-    console.log('Adding expense with data:', newExpense);
+    
     
     if (!newExpense.amount || !newExpense.category_id) {
       toast({ title: "Fehler", description: "Betrag und Kategorie sind erforderlich", variant: "destructive" });
@@ -188,13 +188,13 @@ export const ExpenseManagement = () => {
 
     let receiptPath = null;
     if (newExpense.receipt_file) {
-      console.log('Receipt file selected, starting upload...');
+      
       receiptPath = await uploadReceipt(newExpense.receipt_file);
       if (!receiptPath) {
         console.error('Receipt upload failed, aborting expense creation');
         return;
       }
-      console.log('Receipt uploaded successfully to:', receiptPath);
+      
     }
 
     const { error } = await supabase

@@ -98,7 +98,7 @@ export const useNoteSharing = (noteId?: string) => {
   };
 
   const unshareNote = async (shareId: string) => {
-    console.log("Unsharing note:", { shareId });
+    
     
     try {
       // Hole zuerst die note_id für die RLS-Policy
@@ -108,7 +108,7 @@ export const useNoteSharing = (noteId?: string) => {
         .eq("id", shareId)
         .single();
 
-      console.log("Share data for unshare:", shareData);
+      
 
       const { data, error } = await supabase
         .from("quick_note_shares")
@@ -116,7 +116,7 @@ export const useNoteSharing = (noteId?: string) => {
         .eq("id", shareId)
         .select();
 
-      console.log("Delete result:", { data, error });
+      
 
       if (error) throw error;
 
@@ -138,7 +138,7 @@ export const useNoteSharing = (noteId?: string) => {
   const updatePermission = async (shareId: string, permissionType: "view" | "edit") => {
     if (!user) return false;
 
-    console.log("Updating individual note permission:", { shareId, permissionType });
+    
 
     try {
       // First get the note_id for the share (helps RLS policy evaluate correctly)
@@ -154,7 +154,7 @@ export const useNoteSharing = (noteId?: string) => {
         return false;
       }
 
-      console.log("Share data for permission update:", shareData);
+      
 
       // Update with note_id filter to help RLS policy
       const { data, error } = await supabase
@@ -164,7 +164,7 @@ export const useNoteSharing = (noteId?: string) => {
         .eq("note_id", shareData.note_id)
         .select();
 
-      console.log("Update result:", { data, error });
+      
 
       if (error) throw error;
 

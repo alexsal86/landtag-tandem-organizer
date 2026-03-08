@@ -192,7 +192,7 @@ export const AppointmentPollCreator = ({ onClose }: { onClose: () => void }) => 
       const creatorName = profile?.display_name || user.email || 'Unbekannt';
 
       // Create participants with improved error handling
-      console.log('Creating participants for poll:', poll.id);
+      
       const participantData = [];
       
       // Process each participant individually to avoid conflicts
@@ -228,7 +228,7 @@ export const AppointmentPollCreator = ({ onClose }: { onClose: () => void }) => 
         }
       }
       
-      console.log('Inserting participant data:', participantData);
+      
       const { error: participantsError } = await supabase
         .from('poll_participants')
         .insert(participantData);
@@ -238,7 +238,7 @@ export const AppointmentPollCreator = ({ onClose }: { onClose: () => void }) => 
         throw new Error(`Teilnehmer konnten nicht erstellt werden: ${participantsError.message}`);
       }
       
-      console.log('Successfully created', participantData.length, 'participants');
+      
 
       // Send invitations to external participants
       const externalEmails = participants
@@ -265,7 +265,7 @@ export const AppointmentPollCreator = ({ onClose }: { onClose: () => void }) => 
             variant: "destructive",
           });
         } else {
-          console.log('Email response:', emailData);
+          
           toast({
             title: "Abstimmung erstellt",
             description: "Die Terminabstimmung wurde erfolgreich erstellt und Einladungen versendet.",

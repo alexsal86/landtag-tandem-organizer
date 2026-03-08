@@ -163,7 +163,7 @@ export const useInfiniteContacts = ({
 
   const fetchContacts = useCallback(async (isLoadMore = false) => {
     if (!user || !currentTenant) {
-      console.log('Missing user or tenant:', { user: !!user, currentTenant: !!currentTenant });
+      
       setLoading(false);
       setLoadingMore(false);
       return;
@@ -179,12 +179,6 @@ export const useInfiniteContacts = ({
       const offset = isLoadMore ? currentPage * ITEMS_PER_PAGE : 0;
       const query = buildQuery(offset, ITEMS_PER_PAGE);
       
-      console.log('Fetching contacts with query:', { 
-        user: user.id, 
-        tenant: currentTenant.id, 
-        offset, 
-        limit: ITEMS_PER_PAGE 
-      });
       
       const { data, error, count } = await query;
 

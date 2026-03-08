@@ -97,12 +97,12 @@ export const StandaloneDecisionCreator = ({
   };
 
   const loadProfiles = useCallback(async () => {
-    console.log("Loading profiles for decision creator...");
+    
     try {
       // Get current user's tenant
       const { data: userData } = await supabase.auth.getUser();
       if (!userData.user) {
-        console.log("No user found");
+        
         return;
       }
 
@@ -113,7 +113,7 @@ export const StandaloneDecisionCreator = ({
         .eq('is_active', true)
         .single();
 
-      console.log("Tenant ID:", tenantData?.tenant_id);
+      
 
       if (!tenantData?.tenant_id) {
         setProfiles([]);
@@ -221,7 +221,7 @@ export const StandaloneDecisionCreator = ({
 
     setIsLoading(true);
     try {
-      console.log('Starting standalone decision creation...');
+      
       
       // Get current user first and validate
       const { data: userData, error: userError } = await supabase.auth.getUser();
@@ -235,7 +235,7 @@ export const StandaloneDecisionCreator = ({
         throw new Error('User not authenticated');
       }
 
-      console.log('User authenticated:', userData.user.id);
+      
 
       // Get user's tenant
       const { data: tenantData, error: tenantError } = await supabase
@@ -280,7 +280,7 @@ export const StandaloneDecisionCreator = ({
         case_item_id: caseItemId || null,
       };
       
-      console.log('Creating standalone decision with data:', insertData);
+      
       
       // Create the decision
       const { data: decision, error: decisionError } = await supabase
@@ -294,7 +294,7 @@ export const StandaloneDecisionCreator = ({
         throw decisionError;
       }
 
-      console.log('Decision created successfully:', decision);
+      
 
       // Upload files if any were selected
       if (selectedFiles.length > 0) {
@@ -327,7 +327,7 @@ export const StandaloneDecisionCreator = ({
           user_id: userId,
         }));
 
-        console.log('Adding participants:', participants);
+        
 
         const { error: participantsError } = await supabase
           .from('task_decision_participants')
@@ -338,7 +338,7 @@ export const StandaloneDecisionCreator = ({
           throw participantsError;
         }
 
-        console.log('Participants added successfully');
+        
       }
 
       // Send notifications to participants

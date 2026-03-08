@@ -148,7 +148,7 @@ export const useYjsCollaboration = ({
       return;
     }
 
-    console.log('[Yjs] Connecting to collaboration for document:', documentId);
+    
     setConnectionState('connecting');
 
     try {
@@ -224,7 +224,7 @@ export const useYjsCollaboration = ({
       });
 
       setConnectionState('connected');
-      console.log('[Yjs] Connected successfully');
+      
 
     } catch (error) {
       console.error('[Yjs] Connection failed:', error);
@@ -234,7 +234,7 @@ export const useYjsCollaboration = ({
 
   // Disconnect from collaboration
   const disconnect = useCallback(() => {
-    console.log('[Yjs] Disconnecting from collaboration');
+    
     
     if (supabaseChannel.current) {
       supabase.removeChannel(supabaseChannel.current);

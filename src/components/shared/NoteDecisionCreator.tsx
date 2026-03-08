@@ -235,8 +235,6 @@ export function NoteDecisionCreator({
         priority: priority ? 1 : 0,
       };
 
-      console.log('NoteDecisionCreator: Creating decision with data:', insertData);
-
       const { data: decision, error: decisionError } = await supabase
         .from("task_decisions")
         .insert([insertData])

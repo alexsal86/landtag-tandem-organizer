@@ -21,7 +21,6 @@ export const useNewItemIndicators = (context: string): NewItemIndicatorsHook => 
   const [indicators, setIndicators] = useState<NewItemIndicators>({});
   const [lastVisited, setLastVisited] = useState<Date | null>(null);
 
-  // Load last visited time for this context
   useEffect(() => {
     if (!user) return;
 
@@ -48,7 +47,6 @@ export const useNewItemIndicators = (context: string): NewItemIndicatorsHook => 
     loadLastVisited();
   }, [user, context]);
 
-  // Mark item as viewed
   const markItemAsViewed = (itemId: string) => {
     setIndicators(prev => {
       const updated = { ...prev };
@@ -57,25 +55,19 @@ export const useNewItemIndicators = (context: string): NewItemIndicatorsHook => 
     });
   };
 
-  // Check if item is new based on creation date
   const isItemNew = (itemId: string, createdAt: string | Date): boolean => {
     if (!lastVisited) {
-      console.log(`🔍 isItemNew(${itemId}): No lastVisited, treating as new`);
-      return true; // If never visited, everything is new
+      return true;
     }
     
     const itemCreatedAt = new Date(createdAt);
-    const isNew = itemCreatedAt > lastVisited;
-    console.log(`🔍 isItemNew(${itemId}): created=${itemCreatedAt.toISOString()}, lastVisited=${lastVisited.toISOString()}, isNew=${isNew}`);
-    return isNew;
+    return itemCreatedAt > lastVisited;
   };
 
-  // Clear all indicators (called when leaving page)
   const clearAllIndicators = () => {
     setIndicators({});
   };
 
-  // Listen for storage events to sync across tabs
   useEffect(() => {
     const handleStorageChange = (e: StorageEvent) => {
       if (e.key === 'navigation_visit_sync' && e.newValue && user) {

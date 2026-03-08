@@ -473,7 +473,7 @@ const DaySlipEditor = memo(function DaySlipEditor(props: DaySlipEditorProps) {
       ([k, v]) => prevProps.current[k as keyof DaySlipEditorProps] !== v,
     );
     if (changed.length) {
-      console.log("DaySlipEditor props changed:", changed.map(([k]) => k));
+      
     }
     prevProps.current = props;
   });

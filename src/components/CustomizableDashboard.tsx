@@ -114,7 +114,7 @@ export const CustomizableDashboard: React.FC = () => {
   const handleLayoutChange = (layout: Layout[], layouts: { [key: string]: Layout[] }) => {
     if (!currentLayout || !isEditMode) return;
 
-    console.log('🔄 Layout change detected:', layout);
+    
 
     // Update all widgets with new positions and sizes at once
     const updatedWidgets = currentLayout.widgets.map(widget => {
@@ -168,7 +168,7 @@ export const CustomizableDashboard: React.FC = () => {
 
   // Handle manual resize from widget overlay
   const handleWidgetResize = (widgetId: string, newSize: string) => {
-    console.log('Manual resize:', widgetId, newSize);
+    
     updateWidget(widgetId, { widgetSize: newSize } as any);
   };
 
@@ -189,9 +189,6 @@ export const CustomizableDashboard: React.FC = () => {
   ];
 
   const handleAddWidget = (widgetType: string) => {
-    console.log('🎯 handleAddWidget START:', widgetType);
-    console.log('🔍 addWidget function type:', typeof addWidget);
-    console.log('📋 Current layout widgets:', currentLayout?.widgets.length);
     
     const widgetInfo = availableWidgets.find(w => w.type === widgetType);
     if (!widgetInfo) {
@@ -200,7 +197,7 @@ export const CustomizableDashboard: React.FC = () => {
       return;
     }
 
-    console.log('✅ Found widget info:', widgetInfo);
+    
 
     // Einfache Position-Berechnung - platziere am Ende
     const existingWidgets = currentLayout?.widgets || [];
@@ -218,8 +215,6 @@ export const CustomizableDashboard: React.FC = () => {
       y = maxY;
     }
 
-    console.log('📍 Calculated position:', { x, y });
-    console.log('🚀 Calling addWidget with:', { type: widgetType, position: { x, y } });
     
     // Widget hinzufügen - Toast wird im Hook gemacht
     addWidget(widgetType, { x, y });

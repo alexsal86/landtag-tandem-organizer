@@ -26,9 +26,7 @@ export const WidgetResizeHandles: React.FC<WidgetResizeHandlesProps> = ({
   if (!isEditMode) return null;
 
   const getCurrentSize = () => {
-    // Add debugging and safety checks
-    console.log('Widget object:', widget);
-    console.log('Widget size property:', widget.size, typeof widget.size);
+    // Handle different possible formats for widget.size
     
     // Handle different possible formats for widget.size
     let sizeString = '2x2'; // Default fallback
@@ -52,7 +50,7 @@ export const WidgetResizeHandles: React.FC<WidgetResizeHandlesProps> = ({
     e.stopPropagation();
     e.nativeEvent.stopImmediatePropagation();
     
-    console.log('Resize handle clicked, direction:', direction);
+    
     setIsResizing(true);
     startPos.current = { x: e.clientX, y: e.clientY };
     
@@ -78,7 +76,7 @@ export const WidgetResizeHandles: React.FC<WidgetResizeHandlesProps> = ({
       }
       
       const newSize = `${newW}x${newH}`;
-      console.log('Attempting to resize to:', newSize, 'from current:', widget.size);
+      
       if (WIDGET_SIZES.includes(newSize)) {
         // Get current size string for comparison
         const currentSizeString = typeof widget.size === 'string' ? widget.size : 

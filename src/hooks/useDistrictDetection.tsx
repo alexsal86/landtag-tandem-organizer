@@ -75,7 +75,7 @@ export const useDistrictDetection = () => {
     setError(null);
 
     try {
-      console.log('Detecting district for:', { location, coordinates });
+      
 
       const { data, error: functionError } = await supabase.functions.invoke('detect-appointment-district', {
         body: { location, coordinates }
@@ -92,7 +92,7 @@ export const useDistrictDetection = () => {
         return null;
       }
 
-      console.log('Detection result:', data);
+      
       setResult(data);
       return data;
 

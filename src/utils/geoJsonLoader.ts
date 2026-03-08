@@ -130,21 +130,21 @@ function reprojectIfNeeded(fc: GeoJsonData): GeoJsonData {
   if (!sourceDef && projected && sample) {
     // Try to guess projection from coordinate values
     sourceDef = guessGaussKruegerFromX(sample[0]);
-    console.log(`Guessed projection for x=${sample[0]}: ${sourceDef ? 'GK Zone detected' : 'unknown'}`);
+    
   }
 
   if (!projected || !sourceDef) {
-    console.log('No reprojection needed or no projection detected');
+    
     return fc;
   }
 
-  console.log(`Reprojecting from ${epsg || 'detected projection'} to WGS84...`);
+  
   
   // Test transformation with sample coordinate
   if (sample) {
     try {
       const [testLon, testLat] = proj4(sourceDef, wgs84, [sample[0], sample[1]]);
-      console.log(`Sample coordinate transformation: [${sample[0]}, ${sample[1]}] -> [${testLon}, ${testLat}]`);
+      
       
       // Sanity check: longitude should be around 8-10 for Baden-Württemberg
       if (testLon < 7 || testLon > 11 || testLat < 47 || testLat > 50) {
@@ -197,7 +197,7 @@ export const loadElectoralDistrictsGeoJson = async (): Promise<GeoJsonData> => {
 
   for (const path of candidates) {
     try {
-      console.log('Attempting to load GeoJSON from', path);
+      
       const res = await fetch(path);
       if (!res.ok) {
         console.warn('Fetch failed for', path, res.status, res.statusText);
@@ -241,7 +241,7 @@ export const loadElectoralDistrictsGeoJson = async (): Promise<GeoJsonData> => {
         continue;
       }
 
-      console.log('Loaded FeatureCollection from', path, 'features:', fc.features.length);
+      
       const data = reprojectIfNeeded(fc as GeoJsonData);
       return data;
     } catch (e) {

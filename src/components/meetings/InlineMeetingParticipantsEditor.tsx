@@ -49,7 +49,7 @@ export function InlineMeetingParticipantsEditor({ meetingId }: InlineMeetingPart
     }
     
     setLoading(true);
-    console.log('Loading participants for meeting:', meetingId);
+    
     
     const { data: participantsData, error: participantsError } = await supabase
       .from('meeting_participants')
@@ -64,7 +64,7 @@ export function InlineMeetingParticipantsEditor({ meetingId }: InlineMeetingPart
     }
     
     if (!participantsData || participantsData.length === 0) {
-      console.log('No participants found for meeting:', meetingId);
+      
       setParticipants([]);
       setLoading(false);
       return;
@@ -86,7 +86,7 @@ export function InlineMeetingParticipantsEditor({ meetingId }: InlineMeetingPart
       user: profiles?.find(prof => prof.user_id === p.user_id) || undefined
     }));
 
-    console.log('Loaded participants:', enrichedParticipants);
+    
     setParticipants(enrichedParticipants);
     setLoading(false);
   };
@@ -109,7 +109,7 @@ export function InlineMeetingParticipantsEditor({ meetingId }: InlineMeetingPart
       return;
     }
 
-    console.log('🔄 Adding participant:', user.id, 'to meeting:', meetingId, 'with role:', selectedRole);
+    
     
     const { data, error } = await supabase
       .from('meeting_participants')
@@ -133,7 +133,7 @@ export function InlineMeetingParticipantsEditor({ meetingId }: InlineMeetingPart
     }
     
     if (data) {
-      console.log('✅ Participant added successfully:', data);
+      
       toast({
         title: "Teilnehmer hinzugefügt",
         description: `${user.display_name} wurde als ${roleLabels[selectedRole].label} hinzugefügt.`,
@@ -174,7 +174,7 @@ export function InlineMeetingParticipantsEditor({ meetingId }: InlineMeetingPart
       return;
     }
     
-    console.log('✅ Role updated for', participant?.user?.display_name, 'to', newRole);
+    
     toast({
       title: "Rolle geändert",
       description: `${participant?.user?.display_name || 'Teilnehmer'} ist jetzt ${roleLabels[newRole].label}.`,
@@ -198,7 +198,7 @@ export function InlineMeetingParticipantsEditor({ meetingId }: InlineMeetingPart
       return;
     }
     
-    console.log('✅ Participant removed:', participant?.user?.display_name);
+    
     toast({
       title: "Teilnehmer entfernt",
       description: `${participant?.user?.display_name || 'Teilnehmer'} wurde entfernt.`,
