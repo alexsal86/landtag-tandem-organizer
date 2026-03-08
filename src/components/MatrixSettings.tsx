@@ -170,7 +170,7 @@ export const MatrixSettings: React.FC = () => {
         .eq("id", subscriptionId);
 
       if (error) {
-        console.error("Error removing subscription:", error);
+        debugConsole.error("Error removing subscription:", error);
         toast({
           title: "Fehler",
           description: "Abonnement konnte nicht entfernt werden.",
