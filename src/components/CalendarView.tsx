@@ -54,14 +54,18 @@ export function CalendarView() {
     let active = true;
     (async () => {
       const isExt = highlightId.startsWith("external-");
-      const table = isExt ? "external_events" : "appointments";
       const id = isExt ? highlightId.replace(/^external-/, "") : highlightId;
 
-      const { data, error } = await supabase
-        .from(table)
-        .select("id, title, start_time, end_time, location, is_all_day" + (isExt ? ", all_day" : ""))
-        .eq("id", id)
-        .maybeSingle();
+      let data: any = null;
+      let error: any = null;
+
+      if (isExt) {
+        const res = await supabase.from("external_events").select("id, title, start_time, end_time, location, all_day").eq("id", id).maybeSingle();
+        data = res.data; error = res.error;
+      } else {
+        const res = await supabase.from("appointments").select("id, title, start_time, end_time, location, is_all_day").eq("id", id).maybeSingle();
+        data = res.data; error = res.error;
+      }
 
       if (!active || error || !data) { handledHighlightRef.current = highlightId; return; }
 
