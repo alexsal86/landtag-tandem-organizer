@@ -360,7 +360,7 @@ export const useNotifications = () => {
           });
           
         } catch (error) {
-          console.error('❌ Failed to get VAPID key or create subscription:', error);
+          debugConsole.error('❌ Failed to get VAPID key or create subscription:', error);
           throw error;
         }
       } else {
