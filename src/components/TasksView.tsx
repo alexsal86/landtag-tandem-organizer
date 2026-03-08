@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { debugConsole } from '@/utils/debugConsole';
 import { useSearchParams } from "react-router-dom";
 import { useNotificationHighlight } from "@/hooks/useNotificationHighlight";
 import { Plus, Filter, Archive, AlarmClock, Calendar, User, ChevronDown, ChevronRight, ListTodo, Paperclip, StickyNote, MessageCircle, Edit2, Trash2, Check, X, Send, Download } from "lucide-react";
