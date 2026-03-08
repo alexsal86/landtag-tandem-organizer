@@ -205,7 +205,6 @@ export function useDashboardLayout() {
       }
 
       if (data?.layout_data) {
-        console.log('Successfully loaded layout from database');
         // Filter out quickactions widget from loaded layout
         const filteredWidgets = ((data.layout_data as any) as DashboardWidget[])
           .filter((w: DashboardWidget) => w.type !== 'quickactions');
