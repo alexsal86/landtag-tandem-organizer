@@ -15,7 +15,7 @@ export async function createLetterApprovalDecision(
     // Create the decision
     const { data: decision, error: decisionError } = await supabase
       .from('task_decisions')
-      .insert({
+      .insert([{
         created_by: createdByUserId,
         title: `Brief freigeben: ${letterTitle}`,
         description: `Bitte prüfen und freigeben Sie den Brief "${letterTitle}".\n\nÖffnen Sie den Brief in der Dokumentenverwaltung, um ihn zu lesen.`,
@@ -26,7 +26,7 @@ export async function createLetterApprovalDecision(
           { label: 'Zurückweisen', value: 'reject' }
         ])),
         visible_to_all: false,
-      })
+      }])
       .select('id')
       .single();
 
