@@ -84,7 +84,7 @@ export function TaskCommentSidebar({
 
       setComments(rootComments);
     } catch (error) {
-      console.error('Error loading comments:', error);
+      debugConsole.error('Error loading comments:', error);
       toast({
         title: "Fehler",
         description: "Kommentare konnten nicht geladen werden.",
