@@ -265,7 +265,7 @@ export const HabitsWidget: React.FC<HabitsWidgetProps> = ({
         toast.success(`${habit.name} markiert (${habit.todayCount + 1}/${habit.target_count})`);
       }
     } catch (error) {
-      console.error('Error completing habit:', error);
+      debugConsole.error('Error completing habit:', error);
       toast.error('Fehler beim Markieren der Gewohnheit');
     }
   };

@@ -180,7 +180,7 @@ export function DistributionListForm({ distributionListId, onSuccess, onBack }: 
 
       onSuccess?.();
     } catch (error) {
-      console.error('Error saving distribution list:', error);
+      debugConsole.error('Error saving distribution list:', error);
       toast({ title: "Fehler", description: "Verteiler konnte nicht gespeichert werden.", variant: "destructive" });
     } finally {
       setLoading(false);

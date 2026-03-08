@@ -115,7 +115,7 @@ export function LoginCustomization() {
         description: 'Login-Anpassungen wurden erfolgreich gespeichert.'
       });
     } catch (error: any) {
-      console.error('Error saving:', error);
+      debugConsole.error('Error saving:', error);
       toast({
         title: 'Fehler',
         description: error.message || 'Speichern fehlgeschlagen.',

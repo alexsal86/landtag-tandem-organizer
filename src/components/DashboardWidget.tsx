@@ -720,7 +720,7 @@ export function DashboardWidget({ widget, isDragging, isEditMode, onResize, onDe
           }}
           onMinimize={() => {}}
           onHide={() => {}}
-          onDelete={onDelete || (() => console.log('Delete function not provided'))}
+          onDelete={onDelete || (() => debugConsole.log('Delete function not provided'))}
           onConfigure={() => {}}
         />
       )}

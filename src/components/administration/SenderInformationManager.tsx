@@ -36,7 +36,7 @@ export function SenderInformationManager() {
     try {
       const { data, error } = await supabase
         .from('sender_information')
-        .select('*')
+        .select('id, name, organization, landtag_email, is_default, is_active')
         .eq('tenant_id', currentTenant.id)
         .eq('is_active', true);
       if (error) throw error;

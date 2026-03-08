@@ -54,7 +54,7 @@ export function useStakeholderTopics(stakeholders: Contact[], onRefresh?: () => 
       toast({ title: "Erfolg", description: "Themen wurden erfolgreich gespeichert." });
       setEditingTopics(null);
     } catch (error) {
-      console.error('Error saving topics:', error);
+      debugConsole.error('Error saving topics:', error);
       setLocalTopicUpdates(prev => { const s = { ...prev }; delete s[stakeholderId]; return s; });
       toast({ title: "Fehler", description: "Themen konnten nicht gespeichert werden.", variant: "destructive" });
     }

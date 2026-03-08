@@ -103,7 +103,7 @@ export const DecisionArchiveSettings = () => {
         description: 'Archivierungseinstellungen wurden erfolgreich gespeichert.'
       });
     } catch (error: any) {
-      console.error('Error saving settings:', error);
+      debugConsole.error('Error saving settings:', error);
       toast({
         title: 'Fehler',
         description: 'Einstellungen konnten nicht gespeichert werden.',

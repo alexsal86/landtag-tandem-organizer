@@ -69,7 +69,7 @@ export function EmailTemplateManager() {
     try {
       const { data, error } = await supabase
         .from('email_templates')
-        .select('*')
+        .select('id, tenant_id, name, subject, body_html, category, variables, is_active, created_at, updated_at')
         .eq('tenant_id', currentTenant.id)
         .order('created_at', { ascending: false });
 

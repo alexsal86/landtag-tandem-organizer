@@ -83,7 +83,7 @@ export const GuestManager: React.FC<GuestManagerProps> = ({
       if (error) throw error;
       setDefaultGuests(data || []);
     } catch (error: any) {
-      console.error('Error fetching default guests:', error);
+      debugConsole.error('Error fetching default guests:', error);
       toast.error('Fehler beim Laden der Standard-Gäste');
     }
   };
