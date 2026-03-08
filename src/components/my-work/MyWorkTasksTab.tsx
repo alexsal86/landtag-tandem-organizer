@@ -478,7 +478,7 @@ export function MyWorkTasksTab() {
       
       toast({ title: `Aufgabe zu "${meetingTitle}" hinzugefügt` });
     } catch (error: any) {
-      console.error('Error adding task to meeting:', error);
+      debugConsole.error('Error adding task to meeting:', error);
       toast({ title: "Fehler", description: error.message, variant: "destructive" });
     } finally {
       setMeetingTaskId(null);
