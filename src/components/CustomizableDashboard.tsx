@@ -114,7 +114,7 @@ export const CustomizableDashboard: React.FC = () => {
   const handleLayoutChange = (layout: Layout[], layouts: { [key: string]: Layout[] }) => {
     if (!currentLayout || !isEditMode) return;
 
-    console.log('🔄 Layout change detected:', layout);
+    
 
     // Update all widgets with new positions and sizes at once
     const updatedWidgets = currentLayout.widgets.map(widget => {
