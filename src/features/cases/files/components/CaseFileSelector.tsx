@@ -167,7 +167,7 @@ export function CaseFileSelector({
     },
     onSuccess: ({ caseFileId, timelineFailed }) => {
       toast({
-        title: timelineFailed ? "Zur FallAkte hinzugefügt (ohne Chronologie-Eintrag)" : "Zur FallAkte hinzugefügt",
+        title: timelineFailed ? "Zur Fallakte hinzugefügt (ohne Chronologie-Eintrag)" : "Zur Fallakte hinzugefügt",
         variant: timelineFailed ? "destructive" : "default",
       });
       queryClient.invalidateQueries({ queryKey: ['case-files'] });
