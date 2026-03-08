@@ -101,7 +101,7 @@ export const useCaseFileTypes = () => {
       console.error('Error updating case file type:', error);
       toast({
         title: "Fehler",
-        description: "FallAkten-Typ konnte nicht aktualisiert werden.",
+        description: "Fallakten-Typ konnte nicht aktualisiert werden.",
         variant: "destructive",
       });
       return false;
