@@ -218,9 +218,9 @@ export function useEmployeesData() {
           supabase.from("employee_meetings").select("id").eq("employee_id", user.id).order("meeting_date", { ascending: false }).limit(1).maybeSingle(),
         ]);
 
-        if (settingsRes.error) { console.error(settingsRes.error); toast({ title: "Fehler", description: "Fehler beim Laden der Mitarbeitereinstellungen", variant: "destructive" }); return; }
-        if (profileRes.error) { console.error(profileRes.error); toast({ title: "Fehler", description: "Fehler beim Laden des Profils", variant: "destructive" }); return; }
-        if (leavesRes.error) { console.error(leavesRes.error); toast({ title: "Fehler", description: "Fehler beim Laden der Urlaubsanträge", variant: "destructive" }); return; }
+        if (settingsRes.error) { debugConsole.error(settingsRes.error); toast({ title: "Fehler", description: "Fehler beim Laden der Mitarbeitereinstellungen", variant: "destructive" }); return; }
+        if (profileRes.error) { debugConsole.error(profileRes.error); toast({ title: "Fehler", description: "Fehler beim Laden des Profils", variant: "destructive" }); return; }
+        if (leavesRes.error) { debugConsole.error(leavesRes.error); toast({ title: "Fehler", description: "Fehler beim Laden der Urlaubsanträge", variant: "destructive" }); return; }
 
         if (!settingsRes.data) {
           toast({ title: "Keine Mitarbeitereinstellungen", description: "Falls der Administrator soeben Daten eingetragen hat, laden Sie die Seite neu (F5).", variant: "destructive" });
