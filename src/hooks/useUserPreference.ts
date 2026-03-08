@@ -12,7 +12,8 @@ const DEBOUNCE_MS = 500;
  */
 export function useUserPreference<T>(key: string, defaultValue: T) {
   const { user } = useAuth();
-  const { tenantId } = useTenant();
+  const { currentTenant } = useTenant();
+  const tenantId = currentTenant?.id;
   const localStorageKey = `pref_${key}`;
 
   // Read initial value from localStorage (fast, synchronous)
