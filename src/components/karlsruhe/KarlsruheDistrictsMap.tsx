@@ -8,6 +8,7 @@ import { MapFlagType } from '@/hooks/useMapFlagTypes';
 import { useMapFlagStakeholders } from '@/hooks/useMapFlagStakeholders';
 import { supabase } from '@/integrations/supabase/client';
 import { lucideIconToSvg, isLucideIcon } from '@/utils/lucideIconToSvg';
+import { debugConsole } from '@/utils/debugConsole';
 import { RoutingMachine } from './RoutingMachine';
 import 'leaflet.heat';
 // @ts-ignore
