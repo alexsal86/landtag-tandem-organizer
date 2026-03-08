@@ -836,6 +836,7 @@ export function AutomationRuleWizard({
   const applyTemplate = (templateId: string) => {
     const template = RULE_TEMPLATES.find((t) => t.id === templateId);
     if (!template) return;
+    const conditions = template.conditions.map((c) => ({ ...c }));
     setForm((prev) => ({
       ...prev,
       name: template.name,
@@ -845,7 +846,8 @@ export function AutomationRuleWizard({
       triggerField: template.triggerField,
       triggerValue: template.triggerValue,
       conditionLogic: "all",
-      conditions: template.conditions.map((c) => ({ ...c })),
+      conditions,
+      conditionGroup: { logic: "all", conditions, groups: [] },
       actions: template.actions.map((a) => ({ ...a })),
       enabled: true,
     }));
