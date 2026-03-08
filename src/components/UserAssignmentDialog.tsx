@@ -76,7 +76,7 @@ const UserAssignmentDialog: React.FC<UserAssignmentDialogProps> = ({
         .in('user_id', userIds);
 
       if (error) {
-        console.error('Error fetching profiles:', error);
+        debugConsole.error('Error fetching profiles:', error);
         throw error;
       }
 
