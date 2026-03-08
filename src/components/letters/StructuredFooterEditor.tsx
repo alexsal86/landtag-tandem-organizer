@@ -43,12 +43,13 @@ interface SenderInfo {
   landtag_house_number?: string | null;
   landtag_postal_code?: string | null;
   landtag_city?: string | null;
-  landtag_email?: string;
-  wahlkreis_street?: string;
-  wahlkreis_house_number?: string;
-  wahlkreis_postal_code?: string;
-  wahlkreis_city?: string;
-  wahlkreis_email?: string;
+  landtag_email?: string | null;
+  wahlkreis_street?: string | null;
+  wahlkreis_house_number?: string | null;
+  wahlkreis_postal_code?: string | null;
+  wahlkreis_city?: string | null;
+  wahlkreis_email?: string | null;
+  [key: string]: any;
 }
 
 interface StructuredFooterEditorProps {
