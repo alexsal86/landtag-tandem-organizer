@@ -208,7 +208,7 @@ export function AnnualTasksView() {
 
       setTasks(tasksWithStatus);
     } catch (error) {
-      console.error("Error loading annual tasks:", error);
+      debugConsole.error("Error loading annual tasks:", error);
     } finally {
       setLoading(false);
     }
