@@ -553,7 +553,7 @@ export function MyWorkTasksTab() {
         ],
       }));
     } catch (error) {
-      console.error("Error creating child task:", error);
+      debugConsole.error("Error creating child task:", error);
       toast({ title: "Fehler", description: "Unteraufgabe konnte nicht erstellt werden.", variant: "destructive" });
     }
   };
