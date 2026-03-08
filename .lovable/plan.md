@@ -1,19 +1,58 @@
 
-## Benachrichtigungen & Badges für Vorgänge — Umgesetzt
 
-### Was wurde gemacht:
+# Phase 2: Wizard-Builder fur Automations-Regeln
 
-1. **DB: Neue `notification_types` für Kategorie `cases`** (alle 3 Tenants)
-   - `case_item_created`, `case_item_assigned`, `case_item_status_changed`, `case_item_comment`
+## Ist-Zustand
+Der aktuelle Regel-Builder ist ein einzelnes langes Formular (Zeilen 479-744) mit allen Feldern auf einer Seite. Fur Fachnutzer:innen ist das unubersichtlich.
 
-2. **DB: `notification_navigation_mapping`** — alle 4 Typen auf `navigation_context = 'mywork'` gemappt, damit Sidebar-Badge korrekt zählt.
+## Ziel
+Umwandlung in einen gefuhrten 4-Schritt-Wizard:
 
-3. **UI: `NotificationSettings.tsx`** — Kategorie `cases` / "Vorgänge" mit Icon 📋 eingefügt (Order 3).
+```text
+[1. Grundlagen] → [2. Trigger] → [3. Bedingungen] → [4. Aktionen + Testlauf]
+```
 
-4. **Code: `useCaseItems.tsx`** — `create_notification` RPC-Aufrufe bei:
-   - Vorgang erstellen → Benachrichtigung an zugewiesenen Owner
-   - Status-Änderung → Benachrichtigung an Ersteller + Owner
-   - Zuweisung-Änderung → Benachrichtigung an neuen Owner
-   - Kommentar/Interaktion → Benachrichtigung an Ersteller + Owner
+## Umsetzungsplan
 
-5. **Badge-System**: Sidebar-Badge für "Meine Arbeit" zählt nun auch Vorgang-Benachrichtigungen (via `navigation_context = 'mywork'` Trigger). Interne Tab-Badges bleiben über `useMyWorkNewCounts` (Zeitstempel-basiert).
+### 1. Wizard-Komponente erstellen
+Neue Datei `src/components/administration/AutomationRuleWizard.tsx`:
+- Stepper-Header mit 4 Schritten (visueller Fortschrittsbalken)
+- State: `currentStep` (0-3), bestehender `form`-State wird ubernommen
+- Navigation: "Zuruck" / "Weiter" Buttons mit Validierung pro Schritt
+- Letzter Schritt: "Speichern" + "Dry-Run testen"
+
+**Schritt 1 — Grundlagen**: Name, Beschreibung, Modul, Aktiv-Toggle, Template-Auswahl
+**Schritt 2 — Trigger**: Trigger-Typ, Trigger-Feld, Trigger-Wert (+ Cron-Hinweis bei "schedule")
+**Schritt 3 — Bedingungen**: Bedingungsfeld, Operator, Wert (modulabhangige Feld-Optionen)
+**Schritt 4 — Aktionen**: Aktionstyp + dynamische Felder je nach Typ, Zusammenfassung, Dry-Run Button
+
+### 2. AutomationRulesManager refactoren
+- Formular-Block (Zeilen 479-744) durch `<AutomationRuleWizard>` ersetzen
+- Props: `form`, `setForm`, `onSave`, `onDryRun`, `editingRuleId`, `saving`, `runningRuleId`, `resetForm`, `applyTemplate`
+- Regel-Liste und Run-Historie bleiben in der Hauptkomponente
+
+### 3. Wizard als Dialog/Sheet
+- Wizard offnet sich als `Dialog` (Sheet) statt inline
+- Trigger: "Neue Regel" Button und "Bearbeiten" Button offnen den Dialog
+- Vorteil: Regel-Liste bleibt sichtbar, fokussierte Erstellung
+
+### 4. Validierung pro Schritt
+- Schritt 1: Name required (min 3 Zeichen)
+- Schritt 2: Trigger-Wert required bei `record_changed`
+- Schritt 3: Bedingungswert required
+- Schritt 4: Action-spezifische Pflichtfelder (target_user_id, title etc.)
+- "Weiter" Button disabled wenn Validierung fehlschlagt
+
+### 5. Zusammenfassungs-Preview
+Im letzten Schritt eine kompakte Ubersicht:
+- "Wenn [Modul].[Feld] = [Wert] UND [Bedingung], dann [Aktion]"
+- Visuell als Karte mit Icons
+
+## Dateien
+| Datei | Anderung |
+|-------|----------|
+| `src/components/administration/AutomationRuleWizard.tsx` | Neu — 4-Schritt Wizard |
+| `src/components/administration/AutomationRulesManager.tsx` | Formular durch Wizard-Dialog ersetzen |
+
+Keine DB-Anderungen notwendig — alles Frontend.
+
