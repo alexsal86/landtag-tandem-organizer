@@ -286,7 +286,7 @@ export function MyWorkTasksTab() {
       });
       toast({ title: "Frist aktualisiert" });
     } catch (error) {
-      console.error("Error updating due date:", error);
+      debugConsole.error("Error updating due date:", error);
       toast({ title: "Fehler beim Speichern", variant: "destructive" });
     }
   };
