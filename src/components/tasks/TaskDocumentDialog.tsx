@@ -7,6 +7,7 @@ import { Upload, FileText, Trash2, Download, ExternalLink } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
+import { debugConsole } from "@/utils/debugConsole";
 import { format } from "date-fns";
 import { de } from "date-fns/locale";
 
