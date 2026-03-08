@@ -225,7 +225,7 @@ export function useEventPlanningData() {
       
       if (data && data.length > 0) {
         try { await fetchAllCollaborators(data.map(p => p.id)); }
-        catch (collabError) { console.error('Error fetching collaborators:', collabError); }
+        catch (collabError) { debugConsole.error('Error fetching collaborators:', collabError); }
       }
     } catch (err) {
       console.error('Unexpected error in fetchPlannings:', err);
