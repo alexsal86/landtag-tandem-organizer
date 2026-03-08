@@ -326,7 +326,7 @@ export const CallLogWidget: React.FC<CallLogWidgetProps> = ({
           .eq('call_log_id', id);
         
         if (appointmentError) {
-          console.error('Error updating appointment:', appointmentError);
+          debugConsole.error('Error updating appointment:', appointmentError);
         }
       }
 
