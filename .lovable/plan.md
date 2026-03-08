@@ -1,43 +1,27 @@
 
-## Code-Qualität — Status
+**Planung für das Refactoring der Vorgangs-Entscheidungen im Zeitstrahl**
 
-### Erledigt
+1. **Verschieben des "Entscheidung stellen"-Buttons**
+   - Der Bereich "Verknüpfte Entscheidungen" in der linken Spalte des Vorgang-Details wird komplett entfernt.
+   - Der Button "Entscheidung stellen" wird in die Interaktionsleiste (neben Anruf, Mail, Treffen etc.) verschoben.
 
-- **strictNullChecks: true** — aktiviert, alle Build-Fehler behoben
-- **noImplicitAny: true** — aktiviert, alle Build-Fehler behoben
-- **DOMPurify** als zentraler HTML-Sanitizer — alle `dangerouslySetInnerHTML` nutzen jetzt `sanitizeRichHtml()`
-- **Tenant-Access Guard** für Edge Functions — existiert in `supabase/functions/_shared/tenant-access.ts`
-- **ESLint `no-unused-vars: warn`** — aktiviert mit `argsIgnorePattern: '^_'`, erste Bereinigungsrunde in Pages/Hooks abgeschlossen
-- **Standalone `React`-Imports entfernt** — ~60 Dateien bereinigt
-- **State-Mutation fix** — `existingContacts.push()` → immutables Update in `useContactImport.ts`
-- **Non-null Assertion Guards** — `user!.id` / `currentTenant!.id` durch Early-Return-Guards ersetzt (~11 Dateien)
-- **Leere catch-Blöcke** — kritische Stellen in MatrixContext & DaySlipStore mit `debugConsole.warn` versehen
-- **JSON-Protocol Speaker-Normalisierung** — `speaker: string | { name }` korrekt normalisiert
+2. **Erweiterte Datenabfrage für Entscheidungen**
+   - Die Ladelogik (`loadLinkedDecisions`) wird erweitert, um neben Titel und Status auch die Beschreibung (`description`) sowie die Teilnehmer (`task_decision_participants`) und deren Antworten (`task_decision_responses`) abzufragen.
+   - Dadurch können die Empfänger (durch Abgleich mit den Team-Mitgliedern) und das aktuelle Abstimmungsergebnis ermittelt werden.
 
-### Noch offen
+3. **Anpassung des Zeitstrahl-Eintrags (UI & Logik)**
+   - **Pending-Status:** Solange keine Antwort vorliegt, wird das Kreis-Icon im Zeitstrahl als Sanduhr (`Hourglass`) dargestellt (gelb/orange).
+   - **Abgeschlossen:** Sobald Antworten vorliegen oder die Entscheidung archiviert ist, wechselt das Icon auf den Richterhammer (`Gavel`) oder einen Haken (grün) und das Ergebnis wird angezeigt.
+   - **Kein "Status: active":** Der technische Text "Status: active" wird aus dem Zeitstrahl entfernt.
+   - **Hover/Tooltip:** Beim Hovern über den Eintrag (Kreis oder Text) öffnet sich eine kompakte Karte (HoverCard). Diese zeigt:
+     - **An wen:** Die Namen der Teilnehmer.
+     - **Was/Warum:** Den Titel und (falls vorhanden) eine gekürzte Beschreibung.
+     - **Ergebnis:** Sobald vorhanden, wird hier das genaue Resultat (z. B. "Zustimmung", "Ablehnung", "Rückfrage") direkt im Tooltip aufgelistet.
 
-1. **`strict: true` aktivieren** — beinhaltet `strictBindCallApply`, `strictFunctionTypes`, `strictPropertyInitialization`, `noImplicitThis`, `alwaysStrict`
-2. **Tote Imports weiter bereinigen** — ~65 standalone `React`-Imports in Components prüfen, weitere lucide-Icons und ungenutzte Variablen entfernen (ESLint-Regel zeigt Warnungen)
-3. **`no-explicit-any` schrittweise einführen** — nach Abschluss der `no-unused-vars`-Bereinigung
-4. **Edge Functions `verify_jwt`-Audit** — ~20 Functions mit `verify_jwt = false` klassifizieren und absichern
-5. **CORS einschränken** — `Access-Control-Allow-Origin: *` durch Allowlist ersetzen für sensible Operationen
+4. **Klickverhalten & Inline-Detail**
+   - Die Einträge für Entscheidungen im Zeitstrahl werden klickbar.
+   - Ein Klick öffnet ein Overlay/Dialog (die bestehende Komponente `TaskDecisionDetails`) direkt in "Meine Arbeit", sodass der Nutzer die vollständige Historie und Kommentare der Entscheidung ansehen kann, ohne die Seite zu verlassen.
+   - Das Layout des Zeitstrahls wird dahingehend angepasst, dass klickbare Elemente visuell hervorgehoben werden (z. B. Hover-Effekt auf dem Hintergrund).
 
----
-
-## No-Code Automations-Hub — Status
-
-### Erledigt
-
-- 4-Step Wizard (Grundlagen → Trigger → Bedingungen → Aktionen)
-- 10 Templates, Template-Galerie mit Suche/Filter
-- Kill-Switch, Dry-Run, Run-Now, Run-Historie mit Step-Logs
-- Error-Dashboard mit Retry, Regel-Versionierung, Import/Export
-- Rate Limiting, Idempotency, Audit-Trail
-- 5 Action-Typen, 5 Condition-Operators, 4 Trigger-Typen (inkl. Webhook)
-- Rollenbasierte Zugriffskontrolle
-- **Regel duplizieren** — Copy-Button pro Regel-Karte
-- **Nächste geplante Ausführung** — Badge für schedule-Regeln
-- **Regel-Statistiken** — Erfolgsrate (%) + Ø Laufzeit als Tooltip-Badge
-- **Notification-Kontext** — `rule_name`, `trigger_reason`, `run_id` in Notification-Payload
-- **Webhook-Trigger** — neue Edge Function `automation-webhook`, Secret-Authentifizierung, URL-Anzeige im Wizard
-- **Verschachtelte Condition-Gruppen** — rekursives AND/OR-Nesting bis 3 Ebenen im Wizard, backward-kompatible DB-Serialisierung
+5. **Dauerhafte Sichtbarkeit**
+   - Entscheidungen werden unabhängig von ihrem Lebenszyklus-Status (`active` oder `archived`) dauerhaft chronologisch im Zeitstrahl des Vorgangs verankert.
