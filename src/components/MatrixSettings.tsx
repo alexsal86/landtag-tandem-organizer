@@ -129,7 +129,7 @@ export const MatrixSettings: React.FC = () => {
         .single();
 
       if (error) {
-        console.error("Error adding Matrix subscription:", error);
+        debugConsole.error("Error adding Matrix subscription:", error);
         toast({
           title: "Fehler",
           description:
