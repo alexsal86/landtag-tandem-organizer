@@ -10,6 +10,7 @@ import { format } from 'date-fns';
 import { de } from 'date-fns/locale';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
+import { debugConsole } from '@/utils/debugConsole';
 
 export default function EventRSVP() {
   const { eventId } = useParams<{ eventId: string }>();
