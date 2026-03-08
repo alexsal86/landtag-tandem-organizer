@@ -286,7 +286,7 @@ export function useMeetingArchive(deps: ArchiveDeps) {
         }).select().single();
         if (taskError) throw taskError;
         followUpTask = createdTask;
-      } catch (e) { console.error('Error creating follow-up task (non-fatal):', e); }
+      } catch (e) { debugConsole.error('Error creating follow-up task (non-fatal):', e); }
 
       // Step 5: Child tasks for items with results but no assignment
       if (followUpTask && agendaItemsData) {
