@@ -638,6 +638,31 @@ export function AutomationRulesManager() {
           )}
         </CardContent>
       </Card>
+
+      {/* Version History Dialog */}
+      {versionsRuleId && (
+        <AutomationRuleVersions
+          ruleId={versionsRuleId}
+          ruleName={versionsRuleName}
+          open={!!versionsRuleId}
+          onOpenChange={(open) => { if (!open) setVersionsRuleId(null); }}
+          onRestore={loadData}
+        />
+      )}
+
+      {/* Export Dialog */}
+      <AutomationRuleExportDialog
+        rules={rules}
+        open={exportOpen}
+        onOpenChange={setExportOpen}
+      />
+
+      {/* Import Dialog */}
+      <AutomationRuleImportDialog
+        open={importOpen}
+        onOpenChange={setImportOpen}
+        onImported={loadData}
+      />
     </div>
   );
 }
