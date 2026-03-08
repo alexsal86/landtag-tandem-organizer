@@ -325,7 +325,7 @@ export const useNotifications = () => {
           .single();
           
         if (!dbSubscription || !dbSubscription.is_active) {
-          console.log('🔄 Database subscription is inactive, creating new one...');
+          
           await subscription.unsubscribe();
           needNewSubscription = true;
         }
