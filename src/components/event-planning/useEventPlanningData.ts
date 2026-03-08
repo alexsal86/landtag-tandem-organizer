@@ -113,9 +113,9 @@ export function useEventPlanningData() {
   }, [searchParams, setSearchParams]);
 
   useEffect(() => {
-    console.log('EventPlanningView mounted, user:', user, 'currentTenant:', currentTenant);
+    debugConsole.log('EventPlanningView mounted, user:', user, 'currentTenant:', currentTenant);
     if (!currentTenant || !user) {
-      console.log('No currentTenant or user available, skipping data fetching');
+      debugConsole.log('No currentTenant or user available, skipping data fetching');
       return;
     }
     
