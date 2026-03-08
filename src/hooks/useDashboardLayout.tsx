@@ -157,20 +157,12 @@ export function useDashboardLayout() {
   const [hasInitialized, setHasInitialized] = useState(false);
   
   useEffect(() => {
-    console.log('🔄 Dashboard initialization effect:', { 
-      hasInitialized, 
-      user: user?.id, 
-      currentTenant: currentTenant?.id 
-    });
-    
     if (hasInitialized) return; // Prevent reloading after initialization
     
     if (user?.id && currentTenant?.id) {
-      console.log('✅ User and tenant available, loading from database');
       loadLayoutFromDatabase();
       setHasInitialized(true);
     } else if (!user) {
-      console.log('👤 No user, loading anonymous layout');
       // Try to load from localStorage for anonymous users
       try {
         const saved = localStorage.getItem(`dashboard-layout-anonymous`);
@@ -184,13 +176,10 @@ export function useDashboardLayout() {
         }
         setHasInitialized(true);
       } catch (error) {
-        console.warn('Failed to load from localStorage:', error);
         setCurrentLayout(defaultLayout);
         setLayouts([defaultLayout]);
         setHasInitialized(true);
       }
-    } else {
-      console.log('⏳ Waiting for user and tenant to be available');
     }
   }, [user, currentTenant, hasInitialized]);
 
