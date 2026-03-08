@@ -196,7 +196,7 @@ export const useCaseFileDetails = (caseFileId: string | null) => {
       if (error) throw error;
       setContacts((data || []) as CaseFileContact[]);
     } catch (error) {
-      console.error('Error fetching contacts:', error);
+      debugConsole.error('Error fetching contacts:', error);
     }
   }, [caseFileId]);
 
