@@ -1,3 +1,5 @@
+import { debugConsole } from "@/utils/debugConsole";
+
 export type SpeechToTextState = 'idle' | 'listening' | 'stopping' | 'unsupported';
 
 export interface SpeechToTextError {

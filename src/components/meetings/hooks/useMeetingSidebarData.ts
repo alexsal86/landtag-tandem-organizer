@@ -246,7 +246,7 @@ export function useMeetingSidebarData(deps: UseMeetingSidebarDataDeps) {
           .eq("id", noteId);
         if (error) throw error;
       } catch (error) {
-        console.error("Error updating quick note result:", error);
+        debugConsole.error("Error updating quick note result:", error);
         toast({
           title: "Fehler",
           description: "Das Ergebnis konnte nicht gespeichert werden.",
