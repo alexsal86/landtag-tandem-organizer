@@ -1389,15 +1389,15 @@ export function MyWorkCasesWorkspace() {
               if (!meetingSelectorItemId) return;
               const { error } = await supabase.from("case_items").update({ meeting_id: meetingId, pending_for_jour_fixe: false }).eq("id", meetingSelectorItemId);
               if (error) { toast.error("Fehler beim Zuordnen."); return; }
+              setCaseItems((prev) => prev.map((i) => i.id === meetingSelectorItemId ? { ...i, meeting_id: meetingId, pending_for_jour_fixe: false } as CaseItem : i));
               toast.success(`Vorgang dem Meeting "${meetingTitle}" zugeordnet.`);
-              refreshCaseItems();
             }}
             onMarkForNextJourFixe={async () => {
               if (!meetingSelectorItemId) return;
               const { error } = await supabase.from("case_items").update({ pending_for_jour_fixe: true }).eq("id", meetingSelectorItemId);
               if (error) { toast.error("Fehler beim Vormerken."); return; }
+              setCaseItems((prev) => prev.map((i) => i.id === meetingSelectorItemId ? { ...i, pending_for_jour_fixe: true } as CaseItem : i));
               toast.success("Vorgang für Jour Fixe vorgemerkt.");
-              refreshCaseItems();
             }}
           />
         </>
