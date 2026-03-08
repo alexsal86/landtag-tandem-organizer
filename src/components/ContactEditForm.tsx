@@ -13,6 +13,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { useTenant } from "@/hooks/useTenant";
 import { isValidEmail, findPotentialDuplicates, DuplicateMatch, type Contact as UtilContact } from "@/lib/utils";
 import { DuplicateWarning } from "@/components/DuplicateWarning";
+import { debugConsole } from "@/utils/debugConsole";
 import { TagInput } from "@/components/ui/tag-input";
 
 interface Contact {
