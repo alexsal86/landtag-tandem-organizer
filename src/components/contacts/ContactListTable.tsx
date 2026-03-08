@@ -77,7 +77,7 @@ export function ContactListTable({
                     </Button>
                   </div>
                 </TableCell>
-                <TableCell><Badge variant="outline" className="text-xs">{contact.contact_type === "organization" ? "Org." : getGenderLabel(contact.gender) || "–"}</Badge></TableCell>
+                <TableCell><Badge variant="outline" className="text-xs">{contact.contact_type === "organization" ? "Org." : getGenderLabel(contact.gender ?? undefined) || "–"}</Badge></TableCell>
                 <TableCell>
                   <div className="flex flex-col">
                     <span className="font-medium">{contact.name}</span>
