@@ -36,7 +36,7 @@ export const getWeather = async (lat: number, lon: number): Promise<WeatherData 
     );
     
     if (!response.ok) {
-      console.error('Weather API error:', response.statusText);
+      debugConsole.error('Weather API error:', response.statusText);
       return null;
     }
     
