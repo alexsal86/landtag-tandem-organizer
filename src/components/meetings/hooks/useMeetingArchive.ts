@@ -318,7 +318,7 @@ export function useMeetingArchive(deps: ArchiveDeps) {
             await supabase.from('quick_notes').update({ meeting_result: note.meeting_result }).eq('id', note.id);
           }
         }
-      } catch (e) { console.error('Error processing quick note results (non-fatal):', e); }
+      } catch (e) { debugConsole.error('Error processing quick note results (non-fatal):', e); }
 
       // Step 5c: Process case item results
       try {
