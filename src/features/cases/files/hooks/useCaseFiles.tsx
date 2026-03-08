@@ -148,7 +148,7 @@ export const useCaseFiles = () => {
       debugConsole.error('Error fetching case files:', error);
       toast({
         title: "Fehler",
-        description: "FallAkten konnten nicht geladen werden.",
+        description: "Fallakten konnten nicht geladen werden.",
         variant: "destructive",
       });
     } finally {
