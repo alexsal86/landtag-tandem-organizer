@@ -68,7 +68,7 @@ export const PartyDistrictMappingManager = () => {
 
     if (error) {
       toast.error('Fehler beim Zuordnen des Wahlkreises');
-      console.error(error);
+      debugConsole.error(error);
     } else {
       toast.success('Wahlkreis erfolgreich zugeordnet');
       await fetchData();
