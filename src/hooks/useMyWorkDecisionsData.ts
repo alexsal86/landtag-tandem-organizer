@@ -236,7 +236,7 @@ export function useMyWorkDecisionsData(userId?: string) {
           topicsByDecision.get(t.decision_id)!.push(t.topic_id);
         });
 
-        const participantsByDecision = new Map<string, any[]>();
+        const participantsByDecision = new Map<string, NonNullable<MyWorkDecision['participants']>[number][]>();
         participantsWithProfiles.forEach((p) => {
           if (!participantsByDecision.has(p.decision_id)) participantsByDecision.set(p.decision_id, []);
           participantsByDecision.get(p.decision_id)!.push({
