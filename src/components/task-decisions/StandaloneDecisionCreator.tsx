@@ -221,7 +221,7 @@ export const StandaloneDecisionCreator = ({
 
     setIsLoading(true);
     try {
-      console.log('Starting standalone decision creation...');
+      
       
       // Get current user first and validate
       const { data: userData, error: userError } = await supabase.auth.getUser();
