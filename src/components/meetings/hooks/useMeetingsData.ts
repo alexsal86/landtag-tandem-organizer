@@ -301,7 +301,7 @@ export function useMeetingsData() {
       setTasks(filteredTasks);
       if (filteredTasks.length > 0) await loadTaskDocuments(filteredTasks.map(task => task.id));
     } catch (error) {
-      debugConsole.error('Error loading tasks:', error);
+      handleAppError(error, { context: 'loadTasks' });
     }
   };
 
