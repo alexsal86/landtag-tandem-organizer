@@ -9,6 +9,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
+import { debugConsole } from "@/utils/debugConsole";
 
 interface ArchivedTask {
   id: string;
@@ -66,7 +67,7 @@ export function TaskArchiveModal({ isOpen, onClose, onTaskRestored }: TaskArchiv
     try {
       const { data, error } = await supabase
         .from('archived_tasks')
-        .select('*')
+        .select('id, task_id, title, description, priority, category, assigned_to, progress, due_date, completed_at, archived_at, auto_delete_after_days')
         .order('archived_at', { ascending: false });
 
       if (error) throw error;
@@ -87,7 +88,7 @@ export function TaskArchiveModal({ isOpen, onClose, onTaskRestored }: TaskArchiv
       
       setArchivedTasks(formattedTasks);
     } catch (error) {
-      console.error('Error loading archived tasks:', error);
+      debugConsole.error('Error loading archived tasks:', error);
       toast({
         title: "Fehler",
         description: "Archivierte Aufgaben konnten nicht geladen werden.",
@@ -102,13 +103,13 @@ export function TaskArchiveModal({ isOpen, onClose, onTaskRestored }: TaskArchiv
     try {
       const { data, error } = await supabase
         .from('task_archive_settings')
-        .select('*')
+        .select('auto_delete_after_days')
         .single();
 
       if (error && error.code !== 'PGRST116') throw error;
       setArchiveSettings(data || {});
     } catch (error) {
-      console.error('Error loading archive settings:', error);
+      debugConsole.error('Error loading archive settings:', error);
     }
   };
 
@@ -136,7 +137,7 @@ export function TaskArchiveModal({ isOpen, onClose, onTaskRestored }: TaskArchiv
         description: "Archiv-Einstellungen wurden automatisch aktualisiert.",
       });
     } catch (error) {
-      console.error('Error saving archive settings:', error);
+      debugConsole.error('Error saving archive settings:', error);
       toast({
         title: "Fehler",
         description: "Einstellungen konnten nicht gespeichert werden.",
@@ -160,7 +161,7 @@ export function TaskArchiveModal({ isOpen, onClose, onTaskRestored }: TaskArchiv
         description: "Die archivierte Aufgabe wurde endgültig gelöscht.",
       });
     } catch (error) {
-      console.error('Error deleting archived task:', error);
+      debugConsole.error('Error deleting archived task:', error);
       toast({
         title: "Fehler",
         description: "Aufgabe konnte nicht gelöscht werden.",
@@ -177,7 +178,7 @@ export function TaskArchiveModal({ isOpen, onClose, onTaskRestored }: TaskArchiv
       // First, check if the original task still exists and update it, or create a new one with the original ID
       const { data: existingTask, error: checkError } = await supabase
         .from('tasks')
-        .select('*')
+        .select('id')
         .eq('id', task.task_id)
         .maybeSingle();
 
@@ -316,7 +317,7 @@ export function TaskArchiveModal({ isOpen, onClose, onTaskRestored }: TaskArchiv
         return;
       }
       
-      console.error('Error restoring archived task:', error);
+      debugConsole.error('Error restoring archived task:', error);
       toast({
         title: "Fehler",
         description: "Aufgabe konnte nicht wiederhergestellt werden.",

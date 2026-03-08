@@ -9,6 +9,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { useTenant } from "@/hooks/useTenant";
 import { supabase } from "@/integrations/supabase/client";
 import { MessageCircle } from "lucide-react";
+import { debugConsole } from "@/utils/debugConsole";
 
 export function EmployeeMeetingRequestDialog() {
   const { user } = useAuth();
@@ -51,7 +52,7 @@ export function EmployeeMeetingRequestDialog() {
       setReason("");
       setUrgency("medium");
     } catch (error: any) {
-      console.error("Error creating meeting request:", error);
+      debugConsole.error("Error creating meeting request:", error);
       toast({
         title: "Fehler",
         description: error.message || "Gesprächswunsch konnte nicht erstellt werden",

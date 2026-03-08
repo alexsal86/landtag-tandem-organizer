@@ -2,6 +2,7 @@ import { Document, Packer, Paragraph, TextRun, Header, Footer, AlignmentType, He
 import { supabase } from '@/integrations/supabase/client';
 import { format } from 'date-fns';
 import { de } from 'date-fns/locale';
+import { debugConsole } from '@/utils/debugConsole';
 
 interface Letter {
   id: string;
@@ -362,7 +363,7 @@ export async function generateLetterDOCX(letter: Letter): Promise<{ blob: Blob; 
     return { blob, filename };
 
   } catch (error) {
-    console.error('Error generating DOCX:', error);
+    debugConsole.error('Error generating DOCX:', error);
     return null;
   }
 }

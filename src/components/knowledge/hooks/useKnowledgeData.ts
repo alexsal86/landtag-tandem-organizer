@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { useToast } from '@/hooks/use-toast';
+import { debugConsole } from '@/utils/debugConsole';
 
 export interface KnowledgeDocument {
   id: string;
@@ -60,7 +61,7 @@ export function useKnowledgeData() {
   const fetchAllDocumentTopics = useCallback(async (docIds: string[]) => {
     if (docIds.length === 0) return;
     const { data, error } = await supabase.from('knowledge_document_topics').select('document_id, topic_id').in('document_id', docIds);
-    if (error) { console.error('Error fetching document topics:', error); return; }
+    if (error) { debugConsole.error('Error fetching document topics:', error); return; }
     const map: Record<string, string[]> = {};
     data?.forEach(item => { if (!map[item.document_id]) map[item.document_id] = []; map[item.document_id].push(item.topic_id); });
     setDocumentTopicsMap(map);
@@ -68,14 +69,14 @@ export function useKnowledgeData() {
 
   const fetchDocumentTopicsById = useCallback(async (docId: string) => {
     const { data, error } = await supabase.from('knowledge_document_topics').select('topic_id').eq('document_id', docId);
-    if (error) { console.error('Error fetching document topics:', error); return; }
+    if (error) { debugConsole.error('Error fetching document topics:', error); return; }
     setDocumentTopicsMap(prev => ({ ...prev, [docId]: (data ?? []).map(i => i.topic_id) }));
   }, []);
 
   const fetchDocuments = useCallback(async () => {
     if (!user) { setLoading(false); return; }
     try {
-      const { data, error } = await supabase.from('knowledge_documents').select('*').order('updated_at', { ascending: false });
+      const { data, error } = await supabase.from('knowledge_documents').select('id, title, content, category, created_by, created_at, updated_at, is_published, is_locked').order('updated_at', { ascending: false });
       if (error) throw error;
       const rows = (data ?? []) as KnowledgeDocumentRow[];
       if (rows.length > 0) {
@@ -84,7 +85,7 @@ export function useKnowledgeData() {
         await fetchAllDocumentTopics(docs.map(d => d.id));
       } else { setDocuments([]); }
     } catch (error) {
-      console.error('Error fetching documents:', error);
+      debugConsole.error('Error fetching documents:', error);
       toast({ title: "Fehler beim Laden der Dokumente", description: "Die Dokumente konnten nicht geladen werden.", variant: "destructive" });
     } finally { setLoading(false); }
   }, [user, hydrateDocuments, fetchAllDocumentTopics, toast]);
@@ -136,7 +137,7 @@ export function useKnowledgeData() {
       setIsSidebarCollapsed(false);
       navigate(`/knowledge/${data.id}`, { replace: true });
     } catch (error) {
-      console.error('Error creating document:', error);
+      debugConsole.error('Error creating document:', error);
       toast({ title: "Fehler beim Erstellen", description: "Das Dokument konnte nicht erstellt werden.", variant: "destructive" });
     }
   };
@@ -151,7 +152,7 @@ export function useKnowledgeData() {
       toast({ title: "Gespeichert", description: "Das Dokument wurde gespeichert." });
       setSelectedDocument(prev => prev ? { ...prev, content: editorContent } : null);
     } catch (error) {
-      console.error('Error saving document:', error);
+      debugConsole.error('Error saving document:', error);
       toast({ title: "Fehler beim Speichern", description: "Das Dokument konnte nicht gespeichert werden.", variant: "destructive" });
     }
   };

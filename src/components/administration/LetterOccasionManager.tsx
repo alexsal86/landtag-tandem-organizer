@@ -11,6 +11,7 @@ import { Plus, Edit, Trash2, Save, X, GripVertical, Users, Building2, PartyPoppe
 import { supabase } from '@/integrations/supabase/client';
 import { useTenant } from '@/hooks/useTenant';
 import { useToast } from '@/hooks/use-toast';
+import { debugConsole } from '@/utils/debugConsole';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 
 interface LetterOccasion {
@@ -104,11 +105,11 @@ export function LetterOccasionManager() {
     setLoading(true);
     const { data, error } = await supabase
       .from('letter_occasions')
-      .select('*')
+      .select('id, key, label, description, icon, color, sort_order, default_template_id, template_match_patterns, is_active')
       .eq('tenant_id', currentTenant.id)
       .order('sort_order');
     if (error) {
-      console.error('Error loading occasions:', error);
+      debugConsole.error('Error loading occasions:', error);
       setLoading(false);
       return;
     }
@@ -153,7 +154,7 @@ export function LetterOccasionManager() {
         is_active: true,
       }).select().maybeSingle();
       if (data) insertedOccasions.push(data);
-      if (error) console.error('Seed error for', o.key, error);
+      if (error) debugConsole.error('Seed error for', o.key, error);
     }
     if (insertedOccasions.length > 0) {
       setOccasions(insertedOccasions);

@@ -16,6 +16,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { useTenant } from '@/hooks/useTenant';
 import { ContactSelector } from '@/components/ContactSelector';
+import { debugConsole } from '@/utils/debugConsole';
 
 interface EventRSVP {
   id: string;
@@ -93,7 +94,7 @@ export const EventRSVPManager = ({ eventPlanningId, eventTitle }: EventRSVPManag
     try {
       const { data, error } = await supabase
         .from('event_rsvps')
-        .select('*')
+        .select('id, email, name, status, comment, responded_at, invited_at, token, invitation_sent, reminder_sent_at, reminder_count, notes_sent, custom_message, created_at')
         .eq('event_planning_id', eventPlanningId)
         .order('created_at', { ascending: false });
 
@@ -105,7 +106,7 @@ export const EventRSVPManager = ({ eventPlanningId, eventTitle }: EventRSVPManag
         notes_sent: (r.notes_sent as any[]) ?? [],
       })));
     } catch (error) {
-      console.error('Error loading RSVPs:', error);
+      debugConsole.error('Error loading RSVPs:', error);
     } finally {
       setLoading(false);
     }
@@ -119,7 +120,7 @@ export const EventRSVPManager = ({ eventPlanningId, eventTitle }: EventRSVPManag
         .order('name');
       setDistributionLists(data || []);
     } catch (e) {
-      console.error('Error loading distribution lists:', e);
+      debugConsole.error('Error loading distribution lists:', e);
     }
   };
 
@@ -165,7 +166,7 @@ export const EventRSVPManager = ({ eventPlanningId, eventTitle }: EventRSVPManag
       toast({ title: `${added} Kontakt(e) hinzugefügt` });
       setSelectedDistList('');
     } catch (e) {
-      console.error('Error loading distribution list members:', e);
+      debugConsole.error('Error loading distribution list members:', e);
     }
   };
 
@@ -211,7 +212,7 @@ export const EventRSVPManager = ({ eventPlanningId, eventTitle }: EventRSVPManag
       setDialogOpen(false);
       loadRSVPs();
     } catch (error) {
-      console.error('Error saving draft:', error);
+      debugConsole.error('Error saving draft:', error);
       toast({ title: "Fehler", description: "Vormerken fehlgeschlagen.", variant: "destructive" });
     } finally {
       setSending(false);
@@ -264,7 +265,7 @@ export const EventRSVPManager = ({ eventPlanningId, eventTitle }: EventRSVPManag
             .in('id', idsToSend);
 
         } catch (emailError) {
-          console.error('Email sending failed:', emailError);
+          debugConsole.error('Email sending failed:', emailError);
         }
       }
 
@@ -278,7 +279,7 @@ export const EventRSVPManager = ({ eventPlanningId, eventTitle }: EventRSVPManag
       setShowEmailEditor(false);
       loadRSVPs();
     } catch (error) {
-      console.error('Error sending invitations:', error);
+      debugConsole.error('Error sending invitations:', error);
       toast({ title: "Fehler", description: "Einladungen konnten nicht versendet werden.", variant: "destructive" });
     } finally {
       setSending(false);
@@ -326,7 +327,7 @@ export const EventRSVPManager = ({ eventPlanningId, eventTitle }: EventRSVPManag
       setReminderDialogOpen(false);
       loadRSVPs();
     } catch (error) {
-      console.error('Error sending reminder:', error);
+      debugConsole.error('Error sending reminder:', error);
       toast({ title: "Fehler", description: "Erinnerung konnte nicht versendet werden.", variant: "destructive" });
     } finally {
       setSendingReminder(false);
@@ -376,7 +377,7 @@ export const EventRSVPManager = ({ eventPlanningId, eventTitle }: EventRSVPManag
       setNoteText('');
       loadRSVPs();
     } catch (error) {
-      console.error('Error sending note:', error);
+      debugConsole.error('Error sending note:', error);
       toast({ title: "Fehler", description: "Hinweis konnte nicht versendet werden.", variant: "destructive" });
     } finally {
       setSendingNote(false);
@@ -394,7 +395,7 @@ export const EventRSVPManager = ({ eventPlanningId, eventTitle }: EventRSVPManag
       setRsvps(prev => prev.filter(r => r.id !== rsvpId));
       toast({ title: "Einladung entfernt" });
     } catch (error) {
-      console.error('Error deleting RSVP:', error);
+      debugConsole.error('Error deleting RSVP:', error);
     }
   };
 

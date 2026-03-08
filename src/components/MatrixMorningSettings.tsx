@@ -8,6 +8,7 @@ import { Input } from '@/components/ui/input';
 import { useAuth } from '@/hooks/useAuth';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
+import { debugConsole } from '@/utils/debugConsole';
 
 interface MorningSettings {
   id?: string;
@@ -40,12 +41,12 @@ export const MatrixMorningSettings: React.FC = () => {
       try {
         const { data, error } = await supabase
           .from('matrix_morning_settings')
-          .select('*')
+          .select('id, enabled, send_time, include_greeting, include_weather, include_appointments')
           .eq('user_id', user.id)
           .maybeSingle();
 
         if (error && error.code !== 'PGRST116') {
-          console.error('Error loading morning settings:', error);
+          debugConsole.error('Error loading morning settings:', error);
           return;
         }
 
@@ -60,7 +61,7 @@ export const MatrixMorningSettings: React.FC = () => {
           });
         }
       } catch (error) {
-        console.error('Error loading settings:', error);
+        debugConsole.error('Error loading settings:', error);
       }
     };
 
@@ -86,7 +87,7 @@ export const MatrixMorningSettings: React.FC = () => {
         });
 
       if (error) {
-        console.error('Error saving settings:', error);
+        debugConsole.error('Error saving settings:', error);
         toast({
           title: 'Fehler',
           description: 'Morgengruß-Einstellungen konnten nicht gespeichert werden.',
@@ -101,7 +102,7 @@ export const MatrixMorningSettings: React.FC = () => {
         description: 'Morgengruß-Einstellungen wurden erfolgreich gespeichert.',
       });
     } catch (error) {
-      console.error('Error saving settings:', error);
+      debugConsole.error('Error saving settings:', error);
       toast({
         title: 'Fehler',
         description: 'Ein unerwarteter Fehler ist aufgetreten.',

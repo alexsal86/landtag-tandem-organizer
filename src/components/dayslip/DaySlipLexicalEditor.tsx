@@ -1,5 +1,6 @@
 import '@/styles/lexical-editor.css';
 import { memo, useCallback, useEffect, useRef, useState, type DragEvent, type MouseEvent } from "react";
+import { debugConsole } from "@/utils/debugConsole";
 import { LexicalComposer } from "@lexical/react/LexicalComposer";
 import { RichTextPlugin } from "@lexical/react/LexicalRichTextPlugin";
 import { ContentEditable } from "@lexical/react/LexicalContentEditable";
@@ -39,7 +40,7 @@ function InitialContentPlugin({ initialHtml, initialNodes, dayKey }: { initialHt
       const root = $getRoot();
       root.clear();
       if (initialNodes?.trim()) {
-        try { const parsed = editor.parseEditorState(initialNodes); editor.setEditorState(parsed); return; } catch (e) { console.warn("Failed to parse saved nodes, falling back to HTML", e); }
+        try { const parsed = editor.parseEditorState(initialNodes); editor.setEditorState(parsed); return; } catch (e) { debugConsole.warn("Failed to parse saved nodes, falling back to HTML", e); }
       }
       if (initialHtml.trim()) {
         const parser = new DOMParser();

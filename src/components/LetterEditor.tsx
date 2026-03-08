@@ -23,6 +23,7 @@ import type { BlockLine } from '@/components/letters/BlockLineEditor';
 
 import { useLetterData } from './letters/hooks/useLetterData';
 import { useLetterOperations } from './letters/hooks/useLetterOperations';
+import { debugConsole } from '@/utils/debugConsole';
 import LetterBriefDetails from './letters/LetterBriefDetails';
 import LetterCommentDialog from './letters/LetterCommentDialog';
 import {
@@ -189,7 +190,7 @@ const LetterEditor: React.FC<LetterEditorProps> = ({ letter, isOpen, onClose, on
       setCurrentTemplate(data);
       if (data) ops.applyTemplateDefaults(data);
     } catch (error) {
-      console.error('Error fetching current template:', error);
+      debugConsole.error('Error fetching current template:', error);
     }
   };
 

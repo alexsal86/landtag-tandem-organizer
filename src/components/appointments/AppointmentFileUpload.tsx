@@ -4,6 +4,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Upload, X, File, AlertCircle } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
+import { debugConsole } from '@/utils/debugConsole';
 
 interface UploadedFile {
   id?: string;
@@ -112,7 +113,7 @@ export function AppointmentFileUpload({
         });
 
       } catch (error) {
-        console.error('Upload error:', error);
+        debugConsole.error('Upload error:', error);
         updatedFiles[index] = {
           ...updatedFiles[index],
           uploading: false,
@@ -155,7 +156,7 @@ export function AppointmentFileUpload({
           description: `${fileToRemove.file.name} wurde gelöscht.`,
         });
       } catch (error) {
-        console.error('Delete error:', error);
+        debugConsole.error('Delete error:', error);
         toast({
           title: "Löschung fehlgeschlagen",
           description: "Die Datei konnte nicht gelöscht werden.",

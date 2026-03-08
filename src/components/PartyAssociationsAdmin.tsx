@@ -23,6 +23,7 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
+import { debugConsole } from '@/utils/debugConsole';
 import { Plus, Edit, Trash2, MapPin } from 'lucide-react';
 import { PartyAssociation } from '@/hooks/usePartyAssociations';
 import { useTenant } from '@/hooks/useTenant';
@@ -75,7 +76,7 @@ export const PartyAssociationsAdmin: React.FC = () => {
       setAssociations(associationsRes.data || []);
       setDistricts(districtsRes.data || []);
     } catch (error) {
-      console.error('Error loading data:', error);
+      debugConsole.error('Error loading data:', error);
       toast.error('Fehler beim Laden der Daten');
     } finally {
       setLoading(false);
@@ -176,7 +177,7 @@ export const PartyAssociationsAdmin: React.FC = () => {
       resetForm();
       loadData();
     } catch (error) {
-      console.error('Error saving association:', error);
+      debugConsole.error('Error saving association:', error);
       toast.error('Fehler beim Speichern des Kreisverbands');
     }
   };
@@ -196,7 +197,7 @@ export const PartyAssociationsAdmin: React.FC = () => {
       toast.success('Kreisverband gelöscht');
       loadData();
     } catch (error) {
-      console.error('Error deleting association:', error);
+      debugConsole.error('Error deleting association:', error);
       toast.error('Fehler beim Löschen des Kreisverbands');
     }
   };

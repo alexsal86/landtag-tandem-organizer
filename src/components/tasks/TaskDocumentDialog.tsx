@@ -7,6 +7,7 @@ import { Upload, FileText, Trash2, Download, ExternalLink } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
+import { debugConsole } from "@/utils/debugConsole";
 import { format } from "date-fns";
 import { de } from "date-fns/locale";
 
@@ -53,14 +54,14 @@ export function TaskDocumentDialog({
     try {
       const { data, error } = await supabase
         .from('task_documents')
-        .select('*')
+        .select('id, task_id, file_name, file_path, file_size, file_type, user_id, created_at')
         .eq('task_id', taskId)
         .order('created_at', { ascending: false });
 
       if (error) throw error;
       setDocuments(data || []);
     } catch (error) {
-      console.error("Error loading documents:", error);
+      debugConsole.error("Error loading documents:", error);
     } finally {
       setLoading(false);
     }
@@ -96,7 +97,7 @@ export function TaskDocumentDialog({
       await loadDocuments();
       toast({ title: "Dokument hochgeladen" });
     } catch (error) {
-      console.error("Error uploading document:", error);
+      debugConsole.error("Error uploading document:", error);
       toast({ title: "Fehler beim Hochladen", variant: "destructive" });
     } finally {
       setUploading(false);
@@ -119,7 +120,7 @@ export function TaskDocumentDialog({
       a.click();
       URL.revokeObjectURL(url);
     } catch (error) {
-      console.error("Error downloading document:", error);
+      debugConsole.error("Error downloading document:", error);
       toast({ title: "Fehler beim Download", variant: "destructive" });
     }
   };
@@ -140,7 +141,7 @@ export function TaskDocumentDialog({
       setDocuments(prev => prev.filter(d => d.id !== doc.id));
       toast({ title: "Dokument gelöscht" });
     } catch (error) {
-      console.error("Error deleting document:", error);
+      debugConsole.error("Error deleting document:", error);
       toast({ title: "Fehler beim Löschen", variant: "destructive" });
     }
   };

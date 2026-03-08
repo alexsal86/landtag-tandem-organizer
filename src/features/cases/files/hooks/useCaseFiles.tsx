@@ -3,6 +3,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { useTenant } from "@/hooks/useTenant";
 import { useToast } from "@/components/ui/use-toast";
+import { debugConsole } from "@/utils/debugConsole";
 
 export interface CaseFile {
   id: string;
@@ -144,7 +145,7 @@ export const useCaseFiles = () => {
 
       setCaseFiles(caseFilesWithCounts);
     } catch (error) {
-      console.error('Error fetching case files:', error);
+      debugConsole.error('Error fetching case files:', error);
       toast({
         title: "Fehler",
         description: "FallAkten konnten nicht geladen werden.",
@@ -196,7 +197,7 @@ export const useCaseFiles = () => {
       await fetchCaseFiles();
       return newCaseFile;
     } catch (error) {
-      console.error('Error creating case file:', error);
+      debugConsole.error('Error creating case file:', error);
       const participantsRollbackError =
         error instanceof Error && error.message === 'ROLLBACK_CASE_FILE_PARTICIPANTS';
 
@@ -228,7 +229,7 @@ export const useCaseFiles = () => {
       await fetchCaseFiles();
       return true;
     } catch (error) {
-      console.error('Error updating case file:', error);
+      debugConsole.error('Error updating case file:', error);
       const errorMessage = error instanceof Error ? error.message : "";
       toast({
         title: "Fehler",
@@ -258,7 +259,7 @@ export const useCaseFiles = () => {
       await fetchCaseFiles();
       return true;
     } catch (error) {
-      console.error('Error deleting case file:', error);
+      debugConsole.error('Error deleting case file:', error);
       toast({
         title: "Fehler",
         description: "FallAkte konnte nicht gelöscht werden.",
