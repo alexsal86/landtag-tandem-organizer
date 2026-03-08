@@ -164,7 +164,7 @@ export const useNavigationNotifications = (): NavigationNotifications => {
       }));
       localStorage.removeItem('notifications_marked_read');
     } catch (error) {
-      console.error('Error in markNavigationAsVisited:', error);
+      debugConsole.error('Error in markNavigationAsVisited:', error);
     }
   };
 
