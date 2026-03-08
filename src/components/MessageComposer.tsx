@@ -15,8 +15,8 @@ import { toast } from "@/hooks/use-toast";
 
 interface Profile {
   user_id: string;
-  display_name: string;
-  avatar_url?: string;
+  display_name: string | null;
+  avatar_url: string | null;
 }
 
 interface MessageComposerProps {
