@@ -9,6 +9,7 @@ import { usePlanningPreferences } from "@/hooks/usePlanningPreferences";
 import { DropResult } from "@hello-pangea/dnd";
 import { format } from "date-fns";
 import { de } from "date-fns/locale";
+import { debugConsole } from '@/utils/debugConsole';
 import type {
   EventPlanning,
   EventPlanningContact,
