@@ -25,7 +25,7 @@ type RuleRow = {
   name: string;
   description: string | null;
   module: string;
-  trigger_type: "record_changed" | "schedule" | "manual";
+  trigger_type: "record_changed" | "schedule" | "manual" | "webhook";
   trigger_config: Record<string, string>;
   conditions: { all?: Array<{ field: string; operator: string; value: string }>; any?: Array<{ field: string; operator: string; value: string }> };
   actions: Array<{ type: string; payload?: Record<string, string> }>;
