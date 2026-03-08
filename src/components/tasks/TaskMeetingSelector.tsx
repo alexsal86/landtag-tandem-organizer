@@ -9,6 +9,7 @@ import { format } from "date-fns";
 import { de } from "date-fns/locale";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
+import { debugConsole } from "@/utils/debugConsole";
 
 interface Meeting {
   id: string;
