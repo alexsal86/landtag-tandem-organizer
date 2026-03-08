@@ -95,8 +95,8 @@ export function useExpenseData() {
   };
 
   const addCategory = async (newCategory: { name: string; description: string; color: string }) => {
-    if (!newCategory.name) { toast({ title: "Fehler", description: "Name ist erforderlich", variant: "destructive" }); return false; }
-    const { error } = await supabase.from("expense_categories").insert([{ name: newCategory.name, description: newCategory.description || null, color: newCategory.color, order_index: categories.length, tenant_id: currentTenant?.id }]);
+    if (!newCategory.name || !currentTenant?.id) { toast({ title: "Fehler", description: "Name ist erforderlich", variant: "destructive" }); return false; }
+    const { error } = await supabase.from("expense_categories").insert([{ name: newCategory.name, description: newCategory.description || null, color: newCategory.color, order_index: categories.length, tenant_id: currentTenant.id }]);
     if (error) { toast({ title: "Fehler", description: "Kategorie konnte nicht hinzugefügt werden", variant: "destructive" }); return false; }
     toast({ title: "Erfolg", description: "Kategorie wurde hinzugefügt" }); loadCategories(); return true;
   };
