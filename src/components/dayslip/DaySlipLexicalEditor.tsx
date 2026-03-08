@@ -1,5 +1,6 @@
 import '@/styles/lexical-editor.css';
 import { memo, useCallback, useEffect, useRef, useState, type DragEvent, type MouseEvent } from "react";
+import { debugConsole } from "@/utils/debugConsole";
 import { LexicalComposer } from "@lexical/react/LexicalComposer";
 import { RichTextPlugin } from "@lexical/react/LexicalRichTextPlugin";
 import { ContentEditable } from "@lexical/react/LexicalContentEditable";
