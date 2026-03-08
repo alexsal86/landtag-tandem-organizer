@@ -399,7 +399,7 @@ export function CommentPlugin({ documentId }: { documentId?: string }) {
   const highlightExistingComments = (commentsList: Comment[]) => {
     if (commentsList.length === 0) return;
     
-    console.log(`Highlighting ${commentsList.length} existing comments`);
+    debugConsole.log(`Highlighting ${commentsList.length} existing comments`);
     
     // Since we can't reliably map old text positions, we'll register a node transform
     // to handle existing comment marks when they're encountered in the editor
