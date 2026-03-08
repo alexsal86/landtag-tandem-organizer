@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Camera } from "lucide-react";
 import { UnsplashImagePicker, UnsplashAttribution } from "./UnsplashImagePicker";
 import { useToast } from "@/hooks/use-toast";
+import { debugConsole } from '@/utils/debugConsole';
 
 interface DashboardCoverImageProps {
   userId: string;
