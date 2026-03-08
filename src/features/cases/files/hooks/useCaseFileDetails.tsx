@@ -311,7 +311,7 @@ export const useCaseFileDetails = (caseFileId: string | null) => {
       if (error) throw error;
       setTimeline((data || []) as CaseFileTimelineEntry[]);
     } catch (error) {
-      console.error('Error fetching timeline:', error);
+      debugConsole.error('Error fetching timeline:', error);
     }
   }, [caseFileId]);
 
