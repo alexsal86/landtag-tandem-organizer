@@ -42,6 +42,8 @@ interface TaskListRowProps {
   depth?: number;
   className?: string;
   highlightRef?: (el: HTMLElement | null) => void;
+  isHighlighted?: (taskId: string) => boolean;
+  getHighlightRef?: (taskId: string) => (el: HTMLElement | null) => void;
   onComplete: (taskId: string) => void;
   onSubtaskComplete: (subtaskId: string) => void;
   onNavigate: (taskId: string) => void;
