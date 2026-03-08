@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { ChevronDown, ChevronRight, Calendar, ExternalLink, Clock, List, StickyNote, Users, ListTodo, Globe, Cake, Scale } from "lucide-react";
+import { ChevronDown, ChevronRight, Calendar, ExternalLink, Clock, List, StickyNote, Users, ListTodo, Globe, Cake, Scale, Briefcase } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { useTenant } from "@/hooks/useTenant";
@@ -36,6 +36,7 @@ export function MyWorkJourFixeTab() {
     meetingTasks,
     meetingDecisions,
     meetingBirthdays,
+    meetingCaseItems,
     userProfiles,
     loadMeetingSystemData,
     setMounted,
@@ -109,6 +110,7 @@ export function MyWorkJourFixeTab() {
     if (systemType === 'tasks') return <ListTodo className="h-3 w-3 text-green-500" />;
     if (systemType === 'decisions') return <Scale className="h-3 w-3 text-violet-500" />;
     if (systemType === 'birthdays') return <Cake className="h-3 w-3 text-pink-500" />;
+    if (systemType === 'case_items') return <Briefcase className="h-3 w-3 text-teal-500" />;
     return null;
   };
 
@@ -129,6 +131,7 @@ export function MyWorkJourFixeTab() {
     const tasks = meetingTasks[meeting.id] || [];
     const decisions = meetingDecisions[meeting.id] || [];
     const birthdays = meetingBirthdays[meeting.id] || [];
+    const caseItems = meetingCaseItems[meeting.id] || [];
     
     // Get only main items (no parent)
     const mainItems = meetingAgenda
@@ -312,6 +315,20 @@ export function MyWorkJourFixeTab() {
                           ))}
                         </ul>
                       )}
+                      {item.system_type === 'case_items' && caseItems.length > 0 && (
+                        <ul className="ml-6 mt-1 space-y-0.5">
+                          {caseItems.map((ci) => (
+                            <li key={ci.id} className="flex items-center gap-1.5 text-muted-foreground">
+                              <Briefcase className="h-2.5 w-2.5 text-teal-500" />
+                              <span>{ci.subject || 'Ohne Betreff'}</span>
+                              <Badge variant="outline" className="text-[10px] px-1 py-0 h-4">{ci.status}</Badge>
+                              {getOwnerLabel(ci.owner_user_id ?? undefined) && (
+                                <span className="text-muted-foreground/80">({getOwnerLabel(ci.owner_user_id ?? undefined)})</span>
+                              )}
+                            </li>
+                          ))}
+                        </ul>
+                      )}
                       {subItems.length > 0 && (
                         <ul className="ml-6 mt-1 space-y-0.5">
                           {subItems.map((subItem, subIndex) => {
@@ -374,6 +391,20 @@ export function MyWorkJourFixeTab() {
                                         <span>
                                           {birthday.name} (geb. {format(birthday.birthDate, "dd.MM.yyyy", { locale: de })}, {birthday.age} Jahre)
                                         </span>
+                                      </li>
+                                    ))}
+                                  </ul>
+                                )}
+                                {subItem.system_type === 'case_items' && caseItems.length > 0 && (
+                                  <ul className="ml-8 mt-0.5 space-y-0.5">
+                                    {caseItems.map((ci) => (
+                                      <li key={ci.id} className="flex items-center gap-1.5 text-muted-foreground">
+                                        <Briefcase className="h-2.5 w-2.5 text-teal-500" />
+                                        <span>{ci.subject || 'Ohne Betreff'}</span>
+                                        <Badge variant="outline" className="text-[10px] px-1 py-0 h-4">{ci.status}</Badge>
+                                        {getOwnerLabel(ci.owner_user_id ?? undefined) && (
+                                          <span className="text-muted-foreground/80">({getOwnerLabel(ci.owner_user_id ?? undefined)})</span>
+                                        )}
                                       </li>
                                     ))}
                                   </ul>

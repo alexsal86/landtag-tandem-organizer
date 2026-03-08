@@ -1,28 +1,19 @@
 
+## Benachrichtigungen & Badges für Vorgänge — Umgesetzt
 
-## Problem
+### Was wurde gemacht:
 
-In der MyWork Jour Fixe Ansicht (`MyWorkJourFixeTab.tsx`) fehlt die Unterstützung für den System-Typ `case_items` (Vorgänge) an drei Stellen:
+1. **DB: Neue `notification_types` für Kategorie `cases`** (alle 3 Tenants)
+   - `case_item_created`, `case_item_assigned`, `case_item_status_changed`, `case_item_comment`
 
-1. **Kein Icon**: `getSystemItemIcon()` hat keinen Eintrag für `case_items` — daher wird kein Briefcase-Icon angezeigt
-2. **Keine Daten geladen**: `meetingCaseItems` wird nicht aus dem Hook `useMyWorkJourFixeSystemData` destrukturiert
-3. **Keine Untereinträge gerendert**: Es gibt keinen Rendering-Block für `item.system_type === 'case_items'` — weder für Haupt- noch für Unterpunkte
-4. **Icon-Import fehlt**: `Briefcase` wird nicht importiert
+2. **DB: `notification_navigation_mapping`** — alle 4 Typen auf `navigation_context = 'mywork'` gemappt, damit Sidebar-Badge korrekt zählt.
 
-## Änderungen in `src/components/my-work/MyWorkJourFixeTab.tsx`
+3. **UI: `NotificationSettings.tsx`** — Kategorie `cases` / "Vorgänge" mit Icon 📋 eingefügt (Order 3).
 
-1. **Import erweitern** (Zeile 8): `Briefcase` zu den Lucide-Imports hinzufügen
+4. **Code: `useCaseItems.tsx`** — `create_notification` RPC-Aufrufe bei:
+   - Vorgang erstellen → Benachrichtigung an zugewiesenen Owner
+   - Status-Änderung → Benachrichtigung an Ersteller + Owner
+   - Zuweisung-Änderung → Benachrichtigung an neuen Owner
+   - Kommentar/Interaktion → Benachrichtigung an Ersteller + Owner
 
-2. **Hook-Destrukturierung** (Zeile 34-42): `meetingCaseItems` aus `useMyWorkJourFixeSystemData` destrukturieren
-
-3. **`getSystemItemIcon`** (Zeile 106-113): Eintrag für `case_items` hinzufügen:
-   ```
-   if (systemType === 'case_items') return <Briefcase className="h-3 w-3 text-teal-500" />;
-   ```
-
-4. **`MeetingItem`-Komponente** (Zeile 128-131): `meetingCaseItems` in die lokale Variable `caseItems` lesen
-
-5. **Haupt-Agenda-Rendering** (nach Zeile 314, analog zu birthdays/decisions): Block für `item.system_type === 'case_items'` einfügen, der `caseItems` als Liste mit Briefcase-Icons rendert (Betreff + Status)
-
-6. **Sub-Item-Rendering** (nach Zeile 380, analog zu sub-birthdays/sub-decisions): Gleichen Block für `subItem.system_type === 'case_items'` einfügen
-
+5. **Badge-System**: Sidebar-Badge für "Meine Arbeit" zählt nun auch Vorgang-Benachrichtigungen (via `navigation_context = 'mywork'` Trigger). Interne Tab-Badges bleiben über `useMyWorkNewCounts` (Zeitstempel-basiert).
