@@ -28,7 +28,7 @@ interface NewsShareDialogProps {
 
 interface UserProfile {
   user_id: string;
-  display_name: string;
+  display_name: string | null;
 }
 
 export const NewsShareDialog: React.FC<NewsShareDialogProps> = ({

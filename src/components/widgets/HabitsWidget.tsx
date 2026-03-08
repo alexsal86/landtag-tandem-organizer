@@ -12,12 +12,12 @@ import { debugConsole } from '@/utils/debugConsole';
 interface Habit {
   id: string;
   name: string;
-  description?: string;
-  color: string;
+  description?: string | null;
+  color: string | null;
   frequency: 'daily' | 'weekly' | 'monthly';
-  target_count: number;
-  category: string;
-  is_active: boolean;
+  target_count: number | null;
+  category: string | null;
+  is_active: boolean | null;
   created_at: string;
 }
 
@@ -26,7 +26,7 @@ interface HabitCompletion {
   habit_id: string;
   completion_date: string;
   count: number;
-  notes?: string;
+  notes?: string | null;
 }
 
 interface HabitWithStats extends Habit {
