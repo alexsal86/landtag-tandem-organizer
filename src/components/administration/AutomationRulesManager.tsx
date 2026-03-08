@@ -12,7 +12,8 @@ import { AlertTriangle, Loader2, Play, Plus, Trash2, Zap } from "lucide-react";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { formatDistanceToNow } from "date-fns";
 import { de } from "date-fns/locale";
-import { AutomationRuleWizard, DEFAULT_FORM, DEFAULT_ACTION, type WizardForm, type ActionItem, type ConditionItem } from "./AutomationRuleWizard";
+import { AutomationRuleWizard, DEFAULT_FORM, DEFAULT_ACTION, RULE_TEMPLATES, type WizardForm, type ActionItem, type ConditionItem } from "./AutomationRuleWizard";
+import { AutomationTemplateGallery } from "./AutomationTemplateGallery";
 
 type RuleRow = {
   id: string;
@@ -115,6 +116,25 @@ export function AutomationRulesManager() {
 
   const openNewWizard = () => {
     resetForm();
+    setWizardOpen(true);
+  };
+
+  const useTemplate = (templateId: string) => {
+    const template = RULE_TEMPLATES.find((t) => t.id === templateId);
+    if (!template) return;
+    resetForm();
+    setForm((prev) => ({
+      ...prev,
+      name: template.name,
+      description: template.description,
+      module: template.module,
+      triggerType: template.triggerType,
+      triggerField: template.triggerField,
+      triggerValue: template.triggerValue,
+      conditions: template.conditions.map((c) => ({ ...c })),
+      actions: template.actions.map((a) => ({ ...a })),
+      enabled: true,
+    }));
     setWizardOpen(true);
   };
 
@@ -363,6 +383,9 @@ export function AutomationRulesManager() {
         saving={saving}
         runningDryRun={runningRuleId !== null}
       />
+
+      {/* Template Gallery */}
+      <AutomationTemplateGallery onUseTemplate={useTemplate} />
 
       {/* Rules list */}
       <Card>
