@@ -190,7 +190,7 @@ export function useEmailComposer() {
         .eq("tenant_id", currentTenant!.id)
         .eq("is_active", true);
       if (error) throw error;
-      setSenderInfos(data || []);
+      setSenderInfos((data || []) as SenderInfo[]);
       const defaultSender = data?.find((s: any) => s.is_default);
       if (defaultSender) setSelectedSender(defaultSender.id);
       else if (data && data.length > 0) setSelectedSender(data[0].id);
