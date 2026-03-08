@@ -161,7 +161,7 @@ export function DistributionListForm({ distributionListId, onSuccess, onBack }: 
       }
 
       const members = selectedContactIds.map(contactId => ({
-        distribution_list_id: distributionListIdToUse,
+        distribution_list_id: distributionListIdToUse!,
         contact_id: contactId,
       }));
 

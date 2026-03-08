@@ -155,8 +155,8 @@ export default function AppointmentPreparationSidebar({
 
       const { data, error } = await supabase
         .from('appointment_preparations')
-        .insert({
-          appointment_id: appointmentId,
+        .insert([{
+          appointment_id: appointmentId!,
           template_id: selectedTemplate,
           tenant_id: currentTenant.id,
           created_by: (await supabase.auth.getUser()).data.user?.id ?? '',
@@ -164,7 +164,7 @@ export default function AppointmentPreparationSidebar({
           status: 'draft',
           preparation_data: preparationData,
           checklist_items: checklistItems,
-        })
+        }])
         .select()
         .single();
 
