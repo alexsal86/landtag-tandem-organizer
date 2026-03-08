@@ -2,15 +2,22 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { format, isPast, isToday } from "date-fns";
 import { de } from "date-fns/locale";
-import { AlertCircle, ArrowUpDown, Briefcase, CalendarClock, ExternalLink, Plus, Search } from "lucide-react";
+import { AlertCircle, Archive, ArrowUpDown, Briefcase, CalendarClock, ExternalLink, Plus, Search } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
+import {
+  ContextMenu,
+  ContextMenuContent,
+  ContextMenuItem,
+  ContextMenuTrigger,
+} from "@/components/ui/context-menu";
 import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { CaseItemsArchiveSheet } from "@/features/cases/items/components/CaseItemsArchiveSheet";
 import { CaseItemCreateDialog } from "@/components/my-work/CaseItemCreateDialog";
 import { useAuth } from "@/hooks/useAuth";
 import { useTenant } from "@/hooks/useTenant";
