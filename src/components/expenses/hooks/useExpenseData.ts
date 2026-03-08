@@ -9,7 +9,7 @@ export interface ExpenseCategory {
   id: string;
   name: string;
   description: string | null;
-  color: string;
+  color: string | null;
   is_active: boolean;
   order_index: number;
 }
