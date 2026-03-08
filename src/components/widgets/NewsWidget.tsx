@@ -115,6 +115,8 @@ export const NewsWidget: React.FC<NewsWidgetProps> = ({ widgetId, compact = fals
     textarea.innerHTML = text;
     return textarea.value;
   };
+
+  if (compact) {
     return (
       <div>
         {loading && <div className="animate-pulse space-y-2">{[...Array(3)].map((_, i) => <div key={i} className="h-6 bg-muted rounded" />)}</div>}
