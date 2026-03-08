@@ -93,7 +93,7 @@ function GuestResponse() {
         setNote(guestData.response_note || '');
       }
 
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Error fetching guest data:', error);
       setError('Fehler beim Laden der Einladung');
     } finally {
@@ -126,7 +126,7 @@ function GuestResponse() {
       // Refresh data to show updated status
       fetchGuestData();
 
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Error submitting response:', error);
       toast.error('Fehler beim Übermitteln der Antwort');
     } finally {

@@ -79,10 +79,10 @@ export function EmailTemplateManager() {
         category: (t as any).category || 'general',
         variables: Array.isArray(t.variables) ? t.variables : []
       })) as EmailTemplate[]);
-    } catch (error: any) {
+    } catch (error: unknown) {
       toast({
         title: "Fehler beim Laden",
-        description: error.message,
+        description: error instanceof Error ? error.message : String(error),
         variant: "destructive",
       });
     } finally {
@@ -122,10 +122,10 @@ export function EmailTemplateManager() {
       resetForm();
       setShowDialog(false);
       fetchTemplates();
-    } catch (error: any) {
+    } catch (error: unknown) {
       toast({
         title: "Fehler beim Speichern",
-        description: error.message,
+        description: error instanceof Error ? error.message : String(error),
         variant: "destructive",
       });
     } finally {
@@ -157,10 +157,10 @@ export function EmailTemplateManager() {
       if (error) throw error;
       toast({ title: "Template gelöscht" });
       fetchTemplates();
-    } catch (error: any) {
+    } catch (error: unknown) {
       toast({
         title: "Fehler beim Löschen",
-        description: error.message,
+        description: error instanceof Error ? error.message : String(error),
         variant: "destructive",
       });
     }

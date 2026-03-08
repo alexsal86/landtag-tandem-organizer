@@ -313,9 +313,9 @@ export function AnnualTasksView() {
         loadTasks();
       }, result ? 2000 : 500);
 
-    } catch (error: any) {
+    } catch (error: unknown) {
       debugConsole.error("Error completing task:", error);
-      toast({ title: "Fehler", description: error.message, variant: "destructive" });
+      toast({ title: "Fehler", description: error instanceof Error ? error.message : String(error), variant: "destructive" });
     } finally {
       setCompleting(false);
     }
@@ -369,11 +369,11 @@ export function AnnualTasksView() {
         title: "Jahresstatistik erstellt", 
         description: `${result.affected_employees || 0} Mitarbeiter wurden aktualisiert.`
       });
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Error generating stats:", error);
       toast({ 
         title: "Fehler", 
-        description: error.message, 
+        description: error instanceof Error ? error.message : String(error), 
         variant: "destructive" 
       });
     } finally {
@@ -398,11 +398,11 @@ export function AnnualTasksView() {
         title: `Jahresstatistik ${currentYear - 1} erstellt`, 
         description: `${result.affected_employees || 0} Mitarbeiter wurden archiviert.`
       });
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Error generating previous year stats:", error);
       toast({ 
         title: "Fehler", 
-        description: error.message, 
+        description: error instanceof Error ? error.message : String(error), 
         variant: "destructive" 
       });
     } finally {

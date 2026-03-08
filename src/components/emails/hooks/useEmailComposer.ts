@@ -175,7 +175,7 @@ export function useEmailComposer() {
       }
 
       toast({ title: "Presse-E-Mail vorbereitet", description: `Daten aus "${pr.title}" wurden geladen.` });
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Error loading press release for email:", error);
       toast({ title: "Fehler", description: "Pressemitteilung konnte nicht geladen werden.", variant: "destructive" });
     }
@@ -224,7 +224,7 @@ export function useEmailComposer() {
         })
       );
       setDistributionLists(listsWithCounts);
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Error fetching distribution lists:", error);
     }
   };
@@ -234,7 +234,7 @@ export function useEmailComposer() {
       const { data, error } = await supabase.from("contacts").select("id, name, email, organization, avatar_url, phone").eq("tenant_id", currentTenant!.id).not("email", "is", null).order("name");
       if (error) throw error;
       setContacts(data || []);
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Error fetching contacts:", error);
     }
   };
@@ -244,7 +244,7 @@ export function useEmailComposer() {
       const { data, error } = await supabase.from("documents").select("id, title, file_name").eq("tenant_id", currentTenant!.id).order("created_at", { ascending: false }).limit(50);
       if (error) throw error;
       setDocuments(data || []);
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Error fetching documents:", error);
     }
   };
@@ -273,8 +273,8 @@ export function useEmailComposer() {
       if (error) throw error;
       toast({ title: "Template gespeichert", description: `"${templateName}" wurde erstellt` });
       fetchEmailTemplates();
-    } catch (error: any) {
-      toast({ title: "Fehler beim Speichern", description: error.message, variant: "destructive" });
+    } catch (error: unknown) {
+      toast({ title: "Fehler beim Speichern", description: error instanceof Error ? error.message : String(error), variant: "destructive" });
     }
   };
 
@@ -389,9 +389,9 @@ export function useEmailComposer() {
       }
 
       setSubject(""); setBodyHtml(""); setReplyTo(""); setIsScheduled(false); setScheduledFor(undefined); setRecipients([]); setSelectedDocuments([]);
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Error sending emails:", error);
-      toast({ title: "Fehler beim Versenden", description: error.message, variant: "destructive" });
+      toast({ title: "Fehler beim Versenden", description: error instanceof Error ? error.message : String(error), variant: "destructive" });
     } finally {
       setLoading(false);
     }

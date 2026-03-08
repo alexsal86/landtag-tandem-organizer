@@ -41,8 +41,8 @@ export function SenderInformationManager() {
         .eq('is_active', true);
       if (error) throw error;
       setSenderInfos(data || []);
-    } catch (error: any) {
-      toast({ title: "Fehler", description: error.message, variant: "destructive" });
+    } catch (error: unknown) {
+      toast({ title: "Fehler", description: error instanceof Error ? error.message : String(error), variant: "destructive" });
     } finally {
       setLoading(false);
     }
@@ -110,8 +110,8 @@ export function SenderInformationManager() {
       setShowDialog(false);
       setEditingInfo(null);
       fetchSenderInfos();
-    } catch (error: any) {
-      toast({ title: "Fehler", description: error.message, variant: "destructive" });
+    } catch (error: unknown) {
+      toast({ title: "Fehler", description: error instanceof Error ? error.message : String(error), variant: "destructive" });
     } finally {
       setLoading(false);
     }
@@ -127,8 +127,8 @@ export function SenderInformationManager() {
       toast({ title: "Absender gelöscht" });
       setDeleteConfirmId(null);
       fetchSenderInfos();
-    } catch (error: any) {
-      toast({ title: "Fehler", description: error.message, variant: "destructive" });
+    } catch (error: unknown) {
+      toast({ title: "Fehler", description: error instanceof Error ? error.message : String(error), variant: "destructive" });
     }
   };
 
@@ -149,8 +149,8 @@ export function SenderInformationManager() {
       if (error) throw error;
       toast({ title: "Standard-Absender gesetzt" });
       fetchSenderInfos();
-    } catch (error: any) {
-      toast({ title: "Fehler", description: error.message, variant: "destructive" });
+    } catch (error: unknown) {
+      toast({ title: "Fehler", description: error instanceof Error ? error.message : String(error), variant: "destructive" });
     }
   };
 

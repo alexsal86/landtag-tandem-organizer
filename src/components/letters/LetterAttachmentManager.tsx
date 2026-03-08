@@ -60,7 +60,7 @@ const LetterAttachmentManager: React.FC<LetterAttachmentManagerProps> = ({
 
       if (error) throw error;
       setDocuments(data || []);
-    } catch (error: any) {
+    } catch (error: unknown) {
       toast({
         title: "Fehler",
         description: "Dokumente konnten nicht geladen werden.",
@@ -232,10 +232,10 @@ const LetterAttachmentManager: React.FC<LetterAttachmentManagerProps> = ({
         title: "Datei gelöscht",
         description: `${attachment.file_name} wurde erfolgreich gelöscht.`,
       });
-    } catch (error: any) {
+    } catch (error: unknown) {
       toast({
         title: "Lösch-Fehler",
-        description: error.message,
+        description: error instanceof Error ? error.message : String(error),
         variant: "destructive",
       });
     }
@@ -271,7 +271,7 @@ const LetterAttachmentManager: React.FC<LetterAttachmentManagerProps> = ({
         title: "Anzeigename aktualisiert",
         description: "Der Anzeigename wurde erfolgreich geändert.",
       });
-    } catch (error: any) {
+    } catch (error: unknown) {
       toast({
         title: "Fehler",
         description: "Der Anzeigename konnte nicht geändert werden.",
@@ -307,7 +307,7 @@ const LetterAttachmentManager: React.FC<LetterAttachmentManagerProps> = ({
       });
 
       setShowDocumentSelector(false);
-    } catch (error: any) {
+    } catch (error: unknown) {
       toast({
         title: "Fehler",
         description: "Das Dokument konnte nicht hinzugefügt werden.",

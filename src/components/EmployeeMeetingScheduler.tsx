@@ -178,11 +178,11 @@ export function EmployeeMeetingScheduler({
 
       // Navigate to meeting protocol
       navigate(`/employee-meeting/${meeting.id}`);
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Error scheduling meeting:", error);
       toast({
         title: "Fehler",
-        description: error.message || "Gespräch konnte nicht geplant werden",
+        description: error instanceof Error ? error.message : "Gespräch konnte nicht geplant werden",
         variant: "destructive",
       });
     } finally {

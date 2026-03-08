@@ -116,7 +116,7 @@ export const ArchivedLetterDetails: React.FC<ArchivedLetterDetailsProps> = ({
       if (attachmentError) throw attachmentError;
       setAttachments(attachmentDocs || []);
 
-    } catch (error: any) {
+    } catch (error: unknown) {
       debugConsole.error('Error fetching letter details:', error);
       toast({
         title: "Fehler",
@@ -144,10 +144,10 @@ export const ArchivedLetterDetails: React.FC<ArchivedLetterDetailsProps> = ({
       link.click();
       URL.revokeObjectURL(url);
       window.document.body.removeChild(link);
-    } catch (error: any) {
+    } catch (error: unknown) {
       toast({
         title: "Download-Fehler",
-        description: error.message,
+        description: error instanceof Error ? error.message : String(error),
         variant: "destructive",
       });
     }

@@ -463,8 +463,8 @@ export const StructuredHeaderEditor: React.FC<StructuredHeaderEditorProps> = ({ 
       blobUrlMapRef.current.delete(galleryImg.path);
       await loadGalleryImages();
       toast({ title: 'Bild gelöscht' });
-    } catch (error: any) {
-      toast({ title: 'Fehler', description: `Bild konnte nicht gelöscht werden: ${error?.message || 'Unbekannter Fehler'}`, variant: 'destructive' });
+    } catch (error: unknown) {
+      toast({ title: 'Fehler', description: `Bild konnte nicht gelöscht werden: ${error instanceof Error ? error.message : 'Unbekannter Fehler'}`, variant: 'destructive' });
     }
   };
 

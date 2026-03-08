@@ -455,11 +455,11 @@ export function ContactEditForm({ contact, onSuccess, onCancel }: ContactEditFor
         title: "Erfolg",
         description: "Profilbild wurde hochgeladen.",
       });
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Error uploading avatar:', error);
       toast({
         title: "Fehler",
-        description: `Profilbild konnte nicht hochgeladen werden: ${error.message || 'Unbekannter Fehler'}`,
+        description: `Profilbild konnte nicht hochgeladen werden: ${error instanceof Error ? error.message : 'Unbekannter Fehler'}`,
         variant: "destructive",
       });
     } finally {

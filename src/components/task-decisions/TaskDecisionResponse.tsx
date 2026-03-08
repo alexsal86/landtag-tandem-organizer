@@ -262,11 +262,11 @@ export const TaskDecisionResponse = ({
       setIsQuestionDialogOpen(false);
       setShowEdit(false);
       onResponseSubmitted();
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Error submitting response:', error);
       toast({
         title: "Fehler",
-        description: error?.message || "Antwort konnte nicht gespeichert werden.",
+        description: error instanceof Error ? error.message : "Antwort konnte nicht gespeichert werden.",
         variant: "destructive",
       });
     } finally {

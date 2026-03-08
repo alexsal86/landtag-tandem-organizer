@@ -29,10 +29,10 @@ export function DocumentContactManager({ documentId, compact = false }: Document
         title: "Kontakt entfernt",
         description: "Die Verknüpfung wurde erfolgreich entfernt.",
       });
-    } catch (error: any) {
+    } catch (error: unknown) {
       toast({
         title: "Fehler",
-        description: error.message,
+        description: error instanceof Error ? error.message : String(error),
         variant: "destructive",
       });
     }

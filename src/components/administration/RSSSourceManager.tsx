@@ -125,8 +125,8 @@ export function RSSSourceManager() {
       setDialogOpen(false);
       form.reset();
       setEditingSource(null);
-    } catch (error: any) {
-      toast.error(error.message || "Fehler beim Speichern");
+    } catch (error: unknown) {
+      toast.error(error instanceof Error ? error.message : "Fehler beim Speichern");
       console.error(error);
     }
   };
@@ -209,8 +209,8 @@ export function RSSSourceManager() {
       } else {
         toast.error("Die URL scheint kein gültiger RSS-Feed zu sein");
       }
-    } catch (error: any) {
-      toast.error(`Fehler beim Testen: ${error.message}`);
+    } catch (error: unknown) {
+      toast.error(`Fehler beim Testen: ${error instanceof Error ? error.message : String(error)}`);
     } finally {
       setTestingUrl(false);
     }

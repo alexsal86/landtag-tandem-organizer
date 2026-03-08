@@ -69,11 +69,11 @@ export const NewUserForm: React.FC<NewUserFormProps> = ({ onSuccess }) => {
         description: `${displayName} wurde erfolgreich erstellt.`,
       });
 
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Error creating user:', error);
       toast({
         title: 'Fehler beim Erstellen des Benutzers',
-        description: error.message || 'Ein unbekannter Fehler ist aufgetreten.',
+        description: error instanceof Error ? error.message : 'Ein unbekannter Fehler ist aufgetreten.',
         variant: 'destructive',
       });
     } finally {

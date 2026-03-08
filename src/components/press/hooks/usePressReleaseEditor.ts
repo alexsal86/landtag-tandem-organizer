@@ -144,9 +144,10 @@ export function usePressReleaseEditor({ pressReleaseId, initialDraft, onBack }: 
         const { data: sp } = await supabase.from("profiles").select("display_name").eq("user_id", data.email_sent_by).maybeSingle();
         setEmailSenderName(sp?.display_name || "Unbekannt");
       } else setEmailSenderName(null);
-    } catch (error: any) {
-      if (error?.message?.includes("Failed to fetch") || error?.message?.includes("NetworkError")) return;
-      toast({ title: "Fehler beim Laden", description: error.message, variant: "destructive" });
+    } catch (error: unknown) {
+      const msg = error instanceof Error ? error.message : String(error);
+      if (msg?.includes("Failed to fetch") || msg?.includes("NetworkError")) return;
+      toast({ title: "Fehler beim Laden", description: msg, variant: "destructive" });
     } finally {
       setLoading(false);
     }
@@ -222,13 +223,14 @@ export function usePressReleaseEditor({ pressReleaseId, initialDraft, onBack }: 
         setPressRelease(newPr);
         toast({ title: "Pressemitteilung erstellt" });
       }
-    } catch (error: any) {
-      if (error?.message?.includes("Failed to fetch") || error?.message?.includes("NetworkError")) {
+    } catch (error: unknown) {
+      const msg = error instanceof Error ? error.message : String(error);
+      if (msg?.includes("Failed to fetch") || msg?.includes("NetworkError")) {
         if (pressRelease) setTimeout(() => loadPressRelease(pressRelease.id), 500);
         toast({ title: "Gespeichert" });
         return;
       }
-      toast({ title: "Fehler beim Speichern", description: error.message, variant: "destructive" });
+      toast({ title: "Fehler beim Speichern", description: msg, variant: "destructive" });
     } finally {
       setSaving(false);
     }
@@ -242,9 +244,10 @@ export function usePressReleaseEditor({ pressReleaseId, initialDraft, onBack }: 
       if (error) throw error;
       toast({ title: "Zur Freigabe gesendet" });
       await loadPressRelease(pressRelease.id);
-    } catch (error: any) {
-      if (error?.message?.includes("Failed to fetch") || error?.message?.includes("NetworkError")) { setTimeout(() => loadPressRelease(pressRelease.id), 500); toast({ title: "Zur Freigabe gesendet" }); return; }
-      toast({ title: "Fehler", description: error.message, variant: "destructive" });
+    } catch (error: unknown) {
+      const msg = error instanceof Error ? error.message : String(error);
+      if (msg?.includes("Failed to fetch") || msg?.includes("NetworkError")) { setTimeout(() => loadPressRelease(pressRelease.id), 500); toast({ title: "Zur Freigabe gesendet" }); return; }
+      toast({ title: "Fehler", description: msg, variant: "destructive" });
     }
   };
 
@@ -255,9 +258,10 @@ export function usePressReleaseEditor({ pressReleaseId, initialDraft, onBack }: 
       if (error) throw error;
       toast({ title: "Pressemitteilung freigegeben" });
       await loadPressRelease(pressRelease.id);
-    } catch (error: any) {
-      if (error?.message?.includes("Failed to fetch") || error?.message?.includes("NetworkError")) { setTimeout(() => loadPressRelease(pressRelease.id), 500); toast({ title: "Pressemitteilung freigegeben" }); return; }
-      toast({ title: "Fehler", description: error.message, variant: "destructive" });
+    } catch (error: unknown) {
+      const msg = error instanceof Error ? error.message : String(error);
+      if (msg?.includes("Failed to fetch") || msg?.includes("NetworkError")) { setTimeout(() => loadPressRelease(pressRelease.id), 500); toast({ title: "Pressemitteilung freigegeben" }); return; }
+      toast({ title: "Fehler", description: msg, variant: "destructive" });
     }
   };
 
@@ -269,8 +273,8 @@ export function usePressReleaseEditor({ pressReleaseId, initialDraft, onBack }: 
       setShowRevisionDialog(false);
       toast({ title: "Zurückgewiesen mit Kommentar" });
       await loadPressRelease(pressRelease.id);
-    } catch (error: any) {
-      toast({ title: "Fehler", description: error.message, variant: "destructive" });
+    } catch (error: unknown) {
+      toast({ title: "Fehler", description: error instanceof Error ? error.message : String(error), variant: "destructive" });
     }
   };
 
@@ -284,8 +288,8 @@ export function usePressReleaseEditor({ pressReleaseId, initialDraft, onBack }: 
       setShowGhostDialog(false);
       toast({ title: "Veröffentlicht!", description: "Die Pressemitteilung wurde erfolgreich auf Ghost veröffentlicht." });
       await loadPressRelease(pressRelease.id);
-    } catch (error: any) {
-      toast({ title: "Fehler bei der Veröffentlichung", description: error.message, variant: "destructive" });
+    } catch (error: unknown) {
+      toast({ title: "Fehler bei der Veröffentlichung", description: error instanceof Error ? error.message : String(error), variant: "destructive" });
     } finally {
       setIsPublishing(false);
     }

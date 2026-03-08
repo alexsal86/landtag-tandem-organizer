@@ -30,8 +30,8 @@ export function useDocumentsData(activeTab: string) {
         ...doc,
         archived_attachments: Array.isArray(doc.archived_attachments) ? doc.archived_attachments : []
       })));
-    } catch (error: any) {
-      toast({ title: "Fehler beim Laden", description: error.message, variant: "destructive" });
+    } catch (error: unknown) {
+      toast({ title: "Fehler beim Laden", description: error instanceof Error ? error.message : String(error), variant: "destructive" });
     } finally {
       setLoading(false);
     }
@@ -54,7 +54,7 @@ export function useDocumentsData(activeTab: string) {
         return { ...folder, documentCount: count || 0 };
       }));
       setFolders(foldersWithCounts);
-    } catch (error: any) {
+    } catch (error: unknown) {
       debugConsole.error('Error fetching folders:', error);
     }
   };
@@ -70,8 +70,8 @@ export function useDocumentsData(activeTab: string) {
         .order('created_at', { ascending: false });
       if (error) throw error;
       setLetters((data || []) as Letter[]);
-    } catch (error: any) {
-      toast({ title: "Fehler beim Laden der Briefe", description: error.message, variant: "destructive" });
+    } catch (error: unknown) {
+      toast({ title: "Fehler beim Laden der Briefe", description: error instanceof Error ? error.message : String(error), variant: "destructive" });
     } finally {
       setLoading(false);
     }

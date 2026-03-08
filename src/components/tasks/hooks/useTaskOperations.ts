@@ -54,16 +54,16 @@ export function useTaskOperations({
               setTasks(prev => prev.filter(t => t.id !== taskId));
               setShowCelebration(true);
             } else if (freshTask.status === 'completed' && newStatus === 'completed') {
-              const { data: existingArchive } = await supabase.from('archived_tasks').select('id').eq('task_id', taskId).maybeSingle();
-              if (!existingArchive) {
-                await supabase.from('archived_tasks').insert({
-                  task_id: taskId, user_id: user.id, title: freshTask.title,
-                  description: freshTask.description, priority: freshTask.priority,
-                  category: freshTask.category, assigned_to: freshTask.assigned_to || '',
-                  progress: 100, due_date: freshTask.due_date,
-                  completed_at: new Date().toISOString(), auto_delete_after_days: null,
-                } as any);
-                await supabase.from('tasks').delete().eq('id', taskId);
+                const { data: existingArchive } = await supabase.from('archived_tasks').select('id').eq('task_id', taskId).maybeSingle();
+                if (!existingArchive) {
+                  await supabase.from('archived_tasks').insert({
+                    task_id: taskId, user_id: user.id, title: freshTask.title,
+                    description: freshTask.description, priority: freshTask.priority,
+                    category: freshTask.category, assigned_to: freshTask.assigned_to || '',
+                    progress: 100, due_date: freshTask.due_date,
+                    completed_at: new Date().toISOString(),
+                  });
+                  await supabase.from('tasks').delete().eq('id', taskId);
               }
               setTasks(prev => prev.filter(t => t.id !== taskId));
               setShowCelebration(true);
@@ -83,8 +83,8 @@ export function useTaskOperations({
           description: task.description, priority: task.priority,
           category: task.category, assigned_to: task.assignedTo || '',
           progress: 100, due_date: task.dueDate,
-          completed_at: new Date().toISOString(), auto_delete_after_days: null,
-        } as any);
+          completed_at: new Date().toISOString(),
+        });
 
         if (archiveError) {
           const isNetworkError = archiveError.message?.includes('Failed to fetch') || archiveError.message?.includes('NetworkError');
@@ -119,16 +119,17 @@ export function useTaskOperations({
           ? "Aufgabe wurde als erledigt markiert und archiviert."
           : "Aufgabe wurde als offen markiert."
       });
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Error updating task:', error);
-      const isNetworkError = error?.message?.includes('Failed to fetch') || error?.message?.includes('NetworkError');
+      const msg = error instanceof Error ? error.message : String(error);
+      const isNetworkError = msg?.includes('Failed to fetch') || msg?.includes('NetworkError');
       if (isNetworkError) {
         setTimeout(() => loadTasks(), 500);
         setProcessingTaskIds(prev => { const next = new Set(prev); next.delete(taskId); return next; });
         return;
       }
       setTasks(prev => prev.map(t => t.id === taskId ? { ...t, status: originalStatus } : t));
-      toast({ title: "Fehler", description: error.message || "Status konnte nicht aktualisiert werden.", variant: "destructive" });
+      toast({ title: "Fehler", description: msg || "Status konnte nicht aktualisiert werden.", variant: "destructive" });
     } finally {
       setProcessingTaskIds(prev => { const next = new Set(prev); next.delete(taskId); return next; });
     }
@@ -142,7 +143,7 @@ export function useTaskOperations({
       await loadTaskComments();
       toast({ title: "Kommentar hinzugefügt" });
       return true;
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Error adding comment:', error);
       toast({ title: "Fehler", description: "Kommentar konnte nicht hinzugefügt werden.", variant: "destructive" });
       return false;
@@ -162,7 +163,7 @@ export function useTaskOperations({
       }
       loadTaskSnoozes();
       toast({ title: "Wiedervorlage gesetzt", description: `Aufgabe wird bis ${new Date(snoozeUntil).toLocaleDateString('de-DE')} ausgeblendet.` });
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Error snoozing task:', error);
       toast({ title: "Fehler", description: "Wiedervorlage konnte nicht gesetzt werden.", variant: "destructive" });
     }
@@ -182,7 +183,7 @@ export function useTaskOperations({
       loadTaskSnoozes();
       loadAssignedSubtasks();
       toast({ title: "Wiedervorlage gesetzt", description: `Unteraufgabe wird bis ${new Date(snoozeUntil).toLocaleDateString('de-DE')} ausgeblendet.` });
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Error snoozing subtask:', error);
       toast({ title: "Fehler", description: "Wiedervorlage konnte nicht gesetzt werden.", variant: "destructive" });
     }
@@ -238,7 +239,7 @@ export function useTaskOperations({
         title: isCompleted ? "Unteraufgabe erledigt" : "Unteraufgabe wieder geöffnet",
         description: isCompleted ? "Die Unteraufgabe wurde als erledigt markiert." : "Die Unteraufgabe wurde wieder geöffnet."
       });
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Error updating subtask:', error);
       toast({ title: "Fehler", description: "Unteraufgabe konnte nicht aktualisiert werden.", variant: "destructive" });
     }

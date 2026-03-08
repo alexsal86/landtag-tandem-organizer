@@ -168,9 +168,10 @@ export function EditProfile() {
         description: "Ihr Profilbild wurde erfolgreich hochgeladen.",
       });
 
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Error uploading file:', error);
-      const errorMessage = error?.message?.includes('bucket') || error?.message?.includes('Bucket')
+      const msg = error instanceof Error ? error.message : '';
+      const errorMessage = msg?.includes('bucket') || msg?.includes('Bucket')
         ? "Der Avatar-Speicher ist nicht konfiguriert. Bitte kontaktieren Sie den Administrator."
         : "Das Bild konnte nicht hochgeladen werden. Bitte versuchen Sie es erneut.";
       toast({

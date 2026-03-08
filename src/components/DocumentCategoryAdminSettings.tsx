@@ -68,7 +68,7 @@ export function DocumentCategoryAdminSettings() {
       await loadCategories();
       setNewCategory(null);
       toast({ title: "Erfolg", description: "Kategorie wurde erfolgreich hinzugefügt." });
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Error adding category:', error);
       toast({ title: "Fehler", description: "Kategorie konnte nicht hinzugefügt werden.", variant: "destructive" });
     }
@@ -90,7 +90,7 @@ export function DocumentCategoryAdminSettings() {
       await loadCategories();
       setEditingCategory(null);
       toast({ title: "Erfolg", description: "Kategorie wurde erfolgreich aktualisiert." });
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Error updating category:', error);
       toast({ title: "Fehler", description: "Kategorie konnte nicht aktualisiert werden.", variant: "destructive" });
     }
@@ -109,7 +109,7 @@ export function DocumentCategoryAdminSettings() {
       
       await loadCategories();
       toast({ title: "Erfolg", description: "Kategorie wurde erfolgreich gelöscht." });
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Error deleting category:', error);
       toast({ title: "Fehler", description: "Kategorie konnte nicht gelöscht werden.", variant: "destructive" });
     }
@@ -122,7 +122,7 @@ export function DocumentCategoryAdminSettings() {
       
       await loadCategories();
       toast({ title: "Erfolg", description: `Kategorie wurde ${!isActive ? 'aktiviert' : 'deaktiviert'}.` });
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Error toggling category:', error);
       toast({ title: "Fehler", description: "Status konnte nicht geändert werden.", variant: "destructive" });
     }

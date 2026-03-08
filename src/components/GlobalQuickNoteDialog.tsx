@@ -115,9 +115,9 @@ export function GlobalQuickNoteDialog({ open, onOpenChange }: GlobalQuickNoteDia
       }));
       
       onOpenChange(false);
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Error creating quick note:", error);
-      toast.error(`Fehler: ${error.message || 'Unbekannter Fehler'}`);
+      toast.error(`Fehler: ${error instanceof Error ? error.message : 'Unbekannter Fehler'}`);
     } finally {
       savingRef.current = false;
       setSaving(false);

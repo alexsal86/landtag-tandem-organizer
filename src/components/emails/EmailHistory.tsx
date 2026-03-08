@@ -110,9 +110,9 @@ export function EmailHistory() {
       })) as EmailLog[];
       
       setEmailLogs(typedData);
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Error fetching email logs:", error);
-      toast({ title: "Fehler beim Laden", description: error.message, variant: "destructive" });
+      toast({ title: "Fehler beim Laden", description: error instanceof Error ? error.message : String(error), variant: "destructive" });
     } finally {
       setLoading(false);
     }
@@ -130,7 +130,7 @@ export function EmailHistory() {
 
       if (error) throw error;
       setScheduledEmails(data || []);
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Error fetching scheduled emails:", error);
     }
   };
@@ -145,8 +145,8 @@ export function EmailHistory() {
       if (error) throw error;
       toast({ title: "Abgebrochen", description: "Geplante E-Mail wurde abgebrochen" });
       fetchScheduledEmails();
-    } catch (error: any) {
-      toast({ title: "Fehler", description: error.message, variant: "destructive" });
+    } catch (error: unknown) {
+      toast({ title: "Fehler", description: error instanceof Error ? error.message : String(error), variant: "destructive" });
     }
   };
 
@@ -162,8 +162,8 @@ export function EmailHistory() {
       toast({ title: "Gelöscht", description: "E-Mail-Eintrag wurde gelöscht." });
       setEmailLogs(prev => prev.filter(l => l.id !== deleteTarget));
       setDeleteTarget(null);
-    } catch (error: any) {
-      toast({ title: "Fehler", description: error.message, variant: "destructive" });
+    } catch (error: unknown) {
+      toast({ title: "Fehler", description: error instanceof Error ? error.message : String(error), variant: "destructive" });
     }
   };
 

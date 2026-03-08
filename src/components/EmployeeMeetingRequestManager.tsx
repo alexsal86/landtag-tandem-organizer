@@ -131,7 +131,7 @@ export function EmployeeMeetingRequestManager({ onPendingCountChange }: MeetingR
 
       setRequests(enrichedRequests);
       onPendingCountChange?.(enrichedRequests.length);
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Error loading requests:", error);
       toast({
         title: "Fehler",
@@ -214,7 +214,7 @@ export function EmployeeMeetingRequestManager({ onPendingCountChange }: MeetingR
       setDeclineReason("");
       setSelectedRequest(null);
       loadRequests();
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Error declining request:", error);
       toast({
         title: "Fehler",
@@ -244,7 +244,7 @@ export function EmployeeMeetingRequestManager({ onPendingCountChange }: MeetingR
       });
 
       loadRequests();
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Error marking as completed:", error);
       toast({
         title: "Fehler",

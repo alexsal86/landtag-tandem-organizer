@@ -46,8 +46,8 @@ export function useTimeTrackingData(userId: string | null, selectedMonth: Date) 
       setOvertimeLeaves(overtime.data || []);
       setHolidays(h.data || []);
       setPendingLeaves(pending.data || []);
-    } catch (error: any) {
-      toast.error("Fehler: " + error.message);
+    } catch (error: unknown) {
+      toast.error("Fehler: " + (error instanceof Error ? error.message : String(error)));
     } finally {
       setLoading(false);
     }

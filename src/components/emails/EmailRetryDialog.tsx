@@ -85,10 +85,10 @@ export function EmailRetryDialog({
           variant: "destructive"
         });
       }
-    } catch (error: any) {
+    } catch (error: unknown) {
       toast({
         title: "Fehler beim erneuten Versenden",
-        description: error.message,
+        description: error instanceof Error ? error.message : String(error),
         variant: "destructive"
       });
     } finally {
