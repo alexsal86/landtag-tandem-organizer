@@ -257,10 +257,10 @@ export function useAgendaOperations(deps: AgendaOpsDeps) {
       const parentIndex = agendaItems.findIndex(item => item.localKey === parent.localKey || item.id === parent.id);
       if (!parentId) {
         const { data: parentData, error: parentError } = await supabase
-          .from('meeting_agenda_items').insert({
+          .from('meeting_agenda_items').insert([{
             meeting_id: selectedMeeting.id, title: parent.title, description: parent.description || null,
             order_index: parent.order_index, is_completed: false, is_recurring: false,
-          }).select().single();
+          }]).select().single();
         if (parentError) throw parentError;
         parentId = parentData.id;
         const updatedItems = [...agendaItems];
