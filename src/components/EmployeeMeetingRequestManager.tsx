@@ -131,7 +131,7 @@ export function EmployeeMeetingRequestManager({ onPendingCountChange }: MeetingR
 
       setRequests(enrichedRequests);
       onPendingCountChange?.(enrichedRequests.length);
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Error loading requests:", error);
       toast({
         title: "Fehler",
