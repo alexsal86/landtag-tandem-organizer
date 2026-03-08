@@ -744,6 +744,8 @@ export function MyWorkTasksTab() {
           <TaskListRow
             key={task.id}
             task={task}
+            isHighlighted={isHighlighted}
+            getHighlightRef={highlightRef}
             className={isHighlighted(task.id) ? 'notification-highlight' : undefined}
             highlightRef={highlightRef(task.id)}
             subtasks={subtasks[task.id]}
