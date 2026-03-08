@@ -144,7 +144,7 @@ function reprojectIfNeeded(fc: GeoJsonData): GeoJsonData {
   if (sample) {
     try {
       const [testLon, testLat] = proj4(sourceDef, wgs84, [sample[0], sample[1]]);
-      console.log(`Sample coordinate transformation: [${sample[0]}, ${sample[1]}] -> [${testLon}, ${testLat}]`);
+      
       
       // Sanity check: longitude should be around 8-10 for Baden-Württemberg
       if (testLon < 7 || testLon > 11 || testLat < 47 || testLat > 50) {
