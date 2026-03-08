@@ -247,7 +247,7 @@ export const useCaseItems = () => {
       await fetchCaseItems();
       return true;
     } catch (error) {
-      console.error("Error updating case item:", error);
+      debugConsole.error("Error updating case item:", error);
       toast({
         title: "Fehler",
         description: "Vorgang konnte nicht aktualisiert werden.",
