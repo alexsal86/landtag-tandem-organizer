@@ -604,7 +604,7 @@ export function QuickNotesList({
       toast.success("Notiz in Papierkorb verschoben (wird nach 30 Tagen gelöscht)");
       loadNotes();
     } catch (error) {
-      console.error("Error deleting note:", error);
+      debugConsole.error("Error deleting note:", error);
       toast.error("Fehler beim Löschen");
     }
   };
