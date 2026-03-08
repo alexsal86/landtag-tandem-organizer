@@ -387,9 +387,9 @@ export function DashboardWidget({ widget, isDragging, isEditMode, onResize, onDe
           return !subtaskSnoozes[subtask.id] || new Date(subtaskSnoozes[subtask.id]) <= new Date();
         });
 
-        const allItems = [
-          ...filteredAssignedTasks.map(task => ({ ...task, type: 'task' })),
-          ...filteredAssignedSubtasks.map(subtask => ({ ...subtask, type: 'subtask' }))
+        const allItems: TaskOrSubtask[] = [
+          ...filteredAssignedTasks.map(task => ({ ...task, type: 'task' as const })),
+          ...filteredAssignedSubtasks.map(subtask => ({ ...subtask, type: 'subtask' as const }))
         ].slice(0, 6);
 
         return (
