@@ -55,6 +55,7 @@ const TRIGGER_TYPES = [
   { value: "record_changed", label: "Bei Datenänderung" },
   { value: "schedule", label: "Zeitgesteuert" },
   { value: "manual", label: "Manuell (Button)" },
+  { value: "webhook", label: "Webhook (extern)" },
 ] as const;
 
 const FIELD_OPTIONS_BY_MODULE: Record<string, Array<{ value: string; label: string }>> = {
