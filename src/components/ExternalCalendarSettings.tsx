@@ -179,7 +179,7 @@ export function ExternalCalendarSettings() {
       toast.success(enabled ? 'Synchronisation aktiviert' : 'Synchronisation deaktiviert');
       fetchCalendars();
     } catch (error) {
-      console.error('Error toggling sync:', error);
+      debugConsole.error('Error toggling sync:', error);
       toast.error('Fehler beim Ändern der Synchronisation');
     }
   };

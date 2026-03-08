@@ -288,7 +288,7 @@ export function MyWorkPlanningsTab() {
       toast({ title: "Planung archiviert" });
       loadPlannings();
     } catch (error) {
-      console.error('Error archiving planning:', error);
+      debugConsole.error('Error archiving planning:', error);
       toast({ title: "Fehler", variant: "destructive" });
     }
   };

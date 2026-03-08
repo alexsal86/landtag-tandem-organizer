@@ -89,7 +89,7 @@ export function FeatureImagePicker({ value, onChange, disabled }: FeatureImagePi
       if (error) throw error;
       setUnsplashImages(data?.results || []);
     } catch (e) {
-      console.error("Unsplash search failed:", e);
+      debugConsole.error("Unsplash search failed:", e);
     } finally {
       setUnsplashLoading(false);
     }

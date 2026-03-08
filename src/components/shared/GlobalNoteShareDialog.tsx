@@ -102,7 +102,7 @@ export const GlobalNoteShareDialog = ({
 
       setTeamMembers(members);
     } catch (error) {
-      console.error("Error loading team members:", error);
+      debugConsole.error("Error loading team members:", error);
     } finally {
       setLoadingMembers(false);
     }
