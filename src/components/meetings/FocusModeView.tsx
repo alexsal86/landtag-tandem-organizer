@@ -539,13 +539,13 @@ export function FocusModeView({
     
     // Render system sub-items (individual notes, appointments, tasks) as autonomous items
     if (isSystemSubItem && sourceData) {
-      // Get result for this system sub-item
+      const src = sourceData as Record<string, unknown>;
       const getSubItemResult = () => {
-        if (sourceType === 'quick_note') return sourceData.meeting_result || '';
+        if (sourceType === 'quick_note') return (src.meeting_result as string) || '';
         if (sourceType === 'appointment' && parentItem) {
           try {
             const results = JSON.parse(parentItem.result_text || '{}');
-            return results[sourceData.id] || '';
+            return results[src.id as string] || '';
           } catch { return ''; }
         }
         if (sourceType === 'task' && parentItem) {
