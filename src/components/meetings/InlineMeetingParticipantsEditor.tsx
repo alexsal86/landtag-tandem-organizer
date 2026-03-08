@@ -133,7 +133,7 @@ export function InlineMeetingParticipantsEditor({ meetingId }: InlineMeetingPart
     }
     
     if (data) {
-      console.log('✅ Participant added successfully:', data);
+      
       toast({
         title: "Teilnehmer hinzugefügt",
         description: `${user.display_name} wurde als ${roleLabels[selectedRole].label} hinzugefügt.`,
