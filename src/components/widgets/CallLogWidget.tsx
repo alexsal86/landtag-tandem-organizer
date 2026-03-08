@@ -225,10 +225,9 @@ export const CallLogWidget: React.FC<CallLogWidgetProps> = ({
           .single();
 
         if (subtaskError || !subtaskData) {
-          console.error('Error creating subtask:', subtaskError);
+          debugConsole.error('Error creating subtask:', subtaskError);
         } else {
-          // Task linking is handled via call_log_id in tasks table
-          console.log('Subtask created successfully:', subtaskData.id);
+          debugConsole.log('Subtask created successfully:', subtaskData.id);
         }
 
         // Create calendar appointment if follow-up has a date
