@@ -115,7 +115,7 @@ export default function CreateTask() {
         debugConsole.log('📝 User auth check:', { user: user?.id, error: userError });
         
         if (userError || !user) {
-          console.error('❌ Auth error:', userError);
+          debugConsole.error('❌ Auth error:', userError);
           toast({
             title: "Fehler",
             description: "Sie müssen angemeldet sein, um Aufgaben zu erstellen.",
