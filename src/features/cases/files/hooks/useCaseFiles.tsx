@@ -235,7 +235,7 @@ export const useCaseFiles = () => {
         title: "Fehler",
         description: errorMessage.includes("Abschlussinteraktion")
           ? "Zum Abschließen ist mindestens eine dokumentierte Abschlussinteraktion erforderlich."
-          : "FallAkte konnte nicht aktualisiert werden.",
+          : "Fallakte konnte nicht aktualisiert werden.",
         variant: "destructive",
       });
       return false;
