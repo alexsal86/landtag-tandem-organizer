@@ -147,7 +147,7 @@ export function MyWorkQuickCapture({ onNoteSaved }: MyWorkQuickCaptureProps) {
       const plainText = stripHtml(content);
       const taskTitle = stripHtml(title) || plainText.substring(0, 100);
       
-      const { error } = await supabase.from("tasks").insert({
+      const { error } = await supabase.from("tasks").insert([{
         user_id: user.id,
         tenant_id: currentTenant.id,
         title: taskTitle,
@@ -155,7 +155,7 @@ export function MyWorkQuickCapture({ onNoteSaved }: MyWorkQuickCaptureProps) {
         status: "todo",
         priority: "medium",
         category: "personal",
-      });
+      }]);
 
       if (error) throw error;
 

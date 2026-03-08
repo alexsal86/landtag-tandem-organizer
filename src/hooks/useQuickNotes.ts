@@ -779,7 +779,7 @@ export function useQuickNotes(refreshTrigger?: number) {
   const restoreVersion = async (version: { title: string | null; content: string }) => {
     if (!versionHistoryNote || !user?.id) return;
     try {
-      await supabase.from("quick_note_versions").insert({ note_id: versionHistoryNote.id, title: versionHistoryNote.title, content: versionHistoryNote.content, user_id: user.id });
+      await supabase.from("quick_note_versions").insert([{ note_id: versionHistoryNote.id, title: versionHistoryNote.title, content: versionHistoryNote.content, user_id: user.id }]);
       const { error } = await supabase.from("quick_notes").update({ title: version.title, content: version.content }).eq("id", versionHistoryNote.id).eq("user_id", user.id);
       if (error) throw error;
       toast.success("Version wiederhergestellt");

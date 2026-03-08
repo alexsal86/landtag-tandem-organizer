@@ -169,12 +169,12 @@ export const TaskDecisionResponse = ({
       } else {
         const { error } = await supabase
           .from('task_decision_responses')
-          .insert({
+          .insert([{
             decision_id: decisionId,
             participant_id: participantId,
             response_type: responseType,
             comment: comment || null,
-          });
+          }]);
 
         if (error) {
           debugConsole.error('Error inserting response:', error);

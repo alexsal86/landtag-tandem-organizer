@@ -489,7 +489,7 @@ export function EmployeeMeetingProtocol({ meetingId, onBack }: EmployeeMeetingPr
     try {
       const { data, error } = await supabase
         .from("employee_meeting_action_items")
-        .insert({
+        .insert([{
           meeting_id: meetingId,
           tenant_id: currentTenant.id,
           description: newActionItem.description,
@@ -497,7 +497,7 @@ export function EmployeeMeetingProtocol({ meetingId, onBack }: EmployeeMeetingPr
           assigned_to: newActionItem.assigned_to || (isEmployee ? meeting.employee_id : meeting.conducted_by),
           due_date: newActionItem.due_date,
           status: "open",
-        })
+        }])
         .select()
         .single();
 

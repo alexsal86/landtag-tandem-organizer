@@ -115,12 +115,12 @@ export function InlineMeetingParticipantsEditor({ meetingId }: InlineMeetingPart
     
     const { data, error } = await supabase
       .from('meeting_participants')
-      .insert({
+      .insert([{
         meeting_id: meetingId,
         user_id: user.id,
         role: selectedRole,
         status: 'pending'
-      })
+      }])
       .select()
       .single();
 

@@ -183,13 +183,13 @@ export const QuickNotesWidget: React.FC<QuickNotesWidgetProps> = ({
     try {
       const { error } = await supabase
         .from('quick_notes')
-        .insert({
+        .insert([{
           user_id: user.id,
           title: newTitle.trim() || undefined,
           content: plainContent,
           color: selectedColor,
           category: 'general'
-        });
+        }]);
 
       if (error) throw error;
 

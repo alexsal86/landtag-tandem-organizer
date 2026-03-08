@@ -308,13 +308,13 @@ export const useAppointmentFeedback = () => {
 
       const { error } = await supabase
         .from('appointment_feedback')
-        .insert({
+        .insert([{
           appointment_id: appointmentId,
           user_id: user.id,
           tenant_id: currentTenant.id,
           feedback_status: 'pending',
           priority_score: priorityScore
-        });
+        }]);
 
       if (error) throw error;
     },
