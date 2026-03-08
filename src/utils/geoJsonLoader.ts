@@ -134,7 +134,7 @@ function reprojectIfNeeded(fc: GeoJsonData): GeoJsonData {
   }
 
   if (!projected || !sourceDef) {
-    console.log('No reprojection needed or no projection detected');
+    
     return fc;
   }
 
