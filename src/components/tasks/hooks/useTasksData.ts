@@ -105,7 +105,7 @@ export function useTasksData() {
         dueDate: task.due_date,
         category: task.category as Task['category'],
         assignedTo: Array.isArray(task.assigned_to) ? task.assigned_to.join(',') : (task.assigned_to || ''),
-        progress: task.progress,
+        progress: task.progress ?? undefined,
         created_at: task.created_at,
         updated_at: task.updated_at,
         user_id: task.user_id,
