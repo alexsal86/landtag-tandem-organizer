@@ -195,7 +195,7 @@ export function MessageComposer({ onClose, onSent }: MessageComposerProps) {
                         onCheckedChange={() => handleRecipientToggle(profile.user_id)}
                       />
                       <Avatar className="h-6 w-6">
-                        <AvatarImage src={profile.avatar_url} />
+                        <AvatarImage src={profile.avatar_url ?? undefined} />
                         <AvatarFallback className="text-xs">
                           {profile.display_name?.charAt(0) || 'U'}
                         </AvatarFallback>
