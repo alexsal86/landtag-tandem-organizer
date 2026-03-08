@@ -83,8 +83,8 @@ export function PressTemplateManager() {
     try {
       const loadedTemplates = await loadPressTemplates(currentTenant.id);
       setTemplates(loadedTemplates);
-    } catch (error: any) {
-      toast({ title: 'Fehler', description: error.message, variant: 'destructive' });
+    } catch (error: unknown) {
+      toast({ title: 'Fehler', description: error instanceof Error ? error.message : 'Laden fehlgeschlagen', variant: 'destructive' });
     } finally {
       setLoading(false);
     }
