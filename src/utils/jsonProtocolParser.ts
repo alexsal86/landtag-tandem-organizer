@@ -60,7 +60,7 @@ export interface ParsedJSONProtocol {
     session_number: string;
     legislature_period: string;
     protocol_date: string;
-    source_pdf_url?: string;
+    source_pdf_url?: string | null;
     statistics?: any;
   };
   structured_data: {
