@@ -108,7 +108,7 @@ export default function AppointmentPreparationSidebar({
       const { data, error } = await supabase
         .from('appointment_preparation_templates')
         .select('*')
-        .eq('tenant_id', currentTenant?.id)
+        .eq('tenant_id', currentTenant?.id ?? '')
         .eq('is_active', true)
         .order('name');
 
