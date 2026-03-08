@@ -920,7 +920,7 @@ export function QuickNotesList({
       return;
     }
 
-    console.log("Setting follow-up:", { noteId, date, userId: user.id });
+    debugConsole.log("Setting follow-up:", { noteId, date, userId: user.id });
 
     try {
       const { data, error } = await supabase
