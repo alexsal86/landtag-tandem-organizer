@@ -264,7 +264,7 @@ export function useLetterOperations(opts: UseLetterOperationsOptions) {
       setIsProofreadingMode(true);
       toast({ title: 'Brief zurückgegeben', description: 'Der Brief wurde zur Bearbeitung zurückgegeben.' });
     } catch (error) {
-      console.error('Error returning letter:', error);
+      debugConsole.error('Error returning letter:', error);
       toast({ title: 'Fehler', description: 'Der Brief konnte nicht zurückgegeben werden.', variant: 'destructive' });
     }
   }, [letter?.id, userId, setEditedLetter, setIsProofreadingMode, toast]);
