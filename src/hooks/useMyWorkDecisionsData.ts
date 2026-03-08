@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { MyWorkDecision, getResponseSummary } from "@/components/my-work/decisions/types";
+import type { ResponseOption } from "@/lib/decisionTemplates";
 
 const isEmailFile = (name: string) => /\.(eml|msg)$/i.test(name);
 const DECISIONS_CACHE_TTL_MS = 30_000;
