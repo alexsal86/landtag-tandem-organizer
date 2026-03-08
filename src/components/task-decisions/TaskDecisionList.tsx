@@ -307,7 +307,7 @@ export const TaskDecisionList = () => {
         .from('task_decision_responses')
         .update({ creator_response: responseText })
         .eq('id', responseId)
-        .select('*');
+        .select('id, creator_response');
 
       if (error) {
         console.error('Error updating creator response:', error);
