@@ -149,7 +149,7 @@ export const MatrixSettings: React.FC = () => {
         description: "Matrix-Abonnement wurde hinzugefügt.",
       });
     } catch (error) {
-      console.error("Error adding subscription:", error);
+      debugConsole.error("Error adding subscription:", error);
       toast({
         title: "Fehler",
         description: "Ein unerwarteter Fehler ist aufgetreten.",
