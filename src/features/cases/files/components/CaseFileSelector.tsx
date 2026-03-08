@@ -84,10 +84,10 @@ export function CaseFileSelector({
       
       switch (itemType) {
         case 'document': {
-          const docResult = await supabase.from('case_file_documents').insert({
+          const docResult = await supabase.from('case_file_documents').insert([{
             case_file_id: caseFileId,
             document_id: itemId,
-          });
+          }]);
           linkError = docResult.error;
           break;
         }
