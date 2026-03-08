@@ -503,7 +503,7 @@ export const TaskDecisionDetails = ({ decisionId, isOpen, onClose, onArchived, h
       toast({ title: hasReplies ? 'Kommentar als gelöscht markiert' : 'Kommentar gelöscht' });
       await loadDecisionDetails();
     } catch (error) {
-      console.error('Error deleting comment:', error);
+      debugConsole.error('Error deleting comment:', error);
       toast({
         title: 'Fehler',
         description: 'Kommentar konnte nicht gelöscht werden.',
