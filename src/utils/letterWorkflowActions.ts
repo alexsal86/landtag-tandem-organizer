@@ -79,7 +79,7 @@ export async function createLetterSendTask(
         tenant_id: tenantId,
       });
   } catch (error) {
-    console.error('Error creating send task:', error);
+    debugConsole.error('Error creating send task:', error);
   }
 }
 
