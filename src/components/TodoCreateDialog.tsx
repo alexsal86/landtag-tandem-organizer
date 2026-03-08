@@ -15,7 +15,7 @@ import { MultiSelect } from "@/components/ui/multi-select-simple";
 interface TodoCategory {
   id: string;
   label: string;
-  color: string;
+  color: string | null;
 }
 
 interface TodoCreateDialogProps {
