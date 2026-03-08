@@ -159,7 +159,7 @@ export function useMeetingArchive(deps: ArchiveDeps) {
       await loadAgendaItems(meetingId);
       toast({ title: "Punkte übertragen", description: `${pendingItems.length} vorgemerkte Punkte wurden in die Agenda eingefügt.` });
     } catch (error) {
-      console.error('Error applying carryover items:', error);
+      debugConsole.error('Error applying carryover items:', error);
     }
   };
 
