@@ -50,7 +50,7 @@ export const WidgetResizeHandles: React.FC<WidgetResizeHandlesProps> = ({
     e.stopPropagation();
     e.nativeEvent.stopImmediatePropagation();
     
-    console.log('Resize handle clicked, direction:', direction);
+    
     setIsResizing(true);
     startPos.current = { x: e.clientX, y: e.clientY };
     
