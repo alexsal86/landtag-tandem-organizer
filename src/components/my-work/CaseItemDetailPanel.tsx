@@ -72,6 +72,7 @@ export function CaseItemDetailPanel({
   onContactEmailChange,
   onContactPhoneChange,
   onContactSelected,
+  onDelete,
 }: {
   itemId: string;
   itemCaseFileId: string | null;
