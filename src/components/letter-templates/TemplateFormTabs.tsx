@@ -222,7 +222,7 @@ export const useTemplateFormTabs = ({
         <div>
           <Label>Standard-Informationsblöcke</Label>
           <div className="space-y-2 max-h-40 overflow-y-auto">
-            {infoBlocks.map((block) => (
+            {infoBlocks.map((block: InformationBlock) => (
               <div key={block.id} className="flex items-center space-x-2">
                 <Checkbox id={`block-${block.id}`} checked={formData.default_info_blocks.includes(block.id)} onCheckedChange={(checked) => {
                   if (checked) { setFormData((prev: any) => ({ ...prev, default_info_blocks: [...prev.default_info_blocks, block.id] })); }
