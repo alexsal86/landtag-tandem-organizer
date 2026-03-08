@@ -241,7 +241,7 @@ export function useEventPlanningData() {
       const { data, error } = await supabase.from("event_plannings").select("*").eq("tenant_id", currentTenant.id).eq("is_archived", true).order("archived_at", { ascending: false });
       if (error) throw error;
       setArchivedPlannings(data || []);
-    } catch (error) { console.error('Error fetching archived plannings:', error); }
+    } catch (error) { debugConsole.error('Error fetching archived plannings:', error); }
   };
 
   const archivePlanning = async (planningId: string) => {
