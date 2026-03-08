@@ -226,8 +226,8 @@ export function SuperadminTenantManagement() {
       if (error) throw error;
       toast({ title: "Gelöscht", description: "Tenant wurde entfernt" });
       loadTenants();
-    } catch (error: any) {
-      toast({ title: "Fehler", description: error.message, variant: "destructive" });
+    } catch (error: unknown) {
+      toast({ title: "Fehler", description: error instanceof Error ? error.message : "Löschen fehlgeschlagen", variant: "destructive" });
     }
   };
 
