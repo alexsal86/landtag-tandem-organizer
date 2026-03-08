@@ -51,6 +51,7 @@ interface SystemAgendaItemProps {
   linkedQuickNotes?: any[];
   linkedTasks?: LinkedTask[];
   linkedDecisions?: LinkedDecision[];
+  linkedCaseItems?: LinkedCaseItem[];
   profiles?: ProfileInfo[];
   resultText?: string | null;
   onUpdateNoteResult?: (noteId: string, result: string) => void;
