@@ -142,7 +142,7 @@ const ProperReactBigCalendar: React.FC<ProperReactBigCalendarProps> = ({
 
     debugConsole.log('🔄 REACT BIG CALENDAR - Converting events to RBC format...');
     const convertedEvents = CalendarEventAdapter.toRBCEvents(events);
-    console.log('🔄 REACT BIG CALENDAR - Converted events:', { 
+    debugConsole.log('🔄 REACT BIG CALENDAR - Converted events:', { 
       originalCount: events.length, 
       convertedCount: convertedEvents.length,
       convertedEvents: convertedEvents.slice(0, 2)
@@ -152,13 +152,13 @@ const ProperReactBigCalendar: React.FC<ProperReactBigCalendarProps> = ({
     const validEvents = convertedEvents.filter(event => {
       const isValid = event && event.start && event.end && event.title;
       if (!isValid) {
-        console.warn('❌ REACT BIG CALENDAR - Invalid event found:', event);
+        debugConsole.warn('❌ REACT BIG CALENDAR - Invalid event found:', event);
       }
       return isValid;
     });
 
-    console.log(`✅ REACT BIG CALENDAR - Final result: ${validEvents.length} valid events out of ${convertedEvents.length} total`);
-    console.log('✅ REACT BIG CALENDAR - Sample events for rendering:', validEvents.slice(0, 3).map(e => ({
+    debugConsole.log(`✅ REACT BIG CALENDAR - Final result: ${validEvents.length} valid events out of ${convertedEvents.length} total`);
+    debugConsole.log('✅ REACT BIG CALENDAR - Sample events for rendering:', validEvents.slice(0, 3).map(e => ({
       id: e.id,
       title: e.title,
       start: e.start?.toISOString(),
