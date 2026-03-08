@@ -72,7 +72,7 @@ export function useCalendarData(currentDate: Date, view: string) {
       const appointmentsData = [...(regular || []), ...(recurring || [])];
       await processAppointments(appointmentsData, startDate, endDate);
     } catch (error) {
-      console.error("Error fetching appointments:", error);
+      debugConsole.error("Error fetching appointments:", error);
     } finally {
       setLoading(false);
     }
