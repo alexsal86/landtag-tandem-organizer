@@ -75,7 +75,7 @@ export const GuestManager: React.FC<GuestManagerProps> = ({
     try {
       const { data, error } = await supabase
         .from('default_appointment_guests')
-        .select('*')
+        .select('id, name, email, is_active')
         .eq('tenant_id', currentTenant.id)
         .eq('is_active', true)
         .order('order_index');
