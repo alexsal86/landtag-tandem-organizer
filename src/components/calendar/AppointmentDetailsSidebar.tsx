@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from "react";
+import { debugConsole } from '@/utils/debugConsole';
 import { X, Edit, Trash2, MapPin, Clock, Users, Calendar as CalendarIcon, Save, Mail, UserPlus, Check, XIcon, ListTodo, CheckCircle2, FileText, CheckSquare } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
