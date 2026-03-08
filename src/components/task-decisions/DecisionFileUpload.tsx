@@ -134,7 +134,7 @@ export function DecisionFileUpload({
           const parsed = await parseEmlFile(file);
           entries.push({ file, emailMetadata: parsed.metadata });
         } catch (e) {
-          console.error('EML parse error:', e);
+          debugConsole.error('EML parse error:', e);
           entries.push({ file, emailMetadata: null });
         }
       } else if (isMsgFile(file)) {
