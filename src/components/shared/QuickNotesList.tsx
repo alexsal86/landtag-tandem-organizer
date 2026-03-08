@@ -640,7 +640,7 @@ export function QuickNotesList({
       toast.success("Notiz archiviert");
       loadNotes();
     } catch (error) {
-      console.error("Error archiving note:", error);
+      debugConsole.error("Error archiving note:", error);
       toast.error("Fehler beim Archivieren");
     }
   };
