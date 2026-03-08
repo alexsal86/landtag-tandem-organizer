@@ -5,6 +5,7 @@
  */
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
+import { debugConsole } from '@/utils/debugConsole';
 import * as React from 'react';
 import * as ReactDOM from 'react-dom';
 import { useLexicalComposerContext } from '@lexical/react/LexicalComposerContext';
