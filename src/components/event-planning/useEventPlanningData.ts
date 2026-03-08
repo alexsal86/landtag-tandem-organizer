@@ -442,7 +442,7 @@ export function useEventPlanningData() {
           await supabase.from("event_planning_collaborators").insert(collabsToInsert);
         }
       }
-    } catch (prefError) { console.error("Error adding default collaborators:", prefError); }
+    } catch (prefError) { debugConsole.error("Error adding default collaborators:", prefError); }
 
     setNewPlanningTitle("");
     setNewPlanningIsPrivate(false);
