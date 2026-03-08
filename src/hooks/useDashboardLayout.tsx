@@ -455,15 +455,7 @@ export function useDashboardLayout() {
 
   // Add new widget with position parameter
   const addWidget = (type: string, position?: { x: number; y: number }) => {
-    console.log('🆕 useDashboardLayout.addWidget CALLED:', { 
-      type, 
-      position, 
-      hasCurrentLayout: !!currentLayout,
-      currentWidgetCount: currentLayout?.widgets.length 
-    });
-    
     if (!currentLayout) {
-      console.error('❌ No currentLayout available');
       toast.error('Layout nicht verfügbar');
       return;
     }
