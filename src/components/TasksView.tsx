@@ -515,7 +515,7 @@ export function TasksView() {
       }
 
       // 2. Get planning subtasks assigned to this user
-      console.log('📅 Loading planning subtasks...');
+      
       const { data: planningSubtasksData, error: planningError } = await supabase
         .from('planning_item_subtasks')
         .select('*')
