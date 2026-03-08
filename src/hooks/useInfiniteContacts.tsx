@@ -217,7 +217,7 @@ export const useInfiniteContacts = ({
         main_contact_person: contact.main_contact_person,
         business_description: contact.business_description,
         is_favorite: contact.is_favorite,
-        gender: (contact as any).gender,
+        gender: (contact as { gender?: string }).gender,
         tags: contact.tags || [],
       })) || [];
 

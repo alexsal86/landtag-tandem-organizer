@@ -229,18 +229,18 @@ export function MyWorkView() {
 
       if (error) throw error;
 
-      const counts = (data || {}) as Partial<TabCounts>;
+      const counts = (data || {}) as Record<string, number>;
 
       if (requestId !== loadCountsRequestRef.current) return;
 
       setTotalCounts({
         tasks: Number(counts.tasks || 0),
         decisions: Number(counts.decisions || 0),
-        cases: Number((counts as any).caseItems || 0) + Number((counts as any).caseFiles || 0),
+        cases: Number(counts.caseItems || 0) + Number(counts.caseFiles || 0),
         plannings: Number(counts.plannings || 0),
         team: Number(counts.team || 0),
         jourFixe: Number(counts.jourFixe || 0),
-        feedbackFeed: Number((counts as any).feedbackFeed || 0),
+        feedbackFeed: Number(counts.feedbackFeed || 0),
       });
       setRealtimeStatus("connected");
     } catch (error) {
