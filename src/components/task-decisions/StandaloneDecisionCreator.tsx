@@ -160,7 +160,7 @@ export const StandaloneDecisionCreator = ({
             if (oldStored) defaultIds = JSON.parse(oldStored);
           }
         } catch (e) {
-          console.error('Error loading default participants:', e);
+          debugConsole.error('Error loading default participants:', e);
         }
 
         if (defaultSettings) {
