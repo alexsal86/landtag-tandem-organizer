@@ -1188,6 +1188,7 @@ export function MyWorkCasesWorkspace() {
                                                 onContactSelected={(contact) => updateEdit({
                                                   selectedContactId: contact?.id || null,
                                                 })}
+                                                onDelete={() => setDeleteConfirmItemId(item.id)}
                                               />
                                             )}
                                           </div>
