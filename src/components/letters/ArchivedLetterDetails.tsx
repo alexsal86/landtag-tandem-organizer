@@ -144,7 +144,7 @@ export const ArchivedLetterDetails: React.FC<ArchivedLetterDetailsProps> = ({
       link.click();
       URL.revokeObjectURL(url);
       window.document.body.removeChild(link);
-    } catch (error: any) {
+    } catch (error: unknown) {
       toast({
         title: "Download-Fehler",
         description: error.message,

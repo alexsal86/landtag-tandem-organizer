@@ -157,7 +157,7 @@ export function EmailTemplateManager() {
       if (error) throw error;
       toast({ title: "Template gelöscht" });
       fetchTemplates();
-    } catch (error: any) {
+    } catch (error: unknown) {
       toast({
         title: "Fehler beim Löschen",
         description: error.message,

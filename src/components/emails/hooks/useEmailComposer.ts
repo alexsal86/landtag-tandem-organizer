@@ -389,9 +389,9 @@ export function useEmailComposer() {
       }
 
       setSubject(""); setBodyHtml(""); setReplyTo(""); setIsScheduled(false); setScheduledFor(undefined); setRecipients([]); setSelectedDocuments([]);
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Error sending emails:", error);
-      toast({ title: "Fehler beim Versenden", description: error.message, variant: "destructive" });
+      toast({ title: "Fehler beim Versenden", description: error instanceof Error ? error.message : String(error), variant: "destructive" });
     } finally {
       setLoading(false);
     }

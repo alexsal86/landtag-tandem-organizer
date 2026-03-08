@@ -153,8 +153,9 @@ export function useTaskDetailData(task: Task | null) {
       toast({ title: "Aufgabe gespeichert", description: "Die Änderungen wurden erfolgreich gespeichert." });
       setEditFormData(updated);
       try { onTaskUpdate(updated); } catch {}
-    } catch (error: any) {
-      const isNetwork = error?.message?.includes("Failed to fetch") || error?.message?.includes("NetworkError") || error?.message?.includes("TypeError");
+    } catch (error: unknown) {
+      const msg = error instanceof Error ? error.message : String(error);
+      const isNetwork = msg?.includes("Failed to fetch") || msg?.includes("NetworkError") || msg?.includes("TypeError");
       if (isNetwork) {
         setTimeout(async () => {
           const { data: fresh } = await supabase.from("tasks").select("*").eq("id", task.id).single();

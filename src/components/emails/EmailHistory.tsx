@@ -162,8 +162,8 @@ export function EmailHistory() {
       toast({ title: "Gelöscht", description: "E-Mail-Eintrag wurde gelöscht." });
       setEmailLogs(prev => prev.filter(l => l.id !== deleteTarget));
       setDeleteTarget(null);
-    } catch (error: any) {
-      toast({ title: "Fehler", description: error.message, variant: "destructive" });
+    } catch (error: unknown) {
+      toast({ title: "Fehler", description: error instanceof Error ? error.message : String(error), variant: "destructive" });
     }
   };
 
