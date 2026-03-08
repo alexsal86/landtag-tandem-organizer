@@ -149,7 +149,7 @@ export const DIN5008LetterLayout: React.FC<DIN5008LetterLayoutProps> = ({
     if (!address) return '';
     
     // Handle different address formats
-    const parts = [];
+    const parts: string[] = [];
     
     // If address has structured fields or simple name+address format
     if (typeof address === 'object' && address.name) {
@@ -199,7 +199,7 @@ export const DIN5008LetterLayout: React.FC<DIN5008LetterLayoutProps> = ({
 
   const formatSenderAddress = (sender: any) => {
     if (!sender) return '';
-    const parts = [];
+    const parts: string[] = [];
     if (sender.organization) parts.push(sender.organization);
     if (sender.name) parts.push(sender.name);
     if (sender.street && sender.house_number) {

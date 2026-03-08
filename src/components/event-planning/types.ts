@@ -1,22 +1,23 @@
 export interface EventPlanning {
   id: string;
   title: string;
-  description?: string;
-  location?: string;
-  background_info?: string;
-  confirmed_date?: string;
+  description?: string | null;
+  location?: string | null;
+  background_info?: string | null;
+  confirmed_date?: string | null;
   is_private: boolean;
   user_id: string;
   created_at: string;
   updated_at: string;
-  is_digital?: boolean;
-  digital_platform?: string;
-  digital_link?: string;
-  digital_access_info?: string;
-  is_completed?: boolean;
-  completed_at?: string;
-  is_archived?: boolean;
-  archived_at?: string;
+  is_digital?: boolean | null;
+  digital_platform?: string | null;
+  digital_link?: string | null;
+  digital_access_info?: string | null;
+  is_completed?: boolean | null;
+  completed_at?: string | null;
+  is_archived?: boolean | null;
+  archived_at?: string | null;
+  contact_person?: string | null;
   creator?: {
     display_name: string | null;
     avatar_url: string | null;
@@ -27,9 +28,9 @@ export interface EventPlanningContact {
   id: string;
   event_planning_id: string;
   name: string;
-  email?: string;
-  phone?: string;
-  role: string;
+  email?: string | null;
+  phone?: string | null;
+  role: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -38,11 +39,11 @@ export interface EventPlanningSpeaker {
   id: string;
   event_planning_id: string;
   name: string;
-  email?: string;
-  phone?: string;
-  bio?: string;
-  topic?: string;
-  order_index: number;
+  email?: string | null;
+  phone?: string | null;
+  bio?: string | null;
+  topic?: string | null;
+  order_index: number | null;
   created_at: string;
   updated_at: string;
 }
@@ -52,7 +53,8 @@ export interface EventPlanningDate {
   event_planning_id: string;
   date_time: string;
   is_confirmed: boolean;
-  appointment_id?: string;
+  appointment_id?: string | null;
+  created_at?: string;
 }
 
 export interface ChecklistItem {
@@ -111,8 +113,8 @@ export interface GeneralPlanningDocument {
   event_planning_id: string;
   file_name: string;
   file_path: string;
-  file_size?: number;
-  file_type?: string;
+  file_size?: number | null;
+  file_type?: string | null;
   uploaded_by: string;
   tenant_id: string;
   created_at: string;
@@ -124,15 +126,15 @@ export interface Collaborator {
   user_id: string;
   can_edit: boolean;
   profiles?: {
-    display_name?: string;
-    avatar_url?: string;
-  };
+    display_name?: string | null;
+    avatar_url?: string | null;
+  } | null;
 }
 
 export interface Profile {
   user_id: string;
-  display_name?: string;
-  avatar_url?: string;
+  display_name?: string | null;
+  avatar_url?: string | null;
 }
 
 export interface AppointmentPreparation {
@@ -140,9 +142,14 @@ export interface AppointmentPreparation {
   title: string;
   appointment_id?: string;
   status: string;
-  notes?: string;
+  notes?: string | null;
   created_at: string;
   updated_at: string;
   is_archived: boolean;
-  archived_at?: string;
+  archived_at?: string | null;
+  checklist_items?: any;
+  preparation_data?: any;
+  template_id?: string | null;
+  tenant_id?: string;
+  created_by?: string;
 }

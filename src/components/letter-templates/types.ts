@@ -25,14 +25,14 @@ export interface SenderInformation {
   id: string;
   name: string;
   organization: string;
-  is_default: boolean;
+  is_default: boolean | null;
 }
 
 export interface InformationBlock {
   id: string;
   name: string;
   label: string;
-  is_default: boolean;
+  is_default: boolean | null;
 }
 
 export type MarginKey = 'top' | 'right' | 'bottom' | 'left';

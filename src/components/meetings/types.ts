@@ -16,7 +16,7 @@ export interface NewMeetingParticipant {
   user?: {
     id: string;
     display_name: string;
-    avatar_url?: string;
+    avatar_url?: string | null;
   };
 }
 
@@ -24,7 +24,7 @@ export interface AgendaItem {
   id?: string;
   meeting_id?: string;
   title: string;
-  description?: string;
+  description?: string | null;
   assigned_to?: string[] | null;
   notes?: string | null;
   is_completed: boolean;

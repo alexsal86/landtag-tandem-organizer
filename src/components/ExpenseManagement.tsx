@@ -117,7 +117,7 @@ export const ExpenseManagement = () => {
             </Dialog>
           </div>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {data.categories.map(cat => <Card key={cat.id}><CardHeader><CardTitle className="flex items-center justify-between"><Badge style={{ backgroundColor: cat.color }}>{cat.name}</Badge></CardTitle></CardHeader><CardContent><p className="text-sm text-muted-foreground">{cat.description || "Keine Beschreibung"}</p></CardContent></Card>)}
+            {data.categories.map(cat => <Card key={cat.id}><CardHeader><CardTitle className="flex items-center justify-between"><Badge style={{ backgroundColor: cat.color || undefined }}>{cat.name}</Badge></CardTitle></CardHeader><CardContent><p className="text-sm text-muted-foreground">{cat.description || "Keine Beschreibung"}</p></CardContent></Card>)}
           </div>
         </TabsContent>
 

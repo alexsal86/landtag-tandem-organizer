@@ -14,12 +14,15 @@ import { useAuth } from '@/hooks/useAuth';
 interface Attachment {
   id: string;
   file_name: string;
-  file_path: string;
-  file_type?: string;
-  file_size?: number;
-  uploaded_by: string;
+  file_path: string | null;
+  file_type?: string | null;
+  file_size?: number | null;
+  uploaded_by: string | null;
   created_at: string;
-  display_name?: string; // For customizable display in letter
+  display_name?: string | null;
+  letter_id?: string;
+  document_id?: string | null;
+  updated_at?: string | null;
 }
 
 interface LetterAttachmentManagerProps {
@@ -183,7 +186,7 @@ const LetterAttachmentManager: React.FC<LetterAttachmentManagerProps> = ({
     try {
       const { data, error } = await supabase.storage
         .from('documents')
-        .download(attachment.file_path);
+        .download(attachment.file_path!);
 
       if (error) throw error;
 
@@ -220,7 +223,7 @@ const LetterAttachmentManager: React.FC<LetterAttachmentManagerProps> = ({
       // Delete from storage
       const { error: storageError } = await supabase.storage
         .from('documents')
-        .remove([attachment.file_path]);
+        .remove([attachment.file_path!]);
 
       if (storageError) {
         debugConsole.error('Storage deletion error:', storageError);

@@ -31,23 +31,26 @@ interface WorkflowEntry {
   status_to: string;
   changed_by: string;
   changed_at: string;
-  notes?: string;
+  notes?: string | null;
   additional_data?: any;
-  user_name?: string;
+  user_name?: string | null;
+  letter_id?: string;
+  created_at?: string;
 }
 
 interface LetterDetails {
   id: string;
   title: string;
   content: string;
-  recipient_name?: string;
-  recipient_address?: string;
+  recipient_name?: string | null;
+  recipient_address?: string | null;
   status: string;
-  sent_date?: string;
-  sent_method?: string;
+  sent_date?: string | null;
+  sent_method?: string | null;
   created_at: string;
-  sent_at?: string;
-  archived_at?: string;
+  sent_at?: string | null;
+  archived_at?: string | null;
+  [key: string]: any;
 }
 
 export const ArchivedLetterDetails: React.FC<ArchivedLetterDetailsProps> = ({

@@ -9,7 +9,7 @@ export interface ExpenseCategory {
   id: string;
   name: string;
   description: string | null;
-  color: string;
+  color: string | null;
   is_active: boolean;
   order_index: number;
 }
@@ -86,32 +86,32 @@ export function useExpenseData() {
   };
 
   const addExpense = async (newExpense: { amount: string; expense_date: string; description: string; notes: string; category_id: string; receipt_file: File | null; recurring_type: string }) => {
-    if (!newExpense.amount || !newExpense.category_id) { toast({ title: "Fehler", description: "Betrag und Kategorie sind erforderlich", variant: "destructive" }); return false; }
-    let receiptPath = null;
+    if (!newExpense.amount || !newExpense.category_id || !user?.id || !currentTenant?.id) { toast({ title: "Fehler", description: "Betrag und Kategorie sind erforderlich", variant: "destructive" }); return false; }
+    let receiptPath: string | null = null;
     if (newExpense.receipt_file) { receiptPath = await uploadReceipt(newExpense.receipt_file); if (!receiptPath) return false; }
-    const { error } = await supabase.from("expenses").insert([{ user_id: user?.id, tenant_id: currentTenant?.id, amount: parseFloat(newExpense.amount), expense_date: newExpense.expense_date, description: newExpense.description || null, notes: newExpense.notes || null, receipt_file_path: receiptPath, category_id: newExpense.category_id, recurring_type: newExpense.recurring_type }]);
+    const { error } = await supabase.from("expenses").insert([{ user_id: user.id, tenant_id: currentTenant.id, amount: parseFloat(newExpense.amount), expense_date: newExpense.expense_date, description: newExpense.description || null, notes: newExpense.notes || null, receipt_file_path: receiptPath, category_id: newExpense.category_id, recurring_type: newExpense.recurring_type }]);
     if (error) { toast({ title: "Fehler", description: "Ausgabe konnte nicht hinzugefügt werden", variant: "destructive" }); return false; }
     toast({ title: "Erfolg", description: "Ausgabe wurde hinzugefügt" }); loadExpenses(); return true;
   };
 
   const addCategory = async (newCategory: { name: string; description: string; color: string }) => {
-    if (!newCategory.name) { toast({ title: "Fehler", description: "Name ist erforderlich", variant: "destructive" }); return false; }
-    const { error } = await supabase.from("expense_categories").insert([{ name: newCategory.name, description: newCategory.description || null, color: newCategory.color, order_index: categories.length, tenant_id: currentTenant?.id }]);
+    if (!newCategory.name || !currentTenant?.id) { toast({ title: "Fehler", description: "Name ist erforderlich", variant: "destructive" }); return false; }
+    const { error } = await supabase.from("expense_categories").insert([{ name: newCategory.name, description: newCategory.description || null, color: newCategory.color, order_index: categories.length, tenant_id: currentTenant.id }]);
     if (error) { toast({ title: "Fehler", description: "Kategorie konnte nicht hinzugefügt werden", variant: "destructive" }); return false; }
     toast({ title: "Erfolg", description: "Kategorie wurde hinzugefügt" }); loadCategories(); return true;
   };
 
   const setBudgetAmount = async (amount: string) => {
-    if (!amount) { toast({ title: "Fehler", description: "Budget-Betrag ist erforderlich", variant: "destructive" }); return false; }
+    if (!amount || !user?.id || !currentTenant?.id) { toast({ title: "Fehler", description: "Budget-Betrag ist erforderlich", variant: "destructive" }); return false; }
     const parsedAmount = parseFloat(amount);
-    const { error } = await supabase.from("expense_budgets").upsert({ user_id: user?.id, tenant_id: currentTenant?.id, year: selectedYear, month: selectedMonth, budget_amount: parsedAmount });
+    const { error } = await supabase.from("expense_budgets").upsert({ user_id: user.id, tenant_id: currentTenant.id, year: selectedYear, month: selectedMonth, budget_amount: parsedAmount });
     if (error) { toast({ title: "Fehler", description: "Budget konnte nicht gesetzt werden", variant: "destructive" }); return false; }
     const currentDate = new Date(selectedYear, selectedMonth - 1);
-    const futureMonths = [];
+    const futureMonths: Array<{ user_id: string; tenant_id: string; year: number; month: number; budget_amount: number }> = [];
     for (let i = 1; i <= 12; i++) {
       const futureDate = new Date(currentDate); futureDate.setMonth(futureDate.getMonth() + i);
       const year = futureDate.getFullYear(); const month = futureDate.getMonth() + 1;
-      if (!budgets.find(b => b.year === year && b.month === month)) futureMonths.push({ user_id: user?.id, tenant_id: currentTenant?.id, year, month, budget_amount: parsedAmount });
+      if (!budgets.find(b => b.year === year && b.month === month)) futureMonths.push({ user_id: user.id, tenant_id: currentTenant.id, year, month, budget_amount: parsedAmount });
     }
     if (futureMonths.length > 0) await supabase.from("expense_budgets").insert(futureMonths);
     toast({ title: "Erfolg", description: `Budget wurde gesetzt und auf ${futureMonths.length} weitere Monate angewendet` }); loadBudgets(); return true;

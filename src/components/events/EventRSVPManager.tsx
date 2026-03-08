@@ -23,15 +23,16 @@ interface EventRSVP {
   email: string;
   name: string;
   status: string;
-  comment?: string;
-  responded_at?: string;
-  invited_at?: string;
-  token: string;
+  comment?: string | null;
+  responded_at?: string | null;
+  invited_at?: string | null;
+  token: string | null;
   invitation_sent: boolean;
-  reminder_sent_at?: string;
+  reminder_sent_at?: string | null;
   reminder_count: number;
   notes_sent: any[];
-  custom_message?: string;
+  custom_message?: string | null;
+  created_at?: string | null;
 }
 
 interface EventRSVPManagerProps {

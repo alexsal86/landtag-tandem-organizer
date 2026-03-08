@@ -141,7 +141,7 @@ export function EventPlanningDetailView(data: EventPlanningDataReturn) {
                     {uniquePlanningCollaborators.slice(0, 5).map((collab) => (
                       <div key={collab.id} className="relative">
                         <Avatar className={cn("h-8 w-8 border-2 hover:z-10 transition-transform hover:scale-110", collab.can_edit ? "border-primary ring-2 ring-primary/20" : "border-muted-foreground/30 opacity-60")}>
-                          <AvatarImage src={collab.profiles?.avatar_url} />
+                          <AvatarImage src={collab.profiles?.avatar_url ?? undefined} />
                           <AvatarFallback className={collab.can_edit ? "bg-primary/10" : "bg-muted"}>{collab.profiles?.display_name?.charAt(0) || 'U'}</AvatarFallback>
                         </Avatar>
                         {!collab.can_edit && <div className="absolute -bottom-1 -right-1 bg-background rounded-full p-0.5"><Eye className="h-3 w-3 text-muted-foreground" /></div>}
@@ -159,7 +159,7 @@ export function EventPlanningDetailView(data: EventPlanningDataReturn) {
                     {uniquePlanningCollaborators.map((collab) => (
                       <div key={collab.id} className="flex items-center justify-between p-3 border rounded-md">
                         <div className="flex items-center gap-3">
-                          <Avatar className="h-8 w-8"><AvatarImage src={collab.profiles?.avatar_url} /><AvatarFallback>{collab.profiles?.display_name?.charAt(0) || 'U'}</AvatarFallback></Avatar>
+                          <Avatar className="h-8 w-8"><AvatarImage src={collab.profiles?.avatar_url ?? undefined} /><AvatarFallback>{collab.profiles?.display_name?.charAt(0) || 'U'}</AvatarFallback></Avatar>
                           <span className="font-medium">{collab.profiles?.display_name || 'Unbenannt'}</span>
                         </div>
                         <div className="flex items-center gap-2">
@@ -192,7 +192,7 @@ export function EventPlanningDetailView(data: EventPlanningDataReturn) {
                       {uniquePlanningCollaborators.map((collab) => (
                         <div key={collab.id} className="flex items-center justify-between p-2 rounded-md bg-muted/30">
                           <div className="flex items-center gap-2">
-                            <Avatar className="h-6 w-6"><AvatarImage src={collab.profiles?.avatar_url} /><AvatarFallback>{collab.profiles?.display_name?.charAt(0) || 'U'}</AvatarFallback></Avatar>
+                            <Avatar className="h-6 w-6"><AvatarImage src={collab.profiles?.avatar_url ?? undefined} /><AvatarFallback>{collab.profiles?.display_name?.charAt(0) || 'U'}</AvatarFallback></Avatar>
                             <span>{collab.profiles?.display_name || 'Unbenannt'}</span>
                           </div>
                           <Badge variant={collab.can_edit ? "default" : "secondary"}>{collab.can_edit ? "Bearbeiten" : "Nur ansehen"}</Badge>
@@ -204,7 +204,7 @@ export function EventPlanningDetailView(data: EventPlanningDataReturn) {
                   {availableProfilesToAdd.map((profile) => (
                     <div key={profile.user_id} className="flex items-center justify-between p-2 rounded-md hover:bg-muted/50">
                       <div className="flex items-center gap-2">
-                        <Avatar className="h-6 w-6"><AvatarImage src={profile.avatar_url} /><AvatarFallback>{profile.display_name?.charAt(0) || 'U'}</AvatarFallback></Avatar>
+                        <Avatar className="h-6 w-6"><AvatarImage src={profile.avatar_url ?? undefined} /><AvatarFallback>{profile.display_name?.charAt(0) || 'U'}</AvatarFallback></Avatar>
                         <span>{profile.display_name || 'Unbenannt'}</span>
                       </div>
                       <div className="space-x-2">

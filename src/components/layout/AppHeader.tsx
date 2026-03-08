@@ -74,7 +74,7 @@ export const AppHeader = ({ onOpenSearch }: AppHeaderProps) => {
   const location = useLocation();
   const appSettings = useAppSettings();
   
-  const [userProfile, setUserProfile] = useState<{ display_name?: string; avatar_url?: string } | null>(null);
+  const [userProfile, setUserProfile] = useState<{ display_name?: string | null; avatar_url?: string | null } | null>(null);
 
   // Get current section from path
   const currentSection = location.pathname === '/' ? 'dashboard' : location.pathname.slice(1).split('/')[0];

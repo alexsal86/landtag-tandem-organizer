@@ -34,21 +34,22 @@ interface FooterBlock {
 interface SenderInfo {
   name: string;
   organization: string;
-  phone?: string;
-  fax?: string;
-  website?: string;
-  instagram_profile?: string;
-  facebook_profile?: string;
-  landtag_street?: string;
-  landtag_house_number?: string;
-  landtag_postal_code?: string;
-  landtag_city?: string;
-  landtag_email?: string;
-  wahlkreis_street?: string;
-  wahlkreis_house_number?: string;
-  wahlkreis_postal_code?: string;
-  wahlkreis_city?: string;
-  wahlkreis_email?: string;
+  phone?: string | null;
+  fax?: string | null;
+  website?: string | null;
+  instagram_profile?: string | null;
+  facebook_profile?: string | null;
+  landtag_street?: string | null;
+  landtag_house_number?: string | null;
+  landtag_postal_code?: string | null;
+  landtag_city?: string | null;
+  landtag_email?: string | null;
+  wahlkreis_street?: string | null;
+  wahlkreis_house_number?: string | null;
+  wahlkreis_postal_code?: string | null;
+  wahlkreis_city?: string | null;
+  wahlkreis_email?: string | null;
+  [key: string]: any;
 }
 
 interface StructuredFooterEditorProps {
@@ -186,7 +187,7 @@ export const StructuredFooterEditor: React.FC<StructuredFooterEditorProps> = ({
 
   const generateLandtagAddress = (): string => {
     if (!senderInfo) return '';
-    const parts = [];
+    const parts: string[] = [];
     if (senderInfo.landtag_street && senderInfo.landtag_house_number) {
       parts.push(`${senderInfo.landtag_street} ${senderInfo.landtag_house_number}`);
     }
@@ -201,7 +202,7 @@ export const StructuredFooterEditor: React.FC<StructuredFooterEditorProps> = ({
 
   const generateWahlkreisAddress = (): string => {
     if (!senderInfo) return '';
-    const parts = [];
+    const parts: string[] = [];
     if (senderInfo.wahlkreis_street && senderInfo.wahlkreis_house_number) {
       parts.push(`${senderInfo.wahlkreis_street} ${senderInfo.wahlkreis_house_number}`);
     }
@@ -216,7 +217,7 @@ export const StructuredFooterEditor: React.FC<StructuredFooterEditorProps> = ({
 
   const generateCommunication = (): string => {
     if (!senderInfo) return '';
-    const parts = [];
+    const parts: string[] = [];
     // Remove "Tel: " prefix from phone numbers
     if (senderInfo.phone) parts.push(senderInfo.phone);
     if (senderInfo.fax) parts.push(`Fax: ${senderInfo.fax}`);
@@ -234,7 +235,7 @@ export const StructuredFooterEditor: React.FC<StructuredFooterEditorProps> = ({
 
   const generateGeneral = (): string => {
     if (!senderInfo) return '';
-    const parts = [];
+    const parts: string[] = [];
     if (senderInfo.name) parts.push(senderInfo.name);
     if (senderInfo.organization) parts.push(senderInfo.organization);
     return parts.join('\n');

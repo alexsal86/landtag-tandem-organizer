@@ -231,7 +231,7 @@ export const LetterTemplateIntegration: React.FC<LetterTemplateIntegrationProps>
           .from('letter_templates')
           .insert([{
             tenant_id: currentTenant.id,
-            created_by: (await supabase.auth.getUser()).data.user?.id,
+            created_by: (await supabase.auth.getUser()).data.user?.id ?? '',
             name: formData.name,
             letterhead_html: formData.letterhead_html,
             letterhead_css: formData.letterhead_css,

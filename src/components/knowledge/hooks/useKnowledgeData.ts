@@ -8,14 +8,21 @@ import { debugConsole } from '@/utils/debugConsole';
 export interface KnowledgeDocument {
   id: string;
   title: string;
-  content: string;
-  category: string;
+  content: string | null;
+  category: string | null;
   created_by: string;
   created_at: string;
   updated_at: string;
-  is_published: boolean;
-  is_locked: boolean;
-  creator_name?: string;
+  is_published: boolean | null;
+  is_locked: boolean | null;
+  creator_name?: string | null;
+  content_html?: string | null;
+  document_version?: number | null;
+  editing_started_at?: string | null;
+  editing_user_id?: string | null;
+  is_template?: boolean | null;
+  locked_by?: string | null;
+  tenant_id?: string;
 }
 
 interface KnowledgeDocumentRow {

@@ -362,8 +362,8 @@ export function useEventPlanningData() {
     const { data, error } = await supabase.from("event_plannings").insert([{ title: newPlanningTitle, user_id: user.id, tenant_id: currentTenant.id, is_private: newPlanningIsPrivate }]).select().single();
     if (error) { toast({ title: "Fehler", description: "Planung konnte nicht erstellt werden.", variant: "destructive" }); return; }
 
-    const templateParam = selectedTemplateId === "none" ? null : selectedTemplateId;
-    await supabase.rpc("create_default_checklist_items", { planning_id: data.id, template_id_param: templateParam });
+    const templateParam: string | null = selectedTemplateId === "none" ? null : selectedTemplateId;
+    await supabase.rpc("create_default_checklist_items", { planning_id: data.id, template_id_param: templateParam } as any);
 
     try {
       const { data: prefs } = await supabase.from("user_planning_preferences").select("default_collaborators").eq("user_id", user.id).eq("tenant_id", currentTenant.id).maybeSingle();
@@ -386,9 +386,10 @@ export function useEventPlanningData() {
   };
 
   const deletePlanning = async (planningId: string) => {
+    if (!user?.id) return;
     const planningToDelete = plannings.find(p => p.id === planningId);
-    if (planningToDelete && planningToDelete.user_id !== user?.id) { toast({ title: "Keine Berechtigung", description: "Nur der Ersteller kann diese Planung löschen.", variant: "destructive" }); return; }
-    const { data, error } = await supabase.from("event_plannings").delete().eq("id", planningId).eq("user_id", user?.id).select();
+    if (planningToDelete && planningToDelete.user_id !== user.id) { toast({ title: "Keine Berechtigung", description: "Nur der Ersteller kann diese Planung löschen.", variant: "destructive" }); return; }
+    const { data, error } = await supabase.from("event_plannings").delete().eq("id", planningId).eq("user_id", user.id).select();
     if (error) { toast({ title: "Fehler", description: "Planung konnte nicht gelöscht werden.", variant: "destructive" }); return; }
     if (!data || data.length === 0) { toast({ title: "Fehler", description: "Planung konnte nicht gelöscht werden. Möglicherweise fehlt die Berechtigung.", variant: "destructive" }); return; }
     fetchPlannings();
@@ -397,10 +398,11 @@ export function useEventPlanningData() {
   };
 
   const archivePlanning = async (planningId: string) => {
+    if (!user?.id) return;
     const planning = plannings.find(p => p.id === planningId);
-    if (planning?.user_id !== user?.id) { toast({ title: "Keine Berechtigung", description: "Nur der Ersteller kann diese Planung archivieren.", variant: "destructive" }); return; }
+    if (planning?.user_id !== user.id) { toast({ title: "Keine Berechtigung", description: "Nur der Ersteller kann diese Planung archivieren.", variant: "destructive" }); return; }
     try {
-      const { data, error } = await supabase.from("event_plannings").update({ is_archived: true, archived_at: new Date().toISOString() }).eq("id", planningId).eq("user_id", user?.id).select();
+      const { data, error } = await supabase.from("event_plannings").update({ is_archived: true, archived_at: new Date().toISOString() }).eq("id", planningId).eq("user_id", user.id).select();
       if (error || !data || data.length === 0) throw error || new Error("Update failed");
       toast({ title: "Planung archiviert", description: "Die Veranstaltungsplanung wurde ins Archiv verschoben." });
       if (selectedPlanning?.id === planningId) setSelectedPlanning(null);
@@ -418,8 +420,9 @@ export function useEventPlanningData() {
   };
 
   const restorePlanning = async (planningId: string) => {
+    if (!user?.id) return;
     try {
-      const { data, error } = await supabase.from("event_plannings").update({ is_archived: false, archived_at: null }).eq("id", planningId).eq("user_id", user?.id).select();
+      const { data, error } = await supabase.from("event_plannings").update({ is_archived: false, archived_at: null }).eq("id", planningId).eq("user_id", user.id).select();
       if (error || !data || data.length === 0) throw error || new Error("Update failed");
       toast({ title: "Planung wiederhergestellt", description: "Die Veranstaltungsplanung wurde aus dem Archiv geholt." });
       fetchPlannings();
@@ -457,7 +460,7 @@ export function useEventPlanningData() {
       if (error) throw error;
 
       const { data: appointment, error: appointmentError } = await supabase.from("appointments").insert([{
-        user_id: user?.id, tenant_id: currentTenant.id, title: `Geplant: ${selectedPlanning.title}`,
+        user_id: user!.id, tenant_id: currentTenant.id, title: `Geplant: ${selectedPlanning.title}`,
         start_time: dateTime.toISOString(), end_time: new Date(dateTime.getTime() + 2 * 60 * 60 * 1000).toISOString(),
         category: "blocked", status: "planned",
       }]).select().single();
@@ -587,7 +590,7 @@ export function useEventPlanningData() {
   // ── Speaker operations ──
   const addSpeaker = async () => {
     if (!selectedPlanning || !newSpeaker.name.trim()) return;
-    const maxOrder = Math.max(...speakers.map(speaker => speaker.order_index), -1);
+    const maxOrder = Math.max(...speakers.map(speaker => speaker.order_index ?? 0), -1);
     const { data, error } = await supabase.from("event_planning_speakers").insert([{ event_planning_id: selectedPlanning.id, name: newSpeaker.name, email: newSpeaker.email || null, phone: newSpeaker.phone || null, bio: newSpeaker.bio || null, topic: newSpeaker.topic || null, order_index: maxOrder + 1 }]).select().single();
     if (error) { toast({ title: "Fehler", description: "Referent konnte nicht hinzugefügt werden.", variant: "destructive" }); return; }
     setSpeakers([...speakers, data]);

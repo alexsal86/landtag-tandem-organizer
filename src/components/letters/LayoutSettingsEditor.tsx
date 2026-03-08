@@ -63,9 +63,9 @@ export function LayoutSettingsEditor({ layoutSettings, onLayoutChange, letterhea
     }
 
     nextSettings.foldHoleMarks = {
-      ...(layoutSettings.foldHoleMarks || defaults.foldHoleMarks),
       ...(defaults.foldHoleMarks || {}),
-    };
+      ...(layoutSettings.foldHoleMarks || {}),
+    } as typeof defaults.foldHoleMarks;
 
     onLayoutChange(nextSettings);
   };
