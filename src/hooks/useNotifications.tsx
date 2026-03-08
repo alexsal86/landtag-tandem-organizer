@@ -280,7 +280,7 @@ export const useNotifications = () => {
         return false;
       }
     } catch (error) {
-      console.error('Error requesting push permission:', error);
+      debugConsole.error('Error requesting push permission:', error);
       toast({
         title: 'Fehler',
         description: 'Berechtigung für Push-Benachrichtigungen konnte nicht angefordert werden.',
