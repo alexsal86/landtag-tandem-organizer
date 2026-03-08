@@ -189,9 +189,6 @@ export const CustomizableDashboard: React.FC = () => {
   ];
 
   const handleAddWidget = (widgetType: string) => {
-    console.log('🎯 handleAddWidget START:', widgetType);
-    console.log('🔍 addWidget function type:', typeof addWidget);
-    console.log('📋 Current layout widgets:', currentLayout?.widgets.length);
     
     const widgetInfo = availableWidgets.find(w => w.type === widgetType);
     if (!widgetInfo) {
