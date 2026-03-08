@@ -820,6 +820,9 @@ export function MyWorkCasesWorkspace() {
       priority: editableCaseItem.priority as any,
       owner_user_id: editableCaseItem.assigneeIds[0] || null,
       intake_payload: intakePayload as any,
+      contact_id: editableCaseItem.selectedContactId || null,
+      reporter_name: parsedName,
+      reporter_contact: editableCaseItem.contactEmail.trim() || editableCaseItem.contactPhone.trim() || parsedDetail,
     };
 
     const ok = await applyItemOptimisticUpdate(
