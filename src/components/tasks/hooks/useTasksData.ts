@@ -226,7 +226,7 @@ export function useTasksData() {
       });
       setSubtaskCounts(counts);
     } catch (error) {
-      console.error('Error loading subtask counts:', error);
+      debugConsole.error('Error loading subtask counts:', error);
     }
   };
 
