@@ -38,7 +38,7 @@ export function CombinedMessagesWidget({ configuration }: CombinedMessagesWidget
         setMessagesCount(unreadPersonalMessages.length);
       }
     } catch (error) {
-      console.error('Error fetching unread counts:', error);
+      debugConsole.error('Error fetching unread counts:', error);
     }
   }, [user]);
 

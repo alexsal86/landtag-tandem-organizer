@@ -245,7 +245,7 @@ export const NotificationSettings: React.FC = () => {
           setQuietHoursEnd(combined[0].quiet_hours_end || '08:00');
         }
       } catch (error) {
-        console.error('Error loading notification settings:', error);
+        debugConsole.error('Error loading notification settings:', error);
         toast({
           title: 'Fehler',
           description: 'Benachrichtigungseinstellungen konnten nicht geladen werden.',

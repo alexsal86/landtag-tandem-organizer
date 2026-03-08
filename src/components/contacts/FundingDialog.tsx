@@ -100,7 +100,7 @@ export function FundingDialog({ open, onOpenChange, initialContactId }: FundingD
       setParticipants(initialContactId ? [{ contact_id: initialContactId }] : []);
       onOpenChange(false);
     } catch (error) {
-      console.error('Error creating funding:', error);
+      debugConsole.error('Error creating funding:', error);
       toast.error("Fehler beim Erstellen der Förderung");
     } finally {
       setLoading(false);

@@ -185,7 +185,7 @@ export function TenantCollaboration() {
 
       fetchCollaborations();
     } catch (error) {
-      console.error("Error rejecting collaboration:", error);
+      debugConsole.error("Error rejecting collaboration:", error);
     }
   };
 

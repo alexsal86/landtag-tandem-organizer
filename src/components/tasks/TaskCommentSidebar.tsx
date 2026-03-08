@@ -190,7 +190,7 @@ export function TaskCommentSidebar({
       loadComments();
       onCommentAdded?.();
     } catch (error) {
-      console.error('Error deleting comment:', error);
+      debugConsole.error('Error deleting comment:', error);
       toast({
         title: "Fehler",
         description: "Kommentar konnte nicht gelöscht werden.",

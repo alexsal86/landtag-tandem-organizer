@@ -290,7 +290,7 @@ export function MyWorkDecisionsTab() {
       if (error) throw error;
       toast({ title: "Aufgabe erstellt", description: "Aufgabe wurde aus der Entscheidung erstellt." });
     } catch (error) {
-      console.error('Error creating task:', error);
+      debugConsole.error('Error creating task:', error);
       toast({ title: "Fehler", description: "Aufgabe konnte nicht erstellt werden.", variant: "destructive" });
     } finally {
       setCreatingTaskId(null);

@@ -152,7 +152,7 @@ export function DocumentCategoryAdminSettings() {
       }
       toast({ title: "Erfolg", description: "Reihenfolge wurde gespeichert." });
     } catch (error) {
-      console.error('Error updating order:', error);
+      debugConsole.error('Error updating order:', error);
       toast({ title: "Fehler", description: "Reihenfolge konnte nicht gespeichert werden.", variant: "destructive" });
       loadCategories();
     }

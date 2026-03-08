@@ -21,7 +21,7 @@ const WeatherCard = ({ location }: WeatherCardProps) => {
         const data = await getWeather(locationData.lat, locationData.lon);
         setWeather(data);
       } catch (error) {
-        console.error('Error fetching weather:', error);
+        debugConsole.error('Error fetching weather:', error);
         setWeather(null);
       } finally {
         setLoading(false);

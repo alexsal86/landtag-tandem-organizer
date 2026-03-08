@@ -226,7 +226,7 @@ export function BulkActionsToolbar({
       setIsDeleteDialogOpen(false);
       onActionComplete();
     } catch (error) {
-      console.error('Error deleting contacts:', error);
+      debugConsole.error('Error deleting contacts:', error);
       toast({
         title: 'Fehler',
         description: 'Kontakte konnten nicht gelöscht werden',

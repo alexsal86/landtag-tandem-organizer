@@ -79,7 +79,7 @@ export const NewsWidget: React.FC<NewsWidgetProps> = ({ widgetId, compact = fals
       
       setArticles(data?.articles || []);
     } catch (err) {
-      console.error('Error fetching news:', err);
+      debugConsole.error('Error fetching news:', err);
       const errorMessage = err instanceof Error && err.message === 'Request timeout' 
         ? 'Zeitüberschreitung beim Laden der Nachrichten'
         : 'Fehler beim Laden der Nachrichten';

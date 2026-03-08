@@ -320,7 +320,7 @@ export function AssignedItemsSection({
         });
         setTaskTopics(topicsMap);
       } catch (error) {
-        console.error('Error loading task topics:', error);
+        debugConsole.error('Error loading task topics:', error);
       }
     };
 
