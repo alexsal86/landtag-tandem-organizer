@@ -280,7 +280,7 @@ export function CaseFileSelector({
             {showCreateNew ? (
               <div className="space-y-2">
                 <Input
-                  placeholder="Titel der neuen FallAkte"
+                  placeholder="Titel der neuen Fallakte"
                   value={newTitle}
                   onChange={(e) => setNewTitle(e.target.value)}
                   autoFocus
