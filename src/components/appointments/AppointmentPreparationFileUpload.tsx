@@ -142,7 +142,7 @@ export function AppointmentPreparationFileUpload({
         });
 
       } catch (error) {
-        console.error('Upload error:', error);
+        debugConsole.error('Upload error:', error);
         
         setFiles(prev => prev.map(f => 
           f.file_name === file.name && f.uploading ? {
