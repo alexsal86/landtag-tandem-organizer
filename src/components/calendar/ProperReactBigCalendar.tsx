@@ -230,22 +230,22 @@ const ProperReactBigCalendar: React.FC<ProperReactBigCalendarProps> = ({
         dayPropGetter={dayPropGetter}
         messages={messages}
         formats={{
-          dayFormat: 'D',
-          weekdayFormat: 'ddd',
-          monthHeaderFormat: 'MMMM YYYY',
-          dayHeaderFormat: 'dddd, DD. MMMM YYYY',
+          dayFormat: 'd',
+          weekdayFormat: 'EEE',
+          monthHeaderFormat: 'MMMM yyyy',
+          dayHeaderFormat: 'EEEE, dd. MMMM yyyy',
           dayRangeHeaderFormat: ({ start, end }) => 
-            `${moment(start).format('DD. MMMM')} – ${moment(end).format('DD. MMMM YYYY')}`,
-          agendaDateFormat: 'dddd, DD. MMMM',
+            `${format(start, 'dd. MMMM', { locale: de })} – ${format(end, 'dd. MMMM yyyy', { locale: de })}`,
+          agendaDateFormat: 'EEEE, dd. MMMM',
           agendaTimeFormat: 'HH:mm',
           agendaTimeRangeFormat: ({ start, end }) => 
-            `${moment(start).format('HH:mm')} – ${moment(end).format('HH:mm')}`,
+            `${format(start, 'HH:mm', { locale: de })} – ${format(end, 'HH:mm', { locale: de })}`,
           timeGutterFormat: 'HH:mm',
           eventTimeRangeFormat: ({ start, end }) => 
-            `${moment(start).format('HH:mm')} – ${moment(end).format('HH:mm')}`,
-          dateFormat: 'D',
+            `${format(start, 'HH:mm', { locale: de })} – ${format(end, 'HH:mm', { locale: de })}`,
+          dateFormat: 'd',
           selectRangeFormat: ({ start, end }) =>
-            `${moment(start).format('DD. MMM')} – ${moment(end).format('DD. MMM')}`
+            `${format(start, 'dd. MMM', { locale: de })} – ${format(end, 'dd. MMM', { locale: de })}`
         }}
         toolbar={false}
         selectable
