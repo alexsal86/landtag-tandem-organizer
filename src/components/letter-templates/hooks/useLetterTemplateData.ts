@@ -135,8 +135,8 @@ export function useLetterTemplateData() {
         header_layout_type: cleanedHeaderElements.length > 0 ? 'structured' : 'html',
         header_text_elements: cleanedHeaderElements.length > 0 ? cleanedHeaderElements : null,
         footer_blocks: Array.isArray(cleanedFooterBlocks) ? (cleanedFooterBlocks.length > 0 ? cleanedFooterBlocks : null) : cleanedFooterBlocks,
-        layout_settings: cleanedLayoutSettings as any,
-      });
+        layout_settings: cleanedLayoutSettings as unknown as Record<string, unknown>,
+      } as Record<string, unknown>);
       if (error) throw error;
       toast({ title: "Template erstellt" });
       setShowCreateDialog(false);
