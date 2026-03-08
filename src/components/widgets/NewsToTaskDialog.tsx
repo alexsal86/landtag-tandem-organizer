@@ -7,6 +7,7 @@ import { Label } from '@/components/ui/label';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { CheckSquare, Loader2 } from 'lucide-react';
+import { debugConsole } from '@/utils/debugConsole';
 import { MultiSelect } from '@/components/ui/multi-select';
 import { Calendar } from '@/components/ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
