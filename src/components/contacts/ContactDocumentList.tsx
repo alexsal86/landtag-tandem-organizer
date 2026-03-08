@@ -19,6 +19,7 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { supabase } from "@/integrations/supabase/client";
+import { debugConsole } from "@/utils/debugConsole";
 import { useToast } from "@/hooks/use-toast";
 import { useState } from "react";
 import type { Document, DirectDocument } from "@/hooks/useContactDocuments";
@@ -79,7 +80,7 @@ export function ContactDocumentList({ documents, type, contactTags = [], onRemov
         description: `${document.file_name} wird heruntergeladen.`,
       });
     } catch (error) {
-      console.error('Error downloading document:', error);
+      debugConsole.error('Error downloading document:', error);
       toast({
         title: "Fehler",
         description: "Dokument konnte nicht heruntergeladen werden.",
@@ -99,7 +100,7 @@ export function ContactDocumentList({ documents, type, contactTags = [], onRemov
       });
       setRemovingDocId(null);
     } catch (error) {
-      console.error('Error removing document link:', error);
+      debugConsole.error('Error removing document link:', error);
       toast({
         title: "Fehler",
         description: "Verknüpfung konnte nicht entfernt werden.",

@@ -25,6 +25,7 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { Trash2, RotateCcw, Clock, ChevronDown, Archive, Calendar as CalendarIcon } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
+import { debugConsole } from "@/utils/debugConsole";
 import { useAuth } from "@/hooks/useAuth";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
@@ -77,7 +78,7 @@ export function NotesArchive({ refreshTrigger, onRestore }: NotesArchiveProps) {
       if (error) throw error;
       setNotes((data || []) as DeletedNote[]);
     } catch (error) {
-      console.error("Error loading deleted notes:", error);
+      debugConsole.error("Error loading deleted notes:", error);
     }
   }, [user]);
 
@@ -96,7 +97,7 @@ export function NotesArchive({ refreshTrigger, onRestore }: NotesArchiveProps) {
       if (error) throw error;
       setArchivedNotes((data || []) as ArchivedNote[]);
     } catch (error) {
-      console.error("Error loading archived notes:", error);
+      debugConsole.error("Error loading archived notes:", error);
     } finally {
       setLoading(false);
     }
@@ -131,7 +132,7 @@ export function NotesArchive({ refreshTrigger, onRestore }: NotesArchiveProps) {
         setNotes((deletedRes.data || []) as DeletedNote[]);
         setArchivedNotes((archivedRes.data || []) as ArchivedNote[]);
       } catch (error) {
-        console.error("Error loading notes:", error);
+        debugConsole.error("Error loading notes:", error);
       } finally {
         setLoading(false);
       }
@@ -167,7 +168,7 @@ export function NotesArchive({ refreshTrigger, onRestore }: NotesArchiveProps) {
       toast.success("Notiz wiederhergestellt");
       onRestore?.();
     } catch (error) {
-      console.error("Error restoring note:", error);
+      debugConsole.error("Error restoring note:", error);
       toast.error("Fehler beim Wiederherstellen");
       loadDeletedNotes();
     }
@@ -200,7 +201,7 @@ export function NotesArchive({ refreshTrigger, onRestore }: NotesArchiveProps) {
       toast.success("Notiz aus Archiv wiederhergestellt");
       onRestore?.();
     } catch (error) {
-      console.error("Error restoring from archive:", error);
+      debugConsole.error("Error restoring from archive:", error);
       toast.error("Fehler beim Wiederherstellen");
       // On error: reload archive list to ensure consistent state
       loadArchivedNotes();
@@ -219,7 +220,7 @@ export function NotesArchive({ refreshTrigger, onRestore }: NotesArchiveProps) {
       setConfirmDeleteNote(null);
       loadDeletedNotes();
     } catch (error) {
-      console.error("Error permanently deleting note:", error);
+      debugConsole.error("Error permanently deleting note:", error);
       toast.error("Fehler beim Löschen");
     }
   };
@@ -236,7 +237,7 @@ export function NotesArchive({ refreshTrigger, onRestore }: NotesArchiveProps) {
       setDatePickerNote(null);
       loadDeletedNotes();
     } catch (error) {
-      console.error("Error updating delete date:", error);
+      debugConsole.error("Error updating delete date:", error);
       toast.error("Fehler beim Ändern des Löschdatums");
     }
   };

@@ -7,6 +7,7 @@ import { Separator } from '@/components/ui/separator';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { supabase } from '@/integrations/supabase/client';
+import { debugConsole } from '@/utils/debugConsole';
 import { useToast } from '@/hooks/use-toast';
 import { format } from 'date-fns';
 import { de } from 'date-fns/locale';
@@ -116,7 +117,7 @@ export const ArchivedLetterDetails: React.FC<ArchivedLetterDetailsProps> = ({
       setAttachments(attachmentDocs || []);
 
     } catch (error: any) {
-      console.error('Error fetching letter details:', error);
+      debugConsole.error('Error fetching letter details:', error);
       toast({
         title: "Fehler",
         description: "Brief-Details konnten nicht geladen werden.",

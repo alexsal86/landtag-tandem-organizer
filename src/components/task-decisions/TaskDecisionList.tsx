@@ -9,6 +9,7 @@ import { TaskDecisionDetails } from "./TaskDecisionDetails";
 import { UserBadge } from "@/components/ui/user-badge";
 import { Check, X, MessageCircle, Send } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
+import { debugConsole } from "@/utils/debugConsole";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
 
@@ -288,7 +289,7 @@ export const TaskDecisionList = () => {
 
       setDecisions(allDecisions);
     } catch (error) {
-      console.error('Error loading decision requests:', error);
+      debugConsole.error('Error loading decision requests:', error);
     }
   };
 
@@ -306,10 +307,10 @@ export const TaskDecisionList = () => {
         .from('task_decision_responses')
         .update({ creator_response: responseText })
         .eq('id', responseId)
-        .select('*');
+        .select('id, creator_response');
 
       if (error) {
-        console.error('Error updating creator response:', error);
+        debugConsole.error('Error updating creator response:', error);
         throw error;
       }
 
@@ -329,7 +330,7 @@ export const TaskDecisionList = () => {
         await loadDecisionRequests(user.id);
       }
     } catch (error) {
-      console.error('Error sending creator response:', error);
+      debugConsole.error('Error sending creator response:', error);
       toast({
         title: "Fehler",
         description: "Antwort konnte nicht gesendet werden.",

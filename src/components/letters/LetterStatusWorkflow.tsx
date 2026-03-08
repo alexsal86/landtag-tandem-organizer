@@ -8,6 +8,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { supabase } from '@/integrations/supabase/client';
+import { debugConsole } from '@/utils/debugConsole';
 import { useToast } from '@/hooks/use-toast';
 import {
   createLetterApprovalDecision,
@@ -197,7 +198,7 @@ export const LetterStatusWorkflow: React.FC<LetterStatusWorkflowProps> = ({
             await archiveLetter(fullLetter, currentUserId);
           }
         } catch (archiveErr) {
-          console.error('Archive failed:', archiveErr);
+          debugConsole.error('Archive failed:', archiveErr);
         }
 
         // Handle email sending
@@ -218,7 +219,7 @@ export const LetterStatusWorkflow: React.FC<LetterStatusWorkflowProps> = ({
               // TODO: Call send-document-email edge function with PDF
             }
           } catch (emailErr) {
-            console.error('Email send failed:', emailErr);
+            debugConsole.error('Email send failed:', emailErr);
           }
         }
 
@@ -245,7 +246,7 @@ export const LetterStatusWorkflow: React.FC<LetterStatusWorkflowProps> = ({
       setRevisionComment('');
       setSelectedReviewer('');
     } catch (error) {
-      console.error('Error changing status:', error);
+      debugConsole.error('Error changing status:', error);
       toast({ title: 'Fehler', description: 'Status konnte nicht geändert werden.', variant: 'destructive' });
     }
   };

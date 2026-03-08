@@ -53,7 +53,7 @@ export const NewsEmailTemplateManager: React.FC = () => {
 
       const { data, error } = await supabase
         .from('news_email_templates')
-        .select('*')
+        .select('id, subject, greeting, introduction, closing, signature')
         .eq('tenant_id', memberships.tenant_id)
         .limit(1)
         .single();

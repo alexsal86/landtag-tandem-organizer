@@ -8,6 +8,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Switch } from '@/components/ui/switch';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { supabase } from '@/integrations/supabase/client';
+import { debugConsole } from '@/utils/debugConsole';
 import { useTenant } from '@/hooks/useTenant';
 import { useAuth } from '@/hooks/useAuth';
 import { useToast } from '@/hooks/use-toast';
@@ -64,7 +65,7 @@ export const InformationBlockManager: React.FC = () => {
       if (error) throw error;
       setBlocks(data || []);
     } catch (error) {
-      console.error('Fehler beim Laden der Informationsblöcke:', error);
+      debugConsole.error('Fehler beim Laden der Informationsblöcke:', error);
       toast({
         title: "Fehler",
         description: "Informationsblöcke konnten nicht geladen werden.",
@@ -288,7 +289,7 @@ export const InformationBlockManager: React.FC = () => {
       });
       fetchBlocks();
     } catch (error) {
-      console.error('Fehler beim Speichern:', error);
+      debugConsole.error('Fehler beim Speichern:', error);
       toast({
         title: "Fehler",
         description: "Informationsblock konnte nicht gespeichert werden.",
@@ -318,7 +319,7 @@ export const InformationBlockManager: React.FC = () => {
       });
       fetchBlocks();
     } catch (error) {
-      console.error('Fehler beim Löschen:', error);
+      debugConsole.error('Fehler beim Löschen:', error);
       toast({
         title: "Fehler",
         description: "Informationsblock konnte nicht gelöscht werden.",

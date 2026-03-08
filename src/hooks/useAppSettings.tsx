@@ -1,5 +1,6 @@
 import React, { useState, useEffect, createContext, useContext, ReactNode } from 'react';
 import { supabase } from '@/integrations/supabase/client';
+import { debugConsole } from '@/utils/debugConsole';
 import { useTenant } from './useTenant';
 
 interface AppSettings {
@@ -81,7 +82,7 @@ export function AppSettingsProvider({ children }: { children: ReactNode }) {
           });
         }
       } catch (error) {
-        console.error('Error loading app settings:', error);
+        debugConsole.error('Error loading app settings:', error);
         setSettings(prev => ({ ...prev, isLoading: false }));
       }
     };

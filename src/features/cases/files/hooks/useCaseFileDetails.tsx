@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/components/ui/use-toast";
+import { debugConsole } from "@/utils/debugConsole";
 import { CaseFile } from "./useCaseFiles";
 
 export interface CaseFileContact {
@@ -168,14 +169,14 @@ export const useCaseFileDetails = (caseFileId: string | null) => {
     try {
       const { data, error } = await supabase
         .from('case_files')
-        .select('*')
+        .select('id, title, description, case_type, status, priority, reference_number, start_date, target_date, assigned_to, user_id, tenant_id, created_at, updated_at, tags, visibility, is_private, case_scale, processing_status, processing_statuses, current_status_note, current_status_updated_at, risks_and_opportunities')
         .eq('id', caseFileId)
         .single();
 
       if (error) throw error;
       setCaseFile(data as unknown as CaseFile);
     } catch (error) {
-      console.error('Error fetching case file:', error);
+      debugConsole.error('Error fetching case file:', error);
     }
   }, [caseFileId]);
 
@@ -195,7 +196,7 @@ export const useCaseFileDetails = (caseFileId: string | null) => {
       if (error) throw error;
       setContacts((data || []) as CaseFileContact[]);
     } catch (error) {
-      console.error('Error fetching contacts:', error);
+      debugConsole.error('Error fetching contacts:', error);
     }
   }, [caseFileId]);
 
@@ -215,7 +216,7 @@ export const useCaseFileDetails = (caseFileId: string | null) => {
       if (error) throw error;
       setDocuments((data || []) as CaseFileDocument[]);
     } catch (error) {
-      console.error('Error fetching documents:', error);
+      debugConsole.error('Error fetching documents:', error);
     }
   }, [caseFileId]);
 
@@ -235,7 +236,7 @@ export const useCaseFileDetails = (caseFileId: string | null) => {
       if (error) throw error;
       setTasks((data || []) as CaseFileTask[]);
     } catch (error) {
-      console.error('Error fetching tasks:', error);
+      debugConsole.error('Error fetching tasks:', error);
     }
   }, [caseFileId]);
 
@@ -255,7 +256,7 @@ export const useCaseFileDetails = (caseFileId: string | null) => {
       if (error) throw error;
       setAppointments((data || []) as CaseFileAppointment[]);
     } catch (error) {
-      console.error('Error fetching appointments:', error);
+      debugConsole.error('Error fetching appointments:', error);
     }
   }, [caseFileId]);
 
@@ -275,7 +276,7 @@ export const useCaseFileDetails = (caseFileId: string | null) => {
       if (error) throw error;
       setLetters((data || []) as CaseFileLetter[]);
     } catch (error) {
-      console.error('Error fetching letters:', error);
+      debugConsole.error('Error fetching letters:', error);
     }
   }, [caseFileId]);
 
@@ -285,7 +286,7 @@ export const useCaseFileDetails = (caseFileId: string | null) => {
     try {
       const { data, error } = await supabase
         .from('case_file_notes')
-        .select('*')
+        .select('id, case_file_id, user_id, content, is_pinned, created_at, updated_at')
         .eq('case_file_id', caseFileId)
         .order('is_pinned', { ascending: false })
         .order('created_at', { ascending: false });
@@ -293,7 +294,7 @@ export const useCaseFileDetails = (caseFileId: string | null) => {
       if (error) throw error;
       setNotes((data || []) as CaseFileNote[]);
     } catch (error) {
-      console.error('Error fetching notes:', error);
+      debugConsole.error('Error fetching notes:', error);
     }
   }, [caseFileId]);
 
@@ -303,14 +304,14 @@ export const useCaseFileDetails = (caseFileId: string | null) => {
     try {
       const { data, error } = await supabase
         .from('case_file_timeline')
-        .select('*')
+        .select('id, case_file_id, event_date, event_type, title, description, source_type, source_id, created_by, created_at')
         .eq('case_file_id', caseFileId)
         .order('event_date', { ascending: false });
 
       if (error) throw error;
       setTimeline((data || []) as CaseFileTimelineEntry[]);
     } catch (error) {
-      console.error('Error fetching timeline:', error);
+      debugConsole.error('Error fetching timeline:', error);
     }
   }, [caseFileId]);
 
@@ -323,7 +324,7 @@ export const useCaseFileDetails = (caseFileId: string | null) => {
       .order("created_at", { ascending: false }) as any);
 
     if (error) {
-      console.error("Error fetching interactions:", error);
+      debugConsole.error("Error fetching interactions:", error);
       return;
     }
 
@@ -368,7 +369,7 @@ export const useCaseFileDetails = (caseFileId: string | null) => {
       });
       await fetchTimeline();
     } catch (error) {
-      console.error('Error creating timeline entry:', error);
+      debugConsole.error('Error creating timeline entry:', error);
     }
   };
 

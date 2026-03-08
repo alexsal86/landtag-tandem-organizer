@@ -9,6 +9,7 @@ import { format } from "date-fns";
 import { de } from "date-fns/locale";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
+import { debugConsole } from "@/utils/debugConsole";
 
 interface Meeting {
   id: string;
@@ -67,7 +68,7 @@ export function TaskMeetingSelector({
         .eq('user_id', user.id);
 
       if (participantError) {
-        console.error('Error loading participant meetings:', participantError);
+        debugConsole.error('Error loading participant meetings:', participantError);
       }
 
       // Combine and deduplicate
@@ -83,7 +84,7 @@ export function TaskMeetingSelector({
 
       setMeetings(allMeetings);
     } catch (error) {
-      console.error('Error loading meetings:', error);
+      debugConsole.error('Error loading meetings:', error);
     } finally {
       setLoading(false);
     }

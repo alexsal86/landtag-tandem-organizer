@@ -9,6 +9,7 @@ import { format } from 'date-fns';
 import { de } from 'date-fns/locale';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
+import { debugConsole } from '@/utils/debugConsole';
 
 interface TimeSlot {
   id: string;
@@ -61,12 +62,12 @@ export const PollResponseInterface = ({ pollId, token, participantId, isPreview 
         // Load poll information
         const { data: pollData, error: pollError } = await supabase
           .from('appointment_polls')
-          .select('*')
+          .select('id, title, description, deadline, status')
           .eq('id', pollId)
           .maybeSingle();
 
         if (pollError) {
-          console.error('Poll loading error:', pollError);
+          debugConsole.error('Poll loading error:', pollError);
           throw new Error('Abstimmung nicht gefunden oder ungültiger Link.');
         }
         if (!pollData) {
@@ -77,12 +78,12 @@ export const PollResponseInterface = ({ pollId, token, participantId, isPreview 
         // Load time slots
         const { data: slotsData, error: slotsError } = await supabase
           .from('poll_time_slots')
-          .select('*')
+          .select('id, start_time, end_time, order_index')
           .eq('poll_id', pollId)
           .order('order_index');
 
         if (slotsError) {
-          console.error('Time slots loading error:', slotsError);
+          debugConsole.error('Time slots loading error:', slotsError);
           throw slotsError;
         }
         setTimeSlots(slotsData || []);
@@ -94,7 +95,7 @@ export const PollResponseInterface = ({ pollId, token, participantId, isPreview 
           // Internal participant
           const { data: participantData, error: participantError } = await supabase
             .from('poll_participants')
-            .select('*')
+            .select('id, name, email, is_external, token')
             .eq('id', participantId)
             .single();
 
@@ -104,7 +105,7 @@ export const PollResponseInterface = ({ pollId, token, participantId, isPreview 
           // External participant with token
           const { data: participantData, error: participantError } = await supabase
             .from('poll_participants')
-            .select('*')
+            .select('id, name, email, is_external, token')
             .eq('poll_id', pollId)
             .eq('token', token)
             .maybeSingle();
@@ -115,7 +116,7 @@ export const PollResponseInterface = ({ pollId, token, participantId, isPreview 
           // Try to find participant without token (fallback for old links)
           const { data: participantData, error: participantError } = await supabase
             .from('poll_participants')
-            .select('*')
+            .select('id, name, email, is_external, token')
             .eq('poll_id', pollId)
             .eq('is_external', true)
             .maybeSingle();
@@ -131,7 +132,7 @@ export const PollResponseInterface = ({ pollId, token, participantId, isPreview 
         if (currentParticipant) {
           const { data: responsesData, error: responsesError } = await supabase
             .from('poll_responses')
-            .select('*')
+            .select('id, time_slot_id, status, comment')
             .eq('poll_id', pollId)
             .eq('participant_id', currentParticipant.id);
 
@@ -149,7 +150,7 @@ export const PollResponseInterface = ({ pollId, token, participantId, isPreview 
         }
 
       } catch (error) {
-        console.error('Error loading poll data:', error);
+        debugConsole.error('Error loading poll data:', error);
         toast({
           title: "Fehler",
           description: "Die Abstimmung konnte nicht geladen werden.",
@@ -219,7 +220,7 @@ export const PollResponseInterface = ({ pollId, token, participantId, isPreview 
       });
 
     } catch (error) {
-      console.error('Error saving responses:', error);
+      debugConsole.error('Error saving responses:', error);
       toast({
         title: "Fehler",
         description: "Die Antworten konnten nicht gespeichert werden.",

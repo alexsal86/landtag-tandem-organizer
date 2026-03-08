@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { debugConsole } from "@/utils/debugConsole";
 import { useAuth } from "@/hooks/useAuth";
 import { useTenant } from "@/hooks/useTenant";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -297,7 +298,7 @@ const [editingChild, setEditingChild] = useState<{ parentIndex: number; childInd
       }
       
     } catch (error) {
-      console.error('Error loading data:', error);
+      debugConsole.error('Error loading data:', error);
       toast({ title: "Fehler", description: "Daten konnten nicht geladen werden.", variant: "destructive" });
     } finally {
       setLoadingData(false);

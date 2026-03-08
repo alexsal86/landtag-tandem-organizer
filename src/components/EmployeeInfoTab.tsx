@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { debugConsole } from "@/utils/debugConsole";
 import { useAuth } from "@/hooks/useAuth";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -55,14 +56,14 @@ export function EmployeeInfoTab({ employeeSettings }: EmployeeInfoTabProps) {
     try {
       const { data, error } = await supabase
         .from('employee_settings_history')
-        .select('*')
+        .select('id, user_id, hours_per_week, days_per_week, hours_per_month, days_per_month, annual_vacation_days, valid_from, valid_until, changed_by, change_reason, created_at')
         .eq('user_id', employeeSettings.user_id)
         .order('valid_from', { ascending: false });
 
       if (error) throw error;
       setHistory(data || []);
     } catch (error) {
-      console.error('Error loading history:', error);
+      debugConsole.error('Error loading history:', error);
     } finally {
       setLoading(false);
     }
