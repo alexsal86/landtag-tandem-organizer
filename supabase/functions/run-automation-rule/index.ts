@@ -391,12 +391,12 @@ serve(async (req) => {
         };
         const resolvedTable = MODULE_TO_TABLE[tableName] ?? tableName;
         const allowedTables = new Set(["tasks", "decisions", "knowledge_documents", "contacts", "case_files"]);
-        if (!allowedTables.has(tableName)) {
-          throw new Error(`Table not allowed: ${tableName}`);
+        if (!allowedTables.has(resolvedTable)) {
+          throw new Error(`Table not allowed: ${resolvedTable}`);
         }
 
         const { error: updateError } = await supabaseAdmin
-          .from(tableName)
+          .from(resolvedTable)
           .update({ status })
           .eq("id", recordId)
           .eq("tenant_id", rule.tenant_id);
