@@ -82,7 +82,7 @@ export function GlobalQuickNoteDialog({ open, onOpenChange }: GlobalQuickNoteDia
         .single();
 
       if (error) {
-        console.error("Supabase error:", error);
+        debugConsole.error("Supabase error:", error);
         throw error;
       }
       
