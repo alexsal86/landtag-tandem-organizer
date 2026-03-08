@@ -1,61 +1,63 @@
 
-Ziel: Rückmeldungs-Feed stabil sichtbar machen und gleichzeitig die aktuellen Build-Blocker entfernen, damit die Fixes überhaupt wieder ausgeliefert werden.
 
-1) Diagnose (aus Code + DB)
-- Do I know what the issue is? Ja.
-- Es gibt aktuell 2 Ebenen von Problemen:
-  1. Build ist kaputt (TypeScript):
-     - `src/components/ui/calendar.tsx`: doppelte Keys im `classNames`-Objekt (`caption_label`, `dropdowns`, `dropdown`) → TS1117.
-     - `src/components/task-decisions/DecisionOverview.tsx`: `ResponseOption`-Typ ohne `requires_comment` → TS2339.
-  2. Feed-Logik ist instabil/zu restriktiv:
-     - `src/components/my-work/MyWorkFeedbackFeedTab.tsx` übergibt `completedTo: new Date().toISOString()` bei jedem Render.
-       Dadurch ändert sich der React-Query-Key permanent (`useTeamFeedbackFeed`), was zu dauerndem Neu-Laden bzw. instabilem Feed führt.
-     - `useTeamFeedbackFeed` filtert hart auf `.not('notes','is',null)`. Damit verschwinden abgeschlossene Rückmeldungen ohne Notiz (z. B. nur Anhang/Aufgabe), obwohl sie fachlich oft relevant sind.
-- DB-Check:
-  - `appointment_feedback` hat Daten (u. a. completed in den letzten 7 Tagen vorhanden).
-  - RLS auf `appointment_feedback` erlaubt tenant-basiertes Lesen (`tenant_id = ANY(get_user_tenant_ids(auth.uid()))`), also kein offensichtlicher RLS-Blocker für Team-Feed im Tenant.
+## Analyse: Aktuelle Badge- und Benachrichtigungslage
 
-2) Umsetzungsplan (in Reihenfolge)
-A. Build sofort reparieren (Blocker)
-- `calendar.tsx`: doppelte Objekt-Keys entfernen, nur eine konsistente Definition für `caption_label`, `dropdowns`, `dropdown` behalten.
-- `DecisionOverview.tsx`: lokalen `ResponseOption`-Typ um `requires_comment?: boolean` ergänzen (oder auf den zentralen Typ aus `decisionTemplates` umstellen).
+### Zwei parallele Badge-Systeme
 
-B. Feed-Query stabilisieren
-- `MyWorkFeedbackFeedTab.tsx`:
-  - `completedTo` nicht mehr bei jedem Render neu erzeugen.
-  - Entweder:
-    - `completedTo` ganz weglassen (nur `completedFrom` + order/limit), oder
-    - `completedTo` per `useMemo/useState` nur bei Filterwechsel neu setzen.
-- `useTeamFeedbackFeed.ts`:
-  - Query-Key nur mit stabilen Filterwerten.
-  - Zeitfilter robust halten (kein per-render Drift).
+Es gibt aktuell **zwei unabhängige Badge-Systeme**, die nicht einheitlich arbeiten:
 
-C. Sichtbarkeit der Rückmeldungen fachlich korrigieren
-- `useTeamFeedbackFeed.ts`:
-  - Notiz-Pflicht entfernen oder erweitern:
-    - statt nur `notes is not null` auch Einträge mit `has_documents = true` oder `has_tasks = true` zulassen.
-  - Ergebnis: auch „abgeschlossen ohne Notiz, aber mit Anhang/Aufgabe“ erscheint im Feed.
+1. **SubNavigation** (obere Leiste: Aufgaben, Akten, Kalender…) — nutzt `useNavigationNotifications`, zählt **ungelesene Einträge** in der `notifications`-Tabelle nach `navigation_context`
+2. **MyWork-Tabs** (interne Tabs: Aufgaben, Vorgänge, Entscheidungen…) — nutzt `useMyWorkNewCounts`, ruft den RPC `get_my_work_new_counts` auf, der Items-`created_at` mit `user_navigation_visits.last_visited_at` vergleicht
 
-D. Fehler nicht mehr als „keine Daten“ maskieren
-- `MyWorkFeedbackFeedTab.tsx`:
-  - `isError` + `error` aus Query auslesen.
-  - Bei Fehler einen klaren Error-State anzeigen (statt „Keine passenden Rückmeldungen gefunden“), inkl. Retry-Button (`refetch`).
+**Problem:** Die SubNavigation-Badges basieren auf Notification-Einträgen, die MyWork-Tab-Badges auf einem Zeitstempel-Vergleich. Beide können unterschiedliche Zahlen zeigen.
 
-E. Quercheck auf Seiteneffekte
-- `useMyWorkNewCounts.tsx` zählt derzeit ebenfalls nur `completed + notes not null`; ggf. auf dieselbe fachliche Logik angleichen, damit Badge und Feed konsistent sind.
+### Fehlende Benachrichtigungstypen für Vorgänge
 
-3) Validierung nach Umsetzung
-- Build grün ohne TS-Fehler.
-- Im Tab „Meine Arbeit > Rückmeldungen“:
-  - Keine Endlos-Ladeanzeige.
-  - Team-Einträge der letzten 7/14 Tage sichtbar.
-  - Filter (Sicht/Zeitraum/Anhänge/Aufgaben) funktionieren.
-  - Bei absichtlichem Query-Fehler erscheint Error-State statt Empty-State.
-- Schneller Datenabgleich:
-  - Feed-Anzahl grob konsistent mit SQL-Count für completed im Zeitraum (unter Berücksichtigung der Filter).
+In der `notification_types`-Tabelle existkeine Einträge** für Vorgänge (case_items). Es gibt Kategorien für `tasks`, `decisions`, `documents`, `meetings`, `planning` — aber **nichts für `cases`**.
 
-4) Warum das den aktuellen Zustand löst
-- Solange Build fehlschlägt, werden vorherige Fixes teils nicht wirksam.
-- Selbst bei laufendem Build kann der Feed durch den „beweglichen“ `completedTo`-Key instabil bleiben.
-- Zusätzlich blendet der harte Notiz-Filter valide Rückmeldungen aus.
-- Mit den vier Korrekturen (Build, stabiler Query-Key, fachlich korrekter Filter, echter Error-State) wird die Ursachekette vollständig geschlossen.
+---
+
+## Plan
+
+### 1. Neue Notification-Types für Vorgänge anlegen (DB-Migration)
+
+Neue Einträge in `notification_types` mit Kategorie `cases`:
+
+| name | label | description |
+|------|-------|-------------|
+| `case_item_created` | Neuer Vorgang | Benachrichtigung wenn ein neuer Vorgang erstellt wird |
+| `case_item_assigned` | Vorgang zugewiesen | Benachrichtigung wenn Ihnen ein Vorgang zugewiesen wird |
+| `case_item_status_changed` | Vorgang-Status geändert | Benachrichtigung bei Statusänderung eines Vorgangs |
+| `case_item_comment` | Vorgang-Kommentar | Benachrichtigung bei neuem Kommentar in einem Vorgang |
+
+Zusätzlich `navigation_context` auf `mywork` setzen, damit die SubNavigation-Badges korrekt zählen.
+
+### 2. Benachrichtigungen in den Einstellungen sichtbar machen
+
+Die Benachrichtigungseinstellungen (`NotificationsPage` / `SettingsView`) gruppieren nach `category`. Die neue Kategorie `cases` mit Label "Vorgänge" muss im UI-Mapping ergänzt werden, damit sie in den Einstellungen erscheint.
+
+### 3. Badge-System vereinheitlichen
+
+Die SubNavigation-Badges für die Gruppe "Meine Arbeit" sollen konsistent mit den MyWork-Tab-Badges sein. Aktuell nutzt die SubNavigation `useNavigationNotifications` (zählt `notifications`-Tabelle), während MyWork intern `useMyWorkNewCounts` nutzt (Zeitstempel-Vergleich).
+
+**Ansatz:** Die SubNavigation zeigt für den "Meine Arbeit"-Bereich die Summe der `newCounts` aus `useMyWorkNewCounts` an, statt den `notifications`-Tabellen-Count. Da "Meine Arbeit" keine SubNavigation-Items hat (es ist eine `route`, keine Gruppe mit `subItems`), betrifft das primär die **Hauptnavigation-Badge** links. Die internen MyWork-Tab-Badges bleiben wie sie sind.
+
+### 4. Benachrichtigungen bei Vorgang-Aktionen auslösen
+
+An den relevanten Stellen im Code `create_notification` RPC-Aufrufe einfügen:
+- **Vorgang erstellt** → Benachrichtigung an zugewiesene Personen
+- **Vorgang zugewiesen** → Benachrichtigung an neue Zugewiesene
+- **Vorgang-Status geändert** → Benachrichtigung an Ersteller/Zugewiesene
+- **Vorgang-Kommentar** → Benachrichtigung an Beteiligte
+
+Dateien betroffen:
+- `src/features/cases/items/` — Erstellungs-, Status- und Kommentar-Logik
+- `src/components/my-work/MyWorkCasesWorkspace.tsx` — falls dort Aktionen ausgelöst werden
+
+### 5. Dateien-Übersicht
+
+- **DB-Migration**: Neue `notification_types`-Einträge für Kategorie `cases`
+- **`src/pages/NotificationsPage.tsx`** oder Benachrichtigungseinstellungen: Kategorie-Mapping um `cases` → "Vorgänge" erweitern
+- **`src/features/cases/items/`**: `create_notification`-Aufrufe bei Erstellung, Zuweisung, Statusänderung, Kommentaren
+- **`src/components/layout/SubNavigation.tsx`**: Badge-Logik vereinheitlichen (optional, da MyWork keine subItems hat)
+
