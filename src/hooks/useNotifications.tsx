@@ -354,7 +354,7 @@ export const useNotifications = () => {
           }
           
           const vapidPublicKey = vapidData.publicKey;
-          console.log('🔑 Got VAPID public key from server');
+          
         
           subscription = await (registration as any).pushManager.subscribe({
             userVisibleOnly: true,
