@@ -130,7 +130,7 @@ export const NewsWidget: React.FC<NewsWidgetProps> = ({ widgetId, compact = fals
                   className="cursor-pointer hover:bg-muted/40 rounded px-1 py-1 transition-colors"
                   onClick={() => window.open(article.link, '_blank')}
                 >
-                  <span className="text-sm text-foreground line-clamp-1">{article.title}</span>
+                  <span className="text-sm text-foreground line-clamp-1">{decodeHtmlEntities(article.title)}</span>
                   <span className="text-[11px] text-primary block mt-0.5">{article.source}</span>
                 </div>
               ))
