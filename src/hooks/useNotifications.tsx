@@ -415,7 +415,7 @@ export const useNotifications = () => {
         });
       }
     } catch (error) {
-      console.error('❌ Error subscribing to push:', error);
+      debugConsole.error('❌ Error subscribing to push:', error);
       toast({
         title: 'Fehler',
         description: 'Push-Benachrichtigungen konnten nicht aktiviert werden.',
