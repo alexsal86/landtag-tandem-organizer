@@ -617,7 +617,7 @@ export const DecisionOverview = () => {
           }
         }
       } catch (notifError) {
-        console.warn('Notification send failed (non-critical):', notifError);
+        debugConsole.warn('Notification send failed (non-critical):', notifError);
       }
 
       // Liste neu laden
