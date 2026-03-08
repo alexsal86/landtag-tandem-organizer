@@ -8,6 +8,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Send, Users, UserCircle, X, Search, FileText, Eye, Mail, ChevronDown, Save, Calendar as CalendarIcon, Clock, AlertTriangle } from "lucide-react";
+import { sanitizeRichHtml } from '@/utils/htmlSanitizer';
 import { ScrollArea } from "@/components/ui/scroll-area";
 import SimpleRichTextEditor from "@/components/ui/SimpleRichTextEditor";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
