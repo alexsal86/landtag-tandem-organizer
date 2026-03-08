@@ -177,7 +177,7 @@ export function useTasksData() {
         });
         setTaskComments(commentsMap);
       } catch (fallbackError) {
-        console.error('Fallback query also failed:', fallbackError);
+        debugConsole.error('Fallback query also failed:', fallbackError);
       }
     }
   };
