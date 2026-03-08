@@ -78,7 +78,7 @@ export function NotesArchive({ refreshTrigger, onRestore }: NotesArchiveProps) {
       if (error) throw error;
       setNotes((data || []) as DeletedNote[]);
     } catch (error) {
-      console.error("Error loading deleted notes:", error);
+      debugConsole.error("Error loading deleted notes:", error);
     }
   }, [user]);
 
