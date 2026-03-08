@@ -106,7 +106,7 @@ export const TaskDecisionResponse = ({
         setResponseOptions(data.response_options as unknown as ResponseOption[]);
       }
     } catch (error) {
-      console.error('Error loading decision options (using defaults):', error);
+      debugConsole.error('Error loading decision options (using defaults):', error);
     }
   };
 
