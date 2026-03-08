@@ -1,0 +1,1 @@
+ALTER TABLE public.tenants ADD COLUMN IF NOT EXISTS automations_paused boolean NOT NULL DEFAULT false;
