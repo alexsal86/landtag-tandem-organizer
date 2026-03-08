@@ -27,7 +27,7 @@ interface Comment {
   text: string;
   author: string;
   authorName: string;
-  avatarUrl?: string;
+  avatarUrl?: string | null;
   timestamp: string;
   position: number;
   length: number;
