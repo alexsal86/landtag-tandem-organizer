@@ -120,7 +120,7 @@ export function useMyWorkDecisionsData(userId?: string) {
           visible_to_all: item.task_decisions.visible_to_all,
           priority: item.task_decisions.priority ?? 0,
           ...attInfo,
-          response_options: Array.isArray(item.task_decisions.response_options) ? item.task_decisions.response_options : undefined,
+          response_options: Array.isArray(item.task_decisions.response_options) ? item.task_decisions.response_options as unknown as ResponseOption[] : undefined,
         };
       });
 
