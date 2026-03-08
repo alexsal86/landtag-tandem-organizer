@@ -112,7 +112,7 @@ export function EmailHistory() {
       
       setEmailLogs(typedData);
     } catch (error: unknown) {
-      console.error("Error fetching email logs:", error);
+      debugConsole.error("Error fetching email logs:", error);
       toast({ title: "Fehler beim Laden", description: error instanceof Error ? error.message : String(error), variant: "destructive" });
     } finally {
       setLoading(false);
