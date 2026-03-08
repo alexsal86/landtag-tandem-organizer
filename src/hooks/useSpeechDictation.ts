@@ -44,19 +44,31 @@ export const useSpeechDictation = ({ editor, insertText, dispatchCommand }: UseS
     playTone('command');
   }, []);
 
-  const removeInterimNode = useCallback(() => {
+  // Takes the interim node out of the ref WITHOUT removing it from the editor tree.
+  // The caller is responsible for replacing or removing it.
+  const takeInterimNode = useCallback(() => {
     const interimNodeKey = interimNodeKeyRef.current;
     if (!interimNodeKey) return null;
 
+    interimNodeKeyRef.current = null;
     const interimNode = $getNodeByKey(interimNodeKey);
     if (interimNode instanceof TextNode) {
-      interimNode.remove();
-      interimNodeKeyRef.current = null;
       return interimNode;
     }
 
-    interimNodeKeyRef.current = null;
     return null;
+  }, []);
+
+  // Removes the interim node from the editor tree and clears the ref.
+  const clearInterimNode = useCallback(() => {
+    const interimNodeKey = interimNodeKeyRef.current;
+    if (!interimNodeKey) return;
+
+    interimNodeKeyRef.current = null;
+    const interimNode = $getNodeByKey(interimNodeKey);
+    if (interimNode instanceof TextNode) {
+      interimNode.remove();
+    }
   }, []);
 
   const updateInterimNode = useCallback((text: string) => {
