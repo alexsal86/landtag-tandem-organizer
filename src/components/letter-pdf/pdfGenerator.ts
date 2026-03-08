@@ -578,7 +578,7 @@ export async function generatePDF(options: GeneratePDFOptions): Promise<{ blob: 
                 pdf.setTextColor(0, 0, 0);
               }
             } catch (error) {
-              console.error('Error embedding attachment:', error);
+              debugConsole.error('Error embedding attachment:', error);
               pdf.setFontSize(11);
               pdf.setFont('helvetica', 'normal');
               pdf.text('Anhang konnte nicht eingebettet werden', attachmentMargin, attachmentMargin + 30);
