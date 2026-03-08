@@ -42,6 +42,7 @@ export function MyWorkTasksTab() {
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
   const { viewType, setViewType } = useViewPreference({ key: "mywork-tasks", defaultView: "card" });
+  const { isHighlighted, highlightRef } = useNotificationHighlight();
   
   const {
     assignedTasks,
