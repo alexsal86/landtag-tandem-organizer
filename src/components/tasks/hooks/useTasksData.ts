@@ -186,7 +186,7 @@ export function useTasksData() {
     try {
       const { data, error } = await supabase
         .from('task_documents')
-        .select('*')
+        .select('id, task_id, file_name, file_path, file_size, file_type, created_at')
         .order('created_at', { ascending: false });
       if (error) throw error;
       const detailsMap: { [taskId: string]: any[] } = {};
