@@ -305,7 +305,7 @@ export const useNotifications = () => {
       if (!(registration as any).pushManager) {
         throw new Error('PushManager is not available on the active service worker registration');
       }
-      console.log('✅ Service worker ready for push (scope:', registration.scope, ')');
+      
 
       // Get existing subscription or create new one
       let subscription = await (registration as any).pushManager.getSubscription();
