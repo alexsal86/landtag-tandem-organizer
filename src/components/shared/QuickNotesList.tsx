@@ -1304,7 +1304,7 @@ export function QuickNotesList({
       .order("created_at", { ascending: false });
     
     if (error) {
-      console.error("Error loading versions:", error);
+      debugConsole.error("Error loading versions:", error);
       toast.error("Fehler beim Laden der Versionen");
       return;
     }
