@@ -217,7 +217,7 @@ export const useSpeechDictation = ({ editor, insertText, dispatchCommand }: UseS
       speechAdapter.destroy();
       if (commandFeedbackTimerRef.current) clearTimeout(commandFeedbackTimerRef.current);
     };
-  }, [commitContentText, editor, removeInterimNode, showCommandFeedback, speechAdapter, updateInterimNode]);
+  }, [clearInterimNode, commitContentText, editor, showCommandFeedback, speechAdapter, updateInterimNode]);
 
   const startSpeechRecognition = useCallback(() => {
     if (!speechAdapter.supported) return;
