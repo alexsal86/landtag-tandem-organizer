@@ -296,7 +296,7 @@ export const useUserStatus = () => {
       // Only fetch statuses for users in the same tenant
       const { data: statuses } = await supabase
         .from('user_status')
-        .select('*')
+        .select('id, user_id, status_type, custom_message, emoji, color, notifications_enabled, auto_away_enabled, last_activity, status_until')
         .eq('tenant_id', currentTenant?.id)
         .in('user_id', onlineUserIds);
 

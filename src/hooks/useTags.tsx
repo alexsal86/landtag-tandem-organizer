@@ -24,7 +24,7 @@ export const useTags = () => {
       setLoading(true);
       const { data, error } = await supabase
         .from('tags')
-        .select('*')
+        .select('id, name, label, color, icon, is_active, order_index')
         .eq('is_active', true)
         .order('order_index');
 

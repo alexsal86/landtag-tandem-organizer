@@ -33,9 +33,9 @@ const EditProfile = lazyWithRetry(() => import("@/pages/EditProfile"));
 const NotificationsPage = lazyWithRetry(() => import("@/pages/NotificationsPage"));
 const LetterDetail = lazyWithRetry(() => import("@/pages/LetterDetail"));
 const EmployeeMeetingDetail = lazyWithRetry(() => import("@/pages/EmployeeMeetingDetail"));
-import { CreateAppointmentDialog } from "@/components/CreateAppointmentDialog";
-import { GlobalQuickActionHandler } from "@/components/layout/GlobalQuickActionHandler";
-import { GlobalAnnouncementBanner } from "@/components/announcements/GlobalAnnouncementBanner";
+const CreateAppointmentDialog = lazyWithRetry(() => import("@/components/CreateAppointmentDialog").then(m => ({ default: m.CreateAppointmentDialog })));
+const GlobalQuickActionHandler = lazyWithRetry(() => import("@/components/layout/GlobalQuickActionHandler").then(m => ({ default: m.GlobalQuickActionHandler })));
+const GlobalAnnouncementBanner = lazyWithRetry(() => import("@/components/announcements/GlobalAnnouncementBanner").then(m => ({ default: m.GlobalAnnouncementBanner })));
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Loader2 } from "lucide-react";
@@ -44,7 +44,7 @@ import { AppHeader } from "@/components/layout/AppHeader";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { SubNavigation } from "@/components/layout/SubNavigation";
 import { MobileSubNavigation } from "@/components/layout/MobileSubNavigation";
-import CreateContact from "./CreateContact";
+const CreateContact = lazyWithRetry(() => import("./CreateContact"));
 
 const Index = () => {
   const { user, loading: authLoading } = useAuth();

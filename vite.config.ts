@@ -59,10 +59,14 @@ export default defineConfig(({ mode }) => ({
       output: {
         manualChunks: {
           'vendor-react': ['react', 'react-dom', 'react-router-dom', '@tanstack/react-query'],
-          'vendor-editor': ['lexical'],
+          'vendor-editor': ['lexical', '@lexical/react', '@lexical/rich-text', '@lexical/list', '@lexical/link', '@lexical/markdown', '@lexical/html', '@lexical/code', '@lexical/table', '@lexical/yjs'],
           'vendor-matrix': ['matrix-js-sdk', 'yjs', 'y-websocket', 'y-indexeddb'],
           'vendor-pdf': ['pdfjs-dist', 'jspdf', 'docx'],
           'vendor-charts-maps': ['recharts', 'leaflet', 'react-leaflet', 'proj4'],
+          'vendor-date': ['date-fns', 'moment', 'rrule'],
+          'vendor-motion': ['framer-motion'],
+          'vendor-dnd': ['@hello-pangea/dnd'],
+          'vendor-ui': ['class-variance-authority', 'clsx', 'tailwind-merge', 'cmdk', 'input-otp', 'embla-carousel-react', 'vaul', 'sonner'],
         },
       },
     },
