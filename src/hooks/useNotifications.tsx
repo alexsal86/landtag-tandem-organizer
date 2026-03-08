@@ -332,10 +332,7 @@ export const useNotifications = () => {
       }
       
       if (needNewSubscription) {
-        console.log('🔧 Creating new push subscription...');
-        
         // Fetch VAPID public key from Edge Function using GET request
-        console.log('🔑 Fetching VAPID public key from Edge Function...');
         try {
           const vapidResponse = await fetch(`https://wawofclbehbkebjivdte.supabase.co/functions/v1/send-push-notification`, {
             method: 'GET',
