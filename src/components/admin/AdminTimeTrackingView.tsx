@@ -712,8 +712,8 @@ export function AdminTimeTrackingView() {
       setCorrectionMinutes("");
       setCorrectionReason("");
       loadMonthData();
-    } catch (error: any) {
-      toast.error(error.message || "Fehler beim Speichern der Korrektur");
+    } catch (error: unknown) {
+      toast.error(error instanceof Error ? error.message : "Fehler beim Speichern der Korrektur");
     }
   };
 
