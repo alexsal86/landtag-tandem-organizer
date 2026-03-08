@@ -34,8 +34,12 @@ interface Contact {
   address?: string;
 }
 
+interface ContactWithAddress extends Contact {
+  formatted_address?: string;
+}
+
 interface ContactSelectorProps {
-  onSelect: (contact: Contact) => void;
+  onSelect: (contact: ContactWithAddress) => void;
   selectedContactId?: string;
   placeholder?: string;
   className?: string;
