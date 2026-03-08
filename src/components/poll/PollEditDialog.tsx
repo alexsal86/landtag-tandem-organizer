@@ -8,6 +8,7 @@ import { Badge } from '@/components/ui/badge';
 import { Calendar } from '@/components/ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { CalendarIcon, Edit, Save, Plus, X, Users, Mail, Trash2 } from 'lucide-react';
+import { debugConsole } from '@/utils/debugConsole';
 import { format } from 'date-fns';
 import { de } from 'date-fns/locale';
 import { supabase } from '@/integrations/supabase/client';
