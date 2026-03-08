@@ -259,7 +259,7 @@ export function SuperadminTenantManagement() {
       loadTenants();
       loadAllUsers();
     } catch (error: unknown) {
-      console.error("Create user error:", error);
+      debugConsole.error("Create user error:", error);
       toast({ title: "Fehler", description: error instanceof Error ? error.message : "Erstellen fehlgeschlagen", variant: "destructive" });
     }
   };

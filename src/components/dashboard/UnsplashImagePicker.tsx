@@ -138,7 +138,7 @@ export function UnsplashImagePicker({
         description: "Dein Bild wurde hochgeladen.",
       });
     } catch (error) {
-      console.error("Error uploading file:", error);
+      debugConsole.error("Error uploading file:", error);
       toast({
         title: "Upload fehlgeschlagen",
         description: "Das Bild konnte nicht hochgeladen werden.",

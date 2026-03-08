@@ -89,7 +89,7 @@ export function BlackBoard() {
 
       fetchPublicMessages();
     } catch (error) {
-      console.error('Error confirming message:', error);
+      debugConsole.error('Error confirming message:', error);
       toast({
         title: "Fehler",
         description: "Die Bekanntmachung konnte nicht bestätigt werden.",

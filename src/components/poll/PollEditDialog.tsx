@@ -248,7 +248,7 @@ export const PollEditDialog = ({
       onUpdate();
 
     } catch (error) {
-      console.error('Error updating poll:', error);
+      debugConsole.error('Error updating poll:', error);
       toast({
         title: "Fehler",
         description: "Die Änderungen konnten nicht gespeichert werden.",
