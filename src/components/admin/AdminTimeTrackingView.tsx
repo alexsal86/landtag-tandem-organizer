@@ -699,12 +699,12 @@ export function AdminTimeTrackingView() {
     try {
       const { error } = await supabase
         .from("time_entry_corrections")
-        .insert({
+        .insert([{
           user_id: selectedUserId,
           correction_minutes: minutes,
           reason: correctionReason,
           created_by: user.id,
-        });
+        }]);
 
       if (error) throw error;
 
