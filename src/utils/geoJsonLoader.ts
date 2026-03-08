@@ -130,7 +130,7 @@ function reprojectIfNeeded(fc: GeoJsonData): GeoJsonData {
   if (!sourceDef && projected && sample) {
     // Try to guess projection from coordinate values
     sourceDef = guessGaussKruegerFromX(sample[0]);
-    console.log(`Guessed projection for x=${sample[0]}: ${sourceDef ? 'GK Zone detected' : 'unknown'}`);
+    
   }
 
   if (!projected || !sourceDef) {
