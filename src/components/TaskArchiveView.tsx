@@ -27,7 +27,7 @@ interface ArchivedTask {
 }
 
 interface ArchiveSettings {
-  auto_delete_after_days?: number;
+  auto_delete_after_days?: number | null;
 }
 
 interface ArchivedDecision {
