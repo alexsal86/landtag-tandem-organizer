@@ -115,11 +115,11 @@ export function useLetterData({ isOpen, tenantId, letterId }: UseLetterDataOptio
     try {
       const { data, error } = await supabase
         .from('letter_comments')
-        .select(`id, content, text_position, text_length, resolved, comment_type, created_at, user_id, profiles:user_id (display_name)`)
+        .select(`id, content, text_position, text_length, resolved, comment_type, created_at, user_id`)
         .eq('letter_id', letterId)
         .order('created_at');
       if (error) throw error;
-      setComments(data || []);
+      setComments((data || []) as LetterComment[]);
     } catch (error) {
       debugConsole.error('Error fetching comments:', error);
     }

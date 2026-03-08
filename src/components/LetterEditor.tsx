@@ -272,7 +272,7 @@ const LetterEditor: React.FC<LetterEditorProps> = ({ letter, isOpen, onClose, on
         wahlkreis_email: sender.wahlkreis_email, landtag_email: sender.landtag_email,
       } : null,
       recipientData,
-      infoBlock ? { reference: infoBlock.block_data?.reference_pattern, handler: infoBlock.block_data?.contact_name, our_reference: '' } : null,
+      infoBlock ? { reference: (infoBlock.block_data as any)?.reference_pattern, handler: (infoBlock.block_data as any)?.contact_name, our_reference: '' } : null,
       attachments,
     );
 
