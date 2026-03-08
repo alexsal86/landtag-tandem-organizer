@@ -184,7 +184,7 @@ export const LetterTemplateIntegration: React.FC<LetterTemplateIntegrationProps>
       setShowFooterEditor(false);
       fetchTemplates();
     } catch (error) {
-      console.error('Error saving footer:', error);
+      debugConsole.error('Error saving footer:', error);
       toast({
         title: "Fehler",
         description: "Footer konnte nicht gespeichert werden.",
