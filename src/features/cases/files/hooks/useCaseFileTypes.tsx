@@ -119,7 +119,7 @@ export const useCaseFileTypes = () => {
 
       toast({
         title: "Erfolgreich",
-        description: "FallAkten-Typ wurde gelöscht.",
+        description: "Fallakten-Typ wurde gelöscht.",
       });
 
       await fetchCaseFileTypes();

@@ -135,9 +135,9 @@ export function CaseFileCreateDialog({ open, onOpenChange, onSuccess }: CaseFile
       <DialogContent className="sm:max-w-[500px] max-h-[90vh] overflow-y-auto">
         <form onSubmit={handleSubmit}>
           <DialogHeader>
-            <DialogTitle>Neue FallAkte erstellen</DialogTitle>
+            <DialogTitle>Neue Fallakte erstellen</DialogTitle>
             <DialogDescription>
-              Erstellen Sie eine neue FallAkte, um Dokumente, Kontakte und Aufgaben zu einem Sachverhalt zu bündeln.
+              Erstellen Sie eine neue Fallakte, um Dokumente, Kontakte und Aufgaben zu einem Sachverhalt zu bündeln.
             </DialogDescription>
           </DialogHeader>
 

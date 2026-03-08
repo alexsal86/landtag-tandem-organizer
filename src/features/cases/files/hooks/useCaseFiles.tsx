@@ -262,7 +262,7 @@ export const useCaseFiles = () => {
       debugConsole.error('Error deleting case file:', error);
       toast({
         title: "Fehler",
-        description: "FallAkte konnte nicht gelöscht werden.",
+        description: "Fallakte konnte nicht gelöscht werden.",
         variant: "destructive",
       });
       return false;
