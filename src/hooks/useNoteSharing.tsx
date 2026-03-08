@@ -150,7 +150,7 @@ export const useNoteSharing = (noteId?: string) => {
         .single();
 
       if (fetchError || !shareData) {
-        console.error("Error fetching share:", fetchError);
+        debugConsole.error("Error fetching share:", fetchError);
         toast.error("Freigabe nicht gefunden");
         return false;
       }
