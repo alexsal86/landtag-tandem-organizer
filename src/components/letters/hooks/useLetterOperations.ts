@@ -47,7 +47,7 @@ export function useLetterOperations(opts: UseLetterOperationsOptions) {
     const contentNodesToSave = immediateContentNodes !== undefined ? immediateContentNodes : latestContentRef.current.contentNodes || editedLetter.content_nodes;
 
     if (contentToSave && contentToSave.includes('{"root":{"children"') && contentToSave.split('{"root":{"children"').length > 2) {
-      console.error('Detected corrupted content, aborting save');
+      debugConsole.error('Detected corrupted content, aborting save');
       toast({ title: 'Inhalt beschädigt', description: 'Der Inhalt scheint beschädigt zu sein. Bitte laden Sie die Seite neu.', variant: 'destructive', duration: 5000 });
       return;
     }
@@ -80,7 +80,7 @@ export function useLetterOperations(opts: UseLetterOperationsOptions) {
       if (error) throw error;
       setLastSaved(new Date());
     } catch (error) {
-      console.error('Error auto-saving letter:', error);
+      debugConsole.error('Error auto-saving letter:', error);
       toast({ title: 'Auto-Speichern fehlgeschlagen', description: 'Änderungen konnten nicht gespeichert werden.', variant: 'destructive', duration: 3000 });
     } finally {
       setTimeout(() => setSaving(false), 200);
@@ -157,7 +157,7 @@ export function useLetterOperations(opts: UseLetterOperationsOptions) {
               data_param: JSON.stringify({ documentId: letter?.id, documentType: 'letter' }),
               priority_param: 'medium',
             });
-          } catch (e) { console.error('Failed to send mention notification:', e); }
+          } catch (e) { debugConsole.error('Failed to send mention notification:', e); }
         });
         await Promise.allSettled(mentionPromises);
         pendingMentionsRef.current.clear();
@@ -166,7 +166,7 @@ export function useLetterOperations(opts: UseLetterOperationsOptions) {
       onSave();
       toast({ title: 'Brief gespeichert', description: 'Ihre Änderungen wurden erfolgreich gespeichert.' });
     } catch (error) {
-      console.error('Error saving letter:', error);
+      debugConsole.error('Error saving letter:', error);
       toast({ title: 'Fehler beim Speichern', description: 'Der Brief konnte nicht gespeichert werden.', variant: 'destructive' });
     } finally {
       setSaving(false);
@@ -226,12 +226,12 @@ export function useLetterOperations(opts: UseLetterOperationsOptions) {
                 : 'Brief wurde als versendet markiert. Archivierung wird im Hintergrund verarbeitet.',
             });
           } catch (archiveError) {
-            console.error('Archive process error:', archiveError);
+            debugConsole.error('Archive process error:', archiveError);
             toast({ title: 'Archivierungsfehler', description: 'Der Brief wurde versendet, aber die Archivierung ist fehlgeschlagen.', variant: 'destructive' });
           }
         }
       } catch (error) {
-        console.error('Error updating workflow tracking:', error);
+        debugConsole.error('Error updating workflow tracking:', error);
         toast({ title: 'Fehler beim Workflow-Update', description: 'Die Workflow-Daten konnten nicht gespeichert werden.', variant: 'destructive' });
       }
     }
@@ -252,7 +252,7 @@ export function useLetterOperations(opts: UseLetterOperationsOptions) {
       fetchComments();
       toast({ title: 'Kommentar hinzugefügt', description: 'Der Kommentar wurde erfolgreich hinzugefügt.' });
     } catch (error) {
-      console.error('Error adding comment:', error);
+      debugConsole.error('Error adding comment:', error);
       toast({ title: 'Fehler', description: 'Der Kommentar konnte nicht hinzugefügt werden.', variant: 'destructive' });
     }
   }, [letter?.id, userId, fetchComments, toast]);
@@ -264,7 +264,7 @@ export function useLetterOperations(opts: UseLetterOperationsOptions) {
       setIsProofreadingMode(true);
       toast({ title: 'Brief zurückgegeben', description: 'Der Brief wurde zur Bearbeitung zurückgegeben.' });
     } catch (error) {
-      console.error('Error returning letter:', error);
+      debugConsole.error('Error returning letter:', error);
       toast({ title: 'Fehler', description: 'Der Brief konnte nicht zurückgegeben werden.', variant: 'destructive' });
     }
   }, [letter?.id, userId, setEditedLetter, setIsProofreadingMode, toast]);
@@ -284,7 +284,7 @@ export function useLetterOperations(opts: UseLetterOperationsOptions) {
       if (error) throw error;
       setAttachments((prev) => prev.map((a) => a.id === attachmentId ? { ...a, display_name: sanitizedDisplayName || null } : a));
     } catch (error) {
-      console.error('Error updating attachment display name:', error);
+      debugConsole.error('Error updating attachment display name:', error);
       toast({ title: 'Fehler beim Umbenennen', description: 'Der Anlagenname konnte nicht aktualisiert werden.', variant: 'destructive' });
     }
   }, [toast]);

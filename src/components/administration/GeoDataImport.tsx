@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { debugConsole } from '@/utils/debugConsole';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Loader2, FileText, Map, Users, Globe } from "lucide-react";
@@ -23,7 +24,7 @@ export function GeoDataImport() {
       if (error) throw error;
       toast({ title: 'Import erfolgreich', description: `${data?.imported ?? 0} Wahlkreise importiert.` });
     } catch (e: any) {
-      console.error(e);
+      debugConsole.error(e);
       toast({ title: 'Import fehlgeschlagen', description: e.message ?? 'Bitte erneut versuchen.', variant: 'destructive' });
     } finally {
       setImporting(false);
@@ -42,7 +43,7 @@ export function GeoDataImport() {
       if (error) throw error;
       toast({ title: 'Import erfolgreich', description: `${data?.data?.length || 0} Verwaltungsgrenzen importiert.` });
     } catch (e: any) {
-      console.error(e);
+      debugConsole.error(e);
       toast({ title: 'Import fehlgeschlagen', description: e.message ?? 'Bitte erneut versuchen.', variant: 'destructive' });
     } finally {
       setImportingBoundaries(false);
@@ -56,7 +57,7 @@ export function GeoDataImport() {
       if (error) throw error;
       toast({ title: 'Import erfolgreich', description: data?.message || 'Abgeordnete erfolgreich importiert' });
     } catch (e: any) {
-      console.error(e);
+      debugConsole.error(e);
       toast({ title: 'Import fehlgeschlagen', description: e.message ?? 'Bitte erneut versuchen.', variant: 'destructive' });
     } finally {
       setImporting(false);
@@ -71,7 +72,7 @@ export function GeoDataImport() {
       if (error) throw error;
       toast({ title: 'Import erfolgreich', description: 'Kreisverbände erfolgreich importiert.' });
     } catch (e: any) {
-      console.error(e);
+      debugConsole.error(e);
       toast({ title: 'Import fehlgeschlagen', description: e.message ?? 'Bitte erneut versuchen.', variant: 'destructive' });
     } finally {
       setImportingPartyAssociations(false);
@@ -85,7 +86,7 @@ export function GeoDataImport() {
       if (error) throw error;
       toast({ title: 'Import erfolgreich', description: 'Karlsruher Stadtteile erfolgreich importiert.' });
     } catch (e: any) {
-      console.error(e);
+      debugConsole.error(e);
       toast({ title: 'Import fehlgeschlagen', description: e.message ?? 'Bitte erneut versuchen.', variant: 'destructive' });
     } finally {
       setImportingKarlsruhe(false);

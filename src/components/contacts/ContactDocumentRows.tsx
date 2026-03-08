@@ -1,4 +1,5 @@
 import { TableRow, TableCell } from "@/components/ui/table";
+import { debugConsole } from '@/utils/debugConsole';
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { FileText, Download, ExternalLink } from "lucide-react";
@@ -31,7 +32,7 @@ export function ContactDocumentRows({ contactId, contactTags }: ContactDocumentR
       document.body.removeChild(link);
       window.URL.revokeObjectURL(url);
     } catch (error: unknown) {
-      console.error('Error downloading document:', error);
+      debugConsole.error('Error downloading document:', error);
       toast.error('Fehler beim Herunterladen des Dokuments');
     }
   };

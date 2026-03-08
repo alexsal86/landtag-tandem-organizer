@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
+import { debugConsole } from '@/utils/debugConsole';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -102,7 +103,7 @@ export const StructuredFooterEditor: React.FC<StructuredFooterEditorProps> = ({
       if (error && error.code !== 'PGRST116') throw error;
       if (data) setSenderInfo(data);
     } catch (error) {
-      console.error('Error fetching sender info:', error);
+      debugConsole.error('Error fetching sender info:', error);
     }
   };
 

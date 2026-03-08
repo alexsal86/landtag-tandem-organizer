@@ -1,4 +1,5 @@
 import React, { useState, useRef } from 'react';
+import { debugConsole } from '@/utils/debugConsole';
 import { useAuth } from '@/hooks/useAuth';
 import { useTenant } from '@/hooks/useTenant';
 import { supabase } from '@/integrations/supabase/client';
@@ -130,10 +131,10 @@ export function DrucksachenUpload({ onUploadSuccess, onProtocolsRefresh }: Druck
       await supabase.storage
         .from('parliament-protocols')
         .remove([filePath]);
-      console.log('Cleaned up orphaned file:', filePath);
+      debugConsole.log('Cleaned up orphaned file:', filePath);
       return true;
     } catch (error) {
-      console.error('Failed to cleanup orphaned file:', error);
+      debugConsole.error('Failed to cleanup orphaned file:', error);
       return false;
     }
   };
@@ -181,7 +182,7 @@ export function DrucksachenUpload({ onUploadSuccess, onProtocolsRefresh }: Druck
       let parsedData = null;
       let pdfMetadata = null;
       try {
-        console.log('Starting local PDF analysis...');
+        debugConsole.log('Starting local PDF analysis...');
         const pdfData = await parsePDFFile(fileData.file);
         const structuredData = analyzeProtocolStructure(pdfData.text);
         parsedData = {
@@ -191,7 +192,7 @@ export function DrucksachenUpload({ onUploadSuccess, onProtocolsRefresh }: Druck
           sessions: structuredData.sessions
         };
         pdfMetadata = pdfData.metadata;
-        console.log('Local PDF analysis completed:', {
+        debugConsole.log('Local PDF analysis completed:', {
           agendaItems: structuredData.agendaItems.length,
           speeches: structuredData.speeches.length,
           sessions: structuredData.sessions.length,
@@ -201,7 +202,7 @@ export function DrucksachenUpload({ onUploadSuccess, onProtocolsRefresh }: Druck
         // Show preview to user
         toast.success(`PDF analysiert: ${structuredData.agendaItems.length} Tagesordnungspunkte, ${structuredData.speeches.length} Reden gefunden`);
       } catch (parseError) {
-        console.error('Local PDF parsing failed:', parseError);
+        debugConsole.error('Local PDF parsing failed:', parseError);
         toast.error(`PDF-Analyse fehlgeschlagen: ${parseError.message}`);
         throw parseError;
       }
@@ -245,7 +246,7 @@ export function DrucksachenUpload({ onUploadSuccess, onProtocolsRefresh }: Druck
         .single();
 
       if (dbError) {
-        console.error('Database insertion failed:', dbError);
+        debugConsole.error('Database insertion failed:', dbError);
         throw new Error(`Datenbankfehler: ${dbError.message}`);
       }
 
@@ -265,15 +266,15 @@ export function DrucksachenUpload({ onUploadSuccess, onProtocolsRefresh }: Druck
         });
         
         if (analysisError) {
-          console.warn('Database insertion error:', analysisError);
+          debugConsole.warn('Database insertion error:', analysisError);
           // Still mark as completed with warning
           toast.warning('PDF hochgeladen, aber Datenbankfehler bei der Analyse');
         } else {
-          console.log('Database insertion completed:', analysisResult);
+          debugConsole.log('Database insertion completed:', analysisResult);
           toast.success('PDF erfolgreich analysiert und gespeichert');
         }
       } catch (error) {
-        console.warn('Analysis function error:', error);
+        debugConsole.warn('Analysis function error:', error);
         toast.warning('PDF hochgeladen, aber Analyse-Service nicht verfügbar');
       }
 
@@ -286,18 +287,18 @@ export function DrucksachenUpload({ onUploadSuccess, onProtocolsRefresh }: Druck
       onProtocolsRefresh(); // Refresh the list
       
     } catch (error) {
-      console.error('Upload error:', error);
+      debugConsole.error('Upload error:', error);
       
       // Cleanup on error: remove uploaded file if database insert failed
       if (uploadedFilePath && !protocolId) {
-        console.log('Cleaning up uploaded file due to database error...');
+        debugConsole.log('Cleaning up uploaded file due to database error...');
         try {
           await supabase.storage
             .from('parliament-protocols')
             .remove([uploadedFilePath]);
-          console.log('Successfully cleaned up orphaned file');
+          debugConsole.log('Successfully cleaned up orphaned file');
         } catch (cleanupError) {
-          console.error('Failed to cleanup file after error:', cleanupError);
+          debugConsole.error('Failed to cleanup file after error:', cleanupError);
         }
       }
 
@@ -375,7 +376,7 @@ export function DrucksachenUpload({ onUploadSuccess, onProtocolsRefresh }: Druck
         .single();
 
       if (dbError) {
-        console.error('Database insertion failed:', dbError);
+        debugConsole.error('Database insertion failed:', dbError);
         throw new Error(`Datenbankfehler: ${dbError.message}`);
       }
 
@@ -393,11 +394,11 @@ export function DrucksachenUpload({ onUploadSuccess, onProtocolsRefresh }: Druck
         });
         
         if (analysisError) {
-          console.warn('Related data insertion error:', analysisError);
+          debugConsole.warn('Related data insertion error:', analysisError);
           toast.warning('JSON importiert, aber Fehler bei der Datenverteilung');
         }
       } catch (error) {
-        console.warn('Analysis function error:', error);
+        debugConsole.warn('Analysis function error:', error);
       }
 
       // Update status to completed
@@ -410,7 +411,7 @@ export function DrucksachenUpload({ onUploadSuccess, onProtocolsRefresh }: Druck
       onProtocolsRefresh();
       
     } catch (error) {
-      console.error('JSON upload error:', error);
+      debugConsole.error('JSON upload error:', error);
       setUploadFiles(prev => prev.map((f, i) => 
         i === index ? { 
           ...f, 
@@ -499,7 +500,7 @@ export function DrucksachenUpload({ onUploadSuccess, onProtocolsRefresh }: Druck
         toast.info('Keine verwaisten Dateien gefunden');
       }
     } catch (error) {
-      console.error('Cleanup error:', error);
+      debugConsole.error('Cleanup error:', error);
       toast.error('Fehler bei der Bereinigung');
     }
   };

@@ -1,4 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
+import { debugConsole } from '@/utils/debugConsole';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Upload, X, File, AlertCircle, Download } from 'lucide-react';
@@ -58,7 +59,7 @@ export function AppointmentPreparationFileUpload({
 
       setFiles(loadedFiles);
     } catch (error) {
-      console.error('Error loading files:', error);
+      debugConsole.error('Error loading files:', error);
       toast({
         title: "Fehler",
         description: "Dateien konnten nicht geladen werden.",
@@ -141,7 +142,7 @@ export function AppointmentPreparationFileUpload({
         });
 
       } catch (error) {
-        console.error('Upload error:', error);
+        debugConsole.error('Upload error:', error);
         
         setFiles(prev => prev.map(f => 
           f.file_name === file.name && f.uploading ? {
@@ -185,7 +186,7 @@ export function AppointmentPreparationFileUpload({
         description: `${file.file_name} wird heruntergeladen.`,
       });
     } catch (error) {
-      console.error('Download error:', error);
+      debugConsole.error('Download error:', error);
       toast({
         title: "Download fehlgeschlagen",
         description: "Die Datei konnte nicht heruntergeladen werden.",
@@ -220,7 +221,7 @@ export function AppointmentPreparationFileUpload({
         description: `${file.file_name} wurde gelöscht.`,
       });
     } catch (error) {
-      console.error('Delete error:', error);
+      debugConsole.error('Delete error:', error);
       toast({
         title: "Löschung fehlgeschlagen",
         description: "Die Datei konnte nicht gelöscht werden.",

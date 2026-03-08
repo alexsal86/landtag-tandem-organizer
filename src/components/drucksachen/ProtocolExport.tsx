@@ -1,4 +1,5 @@
 import React from 'react';
+import { debugConsole } from '@/utils/debugConsole';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { 
@@ -65,7 +66,7 @@ export function ProtocolExport({ protocolId, protocolTitle }: ProtocolExportProp
 
       toast.success('JSON-Export erfolgreich erstellt');
     } catch (error) {
-      console.error('Error exporting JSON:', error);
+      debugConsole.error('Error exporting JSON:', error);
       toast.error('Fehler beim JSON-Export');
     } finally {
       setIsExporting(false);
@@ -110,7 +111,7 @@ export function ProtocolExport({ protocolId, protocolTitle }: ProtocolExportProp
 
       toast.success('CSV-Export erfolgreich erstellt');
     } catch (error) {
-      console.error('Error exporting CSV:', error);
+      debugConsole.error('Error exporting CSV:', error);
       toast.error('Fehler beim CSV-Export');
     } finally {
       setIsExporting(false);
@@ -147,7 +148,7 @@ export function ProtocolExport({ protocolId, protocolTitle }: ProtocolExportProp
         toast.success('PDF-Download gestartet');
       }
     } catch (error) {
-      console.error('Error downloading PDF:', error);
+      debugConsole.error('Error downloading PDF:', error);
       toast.error('Fehler beim PDF-Download');
     } finally {
       setIsExporting(false);

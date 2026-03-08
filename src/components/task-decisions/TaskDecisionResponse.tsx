@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from "react";
+import { debugConsole } from '@/utils/debugConsole';
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
@@ -98,14 +99,14 @@ export const TaskDecisionResponse = ({
         .maybeSingle();
 
       if (error) {
-        console.error('Error loading decision options (using defaults):', error);
+        debugConsole.error('Error loading decision options (using defaults):', error);
         return;
       }
       if (data?.response_options && Array.isArray(data.response_options)) {
         setResponseOptions(data.response_options as unknown as ResponseOption[]);
       }
     } catch (error) {
-      console.error('Error loading decision options (using defaults):', error);
+      debugConsole.error('Error loading decision options (using defaults):', error);
     }
   };
 
@@ -128,7 +129,7 @@ export const TaskDecisionResponse = ({
         });
       }
     } catch (error) {
-      console.error('Error loading current response:', error);
+      debugConsole.error('Error loading current response:', error);
     }
   };
 
@@ -147,7 +148,7 @@ export const TaskDecisionResponse = ({
         .maybeSingle();
 
       if (checkError) {
-        console.error('Error checking existing response:', checkError);
+        debugConsole.error('Error checking existing response:', checkError);
         throw new Error('Antwort konnte nicht überprüft werden');
       }
 
@@ -162,7 +163,7 @@ export const TaskDecisionResponse = ({
           .eq('id', existingResponse.id);
 
         if (error) {
-          console.error('Error updating response:', error);
+          debugConsole.error('Error updating response:', error);
           throw new Error('Antwort konnte nicht aktualisiert werden');
         }
       } else {
@@ -176,7 +177,7 @@ export const TaskDecisionResponse = ({
           });
 
         if (error) {
-          console.error('Error inserting response:', error);
+          debugConsole.error('Error inserting response:', error);
           throw new Error('Antwort konnte nicht gespeichert werden');
         }
       }
@@ -263,7 +264,7 @@ export const TaskDecisionResponse = ({
       setShowEdit(false);
       onResponseSubmitted();
     } catch (error: unknown) {
-      console.error('Error submitting response:', error);
+      debugConsole.error('Error submitting response:', error);
       toast({
         title: "Fehler",
         description: error instanceof Error ? error.message : "Antwort konnte nicht gespeichert werden.",

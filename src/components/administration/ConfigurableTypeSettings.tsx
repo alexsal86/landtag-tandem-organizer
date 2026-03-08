@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { debugConsole } from '@/utils/debugConsole';
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -64,7 +65,7 @@ export function ConfigurableTypeSettings({
       if (error) throw error;
       setItems(data || []);
     } catch (error) {
-      console.error(`Error loading ${tableName}:`, error);
+      debugConsole.error(`Error loading ${tableName}:`, error);
       toast({ title: "Fehler", description: `${title} konnten nicht geladen werden.`, variant: "destructive" });
     } finally {
       setLoading(false);

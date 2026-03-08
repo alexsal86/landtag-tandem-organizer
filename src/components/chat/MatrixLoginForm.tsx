@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { debugConsole } from '@/utils/debugConsole';
 import { Loader2, Save, TestTube, CheckCircle, XCircle, Link2, ShieldCheck, LogIn, ChevronDown } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -68,7 +69,7 @@ export function MatrixLoginForm() {
           }
         }
       } catch (error) {
-        console.error('Error loading Matrix credentials:', error);
+        debugConsole.error('Error loading Matrix credentials:', error);
       }
     };
 
@@ -177,7 +178,7 @@ export function MatrixLoginForm() {
         description: `Verbunden als ${confirmedUserId}`,
       });
     } catch (error) {
-      console.error('Matrix password login failed:', error instanceof Error ? error.message : 'Unbekannter Fehler');
+      debugConsole.error('Matrix password login failed:', error instanceof Error ? error.message : 'Unbekannter Fehler');
       toast({
         title: 'Anmeldung fehlgeschlagen',
         description: error instanceof Error ? error.message : 'Login konnte nicht durchgeführt werden',
@@ -248,7 +249,7 @@ export function MatrixLoginForm() {
         deviceId: deviceId.trim() || undefined,
       });
     } catch (error) {
-      console.error('Error saving Matrix credentials:', error);
+      debugConsole.error('Error saving Matrix credentials:', error);
       toast({ title: 'Fehler', description: 'Zugangsdaten konnten nicht gespeichert werden', variant: 'destructive' });
     } finally {
       setIsSaving(false);
@@ -272,7 +273,7 @@ export function MatrixLoginForm() {
       setTestResult('success');
       toast({ title: 'Test erfolgreich', description: 'Verbindung zu Matrix wurde hergestellt' });
     } catch (error) {
-      console.error('Matrix connection test failed:', error);
+      debugConsole.error('Matrix connection test failed:', error);
       setTestResult('error');
       toast({
         title: 'Test fehlgeschlagen',

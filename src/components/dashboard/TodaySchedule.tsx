@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { debugConsole } from '@/utils/debugConsole';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -110,7 +111,7 @@ export const TodaySchedule = ({ onCountChange }: TodayScheduleProps) => {
           onCountChange(filteredEvents.length);
         }
       } catch (error) {
-        console.error('Error fetching appointments:', error);
+        debugConsole.error('Error fetching appointments:', error);
       } finally {
         setLoading(false);
       }

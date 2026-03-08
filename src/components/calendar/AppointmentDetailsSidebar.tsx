@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from "react";
+import { debugConsole } from '@/utils/debugConsole';
 import { X, Edit, Trash2, MapPin, Clock, Users, Calendar as CalendarIcon, Save, Mail, UserPlus, Check, XIcon, ListTodo, CheckCircle2, FileText, CheckSquare } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
@@ -100,7 +101,7 @@ export function AppointmentDetailsSidebar({
       if (error) throw error;
       setGuests(guestsData || []);
     } catch (error) {
-      console.error('Error fetching guests:', error);
+      debugConsole.error('Error fetching guests:', error);
     } finally {
       setIsLoadingGuests(false);
     }
@@ -130,7 +131,7 @@ export function AppointmentDetailsSidebar({
         setFeedback(null);
       }
     } catch (error) {
-      console.error('Error fetching feedback:', error);
+      debugConsole.error('Error fetching feedback:', error);
     }
   };
 
@@ -163,7 +164,7 @@ export function AppointmentDetailsSidebar({
       onUpdate();
       fetchGuests();
     } catch (error) {
-      console.error('Error sending invitations:', error);
+      debugConsole.error('Error sending invitations:', error);
       toast({
         title: "Fehler",
         description: `Die Einladungen konnten nicht versendet werden: ${error.message}`,
@@ -256,7 +257,7 @@ export function AppointmentDetailsSidebar({
           .eq('appointment_id', appointment.id);
 
         if (deleteError) {
-          console.error('Error deleting existing guests:', deleteError);
+          debugConsole.error('Error deleting existing guests:', deleteError);
         }
 
         // Insert updated guests with tokens
@@ -274,7 +275,7 @@ export function AppointmentDetailsSidebar({
           .insert(guestEntries);
 
         if (guestsError) {
-          console.error('Error saving guests:', guestsError);
+          debugConsole.error('Error saving guests:', guestsError);
         } else {
           // Automatically send invitations to all guests
           try {
@@ -286,7 +287,7 @@ export function AppointmentDetailsSidebar({
             });
 
             if (invitationError) {
-              console.error('Error sending invitations:', invitationError);
+              debugConsole.error('Error sending invitations:', invitationError);
               toast({
                 title: "Warnung",
                 description: "Gäste wurden gespeichert, aber Einladungen konnten nicht versendet werden.",
@@ -299,7 +300,7 @@ export function AppointmentDetailsSidebar({
               });
             }
           } catch (error) {
-            console.error('Error sending invitations:', error);
+            debugConsole.error('Error sending invitations:', error);
             toast({
               title: "Warnung",
               description: "Gäste wurden gespeichert, aber Einladungen konnten nicht versendet werden.",
@@ -317,7 +318,7 @@ export function AppointmentDetailsSidebar({
       setIsEditing(false);
       onUpdate();
     } catch (error) {
-      console.error('Error updating appointment:', error);
+      debugConsole.error('Error updating appointment:', error);
       toast({
         title: "Fehler",
         description: "Der Termin konnte nicht aktualisiert werden.",
@@ -358,7 +359,7 @@ export function AppointmentDetailsSidebar({
       onUpdate();
       onClose();
     } catch (error) {
-      console.error('Error deleting appointment:', error);
+      debugConsole.error('Error deleting appointment:', error);
       toast({
         title: "Fehler",
         description: "Der Termin konnte nicht gelöscht werden.",

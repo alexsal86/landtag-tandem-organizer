@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { debugConsole } from '@/utils/debugConsole';
 import { Button } from '@/components/ui/button';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -67,7 +68,7 @@ export const PartyDistrictMappingManager = () => {
 
     if (error) {
       toast.error('Fehler beim Zuordnen des Wahlkreises');
-      console.error(error);
+      debugConsole.error(error);
     } else {
       toast.success('Wahlkreis erfolgreich zugeordnet');
       await fetchData();
@@ -90,7 +91,7 @@ export const PartyDistrictMappingManager = () => {
 
     if (error) {
       toast.error('Fehler beim Entfernen der Zuordnung');
-      console.error(error);
+      debugConsole.error(error);
     } else {
       toast.success('Zuordnung erfolgreich entfernt');
       await fetchData();

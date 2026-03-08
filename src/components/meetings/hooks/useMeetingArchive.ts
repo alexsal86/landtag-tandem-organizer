@@ -1,4 +1,5 @@
 import { supabase } from "@/integrations/supabase/client";
+import { debugConsole } from '@/utils/debugConsole';
 import { format } from "date-fns";
 import { de } from "date-fns/locale";
 import type { AgendaItem, Meeting, Profile } from "@/components/meetings/types";
@@ -67,10 +68,10 @@ export function useMeetingArchive(deps: ArchiveDeps) {
           original_meeting_title: sourceMeeting.title,
           carryover_notes: `Übertragen von: ${sourceMeeting.title} (${sourceMeeting.meeting_date})`
         });
-        if (error) console.error('Error transferring item:', error);
+        if (error) debugConsole.error('Error transferring item:', error);
         else existingSet.add(dedupeKey);
       } catch (error) {
-        console.error('Error transferring agenda item:', item.title, error);
+        debugConsole.error('Error transferring agenda item:', item.title, error);
       }
     }
   };
@@ -86,9 +87,9 @@ export function useMeetingArchive(deps: ArchiveDeps) {
           original_meeting_date: typeof sourceMeeting.meeting_date === 'string' ? sourceMeeting.meeting_date : sourceMeeting.meeting_date?.toISOString().split('T')[0],
           original_meeting_title: sourceMeeting.title
         });
-        if (error) console.error('Error storing carryover item:', error);
+        if (error) debugConsole.error('Error storing carryover item:', error);
       } catch (error) {
-        console.error('Error storing carryover item:', item.title, error);
+        debugConsole.error('Error storing carryover item:', item.title, error);
       }
     }
   };
@@ -110,7 +111,7 @@ export function useMeetingArchive(deps: ArchiveDeps) {
       }
       await loadCarryoverBufferItems();
     } catch (error) {
-      console.error('Error processing carryover items:', error);
+      debugConsole.error('Error processing carryover items:', error);
       toast({ title: "Fehler", description: "Fehler beim Übertragen der Agenda-Punkte", variant: "destructive" });
     }
   };
@@ -158,7 +159,7 @@ export function useMeetingArchive(deps: ArchiveDeps) {
       await loadAgendaItems(meetingId);
       toast({ title: "Punkte übertragen", description: `${pendingItems.length} vorgemerkte Punkte wurden in die Agenda eingefügt.` });
     } catch (error) {
-      console.error('Error applying carryover items:', error);
+      debugConsole.error('Error applying carryover items:', error);
     }
   };
 
@@ -175,7 +176,7 @@ export function useMeetingArchive(deps: ArchiveDeps) {
       // Step 2: Process carryover items
       const carryoverItems = agendaItemsData?.filter(item => item.carry_over_to_next) || [];
       if (carryoverItems.length > 0) {
-        try { await processCarryoverItems(meeting, carryoverItems); } catch (e) { console.error('Carryover error (non-fatal):', e); }
+        try { await processCarryoverItems(meeting, carryoverItems); } catch (e) { debugConsole.error('Carryover error (non-fatal):', e); }
       }
 
       // Step 3a: Linked task results → child tasks
@@ -194,7 +195,7 @@ export function useMeetingArchive(deps: ArchiveDeps) {
               due_date: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),
             });
           }
-        } catch (e) { console.error('Error creating child task for linked item (non-fatal):', e); }
+        } catch (e) { debugConsole.error('Error creating child task for linked item (non-fatal):', e); }
       }
 
       // Step 3b: Create tasks for assigned items without linked task
@@ -230,7 +231,7 @@ export function useMeetingArchive(deps: ArchiveDeps) {
             assigned_to: assignedUserId, tenant_id: currentTenant?.id || '',
             due_date: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString()
           });
-        } catch (e) { console.error('Error creating task for assigned item (non-fatal):', e); }
+        } catch (e) { debugConsole.error('Error creating task for assigned item (non-fatal):', e); }
       }
 
       // Step 3c: Birthday follow-up tasks
@@ -268,7 +269,7 @@ export function useMeetingArchive(deps: ArchiveDeps) {
           if (tasksToInsert.length > 0) {
             await supabase.from('tasks').insert(tasksToInsert);
           }
-        } catch (e) { console.error('Error processing birthday tasks (non-fatal):', e); }
+        } catch (e) { debugConsole.error('Error processing birthday tasks (non-fatal):', e); }
       }
 
       // Step 4: Follow-up task with subtasks
@@ -285,7 +286,7 @@ export function useMeetingArchive(deps: ArchiveDeps) {
         }).select().single();
         if (taskError) throw taskError;
         followUpTask = createdTask;
-      } catch (e) { console.error('Error creating follow-up task (non-fatal):', e); }
+      } catch (e) { debugConsole.error('Error creating follow-up task (non-fatal):', e); }
 
       // Step 5: Child tasks for items with results but no assignment
       if (followUpTask && agendaItemsData) {
@@ -306,7 +307,7 @@ export function useMeetingArchive(deps: ArchiveDeps) {
           }
         }
         if (childTasksToCreate.length > 0) {
-          try { await supabase.from('tasks').insert(childTasksToCreate); } catch (e) { console.error('Error creating child tasks (non-fatal):', e); }
+          try { await supabase.from('tasks').insert(childTasksToCreate); } catch (e) { debugConsole.error('Error creating child tasks (non-fatal):', e); }
         }
       }
 
@@ -317,7 +318,7 @@ export function useMeetingArchive(deps: ArchiveDeps) {
             await supabase.from('quick_notes').update({ meeting_result: note.meeting_result }).eq('id', note.id);
           }
         }
-      } catch (e) { console.error('Error processing quick note results (non-fatal):', e); }
+      } catch (e) { debugConsole.error('Error processing quick note results (non-fatal):', e); }
 
       // Step 5c: Process case item results
       try {
@@ -346,7 +347,7 @@ export function useMeetingArchive(deps: ArchiveDeps) {
             }
           }
         }
-      } catch (e) { console.error('Error processing case item results (non-fatal):', e); }
+      } catch (e) { debugConsole.error('Error processing case item results (non-fatal):', e); }
 
       // Step 5d: Starred appointments → tasks
       try {
@@ -408,7 +409,7 @@ export function useMeetingArchive(deps: ArchiveDeps) {
             }
           }
         }
-      } catch (e) { console.error('Error creating starred appointments tasks (non-fatal):', e); }
+      } catch (e) { debugConsole.error('Error creating starred appointments tasks (non-fatal):', e); }
 
       // Step 5e: Clear completed carryover buffer
       await clearCompletedCarryoverBuffer(meeting);
@@ -433,7 +434,7 @@ export function useMeetingArchive(deps: ArchiveDeps) {
               priority_param: 'medium',
               data_param: JSON.stringify({ meeting_id: meeting.id, meeting_title: meeting.title, meeting_date: meeting.meeting_date }),
             });
-          } catch (e) { console.error(`Notification to ${recipientId} failed (non-fatal):`, e); }
+          } catch (e) { debugConsole.error(`Notification to ${recipientId} failed (non-fatal):`, e); }
         }
       } catch (e) { console.error('Error sending archive notifications (non-fatal):', e); }
 

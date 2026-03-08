@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { debugConsole } from '@/utils/debugConsole';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Undo2, Redo2, RotateCcw } from 'lucide-react';
@@ -98,7 +99,7 @@ export function UndoRedoSystem() {
   const applyLayout = (layout: DashboardLayout) => {
     // This would typically call a function from the dashboard hook
     // For now, just log the action
-    console.log('Applying layout:', layout);
+    debugConsole.log('Applying layout:', layout);
   };
 
   const handleReset = () => {

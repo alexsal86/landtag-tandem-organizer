@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo } from "react";
+import { debugConsole } from '@/utils/debugConsole';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -82,7 +83,7 @@ export const DecisionEditDialog = ({ decisionId, isOpen, onClose, onUpdated }: D
       if (error) throw error;
       setProfiles(data || []);
     } catch (error) {
-      console.error('Error loading profiles:', error);
+      debugConsole.error('Error loading profiles:', error);
     }
   };
 
@@ -114,7 +115,7 @@ export const DecisionEditDialog = ({ decisionId, isOpen, onClose, onUpdated }: D
 
       setSelectedUsers(participants.map(p => p.user_id));
     } catch (error) {
-      console.error('Error loading decision data:', error);
+      debugConsole.error('Error loading decision data:', error);
       toast({
         title: "Fehler",
         description: "Entscheidungsdaten konnten nicht geladen werden.",
@@ -255,7 +256,7 @@ export const DecisionEditDialog = ({ decisionId, isOpen, onClose, onUpdated }: D
       onUpdated();
       onClose();
     } catch (error) {
-      console.error('Error updating decision:', error);
+      debugConsole.error('Error updating decision:', error);
       toast({
         title: "Fehler",
         description: "Entscheidung konnte nicht aktualisiert werden.",

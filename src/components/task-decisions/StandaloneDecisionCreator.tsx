@@ -1,4 +1,5 @@
 import { useState, useMemo, useEffect, useCallback } from "react";
+import { debugConsole } from '@/utils/debugConsole';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -159,7 +160,7 @@ export const StandaloneDecisionCreator = ({
             if (oldStored) defaultIds = JSON.parse(oldStored);
           }
         } catch (e) {
-          console.error('Error loading default participants:', e);
+          debugConsole.error('Error loading default participants:', e);
         }
 
         if (defaultSettings) {
@@ -194,7 +195,7 @@ export const StandaloneDecisionCreator = ({
       setProfilesLoaded(true);
     } catch (error) {
       setUploadStatus(null);
-      console.error('Error loading profiles:', error);
+      debugConsole.error('Error loading profiles:', error);
       setProfilesLoaded(true);
     }
   }, []);
@@ -226,12 +227,12 @@ export const StandaloneDecisionCreator = ({
       // Get current user first and validate
       const { data: userData, error: userError } = await supabase.auth.getUser();
       if (userError) {
-        console.error('Auth error:', userError);
+        debugConsole.error('Auth error:', userError);
         throw new Error(`Authentication error: ${userError.message}`);
       }
       
       if (!userData.user) {
-        console.error('No user found');
+        debugConsole.error('No user found');
         throw new Error('User not authenticated');
       }
 
@@ -246,7 +247,7 @@ export const StandaloneDecisionCreator = ({
         .single();
 
       if (tenantError || !tenantData) {
-        console.error('Tenant lookup error:', tenantError);
+        debugConsole.error('Tenant lookup error:', tenantError);
         throw new Error('Unable to determine user tenant');
       }
 
@@ -290,7 +291,7 @@ export const StandaloneDecisionCreator = ({
         .single();
 
       if (decisionError) {
-        console.error('Decision creation error:', decisionError);
+        debugConsole.error('Decision creation error:', decisionError);
         throw decisionError;
       }
 
@@ -334,7 +335,7 @@ export const StandaloneDecisionCreator = ({
           .insert(participants);
 
         if (participantsError) {
-          console.error('Participants creation error:', participantsError);
+          debugConsole.error('Participants creation error:', participantsError);
           throw participantsError;
         }
 
@@ -356,7 +357,7 @@ export const StandaloneDecisionCreator = ({
         });
 
         if (notificationError) {
-          console.error('Error creating notification for user:', userId, notificationError);
+          debugConsole.error('Error creating notification for user:', userId, notificationError);
         }
       }
 
@@ -379,7 +380,7 @@ export const StandaloneDecisionCreator = ({
           });
 
           if (matrixError) {
-            console.error('Error sending Matrix decisions:', matrixError);
+            debugConsole.error('Error sending Matrix decisions:', matrixError);
             toast({
               title: "Matrix-Fehler",
               description: `Matrix-Nachrichten konnten nicht versendet werden: ${matrixError.message}`,
@@ -403,7 +404,7 @@ export const StandaloneDecisionCreator = ({
             }
           }
         } catch (matrixError: any) {
-          console.error('Error sending Matrix decisions:', matrixError);
+          debugConsole.error('Error sending Matrix decisions:', matrixError);
           toast({
             title: "Matrix-Fehler",
             description: `Unerwarteter Fehler beim Matrix-Versand: ${matrixError.message}`,
@@ -432,7 +433,7 @@ export const StandaloneDecisionCreator = ({
           });
 
           if (emailError) {
-            console.error('Error sending decision emails:', emailError);
+            debugConsole.error('Error sending decision emails:', emailError);
             toast({
               title: "E-Mail-Fehler",
               description: `E-Mails konnten nicht versendet werden: ${emailError.message}`,

@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { debugConsole } from '@/utils/debugConsole';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -195,7 +196,7 @@ export function WidgetPalette({ onAddWidget, onClose, suggestions }: WidgetPalet
   });
 
   const handleAddWidget = (type: DashboardWidget['type']) => {
-    console.log('🔧 WidgetPalette: Adding widget of type:', type);
+    debugConsole.log('🔧 WidgetPalette: Adding widget of type:', type);
     onAddWidget(type);
     
     // Update recent widgets

@@ -1,4 +1,5 @@
 import React, { useEffect, useRef, useState } from "react";
+import { debugConsole } from '@/utils/debugConsole';
 import { CalendarEvent } from "./types";
 import { formatEventDisplay, isMultiDayEvent, getEventDays } from "@/lib/timeUtils";
 import { FileText, Users } from "lucide-react";
@@ -87,7 +88,7 @@ export function DayView({ date, events, onAppointmentClick, onPreparationClick }
         });
         setGuestCounts(guestCountsTemp);
       } catch (error) {
-        console.error('Error fetching counts:', error);
+        debugConsole.error('Error fetching counts:', error);
       }
     };
 
@@ -382,7 +383,7 @@ export function DayView({ date, events, onAppointmentClick, onPreparationClick }
                 const height = event.durationInMinutes;
                 const isPast = isPastEvent(event);
                 
-                console.log(`Rendering event: ${event.title}, Position: ${topPosition}px, Column: ${column}/${totalColumns-1}, Width: ${widthPercentage}%`);
+                debugConsole.log(`Rendering event: ${event.title}, Position: ${topPosition}px, Column: ${column}/${totalColumns-1}, Width: ${widthPercentage}%`);
                 
                 return (
                   <div

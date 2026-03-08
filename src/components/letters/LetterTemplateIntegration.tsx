@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { debugConsole } from '@/utils/debugConsole';
 import { FileText, Plus, Edit, Trash2, Settings, Image as ImageIcon, Type } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -85,7 +86,7 @@ export const LetterTemplateIntegration: React.FC<LetterTemplateIntegrationProps>
       })) as LetterTemplate[];
       setTemplates(typedTemplates);
     } catch (error) {
-      console.error('Error fetching templates:', error);
+      debugConsole.error('Error fetching templates:', error);
       toast({
         title: "Fehler",
         description: "Vorlagen konnten nicht geladen werden.",
@@ -155,7 +156,7 @@ export const LetterTemplateIntegration: React.FC<LetterTemplateIntegrationProps>
       setShowHeaderEditor(false);
       fetchTemplates();
     } catch (error) {
-      console.error('Error saving header:', error);
+      debugConsole.error('Error saving header:', error);
       toast({
         title: "Fehler",
         description: "Header konnte nicht gespeichert werden.",
@@ -183,7 +184,7 @@ export const LetterTemplateIntegration: React.FC<LetterTemplateIntegrationProps>
       setShowFooterEditor(false);
       fetchTemplates();
     } catch (error) {
-      console.error('Error saving footer:', error);
+      debugConsole.error('Error saving footer:', error);
       toast({
         title: "Fehler",
         description: "Footer konnte nicht gespeichert werden.",
@@ -250,7 +251,7 @@ export const LetterTemplateIntegration: React.FC<LetterTemplateIntegrationProps>
       setIsDialogOpen(false);
       fetchTemplates();
     } catch (error) {
-      console.error('Error saving template:', error);
+      debugConsole.error('Error saving template:', error);
       toast({
         title: "Fehler",
         description: "Vorlage konnte nicht gespeichert werden.",
@@ -277,7 +278,7 @@ export const LetterTemplateIntegration: React.FC<LetterTemplateIntegrationProps>
 
       fetchTemplates();
     } catch (error) {
-      console.error('Error deleting template:', error);
+      debugConsole.error('Error deleting template:', error);
       toast({
         title: "Fehler",
         description: "Vorlage konnte nicht gelöscht werden.",

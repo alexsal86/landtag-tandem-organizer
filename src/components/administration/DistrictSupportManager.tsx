@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { debugConsole } from '@/utils/debugConsole';
 import { useElectionDistricts } from '@/hooks/useElectionDistricts';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
@@ -108,7 +109,7 @@ export const DistrictSupportManager = () => {
       setNotes('');
     },
     onError: (error) => {
-      console.error('Error adding support assignment:', error);
+      debugConsole.error('Error adding support assignment:', error);
       toast({
         title: "Fehler",
         description: "Die Zuordnung konnte nicht erstellt werden.",
@@ -135,7 +136,7 @@ export const DistrictSupportManager = () => {
       });
     },
     onError: (error) => {
-      console.error('Error removing support assignment:', error);
+      debugConsole.error('Error removing support assignment:', error);
       toast({
         title: "Fehler",
         description: "Die Zuordnung konnte nicht entfernt werden.",

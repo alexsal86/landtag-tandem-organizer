@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { debugConsole } from '@/utils/debugConsole';
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -122,7 +123,7 @@ export const TaskDecisionStatus = ({ taskId, createdBy }: TaskDecisionStatusProp
 
       setDecisions(formattedData);
     } catch (error) {
-      console.error('Error loading decisions:', error);
+      debugConsole.error('Error loading decisions:', error);
     }
   };
 
@@ -147,7 +148,7 @@ export const TaskDecisionStatus = ({ taskId, createdBy }: TaskDecisionStatusProp
 
       loadDecisions();
     } catch (error) {
-      console.error('Error archiving decision:', error);
+      debugConsole.error('Error archiving decision:', error);
       toast({
         title: "Fehler",
         description: "Entscheidung konnte nicht archiviert werden.",

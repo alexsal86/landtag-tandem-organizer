@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
+import { debugConsole } from '@/utils/debugConsole';
 import { icons, Loader2, Plus, RotateCcw, Save, Trash2 } from 'lucide-react';
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -54,7 +55,7 @@ export const DashboardHintSettings = () => {
         const parsedDays = parseSpecialDaysSetting(data?.setting_value);
         setEntries(parsedDays || DEFAULT_SPECIAL_DAYS);
       } catch (error) {
-        console.error('Error loading dashboard hint settings:', error);
+        debugConsole.error('Error loading dashboard hint settings:', error);
         toast({
           title: 'Fehler',
           description: 'Dashboard-Hinweise konnten nicht geladen werden.',
@@ -165,7 +166,7 @@ export const DashboardHintSettings = () => {
 
       toast({ title: 'Gespeichert', description: 'Dashboard-Hinweise wurden aktualisiert.' });
     } catch (error) {
-      console.error('Error saving dashboard hint settings:', error);
+      debugConsole.error('Error saving dashboard hint settings:', error);
       toast({
         title: 'Fehler',
         description: 'Dashboard-Hinweise konnten nicht gespeichert werden.',

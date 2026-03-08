@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { debugConsole } from '@/utils/debugConsole';
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { useTenant } from "@/hooks/useTenant";
@@ -63,7 +64,7 @@ export const UserColorManager = () => {
       if (error) throw error;
       setUsers(data || []);
     } catch (error) {
-      console.error('Error loading users:', error);
+      debugConsole.error('Error loading users:', error);
       toast({
         title: "Fehler beim Laden",
         description: "Benutzer konnten nicht geladen werden.",
@@ -97,7 +98,7 @@ export const UserColorManager = () => {
         description: "Die Benutzerfarbe wurde erfolgreich gespeichert.",
       });
     } catch (error) {
-      console.error('Error updating user color:', error);
+      debugConsole.error('Error updating user color:', error);
       toast({
         title: "Fehler",
         description: "Farbe konnte nicht aktualisiert werden.",
@@ -130,7 +131,7 @@ export const UserColorManager = () => {
         description: `${users.length} Benutzern wurden automatisch Farben zugewiesen.`,
       });
     } catch (error) {
-      console.error('Error auto-assigning colors:', error);
+      debugConsole.error('Error auto-assigning colors:', error);
       toast({
         title: "Fehler",
         description: "Automatische Farbzuweisung fehlgeschlagen.",
@@ -158,7 +159,7 @@ export const UserColorManager = () => {
         description: "Alle Benutzerfarben wurden entfernt.",
       });
     } catch (error) {
-      console.error('Error resetting colors:', error);
+      debugConsole.error('Error resetting colors:', error);
       toast({
         title: "Fehler",
         description: "Farben konnten nicht zurückgesetzt werden.",

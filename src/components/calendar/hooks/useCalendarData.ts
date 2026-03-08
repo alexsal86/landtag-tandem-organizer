@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { debugConsole } from '@/utils/debugConsole';
 import { supabase } from "@/integrations/supabase/client";
 import { useTenant } from "@/hooks/useTenant";
 import { rrulestr } from "rrule";
@@ -64,14 +65,14 @@ export function useCalendarData(currentDate: Date, view: string) {
       ]);
 
       if (e1 || e2) {
-        console.error("Error fetching appointments:", e1 || e2);
+        debugConsole.error("Error fetching appointments:", e1 || e2);
         return;
       }
 
       const appointmentsData = [...(regular || []), ...(recurring || [])];
       await processAppointments(appointmentsData, startDate, endDate);
     } catch (error) {
-      console.error("Error fetching appointments:", error);
+      debugConsole.error("Error fetching appointments:", error);
     } finally {
       setLoading(false);
     }
@@ -245,7 +246,7 @@ export function useCalendarData(currentDate: Date, view: string) {
 
       setAppointments(formattedEvents);
     } catch (error) {
-      console.error("Error processing appointments:", error);
+      debugConsole.error("Error processing appointments:", error);
       setAppointments([]);
     }
   };

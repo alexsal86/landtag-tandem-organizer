@@ -1,4 +1,5 @@
 import React, { useEffect, useRef, useState } from "react";
+import { debugConsole } from '@/utils/debugConsole';
 import { CalendarEvent } from "./types";
 import { formatEventDisplay, isMultiDayEvent, getEventDays } from "@/lib/timeUtils";
 import { FileText, Users } from "lucide-react";
@@ -69,7 +70,7 @@ export function WeekView({ weekStart, events, onAppointmentClick, onPreparationC
         });
         setGuestCounts(guestCountsTemp);
       } catch (error) {
-        console.error('Error fetching counts:', error);
+        debugConsole.error('Error fetching counts:', error);
       }
     };
 

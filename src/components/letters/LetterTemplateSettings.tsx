@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { debugConsole } from '@/utils/debugConsole';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -151,7 +152,7 @@ export const LetterTemplateSettings: React.FC<LetterTemplateSettingsProps> = ({ 
         }));
       }
     } catch (error) {
-      console.error('Error fetching settings:', error);
+      debugConsole.error('Error fetching settings:', error);
     } finally {
       setLoading(false);
     }
@@ -189,7 +190,7 @@ export const LetterTemplateSettings: React.FC<LetterTemplateSettingsProps> = ({ 
 
       toast({ title: 'Einstellungen gespeichert' });
     } catch (error) {
-      console.error('Error saving settings:', error);
+      debugConsole.error('Error saving settings:', error);
       toast({ title: 'Fehler', description: 'Einstellungen konnten nicht gespeichert werden.', variant: 'destructive' });
     } finally {
       setSaving(false);

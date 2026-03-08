@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { debugConsole } from '@/utils/debugConsole';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
@@ -192,7 +193,7 @@ export function ProtocolAnalytics({ protocolId, tenantId }: ProtocolAnalyticsPro
       });
 
     } catch (error) {
-      console.error('Error loading analytics:', error);
+      debugConsole.error('Error loading analytics:', error);
       toast.error('Fehler beim Laden der Statistiken');
     } finally {
       setLoading(false);

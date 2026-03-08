@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { debugConsole } from '@/utils/debugConsole';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { CheckSquare } from 'lucide-react';
@@ -64,7 +65,7 @@ export const TasksSummary = ({ onCountChange, onCompletedCountChange }: TasksSum
           }
         }
       } catch (error) {
-        console.error('Error fetching tasks count:', error);
+        debugConsole.error('Error fetching tasks count:', error);
       } finally {
         setLoading(false);
       }

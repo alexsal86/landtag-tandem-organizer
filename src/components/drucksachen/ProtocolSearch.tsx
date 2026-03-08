@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { debugConsole } from '@/utils/debugConsole';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
@@ -61,7 +62,7 @@ export function ProtocolSearch({ protocolId, onResultSelect }: ProtocolSearchPro
       setAvailableSpeakers(speakers.sort());
       setAvailableParties(parties.sort());
     } catch (error) {
-      console.error('Error loading filter options:', error);
+      debugConsole.error('Error loading filter options:', error);
     }
   };
 
@@ -153,7 +154,7 @@ export function ProtocolSearch({ protocolId, onResultSelect }: ProtocolSearchPro
         toast.success(`${searchResults.length} Ergebnisse gefunden`);
       }
     } catch (error) {
-      console.error('Error performing search:', error);
+      debugConsole.error('Error performing search:', error);
       toast.error('Fehler bei der Suche');
     } finally {
       setIsSearching(false);

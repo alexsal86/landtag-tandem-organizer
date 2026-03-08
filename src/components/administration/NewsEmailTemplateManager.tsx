@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { debugConsole } from '@/utils/debugConsole';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -66,7 +67,7 @@ export const NewsEmailTemplateManager: React.FC = () => {
         setTemplate(data);
       }
     } catch (error) {
-      console.error('Error loading template:', error);
+      debugConsole.error('Error loading template:', error);
       toast.error('Fehler beim Laden der Vorlage');
     } finally {
       setLoading(false);
@@ -124,7 +125,7 @@ export const NewsEmailTemplateManager: React.FC = () => {
 
       toast.success('Vorlage erfolgreich gespeichert');
     } catch (error) {
-      console.error('Error saving template:', error);
+      debugConsole.error('Error saving template:', error);
       toast.error('Fehler beim Speichern der Vorlage');
     } finally {
       setSaving(false);

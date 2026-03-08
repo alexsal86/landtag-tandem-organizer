@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { debugConsole } from '@/utils/debugConsole';
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
@@ -116,7 +117,7 @@ export function DecisionCardActivity({ participants = [], maxItems = 2, isCreato
       setReplyText("");
       setReplyingTo(null);
     } catch (e) {
-      console.error('Reply failed:', e);
+      debugConsole.error('Reply failed:', e);
     } finally {
       setIsSending(false);
     }
