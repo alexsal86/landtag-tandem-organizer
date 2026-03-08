@@ -62,7 +62,7 @@ export function ActiveSessionsCard() {
       if (error) throw error;
       setSessions((data || []) as UserSession[]);
     } catch (error) {
-      console.error('Error loading sessions:', error);
+      debugConsole.error('Error loading sessions:', error);
     } finally {
       setLoading(false);
     }
