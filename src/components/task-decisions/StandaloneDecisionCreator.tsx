@@ -195,7 +195,7 @@ export const StandaloneDecisionCreator = ({
       setProfilesLoaded(true);
     } catch (error) {
       setUploadStatus(null);
-      console.error('Error loading profiles:', error);
+      debugConsole.error('Error loading profiles:', error);
       setProfilesLoaded(true);
     }
   }, []);
