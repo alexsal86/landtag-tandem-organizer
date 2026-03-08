@@ -359,19 +359,19 @@ export function DrucksachenUpload({ onUploadSuccess, onProtocolsRefresh }: Druck
       // Insert protocol record
       const { data: protocolData, error: dbError } = await supabase
         .from('parliament_protocols')
-        .insert({
+        .insert([{
           tenant_id: currentTenant.id,
           uploaded_by: user.id,
           original_filename: fileData.file.name,
-          file_path: `json-import/${fileData.file.name}`, // Virtual path for JSON imports
+          file_path: `json-import/${fileData.file.name}`,
           file_size: fileData.file.size,
-          processing_status: 'completed', // JSON is already processed
+          processing_status: 'completed',
           session_number: parsedProtocol.metadata.session_number,
           legislature_period: parsedProtocol.metadata.legislature_period,
           protocol_date: parsedProtocol.metadata.protocol_date,
           structured_data: parsedProtocol.structured_data,
-          raw_text: JSON.stringify(jsonData, null, 2).slice(0, 50000) // Store JSON as raw text
-        })
+          raw_text: JSON.stringify(jsonData, null, 2).slice(0, 50000)
+        }])
         .select()
         .single();
 

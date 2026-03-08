@@ -44,12 +44,12 @@ export function StakeholderToDistributionDialog({
       // Create distribution list
       const { data: distributionList, error: listError } = await supabase
         .from('distribution_lists')
-        .insert({
+        .insert([{
           user_id: user.id,
           name,
           description,
           topic,
-        })
+        }])
         .select()
         .single();
 

@@ -152,7 +152,7 @@ export function DistributionListForm({ distributionListId, onSuccess, onBack }: 
       } else {
         const { data: newList, error: createError } = await supabase
           .from('distribution_lists')
-          .insert({ user_id: user!.id, name, description, topic })
+          .insert([{ user_id: user!.id, name, description, topic }])
           .select()
           .single();
 

@@ -352,12 +352,12 @@ export function AgendaEditorPanel({
                                                 let itemId = item.id;
                                                 if (!itemId) {
                                                   const { data: savedItem, error: saveError } = await supabase
-                                                    .from('meeting_agenda_items').insert({
+                                                    .from('meeting_agenda_items').insert([{
                                                       meeting_id: selectedMeeting.id, title: item.title || 'Agenda-Punkt',
                                                       description: item.description || '', notes: item.notes || '',
                                                       parent_id: item.parent_id || null, order_index: item.order_index,
                                                       is_completed: false, is_recurring: false,
-                                                    }).select().single();
+                                                    }]).select().single();
                                                   if (saveError) throw saveError;
                                                   itemId = savedItem.id;
                                                   // Note: we can't easily update local state here without the index

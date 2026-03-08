@@ -72,9 +72,9 @@ export const DecisionEmailTemplates = () => {
 
       const { data, error } = await supabase
         .from('decision_email_templates')
-        .insert({
+        .insert([{
           tenant_id: userProfile.tenant_id,
-        })
+        }])
         .select()
         .single();
 

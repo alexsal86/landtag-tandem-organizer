@@ -267,7 +267,7 @@ export function useTaskDetailData(task: Task | null) {
   const addSubtask = async () => {
     if (!newSubtask.description.trim() || !task || !user) return;
     try {
-      const { error } = await supabase.from("tasks").insert({
+      const { error } = await supabase.from("tasks").insert([{
         parent_task_id: task.id,
         user_id: user.id,
         tenant_id: (task as any).tenant_id,
@@ -279,7 +279,7 @@ export function useTaskDetailData(task: Task | null) {
         priority: task.priority || "medium",
         category: task.category || "personal",
         progress: 0,
-      } as any);
+      }] as any);
       if (error) throw error;
       setNewSubtask({ description: "", assigned_to: "", due_date: "" });
       loadSubtasks(task.id);

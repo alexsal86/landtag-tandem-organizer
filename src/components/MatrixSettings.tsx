@@ -119,12 +119,12 @@ export const MatrixSettings: React.FC = () => {
     try {
       const { data, error } = await supabase
         .from("matrix_subscriptions")
-        .insert({
+        .insert([{
           user_id: user.id,
           room_id: newRoom.trim(),
           matrix_username: newUsername.trim(),
           is_active: true,
-        })
+        }])
         .select()
         .single();
 

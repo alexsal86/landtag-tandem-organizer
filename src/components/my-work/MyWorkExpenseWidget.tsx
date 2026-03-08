@@ -141,14 +141,14 @@ export function MyWorkExpenseWidget({ userRole }: Props) {
     if (!user || !currentTenant || !newAmount || !newCategoryId) return;
     setSubmitting(true);
     try {
-      const { error } = await supabase.from("expenses").insert({
+      const { error } = await supabase.from("expenses").insert([{
         user_id: user.id,
         tenant_id: currentTenant.id,
         amount: parseFloat(newAmount),
         category_id: newCategoryId,
         description: newDescription || null,
         expense_date: newDate,
-      });
+      }]);
       if (error) throw error;
       toast({ title: "Ausgabe erfasst" });
       setDialogOpen(false);

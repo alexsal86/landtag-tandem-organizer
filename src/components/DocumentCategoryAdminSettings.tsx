@@ -58,14 +58,14 @@ export function DocumentCategoryAdminSettings() {
     if (!label.trim()) return;
     
     try {
-      const { error } = await supabase.from('document_categories').insert({
+      const { error } = await supabase.from('document_categories').insert([{
         name: label.toLowerCase().replace(/\s+/g, '_'),
         label,
         color,
         icon: icon || null,
         order_index: Math.max(...categories.map(c => c.order_index), -1) + 1,
         tenant_id: currentTenant!.id,
-      });
+      }]);
       
       if (error) throw error;
       
