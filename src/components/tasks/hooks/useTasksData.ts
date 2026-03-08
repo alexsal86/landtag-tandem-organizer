@@ -345,7 +345,7 @@ export function useTasksData() {
         is_completed: todo.is_completed
       })));
     } catch (error) {
-      console.error('Error loading todos:', error);
+      debugConsole.error('Error loading todos:', error);
     }
   };
 
