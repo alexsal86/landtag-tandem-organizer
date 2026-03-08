@@ -56,7 +56,7 @@ interface AnnualTask {
 
 interface AnnualTaskCompletion {
   id: string;
-  annual_task_id: string;
+  annual_task_id: string | null;
   year: number;
   completed_at: string | null;
   completed_by: string | null;

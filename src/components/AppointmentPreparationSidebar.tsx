@@ -33,16 +33,16 @@ interface Preparation {
   status: string;
   preparation_data: any;
   checklist_items: any[];
-  notes: string;
+  notes: string | null;
   is_archived: boolean;
   created_at: string;
-  template_id: string;
+  template_id: string | null;
 }
 
 interface Template {
   id: string;
   name: string;
-  description: string;
+  description: string | null;
   template_data: any[];
   is_default?: boolean;
   is_active: boolean;
