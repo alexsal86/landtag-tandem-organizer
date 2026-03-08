@@ -758,6 +758,11 @@ export function AutomationRuleWizard({
     [form.module]
   );
 
+  const updateConditionGroup = (updated: ConditionGroup) => {
+    setForm((prev) => ({ ...prev, conditionGroup: updated }));
+  };
+
+  // Legacy flat helpers kept for backward compat
   const updateCondition = (index: number, patch: Partial<ConditionItem>) => {
     setForm((prev) => {
       const next = [...prev.conditions];
