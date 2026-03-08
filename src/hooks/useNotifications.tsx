@@ -236,7 +236,7 @@ export const useNotifications = () => {
       
       if (isNetworkError) {
         // Don't revert - operation likely succeeded, reload to confirm
-        console.log('Network error during markAllAsRead - reloading to verify state');
+        
         setTimeout(() => loadNotifications(), 1000);
       } else {
         // Revert optimistic update on real error
