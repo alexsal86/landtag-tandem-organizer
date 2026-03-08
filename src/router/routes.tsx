@@ -42,7 +42,7 @@ export const AppRoutes = () => (
     <Route path="/event-rsvp/:eventId" element={<EventRSVP />} />
     <Route path="/appointment-preparation" element={<AppointmentPreparationDetail />} />
     <Route path="/appointment-preparation/:id" element={<AppointmentPreparationDetail />} />
-    <Route path="/employee-meeting/:meetingId" element={<Index />} />
+    
     <Route path="/letters/:letterId" element={<LetterDetail />} />
     <Route path="/vorgaenge/:caseItemId" element={<CaseItemDetail />} />
     {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
