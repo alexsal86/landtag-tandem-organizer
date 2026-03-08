@@ -116,7 +116,7 @@ export function MeetingTemplateParticipantsEditor({
 
       setParticipantUsers(users);
     } catch (error) {
-      console.error('Error loading user details:', error);
+      debugConsole.error('Error loading user details:', error);
     }
   };
 

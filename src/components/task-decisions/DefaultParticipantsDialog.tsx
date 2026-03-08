@@ -100,7 +100,7 @@ export function DefaultParticipantsDialog({ open, onOpenChange, decisionTabSetti
       setProfiles(data || []);
       setLoaded(true);
     } catch (error) {
-      console.error('Error loading profiles:', error);
+      debugConsole.error('Error loading profiles:', error);
     }
   };
 

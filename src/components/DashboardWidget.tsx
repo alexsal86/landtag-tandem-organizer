@@ -9,6 +9,7 @@ import { DashboardWidget as WidgetType } from '@/hooks/useDashboardLayout';
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
+import { debugConsole } from "@/utils/debugConsole";
 import { MessageSystem } from './MessageSystem';
 import { BlackBoard } from './BlackBoard';
 import { CombinedMessagesWidget } from './CombinedMessagesWidget';

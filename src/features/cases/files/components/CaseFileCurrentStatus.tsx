@@ -62,7 +62,7 @@ export function CaseFileCurrentStatus({ caseFile, onUpdate, onUpdateProcessingSt
       if (error) throw error;
       setHistory((data || []) as unknown as StatusHistoryEntry[]);
     } catch (error) {
-      console.error('Error loading status history:', error);
+      debugConsole.error('Error loading status history:', error);
     }
   };
 
