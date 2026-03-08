@@ -1,4 +1,5 @@
 import { supabase } from '@/integrations/supabase/client';
+import { debugConsole } from '@/utils/debugConsole';
 
 /**
  * Creates a decision for letter approval when transitioning to pending_approval.
