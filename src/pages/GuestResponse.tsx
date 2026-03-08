@@ -93,7 +93,7 @@ function GuestResponse() {
         setNote(guestData.response_note || '');
       }
 
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Error fetching guest data:', error);
       setError('Fehler beim Laden der Einladung');
     } finally {
