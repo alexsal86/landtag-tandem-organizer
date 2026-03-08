@@ -549,7 +549,7 @@ export function useEventPlanningData() {
   // ── Contact operations ──
   const addContact = async () => {
     if (!selectedPlanning || !newContact.name.trim()) return;
-    const { data, error } = await supabase.from("event_planning_contacts").insert({ event_planning_id: selectedPlanning.id, name: newContact.name, email: newContact.email || null, phone: newContact.phone || null, role: "contact_person" }).select().single();
+    const { data, error } = await supabase.from("event_planning_contacts").insert([{ event_planning_id: selectedPlanning.id, name: newContact.name, email: newContact.email || null, phone: newContact.phone || null, role: "contact_person" }]).select().single();
     if (error) { toast({ title: "Fehler", description: "Ansprechperson konnte nicht hinzugefügt werden.", variant: "destructive" }); return; }
     setContacts([...contacts, data]);
     setNewContact({ name: "", email: "", phone: "" });
