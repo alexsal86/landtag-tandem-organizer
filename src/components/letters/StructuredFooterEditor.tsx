@@ -187,7 +187,7 @@ export const StructuredFooterEditor: React.FC<StructuredFooterEditorProps> = ({
 
   const generateLandtagAddress = (): string => {
     if (!senderInfo) return '';
-    const parts = [];
+    const parts: string[] = [];
     if (senderInfo.landtag_street && senderInfo.landtag_house_number) {
       parts.push(`${senderInfo.landtag_street} ${senderInfo.landtag_house_number}`);
     }
