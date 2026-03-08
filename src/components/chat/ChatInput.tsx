@@ -3,6 +3,7 @@ import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Send, Loader2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { debugConsole } from '@/utils/debugConsole';
 
 interface ChatInputProps {
   onSendMessage: (message: string) => Promise<void>;
