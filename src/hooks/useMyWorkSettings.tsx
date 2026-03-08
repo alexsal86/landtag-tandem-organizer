@@ -88,7 +88,7 @@ export function useMyWorkSettings(): MyWorkSettingsResult {
         }, { onConflict: 'user_id' });
       
       if (error) {
-        console.error('Error updating badge display mode:', error);
+        debugConsole.error('Error updating badge display mode:', error);
         return false;
       }
       
