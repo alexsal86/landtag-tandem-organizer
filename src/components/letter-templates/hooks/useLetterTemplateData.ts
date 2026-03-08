@@ -123,7 +123,7 @@ export function useLetterTemplateData() {
 
   const handleCreateTemplate = async () => {
     if (!currentTenant || !user || !formData.name.trim()) return;
-    const cleanedHeaderElements = stripBlobUrls(formData.header_elements);
+    const cleanedHeaderElements = stripBlobUrls(formData.header_elements) as unknown[];
     const cleanedFooterBlocks = stripBlobUrls(formData.footer_blocks);
     const cleanedLayoutSettings = stripBlobUrlsFromLayoutSettings(normalizeLayoutBlockContentImages(formData.layout_settings));
     try {
