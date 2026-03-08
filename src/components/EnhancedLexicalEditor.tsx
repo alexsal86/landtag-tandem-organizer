@@ -110,7 +110,7 @@ function ContentPlugin({ content, contentNodes }: { content: string; contentNode
         editor.setEditorState(editorState);
         return;
       } catch (error) {
-        console.warn('[ContentPlugin] Failed to parse contentNodes:', error);
+        debugConsole.warn('[ContentPlugin] Failed to parse contentNodes:', error);
       }
     }
 
