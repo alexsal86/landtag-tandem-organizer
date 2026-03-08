@@ -372,14 +372,14 @@ export function AdminTimeTrackingView() {
         }
 
         // Create absence
-        const { error } = await supabase.from("leave_requests").insert({
+        const { error } = await supabase.from("leave_requests").insert([{
           user_id: selectedUserId,
           type: newEntryType,
           start_date: newEntryDate,
           end_date: newEntryDate,
           status: "approved",
           reason: newEntryReason || `Admin-Eintrag: ${getTypeLabel(newEntryType)}`,
-        });
+        }]);
         
         if (error) throw error;
         toast.success(`${getTypeLabel(newEntryType)} erstellt`);
