@@ -139,7 +139,7 @@ export function useTaskOperations({
   const addComment = async (taskId: string, content: string) => {
     if (!content.trim() || !user) return;
     try {
-      const { error } = await supabase.from('task_comments').insert({ task_id: taskId, user_id: user.id, content: content.trim() });
+      const { error } = await supabase.from('task_comments').insert([{ task_id: taskId, user_id: user.id, content: content.trim() }]);
       if (error) throw error;
       await loadTaskComments();
       toast({ title: "Kommentar hinzugefügt" });
