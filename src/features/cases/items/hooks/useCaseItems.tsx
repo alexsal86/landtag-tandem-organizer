@@ -181,7 +181,7 @@ export const useCaseItems = () => {
       await fetchCaseItems();
       return (inserted ?? { id: "new" }) as unknown as CaseItem;
     } catch (error: unknown) {
-      console.error("Error creating case item:", error);
+      debugConsole.error("Error creating case item:", error);
       const detail = error instanceof Error ? error.message : String(error);
       toast({
         title: "Fehler beim Erstellen",
