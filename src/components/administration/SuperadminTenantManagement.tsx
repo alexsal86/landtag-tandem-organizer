@@ -189,7 +189,7 @@ export function SuperadminTenantManagement() {
           });
           
           if (initError) {
-            console.error('Error initializing tenant:', initError);
+            debugConsole.error('Error initializing tenant:', initError);
             // Don't fail the whole operation, just log
           }
         }
