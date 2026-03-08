@@ -455,7 +455,7 @@ export function CommentPlugin({ documentId }: { documentId?: string }) {
             const commentId = node.getAttribute('data-comment-id');
             if (commentId && node.classList.contains('comment-highlight')) {
               // Comment mark was removed from editor - delete from database
-              console.log('[CommentPlugin] Deleting orphaned comment:', commentId);
+              debugConsole.log('[CommentPlugin] Deleting orphaned comment:', commentId);
               supabase
                 .from('letter_comments')
                 .delete()
