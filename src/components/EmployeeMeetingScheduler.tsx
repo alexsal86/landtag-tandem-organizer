@@ -10,6 +10,7 @@ import { useTenant } from "@/hooks/useTenant";
 import { supabase } from "@/integrations/supabase/client";
 import { format, addMonths, startOfDay } from "date-fns";
 import { de } from "date-fns/locale";
+import { debugConsole } from "@/utils/debugConsole";
 
 interface EmployeeMeetingSchedulerProps {
   employeeId: string;
