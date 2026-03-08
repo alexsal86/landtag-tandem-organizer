@@ -131,9 +131,9 @@ export function SuperadminTenantManagement() {
       if (!data.success) throw new Error(data.error);
 
       setAllUsers(data.users || []);
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Error loading users:", error);
-      toast({ title: "Fehler", description: error.message || "Benutzer konnten nicht geladen werden", variant: "destructive" });
+      toast({ title: "Fehler", description: error instanceof Error ? error.message : "Benutzer konnten nicht geladen werden", variant: "destructive" });
     } finally {
       setUsersLoading(false);
     }
