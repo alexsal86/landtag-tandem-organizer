@@ -41,7 +41,7 @@ export const MatrixMorningSettings: React.FC = () => {
       try {
         const { data, error } = await supabase
           .from('matrix_morning_settings')
-          .select('*')
+          .select('id, enabled, send_time, include_greeting, include_weather, include_appointments')
           .eq('user_id', user.id)
           .maybeSingle();
 
