@@ -180,7 +180,7 @@ export function AppointmentPreparationDataTab({
         description: "Terminvorbereitung wurde erfolgreich gespeichert.",
       });
     } catch (error) {
-      console.error("Error saving preparation:", error);
+      debugConsole.error("Error saving preparation:", error);
       toast({
         title: "Fehler",
         description: "Fehler beim Speichern der Terminvorbereitung.",
