@@ -5,6 +5,7 @@ import { de } from "date-fns/locale";
 import { ArrowDown, ArrowUp, Briefcase, CalendarDays, CheckCircle2, Circle, Clock, FileText, FolderOpen, Gavel, GripVertical, Inbox, Link2, Mail, MessageSquare, Phone, Plus, Search, Timer, UserRound, Users, Vote } from "lucide-react";
 import { DragDropContext, Droppable, Draggable, type DropResult } from "@hello-pangea/dnd";
 import DOMPurify from "dompurify";
+import { RichTextDisplay } from "@/components/ui/RichTextDisplay";
 
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
@@ -1170,22 +1171,24 @@ export function MyWorkCasesWorkspace() {
                       <FolderOpen className="h-4 w-4" />
                       FallAkten
                     </CardTitle>
-                    <Button size="sm" onClick={() => handleCreateCaseFile()}>
-                      <Plus className="mr-1 h-4 w-4" />
-                      Neu
-                    </Button>
+                    <div className="flex items-center gap-2">
+                      <Button size="sm" onClick={() => handleCreateCaseFile()}>
+                        <Plus className="mr-1 h-4 w-4" />
+                        Neu
+                      </Button>
+                      <div className="relative">
+                        <Search className="pointer-events-none absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
+                        <Input
+                          value={fileFilterQuery}
+                          onChange={(e) => setFileFilterQuery(e.target.value)}
+                          placeholder="Filtern…"
+                          className="pl-8 h-8 w-36"
+                        />
+                      </div>
+                    </div>
                   </div>
                 </CardHeader>
                 <CardContent className="space-y-3">
-                  <div className="relative">
-                    <Search className="pointer-events-none absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
-                    <Input
-                      value={fileFilterQuery}
-                      onChange={(e) => setFileFilterQuery(e.target.value)}
-                      placeholder="FallAkten filtern…"
-                      className="pl-8"
-                    />
-                  </div>
                   <div className="space-y-1.5 pr-2">
                     <div className="space-y-1.5">
                       {filteredCaseFiles.length === 0 ? (
@@ -1213,7 +1216,7 @@ export function MyWorkCasesWorkspace() {
                                   >
                                     <div className="flex items-center gap-2">
                                       <p className="text-sm font-medium line-clamp-1 flex-1">{cf.title}</p>
-                                      {caseFileStatusBadge(cf.status)}
+                                      
                                     </div>
                                     <div className="mt-1.5 flex items-center justify-between text-xs text-muted-foreground">
                                       {cf.reference_number && <span>{cf.reference_number}</span>}
@@ -1228,7 +1231,9 @@ export function MyWorkCasesWorkspace() {
                                       <p className="mt-1 text-xs text-blue-600 font-medium">Vorgang hier ablegen zum Verknüpfen</p>
                                     )}
                                     {cf.current_status_note && !dropSnapshot.isDraggingOver && (
-                                      <p className="mt-1 text-xs text-muted-foreground truncate">{cf.current_status_note}</p>
+                                      <div className="mt-1 [&_p]:line-clamp-1">
+                                        <RichTextDisplay content={cf.current_status_note} className="text-xs" />
+                                      </div>
                                     )}
                                   </button>
                                   {dropProvided.placeholder}
