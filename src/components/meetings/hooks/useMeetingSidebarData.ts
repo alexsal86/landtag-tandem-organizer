@@ -73,7 +73,7 @@ export function useMeetingSidebarData(deps: UseMeetingSidebarDataDeps) {
       if (error) throw error;
       setMeetingLinkedCaseItems(data || []);
     } catch (error) {
-      console.error("Error loading meeting linked case items:", error);
+      debugConsole.error("Error loading meeting linked case items:", error);
       setMeetingLinkedCaseItems([]);
     }
   };
