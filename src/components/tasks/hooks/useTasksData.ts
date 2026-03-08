@@ -279,7 +279,7 @@ export function useTasksData() {
       setTaskSnoozes(taskSnoozeMap);
       setSubtaskSnoozes(subtaskSnoozeMap);
     } catch (error) {
-      console.error('Error loading task snoozes:', error);
+      debugConsole.error('Error loading task snoozes:', error);
     }
   };
 
