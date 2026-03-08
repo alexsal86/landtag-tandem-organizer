@@ -172,7 +172,7 @@ export const FocusModeUpcomingAppointments = forwardRef<
       });
       setStarredIds(ids);
     } catch (error) {
-      console.error('Error loading starred appointments:', error);
+      debugConsole.error('Error loading starred appointments:', error);
     }
   };
 
