@@ -12,7 +12,7 @@ import { AlertTriangle, Loader2, Play, Plus, Trash2, Zap } from "lucide-react";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { formatDistanceToNow } from "date-fns";
 import { de } from "date-fns/locale";
-import { AutomationRuleWizard, DEFAULT_FORM, type WizardForm } from "./AutomationRuleWizard";
+import { AutomationRuleWizard, DEFAULT_FORM, DEFAULT_ACTION, type WizardForm, type ActionItem, type ConditionItem } from "./AutomationRuleWizard";
 
 type RuleRow = {
   id: string;
