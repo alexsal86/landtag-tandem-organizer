@@ -394,7 +394,7 @@ export function DrucksachenUpload({ onUploadSuccess, onProtocolsRefresh }: Druck
         });
         
         if (analysisError) {
-          console.warn('Related data insertion error:', analysisError);
+          debugConsole.warn('Related data insertion error:', analysisError);
           toast.warning('JSON importiert, aber Fehler bei der Datenverteilung');
         }
       } catch (error) {
