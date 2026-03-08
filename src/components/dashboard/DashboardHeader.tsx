@@ -41,12 +41,12 @@ export const DashboardHeader = () => {
   const greeting = getGreeting(getCurrentTimeSlot());
 
   return (
-    <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-      <div>
+    <div className="grid grid-cols-1 lg:grid-cols-[3fr_2fr] gap-6 max-w-6xl items-end">
+      <div className="flex items-baseline gap-3 flex-wrap">
         <h1 className="text-2xl font-bold text-foreground capitalize">{dayDate}</h1>
         <p className="text-lg text-muted-foreground">{greeting}, {userName}!</p>
       </div>
-      <div className="flex items-center gap-4 text-sm text-muted-foreground">
+      <div className="flex items-center justify-end gap-4 text-sm text-muted-foreground">
         {weatherKarlsruhe && (
           <span className="flex items-center gap-1">
             <span className="text-lg">{getWeatherIcon(weatherKarlsruhe.icon)}</span>
