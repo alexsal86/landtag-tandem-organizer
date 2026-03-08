@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from './useAuth';
 import { useTenant } from './useTenant';
+import { debugConsole } from '@/utils/debugConsole';
 
 export interface NavigationCounts {
   [key: string]: number;
