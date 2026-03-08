@@ -462,7 +462,7 @@ export function CommentPlugin({ documentId }: { documentId?: string }) {
                 .eq('id', commentId)
                 .then(({ error }) => {
                   if (error) {
-                    console.error('[CommentPlugin] Error deleting orphaned comment:', error);
+                    debugConsole.error('[CommentPlugin] Error deleting orphaned comment:', error);
                   } else {
                     // Refresh comments list
                     loadComments();
