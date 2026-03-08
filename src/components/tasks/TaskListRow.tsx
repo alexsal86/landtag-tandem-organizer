@@ -157,7 +157,7 @@ export function TaskListRow({
   };
 
   return (
-    <div ref={highlightRef} className={className}>
+    <div ref={getHighlightRef ? getHighlightRef(task.id) : highlightRef} className={cn(className, isHighlighted?.(task.id) && "notification-highlight")}>
       <div
         className="flex items-center gap-2 px-3 py-2 hover:bg-muted/50 transition-colors border-b"
         style={{ paddingLeft: `${12 + depth * 20}px` }}
