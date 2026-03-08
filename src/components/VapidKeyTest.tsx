@@ -62,7 +62,7 @@ export const VapidKeyTest: React.FC = () => {
                             publicKey.length > 60 && // VAPID keys are typically 87+ characters
                             publicKey.startsWith('B'); // VAPID keys typically start with 'B'
 
-        console.log('🔑 Public key validation:', {
+        debugConsole.log('🔑 Public key validation:', {
           length: publicKey.length,
           startsWithB: publicKey.startsWith('B'),
           isValid: isValidFormat
