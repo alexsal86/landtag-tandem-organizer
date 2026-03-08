@@ -1246,7 +1246,7 @@ export function MyWorkCasesWorkspace() {
                     </div>
                     {hasMoreFiles && (
                       <Button type="button" variant="outline" size="sm" disabled={loadingMoreFiles} onClick={() => runAsync(loadMoreFiles)}>
-                        {loadingMoreFiles ? "Lade weitere FallAkten…" : "Weitere FallAkten laden"}
+                        {loadingMoreFiles ? "Lade weitere Fallakten…" : "Weitere Fallakten laden"}
                       </Button>
                     )}
                   </div>
