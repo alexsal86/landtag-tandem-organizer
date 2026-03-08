@@ -51,7 +51,7 @@ export const useDecisionTopics = (decisionId: string | undefined) => {
       setAssignedTopics(prev => [...prev, topicId]);
       return true;
     } catch (error) {
-      console.error('Error assigning topic:', error);
+      debugConsole.error('Error assigning topic:', error);
       toast({
         title: "Fehler",
         description: "Thema konnte nicht zugewiesen werden.",
