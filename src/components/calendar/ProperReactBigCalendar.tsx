@@ -129,7 +129,7 @@ const ProperReactBigCalendar: React.FC<ProperReactBigCalendarProps> = ({
 
   // Convert events to RBC format using the adapter
   const rbcEvents = useMemo(() => {
-    console.log('🔄 REACT BIG CALENDAR - Processing events:', { 
+    debugConsole.log('🔄 REACT BIG CALENDAR - Processing events:', { 
       eventsProvided: !!events, 
       eventsCount: events?.length || 0,
       eventsData: events?.slice(0, 2)
