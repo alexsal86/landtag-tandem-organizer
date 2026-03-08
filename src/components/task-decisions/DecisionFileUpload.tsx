@@ -15,7 +15,7 @@ interface UploadedFile {
   file_name: string;
   file_path: string;
   file_size: number;
-  file_type?: string;
+  file_type?: string | null;
   uploaded_by?: string;
   uploader_name?: string;
   created_at?: string;
