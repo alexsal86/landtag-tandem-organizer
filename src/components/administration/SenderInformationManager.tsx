@@ -149,8 +149,8 @@ export function SenderInformationManager() {
       if (error) throw error;
       toast({ title: "Standard-Absender gesetzt" });
       fetchSenderInfos();
-    } catch (error: any) {
-      toast({ title: "Fehler", description: error.message, variant: "destructive" });
+    } catch (error: unknown) {
+      toast({ title: "Fehler", description: error instanceof Error ? error.message : String(error), variant: "destructive" });
     }
   };
 

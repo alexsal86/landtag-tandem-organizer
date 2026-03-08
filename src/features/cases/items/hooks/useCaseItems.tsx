@@ -164,9 +164,9 @@ export const useCaseItems = () => {
       await fetchCaseItems();
       // Return a placeholder; the real item is now in caseItems state
       return { id: "new" } as unknown as CaseItem;
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Error creating case item:", error);
-      const detail = error?.message || error?.details || "Unbekannter Fehler";
+      const detail = error instanceof Error ? error.message : String(error);
       toast({
         title: "Fehler beim Erstellen",
         description: detail,

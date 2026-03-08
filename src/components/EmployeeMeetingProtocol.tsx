@@ -528,7 +528,7 @@ export function EmployeeMeetingProtocol({ meetingId, onBack }: EmployeeMeetingPr
       if (error) throw error;
       setActionItems(actionItems.filter(item => item.id !== itemId));
       toast({ title: "Gelöscht", description: "Action Item wurde entfernt" });
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Error deleting action item:", error);
       toast({ title: "Fehler", description: "Action Item konnte nicht gelöscht werden", variant: "destructive" });
     }
