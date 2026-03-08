@@ -681,11 +681,11 @@ export const useCaseFileDetails = (caseFileId: string | null) => {
     try {
       const { error } = await supabase
         .from('case_file_timeline')
-        .insert({
+        .insert([{
           ...entry,
           case_file_id: caseFileId,
           created_by: user.id,
-        });
+        }]);
 
       if (error) throw error;
       await fetchTimeline();
