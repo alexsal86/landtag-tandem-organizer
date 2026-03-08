@@ -300,7 +300,7 @@ export const TaskDecisionList = () => {
 
     setIsLoading(true);
     try {
-      console.log('Updating task_decision_responses with:', { responseId, responseText });
+      
       
       const { data, error } = await supabase
         .from('task_decision_responses')
