@@ -261,7 +261,7 @@ export function AnnualTasksView() {
         );
 
         if (error) {
-          console.error("Function execution error:", error);
+          debugConsole.error("Function execution error:", error);
           toast({ 
             title: "Fehler bei der Ausführung", 
             description: error.message,
