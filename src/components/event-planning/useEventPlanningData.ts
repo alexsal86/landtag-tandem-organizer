@@ -340,7 +340,7 @@ export function useEventPlanningData() {
       const { data: archivedData, error: archivedError } = await supabase.from("appointment_preparations").select("*").eq("is_archived", true).order("archived_at", { ascending: false });
       if (archivedError) debugConsole.error("Error fetching archived preparations:", archivedError);
       else setArchivedPreparations(archivedData || []);
-    } catch (error) { debugConsole.error("Error in fetchAppointmentPreparations:", error); }
+    } catch (error) { handleAppError(error, { context: 'fetchAppointmentPreparations' }); }
   };
 
   const handlePreparationClick = (preparation: AppointmentPreparation) => {
