@@ -117,7 +117,7 @@ export const normalizeLayoutBlockContentImages = (layoutSettings: LetterLayoutSe
 
 const DEFAULT_ATTACHMENT_PREVIEW_LINES = ['- Antrag_2026-02-15.pdf', '- Stellungnahme_Verkehrsausschuss.docx', '- Anlagenverzeichnis.xlsx'];
 
-export const createDefaultAttachmentElements = () => ([{
+export const createDefaultAttachmentElements = (): Record<string, unknown>[] => ([{
   id: `attachments-default-${Date.now()}`,
   type: 'text',
   x: 0,
@@ -130,6 +130,6 @@ export const createDefaultAttachmentElements = () => ([{
   fontWeight: 'bold',
   color: '#000000',
   textLineHeight: 1.2,
-}] as any[]);
+}]);
 
 export { DEFAULT_ATTACHMENT_PREVIEW_LINES };
