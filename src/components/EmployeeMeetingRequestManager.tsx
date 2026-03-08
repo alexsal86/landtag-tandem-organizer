@@ -214,7 +214,7 @@ export function EmployeeMeetingRequestManager({ onPendingCountChange }: MeetingR
       setDeclineReason("");
       setSelectedRequest(null);
       loadRequests();
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Error declining request:", error);
       toast({
         title: "Fehler",
