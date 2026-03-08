@@ -348,7 +348,7 @@ const LetterEditor: React.FC<LetterEditorProps> = ({ letter, isOpen, onClose, on
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end" className="w-[420px] p-3">
                 {letter?.id ? (
-                  <LetterAttachmentManager letterId={letter.id} attachments={attachments} onAttachmentUpdate={fetchAttachments} readonly={!canEdit} />
+                  <LetterAttachmentManager letterId={letter.id} attachments={attachments as any} onAttachmentUpdate={fetchAttachments} readonly={!canEdit} />
                 ) : (
                   <div className="p-4 text-center text-muted-foreground border border-dashed rounded-lg">
                     <FileText className="h-8 w-8 mx-auto mb-2 opacity-50" />
