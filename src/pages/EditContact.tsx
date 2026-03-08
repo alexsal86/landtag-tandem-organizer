@@ -439,7 +439,7 @@ export default function EditContact() {
                         <div>
                           <Label htmlFor="category">Kategorie</Label>
                           <Select
-                            value={contact.category}
+                            value={contact.category ?? undefined}
                             onValueChange={(value: any) =>
                               setContact({ ...contact, category: value })
                             }
