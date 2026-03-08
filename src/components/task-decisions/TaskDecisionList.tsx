@@ -153,7 +153,7 @@ export const TaskDecisionList = () => {
           const isParticipant = item.task_decision_participants.some(p => p.user_id === currentUserId);
           const isCreator = item.created_by === currentUserId;
           const shouldInclude = isAssigned || isParticipant || isCreator;
-          console.log('Task:', item.tasks?.title, 'assigned_to:', assignedTo, 'isAssigned:', isAssigned, 'isParticipant:', isParticipant, 'isCreator:', isCreator, 'shouldInclude:', shouldInclude);
+          
           return shouldInclude;
         })
         ?.map(item => {
