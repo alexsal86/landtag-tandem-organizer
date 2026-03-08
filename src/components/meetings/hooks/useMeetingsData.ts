@@ -372,8 +372,7 @@ export function useMeetingsData() {
         await loadAgendaDocuments(sortedItems.map(item => item.id!).filter(Boolean));
       }
     } catch (error) {
-      debugConsole.error('Error loading agenda items:', error);
-      toast({ title: "Fehler beim Laden der Agenda", description: "Die Agenda-Punkte konnten nicht geladen werden.", variant: "destructive" });
+      handleAppError(error, { context: 'loadAgendaItems', toast: { fn: toast, title: 'Fehler beim Laden der Agenda', description: 'Die Agenda-Punkte konnten nicht geladen werden.' } });
     }
   };
 
