@@ -253,9 +253,9 @@ export const CallLogWidget: React.FC<CallLogWidgetProps> = ({
             });
 
           if (appointmentError) {
-            console.error('Error creating follow-up appointment:', appointmentError);
+            debugConsole.error('Error creating follow-up appointment:', appointmentError);
           } else {
-            console.log('Follow-up appointment created successfully');
+            debugConsole.log('Follow-up appointment created successfully');
           }
         }
       }
