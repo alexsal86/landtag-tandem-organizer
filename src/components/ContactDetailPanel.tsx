@@ -191,7 +191,7 @@ export function ContactDetailPanel({ contactId, onClose, onContactUpdate }: Cont
         priority: data.priority as Contact["priority"],
         tags: data.tags || [],
         coordinates: data.coordinates as { lat: number; lng: number } | undefined,
-      });
+      } as Contact);
       let inheritedTags: string[] = [];
       if (data.contact_type === 'person' && data.organization_id) {
         const { data: orgData, error: orgError } = await supabase
