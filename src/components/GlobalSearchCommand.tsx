@@ -329,7 +329,7 @@ export function GlobalSearchCommand() {
       const { data } = await supabase
         .from('archived_tasks')
         .select('id, title, description, completed_at, category, priority')
-        .eq('user_id', user!.id)
+        .eq('user_id', user?.id ?? '')
         .or(`title.ilike.%${searchQuery}%,description.ilike.%${searchQuery}%,category.ilike.%${searchQuery}%,priority.ilike.%${searchQuery}%`)
         .order('archived_at', { ascending: false })
         .limit(10);
