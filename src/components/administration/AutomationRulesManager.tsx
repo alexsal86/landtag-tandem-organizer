@@ -12,7 +12,7 @@ import { AlertTriangle, Loader2, Play, Plus, Trash2, Zap } from "lucide-react";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { formatDistanceToNow } from "date-fns";
 import { de } from "date-fns/locale";
-import { AutomationRuleWizard, DEFAULT_FORM, type WizardForm } from "./AutomationRuleWizard";
+import { AutomationRuleWizard, DEFAULT_FORM, DEFAULT_ACTION, type WizardForm, type ActionItem, type ConditionItem } from "./AutomationRuleWizard";
 
 type RuleRow = {
   id: string;
@@ -119,8 +119,28 @@ export function AutomationRulesManager() {
   };
 
   const startEdit = (rule: RuleRow) => {
-    const condition = rule.conditions?.all?.[0];
-    const action = rule.actions?.[0];
+    const conditions: ConditionItem[] = (rule.conditions?.all || []).map((c) => ({
+      field: c.field || "status",
+      operator: c.operator || "equals",
+      value: c.value || "",
+    }));
+    if (conditions.length === 0) conditions.push({ field: "status", operator: "equals", value: "" });
+
+    const actions: ActionItem[] = (rule.actions || []).map((a) => ({
+      type: a.type || "create_notification",
+      targetUserId: (a.payload?.target_user_id as string) || "",
+      title: (a.payload?.title as string) || "",
+      message: (a.payload?.message as string) || "",
+      taskPriority: (a.payload?.priority as string) || "medium",
+      taskCategory: (a.payload?.category as string) || "personal",
+      taskDueDate: (a.payload?.due_date as string) || "",
+      taskAssignees: (a.payload?.assigned_to as string) || "",
+      table: (a.payload?.table as string) || "tasks",
+      recordId: (a.payload?.record_id as string) || "",
+      status: (a.payload?.status as string) || "",
+    }));
+    if (actions.length === 0) actions.push({ ...DEFAULT_ACTION });
+
     setEditingRuleId(rule.id);
     setForm({
       name: rule.name,
@@ -129,20 +149,8 @@ export function AutomationRulesManager() {
       triggerType: rule.trigger_type,
       triggerField: (rule.trigger_config?.field as string) || "status",
       triggerValue: (rule.trigger_config?.value as string) || "",
-      conditionField: condition?.field || "status",
-      conditionOperator: condition?.operator || "equals",
-      conditionValue: condition?.value || "",
-      actionType: action?.type || "create_notification",
-      actionTargetUserId: (action?.payload?.target_user_id as string) || "",
-      actionTitle: (action?.payload?.title as string) || "",
-      actionMessage: (action?.payload?.message as string) || "",
-      actionTaskPriority: (action?.payload?.priority as string) || "medium",
-      actionTaskCategory: (action?.payload?.category as string) || "personal",
-      actionTaskDueDate: (action?.payload?.due_date as string) || "",
-      actionTaskAssignees: (action?.payload?.assigned_to as string) || "",
-      actionTable: (action?.payload?.table as string) || "tasks",
-      actionRecordId: (action?.payload?.record_id as string) || "",
-      actionStatus: (action?.payload?.status as string) || "",
+      conditions,
+      actions,
       enabled: rule.enabled,
     });
     setWizardOpen(true);
@@ -189,25 +197,23 @@ export function AutomationRulesManager() {
       trigger_type: form.triggerType,
       trigger_config: { field: form.triggerField, value: form.triggerValue },
       conditions: {
-        all: [{ field: form.conditionField, operator: form.conditionOperator, value: form.conditionValue }],
+        all: form.conditions.map((c) => ({ field: c.field, operator: c.operator, value: c.value })),
       },
-      actions: [
-        {
-          type: form.actionType,
-          payload: {
-            target_user_id: form.actionTargetUserId,
-            title: form.actionTitle,
-            message: form.actionMessage,
-            priority: form.actionTaskPriority,
-            category: form.actionTaskCategory,
-            due_date: form.actionTaskDueDate,
-            assigned_to: form.actionTaskAssignees,
-            table: form.actionTable,
-            record_id: form.actionRecordId,
-            status: form.actionStatus,
-          },
+      actions: form.actions.map((a) => ({
+        type: a.type,
+        payload: {
+          target_user_id: a.targetUserId,
+          title: a.title,
+          message: a.message,
+          priority: a.taskPriority,
+          category: a.taskCategory,
+          due_date: a.taskDueDate,
+          assigned_to: a.taskAssignees,
+          table: a.table,
+          record_id: a.recordId,
+          status: a.status,
         },
-      ],
+      })),
       enabled: form.enabled,
     };
 
@@ -253,7 +259,7 @@ export function AutomationRulesManager() {
         idempotencyKey,
         sourcePayload: {
           [form.triggerField]: form.triggerValue || "triggered",
-          [form.conditionField]: form.conditionValue || "condition-match",
+          ...(form.conditions[0] ? { [form.conditions[0].field]: form.conditions[0].value || "condition-match" } : {}),
           rule_name: targetRule.name,
           module: targetRule.module,
         },
@@ -281,7 +287,7 @@ export function AutomationRulesManager() {
         idempotencyKey,
         sourcePayload: {
           [form.triggerField]: form.triggerValue || "triggered",
-          [form.conditionField]: form.conditionValue || "condition-match",
+          ...(form.conditions[0] ? { [form.conditions[0].field]: form.conditions[0].value || "condition-match" } : {}),
           rule_name: rule.name,
           module: rule.module,
         },

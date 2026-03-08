@@ -9,7 +9,7 @@ import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { cn } from "@/lib/utils";
-import { ArrowLeft, ArrowRight, Check, Clock, Filter, Loader2, Play, Save, Zap } from "lucide-react";
+import { ArrowLeft, ArrowRight, Check, Clock, Filter, Loader2, Play, Plus, Save, Trash2, Zap } from "lucide-react";
 
 const MODULE_OPTIONS = [
   { value: "tasks", label: "Aufgaben" },
@@ -77,16 +77,20 @@ export const RULE_TEMPLATES = [
     triggerType: "record_changed",
     triggerField: "status",
     triggerValue: "overdue",
-    conditionField: "priority",
-    conditionOperator: "equals",
-    conditionValue: "high",
-    actionType: "create_notification",
-    actionTargetUserId: "",
-    actionTitle: "Überfällige Aufgabe",
-    actionMessage: "Eine priorisierte Aufgabe ist überfällig.",
-    actionTable: "tasks",
-    actionRecordId: "",
-    actionStatus: "",
+    conditions: [{ field: "priority", operator: "equals", value: "high" }],
+    actions: [{
+      type: "create_notification",
+      targetUserId: "",
+      title: "Überfällige Aufgabe",
+      message: "Eine priorisierte Aufgabe ist überfällig.",
+      taskPriority: "medium",
+      taskCategory: "personal",
+      taskDueDate: "",
+      taskAssignees: "",
+      table: "tasks",
+      recordId: "",
+      status: "",
+    }],
   },
   {
     id: "knowledge-review",
@@ -96,16 +100,20 @@ export const RULE_TEMPLATES = [
     triggerType: "schedule",
     triggerField: "updated_at",
     triggerValue: "90_days",
-    conditionField: "status",
-    conditionOperator: "equals",
-    conditionValue: "published",
-    actionType: "update_record_status",
-    actionTargetUserId: "",
-    actionTitle: "",
-    actionMessage: "",
-    actionTable: "knowledge_documents",
-    actionRecordId: "",
-    actionStatus: "review",
+    conditions: [{ field: "status", operator: "equals", value: "published" }],
+    actions: [{
+      type: "update_record_status",
+      targetUserId: "",
+      title: "",
+      message: "",
+      taskPriority: "medium",
+      taskCategory: "personal",
+      taskDueDate: "",
+      taskAssignees: "",
+      table: "knowledge_documents",
+      recordId: "",
+      status: "review",
+    }],
   },
   {
     id: "meeting-reminder-48h",
@@ -115,16 +123,20 @@ export const RULE_TEMPLATES = [
     triggerType: "schedule",
     triggerField: "start_time",
     triggerValue: "48_hours_before",
-    conditionField: "has_preparation",
-    conditionOperator: "equals",
-    conditionValue: "false",
-    actionType: "create_notification",
-    actionTargetUserId: "",
-    actionTitle: "Meeting-Vorbereitung fehlt",
-    actionMessage: "Ihr Meeting findet in 48 Stunden statt, aber es wurde noch keine Vorbereitung erstellt.",
-    actionTable: "appointments",
-    actionRecordId: "",
-    actionStatus: "",
+    conditions: [{ field: "has_preparation", operator: "equals", value: "false" }],
+    actions: [{
+      type: "create_notification",
+      targetUserId: "",
+      title: "Meeting-Vorbereitung fehlt",
+      message: "Ihr Meeting findet in 48 Stunden statt, aber es wurde noch keine Vorbereitung erstellt.",
+      taskPriority: "medium",
+      taskCategory: "personal",
+      taskDueDate: "",
+      taskAssignees: "",
+      table: "appointments",
+      recordId: "",
+      status: "",
+    }],
   },
   {
     id: "decision-accepted-task",
@@ -134,16 +146,20 @@ export const RULE_TEMPLATES = [
     triggerType: "record_changed",
     triggerField: "status",
     triggerValue: "accepted",
-    conditionField: "assigned_to",
-    conditionOperator: "not_equals",
-    conditionValue: "",
-    actionType: "create_task",
-    actionTargetUserId: "",
-    actionTitle: "Umsetzung: Entscheidung umsetzen",
-    actionMessage: "Bitte die angenommene Entscheidung umsetzen.",
-    actionTable: "decisions",
-    actionRecordId: "",
-    actionStatus: "",
+    conditions: [{ field: "assigned_to", operator: "not_equals", value: "" }],
+    actions: [{
+      type: "create_task",
+      targetUserId: "",
+      title: "Umsetzung: Entscheidung umsetzen",
+      message: "Bitte die angenommene Entscheidung umsetzen.",
+      taskPriority: "medium",
+      taskCategory: "personal",
+      taskDueDate: "",
+      taskAssignees: "",
+      table: "decisions",
+      recordId: "",
+      status: "",
+    }],
   },
   {
     id: "casefile-critical-alert",
@@ -153,18 +169,62 @@ export const RULE_TEMPLATES = [
     triggerType: "record_changed",
     triggerField: "priority",
     triggerValue: "critical",
-    conditionField: "status",
-    conditionOperator: "not_equals",
-    conditionValue: "closed",
-    actionType: "create_notification",
-    actionTargetUserId: "",
-    actionTitle: "Kritischer Vorgang",
-    actionMessage: "Ein Vorgang wurde als kritisch eingestuft und erfordert sofortige Aufmerksamkeit.",
-    actionTable: "case_files",
-    actionRecordId: "",
-    actionStatus: "",
+    conditions: [{ field: "status", operator: "not_equals", value: "closed" }],
+    actions: [{
+      type: "create_notification",
+      targetUserId: "",
+      title: "Kritischer Vorgang",
+      message: "Ein Vorgang wurde als kritisch eingestuft und erfordert sofortige Aufmerksamkeit.",
+      taskPriority: "medium",
+      taskCategory: "personal",
+      taskDueDate: "",
+      taskAssignees: "",
+      table: "case_files",
+      recordId: "",
+      status: "",
+    }],
   },
 ] as const;
+
+export type ConditionItem = {
+  field: string;
+  operator: string;
+  value: string;
+};
+
+export type ActionItem = {
+  type: string;
+  targetUserId: string;
+  title: string;
+  message: string;
+  taskPriority: string;
+  taskCategory: string;
+  taskDueDate: string;
+  taskAssignees: string;
+  table: string;
+  recordId: string;
+  status: string;
+};
+
+export const DEFAULT_ACTION: ActionItem = {
+  type: "create_notification",
+  targetUserId: "",
+  title: "",
+  message: "",
+  taskPriority: "medium",
+  taskCategory: "personal",
+  taskDueDate: "",
+  taskAssignees: "",
+  table: "tasks",
+  recordId: "",
+  status: "",
+};
+
+export const DEFAULT_CONDITION: ConditionItem = {
+  field: "status",
+  operator: "equals",
+  value: "",
+};
 
 export type WizardForm = {
   name: string;
@@ -173,20 +233,8 @@ export type WizardForm = {
   triggerType: string;
   triggerField: string;
   triggerValue: string;
-  conditionField: string;
-  conditionOperator: string;
-  conditionValue: string;
-  actionType: string;
-  actionTargetUserId: string;
-  actionTitle: string;
-  actionMessage: string;
-  actionTaskPriority: string;
-  actionTaskCategory: string;
-  actionTaskDueDate: string;
-  actionTaskAssignees: string;
-  actionTable: string;
-  actionRecordId: string;
-  actionStatus: string;
+  conditions: ConditionItem[];
+  actions: ActionItem[];
   enabled: boolean;
 };
 
@@ -197,20 +245,8 @@ export const DEFAULT_FORM: WizardForm = {
   triggerType: "record_changed",
   triggerField: "status",
   triggerValue: "",
-  conditionField: "status",
-  conditionOperator: "equals",
-  conditionValue: "",
-  actionType: "create_notification",
-  actionTargetUserId: "",
-  actionTitle: "",
-  actionMessage: "",
-  actionTaskPriority: "medium",
-  actionTaskCategory: "personal",
-  actionTaskDueDate: "",
-  actionTaskAssignees: "",
-  actionTable: "tasks",
-  actionRecordId: "",
-  actionStatus: "",
+  conditions: [{ ...DEFAULT_CONDITION }],
+  actions: [{ ...DEFAULT_ACTION }],
   enabled: true,
 };
 
@@ -233,6 +269,216 @@ interface AutomationRuleWizardProps {
   runningDryRun: boolean;
 }
 
+// --- Sub-components for conditions / actions ---
+
+function ConditionCard({
+  condition,
+  index,
+  fieldOptions,
+  onChange,
+  onRemove,
+  canRemove,
+}: {
+  condition: ConditionItem;
+  index: number;
+  fieldOptions: Array<{ value: string; label: string }>;
+  onChange: (index: number, patch: Partial<ConditionItem>) => void;
+  onRemove: (index: number) => void;
+  canRemove: boolean;
+}) {
+  return (
+    <div className="rounded-md border bg-muted/20 p-3 space-y-3">
+      <div className="flex items-center justify-between">
+        <span className="text-xs font-medium text-muted-foreground">
+          Bedingung {index + 1}
+        </span>
+        {canRemove && (
+          <Button variant="ghost" size="sm" className="h-6 w-6 p-0" onClick={() => onRemove(index)}>
+            <Trash2 className="h-3.5 w-3.5 text-destructive" />
+          </Button>
+        )}
+      </div>
+      <div className="grid gap-3 sm:grid-cols-3">
+        <div className="space-y-1">
+          <Label className="text-xs">Feld</Label>
+          <Select value={condition.field} onValueChange={(v) => onChange(index, { field: v })}>
+            <SelectTrigger className="h-8 text-xs">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {fieldOptions.map((o) => (
+                <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+        <div className="space-y-1">
+          <Label className="text-xs">Operator</Label>
+          <Select value={condition.operator} onValueChange={(v) => onChange(index, { operator: v })}>
+            <SelectTrigger className="h-8 text-xs">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {CONDITION_OPERATORS.map((o) => (
+                <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+        <div className="space-y-1">
+          <Label className="text-xs">Wert</Label>
+          <Input
+            className="h-8 text-xs"
+            value={condition.value}
+            onChange={(e) => onChange(index, { value: e.target.value })}
+            placeholder="z. B. high"
+          />
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function ActionCard({
+  action,
+  index,
+  onChange,
+  onRemove,
+  canRemove,
+}: {
+  action: ActionItem;
+  index: number;
+  onChange: (index: number, patch: Partial<ActionItem>) => void;
+  onRemove: (index: number) => void;
+  canRemove: boolean;
+}) {
+  const isNotification = action.type === "create_notification" || action.type === "send_push_notification";
+  const isStatus = action.type === "update_record_status";
+  const isTask = action.type === "create_task";
+
+  return (
+    <div className="rounded-md border bg-muted/20 p-3 space-y-3">
+      <div className="flex items-center justify-between">
+        <span className="text-xs font-medium text-muted-foreground">
+          Aktion {index + 1}
+        </span>
+        {canRemove && (
+          <Button variant="ghost" size="sm" className="h-6 w-6 p-0" onClick={() => onRemove(index)}>
+            <Trash2 className="h-3.5 w-3.5 text-destructive" />
+          </Button>
+        )}
+      </div>
+
+      <div className="space-y-1">
+        <Label className="text-xs">Aktionstyp</Label>
+        <Select value={action.type} onValueChange={(v) => onChange(index, { type: v })}>
+          <SelectTrigger className="h-8 text-xs">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            {ACTION_TYPES.map((o) => (
+              <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </div>
+
+      {isNotification && (
+        <div className="space-y-3">
+          <div className="space-y-1">
+            <Label className="text-xs">Empfänger:in *</Label>
+            <TenantUserSelect
+              value={action.targetUserId}
+              onValueChange={(v) => onChange(index, { targetUserId: v })}
+              placeholder="Empfänger:in auswählen…"
+            />
+          </div>
+          <div className="grid gap-3 sm:grid-cols-2">
+            <div className="space-y-1">
+              <Label className="text-xs">Titel</Label>
+              <Input className="h-8 text-xs" value={action.title} onChange={(e) => onChange(index, { title: e.target.value })} placeholder="Notification-Titel" />
+            </div>
+            <div className="space-y-1">
+              <Label className="text-xs">Nachricht</Label>
+              <Input className="h-8 text-xs" value={action.message} onChange={(e) => onChange(index, { message: e.target.value })} placeholder="Optional" />
+            </div>
+          </div>
+        </div>
+      )}
+
+      {isStatus && (
+        <div className="grid gap-3 sm:grid-cols-3">
+          <div className="space-y-1">
+            <Label className="text-xs">Tabelle</Label>
+            <Select value={action.table} onValueChange={(v) => onChange(index, { table: v })}>
+              <SelectTrigger className="h-8 text-xs"><SelectValue /></SelectTrigger>
+              <SelectContent>
+                {STATUS_TABLE_OPTIONS.map((t) => (
+                  <SelectItem key={t} value={t}>{t}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="space-y-1">
+            <Label className="text-xs">Record-ID *</Label>
+            <Input className="h-8 text-xs" value={action.recordId} onChange={(e) => onChange(index, { recordId: e.target.value })} placeholder="record_id" />
+          </div>
+          <div className="space-y-1">
+            <Label className="text-xs">Zielstatus *</Label>
+            <Input className="h-8 text-xs" value={action.status} onChange={(e) => onChange(index, { status: e.target.value })} placeholder="status" />
+          </div>
+        </div>
+      )}
+
+      {isTask && (
+        <div className="space-y-3">
+          <div className="space-y-1">
+            <Label className="text-xs">Aufgaben-Titel *</Label>
+            <Input className="h-8 text-xs" value={action.title} onChange={(e) => onChange(index, { title: e.target.value })} placeholder="Titel der zu erstellenden Aufgabe" />
+          </div>
+          <div className="grid gap-3 sm:grid-cols-2">
+            <div className="space-y-1">
+              <Label className="text-xs">Priorität</Label>
+              <Select value={action.taskPriority} onValueChange={(v) => onChange(index, { taskPriority: v })}>
+                <SelectTrigger className="h-8 text-xs"><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  {TASK_PRIORITY_OPTIONS.map((p) => (
+                    <SelectItem key={p} value={p}>{p}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-1">
+              <Label className="text-xs">Kategorie</Label>
+              <Input className="h-8 text-xs" value={action.taskCategory} onChange={(e) => onChange(index, { taskCategory: e.target.value })} placeholder="personal" />
+            </div>
+          </div>
+          <div className="space-y-1">
+            <Label className="text-xs">Beschreibung</Label>
+            <Input className="h-8 text-xs" value={action.message} onChange={(e) => onChange(index, { message: e.target.value })} placeholder="Optional" />
+          </div>
+          <div className="grid gap-3 sm:grid-cols-2">
+            <div className="space-y-1">
+              <Label className="text-xs">Fällig am</Label>
+              <Input className="h-8 text-xs" value={action.taskDueDate} onChange={(e) => onChange(index, { taskDueDate: e.target.value })} placeholder="2026-03-01" />
+            </div>
+            <div className="space-y-1">
+              <Label className="text-xs">Zuweisen an</Label>
+              <TenantUserSelect
+                value={action.taskAssignees}
+                onValueChange={(v) => onChange(index, { taskAssignees: v })}
+                placeholder="Nutzer:in zuweisen…"
+              />
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// --- Main Wizard ---
+
 export function AutomationRuleWizard({
   open,
   onOpenChange,
@@ -251,11 +497,52 @@ export function AutomationRuleWizard({
     [form.module]
   );
 
-  const isNotificationAction = form.actionType === "create_notification" || form.actionType === "send_push_notification";
-  const isStatusAction = form.actionType === "update_record_status";
-  const isCreateTaskAction = form.actionType === "create_task";
+  // Helpers for array updates
+  const updateCondition = (index: number, patch: Partial<ConditionItem>) => {
+    setForm((prev) => {
+      const next = [...prev.conditions];
+      next[index] = { ...next[index], ...patch };
+      return { ...prev, conditions: next };
+    });
+  };
 
-  // Per-step validation
+  const addCondition = () => {
+    setForm((prev) => ({
+      ...prev,
+      conditions: [...prev.conditions, { ...DEFAULT_CONDITION, field: fieldOptions[0]?.value || "status" }],
+    }));
+  };
+
+  const removeCondition = (index: number) => {
+    setForm((prev) => ({
+      ...prev,
+      conditions: prev.conditions.filter((_, i) => i !== index),
+    }));
+  };
+
+  const updateAction = (index: number, patch: Partial<ActionItem>) => {
+    setForm((prev) => {
+      const next = [...prev.actions];
+      next[index] = { ...next[index], ...patch };
+      return { ...prev, actions: next };
+    });
+  };
+
+  const addAction = () => {
+    setForm((prev) => ({
+      ...prev,
+      actions: [...prev.actions, { ...DEFAULT_ACTION }],
+    }));
+  };
+
+  const removeAction = (index: number) => {
+    setForm((prev) => ({
+      ...prev,
+      actions: prev.actions.filter((_, i) => i !== index),
+    }));
+  };
+
+  // Validation
   const stepValid = useMemo(() => {
     switch (currentStep) {
       case 0:
@@ -263,22 +550,38 @@ export function AutomationRuleWizard({
       case 1:
         return form.triggerType === "schedule" || form.triggerType === "manual" || form.triggerValue.trim().length > 0;
       case 2:
-        return form.conditionValue.trim().length > 0;
+        return form.conditions.length > 0 && form.conditions.every((c) => c.value.trim().length > 0);
       case 3: {
-        if (isNotificationAction) return form.actionTargetUserId.trim().length > 0;
-        if (isStatusAction) return form.actionRecordId.trim().length > 0 && form.actionStatus.trim().length > 0;
-        if (isCreateTaskAction) return form.actionTitle.trim().length > 0;
-        return true;
+        return form.actions.length > 0 && form.actions.every((a) => {
+          const isNotif = a.type === "create_notification" || a.type === "send_push_notification";
+          const isStat = a.type === "update_record_status";
+          const isTask = a.type === "create_task";
+          if (isNotif) return a.targetUserId.trim().length > 0;
+          if (isStat) return a.recordId.trim().length > 0 && a.status.trim().length > 0;
+          if (isTask) return a.title.trim().length > 0;
+          return true;
+        });
       }
       default:
         return true;
     }
-  }, [currentStep, form, isNotificationAction, isStatusAction, isCreateTaskAction]);
+  }, [currentStep, form]);
 
   const applyTemplate = (templateId: string) => {
     const template = RULE_TEMPLATES.find((t) => t.id === templateId);
     if (!template) return;
-    setForm((prev) => ({ ...prev, ...template, enabled: true }));
+    setForm((prev) => ({
+      ...prev,
+      name: template.name,
+      description: template.description,
+      module: template.module,
+      triggerType: template.triggerType,
+      triggerField: template.triggerField,
+      triggerValue: template.triggerValue,
+      conditions: template.conditions.map((c) => ({ ...c })),
+      actions: template.actions.map((a) => ({ ...a })),
+      enabled: true,
+    }));
   };
 
   const handleSave = async () => {
@@ -291,14 +594,12 @@ export function AutomationRuleWizard({
     onOpenChange(val);
   };
 
-  // Summary for step 4
+  // Summary
   const summaryLine = useMemo(() => {
     const mod = MODULE_OPTIONS.find((m) => m.value === form.module)?.label || form.module;
     const trigger = TRIGGER_TYPES.find((t) => t.value === form.triggerType)?.label || form.triggerType;
-    const op = CONDITION_OPERATORS.find((o) => o.value === form.conditionOperator)?.label || form.conditionOperator;
-    const action = ACTION_TYPES.find((a) => a.value === form.actionType)?.label || form.actionType;
-    return { mod, trigger, op, action };
-  }, [form]);
+    return { mod, trigger };
+  }, [form.module, form.triggerType]);
 
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
@@ -380,7 +681,12 @@ export function AutomationRuleWizard({
               <Select
                 value={form.module}
                 onValueChange={(v) =>
-                  setForm((prev) => ({ ...prev, module: v, triggerField: "status", conditionField: "status" }))
+                  setForm((prev) => ({
+                    ...prev,
+                    module: v,
+                    triggerField: "status",
+                    conditions: prev.conditions.map((c) => ({ ...c, field: "status" })),
+                  }))
                 }
               >
                 <SelectTrigger>
@@ -463,81 +769,44 @@ export function AutomationRuleWizard({
               </Select>
             </div>
 
-            {form.triggerType === "record_changed" && (
-              <div className="space-y-2">
-                <Label>Trigger-Wert *</Label>
-                <Input
-                  value={form.triggerValue}
-                  onChange={(e) => setForm((prev) => ({ ...prev, triggerValue: e.target.value }))}
-                  placeholder="z. B. overdue"
-                />
-              </div>
-            )}
-
-            {form.triggerType !== "record_changed" && (
-              <div className="space-y-2">
-                <Label>Trigger-Wert</Label>
-                <Input
-                  value={form.triggerValue}
-                  onChange={(e) => setForm((prev) => ({ ...prev, triggerValue: e.target.value }))}
-                  placeholder="z. B. 90_days"
-                />
-              </div>
-            )}
-          </div>
-        )}
-
-        {/* Step 3: Bedingungen */}
-        {currentStep === 2 && (
-          <div className="space-y-4 py-2">
             <div className="space-y-2">
-              <Label>Bedingungsfeld</Label>
-              <Select
-                value={form.conditionField}
-                onValueChange={(v) => setForm((prev) => ({ ...prev, conditionField: v }))}
-              >
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {fieldOptions.map((o) => (
-                    <SelectItem key={o.value} value={o.value}>
-                      {o.label}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="space-y-2">
-              <Label>Operator</Label>
-              <Select
-                value={form.conditionOperator}
-                onValueChange={(v) => setForm((prev) => ({ ...prev, conditionOperator: v }))}
-              >
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {CONDITION_OPERATORS.map((o) => (
-                    <SelectItem key={o.value} value={o.value}>
-                      {o.label}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="space-y-2">
-              <Label>Bedingungswert *</Label>
+              <Label>Trigger-Wert {form.triggerType === "record_changed" ? "*" : ""}</Label>
               <Input
-                value={form.conditionValue}
-                onChange={(e) => setForm((prev) => ({ ...prev, conditionValue: e.target.value }))}
-                placeholder="z. B. high"
+                value={form.triggerValue}
+                onChange={(e) => setForm((prev) => ({ ...prev, triggerValue: e.target.value }))}
+                placeholder={form.triggerType === "record_changed" ? "z. B. overdue" : "z. B. 90_days"}
               />
             </div>
           </div>
         )}
 
-        {/* Step 4: Aktionen + Testlauf */}
+        {/* Step 3: Bedingungen (multi) */}
+        {currentStep === 2 && (
+          <div className="space-y-3 py-2">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm font-medium">Bedingungen</p>
+                <p className="text-xs text-muted-foreground">Alle Bedingungen müssen erfüllt sein (UND-Verknüpfung).</p>
+              </div>
+              <Button variant="outline" size="sm" onClick={addCondition} className="gap-1">
+                <Plus className="h-3.5 w-3.5" /> Bedingung
+              </Button>
+            </div>
+            {form.conditions.map((condition, i) => (
+              <ConditionCard
+                key={i}
+                condition={condition}
+                index={i}
+                fieldOptions={fieldOptions}
+                onChange={updateCondition}
+                onRemove={removeCondition}
+                canRemove={form.conditions.length > 1}
+              />
+            ))}
+          </div>
+        )}
+
+        {/* Step 4: Aktionen (multi) + Zusammenfassung */}
         {currentStep === 3 && (
           <div className="space-y-4 py-2">
             {/* Summary card */}
@@ -546,169 +815,34 @@ export function AutomationRuleWizard({
               <p className="text-sm">
                 <Badge variant="outline" className="mr-1">{summaryLine.mod}</Badge>
                 Wenn <span className="font-medium">{form.triggerField}</span> = „{form.triggerValue || "—"}"
-                {" "}UND <span className="font-medium">{form.conditionField}</span>{" "}
-                {summaryLine.op} „{form.conditionValue || "—"}"
               </p>
-              <p className="text-sm">
-                → <span className="font-medium">{summaryLine.action}</span>
+              <p className="text-sm text-muted-foreground">
+                {form.conditions.length} Bedingung{form.conditions.length !== 1 ? "en" : ""} · {form.actions.length} Aktion{form.actions.length !== 1 ? "en" : ""}
               </p>
             </div>
 
             <Separator />
 
-            <div className="space-y-2">
-              <Label>Aktion</Label>
-              <Select
-                value={form.actionType}
-                onValueChange={(v) => setForm((prev) => ({ ...prev, actionType: v }))}
-              >
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {ACTION_TYPES.map((o) => (
-                    <SelectItem key={o.value} value={o.value}>
-                      {o.label}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm font-medium">Aktionen</p>
+                <p className="text-xs text-muted-foreground">Alle Aktionen werden nacheinander ausgeführt.</p>
+              </div>
+              <Button variant="outline" size="sm" onClick={addAction} className="gap-1">
+                <Plus className="h-3.5 w-3.5" /> Aktion
+              </Button>
             </div>
 
-            {isNotificationAction && (
-              <div className="space-y-4">
-                <div className="space-y-2">
-                  <Label>Empfänger:in *</Label>
-                  <TenantUserSelect
-                    value={form.actionTargetUserId}
-                    onValueChange={(v) => setForm((prev) => ({ ...prev, actionTargetUserId: v }))}
-                    placeholder="Empfänger:in auswählen…"
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label>Titel</Label>
-                  <Input
-                    value={form.actionTitle}
-                    onChange={(e) => setForm((prev) => ({ ...prev, actionTitle: e.target.value }))}
-                    placeholder="Notification-Titel"
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label>Nachricht</Label>
-                  <Input
-                    value={form.actionMessage}
-                    onChange={(e) => setForm((prev) => ({ ...prev, actionMessage: e.target.value }))}
-                    placeholder="Optional"
-                  />
-                </div>
-              </div>
-            )}
-
-            {isStatusAction && (
-              <div className="grid gap-4 md:grid-cols-3">
-                <div className="space-y-2">
-                  <Label>Tabelle</Label>
-                  <Select
-                    value={form.actionTable}
-                    onValueChange={(v) => setForm((prev) => ({ ...prev, actionTable: v }))}
-                  >
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {STATUS_TABLE_OPTIONS.map((t) => (
-                        <SelectItem key={t} value={t}>
-                          {t}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div className="space-y-2">
-                  <Label>Record-ID *</Label>
-                  <Input
-                    value={form.actionRecordId}
-                    onChange={(e) => setForm((prev) => ({ ...prev, actionRecordId: e.target.value }))}
-                    placeholder="record_id"
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label>Zielstatus *</Label>
-                  <Input
-                    value={form.actionStatus}
-                    onChange={(e) => setForm((prev) => ({ ...prev, actionStatus: e.target.value }))}
-                    placeholder="status"
-                  />
-                </div>
-              </div>
-            )}
-
-            {isCreateTaskAction && (
-              <div className="space-y-4">
-                <div className="space-y-2">
-                  <Label>Aufgaben-Titel *</Label>
-                  <Input
-                    value={form.actionTitle}
-                    onChange={(e) => setForm((prev) => ({ ...prev, actionTitle: e.target.value }))}
-                    placeholder="Titel der zu erstellenden Aufgabe"
-                  />
-                </div>
-                <div className="grid gap-4 md:grid-cols-2">
-                  <div className="space-y-2">
-                    <Label>Priorität</Label>
-                    <Select
-                      value={form.actionTaskPriority}
-                      onValueChange={(v) => setForm((prev) => ({ ...prev, actionTaskPriority: v }))}
-                    >
-                      <SelectTrigger>
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {TASK_PRIORITY_OPTIONS.map((p) => (
-                          <SelectItem key={p} value={p}>
-                            {p}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <div className="space-y-2">
-                    <Label>Kategorie</Label>
-                    <Input
-                      value={form.actionTaskCategory}
-                      onChange={(e) => setForm((prev) => ({ ...prev, actionTaskCategory: e.target.value }))}
-                      placeholder="personal"
-                    />
-                  </div>
-                </div>
-                <div className="space-y-2">
-                  <Label>Beschreibung</Label>
-                  <Input
-                    value={form.actionMessage}
-                    onChange={(e) => setForm((prev) => ({ ...prev, actionMessage: e.target.value }))}
-                    placeholder="Optional"
-                  />
-                </div>
-                <div className="grid gap-4 md:grid-cols-2">
-                  <div className="space-y-2">
-                    <Label>Fällig am</Label>
-                    <Input
-                      value={form.actionTaskDueDate}
-                      onChange={(e) => setForm((prev) => ({ ...prev, actionTaskDueDate: e.target.value }))}
-                      placeholder="2026-03-01"
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label>Zuweisen an</Label>
-                    <TenantUserSelect
-                      value={form.actionTaskAssignees}
-                      onValueChange={(v) => setForm((prev) => ({ ...prev, actionTaskAssignees: v }))}
-                      placeholder="Nutzer:in zuweisen…"
-                    />
-                  </div>
-                </div>
-              </div>
-            )}
+            {form.actions.map((action, i) => (
+              <ActionCard
+                key={i}
+                action={action}
+                index={i}
+                onChange={updateAction}
+                onRemove={removeAction}
+                canRemove={form.actions.length > 1}
+              />
+            ))}
           </div>
         )}
 
