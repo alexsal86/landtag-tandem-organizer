@@ -259,7 +259,7 @@ export function AutomationRulesManager() {
         idempotencyKey,
         sourcePayload: {
           [form.triggerField]: form.triggerValue || "triggered",
-          [form.conditionField]: form.conditionValue || "condition-match",
+          ...(form.conditions[0] ? { [form.conditions[0].field]: form.conditions[0].value || "condition-match" } : {}),
           rule_name: targetRule.name,
           module: targetRule.module,
         },
