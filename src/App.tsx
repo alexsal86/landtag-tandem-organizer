@@ -71,8 +71,7 @@ const AppContent = () => {
       <Toaster />
       <Sonner />
       <BrowserRouter>
-        <Suspense fallback={<div className="min-h-screen bg-gradient-subtle flex items-center justify-center" />}>
-          <MatrixClientProvider>
+          <MatrixUnreadProvider>
             <GlobalSearchCommand />
             <GlobalQuickNoteDialog open={quickNoteOpen} onOpenChange={setQuickNoteOpen} />
             <GlobalDaySlipPanel />
