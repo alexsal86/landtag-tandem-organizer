@@ -378,7 +378,7 @@ classifyCaseScale({ explicitScale: cf.case_scale, caseType: cf.case_type }) === 
         <Card>
           <CardContent className="flex flex-col items-center justify-center py-12">
             <Briefcase className="h-12 w-12 text-muted-foreground mb-4" />
-            <h3 className="text-lg font-semibold">Keine FallAkten gefunden</h3>
+            <h3 className="text-lg font-semibold">Keine Fallakten gefunden</h3>
             <p className="text-muted-foreground text-center mt-2">
               {searchTerm || statusFilter !== "all" || typeFilter !== "all"
                 || scopeFilter !== "all"
