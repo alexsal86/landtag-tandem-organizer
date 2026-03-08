@@ -114,7 +114,7 @@ export function SuperadminTenantManagement() {
 
       setTenants(data || []);
     } catch (error) {
-      console.error("Error loading tenants:", error);
+      debugConsole.error("Error loading tenants:", error);
       toast({ title: "Fehler", description: "Tenants konnten nicht geladen werden", variant: "destructive" });
     } finally {
       setLoading(false);
