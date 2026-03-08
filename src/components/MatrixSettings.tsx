@@ -326,7 +326,7 @@ export const MatrixSettings: React.FC = () => {
       );
 
       if (error) {
-        console.error("Error testing Matrix:", error);
+        debugConsole.error("Error testing Matrix:", error);
         toast({
           title: "Test fehlgeschlagen",
           description:
