@@ -112,7 +112,7 @@ export default function CreateTask() {
 
         // Get current user
         const { data: { user }, error: userError } = await supabase.auth.getUser();
-        console.log('📝 User auth check:', { user: user?.id, error: userError });
+        debugConsole.log('📝 User auth check:', { user: user?.id, error: userError });
         
         if (userError || !user) {
           console.error('❌ Auth error:', userError);
