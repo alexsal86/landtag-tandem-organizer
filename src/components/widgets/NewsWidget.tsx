@@ -110,6 +110,12 @@ export const NewsWidget: React.FC<NewsWidgetProps> = ({ widgetId, compact = fals
     });
   };
 
+  const decodeHtmlEntities = (text: string) => {
+    const textarea = document.createElement('textarea');
+    textarea.innerHTML = text;
+    return textarea.value;
+  };
+
   if (compact) {
     return (
       <div>
@@ -126,7 +132,7 @@ export const NewsWidget: React.FC<NewsWidgetProps> = ({ widgetId, compact = fals
                   className="cursor-pointer hover:bg-muted/40 rounded px-1 py-1 transition-colors"
                   onClick={() => window.open(article.link, '_blank')}
                 >
-                  <span className="text-sm text-foreground line-clamp-1">{article.title}</span>
+                  <span className="text-sm text-foreground line-clamp-1">{decodeHtmlEntities(article.title)}</span>
                   <span className="text-[11px] text-primary block mt-0.5">{article.source}</span>
                 </div>
               ))
@@ -205,7 +211,7 @@ export const NewsWidget: React.FC<NewsWidgetProps> = ({ widgetId, compact = fals
                         className="font-medium text-sm line-clamp-2 hover:text-primary cursor-pointer flex-1"
                         onClick={() => window.open(article.link, '_blank')}
                       >
-                        {article.title}
+                        {decodeHtmlEntities(article.title)}
                       </h4>
                       <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
                         <Button
@@ -251,7 +257,7 @@ export const NewsWidget: React.FC<NewsWidgetProps> = ({ widgetId, compact = fals
                     
                     {article.description && (
                       <p className="text-xs text-muted-foreground line-clamp-2 mb-2">
-                        {article.description}
+                        {decodeHtmlEntities(article.description)}
                       </p>
                     )}
                     
