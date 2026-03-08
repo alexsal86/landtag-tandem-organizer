@@ -9,6 +9,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { useTenant } from "@/hooks/useTenant";
 import { supabase } from "@/integrations/supabase/client";
 import { MessageCircle } from "lucide-react";
+import { debugConsole } from "@/utils/debugConsole";
 
 export function EmployeeMeetingRequestDialog() {
   const { user } = useAuth();
