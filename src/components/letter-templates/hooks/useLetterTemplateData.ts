@@ -39,8 +39,8 @@ export function useLetterTemplateData() {
     response_time_days: 21,
     default_sender_id: '',
     default_info_blocks: [] as string[],
-    header_elements: [] as any[],
-    footer_blocks: [] as any[],
+    header_elements: [] as unknown[],
+    footer_blocks: [] as unknown[],
     layout_settings: DEFAULT_DIN5008_LAYOUT as LetterLayoutSettings,
   });
 
