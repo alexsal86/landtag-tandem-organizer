@@ -192,7 +192,7 @@ export function DrucksachenUpload({ onUploadSuccess, onProtocolsRefresh }: Druck
           sessions: structuredData.sessions
         };
         pdfMetadata = pdfData.metadata;
-        console.log('Local PDF analysis completed:', {
+        debugConsole.log('Local PDF analysis completed:', {
           agendaItems: structuredData.agendaItems.length,
           speeches: structuredData.speeches.length,
           sessions: structuredData.sessions.length,
