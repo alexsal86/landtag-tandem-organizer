@@ -39,10 +39,10 @@ export async function createLetterApprovalDecision(
     if (decision?.id) {
       const { error: participantError } = await supabase
         .from('task_decision_participants')
-        .insert({
+        .insert([{
           decision_id: decision.id,
           user_id: reviewerUserId,
-        });
+        }]);
 
       if (participantError) {
         debugConsole.error('Error adding decision participant:', participantError);
