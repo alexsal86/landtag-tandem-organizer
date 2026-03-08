@@ -310,7 +310,7 @@ export const TaskDecisionList = () => {
         .select('id, creator_response');
 
       if (error) {
-        console.error('Error updating creator response:', error);
+        debugConsole.error('Error updating creator response:', error);
         throw error;
       }
 
