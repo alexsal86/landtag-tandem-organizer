@@ -685,7 +685,7 @@ export const DecisionOverview = () => {
       toast({ title: "Archiviert", description: "Entscheidung wurde archiviert." });
       loadDecisionRequests(user.id);
     } catch (error) {
-      console.error('Error archiving decision:', error);
+      debugConsole.error('Error archiving decision:', error);
       toast({ title: "Fehler", description: "Entscheidung konnte nicht archiviert werden.", variant: "destructive" });
     }
   };
