@@ -449,7 +449,7 @@ export function MyWorkTasksTab() {
     if (!meetingTaskId || !user) return;
     
     try {
-      console.log('Adding task to meeting:', { taskId: meetingTaskId, meetingId });
+      debugConsole.log('Adding task to meeting:', { taskId: meetingTaskId, meetingId });
       
       const { data, error } = await supabase
         .from('tasks')
