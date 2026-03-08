@@ -811,7 +811,7 @@ export function TasksView() {
         });
       });
 
-      console.log('Final comments map:', commentsMap);
+      
       setTaskComments(commentsMap);
     } catch (error) {
       console.error('Error loading task comments:', error);
