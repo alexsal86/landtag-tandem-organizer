@@ -719,7 +719,7 @@ export function QuickNotesList({
       toast.success(color ? "Farbe gesetzt" : "Farbe entfernt");
       loadNotes();
     } catch (error) {
-      console.error("Error setting color:", error);
+      debugConsole.error("Error setting color:", error);
       toast.error("Fehler beim Setzen der Farbe");
     }
   };
