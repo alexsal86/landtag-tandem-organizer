@@ -229,7 +229,7 @@ export const useCaseFiles = () => {
       await fetchCaseFiles();
       return true;
     } catch (error) {
-      console.error('Error updating case file:', error);
+      debugConsole.error('Error updating case file:', error);
       const errorMessage = error instanceof Error ? error.message : "";
       toast({
         title: "Fehler",
