@@ -61,6 +61,7 @@ const STATUS_LABELS: Record<string, string> = {
   in_klaerung: "In Klärung",
   antwort_ausstehend: "Antwort ausstehend",
   erledigt: "Erledigt",
+  archiviert: "Archiviert",
 };
 
 const CHANNEL_LABELS: Record<string, string> = {
