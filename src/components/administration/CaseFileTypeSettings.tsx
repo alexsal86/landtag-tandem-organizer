@@ -185,7 +185,7 @@ export function CaseFileTypeSettings() {
                                 <div className="flex items-center gap-2">
                                   <span
                                     className="inline-block w-3 h-3 rounded-full"
-                                    style={{ backgroundColor: type.color }}
+                                    style={{ backgroundColor: type.color ?? undefined }}
                                   />
                                   {(() => {
                                     const Icon = getIconComponent(type.icon);
