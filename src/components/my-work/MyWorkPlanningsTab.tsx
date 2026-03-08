@@ -190,7 +190,7 @@ export function MyWorkPlanningsTab() {
       });
       setPlannings(sorted);
     } catch (error) {
-      console.error("Error loading plannings:", error);
+      debugConsole.error("Error loading plannings:", error);
     } finally {
       setLoading(false);
     }
