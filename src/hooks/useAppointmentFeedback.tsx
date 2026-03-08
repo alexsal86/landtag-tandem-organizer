@@ -5,6 +5,7 @@ import { useAuth } from './useAuth';
 import { useTenant } from './useTenant';
 import { format } from 'date-fns';
 import { toast } from './use-toast';
+import { debugConsole } from '@/utils/debugConsole';
 
 export interface AppointmentWithFeedback {
   id: string;
