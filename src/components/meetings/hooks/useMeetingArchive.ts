@@ -195,7 +195,7 @@ export function useMeetingArchive(deps: ArchiveDeps) {
               due_date: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),
             });
           }
-        } catch (e) { console.error('Error creating child task for linked item (non-fatal):', e); }
+        } catch (e) { debugConsole.error('Error creating child task for linked item (non-fatal):', e); }
       }
 
       // Step 3b: Create tasks for assigned items without linked task
