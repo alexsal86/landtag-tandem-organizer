@@ -1,7 +1,7 @@
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { CalendarDays, StickyNote, ListTodo, Trash, Cake, Scale } from 'lucide-react';
+import { CalendarDays, StickyNote, ListTodo, Trash, Cake, Scale, Briefcase } from 'lucide-react';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { UpcomingAppointmentsSection } from './UpcomingAppointmentsSection';
 import { BirthdayAgendaItem } from './BirthdayAgendaItem';
