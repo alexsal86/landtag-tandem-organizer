@@ -1,4 +1,5 @@
 import { TableRow, TableCell } from "@/components/ui/table";
+import { debugConsole } from '@/utils/debugConsole';
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { FileText, Download, ExternalLink } from "lucide-react";
