@@ -157,7 +157,7 @@ export function ProtocolsList({ protocols, onProtocolSelect, onProtocolsRefresh 
           body: { protocolId }
         });
       } catch (error) {
-        console.warn('Protocol analysis function not available:', error);
+        debugConsole.warn('Protocol analysis function not available:', error);
       }
       
       toast.success('Protokoll wird erneut verarbeitet');
