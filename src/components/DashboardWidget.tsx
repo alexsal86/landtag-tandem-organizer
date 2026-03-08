@@ -412,7 +412,7 @@ export function DashboardWidget({ widget, isDragging, isEditMode, onResize, onDe
                   >
                     <div className="flex items-center gap-3 flex-1 min-w-0">
                       <Checkbox
-                        checked={isTask ? (item as any).status === "completed" : (item as any).is_completed}
+                        checked={item.type === 'task' ? item.status === "completed" : item.is_completed}
                         onCheckedChange={async (checked) => {
                           if (checked) {
                             if (isTask) {
