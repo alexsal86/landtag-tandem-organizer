@@ -10,6 +10,7 @@ import { MessageCircle, Bell, ChevronRight, Send, Reply } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+import { debugConsole } from "@/utils/debugConsole";
 import { formatDistanceToNow } from "date-fns";
 import { de } from "date-fns/locale";
 
