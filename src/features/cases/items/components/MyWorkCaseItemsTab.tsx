@@ -139,6 +139,7 @@ export function MyWorkCaseItemsTab() {
 
       const visibleItems = ((data || []) as any[])
         .filter((row) => row.user_id === user.id || row.owner_user_id === user.id)
+        .filter((row) => row.status !== "archiviert")
         .map((row) => ({
           id: row.id,
           title: row.subject || row.resolution_summary || "Ohne Titel",
