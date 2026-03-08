@@ -51,7 +51,7 @@ export async function createLetterApprovalDecision(
 
     return decision?.id || null;
   } catch (error) {
-    console.error('Error in createLetterApprovalDecision:', error);
+    debugConsole.error('Error in createLetterApprovalDecision:', error);
     return null;
   }
 }
