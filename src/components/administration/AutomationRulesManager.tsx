@@ -119,6 +119,25 @@ export function AutomationRulesManager() {
     setWizardOpen(true);
   };
 
+  const useTemplate = (templateId: string) => {
+    const template = RULE_TEMPLATES.find((t) => t.id === templateId);
+    if (!template) return;
+    resetForm();
+    setForm((prev) => ({
+      ...prev,
+      name: template.name,
+      description: template.description,
+      module: template.module,
+      triggerType: template.triggerType,
+      triggerField: template.triggerField,
+      triggerValue: template.triggerValue,
+      conditions: template.conditions.map((c) => ({ ...c })),
+      actions: template.actions.map((a) => ({ ...a })),
+      enabled: true,
+    }));
+    setWizardOpen(true);
+  };
+
   const startEdit = (rule: RuleRow) => {
     const conditions: ConditionItem[] = (rule.conditions?.all || []).map((c) => ({
       field: c.field || "status",
