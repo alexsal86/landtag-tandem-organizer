@@ -51,7 +51,7 @@ export function useEmployeeOperations({
         });
       }
     } catch (error) {
-      console.error("Fehler beim Erstellen des Kalendereintrags:", error);
+      debugConsole.error("Fehler beim Erstellen des Kalendereintrags:", error);
     }
   };
 
