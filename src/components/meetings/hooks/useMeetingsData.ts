@@ -89,6 +89,7 @@ export function useMeetingsData() {
       sidebar.loadStarredAppointments(urlMeetingId);
       searchParams.delete('id');
       setSearchParams(searchParams, { replace: true });
+      deepLinkIdRef.current = null;
     };
 
     const meetingFromUrl = meetings.find(m => m.id === urlMeetingId);
