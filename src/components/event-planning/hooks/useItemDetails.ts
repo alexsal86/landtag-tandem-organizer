@@ -52,7 +52,7 @@ export function useItemDetails({
         const { data: profilesData } = await supabase.from('profiles').select('user_id, display_name, avatar_url').in('user_id', userIds);
         profiles = profilesData || [];
       }
-      const formattedComments: PlanningComment[] = (comments || []).map(comment => ({ id: comment.id, planning_item_id: comment.planning_item_id, user_id: comment.user_id, content: comment.content, created_at: comment.created_at, profile: profiles.find(p => p.user_id === comment.user_id) || null }));
+      const formattedComments = (comments || []).map(comment => ({ id: comment.id, planning_item_id: comment.planning_item_id, user_id: comment.user_id, content: comment.content, created_at: comment.created_at, profile: profiles.find(p => p.user_id === comment.user_id) || null })) as PlanningComment[];
       setItemComments(prev => ({ ...prev, [itemId]: formattedComments }));
     } catch (error) { handleAppError(error, { context: 'loadItemComments' }); }
   };
