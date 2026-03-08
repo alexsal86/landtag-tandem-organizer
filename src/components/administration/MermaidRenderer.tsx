@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { debugConsole } from '@/utils/debugConsole';
+import { sanitizeRichHtml } from '@/utils/htmlSanitizer';
 
 interface MermaidRendererProps {
   chart: string;
