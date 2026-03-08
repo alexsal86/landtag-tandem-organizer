@@ -463,7 +463,6 @@ export function useDashboardLayout() {
     // Validiere Type
     const validTypes = ['stats', 'tasks', 'schedule', 'appointmentfeedback', 'messages', 'combined-messages', 'quicknotes', 'pomodoro', 'habits', 'calllog', 'teamchat', 'quickactions', 'news', 'blackboard', 'actions', 'stakeholder-network'];
     if (!validTypes.includes(type)) {
-      console.error('❌ Invalid widget type:', type);
       toast.error(`Ungültiger Widget-Typ: ${type}`);
       return;
     }
