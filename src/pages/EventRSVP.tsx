@@ -62,7 +62,7 @@ export default function EventRSVP() {
           setSubmitted(true);
         }
       } catch (error) {
-        console.error('Error loading RSVP data:', error);
+        debugConsole.error('Error loading RSVP data:', error);
       } finally {
         setLoading(false);
       }
