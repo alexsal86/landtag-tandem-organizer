@@ -521,11 +521,11 @@ export function AutomationRuleWizard({
             {isNotificationAction && (
               <div className="space-y-4">
                 <div className="space-y-2">
-                  <Label>Ziel-User-ID *</Label>
-                  <Input
+                  <Label>Empfänger:in *</Label>
+                  <TenantUserSelect
                     value={form.actionTargetUserId}
-                    onChange={(e) => setForm((prev) => ({ ...prev, actionTargetUserId: e.target.value }))}
-                    placeholder="UUID der Empfänger:in"
+                    onValueChange={(v) => setForm((prev) => ({ ...prev, actionTargetUserId: v }))}
+                    placeholder="Empfänger:in auswählen…"
                   />
                 </div>
                 <div className="space-y-2">
