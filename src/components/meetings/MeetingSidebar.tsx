@@ -32,7 +32,7 @@ interface MeetingSidebarProps {
   newMeetingRecurrence: RecurrenceData;
   meetingTemplates: MeetingTemplate[];
   showCarryoverBuffer: boolean;
-  carryoverBufferItems: any[];
+  carryoverBufferItems: AgendaItem[];
   isHighlighted: (id: string) => boolean;
   highlightRef: (id: string) => React.RefCallback<HTMLElement>;
   onSelectMeeting: (meeting: Meeting) => void;
