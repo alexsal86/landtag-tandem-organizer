@@ -60,19 +60,8 @@ import { LineHeightPlugin } from './plugins/LineHeightPlugin';
 import { ImageUploadDialog } from './plugins/ImagePlugin';
 import { Input } from '@/components/ui/input';
 import { useSpeechDictation } from '@/hooks/useSpeechDictation';
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
-
-const SPEECH_COMMAND_HINTS = [
-  'Fett',
-  'Kursiv',
-  'Unterstreichen',
-  'Aufzählung / Liste',
-  'Nummerierte Liste',
-  'Rückgängig',
-  'Wiederholen',
-  'Neue Zeile / Neuer Absatz',
-  'Stopp (beendet die Aufnahme)',
-] as const;
+import { SpeechCommandsDialog } from '@/components/SpeechCommandsDialog';
+import { SpeechSessionStats } from '@/components/SpeechSessionStats';
 
 interface EnhancedLexicalToolbarProps {
   showFloatingToolbar?: boolean;
