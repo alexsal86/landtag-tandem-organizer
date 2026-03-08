@@ -149,9 +149,15 @@ export const useSpeechDictation = ({ editor, insertText, dispatchCommand }: UseS
         playTone('start');
         setSessionStartTime(Date.now());
         setSessionWordCount(0);
+        lastInsertedSegmentRef.current = '';
       } else if (state === 'idle') {
         playTone('stop');
         setSessionStartTime(null);
+        // Clean up any leftover interim node
+        editor.update(() => {
+          clearInterimNode();
+        });
+        setInterimTranscript('');
       }
     };
     speechAdapter.onError = setSpeechError;
