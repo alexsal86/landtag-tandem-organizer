@@ -90,7 +90,7 @@ export const NewsShareDialog: React.FC<NewsShareDialogProps> = ({
 
       setUsers(profiles || []);
     } catch (error) {
-      console.error('Error loading users:', error);
+      debugConsole.error('Error loading users:', error);
       setUsers([]);
     }
   };
