@@ -312,7 +312,7 @@ export function GlobalSearchCommand() {
       const { data } = await supabase
         .from('case_files')
         .select('id, title, reference_number, status, case_type, tags, current_status_note, processing_status, priority')
-        .eq('tenant_id', currentTenant!.id)
+        .eq('tenant_id', currentTenant?.id ?? '')
         .or(`title.ilike.%${searchQuery}%,description.ilike.%${searchQuery}%,reference_number.ilike.%${searchQuery}%,current_status_note.ilike.%${searchQuery}%,case_type.ilike.%${searchQuery}%,processing_status.ilike.%${searchQuery}%,status.ilike.%${searchQuery}%,priority.ilike.%${searchQuery}%`)
         .order('updated_at', { ascending: false })
         .limit(10);

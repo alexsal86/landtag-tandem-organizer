@@ -1011,7 +1011,7 @@ export function MatrixClientProvider({ children }: { children: ReactNode }) {
                 otkCollisionDetected = true;
                 matrixLogger.warn('[Matrix] OTK collision detected – will auto-recover after sync');
               }
-            } catch {}
+            } catch (e) { /* best-effort: OTK collision body parse may fail on cloned response */ }
           }
         }
         return response;

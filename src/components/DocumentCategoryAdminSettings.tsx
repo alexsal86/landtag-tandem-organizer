@@ -55,7 +55,7 @@ export function DocumentCategoryAdminSettings() {
   };
 
   const addCategory = async (label: string, color: string, icon?: string) => {
-    if (!label.trim()) return;
+    if (!label.trim() || !currentTenant) return;
     
     try {
       const { error } = await supabase.from('document_categories').insert([{
@@ -64,7 +64,7 @@ export function DocumentCategoryAdminSettings() {
         color,
         icon: icon || null,
         order_index: Math.max(...categories.map(c => c.order_index), -1) + 1,
-        tenant_id: currentTenant!.id,
+        tenant_id: currentTenant.id,
       }]);
       
       if (error) throw error;

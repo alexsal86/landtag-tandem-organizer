@@ -270,8 +270,9 @@ export function EmployeeMeetingProtocol({ meetingId, onBack }: EmployeeMeetingPr
       };
 
       setMeeting(enrichedMeeting);
-      setIsEmployee(meetingData.employee_id === user!.id);
-      setIsSupervisor(meetingData.conducted_by === user!.id);
+      const uid = user?.id;
+      setIsEmployee(meetingData.employee_id === uid);
+      setIsSupervisor(meetingData.conducted_by === uid);
 
       if (meetingData.protocol_data) {
         setProtocolData(meetingData.protocol_data as ProtocolData);
@@ -279,14 +280,14 @@ export function EmployeeMeetingProtocol({ meetingId, onBack }: EmployeeMeetingPr
       if (meetingData.employee_preparation) {
         const empPrep = meetingData.employee_preparation as any;
         setEmployeePrep(empPrep);
-        if (user!.id === meetingData.employee_id && empPrep?.private_notes) {
+        if (uid === meetingData.employee_id && empPrep?.private_notes) {
           setPrivateNotes(empPrep.private_notes);
         }
       }
       if (meetingData.supervisor_preparation) {
         const supPrep = meetingData.supervisor_preparation as any;
         setSupervisorPrep(supPrep);
-        if (user!.id === meetingData.conducted_by && supPrep?.private_notes) {
+        if (uid === meetingData.conducted_by && supPrep?.private_notes) {
           setPrivateNotes(supPrep.private_notes);
         }
       }

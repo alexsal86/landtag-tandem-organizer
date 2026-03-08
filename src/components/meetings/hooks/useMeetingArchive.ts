@@ -77,10 +77,11 @@ export function useMeetingArchive(deps: ArchiveDeps) {
   };
 
   const storeCarryoverItems = async (items: AgendaItem[], sourceMeeting: Meeting) => {
+    if (!user) return;
     for (const item of items) {
       try {
         const { error } = await supabase.from('carryover_items').insert([{
-          user_id: user!.id, template_id: sourceMeeting.template_id, title: item.title,
+          user_id: user.id, template_id: sourceMeeting.template_id, title: item.title,
           description: item.description, notes: item.notes, result_text: item.result_text,
           assigned_to: item.assigned_to, order_index: item.order_index,
           original_meeting_id: sourceMeeting.id,

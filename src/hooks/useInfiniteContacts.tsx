@@ -138,9 +138,10 @@ export const useInfiniteContacts = ({
   }, [currentTenant?.id, activeTab, searchTerm, selectedCategory, selectedType, selectedTagFilter, sortColumn, sortDirection]);
 
   const insertSampleContacts = useCallback(async () => {
+    if (!user) return false;
     try {
       const { error } = await supabase.rpc('insert_sample_contacts', {
-        target_user_id: user!.id
+        target_user_id: user.id
       });
 
       if (error) throw error;

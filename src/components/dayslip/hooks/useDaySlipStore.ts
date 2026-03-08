@@ -342,7 +342,7 @@ export function useDaySlipStore(userId?: string, tenantId?: string) {
           { onConflict: "user_id,tenant_id,key" }
         ).then();
       }
-    } catch {}
+    } catch (e) { debugConsole.warn("useDaySlipStore: syncResolveExport failed", e); }
   }, [todayKey, userId, tenantId]);
 
   const toggleResolveLine = useCallback((lineId: string, line: string, target: ResolveTarget) => {

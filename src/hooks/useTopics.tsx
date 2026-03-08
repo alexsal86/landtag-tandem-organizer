@@ -57,6 +57,7 @@ export const useTopics = () => {
       });
       return null;
     }
+    if (!currentTenant) return null;
 
     try {
       const maxOrderIndex = topics.length > 0 
@@ -73,7 +74,7 @@ export const useTopics = () => {
           description: topicData.description,
           order_index: maxOrderIndex,
           is_active: true,
-          tenant_id: currentTenant!.id,
+          tenant_id: currentTenant.id,
         }])
         .select()
         .single();
