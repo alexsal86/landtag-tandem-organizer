@@ -230,8 +230,8 @@ export function DashboardWidget({ widget, isDragging, isEditMode, onResize, onDe
           if (!task.assigned_to) return false;
           const assignees = task.assigned_to.split(',').map((id: string) => id.trim());
           return assignees.includes(user.id) || 
-                 assignees.includes(user.email) ||
-                 assignees.includes(user.email?.toLowerCase());
+                 assignees.includes(user.email ?? '') ||
+                 assignees.includes(user.email?.toLowerCase() ?? '');
         });
         setAssignedTasks(userAssignedTasks as Task[]);
       }
@@ -448,7 +448,7 @@ export function DashboardWidget({ widget, isDragging, isEditMode, onResize, onDe
                         )}
                         {item.type === 'subtask' && (item.assigned_to_names || item.assigned_to) && (
                           <div className="text-sm text-muted-foreground truncate">
-                            Zuständig: {item.assigned_to_names || resolveUserNames(item.assigned_to)}
+                            Zuständig: {item.assigned_to_names || resolveUserNames(item.assigned_to ?? '')}
                           </div>
                         )}
                         {isSnoozed && (
@@ -483,7 +483,7 @@ export function DashboardWidget({ widget, isDragging, isEditMode, onResize, onDe
                                   await supabase
                                     .from('task_snoozes')
                                     .upsert({
-                                      user_id: user?.id,
+                                      user_id: user?.id ?? '',
                                       [isTask ? 'task_id' : 'subtask_id']: item.id,
                                       snoozed_until: snoozeDate + 'T00:00:00.000Z'
                                     });

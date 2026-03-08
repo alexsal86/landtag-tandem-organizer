@@ -323,7 +323,7 @@ export function AdminTimeEntryEditor({
           </Button>
           <Button
             onClick={handleSave}
-            disabled={isLoading || !editReason.trim() || (showTimeFields && preview && "error" in preview)}
+            disabled={isLoading || !editReason.trim() || !!(showTimeFields && preview && "error" in preview)}
           >
             {isLoading ? "Speichern..." : isTypeChanged ? "Typ ändern" : "Änderung speichern"}
           </Button>

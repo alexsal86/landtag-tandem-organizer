@@ -17,10 +17,10 @@ import { debugConsole } from "@/utils/debugConsole";
 interface Contact {
   id: string;
   name: string;
-  email?: string;
-  organization?: string;
-  avatar_url?: string;
-  category?: string;
+  email?: string | null;
+  organization?: string | null;
+  avatar_url?: string | null;
+  category?: string | null;
 }
 
 interface DistributionListFormProps {
@@ -85,7 +85,7 @@ export function DistributionListForm({ distributionListId, onSuccess, onBack }: 
       const { data: distributionList, error: listError } = await supabase
         .from('distribution_lists')
         .select('id, name, description, topic')
-        .eq('id', distributionListId)
+        .eq('id', distributionListId!)
         .single();
 
       if (listError) throw listError;
@@ -97,7 +97,7 @@ export function DistributionListForm({ distributionListId, onSuccess, onBack }: 
       const { data: members, error: membersError } = await supabase
         .from('distribution_list_members')
         .select('contact_id')
-        .eq('distribution_list_id', distributionListId);
+        .eq('distribution_list_id', distributionListId!);
 
       if (membersError) throw membersError;
       setSelectedContactIds(members?.map(m => m.contact_id) || []);
@@ -161,7 +161,7 @@ export function DistributionListForm({ distributionListId, onSuccess, onBack }: 
       }
 
       const members = selectedContactIds.map(contactId => ({
-        distribution_list_id: distributionListIdToUse,
+        distribution_list_id: distributionListIdToUse!,
         contact_id: contactId,
       }));
 

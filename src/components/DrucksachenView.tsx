@@ -21,12 +21,12 @@ interface Protocol {
   legislature_period: string;
   original_filename: string;
   processing_status: string;
-  processing_error_message?: string;
+  processing_error_message?: string | null;
   created_at: string;
   updated_at: string;
-  file_path?: string;
-  file_size?: number;
-  uploaded_by?: string;
+  file_path?: string | null;
+  file_size?: number | null;
+  uploaded_by?: string | null;
 }
 
 export function DrucksachenView() {
