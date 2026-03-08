@@ -413,7 +413,7 @@ const [editingChild, setEditingChild] = useState<{ parentIndex: number; childInd
       setEditingTemplateName({ id: data.id, value: data.name });
       
       toast({ title: "Template erstellt", description: "Neues Meeting-Template wurde angelegt." });
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Error creating template:', error);
       toast({ title: "Fehler", description: "Template konnte nicht erstellt werden.", variant: "destructive" });
     }
@@ -442,14 +442,11 @@ const [editingChild, setEditingChild] = useState<{ parentIndex: number; childInd
         
       if (error) throw error;
       // Silent save - no toast on success
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Save error:', error);
-      // Extended network error detection
       const isNetworkError = 
-        error.message?.includes('Failed to fetch') ||
-        error.name === 'TypeError' ||
-        error.message?.includes('NetworkError') ||
-        error.message?.includes('network') ||
+        (error instanceof Error && (error.message?.includes('Failed to fetch') || error.message?.includes('NetworkError') || error.message?.includes('network'))) ||
+        (error instanceof TypeError) ||
         !navigator.onLine;
         
       if (retryCount < 2 && isNetworkError) {
@@ -542,7 +539,7 @@ const [editingChild, setEditingChild] = useState<{ parentIndex: number; childInd
       if (items === planningTemplateItems) {
         toast({ title: "Gespeichert", description: "Template erfolgreich aktualisiert." });
       }
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error(error);
       toast({ title: "Fehler", description: "Fehler beim Speichern.", variant: "destructive" });
     }
@@ -1250,7 +1247,7 @@ const [editingChild, setEditingChild] = useState<{ parentIndex: number; childInd
                                       await loadData();
                                       setEditingTemplateName(null);
                                       toast({ title: "Gespeichert", description: "Template-Name aktualisiert." });
-                                    } catch (error: any) {
+                                    } catch (error: unknown) {
                                       toast({ title: "Fehler", description: "Fehler beim Speichern.", variant: "destructive" });
                                     }
                                   }}>
@@ -1881,7 +1878,7 @@ const [editingChild, setEditingChild] = useState<{ parentIndex: number; childInd
                             await loadData();
                             setEditingPlanningTemplateName(null);
                             toast({ title: "Gespeichert", description: "Template-Name aktualisiert." });
-                          } catch (error: any) {
+                          } catch (error: unknown) {
                             toast({ title: "Fehler", description: "Fehler beim Speichern.", variant: "destructive" });
                           }
                         }}>

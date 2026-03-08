@@ -31,7 +31,7 @@ export interface AgendaItem {
   file_path?: string | null;
   result_text?: string | null;
   carry_over_to_next?: boolean;
-  sub_items?: any[];
+  sub_items?: AgendaItem[];
   source_meeting_id?: string | null;
   carried_over_from?: string | null;
   original_meeting_date?: string | null;

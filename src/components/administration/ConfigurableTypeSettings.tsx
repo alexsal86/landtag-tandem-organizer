@@ -126,7 +126,7 @@ export function ConfigurableTypeSettings({
       await loadItems();
       setNewItem(null);
       toast({ title: "Erfolg", description: `${entityName} wurde erfolgreich hinzugefügt.` });
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error(`Error adding ${entityName}:`, error);
       toast({ title: "Fehler", description: `${entityName} konnte nicht hinzugefügt werden.`, variant: "destructive" });
     }
@@ -167,7 +167,7 @@ export function ConfigurableTypeSettings({
       }
 
       toast({ title: "Erfolg", description: `${entityName} wurde erfolgreich aktualisiert.` });
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error(`Error updating ${entityName}:`, error);
       toast({ title: "Fehler", description: `${entityName} konnte nicht aktualisiert werden.`, variant: "destructive" });
     }
@@ -180,7 +180,7 @@ export function ConfigurableTypeSettings({
 
       await loadItems();
       toast({ title: "Erfolg", description: `${entityName} wurde erfolgreich gelöscht.` });
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error(`Error deleting ${entityName}:`, error);
       toast({ title: "Fehler", description: `${entityName} konnte nicht gelöscht werden.`, variant: "destructive" });
     }
@@ -204,7 +204,7 @@ export function ConfigurableTypeSettings({
       }
 
       toast({ title: "Erfolg", description: `${entityName} wurde ${!isActive ? 'aktiviert' : 'deaktiviert'}.` });
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error(`Error toggling ${entityName}:`, error);
       toast({ title: "Fehler", description: "Status konnte nicht geändert werden.", variant: "destructive" });
     }

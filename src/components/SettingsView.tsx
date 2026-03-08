@@ -118,11 +118,11 @@ export function SettingsView() {
       setPasswordDialogOpen(false);
       setNewPassword("");
       setConfirmPassword("");
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Password change error:', error);
       toast({
         title: "Fehler",
-        description: error.message || "Passwort konnte nicht geändert werden.",
+        description: error instanceof Error ? error.message : "Passwort konnte nicht geändert werden.",
         variant: "destructive",
       });
     } finally {

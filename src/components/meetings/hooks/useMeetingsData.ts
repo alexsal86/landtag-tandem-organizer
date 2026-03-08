@@ -339,7 +339,7 @@ export function useMeetingsData() {
       if (error) throw error;
 
       const mainItems = (data || []).filter(item => !item.parent_id).sort((a, b) => a.order_index - b.order_index);
-      const sortedItems: any[] = [];
+      const sortedItems: AgendaItem[] = [];
       mainItems.forEach(main => {
         sortedItems.push({ ...main, localKey: main.id, parentLocalKey: undefined });
         const children = (data || []).filter(item => item.parent_id === main.id).sort((a, b) => a.order_index - b.order_index);

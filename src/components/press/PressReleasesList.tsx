@@ -122,8 +122,8 @@ export function PressReleasesList({ onCreateNew, onSelect }: PressReleasesListPr
 
       toast({ title: "Einstellungen gespeichert" });
       setSettingsOpen(false);
-    } catch (error: any) {
-      toast({ title: "Fehler", description: error.message, variant: "destructive" });
+    } catch (error: unknown) {
+      toast({ title: "Fehler", description: error instanceof Error ? error.message : "Speichern fehlgeschlagen", variant: "destructive" });
     } finally {
       setSavingSettings(false);
     }
@@ -161,10 +161,10 @@ export function PressReleasesList({ onCreateNew, onSelect }: PressReleasesListPr
         });
         setProfiles(profileMap);
       }
-    } catch (error: any) {
+    } catch (error: unknown) {
       toast({
         title: "Fehler beim Laden",
-        description: error.message,
+        description: error instanceof Error ? error.message : "Unbekannter Fehler",
         variant: "destructive",
       });
     } finally {

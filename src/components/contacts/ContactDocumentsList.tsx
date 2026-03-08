@@ -44,10 +44,10 @@ export function ContactDocumentsList({ contactId, contactTags = [], documentCoun
         title: "Download erfolgreich",
         description: `${fileName} wurde heruntergeladen.`,
       });
-    } catch (error: any) {
+    } catch (error: unknown) {
       toast({
         title: "Download-Fehler",
-        description: error.message,
+        description: error instanceof Error ? error.message : "Download fehlgeschlagen",
         variant: "destructive",
       });
     }

@@ -54,7 +54,7 @@ export function TwoFactorSettings() {
         const hasVerifiedFactor = data.all?.some((f: MFAFactor) => f.status === "verified");
         setIsEnabled(hasVerifiedFactor);
       }
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Error loading MFA status:", error);
     } finally {
       setLoading(false);
@@ -79,11 +79,12 @@ export function TwoFactorSettings() {
         setSetupStep("qr");
         setShowSetupDialog(true);
       }
-    } catch (error: any) {
-      setError(error.message);
+    } catch (error: unknown) {
+      const msg = error instanceof Error ? error.message : String(error);
+      setError(msg);
       toast({
         title: "Fehler",
-        description: "2FA-Setup konnte nicht gestartet werden: " + error.message,
+        description: "2FA-Setup konnte nicht gestartet werden: " + msg,
         variant: "destructive"
       });
     } finally {
@@ -122,11 +123,11 @@ export function TwoFactorSettings() {
       });
       
       await loadMFAStatus();
-    } catch (error: any) {
+    } catch (error: unknown) {
       setError("Ungültiger Code. Bitte versuchen Sie es erneut.");
       toast({
         title: "Fehler",
-        description: "Code konnte nicht verifiziert werden: " + error.message,
+        description: "Code konnte nicht verifiziert werden: " + (error instanceof Error ? error.message : String(error)),
         variant: "destructive"
       });
     } finally {
@@ -182,11 +183,11 @@ export function TwoFactorSettings() {
       
       setShowDisableDialog(false);
       await loadMFAStatus();
-    } catch (error: any) {
+    } catch (error: unknown) {
       setError("Ungültiger Code oder Fehler beim Deaktivieren.");
       toast({
         title: "Fehler",
-        description: "2FA konnte nicht deaktiviert werden: " + error.message,
+        description: "2FA konnte nicht deaktiviert werden: " + (error instanceof Error ? error.message : String(error)),
         variant: "destructive"
       });
     } finally {

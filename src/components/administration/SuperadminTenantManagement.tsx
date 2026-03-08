@@ -131,9 +131,9 @@ export function SuperadminTenantManagement() {
       if (!data.success) throw new Error(data.error);
 
       setAllUsers(data.users || []);
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Error loading users:", error);
-      toast({ title: "Fehler", description: error.message || "Benutzer konnten nicht geladen werden", variant: "destructive" });
+      toast({ title: "Fehler", description: error instanceof Error ? error.message : "Benutzer konnten nicht geladen werden", variant: "destructive" });
     } finally {
       setUsersLoading(false);
     }
@@ -199,9 +199,9 @@ export function SuperadminTenantManagement() {
       setDialogOpen(false);
       resetTenantForm();
       loadTenants();
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Save tenant error:", error);
-      toast({ title: "Fehler", description: error.message, variant: "destructive" });
+      toast({ title: "Fehler", description: error instanceof Error ? error.message : "Speichern fehlgeschlagen", variant: "destructive" });
     }
   };
 
@@ -226,8 +226,8 @@ export function SuperadminTenantManagement() {
       if (error) throw error;
       toast({ title: "Gelöscht", description: "Tenant wurde entfernt" });
       loadTenants();
-    } catch (error: any) {
-      toast({ title: "Fehler", description: error.message, variant: "destructive" });
+    } catch (error: unknown) {
+      toast({ title: "Fehler", description: error instanceof Error ? error.message : "Löschen fehlgeschlagen", variant: "destructive" });
     }
   };
 
@@ -257,9 +257,9 @@ export function SuperadminTenantManagement() {
       // Reload data
       loadTenants();
       loadAllUsers();
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Create user error:", error);
-      toast({ title: "Fehler", description: error.message, variant: "destructive" });
+      toast({ title: "Fehler", description: error instanceof Error ? error.message : "Erstellen fehlgeschlagen", variant: "destructive" });
     }
   };
 
@@ -287,8 +287,8 @@ export function SuperadminTenantManagement() {
       setAssigningUser(null);
       loadTenants();
       loadAllUsers();
-    } catch (error: any) {
-      toast({ title: "Fehler", description: error.message, variant: "destructive" });
+    } catch (error: unknown) {
+      toast({ title: "Fehler", description: error instanceof Error ? error.message : "Zuweisung fehlgeschlagen", variant: "destructive" });
     }
   };
 
@@ -307,8 +307,8 @@ export function SuperadminTenantManagement() {
       toast({ title: "Gelöscht", description: `${userToDelete.display_name} wurde entfernt` });
       loadTenants();
       loadAllUsers();
-    } catch (error: any) {
-      toast({ title: "Fehler", description: error.message, variant: "destructive" });
+    } catch (error: unknown) {
+      toast({ title: "Fehler", description: error instanceof Error ? error.message : "Löschen fehlgeschlagen", variant: "destructive" });
     }
   };
 

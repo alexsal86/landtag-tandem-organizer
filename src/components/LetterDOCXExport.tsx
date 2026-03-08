@@ -65,11 +65,11 @@ export default function LetterDOCXExport({
         description: `Brief wurde als ${filename} heruntergeladen.`,
       });
 
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('DOCX Export Error:', error);
       toast({
         title: "Export-Fehler",
-        description: error.message || "Der Brief konnte nicht als DOCX exportiert werden.",
+        description: error instanceof Error ? error.message : "Der Brief konnte nicht als DOCX exportiert werden.",
         variant: "destructive",
       });
     } finally {

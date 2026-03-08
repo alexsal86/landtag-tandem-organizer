@@ -179,7 +179,7 @@ export function MyWorkTasksTab() {
 
       setShowCelebration(true);
       toast({ title: "Aufgabe erledigt und archiviert" });
-    } catch (error: any) {
+    } catch (error: unknown) {
       debugConsole.error("Error completing task:", error);
       toast({ title: "Fehler", variant: "destructive" });
     }
@@ -477,9 +477,9 @@ export function MyWorkTasksTab() {
       }
       
       toast({ title: `Aufgabe zu "${meetingTitle}" hinzugefügt` });
-    } catch (error: any) {
+    } catch (error: unknown) {
       debugConsole.error('Error adding task to meeting:', error);
-      toast({ title: "Fehler", description: error.message, variant: "destructive" });
+      toast({ title: "Fehler", description: error instanceof Error ? error.message : "Unbekannter Fehler", variant: "destructive" });
     } finally {
       setMeetingTaskId(null);
     }
@@ -508,9 +508,9 @@ export function MyWorkTasksTab() {
       }
       
       toast({ title: "Aufgabe für nächsten Jour Fixe vorgemerkt" });
-    } catch (error: any) {
+    } catch (error: unknown) {
       debugConsole.error('Error marking task for next jour fixe:', error);
-      toast({ title: "Fehler", description: error.message, variant: "destructive" });
+      toast({ title: "Fehler", description: error instanceof Error ? error.message : "Unbekannter Fehler", variant: "destructive" });
     } finally {
       setMeetingTaskId(null);
     }

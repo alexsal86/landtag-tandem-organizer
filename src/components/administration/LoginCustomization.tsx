@@ -114,11 +114,11 @@ export function LoginCustomization() {
         title: 'Gespeichert',
         description: 'Login-Anpassungen wurden erfolgreich gespeichert.'
       });
-    } catch (error: any) {
+    } catch (error: unknown) {
       debugConsole.error('Error saving:', error);
       toast({
         title: 'Fehler',
-        description: error.message || 'Speichern fehlgeschlagen.',
+        description: error instanceof Error ? error.message : 'Speichern fehlgeschlagen.',
         variant: 'destructive'
       });
     } finally {
