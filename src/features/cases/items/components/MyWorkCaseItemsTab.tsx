@@ -135,7 +135,7 @@ export function MyWorkCaseItemsTab() {
         });
         if (!escError) escalationData = escData;
       } catch (e) {
-        console.warn("Eskalationsvorschläge konnten nicht geladen werden:", e);
+        debugConsole.warn("Eskalationsvorschläge konnten nicht geladen werden:", e);
       }
 
       const visibleItems = ((data || []) as any[])
