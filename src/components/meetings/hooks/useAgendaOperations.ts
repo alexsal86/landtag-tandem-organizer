@@ -339,7 +339,7 @@ export function useAgendaOperations(deps: AgendaOpsDeps) {
         description: newVisibility ? "Der optionale Punkt wird nun angezeigt." : "Der optionale Punkt wurde ausgeblendet.",
       });
     } catch (error) {
-      console.error('Error toggling visibility:', error);
+      debugConsole.error('Error toggling visibility:', error);
       toast({ title: "Fehler", description: "Sichtbarkeit konnte nicht geändert werden.", variant: "destructive" });
     }
   };
