@@ -113,7 +113,7 @@ export const useDecisionTopics = (decisionId: string | undefined) => {
       setAssignedTopics(topicIds);
       return true;
     } catch (error) {
-      console.error('Error setting topics:', error);
+      debugConsole.error('Error setting topics:', error);
       toast({
         title: "Fehler",
         description: "Themen konnten nicht aktualisiert werden.",
