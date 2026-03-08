@@ -437,7 +437,7 @@ export function useMeetingsData() {
       if (error) throw error;
       setCarryoverBufferItems((data || []).map(d => ({ ...d, is_completed: false, is_recurring: false })));
     } catch (error) {
-      console.error('Error loading carryover buffer:', error);
+      debugConsole.error('Error loading carryover buffer:', error);
     }
   };
 
