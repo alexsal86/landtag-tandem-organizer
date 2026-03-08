@@ -62,7 +62,7 @@ export function ProtocolSearch({ protocolId, onResultSelect }: ProtocolSearchPro
       setAvailableSpeakers(speakers.sort());
       setAvailableParties(parties.sort());
     } catch (error) {
-      console.error('Error loading filter options:', error);
+      debugConsole.error('Error loading filter options:', error);
     }
   };
 
