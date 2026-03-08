@@ -162,7 +162,7 @@ export function useEmployeeOperations({
       setEmployees(prev => prev.map(emp => emp.user_id === userId ? { ...emp, annual_vacation_days: newDays } : emp));
       toast({ title: "Gespeichert", description: "Urlaubstage wurden aktualisiert." });
     } catch (e: any) {
-      console.error(e); toast({ title: "Fehler", description: e?.message ?? "Urlaubstage konnten nicht aktualisiert werden.", variant: "destructive" });
+      debugConsole.error(e); toast({ title: "Fehler", description: e?.message ?? "Urlaubstage konnten nicht aktualisiert werden.", variant: "destructive" });
     }
   };
 
