@@ -458,7 +458,7 @@ export function MyWorkTasksTab() {
         .select();
 
       if (error) {
-        console.error('Error adding task to meeting:', error);
+        debugConsole.error('Error adding task to meeting:', error);
         toast({ 
           title: "Fehler", 
           description: error.message || "Aufgabe konnte nicht zugeordnet werden.",
