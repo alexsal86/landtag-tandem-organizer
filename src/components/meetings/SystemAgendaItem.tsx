@@ -9,50 +9,18 @@ import { cn } from '@/lib/utils';
 import { RichTextDisplay } from '@/components/ui/RichTextDisplay';
 import { format } from 'date-fns';
 import { de } from 'date-fns/locale';
-
-interface LinkedTask {
-  id: string;
-  title: string;
-  description?: string | null;
-  due_date?: string | null;
-  priority?: string;
-  status?: string;
-  user_id?: string;
-}
-
-interface ProfileInfo {
-  user_id: string;
-  display_name: string | null;
-  avatar_url?: string | null;
-}
-
-interface LinkedDecision {
-  id: string;
-  title: string;
-  description?: string | null;
-  response_deadline?: string | null;
-  priority?: number | null;
-}
-
-interface LinkedCaseItem {
-  id: string;
-  subject: string | null;
-  status: string;
-  priority: string;
-  due_at: string | null;
-  owner_user_id: string | null;
-}
+import type { LinkedQuickNote, LinkedTask, LinkedCaseItem, RelevantDecision, Profile } from './types';
 
 interface SystemAgendaItemProps {
   systemType: 'upcoming_appointments' | 'quick_notes' | 'tasks' | 'birthdays' | 'decisions' | 'case_items';
   meetingDate?: string | Date;
   meetingId?: string;
   allowStarring?: boolean;
-  linkedQuickNotes?: any[];
+  linkedQuickNotes?: LinkedQuickNote[];
   linkedTasks?: LinkedTask[];
-  linkedDecisions?: LinkedDecision[];
+  linkedDecisions?: RelevantDecision[];
   linkedCaseItems?: LinkedCaseItem[];
-  profiles?: ProfileInfo[];
+  profiles?: Profile[];
   resultText?: string | null;
   onUpdateNoteResult?: (noteId: string, result: string) => void;
   onUpdateResult?: (result: string) => void;
@@ -61,10 +29,10 @@ interface SystemAgendaItemProps {
   isEmbedded?: boolean;
   defaultCollapsed?: boolean;
   /** Profiles passed through to child components like BirthdayAgendaItem */
-  allProfiles?: ProfileInfo[];
+  allProfiles?: Profile[];
 }
 
-function ProfileBadge({ userId, profiles }: { userId?: string; profiles?: ProfileInfo[] }) {
+function ProfileBadge({ userId, profiles }: { userId?: string; profiles?: Profile[] }) {
   if (!userId || !profiles) return null;
   const profile = profiles.find(p => p.user_id === userId);
   if (!profile) return null;

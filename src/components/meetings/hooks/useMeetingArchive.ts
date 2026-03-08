@@ -263,10 +263,10 @@ export function useMeetingArchive(deps: ArchiveDeps) {
               tenant_id: currentTenant?.id || '',
               due_date: new Date(new Date(meeting.meeting_date).getTime() + 3 * 24 * 60 * 60 * 1000).toISOString(),
             };
-          }).filter(Boolean);
+          }).filter((t): t is NonNullable<typeof t> => t !== null);
 
           if (tasksToInsert.length > 0) {
-            await supabase.from('tasks').insert(tasksToInsert as any[]);
+            await supabase.from('tasks').insert(tasksToInsert);
           }
         } catch (e) { console.error('Error processing birthday tasks (non-fatal):', e); }
       }
@@ -340,11 +340,11 @@ export function useMeetingArchive(deps: ArchiveDeps) {
           if (starredAppts && starredAppts.length > 0) {
             const starredAssignmentMap = new Map<string, string[] | null>();
             const appointmentIds = starredAppts.filter(s => s.appointment_id).map(s => {
-              starredAssignmentMap.set(s.appointment_id!, (s as any).assigned_to || null);
+              starredAssignmentMap.set(s.appointment_id!, s.assigned_to || null);
               return s.appointment_id;
             });
             const externalEventIds = starredAppts.filter(s => s.external_event_id).map(s => {
-              starredAssignmentMap.set(s.external_event_id!, (s as any).assigned_to || null);
+              starredAssignmentMap.set(s.external_event_id!, s.assigned_to || null);
               return s.external_event_id;
             });
 

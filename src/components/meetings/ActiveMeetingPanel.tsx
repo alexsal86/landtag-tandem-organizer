@@ -16,28 +16,28 @@ import { de } from 'date-fns/locale';
 import { cn } from '@/lib/utils';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
-import type { Meeting, AgendaItem, Profile } from './types';
+import type { Meeting, AgendaItem, Profile, LinkedQuickNote, LinkedTask, LinkedCaseItem, RelevantDecision, MeetingUpcomingAppointment } from './types';
 
 interface ActiveMeetingPanelProps {
   meeting: Meeting;
   meetingItems: AgendaItem[];
   allAgendaItems: AgendaItem[];
   profiles: Profile[];
-  linkedQuickNotes: any[];
-  linkedTasks: any[];
-  linkedCaseItems: any[];
-  relevantDecisions: any[];
-  upcomingAppointments: any[];
+  linkedQuickNotes: LinkedQuickNote[];
+  linkedTasks: LinkedTask[];
+  linkedCaseItems: LinkedCaseItem[];
+  relevantDecisions: RelevantDecision[];
+  upcomingAppointments: MeetingUpcomingAppointment[];
   starredAppointmentIds: Set<string>;
   expandedApptNotes: Set<string>;
   onExpandApptNote: (id: string) => void;
   onSetFocusMode: () => void;
   onStopMeeting: () => void;
   onArchiveMeeting: () => void;
-  onUpdateAgendaItem: (index: number, field: keyof AgendaItem, value: any) => void;
-  onUpdateResult: (itemId: string, field: 'result_text' | 'carry_over_to_next', value: any) => void;
+  onUpdateAgendaItem: (index: number, field: keyof AgendaItem, value: unknown) => void;
+  onUpdateResult: (itemId: string, field: 'result_text' | 'carry_over_to_next', value: unknown) => void;
   onUpdateNoteResult: (noteId: string, result: string) => void;
-  onToggleStar: (appt: any) => void;
+  onToggleStar: (appt: MeetingUpcomingAppointment) => void;
   onToggleVisibility: (itemId: string, currentVisibility: boolean) => void;
 }
 

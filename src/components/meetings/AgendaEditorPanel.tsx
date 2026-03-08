@@ -20,34 +20,34 @@ import { cn } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { SUBPOINT_OPTIONS } from "@/components/meetings/types";
-import type { AgendaItem, Meeting, Profile } from "@/components/meetings/types";
+import type { AgendaItem, Meeting, Profile, LinkedQuickNote, LinkedTask, LinkedCaseItem, RelevantDecision, AgendaDocument } from "@/components/meetings/types";
 
 interface AgendaEditorPanelProps {
   selectedMeeting: Meeting;
   agendaItems: AgendaItem[];
   profiles: Profile[];
-  tasks: any[];
-  taskDocuments: Record<string, any[]>;
-  agendaDocuments: Record<string, any[]>;
-  linkedQuickNotes: any[];
+  tasks: LinkedTask[];
+  taskDocuments: Record<string, AgendaDocument[]>;
+  agendaDocuments: Record<string, AgendaDocument[]>;
+  linkedQuickNotes: LinkedQuickNote[];
   hasEditPermission: boolean;
   showTaskSelector: { itemIndex: number } | null;
   onSetShowTaskSelector: (v: { itemIndex: number } | null) => void;
   onAddAgendaItem: () => void;
   onAddSystemAgendaItem: (systemType: 'upcoming_appointments' | 'quick_notes' | 'tasks' | 'birthdays' | 'decisions' | 'case_items', parentItem?: AgendaItem) => void;
-  onUpdateAgendaItem: (index: number, field: keyof AgendaItem, value: any) => void;
+  onUpdateAgendaItem: (index: number, field: keyof AgendaItem, value: unknown) => void;
   onSaveAgendaItems: () => void;
-  onAddTaskToAgenda: (task: any, parentItem: AgendaItem, parentIndex: number) => void;
+  onAddTaskToAgenda: (task: LinkedTask, parentItem: AgendaItem, parentIndex: number) => void;
   onAddSubItem: (parent: AgendaItem, title: string) => void;
   onDeleteAgendaItem: (item: AgendaItem, index: number) => void;
   onToggleVisibility: (itemId: string, currentVisibility: boolean) => void;
   onDragEnd: (result: DropResult) => void;
-  onUploadAgendaDocument: (agendaItemId: string, file: File) => Promise<any>;
+  onUploadAgendaDocument: (agendaItemId: string, file: File) => Promise<AgendaDocument | null>;
   onDeleteAgendaDocument: (documentId: string, agendaItemId: string, filePath: string) => void;
   onSetAgendaItems: React.Dispatch<React.SetStateAction<AgendaItem[]>>;
-  meetingLinkedTasks: any[];
-  meetingLinkedCaseItems: any[];
-  meetingRelevantDecisions: any[];
+  meetingLinkedTasks: LinkedTask[];
+  meetingLinkedCaseItems: LinkedCaseItem[];
+  meetingRelevantDecisions: RelevantDecision[];
 }
 
 export function AgendaEditorPanel({

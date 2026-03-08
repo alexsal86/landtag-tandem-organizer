@@ -58,7 +58,7 @@ export function useMeetingsData() {
   const [starredAppointmentIds, setStarredAppointmentIds] = useState<Set<string>>(new Set());
   const [expandedApptNotes, setExpandedApptNotes] = useState<Set<string>>(new Set());
   const [showCarryoverBuffer, setShowCarryoverBuffer] = useState(false);
-  const [carryoverBufferItems, setCarryoverBufferItems] = useState<any[]>([]);
+  const [carryoverBufferItems, setCarryoverBufferItems] = useState<AgendaItem[]>([]);
 
   // URL action parameter
   useEffect(() => {
@@ -578,7 +578,7 @@ export function useMeetingsData() {
       const { data, error } = await supabase
         .from('carryover_items').select('*').eq('user_id', user.id).order('created_at', { ascending: false });
       if (error) throw error;
-      setCarryoverBufferItems(data || []);
+      setCarryoverBufferItems((data || []).map(d => ({ ...d, is_completed: false, is_recurring: false })));
     } catch (error) {
       console.error('Error loading carryover buffer:', error);
     }

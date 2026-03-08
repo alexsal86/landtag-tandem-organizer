@@ -27,6 +27,8 @@ import { format } from 'date-fns';
 import { de } from 'date-fns/locale';
 import { RichTextDisplay } from '@/components/ui/RichTextDisplay';
 
+import type { LinkedQuickNote, LinkedTask, LinkedCaseItem, MeetingUpcomingAppointment } from './types';
+
 interface AgendaItem {
   id?: string;
   title: string;
@@ -59,26 +61,26 @@ interface NavigableItem {
   item: AgendaItem;
   isSubItem: boolean;
   parentItem: AgendaItem | null;
-  globalIndex: number; // Index in agendaItems array
-  isSystemSubItem?: boolean; // True for individual notes/appointments/tasks
-  sourceId?: string; // ID of the source item (note, appointment, task)
+  globalIndex: number;
+  isSystemSubItem?: boolean;
+  sourceId?: string;
   sourceType?: 'quick_note' | 'appointment' | 'task';
-  sourceData?: any; // The actual source data
+  sourceData?: unknown;
 }
 
 interface FocusModeViewProps {
   meeting: Meeting;
   agendaItems: AgendaItem[];
   profiles: Profile[];
-  linkedQuickNotes?: any[];
-  linkedTasks?: any[];
-  linkedCaseItems?: any[];
-  upcomingAppointments?: any[];
+  linkedQuickNotes?: LinkedQuickNote[];
+  linkedTasks?: LinkedTask[];
+  linkedCaseItems?: LinkedCaseItem[];
+  upcomingAppointments?: MeetingUpcomingAppointment[];
   starredAppointmentIds?: Set<string>;
-  onToggleStar?: (appt: any) => void;
+  onToggleStar?: (appt: MeetingUpcomingAppointment) => void;
   onClose: () => void;
-  onUpdateItem: (index: number, field: keyof AgendaItem, value: any) => void;
-  onUpdateResult: (itemId: string, field: 'result_text' | 'carry_over_to_next', value: any) => void;
+  onUpdateItem: (index: number, field: keyof AgendaItem, value: unknown) => void;
+  onUpdateResult: (itemId: string, field: 'result_text' | 'carry_over_to_next', value: unknown) => void;
   onUpdateNoteResult?: (noteId: string, result: string) => void;
   onArchive: () => void;
 }
@@ -456,7 +458,7 @@ export function FocusModeView({
           e.preventDefault();
           // Toggle star on current appointment
           if (currentNavigable?.sourceType === 'appointment' && onToggleStar && currentNavigable.sourceData) {
-            onToggleStar(currentNavigable.sourceData);
+            onToggleStar(currentNavigable.sourceData as MeetingUpcomingAppointment);
           }
           break;
         case 'n':
@@ -537,19 +539,19 @@ export function FocusModeView({
     
     // Render system sub-items (individual notes, appointments, tasks) as autonomous items
     if (isSystemSubItem && sourceData) {
-      // Get result for this system sub-item
+      const src = sourceData as Record<string, unknown>;
       const getSubItemResult = () => {
-        if (sourceType === 'quick_note') return sourceData.meeting_result || '';
+        if (sourceType === 'quick_note') return (src.meeting_result as string) || '';
         if (sourceType === 'appointment' && parentItem) {
           try {
             const results = JSON.parse(parentItem.result_text || '{}');
-            return results[sourceData.id] || '';
+            return results[src.id as string] || '';
           } catch { return ''; }
         }
         if (sourceType === 'task' && parentItem) {
           try {
             const results = JSON.parse(parentItem.result_text || '{}');
-            return results[sourceData.id] || '';
+            return results[src.id as string] || '';
           } catch { return ''; }
         }
         return '';
@@ -557,14 +559,14 @@ export function FocusModeView({
 
       const updateSubItemResult = (value: string) => {
         if (sourceType === 'quick_note' && onUpdateNoteResult) {
-          onUpdateNoteResult(sourceData.id, value);
+          onUpdateNoteResult(src.id as string, value);
         } else if ((sourceType === 'task' || sourceType === 'appointment') && parentItem?.id) {
           try {
             const results = JSON.parse(parentItem.result_text || '{}');
-            results[sourceData.id] = value;
+            results[src.id as string] = value;
             onUpdateResult(parentItem.id, 'result_text', JSON.stringify(results));
           } catch {
-            onUpdateResult(parentItem.id, 'result_text', JSON.stringify({ [sourceData.id]: value }));
+            onUpdateResult(parentItem.id, 'result_text', JSON.stringify({ [src.id as string]: value }));
           }
         }
       };
@@ -597,9 +599,9 @@ export function FocusModeView({
                     variant="ghost"
                     size="sm"
                     className="h-6 w-6 p-0 shrink-0"
-                    onClick={(e) => { e.stopPropagation(); onToggleStar(sourceData); }}
+                    onClick={(e) => { e.stopPropagation(); onToggleStar(sourceData as MeetingUpcomingAppointment); }}
                   >
-                    <Star className={cn("h-3.5 w-3.5", starredAppointmentIds.has(sourceData.id) ? "fill-amber-400 text-amber-400" : "text-muted-foreground")} />
+                    <Star className={cn("h-3.5 w-3.5", starredAppointmentIds.has(src.id as string) ? "fill-amber-400 text-amber-400" : "text-muted-foreground")} />
                   </Button>
                 )}
                 {sourceType === 'quick_note' && <StickyNote className="h-3.5 w-3.5 text-amber-500" />}
@@ -613,32 +615,32 @@ export function FocusModeView({
                   </Badge>
                 )}
               </div>
-              {sourceType === 'quick_note' && sourceData.content && (
+              {sourceType === 'quick_note' && (src.content as string) && (
                 <div className="mt-1">
-                  <RichTextDisplay content={sourceData.content} className="text-sm text-muted-foreground line-clamp-2" />
+                  <RichTextDisplay content={src.content as string} className="text-sm text-muted-foreground line-clamp-2" />
                 </div>
               )}
               {sourceType === 'task' && (
                 <div className="mt-1">
-                  {sourceData.description && (
-                    <RichTextDisplay content={sourceData.description} className="text-sm text-muted-foreground" />
+                  {(src.description as string) && (
+                    <RichTextDisplay content={src.description as string} className="text-sm text-muted-foreground" />
                   )}
                   <div className="flex items-center gap-2 mt-1">
-                    {sourceData.due_date && (
+                    {(src.due_date as string) && (
                       <span className="text-xs text-muted-foreground">
-                        Frist: {format(new Date(sourceData.due_date), "dd.MM.yyyy", { locale: de })}
+                        Frist: {format(new Date(src.due_date as string), "dd.MM.yyyy", { locale: de })}
                       </span>
                     )}
-                    {sourceData.priority && (
+                    {(src.priority as string) && (
                       <Badge variant="outline" className="text-xs">
-                        {sourceData.priority}
+                        {src.priority as string}
                       </Badge>
                     )}
                   </div>
                 </div>
               )}
-              {(sourceType === 'quick_note' || sourceType === 'task') && sourceData.user_id && (() => {
-                const profile = profiles.find(p => p.user_id === sourceData.user_id);
+              {(sourceType === 'quick_note' || sourceType === 'task') && (src.user_id as string) && (() => {
+                const profile = profiles.find(p => p.user_id === (src.user_id as string));
                 return profile ? (
                   <div className="flex items-center gap-1.5 mt-1">
                     <Avatar className="h-5 w-5">
@@ -650,13 +652,13 @@ export function FocusModeView({
                     <span className="text-xs text-muted-foreground">{profile.display_name}</span>
                   </div>
                 ) : (
-                  <span className="text-xs text-muted-foreground">von {getDisplayName(sourceData.user_id)}</span>
+                  <span className="text-xs text-muted-foreground">von {getDisplayName(src.user_id as string)}</span>
                 );
               })()}
               {sourceType === 'appointment' && (
                 <p className="text-xs text-muted-foreground mt-1">
-                  {sourceData.start_time && format(new Date(sourceData.start_time), "dd.MM.yyyy HH:mm", { locale: de })}
-                  {sourceData.location && ` • ${sourceData.location}`}
+                  {(src.start_time as string) && format(new Date(src.start_time as string), "dd.MM.yyyy HH:mm", { locale: de })}
+                  {(src.location as string) && ` • ${src.location as string}`}
                 </p>
               )}
 
