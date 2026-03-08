@@ -212,7 +212,7 @@ export function VersionHistoryPlugin({
 
       setVersions(versionsData);
     } catch (error) {
-      console.error('Error loading versions:', error);
+      debugConsole.error('Error loading versions:', error);
     }
   };
 
