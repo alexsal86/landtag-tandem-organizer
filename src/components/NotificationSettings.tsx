@@ -411,7 +411,7 @@ export const NotificationSettings: React.FC = () => {
         description: 'Ruhezeiten wurden erfolgreich gespeichert.',
       });
     } catch (error) {
-      console.error('Error updating quiet hours:', error);
+      debugConsole.error('Error updating quiet hours:', error);
       toast({
         title: 'Fehler',
         description: 'Ruhezeiten konnten nicht gespeichert werden.',
