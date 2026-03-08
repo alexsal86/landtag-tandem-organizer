@@ -110,8 +110,8 @@ export function VacationHistoryDialog({
               </TableHeader>
               <TableBody>
                 {history.map((entry) => {
-                  const total = entry.annual_entitlement + entry.carry_over_from_previous;
-                  const remaining = total - entry.total_taken - entry.expired_days;
+                  const total = entry.annual_entitlement + (entry.carry_over_from_previous ?? 0);
+                  const remaining = total - (entry.total_taken ?? 0) - (entry.expired_days ?? 0);
                   
                   return (
                     <TableRow key={entry.id}>
