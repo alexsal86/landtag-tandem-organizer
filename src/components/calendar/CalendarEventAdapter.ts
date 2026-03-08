@@ -188,7 +188,7 @@ export class CalendarEventAdapter {
       return new Date(dateObj);
     }
 
-    console.warn('⚠️ Unknown date format:', dateObj);
+    debugConsole.warn('⚠️ Unknown date format:', dateObj);
     return new Date();
   }
 
