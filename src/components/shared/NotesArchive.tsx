@@ -132,7 +132,7 @@ export function NotesArchive({ refreshTrigger, onRestore }: NotesArchiveProps) {
         setNotes((deletedRes.data || []) as DeletedNote[]);
         setArchivedNotes((archivedRes.data || []) as ArchivedNote[]);
       } catch (error) {
-        console.error("Error loading notes:", error);
+        debugConsole.error("Error loading notes:", error);
       } finally {
         setLoading(false);
       }
