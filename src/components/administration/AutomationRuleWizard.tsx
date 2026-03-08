@@ -833,6 +833,23 @@ export function AutomationRuleWizard({
               </div>
             )}
 
+            {form.triggerType === "webhook" && (
+              <div className="rounded-md border border-dashed p-3 text-sm space-y-2">
+                <p className="text-muted-foreground">
+                  <Zap className="inline h-4 w-4 mr-1" />
+                  Webhook-Regeln werden durch einen externen HTTP-Aufruf ausgelöst. Nach dem Speichern wird die Webhook-URL in den Regel-Details angezeigt.
+                </p>
+                {editingRuleId && (
+                  <div className="bg-muted rounded p-2">
+                    <p className="text-xs font-medium mb-1">Webhook-URL:</p>
+                    <code className="text-xs break-all select-all">
+                      {`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/automation-webhook?ruleId=${editingRuleId}`}
+                    </code>
+                  </div>
+                )}
+              </div>
+            )}
+
             <div className="space-y-2">
               <Label>Trigger-Feld</Label>
               <Select
