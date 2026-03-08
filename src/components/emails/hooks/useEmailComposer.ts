@@ -244,7 +244,7 @@ export function useEmailComposer() {
       const { data, error } = await supabase.from("documents").select("id, title, file_name").eq("tenant_id", currentTenant!.id).order("created_at", { ascending: false }).limit(50);
       if (error) throw error;
       setDocuments(data || []);
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Error fetching documents:", error);
     }
   };
