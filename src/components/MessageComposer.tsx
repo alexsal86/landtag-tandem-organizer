@@ -98,7 +98,6 @@ export function MessageComposer({ onClose, onSent }: MessageComposerProps) {
         });
 
       // Send push notification for new message
-      console.log('📨 Sending push notification for new message...');
       try {
         const authorName = currentUserProfile?.display_name || user.user_metadata?.display_name || user.email;
         const response = await supabase.functions.invoke('send-push-notification', {
@@ -116,14 +115,7 @@ export function MessageComposer({ onClose, onSent }: MessageComposerProps) {
             }
           }
         });
-
-        if (response.data?.success) {
-          console.log('✅ Push notification sent successfully:', response.data);
-        } else {
-          console.log('⚠️ Push notification failed:', response.data);
-        }
       } catch (pushError) {
-        console.error('❌ Push notification error:', pushError);
         // Don't fail the entire message sending process if push fails
       }
 

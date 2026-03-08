@@ -163,22 +163,13 @@ export function Navigation({ activeSection, onSectionChange }: NavigationProps) 
               {navigationItems.filter(item => 
                 item.id !== "time" || !isAdmin
               ).map((item) => {
-                console.log('Navigation item:', item.label, 'id:', item.id);
                 return (
                 <SidebarMenuItem key={item.id}>
                   <HoverCard openDelay={500} closeDelay={100}>
                     <HoverCardTrigger asChild>
                       <SidebarMenuButton
                         onClick={(e) => {
-                          console.log('Button clicked for:', item.label, 'id:', item.id);
-                          // Visuelles Feedback mit Toast
-                          toast({
-                            title: `Navigation geklickt: ${item.label}`,
-                            description: `Wechsle zu: ${item.id}`,
-                          });
-                          console.log('Calling handleNavigationClick with:', item.id);
                           handleNavigationClick(item.id);
-                          console.log('handleNavigationClick called successfully');
                         }}
                         isActive={activeSection === item.id}
                         tooltip={item.label}
