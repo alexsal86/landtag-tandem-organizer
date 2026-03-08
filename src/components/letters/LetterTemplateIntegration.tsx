@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { debugConsole } from '@/utils/debugConsole';
 import { FileText, Plus, Edit, Trash2, Settings, Image as ImageIcon, Type } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
