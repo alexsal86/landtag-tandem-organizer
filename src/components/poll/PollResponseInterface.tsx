@@ -78,7 +78,7 @@ export const PollResponseInterface = ({ pollId, token, participantId, isPreview 
         // Load time slots
         const { data: slotsData, error: slotsError } = await supabase
           .from('poll_time_slots')
-          .select('*')
+          .select('id, start_time, end_time, order_index')
           .eq('poll_id', pollId)
           .order('order_index');
 
