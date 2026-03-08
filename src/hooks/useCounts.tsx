@@ -75,7 +75,7 @@ export function useCounts(): CountsData {
         .or(`tenant_id.eq.${currentTenant.id},tenant_id.is.null`);
 
       if (distributionError) {
-        console.error('Error fetching distribution lists count:', distributionError);
+        debugConsole.error('Error fetching distribution lists count:', distributionError);
       }
 
 
