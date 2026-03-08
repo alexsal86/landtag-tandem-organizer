@@ -267,7 +267,7 @@ export function DashboardWidget({ widget, isDragging, isEditMode, onResize, onDe
       // Load snoozes
       const { data: snoozesData } = await supabase
         .from('task_snoozes')
-        .select('*')
+        .select('id, task_id, subtask_id, snoozed_until')
         .eq('user_id', user.id)
         .gte('snoozed_until', new Date().toISOString());
 
