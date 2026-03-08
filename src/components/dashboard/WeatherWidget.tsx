@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { debugConsole } from '@/utils/debugConsole';
 import { Card, CardContent } from '@/components/ui/card';
 import { getWeather, getWeatherIcon, translateCondition, LOCATIONS } from '@/utils/dashboard/weatherApi';
 import type { WeatherData } from '@/utils/dashboard/weatherApi';
