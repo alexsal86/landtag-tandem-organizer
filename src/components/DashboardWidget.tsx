@@ -491,7 +491,7 @@ export function DashboardWidget({ widget, isDragging, isEditMode, onResize, onDe
                                     description: `${isTask ? 'Aufgabe' : 'Unteraufgabe'} wird bis ${new Date(snoozeDate).toLocaleDateString('de-DE')} ausgeblendet.`
                                   });
                                 } catch (error) {
-                                  console.error('Error setting snooze:', error);
+                                  debugConsole.error('Error setting snooze:', error);
                                 }
                               }
                             }}
