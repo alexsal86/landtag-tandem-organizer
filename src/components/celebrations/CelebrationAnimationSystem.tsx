@@ -1,6 +1,7 @@
 import React, { useEffect, useState, useCallback } from 'react';
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
+import { debugConsole } from "@/utils/debugConsole";
 import { UnicornAnimation } from './UnicornAnimation';
 import { ConfettiAnimation } from './ConfettiAnimation';
 import { FireworksAnimation } from './FireworksAnimation';
