@@ -602,7 +602,7 @@ export function TasksView() {
                            assignees.includes(user.email) || 
                            task.user_id === user.id;
           
-          console.log('📝 Checking call follow-up task:', task.id, 'assignees:', assignees, 'isAssigned:', isAssigned);
+          
           return isAssigned;
         });
 
