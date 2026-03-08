@@ -80,7 +80,7 @@ export function useLetterOperations(opts: UseLetterOperationsOptions) {
       if (error) throw error;
       setLastSaved(new Date());
     } catch (error) {
-      console.error('Error auto-saving letter:', error);
+      debugConsole.error('Error auto-saving letter:', error);
       toast({ title: 'Auto-Speichern fehlgeschlagen', description: 'Änderungen konnten nicht gespeichert werden.', variant: 'destructive', duration: 3000 });
     } finally {
       setTimeout(() => setSaving(false), 200);
