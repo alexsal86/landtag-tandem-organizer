@@ -76,7 +76,7 @@ export const useDecisionTopics = (decisionId: string | undefined) => {
       setAssignedTopics(prev => prev.filter(id => id !== topicId));
       return true;
     } catch (error) {
-      console.error('Error removing topic:', error);
+      debugConsole.error('Error removing topic:', error);
       toast({
         title: "Fehler",
         description: "Thema konnte nicht entfernt werden.",
