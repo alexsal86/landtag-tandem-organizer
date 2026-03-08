@@ -3,6 +3,7 @@ import { format } from 'date-fns';
 import { de } from 'date-fns/locale';
 import { useNavigate } from 'react-router-dom';
 import { icons } from 'lucide-react';
+import { Separator } from '@/components/ui/separator';
 import { getCurrentTimeSlot, getCurrentDayOfWeek } from '@/utils/dashboard/timeUtils';
 import { selectMessage } from '@/utils/dashboard/messageGenerator';
 import { getSpecialDayHint } from '@/utils/dashboard/specialDays';
