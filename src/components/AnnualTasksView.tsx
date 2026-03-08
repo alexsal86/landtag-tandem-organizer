@@ -369,7 +369,7 @@ export function AnnualTasksView() {
         title: "Jahresstatistik erstellt", 
         description: `${result.affected_employees || 0} Mitarbeiter wurden aktualisiert.`
       });
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Error generating stats:", error);
       toast({ 
         title: "Fehler", 
