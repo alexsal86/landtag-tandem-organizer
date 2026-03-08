@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { debugConsole } from '@/utils/debugConsole';
 
 export type FeatureFlags = {
   useReactBigCalendar: boolean;
