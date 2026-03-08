@@ -69,7 +69,7 @@ export function MatrixLoginForm() {
           }
         }
       } catch (error) {
-        console.error('Error loading Matrix credentials:', error);
+        debugConsole.error('Error loading Matrix credentials:', error);
       }
     };
 
