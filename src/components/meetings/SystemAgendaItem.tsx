@@ -34,6 +34,15 @@ interface LinkedDecision {
   priority?: number | null;
 }
 
+interface LinkedCaseItem {
+  id: string;
+  subject: string | null;
+  status: string;
+  priority: string;
+  due_at: string | null;
+  owner_user_id: string | null;
+}
+
 interface SystemAgendaItemProps {
   systemType: 'upcoming_appointments' | 'quick_notes' | 'tasks' | 'birthdays' | 'decisions';
   meetingDate?: string | Date;
