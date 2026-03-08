@@ -370,7 +370,7 @@ export function EmployeeMeetingProtocol({ meetingId, onBack }: EmployeeMeetingPr
       setSharedDuringMeeting(true);
       toast({ title: "Vorbereitung geteilt", description: "Beide Parteien können jetzt die Vorbereitungen sehen" });
     } catch (error: unknown) {
-      console.error("Error sharing preparation:", error);
+      debugConsole.error("Error sharing preparation:", error);
       toast({ title: "Fehler", description: "Vorbereitung konnte nicht geteilt werden", variant: "destructive" });
     }
   };
