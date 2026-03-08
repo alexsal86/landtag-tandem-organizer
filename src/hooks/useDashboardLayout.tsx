@@ -270,7 +270,6 @@ export function useDashboardLayout() {
     );
 
     const updatedLayout = { ...currentLayout, widgets: updatedWidgets };
-    console.log('💾 Setting updated layout:', updatedLayout);
     setCurrentLayout(updatedLayout);
     
     // Immediate local storage backup
