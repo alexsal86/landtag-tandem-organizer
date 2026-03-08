@@ -234,7 +234,7 @@ export function useTasksData() {
     try {
       const { data: childTasks, error } = await supabase
         .from('tasks')
-        .select('*')
+        .select('id, title, description, parent_task_id, assigned_to, due_date, status, created_at, updated_at, priority')
         .eq('parent_task_id', taskId)
         .order('created_at', { ascending: true });
       if (error) throw error;
