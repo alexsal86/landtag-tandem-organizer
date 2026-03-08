@@ -36,7 +36,7 @@ interface TemplateFormTabsProps {
   toast: any;
 }
 
-export const TemplateFormTabs: React.FC<TemplateFormTabsProps> = ({
+export const useTemplateFormTabs = ({
   activeTab, setActiveTab, formData, setFormData,
   editingTemplate, senderInfos, infoBlocks,
   handleCreateTemplate, resetForm, setShowCreateDialog,
