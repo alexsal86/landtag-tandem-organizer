@@ -294,11 +294,8 @@ export const useNotifications = () => {
     if (!user || !pushSupported || pushPermission !== 'granted') {
       return;
     }
-    }
 
     try {
-      
-      
       // Use the already-registered root service worker (COOP/COEP worker at /coi-serviceworker.js)
       // Registering a second worker at scope '/' caused non-deterministic replacement and flaky push delivery.
       const registration = await navigator.serviceWorker.ready;
