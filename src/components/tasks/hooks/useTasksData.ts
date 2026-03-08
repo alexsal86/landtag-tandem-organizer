@@ -255,7 +255,7 @@ export function useTasksData() {
         updated_at: task.updated_at,
         priority: task.priority,
       }));
-      setSubtasks(prev => ({ ...prev, [taskId]: mappedChildTasks as any }));
+      setSubtasks(prev => ({ ...prev, [taskId]: mappedChildTasks as Subtask[] }));
     } catch (error) {
       debugConsole.error('Error loading subtasks:', error);
     }
