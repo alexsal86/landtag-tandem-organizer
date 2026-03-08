@@ -133,7 +133,7 @@ export function AppointmentPreparationDataTab({
         });
       }
     } catch (error) {
-      console.error("Error fetching appointment details:", error);
+      debugConsole.error("Error fetching appointment details:", error);
     }
   };
 
