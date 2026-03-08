@@ -153,19 +153,20 @@ export function useLetterTemplateData() {
 
   const handleUpdateTemplate = async () => {
     if (!editingTemplate) return;
-    const cleanedHeaderElements = stripBlobUrls(formData.header_elements);
     const cleanedHeaderElements = stripBlobUrls(formData.header_elements) as unknown[];
     const cleanedFooterBlocks = stripBlobUrls(formData.footer_blocks);
+    const cleanedLayoutSettings = stripBlobUrlsFromLayoutSettings(normalizeLayoutBlockContentImages(formData.layout_settings));
     try {
-      const { error } = await supabase.from('letter_templates').update({
+      const updateData: Record<string, unknown> = {
         name: formData.name.trim(), letterhead_html: formData.letterhead_html, letterhead_css: formData.letterhead_css,
         response_time_days: formData.response_time_days, default_sender_id: formData.default_sender_id || null,
         default_info_blocks: formData.default_info_blocks.length > 0 ? formData.default_info_blocks : null,
         header_layout_type: cleanedHeaderElements.length > 0 ? 'structured' : 'html',
         header_text_elements: cleanedHeaderElements.length > 0 ? cleanedHeaderElements : null,
-        footer_blocks: Array.isArray(cleanedFooterBlocks) ? (cleanedFooterBlocks.length > 0 ? cleanedFooterBlocks : null) : cleanedFooterBlocks,
-        layout_settings: cleanedLayoutSettings as unknown as Record<string, unknown>, updated_at: new Date().toISOString(),
-      } as Record<string, unknown>).eq('id', editingTemplate.id);
+        footer_blocks: Array.isArray(cleanedFooterBlocks) ? ((cleanedFooterBlocks as unknown[]).length > 0 ? cleanedFooterBlocks : null) : cleanedFooterBlocks,
+        layout_settings: cleanedLayoutSettings, updated_at: new Date().toISOString(),
+      };
+      const { error } = await supabase.from('letter_templates').update(updateData as typeof updateData & { name: string }).eq('id', editingTemplate.id);
       if (error) throw error;
       toast({ title: "Template aktualisiert" });
       setEditingTemplate(null); resetForm(); fetchTemplates();
