@@ -120,7 +120,7 @@ export function TaskDocumentDialog({
       a.click();
       URL.revokeObjectURL(url);
     } catch (error) {
-      console.error("Error downloading document:", error);
+      debugConsole.error("Error downloading document:", error);
       toast({ title: "Fehler beim Download", variant: "destructive" });
     }
   };
