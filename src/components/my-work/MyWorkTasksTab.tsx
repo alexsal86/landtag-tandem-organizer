@@ -334,7 +334,7 @@ export function MyWorkTasksTab() {
       setSnoozeDialogOpen(false);
       setSnoozeTaskId(null);
     } catch (error) {
-      console.error("Error setting snooze:", error);
+      debugConsole.error("Error setting snooze:", error);
       toast({ title: "Fehler", variant: "destructive" });
     }
   };
