@@ -1014,7 +1014,7 @@ export function useEventPlanningData() {
       loadItemDocuments(selectedItemId!);
       loadAllItemCounts();
       toast({ title: "Dokument gelöscht", description: "Das Dokument wurde erfolgreich entfernt." });
-    } catch (error) { console.error('Error deleting document:', error); toast({ title: "Fehler", description: "Das Dokument konnte nicht gelöscht werden.", variant: "destructive" }); }
+    } catch (error) { debugConsole.error('Error deleting document:', error); toast({ title: "Fehler", description: "Das Dokument konnte nicht gelöscht werden.", variant: "destructive" }); }
   };
 
   const downloadItemDocument = async (doc: PlanningDocument) => {
