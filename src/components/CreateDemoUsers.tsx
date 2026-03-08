@@ -38,7 +38,7 @@ export const CreateDemoUsers = () => {
         toast.error('Unbekannter Fehler beim Erstellen der Demo-Benutzer');
       }
     } catch (error) {
-      console.error('Function call error:', error);
+      debugConsole.error('Function call error:', error);
       toast.error('Fehler beim Aufruf der Funktion');
     } finally {
       setIsCreating(false);

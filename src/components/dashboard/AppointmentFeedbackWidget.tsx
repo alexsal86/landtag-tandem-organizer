@@ -188,7 +188,7 @@ export const AppointmentFeedbackWidget = ({
       }
     } catch (err) {
       // Non-critical – don't block save if notifications fail
-      console.error('Failed to send feedback notifications:', err);
+      debugConsole.error('Failed to send feedback notifications:', err);
     }
 
     setNoteText('');

@@ -322,7 +322,7 @@ export function useTaskOperations({
       setShowCelebration(true);
       toast({ title: "ToDo erledigt", description: "Das ToDo wurde als erledigt markiert." });
     } catch (error) {
-      console.error('Error completing todo:', error);
+      debugConsole.error('Error completing todo:', error);
       toast({ title: "Fehler", description: "ToDo konnte nicht als erledigt markiert werden.", variant: "destructive" });
     }
   };

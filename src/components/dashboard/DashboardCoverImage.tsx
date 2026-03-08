@@ -119,7 +119,7 @@ export function DashboardCoverImage({ userId }: DashboardCoverImageProps) {
         description: "Dein Dashboard-Cover wurde erfolgreich aktualisiert.",
       });
     } catch (error) {
-      console.error("Error saving cover:", error);
+      debugConsole.error("Error saving cover:", error);
       toast({
         title: "Fehler",
         description: "Das Cover konnte nicht gespeichert werden.",

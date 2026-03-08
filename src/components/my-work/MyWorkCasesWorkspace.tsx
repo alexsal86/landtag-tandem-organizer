@@ -336,7 +336,7 @@ export function MyWorkCasesWorkspace() {
         setLinkedDecisions((prev) => ({ ...prev, [itemId]: data as any }));
       }
     } catch (e) {
-      console.error("Error loading linked decisions:", e);
+      debugConsole.error("Error loading linked decisions:", e);
     } finally {
       setLoadingDecisions(false);
     }

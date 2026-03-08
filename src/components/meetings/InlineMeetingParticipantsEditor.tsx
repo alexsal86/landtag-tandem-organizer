@@ -191,7 +191,7 @@ export function InlineMeetingParticipantsEditor({ meetingId }: InlineMeetingPart
       .eq('id', participantId);
 
     if (error) {
-      console.error('❌ Error removing participant:', error);
+      debugConsole.error('❌ Error removing participant:', error);
       toast({
         title: "Fehler",
         description: "Teilnehmer konnte nicht entfernt werden.",

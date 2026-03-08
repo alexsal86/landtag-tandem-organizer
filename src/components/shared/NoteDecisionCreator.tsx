@@ -354,7 +354,7 @@ export function NoteDecisionCreator({
       setUploadStatus(null);
     } catch (error) {
       setUploadStatus(null);
-      console.error('Error creating decision:', error);
+      debugConsole.error('Error creating decision:', error);
       toast.error(error instanceof Error ? error.message : "Fehler beim Erstellen der Entscheidungsanfrage");
     } finally {
       setLoading(false);

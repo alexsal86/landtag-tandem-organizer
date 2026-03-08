@@ -140,7 +140,7 @@ const ProperReactBigCalendar: React.FC<ProperReactBigCalendarProps> = ({
       return [];
     }
 
-    console.log('🔄 REACT BIG CALENDAR - Converting events to RBC format...');
+    debugConsole.log('🔄 REACT BIG CALENDAR - Converting events to RBC format...');
     const convertedEvents = CalendarEventAdapter.toRBCEvents(events);
     console.log('🔄 REACT BIG CALENDAR - Converted events:', { 
       originalCount: events.length, 
