@@ -8,7 +8,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/components/ui/use-toast";
-import { Loader2, Play, Plus, Trash2, Zap } from "lucide-react";
+import { AlertTriangle, Loader2, Play, Plus, Trash2, Zap } from "lucide-react";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { formatDistanceToNow } from "date-fns";
 import { de } from "date-fns/locale";
 import { AutomationRuleWizard, DEFAULT_FORM, type WizardForm } from "./AutomationRuleWizard";
@@ -318,8 +319,29 @@ export function AutomationRulesManager() {
     );
   }
 
-  return (
+    const failedRunCount = runs.filter((r) => r.status === "failed").length;
+
+    return (
     <div className="space-y-6">
+      {/* Failed runs alert banner */}
+      {failedRunCount > 0 && (
+        <Alert variant="destructive">
+          <AlertTriangle className="h-4 w-4" />
+          <AlertTitle>Fehlgeschlagene Runs</AlertTitle>
+          <AlertDescription className="flex items-center justify-between">
+            <span>{failedRunCount} Automation-Run{failedRunCount > 1 ? "s" : ""} fehlgeschlagen.</span>
+            <Button
+              variant="outline"
+              size="sm"
+              className="ml-4 border-destructive text-destructive hover:bg-destructive/10"
+              onClick={() => setRunStatusFilter("failed")}
+            >
+              Fehler anzeigen
+            </Button>
+          </AlertDescription>
+        </Alert>
+      )}
+
       {/* Wizard Dialog */}
       <AutomationRuleWizard
         open={wizardOpen}

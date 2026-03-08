@@ -115,6 +115,10 @@ export const buildDeepLinkPath = (notification: Notification): string => {
     // System
     case 'team_announcement_created':
       return '/mywork?tab=team';
+    case 'automation_run_failed':
+      return data.run_id
+        ? `/admin?tab=automation&filter=failed&highlight=${data.run_id}`
+        : '/admin?tab=automation&filter=failed';
     case 'budget_exceeded':
     case 'system_update':
       return '/';
