@@ -273,8 +273,8 @@ export function useEmailComposer() {
       if (error) throw error;
       toast({ title: "Template gespeichert", description: `"${templateName}" wurde erstellt` });
       fetchEmailTemplates();
-    } catch (error: any) {
-      toast({ title: "Fehler beim Speichern", description: error.message, variant: "destructive" });
+    } catch (error: unknown) {
+      toast({ title: "Fehler beim Speichern", description: error instanceof Error ? error.message : String(error), variant: "destructive" });
     }
   };
 
