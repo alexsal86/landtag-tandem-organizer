@@ -155,7 +155,7 @@ export function useContactImport() {
         let existingOrg = existingContacts.find((c) => c.organization === orgName || (c.name === orgName && !c.organization));
         if (!existingOrg) {
           try {
-            const { data: newOrg, error: orgError } = await supabase.from("contacts").insert({ user_id: user!.id, tenant_id: currentTenant!.id, name: orgName, contact_type: "organization", category: "organization" }).select("id, name").single();
+            const { data: newOrg, error: orgError } = await supabase.from("contacts").insert([{ user_id: user!.id, tenant_id: currentTenant!.id, name: orgName, contact_type: "organization", category: "organization" }]).select("id, name").single();
             if (!orgError && newOrg) { contactData.organization_id = newOrg.id; existingContacts.push({ id: newOrg.id, name: newOrg.name, email: null, phone: null, organization: null }); }
           } catch (e) { debugConsole.warn("Could not create organization:", e); }
         } else { contactData.organization_id = existingOrg.id; }
