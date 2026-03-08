@@ -150,7 +150,7 @@ export const PollResponseInterface = ({ pollId, token, participantId, isPreview 
         }
 
       } catch (error) {
-        console.error('Error loading poll data:', error);
+        debugConsole.error('Error loading poll data:', error);
         toast({
           title: "Fehler",
           description: "Die Abstimmung konnte nicht geladen werden.",
