@@ -1647,6 +1647,34 @@ export function MeetingsView() {
         console.error('Error processing task results (non-fatal):', taskResultError);
       }
 
+      // Step 5c2: Process case item results - save as timeline events
+      try {
+        const caseItemSystemItems = agendaItemsData?.filter(item => item.system_type === 'case_items') || [];
+        for (const ciItem of caseItemSystemItems) {
+          if (!ciItem.result_text?.trim()) continue;
+          
+          try {
+            const ciResults = JSON.parse(ciItem.result_text);
+            for (const [caseItemId, resultText] of Object.entries(ciResults)) {
+              if (!resultText || !(resultText as string).trim()) continue;
+              
+              const meetingContext = `Aus Besprechung "${meeting.title}" vom ${format(new Date(meeting.meeting_date), 'dd.MM.yyyy', { locale: de })}`;
+              await supabase.from('case_item_timeline_entries' as any).insert({
+                case_item_id: caseItemId,
+                entry_type: 'meeting_result',
+                title: `Ergebnis: ${meeting.title}`,
+                content: `${meetingContext}\n\n${resultText}`,
+                created_by: user.id,
+              });
+            }
+          } catch (e) {
+            console.error('Error processing case item results:', e);
+          }
+        }
+      } catch (ciResultError) {
+        console.error('Error processing case item results (non-fatal):', ciResultError);
+      }
+
       // Step 5d: Create tasks for starred appointments with per-appointment assignment
       try {
         const meetingTenantId = currentTenant?.id || meeting.tenant_id;
