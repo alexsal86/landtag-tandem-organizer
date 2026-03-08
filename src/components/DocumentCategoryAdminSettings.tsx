@@ -362,7 +362,7 @@ export function DocumentCategoryAdminSettings() {
                                 ) : (
                                   <>
                                     <Button
-                                      onClick={() => setEditingCategory({ id: category.id, label: category.label, color: category.color, icon: category.icon })}
+                                      onClick={() => setEditingCategory({ id: category.id, label: category.label, color: category.color ?? '', icon: category.icon ?? undefined })}
                                       size="sm"
                                       variant="outline"
                                       className="h-8 w-8 p-0"

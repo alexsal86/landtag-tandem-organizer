@@ -187,8 +187,8 @@ const LetterEditor: React.FC<LetterEditorProps> = ({ letter, isOpen, onClose, on
     try {
       const { data, error } = await supabase.from('letter_templates').select('*').eq('id', templateId).single();
       if (error) throw error;
-      setCurrentTemplate(data);
-      if (data) ops.applyTemplateDefaults(data);
+      setCurrentTemplate(data as LetterTemplate);
+      if (data) ops.applyTemplateDefaults(data as LetterTemplate);
     } catch (error) {
       debugConsole.error('Error fetching current template:', error);
     }

@@ -117,7 +117,7 @@ const KnowledgeBaseView = () => {
                       <div className="relative"><Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" /><Input placeholder="Dokumente durchsuchen..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} className="pl-10" /></div>
                       <div className="flex flex-wrap gap-2">
                         <Badge variant={selectedTopicFilter === null ? "default" : "outline"} className="cursor-pointer" onClick={() => setSelectedTopicFilter(null)}>Alle</Badge>
-                        {getActiveTopics().slice(0, 6).map(topic => <Badge key={topic.id} variant={selectedTopicFilter === topic.id ? "default" : "outline"} className="cursor-pointer" style={selectedTopicFilter === topic.id ? { backgroundColor: topic.color } : {}} onClick={() => setSelectedTopicFilter(selectedTopicFilter === topic.id ? null : topic.id)}>{topic.label}</Badge>)}
+                        {getActiveTopics().slice(0, 6).map(topic => <Badge key={topic.id} variant={selectedTopicFilter === topic.id ? "default" : "outline"} className="cursor-pointer" style={selectedTopicFilter === topic.id ? { backgroundColor: topic.color ?? undefined } : {}} onClick={() => setSelectedTopicFilter(selectedTopicFilter === topic.id ? null : topic.id)}>{topic.label}</Badge>)}
                       </div>
                     </div>
                   </TabsContent>

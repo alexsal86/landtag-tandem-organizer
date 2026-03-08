@@ -10,25 +10,25 @@ import { debugConsole } from "@/utils/debugConsole";
 interface AgendaItem {
   id: string;
   title: string;
-  description?: string;
-  notes?: string;
-  result_text?: string;
-  assigned_to?: string[];
+  description?: string | null;
+  notes?: string | null;
+  result_text?: string | null;
+  assigned_to?: string[] | null;
   order_index: number;
 }
 
 interface Meeting {
   id: string;
   title: string;
-  description?: string;
+  description?: string | null;
   meeting_date: string;
-  location?: string;
+  location?: string | null;
   status: string;
 }
 
 interface Profile {
   user_id: string;
-  display_name: string;
+  display_name: string | null;
 }
 
 interface StarredAppointment {

@@ -42,10 +42,10 @@ export interface LetterTemplate {
   letterhead_html: string;
   letterhead_css: string;
   response_time_days: number;
-  is_default: boolean;
-  is_active: boolean;
-  default_sender_id?: string;
-  default_info_blocks?: string[];
+  is_default: boolean | null;
+  is_active: boolean | null;
+  default_sender_id?: string | null;
+  default_info_blocks?: string[] | null;
   layout_settings?: any;
 }
 
