@@ -211,7 +211,7 @@ export const MatrixSettings: React.FC = () => {
         .eq("id", subscriptionId);
 
       if (error) {
-        console.error("Error updating subscription:", error);
+        debugConsole.error("Error updating subscription:", error);
         toast({
           title: "Fehler",
           description: "Abonnement-Status konnte nicht geändert werden.",
