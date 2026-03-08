@@ -242,7 +242,7 @@ export function MyWorkDecisionsTab() {
       toast({ title: "Archiviert", description: "Entscheidung wurde archiviert." });
     } catch (error) {
       setDecisions(previousDecisions);
-      console.error('Error archiving:', error);
+      debugConsole.error('Error archiving:', error);
       toast({ title: "Fehler", description: "Archivierung fehlgeschlagen.", variant: "destructive" });
     } finally {
       setArchivingDecisionId(null);
