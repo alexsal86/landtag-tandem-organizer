@@ -49,6 +49,7 @@ export function useMyWorkJourFixeSystemData(userId?: string, tenantId?: string) 
   const [meetingTasks, setMeetingTasks] = useState<Record<string, SystemItemData[]>>({});
   const [meetingDecisions, setMeetingDecisions] = useState<Record<string, SystemItemData[]>>({});
   const [meetingBirthdays, setMeetingBirthdays] = useState<Record<string, BirthdayItemData[]>>({});
+  const [meetingCaseItems, setMeetingCaseItems] = useState<Record<string, CaseItemData[]>>({});
   const [userProfiles, setUserProfiles] = useState<Record<string, UserProfileData>>({});
   const isMountedRef = useRef(true);
   const requestVersionRef = useRef(0);
