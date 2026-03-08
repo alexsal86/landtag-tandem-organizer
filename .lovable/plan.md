@@ -1,19 +1,54 @@
 
-## Code-Qualität — Status
 
-### Erledigt
+# Fix: 5 Code-Quality-Probleme (Codex-Audit)
 
-- **strictNullChecks: true** — aktiviert, alle Build-Fehler behoben
-- **noImplicitAny: true** — aktiviert, alle Build-Fehler behoben
-- **DOMPurify** als zentraler HTML-Sanitizer — alle `dangerouslySetInnerHTML` nutzen jetzt `sanitizeRichHtml()`
-- **Tenant-Access Guard** für Edge Functions — existiert in `supabase/functions/_shared/tenant-access.ts`
-- **ESLint `no-unused-vars: warn`** — aktiviert mit `argsIgnorePattern: '^_'`, erste Bereinigungsrunde in Pages/Hooks abgeschlossen
-- **Standalone `React`-Imports entfernt** — ~60 Dateien bereinigt (standalone `import React` und unnötiges `React, ` Prefix bei destructured imports)
+## 1. State-Mutation in Contact-Import
 
-### Noch offen
+**Datei:** `src/components/contact-import/hooks/useContactImport.ts` Zeile 159
 
-1. **`strict: true` aktivieren** — beinhaltet `strictBindCallApply`, `strictFunctionTypes`, `strictPropertyInitialization`, `noImplicitThis`, `alwaysStrict`
-2. **Tote Imports weiter bereinigen** — ~65 standalone `React`-Imports in Components prüfen, weitere lucide-Icons und ungenutzte Variablen entfernen (ESLint-Regel zeigt Warnungen)
-3. **`no-explicit-any` schrittweise einführen** — nach Abschluss der `no-unused-vars`-Bereinigung
-4. **Edge Functions `verify_jwt`-Audit** — ~20 Functions mit `verify_jwt = false` klassifizieren und absichern
-5. **CORS einschränken** — `Access-Control-Allow-Origin: *` durch Allowlist ersetzen für sensible Operationen
+`existingContacts.push(...)` mutiert den React-State direkt. Fix: durch `setExistingContacts(prev => [...prev, newEntry])` ersetzen.
+
+## 2. Non-null Assertions absichern
+
+**Datei:** `useContactImport.ts` Zeilen 40, 150, 158
+
+`user!.id` und `currentTenant!.id` in async-Logik durch Early-Return-Guards ersetzen:
+```ts
+if (!user || !currentTenant) return;
+```
+Gleiches Muster in den ~25 betroffenen Dateien (GlobalSearchCommand, EditContact, DistributionListForm, etc.) — bei allen async-Funktionen Guards hinzufügen statt `!`-Assertions.
+
+## 3. Leere catch-Blöcke mit minimalem Logging versehen
+
+Zwei Kategorien:
+- **Unkritisch (localStorage, cleanup):** `catch {}` bei `localStorage.setItem` oder `indexedDB.deleteDatabase` ist akzeptabel — hier `catch { /* best-effort */ }` Kommentar hinzufügen für Klarheit.
+- **Kritisch (Matrix-Context, DaySlip DB-Ops):** Leere `catch {}` bei DB-Operationen oder Crypto-Recovery durch `catch (e) { debugConsole.warn(...) }` ersetzen. Betrifft ~8 Stellen in `MatrixClientContext.tsx` und ~3 in `useDaySlipStore.ts`.
+
+## 4. JSON-Protocol-Parser: Speaker-Typ-Inkonsistenz
+
+**Datei:** `src/utils/jsonProtocolParser.ts`
+
+- Interface `JSONProtocolStructure.speeches[].speaker` ist `string`, aber `validateJSONProtocol` akzeptiert auch `{ name: string }` Objekte (Zeile 116)
+- `parseJSONProtocol` schreibt `speech.speaker` direkt in `speaker_name` ohne Normalisierung
+
+**Fix:** Speaker-Normalisierung in `parseJSONProtocol`:
+```ts
+speaker_name: typeof speech.speaker === 'object' ? speech.speaker.name : speech.speaker,
+```
+Plus Interface anpassen: `speaker: string | { name: string; ... }`
+
+## 5. `no-explicit-any` bleibt bewusst `off`
+
+Dies ist eine bewusste Entscheidung — bei ~200+ Dateien mit `any` wäre ein sofortiges Aktivieren kontraproduktiv. Stattdessen: schrittweise Typisierung in kritischen Modulen (bereits begonnen im Letter-Modul). Kein Handlungsbedarf in diesem Batch.
+
+---
+
+## Umfang
+
+| Bereich | Dateien | Aufwand |
+|---------|---------|---------|
+| State-Mutation fix | 1 | Klein |
+| Non-null Guards | ~25 | Mittel |
+| Leere catches loggen | ~10 | Klein |
+| Speaker-Typ normalisieren | 1 | Klein |
+
