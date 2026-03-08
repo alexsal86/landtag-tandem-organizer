@@ -84,7 +84,7 @@ export function MeetingParticipantsManager({
               excludeUserIds={excludedUserIds}
             />
           </div>
-          <Select value={selectedRole} onValueChange={(v) => setSelectedRole(v as any)}>
+          <Select value={selectedRole} onValueChange={(v) => setSelectedRole(v as ParticipantRole)}>
             <SelectTrigger className="w-36">
               <SelectValue />
             </SelectTrigger>

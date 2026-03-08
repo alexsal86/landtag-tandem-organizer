@@ -121,7 +121,7 @@ export function AgendaEditorPanel({
                           className={cn("transition-shadow", snapshot.isDragging && "shadow-lg")}
                         >
                           <SystemAgendaItem
-                            systemType={item.system_type as any}
+                            systemType={item.system_type as SystemAgendaType}
                             meetingDate={selectedMeeting.meeting_date}
                             meetingId={selectedMeeting.id}
                             allowStarring={false}

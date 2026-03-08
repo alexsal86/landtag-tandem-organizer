@@ -12,7 +12,7 @@ export interface RecurrenceData {
 
 export interface NewMeetingParticipant {
   userId: string;
-  role: 'organizer' | 'participant' | 'optional';
+  role: ParticipantRole;
   user?: {
     id: string;
     display_name: string;

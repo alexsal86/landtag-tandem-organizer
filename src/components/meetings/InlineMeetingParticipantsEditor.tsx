@@ -259,7 +259,7 @@ export function InlineMeetingParticipantsEditor({ meetingId }: InlineMeetingPart
                 </AvatarFallback>
               </Avatar>
               <span className="flex-1 text-sm">{p.user?.display_name || 'Unbekannt'}</span>
-              <Select value={p.role} onValueChange={(v) => handleRoleChange(p.id, v as any)}>
+              <Select value={p.role} onValueChange={(v) => handleRoleChange(p.id, v as ParticipantRole)}>
                 <SelectTrigger className="w-28 h-7 text-xs">
                   <SelectValue />
                 </SelectTrigger>
