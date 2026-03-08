@@ -197,25 +197,23 @@ export function AutomationRulesManager() {
       trigger_type: form.triggerType,
       trigger_config: { field: form.triggerField, value: form.triggerValue },
       conditions: {
-        all: [{ field: form.conditionField, operator: form.conditionOperator, value: form.conditionValue }],
+        all: form.conditions.map((c) => ({ field: c.field, operator: c.operator, value: c.value })),
       },
-      actions: [
-        {
-          type: form.actionType,
-          payload: {
-            target_user_id: form.actionTargetUserId,
-            title: form.actionTitle,
-            message: form.actionMessage,
-            priority: form.actionTaskPriority,
-            category: form.actionTaskCategory,
-            due_date: form.actionTaskDueDate,
-            assigned_to: form.actionTaskAssignees,
-            table: form.actionTable,
-            record_id: form.actionRecordId,
-            status: form.actionStatus,
-          },
+      actions: form.actions.map((a) => ({
+        type: a.type,
+        payload: {
+          target_user_id: a.targetUserId,
+          title: a.title,
+          message: a.message,
+          priority: a.taskPriority,
+          category: a.taskCategory,
+          due_date: a.taskDueDate,
+          assigned_to: a.taskAssignees,
+          table: a.table,
+          record_id: a.recordId,
+          status: a.status,
         },
-      ],
+      })),
       enabled: form.enabled,
     };
 
