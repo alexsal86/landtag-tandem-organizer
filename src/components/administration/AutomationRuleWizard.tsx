@@ -216,6 +216,12 @@ export type ConditionItem = {
   value: string;
 };
 
+export type ConditionGroup = {
+  logic: "all" | "any";
+  conditions: ConditionItem[];
+  groups: ConditionGroup[];
+};
+
 export type ActionItem = {
   type: string;
   targetUserId: string;
