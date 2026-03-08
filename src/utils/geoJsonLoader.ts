@@ -247,7 +247,7 @@ export const loadElectoralDistrictsGeoJson = async (): Promise<GeoJsonData> => {
       return data;
     } catch (e) {
       lastError = e;
-      console.warn('Failed to load from', path, e);
+      debugConsole.warn('Failed to load from', path, e);
       continue;
     }
   }
