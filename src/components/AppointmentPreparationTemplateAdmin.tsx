@@ -18,7 +18,7 @@ import { Switch } from '@/components/ui/switch';
 interface Template {
   id: string;
   name: string;
-  description: string;
+  description: string | null;
   template_data: any[];
   is_default: boolean;
   is_active: boolean;
