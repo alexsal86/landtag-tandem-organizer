@@ -111,7 +111,7 @@ export function useMeetingArchive(deps: ArchiveDeps) {
       }
       await loadCarryoverBufferItems();
     } catch (error) {
-      console.error('Error processing carryover items:', error);
+      debugConsole.error('Error processing carryover items:', error);
       toast({ title: "Fehler", description: "Fehler beim Übertragen der Agenda-Punkte", variant: "destructive" });
     }
   };
