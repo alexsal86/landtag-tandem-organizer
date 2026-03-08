@@ -121,7 +121,7 @@ export function useContactsViewState() {
       toast({ title: "Erfolg", description: "Verteiler wurde erfolgreich gelöscht." });
       fetchDistributionLists();
     } catch (error) {
-      console.error('Error deleting distribution list:', error);
+      debugConsole.error('Error deleting distribution list:', error);
       toast({ title: "Fehler", description: "Verteiler konnte nicht gelöscht werden.", variant: "destructive" });
     }
   };
