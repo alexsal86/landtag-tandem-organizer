@@ -113,10 +113,6 @@ export const NewsWidget: React.FC<NewsWidgetProps> = ({ widgetId, compact = fals
   if (compact) {
     return (
       <div>
-        <h3 className="text-sm font-semibold text-foreground mb-2 flex items-center gap-2">
-          <Rss className="h-3.5 w-3.5" />
-          News
-        </h3>
         {loading && <div className="animate-pulse space-y-2">{[...Array(3)].map((_, i) => <div key={i} className="h-6 bg-muted rounded" />)}</div>}
         {error && <p className="text-xs text-muted-foreground">{error}</p>}
         {!loading && !error && (
