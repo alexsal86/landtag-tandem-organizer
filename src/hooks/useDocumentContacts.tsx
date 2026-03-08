@@ -93,7 +93,7 @@ export const useDocumentContacts = (documentId?: string) => {
 
       if (error) throw error;
       await fetchDocumentContacts();
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Error removing document contact:', error);
       throw error;
     }
