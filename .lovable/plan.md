@@ -1,16 +1,36 @@
 
-## Code-Qualität — Status
 
-### Erledigt
+# Plan: ESLint `no-unused-vars` auf `warn` setzen + tote Imports/Variablen entfernen
 
-- **strictNullChecks: true** — aktiviert, alle Build-Fehler behoben
-- **noImplicitAny: true** — aktiviert, alle Build-Fehler behoben
-- **DOMPurify** als zentraler HTML-Sanitizer — alle `dangerouslySetInnerHTML` nutzen jetzt `sanitizeRichHtml()`
-- **Tenant-Access Guard** für Edge Functions — existiert in `supabase/functions/_shared/tenant-access.ts`
+## Überblick
+Die ESLint-Regel `@typescript-eslint/no-unused-vars` wird von `off` auf `warn` gesetzt. Anschließend werden alle toten Imports und ungenutzten Variablen im gesamten Projekt systematisch entfernt.
 
-### Noch offen
+## Vorgehen
 
-1. **`strict: true` aktivieren** — beinhaltet `strictBindCallApply`, `strictFunctionTypes`, `strictPropertyInitialization`, `noImplicitThis`, `alwaysStrict`
-2. **Lint-Regeln verschärfen** — `no-unused-vars` auf `warn` setzen, tote Importe entfernen; dann `no-explicit-any` schrittweise einführen
-3. **Edge Functions `verify_jwt`-Audit** — ~20 Functions mit `verify_jwt = false` klassifizieren und absichern
-4. **CORS einschränken** — `Access-Control-Allow-Origin: *` durch Allowlist ersetzen für sensible Operationen
+### Schritt 1: ESLint-Regel aktivieren
+In `eslint.config.js` Zeile 28 ändern:
+```js
+'@typescript-eslint/no-unused-vars': ['warn', { argsIgnorePattern: '^_', varsIgnorePattern: '^_' }]
+```
+Das `_`-Prefix-Pattern erlaubt bewusst ignorierte Parameter (z.B. `_config`, `_event`).
+
+### Schritt 2: Systematische Bereinigung
+Da das Projekt ~200+ Dateien umfasst, werden die Dateien paketweise durchgegangen:
+
+1. **Pages** (~22 Dateien) - Imports und lokale Variablen prüfen
+2. **Hooks** (~80 Dateien) - Ungenutzte Imports, Destructuring-Reste
+3. **Components** (~150+ Dateien) - Größtes Paket, aufgeteilt nach Unterordnern
+4. **Utils/Services/Contexts** (~20 Dateien) - Hilfsfunktionen
+
+Typische Patterns die entfernt werden:
+- Importierte aber nie verwendete Komponenten/Typen
+- Destructurte aber nie gelesene Variablen
+- Lokale Variablen die zugewiesen aber nie gelesen werden
+- Ungenutzte Funktionsparameter (werden mit `_` prefixed statt entfernt)
+
+### Schritt 3: Build-Verifikation
+Nach jeder Batch-Bereinigung wird sichergestellt, dass der Build stabil bleibt.
+
+## Umfang
+Geschätzt ~50-100 Dateien mit toten Imports/Variablen. Wird in mehreren großen Paketen abgearbeitet.
+
