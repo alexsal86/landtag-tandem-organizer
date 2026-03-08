@@ -14,7 +14,7 @@ type Condition = {
 };
 
 type Action = {
-  type: "create_notification" | "update_record_status" | "create_task";
+  type: "create_notification" | "update_record_status" | "create_task" | "send_push_notification" | "send_email_template";
   payload?: Record<string, unknown>;
 };
 
