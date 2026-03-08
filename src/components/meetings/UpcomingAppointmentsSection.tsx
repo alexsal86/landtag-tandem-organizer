@@ -115,7 +115,7 @@ export const UpcomingAppointmentsSection: React.FC<UpcomingAppointmentsSectionPr
         .lte('start_time', endDate.toISOString());
 
       if (externalError) {
-        console.error('Error loading external events:', externalError);
+        debugConsole.error('Error loading external events:', externalError);
       }
 
       // Merge and format appointments
