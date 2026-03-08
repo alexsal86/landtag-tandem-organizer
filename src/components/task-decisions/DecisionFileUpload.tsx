@@ -142,7 +142,7 @@ export function DecisionFileUpload({
           const parsed = await parseMsgFile(file);
           entries.push({ file, emailMetadata: parsed.metadata });
         } catch (e) {
-          console.error('MSG parse error:', e);
+          debugConsole.error('MSG parse error:', e);
           entries.push({ file, emailMetadata: null });
         }
       } else {
