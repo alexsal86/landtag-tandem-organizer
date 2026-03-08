@@ -1,5 +1,6 @@
 import React from "react";
 import type { SystemAgendaType } from "@/components/meetings/types";
+import { debugConsole } from '@/utils/debugConsole';
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -290,7 +291,7 @@ export function AgendaEditorPanel({
                                                   if (error) throw error;
                                                   const url = URL.createObjectURL(data);
                                                   const a = document.createElement('a'); a.href = url; a.download = doc.file_name || 'download'; a.click(); URL.revokeObjectURL(url);
-                                                } catch (error) { console.error('Download error:', error); toast({ title: "Download-Fehler", description: "Datei konnte nicht heruntergeladen werden.", variant: "destructive" }); }
+                                                 } catch (error) { debugConsole.error('Download error:', error); toast({ title: "Download-Fehler", description: "Datei konnte nicht heruntergeladen werden.", variant: "destructive" }); }
                                               }}>
                                               <Download className="h-3 w-3" />
                                             </Button>
@@ -324,7 +325,7 @@ export function AgendaEditorPanel({
                                                       const { data, error } = await supabase.storage.from('documents').download(doc.file_path);
                                                       if (error) throw error;
                                                       const url = URL.createObjectURL(data); const a = document.createElement('a'); a.href = url; a.download = doc.file_name; a.click(); URL.revokeObjectURL(url);
-                                                    } catch (error) { console.error('Download error:', error); toast({ title: "Download-Fehler", description: "Datei konnte nicht heruntergeladen werden.", variant: "destructive" }); }
+                                                    } catch (error) { debugConsole.error('Download error:', error); toast({ title: "Download-Fehler", description: "Datei konnte nicht heruntergeladen werden.", variant: "destructive" }); }
                                                   }}>
                                                   <Download className="h-4 w-4" />
                                                 </Button>
@@ -364,7 +365,7 @@ export function AgendaEditorPanel({
                                                 await onUploadAgendaDocument(itemId!, file);
                                                 toast({ title: "Dokument hochgeladen", description: "Das Dokument wurde erfolgreich hinzugefügt." });
                                               } catch (error) {
-                                                console.error('Upload error:', error);
+                                                debugConsole.error('Upload error:', error);
                                                 toast({ title: "Upload-Fehler", description: "Dokument konnte nicht hochgeladen werden.", variant: "destructive" });
                                               }
                                             }

@@ -8,6 +8,7 @@ import { useTenant } from '@/hooks/useTenant';
 import { useAuth } from '@/hooks/useAuth';
 import { format, addDays, startOfDay, endOfDay, isSameWeek, addWeeks } from 'date-fns';
 import { de } from 'date-fns/locale';
+import { debugConsole } from '@/utils/debugConsole';
 import { cn } from '@/lib/utils';
 import { MultiUserAssignSelect } from './MultiUserAssignSelect';
 
@@ -114,7 +115,7 @@ export const UpcomingAppointmentsSection: React.FC<UpcomingAppointmentsSectionPr
         .lte('start_time', endDate.toISOString());
 
       if (externalError) {
-        console.error('Error loading external events:', externalError);
+        debugConsole.error('Error loading external events:', externalError);
       }
 
       // Merge and format appointments
@@ -141,7 +142,7 @@ export const UpcomingAppointmentsSection: React.FC<UpcomingAppointmentsSectionPr
 
       setAppointments(allAppointments);
     } catch (error) {
-      console.error('Error loading appointments:', error);
+      debugConsole.error('Error loading appointments:', error);
     } finally {
       setLoading(false);
     }
@@ -173,7 +174,7 @@ export const UpcomingAppointmentsSection: React.FC<UpcomingAppointmentsSectionPr
       setStarredIds(ids);
       setStarredAssignments(assignments);
     } catch (error) {
-      console.error('Error loading starred appointments:', error);
+      debugConsole.error('Error loading starred appointments:', error);
     }
   };
 
@@ -219,7 +220,7 @@ export const UpcomingAppointmentsSection: React.FC<UpcomingAppointmentsSectionPr
         await supabase.from('starred_appointments').insert(insertData);
       }
     } catch (error) {
-      console.error('Error toggling star:', error);
+      debugConsole.error('Error toggling star:', error);
       // Rollback on error
       setStarredIds(prev => {
         const newSet = new Set(prev);
@@ -255,7 +256,7 @@ export const UpcomingAppointmentsSection: React.FC<UpcomingAppointmentsSectionPr
         .eq('user_id', user.id)
         .or(`appointment_id.eq.${aptId},external_event_id.eq.${aptId}`);
     } catch (error) {
-      console.error('Error updating starred assignment:', error);
+      debugConsole.error('Error updating starred assignment:', error);
     }
   };
 

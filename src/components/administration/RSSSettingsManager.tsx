@@ -8,6 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
+import { debugConsole } from '@/utils/debugConsole';
 import * as z from "zod";
 import { supabase } from "@/integrations/supabase/client";
 import { useTenant } from "@/hooks/useTenant";
@@ -49,7 +50,7 @@ export function RSSSettingsManager() {
 
     if (error && error.code !== 'PGRST116') {
       toast.error("Fehler beim Laden der Einstellungen");
-      console.error(error);
+      debugConsole.error(error);
     } else if (data) {
       form.reset({
         articles_per_feed: data.articles_per_feed,
@@ -86,7 +87,7 @@ export function RSSSettingsManager() {
       toast.success("Einstellungen gespeichert");
     } catch (error: unknown) {
       toast.error(error instanceof Error ? error.message : "Fehler beim Speichern");
-      console.error(error);
+      debugConsole.error(error);
     } finally {
       setSaving(false);
     }

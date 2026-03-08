@@ -4,6 +4,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { useLetterArchiving } from "@/hooks/useLetterArchiving";
 import type { Document, Letter, ParentTaskOption } from "../types";
+import { debugConsole } from '@/utils/debugConsole';
 
 interface UseDocumentOperationsProps {
   user: any;
@@ -52,7 +53,7 @@ export function useDocumentOperations({
     try {
       if (document.document_type !== 'archived_letter') {
         const { error: storageError } = await supabase.storage.from('documents').remove([document.file_path]);
-        if (storageError) console.warn('Storage deletion error:', storageError);
+        if (storageError) debugConsole.warn('Storage deletion error:', storageError);
       }
       const { error: dbError } = await supabase.from('documents').delete().eq('id', document.id);
       if (dbError) throw dbError;

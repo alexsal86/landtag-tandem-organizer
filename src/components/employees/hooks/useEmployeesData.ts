@@ -3,6 +3,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { useTenant } from "@/hooks/useTenant";
 import { useToast } from "@/hooks/use-toast";
+import { debugConsole } from '@/utils/debugConsole';
 import { startOfYear, endOfYear } from "date-fns";
 import {
   Employee, EmployeeSettingsRow, Profile, LeaveAgg, PendingLeaveRequest,
@@ -37,7 +38,7 @@ export function useEmployeesData() {
         .select("role")
         .eq("user_id", user.id)
         .single();
-      if (error) console.error(error);
+      if (error) debugConsole.error(error);
       setIsAdmin(roleData?.role === "abgeordneter");
     };
     run();
@@ -180,7 +181,7 @@ export function useEmployeesData() {
         }));
         setPendingLeaves(pendingWithNames);
       } catch (e: any) {
-        console.error(e);
+        debugConsole.error(e);
         toast({ title: "Fehler beim Laden", description: e?.message ?? "Daten konnten nicht geladen werden.", variant: "destructive" });
       } finally {
         setLoading(false);
@@ -217,9 +218,9 @@ export function useEmployeesData() {
           supabase.from("employee_meetings").select("id").eq("employee_id", user.id).order("meeting_date", { ascending: false }).limit(1).maybeSingle(),
         ]);
 
-        if (settingsRes.error) { console.error(settingsRes.error); toast({ title: "Fehler", description: "Fehler beim Laden der Mitarbeitereinstellungen", variant: "destructive" }); return; }
-        if (profileRes.error) { console.error(profileRes.error); toast({ title: "Fehler", description: "Fehler beim Laden des Profils", variant: "destructive" }); return; }
-        if (leavesRes.error) { console.error(leavesRes.error); toast({ title: "Fehler", description: "Fehler beim Laden der Urlaubsanträge", variant: "destructive" }); return; }
+        if (settingsRes.error) { debugConsole.error(settingsRes.error); toast({ title: "Fehler", description: "Fehler beim Laden der Mitarbeitereinstellungen", variant: "destructive" }); return; }
+        if (profileRes.error) { debugConsole.error(profileRes.error); toast({ title: "Fehler", description: "Fehler beim Laden des Profils", variant: "destructive" }); return; }
+        if (leavesRes.error) { debugConsole.error(leavesRes.error); toast({ title: "Fehler", description: "Fehler beim Laden der Urlaubsanträge", variant: "destructive" }); return; }
 
         if (!settingsRes.data) {
           toast({ title: "Keine Mitarbeitereinstellungen", description: "Falls der Administrator soeben Daten eingetragen hat, laden Sie die Seite neu (F5).", variant: "destructive" });
@@ -246,7 +247,7 @@ export function useEmployeesData() {
         });
         setSelfLeaveAgg(agg);
       } catch (e: any) {
-        console.error(e);
+        debugConsole.error(e);
         toast({ title: "Fehler beim Laden", description: e?.message ?? "Eigene Daten konnten nicht geladen werden.", variant: "destructive" });
       } finally {
         setLoading(false);

@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { debugConsole } from '@/utils/debugConsole';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -128,7 +129,7 @@ export function BirthdayAgendaItem({
         birthdayContacts.sort((a, b) => a.nextBirthday.getTime() - b.nextBirthday.getTime());
         setContacts(birthdayContacts);
       } catch (error) {
-        console.error('Error loading birthday contacts:', error);
+        debugConsole.error('Error loading birthday contacts:', error);
       } finally {
         setLoading(false);
       }

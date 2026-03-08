@@ -3,6 +3,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { debugConsole } from '@/utils/debugConsole';
 import { Badge } from "@/components/ui/badge";
 import { Switch } from "@/components/ui/switch";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
@@ -55,7 +56,7 @@ export const DefaultGuestsAdmin: React.FC = () => {
       if (error) throw error;
       setGuests(data || []);
     } catch (error: unknown) {
-      console.error('Error fetching default guests:', error);
+      debugConsole.error('Error fetching default guests:', error);
       toast.error('Fehler beim Laden der Standard-Gäste');
     } finally {
       setLoading(false);
@@ -98,7 +99,7 @@ export const DefaultGuestsAdmin: React.FC = () => {
       setAddForm({ name: '', email: '', is_active: true });
       fetchDefaultGuests();
     } catch (error: unknown) {
-      console.error('Error adding default guest:', error);
+      debugConsole.error('Error adding default guest:', error);
       toast.error('Fehler beim Hinzufügen des Standard-Gastes');
     }
   };
@@ -140,7 +141,7 @@ export const DefaultGuestsAdmin: React.FC = () => {
       setEditingId(null);
       fetchDefaultGuests();
     } catch (error: unknown) {
-      console.error('Error updating default guest:', error);
+      debugConsole.error('Error updating default guest:', error);
       toast.error('Fehler beim Aktualisieren des Standard-Gastes');
     }
   };
@@ -161,7 +162,7 @@ export const DefaultGuestsAdmin: React.FC = () => {
       toast.success('Standard-Gast gelöscht');
       fetchDefaultGuests();
     } catch (error: unknown) {
-      console.error('Error deleting default guest:', error);
+      debugConsole.error('Error deleting default guest:', error);
       toast.error('Fehler beim Löschen des Standard-Gastes');
     }
   };
@@ -178,7 +179,7 @@ export const DefaultGuestsAdmin: React.FC = () => {
       toast.success(!currentActive ? 'Standard-Gast aktiviert' : 'Standard-Gast deaktiviert');
       fetchDefaultGuests();
     } catch (error: unknown) {
-      console.error('Error toggling guest status:', error);
+      debugConsole.error('Error toggling guest status:', error);
       toast.error('Fehler beim Ändern des Status');
     }
   };

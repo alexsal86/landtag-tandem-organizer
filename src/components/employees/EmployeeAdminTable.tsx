@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { debugConsole } from '@/utils/debugConsole';
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -28,7 +29,7 @@ function EmployeeHistoryPopover({ userId }: { userId: string }) {
       const { data, error } = await supabase.from('employee_settings_history').select('*').eq('user_id', userId).order('valid_from', { ascending: false });
       if (error) throw error;
       setHistory(data || []);
-    } catch (error) { console.error('Error loading history:', error); } finally { setLoading(false); }
+    } catch (error) { debugConsole.error('Error loading history:', error); } finally { setLoading(false); }
   };
 
   return (

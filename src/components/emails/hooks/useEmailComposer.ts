@@ -6,6 +6,7 @@ import { useTenant } from "@/hooks/useTenant";
 import { useToast } from "@/hooks/use-toast";
 import { format } from "date-fns";
 import { de } from "date-fns/locale";
+import { debugConsole } from '@/utils/debugConsole';
 
 // ── Types ────────────────────────────────────────────────────
 export interface Contact {
@@ -176,7 +177,7 @@ export function useEmailComposer() {
 
       toast({ title: "Presse-E-Mail vorbereitet", description: `Daten aus "${pr.title}" wurden geladen.` });
     } catch (error: unknown) {
-      console.error("Error loading press release for email:", error);
+      debugConsole.error("Error loading press release for email:", error);
       toast({ title: "Fehler", description: "Pressemitteilung konnte nicht geladen werden.", variant: "destructive" });
     }
   };
@@ -194,7 +195,7 @@ export function useEmailComposer() {
       if (defaultSender) setSelectedSender(defaultSender.id);
       else if (data && data.length > 0) setSelectedSender(data[0].id);
     } catch (error) {
-      console.error("Error fetching sender infos:", error);
+      debugConsole.error("Error fetching sender infos:", error);
     }
   };
 
@@ -209,7 +210,7 @@ export function useEmailComposer() {
       if (error) throw error;
       setEmailTemplates(data || []);
     } catch (error) {
-      console.error("Error fetching email templates:", error);
+      debugConsole.error("Error fetching email templates:", error);
     }
   };
 
@@ -225,7 +226,7 @@ export function useEmailComposer() {
       );
       setDistributionLists(listsWithCounts);
     } catch (error: unknown) {
-      console.error("Error fetching distribution lists:", error);
+      debugConsole.error("Error fetching distribution lists:", error);
     }
   };
 
@@ -235,7 +236,7 @@ export function useEmailComposer() {
       if (error) throw error;
       setContacts(data || []);
     } catch (error: unknown) {
-      console.error("Error fetching contacts:", error);
+      debugConsole.error("Error fetching contacts:", error);
     }
   };
 
@@ -245,7 +246,7 @@ export function useEmailComposer() {
       if (error) throw error;
       setDocuments(data || []);
     } catch (error: unknown) {
-      console.error("Error fetching documents:", error);
+      debugConsole.error("Error fetching documents:", error);
     }
   };
 
@@ -390,7 +391,7 @@ export function useEmailComposer() {
 
       setSubject(""); setBodyHtml(""); setReplyTo(""); setIsScheduled(false); setScheduledFor(undefined); setRecipients([]); setSelectedDocuments([]);
     } catch (error: unknown) {
-      console.error("Error sending emails:", error);
+      debugConsole.error("Error sending emails:", error);
       toast({ title: "Fehler beim Versenden", description: error instanceof Error ? error.message : String(error), variant: "destructive" });
     } finally {
       setLoading(false);

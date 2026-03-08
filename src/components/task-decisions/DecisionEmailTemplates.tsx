@@ -3,6 +3,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
+import { debugConsole } from '@/utils/debugConsole';
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { Save, RefreshCw, Copy, Info } from "lucide-react";
@@ -48,7 +49,7 @@ export const DecisionEmailTemplates = () => {
         await createDefaultTemplate();
       }
     } catch (error) {
-      console.error('Error loading email template:', error);
+      debugConsole.error('Error loading email template:', error);
       toast({
         title: "Fehler",
         description: "E-Mail-Template konnte nicht geladen werden.",
@@ -80,7 +81,7 @@ export const DecisionEmailTemplates = () => {
       if (error) throw error;
       setTemplate(data);
     } catch (error) {
-      console.error('Error creating default template:', error);
+      debugConsole.error('Error creating default template:', error);
     }
   };
 
@@ -110,7 +111,7 @@ export const DecisionEmailTemplates = () => {
         description: "E-Mail-Template wurde erfolgreich aktualisiert.",
       });
     } catch (error) {
-      console.error('Error saving template:', error);
+      debugConsole.error('Error saving template:', error);
       toast({
         title: "Fehler",
         description: "E-Mail-Template konnte nicht gespeichert werden.",

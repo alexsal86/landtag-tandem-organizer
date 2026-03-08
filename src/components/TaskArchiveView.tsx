@@ -3,6 +3,7 @@ import { Archive, Trash2, Download, Settings, Calendar, Flag, Tag } from "lucide
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { debugConsole } from '@/utils/debugConsole';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -83,7 +84,7 @@ export function TaskArchiveView() {
       
       setArchivedTasks(formattedTasks);
     } catch (error) {
-      console.error('Error loading archived tasks:', error);
+      debugConsole.error('Error loading archived tasks:', error);
       toast({
         title: "Fehler",
         description: "Archivierte Aufgaben konnten nicht geladen werden.",
@@ -147,7 +148,7 @@ export function TaskArchiveView() {
 
       setArchivedDecisions(formattedDecisions);
     } catch (error) {
-      console.error('Error loading archived decisions:', error);
+      debugConsole.error('Error loading archived decisions:', error);
     }
   };
 
@@ -161,7 +162,7 @@ export function TaskArchiveView() {
       if (error && error.code !== 'PGRST116') throw error;
       setArchiveSettings(data || {});
     } catch (error) {
-      console.error('Error loading archive settings:', error);
+      debugConsole.error('Error loading archive settings:', error);
     }
   };
 
@@ -189,7 +190,7 @@ export function TaskArchiveView() {
         description: "Archiv-Einstellungen wurden automatisch aktualisiert.",
       });
     } catch (error) {
-      console.error('Error saving archive settings:', error);
+      debugConsole.error('Error saving archive settings:', error);
       toast({
         title: "Fehler",
         description: "Einstellungen konnten nicht gespeichert werden.",
@@ -213,7 +214,7 @@ export function TaskArchiveView() {
         description: "Die archivierte Aufgabe wurde endgültig gelöscht.",
       });
     } catch (error) {
-      console.error('Error deleting archived task:', error);
+      debugConsole.error('Error deleting archived task:', error);
       toast({
         title: "Fehler",
         description: "Aufgabe konnte nicht gelöscht werden.",
@@ -237,7 +238,7 @@ export function TaskArchiveView() {
         description: "Die archivierte Entscheidung wurde endgültig gelöscht.",
       });
     } catch (error) {
-      console.error('Error deleting archived decision:', error);
+      debugConsole.error('Error deleting archived decision:', error);
       toast({
         title: "Fehler",
         description: "Entscheidung konnte nicht gelöscht werden.",

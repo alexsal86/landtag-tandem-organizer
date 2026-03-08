@@ -8,6 +8,7 @@ import { Image, X } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { $createImageNode, type ImagePayload } from '@/components/nodes/ImageNode';
+import { debugConsole } from '@/utils/debugConsole';
 
 interface ImageUploadDialogProps {
   onInsert: (payload: ImagePayload) => void;
@@ -44,7 +45,7 @@ const ImageUploadDialog: React.FC<ImageUploadDialogProps> = ({ onInsert, onCance
         description: "Bild erfolgreich hochgeladen",
       });
     } catch (error) {
-      console.error('Error uploading image:', error);
+      debugConsole.error('Error uploading image:', error);
       toast({
         title: "Fehler",
         description: "Fehler beim Hochladen des Bildes",

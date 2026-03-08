@@ -8,6 +8,7 @@ import { isEmailFile, isEmlFile, isMsgFile, parseEmlFile, parseMsgFile, buildEml
 import { useDecisionAttachmentUpload } from '@/hooks/useDecisionAttachmentUpload';
 import { EmailPreviewCard } from './EmailPreviewCard';
 import { EmailPreviewDialog } from './EmailPreviewDialog';
+import { debugConsole } from '@/utils/debugConsole';
 
 interface UploadedFile {
   id?: string;
@@ -121,7 +122,7 @@ export function DecisionFileUpload({
 
       setFiles(formattedFiles);
     } catch (error) {
-      console.error('Error loading files:', error);
+      debugConsole.error('Error loading files:', error);
     }
   };
 
@@ -133,7 +134,7 @@ export function DecisionFileUpload({
           const parsed = await parseEmlFile(file);
           entries.push({ file, emailMetadata: parsed.metadata });
         } catch (e) {
-          console.error('EML parse error:', e);
+          debugConsole.error('EML parse error:', e);
           entries.push({ file, emailMetadata: null });
         }
       } else if (isMsgFile(file)) {
@@ -141,7 +142,7 @@ export function DecisionFileUpload({
           const parsed = await parseMsgFile(file);
           entries.push({ file, emailMetadata: parsed.metadata });
         } catch (e) {
-          console.error('MSG parse error:', e);
+          debugConsole.error('MSG parse error:', e);
           entries.push({ file, emailMetadata: null });
         }
       } else {
@@ -363,7 +364,7 @@ export function DecisionFileUpload({
         description: `${fileName} wird heruntergeladen.`,
       });
     } catch (error) {
-      console.error('Download error:', error);
+      debugConsole.error('Download error:', error);
       toast({
         title: 'Download fehlgeschlagen',
         description: 'Die Datei konnte nicht heruntergeladen werden.',
@@ -395,7 +396,7 @@ export function DecisionFileUpload({
       loadExistingFiles();
       onFilesChange?.();
     } catch (error) {
-      console.error('Delete error:', error);
+      debugConsole.error('Delete error:', error);
       toast({
         title: 'Löschung fehlgeschlagen',
         description: 'Die Datei konnte nicht gelöscht werden.',

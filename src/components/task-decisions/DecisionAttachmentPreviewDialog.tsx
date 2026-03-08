@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Download, FileImage, FileSpreadsheet, FileText, FileIcon } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import * as XLSX from "xlsx";
+import { debugConsole } from '@/utils/debugConsole';
 
 interface DecisionAttachmentPreviewDialogProps {
   open: boolean;
@@ -73,7 +74,7 @@ function PdfPreview({ url, fileName }: { url: string; fileName: string }) {
         if (!ctx) return;
         await page.render({ canvasContext: ctx, viewport, canvas } as any).promise;
       } catch (e) {
-        console.error("PDF render error:", e);
+        debugConsole.error("PDF render error:", e);
         if (!cancelled) setError(true);
       } finally {
         if (!cancelled) setLoading(false);
@@ -116,7 +117,7 @@ function ExcelPreview({ url }: { url: string }) {
         const rendered = XLSX.utils.sheet_to_html(firstSheet, { editable: false });
         if (!cancelled) setHtml(rendered);
       } catch (e) {
-        console.error("Excel render error:", e);
+        debugConsole.error("Excel render error:", e);
         if (!cancelled) setError(true);
       } finally {
         if (!cancelled) setLoading(false);
@@ -155,7 +156,7 @@ function WordPreview({ url }: { url: string }) {
         const result = await mammoth.convertToHtml({ arrayBuffer });
         if (!cancelled) setHtml(result.value);
       } catch (e) {
-        console.error("Word render error:", e);
+        debugConsole.error("Word render error:", e);
         if (!cancelled) setError(true);
       } finally {
         if (!cancelled) setLoading(false);
@@ -243,7 +244,7 @@ export function DecisionAttachmentPreviewDialog({
         const blobUrl = URL.createObjectURL(blobData);
         setSignedUrl(blobUrl);
       } catch (e: any) {
-        console.error('Error loading preview:', e, 'path:', normalizedFilePath, 'raw:', filePath);
+        debugConsole.error('Error loading preview:', e, 'path:', normalizedFilePath, 'raw:', filePath);
         setError(`Vorschau konnte nicht geladen werden. (${e?.message || 'Unbekannter Fehler'})`);
       } finally {
         setLoading(false);
@@ -287,7 +288,7 @@ export function DecisionAttachmentPreviewDialog({
       document.body.removeChild(a);
       URL.revokeObjectURL(url);
     } catch (e) {
-      console.error('Error downloading preview file:', e);
+      debugConsole.error('Error downloading preview file:', e);
       setError('Datei konnte nicht heruntergeladen werden.');
     }
   };

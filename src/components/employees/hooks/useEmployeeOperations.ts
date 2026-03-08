@@ -1,4 +1,5 @@
 import { supabase } from "@/integrations/supabase/client";
+import { debugConsole } from '@/utils/debugConsole';
 import type { Database } from "@/integrations/supabase/types";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
@@ -50,7 +51,7 @@ export function useEmployeeOperations({
         });
       }
     } catch (error) {
-      console.error("Fehler beim Erstellen des Kalendereintrags:", error);
+      debugConsole.error("Fehler beim Erstellen des Kalendereintrags:", error);
     }
   };
 
@@ -79,7 +80,7 @@ export function useEmployeeOperations({
       toast({ title: action === "approved" ? `${typeLabel} genehmigt` : `${typeLabel} abgelehnt`, description: action === "approved" ? `Der ${typeLabel} wurde genehmigt.` : `Der ${typeLabel} wurde abgelehnt.` });
       setTimeout(() => window.location.reload(), 300);
     } catch (e: any) {
-      console.error(e);
+      debugConsole.error(e);
       if (e?.message?.includes('Failed to fetch') || e?.message?.includes('NetworkError') || e?.name === 'TypeError') {
         await new Promise(r => setTimeout(r, 500));
         const { data: checkData } = await supabase.from("leave_requests").select("status").eq("id", leaveId).maybeSingle();
@@ -111,7 +112,7 @@ export function useEmployeeOperations({
       toast({ title: approve ? "Stornierung genehmigt" : "Stornierung abgelehnt", description: approve ? "Die Urlaubsstornierung wurde genehmigt und der Kalendereintrag entfernt." : "Die Stornierung wurde abgelehnt. Der Urlaub bleibt bestehen." });
       window.location.reload();
     } catch (e: any) {
-      console.error(e);
+      debugConsole.error(e);
       toast({ title: "Fehler", description: e?.message ?? "Stornierungsanfrage konnte nicht verarbeitet werden.", variant: "destructive" });
     }
   };
@@ -124,7 +125,7 @@ export function useEmployeeOperations({
       setEmployees(prev => prev.map(emp => emp.user_id === userId ? { ...emp, hours_per_week: newHours } : emp));
       toast({ title: "Gespeichert", description: "Stunden pro Woche wurden aktualisiert." });
     } catch (e: any) {
-      console.error(e);
+      debugConsole.error(e);
       toast({ title: "Fehler", description: e?.message ?? "Stunden konnten nicht aktualisiert werden.", variant: "destructive" });
     }
   };
@@ -137,7 +138,7 @@ export function useEmployeeOperations({
       setEmployees(prev => prev.map(emp => emp.user_id === userId ? { ...emp, days_per_week: newDays } : emp));
       toast({ title: "Gespeichert", description: "Tage pro Woche wurden aktualisiert." });
     } catch (e: any) {
-      console.error(e); toast({ title: "Fehler", description: e?.message ?? "Tage konnten nicht aktualisiert werden.", variant: "destructive" });
+      debugConsole.error(e); toast({ title: "Fehler", description: e?.message ?? "Tage konnten nicht aktualisiert werden.", variant: "destructive" });
     }
   };
 
@@ -149,7 +150,7 @@ export function useEmployeeOperations({
       setEmployees(prev => prev.map(emp => emp.user_id === userId ? { ...emp, days_per_month: newDays } : emp));
       toast({ title: "Gespeichert", description: "Tage pro Monat wurden aktualisiert." });
     } catch (e: any) {
-      console.error(e); toast({ title: "Fehler", description: e?.message ?? "Tage konnten nicht aktualisiert werden.", variant: "destructive" });
+      debugConsole.error(e); toast({ title: "Fehler", description: e?.message ?? "Tage konnten nicht aktualisiert werden.", variant: "destructive" });
     }
   };
 
@@ -161,7 +162,7 @@ export function useEmployeeOperations({
       setEmployees(prev => prev.map(emp => emp.user_id === userId ? { ...emp, annual_vacation_days: newDays } : emp));
       toast({ title: "Gespeichert", description: "Urlaubstage wurden aktualisiert." });
     } catch (e: any) {
-      console.error(e); toast({ title: "Fehler", description: e?.message ?? "Urlaubstage konnten nicht aktualisiert werden.", variant: "destructive" });
+      debugConsole.error(e); toast({ title: "Fehler", description: e?.message ?? "Urlaubstage konnten nicht aktualisiert werden.", variant: "destructive" });
     }
   };
 
@@ -172,7 +173,7 @@ export function useEmployeeOperations({
       setEmployees(prev => prev.map(emp => emp.user_id === userId ? { ...emp, employment_start_date: newDate } : emp));
       toast({ title: "Gespeichert", description: "Startdatum wurde aktualisiert." });
     } catch (e: any) {
-      console.error(e); toast({ title: "Fehler", description: e?.message ?? "Startdatum konnte nicht aktualisiert werden.", variant: "destructive" });
+      debugConsole.error(e); toast({ title: "Fehler", description: e?.message ?? "Startdatum konnte nicht aktualisiert werden.", variant: "destructive" });
     }
   };
 

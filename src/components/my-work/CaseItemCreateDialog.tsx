@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { addWeeks, format } from "date-fns";
 import { Briefcase, Mail, MessageSquare, Phone, UserRound } from "lucide-react";
+import { debugConsole } from '@/utils/debugConsole';
 
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -118,7 +119,7 @@ export function CaseItemCreateDialog({ open, onOpenChange, onCreated, createCase
       if (requestId !== contactSearchRequestId.current) return;
 
       if (error) {
-        console.error("Error searching contacts:", error);
+        debugConsole.error("Error searching contacts:", error);
         setSearchResults([]);
       } else {
         setSearchResults((data ?? []) as ContactSearchResult[]);

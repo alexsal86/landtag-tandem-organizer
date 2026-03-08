@@ -8,6 +8,7 @@ import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { debugConsole } from '@/utils/debugConsole';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { UserBadge } from "@/components/ui/user-badge";
 import { getHashedColor } from "@/utils/userColors";
@@ -53,7 +54,7 @@ export function EventPlanningListView(data: EventPlanningDataReturn) {
             <Button variant="outline" size="sm" onClick={() => setShowDefaultCollaboratorsDialog(true)}>
               <Users className="h-4 w-4 mr-2" />Standard-Mitarbeiter
             </Button>
-            <Dialog open={showPlanningArchive} onOpenChange={(open) => { setShowPlanningArchive(open); if (open) fetchArchivedPlannings().catch(err => console.error('Failed to fetch archived plannings:', err)); }}>
+            <Dialog open={showPlanningArchive} onOpenChange={(open) => { setShowPlanningArchive(open); if (open) fetchArchivedPlannings().catch(err => debugConsole.error('Failed to fetch archived plannings:', err)); }}>
               <DialogTrigger asChild>
                 <Button variant={showPlanningArchive ? "default" : "outline"} size="sm"><Archive className="h-4 w-4 mr-2" />Archiv</Button>
               </DialogTrigger>

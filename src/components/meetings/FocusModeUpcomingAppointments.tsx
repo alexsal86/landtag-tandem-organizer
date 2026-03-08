@@ -8,6 +8,7 @@ import { useTenant } from '@/hooks/useTenant';
 import { useAuth } from '@/hooks/useAuth';
 import { format, addDays, startOfDay, endOfDay, isSameWeek, addWeeks } from 'date-fns';
 import { de } from 'date-fns/locale';
+import { debugConsole } from '@/utils/debugConsole';
 import { cn } from '@/lib/utils';
 
 interface Appointment {
@@ -119,7 +120,7 @@ export const FocusModeUpcomingAppointments = forwardRef<
         .lte('start_time', endDate.toISOString());
 
       if (externalError) {
-        console.error('Error loading external events:', externalError);
+        debugConsole.error('Error loading external events:', externalError);
       }
 
       // Merge and format appointments
@@ -146,7 +147,7 @@ export const FocusModeUpcomingAppointments = forwardRef<
 
       setAppointments(allAppointments);
     } catch (error) {
-      console.error('Error loading appointments:', error);
+      debugConsole.error('Error loading appointments:', error);
     } finally {
       setLoading(false);
     }
@@ -171,7 +172,7 @@ export const FocusModeUpcomingAppointments = forwardRef<
       });
       setStarredIds(ids);
     } catch (error) {
-      console.error('Error loading starred appointments:', error);
+      debugConsole.error('Error loading starred appointments:', error);
     }
   };
 
@@ -217,7 +218,7 @@ export const FocusModeUpcomingAppointments = forwardRef<
         await supabase.from('starred_appointments').insert(insertData);
       }
     } catch (error) {
-      console.error('Error toggling star:', error);
+      debugConsole.error('Error toggling star:', error);
       // Rollback on error
       setStarredIds(prev => {
         const newSet = new Set(prev);

@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { debugConsole } from '@/utils/debugConsole';
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -111,7 +112,7 @@ export function EmailHistory() {
       
       setEmailLogs(typedData);
     } catch (error: unknown) {
-      console.error("Error fetching email logs:", error);
+      debugConsole.error("Error fetching email logs:", error);
       toast({ title: "Fehler beim Laden", description: error instanceof Error ? error.message : String(error), variant: "destructive" });
     } finally {
       setLoading(false);
@@ -131,7 +132,7 @@ export function EmailHistory() {
       if (error) throw error;
       setScheduledEmails(data || []);
     } catch (error: unknown) {
-      console.error("Error fetching scheduled emails:", error);
+      debugConsole.error("Error fetching scheduled emails:", error);
     }
   };
 

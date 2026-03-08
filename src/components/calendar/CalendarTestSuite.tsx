@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
+import { debugConsole } from '@/utils/debugConsole';
 import { CalendarEvent } from './types';
 import { ReactBigCalendarView } from './ReactBigCalendarView';
 import { EnhancedCalendarGrid } from './EnhancedCalendarGrid';
@@ -69,7 +70,7 @@ export function CalendarTestSuite() {
       
       setTestResults(results);
     } catch (error) {
-      console.error('Test execution failed:', error);
+      debugConsole.error('Test execution failed:', error);
     } finally {
       setIsRunning(false);
     }

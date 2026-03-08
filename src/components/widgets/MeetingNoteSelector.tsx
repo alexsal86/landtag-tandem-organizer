@@ -7,6 +7,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { format } from 'date-fns';
 import { de } from 'date-fns/locale';
+import { debugConsole } from '@/utils/debugConsole';
 
 interface Meeting {
   id: string;
@@ -107,7 +108,7 @@ export const MeetingNoteSelector: React.FC<MeetingNoteSelectorProps> = ({
 
       setMeetings(allMeetings);
     } catch (error) {
-      console.error('Error loading meetings:', error);
+      debugConsole.error('Error loading meetings:', error);
     } finally {
       setLoading(false);
     }

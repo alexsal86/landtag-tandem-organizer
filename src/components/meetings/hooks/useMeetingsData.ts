@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo, useRef } from "react";
+import { debugConsole } from '@/utils/debugConsole';
 import { useSearchParams } from "react-router-dom";
 import { useNotificationHighlight } from "@/hooks/useNotificationHighlight";
 import { useAuth } from "@/hooks/useAuth";
@@ -186,7 +187,7 @@ export function useMeetingsData() {
           }
         }
       } catch (error) {
-        console.error('Error syncing task changes:', error);
+        debugConsole.error('Error syncing task changes:', error);
       }
     };
     if (tasks.length > 0) syncTaskChanges();
@@ -252,7 +253,7 @@ export function useMeetingsData() {
 
       const { data: participantMeetings, error: participantError } = await supabase
         .from('meeting_participants').select('meeting_id, meetings(*)').eq('user_id', user?.id);
-      if (participantError) console.error('Error loading participant meetings:', participantError);
+      if (participantError) debugConsole.error('Error loading participant meetings:', participantError);
 
       const ownMeetingIds = new Set((ownMeetings || []).map(m => m.id));
       const participantMeetingsData = (participantMeetings || [])
@@ -262,7 +263,7 @@ export function useMeetingsData() {
       const allMeetings = [...(ownMeetings || []), ...participantMeetingsData];
       setMeetings(allMeetings.map(meeting => ({ ...meeting, meeting_date: new Date(meeting.meeting_date) })));
     } catch (error) {
-      console.error('Error in loadMeetings:', error);
+      debugConsole.error('Error in loadMeetings:', error);
       toast({ title: "Fehler beim Laden der Meetings", description: "Die Meetings konnten nicht geladen werden.", variant: "destructive" });
     }
   };
@@ -283,7 +284,7 @@ export function useMeetingsData() {
       const otherProfiles = data?.filter(p => p.user_id !== user?.id) || [];
       setProfiles(currentUserProfile ? [currentUserProfile, ...otherProfiles] : otherProfiles);
     } catch (error) {
-      console.error('Error loading profiles:', error);
+      debugConsole.error('Error loading profiles:', error);
     }
   };
 
@@ -292,7 +293,7 @@ export function useMeetingsData() {
     try {
       const { data: allTenantTasks, error } = await supabase
         .from('tasks').select('*').eq('tenant_id', currentTenant.id).eq('status', 'todo').order('created_at', { ascending: false });
-      if (error) { console.error('Error loading tasks:', error); return; }
+      if (error) { debugConsole.error('Error loading tasks:', error); return; }
 
       const filteredTasks = (allTenantTasks || []).filter(task => 
         task.user_id === user.id || (task.assigned_to && task.assigned_to.includes(user.id))
@@ -300,7 +301,7 @@ export function useMeetingsData() {
       setTasks(filteredTasks);
       if (filteredTasks.length > 0) await loadTaskDocuments(filteredTasks.map(task => task.id));
     } catch (error) {
-      console.error('Error loading tasks:', error);
+      debugConsole.error('Error loading tasks:', error);
     }
   };
 
@@ -315,7 +316,7 @@ export function useMeetingsData() {
       });
       setTaskDocuments(docsByTaskId);
     } catch (error) {
-      console.error('Error loading task documents:', error);
+      debugConsole.error('Error loading task documents:', error);
     }
   };
 
@@ -346,7 +347,7 @@ export function useMeetingsData() {
         }
       }
     } catch (error) {
-      console.error('Error loading meeting templates:', error);
+      debugConsole.error('Error loading meeting templates:', error);
     }
   };
 
@@ -371,7 +372,7 @@ export function useMeetingsData() {
         await loadAgendaDocuments(sortedItems.map(item => item.id!).filter(Boolean));
       }
     } catch (error) {
-      console.error('Error loading agenda items:', error);
+      debugConsole.error('Error loading agenda items:', error);
       toast({ title: "Fehler beim Laden der Agenda", description: "Die Agenda-Punkte konnten nicht geladen werden.", variant: "destructive" });
     }
   };
@@ -388,7 +389,7 @@ export function useMeetingsData() {
       });
       setAgendaDocuments(docsByItemId);
     } catch (error) {
-      console.error('Error loading agenda documents:', error);
+      debugConsole.error('Error loading agenda documents:', error);
     }
   };
 
@@ -409,7 +410,7 @@ export function useMeetingsData() {
       setAgendaDocuments(prev => ({ ...prev, [agendaItemId]: [...(prev[agendaItemId] || []), document] }));
       return document;
     } catch (error) {
-      console.error('Error uploading agenda document:', error);
+      debugConsole.error('Error uploading agenda document:', error);
       throw error;
     }
   };
