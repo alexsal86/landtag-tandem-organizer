@@ -496,7 +496,6 @@ export function useDashboardLayout() {
     }));
 
     const defaultPosition = position || findAvailablePosition(existingPositions);
-    console.log('📍 Calculated position for new widget:', defaultPosition);
 
     const newWidget: DashboardWidget = {
       id: `widget-${Date.now()}`,
