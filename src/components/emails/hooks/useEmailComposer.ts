@@ -224,7 +224,7 @@ export function useEmailComposer() {
           return { ...list, memberCount: count || 0 };
         })
       );
-      setDistributionLists(listsWithCounts);
+      setDistributionLists(listsWithCounts as DistributionList[]);
     } catch (error: unknown) {
       debugConsole.error("Error fetching distribution lists:", error);
     }
