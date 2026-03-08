@@ -123,7 +123,7 @@ export const DashboardTasksSection = () => {
       >
         <span
           draggable
-          onDragStart={(e) => { e.stopPropagation(); handleDragStart(e, item.title, item.id); }}
+          onDragStart={(e) => { e.stopPropagation(); handleDragStart(e, item.title, item.id, item.type); }}
           className="cursor-grab rounded p-0.5 text-muted-foreground transition-colors hover:bg-muted/60 hover:text-foreground active:cursor-grabbing"
           onClick={(e) => e.stopPropagation()}
         >

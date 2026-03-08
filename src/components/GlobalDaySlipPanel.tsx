@@ -132,10 +132,13 @@ export function GlobalDaySlipPanel() {
     event.preventDefault();
     const droppedTaskTitle = event.dataTransfer.getData("application/x-mywork-task-title").trim();
     const droppedTaskId = event.dataTransfer.getData("application/x-mywork-task-id").trim();
+    const droppedItemType = event.dataTransfer.getData("application/x-mywork-item-type").trim();
     const droppedPlainText = event.dataTransfer.getData("text/plain").trim();
     const rawValue = droppedTaskTitle || droppedPlainText;
     if (!rawValue) return;
-    const withTaskIcon = droppedTaskTitle && !rawValue.startsWith("✅") ? `✅ ${rawValue}` : rawValue;
+    const typeIcons: Record<string, string> = { task: "✅", note: "📝", case: "💼", decision: "🗳️" };
+    const icon = (droppedItemType && typeIcons[droppedItemType]) || (droppedTaskTitle ? "✅" : "");
+    const withIcon = icon && !rawValue.startsWith(icon) ? `${icon} ${rawValue}` : rawValue;
     if (droppedTaskId && ds.editorRef.current) {
       ds.editorRef.current.update(() => {
         const root = $getRoot();
