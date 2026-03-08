@@ -5,6 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { LetterTemplate, DEFAULT_ATTACHMENT_PREVIEW_LINES } from './types';
+import { sanitizeRichHtml } from '@/utils/htmlSanitizer';
 
 interface TemplateGridProps {
   templates: LetterTemplate[];
