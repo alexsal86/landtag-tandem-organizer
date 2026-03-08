@@ -271,7 +271,7 @@ export const useCaseItems = () => {
       await fetchCaseItems();
       return true;
     } catch (error) {
-      console.error("Error deleting case item:", error);
+      debugConsole.error("Error deleting case item:", error);
       toast({
         title: "Fehler",
         description: "Vorgang konnte nicht gelöscht werden.",
