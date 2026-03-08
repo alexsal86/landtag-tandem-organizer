@@ -1,43 +1,35 @@
 
-## Code-Qualität — Status
 
-### Erledigt
+# Fix: Doppelter Text und steckengebliebene Interim-Nodes bei der Spracherkennung
 
-- **strictNullChecks: true** — aktiviert, alle Build-Fehler behoben
-- **noImplicitAny: true** — aktiviert, alle Build-Fehler behoben
-- **DOMPurify** als zentraler HTML-Sanitizer — alle `dangerouslySetInnerHTML` nutzen jetzt `sanitizeRichHtml()`
-- **Tenant-Access Guard** für Edge Functions — existiert in `supabase/functions/_shared/tenant-access.ts`
-- **ESLint `no-unused-vars: warn`** — aktiviert mit `argsIgnorePattern: '^_'`, erste Bereinigungsrunde in Pages/Hooks abgeschlossen
-- **Standalone `React`-Imports entfernt** — ~60 Dateien bereinigt
-- **State-Mutation fix** — `existingContacts.push()` → immutables Update in `useContactImport.ts`
-- **Non-null Assertion Guards** — `user!.id` / `currentTenant!.id` durch Early-Return-Guards ersetzt (~11 Dateien)
-- **Leere catch-Blöcke** — kritische Stellen in MatrixContext & DaySlipStore mit `debugConsole.warn` versehen
-- **JSON-Protocol Speaker-Normalisierung** — `speaker: string | { name }` korrekt normalisiert
+## Analyse der Bugs
 
-### Noch offen
+Ich habe zwei zusammenhängende Fehler identifiziert:
 
-1. **`strict: true` aktivieren** — beinhaltet `strictBindCallApply`, `strictFunctionTypes`, `strictPropertyInitialization`, `noImplicitThis`, `alwaysStrict`
-2. **Tote Imports weiter bereinigen** — ~65 standalone `React`-Imports in Components prüfen, weitere lucide-Icons und ungenutzte Variablen entfernen (ESLint-Regel zeigt Warnungen)
-3. **`no-explicit-any` schrittweise einführen** — nach Abschluss der `no-unused-vars`-Bereinigung
-4. **Edge Functions `verify_jwt`-Audit** — ~20 Functions mit `verify_jwt = false` klassifizieren und absichern
-5. **CORS einschränken** — `Access-Control-Allow-Origin: *` durch Allowlist ersetzen für sensible Operationen
+### Bug 1: Text bleibt grau/kursiv (Interim-Node wird nicht aufgelöst)
+In `commitContentText` wird `removeInterimNode()` aufgerufen, das den Node aus dem Baum **entfernt** (`interimNode.remove()`). Danach versucht Zeile 114 `interimNode.replace(...)` auf dem bereits entfernten Node — das schlägt still fehl, weil der Node nicht mehr im Baum hängt. Ergebnis: Der graue Text verschwindet, aber der finale Text wird nie eingefügt.
 
----
+### Bug 2: Text wird doppelt eingefügt
+Wenn der `replace`-Aufruf fehlschlägt (Bug 1), kehrt die Funktion trotzdem bei Zeile 117 zurück, ohne Text einzufügen. Beim nächsten `onresult`-Event des Browsers kommt derselbe finale Text erneut an. Diesmal existiert kein Interim-Node mehr, also geht der Code über `insertTextRef.current()` — und fügt den Text ein. Manchmal bleibt aber zusätzlich noch ein verwaister Interim-Node sichtbar → doppelt.
 
-## No-Code Automations-Hub — Status
+### Bug 3: `lastInsertedSegmentRef` wird nie zurückgesetzt
+Zwischen Speech-Sessions oder nach Session-Neustarts (Browser beendet die Recognition automatisch) wird `lastInsertedSegmentRef` nicht geleert. Wenn der nächste Satz zufällig denselben Text enthält, wird er fälschlicherweise als Duplikat erkannt und unterdrückt.
 
-### Erledigt
+## Lösung
 
-- 4-Step Wizard (Grundlagen → Trigger → Bedingungen → Aktionen)
-- 10 Templates, Template-Galerie mit Suche/Filter
-- Kill-Switch, Dry-Run, Run-Now, Run-Historie mit Step-Logs
-- Error-Dashboard mit Retry, Regel-Versionierung, Import/Export
-- Rate Limiting, Idempotency, Audit-Trail
-- 5 Action-Typen, 5 Condition-Operators, 4 Trigger-Typen (inkl. Webhook)
-- Rollenbasierte Zugriffskontrolle
-- **Regel duplizieren** — Copy-Button pro Regel-Karte
-- **Nächste geplante Ausführung** — Badge für schedule-Regeln
-- **Regel-Statistiken** — Erfolgsrate (%) + Ø Laufzeit als Tooltip-Badge
-- **Notification-Kontext** — `rule_name`, `trigger_reason`, `run_id` in Notification-Payload
-- **Webhook-Trigger** — neue Edge Function `automation-webhook`, Secret-Authentifizierung, URL-Anzeige im Wizard
-- **Verschachtelte Condition-Gruppen** — rekursives AND/OR-Nesting bis 3 Ebenen im Wizard, backward-kompatible DB-Serialisierung
+### 1. `removeInterimNode` → `takeInterimNode` refactoren
+Statt den Node zu entfernen und dann zu ersetzen, soll die Funktion den Node nur **aus dem Ref lösen** ohne ihn aus dem Baum zu entfernen. `commitContentText` kann dann direkt `replace()` auf den noch im Baum befindlichen Node aufrufen, oder ihn entfernen falls kein Text eingefügt wird.
+
+### 2. `lastInsertedSegmentRef` zurücksetzen
+- Bei `startSpeechRecognition` → `lastInsertedSegmentRef.current = ''`
+- Bei jedem neuen Interim-Transkript (das sich vom letzten unterscheidet) → Reset, damit der nächste Final-Text nicht blockiert wird
+
+### 3. Interim-Node Cleanup bei Session-Ende
+Wenn `speechState` auf `'idle'` wechselt, sicherstellen dass kein Interim-Node im Editor zurückbleibt (Cleanup im State-Change Handler).
+
+## Betroffene Dateien
+
+| Datei | Änderung |
+|---|---|
+| `src/hooks/useSpeechDictation.ts` | `removeInterimNode` → `takeInterimNode` (Node im Baum lassen), `lastInsertedSegmentRef` Reset-Logik, Cleanup bei idle |
+
