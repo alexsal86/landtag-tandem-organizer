@@ -113,7 +113,7 @@ export function useMeetingParticipants(meetingId?: string) {
       setParticipants(prev => [...prev, newParticipant]);
       return newParticipant;
     } catch (error) {
-      console.error('Error adding participant:', error);
+      debugConsole.error('Error adding participant:', error);
       toast({
         title: "Fehler",
         description: "Teilnehmer konnte nicht hinzugefügt werden.",
