@@ -370,8 +370,7 @@ export const useNotifications = () => {
       }
 
       if (subscription) {
-        console.log('💾 Saving subscription to database...');
-        console.log('📋 Subscription endpoint:', subscription.endpoint);
+        // Extract keys from subscription
         
         // Extract keys from subscription
         const p256dh = subscription.getKey('p256dh');
