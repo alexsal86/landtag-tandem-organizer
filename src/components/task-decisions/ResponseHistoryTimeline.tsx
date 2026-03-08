@@ -46,7 +46,7 @@ export const ResponseHistoryTimeline = ({ participantId, decisionId }: ResponseH
         .order('created_at', { ascending: false });
 
       if (error) {
-        console.error('Error loading history:', error);
+        debugConsole.error('Error loading history:', error);
       } else if (data) {
         // Type assertion after validating data structure
         setHistory(data.map(item => ({
