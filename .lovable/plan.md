@@ -1,38 +1,19 @@
 
+## Benachrichtigungen & Badges für Vorgänge — Umgesetzt
 
-## Fix: Abgeschnittene Zeilen an Seitengrenzen
+### Was wurde gemacht:
 
-### Problem
-Die Viewport-Pagination nutzt `snapToLine` mit `Math.floor` für die Body-Höhe und den Offset. Wenn der Offset (`page1BodyMm + (pageIndex - 1) * pageNBodyMm`) berechnet wird, entstehen durch Rundungsfehler Situationen, in denen eine Textzeile teilweise sichtbar ist und dann durch `overflow: hidden` abgeschnitten wird.
+1. **DB: Neue `notification_types` für Kategorie `cases`** (alle 3 Tenants)
+   - `case_item_created`, `case_item_assigned`, `case_item_status_changed`, `case_item_comment`
 
-### Ursache (Zeile 400-404)
-```
-rawOffset = page1BodyMm + (pageIndex - 1) * pageNBodyMm;
-offsetMm = snapToLine(rawOffset);
-```
-`page1BodyMm` und `pageNBodyMm` sind bereits line-snapped, sodass `rawOffset` theoretisch exakt sein sollte. Aber durch Floating-Point-Ungenauigkeiten (z.B. `4.2336 * 37 = 156.6431999...` statt `156.6432`) kann `Math.floor(x / lineHeight) * lineHeight` eine Zeile zu wenig ergeben.
+2. **DB: `notification_navigation_mapping`** — alle 4 Typen auf `navigation_context = 'mywork'` gemappt, damit Sidebar-Badge korrekt zählt.
 
-### Lösung
-In `src/components/letters/LetterEditorCanvas.tsx`:
+3. **UI: `NotificationSettings.tsx`** — Kategorie `cases` / "Vorgänge" mit Icon 📋 eingefügt (Order 3).
 
-1. **`snapToLine` toleranter machen**: Statt `Math.floor` ein `Math.round` mit kleiner Epsilon-Toleranz verwenden, damit Floating-Point-Ungenauigkeiten keine Zeile verschlucken:
-   ```typescript
-   const snapToLine = (mm: number) => {
-     if (lineHeightMm <= 0) return mm;
-     const lines = mm / lineHeightMm;
-     const rounded = Math.round(lines);
-     // Use rounded if very close, otherwise floor
-     const snapped = Math.abs(lines - rounded) < 0.01 ? rounded : Math.floor(lines);
-     return snapped * lineHeightMm;
-   };
-   ```
+4. **Code: `useCaseItems.tsx`** — `create_notification` RPC-Aufrufe bei:
+   - Vorgang erstellen → Benachrichtigung an zugewiesenen Owner
+   - Status-Änderung → Benachrichtigung an Ersteller + Owner
+   - Zuweisung-Änderung → Benachrichtigung an neuen Owner
+   - Kommentar/Interaktion → Benachrichtigung an Ersteller + Owner
 
-2. **Offset direkt aus snapped Werten berechnen** (ohne erneutes Snapping), da `page1BodyMm` und `pageNBodyMm` bereits line-snapped sind:
-   ```typescript
-   const offsetMm = isFirst ? 0 : page1BodyMm + (pageIndex - 1) * pageNBodyMm;
-   ```
-   Das eliminiert die doppelte Snap-Rundung komplett.
-
-### Dateien
-- `src/components/letters/LetterEditorCanvas.tsx` — snapToLine-Funktion anpassen und Offset-Berechnung vereinfachen
-
+5. **Badge-System**: Sidebar-Badge für "Meine Arbeit" zählt nun auch Vorgang-Benachrichtigungen (via `navigation_context = 'mywork'` Trigger). Interne Tab-Badges bleiben über `useMyWorkNewCounts` (Zeitstempel-basiert).

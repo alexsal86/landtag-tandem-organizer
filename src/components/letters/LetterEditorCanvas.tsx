@@ -193,9 +193,13 @@ export const LetterEditorCanvas: React.FC<LetterEditorCanvasProps> = ({
 
   // ── line-height snapping to avoid cutting lines ──
   const lineHeightMm = contentFontSizePt * 0.3528 * 1.2;
-  const snapToLine = (mm: number) => lineHeightMm > 0
-    ? Math.floor(mm / lineHeightMm) * lineHeightMm
-    : mm;
+  const snapToLine = (mm: number) => {
+    if (lineHeightMm <= 0) return mm;
+    const lines = mm / lineHeightMm;
+    const rounded = Math.round(lines);
+    const snapped = Math.abs(lines - rounded) < 0.01 ? rounded : Math.floor(lines);
+    return snapped * lineHeightMm;
+  };
 
   // ── available body height per page (snapped to line height) ──
   const page1BodyMm = Math.max(lineHeightMm, snapToLine(contentBottomMm - contentStartMm));
@@ -397,11 +401,8 @@ export const LetterEditorCanvas: React.FC<LetterEditorCanvasProps> = ({
     const localTopMm = isFirst ? contentStartMm : page2TopMm;
     const bodyHeightMm = isFirst ? page1BodyMm : pageNBodyMm;
 
-    // Calculate the vertical offset into the flow for this page (line-snapped)
-    const rawOffset = isFirst
-      ? 0
-      : page1BodyMm + (pageIndex - 1) * pageNBodyMm;
-    const offsetMm = isFirst ? 0 : snapToLine(rawOffset);
+    // Offset directly from snapped values — no re-snapping needed
+    const offsetMm = isFirst ? 0 : page1BodyMm + (pageIndex - 1) * pageNBodyMm;
 
     return (
       <div
