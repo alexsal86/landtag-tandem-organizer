@@ -8,10 +8,11 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { useToast } from "@/hooks/use-toast";
 import { format } from "date-fns";
 import { de } from "date-fns/locale";
-import { Calendar, Clock, FileText, Loader2 } from "lucide-react";
+import { Calendar, Clock, FileText, Loader2, Trash2 } from "lucide-react";
 
 interface Meeting {
   id: string;
@@ -134,7 +135,35 @@ export function EmployeeMeetingHistory({ employeeId, showFilters = true }: Emplo
     }
   };
 
-  const getMeetingTypeLabel = (type: string) => {
+  const handleDeleteMeeting = async (meetingId: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    try {
+      // Delete related data first
+      await supabase.from("employee_meeting_action_items").delete().eq("meeting_id", meetingId);
+      await supabase.from("employee_meeting_ratings").delete().eq("meeting_id", meetingId);
+      
+      const { error } = await supabase
+        .from("employee_meetings")
+        .delete()
+        .eq("id", meetingId);
+
+      if (error) throw error;
+
+      setMeetings((prev) => prev.filter((m) => m.id !== meetingId));
+      toast({
+        title: "Gespräch gelöscht",
+        description: "Das Mitarbeitergespräch wurde erfolgreich entfernt.",
+      });
+    } catch (error) {
+      console.error("Error deleting meeting:", error);
+      toast({
+        title: "Fehler",
+        description: "Das Gespräch konnte nicht gelöscht werden.",
+        variant: "destructive",
+      });
+    }
+  };
+
     const labels: Record<string, string> = {
       regular: "Regulär",
       probation: "Probezeit",
@@ -274,16 +303,47 @@ export function EmployeeMeetingHistory({ employeeId, showFilters = true }: Emplo
                     </div>
                   </TableCell>
                   <TableCell>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        navigate(`/employee-meeting/${meeting.id}`);
-                      }}
-                    >
-                      Öffnen
-                    </Button>
+                    <div className="flex items-center gap-1">
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          navigate(`/employee-meeting/${meeting.id}`);
+                        }}
+                      >
+                        Öffnen
+                      </Button>
+                      <AlertDialog>
+                        <AlertDialogTrigger asChild>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-8 w-8 text-muted-foreground hover:text-destructive"
+                            onClick={(e) => e.stopPropagation()}
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </AlertDialogTrigger>
+                        <AlertDialogContent onClick={(e) => e.stopPropagation()}>
+                          <AlertDialogHeader>
+                            <AlertDialogTitle>Gespräch löschen?</AlertDialogTitle>
+                            <AlertDialogDescription>
+                              Dieses Mitarbeitergespräch wird unwiderruflich gelöscht, einschließlich aller zugehörigen Bewertungen und Action Items.
+                            </AlertDialogDescription>
+                          </AlertDialogHeader>
+                          <AlertDialogFooter>
+                            <AlertDialogCancel>Abbrechen</AlertDialogCancel>
+                            <AlertDialogAction
+                              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                              onClick={(e) => handleDeleteMeeting(meeting.id, e)}
+                            >
+                              Löschen
+                            </AlertDialogAction>
+                          </AlertDialogFooter>
+                        </AlertDialogContent>
+                      </AlertDialog>
+                    </div>
                   </TableCell>
                 </TableRow>
               ))}
