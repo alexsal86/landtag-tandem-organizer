@@ -173,7 +173,7 @@ export function GlobalSearchCommand() {
       let query = supabase
         .from('contacts')
         .select('id, name, organization, avatar_url, category, company, email, phone, mobile_phone, role, position')
-        .eq('tenant_id', currentTenant!.id);
+        .eq('tenant_id', currentTenant?.id ?? '');
       
       // Fuzzy search using pg_trgm similarity
       query = query.or(`name.ilike.%${searchQuery}%,organization.ilike.%${searchQuery}%,company.ilike.%${searchQuery}%,email.ilike.%${searchQuery}%,phone.ilike.%${searchQuery}%,mobile_phone.ilike.%${searchQuery}%,role.ilike.%${searchQuery}%,position.ilike.%${searchQuery}%`);
