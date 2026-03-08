@@ -63,7 +63,7 @@ export function AuditLogViewer() {
     const csv = data.logs.map(log => ({
       Zeitstempel: format(new Date(log.created_at), 'dd.MM.yyyy HH:mm:ss', { locale: de }),
       'IP-Adresse': log.ip_address || 'N/A',
-      Aktion: (log.payload as any)?.action || 'Unbekannt',
+      Aktion: (log.payload as Record<string, unknown>)?.action as string || 'Unbekannt',
       Details: JSON.stringify(log.payload),
     }));
 
