@@ -66,7 +66,7 @@ export function EditProfile() {
         });
       }
     } catch (error) {
-      console.error('Error fetching profile:', error);
+      debugConsole.error('Error fetching profile:', error);
       toast({
         title: "Fehler",
         description: "Profil konnte nicht geladen werden.",
