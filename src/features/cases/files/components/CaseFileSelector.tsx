@@ -176,7 +176,7 @@ export function CaseFileSelector({
     },
     onError: (error: any) => {
       if (error.message === 'already_linked') {
-        toast({ title: "Bereits mit dieser FallAkte verknüpft", variant: "destructive" });
+        toast({ title: "Bereits mit dieser Fallakte verknüpft", variant: "destructive" });
       } else {
         toast({ title: "Fehler beim Hinzufügen", variant: "destructive" });
       }
