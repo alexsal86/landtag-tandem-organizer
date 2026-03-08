@@ -532,7 +532,7 @@ export function useDashboardLayout() {
   // Show success toast after widget is added
   useEffect(() => {
     if (pendingWidgetType && currentLayout) {
-      console.log('✅ Widget successfully added to layout:', pendingWidgetType);
+      
       toast.success(`${pendingWidgetType} Widget hinzugefügt`);
       setPendingWidgetType(null);
     }
