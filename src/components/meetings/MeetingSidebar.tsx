@@ -64,7 +64,7 @@ export function MeetingSidebar({
   onStartMeeting, onStopMeeting, onShowArchive, onLoadCarryoverBufferItems, loadAgendaItems,
 }: MeetingSidebarProps) {
   return (
-    <div className="h-full flex flex-col pr-4 space-y-4 overflow-y-auto">
+    <div className="flex flex-col pr-4 space-y-4">
       {/* Header & Buttons */}
       <div>
         <h1 className="text-2xl font-bold mb-1">Meeting Agenda</h1>
