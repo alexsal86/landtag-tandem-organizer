@@ -55,7 +55,7 @@ export function GlobalDaySlipPanel() {
   // Keyboard shortcut
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {
-      if ((event.ctrlKey || event.metaKey) && event.altKey && event.key.toLowerCase() === "j") { event.preventDefault(); setOpen((prev) => !prev); }
+      if ((event.ctrlKey || event.metaKey) && event.altKey && event.key.toLowerCase() === "j") { event.preventDefault(); setOpen((prev: boolean) => !prev); }
     };
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);
