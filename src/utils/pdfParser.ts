@@ -1,4 +1,5 @@
 import * as pdfjsLib from 'pdfjs-dist';
+import { debugConsole } from '@/utils/debugConsole';
 
 // Configure PDF.js worker to use the file from public folder
 pdfjsLib.GlobalWorkerOptions.workerSrc = window.location.origin + "/pdf.worker.min.mjs";
