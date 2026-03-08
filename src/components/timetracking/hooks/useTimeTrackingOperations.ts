@@ -112,7 +112,7 @@ export function useTimeTrackingOperations({
       if (error) throw error;
       if (!data || data.length === 0) { toast.error("Keine Berechtigung zum Bearbeiten dieses Eintrags"); return; }
       toast.success("Eintrag aktualisiert"); setIsEditDialogOpen(false); setEditingEntry(null); resetEntryForm(); loadData();
-    } catch (error: any) { console.error("Update error:", error); toast.error(error.message); }
+    } catch (error: unknown) { console.error("Update error:", error); toast.error(error instanceof Error ? error.message : "Fehler beim Aktualisieren"); }
   };
 
   const handleDeleteEntry = async (entryId: string) => {
