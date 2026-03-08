@@ -56,7 +56,7 @@ export function useMeetingSidebarData(deps: UseMeetingSidebarDataDeps) {
       if (error) throw error;
       setMeetingLinkedTasks(data || []);
     } catch (error) {
-      console.error("Error loading meeting linked tasks:", error);
+      debugConsole.error("Error loading meeting linked tasks:", error);
       setMeetingLinkedTasks([]);
     }
   };
