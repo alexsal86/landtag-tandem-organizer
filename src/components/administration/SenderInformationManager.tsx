@@ -95,7 +95,7 @@ export function SenderInformationManager() {
       } else {
         const { error } = await supabase
           .from('sender_information')
-          .insert({
+          .insert([{
             name: formData.sender_name,
             organization: formData.sender_name,
             landtag_email: formData.sender_email,
@@ -103,7 +103,7 @@ export function SenderInformationManager() {
             tenant_id: currentTenant.id,
             is_active: true,
             created_by: user.id,
-          });
+          }]);
         if (error) throw error;
         toast({ title: "Absender erstellt" });
       }

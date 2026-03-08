@@ -137,7 +137,7 @@ const LetterTemplateSelector: React.FC<LetterTemplateSelectorProps> = ({
     try {
       const { error } = await supabase
         .from('letter_templates')
-        .insert({
+        .insert([{
           tenant_id: currentTenant.id,
           created_by: user.id,
           name: newTemplate.name.trim(),
@@ -146,7 +146,7 @@ const LetterTemplateSelector: React.FC<LetterTemplateSelectorProps> = ({
           response_time_days: newTemplate.response_time_days,
           default_sender_id: newTemplate.default_sender_id || null,
           default_info_blocks: newTemplate.default_info_blocks.length > 0 ? newTemplate.default_info_blocks : null
-        });
+        }]);
 
       if (error) throw error;
 

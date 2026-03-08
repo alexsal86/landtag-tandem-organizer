@@ -116,12 +116,12 @@ export function DecisionComments({
     try {
       const { error } = await supabase
         .from('task_decision_comments')
-        .insert({
+        .insert([{
           decision_id: decisionId,
           user_id: user.id,
           parent_id: parentId,
           content: commentContent.trim(),
-        });
+        }]);
 
       if (error) throw error;
 

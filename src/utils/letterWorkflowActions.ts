@@ -101,7 +101,7 @@ export async function createLetterRevisionTask(
 
     await supabase
       .from('tasks')
-      .insert({
+      .insert([{
         title: `Brief überarbeiten: ${letterTitle}`,
         description: revisionComment 
           ? `Begründung der Zurückweisung:\n\n${revisionComment}` 
@@ -112,7 +112,7 @@ export async function createLetterRevisionTask(
         assigned_to: assignedTo,
         user_id: reviewerUserId,
         tenant_id: tenantId,
-      });
+      }]);
   } catch (error) {
     debugConsole.error('Error creating revision task:', error);
   }

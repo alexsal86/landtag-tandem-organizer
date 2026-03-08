@@ -377,9 +377,9 @@ export function useDaySlipStore(userId?: string, tenantId?: string) {
     const exportable = resolved.filter((item) => item.target === "note" || item.target === "task" || item.target === "decision");
     for (const item of exportable) {
       try {
-        if (item.target === "note") await supabase.from("quick_notes").insert({ user_id: userId, title: item.text, content: `Aus Tageszettel (${todayKey})` });
-        else if (item.target === "task" && tenantId) await supabase.from("tasks").insert({ user_id: userId, tenant_id: tenantId, title: item.text, description: `Aus Tageszettel (${todayKey})`, status: "open", priority: "medium", category: "allgemein" });
-        else if (item.target === "decision") await supabase.from("task_decisions").insert({ created_by: userId, title: item.text, description: `Aus Tageszettel (${todayKey})`, status: "open" });
+        if (item.target === "note") await supabase.from("quick_notes").insert([{ user_id: userId, title: item.text, content: `Aus Tageszettel (${todayKey})` }]);
+        else if (item.target === "task" && tenantId) await supabase.from("tasks").insert([{ user_id: userId, tenant_id: tenantId, title: item.text, description: `Aus Tageszettel (${todayKey})`, status: "open", priority: "medium", category: "allgemein" }]);
+        else if (item.target === "decision") await supabase.from("task_decisions").insert([{ created_by: userId, title: item.text, description: `Aus Tageszettel (${todayKey})`, status: "open" }]);
       } catch (err) { debugConsole.error(`Failed to persist resolved item (${item.target}):`, err); }
     }
   }, [userId, tenantId, store, todayKey]);

@@ -58,14 +58,14 @@ export function TagAdminSettings() {
     if (!label.trim()) return;
     
     try {
-      const { error } = await supabase.from('tags').insert({
+      const { error } = await supabase.from('tags').insert([{
         name: label.toLowerCase().replace(/\s+/g, '_'),
         label,
         color,
         icon: icon || null,
         order_index: Math.max(...tags.map(t => t.order_index), -1) + 1,
         tenant_id: currentTenant!.id,
-      });
+      }]);
       
       if (error) throw error;
       

@@ -127,12 +127,12 @@ export function useCreateAppointment(open: boolean, onOpenChange: (open: boolean
       const startTime = values.is_all_day ? values.start_date + "T00:00:00" : values.start_date + "T" + (values.start_time || "09:00") + ":00";
       const endTime = values.is_all_day ? (values.end_date || values.start_date) + "T23:59:59" : (values.end_date || values.start_date) + "T" + (values.end_time || "10:00") + ":00";
 
-      const { data: appointment, error } = await supabase.from('appointments').insert({
+      const { data: appointment, error } = await supabase.from('appointments').insert([{
         title: values.title, description: values.description, start_time: new Date(startTime).toISOString(), end_time: new Date(endTime).toISOString(),
         location: values.location, priority: values.priority, category: values.category, status: values.status,
         reminder_minutes: values.reminder_minutes, user_id: user.id, tenant_id: currentTenant.id,
         is_all_day: values.is_all_day, has_external_guests: appointmentGuests.length > 0,
-      }).select().single();
+      }]).select().single();
       if (error) throw error;
 
       if (selectedTopicIds.length > 0 && appointment) await saveAppointmentTopics(appointment.id, selectedTopicIds);
