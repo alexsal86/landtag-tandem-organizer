@@ -19,8 +19,8 @@ type ConfigurableType = {
   label: string | null;
   color?: string | null;
   icon?: string | null;
-  is_active: boolean;
-  order_index: number;
+  is_active: boolean | null;
+  order_index: number | null;
 };
 
 interface ConfigurableTypeSettingsProps {
@@ -428,7 +428,7 @@ export function ConfigurableTypeSettings({
                                       onClick={() => setEditingItem({ 
                                         id: item.id, 
                                         label: item.label, 
-                                        color: item.color || defaultColor, 
+                                        color: item.color ?? defaultColor, 
                                         icon: item.icon || undefined 
                                       })}
                                       size="sm"

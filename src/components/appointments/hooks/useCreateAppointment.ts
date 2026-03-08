@@ -91,7 +91,7 @@ export function useCreateAppointment(open: boolean, onOpenChange: (open: boolean
     ]).then(([cats, stats, locs]) => {
       setAppointmentCategories(cats.data || []);
       setAppointmentStatuses(stats.data || []);
-      setAppointmentLocations(locs.data || []);
+      setAppointmentLocations((locs.data || []).map(l => ({ ...l, address: l.address ?? undefined })));
       if (cats.data?.length) form.setValue('category', cats.data[0].name as any);
       if (stats.data?.length) form.setValue('status', stats.data[0].name as any);
     });

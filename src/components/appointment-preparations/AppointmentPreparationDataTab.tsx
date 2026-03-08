@@ -123,13 +123,13 @@ export function AppointmentPreparationDataTab({
           title: data.title,
           start: data.start_time,
           end: data.end_time,
-          description: data.description,
-          location: data.location,
-          category: data.category,
-          priority: data.priority,
-          status: data.status,
-          meeting_link: data.meeting_link,
-          meeting_details: data.meeting_details
+          description: data.description ?? undefined,
+          location: data.location ?? undefined,
+          category: data.category ?? undefined,
+          priority: data.priority ?? undefined,
+          status: data.status ?? undefined,
+          meeting_link: data.meeting_link ?? undefined,
+          meeting_details: data.meeting_details ?? undefined
         });
       }
     } catch (error) {
@@ -162,9 +162,9 @@ export function AppointmentPreparationDataTab({
       const updatedPreparationData = {
         ...editData,
         // Move contact fields into preparation_data
-        contact_name: showCustomContact ? editData.contact_name : (selectedContactId ? contacts.find(c => c.id === selectedContactId)?.name : null),
-        contact_info: showCustomContact ? editData.contact_info : (selectedContactId ? `${contacts.find(c => c.id === selectedContactId)?.email || ""}${contacts.find(c => c.id === selectedContactId)?.phone ? ` | ${contacts.find(c => c.id === selectedContactId)?.phone}` : ""}`.trim().replace(/^\|/, '').trim() : null),
-        contact_id: showCustomContact ? null : selectedContactId || null
+        contact_name: showCustomContact ? editData.contact_name : (selectedContactId ? contacts.find(c => c.id === selectedContactId)?.name : undefined),
+        contact_info: showCustomContact ? editData.contact_info : (selectedContactId ? `${contacts.find(c => c.id === selectedContactId)?.email || ""}${contacts.find(c => c.id === selectedContactId)?.phone ? ` | ${contacts.find(c => c.id === selectedContactId)?.phone}` : ""}`.trim().replace(/^\|/, '').trim() || undefined : undefined),
+        contact_id: showCustomContact ? undefined : selectedContactId || undefined
       };
 
       const updates: Partial<AppointmentPreparation> = {
