@@ -269,7 +269,7 @@ export function useMeetingArchive(deps: ArchiveDeps) {
           if (tasksToInsert.length > 0) {
             await supabase.from('tasks').insert(tasksToInsert);
           }
-        } catch (e) { console.error('Error processing birthday tasks (non-fatal):', e); }
+        } catch (e) { debugConsole.error('Error processing birthday tasks (non-fatal):', e); }
       }
 
       // Step 4: Follow-up task with subtasks
