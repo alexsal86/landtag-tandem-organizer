@@ -164,7 +164,7 @@ export const useNoteSharing = (noteId?: string) => {
         .eq("note_id", shareData.note_id)
         .select();
 
-      console.log("Update result:", { data, error });
+      
 
       if (error) throw error;
 

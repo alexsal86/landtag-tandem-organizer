@@ -338,7 +338,7 @@ export const StandaloneDecisionCreator = ({
           throw participantsError;
         }
 
-        console.log('Participants added successfully');
+        
       }
 
       // Send notifications to participants

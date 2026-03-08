@@ -86,7 +86,7 @@ export const archiveLetter = async (letter: Letter, userId: string): Promise<boo
 
     if (letterUpdateError) throw letterUpdateError;
 
-    console.log(`Brief archiviert: ${filename}`);
+    
     return true;
 
   } catch (error: any) {

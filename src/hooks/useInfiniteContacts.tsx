@@ -163,7 +163,7 @@ export const useInfiniteContacts = ({
 
   const fetchContacts = useCallback(async (isLoadMore = false) => {
     if (!user || !currentTenant) {
-      console.log('Missing user or tenant:', { user: !!user, currentTenant: !!currentTenant });
+      
       setLoading(false);
       setLoadingMore(false);
       return;

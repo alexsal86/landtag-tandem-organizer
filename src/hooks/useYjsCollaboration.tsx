@@ -234,7 +234,7 @@ export const useYjsCollaboration = ({
 
   // Disconnect from collaboration
   const disconnect = useCallback(() => {
-    console.log('[Yjs] Disconnecting from collaboration');
+    
     
     if (supabaseChannel.current) {
       supabase.removeChannel(supabaseChannel.current);

@@ -92,7 +92,7 @@ export const useDistrictDetection = () => {
         return null;
       }
 
-      console.log('Detection result:', data);
+      
       setResult(data);
       return data;
 

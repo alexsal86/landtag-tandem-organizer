@@ -241,7 +241,7 @@ export const loadElectoralDistrictsGeoJson = async (): Promise<GeoJsonData> => {
         continue;
       }
 
-      console.log('Loaded FeatureCollection from', path, 'features:', fc.features.length);
+      
       const data = reprojectIfNeeded(fc as GeoJsonData);
       return data;
     } catch (e) {

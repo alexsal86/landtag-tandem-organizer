@@ -265,7 +265,7 @@ export const AppointmentPollCreator = ({ onClose }: { onClose: () => void }) => 
             variant: "destructive",
           });
         } else {
-          console.log('Email response:', emailData);
+          
           toast({
             title: "Abstimmung erstellt",
             description: "Die Terminabstimmung wurde erfolgreich erstellt und Einladungen versendet.",
