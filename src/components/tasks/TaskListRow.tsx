@@ -277,6 +277,8 @@ export function TaskListRow({
             <TaskListRow
               key={childTask.id}
               task={childTask}
+              isHighlighted={isHighlighted}
+              getHighlightRef={getHighlightRef}
               subtasks={getChildTasks ? getChildTasks(childTask.id) : []}
               resolveAssigneeName={resolveAssigneeName}
               hasMeetingLink={!!(childTask.meeting_id || childTask.pending_for_jour_fixe)}
