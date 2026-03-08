@@ -148,7 +148,7 @@ export function ProtocolExport({ protocolId, protocolTitle }: ProtocolExportProp
         toast.success('PDF-Download gestartet');
       }
     } catch (error) {
-      console.error('Error downloading PDF:', error);
+      debugConsole.error('Error downloading PDF:', error);
       toast.error('Fehler beim PDF-Download');
     } finally {
       setIsExporting(false);

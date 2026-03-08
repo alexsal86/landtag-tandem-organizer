@@ -65,7 +65,7 @@ export const TasksSummary = ({ onCountChange, onCompletedCountChange }: TasksSum
           }
         }
       } catch (error) {
-        console.error('Error fetching tasks count:', error);
+        debugConsole.error('Error fetching tasks count:', error);
       } finally {
         setLoading(false);
       }

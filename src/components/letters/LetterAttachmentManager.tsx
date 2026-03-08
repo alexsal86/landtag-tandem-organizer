@@ -223,7 +223,7 @@ const LetterAttachmentManager: React.FC<LetterAttachmentManagerProps> = ({
         .remove([attachment.file_path]);
 
       if (storageError) {
-        console.error('Storage deletion error:', storageError);
+        debugConsole.error('Storage deletion error:', storageError);
       }
 
       const updatedAttachments = attachments.filter(att => att.id !== attachment.id);

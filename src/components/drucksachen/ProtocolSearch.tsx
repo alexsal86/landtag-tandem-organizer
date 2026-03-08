@@ -154,7 +154,7 @@ export function ProtocolSearch({ protocolId, onResultSelect }: ProtocolSearchPro
         toast.success(`${searchResults.length} Ergebnisse gefunden`);
       }
     } catch (error) {
-      console.error('Error performing search:', error);
+      debugConsole.error('Error performing search:', error);
       toast.error('Fehler bei der Suche');
     } finally {
       setIsSearching(false);

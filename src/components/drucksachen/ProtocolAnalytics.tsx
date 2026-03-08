@@ -193,7 +193,7 @@ export function ProtocolAnalytics({ protocolId, tenantId }: ProtocolAnalyticsPro
       });
 
     } catch (error) {
-      console.error('Error loading analytics:', error);
+      debugConsole.error('Error loading analytics:', error);
       toast.error('Fehler beim Laden der Statistiken');
     } finally {
       setLoading(false);

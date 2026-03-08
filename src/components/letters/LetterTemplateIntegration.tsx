@@ -278,7 +278,7 @@ export const LetterTemplateIntegration: React.FC<LetterTemplateIntegrationProps>
 
       fetchTemplates();
     } catch (error) {
-      console.error('Error deleting template:', error);
+      debugConsole.error('Error deleting template:', error);
       toast({
         title: "Fehler",
         description: "Vorlage konnte nicht gelöscht werden.",

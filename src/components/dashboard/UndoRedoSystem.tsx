@@ -99,7 +99,7 @@ export function UndoRedoSystem() {
   const applyLayout = (layout: DashboardLayout) => {
     // This would typically call a function from the dashboard hook
     // For now, just log the action
-    console.log('Applying layout:', layout);
+    debugConsole.log('Applying layout:', layout);
   };
 
   const handleReset = () => {

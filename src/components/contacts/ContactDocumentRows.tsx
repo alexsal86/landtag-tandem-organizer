@@ -32,7 +32,7 @@ export function ContactDocumentRows({ contactId, contactTags }: ContactDocumentR
       document.body.removeChild(link);
       window.URL.revokeObjectURL(url);
     } catch (error: unknown) {
-      console.error('Error downloading document:', error);
+      debugConsole.error('Error downloading document:', error);
       toast.error('Fehler beim Herunterladen des Dokuments');
     }
   };

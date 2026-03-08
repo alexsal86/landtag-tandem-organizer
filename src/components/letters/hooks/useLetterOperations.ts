@@ -284,7 +284,7 @@ export function useLetterOperations(opts: UseLetterOperationsOptions) {
       if (error) throw error;
       setAttachments((prev) => prev.map((a) => a.id === attachmentId ? { ...a, display_name: sanitizedDisplayName || null } : a));
     } catch (error) {
-      console.error('Error updating attachment display name:', error);
+      debugConsole.error('Error updating attachment display name:', error);
       toast({ title: 'Fehler beim Umbenennen', description: 'Der Anlagenname konnte nicht aktualisiert werden.', variant: 'destructive' });
     }
   }, [toast]);

@@ -196,7 +196,7 @@ export function WidgetPalette({ onAddWidget, onClose, suggestions }: WidgetPalet
   });
 
   const handleAddWidget = (type: DashboardWidget['type']) => {
-    console.log('🔧 WidgetPalette: Adding widget of type:', type);
+    debugConsole.log('🔧 WidgetPalette: Adding widget of type:', type);
     onAddWidget(type);
     
     // Update recent widgets

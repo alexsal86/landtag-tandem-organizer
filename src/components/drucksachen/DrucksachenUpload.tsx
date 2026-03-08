@@ -500,7 +500,7 @@ export function DrucksachenUpload({ onUploadSuccess, onProtocolsRefresh }: Druck
         toast.info('Keine verwaisten Dateien gefunden');
       }
     } catch (error) {
-      console.error('Cleanup error:', error);
+      debugConsole.error('Cleanup error:', error);
       toast.error('Fehler bei der Bereinigung');
     }
   };

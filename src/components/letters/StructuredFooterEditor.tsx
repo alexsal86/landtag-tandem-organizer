@@ -103,7 +103,7 @@ export const StructuredFooterEditor: React.FC<StructuredFooterEditorProps> = ({
       if (error && error.code !== 'PGRST116') throw error;
       if (data) setSenderInfo(data);
     } catch (error) {
-      console.error('Error fetching sender info:', error);
+      debugConsole.error('Error fetching sender info:', error);
     }
   };
 

@@ -111,7 +111,7 @@ export const TodaySchedule = ({ onCountChange }: TodayScheduleProps) => {
           onCountChange(filteredEvents.length);
         }
       } catch (error) {
-        console.error('Error fetching appointments:', error);
+        debugConsole.error('Error fetching appointments:', error);
       } finally {
         setLoading(false);
       }

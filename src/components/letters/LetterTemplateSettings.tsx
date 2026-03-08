@@ -190,7 +190,7 @@ export const LetterTemplateSettings: React.FC<LetterTemplateSettingsProps> = ({ 
 
       toast({ title: 'Einstellungen gespeichert' });
     } catch (error) {
-      console.error('Error saving settings:', error);
+      debugConsole.error('Error saving settings:', error);
       toast({ title: 'Fehler', description: 'Einstellungen konnten nicht gespeichert werden.', variant: 'destructive' });
     } finally {
       setSaving(false);
