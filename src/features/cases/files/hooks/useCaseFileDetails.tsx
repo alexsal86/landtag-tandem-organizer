@@ -216,7 +216,7 @@ export const useCaseFileDetails = (caseFileId: string | null) => {
       if (error) throw error;
       setDocuments((data || []) as CaseFileDocument[]);
     } catch (error) {
-      console.error('Error fetching documents:', error);
+      debugConsole.error('Error fetching documents:', error);
     }
   }, [caseFileId]);
 
