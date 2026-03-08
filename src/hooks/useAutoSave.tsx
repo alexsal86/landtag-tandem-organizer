@@ -36,7 +36,7 @@ export function useAutoSave({
         .eq('id', documentId);
 
       if (error) {
-        console.error('Error saving document:', error);
+        debugConsole.error('Error saving document:', error);
         toast({
           title: "Fehler beim Speichern",
           description: "Das Dokument konnte nicht gespeichert werden.",
