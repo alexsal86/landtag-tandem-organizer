@@ -13,6 +13,7 @@ import { formatDistanceToNow } from "date-fns";
 import { de } from "date-fns/locale";
 import { Calendar, CheckCircle2, Loader2, X, AlertCircle } from "lucide-react";
 import { EmployeeMeetingScheduler } from "./EmployeeMeetingScheduler";
+import { debugConsole } from "@/utils/debugConsole";
 
 interface MeetingRequestManagerProps {
   onPendingCountChange?: (count: number) => void;
