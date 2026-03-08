@@ -96,7 +96,7 @@ export const useNavigationNotifications = (): NavigationNotifications => {
 
       setLastVisited(visitMap);
     } catch (error) {
-      console.error('Error in loadNavigationCounts:', error);
+      debugConsole.error('Error in loadNavigationCounts:', error);
     } finally {
       setIsLoading(false);
     }
