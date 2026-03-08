@@ -26,9 +26,7 @@ export const WidgetResizeHandles: React.FC<WidgetResizeHandlesProps> = ({
   if (!isEditMode) return null;
 
   const getCurrentSize = () => {
-    // Add debugging and safety checks
-    console.log('Widget object:', widget);
-    console.log('Widget size property:', widget.size, typeof widget.size);
+    // Handle different possible formats for widget.size
     
     // Handle different possible formats for widget.size
     let sizeString = '2x2'; // Default fallback
