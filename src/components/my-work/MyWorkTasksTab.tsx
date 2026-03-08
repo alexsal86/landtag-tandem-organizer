@@ -179,7 +179,7 @@ export function MyWorkTasksTab() {
 
       setShowCelebration(true);
       toast({ title: "Aufgabe erledigt und archiviert" });
-    } catch (error: any) {
+    } catch (error: unknown) {
       debugConsole.error("Error completing task:", error);
       toast({ title: "Fehler", variant: "destructive" });
     }
