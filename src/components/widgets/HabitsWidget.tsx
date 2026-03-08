@@ -227,7 +227,7 @@ export const HabitsWidget: React.FC<HabitsWidgetProps> = ({
 
       if (existingCompletion) {
         // Update existing completion
-        const newCount = Math.min(existingCompletion.count + 1, habit.target_count);
+        const newCount = Math.min(existingCompletion.count + 1, habit.target_count ?? 1);
         const { error } = await supabase
           .from('habit_completions')
           .update({ count: newCount })
