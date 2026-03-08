@@ -187,7 +187,7 @@ export function useYearlyBalance(
         setYearlyBalance(totalBalance);
       } catch (error) {
         if (!signal.aborted) {
-          console.error("useYearlyBalance: Error loading yearly balance:", error);
+          debugConsole.error("useYearlyBalance: Error loading yearly balance:", error);
         }
       } finally {
         if (!signal.aborted) {

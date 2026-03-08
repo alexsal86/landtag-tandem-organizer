@@ -18,7 +18,7 @@ export const logAuditEvent = async ({ action, details, email }: AuditLogParams):
     }
   } catch (err) {
     // Silently fail - audit logging should not break the app
-    console.error('Audit logging error:', err);
+    debugConsole.error('Audit logging error:', err);
   }
 };
 

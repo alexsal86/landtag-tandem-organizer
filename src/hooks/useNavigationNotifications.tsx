@@ -239,7 +239,7 @@ export const useNavigationNotifications = (): NavigationNotifications => {
             }));
           }
         } catch (error) {
-          console.error('Error parsing navigation visit sync data:', error);
+          debugConsole.error('Error parsing navigation visit sync data:', error);
         }
       }
 

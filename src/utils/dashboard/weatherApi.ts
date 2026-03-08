@@ -52,7 +52,7 @@ export const getWeather = async (lat: number, lon: number): Promise<WeatherData 
     
     return weatherData;
   } catch (error) {
-    console.error('Failed to fetch weather:', error);
+    debugConsole.error('Failed to fetch weather:', error);
     return null;
   }
 };

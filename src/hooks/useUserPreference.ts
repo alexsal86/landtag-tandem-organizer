@@ -121,7 +121,7 @@ export function useUserPreference<T>(key: string, defaultValue: T) {
             { onConflict: "user_id,tenant_id,key" }
           );
         } catch (e) {
-          console.error("useUserPreference: save error", e);
+          debugConsole.error("useUserPreference: save error", e);
         }
       }, DEBOUNCE_MS);
     },

@@ -36,7 +36,7 @@ export const useTags = () => {
 
       setTags(data || []);
     } catch (error) {
-      console.error('Error in fetchTags:', error);
+      debugConsole.error('Error in fetchTags:', error);
     } finally {
       setLoading(false);
     }

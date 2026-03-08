@@ -87,7 +87,7 @@ export function useCounts(): CountsData {
         loading: false,
       });
     } catch (error) {
-      console.error('Error fetching counts:', error);
+      debugConsole.error('Error fetching counts:', error);
       setCounts(prev => ({ ...prev, loading: false }));
     }
   };

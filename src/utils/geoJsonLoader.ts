@@ -252,7 +252,7 @@ export const loadElectoralDistrictsGeoJson = async (): Promise<GeoJsonData> => {
     }
   }
 
-  console.error('All GeoJSON sources failed');
+  debugConsole.error('All GeoJSON sources failed');
   if (lastError) throw lastError;
   throw new Error('Unable to load any GeoJSON source');
 };
