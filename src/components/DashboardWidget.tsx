@@ -72,6 +72,8 @@ interface Subtask {
   assigned_to_names?: string;
 }
 
+type TaskOrSubtask = (Task & { type: 'task' }) | (Subtask & { type: 'subtask' });
+
 interface PendingTask {
   id: string;
   title: string;
