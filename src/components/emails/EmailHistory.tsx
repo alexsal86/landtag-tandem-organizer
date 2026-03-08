@@ -145,8 +145,8 @@ export function EmailHistory() {
       if (error) throw error;
       toast({ title: "Abgebrochen", description: "Geplante E-Mail wurde abgebrochen" });
       fetchScheduledEmails();
-    } catch (error: any) {
-      toast({ title: "Fehler", description: error.message, variant: "destructive" });
+    } catch (error: unknown) {
+      toast({ title: "Fehler", description: error instanceof Error ? error.message : String(error), variant: "destructive" });
     }
   };
 
