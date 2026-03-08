@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { debugConsole } from '@/utils/debugConsole';
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from '@/components/ui/sheet';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
@@ -81,7 +82,7 @@ export function DuplicateContactsSheet({
       });
       setDuplicates(foundDuplicates);
     } catch (error) {
-      console.error('Error fetching contacts:', error);
+      debugConsole.error('Error fetching contacts:', error);
     } finally {
       setLoading(false);
     }

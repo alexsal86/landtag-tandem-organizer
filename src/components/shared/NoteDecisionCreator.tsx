@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo, useRef } from "react";
+import { debugConsole } from '@/utils/debugConsole';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -141,7 +142,7 @@ export function NoteDecisionCreator({
           }
         }
       } catch (e) {
-        console.error('Error loading default participants:', e);
+        debugConsole.error('Error loading default participants:', e);
       }
 
       if (defaultSettings) {
@@ -176,7 +177,7 @@ export function NoteDecisionCreator({
         }
       }
     } catch (error) {
-      console.error('Error loading profiles:', error);
+      debugConsole.error('Error loading profiles:', error);
       toast.error("Fehler beim Laden der Benutzer");
     } finally {
       setProfilesLoading(false);
@@ -270,7 +271,7 @@ export function NoteDecisionCreator({
         .eq("user_id", user.id);
 
       if (noteError) {
-        console.warn('Error linking decision to note:', noteError);
+        debugConsole.warn('Error linking decision to note:', noteError);
       }
 
       // Add participants (only if there are any)
@@ -301,7 +302,7 @@ export function NoteDecisionCreator({
           });
 
           if (notificationError) {
-            console.warn('Notification error for user:', userId, notificationError);
+            debugConsole.warn('Notification error for user:', userId, notificationError);
           }
 
           // Get participant token for email
@@ -322,7 +323,7 @@ export function NoteDecisionCreator({
                   }
                 });
               } catch (emailError) {
-                console.warn('Email sending failed:', emailError);
+                debugConsole.warn('Email sending failed:', emailError);
               }
             }
           }
@@ -353,7 +354,7 @@ export function NoteDecisionCreator({
       setUploadStatus(null);
     } catch (error) {
       setUploadStatus(null);
-      console.error('Error creating decision:', error);
+      debugConsole.error('Error creating decision:', error);
       toast.error(error instanceof Error ? error.message : "Fehler beim Erstellen der Entscheidungsanfrage");
     } finally {
       setLoading(false);

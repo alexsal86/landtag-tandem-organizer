@@ -7,6 +7,7 @@ import { UserSelector } from '@/components/UserSelector';
 import { Trash2 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
+import { debugConsole } from '@/utils/debugConsole';
 
 interface Participant {
   id: string;
@@ -44,7 +45,7 @@ export function InlineMeetingParticipantsEditor({ meetingId }: InlineMeetingPart
 
   const loadParticipants = async () => {
     if (!meetingId) {
-      console.error('InlineMeetingParticipantsEditor: No meetingId provided!');
+      debugConsole.error('InlineMeetingParticipantsEditor: No meetingId provided!');
       setLoading(false);
       return;
     }
@@ -58,7 +59,7 @@ export function InlineMeetingParticipantsEditor({ meetingId }: InlineMeetingPart
       .eq('meeting_id', meetingId);
 
     if (participantsError) {
-      console.error('Error loading participants:', participantsError);
+      debugConsole.error('Error loading participants:', participantsError);
       setParticipants([]);
       setLoading(false);
       return;
@@ -78,7 +79,7 @@ export function InlineMeetingParticipantsEditor({ meetingId }: InlineMeetingPart
       .in('user_id', userIds);
 
     if (profilesError) {
-      console.error('Error loading profiles:', profilesError);
+      debugConsole.error('Error loading profiles:', profilesError);
     }
 
     const enrichedParticipants: Participant[] = participantsData.map(p => ({
@@ -94,7 +95,7 @@ export function InlineMeetingParticipantsEditor({ meetingId }: InlineMeetingPart
 
   const handleAddParticipant = async (user: { id: string; display_name: string }) => {
     if (!meetingId) {
-      console.error('❌ InlineMeetingParticipantsEditor: No meetingId provided!');
+      debugConsole.error('❌ InlineMeetingParticipantsEditor: No meetingId provided!');
       toast({
         title: "Fehler",
         description: "Keine Meeting-ID vorhanden",
@@ -124,7 +125,7 @@ export function InlineMeetingParticipantsEditor({ meetingId }: InlineMeetingPart
       .single();
 
     if (error) {
-      console.error('❌ Error adding participant:', error);
+      debugConsole.error('❌ Error adding participant:', error);
       toast({
         title: "Fehler beim Hinzufügen",
         description: error.message || "Teilnehmer konnte nicht hinzugefügt werden.",
@@ -162,7 +163,7 @@ export function InlineMeetingParticipantsEditor({ meetingId }: InlineMeetingPart
       .eq('id', participantId);
 
     if (error) {
-      console.error('❌ Error updating participant role:', error);
+      debugConsole.error('❌ Error updating participant role:', error);
       // Revert on error
       setParticipants(prev => prev.map(p => 
         p.id === participantId ? { ...p, role: previousRole } : p
@@ -190,7 +191,7 @@ export function InlineMeetingParticipantsEditor({ meetingId }: InlineMeetingPart
       .eq('id', participantId);
 
     if (error) {
-      console.error('❌ Error removing participant:', error);
+      debugConsole.error('❌ Error removing participant:', error);
       toast({
         title: "Fehler",
         description: "Teilnehmer konnte nicht entfernt werden.",

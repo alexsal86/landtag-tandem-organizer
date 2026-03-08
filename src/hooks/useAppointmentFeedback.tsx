@@ -5,6 +5,7 @@ import { useAuth } from './useAuth';
 import { useTenant } from './useTenant';
 import { format } from 'date-fns';
 import { toast } from './use-toast';
+import { debugConsole } from '@/utils/debugConsole';
 
 export interface AppointmentWithFeedback {
   id: string;
@@ -130,7 +131,7 @@ export const useAppointmentFeedback = () => {
         .order('start_time', { ascending: false });
 
       if (eventsError) {
-        console.error('Error fetching external events:', eventsError);
+        debugConsole.error('Error fetching external events:', eventsError);
         return [];
       }
 
@@ -285,7 +286,7 @@ export const useAppointmentFeedback = () => {
       queryClient.invalidateQueries({ queryKey: ['appointment-feedback-external'] });
     },
     onError: (error) => {
-      console.error('Error updating feedback:', error);
+      debugConsole.error('Error updating feedback:', error);
       toast({
         title: 'Fehler',
         description: 'Feedback konnte nicht aktualisiert werden.',
@@ -345,7 +346,7 @@ export const useAppointmentFeedback = () => {
       });
     },
     onError: (error) => {
-      console.error('Error updating settings:', error);
+      debugConsole.error('Error updating settings:', error);
       toast({
         title: 'Fehler',
         description: 'Einstellungen konnten nicht gespeichert werden.',

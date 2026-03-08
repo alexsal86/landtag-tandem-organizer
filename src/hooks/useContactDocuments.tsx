@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { useTenant } from "@/hooks/useTenant";
+import { debugConsole } from '@/utils/debugConsole';
 
 export interface Document {
   id: string;
@@ -67,7 +68,7 @@ export const useContactDocuments = (contactId?: string, contactTags?: string[]) 
         .eq('contact_id', contactId);
 
       if (directError) {
-        console.error('Error fetching direct documents:', directError);
+        debugConsole.error('Error fetching direct documents:', directError);
         throw directError;
       }
 
@@ -102,7 +103,7 @@ export const useContactDocuments = (contactId?: string, contactTags?: string[]) 
           .order('created_at', { ascending: false });
 
         if (taggedError) {
-          console.error('Error fetching tagged documents:', taggedError);
+          debugConsole.error('Error fetching tagged documents:', taggedError);
           throw taggedError;
         }
         
@@ -111,7 +112,7 @@ export const useContactDocuments = (contactId?: string, contactTags?: string[]) 
         setTaggedDocuments([]);
       }
     } catch (error) {
-      console.error('Error fetching contact documents:', error);
+      debugConsole.error('Error fetching contact documents:', error);
     } finally {
       setLoading(false);
     }
@@ -127,7 +128,7 @@ export const useContactDocuments = (contactId?: string, contactTags?: string[]) 
       if (error) throw error;
       await fetchDocuments();
     } catch (error: unknown) {
-      console.error('Error removing document link:', error);
+      debugConsole.error('Error removing document link:', error);
       throw error;
     }
   };

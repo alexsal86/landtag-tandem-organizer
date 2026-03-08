@@ -5,6 +5,7 @@ import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+import { debugConsole } from '@/utils/debugConsole';
 import { Users, Copy, Eye, EyeOff } from "lucide-react";
 
 interface DemoUser {
@@ -25,7 +26,7 @@ export const CreateDemoUsers = () => {
       const { data, error } = await supabase.functions.invoke('create-demo-users');
       
       if (error) {
-        console.error('Error creating demo users:', error);
+        debugConsole.error('Error creating demo users:', error);
         toast.error('Fehler beim Erstellen der Demo-Benutzer');
         return;
       }
@@ -37,7 +38,7 @@ export const CreateDemoUsers = () => {
         toast.error('Unbekannter Fehler beim Erstellen der Demo-Benutzer');
       }
     } catch (error) {
-      console.error('Function call error:', error);
+      debugConsole.error('Function call error:', error);
       toast.error('Fehler beim Aufruf der Funktion');
     } finally {
       setIsCreating(false);

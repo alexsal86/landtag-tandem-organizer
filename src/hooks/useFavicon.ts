@@ -1,5 +1,6 @@
 import { useEffect } from "react";
 import sunflowerSvg from "@/assets/sunflower.svg";
+import { debugConsole } from '@/utils/debugConsole';
 
 const DEFAULT_FAVICON_URL = "/favicon.svg";
 
@@ -98,7 +99,7 @@ export const useFavicon = (faviconUrl?: string | null) => {
         }
       } catch (error) {
         if (!isCancelled) {
-          console.warn("Favicon could not be generated from source, using direct URL fallback.", error);
+          debugConsole.warn("Favicon could not be generated from source, using direct URL fallback.", error);
           updateFaviconLinks(sourceUrl);
         }
       }

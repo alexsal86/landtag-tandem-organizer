@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Camera } from "lucide-react";
 import { UnsplashImagePicker, UnsplashAttribution } from "./UnsplashImagePicker";
 import { useToast } from "@/hooks/use-toast";
+import { debugConsole } from '@/utils/debugConsole';
 
 interface DashboardCoverImageProps {
   userId: string;
@@ -75,7 +76,7 @@ export function DashboardCoverImage({ userId }: DashboardCoverImageProps) {
       setCoverUrl(randomUrl);
       setPosition("center");
     } catch (error) {
-      console.error("Error loading cover image:", error);
+      debugConsole.error("Error loading cover image:", error);
       // Fallback to a simple gradient
       setCoverUrl(null);
     } finally {
@@ -118,7 +119,7 @@ export function DashboardCoverImage({ userId }: DashboardCoverImageProps) {
         description: "Dein Dashboard-Cover wurde erfolgreich aktualisiert.",
       });
     } catch (error) {
-      console.error("Error saving cover:", error);
+      debugConsole.error("Error saving cover:", error);
       toast({
         title: "Fehler",
         description: "Das Cover konnte nicht gespeichert werden.",

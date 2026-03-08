@@ -3,6 +3,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
 import type { CelebrationSettings } from '@/components/celebrations';
+import { debugConsole } from '@/utils/debugConsole';
 
 interface AnimationDefinition {
   id: string;
@@ -70,7 +71,7 @@ export function useCelebrationSettings() {
         });
       }
     } catch (error) {
-      console.error('Error loading celebration settings:', error);
+      debugConsole.error('Error loading celebration settings:', error);
     } finally {
       setLoading(false);
     }
@@ -102,7 +103,7 @@ export function useCelebrationSettings() {
 
       if (error) throw error;
     } catch (error: unknown) {
-      console.error('Error updating celebration settings:', error);
+      debugConsole.error('Error updating celebration settings:', error);
       toast({
         title: "Fehler",
         description: "Einstellungen konnten nicht gespeichert werden.",

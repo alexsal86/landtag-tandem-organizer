@@ -3,6 +3,7 @@ import { Button } from "@/components/ui/button";
 import { Download } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { generateLetterDOCX } from "@/utils/letterDOCXGenerator";
+import { debugConsole } from '@/utils/debugConsole';
 
 interface Letter {
   id: string;
@@ -66,7 +67,7 @@ export default function LetterDOCXExport({
       });
 
     } catch (error: unknown) {
-      console.error('DOCX Export Error:', error);
+      debugConsole.error('DOCX Export Error:', error);
       toast({
         title: "Export-Fehler",
         description: error instanceof Error ? error.message : "Der Brief konnte nicht als DOCX exportiert werden.",

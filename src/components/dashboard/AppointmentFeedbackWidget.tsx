@@ -1,4 +1,5 @@
 import { useState, useMemo, useRef, useEffect, useCallback } from 'react';
+import { debugConsole } from '@/utils/debugConsole';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -187,7 +188,7 @@ export const AppointmentFeedbackWidget = ({
       }
     } catch (err) {
       // Non-critical – don't block save if notifications fail
-      console.error('Failed to send feedback notifications:', err);
+      debugConsole.error('Failed to send feedback notifications:', err);
     }
 
     setNoteText('');

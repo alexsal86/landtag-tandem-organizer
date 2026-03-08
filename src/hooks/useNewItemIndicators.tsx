@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from './useAuth';
+import { debugConsole } from '@/utils/debugConsole';
 
 interface NewItemIndicators {
   [itemId: string]: {
@@ -34,13 +35,13 @@ export const useNewItemIndicators = (context: string): NewItemIndicatorsHook => 
           .maybeSingle();
 
         if (error) {
-          console.error('Error loading last visited:', error);
+          debugConsole.error('Error loading last visited:', error);
           return;
         }
 
         setLastVisited(data ? new Date(data.last_visited_at) : null);
       } catch (error) {
-        console.error('Error in loadLastVisited:', error);
+        debugConsole.error('Error in loadLastVisited:', error);
       }
     };
 
@@ -78,7 +79,7 @@ export const useNewItemIndicators = (context: string): NewItemIndicatorsHook => 
             clearAllIndicators();
           }
         } catch (error) {
-          console.error('Error parsing navigation visit sync data:', error);
+          debugConsole.error('Error parsing navigation visit sync data:', error);
         }
       }
     };

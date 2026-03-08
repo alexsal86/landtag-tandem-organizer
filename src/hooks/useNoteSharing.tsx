@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { toast } from "sonner";
+import { debugConsole } from '@/utils/debugConsole';
 
 export interface NoteShare {
   id: string;
@@ -53,7 +54,7 @@ export const useNoteSharing = (noteId?: string) => {
         setShares([]);
       }
     } catch (error) {
-      console.error("Error loading shares:", error);
+      debugConsole.error("Error loading shares:", error);
     } finally {
       setLoading(false);
     }
@@ -91,7 +92,7 @@ export const useNoteSharing = (noteId?: string) => {
       loadShares();
       return true;
     } catch (error) {
-      console.error("Error sharing note:", error);
+      debugConsole.error("Error sharing note:", error);
       toast.error("Fehler beim Freigeben der Notiz");
       return false;
     }
@@ -129,7 +130,7 @@ export const useNoteSharing = (noteId?: string) => {
       loadShares();
       return true;
     } catch (error) {
-      console.error("Error removing share:", error);
+      debugConsole.error("Error removing share:", error);
       toast.error("Fehler beim Entfernen der Freigabe");
       return false;
     }
@@ -149,7 +150,7 @@ export const useNoteSharing = (noteId?: string) => {
         .single();
 
       if (fetchError || !shareData) {
-        console.error("Error fetching share:", fetchError);
+        debugConsole.error("Error fetching share:", fetchError);
         toast.error("Freigabe nicht gefunden");
         return false;
       }
@@ -177,7 +178,7 @@ export const useNoteSharing = (noteId?: string) => {
       loadShares();
       return true;
     } catch (error) {
-      console.error("Error updating permission:", error);
+      debugConsole.error("Error updating permission:", error);
       toast.error("Fehler beim Aktualisieren der Berechtigung");
       return false;
     }

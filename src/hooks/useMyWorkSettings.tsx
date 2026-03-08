@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from './useAuth';
+import { debugConsole } from '@/utils/debugConsole';
 
 export type BadgeDisplayMode = 'new' | 'total';
 export type DecisionTabId = 'for-me' | 'answered' | 'my-decisions' | 'public';
@@ -59,12 +60,12 @@ export function useMyWorkSettings(): MyWorkSettingsResult {
         .maybeSingle();
       
       if (error) {
-        console.error('Error loading mywork settings:', error);
+        debugConsole.error('Error loading mywork settings:', error);
       } else if (data) {
         setBadgeDisplayMode(data.badge_display_mode as BadgeDisplayMode);
       }
     } catch (error) {
-      console.error('Error in loadSettings:', error);
+      debugConsole.error('Error in loadSettings:', error);
     } finally {
       setIsLoading(false);
     }
@@ -87,14 +88,14 @@ export function useMyWorkSettings(): MyWorkSettingsResult {
         }, { onConflict: 'user_id' });
       
       if (error) {
-        console.error('Error updating badge display mode:', error);
+        debugConsole.error('Error updating badge display mode:', error);
         return false;
       }
       
       setBadgeDisplayMode(mode);
       return true;
     } catch (error) {
-      console.error('Error in updateBadgeDisplayMode:', error);
+      debugConsole.error('Error in updateBadgeDisplayMode:', error);
       return false;
     }
   }, [user]);
@@ -111,7 +112,7 @@ export function useMyWorkSettings(): MyWorkSettingsResult {
       setHiddenDecisionTabs(normalized.hiddenTabs);
       return true;
     } catch (error) {
-      console.error('Error in updateDecisionTabSettings:', error);
+      debugConsole.error('Error in updateDecisionTabSettings:', error);
       return false;
     }
   }, [sanitizeDecisionTabSettings, user]);

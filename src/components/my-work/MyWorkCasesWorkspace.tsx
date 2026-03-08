@@ -6,6 +6,7 @@ import { ArrowDown, ArrowUp, Briefcase, CalendarDays, CheckCircle2, ChevronRight
 import { DragDropContext, Droppable, Draggable, type DropResult } from "@hello-pangea/dnd";
 import DOMPurify from "dompurify";
 import { RichTextDisplay } from "@/components/ui/RichTextDisplay";
+import { debugConsole } from '@/utils/debugConsole';
 
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
@@ -188,7 +189,7 @@ const formatDateSafe = (
   if (Number.isNaN(parsedDate.getTime())) {
     if (options?.warnKey && !loggedInvalidDateWarnings.has(options.warnKey)) {
       loggedInvalidDateWarnings.add(options.warnKey);
-      console.warn("Invalid date in case workspace item", {
+      debugConsole.warn("Invalid date in case workspace item", {
         itemId: options.warnItemId,
         field: options.warnField,
         value,
@@ -265,7 +266,7 @@ export function MyWorkCasesWorkspace() {
 
   const runAsync = useCallback((action: () => Promise<unknown>) => {
     action().catch((error) => {
-      console.error("Unerwarteter Fehler:", error);
+      debugConsole.error("Unerwarteter Fehler:", error);
       toast.error("Aktion konnte nicht ausgeführt werden.");
     });
   }, []);
@@ -335,7 +336,7 @@ export function MyWorkCasesWorkspace() {
         setLinkedDecisions((prev) => ({ ...prev, [itemId]: data as any }));
       }
     } catch (e) {
-      console.error("Error loading linked decisions:", e);
+      debugConsole.error("Error loading linked decisions:", e);
     } finally {
       setLoadingDecisions(false);
     }

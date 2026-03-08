@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
+import { debugConsole } from '@/utils/debugConsole';
 import type { Task } from "../types";
 
 interface UseTaskOperationsProps {
@@ -120,7 +121,7 @@ export function useTaskOperations({
           : "Aufgabe wurde als offen markiert."
       });
     } catch (error: unknown) {
-      console.error('Error updating task:', error);
+      debugConsole.error('Error updating task:', error);
       const msg = error instanceof Error ? error.message : String(error);
       const isNetworkError = msg?.includes('Failed to fetch') || msg?.includes('NetworkError');
       if (isNetworkError) {
@@ -144,7 +145,7 @@ export function useTaskOperations({
       toast({ title: "Kommentar hinzugefügt" });
       return true;
     } catch (error: unknown) {
-      console.error('Error adding comment:', error);
+      debugConsole.error('Error adding comment:', error);
       toast({ title: "Fehler", description: "Kommentar konnte nicht hinzugefügt werden.", variant: "destructive" });
       return false;
     }
@@ -164,7 +165,7 @@ export function useTaskOperations({
       loadTaskSnoozes();
       toast({ title: "Wiedervorlage gesetzt", description: `Aufgabe wird bis ${new Date(snoozeUntil).toLocaleDateString('de-DE')} ausgeblendet.` });
     } catch (error: unknown) {
-      console.error('Error snoozing task:', error);
+      debugConsole.error('Error snoozing task:', error);
       toast({ title: "Fehler", description: "Wiedervorlage konnte nicht gesetzt werden.", variant: "destructive" });
     }
   };
@@ -184,7 +185,7 @@ export function useTaskOperations({
       loadAssignedSubtasks();
       toast({ title: "Wiedervorlage gesetzt", description: `Unteraufgabe wird bis ${new Date(snoozeUntil).toLocaleDateString('de-DE')} ausgeblendet.` });
     } catch (error: unknown) {
-      console.error('Error snoozing subtask:', error);
+      debugConsole.error('Error snoozing subtask:', error);
       toast({ title: "Fehler", description: "Wiedervorlage konnte nicht gesetzt werden.", variant: "destructive" });
     }
   };
@@ -197,7 +198,7 @@ export function useTaskOperations({
       loadTaskSnoozes();
       toast({ title: "Erfolgreich", description: "Wiedervorlage wurde aktualisiert." });
     } catch (error) {
-      console.error('Error updating snooze:', error);
+      debugConsole.error('Error updating snooze:', error);
       toast({ title: "Fehler", description: "Wiedervorlage konnte nicht aktualisiert werden.", variant: "destructive" });
     }
   };
@@ -210,7 +211,7 @@ export function useTaskOperations({
       loadTaskSnoozes();
       toast({ title: "Erfolgreich", description: "Wiedervorlage wurde gelöscht." });
     } catch (error) {
-      console.error('Error deleting snooze:', error);
+      debugConsole.error('Error deleting snooze:', error);
       toast({ title: "Fehler", description: "Wiedervorlage konnte nicht gelöscht werden.", variant: "destructive" });
     }
   };
@@ -240,7 +241,7 @@ export function useTaskOperations({
         description: isCompleted ? "Die Unteraufgabe wurde als erledigt markiert." : "Die Unteraufgabe wurde wieder geöffnet."
       });
     } catch (error: unknown) {
-      console.error('Error updating subtask:', error);
+      debugConsole.error('Error updating subtask:', error);
       toast({ title: "Fehler", description: "Unteraufgabe konnte nicht aktualisiert werden.", variant: "destructive" });
     }
   };
@@ -307,7 +308,7 @@ export function useTaskOperations({
       toast({ title: "Notiz erstellt", description: "Quick Note wurde erfolgreich erstellt." });
       return true;
     } catch (error) {
-      console.error('Error creating quick note:', error);
+      debugConsole.error('Error creating quick note:', error);
       toast({ title: "Fehler", description: "Notiz konnte nicht erstellt werden.", variant: "destructive" });
       return false;
     }
@@ -321,7 +322,7 @@ export function useTaskOperations({
       setShowCelebration(true);
       toast({ title: "ToDo erledigt", description: "Das ToDo wurde als erledigt markiert." });
     } catch (error) {
-      console.error('Error completing todo:', error);
+      debugConsole.error('Error completing todo:', error);
       toast({ title: "Fehler", description: "ToDo konnte nicht als erledigt markiert werden.", variant: "destructive" });
     }
   };

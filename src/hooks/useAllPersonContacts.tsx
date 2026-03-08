@@ -4,6 +4,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { useTenant } from "@/hooks/useTenant";
 import { Contact } from "@/hooks/useInfiniteContacts";
+import { debugConsole } from '@/utils/debugConsole';
 
 const PAGE_SIZE = 500;
 const PERSON_CONTACT_SELECT = "id, contact_type, name, organization, organization_id, email";
@@ -49,7 +50,7 @@ export const useAllPersonContacts = () => {
           .range(from, to);
 
         if (error) {
-          console.error("Error fetching person contacts:", error);
+          debugConsole.error("Error fetching person contacts:", error);
           return;
         }
 
@@ -65,7 +66,7 @@ export const useAllPersonContacts = () => {
 
       setPersonContacts(allContacts);
     } catch (error) {
-      console.error("Error in fetchPersonContacts:", error);
+      debugConsole.error("Error in fetchPersonContacts:", error);
     } finally {
       setLoading(false);
     }
@@ -85,7 +86,7 @@ export const useAllPersonContacts = () => {
         .maybeSingle();
 
       if (error) {
-        console.error("Error refreshing person contact by id:", error);
+        debugConsole.error("Error refreshing person contact by id:", error);
         return;
       }
 
