@@ -1,116 +1,61 @@
 
+Ziel: Rückmeldungs-Feed stabil sichtbar machen und gleichzeitig die aktuellen Build-Blocker entfernen, damit die Fixes überhaupt wieder ausgeliefert werden.
 
-## Plan: Plattform-Qualität verbessern (3 Maßnahmen + App.tsx Refactoring)
+1) Diagnose (aus Code + DB)
+- Do I know what the issue is? Ja.
+- Es gibt aktuell 2 Ebenen von Problemen:
+  1. Build ist kaputt (TypeScript):
+     - `src/components/ui/calendar.tsx`: doppelte Keys im `classNames`-Objekt (`caption_label`, `dropdowns`, `dropdown`) → TS1117.
+     - `src/components/task-decisions/DecisionOverview.tsx`: `ResponseOption`-Typ ohne `requires_comment` → TS2339.
+  2. Feed-Logik ist instabil/zu restriktiv:
+     - `src/components/my-work/MyWorkFeedbackFeedTab.tsx` übergibt `completedTo: new Date().toISOString()` bei jedem Render.
+       Dadurch ändert sich der React-Query-Key permanent (`useTeamFeedbackFeed`), was zu dauerndem Neu-Laden bzw. instabilem Feed führt.
+     - `useTeamFeedbackFeed` filtert hart auf `.not('notes','is',null)`. Damit verschwinden abgeschlossene Rückmeldungen ohne Notiz (z. B. nur Anhang/Aufgabe), obwohl sie fachlich oft relevant sind.
+- DB-Check:
+  - `appointment_feedback` hat Daten (u. a. completed in den letzten 7 Tagen vorhanden).
+  - RLS auf `appointment_feedback` erlaubt tenant-basiertes Lesen (`tenant_id = ANY(get_user_tenant_ids(auth.uid()))`), also kein offensichtlicher RLS-Blocker für Team-Feed im Tenant.
 
----
+2) Umsetzungsplan (in Reihenfolge)
+A. Build sofort reparieren (Blocker)
+- `calendar.tsx`: doppelte Objekt-Keys entfernen, nur eine konsistente Definition für `caption_label`, `dropdowns`, `dropdown` behalten.
+- `DecisionOverview.tsx`: lokalen `ResponseOption`-Typ um `requires_comment?: boolean` ergänzen (oder auf den zentralen Typ aus `decisionTemplates` umstellen).
 
-### 1. App.tsx aufteilen (Architektur & Modularität)
+B. Feed-Query stabilisieren
+- `MyWorkFeedbackFeedTab.tsx`:
+  - `completedTo` nicht mehr bei jedem Render neu erzeugen.
+  - Entweder:
+    - `completedTo` ganz weglassen (nur `completedFrom` + order/limit), oder
+    - `completedTo` per `useMemo/useState` nur bei Filterwechsel neu setzen.
+- `useTeamFeedbackFeed.ts`:
+  - Query-Key nur mit stabilen Filterwerten.
+  - Zeitfilter robust halten (kein per-render Drift).
 
-**Problem:** `App.tsx` enthält aktuell Routing (~30 Routes), Provider-Stack (6 Provider), globale Dialoge, QueryClient-Konfiguration und Keyboard-Shortcuts in einer Datei.
+C. Sichtbarkeit der Rückmeldungen fachlich korrigieren
+- `useTeamFeedbackFeed.ts`:
+  - Notiz-Pflicht entfernen oder erweitern:
+    - statt nur `notes is not null` auch Einträge mit `has_documents = true` oder `has_tasks = true` zulassen.
+  - Ergebnis: auch „abgeschlossen ohne Notiz, aber mit Anhang/Aufgabe“ erscheint im Feed.
 
-**Neue Dateistruktur:**
+D. Fehler nicht mehr als „keine Daten“ maskieren
+- `MyWorkFeedbackFeedTab.tsx`:
+  - `isError` + `error` aus Query auslesen.
+  - Bei Fehler einen klaren Error-State anzeigen (statt „Keine passenden Rückmeldungen gefunden“), inkl. Retry-Button (`refetch`).
 
-```text
-src/
-  App.tsx                          ← nur noch: <AppProviders><AppRouter /></AppProviders>
-  providers/
-    AppProviders.tsx                ← QueryClient + Auth + Tenant + AppSettings + Notification + Tooltip
-  router/
-    AppRouter.tsx                   ← BrowserRouter + MatrixUnreadProvider + Routes + globale Overlays
-    routes.tsx                      ← alle <Route> Definitionen + lazy imports
-  components/layout/
-    GlobalOverlays.tsx              ← GlobalSearchCommand + GlobalQuickNoteDialog + GlobalDaySlipPanel + Keyboard-Shortcut
-```
+E. Quercheck auf Seiteneffekte
+- `useMyWorkNewCounts.tsx` zählt derzeit ebenfalls nur `completed + notes not null`; ggf. auf dieselbe fachliche Logik angleichen, damit Badge und Feed konsistent sind.
 
-**Ergebnis `App.tsx`** (ca. 10 Zeilen):
-```tsx
-const App = () => (
-  <AppProviders>
-    <AppRouter />
-  </AppProviders>
-);
-```
+3) Validierung nach Umsetzung
+- Build grün ohne TS-Fehler.
+- Im Tab „Meine Arbeit > Rückmeldungen“:
+  - Keine Endlos-Ladeanzeige.
+  - Team-Einträge der letzten 7/14 Tage sichtbar.
+  - Filter (Sicht/Zeitraum/Anhänge/Aufgaben) funktionieren.
+  - Bei absichtlichem Query-Fehler erscheint Error-State statt Empty-State.
+- Schneller Datenabgleich:
+  - Feed-Anzahl grob konsistent mit SQL-Count für completed im Zeitraum (unter Berücksichtigung der Filter).
 
-**`AppProviders.tsx`**: QueryClientProvider, AuthProvider, TenantProvider, AppSettingsProvider, NotificationProvider, TooltipProvider. QueryClient-Instanz wird hier erstellt.
-
-**`AppRouter.tsx`**: BrowserRouter, MatrixUnreadProvider, Toaster/Sonner, GlobalOverlays, Suspense + Routes.
-
-**`routes.tsx`**: Alle lazy imports und `<Route>`-Definitionen als exportiertes Array oder JSX-Fragment.
-
----
-
-### 2. TypeScript strenger konfigurieren (Codequalität)
-
-**Schritt 1 – Sofort umsetzbar** (kein Breaking Change):
-- `tsconfig.app.json`: `strictNullChecks: true` aktivieren
-- Erwartbar ~50-100 Compile-Fehler, die mit `?.` und `?? ''` Null-Guards fixiert werden
-
-**Schritt 2 – `catch (error: any)` systematisch ersetzen** (720 Vorkommen in 57 Dateien):
-- Der zentrale `handleAppError()` + `getErrorMessage()` existiert bereits in `src/utils/errorHandler.ts`
-- Batch-weise die verbleibenden 57 Dateien auf `catch (error: unknown)` + `handleAppError()` umstellen
-- Priorisierung nach Dateigröße/Nutzung: Hooks zuerst, dann Komponenten
-
-**Schritt 3 – `as any` auf Supabase-Daten** (1335 Vorkommen in 110 Dateien):
-- Weiterführung der bereits begonnenen Arbeit
-- Fokus auf `(planning as any).is_completed`, `(profile as any)?.badge_color` etc. – hier fehlen Felder in den lokalen Interfaces, nicht in der DB
-
-**Was wir NICHT ändern:** `strict: true` komplett aktivieren wäre zu disruptiv (tausende Fehler). `strictNullChecks` allein bringt den größten Sicherheitsgewinn.
-
----
-
-### 3. Testabdeckung erhöhen (aktuell: 5 Testdateien)
-
-**Ist-Zustand:** Tests existieren nur für `speechToTextAdapter`, `speechCommandUtils`, `errorHandler`, `letter/types`. Kein einziger Hook oder Supabase-Query ist getestet.
-
-**Strategie: Unit-Tests für die 10 kritischsten Hooks:**
-
-| Priorität | Datei | Was testen |
-|-----------|-------|------------|
-| 1 | `useAuth.tsx` | Login/Logout-Flow, Session-Handling |
-| 2 | `useTasksData.ts` (bzw. useTaskOperations) | CRUD-Operationen, Optimistic Updates |
-| 3 | `useMeetingsData.ts` | Daten-Laden, Filtering |
-| 4 | `useDocumentsData.ts` | Upload, Delete |
-| 5 | `useTenant.tsx` | Tenant-Switching, Fallback |
-| 6 | `useNotifications.tsx` | Mark-as-read, Realtime |
-| 7 | `useContactDocuments.tsx` | Verknüpfungen |
-| 8 | `useTimeTrackingOperations.ts` | Start/Stop Timer |
-| 9 | `useEmployeeOperations.ts` | Status-Updates |
-| 10 | `useCaseFileDetails.tsx` | Case-File CRUD |
-
-**Test-Pattern:** Supabase-Client mocken mit `vi.mock('@/integrations/supabase/client')`, keine echte DB. Jeder Hook-Test prüft: Success-Case, Error-Case, Loading-State.
-
-**Dateistruktur:**
-```text
-src/hooks/__tests__/useAuth.test.ts
-src/hooks/__tests__/useTenant.test.ts
-src/components/tasks/hooks/__tests__/useTaskOperations.test.ts
-...
-```
-
----
-
-### 4. README modernisieren
-
-**Aktuell:** Generisches Lovable-Template mit 0 projektspezifischem Inhalt.
-
-**Neue README-Struktur:**
-
-1. **Projektname & Beschreibung** – Was ist die Plattform, wer nutzt sie
-2. **Architektur-Übersicht** – ASCII-Diagramm der Schichten (Frontend → Supabase → Edge Functions)
-3. **Lokales Setup** – Schritt-für-Schritt mit Env-Variablen, Supabase-Projekt verlinken
-4. **Ordnerstruktur** – Erklärung von `src/features/`, `src/hooks/`, `src/components/`, `src/services/`
-5. **Wichtige Patterns** – `lazyWithRetry`, `debugConsole`, `handleAppError`, Tenant-System
-6. **Edge Functions** – Liste mit Zweck und verify_jwt Status
-7. **Testing** – Wie Tests ausführen, wo neue Tests hingehören
-8. **Deployment** – Via Lovable oder manuell
-9. **Rollen & Rechte** – Verweis auf `docs/rollenrechte-matrix.md`
-
----
-
-### Umsetzungsreihenfolge
-
-1. **App.tsx aufteilen** (sofort, keine funktionale Änderung)
-2. **README modernisieren** (sofort, keine Code-Änderung)
-3. **TypeScript strictNullChecks** (erfordert Fixes, aber hoher Impact)
-4. **Testabdeckung** (fortlaufend, Batch-weise)
-
+4) Warum das den aktuellen Zustand löst
+- Solange Build fehlschlägt, werden vorherige Fixes teils nicht wirksam.
+- Selbst bei laufendem Build kann der Feed durch den „beweglichen“ `completedTo`-Key instabil bleiben.
+- Zusätzlich blendet der harte Notiz-Filter valide Rückmeldungen aus.
+- Mit den vier Korrekturen (Build, stabiler Query-Key, fachlich korrekter Filter, echter Error-State) wird die Ursachekette vollständig geschlossen.

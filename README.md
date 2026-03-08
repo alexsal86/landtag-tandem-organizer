@@ -1,77 +1,181 @@
-# Welcome to your Lovable project
+# Büro-Plattform
 
-## Project info
+Digitale Arbeitsplattform für politische Büros – Termine, Kontakte, Vorgänge, Aufgaben, Dokumente, Sitzungen und mehr. Multi-Tenant-fähig mit rollenbasiertem Zugriff.
 
-**URL**: https://lovable.dev/projects/7d09a65d-5cbe-421b-a580-38a4fe244277
+**Lovable-Projekt:** [https://lovable.dev/projects/7d09a65d-5cbe-421b-a580-38a4fe244277](https://lovable.dev/projects/7d09a65d-5cbe-421b-a580-38a4fe244277)
 
-## How can I edit this code?
+---
 
-There are several ways of editing your application.
+## Architektur
 
-**Use Lovable**
+```
+┌─────────────────────────────────────────────┐
+│  React SPA (Vite + TypeScript + Tailwind)   │
+│  ├── shadcn/ui + Radix Primitives           │
+│  ├── React Query (Server-State)             │
+│  ├── Lexical (Rich-Text-Editor)             │
+│  └── Leaflet (Karten)                       │
+├─────────────────────────────────────────────┤
+│  Supabase                                   │
+│  ├── PostgreSQL (RLS + Tenant-Isolation)    │
+│  ├── Auth (Email/Password + MFA)            │
+│  ├── Storage (Dokumente, Anhänge)           │
+│  ├── Realtime (Notifications, Chat)         │
+│  └── Edge Functions (50+ Funktionen)        │
+└─────────────────────────────────────────────┘
+```
 
-Simply visit the [Lovable Project](https://lovable.dev/projects/7d09a65d-5cbe-421b-a580-38a4fe244277) and start prompting.
+---
 
-Changes made via Lovable will be committed automatically to this repo.
+## Lokales Setup
 
-**Use your preferred IDE**
+```bash
+# Repository klonen
+git clone <GIT_URL>
+cd <PROJEKT>
 
-If you want to work locally using your own IDE, you can clone this repo and push changes. Pushed changes will also be reflected in Lovable.
+# Dependencies installieren
+npm install
 
-The only requirement is having Node.js & npm installed - [install with nvm](https://github.com/nvm-sh/nvm#installing-and-updating)
-
-Follow these steps:
-
-```sh
-# Step 1: Clone the repository using the project's Git URL.
-git clone <YOUR_GIT_URL>
-
-# Step 2: Navigate to the project directory.
-cd <YOUR_PROJECT_NAME>
-
-# Step 3: Install the necessary dependencies.
-npm i
-
-# Step 4: Start the development server with auto-reloading and an instant preview.
+# Entwicklungsserver starten
 npm run dev
 ```
 
-**Edit a file directly in GitHub**
+Alternativ direkt in Lovable entwickeln – Änderungen werden automatisch committet.
 
-- Navigate to the desired file(s).
-- Click the "Edit" button (pencil icon) at the top right of the file view.
-- Make your changes and commit the changes.
+---
 
-**Use GitHub Codespaces**
+## Ordnerstruktur
 
-- Navigate to the main page of your repository.
-- Click on the "Code" button (green button) near the top right.
-- Select the "Codespaces" tab.
-- Click on "New codespace" to launch a new Codespace environment.
-- Edit files directly within the Codespace and commit and push your changes once you're done.
+```
+src/
+├── App.tsx                    # Einstiegspunkt (~10 Zeilen)
+├── providers/
+│   └── AppProviders.tsx       # QueryClient + Auth + Tenant + Settings + Notifications
+├── router/
+│   ├── AppRouter.tsx          # BrowserRouter + Suspense + globale Overlays
+│   └── routes.tsx             # Alle Route-Definitionen (lazy-loaded)
+├── components/
+│   ├── layout/                # Header, Navigation, GlobalOverlays
+│   ├── ui/                    # shadcn/ui Basis-Komponenten
+│   ├── my-work/               # "Meine Arbeit" Dashboard
+│   ├── meetings/              # Sitzungsverwaltung
+│   ├── letters/               # Briefeditor + Templates
+│   ├── tasks/                 # Aufgabenverwaltung
+│   ├── contacts/              # Kontaktverwaltung
+│   ├── documents/             # Dokumentenverwaltung
+│   ├── appointments/          # Terminverwaltung
+│   ├── employees/             # Mitarbeiterverwaltung
+│   ├── timetracking/          # Zeiterfassung
+│   ├── chat/                  # Matrix-Chat
+│   ├── admin/                 # Admin-Ansichten
+│   └── ...                    # Weitere Feature-Module
+├── features/
+│   ├── cases/                 # Vorgänge (Files + Items) – Feature-First-Struktur
+│   └── matrix-widget/         # Matrix-Widget
+├── hooks/                     # Globale Custom Hooks (80+)
+├── contexts/                  # React Contexts (Notifications, Matrix)
+├── integrations/supabase/     # Generierte Types + Client
+├── lib/                       # Utilities (lazyWithRetry, coiRuntime)
+├── utils/                     # Hilfsfunktionen (errorHandler, debugConsole, sanitize)
+├── services/                  # Service-Layer
+└── pages/                     # Seiten-Komponenten (Auth, ContactDetail, etc.)
 
-## What technologies are used for this project?
+supabase/
+├── functions/                 # 50+ Edge Functions
+└── migrations/                # DB-Migrationen (read-only)
 
-This project is built with:
+docs/                          # Fachliche Dokumentation
+├── rollenrechte-matrix.md     # Rollen- und Rechtemodell
+├── automation-no-code-umsetzung.md
+└── ...
+```
 
-- Vite
-- TypeScript
-- React
-- shadcn-ui
-- Tailwind CSS
+---
 
-## How can I deploy this project?
+## Wichtige Patterns
 
-Simply open [Lovable](https://lovable.dev/projects/7d09a65d-5cbe-421b-a580-38a4fe244277) and click on Share -> Publish.
+### `lazyWithRetry`
+Alle Seiten und schwere Komponenten werden über `lazyWithRetry()` geladen – Lazy Loading mit automatischem Retry bei Chunk-Fehlern.
 
-## Can I connect a custom domain to my Lovable project?
+### `debugConsole`
+Wrapper um `console.*` der im Production-Build stumm bleibt. Immer `debugConsole.log()` statt `console.log()` verwenden.
 
-Yes, you can!
+### `handleAppError` / `getErrorMessage`
+Zentraler Error-Handler in `src/utils/errorHandler.ts`. Einheitliches Logging + optionaler Toast + optionales Rethrow:
+```ts
+catch (error: unknown) {
+  handleAppError(error, {
+    context: 'useLetters.save',
+    toast: { fn: toast, title: 'Speichern fehlgeschlagen' },
+  });
+}
+```
 
-To connect a domain, navigate to Project > Settings > Domains and click Connect Domain.
+### Multi-Tenant-System
+- Jeder Datensatz gehört zu einem `tenant_id`
+- RLS-Policies nutzen `get_user_tenant_ids(auth.uid())` für Zugriffskontrolle
+- Tenant-Wechsel über `useTenant()` Hook
+- `localStorage` speichert den aktiven Tenant pro User (`currentTenantId_<userId>`)
 
-Read more here: [Setting up a custom domain](https://docs.lovable.dev/tips-tricks/custom-domain#step-by-step-guide)
+### Rollen & Rechte
+Rollen werden in einer separaten `user_roles`-Tabelle gespeichert (nicht auf `profiles`). Details: [`docs/rollenrechte-matrix.md`](docs/rollenrechte-matrix.md)
 
-## Rollen- und Rechtemodell
+---
 
-Details zur Trennung von globalen und tenant-lokalen Rollen stehen in `docs/rollenrechte-matrix.md`.
+## Edge Functions (Auswahl)
+
+| Funktion | Zweck | Auth |
+|----------|-------|------|
+| `sync-external-calendar` | iCal-Kalender synchronisieren | JWT |
+| `create-daily-appointment-feedback` | Tägliche Rückmeldungs-Erstellung (Cron) | Cron |
+| `send-decision-email` | Entscheidungs-E-Mails versenden | JWT |
+| `process-decision-response` | Gast-Antworten verarbeiten | Public |
+| `log-audit-event` | Audit-Log-Einträge schreiben | JWT |
+| `run-automation-rule` | No-Code-Automatisierungen ausführen | JWT |
+| `suggest-case-escalations` | Eskalationsvorschläge für Vorgänge | JWT |
+| `global-logout` | Alle Sessions eines Users beenden | JWT |
+| `manage-tenant-user` | Tenant-Mitglieder verwalten | JWT |
+| `send-push-notification` | Web-Push-Benachrichtigungen | JWT |
+
+Vollständige Liste: `supabase/functions/`
+
+---
+
+## Testing
+
+```bash
+# Tests ausführen
+npx vitest run
+
+# Tests im Watch-Mode
+npx vitest
+```
+
+- Framework: **Vitest** + **@testing-library/react**
+- Tests liegen neben den Quelldateien oder in `__tests__/`-Unterordnern
+- Supabase-Client wird per `vi.mock('@/integrations/supabase/client')` gemockt
+
+---
+
+## Deployment
+
+**Via Lovable:** Share → Publish
+
+**Custom Domain:** Project → Settings → Domains → Connect Domain. Siehe [Lovable Docs](https://docs.lovable.dev/tips-tricks/custom-domain).
+
+---
+
+## Tech-Stack
+
+| Kategorie | Technologie |
+|-----------|------------|
+| Framework | React 19 + TypeScript |
+| Build | Vite |
+| Styling | Tailwind CSS + shadcn/ui |
+| State | React Query (TanStack) |
+| Backend | Supabase (PostgreSQL, Auth, Storage, Realtime, Edge Functions) |
+| Editor | Lexical |
+| Karten | Leaflet + React-Leaflet |
+| Chat | Matrix SDK |
+| Testing | Vitest |
