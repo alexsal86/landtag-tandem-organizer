@@ -233,7 +233,7 @@ export function MyWorkTasksTab() {
       });
       toast({ title: "Titel aktualisiert" });
     } catch (error) {
-      console.error("Error updating title:", error);
+      debugConsole.error("Error updating title:", error);
       toast({ title: "Fehler beim Speichern", variant: "destructive" });
     }
   };
