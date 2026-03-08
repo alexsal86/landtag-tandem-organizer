@@ -587,7 +587,7 @@ export function useEventPlanningData() {
             await supabase.functions.invoke("send-checklist-email", { body: { actionId: emailAction.id, checklistItemId: itemId } });
             toast({ title: "E-Mail versendet", description: "Benachrichtigung wurde automatisch versendet." });
           }
-        } catch (emailError) { console.error("Error sending email:", emailError); }
+        } catch (emailError) { debugConsole.error("Error sending email:", emailError); }
       }
     } catch (fetchError) {
       console.warn("Network error during checklist update, verifying state...", fetchError);
