@@ -183,7 +183,7 @@ export function useTaskOperations({
       loadTaskSnoozes();
       loadAssignedSubtasks();
       toast({ title: "Wiedervorlage gesetzt", description: `Unteraufgabe wird bis ${new Date(snoozeUntil).toLocaleDateString('de-DE')} ausgeblendet.` });
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Error snoozing subtask:', error);
       toast({ title: "Fehler", description: "Wiedervorlage konnte nicht gesetzt werden.", variant: "destructive" });
     }
