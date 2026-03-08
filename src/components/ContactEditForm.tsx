@@ -450,7 +450,7 @@ export function ContactEditForm({ contact, onSuccess, onCancel }: ContactEditFor
         .from('avatars')
         .getPublicUrl(filePath);
 
-      console.log('Avatar uploaded successfully:', publicUrl);
+      debugConsole.log('Avatar uploaded successfully:', publicUrl);
       setFormData(prev => ({ ...prev, avatar_url: publicUrl }));
       
       toast({
