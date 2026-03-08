@@ -316,7 +316,7 @@ const SimpleLeafletMap: React.FC<LeafletKarlsruheMapProps> = ({
               // GeoJSON format: coordinates[0] = longitude, coordinates[1] = latitude
               lng = boundaryDistrict.center_coordinates.coordinates[0];
               lat = boundaryDistrict.center_coordinates.coordinates[1];
-              console.log(`Parsed GeoJSON Point: lng=${lng}, lat=${lat}`);
+              debugConsole.log(`Parsed GeoJSON Point: lng=${lng}, lat=${lat}`);
               
             } else if ('lat' in boundaryDistrict.center_coordinates && 'lng' in boundaryDistrict.center_coordinates) {
               lat = boundaryDistrict.center_coordinates.lat;
