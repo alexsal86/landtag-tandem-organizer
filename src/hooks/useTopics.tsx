@@ -84,7 +84,7 @@ export const useTopics = () => {
       toast({ title: "Thema erstellt", description: `"${topicData.label}" wurde hinzugefügt.` });
       return data;
     } catch (error: unknown) {
-      console.error('Error creating topic:', error);
+      debugConsole.error('Error creating topic:', error);
       toast({ 
         title: "Fehler", 
         description: error instanceof Error ? error.message : "Thema konnte nicht erstellt werden.", 
