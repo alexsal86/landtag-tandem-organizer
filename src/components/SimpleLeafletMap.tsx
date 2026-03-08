@@ -248,7 +248,7 @@ const SimpleLeafletMap: React.FC<LeafletKarlsruheMapProps> = ({
 
       geoLayer.addTo(districtLayerRef.current);
       renderedBounds = geoLayer.getBounds();
-      console.log(`Rendered ${allDistrictsToRender.length} districts (${districts.length} regular + ${allDistrictsToRender.length - districts.length} party boundaries)`);
+      
     }
 
     // Add markers with district numbers (only for election districts, not administrative boundaries)
