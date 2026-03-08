@@ -330,7 +330,7 @@ export const StructuredHeaderEditor: React.FC<StructuredHeaderEditorProps> = ({ 
         previous.forEach((img) => URL.revokeObjectURL(img.blobUrl));
         return loaded;
       });
-    } catch (error) { console.error('Error loading gallery:', error); }
+    } catch (error) { debugConsole.error('Error loading gallery:', error); }
     finally { setGalleryLoading(false); }
   }, [currentTenant?.id]);
 
