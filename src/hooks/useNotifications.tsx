@@ -474,7 +474,7 @@ export const useNotifications = () => {
         supabase.removeChannel(currentChannel);
       }
 
-      console.log(`Setting up notifications realtime subscription for user: ${user.id} (attempt ${retryCount + 1})`);
+      debugConsole.log(`Setting up notifications realtime subscription for user: ${user.id} (attempt ${retryCount + 1})`);
 
       currentChannel = supabase
         .channel(`user-notifications:${user.id}:${Date.now()}`)
