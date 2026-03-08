@@ -22,7 +22,7 @@ export function LoginCustomization() {
   const [customization, setCustomization] = useState({
     background_image_url: 'https://images.unsplash.com/photo-1584974292709-5c2f0619971b?w=1920&q=80',
     background_position: 'center',
-    background_attribution: null as unknown,
+    background_attribution: null as Record<string, string> | null,
     primary_color: '#57ab27',
     accent_color: '#E6007E',
     tagline: 'Ihre politische Arbeit. Organisiert.',
