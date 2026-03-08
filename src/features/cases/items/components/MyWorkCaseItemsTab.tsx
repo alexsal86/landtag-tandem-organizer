@@ -309,6 +309,21 @@ export function MyWorkCaseItemsTab() {
     });
   }, [items, searchTerm, channelFilter, statusFilter, priorityFilter, followUpFilter, dueFilter, assignedToMeOnly, sortBy, user?.id]);
 
+  const handleArchive = async (itemId: string) => {
+    try {
+      const { error } = await supabase
+        .from("case_items")
+        .update({ status: "archiviert" } as any)
+        .eq("id", itemId);
+      if (error) throw error;
+      toast({ title: "Archiviert", description: "Vorgang wurde archiviert." });
+      await loadCaseItems();
+    } catch (e) {
+      console.error("Error archiving case item:", e);
+      toast({ title: "Fehler", description: "Vorgang konnte nicht archiviert werden.", variant: "destructive" });
+    }
+  };
+
   if (loading) {
     return (
       <div className="space-y-2 p-4">
@@ -328,6 +343,11 @@ export function MyWorkCaseItemsTab() {
         createCaseItem={createCaseItem}
         assignees={[]}
         defaultAssigneeId={null}
+      />
+      <CaseItemsArchiveSheet
+        open={archiveOpen}
+        onOpenChange={setArchiveOpen}
+        onRestore={() => loadCaseItems()}
       />
 
       <Card>
