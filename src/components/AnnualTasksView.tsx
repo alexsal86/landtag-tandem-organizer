@@ -285,7 +285,7 @@ export function AnnualTasksView() {
 
       // Mark task as completed
       const { error } = await supabase
-        .from("annual_task_completions" as any)
+        .from("annual_task_completions")
         .upsert({
           annual_task_id: selectedTask.id,
           year: currentYear,
