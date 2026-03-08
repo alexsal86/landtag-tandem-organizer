@@ -321,11 +321,11 @@ export function MyWorkTasksTab() {
         // Create new snooze
         const { error } = await supabase
           .from('task_snoozes')
-          .insert({
+          .insert([{
             user_id: user.id,
             task_id: snoozeTaskId,
             snoozed_until: date.toISOString()
-          });
+          }]);
         if (error) throw error;
       }
       
