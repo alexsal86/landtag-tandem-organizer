@@ -87,9 +87,9 @@ export function useMeetingArchive(deps: ArchiveDeps) {
           original_meeting_date: typeof sourceMeeting.meeting_date === 'string' ? sourceMeeting.meeting_date : sourceMeeting.meeting_date?.toISOString().split('T')[0],
           original_meeting_title: sourceMeeting.title
         });
-        if (error) console.error('Error storing carryover item:', error);
+        if (error) debugConsole.error('Error storing carryover item:', error);
       } catch (error) {
-        console.error('Error storing carryover item:', item.title, error);
+        debugConsole.error('Error storing carryover item:', item.title, error);
       }
     }
   };
