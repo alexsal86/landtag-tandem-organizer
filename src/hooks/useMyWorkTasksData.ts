@@ -188,7 +188,7 @@ export function useMyWorkTasksData(userId?: string) {
         taskCommentCounts: commentCounts,
       });
     } catch (error) {
-      console.error("Error loading tasks:", error);
+      debugConsole.error("Error loading tasks:", error);
     } finally {
       setLoading(false);
     }

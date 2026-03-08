@@ -148,7 +148,7 @@ export const saveDecisionTopics = async (decisionId: string, topicIds: string[])
     if (error) throw error;
     return true;
   } catch (error) {
-    console.error('Error saving decision topics:', error);
+    debugConsole.error('Error saving decision topics:', error);
     return false;
   }
 };

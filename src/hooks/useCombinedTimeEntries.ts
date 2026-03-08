@@ -334,7 +334,7 @@ export function useCombinedTimeEntries({
         return;
       }
       if (overtimeDates.has(dateStr)) {
-        console.warn(`Arbeitseintrag an Überstundenabbau-Tag ignoriert: ${dateStr}`);
+        debugConsole.warn(`Arbeitseintrag an Überstundenabbau-Tag ignoriert: ${dateStr}`);
         return;
       }
 

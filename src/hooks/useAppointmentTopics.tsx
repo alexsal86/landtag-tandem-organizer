@@ -114,7 +114,7 @@ export const saveAppointmentTopics = async (appointmentId: string, topicIds: str
     if (error) throw error;
     return true;
   } catch (error) {
-    console.error('Error saving appointment topics:', error);
+    debugConsole.error('Error saving appointment topics:', error);
     return false;
   }
 };

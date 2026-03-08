@@ -98,7 +98,7 @@ export const useDistrictDetection = () => {
       return data;
 
     } catch (err) {
-      console.error('Error detecting district:', err);
+      debugConsole.error('Error detecting district:', err);
       const errorMessage = err instanceof Error ? err.message : 'Unknown error occurred';
       setError(errorMessage);
       return null;

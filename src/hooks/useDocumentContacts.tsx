@@ -118,7 +118,7 @@ export const useDocumentContacts = (documentId?: string) => {
       if (error) throw error;
       await fetchDocumentContacts();
     } catch (error: unknown) {
-      console.error('Error updating document contact:', error);
+      debugConsole.error('Error updating document contact:', error);
       throw error;
     }
   };

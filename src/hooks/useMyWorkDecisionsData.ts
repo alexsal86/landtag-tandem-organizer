@@ -297,7 +297,7 @@ export function useMyWorkDecisionsData(userId?: string) {
       }
     } catch (error) {
       if (isCurrentRequest()) {
-        console.error("Error loading decisions:", error);
+        debugConsole.error("Error loading decisions:", error);
       }
     } finally {
       if (isCurrentRequest()) {
