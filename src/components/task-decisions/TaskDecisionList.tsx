@@ -289,7 +289,7 @@ export const TaskDecisionList = () => {
 
       setDecisions(allDecisions);
     } catch (error) {
-      console.error('Error loading decision requests:', error);
+      debugConsole.error('Error loading decision requests:', error);
     }
   };
 
