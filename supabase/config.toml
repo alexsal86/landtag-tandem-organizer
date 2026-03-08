@@ -157,3 +157,6 @@ verify_jwt = true
 [functions.run-scheduled-automation-rules]
 verify_jwt = false
 schedule = "*/5 * * * *"
+
+[functions.automation-webhook]
+verify_jwt = false
