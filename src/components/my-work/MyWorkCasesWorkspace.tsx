@@ -300,6 +300,23 @@ export function MyWorkCasesWorkspace() {
   const [isMeetingSelectorOpen, setIsMeetingSelectorOpen] = useState(false);
   const [meetingSelectorItemId, setMeetingSelectorItemId] = useState<string | null>(null);
 
+  // Delete confirmation state
+  const [deleteConfirmItemId, setDeleteConfirmItemId] = useState<string | null>(null);
+
+  const handleDeleteCaseItem = useCallback(async () => {
+    if (!deleteConfirmItemId) return;
+    const id = deleteConfirmItemId;
+    setDeleteConfirmItemId(null);
+    // If this item is open in detail, close it
+    if (detailItemId === id) {
+      setDetailItemId(null);
+      setEditableCaseItem(null);
+    }
+    setCaseItems((current) => current.filter((row) => row.id !== id));
+    await deleteCaseItem(id);
+    toast.success("Vorgang gelöscht");
+  }, [deleteConfirmItemId, detailItemId, setEditableCaseItem, setCaseItems, deleteCaseItem]);
+
   const getItemSubject = useCallback((item: CaseItem) => item.subject || item.summary || item.resolution_summary || "Ohne Titel", []);
   const getItemDescription = useCallback((item: CaseItem) => richTextToPlain(item.summary || item.resolution_summary || ""), []);
 
