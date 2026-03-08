@@ -170,7 +170,7 @@ export function MergeContactsDialog({
       if (userData.user && contactData) {
         await supabase
           .from('contact_activities')
-          .insert({
+          .insert([{
             contact_id: primaryContact,
             tenant_id: contactData.tenant_id,
             activity_type: 'edit',
@@ -181,7 +181,7 @@ export function MergeContactsDialog({
               merged_contact_id: secondaryContactId,
               merged_contact_name: secondaryContactId === contact1.id ? contact1.name : contact2.name,
             },
-          });
+          }]);
       }
 
       // Delete secondary contact

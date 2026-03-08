@@ -723,7 +723,7 @@ export const useCaseFileDetails = (caseFileId: string | null) => {
     if (!user) return false;
     const { error } = await supabase
       .from("case_item_interactions")
-      .insert({ ...interaction, created_by: user.id } as any);
+      .insert([{ ...interaction, created_by: user.id }] as any);
 
     if (error) {
       toast({ title: "Fehler beim Hinzufügen", variant: "destructive" });

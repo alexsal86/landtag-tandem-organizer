@@ -83,14 +83,14 @@ export function TaskDocumentDialog({
 
       const { error: dbError } = await supabase
         .from('task_documents')
-        .insert({
+        .insert([{
           task_id: taskId,
           file_name: file.name,
           file_path: fileName,
           file_size: file.size,
           file_type: file.type,
           user_id: user.id
-        });
+        }]);
 
       if (dbError) throw dbError;
 
