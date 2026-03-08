@@ -68,7 +68,7 @@ export function CaseFileEditDialog({ caseFile, open, onOpenChange }: CaseFileEdi
         reference_number: caseFile.reference_number || "",
         start_date: caseFile.start_date || undefined,
         target_date: caseFile.target_date || undefined,
-        is_private: caseFile.is_private,
+        is_private: caseFile.is_private ?? false,
       });
       
       // Determine visibility from the case file data
