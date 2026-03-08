@@ -164,7 +164,7 @@ export function AppointmentDetailsSidebar({
       onUpdate();
       fetchGuests();
     } catch (error) {
-      console.error('Error sending invitations:', error);
+      debugConsole.error('Error sending invitations:', error);
       toast({
         title: "Fehler",
         description: `Die Einladungen konnten nicht versendet werden: ${error.message}`,
