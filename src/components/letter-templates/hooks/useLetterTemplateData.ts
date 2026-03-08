@@ -146,8 +146,7 @@ export function useLetterTemplateData() {
       resetForm();
       fetchTemplates();
     } catch (error) {
-      debugConsole.error('Error creating template:', error);
-      toast({ title: "Fehler", description: "Template konnte nicht erstellt werden.", variant: "destructive" });
+      handleAppError(error, { context: 'handleCreateTemplate', toast: { fn: toast, title: 'Fehler', description: 'Template konnte nicht erstellt werden.' } });
     }
   };
 
