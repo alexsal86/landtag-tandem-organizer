@@ -159,7 +159,7 @@ export function EventPlanningDetailView(data: EventPlanningDataReturn) {
                     {uniquePlanningCollaborators.map((collab) => (
                       <div key={collab.id} className="flex items-center justify-between p-3 border rounded-md">
                         <div className="flex items-center gap-3">
-                          <Avatar className="h-8 w-8"><AvatarImage src={collab.profiles?.avatar_url} /><AvatarFallback>{collab.profiles?.display_name?.charAt(0) || 'U'}</AvatarFallback></Avatar>
+                          <Avatar className="h-8 w-8"><AvatarImage src={collab.profiles?.avatar_url ?? undefined} /><AvatarFallback>{collab.profiles?.display_name?.charAt(0) || 'U'}</AvatarFallback></Avatar>
                           <span className="font-medium">{collab.profiles?.display_name || 'Unbenannt'}</span>
                         </div>
                         <div className="flex items-center gap-2">
