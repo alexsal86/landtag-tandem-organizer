@@ -227,7 +227,7 @@ export function CaseFileSelector({
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <Briefcase className="h-5 w-5" />
-            Zur FallAkte hinzufügen
+            Zur Fallakte hinzufügen
           </DialogTitle>
         </DialogHeader>
 
