@@ -30,7 +30,7 @@ export const useTags = () => {
         .order('order_index');
 
       if (error) {
-        console.error('Error fetching tags:', error);
+        debugConsole.error('Error fetching tags:', error);
         return;
       }
 
