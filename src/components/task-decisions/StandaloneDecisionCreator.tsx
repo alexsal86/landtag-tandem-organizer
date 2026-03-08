@@ -327,7 +327,7 @@ export const StandaloneDecisionCreator = ({
           user_id: userId,
         }));
 
-        console.log('Adding participants:', participants);
+        
 
         const { error: participantsError } = await supabase
           .from('task_decision_participants')
