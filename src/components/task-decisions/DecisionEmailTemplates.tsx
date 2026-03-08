@@ -49,7 +49,7 @@ export const DecisionEmailTemplates = () => {
         await createDefaultTemplate();
       }
     } catch (error) {
-      console.error('Error loading email template:', error);
+      debugConsole.error('Error loading email template:', error);
       toast({
         title: "Fehler",
         description: "E-Mail-Template konnte nicht geladen werden.",
