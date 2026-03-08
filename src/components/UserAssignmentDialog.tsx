@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { debugConsole } from '@/utils/debugConsole';
 import { Users, X, Check } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
