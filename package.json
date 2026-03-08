@@ -19,7 +19,8 @@
     "typecheck:dashboard": "tsc -p tsconfig.dashboard-strict.json --noEmit",
     "typecheck:hooks-batch1": "tsc -p tsconfig.hooks-batch1-strict.json --noEmit",
     "typecheck:hooks-batch2": "tsc -p tsconfig.hooks-batch2-strict.json --noEmit",
-    "typecheck:strict-all": "npm run typecheck:knowledge && npm run typecheck:auth && npm run typecheck:quicknotes && npm run typecheck:notifications && npm run typecheck:dashboard && npm run typecheck:utils && npm run typecheck:hooks-batch1 && npm run typecheck:hooks-batch2",
+    "typecheck:contexts": "tsc -p tsconfig.contexts-strict.json --noEmit",
+    "typecheck:strict-all": "npm run typecheck:knowledge && npm run typecheck:auth && npm run typecheck:quicknotes && npm run typecheck:notifications && npm run typecheck:dashboard && npm run typecheck:utils && npm run typecheck:hooks-batch1 && npm run typecheck:hooks-batch2 && npm run typecheck:contexts",
     "typecheck:utils": "tsc -p tsconfig.strict-utils.json --noEmit",
     "report:bundle-size": "node scripts/report-bundle-size.mjs"
   },
