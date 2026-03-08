@@ -109,7 +109,7 @@ export function useContactsViewState() {
         members: list.distribution_list_members?.map((m: any) => m.contacts) || [],
       })) || []);
     } catch (error) {
-      console.error('Error fetching distribution lists:', error);
+      debugConsole.error('Error fetching distribution lists:', error);
       toast({ title: "Fehler", description: "Verteiler konnten nicht geladen werden.", variant: "destructive" });
     } finally { setDistributionListsLoading(false); }
   };
