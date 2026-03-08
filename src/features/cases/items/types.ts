@@ -4,5 +4,8 @@ export interface CaseItemIntakePayload extends Record<string, unknown> {
   timeline_events?: unknown[];
   contact_name?: string | null;
   contact_detail?: string | null;
+  contact_email?: string | null;
+  contact_phone?: string | null;
+  matched_contact_id?: string | null;
 }
 

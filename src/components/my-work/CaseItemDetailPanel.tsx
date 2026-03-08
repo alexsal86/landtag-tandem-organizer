@@ -1,8 +1,9 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { format } from "date-fns";
 import { de } from "date-fns/locale";
-import { AlertCircle, ChevronDown, ExternalLink, Gavel, Loader2, Mail, MessageSquare, Phone, Trash2, Users, Vote } from "lucide-react";
-
+import { AlertCircle, Check, ChevronDown, ExternalLink, Gavel, Loader2, Mail, MessageSquare, Phone, Search, Trash2, Users, Vote } from "lucide-react";
+import { supabase } from "@/integrations/supabase/client";
+import { useTenant } from "@/hooks/useTenant";
 import { Button } from "@/components/ui/button";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { Input } from "@/components/ui/input";
@@ -63,7 +64,13 @@ export function CaseItemDetailPanel({
   onNavigateToCaseFile,
   contactDisplay,
   contactPerson,
+  contactEmail,
+  contactPhone,
+  selectedContactId,
   onContactPersonChange,
+  onContactEmailChange,
+  onContactPhoneChange,
+  onContactSelected,
 }: {
   itemId: string;
   itemCaseFileId: string | null;
@@ -85,14 +92,93 @@ export function CaseItemDetailPanel({
   onNavigateToCaseFile: (caseFileId: string) => void;
   contactDisplay: string;
   contactPerson: string;
+  contactEmail: string;
+  contactPhone: string;
+  selectedContactId: string | null;
   onContactPersonChange: (value: string) => void;
+  onContactEmailChange: (value: string) => void;
+  onContactPhoneChange: (value: string) => void;
+  onContactSelected: (contact: { id: string; name: string; email: string | null; phone: string | null } | null) => void;
 }) {
   const [showMetaFields, setShowMetaFields] = useState(false);
   const [showInteractionComposer, setShowInteractionComposer] = useState(false);
+  const [contactSearchResults, setContactSearchResults] = useState<Array<{ id: string; name: string; email: string | null; phone: string | null; organization: string | null }>>([]);
+  const [searchingContacts, setSearchingContacts] = useState(false);
+  const [showSearchResults, setShowSearchResults] = useState(false);
+  const contactSearchRef = useRef(0);
+  const searchContainerRef = useRef<HTMLDivElement>(null);
+  const { currentTenant } = useTenant();
 
   useEffect(() => {
     setShowInteractionComposer(false);
   }, [itemId]);
+
+  // Contact search effect
+  useEffect(() => {
+    if (!currentTenant) return;
+
+    const query = contactPerson.trim();
+    if (query.length < 2) {
+      setContactSearchResults([]);
+      setSearchingContacts(false);
+      return;
+    }
+
+    // Don't search if a contact is already selected with this exact name
+    if (selectedContactId) return;
+
+    const timer = setTimeout(async () => {
+      const requestId = ++contactSearchRef.current;
+      setSearchingContacts(true);
+
+      const { data, error } = await supabase
+        .from("contacts")
+        .select("id, name, email, phone, organization")
+        .eq("tenant_id", currentTenant.id)
+        .neq("contact_type", "archive")
+        .ilike("name", `%${query}%`)
+        .order("is_favorite", { ascending: false })
+        .order("name")
+        .limit(8);
+
+      if (requestId !== contactSearchRef.current) return;
+
+      if (error) {
+        console.error("Error searching contacts:", error);
+        setContactSearchResults([]);
+      } else {
+        setContactSearchResults((data ?? []) as Array<{ id: string; name: string; email: string | null; phone: string | null; organization: string | null }>);
+        setShowSearchResults(true);
+      }
+
+      setSearchingContacts(false);
+    }, 250);
+
+    return () => clearTimeout(timer);
+  }, [contactPerson, currentTenant, selectedContactId]);
+
+  // Close search results on outside click
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (searchContainerRef.current && !searchContainerRef.current.contains(e.target as Node)) {
+        setShowSearchResults(false);
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
+
+  const handleSelectContact = (contact: { id: string; name: string; email: string | null; phone: string | null }) => {
+    onContactPersonChange(contact.name);
+    onContactEmailChange(contact.email || "");
+    onContactPhoneChange(contact.phone || "");
+    onContactSelected(contact);
+    setShowSearchResults(false);
+  };
+
+  const handleClearContact = () => {
+    onContactSelected(null);
+  };
 
   const formatDecisionDate = (value: string | null | undefined) => {
     if (!value) return "–";
@@ -113,39 +199,71 @@ export function CaseItemDetailPanel({
     return format(parsed, "HH:mm", { locale: de });
   };
 
-  const contactParts = contactPerson
-    .split(/[|,·]/)
-    .map((value) => value.trim())
-    .filter(Boolean);
-  const contactName = contactParts[0] || "";
-  const contactAddress = contactParts.slice(1).join(" ").trim();
-
-  const updateContact = (name: string, detail: string) => {
-    onContactPersonChange([name.trim(), detail.trim()].filter(Boolean).join(" · "));
-  };
-
   return (
     <div className="mx-2 mb-3 rounded-md border bg-muted/20 p-3 space-y-4">
       <div className="grid gap-4 lg:grid-cols-[minmax(230px,1fr)_minmax(0,2.8fr)]">
         <div className="space-y-3">
           <div className="space-y-3 rounded-md border bg-background p-3 text-sm">
             <Label className="font-bold" htmlFor="detail-contact-name">Von / Gesprächspartner</Label>
-            <div className="space-y-1.5">
+            <div className="space-y-1.5 relative" ref={searchContainerRef}>
               <Label className="text-xs text-muted-foreground" htmlFor="detail-contact-name">Name</Label>
+              <div className="relative">
+                <Input
+                  id="detail-contact-name"
+                  value={contactPerson}
+                  placeholder={contactDisplay || "Name eingeben zum Suchen…"}
+                  onChange={(event) => {
+                    onContactPersonChange(event.target.value);
+                    if (selectedContactId) handleClearContact();
+                  }}
+                  onFocus={() => { if (contactSearchResults.length > 0) setShowSearchResults(true); }}
+                  className="pr-8"
+                />
+                {searchingContacts && <Loader2 className="absolute right-2.5 top-1/2 -translate-y-1/2 h-4 w-4 animate-spin text-muted-foreground" />}
+                {!searchingContacts && !selectedContactId && contactPerson.length >= 2 && <Search className="absolute right-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />}
+              </div>
+              {selectedContactId && (
+                <p className="flex items-center gap-1 text-xs text-emerald-600">
+                  <Check className="h-3 w-3" />
+                  Kontakt verknüpft
+                </p>
+              )}
+              {showSearchResults && contactSearchResults.length > 0 && (
+                <div className="absolute left-0 right-0 top-full z-50 mt-1 max-h-56 overflow-y-auto rounded-md border bg-popover shadow-lg">
+                  {contactSearchResults.map((result) => (
+                    <button
+                      key={result.id}
+                      type="button"
+                      className="flex w-full flex-col items-start gap-0.5 px-3 py-2 text-left text-sm hover:bg-accent transition-colors"
+                      onClick={() => handleSelectContact(result)}
+                    >
+                      <span className="font-medium">{result.name}</span>
+                      <span className="text-xs text-muted-foreground">
+                        {[result.organization, result.email, result.phone].filter(Boolean).join(" · ")}
+                      </span>
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+            <div className="space-y-1.5">
+              <Label className="text-xs text-muted-foreground" htmlFor="detail-contact-email">E-Mail</Label>
               <Input
-                id="detail-contact-name"
-                value={contactName}
-                placeholder={contactDisplay || "Name"}
-                onChange={(event) => updateContact(event.target.value, contactAddress)}
+                id="detail-contact-email"
+                type="email"
+                value={contactEmail}
+                placeholder="name@beispiel.de"
+                onChange={(event) => onContactEmailChange(event.target.value)}
               />
             </div>
             <div className="space-y-1.5">
-              <Label className="text-xs text-muted-foreground" htmlFor="detail-contact-detail">E-Mail / Telefon</Label>
+              <Label className="text-xs text-muted-foreground" htmlFor="detail-contact-phone">Telefon</Label>
               <Input
-                id="detail-contact-detail"
-                value={contactAddress}
-                placeholder="name@beispiel.de oder +49 …"
-                onChange={(event) => updateContact(contactName, event.target.value)}
+                id="detail-contact-phone"
+                type="tel"
+                value={contactPhone}
+                placeholder="+49 …"
+                onChange={(event) => onContactPhoneChange(event.target.value)}
               />
             </div>
           </div>

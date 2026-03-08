@@ -558,6 +558,9 @@ export function MyWorkCasesWorkspace() {
       interactionDateTime: "",
       interactionNote: "",
       contactPerson: [getContactName(item.intake_payload), getContactDetail(item.intake_payload)].filter(Boolean).join(" · "),
+      contactEmail: (item.intake_payload as Record<string, unknown>)?.contact_email as string || "",
+      contactPhone: (item.intake_payload as Record<string, unknown>)?.contact_phone as string || "",
+      selectedContactId: ((item.intake_payload as Record<string, unknown>)?.matched_contact_id as string) || (item as Record<string, unknown>).contact_id as string || null,
     });
   };
 
@@ -791,12 +794,18 @@ export function MyWorkCasesWorkspace() {
       return;
     }
 
+    const { contactName: parsedName, contactDetail: parsedDetail } = parseContactPerson(editableCaseItem.contactPerson);
+
     const intakePayload: CaseItemIntakePayload = {
       ...(detailItem?.intake_payload || {}),
       category: editableCaseItem.category,
       assignee_ids: editableCaseItem.assigneeIds,
       timeline_events: editableCaseItem.timelineEvents,
-      ...parseContactPerson(editableCaseItem.contactPerson),
+      contact_name: parsedName,
+      contact_detail: parsedDetail,
+      contact_email: editableCaseItem.contactEmail.trim() || null,
+      contact_phone: editableCaseItem.contactPhone.trim() || null,
+      matched_contact_id: editableCaseItem.selectedContactId,
     };
 
     const patch = {
@@ -811,6 +820,9 @@ export function MyWorkCasesWorkspace() {
       priority: editableCaseItem.priority as any,
       owner_user_id: editableCaseItem.assigneeIds[0] || null,
       intake_payload: intakePayload as any,
+      contact_id: editableCaseItem.selectedContactId || null,
+      reporter_name: parsedName,
+      reporter_contact: editableCaseItem.contactEmail.trim() || editableCaseItem.contactPhone.trim() || parsedDetail,
     };
 
     const ok = await applyItemOptimisticUpdate(
@@ -1116,6 +1128,14 @@ export function MyWorkCasesWorkspace() {
                                                 contactDisplay={contactDisplay}
                                                 onContactPersonChange={(value) => updateEdit({ contactPerson: value })}
                                                 contactPerson={editableCaseItem.contactPerson}
+                                                contactEmail={editableCaseItem.contactEmail}
+                                                contactPhone={editableCaseItem.contactPhone}
+                                                selectedContactId={editableCaseItem.selectedContactId}
+                                                onContactEmailChange={(value) => updateEdit({ contactEmail: value })}
+                                                onContactPhoneChange={(value) => updateEdit({ contactPhone: value })}
+                                                onContactSelected={(contact) => updateEdit({
+                                                  selectedContactId: contact?.id || null,
+                                                })}
                                               />
                                             )}
                                           </div>
