@@ -189,7 +189,7 @@ export const DIN5008LetterLayout: React.FC<DIN5008LetterLayoutProps> = ({
       if (address.recipient_name) parts.push(address.recipient_name);
       if (address.recipient_address) {
         // Split address string into lines and add each non-empty line
-        const addressLines = address.recipient_address.split('\n').filter(line => line.trim());
+        const addressLines = address.recipient_address.split('\n').filter((line: string) => line.trim());
         parts.push(...addressLines);
       }
     }
