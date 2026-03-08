@@ -457,8 +457,13 @@ export function MyWorkView() {
         <div className="space-y-6">
           <DashboardHeader />
           <div className="grid grid-cols-1 lg:grid-cols-[3fr_2fr] 2xl:grid-cols-[3fr_2fr_2fr] gap-6 max-w-7xl items-start">
-            <Card className="p-5">
-              <DashboardTasksSection />
+            <Card>
+              <CardHeader className="pb-3">
+                <CardTitle className="text-base font-semibold">📋 Fristen</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <DashboardTasksSection />
+              </CardContent>
             </Card>
             <Card>
               <CardHeader className="pb-3">
@@ -471,8 +476,13 @@ export function MyWorkView() {
               </CardContent>
             </Card>
             <div className="lg:col-span-2 2xl:col-span-1">
-              <Card className="p-5">
-                <NewsWidget compact />
+              <Card>
+                <CardHeader className="pb-3">
+                  <CardTitle className="text-base font-semibold">📰 News</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <NewsWidget compact />
+                </CardContent>
               </Card>
             </div>
           </div>

@@ -152,7 +152,6 @@ export const DashboardTasksSection = () => {
 
   return (
     <div>
-      <h3 className="text-sm font-semibold text-foreground mb-3">📋 Fristen</h3>
       {items.length === 0 ? (
         <p className="text-sm text-muted-foreground">Keine offenen Fristen.</p>
       ) : (
