@@ -3343,29 +3343,11 @@ export function MeetingsView() {
               </div>
             </div>
 
-            <Dialog open={showCarryoverBuffer} onOpenChange={setShowCarryoverBuffer}>
-              <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
-                <DialogHeader>
-                  <DialogTitle>Zwischenspeicher: Übertragene Punkte</DialogTitle>
-                  <DialogDescription>
-                    Diese Punkte wurden auf die nächste Sitzung vorgemerkt und bleiben im Zwischenspeicher, bis sie in einer erfolgreich beendeten Besprechung behandelt wurden.
-                  </DialogDescription>
-                </DialogHeader>
-                <div className="space-y-3">
-                  {carryoverBufferItems.length === 0 ? (
-                    <p className="text-sm text-muted-foreground">Keine übertragenen Punkte im Zwischenspeicher.</p>
-                  ) : carryoverBufferItems.map((item) => (
-                    <Card key={item.id}>
-                      <CardContent className="p-3 space-y-1">
-                        <p className="font-medium text-sm">{item.title}</p>
-                        <p className="text-xs text-muted-foreground">Ursprung: {item.original_meeting_title || 'Unbekannt'} ({item.original_meeting_date || '-'})</p>
-                        {item.description && <p className="text-xs text-muted-foreground line-clamp-2">{item.description}</p>}
-                      </CardContent>
-                    </Card>
-                  ))}
-                </div>
-              </DialogContent>
-            </Dialog>
+            <CarryoverBufferDialog
+              open={showCarryoverBuffer}
+              onOpenChange={setShowCarryoverBuffer}
+              items={carryoverBufferItems}
+            />
 
           </div>
         </ResizablePanel>
