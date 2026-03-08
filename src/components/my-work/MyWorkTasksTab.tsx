@@ -498,7 +498,7 @@ export function MyWorkTasksTab() {
         .select();
 
       if (error) {
-        console.error('Error marking task:', error);
+        debugConsole.error('Error marking task:', error);
         toast({ 
           title: "Fehler", 
           description: error.message || "Aufgabe konnte nicht vorgemerkt werden.",
