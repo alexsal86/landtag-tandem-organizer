@@ -100,6 +100,7 @@ export function CaseItemDetailPanel({
   onContactEmailChange: (value: string) => void;
   onContactPhoneChange: (value: string) => void;
   onContactSelected: (contact: { id: string; name: string; email: string | null; phone: string | null } | null) => void;
+  onDelete?: () => void;
 }) {
   const [showMetaFields, setShowMetaFields] = useState(false);
   const [showInteractionComposer, setShowInteractionComposer] = useState(false);
