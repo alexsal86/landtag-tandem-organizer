@@ -83,8 +83,8 @@ export function useTaskOperations({
           description: task.description, priority: task.priority,
           category: task.category, assigned_to: task.assignedTo || '',
           progress: 100, due_date: task.dueDate,
-          completed_at: new Date().toISOString(), auto_delete_after_days: null,
-        } as any);
+          completed_at: new Date().toISOString(),
+        });
 
         if (archiveError) {
           const isNetworkError = archiveError.message?.includes('Failed to fetch') || archiveError.message?.includes('NetworkError');
