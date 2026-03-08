@@ -68,7 +68,7 @@ export const GlobalNoteShareDialog = ({
         .eq("is_active", true);
 
       if (memberError || !memberships) {
-        console.error("Error loading memberships:", memberError);
+        debugConsole.error("Error loading memberships:", memberError);
         return;
       }
 
