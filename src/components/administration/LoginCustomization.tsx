@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import type { UnsplashAttribution } from '@/components/dashboard/UnsplashImagePicker';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
@@ -22,7 +23,7 @@ export function LoginCustomization() {
   const [customization, setCustomization] = useState({
     background_image_url: 'https://images.unsplash.com/photo-1584974292709-5c2f0619971b?w=1920&q=80',
     background_position: 'center',
-    background_attribution: null as any,
+    background_attribution: null as UnsplashAttribution | null,
     primary_color: '#57ab27',
     accent_color: '#E6007E',
     tagline: 'Ihre politische Arbeit. Organisiert.',
@@ -68,7 +69,7 @@ export function LoginCustomization() {
         setCustomization({
           background_image_url: customData.background_image_url || customization.background_image_url,
           background_position: customData.background_position || 'center',
-          background_attribution: customData.background_attribution,
+          background_attribution: customData.background_attribution as unknown as UnsplashAttribution | null,
           primary_color: customData.primary_color || '#57ab27',
           accent_color: customData.accent_color || '#E6007E',
           tagline: customData.tagline || customization.tagline,
@@ -98,15 +99,24 @@ export function LoginCustomization() {
       setSaving(true);
 
       // Upsert login customization
+      const upsertData = {
+        tenant_id: currentTenant.id,
+        logo_url: logoUrl || null,
+        background_image_url: customization.background_image_url,
+        background_position: customization.background_position,
+        background_attribution: customization.background_attribution as unknown as Record<string, string> | null,
+        primary_color: customization.primary_color,
+        accent_color: customization.accent_color,
+        tagline: customization.tagline,
+        welcome_text: customization.welcome_text,
+        footer_text: customization.footer_text,
+        social_login_enabled: customization.social_login_enabled,
+        registration_enabled: customization.registration_enabled,
+        password_reset_enabled: customization.password_reset_enabled,
+      };
       const { error } = await supabase
         .from('login_customization')
-        .upsert({
-          tenant_id: currentTenant.id,
-          logo_url: logoUrl || null,
-          ...customization
-        }, {
-          onConflict: 'tenant_id'
-        });
+        .upsert(upsertData, { onConflict: 'tenant_id' });
 
       if (error) throw error;
 

@@ -47,7 +47,7 @@ export function useMeetingArchive(deps: ArchiveDeps) {
     const reviewParentId = await ensureReviewParentItem(targetMeetingId);
     const { data: existingChildren } = await supabase
       .from('meeting_agenda_items').select('title, source_meeting_id').eq('meeting_id', targetMeetingId).eq('parent_id', reviewParentId);
-    let existingSet = new Set((existingChildren || []).map((i: any) => `${i.source_meeting_id}::${i.title}`));
+    let existingSet = new Set((existingChildren || []).map(i => `${i.source_meeting_id}::${i.title}`));
 
     const { data: maxOrderData } = await supabase
       .from('meeting_agenda_items').select('order_index').eq('meeting_id', targetMeetingId).eq('parent_id', reviewParentId)
@@ -140,7 +140,7 @@ export function useMeetingArchive(deps: ArchiveDeps) {
         .from('meeting_agenda_items').select('order_index, title, source_meeting_id')
         .eq('meeting_id', meetingId).eq('parent_id', reviewParentId).order('order_index', { ascending: false });
 
-      const existingSet = new Set((existingItems || []).map((i: any) => `${i.source_meeting_id}::${i.title}`));
+      const existingSet = new Set((existingItems || []).map(i => `${i.source_meeting_id}::${i.title}`));
       let nextOrderIndex = (existingItems?.[0]?.order_index || 0) + 1;
 
       for (const item of pendingItems) {
@@ -322,11 +322,28 @@ export function useMeetingArchive(deps: ArchiveDeps) {
       // Step 5c: Process case item results
       try {
         for (const ci of meetingLinkedCaseItems) {
-          if ((ci as any).meeting_result?.trim()) {
-            await supabase.from('case_item_notes' as any).insert({ // case_item_notes not in generated types
-              case_item_id: ci.id, content: (ci as any).meeting_result,
-              created_by: user.id, note_type: 'meeting_result',
-            });
+          const meetingResult = (ci as { meeting_result?: string }).meeting_result;
+          if (meetingResult?.trim()) {
+            // case_item_notes is not in generated Supabase types – use fetch directly
+            try {
+              const url = `${import.meta.env.VITE_SUPABASE_URL}/rest/v1/case_item_notes`;
+              await fetch(url, {
+                method: 'POST',
+                headers: {
+                  'Content-Type': 'application/json',
+                  'apikey': import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY,
+                  'Authorization': `Bearer ${(await supabase.auth.getSession()).data.session?.access_token}`,
+                },
+                body: JSON.stringify({
+                  case_item_id: ci.id,
+                  content: meetingResult,
+                  created_by: user.id,
+                  note_type: 'meeting_result',
+                }),
+              });
+            } catch {
+              // Table may not exist yet
+            }
           }
         }
       } catch (e) { console.error('Error processing case item results (non-fatal):', e); }

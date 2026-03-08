@@ -19,7 +19,9 @@ import { loadPressTemplates, persistPressTemplates, type PressTemplateConfig } f
 
 type EditorTab = 'canvas-designer' | 'header-designer' | 'footer-designer' | 'block-address' | 'block-info' | 'block-subject' | 'layout-settings' | 'general';
 type BlockKey = 'addressField' | 'infoBlock' | 'subject';
-type CanvasElement = any;
+// CanvasElement is HeaderElement from the canvas engine
+import type { HeaderElement } from '@/components/canvas-engine/types';
+type CanvasElement = HeaderElement;
 
 type PressTemplate = PressTemplateConfig;
 
@@ -41,8 +43,8 @@ const cloneLayout = (layout?: LetterLayoutSettings): LetterLayoutSettings => ({
   blockContent: { ...((layout?.blockContent as Record<string, any[]>) || {}) },
 });
 
-const getBlockItems = (layout: LetterLayoutSettings, blockKey: BlockKey) => {
-  const content = ((layout as any).blockContent || {}) as Record<string, any[]>;
+const getBlockItems = (layout: LetterLayoutSettings, blockKey: BlockKey): CanvasElement[] => {
+  const content = (layout.blockContent || {}) as Record<string, CanvasElement[]>;
   return content[blockKey] || [];
 };
 
@@ -146,17 +148,17 @@ export function PressTemplateManager() {
     }));
   };
 
-  const setBlockItems = (blockKey: BlockKey, items: any[]) => {
+  const setBlockItems = (blockKey: BlockKey, items: CanvasElement[]) => {
     updateLayoutSettings((layout) => {
-      const current = ((layout as any).blockContent || {}) as Record<string, any[]>;
+      const current = (layout.blockContent || {}) as Record<string, CanvasElement[]>;
       return { ...layout, blockContent: { ...current, [blockKey]: items } } as LetterLayoutSettings;
     });
   };
 
   const renderBlockEditor = (blockKey: BlockKey, canvasWidthMm: number, canvasHeightMm: number) => (
     <StructuredHeaderEditor
-      initialElements={getBlockItems(form.layout_settings, blockKey) as any}
-      onElementsChange={(elements) => setBlockItems(blockKey, elements as any[])}
+      initialElements={getBlockItems(form.layout_settings, blockKey)}
+      onElementsChange={(elements) => setBlockItems(blockKey, elements)}
       layoutSettings={form.layout_settings}
       canvasWidthMm={canvasWidthMm}
       canvasHeightMm={canvasHeightMm}
@@ -271,8 +273,8 @@ export function PressTemplateManager() {
 
               <TabsContent value="header-designer" className="space-y-4 pt-4">
                 <StructuredHeaderEditor
-                  initialElements={form.header_elements as any}
-                  onElementsChange={(elements) => setForm((prev) => ({ ...prev, header_elements: elements as any[] }))}
+                  initialElements={form.header_elements}
+                  onElementsChange={(elements) => setForm((prev) => ({ ...prev, header_elements: elements }))}
                   layoutSettings={form.layout_settings}
                   canvasWidthMm={form.layout_settings.pageWidth}
                   canvasHeightMm={form.layout_settings.header.height}
@@ -282,8 +284,8 @@ export function PressTemplateManager() {
 
               <TabsContent value="footer-designer" className="space-y-4 pt-4">
                 <StructuredHeaderEditor
-                  initialElements={form.footer_elements as any}
-                  onElementsChange={(elements) => setForm((prev) => ({ ...prev, footer_elements: elements as any[] }))}
+                  initialElements={form.footer_elements}
+                  onElementsChange={(elements) => setForm((prev) => ({ ...prev, footer_elements: elements }))}
                   layoutSettings={form.layout_settings}
                   canvasWidthMm={form.layout_settings.pageWidth}
                   canvasHeightMm={form.layout_settings.footer.height}

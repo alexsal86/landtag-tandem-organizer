@@ -16,7 +16,8 @@ import * as LucideIcons from "lucide-react";
 import { TagIconPicker } from "@/components/contacts/TagIconPicker";
 
 const getIconComponent = (iconName: string) => {
-  const Icon = (LucideIcons as any)[iconName];
+  const icons = LucideIcons as unknown as Record<string, React.ComponentType<{ className?: string }> | undefined>;
+  const Icon = icons[iconName];
   return Icon ? <Icon className="h-4 w-4" /> : <Tag className="h-4 w-4" />;
 };
 

@@ -1,11 +1,23 @@
 import { supabase } from "@/integrations/supabase/client";
 import { format } from "date-fns";
-import type { RecurrenceData, NewMeetingParticipant, Meeting, MeetingTemplate, Profile } from "@/components/meetings/types";
+import type { RecurrenceData, NewMeetingParticipant, AgendaItem, Meeting, MeetingTemplate, Profile } from "@/components/meetings/types";
+
+interface AuthUser {
+  id: string;
+}
+
+interface Tenant {
+  id: string;
+}
+
+interface ToastFn {
+  (opts: { title: string; description: string; variant?: "default" | "destructive" }): void;
+}
 
 interface UseMeetingCreateDeps {
-  user: any;
-  currentTenant: any;
-  toast: any;
+  user: AuthUser | null;
+  currentTenant: Tenant | null;
+  toast: ToastFn;
   newMeeting: Meeting;
   newMeetingTime: string;
   newMeetingParticipants: NewMeetingParticipant[];
@@ -15,7 +27,7 @@ interface UseMeetingCreateDeps {
   profiles: Profile[];
   setMeetings: React.Dispatch<React.SetStateAction<Meeting[]>>;
   setSelectedMeeting: React.Dispatch<React.SetStateAction<Meeting | null>>;
-  setAgendaItems: React.Dispatch<React.SetStateAction<any[]>>;
+  setAgendaItems: React.Dispatch<React.SetStateAction<AgendaItem[]>>;
   setIsNewMeetingOpen: React.Dispatch<React.SetStateAction<boolean>>;
   setNewMeeting: React.Dispatch<React.SetStateAction<Meeting>>;
   setNewMeetingParticipants: React.Dispatch<React.SetStateAction<NewMeetingParticipant[]>>;
@@ -39,13 +51,13 @@ export function useMeetingCreate(deps: UseMeetingCreateDeps) {
     if (!newMeeting.title.trim()) { toast({ title: "Fehler", description: "Bitte geben Sie einen Titel ein!", variant: "destructive" }); return; }
 
     try {
-      const insertData: any = {
+      const insertData = {
         title: newMeeting.title, description: newMeeting.description || null,
         meeting_date: format(newMeeting.meeting_date, 'yyyy-MM-dd'), meeting_time: newMeetingTime,
         location: newMeeting.location || null, status: newMeeting.status, user_id: user.id,
         tenant_id: currentTenant?.id, template_id: newMeeting.template_id || null,
         is_public: newMeeting.is_public || false,
-        recurrence_rule: newMeetingRecurrence.enabled ? newMeetingRecurrence : null
+        recurrence_rule: newMeetingRecurrence.enabled ? JSON.parse(JSON.stringify(newMeetingRecurrence)) : null
       };
 
       const { data, error } = await supabase.from('meetings').insert([insertData]).select().single();
