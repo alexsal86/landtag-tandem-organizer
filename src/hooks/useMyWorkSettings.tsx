@@ -65,7 +65,7 @@ export function useMyWorkSettings(): MyWorkSettingsResult {
         setBadgeDisplayMode(data.badge_display_mode as BadgeDisplayMode);
       }
     } catch (error) {
-      console.error('Error in loadSettings:', error);
+      debugConsole.error('Error in loadSettings:', error);
     } finally {
       setIsLoading(false);
     }
