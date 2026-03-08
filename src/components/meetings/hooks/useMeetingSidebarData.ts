@@ -13,7 +13,7 @@ interface UseMeetingSidebarDataDeps {
   userId?: string;
   tenantId?: string;
   activeMeetingId: string | null;
-  toast: (opts: { title: string; description: string; variant?: string }) => void;
+  toast: (opts: { title: string; description: string; variant?: "default" | "destructive" }) => void;
 }
 
 export function useMeetingSidebarData(deps: UseMeetingSidebarDataDeps) {

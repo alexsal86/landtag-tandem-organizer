@@ -293,7 +293,7 @@ export function useMeetingsData() {
       const docsByTaskId: Record<string, AgendaDocument[]> = {};
       data?.forEach(doc => {
         if (!docsByTaskId[doc.task_id]) docsByTaskId[doc.task_id] = [];
-        docsByTaskId[doc.task_id].push(doc);
+        docsByTaskId[doc.task_id].push({ ...doc, meeting_agenda_item_id: doc.task_id });
       });
       setTaskDocuments(docsByTaskId);
     } catch (error) {
