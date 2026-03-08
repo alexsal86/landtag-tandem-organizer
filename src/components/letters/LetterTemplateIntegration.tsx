@@ -156,7 +156,7 @@ export const LetterTemplateIntegration: React.FC<LetterTemplateIntegrationProps>
       setShowHeaderEditor(false);
       fetchTemplates();
     } catch (error) {
-      console.error('Error saving header:', error);
+      debugConsole.error('Error saving header:', error);
       toast({
         title: "Fehler",
         description: "Header konnte nicht gespeichert werden.",
