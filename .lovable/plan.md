@@ -1,61 +1,53 @@
 
-Ziel: Rückmeldungs-Feed stabil sichtbar machen und gleichzeitig die aktuellen Build-Blocker entfernen, damit die Fixes überhaupt wieder ausgeliefert werden.
 
-1) Diagnose (aus Code + DB)
-- Do I know what the issue is? Ja.
-- Es gibt aktuell 2 Ebenen von Problemen:
-  1. Build ist kaputt (TypeScript):
-     - `src/components/ui/calendar.tsx`: doppelte Keys im `classNames`-Objekt (`caption_label`, `dropdowns`, `dropdown`) → TS1117.
-     - `src/components/task-decisions/DecisionOverview.tsx`: `ResponseOption`-Typ ohne `requires_comment` → TS2339.
-  2. Feed-Logik ist instabil/zu restriktiv:
-     - `src/components/my-work/MyWorkFeedbackFeedTab.tsx` übergibt `completedTo: new Date().toISOString()` bei jedem Render.
-       Dadurch ändert sich der React-Query-Key permanent (`useTeamFeedbackFeed`), was zu dauerndem Neu-Laden bzw. instabilem Feed führt.
-     - `useTeamFeedbackFeed` filtert hart auf `.not('notes','is',null)`. Damit verschwinden abgeschlossene Rückmeldungen ohne Notiz (z. B. nur Anhang/Aufgabe), obwohl sie fachlich oft relevant sind.
-- DB-Check:
-  - `appointment_feedback` hat Daten (u. a. completed in den letzten 7 Tagen vorhanden).
-  - RLS auf `appointment_feedback` erlaubt tenant-basiertes Lesen (`tenant_id = ANY(get_user_tenant_ids(auth.uid()))`), also kein offensichtlicher RLS-Blocker für Team-Feed im Tenant.
+# Status: Refactoring grosser Dateien
 
-2) Umsetzungsplan (in Reihenfolge)
-A. Build sofort reparieren (Blocker)
-- `calendar.tsx`: doppelte Objekt-Keys entfernen, nur eine konsistente Definition für `caption_label`, `dropdowns`, `dropdown` behalten.
-- `DecisionOverview.tsx`: lokalen `ResponseOption`-Typ um `requires_comment?: boolean` ergänzen (oder auf den zentralen Typ aus `decisionTemplates` umstellen).
+## Erfolgreich refactored (12 Dateien)
 
-B. Feed-Query stabilisieren
-- `MyWorkFeedbackFeedTab.tsx`:
-  - `completedTo` nicht mehr bei jedem Render neu erzeugen.
-  - Entweder:
-    - `completedTo` ganz weglassen (nur `completedFrom` + order/limit), oder
-    - `completedTo` per `useMemo/useState` nur bei Filterwechsel neu setzen.
-- `useTeamFeedbackFeed.ts`:
-  - Query-Key nur mit stabilen Filterwerten.
-  - Zeitfilter robust halten (kein per-render Drift).
+| Datei | Vorher | Nachher | Reduktion |
+|---|---|---|---|
+| MeetingsView.tsx | 5.383 | 193 | -96% |
+| TasksView.tsx | 2.719 | 406 | -85% |
+| EmployeesView.tsx | 1.763 | 134 | -92% |
+| ContactsView.tsx | 1.397 | 224 | -84% |
+| CalendarView.tsx | 1.330 | 178 | -87% |
+| TaskDetailSidebar.tsx | 1.235 | 161 | -87% |
+| LetterTemplateManager.tsx | 1.134 | 98 | -91% |
+| ContactImport.tsx | 1.060 | 48 | -95% |
+| LetterPDFExport.tsx | 1.033 | 70 | -93% |
+| StakeholderView.tsx | 993 | 146 | -85% |
+| ExpenseManagement.tsx | 915 | 168 | -82% |
+| KnowledgeBaseView.tsx | 897 | 188 | -79% |
+| CreateAppointmentDialog.tsx | 808 | 79 | -90% |
 
-C. Sichtbarkeit der Rückmeldungen fachlich korrigieren
-- `useTeamFeedbackFeed.ts`:
-  - Notiz-Pflicht entfernen oder erweitern:
-    - statt nur `notes is not null` auch Einträge mit `has_documents = true` oder `has_tasks = true` zulassen.
-  - Ergebnis: auch „abgeschlossen ohne Notiz, aber mit Anhang/Aufgabe“ erscheint im Feed.
+## Noch nicht refactored (bisher nicht im Scope)
 
-D. Fehler nicht mehr als „keine Daten“ maskieren
-- `MyWorkFeedbackFeedTab.tsx`:
-  - `isError` + `error` aus Query auslesen.
-  - Bei Fehler einen klaren Error-State anzeigen (statt „Keine passenden Rückmeldungen gefunden“), inkl. Retry-Button (`refetch`).
+Diese Dateien waren nicht auf der urspruenglichen Liste, sind aber ebenfalls gross:
 
-E. Quercheck auf Seiteneffekte
-- `useMyWorkNewCounts.tsx` zählt derzeit ebenfalls nur `completed + notes not null`; ggf. auf dieselbe fachliche Logik angleichen, damit Badge und Feed konsistent sind.
+| Datei | Zeilen | Kategorie |
+|---|---|---|
+| **EmailComposer.tsx** | 1.069 | Email-Modul |
+| **PressReleaseEditor.tsx** | 767 | Presse-Modul |
+| **pdfGenerator.ts** (extrahiert) | 638 | Extrahierter Code |
+| **EmailHistory.tsx** | 542 | Email-Modul |
+| **LetterWizard.tsx** | 467 | Brief-Modul |
+| **GlobalDaySlipPanel.tsx** | 434 | Tageszettel |
+| **TemplateFormTabs.tsx** (extrahiert) | 416 | Extrahierter Code |
+| **TasksView.tsx** | 406 | Aufgaben |
+| **PressReleasesList.tsx** | 395 | Presse-Modul |
+| **EnhancedLexicalEditor.tsx** | 337 | Editor |
 
-3) Validierung nach Umsetzung
-- Build grün ohne TS-Fehler.
-- Im Tab „Meine Arbeit > Rückmeldungen“:
-  - Keine Endlos-Ladeanzeige.
-  - Team-Einträge der letzten 7/14 Tage sichtbar.
-  - Filter (Sicht/Zeitraum/Anhänge/Aufgaben) funktionieren.
-  - Bei absichtlichem Query-Fehler erscheint Error-State statt Empty-State.
-- Schneller Datenabgleich:
-  - Feed-Anzahl grob konsistent mit SQL-Count für completed im Zeitraum (unter Berücksichtigung der Filter).
+## Bewertung
 
-4) Warum das den aktuellen Zustand löst
-- Solange Build fehlschlägt, werden vorherige Fixes teils nicht wirksam.
-- Selbst bei laufendem Build kann der Feed durch den „beweglichen“ `completedTo`-Key instabil bleiben.
-- Zusätzlich blendet der harte Notiz-Filter valide Rückmeldungen aus.
-- Mit den vier Korrekturen (Build, stabiler Query-Key, fachlich korrekter Filter, echter Error-State) wird die Ursachekette vollständig geschlossen.
+Die 12 urspruenglichen Zieldateien (alle >800 Zeilen) sind erfolgreich refactored. Die Struktur ist jetzt sauber: Hooks fuer Logik, separate UI-Komponenten, zentrale Typen.
+
+Zwei Dateien sind allerdings noch auffaellig gross und wurden bisher uebersehen:
+- **EmailComposer.tsx (1.069 Zeilen)** -- groesser als mehrere bereits refactorte Dateien
+- **PressReleaseEditor.tsx (767 Zeilen)** -- nah an der 800-Zeilen-Grenze
+
+Ausserdem sind `pdfGenerator.ts` (638) und `TemplateFormTabs.tsx` (416) extrahierte Dateien aus dem Refactoring, die selbst noch recht gross sind -- aber als reine Logik- bzw. UI-Dateien mit klarer Verantwortung ist das vertretbar.
+
+## Empfehlung
+
+Wenn du konsequent bleiben willst: **EmailComposer.tsx** und **PressReleaseEditor.tsx** nach dem gleichen Muster refactoren (Hook + UI-Splits). Optional auch EmailHistory.tsx (542) und LetterWizard.tsx (467).
+
