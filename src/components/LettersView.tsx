@@ -262,7 +262,7 @@ const LettersView: React.FC = () => {
       });
       closeTaskDialog();
     } catch (error) {
-      console.error('Error creating task from letter:', error);
+      debugConsole.error('Error creating task from letter:', error);
       toast({
         title: 'Fehler',
         description: taskDialogMode === 'task'
