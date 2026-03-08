@@ -26,7 +26,7 @@ import type {
 } from "./types";
 
 export function useEventPlanningData() {
-  console.log('=== EventPlanningView component loaded ===');
+  debugConsole.log('=== EventPlanningView component loaded ===');
   const { user } = useAuth();
   const { currentTenant } = useTenant();
   const navigate = useNavigate();
