@@ -139,7 +139,7 @@ export function EmailTemplateManager() {
       name: template.name,
       subject: template.subject,
       body_html: template.body_html,
-      category: template.category,
+      category: template.category ?? '',
       variables: template.variables || []
     });
     setShowDialog(true);
