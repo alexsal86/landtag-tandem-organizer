@@ -53,7 +53,7 @@ export function ChecklistItemEmailDialog({
       .maybeSingle();
 
     if (error) {
-      console.error("Error loading email action:", error);
+      debugConsole.error("Error loading email action:", error);
       return;
     }
 
