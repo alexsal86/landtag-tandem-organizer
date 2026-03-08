@@ -153,7 +153,7 @@ export function VacationHistoryDialog({
                         )}
                       </TableCell>
                       <TableCell className="text-right">
-                        {entry.carry_over_to_next > 0 ? (
+                        {(entry.carry_over_to_next ?? 0) > 0 ? (
                           <Badge variant="secondary" className="font-mono bg-blue-50 text-blue-700 border-blue-200">
                             {entry.carry_over_to_next}
                           </Badge>
