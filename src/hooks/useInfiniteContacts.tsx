@@ -4,6 +4,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { useTenant } from "@/hooks/useTenant";
 import { useToast } from "@/hooks/use-toast";
 import { debounce } from "@/utils/debounce";
+import { debugConsole } from '@/utils/debugConsole';
 
 export interface Contact {
   id: string;
