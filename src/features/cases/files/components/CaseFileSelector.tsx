@@ -92,11 +92,11 @@ export function CaseFileSelector({
           break;
         }
         case 'contact': {
-          const contactResult = await supabase.from('case_file_contacts').insert({
+          const contactResult = await supabase.from('case_file_contacts').insert([{
             case_file_id: caseFileId,
             contact_id: itemId,
             role: 'stakeholder',
-          });
+          }]);
           linkError = contactResult.error;
           break;
         }
