@@ -281,7 +281,7 @@ export function EmailTemplateManager() {
                     <CardDescription>{template.subject}</CardDescription>
                   </div>
                   <Badge variant="secondary">
-                    {getCategoryLabel(template.category)}
+                    {getCategoryLabel(template.category ?? '')}
                   </Badge>
                 </div>
               </CardHeader>

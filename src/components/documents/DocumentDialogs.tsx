@@ -151,7 +151,7 @@ export function DocumentDialogs(props: DocumentDialogsProps) {
       {/* Archived Letter Details */}
       {props.selectedArchivedDocument && (
         <ArchivedLetterDetails
-          document={props.selectedArchivedDocument}
+          document={props.selectedArchivedDocument as any}
           isOpen={props.showArchivedLetterDetails}
           onClose={() => { props.setShowArchivedLetterDetails(false); props.setSelectedArchivedDocument(null); }}
         />

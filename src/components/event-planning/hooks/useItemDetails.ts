@@ -69,7 +69,7 @@ export function useItemDetails({
     try {
       const { data, error } = await supabase.from('planning_item_documents').select('*').eq('planning_item_id', itemId).order('created_at', { ascending: false });
       if (error) throw error;
-      setItemDocuments(prev => ({ ...prev, [itemId]: data || [] }));
+      setItemDocuments(prev => ({ ...prev, [itemId]: (data || []) as PlanningDocument[] }));
     } catch (error) { handleAppError(error, { context: 'loadItemDocuments' }); }
   };
 
