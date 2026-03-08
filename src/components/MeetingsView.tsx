@@ -249,6 +249,7 @@ export function MeetingsView() {
     if (selectedMeeting?.id && !activeMeeting) {
       loadLinkedQuickNotes(selectedMeeting.id);
       loadMeetingLinkedTasks(selectedMeeting.id);
+      loadMeetingLinkedCaseItems(selectedMeeting.id);
       loadMeetingRelevantDecisions();
       if (selectedMeeting.meeting_date) loadMeetingUpcomingAppointments(selectedMeeting.id, selectedMeeting.meeting_date);
       loadStarredAppointments(selectedMeeting.id);
