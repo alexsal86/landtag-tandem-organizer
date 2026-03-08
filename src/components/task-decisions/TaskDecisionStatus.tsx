@@ -123,7 +123,7 @@ export const TaskDecisionStatus = ({ taskId, createdBy }: TaskDecisionStatusProp
 
       setDecisions(formattedData);
     } catch (error) {
-      console.error('Error loading decisions:', error);
+      debugConsole.error('Error loading decisions:', error);
     }
   };
 
