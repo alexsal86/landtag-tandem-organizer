@@ -26,7 +26,8 @@
     "typecheck:components-batch3": "tsc -p tsconfig.components-batch3-strict.json --noEmit",
     "typecheck:components-batch4": "tsc -p tsconfig.components-batch4-strict.json --noEmit",
     "typecheck:components-toplevel": "tsc -p tsconfig.components-toplevel-strict.json --noEmit",
-    "typecheck:strict-all": "npm run typecheck:knowledge && npm run typecheck:auth && npm run typecheck:quicknotes && npm run typecheck:notifications && npm run typecheck:dashboard && npm run typecheck:utils && npm run typecheck:hooks-batch1 && npm run typecheck:hooks-batch2 && npm run typecheck:contexts && npm run typecheck:services-features && npm run typecheck:components-batch1 && npm run typecheck:components-batch2 && npm run typecheck:components-batch3 && npm run typecheck:components-batch4 && npm run typecheck:components-toplevel",
+    "typecheck:pages": "tsc -p tsconfig.pages-strict.json --noEmit",
+    "typecheck:strict-all": "npm run typecheck:knowledge && npm run typecheck:auth && npm run typecheck:quicknotes && npm run typecheck:notifications && npm run typecheck:dashboard && npm run typecheck:utils && npm run typecheck:hooks-batch1 && npm run typecheck:hooks-batch2 && npm run typecheck:contexts && npm run typecheck:services-features && npm run typecheck:components-batch1 && npm run typecheck:components-batch2 && npm run typecheck:components-batch3 && npm run typecheck:components-batch4 && npm run typecheck:components-toplevel && npm run typecheck:pages",
     "typecheck:utils": "tsc -p tsconfig.strict-utils.json --noEmit",
     "report:bundle-size": "node scripts/report-bundle-size.mjs"
   },
