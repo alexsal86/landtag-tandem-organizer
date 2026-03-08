@@ -456,21 +456,21 @@ export function MyWorkView() {
       {activeTab === "dashboard" && (
         <div className="space-y-6">
           <DashboardHeader />
-          <div className="grid grid-cols-1 lg:grid-cols-[3fr_2fr] gap-6 max-w-6xl items-start">
+          <div className="grid grid-cols-1 lg:grid-cols-[3fr_2fr] 2xl:grid-cols-[3fr_2fr_2fr] gap-6 max-w-7xl items-start">
             <Card className="p-5">
               <DashboardTasksSection />
             </Card>
-            <div className="space-y-6">
-              <Card>
-                <CardHeader className="pb-3">
-                  <CardTitle className="text-base font-semibold">
-                    📅 {dashboardData.isShowingTomorrow ? 'Deine Termine morgen' : 'Deine Termine heute'}
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <DashboardAppointments data={dashboardData} />
-                </CardContent>
-              </Card>
+            <Card>
+              <CardHeader className="pb-3">
+                <CardTitle className="text-base font-semibold">
+                  📅 {dashboardData.isShowingTomorrow ? 'Deine Termine morgen' : 'Deine Termine heute'}
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <DashboardAppointments data={dashboardData} />
+              </CardContent>
+            </Card>
+            <div className="lg:col-span-2 2xl:col-span-1">
               <Card className="p-5">
                 <NewsWidget compact />
               </Card>
