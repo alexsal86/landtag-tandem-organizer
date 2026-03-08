@@ -1,19 +1,53 @@
 
-## Benachrichtigungen & Badges für Vorgänge — Umgesetzt
 
-### Was wurde gemacht:
+# Alle `dangerouslySetInnerHTML`-Stellen mit `sanitizeRichHtml` absichern
 
-1. **DB: Neue `notification_types` für Kategorie `cases`** (alle 3 Tenants)
-   - `case_item_created`, `case_item_assigned`, `case_item_status_changed`, `case_item_comment`
+## Betroffene Dateien (unsanitized)
 
-2. **DB: `notification_navigation_mapping`** — alle 4 Typen auf `navigation_context = 'mywork'` gemappt, damit Sidebar-Badge korrekt zählt.
+| Datei | Zeile(n) | Inhalt |
+|---|---|---|
+| `EmailHistory.tsx` | 502 | `selectedEmail.body_html` |
+| `EmailComposer.tsx` | 196 | `hook.replaceVariables(hook.bodyHtml, ...)` |
+| `DecisionAttachmentPreviewDialog.tsx` | 137, 176 | `html` (Datei-Preview) |
+| `TemplateGrid.tsx` | 49 | `previewHtml` (Template-Vorschau) |
+| `ArchivedLetterDetails.tsx` | 251 | `letterDetails.content` |
+| `DIN5008LetterLayout.tsx` | 604, 750, 832, 909 | `template.letterhead_html`, `content`, `template.letterhead_css` |
+| `DashboardAppointments.tsx` | 80 | `specialDayHint.text` (Markdown→HTML) |
+| `MermaidRenderer.tsx` | 73 | `svg` (Mermaid-Output) |
+| `TwoFactorSettings.tsx` | 316 | `qrCode` (QR-SVG) |
 
-3. **UI: `NotificationSettings.tsx`** — Kategorie `cases` / "Vorgänge" mit Icon 📋 eingefügt (Order 3).
+Bereits abgesichert (kein Handlungsbedarf):
+- `RichTextDisplay.tsx` — nutzt `sanitizeRichHtml`
+- `ProtocolViewer.tsx` — nutzt `sanitizeRichHtml`
+- `ProtocolRawData.tsx` — nutzt `sanitizeRichHtml`
+- `CaseItemDetailPanel.tsx` — nutzt `safeNoteHtml` (pre-sanitized)
 
-4. **Code: `useCaseItems.tsx`** — `create_notification` RPC-Aufrufe bei:
-   - Vorgang erstellen → Benachrichtigung an zugewiesenen Owner
-   - Status-Änderung → Benachrichtigung an Ersteller + Owner
-   - Zuweisung-Änderung → Benachrichtigung an neuen Owner
-   - Kommentar/Interaktion → Benachrichtigung an Ersteller + Owner
+## Umsetzung
 
-5. **Badge-System**: Sidebar-Badge für "Meine Arbeit" zählt nun auch Vorgang-Benachrichtigungen (via `navigation_context = 'mywork'` Trigger). Interne Tab-Badges bleiben über `useMyWorkNewCounts` (Zeitstempel-basiert).
+**Für jede betroffene Datei:**
+1. `import { sanitizeRichHtml } from '@/utils/htmlSanitizer';` hinzufügen
+2. Jeden `dangerouslySetInnerHTML={{ __html: xyz }}` Aufruf ersetzen durch `dangerouslySetInnerHTML={{ __html: sanitizeRichHtml(xyz) }}`
+
+**Sonderfälle:**
+- **`DIN5008LetterLayout.tsx` Zeile 909** (`<style dangerouslySetInnerHTML>`): CSS-Sanitization braucht eine eigene Funktion, da `sanitizeRichHtml` CSS-Tags entfernt. Hier eine neue `sanitizeCss`-Funktion in `htmlSanitizer.ts` ergänzen, die gefährliche CSS-Konstrukte (`expression()`, `url()`, `@import`) entfernt.
+- **`MermaidRenderer.tsx`** und **`TwoFactorSettings.tsx`**: SVG-Output von trusted Libraries (Mermaid, QR-Generator). Trotzdem absichern mit `sanitizeRichHtml`, da DOMPurify SVG unterstützt.
+- **`DashboardAppointments.tsx`**: Einfacher Markdown→HTML-Ersatz (`**bold**` + `\n`→`<br/>`). Absichern mit `sanitizeRichHtml`.
+
+## Neue Funktion in `htmlSanitizer.ts`
+
+```typescript
+export const sanitizeCss = (css: string): string => {
+  return css
+    .replace(/expression\s*\(/gi, '')
+    .replace(/@import\b/gi, '')
+    .replace(/javascript\s*:/gi, '')
+    .replace(/url\s*\(\s*['"]?\s*javascript:/gi, '');
+};
+```
+
+## Zusammenfassung
+
+- **9 Dateien** bearbeiten
+- **~12 Stellen** absichern
+- **1 neue Funktion** (`sanitizeCss`) für CSS-Sonderfall
+
