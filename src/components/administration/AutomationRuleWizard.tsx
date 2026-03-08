@@ -814,7 +814,7 @@ export function AutomationRuleWizard({
       case 1:
         return form.triggerType === "schedule" || form.triggerType === "manual" || form.triggerType === "webhook" || form.triggerValue.trim().length > 0;
       case 2:
-        return form.conditions.length > 0 && form.conditions.every((c) => c.value.trim().length > 0);
+        return validateConditionGroup(form.conditionGroup);
       case 3: {
         return form.actions.length > 0 && form.actions.every((a) => {
           const isNotif = a.type === "create_notification" || a.type === "send_push_notification";
