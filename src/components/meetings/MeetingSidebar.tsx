@@ -17,7 +17,7 @@ import { CarryoverBufferDialog } from "@/components/meetings/CarryoverBufferDial
 import { format } from "date-fns";
 import { de } from "date-fns/locale";
 import { cn } from "@/lib/utils";
-import type { Meeting, MeetingTemplate, NewMeetingParticipant, RecurrenceData } from "@/components/meetings/types";
+import type { Meeting, MeetingTemplate, NewMeetingParticipant, RecurrenceData, AgendaItem } from "@/components/meetings/types";
 
 interface MeetingSidebarProps {
   meetings: Meeting[];

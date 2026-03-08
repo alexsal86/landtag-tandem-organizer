@@ -58,7 +58,7 @@ export function useMeetingsData() {
   const [starredAppointmentIds, setStarredAppointmentIds] = useState<Set<string>>(new Set());
   const [expandedApptNotes, setExpandedApptNotes] = useState<Set<string>>(new Set());
   const [showCarryoverBuffer, setShowCarryoverBuffer] = useState(false);
-  const [carryoverBufferItems, setCarryoverBufferItems] = useState<any[]>([]);
+  const [carryoverBufferItems, setCarryoverBufferItems] = useState<AgendaItem[]>([]);
 
   // URL action parameter
   useEffect(() => {

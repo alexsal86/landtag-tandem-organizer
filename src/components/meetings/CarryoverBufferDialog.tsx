@@ -1,11 +1,11 @@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import type { Meeting } from './types';
+import type { AgendaItem } from './types';
 
 interface CarryoverBufferDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  items: any[];
+  items: AgendaItem[];
 }
 
 export function CarryoverBufferDialog({ open, onOpenChange, items }: CarryoverBufferDialogProps) {

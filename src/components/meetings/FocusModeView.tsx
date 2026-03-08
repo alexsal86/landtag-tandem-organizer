@@ -27,6 +27,8 @@ import { format } from 'date-fns';
 import { de } from 'date-fns/locale';
 import { RichTextDisplay } from '@/components/ui/RichTextDisplay';
 
+import type { LinkedQuickNote, LinkedTask, LinkedCaseItem, MeetingUpcomingAppointment } from './types';
+
 interface AgendaItem {
   id?: string;
   title: string;
@@ -59,26 +61,26 @@ interface NavigableItem {
   item: AgendaItem;
   isSubItem: boolean;
   parentItem: AgendaItem | null;
-  globalIndex: number; // Index in agendaItems array
-  isSystemSubItem?: boolean; // True for individual notes/appointments/tasks
-  sourceId?: string; // ID of the source item (note, appointment, task)
+  globalIndex: number;
+  isSystemSubItem?: boolean;
+  sourceId?: string;
   sourceType?: 'quick_note' | 'appointment' | 'task';
-  sourceData?: any; // The actual source data
+  sourceData?: LinkedQuickNote | LinkedTask | MeetingUpcomingAppointment;
 }
 
 interface FocusModeViewProps {
   meeting: Meeting;
   agendaItems: AgendaItem[];
   profiles: Profile[];
-  linkedQuickNotes?: any[];
-  linkedTasks?: any[];
-  linkedCaseItems?: any[];
-  upcomingAppointments?: any[];
+  linkedQuickNotes?: LinkedQuickNote[];
+  linkedTasks?: LinkedTask[];
+  linkedCaseItems?: LinkedCaseItem[];
+  upcomingAppointments?: MeetingUpcomingAppointment[];
   starredAppointmentIds?: Set<string>;
-  onToggleStar?: (appt: any) => void;
+  onToggleStar?: (appt: MeetingUpcomingAppointment) => void;
   onClose: () => void;
-  onUpdateItem: (index: number, field: keyof AgendaItem, value: any) => void;
-  onUpdateResult: (itemId: string, field: 'result_text' | 'carry_over_to_next', value: any) => void;
+  onUpdateItem: (index: number, field: keyof AgendaItem, value: unknown) => void;
+  onUpdateResult: (itemId: string, field: 'result_text' | 'carry_over_to_next', value: unknown) => void;
   onUpdateNoteResult?: (noteId: string, result: string) => void;
   onArchive: () => void;
 }
