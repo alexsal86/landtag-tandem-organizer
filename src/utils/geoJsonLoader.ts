@@ -149,7 +149,7 @@ function reprojectIfNeeded(fc: GeoJsonData): GeoJsonData {
       
       // Sanity check: longitude should be around 8-10 for Baden-Württemberg
       if (testLon < 7 || testLon > 11 || testLat < 47 || testLat > 50) {
-        console.warn('Transformation result seems incorrect, using fallback');
+        debugConsole.warn('Transformation result seems incorrect, using fallback');
         return fc; // Don't transform if result looks wrong
       }
     } catch (e) {
