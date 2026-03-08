@@ -418,7 +418,7 @@ export const generateLetterPDF = async (letter: Letter): Promise<{ blob: Blob; f
     if (template?.header_layout_type === 'structured' && template?.header_text_elements) {
       // Render text elements
       const textElements = Array.isArray(template.header_text_elements) ? template.header_text_elements : [];
-      textElements.forEach(element => {
+      textElements.forEach((element: any) => {
         if (element.type === 'text' && element.content) {
           pdf.setFontSize(element.fontSize || 12);
           pdf.setFont('helvetica', element.fontWeight === 'bold' ? 'bold' : 'normal');
