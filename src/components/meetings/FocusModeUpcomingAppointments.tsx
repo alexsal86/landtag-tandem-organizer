@@ -16,9 +16,9 @@ interface Appointment {
   title: string;
   start_time: string;
   end_time: string;
-  location?: string;
-  category?: string;
-  status?: string;
+  location?: string | null;
+  category?: string | null;
+  status?: string | null;
   isExternal?: boolean;
   calendarName?: string;
   calendarColor?: string;

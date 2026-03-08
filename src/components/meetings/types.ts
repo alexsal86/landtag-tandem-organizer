@@ -16,7 +16,7 @@ export interface NewMeetingParticipant {
   user?: {
     id: string;
     display_name: string;
-    avatar_url?: string;
+    avatar_url?: string | null;
   };
 }
 

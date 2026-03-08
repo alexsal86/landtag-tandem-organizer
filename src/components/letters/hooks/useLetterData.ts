@@ -162,7 +162,7 @@ export function useLetterData({ isOpen, tenantId, letterId }: UseLetterDataOptio
       letter.approved_by,
       letter.sent_by,
       letter.created_by,
-    ].filter(Boolean);
+    ].filter((id): id is string => Boolean(id));
     if (userIds.length === 0) return;
 
     try {
@@ -172,7 +172,7 @@ export function useLetterData({ isOpen, tenantId, letterId }: UseLetterDataOptio
         .in('user_id', userIds);
       if (error) { debugConsole.error('Error fetching user profiles:', error); return; }
       const profilesMap = profiles?.reduce((acc, profile) => {
-        acc[profile.user_id] = { display_name: profile.display_name || 'Unbekannter Benutzer', avatar_url: profile.avatar_url };
+        acc[profile.user_id] = { display_name: profile.display_name || 'Unbekannter Benutzer', avatar_url: profile.avatar_url ?? undefined };
         return acc;
       }, {} as Record<string, { display_name: string; avatar_url?: string }>) || {};
       setUserProfiles(profilesMap);

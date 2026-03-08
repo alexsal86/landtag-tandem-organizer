@@ -362,8 +362,8 @@ export function useEventPlanningData() {
     const { data, error } = await supabase.from("event_plannings").insert([{ title: newPlanningTitle, user_id: user.id, tenant_id: currentTenant.id, is_private: newPlanningIsPrivate }]).select().single();
     if (error) { toast({ title: "Fehler", description: "Planung konnte nicht erstellt werden.", variant: "destructive" }); return; }
 
-    const templateParam = selectedTemplateId === "none" ? null : selectedTemplateId;
-    await supabase.rpc("create_default_checklist_items", { planning_id: data.id, template_id_param: templateParam });
+    const templateParam: string | null = selectedTemplateId === "none" ? null : selectedTemplateId;
+    await supabase.rpc("create_default_checklist_items", { planning_id: data.id, template_id_param: templateParam } as any);
 
     try {
       const { data: prefs } = await supabase.from("user_planning_preferences").select("default_collaborators").eq("user_id", user.id).eq("tenant_id", currentTenant.id).maybeSingle();

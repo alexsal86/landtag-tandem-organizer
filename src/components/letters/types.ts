@@ -52,19 +52,19 @@ export interface LetterTemplate {
 export interface Contact {
   id: string;
   name: string;
-  organization?: string;
-  gender?: string;
-  last_name?: string;
-  private_street?: string;
-  private_house_number?: string;
-  private_postal_code?: string;
-  private_city?: string;
-  private_country?: string;
-  business_street?: string;
-  business_house_number?: string;
-  business_postal_code?: string;
-  business_city?: string;
-  business_country?: string;
+  organization?: string | null;
+  gender?: string | null;
+  last_name?: string | null;
+  private_street?: string | null;
+  private_house_number?: string | null;
+  private_postal_code?: string | null;
+  private_city?: string | null;
+  private_country?: string | null;
+  business_street?: string | null;
+  business_house_number?: string | null;
+  business_postal_code?: string | null;
+  business_city?: string | null;
+  business_country?: string | null;
 }
 
 export interface LetterCollaborator {
@@ -73,7 +73,7 @@ export interface LetterCollaborator {
   role: string;
   created_at: string;
   profiles: {
-    display_name: string;
+    display_name: string | null;
   };
 }
 

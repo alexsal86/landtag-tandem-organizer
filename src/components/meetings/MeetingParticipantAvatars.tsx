@@ -8,7 +8,7 @@ interface Participant {
   user?: {
     display_name: string | null;
     avatar_url: string | null;
-  };
+  } | null;
 }
 
 interface MeetingParticipantAvatarsProps {
