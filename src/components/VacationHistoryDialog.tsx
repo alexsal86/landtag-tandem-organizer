@@ -13,10 +13,10 @@ interface VacationHistoryEntry {
   id: string;
   year: number;
   annual_entitlement: number;
-  carry_over_from_previous: number;
-  total_taken: number;
-  carry_over_to_next: number;
-  expired_days: number;
+  carry_over_from_previous: number | null;
+  total_taken: number | null;
+  carry_over_to_next: number | null;
+  expired_days: number | null;
   notes: string | null;
 }
 

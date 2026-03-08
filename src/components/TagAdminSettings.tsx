@@ -364,7 +364,7 @@ export function TagAdminSettings() {
                                 ) : (
                                   <>
                                     <Button
-                                      onClick={() => setEditingTag({ id: tag.id, label: tag.label, color: tag.color, icon: tag.icon })}
+                                      onClick={() => setEditingTag({ id: tag.id, label: tag.label, color: tag.color ?? '#3b82f6', icon: tag.icon ?? undefined })}
                                       size="sm"
                                       variant="outline"
                                       className="h-8 w-8 p-0"

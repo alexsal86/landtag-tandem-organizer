@@ -86,7 +86,7 @@ interface AssignedItemsSectionProps {
   onSubtaskSnooze: (subtaskId: string) => void;
   onTaskEdit: (task: any) => void;
   onSubtaskEdit: (subtask: Subtask) => void;
-  resolveUserNames: (assignedTo?: string[]) => string;
+  resolveUserNames: (assignedTo: string | string[] | null) => string;
   children?: React.ReactNode;
 }
 

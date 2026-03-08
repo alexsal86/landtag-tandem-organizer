@@ -104,14 +104,14 @@ export function TodoCreateDialog({ open, onOpenChange, onTodoCreated }: TodoCrea
     setLoading(true);
     
     try {
-      const { error } = await supabase.from('todos').insert({
-        user_id: user?.id,
-        tenant_id: currentTenant?.id || '', // Use current tenant ID
+      const { error } = await supabase.from('todos').insert([{
+        user_id: user?.id ?? '',
+        tenant_id: currentTenant?.id || '',
         category_id: categoryId,
         title: title.trim(),
         assigned_to: assignedTo.length > 0 ? assignedTo : null,
         due_date: dueDate || null
-      });
+      }]);
       
       if (error) throw error;
 

@@ -11,7 +11,7 @@ import { debugConsole } from '@/utils/debugConsole';
 interface User {
   id: string;
   display_name: string;
-  avatar_url?: string;
+  avatar_url?: string | null;
 }
 
 interface UserSelectorProps {

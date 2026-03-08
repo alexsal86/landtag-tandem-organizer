@@ -93,7 +93,7 @@ export const UserStatusSelector: React.FC<UserStatusSelectorProps> = ({ children
     setIsOpen(false);
   };
 
-  const currentDisplay = getStatusDisplay(currentStatus);
+  const currentDisplay = getStatusDisplay(currentStatus ?? undefined);
 
   if (loading) {
     return (
