@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import { debugConsole } from '@/utils/debugConsole';
 
 interface MermaidRendererProps {
   chart: string;
