@@ -73,7 +73,7 @@ export function GeneralSettings() {
               return acc;
             }, {} as Partial<AppSettings>);
           } else {
-            console.warn('Global app settings fallback not available:', globalError);
+            debugConsole.warn('Global app settings fallback not available:', globalError);
           }
         }
 
