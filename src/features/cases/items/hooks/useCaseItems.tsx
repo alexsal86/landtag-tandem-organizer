@@ -240,7 +240,7 @@ export const useCaseItems = () => {
           priority_param: "medium",
           data_param: JSON.stringify({ case_item_id: id }),
         }).then(({ error: nErr }) => {
-          if (nErr) console.warn("Notification error (case_item_assigned):", nErr);
+          if (nErr) debugConsole.warn("Notification error (case_item_assigned):", nErr);
         });
       }
 
