@@ -45,11 +45,11 @@ function sampleFirstCoord(geometry: GeoJsonFeature['geometry']): [number, number
   return null;
 }
 
-function isProjectedCoord([x, y]: [number, number] | null): boolean {
-  if (!x && x !== 0) return false;
-  if (!y && y !== 0) return false;
+function isProjectedCoord(coord: [number, number] | null): boolean {
+  if (!coord) return false;
+  const [x, y] = coord;
   // Heuristic: UTM meters are much larger than lon/lat degrees
-  return Math.abs(x as number) > 180 || Math.abs(y as number) > 90;
+  return Math.abs(x) > 180 || Math.abs(y) > 90;
 }
 
 function reprojectGeometry(geometry: GeoJsonFeature['geometry'], sourceDef: string): GeoJsonFeature['geometry'] {
