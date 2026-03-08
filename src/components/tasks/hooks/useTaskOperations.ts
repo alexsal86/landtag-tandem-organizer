@@ -308,7 +308,7 @@ export function useTaskOperations({
       toast({ title: "Notiz erstellt", description: "Quick Note wurde erfolgreich erstellt." });
       return true;
     } catch (error) {
-      console.error('Error creating quick note:', error);
+      debugConsole.error('Error creating quick note:', error);
       toast({ title: "Fehler", description: "Notiz konnte nicht erstellt werden.", variant: "destructive" });
       return false;
     }
