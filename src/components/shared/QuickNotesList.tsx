@@ -728,7 +728,7 @@ export function QuickNotesList({
   const handleSetColorMode = async (noteId: string, fullCard: boolean) => {
     // Prevent double execution
     if (colorModeUpdating) {
-      console.log("Color mode update already in progress, skipping");
+      debugConsole.log("Color mode update already in progress, skipping");
       return;
     }
     
