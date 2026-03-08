@@ -45,7 +45,7 @@ export function TagAdminSettings() {
       if (error) throw error;
       setTags(data || []);
     } catch (error) {
-      console.error('Error loading tags:', error);
+      debugConsole.error('Error loading tags:', error);
       toast({ title: "Fehler", description: "Tags konnten nicht geladen werden.", variant: "destructive" });
     } finally {
       setLoading(false);
