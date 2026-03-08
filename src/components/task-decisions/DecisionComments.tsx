@@ -211,7 +211,7 @@ export function DecisionComments({
       toast({ title: "Kommentar aktualisiert" });
       loadComments();
     } catch (error) {
-      console.error('Error updating comment:', error);
+      debugConsole.error('Error updating comment:', error);
       toast({
         title: "Fehler",
         description: "Kommentar konnte nicht bearbeitet werden.",
