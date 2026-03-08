@@ -72,6 +72,7 @@ interface FocusModeViewProps {
   profiles: Profile[];
   linkedQuickNotes?: any[];
   linkedTasks?: any[];
+  linkedCaseItems?: any[];
   upcomingAppointments?: any[];
   starredAppointmentIds?: Set<string>;
   onToggleStar?: (appt: any) => void;
