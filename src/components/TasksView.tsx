@@ -525,7 +525,7 @@ export function TasksView() {
       if (planningError) {
         console.error('❌ Error loading planning subtasks:', planningError);
       } else {
-        console.log('✅ Raw planning subtasks data:', planningSubtasksData);
+        
         
         if (planningSubtasksData) {
           for (const subtask of planningSubtasksData) {
