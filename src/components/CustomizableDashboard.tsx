@@ -197,7 +197,7 @@ export const CustomizableDashboard: React.FC = () => {
       return;
     }
 
-    console.log('✅ Found widget info:', widgetInfo);
+    
 
     // Einfache Position-Berechnung - platziere am Ende
     const existingWidgets = currentLayout?.widgets || [];
