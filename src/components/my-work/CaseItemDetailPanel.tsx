@@ -565,32 +565,6 @@ export function CaseItemDetailPanel({
         </div>
       </div>
 
-      {itemCaseFileId && caseFilesById[itemCaseFileId] ? (
-        <div className="mt-1 space-y-2">
-          <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Verknüpfte Fallakte</p>
-          <div className="rounded-md border bg-background p-3 text-sm">
-            <p className="font-semibold">{caseFilesById[itemCaseFileId].title}</p>
-            <ul className="mt-2 space-y-1 text-xs text-muted-foreground">
-              <li>• Status: {caseFilesById[itemCaseFileId].status || "offen"}</li>
-              {caseFilesById[itemCaseFileId].reference_number && <li>• Aktenzeichen: {caseFilesById[itemCaseFileId].reference_number}</li>}
-              {caseFilesById[itemCaseFileId].case_type && <li>• Typ: {caseFilesById[itemCaseFileId].case_type}</li>}
-              {caseFilesById[itemCaseFileId].current_status_note && <li>• Hinweis: {caseFilesById[itemCaseFileId].current_status_note}</li>}
-            </ul>
-          </div>
-          <Button size="sm" variant="outline" onClick={() => onNavigateToCaseFile(itemCaseFileId)}>
-            <ExternalLink className="mr-1 h-3.5 w-3.5" />
-            Vollansicht
-          </Button>
-        </div>
-      ) : (
-        <div className="mt-1 space-y-3 rounded-md border border-dashed bg-background p-4 text-sm text-muted-foreground">
-          <AlertCircle className="h-4 w-4" />
-          <p>Keine Akte verknüpft.</p>
-          <div className="flex flex-wrap gap-2">
-            <Button size="sm" onClick={() => onCreateCaseFile(itemId)}>Neue Akte anlegen</Button>
-          </div>
-        </div>
-      )}
 
       {/* Delete action */}
       {onDelete && (
