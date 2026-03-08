@@ -44,19 +44,31 @@ export const useSpeechDictation = ({ editor, insertText, dispatchCommand }: UseS
     playTone('command');
   }, []);
 
-  const removeInterimNode = useCallback(() => {
+  // Takes the interim node out of the ref WITHOUT removing it from the editor tree.
+  // The caller is responsible for replacing or removing it.
+  const takeInterimNode = useCallback(() => {
     const interimNodeKey = interimNodeKeyRef.current;
     if (!interimNodeKey) return null;
 
+    interimNodeKeyRef.current = null;
     const interimNode = $getNodeByKey(interimNodeKey);
     if (interimNode instanceof TextNode) {
-      interimNode.remove();
-      interimNodeKeyRef.current = null;
       return interimNode;
     }
 
-    interimNodeKeyRef.current = null;
     return null;
+  }, []);
+
+  // Removes the interim node from the editor tree and clears the ref.
+  const clearInterimNode = useCallback(() => {
+    const interimNodeKey = interimNodeKeyRef.current;
+    if (!interimNodeKey) return;
+
+    interimNodeKeyRef.current = null;
+    const interimNode = $getNodeByKey(interimNodeKey);
+    if (interimNode instanceof TextNode) {
+      interimNode.remove();
+    }
   }, []);
 
   const updateInterimNode = useCallback((text: string) => {
@@ -108,11 +120,14 @@ export const useSpeechDictation = ({ editor, insertText, dispatchCommand }: UseS
           : formattedText
         : '';
 
-      const interimNode = removeInterimNode();
+      // takeInterimNode leaves the node in the tree so replace() works
+      const interimNode = takeInterimNode();
       if (interimNode instanceof TextNode) {
         if (textToInsert) {
           interimNode.replace($createTextNode(textToInsert));
           lastInsertedSegmentRef.current = textToInsert;
+        } else {
+          interimNode.remove();
         }
         return;
       }
@@ -124,7 +139,7 @@ export const useSpeechDictation = ({ editor, insertText, dispatchCommand }: UseS
     });
 
     setInterimTranscript('');
-  }, [editor, removeInterimNode]);
+  }, [editor, takeInterimNode]);
 
   // Setup effect
   useEffect(() => {
@@ -134,9 +149,15 @@ export const useSpeechDictation = ({ editor, insertText, dispatchCommand }: UseS
         playTone('start');
         setSessionStartTime(Date.now());
         setSessionWordCount(0);
+        lastInsertedSegmentRef.current = '';
       } else if (state === 'idle') {
         playTone('stop');
         setSessionStartTime(null);
+        // Clean up any leftover interim node
+        editor.update(() => {
+          clearInterimNode();
+        });
+        setInterimTranscript('');
       }
     };
     speechAdapter.onError = setSpeechError;
@@ -151,7 +172,7 @@ export const useSpeechDictation = ({ editor, insertText, dispatchCommand }: UseS
           commitContentText(contentText);
         } else {
           editor.update(() => {
-            removeInterimNode();
+            clearInterimNode();
           });
           setInterimTranscript('');
         }
@@ -169,7 +190,7 @@ export const useSpeechDictation = ({ editor, insertText, dispatchCommand }: UseS
           commitContentText(contentText);
         } else {
           editor.update(() => {
-            removeInterimNode();
+            clearInterimNode();
           });
           setInterimTranscript('');
         }
@@ -196,7 +217,7 @@ export const useSpeechDictation = ({ editor, insertText, dispatchCommand }: UseS
       speechAdapter.destroy();
       if (commandFeedbackTimerRef.current) clearTimeout(commandFeedbackTimerRef.current);
     };
-  }, [commitContentText, editor, removeInterimNode, showCommandFeedback, speechAdapter, updateInterimNode]);
+  }, [clearInterimNode, commitContentText, editor, showCommandFeedback, speechAdapter, updateInterimNode]);
 
   const startSpeechRecognition = useCallback(() => {
     if (!speechAdapter.supported) return;
