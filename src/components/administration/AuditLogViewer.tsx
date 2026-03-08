@@ -146,7 +146,7 @@ export function AuditLogViewer() {
                           {log.ip_address || 'N/A'}
                         </TableCell>
                         <TableCell>
-                          {(log.payload as any)?.action || 'Unbekannt'}
+                          {(log.payload as Record<string, unknown>)?.action as string || 'Unbekannt'}
                         </TableCell>
                         <TableCell>
                           <Dialog>

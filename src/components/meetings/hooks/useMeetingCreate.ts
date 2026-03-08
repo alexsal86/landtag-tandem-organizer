@@ -51,13 +51,13 @@ export function useMeetingCreate(deps: UseMeetingCreateDeps) {
     if (!newMeeting.title.trim()) { toast({ title: "Fehler", description: "Bitte geben Sie einen Titel ein!", variant: "destructive" }); return; }
 
     try {
-      const insertData: any = {
+      const insertData = {
         title: newMeeting.title, description: newMeeting.description || null,
         meeting_date: format(newMeeting.meeting_date, 'yyyy-MM-dd'), meeting_time: newMeetingTime,
         location: newMeeting.location || null, status: newMeeting.status, user_id: user.id,
         tenant_id: currentTenant?.id, template_id: newMeeting.template_id || null,
         is_public: newMeeting.is_public || false,
-        recurrence_rule: newMeetingRecurrence.enabled ? newMeetingRecurrence : null
+        recurrence_rule: newMeetingRecurrence.enabled ? JSON.parse(JSON.stringify(newMeetingRecurrence)) : null
       };
 
       const { data, error } = await supabase.from('meetings').insert([insertData]).select().single();

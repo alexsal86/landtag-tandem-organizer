@@ -41,8 +41,8 @@ const cloneLayout = (layout?: LetterLayoutSettings): LetterLayoutSettings => ({
   blockContent: { ...((layout?.blockContent as Record<string, any[]>) || {}) },
 });
 
-const getBlockItems = (layout: LetterLayoutSettings, blockKey: BlockKey) => {
-  const content = ((layout as any).blockContent || {}) as Record<string, any[]>;
+const getBlockItems = (layout: LetterLayoutSettings, blockKey: BlockKey): CanvasElement[] => {
+  const content = (layout.blockContent || {}) as Record<string, CanvasElement[]>;
   return content[blockKey] || [];
 };
 
