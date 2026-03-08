@@ -300,7 +300,7 @@ export function AppointmentDetailsSidebar({
               });
             }
           } catch (error) {
-            console.error('Error sending invitations:', error);
+            debugConsole.error('Error sending invitations:', error);
             toast({
               title: "Warnung",
               description: "Gäste wurden gespeichert, aber Einladungen konnten nicht versendet werden.",
