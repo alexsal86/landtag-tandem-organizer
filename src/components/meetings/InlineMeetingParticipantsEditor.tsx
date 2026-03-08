@@ -79,7 +79,7 @@ export function InlineMeetingParticipantsEditor({ meetingId }: InlineMeetingPart
       .in('user_id', userIds);
 
     if (profilesError) {
-      console.error('Error loading profiles:', profilesError);
+      debugConsole.error('Error loading profiles:', profilesError);
     }
 
     const enrichedParticipants: Participant[] = participantsData.map(p => ({
