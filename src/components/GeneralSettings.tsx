@@ -207,7 +207,7 @@ export function GeneralSettings() {
         window.location.reload();
       }, 1000);
     } catch (error) {
-      console.error('Error saving settings:', error);
+      debugConsole.error('Error saving settings:', error);
       toast({
         title: "Fehler", 
         description: "Einstellungen konnten nicht gespeichert werden.",
