@@ -402,7 +402,7 @@ export function AnnualTasksView() {
       console.error("Error generating previous year stats:", error);
       toast({ 
         title: "Fehler", 
-        description: error.message, 
+        description: error instanceof Error ? error.message : String(error), 
         variant: "destructive" 
       });
     } finally {
