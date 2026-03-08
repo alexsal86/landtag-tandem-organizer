@@ -169,14 +169,14 @@ export const useCaseFileDetails = (caseFileId: string | null) => {
     try {
       const { data, error } = await supabase
         .from('case_files')
-        .select('*')
+        .select('id, title, description, case_type, status, priority, reference_number, start_date, target_date, assigned_to, user_id, tenant_id, created_at, updated_at, tags, visibility, is_private, case_scale, processing_status, processing_statuses, current_status_note, current_status_updated_at, risks_and_opportunities')
         .eq('id', caseFileId)
         .single();
 
       if (error) throw error;
       setCaseFile(data as unknown as CaseFile);
     } catch (error) {
-      console.error('Error fetching case file:', error);
+      debugConsole.error('Error fetching case file:', error);
     }
   }, [caseFileId]);
 
