@@ -111,7 +111,7 @@ export function useLetterData({ isOpen, tenantId, letterId }: UseLetterDataOptio
       if (error) throw error;
       setComments(data || []);
     } catch (error) {
-      console.error('Error fetching comments:', error);
+      debugConsole.error('Error fetching comments:', error);
     }
   }, [letterId]);
 
