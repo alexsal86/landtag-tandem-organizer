@@ -8,6 +8,7 @@ import { Badge } from '@/components/ui/badge';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Textarea } from '@/components/ui/textarea';
 import { Plus, Edit, Trash2, Save, X, Megaphone, Building2, Users, FileText, Handshake, Vote } from 'lucide-react';
+import { debugConsole } from '@/utils/debugConsole';
 import { supabase } from '@/integrations/supabase/client';
 import { useTenant } from '@/hooks/useTenant';
 import { useToast } from '@/hooks/use-toast';
