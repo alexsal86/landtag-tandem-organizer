@@ -590,7 +590,7 @@ export function useEventPlanningData() {
         } catch (emailError) { debugConsole.error("Error sending email:", emailError); }
       }
     } catch (fetchError) {
-      console.warn("Network error during checklist update, verifying state...", fetchError);
+      debugConsole.warn("Network error during checklist update, verifying state...", fetchError);
       setTimeout(async () => {
         if (selectedPlanning) {
           const { data: freshItems } = await supabase.from("event_planning_checklist_items").select("*").eq("event_planning_id", selectedPlanning.id).order("order_index", { ascending: true });
