@@ -172,7 +172,7 @@ export const TaskDecisionCreator = ({
           }
         }
       } catch (e) {
-        console.error('Error loading default participants:', e);
+        debugConsole.error('Error loading default participants:', e);
       }
 
       if (defaultSettings) {
