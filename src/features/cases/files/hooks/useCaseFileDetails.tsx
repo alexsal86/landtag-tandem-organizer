@@ -236,7 +236,7 @@ export const useCaseFileDetails = (caseFileId: string | null) => {
       if (error) throw error;
       setTasks((data || []) as CaseFileTask[]);
     } catch (error) {
-      console.error('Error fetching tasks:', error);
+      debugConsole.error('Error fetching tasks:', error);
     }
   }, [caseFileId]);
 
