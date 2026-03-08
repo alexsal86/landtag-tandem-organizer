@@ -88,7 +88,7 @@ export const useNotifications = () => {
       const unread = data?.filter(n => !n.is_read).length || 0;
       setUnreadCount(unread);
     } catch (error) {
-      console.error('Error loading notifications:', error);
+      debugConsole.error('Error loading notifications:', error);
       toast({
         title: 'Fehler',
         description: 'Benachrichtigungen konnten nicht geladen werden.',
