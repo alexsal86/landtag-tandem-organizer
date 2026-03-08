@@ -16,7 +16,7 @@ interface PendingNote {
   title: string | null;
   content: string;
   created_at: string;
-  priority_level?: number;
+  priority_level?: number | null;
 }
 
 interface PendingJourFixeNotesProps {

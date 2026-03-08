@@ -222,7 +222,7 @@ export function MeetingSidebar({
                       {meeting.id && <InlineMeetingParticipantsEditor meetingId={meeting.id} />}
                     </div>
                     <div className="flex items-center space-x-2 p-2 bg-muted/50 rounded-md">
-                      <Checkbox id={`edit_public_${meeting.id}`} checked={editingMeeting?.is_public || false} onCheckedChange={(checked) => onSetEditingMeeting({ ...editingMeeting, is_public: !!checked })} />
+                      <Checkbox id={`edit_public_${meeting.id}`} checked={editingMeeting?.is_public || false} onCheckedChange={(checked) => onSetEditingMeeting({ ...editingMeeting!, is_public: !!checked } as Meeting)} />
                       <label htmlFor={`edit_public_${meeting.id}`} className="text-xs cursor-pointer">Öffentlich</label>
                     </div>
                   </div>

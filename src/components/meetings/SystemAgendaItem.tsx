@@ -314,7 +314,7 @@ export function SystemAgendaItem({
                     <Badge variant="outline" className="text-xs">
                       {statusLabels[ci.status] || ci.status}
                     </Badge>
-                    <span className={cn("font-medium", priorityColors[ci.priority] || '')}>
+                    <span className={cn("font-medium", ci.priority ? priorityColors[ci.priority] : '')}>
                       {ci.priority}
                     </span>
                     {ci.due_at && (

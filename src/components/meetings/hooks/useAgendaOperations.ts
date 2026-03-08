@@ -229,7 +229,7 @@ export function useAgendaOperations(deps: AgendaOpsDeps) {
         }]).select().single();
       if (taskError) throw taskError;
 
-      const newSubItem: AgendaItem = { ...taskData, localKey: taskData.id, parentLocalKey: parentId };
+      const newSubItem: AgendaItem = { ...taskData, carry_over_to_next: taskData.carry_over_to_next ?? undefined, localKey: taskData.id, parentLocalKey: parentId };
       const updatedItems = [...agendaItems];
       updatedItems.splice(parentIndex + 1, 0, newSubItem);
       const reindexedItems = updatedItems.map((item, idx) => ({ ...item, order_index: idx }));

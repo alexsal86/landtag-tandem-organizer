@@ -299,7 +299,7 @@ const LetterEditor: React.FC<LetterEditorProps> = ({ letter, isOpen, onClose, on
     const salutationTemplate = currentTemplate?.layout_settings?.salutation?.template || 'Sehr geehrte Damen und Herren,';
     if (salutationTemplate === '{{anrede}}') {
       const contact = contacts.find(c => c.name === editedLetter.recipient_name);
-      const recipientData = contact ? { name: contact.name, gender: contact.gender, last_name: contact.last_name || contact.name?.split(' ').pop() }
+      const recipientData = contact ? { name: contact.name, gender: contact.gender ?? undefined, last_name: contact.last_name || contact.name?.split(' ').pop() }
         : editedLetter.recipient_name ? { name: editedLetter.recipient_name } : null;
       const varMap = buildVariableMap({ subject: editedLetter.subject }, null, recipientData, null, null);
       return varMap['{{anrede}}'] || 'Sehr geehrte Damen und Herren,';
