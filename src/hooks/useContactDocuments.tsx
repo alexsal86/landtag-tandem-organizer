@@ -68,7 +68,7 @@ export const useContactDocuments = (contactId?: string, contactTags?: string[]) 
         .eq('contact_id', contactId);
 
       if (directError) {
-        console.error('Error fetching direct documents:', directError);
+        debugConsole.error('Error fetching direct documents:', directError);
         throw directError;
       }
 
