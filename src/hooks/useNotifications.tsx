@@ -136,7 +136,7 @@ export const useNotifications = () => {
       }));
       localStorage.removeItem('notifications_marked_read');
     } catch (error) {
-      console.error('Error marking notification as read:', error);
+      debugConsole.error('Error marking notification as read:', error);
       // Revert optimistic update on error
       setNotifications(prev => 
         prev.map(n => 
