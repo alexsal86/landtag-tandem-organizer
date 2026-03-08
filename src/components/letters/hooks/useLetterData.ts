@@ -167,7 +167,7 @@ export function useLetterData({ isOpen, tenantId, letterId }: UseLetterDataOptio
       }, {} as Record<string, { display_name: string; avatar_url?: string }>) || {};
       setUserProfiles(profilesMap);
     } catch (error) {
-      console.error('Error fetching workflow user profiles:', error);
+      debugConsole.error('Error fetching workflow user profiles:', error);
     }
   }, []);
 

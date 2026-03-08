@@ -3,9 +3,6 @@ import { User, Session } from "@supabase/supabase-js";
 import { supabase } from "@/integrations/supabase/client";
 import { logAuditEvent, AuditActions } from "@/hooks/useAuditLog";
 import { debugConsole } from "@/utils/debugConsole";
-import { User, Session } from "@supabase/supabase-js";
-import { supabase } from "@/integrations/supabase/client";
-import { logAuditEvent, AuditActions } from "@/hooks/useAuditLog";
 
 interface AuthContextType {
   user: User | null;
