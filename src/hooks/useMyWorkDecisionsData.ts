@@ -123,9 +123,9 @@ export function useMyWorkDecisionsData(userId?: string) {
         };
       });
 
-      const creatorDecisions: MyWorkDecision[] = creatorData.map((item: any) => {
+      const creatorDecisions: MyWorkDecision[] = creatorData.map((item) => {
         const participants = item.task_decision_participants || [];
-        const pendingCount = participants.filter((p: any) => !p.task_decision_responses || p.task_decision_responses.length === 0).length;
+        const pendingCount = participants.filter((p) => !p.task_decision_responses || p.task_decision_responses.length === 0).length;
         const attInfo = computeAttachmentInfo(item.task_decision_attachments);
 
         return {
