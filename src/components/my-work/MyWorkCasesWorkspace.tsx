@@ -1431,6 +1431,23 @@ export function MyWorkCasesWorkspace() {
           />
         </>
       )}
+
+      <AlertDialog open={!!deleteConfirmItemId} onOpenChange={(open) => { if (!open) setDeleteConfirmItemId(null); }}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Vorgang endgültig löschen?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Dieser Vorgang wird unwiderruflich gelöscht. Verknüpfte Zeitstrahlereignisse und Interaktionen gehen ebenfalls verloren.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Abbrechen</AlertDialogCancel>
+            <AlertDialogAction onClick={() => runAsync(handleDeleteCaseItem)} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+              Löschen
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </>
   );
 }
