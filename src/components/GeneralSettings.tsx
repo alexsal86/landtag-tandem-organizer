@@ -83,7 +83,7 @@ export function GeneralSettings() {
           app_logo_url: tenantSettings.app_logo_url || globalSettings.app_logo_url || ""
         });
       } catch (error) {
-        console.error('Error loading settings:', error);
+        debugConsole.error('Error loading settings:', error);
         toast({
           title: "Fehler",
           description: "Einstellungen konnten nicht geladen werden.",
