@@ -120,7 +120,7 @@ export const EventRSVPManager = ({ eventPlanningId, eventTitle }: EventRSVPManag
         .order('name');
       setDistributionLists(data || []);
     } catch (e) {
-      console.error('Error loading distribution lists:', e);
+      debugConsole.error('Error loading distribution lists:', e);
     }
   };
 
