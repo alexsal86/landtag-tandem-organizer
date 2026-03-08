@@ -300,7 +300,7 @@ const SimpleLeafletMap: React.FC<LeafletKarlsruheMapProps> = ({
           }
           
           // Debug logging to see the actual structure
-          console.log('Party association boundary district coordinates:', boundaryDistrict.center_coordinates);
+          debugConsole.log('Party association boundary district coordinates:', boundaryDistrict.center_coordinates);
           
           // Handle GeoJSON Point format: { "type": "Point", "coordinates": [lng, lat] }
           let lat: number, lng: number;
