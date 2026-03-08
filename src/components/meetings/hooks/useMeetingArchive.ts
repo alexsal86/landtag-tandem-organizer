@@ -436,7 +436,7 @@ export function useMeetingArchive(deps: ArchiveDeps) {
             });
           } catch (e) { debugConsole.error(`Notification to ${recipientId} failed (non-fatal):`, e); }
         }
-      } catch (e) { console.error('Error sending archive notifications (non-fatal):', e); }
+      } catch (e) { debugConsole.error('Error sending archive notifications (non-fatal):', e); }
 
       // Step 7: Reset state
       setActiveMeeting(null);
