@@ -768,7 +768,7 @@ export function QuickNotesList({
         .select();
 
       if (error || !data || data.length === 0) {
-        console.error("Update error:", error);
+        debugConsole.error("Update error:", error);
         // Rollback
         setNotes(prev => prev.map(n => 
           n.id === noteId ? { ...n, color_full_card: previousValue } : n
