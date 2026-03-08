@@ -153,7 +153,7 @@ function reprojectIfNeeded(fc: GeoJsonData): GeoJsonData {
         return fc; // Don't transform if result looks wrong
       }
     } catch (e) {
-      console.error('Test transformation failed:', e);
+      debugConsole.error('Test transformation failed:', e);
       return fc;
     }
   }
