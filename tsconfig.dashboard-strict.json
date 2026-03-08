@@ -1,0 +1,17 @@
+{
+  "extends": "./tsconfig.app.json",
+  "compilerOptions": {
+    "strict": false,
+    "strictNullChecks": true,
+    "noImplicitAny": true,
+    "noUnusedLocals": false,
+    "noUnusedParameters": false
+  },
+  "include": [
+    "src/hooks/useDashboardData.ts",
+    "src/hooks/useMyWorkTasksData.ts",
+    "src/hooks/useMyWorkDecisionsData.ts",
+    "src/hooks/useMyWorkDecisionsSidebarData.ts",
+    "src/hooks/useCounts.tsx"
+  ]
+}
