@@ -80,7 +80,7 @@ export function useEmployeeOperations({
       toast({ title: action === "approved" ? `${typeLabel} genehmigt` : `${typeLabel} abgelehnt`, description: action === "approved" ? `Der ${typeLabel} wurde genehmigt.` : `Der ${typeLabel} wurde abgelehnt.` });
       setTimeout(() => window.location.reload(), 300);
     } catch (e: any) {
-      console.error(e);
+      debugConsole.error(e);
       if (e?.message?.includes('Failed to fetch') || e?.message?.includes('NetworkError') || e?.name === 'TypeError') {
         await new Promise(r => setTimeout(r, 500));
         const { data: checkData } = await supabase.from("leave_requests").select("status").eq("id", leaveId).maybeSingle();
