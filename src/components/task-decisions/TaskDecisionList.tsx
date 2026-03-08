@@ -174,7 +174,7 @@ export const TaskDecisionList = () => {
           };
         }) || [];
 
-      console.log('Formatted assigned data after filtering:', formattedAssignedData);
+      
 
       // Combine and deduplicate (participant decisions take priority)
       const allDecisions = [...formattedParticipantData];
