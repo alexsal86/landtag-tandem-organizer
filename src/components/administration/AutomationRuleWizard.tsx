@@ -564,9 +564,11 @@ export function AutomationRuleWizard({
           const isNotif = a.type === "create_notification" || a.type === "send_push_notification";
           const isStat = a.type === "update_record_status";
           const isTask = a.type === "create_task";
+          const isEmail = a.type === "send_email_template";
           if (isNotif) return a.targetUserId.trim().length > 0;
           if (isStat) return a.recordId.trim().length > 0 && a.status.trim().length > 0;
           if (isTask) return a.title.trim().length > 0;
+          if (isEmail) return a.emailTemplateId.trim().length > 0 && a.emailRecipient.trim().length > 0;
           return true;
         });
       }
