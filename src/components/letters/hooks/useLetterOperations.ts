@@ -231,7 +231,7 @@ export function useLetterOperations(opts: UseLetterOperationsOptions) {
           }
         }
       } catch (error) {
-        console.error('Error updating workflow tracking:', error);
+        debugConsole.error('Error updating workflow tracking:', error);
         toast({ title: 'Fehler beim Workflow-Update', description: 'Die Workflow-Daten konnten nicht gespeichert werden.', variant: 'destructive' });
       }
     }
