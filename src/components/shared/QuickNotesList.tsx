@@ -1257,7 +1257,7 @@ export function QuickNotesList({
       setEditingNote(null);
       loadNotes();
     } catch (error) {
-      console.error("Error updating note:", error);
+      debugConsole.error("Error updating note:", error);
       toast.error("Fehler beim Speichern");
     }
   };
