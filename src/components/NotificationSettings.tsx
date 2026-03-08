@@ -369,7 +369,7 @@ export const NotificationSettings: React.FC = () => {
       setSettings(prev => prev.map(s =>
         (s.type.category || 'system') === category ? { ...s, [field]: !value } : s
       ));
-      console.error('Error updating category settings:', error);
+      debugConsole.error('Error updating category settings:', error);
       toast({
         title: 'Fehler',
         description: 'Einstellungen konnten nicht gespeichert werden.',
