@@ -1205,7 +1205,7 @@ export function TasksView() {
     if (!content || !user) return;
 
     try {
-      console.log('Adding comment for task:', taskId, 'Content:', content);
+      
       const { error } = await supabase
         .from('task_comments')
         .insert({
