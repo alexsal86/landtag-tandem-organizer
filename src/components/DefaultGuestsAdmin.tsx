@@ -83,14 +83,14 @@ export const DefaultGuestsAdmin: React.FC = () => {
 
       const { error } = await supabase
         .from('default_appointment_guests')
-        .insert({
+        .insert([{
           tenant_id: currentTenant!.id,
           name: addForm.name.trim(),
           email: addForm.email.trim().toLowerCase(),
           is_active: addForm.is_active,
           order_index: maxOrderIndex + 1,
           created_by: user.user.id
-        });
+        }]);
 
       if (error) throw error;
 

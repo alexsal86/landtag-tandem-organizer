@@ -96,7 +96,7 @@ export function ExternalCalendarSettings() {
 
       const { error } = await supabase
         .from('external_calendars')
-        .insert({
+        .insert([{
           user_id: user.id,
           tenant_id: currentTenant.id,
           name: formData.name,
@@ -104,7 +104,7 @@ export function ExternalCalendarSettings() {
           calendar_type: formData.calendar_type,
           color: formData.color,
           sync_interval: formData.sync_interval,
-        });
+        }]);
 
       if (error) throw error;
 

@@ -57,13 +57,13 @@ export function useTaskOperations({
             } else if (freshTask.status === 'completed' && newStatus === 'completed') {
                 const { data: existingArchive } = await supabase.from('archived_tasks').select('id').eq('task_id', taskId).maybeSingle();
                 if (!existingArchive) {
-                  await supabase.from('archived_tasks').insert({
+                  await supabase.from('archived_tasks').insert([{
                     task_id: taskId, user_id: user.id, title: freshTask.title,
                     description: freshTask.description, priority: freshTask.priority,
                     category: freshTask.category, assigned_to: freshTask.assigned_to || '',
                     progress: 100, due_date: freshTask.due_date,
                     completed_at: new Date().toISOString(),
-                  });
+                  }]);
                   await supabase.from('tasks').delete().eq('id', taskId);
               }
               setTasks(prev => prev.filter(t => t.id !== taskId));
@@ -79,13 +79,13 @@ export function useTaskOperations({
       }
 
       if (newStatus === "completed") {
-        const { error: archiveError } = await supabase.from('archived_tasks').insert({
+        const { error: archiveError } = await supabase.from('archived_tasks').insert([{
           task_id: taskId, user_id: user.id, title: task.title,
           description: task.description, priority: task.priority,
           category: task.category, assigned_to: task.assignedTo || '',
           progress: 100, due_date: task.dueDate,
           completed_at: new Date().toISOString(),
-        });
+        }]);
 
         if (archiveError) {
           const isNetworkError = archiveError.message?.includes('Failed to fetch') || archiveError.message?.includes('NetworkError');
@@ -139,7 +139,7 @@ export function useTaskOperations({
   const addComment = async (taskId: string, content: string) => {
     if (!content.trim() || !user) return;
     try {
-      const { error } = await supabase.from('task_comments').insert({ task_id: taskId, user_id: user.id, content: content.trim() });
+      const { error } = await supabase.from('task_comments').insert([{ task_id: taskId, user_id: user.id, content: content.trim() }]);
       if (error) throw error;
       await loadTaskComments();
       toast({ title: "Kommentar hinzugefügt" });
@@ -159,7 +159,7 @@ export function useTaskOperations({
         const { error } = await supabase.from('task_snoozes').update({ snoozed_until: snoozeUntil }).eq('id', existingSnooze.id);
         if (error) throw error;
       } else {
-        const { error } = await supabase.from('task_snoozes').insert({ user_id: user.id, task_id: taskId, snoozed_until: snoozeUntil });
+        const { error } = await supabase.from('task_snoozes').insert([{ user_id: user.id, task_id: taskId, snoozed_until: snoozeUntil }]);
         if (error) throw error;
       }
       loadTaskSnoozes();
@@ -178,7 +178,7 @@ export function useTaskOperations({
         const { error } = await supabase.from('task_snoozes').update({ snoozed_until: snoozeUntil }).eq('id', existingSnooze.id);
         if (error) throw error;
       } else {
-        const { error } = await supabase.from('task_snoozes').insert({ user_id: user.id, subtask_id: subtaskId, snoozed_until: snoozeUntil });
+        const { error } = await supabase.from('task_snoozes').insert([{ user_id: user.id, subtask_id: subtaskId, snoozed_until: snoozeUntil }]);
         if (error) throw error;
       }
       loadTaskSnoozes();
@@ -282,13 +282,13 @@ export function useTaskOperations({
         `Follow-Up Ergebnis: ${resultText || 'Keine Notizen'}`;
       await supabase.from('contacts').update({ notes: newNotes, last_contact: 'heute', updated_at: new Date().toISOString() }).eq('id', archiveContact.id);
     } else {
-      await supabase.from('contacts').insert({
+      await supabase.from('contacts').insert([{
         user_id: user!.id, name, phone, contact_type: 'archive',
         category: 'citizen', priority: 'low', last_contact: 'heute',
         notes: `=== CALL FOLLOW-UP ARCHIV ===\nUrsprünglicher Anruf: ${new Date(callLog.call_date).toLocaleString('de-DE')}\nAnruftyp: ${callLog.call_type === 'incoming' ? 'Eingehend' : 'Ausgehend'}\nPriorität: ${callLog.priority}\nUrsprüngliche Notizen: ${callLog.notes || 'Keine'}\nFollow-Up Ergebnis: ${resultText || 'Keine Notizen'}\n\nDieser Kontakt wurde automatisch aus Call Follow-Ups erstellt.`,
         additional_info: 'Automatisch erstellt aus Call Follow-Up',
         tenant_id: currentTenant?.id || ''
-      });
+      }]);
     }
 
     await supabase.from('call_logs').update({ follow_up_completed: true, completion_notes: resultText || null }).eq('id', callLog.id);
@@ -299,11 +299,11 @@ export function useTaskOperations({
     const task = tasks.find(t => t.id === taskId);
     if (!task) return;
     try {
-      const { error } = await supabase.from('quick_notes').insert({
+      const { error } = await supabase.from('quick_notes').insert([{
         user_id: user.id, title: `Task Note: ${task.title}`,
         content: content.trim(), category: 'task', color: '#3b82f6',
         is_pinned: false, tags: ['task', task.category]
-      });
+      }]);
       if (error) throw error;
       toast({ title: "Notiz erstellt", description: "Quick Note wurde erfolgreich erstellt." });
       return true;

@@ -55,7 +55,7 @@ export const archiveLetter = async (letter: Letter, userId: string): Promise<boo
     // Create document record in database
     const { data: documentData, error: dbError } = await supabase
       .from('documents')
-      .insert({
+      .insert([{
         user_id: userId,
         tenant_id: letter.tenant_id,
         title: `Archivierter Brief: ${letter.title}`,
@@ -69,7 +69,7 @@ export const archiveLetter = async (letter: Letter, userId: string): Promise<boo
         document_type: 'archived_letter',
         source_letter_id: letter.id,
         archived_attachments: attachments || []
-      })
+      }])
       .select()
       .single();
 

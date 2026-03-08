@@ -517,13 +517,13 @@ export function CommentPlugin({ documentId }: { documentId?: string }) {
     try {
       const { data, error } = await supabase
         .from('letter_comments')
-        .insert({
+        .insert([{
           letter_id: documentId,
           user_id: (await supabase.auth.getUser()).data.user?.id,
           content: text,
           text_position: textPosition,
           text_length: textLength
-        })
+        }])
         .select()
         .single();
 
@@ -676,13 +676,13 @@ export function CommentPlugin({ documentId }: { documentId?: string }) {
     try {
       const { data, error } = await supabase
         .from('letter_comments')
-        .insert({
+        .insert([{
           letter_id: documentId,
           user_id: (await supabase.auth.getUser()).data.user?.id,
           content: text,
           parent_comment_id: commentId,
           comment_type: 'reply'
-        })
+        }])
         .select()
         .single();
 

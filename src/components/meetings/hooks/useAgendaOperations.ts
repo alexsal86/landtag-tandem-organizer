@@ -69,10 +69,10 @@ export function useAgendaOperations(deps: AgendaOpsDeps) {
         parentIndex = agendaItems.findIndex(item => item.id === parentItem.id || item.localKey === parentItem.localKey);
         if (!parentId) {
           const { data: parentData, error: parentError } = await supabase
-            .from('meeting_agenda_items').insert({
+            .from('meeting_agenda_items').insert([{
               meeting_id: selectedMeeting.id, title: parentItem.title, description: parentItem.description || null,
               order_index: parentItem.order_index, is_completed: false, is_recurring: false,
-            }).select().single();
+            }]).select().single();
           if (parentError) throw parentError;
           parentId = parentData.id;
           const updatedItems = [...agendaItems];
@@ -94,11 +94,11 @@ export function useAgendaOperations(deps: AgendaOpsDeps) {
       }
 
       const { data: savedItem, error } = await supabase
-        .from('meeting_agenda_items').insert({
+        .from('meeting_agenda_items').insert([{
           meeting_id: selectedMeeting.id, title: titles[systemType], description: null,
           system_type: systemType, parent_id: parentId, order_index: insertIndex,
           is_completed: false, is_recurring: false, is_visible: true,
-        }).select().single();
+        }]).select().single();
       if (error) throw error;
 
       const newItem: AgendaItem = { ...savedItem, localKey: savedItem.id, parentLocalKey: parentId || undefined };
@@ -205,10 +205,10 @@ export function useAgendaOperations(deps: AgendaOpsDeps) {
       let parentId = parentItem.id;
       if (!parentId) {
         const { data: parentData, error: parentError } = await supabase
-          .from('meeting_agenda_items').insert({
+          .from('meeting_agenda_items').insert([{
             meeting_id: selectedMeeting.id, title: parentItem.title, description: parentItem.description || null,
             order_index: parentItem.order_index, is_completed: false, is_recurring: false,
-          }).select().single();
+          }]).select().single();
         if (parentError) throw parentError;
         parentId = parentData.id;
         const updatedItems = [...agendaItems];
@@ -221,12 +221,12 @@ export function useAgendaOperations(deps: AgendaOpsDeps) {
       const taskOwner = task.assigned_to || task.user_id || user?.id;
 
       const { data: taskData, error: taskError } = await supabase
-        .from('meeting_agenda_items').insert({
+        .from('meeting_agenda_items').insert([{
           meeting_id: selectedMeeting.id, title: task.title, description: task.description || null,
           task_id: task.id, parent_id: parentId, order_index: parentIndex + 1,
           is_completed: false, is_recurring: false, file_path: documentPath,
           assigned_to: taskOwner ? [taskOwner] : null,
-        }).select().single();
+        }]).select().single();
       if (taskError) throw taskError;
 
       const newSubItem: AgendaItem = { ...taskData, localKey: taskData.id, parentLocalKey: parentId };
@@ -257,10 +257,10 @@ export function useAgendaOperations(deps: AgendaOpsDeps) {
       const parentIndex = agendaItems.findIndex(item => item.localKey === parent.localKey || item.id === parent.id);
       if (!parentId) {
         const { data: parentData, error: parentError } = await supabase
-          .from('meeting_agenda_items').insert({
+          .from('meeting_agenda_items').insert([{
             meeting_id: selectedMeeting.id, title: parent.title, description: parent.description || null,
             order_index: parent.order_index, is_completed: false, is_recurring: false,
-          }).select().single();
+          }]).select().single();
         if (parentError) throw parentError;
         parentId = parentData.id;
         const updatedItems = [...agendaItems];
@@ -269,11 +269,11 @@ export function useAgendaOperations(deps: AgendaOpsDeps) {
       }
 
       const { data: subItemData, error: subItemError } = await supabase
-        .from('meeting_agenda_items').insert({
+        .from('meeting_agenda_items').insert([{
           meeting_id: selectedMeeting.id, title: title || '', description: null,
           parent_id: parentId, order_index: parentIndex + 1, is_completed: false, is_recurring: false,
           assigned_to: user?.id ? [user.id] : null,
-        }).select().single();
+        }]).select().single();
       if (subItemError) throw subItemError;
 
       const newSubItem: AgendaItem = { ...subItemData, localKey: subItemData.id, parentLocalKey: parentId };

@@ -345,7 +345,7 @@ export function AdminTimeTrackingView() {
 
         const netMinutes = grossMinutes - pause;
         
-        const { error } = await supabase.from("time_entries").insert({
+        const { error } = await supabase.from("time_entries").insert([{
           user_id: selectedUserId,
           work_date: newEntryDate,
           started_at: start.toISOString(),
@@ -356,7 +356,7 @@ export function AdminTimeTrackingView() {
           edited_by: user.id,
           edited_at: new Date().toISOString(),
           edit_reason: newEntryReason || "Admin-Eintrag",
-        });
+        }]);
         
         if (error) throw error;
         toast.success("Zeiteintrag erstellt");
@@ -372,14 +372,14 @@ export function AdminTimeTrackingView() {
         }
 
         // Create absence
-        const { error } = await supabase.from("leave_requests").insert({
+        const { error } = await supabase.from("leave_requests").insert([{
           user_id: selectedUserId,
           type: newEntryType,
           start_date: newEntryDate,
           end_date: newEntryDate,
           status: "approved",
           reason: newEntryReason || `Admin-Eintrag: ${getTypeLabel(newEntryType)}`,
-        });
+        }]);
         
         if (error) throw error;
         toast.success(`${getTypeLabel(newEntryType)} erstellt`);
@@ -618,14 +618,14 @@ export function AdminTimeTrackingView() {
 
         const { error: insertError } = await supabase
           .from("leave_requests")
-          .insert({
+          .insert([{
             user_id: selectedUserId,
             type: newType,
             start_date: entry.work_date,
             end_date: entry.work_date,
             status: "approved",
             reason: `Admin-Umwandlung: ${reason}`,
-          });
+          }]);
         
         if (insertError && !insertError.message?.includes('fetch')) {
           throw insertError;

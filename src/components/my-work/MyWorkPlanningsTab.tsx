@@ -217,12 +217,12 @@ export function MyWorkPlanningsTab() {
 
       const { error } = await supabase
         .from("event_planning_checklist_items")
-        .insert({
+        .insert([{
           event_planning_id: planning.id,
           title,
           order_index: maxOrderIndex + 1,
           is_completed: false,
-        });
+        }]);
 
       if (error) throw error;
 

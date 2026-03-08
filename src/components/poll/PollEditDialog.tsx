@@ -161,7 +161,7 @@ export const PollEditDialog = ({
       // Create version entry
       await supabase
         .from('poll_versions')
-        .insert({
+        .insert([{
           poll_id: pollId,
           version_number: newVersion,
           title: currentTitle,
@@ -169,7 +169,7 @@ export const PollEditDialog = ({
           deadline: currentDeadline,
           changes_summary: changes.join('; '),
           created_by: (await supabase.auth.getUser()).data.user?.id
-        });
+        }]);
 
       // Update poll
       const { error } = await supabase

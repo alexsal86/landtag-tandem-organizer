@@ -549,7 +549,7 @@ export function useEventPlanningData() {
   // ── Contact operations ──
   const addContact = async () => {
     if (!selectedPlanning || !newContact.name.trim()) return;
-    const { data, error } = await supabase.from("event_planning_contacts").insert({ event_planning_id: selectedPlanning.id, name: newContact.name, email: newContact.email || null, phone: newContact.phone || null, role: "contact_person" }).select().single();
+    const { data, error } = await supabase.from("event_planning_contacts").insert([{ event_planning_id: selectedPlanning.id, name: newContact.name, email: newContact.email || null, phone: newContact.phone || null, role: "contact_person" }]).select().single();
     if (error) { toast({ title: "Fehler", description: "Ansprechperson konnte nicht hinzugefügt werden.", variant: "destructive" }); return; }
     setContacts([...contacts, data]);
     setNewContact({ name: "", email: "", phone: "" });
@@ -588,7 +588,7 @@ export function useEventPlanningData() {
   const addSpeaker = async () => {
     if (!selectedPlanning || !newSpeaker.name.trim()) return;
     const maxOrder = Math.max(...speakers.map(speaker => speaker.order_index), -1);
-    const { data, error } = await supabase.from("event_planning_speakers").insert({ event_planning_id: selectedPlanning.id, name: newSpeaker.name, email: newSpeaker.email || null, phone: newSpeaker.phone || null, bio: newSpeaker.bio || null, topic: newSpeaker.topic || null, order_index: maxOrder + 1 }).select().single();
+    const { data, error } = await supabase.from("event_planning_speakers").insert([{ event_planning_id: selectedPlanning.id, name: newSpeaker.name, email: newSpeaker.email || null, phone: newSpeaker.phone || null, bio: newSpeaker.bio || null, topic: newSpeaker.topic || null, order_index: maxOrder + 1 }]).select().single();
     if (error) { toast({ title: "Fehler", description: "Referent konnte nicht hinzugefügt werden.", variant: "destructive" }); return; }
     setSpeakers([...speakers, data]);
     setNewSpeaker({ name: "", email: "", phone: "", bio: "", topic: "" });
@@ -645,7 +645,7 @@ export function useEventPlanningData() {
       const filePath = `${currentTenant.id}/general/${selectedPlanning.id}/${fileName}`;
       const { error: uploadError } = await supabase.storage.from('planning-documents').upload(filePath, file);
       if (uploadError) { toast({ title: "Fehler", description: `Upload fehlgeschlagen: ${uploadError.message}`, variant: "destructive" }); continue; }
-      const { error: dbError } = await supabase.from('event_planning_documents').insert({ event_planning_id: selectedPlanning.id, file_path: filePath, file_name: file.name, file_size: file.size, file_type: file.type, uploaded_by: user.id, tenant_id: currentTenant.id });
+      const { error: dbError } = await supabase.from('event_planning_documents').insert([{ event_planning_id: selectedPlanning.id, file_path: filePath, file_name: file.name, file_size: file.size, file_type: file.type, uploaded_by: user.id, tenant_id: currentTenant.id }]);
       if (dbError) toast({ title: "Fehler", description: "Dokument-Metadaten konnten nicht gespeichert werden", variant: "destructive" });
     }
     await loadGeneralDocuments(selectedPlanning.id);

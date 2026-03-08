@@ -15,7 +15,7 @@ export async function createLetterApprovalDecision(
     // Create the decision
     const { data: decision, error: decisionError } = await supabase
       .from('task_decisions')
-      .insert({
+      .insert([{
         created_by: createdByUserId,
         title: `Brief freigeben: ${letterTitle}`,
         description: `Bitte prüfen und freigeben Sie den Brief "${letterTitle}".\n\nÖffnen Sie den Brief in der Dokumentenverwaltung, um ihn zu lesen.`,
@@ -26,7 +26,7 @@ export async function createLetterApprovalDecision(
           { label: 'Zurückweisen', value: 'reject' }
         ])),
         visible_to_all: false,
-      })
+      }])
       .select('id')
       .single();
 
@@ -39,10 +39,10 @@ export async function createLetterApprovalDecision(
     if (decision?.id) {
       const { error: participantError } = await supabase
         .from('task_decision_participants')
-        .insert({
+        .insert([{
           decision_id: decision.id,
           user_id: reviewerUserId,
-        });
+        }]);
 
       if (participantError) {
         debugConsole.error('Error adding decision participant:', participantError);
@@ -68,7 +68,7 @@ export async function createLetterSendTask(
   try {
     await supabase
       .from('tasks')
-      .insert({
+      .insert([{
         title: `Brief versenden: ${letterTitle}`,
         description: `Der Brief "${letterTitle}" wurde freigegeben und kann jetzt versendet werden.`,
         status: 'to-do',
@@ -77,7 +77,7 @@ export async function createLetterSendTask(
         assigned_to: assignedToUserId,
         user_id: createdByUserId,
         tenant_id: tenantId,
-      });
+      }]);
   } catch (error) {
     debugConsole.error('Error creating send task:', error);
   }
@@ -101,7 +101,7 @@ export async function createLetterRevisionTask(
 
     await supabase
       .from('tasks')
-      .insert({
+      .insert([{
         title: `Brief überarbeiten: ${letterTitle}`,
         description: revisionComment 
           ? `Begründung der Zurückweisung:\n\n${revisionComment}` 
@@ -112,7 +112,7 @@ export async function createLetterRevisionTask(
         assigned_to: assignedTo,
         user_id: reviewerUserId,
         tenant_id: tenantId,
-      });
+      }]);
   } catch (error) {
     debugConsole.error('Error creating revision task:', error);
   }

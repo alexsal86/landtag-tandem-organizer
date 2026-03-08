@@ -98,7 +98,7 @@ export function useChecklistOperations({
     const itemType = newChecklistItem.startsWith('---') ? 'separator' : 'item';
     const title = itemType === 'separator' ? newChecklistItem.replace(/^---\s*/, '') : newChecklistItem;
 
-    const { data, error } = await supabase.from("event_planning_checklist_items").insert({ event_planning_id: selectedPlanningId, title, order_index: maxOrder + 1, type: itemType }).select().single();
+    const { data, error } = await supabase.from("event_planning_checklist_items").insert([{ event_planning_id: selectedPlanningId, title, order_index: maxOrder + 1, type: itemType }]).select().single();
     if (error) { toast({ title: "Fehler", description: "Checklisten-Punkt konnte nicht hinzugefügt werden.", variant: "destructive" }); return; }
 
     const transformedData = { ...data, sub_items: Array.isArray(data.sub_items) ? data.sub_items : (data.sub_items ? JSON.parse(data.sub_items as string) : []) };

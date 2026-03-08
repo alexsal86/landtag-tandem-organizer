@@ -35,7 +35,7 @@ export const useContactTopics = (contactId: string | undefined) => {
     try {
       const { error } = await supabase
         .from('contact_topics')
-        .insert({ contact_id: contactId, topic_id: topicId });
+        .insert([{ contact_id: contactId, topic_id: topicId }]);
 
       if (error) throw error;
       setAssignedTopics(prev => [...prev, topicId]);

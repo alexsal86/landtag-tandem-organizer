@@ -353,13 +353,13 @@ export const TaskDecisionDetails = ({ decisionId, isOpen, onClose, onArchived, h
     try {
       const { error } = await supabase
         .from('task_decision_responses')
-        .insert({
+        .insert([{
           decision_id: decisionId,
           participant_id: participantId,
           response_type: 'question',
           comment: replyText.trim(),
           parent_response_id: parentResponseId,
-        });
+        }]);
 
       if (error) throw error;
 
@@ -383,12 +383,12 @@ export const TaskDecisionDetails = ({ decisionId, isOpen, onClose, onArchived, h
     try {
       const { error } = await supabase
         .from('task_decision_comments')
-        .insert({
+        .insert([{
           decision_id: decisionId,
           user_id: currentUserId,
           parent_id: parentId,
           content: commentContent.trim(),
-        });
+        }]);
 
       if (error) throw error;
 

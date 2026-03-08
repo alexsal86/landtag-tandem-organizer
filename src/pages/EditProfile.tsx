@@ -229,13 +229,13 @@ export function EditProfile() {
         // Insert new profile
         const { error: insertError } = await supabase
           .from('profiles')
-          .insert({
+          .insert([{
             user_id: user.id,
             display_name: formData.display_name || null,
             bio: formData.bio || null,
             avatar_url: formData.avatar_url || null,
             tenant_id: currentTenant?.id || 'default-tenant-id'
-          });
+          }]);
         error = insertError;
       }
 

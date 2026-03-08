@@ -48,11 +48,11 @@ export const useMapFlagTypes = () => {
 
       const { data, error } = await supabase
         .from('map_flag_types')
-        .insert({
+        .insert([{
           ...newType,
           tenant_id: currentTenant.id,
           created_by: user.id,
-        })
+        }])
         .select()
         .single();
 

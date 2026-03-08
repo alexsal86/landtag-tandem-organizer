@@ -151,12 +151,12 @@ const handler = async (req: Request): Promise<Response> => {
       // Create new response
       const { error: insertError } = await supabase
         .from('task_decision_responses')
-        .insert({
+        .insert([{
           decision_id: participant.decision_id,
           participant_id: participantId,
           response_type: responseType,
           comment: comment || null
-        });
+        }]);
 
       if (insertError) {
         console.error("Error creating response:", insertError);

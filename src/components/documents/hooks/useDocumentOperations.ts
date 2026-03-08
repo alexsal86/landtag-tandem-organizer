@@ -81,12 +81,12 @@ export function useDocumentOperations({
       const { error: uploadError } = await supabase.storage.from('documents').upload(fileName, uploadFile);
       if (uploadError) throw uploadError;
 
-      const { data: documentData, error: dbError } = await supabase.from('documents').insert({
+      const { data: documentData, error: dbError } = await supabase.from('documents').insert([{
         user_id: user.id, tenant_id: currentTenant?.id || '', title: uploadTitle,
         description: uploadDescription, file_name: uploadFile.name, file_path: fileName,
         file_size: uploadFile.size, file_type: uploadFile.type, category: uploadCategory,
         tags: uploadTags, status: uploadStatus, folder_id: uploadFolderId || null,
-      }).select().single();
+      }]).select().single();
       if (dbError) throw dbError;
 
       if (uploadContacts.length > 0 && documentData) {
@@ -134,10 +134,10 @@ export function useDocumentOperations({
   ) => {
     if (!folderName || !user || !currentTenant) return;
     try {
-      const { error } = await supabase.from('document_folders').insert({
+      const { error } = await supabase.from('document_folders').insert([{
         user_id: user.id, tenant_id: currentTenant.id, name: folderName,
         description: folderDescription, parent_folder_id: currentFolder, color: folderColor,
-      });
+      }]);
       if (error) throw error;
       toast({ title: "Ordner erstellt", description: `Der Ordner "${folderName}" wurde erfolgreich erstellt.` });
       onSuccess();
@@ -244,18 +244,18 @@ export function useDocumentOperations({
     setIsCreatingTask(true);
     try {
       if (taskDialogMode === 'task') {
-        const { error } = await supabase.from('tasks').insert({
+        const { error } = await supabase.from('tasks').insert([{
           user_id: user.id, tenant_id: currentTenant.id, title: taskTitle.trim(),
           description: [taskDescription.trim(), sourceLetterForTask.id ? `[[letter:${sourceLetterForTask.id}]]` : ''].filter(Boolean).join('\n\n'),
           status: 'todo', priority: 'medium', category: 'personal',
-        });
+        }]);
         if (error) throw error;
       } else {
-        const { error } = await supabase.from('tasks').insert({
+        const { error } = await supabase.from('tasks').insert([{
           user_id: user.id, tenant_id: currentTenant.id, parent_task_id: parentTaskId,
           title: sourceLetterForTask.id ? `${taskTitle.trim()} [[letter:${sourceLetterForTask.id}]]` : taskTitle.trim(),
           description: taskDescription.trim() || null, status: 'todo', priority: 'medium', category: 'personal', assigned_to: user.id,
-        });
+        }]);
         if (error) throw error;
       }
       toast({ title: taskDialogMode === 'task' ? 'Aufgabe erstellt' : 'Unteraufgabe erstellt' });

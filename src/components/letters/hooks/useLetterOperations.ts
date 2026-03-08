@@ -120,7 +120,7 @@ export function useLetterOperations(opts: UseLetterOperationsOptions) {
       } else {
         const { error } = await supabase
           .from('letters')
-          .insert({
+          .insert([{
             tenant_id: tenantId,
             created_by: userId,
             title: editedLetter.title || 'Neuer Brief',
@@ -138,7 +138,7 @@ export function useLetterOperations(opts: UseLetterOperationsOptions) {
             letter_date: editedLetter.letter_date,
             status: editedLetter.status || 'draft',
             show_pagination: showPagination,
-          });
+          }]);
         if (error) throw error;
       }
 
@@ -247,7 +247,7 @@ export function useLetterOperations(opts: UseLetterOperationsOptions) {
     try {
       const { error } = await supabase
         .from('letter_comments')
-        .insert({ letter_id: letter.id, user_id: userId, content, comment_type: 'comment' });
+        .insert([{ letter_id: letter.id, user_id: userId, content, comment_type: 'comment' }]);
       if (error) throw error;
       fetchComments();
       toast({ title: 'Kommentar hinzugefügt', description: 'Der Kommentar wurde erfolgreich hinzugefügt.' });

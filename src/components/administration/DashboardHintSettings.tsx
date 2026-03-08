@@ -155,11 +155,11 @@ export const DashboardHintSettings = () => {
       } else {
         const { error: insertError } = await supabase
           .from('app_settings')
-          .insert({
+          .insert([{
             setting_key: SETTINGS_KEY,
             setting_value: settingValue,
             tenant_id: tenantId
-          });
+          }]);
 
         if (insertError) throw insertError;
       }

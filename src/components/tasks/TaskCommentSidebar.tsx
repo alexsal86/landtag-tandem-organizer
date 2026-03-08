@@ -109,12 +109,12 @@ export function TaskCommentSidebar({
     try {
       const { error } = await supabase
         .from('task_comments')
-        .insert({
+        .insert([{
           task_id: taskId,
           user_id: user.id,
           parent_id: parentId,
           content: commentContent.trim(),
-        });
+        }]);
 
       if (error) throw error;
 

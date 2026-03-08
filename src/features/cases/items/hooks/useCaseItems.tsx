@@ -287,11 +287,11 @@ export const useCaseItems = () => {
     try {
       const { data: interaction, error } = await supabase
         .from("case_item_interactions")
-        .insert({
+        .insert([{
           ...data,
           tenant_id: currentTenant.id,
           created_by: user.id,
-        } as any)
+        } as any])
         .select()
         .single();
 

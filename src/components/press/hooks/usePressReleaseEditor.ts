@@ -218,7 +218,7 @@ export function usePressReleaseEditor({ pressReleaseId, initialDraft, onBack }: 
       } else {
         const { data: newPr, error } = await supabase
           .from("press_releases")
-          .insert({ ...payload, tenant_id: currentTenant.id, created_by: user.id, status: "draft" })
+          .insert([{ ...payload, tenant_id: currentTenant.id, created_by: user.id, status: "draft" }])
           .select().single();
         if (error) throw error;
         setPressRelease(newPr);

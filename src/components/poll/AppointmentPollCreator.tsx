@@ -157,13 +157,13 @@ export const AppointmentPollCreator = ({ onClose }: { onClose: () => void }) => 
       // Create poll
       const { data: poll, error: pollError } = await supabase
         .from('appointment_polls')
-        .insert({
+        .insert([{
           user_id: user.id,
           title,
           description,
           deadline: deadline?.toISOString(),
           status: 'active'
-        })
+        }])
         .select()
         .single();
 

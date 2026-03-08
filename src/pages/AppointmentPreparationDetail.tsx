@@ -49,7 +49,7 @@ export default function AppointmentPreparationDetail() {
         try {
           const { data, error } = await supabase
             .from('appointment_preparations')
-            .insert({
+            .insert([{
               title: `Terminplanung: ${title}`,
               appointment_id: appointmentId,
               tenant_id: currentTenant.id,
@@ -69,7 +69,7 @@ export default function AppointmentPreparationDetail() {
                 { id: crypto.randomUUID(), label: 'Teilnehmer informieren', completed: false },
                 { id: crypto.randomUUID(), label: 'Technische Ausstattung prüfen', completed: false }
               ]
-            })
+            }])
             .select()
             .single();
 

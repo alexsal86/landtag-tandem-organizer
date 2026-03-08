@@ -370,7 +370,7 @@ const [editingChild, setEditingChild] = useState<{ parentIndex: number; childInd
       if (role !== "none") {
         const { error: insErr } = await supabase
           .from("user_roles")
-          .insert({ user_id: targetUserId, role, assigned_by: user.id });
+          .insert([{ user_id: targetUserId, role, assigned_by: user.id }]);
         if (insErr) throw insErr;
       }
 
@@ -394,7 +394,7 @@ const [editingChild, setEditingChild] = useState<{ parentIndex: number; childInd
       const newName = `Neues Template ${meetingTemplates.length + 1}`;
       const { data, error } = await supabase
         .from('meeting_templates')
-        .insert({
+        .insert([{
           name: newName,
           description: '',
           template_items: [],
@@ -403,7 +403,7 @@ const [editingChild, setEditingChild] = useState<{ parentIndex: number; childInd
           auto_create_count: 3,
           is_default: false,
           user_id: user.id
-        })
+        }])
         .select()
         .single();
         

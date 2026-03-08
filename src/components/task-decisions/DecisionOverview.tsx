@@ -562,13 +562,13 @@ export const DecisionOverview = () => {
 
               const { error: insertError } = await supabase
                 .from('task_decision_responses')
-                .insert({
+                .insert([{
                   decision_id: data.decision_id,
                   participant_id: data.participant_id,
                   response_type: 'question',
                   comment: text.trim(),
                   parent_response_id: responseId,
-                });
+                }]);
 
               return insertError;
             }));
@@ -749,7 +749,7 @@ export const DecisionOverview = () => {
     try {
       const { error } = await supabase
         .from('tasks')
-        .insert({
+        .insert([{
           user_id: user.id,
           title: `[Entscheidung] ${decision.title}`,
           description: taskDescription,
@@ -758,7 +758,7 @@ export const DecisionOverview = () => {
           status: 'todo',
           priority: 'medium',
           category: 'personal'
-        });
+        }]);
       
       if (error) throw error;
       toast({ title: "Aufgabe erstellt", description: "Die Aufgabe wurde aus der Entscheidung erstellt." });

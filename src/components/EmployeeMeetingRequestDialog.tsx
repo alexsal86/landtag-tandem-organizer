@@ -33,13 +33,13 @@ export function EmployeeMeetingRequestDialog() {
 
     setLoading(true);
     try {
-      const { error } = await supabase.from("employee_meeting_requests").insert({
+      const { error } = await supabase.from("employee_meeting_requests").insert([{
         employee_id: user.id,
         tenant_id: currentTenant.id,
         reason: reason.trim(),
         urgency,
         status: "pending",
-      });
+      }]);
 
       if (error) throw error;
 

@@ -162,12 +162,12 @@ export function BulkActionsToolbar({
       // Create distribution list
       const { data: listData, error: listError } = await supabase
         .from('distribution_lists')
-        .insert({
+        .insert([{
           name: distributionListName,
           description: distributionListDescription,
           user_id: userData.user.id,
           tenant_id: currentTenant.id,
-        })
+        }])
         .select()
         .single();
 

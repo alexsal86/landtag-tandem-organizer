@@ -147,14 +147,14 @@ export function useMeetingArchive(deps: ArchiveDeps) {
       for (const item of pendingItems) {
         const dedupeKey = `${item.original_meeting_id}::${item.title}`;
         if (existingSet.has(dedupeKey)) continue;
-        await supabase.from('meeting_agenda_items').insert({
+        await supabase.from('meeting_agenda_items').insert([{
           meeting_id: meetingId, parent_id: reviewParentId, title: item.title,
           description: item.description, notes: item.notes, result_text: item.result_text,
           assigned_to: item.assigned_to, order_index: nextOrderIndex++,
           source_meeting_id: item.original_meeting_id,
           original_meeting_date: item.original_meeting_date, original_meeting_title: item.original_meeting_title,
           carryover_notes: `Übertragen von: ${item.original_meeting_title} (${item.original_meeting_date})`
-        });
+        }]);
       }
       await loadAgendaItems(meetingId);
       toast({ title: "Punkte übertragen", description: `${pendingItems.length} vorgemerkte Punkte wurden in die Agenda eingefügt.` });
@@ -186,14 +186,14 @@ export function useMeetingArchive(deps: ArchiveDeps) {
           const { data: existingTask } = await supabase.from('tasks').select('id, user_id, assigned_to, tenant_id').eq('id', item.task_id).maybeSingle();
           if (existingTask) {
             const meetingContext = `Ergebnis aus Besprechung "${meeting.title}" vom ${format(new Date(meeting.meeting_date), 'dd.MM.yyyy', { locale: de })}`;
-            await supabase.from('tasks').insert({
+            await supabase.from('tasks').insert([{
               user_id: user.id, tenant_id: existingTask.tenant_id || currentTenant?.id || '',
               parent_task_id: existingTask.id, title: item.result_text!.substring(0, 200),
               description: `**${meetingContext}**\n\n${item.result_text}`,
               assigned_to: existingTask.assigned_to || existingTask.user_id || user.id,
               status: 'todo', priority: 'medium', category: 'meeting',
               due_date: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),
-            });
+            }]);
           }
         } catch (e) { debugConsole.error('Error creating child task for linked item (non-fatal):', e); }
       }
@@ -225,12 +225,12 @@ export function useMeetingArchive(deps: ArchiveDeps) {
 
           const taskDescription = `**Aus Besprechung:** ${meeting.title} vom ${format(new Date(meeting.meeting_date), 'dd.MM.yyyy', { locale: de })}${resultBlock}${detailsBlock}${notesBlock}${multiAssigneeNote}`;
 
-          await supabase.from('tasks').insert({
+          await supabase.from('tasks').insert([{
             user_id: user.id, title: item.title, description: taskDescription,
             priority: 'medium', category: 'meeting', status: 'todo',
             assigned_to: assignedUserId, tenant_id: currentTenant?.id || '',
             due_date: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString()
-          });
+          }]);
         } catch (e) { debugConsole.error('Error creating task for assigned item (non-fatal):', e); }
       }
 
@@ -275,7 +275,7 @@ export function useMeetingArchive(deps: ArchiveDeps) {
       // Step 4: Follow-up task with subtasks
       let followUpTask = null;
       try {
-        const { data: createdTask, error: taskError } = await supabase.from('tasks').insert({
+        const { data: createdTask, error: taskError } = await supabase.from('tasks').insert([{
           user_id: user.id,
           title: `Nachbereitung ${meeting.title} vom ${format(new Date(), 'dd.MM.yyyy')}`,
           description: `Nachbereitung der Besprechung "${meeting.title}"`,
@@ -283,7 +283,7 @@ export function useMeetingArchive(deps: ArchiveDeps) {
           tenant_id: currentTenant?.id || '',
           due_date: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),
           assigned_to: user.id,
-        }).select().single();
+        }]).select().single();
         if (taskError) throw taskError;
         followUpTask = createdTask;
       } catch (e) { debugConsole.error('Error creating follow-up task (non-fatal):', e); }
@@ -385,13 +385,13 @@ export function useMeetingArchive(deps: ArchiveDeps) {
 
               allAppointments.sort((a, b) => new Date(a.start_time).getTime() - new Date(b.start_time).getTime());
               const allAssignedIds = `{${allParticipantIds.join(',')}}`;
-              const { data: apptTask } = await supabase.from('tasks').insert({
+              const { data: apptTask } = await supabase.from('tasks').insert([{
                 user_id: user.id, title: `Vorbereitung: Markierte Termine aus ${meeting.title}`,
                 description: `Folgende Termine wurden in der Besprechung als wichtig markiert.`,
                 priority: 'medium', category: 'meeting', status: 'todo', assigned_to: allAssignedIds,
                 tenant_id: meetingTenantId,
                 due_date: new Date(Date.now() + 3 * 24 * 60 * 60 * 1000).toISOString()
-              }).select().single();
+              }]).select().single();
 
               if (apptTask) {
                 const childTasks = allAppointments.map(apt => {

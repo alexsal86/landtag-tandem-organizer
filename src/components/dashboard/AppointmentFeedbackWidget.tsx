@@ -241,7 +241,7 @@ export const AppointmentFeedbackWidget = ({
 
       const { data: createdTask, error } = await supabase
         .from('tasks')
-        .insert({
+        .insert([{
           title: taskTitle,
           description: taskDescription || `Follow-up zu Termin: ${appointmentTitle}`,
           category: 'follow-up',
@@ -253,7 +253,7 @@ export const AppointmentFeedbackWidget = ({
           priority: taskPriority,
           source_type: 'appointment_feedback',
           source_id: feedbackId,
-        })
+        }])
         .select('id')
         .single();
 
