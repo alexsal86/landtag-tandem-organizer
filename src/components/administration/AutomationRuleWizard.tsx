@@ -32,6 +32,7 @@ const ACTION_TYPES = [
   { value: "create_task", label: "Aufgabe erzeugen" },
   { value: "update_record_status", label: "Status aktualisieren" },
   { value: "send_push_notification", label: "Push senden" },
+  { value: "send_email_template", label: "E-Mail-Template senden" },
 ] as const;
 
 const STATUS_TABLE_OPTIONS = ["tasks", "decisions", "knowledge_documents", "casefiles"] as const;
