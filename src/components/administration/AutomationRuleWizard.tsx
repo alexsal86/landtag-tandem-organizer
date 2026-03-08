@@ -642,11 +642,11 @@ export function AutomationRuleWizard({
                     />
                   </div>
                   <div className="space-y-2">
-                    <Label>Assigned_to</Label>
-                    <Input
+                    <Label>Zuweisen an</Label>
+                    <TenantUserSelect
                       value={form.actionTaskAssignees}
-                      onChange={(e) => setForm((prev) => ({ ...prev, actionTaskAssignees: e.target.value }))}
-                      placeholder="UUID, UUID"
+                      onValueChange={(v) => setForm((prev) => ({ ...prev, actionTaskAssignees: v }))}
+                      placeholder="Nutzer:in zuweisen…"
                     />
                   </div>
                 </div>
