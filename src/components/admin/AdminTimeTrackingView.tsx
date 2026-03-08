@@ -567,8 +567,8 @@ export function AdminTimeTrackingView() {
       toast.success("Zeiteintrag aktualisiert");
       setEditingEntry(null);
       loadMonthData();
-    } catch (error: any) {
-      toast.error(error.message || "Fehler beim Speichern");
+    } catch (error: unknown) {
+      toast.error(error instanceof Error ? error.message : "Fehler beim Speichern");
     } finally {
       setIsSaving(false);
     }
