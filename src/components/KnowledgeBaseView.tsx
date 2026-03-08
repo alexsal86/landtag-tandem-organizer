@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { Search, Plus, Database, User, ChevronLeft, ChevronRight, Lock, Unlock, Save, Trash2 } from 'lucide-react';
 import EnhancedLexicalEditor from './EnhancedLexicalEditor';
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
