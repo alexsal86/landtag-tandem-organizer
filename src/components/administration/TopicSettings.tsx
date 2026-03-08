@@ -106,7 +106,7 @@ export const TopicSettings = () => {
               Zentrale Themen
             </CardTitle>
             <CardDescription>
-              Themen können allen Modulen zugewiesen werden: FallAkten, Kontakte, Aufgaben, Termine, Dokumente
+              Themen können allen Modulen zugewiesen werden: Fallakten, Kontakte, Aufgaben, Termine, Dokumente
             </CardDescription>
           </div>
           <Dialog open={isCreateOpen} onOpenChange={setIsCreateOpen}>
