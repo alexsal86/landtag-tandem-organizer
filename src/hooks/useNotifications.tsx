@@ -297,7 +297,7 @@ export const useNotifications = () => {
     }
 
     try {
-      console.log('🔄 Starting push subscription process...');
+      
       
       // Use the already-registered root service worker (COOP/COEP worker at /coi-serviceworker.js)
       // Registering a second worker at scope '/' caused non-deterministic replacement and flaky push delivery.
