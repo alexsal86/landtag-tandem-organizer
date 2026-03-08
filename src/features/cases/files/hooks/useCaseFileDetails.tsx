@@ -430,12 +430,12 @@ export const useCaseFileDetails = (caseFileId: string | null) => {
     try {
       const { error } = await supabase
         .from('case_file_documents')
-        .insert({
+        .insert([{
           case_file_id: caseFileId,
           document_id: documentId,
           relevance,
           notes,
-        });
+        }]);
 
       if (error) throw error;
       await fetchDocuments();
