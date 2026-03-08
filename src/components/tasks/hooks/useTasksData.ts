@@ -395,7 +395,7 @@ export function useTasksData() {
       if (planningSubtasksData) {
         for (const subtask of planningSubtasksData) {
           try {
-            const resolvedAssignedTo = await resolveUserNamesAsync([subtask.assigned_to]);
+            const resolvedAssignedTo = await resolveUserNamesAsync([subtask.assigned_to].filter(Boolean) as string[]);
             const { data: checklistItemData } = await supabase
               .from('event_planning_checklist_items')
               .select('title, event_planning_id')
