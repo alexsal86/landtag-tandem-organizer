@@ -61,7 +61,7 @@ export function useItemDetails({
     try {
       const { data, error } = await supabase.from('planning_item_subtasks').select('*').eq('planning_item_id', itemId).order('order_index', { ascending: true });
       if (error) throw error;
-      setItemSubtasks(prev => ({ ...prev, [itemId]: data || [] }));
+      setItemSubtasks(prev => ({ ...prev, [itemId]: (data || []) as PlanningSubtask[] }));
     } catch (error) { handleAppError(error, { context: 'loadItemSubtasks' }); }
   };
 
