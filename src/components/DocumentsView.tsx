@@ -373,7 +373,7 @@ export function DocumentsView() {
                     <CardHeader className="pb-3"><div className="flex items-start justify-between gap-2 min-w-0"><div className="flex items-center gap-2 min-w-0 flex-1 overflow-hidden"><FileText className="h-5 w-5 text-primary flex-shrink-0" /><CardTitle className="text-lg truncate">{doc.title}</CardTitle></div><Badge className={`${getStatusColor(doc.status)} flex-shrink-0`}>{STATUS_LABELS[doc.status] || doc.status}</Badge></div>{doc.description && <CardDescription className="line-clamp-2 break-words">{doc.description}</CardDescription>}</CardHeader>
                     <CardContent className="space-y-4">
                       <div className="space-y-2 text-sm text-muted-foreground">
-                        <div className="flex items-center gap-2"><Folder className="h-4 w-4 flex-shrink-0" /><span className="truncate">{getCategoryLabel(doc.category)}</span></div>
+                        <div className="flex items-center gap-2"><Folder className="h-4 w-4 flex-shrink-0" /><span className="truncate">{getCategoryLabel(doc.category ?? '')}</span></div>
                         <div className="flex items-center gap-2"><Calendar className="h-4 w-4 flex-shrink-0" /><span>{format(new Date(doc.created_at), "dd.MM.yyyy", { locale: de })}</span></div>
                         <div className="flex items-center gap-2"><FileType className="h-4 w-4 flex-shrink-0" /><span className="truncate">{doc.file_name}</span></div>
                         <div><span>Größe: {formatFileSize(doc.file_size)}</span></div>
