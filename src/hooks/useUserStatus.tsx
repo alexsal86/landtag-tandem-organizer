@@ -17,13 +17,13 @@ export interface UserStatus {
   id: string;
   user_id: string;
   status_type: 'online' | 'meeting' | 'break' | 'away' | 'offline' | 'custom';
-  custom_message?: string;
-  emoji?: string;
-  color?: string;
+  custom_message?: string | null;
+  emoji?: string | null;
+  color?: string | null;
   notifications_enabled: boolean;
   auto_away_enabled: boolean;
   last_activity: string;
-  status_until?: string;
+  status_until?: string | null;
 }
 
 export interface UserWithStatus {
@@ -297,7 +297,7 @@ export const useUserStatus = () => {
       const { data: statuses } = await supabase
         .from('user_status')
         .select('id, user_id, status_type, custom_message, emoji, color, notifications_enabled, auto_away_enabled, last_activity, status_until')
-        .eq('tenant_id', currentTenant?.id)
+        .eq('tenant_id', currentTenant?.id ?? '')
         .in('user_id', onlineUserIds);
 
       const usersWithStatusData = onlineUsersList.map(onlineUser => ({
@@ -396,7 +396,7 @@ export const useUserStatus = () => {
         await updateStatus(
           mappedStatusType,
           undefined,
-          statusOption?.emoji,
+          statusOption?.emoji ?? undefined,
           undefined,
           mappedStatusType !== 'meeting' && mappedStatusType !== 'break'
         );

@@ -9,7 +9,7 @@ export interface MeetingParticipant {
   user_id: string;
   role: 'organizer' | 'participant' | 'optional';
   status: 'pending' | 'confirmed' | 'declined';
-  created_at: string;
+  created_at: string | null;
   user?: {
     id: string;
     display_name: string;

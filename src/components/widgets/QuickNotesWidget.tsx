@@ -136,7 +136,7 @@ export const QuickNotesWidget: React.FC<QuickNotesWidgetProps> = ({
         .limit(10);
 
       if (tasksError) throw tasksError;
-      setTasks(tasksData || []);
+      setTasks((tasksData || []).map(t => ({ ...t, due_date: t.due_date ?? undefined })));
 
       if (tasksData && tasksData.length > 0) {
         const taskIds = tasksData.map(t => t.id);

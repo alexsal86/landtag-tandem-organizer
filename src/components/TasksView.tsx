@@ -88,7 +88,7 @@ export function TasksView() {
 
   const feedbackFilterId = searchParams.get('feedback_id');
   const filteredTasks = data.tasks
-    .filter(task => { if (feedbackFilterId && !(task.source_type === 'appointment_feedback' && task.source_id === feedbackFilterId)) return false; if (filter === "all") return true; if (filter === "pending") return task.status === "todo" || task.status === "in-progress"; if (filter === "overdue") return isOverdue(task.dueDate); return task.status === filter; })
+    .filter(task => { if (feedbackFilterId && !(task.source_type === 'appointment_feedback' && task.source_id === feedbackFilterId)) return false; if (filter === "all") return true; if (filter === "pending") return task.status === "todo" || task.status === "in-progress"; if (filter === "overdue") return task.dueDate ? isOverdue(task.dueDate) : false; return task.status === filter; })
     .filter(task => categoryFilter === "all" || task.category === categoryFilter)
     .filter(task => priorityFilter === "all" || task.priority === priorityFilter)
     .filter(task => task.category !== 'call_follow_up' && task.category !== 'call_followup');

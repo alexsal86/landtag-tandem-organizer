@@ -335,7 +335,7 @@ export function DistrictDetailDialog({ district, open, onOpenChange }: DistrictD
                           <Badge variant={getPriorityColor(note.priority) as "default" | "secondary" | "destructive" | "outline"}>
                             {note.priority === "high" ? "Hoch" : note.priority === "medium" ? "Mittel" : "Niedrig"}
                           </Badge>
-                          <Badge variant="outline">{getCategoryLabel(note.category)}</Badge>
+                          <Badge variant="outline">{getCategoryLabel(note.category ?? '')}</Badge>
                           {note.due_date && (
                             <span className="text-xs flex items-center gap-1">
                               <CalendarIcon className="h-3 w-3" />

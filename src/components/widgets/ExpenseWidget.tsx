@@ -39,7 +39,7 @@ export const ExpenseWidget = ({ className }: ExpenseWidgetProps) => {
     const { data: budget } = await supabase
       .from("expense_budgets")
       .select("budget_amount")
-      .eq("user_id", user?.id)
+      .eq("user_id", user?.id ?? '')
       .eq("year", year)
       .eq("month", month)
       .single();

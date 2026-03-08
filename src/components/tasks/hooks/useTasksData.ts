@@ -395,7 +395,7 @@ export function useTasksData() {
       if (planningSubtasksData) {
         for (const subtask of planningSubtasksData) {
           try {
-            const resolvedAssignedTo = await resolveUserNamesAsync([subtask.assigned_to]);
+            const resolvedAssignedTo = await resolveUserNamesAsync([subtask.assigned_to].filter(Boolean) as string[]);
             const { data: checklistItemData } = await supabase
               .from('event_planning_checklist_items')
               .select('title, event_planning_id')
@@ -411,7 +411,7 @@ export function useTasksData() {
               title: checklistItemData?.title || subtask.description || 'Unterpunkt',
               task_title: planningTitle, source_type: 'planning' as const,
               checklist_item_title: checklistItemData?.title ?? null, planning_item_id: subtask.planning_item_id,
-              assigned_to_names: resolvedAssignedTo, assigned_to: [subtask.assigned_to]
+              assigned_to_names: resolvedAssignedTo, assigned_to: [subtask.assigned_to].filter(Boolean) as string[]
             });
           } catch {
             allSubtasks.push({
@@ -419,8 +419,8 @@ export function useTasksData() {
               title: subtask.description || 'Unterpunkt',
               task_title: 'Unbekannte Planung', source_type: 'planning' as const,
               planning_item_id: subtask.planning_item_id,
-              assigned_to_names: resolveUserNames([subtask.assigned_to]),
-              assigned_to: [subtask.assigned_to]
+              assigned_to_names: resolveUserNames([subtask.assigned_to].filter(Boolean) as string[]),
+              assigned_to: [subtask.assigned_to].filter(Boolean) as string[]
             });
           }
         }

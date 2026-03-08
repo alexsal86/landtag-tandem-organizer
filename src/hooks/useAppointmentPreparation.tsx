@@ -7,15 +7,15 @@ export interface AppointmentPreparation {
   id: string;
   title: string;
   status: string;
-  notes?: string;
-  appointment_id?: string;
-  template_id?: string;
+  notes?: string | null;
+  appointment_id?: string | null;
+  template_id?: string | null;
   tenant_id: string;
   created_by: string;
   created_at: string;
   updated_at: string;
   is_archived: boolean;
-  archived_at?: string;
+  archived_at?: string | null;
   preparation_data: {
     objectives?: string;
     key_topics?: string;
@@ -96,7 +96,7 @@ export function useAppointmentPreparation(preparationId: string | undefined) {
       const { error: updateError } = await supabase
         .from('appointment_preparations')
         .update({
-          ...updates,
+          ...(updates as any),
           updated_at: new Date().toISOString()
         })
         .eq('id', preparationId);

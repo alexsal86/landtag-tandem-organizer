@@ -185,7 +185,7 @@ export function CaseFileTypeSettings() {
                                 <div className="flex items-center gap-2">
                                   <span
                                     className="inline-block w-3 h-3 rounded-full"
-                                    style={{ backgroundColor: type.color }}
+                                    style={{ backgroundColor: type.color ?? undefined }}
                                   />
                                   {(() => {
                                     const Icon = getIconComponent(type.icon);
@@ -227,7 +227,7 @@ export function CaseFileTypeSettings() {
                               ) : (
                                 <span
                                   className="inline-block w-8 h-8 rounded border border-border cursor-pointer"
-                                  style={{ backgroundColor: type.color }}
+                                  style={{ backgroundColor: type.color ?? undefined }}
                                 />
                               )}
                             </TableCell>
@@ -265,7 +265,7 @@ export function CaseFileTypeSettings() {
                                 ) : (
                                   <>
                                     <Button
-                                      onClick={() => setEditingType({ id: type.id, label: type.label, color: type.color, icon: type.icon || undefined })}
+                                      onClick={() => setEditingType({ id: type.id, label: type.label, color: type.color ?? '#6b7280', icon: type.icon || undefined })}
                                       size="sm"
                                       variant="outline"
                                       className="h-8 w-8 p-0"

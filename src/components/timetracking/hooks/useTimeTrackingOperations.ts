@@ -183,7 +183,7 @@ export function useTimeTrackingOperations({
       const leave = leaves.find(l => l.id === leaveId);
       if (!leave) { toast.error("Antrag nicht gefunden"); return; }
       const newStatus: Database["public"]["Enums"]["leave_status"] = leave.status === "pending" ? "cancelled" : "cancel_requested";
-      const { error } = await supabase.from("leave_requests").update({ status: newStatus }).eq("id", leaveId).eq("user_id", userId);
+      const { error } = await supabase.from("leave_requests").update({ status: newStatus }).eq("id", leaveId).eq("user_id", userId!);
       if (error) throw error;
       if (newStatus === "cancelled") await removeLeaveCalendarEntry(leave, type);
       toast.success(newStatus === "cancelled" ? successMsg : "Stornierungsanfrage gesendet");

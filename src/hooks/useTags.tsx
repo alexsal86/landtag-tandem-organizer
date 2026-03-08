@@ -6,8 +6,8 @@ interface Tag {
   id: string;
   name: string;
   label: string;
-  color: string;
-  icon?: string;
+  color: string | null;
+  icon?: string | null;
   is_active: boolean;
   order_index: number;
 }

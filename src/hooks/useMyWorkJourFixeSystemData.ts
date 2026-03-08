@@ -22,7 +22,7 @@ export interface CaseItemData {
 
 export interface SystemItemData {
   id: string;
-  title: string;
+  title: string | null;
   user_id?: string;
 }
 

@@ -25,13 +25,13 @@ export interface ElectionDistrict {
   region: string;
   boundaries?: any;
   center_coordinates?: any;
-  population?: number;
-  area_km2?: number;
+  population?: number | null;
+  area_km2?: number | null;
   contact_info?: any;
-  website_url?: string;
-  district_type?: string;
-  major_cities?: string[];
-  rural_percentage?: number;
+  website_url?: string | null;
+  district_type?: string | null;
+  major_cities?: string[] | null;
+  rural_percentage?: number | null;
   representatives?: ElectionRepresentative[];
   created_at: string;
   updated_at: string;
@@ -43,12 +43,12 @@ export interface ElectionDistrictNote {
   tenant_id: string;
   district_id: string;
   title: string;
-  content?: string;
+  content?: string | null;
   priority: string;
-  category: string;
-  due_date?: string;
+  category: string | null;
+  due_date?: string | null;
   is_completed: boolean;
-  tags?: string[];
+  tags?: string[] | null;
   created_at: string;
   updated_at: string;
 }

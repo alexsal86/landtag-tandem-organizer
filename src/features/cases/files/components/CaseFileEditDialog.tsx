@@ -68,7 +68,7 @@ export function CaseFileEditDialog({ caseFile, open, onOpenChange }: CaseFileEdi
         reference_number: caseFile.reference_number || "",
         start_date: caseFile.start_date || undefined,
         target_date: caseFile.target_date || undefined,
-        is_private: caseFile.is_private,
+        is_private: caseFile.is_private ?? false,
       });
       
       // Determine visibility from the case file data
@@ -204,9 +204,9 @@ export function CaseFileEditDialog({ caseFile, open, onOpenChange }: CaseFileEdi
                           <div className="flex items-center gap-2">
                             <span 
                               className="w-2 h-2 rounded-full" 
-                              style={{ backgroundColor: type.color }}
+                              style={{ backgroundColor: type.color ?? undefined }}
                             />
-                            {TypeIcon && <TypeIcon className="h-3 w-3" style={{ color: type.color }} />}
+                            {TypeIcon && <TypeIcon className="h-3 w-3" style={{ color: type.color ?? undefined }} />}
                             {type.label}
                           </div>
                         </SelectItem>

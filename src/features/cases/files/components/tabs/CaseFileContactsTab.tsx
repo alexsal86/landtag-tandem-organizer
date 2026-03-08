@@ -130,8 +130,8 @@ export function CaseFileContactsTab({ contacts, onAdd, onRemove }: CaseFileConta
           <div className="grid gap-4 py-4">
             <div className="grid gap-2">
               <Label>Kontakt</Label>
-              <ContactSelector
-                selectedContactId={selectedContactId}
+                <ContactSelector
+                selectedContactId={selectedContactId ?? undefined}
                 onSelect={(contact) => {
                   setSelectedContactId(contact?.id || null);
                   setSelectedContactName(contact?.name || null);

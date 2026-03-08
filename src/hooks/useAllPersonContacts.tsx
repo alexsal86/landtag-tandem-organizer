@@ -15,9 +15,9 @@ const mapPersonContact = (contact: MinimalPersonContact): Contact => ({
   id: contact.id,
   contact_type: contact.contact_type,
   name: contact.name,
-  organization: contact.organization ?? null,
-  organization_id: contact.organization_id ?? null,
-  email: contact.email ?? null,
+  organization: contact.organization ?? undefined,
+  organization_id: contact.organization_id ?? undefined,
+  email: contact.email ?? undefined,
 });
 
 export const useAllPersonContacts = () => {

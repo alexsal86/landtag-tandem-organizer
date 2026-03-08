@@ -65,7 +65,7 @@ export const useContactDocumentCounts = (contactIds: string[]) => {
           // Count matches for each contact
           contactsWithTags.forEach(contact => {
             const matchingDocs = taggedDocs?.filter(doc => 
-              doc.tags && doc.tags.some((tag: string) => contact.tags.includes(tag))
+              doc.tags && doc.tags.some((tag: string) => contact.tags?.includes(tag))
             ) || [];
             
             // Exclude documents already counted in direct links

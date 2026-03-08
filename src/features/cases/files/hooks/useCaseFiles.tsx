@@ -19,7 +19,7 @@ export interface CaseFile {
   start_date: string | null;
   target_date: string | null;
   tags: string[] | null;
-  is_private: boolean;
+  is_private: boolean | null;
   visibility: string;
   current_status_note: string | null;
   current_status_updated_at: string | null;

@@ -37,7 +37,7 @@ interface TaskCategory {
 
 interface UserProfile {
   user_id: string;
-  display_name: string;
+  display_name: string | null;
 }
 
 export const NewsToTaskDialog: React.FC<NewsToTaskDialogProps> = ({

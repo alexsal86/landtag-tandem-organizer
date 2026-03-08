@@ -771,7 +771,7 @@ export function useQuickNotes(refreshTrigger?: number) {
     const { data, error } = await supabase
       .from("quick_note_versions").select("*").eq("note_id", note.id).order("created_at", { ascending: false });
     if (error) { debugConsole.error("Error loading versions:", error); toast.error("Fehler beim Laden der Versionen"); return; }
-    setVersions(data || []);
+    setVersions((data || []).map(v => ({ ...v, created_at: v.created_at ?? '' })));
     setVersionHistoryNote(note);
     setVersionHistoryOpen(true);
   };

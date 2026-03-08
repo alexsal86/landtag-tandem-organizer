@@ -12,12 +12,12 @@ import { debugConsole } from '@/utils/debugConsole';
 interface Habit {
   id: string;
   name: string;
-  description?: string;
-  color: string;
+  description?: string | null;
+  color: string | null;
   frequency: 'daily' | 'weekly' | 'monthly';
-  target_count: number;
-  category: string;
-  is_active: boolean;
+  target_count: number | null;
+  category: string | null;
+  is_active: boolean | null;
   created_at: string;
 }
 
@@ -26,7 +26,7 @@ interface HabitCompletion {
   habit_id: string;
   completion_date: string;
   count: number;
-  notes?: string;
+  notes?: string | null;
 }
 
 interface HabitWithStats extends Habit {
@@ -131,7 +131,7 @@ export const HabitsWidget: React.FC<HabitsWidgetProps> = ({
       // Today's count
       const todayCompletion = habitCompletions.find(c => c.completion_date === today);
       const todayCount = todayCompletion?.count || 0;
-      const isCompletedToday = todayCount >= habit.target_count;
+      const isCompletedToday = todayCount >= (habit.target_count ?? 1);
       
       // Calculate streak
       let currentStreak = 0;
@@ -144,7 +144,7 @@ export const HabitsWidget: React.FC<HabitsWidgetProps> = ({
         const dateStr = checkDate.toISOString().split('T')[0];
         
         const dayCompletion = sortedCompletions.find(c => c.completion_date === dateStr);
-        if (dayCompletion && dayCompletion.count >= habit.target_count) {
+        if (dayCompletion && dayCompletion.count >= (habit.target_count ?? 1)) {
           currentStreak++;
         } else {
           break;
@@ -159,7 +159,7 @@ export const HabitsWidget: React.FC<HabitsWidgetProps> = ({
         const dateStr = checkDate.toISOString().split('T')[0];
         
         const dayCompletion = habitCompletions.find(c => c.completion_date === dateStr);
-        if (dayCompletion && dayCompletion.count >= habit.target_count) {
+        if (dayCompletion && dayCompletion.count >= (habit.target_count ?? 1)) {
           completedDays++;
         }
       }
@@ -227,7 +227,7 @@ export const HabitsWidget: React.FC<HabitsWidgetProps> = ({
 
       if (existingCompletion) {
         // Update existing completion
-        const newCount = Math.min(existingCompletion.count + 1, habit.target_count);
+        const newCount = Math.min(existingCompletion.count + 1, habit.target_count ?? 1);
         const { error } = await supabase
           .from('habit_completions')
           .update({ count: newCount })
@@ -253,16 +253,16 @@ export const HabitsWidget: React.FC<HabitsWidgetProps> = ({
 
         if (error) throw error;
 
-        setCompletions(prev => [data, ...prev]);
+        setCompletions(prev => [{ ...data, count: data.count ?? 1, notes: data.notes ?? undefined }, ...prev]);
       }
 
       // Recalculate stats
       loadCompletions();
       
-      if (habit.todayCount + 1 >= habit.target_count) {
+      if (habit.todayCount + 1 >= (habit.target_count ?? 1)) {
         toast.success(`${habit.name} für heute abgeschlossen! 🎉`);
       } else {
-        toast.success(`${habit.name} markiert (${habit.todayCount + 1}/${habit.target_count})`);
+        toast.success(`${habit.name} markiert (${habit.todayCount + 1}/${habit.target_count ?? 1})`);
       }
     } catch (error) {
       debugConsole.error('Error completing habit:', error);
@@ -366,11 +366,11 @@ export const HabitsWidget: React.FC<HabitsWidgetProps> = ({
                         {/* Progress */}
                         <div className="flex items-center gap-2">
                           <Progress 
-                            value={(habit.todayCount / habit.target_count) * 100} 
+                            value={(habit.todayCount / (habit.target_count ?? 1)) * 100} 
                             className="flex-1 h-2"
                           />
                           <span className="text-xs text-muted-foreground">
-                            {habit.todayCount}/{habit.target_count}
+                            {habit.todayCount}/{habit.target_count ?? 1}
                           </span>
                         </div>
                         

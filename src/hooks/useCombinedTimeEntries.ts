@@ -32,7 +32,7 @@ interface HolidayRow {
   id: string;
   holiday_date: string;
   name: string;
-  is_nationwide?: boolean;
+  is_nationwide?: boolean | null;
   state?: string | null;
 }
 
