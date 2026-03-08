@@ -247,7 +247,7 @@ export function useLetterOperations(opts: UseLetterOperationsOptions) {
     try {
       const { error } = await supabase
         .from('letter_comments')
-        .insert({ letter_id: letter.id, user_id: userId, content, comment_type: 'comment' });
+        .insert([{ letter_id: letter.id, user_id: userId, content, comment_type: 'comment' }]);
       if (error) throw error;
       fetchComments();
       toast({ title: 'Kommentar hinzugefügt', description: 'Der Kommentar wurde erfolgreich hinzugefügt.' });

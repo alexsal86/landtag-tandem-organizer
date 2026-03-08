@@ -385,13 +385,13 @@ export function useMeetingArchive(deps: ArchiveDeps) {
 
               allAppointments.sort((a, b) => new Date(a.start_time).getTime() - new Date(b.start_time).getTime());
               const allAssignedIds = `{${allParticipantIds.join(',')}}`;
-              const { data: apptTask } = await supabase.from('tasks').insert({
+              const { data: apptTask } = await supabase.from('tasks').insert([{
                 user_id: user.id, title: `Vorbereitung: Markierte Termine aus ${meeting.title}`,
                 description: `Folgende Termine wurden in der Besprechung als wichtig markiert.`,
                 priority: 'medium', category: 'meeting', status: 'todo', assigned_to: allAssignedIds,
                 tenant_id: meetingTenantId,
                 due_date: new Date(Date.now() + 3 * 24 * 60 * 60 * 1000).toISOString()
-              }).select().single();
+              }]).select().single();
 
               if (apptTask) {
                 const childTasks = allAppointments.map(apt => {

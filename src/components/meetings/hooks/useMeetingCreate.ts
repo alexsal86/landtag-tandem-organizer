@@ -70,12 +70,12 @@ export function useMeetingCreate(deps: UseMeetingCreateDeps) {
           const meetingDateStr = format(newMeeting.meeting_date, 'yyyy-MM-dd');
           const localStartTime = new Date(`${meetingDateStr}T${newMeetingTime}:00`);
           const localEndTime = new Date(localStartTime.getTime() + 60 * 60 * 1000);
-          await supabase.from('appointments').insert({
+          await supabase.from('appointments').insert([{
             title: newMeeting.title, description: newMeeting.description || null,
             location: newMeeting.location || null, start_time: localStartTime.toISOString(),
             end_time: localEndTime.toISOString(), category: 'meeting', status: 'planned',
             user_id: user.id, tenant_id: currentTenant.id, meeting_id: data.id
-          });
+          }]);
         } catch (e) { debugConsole.error('Error creating appointment for meeting:', e); }
       }
 

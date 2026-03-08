@@ -311,10 +311,10 @@ export function useTeamAnnouncements() {
     try {
       const { error } = await supabase
         .from("team_announcement_dismissals")
-        .insert({
+        .insert([{
           announcement_id: announcementId,
           user_id: user.id,
-        });
+        }]);
 
       if (error) throw error;
 

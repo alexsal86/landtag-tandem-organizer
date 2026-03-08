@@ -229,7 +229,7 @@ export const LetterTemplateIntegration: React.FC<LetterTemplateIntegrationProps>
         // Create new template
         const { error } = await supabase
           .from('letter_templates')
-          .insert({
+          .insert([{
             tenant_id: currentTenant.id,
             created_by: (await supabase.auth.getUser()).data.user?.id,
             name: formData.name,
@@ -238,7 +238,7 @@ export const LetterTemplateIntegration: React.FC<LetterTemplateIntegrationProps>
             response_time_days: formData.response_time_days,
             is_default: formData.is_default,
             is_active: formData.is_active
-          });
+          }]);
 
         if (error) throw error;
 

@@ -269,11 +269,11 @@ export function useAgendaOperations(deps: AgendaOpsDeps) {
       }
 
       const { data: subItemData, error: subItemError } = await supabase
-        .from('meeting_agenda_items').insert({
+        .from('meeting_agenda_items').insert([{
           meeting_id: selectedMeeting.id, title: title || '', description: null,
           parent_id: parentId, order_index: parentIndex + 1, is_completed: false, is_recurring: false,
           assigned_to: user?.id ? [user.id] : null,
-        }).select().single();
+        }]).select().single();
       if (subItemError) throw subItemError;
 
       const newSubItem: AgendaItem = { ...subItemData, localKey: subItemData.id, parentLocalKey: parentId };

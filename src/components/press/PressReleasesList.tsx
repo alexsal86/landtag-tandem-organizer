@@ -116,7 +116,7 @@ export function PressReleasesList({ onCreateNew, onSelect }: PressReleasesListPr
         if (existing) {
           await supabase.from('app_settings').update({ setting_value: value }).eq('id', existing.id);
         } else {
-          await supabase.from('app_settings').insert({ tenant_id: currentTenant.id, setting_key: key, setting_value: value });
+          await supabase.from('app_settings').insert([{ tenant_id: currentTenant.id, setting_key: key, setting_value: value }]);
         }
       }
 

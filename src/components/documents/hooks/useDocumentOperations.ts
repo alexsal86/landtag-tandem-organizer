@@ -251,11 +251,11 @@ export function useDocumentOperations({
         }]);
         if (error) throw error;
       } else {
-        const { error } = await supabase.from('tasks').insert({
+        const { error } = await supabase.from('tasks').insert([{
           user_id: user.id, tenant_id: currentTenant.id, parent_task_id: parentTaskId,
           title: sourceLetterForTask.id ? `${taskTitle.trim()} [[letter:${sourceLetterForTask.id}]]` : taskTitle.trim(),
           description: taskDescription.trim() || null, status: 'todo', priority: 'medium', category: 'personal', assigned_to: user.id,
-        });
+        }]);
         if (error) throw error;
       }
       toast({ title: taskDialogMode === 'task' ? 'Aufgabe erstellt' : 'Unteraufgabe erstellt' });

@@ -180,11 +180,11 @@ export const LetterTemplateSettings: React.FC<LetterTemplateSettingsProps> = ({ 
       } else {
         const { error } = await supabase
           .from('letter_template_settings')
-          .insert({
+          .insert([{
             tenant_id: currentTenant.id,
             variable_defaults: variableDefaults,
             din5008_defaults: din5008Defaults,
-          });
+          }]);
         if (error) throw error;
       }
 
