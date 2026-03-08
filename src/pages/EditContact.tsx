@@ -92,8 +92,8 @@ export default function EditContact() {
     const { data, error } = await supabase
       .from("contacts")
       .select("*")
-      .eq("id", id)
-      .eq("tenant_id", currentTenant.id)
+      .eq("id", id!)
+      .eq("tenant_id", currentTenant!.id)
       .single();
     if (error || !data) {
       toast({
