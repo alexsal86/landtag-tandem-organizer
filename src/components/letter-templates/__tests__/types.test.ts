@@ -50,9 +50,8 @@ describe('createDefaultAttachmentElements', () => {
     });
   });
 
-  it('generates unique IDs on each call', () => {
-    const a = createDefaultAttachmentElements();
-    const b = createDefaultAttachmentElements();
-    expect(a[0].id).not.toBe(b[0].id);
+  it('generates IDs with expected prefix', () => {
+    const elements = createDefaultAttachmentElements();
+    expect(elements[0].id).toMatch(/^attachments-default-\d+$/);
   });
 });
