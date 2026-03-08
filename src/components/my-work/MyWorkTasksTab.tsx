@@ -131,7 +131,7 @@ export function MyWorkTasksTab() {
       if (error) throw error;
       setProfiles(data || []);
     } catch (error) {
-      console.error('Error loading profiles:', error);
+      debugConsole.error('Error loading profiles:', error);
     }
   };
 
