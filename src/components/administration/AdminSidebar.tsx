@@ -163,6 +163,7 @@ export const adminMenuItems: AdminMenuItem[] = [
       { id: "geo-import", label: "Geo-Datenimport", icon: Globe },
       { id: "mywork-overview", label: "Meine Arbeit Übersicht", icon: PanelTop },
       { id: "dashboard-hints", label: "Dashboard-Hinweise", icon: PanelTop },
+      { id: "motivational-messages", label: "Motivationssprüche", icon: PanelTop },
     ],
   },
 ];

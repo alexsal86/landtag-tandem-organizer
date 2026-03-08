@@ -2234,6 +2234,8 @@ const [editingChild, setEditingChild] = useState<{ parentIndex: number; childInd
           return <MyWorkSystemOverview />;
         case "dashboard-hints":
           return <DashboardHintSettings />;
+        case "motivational-messages":
+          return <MotivationalMessagesOverview />;
         default:
           return null;
       }
