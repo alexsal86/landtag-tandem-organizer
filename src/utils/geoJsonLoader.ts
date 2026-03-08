@@ -238,7 +238,7 @@ export const loadElectoralDistrictsGeoJson = async (): Promise<GeoJsonData> => {
       }
 
       if (!fc || fc.type !== 'FeatureCollection' || !Array.isArray(fc.features)) {
-        console.warn('Invalid GeoJSON structure from', path);
+        debugConsole.warn('Invalid GeoJSON structure from', path);
         continue;
       }
 
