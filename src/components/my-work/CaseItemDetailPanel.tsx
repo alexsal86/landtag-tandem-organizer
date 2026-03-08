@@ -563,6 +563,16 @@ export function CaseItemDetailPanel({
           </div>
         </div>
       )}
+
+      {/* Delete action */}
+      {onDelete && (
+        <div className="mt-6 pt-4 border-t border-dashed">
+          <Button variant="ghost" size="sm" className="text-destructive hover:text-destructive hover:bg-destructive/10" onClick={onDelete}>
+            <Trash2 className="mr-2 h-3.5 w-3.5" />
+            Vorgang löschen
+          </Button>
+        </div>
+      )}
     </div>
   );
 }
