@@ -62,7 +62,7 @@ export const PollResponseInterface = ({ pollId, token, participantId, isPreview 
         // Load poll information
         const { data: pollData, error: pollError } = await supabase
           .from('appointment_polls')
-          .select('*')
+          .select('id, title, description, deadline, status')
           .eq('id', pollId)
           .maybeSingle();
 
