@@ -1,5 +1,5 @@
 import React from 'react';
-import { CalendarEvent } from '../CalendarView';
+import { CalendarEvent } from './types';
 import { CalendarEventComponent } from './CalendarEventComponent';
 import { isSameDay, format } from 'date-fns';
 import { de } from 'date-fns/locale';

@@ -6,7 +6,7 @@ import 'moment/locale/de';
 import 'react-big-calendar/lib/css/react-big-calendar.css';
 import 'react-big-calendar/lib/addons/dragAndDrop/styles.css';
 import { CalendarEventAdapter, type RBCEvent } from './CalendarEventAdapter';
-import type { CalendarEvent } from '../CalendarView';
+import type { CalendarEvent } from './types';
 
 interface ProperReactBigCalendarProps {
   events: CalendarEvent[];

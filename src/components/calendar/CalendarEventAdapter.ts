@@ -1,4 +1,4 @@
-import { CalendarEvent } from "../CalendarView";
+import { CalendarEvent } from "./types";
 
 // React Big Calendar event interface
 export interface RBCEvent {
