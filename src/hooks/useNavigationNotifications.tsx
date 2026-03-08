@@ -125,7 +125,7 @@ export const useNavigationNotifications = (): NavigationNotifications => {
         );
 
       if (error) {
-        console.error('Error marking navigation as visited:', error);
+        debugConsole.error('Error marking navigation as visited:', error);
         return;
       }
 
