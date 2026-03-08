@@ -127,8 +127,8 @@ export function MessageSystem() {
         }));
 
       // Separate read messages for user archive
-      const unreadMessages = convertedReceivedMessages.filter(msg => !msg.has_read);
-      const readMessages = convertedReceivedMessages.filter(msg => msg.has_read);
+      const unreadMessages = convertedReceivedMessages.filter((msg: any) => !msg.has_read);
+      const readMessages = convertedReceivedMessages.filter((msg: any) => msg.has_read);
 
       setActiveMessages(unreadMessages);
       setArchivedUserMessages(readMessages);
