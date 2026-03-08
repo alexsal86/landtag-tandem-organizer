@@ -57,7 +57,7 @@ export function TenantCollaboration() {
         .or(`tenant_a_id.eq.${currentTenant.id},tenant_b_id.eq.${currentTenant.id}`);
 
       if (error) {
-        console.error("Error fetching collaborations:", error);
+        debugConsole.error("Error fetching collaborations:", error);
         return;
       }
 
