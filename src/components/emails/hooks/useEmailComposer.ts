@@ -210,7 +210,7 @@ export function useEmailComposer() {
       if (error) throw error;
       setEmailTemplates(data || []);
     } catch (error) {
-      console.error("Error fetching email templates:", error);
+      debugConsole.error("Error fetching email templates:", error);
     }
   };
 
