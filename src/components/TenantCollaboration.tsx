@@ -63,7 +63,7 @@ export function TenantCollaboration() {
 
       setCollaborations(data || []);
     } catch (error) {
-      console.error("Error in fetchCollaborations:", error);
+      debugConsole.error("Error in fetchCollaborations:", error);
     } finally {
       setLoading(false);
     }
