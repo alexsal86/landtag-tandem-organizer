@@ -111,7 +111,7 @@ export const QuickNotesWidget: React.FC<QuickNotesWidgetProps> = ({
           const settings = JSON.parse(saved);
           setShowDeleteConfirmation(settings.showDeleteConfirmation ?? true);
         } catch (error) {
-          console.error('Error loading settings:', error);
+          debugConsole.error('Error loading settings:', error);
         }
       }
     }
