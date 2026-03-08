@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { debugConsole } from "@/utils/debugConsole";
 import { useAuth } from "@/hooks/useAuth";
 import { useTenant } from "@/hooks/useTenant";
 import { useToast } from "@/hooks/use-toast";
@@ -165,10 +166,10 @@ export function AnnualTasksView() {
 
     try {
       const { data: tasksData, error: tasksError } = await supabase
-        .from("annual_tasks" as any)
+        .from("annual_tasks")
         .select("*")
         .eq("tenant_id", currentTenant.id)
-        .order("due_month", { ascending: true }) as { data: AnnualTask[] | null; error: any };
+        .order("due_month", { ascending: true });
 
       if (tasksError) throw tasksError;
 
@@ -180,10 +181,10 @@ export function AnnualTasksView() {
       }
 
       const { data: completionsData, error: completionsError } = await supabase
-        .from("annual_task_completions" as any)
+        .from("annual_task_completions")
         .select("*")
         .in("annual_task_id", taskIds)
-        .eq("year", currentYear) as { data: AnnualTaskCompletion[] | null; error: any };
+        .eq("year", currentYear);
 
       if (completionsError) throw completionsError;
 
@@ -208,7 +209,7 @@ export function AnnualTasksView() {
 
       setTasks(tasksWithStatus);
     } catch (error) {
-      console.error("Error loading annual tasks:", error);
+      debugConsole.error("Error loading annual tasks:", error);
     } finally {
       setLoading(false);
     }
@@ -240,7 +241,7 @@ export function AnnualTasksView() {
       
       setAffectedCount(count || 0);
     } catch (error) {
-      console.error("Error loading affected count:", error);
+      debugConsole.error("Error loading affected count:", error);
       setAffectedCount(null);
     }
   };
@@ -261,7 +262,7 @@ export function AnnualTasksView() {
         );
 
         if (error) {
-          console.error("Function execution error:", error);
+          debugConsole.error("Function execution error:", error);
           toast({ 
             title: "Fehler bei der Ausführung", 
             description: error.message,
@@ -278,14 +279,14 @@ export function AnnualTasksView() {
       // Update auto_execute setting if changed
       if (selectedTask.is_system_task && enableAutoExecute !== selectedTask.auto_execute) {
         await supabase
-          .from("annual_tasks" as any)
+          .from("annual_tasks")
           .update({ auto_execute: enableAutoExecute })
           .eq("id", selectedTask.id);
       }
 
       // Mark task as completed
       const { error } = await supabase
-        .from("annual_task_completions" as any)
+        .from("annual_task_completions")
         .upsert({
           annual_task_id: selectedTask.id,
           year: currentYear,
@@ -313,7 +314,7 @@ export function AnnualTasksView() {
       }, result ? 2000 : 500);
 
     } catch (error: any) {
-      console.error("Error completing task:", error);
+      debugConsole.error("Error completing task:", error);
       toast({ title: "Fehler", description: error.message, variant: "destructive" });
     } finally {
       setCompleting(false);

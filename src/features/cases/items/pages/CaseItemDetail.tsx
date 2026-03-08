@@ -144,30 +144,30 @@ const CaseItemDetail = () => {
     if (!caseItemId || !currentTenant) return;
     setLoading(true);
 
-    const { data: caseItemData } = await (supabase
+    const { data: caseItemData } = await supabase
       .from("case_items")
       .select("id, source_channel, status, owner_user_id, due_at, follow_up_at, case_file_id, case_scale, updated_at")
       .eq("tenant_id", currentTenant.id)
       .eq("id", caseItemId)
-      .maybeSingle() as any);
+      .maybeSingle();
 
     const ci = (caseItemData as CaseItemRecord | null) ?? null;
     setCaseItem(ci);
 
     const [{ data: files }, { data: itemTimeline }] = await Promise.all([
       supabase.from("case_files").select("id, title").eq("tenant_id", currentTenant.id).in("status", ["active", "pending"]).order("updated_at", { ascending: false }).limit(20),
-      (supabase.from("case_item_interactions").select("id, created_at, subject").eq("case_item_id", caseItemId).order("created_at", { ascending: false }).limit(20) as any),
+      supabase.from("case_item_interactions").select("id, created_at, subject").eq("case_item_id", caseItemId).order("created_at", { ascending: false }).limit(20) as any,
     ]);
 
     setAssignableFiles(files ?? []);
     setTimelineEntries(itemTimeline ?? []);
 
     if (ci?.case_file_id) {
-      const { data: cf } = await (supabase
+      const { data: cf } = await supabase
         .from("case_files")
         .select("id, title, case_type, case_scale, start_date, target_date, risks_and_opportunities")
         .eq("id", ci.case_file_id)
-        .maybeSingle() as any);
+        .maybeSingle();
 
       setCaseFile((cf as CaseFileRecord | null) ?? null);
     } else {

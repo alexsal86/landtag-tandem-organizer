@@ -203,12 +203,12 @@ export function AutomationRulesManager() {
     setLoading(true);
     const [{ data: rulesData, error: rulesError }, { data: runData, error: runsError }] = await Promise.all([
       supabase
-        .from("automation_rules" as any)
+        .from("automation_rules")
         .select("id, name, description, module, trigger_type, trigger_config, conditions, actions, enabled, updated_at")
         .eq("tenant_id", currentTenant.id)
         .order("updated_at", { ascending: false }),
       supabase
-        .from("automation_rule_runs" as any)
+        .from("automation_rule_runs")
         .select("id, rule_id, status, dry_run, trigger_source, started_at, error_message")
         .eq("tenant_id", currentTenant.id)
         .order("started_at", { ascending: false })
@@ -254,7 +254,7 @@ export function AutomationRulesManager() {
 
   const loadRunSteps = async (runId: string) => {
     const { data, error } = await supabase
-      .from("automation_rule_run_steps" as any)
+      .from("automation_rule_run_steps")
       .select("id, run_id, step_order, step_type, status, result_payload, error_message")
       .eq("run_id", runId)
       .order("step_order", { ascending: true });
@@ -382,8 +382,8 @@ export function AutomationRulesManager() {
     };
 
     const query = editingRuleId
-      ? supabase.from("automation_rules" as any).update(payload).eq("id", editingRuleId)
-      : supabase.from("automation_rules" as any).insert({ ...payload, created_by: user.id });
+      ? supabase.from("automation_rules").update(payload).eq("id", editingRuleId)
+      : supabase.from("automation_rules").insert({ ...payload, created_by: user.id });
 
     const { error } = await query;
 
@@ -399,7 +399,7 @@ export function AutomationRulesManager() {
   };
 
   const deleteRule = async (ruleId: string) => {
-    const { error } = await supabase.from("automation_rules" as any).delete().eq("id", ruleId);
+    const { error } = await supabase.from("automation_rules").delete().eq("id", ruleId);
     if (error) {
       toast({ title: "Löschen fehlgeschlagen", description: error.message, variant: "destructive" });
       return;

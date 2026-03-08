@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Monitor, Smartphone, Tablet, Globe, LogOut, Shield } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
+import { debugConsole } from "@/utils/debugConsole";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
 import { format, formatDistanceToNow } from "date-fns";
@@ -54,15 +55,15 @@ export function ActiveSessionsCard() {
     if (!user?.id) return;
     try {
       const { data, error } = await supabase
-        .from('user_sessions' as any)
-        .select('*')
+        .from('user_sessions')
+        .select('id, device_info, ip_address, last_active_at, created_at, is_current')
         .eq('user_id', user.id)
         .order('last_active_at', { ascending: false });
 
       if (error) throw error;
-      setSessions((data || []) as unknown as UserSession[]);
+      setSessions((data || []) as UserSession[]);
     } catch (error) {
-      console.error('Error loading sessions:', error);
+      debugConsole.error('Error loading sessions:', error);
     } finally {
       setLoading(false);
     }

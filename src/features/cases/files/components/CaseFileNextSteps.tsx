@@ -10,6 +10,7 @@ import { format, isPast } from "date-fns";
 import { de } from "date-fns/locale";
 import { cn } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
+import { debugConsole } from "@/utils/debugConsole";
 import { useAuth } from "@/hooks/useAuth";
 import { useTenant } from "@/hooks/useTenant";
 import { useToast } from "@/hooks/use-toast";
@@ -182,7 +183,7 @@ export function CaseFileNextSteps({
           tenant_id: resolvedTenantId,
           assigned_to: assignedTo || user.id,
           parent_task_id: parentTaskId,
-        } as any)
+        })
         .select()
         .single();
 
@@ -193,7 +194,7 @@ export function CaseFileNextSteps({
       setQuickTaskTitle("");
       onRefresh();
     } catch (error) {
-      console.error("Error creating quick task:", error);
+      debugConsole.error("Error creating quick task:", error);
       toast({
         title: "Schnellaufgabe konnte nicht erstellt werden",
         variant: "destructive",

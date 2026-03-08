@@ -317,11 +317,11 @@ export const useCaseFileDetails = (caseFileId: string | null) => {
 
   const fetchInteractions = useCallback(async () => {
     if (!caseFileId) return;
-    const { data, error } = await (supabase
+    const { data, error } = await supabase
       .from("case_item_interactions")
       .select("*")
       .eq("case_file_id", caseFileId)
-      .order("created_at", { ascending: false }) as any);
+      .order("created_at", { ascending: false });
 
     if (error) {
       debugConsole.error("Error fetching interactions:", error);
@@ -739,7 +739,7 @@ export const useCaseFileDetails = (caseFileId: string | null) => {
         .update({
           current_status_note: note,
           current_status_updated_at: new Date().toISOString(),
-        } as any)
+        })
         .eq('id', caseFileId);
 
       if (error) throw error;
@@ -758,7 +758,7 @@ export const useCaseFileDetails = (caseFileId: string | null) => {
     try {
       const { error } = await supabase
         .from('case_files')
-        .update({ risks_and_opportunities: data } as any)
+        .update({ risks_and_opportunities: data as unknown as import('@/integrations/supabase/types').Json })
         .eq('id', caseFileId);
 
       if (error) throw error;
@@ -794,7 +794,7 @@ export const useCaseFileDetails = (caseFileId: string | null) => {
     try {
       const { error } = await supabase
         .from('case_files')
-        .update({ assigned_to: userId } as any)
+        .update({ assigned_to: userId })
         .eq('id', caseFileId);
 
       if (error) throw error;
@@ -813,7 +813,7 @@ export const useCaseFileDetails = (caseFileId: string | null) => {
     try {
       const { error } = await supabase
         .from('case_files')
-        .update({ processing_statuses: statuses } as any)
+        .update({ processing_statuses: statuses })
         .eq('id', caseFileId);
 
       if (error) throw error;
