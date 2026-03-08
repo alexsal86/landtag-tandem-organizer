@@ -109,7 +109,7 @@ export function TaskArchiveModal({ isOpen, onClose, onTaskRestored }: TaskArchiv
       if (error && error.code !== 'PGRST116') throw error;
       setArchiveSettings(data || {});
     } catch (error) {
-      console.error('Error loading archive settings:', error);
+      debugConsole.error('Error loading archive settings:', error);
     }
   };
 
