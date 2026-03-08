@@ -29,7 +29,7 @@ export function useDocumentsData(activeTab: string) {
       setDocuments((data || []).map(doc => ({
         ...doc,
         archived_attachments: Array.isArray(doc.archived_attachments) ? doc.archived_attachments : []
-      })));
+      })) as Document[]);
     } catch (error: unknown) {
       toast({ title: "Fehler beim Laden", description: error instanceof Error ? error.message : String(error), variant: "destructive" });
     } finally {
