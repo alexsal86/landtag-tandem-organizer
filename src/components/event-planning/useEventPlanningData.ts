@@ -564,7 +564,7 @@ export function useEventPlanningData() {
       if (error) {
         const isNetworkError = error.message?.includes("Failed to fetch") || error.message?.includes("NetworkError") || error.message?.includes("TypeError");
         if (isNetworkError) {
-          console.warn("Network interruption detected, verifying server state...", error);
+          debugConsole.warn("Network interruption detected, verifying server state...", error);
           setTimeout(async () => {
             if (selectedPlanning) {
               const { data: freshItems } = await supabase.from("event_planning_checklist_items").select("*").eq("event_planning_id", selectedPlanning.id).order("order_index", { ascending: true });
