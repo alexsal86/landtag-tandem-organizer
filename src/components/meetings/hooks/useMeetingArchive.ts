@@ -59,7 +59,7 @@ export function useMeetingArchive(deps: ArchiveDeps) {
       try {
         const dedupeKey = `${sourceMeeting.id}::${item.title}`;
         if (existingSet.has(dedupeKey)) continue;
-        const { error } = await supabase.from('meeting_agenda_items').insert({
+        const { error } = await supabase.from('meeting_agenda_items').insert([{
           meeting_id: targetMeetingId, parent_id: reviewParentId, title: item.title,
           description: item.description, notes: item.notes, result_text: item.result_text,
           assigned_to: item.assigned_to, order_index: nextOrderIndex++,
@@ -67,7 +67,7 @@ export function useMeetingArchive(deps: ArchiveDeps) {
           original_meeting_date: typeof sourceMeeting.meeting_date === 'string' ? sourceMeeting.meeting_date : sourceMeeting.meeting_date?.toISOString().split('T')[0],
           original_meeting_title: sourceMeeting.title,
           carryover_notes: `Übertragen von: ${sourceMeeting.title} (${sourceMeeting.meeting_date})`
-        });
+        }]);
         if (error) debugConsole.error('Error transferring item:', error);
         else existingSet.add(dedupeKey);
       } catch (error) {
