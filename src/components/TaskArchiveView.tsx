@@ -190,7 +190,7 @@ export function TaskArchiveView() {
         description: "Archiv-Einstellungen wurden automatisch aktualisiert.",
       });
     } catch (error) {
-      console.error('Error saving archive settings:', error);
+      debugConsole.error('Error saving archive settings:', error);
       toast({
         title: "Fehler",
         description: "Einstellungen konnten nicht gespeichert werden.",
