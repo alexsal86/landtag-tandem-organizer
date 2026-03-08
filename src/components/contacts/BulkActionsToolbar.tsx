@@ -140,7 +140,7 @@ export function BulkActionsToolbar({
       setSelectedCategory('');
       onActionComplete();
     } catch (error) {
-      console.error('Error changing category:', error);
+      debugConsole.error('Error changing category:', error);
       toast({
         title: 'Fehler',
         description: 'Kategorie konnte nicht geändert werden',
