@@ -518,7 +518,7 @@ export function EmployeeMeetingProtocol({ meetingId, onBack }: EmployeeMeetingPr
       setActionItems(actionItems.map(item => item.id === itemId ? { ...item, ...updates } : item));
       toast({ title: "Aktualisiert", description: "Action Item wurde aktualisiert" });
     } catch (error: unknown) {
-      console.error("Error updating action item:", error);
+      debugConsole.error("Error updating action item:", error);
       toast({ title: "Fehler", description: "Action Item konnte nicht aktualisiert werden", variant: "destructive" });
     }
   };
