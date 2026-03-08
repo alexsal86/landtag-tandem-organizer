@@ -144,9 +144,10 @@ export function usePressReleaseEditor({ pressReleaseId, initialDraft, onBack }: 
         const { data: sp } = await supabase.from("profiles").select("display_name").eq("user_id", data.email_sent_by).maybeSingle();
         setEmailSenderName(sp?.display_name || "Unbekannt");
       } else setEmailSenderName(null);
-    } catch (error: any) {
-      if (error?.message?.includes("Failed to fetch") || error?.message?.includes("NetworkError")) return;
-      toast({ title: "Fehler beim Laden", description: error.message, variant: "destructive" });
+    } catch (error: unknown) {
+      const msg = error instanceof Error ? error.message : String(error);
+      if (msg?.includes("Failed to fetch") || msg?.includes("NetworkError")) return;
+      toast({ title: "Fehler beim Laden", description: msg, variant: "destructive" });
     } finally {
       setLoading(false);
     }
