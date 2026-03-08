@@ -341,7 +341,6 @@ export function TaskCard({
             <TaskCard
               key={childTask.id}
               task={childTask}
-              className={className}
               isHighlighted={isHighlighted}
               getHighlightRef={getHighlightRef}
               subtasks={getChildTasks ? getChildTasks(childTask.id) : []}
