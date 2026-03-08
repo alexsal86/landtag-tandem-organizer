@@ -34,7 +34,7 @@ export function useAgendaOperations(deps: AgendaOpsDeps) {
       try {
         await supabase.from('meeting_agenda_items').update({ [field]: value }).eq('id', itemId);
       } catch (error) {
-        console.error('Error updating agenda item:', error);
+        debugConsole.error('Error updating agenda item:', error);
         toast({ title: "Fehler", description: "Die Änderung konnte nicht gespeichert werden.", variant: "destructive" });
       }
     }
