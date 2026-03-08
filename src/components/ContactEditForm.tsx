@@ -361,7 +361,7 @@ export function ContactEditForm({ contact, onSuccess, onCancel }: ContactEditFor
 
       onSuccess();
     } catch (error) {
-      console.error('Error updating contact:', error);
+      debugConsole.error('Error updating contact:', error);
       toast({
         title: "Fehler",
         description: "Kontakt konnte nicht aktualisiert werden.",
