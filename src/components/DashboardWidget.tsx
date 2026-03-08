@@ -483,7 +483,7 @@ export function DashboardWidget({ widget, isDragging, isEditMode, onResize, onDe
                                   await supabase
                                     .from('task_snoozes')
                                     .upsert({
-                                      user_id: user?.id,
+                                      user_id: user?.id ?? '',
                                       [isTask ? 'task_id' : 'subtask_id']: item.id,
                                       snoozed_until: snoozeDate + 'T00:00:00.000Z'
                                     });

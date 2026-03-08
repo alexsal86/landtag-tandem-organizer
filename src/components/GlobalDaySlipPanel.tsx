@@ -94,7 +94,7 @@ export function GlobalDaySlipPanel() {
   // Panel close flow
   const animateClosePanel = () => {
     try { localStorage.setItem(STORAGE_KEY, JSON.stringify(ds.store)); } catch {}
-    clearTimeout(ds.saveTimeoutRef.current);
+    clearTimeout(ds.saveTimeoutRef.current as unknown as number | undefined);
     setClosing(true);
     setTimeout(() => { ds.setResolveMode(false); setOpen(false); setClosing(false); setShowCompletePulse(true); setTimeout(() => setShowCompletePulse(false), 500); }, 220);
   };

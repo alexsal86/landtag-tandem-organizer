@@ -97,7 +97,7 @@ export function DistributionListForm({ distributionListId, onSuccess, onBack }: 
       const { data: members, error: membersError } = await supabase
         .from('distribution_list_members')
         .select('contact_id')
-        .eq('distribution_list_id', distributionListId);
+        .eq('distribution_list_id', distributionListId!);
 
       if (membersError) throw membersError;
       setSelectedContactIds(members?.map(m => m.contact_id) || []);

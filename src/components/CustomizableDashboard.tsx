@@ -344,7 +344,7 @@ export const CustomizableDashboard: React.FC = () => {
                       <DropdownMenuItem
                         key={layout.id}
                         onClick={() => switchLayout(layout.id!)}
-                        className={currentLayout.id === layout.id ? 'bg-accent' : ''}
+                        className={currentLayout?.id === layout.id ? 'bg-accent' : ''}
                       >
                         {layout.name}
                       </DropdownMenuItem>

@@ -299,8 +299,8 @@ export function EmployeeMeetingHistory({ employeeId, showFilters = true }: Emplo
                   </TableCell>
                   <TableCell>
                     <div className="flex items-center gap-1">
-                      <Badge variant={meeting.open_action_items > 0 ? "default" : "outline"}>
-                        {meeting.open_action_items}/{meeting.total_action_items}
+                      <Badge variant={(meeting.open_action_items ?? 0) > 0 ? "default" : "outline"}>
+                        {meeting.open_action_items ?? 0}/{meeting.total_action_items ?? 0}
                       </Badge>
                     </div>
                   </TableCell>
