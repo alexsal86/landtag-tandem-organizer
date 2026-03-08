@@ -116,7 +116,7 @@ const richTextToPlain = (value: string | null | undefined): string => {
 
 const sanitizeTimelineNote = (note: string | undefined) => {
   if (!note) return undefined;
-  return DOMPurify.sanitize(note, { USE_PROFILES: { html: true } });
+  return sanitizeRichHtml(note);
 };
 
 const parseTimelineEvents = (payload: CaseItemIntakePayload | null): TimelineEvent[] => {

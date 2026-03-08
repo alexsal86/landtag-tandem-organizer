@@ -439,7 +439,7 @@ export const LetterEditorCanvas: React.FC<LetterEditorCanvasProps> = ({
     <>
       <div
         className="din5008-content-text"
-        dangerouslySetInnerHTML={{ __html: renderedHtml }}
+        dangerouslySetInnerHTML={{ __html: sanitizeRichHtml(renderedHtml) }}
       />
       {renderClosing()}
       {renderAttachments()}
