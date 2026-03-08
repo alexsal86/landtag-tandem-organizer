@@ -221,7 +221,7 @@ export function MyWorkView() {
     setCountLoadError(null);
 
     try {
-      const { data, error } = await supabase.rpc("get_my_work_counts" as any, {
+      const { data, error } = await supabase.rpc("get_my_work_counts", {
         p_user_id: user.id,
         p_include_team: includeTeamCount,
       });

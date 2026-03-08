@@ -180,13 +180,13 @@ export function useTimeTrackingOperations({
     try {
       const leave = leaves.find(l => l.id === leaveId);
       if (!leave) { toast.error("Antrag nicht gefunden"); return; }
-      const newStatus = leave.status === "pending" ? "cancelled" : "cancel_requested";
-      const { error } = await supabase.from("leave_requests").update({ status: newStatus as any }).eq("id", leaveId).eq("user_id", userId);
+      const newStatus: Database["public"]["Enums"]["leave_status"] = leave.status === "pending" ? "cancelled" : "cancel_requested";
+      const { error } = await supabase.from("leave_requests").update({ status: newStatus }).eq("id", leaveId).eq("user_id", userId);
       if (error) throw error;
       if (newStatus === "cancelled") await removeLeaveCalendarEntry(leave, type);
       toast.success(newStatus === "cancelled" ? successMsg : "Stornierungsanfrage gesendet");
       loadData();
-    } catch (error: any) { console.error(`Error cancelling ${type}:`, error); toast.error("Fehler beim Stornieren"); }
+    } catch (error: unknown) { console.error(`Error cancelling ${type}:`, error); toast.error("Fehler beim Stornieren"); }
   };
 
   const handleCancelVacationRequest = (leaveId: string) => {

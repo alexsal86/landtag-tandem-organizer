@@ -96,8 +96,8 @@ export function useEmployeeOperations({
   const handleCancelApproval = async (leaveId: string, approve: boolean) => {
     try {
       const leaveRequest = pendingLeaves.find(req => req.id === leaveId);
-      const newStatus = approve ? 'cancelled' : 'approved';
-      const { error } = await supabase.from("leave_requests").update({ status: newStatus as any }).eq("id", leaveId);
+      const newStatus: Database["public"]["Enums"]["leave_status"] = approve ? 'cancelled' : 'approved';
+      const { error } = await supabase.from("leave_requests").update({ status: newStatus }).eq("id", leaveId);
       if (error) throw error;
 
       if (approve && leaveRequest) {
