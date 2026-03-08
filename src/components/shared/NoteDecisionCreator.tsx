@@ -271,7 +271,7 @@ export function NoteDecisionCreator({
         .eq("user_id", user.id);
 
       if (noteError) {
-        console.warn('Error linking decision to note:', noteError);
+        debugConsole.warn('Error linking decision to note:', noteError);
       }
 
       // Add participants (only if there are any)
