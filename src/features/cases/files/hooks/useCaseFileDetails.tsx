@@ -794,7 +794,7 @@ export const useCaseFileDetails = (caseFileId: string | null) => {
     try {
       const { error } = await supabase
         .from('case_files')
-        .update({ assigned_to: userId } as any)
+        .update({ assigned_to: userId })
         .eq('id', caseFileId);
 
       if (error) throw error;
