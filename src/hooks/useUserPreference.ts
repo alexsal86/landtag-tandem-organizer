@@ -90,7 +90,7 @@ export function useUserPreference<T>(key: string, defaultValue: T) {
 
         dbSynced.current = true;
       } catch (e) {
-        console.error("useUserPreference: unexpected error", e);
+        debugConsole.error("useUserPreference: unexpected error", e);
       }
     };
 
