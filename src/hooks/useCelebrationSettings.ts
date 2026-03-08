@@ -72,7 +72,7 @@ export function useCelebrationSettings() {
         });
       }
     } catch (error) {
-      console.error('Error loading celebration settings:', error);
+      debugConsole.error('Error loading celebration settings:', error);
     } finally {
       setLoading(false);
     }
