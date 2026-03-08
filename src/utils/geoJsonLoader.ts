@@ -138,7 +138,7 @@ function reprojectIfNeeded(fc: GeoJsonData): GeoJsonData {
     return fc;
   }
 
-  console.log(`Reprojecting from ${epsg || 'detected projection'} to WGS84...`);
+  
   
   // Test transformation with sample coordinate
   if (sample) {
