@@ -60,7 +60,7 @@ const LetterAttachmentManager: React.FC<LetterAttachmentManagerProps> = ({
 
       if (error) throw error;
       setDocuments(data || []);
-    } catch (error: any) {
+    } catch (error: unknown) {
       toast({
         title: "Fehler",
         description: "Dokumente konnten nicht geladen werden.",
