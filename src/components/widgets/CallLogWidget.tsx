@@ -333,7 +333,7 @@ export const CallLogWidget: React.FC<CallLogWidgetProps> = ({
       await loadCallLogs();
       toast.success('Follow-up abgeschlossen');
     } catch (error) {
-      console.error('Error marking follow-up complete:', error);
+      debugConsole.error('Error marking follow-up complete:', error);
       toast.error('Fehler beim Abschließen des Follow-ups');
     }
   };
