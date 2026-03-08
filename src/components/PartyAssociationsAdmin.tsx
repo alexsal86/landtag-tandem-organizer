@@ -76,7 +76,7 @@ export const PartyAssociationsAdmin: React.FC = () => {
       setAssociations(associationsRes.data || []);
       setDistricts(districtsRes.data || []);
     } catch (error) {
-      console.error('Error loading data:', error);
+      debugConsole.error('Error loading data:', error);
       toast.error('Fehler beim Laden der Daten');
     } finally {
       setLoading(false);
