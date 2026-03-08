@@ -249,7 +249,7 @@ export function useMeetingsData() {
   const loadMeetings = async () => {
     try {
       const { data: ownMeetings, error: ownError } = await supabase
-        .from('meetings').select('*').eq('user_id', user?.id).neq('status', 'archived').order('meeting_date', { ascending: false });
+        .from('meetings').select('*').eq('user_id', user?.id ?? '').neq('status', 'archived').order('meeting_date', { ascending: false });
       if (ownError) throw ownError;
 
       const { data: participantMeetings, error: participantError } = await supabase
