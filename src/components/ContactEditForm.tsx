@@ -149,7 +149,7 @@ export function ContactEditForm({ contact, onSuccess, onCancel }: ContactEditFor
       });
       setAllTags(Array.from(tagsSet));
     } catch (error) {
-      console.error('Error fetching tags:', error);
+      debugConsole.error('Error fetching tags:', error);
     }
   };
 
