@@ -98,7 +98,7 @@ export const CallLogWidget: React.FC<CallLogWidgetProps> = ({
     try {
       const { data, error } = await supabase
         .from('call_logs')
-        .select('id, contact_id, caller_name, caller_phone, call_type, duration_minutes, call_date, notes, follow_up_required, follow_up_date, follow_up_completed, completion_notes, priority, created_at, created_by_name, task_id')
+        .select('id, contact_id, caller_name, caller_phone, call_type, duration_minutes, call_date, notes, follow_up_required, follow_up_date, follow_up_completed, completion_notes, priority, created_at, created_by_name')
         .eq('user_id', user.id)
         .order('call_date', { ascending: false })
         .limit(50);
