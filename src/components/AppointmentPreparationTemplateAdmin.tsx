@@ -156,7 +156,7 @@ export default function AppointmentPreparationTemplateAdmin() {
 
       fetchTemplates();
     } catch (error) {
-      console.error('Error deleting template:', error);
+      debugConsole.error('Error deleting template:', error);
       toast({
         title: 'Fehler',
         description: 'Template konnte nicht gelöscht werden.',
