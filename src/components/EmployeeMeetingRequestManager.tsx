@@ -244,7 +244,7 @@ export function EmployeeMeetingRequestManager({ onPendingCountChange }: MeetingR
       });
 
       loadRequests();
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Error marking as completed:", error);
       toast({
         title: "Fehler",
