@@ -240,7 +240,7 @@ export function ContactEditForm({ contact, onSuccess, onCancel }: ContactEditFor
     }
 
     if (!currentTenant) {
-      console.error('No tenant available');
+      debugConsole.error('No tenant available');
       toast({
         title: "Fehler", 
         description: "Mandant nicht verfügbar. Bitte wählen Sie einen Mandanten aus.",
