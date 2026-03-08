@@ -201,7 +201,7 @@ export const PomodoroWidget: React.FC<PomodoroWidgetProps> = ({
         
         // Play completion sound
         if (audioRef.current) {
-          audioRef.current.play().catch(console.error);
+          audioRef.current.play().catch(debugConsole.error);
         }
 
       } catch (error) {
