@@ -192,7 +192,7 @@ export function MyWorkQuickCapture({ onNoteSaved }: MyWorkQuickCaptureProps) {
 
   return (
     <>
-      <Card className="transition-colors border-l-4" style={{ borderLeftColor: selectedColor }}>
+      <Card className="transition-colors border-l-4 self-start" style={{ borderLeftColor: selectedColor }}>
       <CardHeader className="pb-3">
         <div className="flex items-center justify-between">
           <CardTitle className="text-lg flex items-center gap-1.5">
