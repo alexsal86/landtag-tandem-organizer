@@ -38,6 +38,75 @@ const evaluateCondition = (source: Record<string, unknown>, condition: Condition
   }
 };
 
+// Feature 6: Evaluate conditions with AND/OR support
+const evaluateConditions = (
+  source: Record<string, unknown>,
+  conditionsBlock: { all?: Condition[]; any?: Condition[] }
+): boolean => {
+  if (conditionsBlock.any && conditionsBlock.any.length > 0) {
+    return conditionsBlock.any.some((c) => evaluateCondition(source, c));
+  }
+  const conditions = conditionsBlock.all ?? [];
+  return conditions.every((c) => evaluateCondition(source, c));
+};
+
+// Feature 7: Rate limiting check
+const checkRateLimit = async (
+  supabaseAdmin: any,
+  tenantId: string,
+  actionType: string
+): Promise<{ allowed: boolean; currentCount: number; maxPerHour: number }> => {
+  const windowStart = new Date();
+  windowStart.setMinutes(0, 0, 0); // Round to current hour
+
+  // Try to get or create the rate limit entry
+  const { data: existing } = await supabaseAdmin
+    .from("automation_rate_limits")
+    .select("action_count, max_per_hour")
+    .eq("tenant_id", tenantId)
+    .eq("action_type", actionType)
+    .gte("window_start", windowStart.toISOString())
+    .maybeSingle();
+
+  if (existing) {
+    if (existing.action_count >= existing.max_per_hour) {
+      return { allowed: false, currentCount: existing.action_count, maxPerHour: existing.max_per_hour };
+    }
+    // Increment
+    await supabaseAdmin
+      .from("automation_rate_limits")
+      .update({ action_count: existing.action_count + 1 })
+      .eq("tenant_id", tenantId)
+      .eq("action_type", actionType)
+      .gte("window_start", windowStart.toISOString());
+    return { allowed: true, currentCount: existing.action_count + 1, maxPerHour: existing.max_per_hour };
+  }
+
+  // Create new window entry
+  const defaultMax = actionType === "send_email_template" ? 50 : 200;
+  await supabaseAdmin.from("automation_rate_limits").insert({
+    tenant_id: tenantId,
+    action_type: actionType,
+    window_start: windowStart.toISOString(),
+    action_count: 1,
+    max_per_hour: defaultMax,
+  });
+  return { allowed: true, currentCount: 1, maxPerHour: defaultMax };
+};
+
+// Feature 8: Determine if error is transient (retryable)
+const isTransientError = (error: Error): boolean => {
+  const msg = error.message.toLowerCase();
+  return (
+    msg.includes("timeout") ||
+    msg.includes("network") ||
+    msg.includes("econnrefused") ||
+    msg.includes("503") ||
+    msg.includes("429") ||
+    msg.includes("rate limit")
+  );
+};
+
 serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: CORS_HEADERS });
@@ -173,6 +242,8 @@ serve(async (req) => {
       input_payload: sourcePayload,
       created_by: user?.id ?? null,
       started_at: new Date().toISOString(),
+      retry_count: 0,
+      max_retries: 3,
     };
 
     const { data: run, error: runError } = await supabaseAdmin
@@ -190,10 +261,11 @@ serve(async (req) => {
 
     activeRunId = run.id;
 
-    const conditions = ((rule.conditions as any)?.all ?? []) as Condition[];
+    // Feature 6: Support both { all: [...] } and { any: [...] } conditions
+    const conditionsBlock = (rule.conditions ?? { all: [] }) as { all?: Condition[]; any?: Condition[] };
     const actions = (rule.actions ?? []) as Action[];
 
-    const matches = conditions.every((condition) => evaluateCondition(sourcePayload, condition));
+    const matches = evaluateConditions(sourcePayload, conditionsBlock);
 
     if (!matches) {
       await supabaseAdmin.from("automation_rule_runs").update({
@@ -208,7 +280,7 @@ serve(async (req) => {
         step_order: 0,
         step_type: "condition_check",
         status: "skipped",
-        input_payload: { conditions },
+        input_payload: { conditions: conditionsBlock },
         result_payload: { matches: false },
       });
 
@@ -229,6 +301,26 @@ serve(async (req) => {
           status: "success",
           input_payload: action,
           result_payload: { dry_run: true },
+        });
+        stepOrder += 1;
+        continue;
+      }
+
+      // Feature 7: Check rate limit before executing action
+      const rateCheck = await checkRateLimit(supabaseAdmin, rule.tenant_id, action.type);
+      if (!rateCheck.allowed) {
+        await supabaseAdmin.from("automation_rule_run_steps").insert({
+          run_id: run.id,
+          tenant_id: rule.tenant_id,
+          step_order: stepOrder,
+          step_type: action.type,
+          status: "rate_limited",
+          input_payload: action,
+          result_payload: {
+            reason: "rate_limit_exceeded",
+            current_count: rateCheck.currentCount,
+            max_per_hour: rateCheck.maxPerHour,
+          },
         });
         stepOrder += 1;
         continue;
@@ -292,7 +384,7 @@ serve(async (req) => {
           continue;
         }
 
-        const allowedTables = new Set(["tasks", "decisions", "knowledge_documents", "casefiles"]);
+        const allowedTables = new Set(["tasks", "decisions", "knowledge_documents", "casefiles", "contacts", "case_files"]);
         if (!allowedTables.has(tableName)) {
           throw new Error(`Table not allowed: ${tableName}`);
         }
@@ -328,7 +420,6 @@ serve(async (req) => {
           continue;
         }
 
-        // Get user's push subscriptions
         const { data: subscriptions, error: subError } = await supabaseAdmin
           .from("push_subscriptions")
           .select("id")
@@ -352,7 +443,6 @@ serve(async (req) => {
           continue;
         }
 
-        // Create notification which triggers push via DB trigger
         const { error: notificationError } = await supabaseAdmin.rpc("create_notification", {
           user_id_param: targetUserId,
           type_name: "automation_push",
@@ -434,7 +524,6 @@ serve(async (req) => {
           continue;
         }
 
-        // Fetch the email template
         const { data: emailTemplate, error: tplError } = await supabaseAdmin
           .from("email_templates")
           .select("name, subject, body_html, variables")
@@ -457,7 +546,6 @@ serve(async (req) => {
           continue;
         }
 
-        // Fetch default sender for tenant
         const { data: sender } = await supabaseAdmin
           .from("sender_information")
           .select("name, wahlkreis_email, landtag_email")
@@ -469,7 +557,6 @@ serve(async (req) => {
         const senderEmail = sender?.wahlkreis_email || sender?.landtag_email || "noreply@gruene.landtag-bw.de";
         const senderName = sender?.name || "Automation";
 
-        // Simple variable replacement in subject and body
         let subject = emailTemplate.subject;
         let body = emailTemplate.body_html;
         const vars: Record<string, string> = {
@@ -485,7 +572,6 @@ serve(async (req) => {
           body = body.replace(placeholder, String(val));
         }
 
-        // Send via Resend
         const resendApiKey = Deno.env.get("RESEND_API_KEY");
         if (!resendApiKey) {
           throw new Error("RESEND_API_KEY not configured");
@@ -530,8 +616,47 @@ serve(async (req) => {
     });
   } catch (error) {
     const message = error instanceof Error ? error.message : "Unknown automation executor error";
+    const isTransient = error instanceof Error && isTransientError(error);
 
     if (activeRunId) {
+      // Feature 8: Retry with backoff for transient errors
+      if (isTransient) {
+        const { data: currentRun } = await supabaseAdmin
+          .from("automation_rule_runs")
+          .select("retry_count, max_retries")
+          .eq("id", activeRunId)
+          .maybeSingle();
+
+        const retryCount = (currentRun?.retry_count ?? 0) + 1;
+        const maxRetries = currentRun?.max_retries ?? 3;
+
+        if (retryCount <= maxRetries) {
+          // Exponential backoff: 1min, 5min, 15min
+          const backoffMinutes = [1, 5, 15][retryCount - 1] ?? 15;
+          const nextRetryAt = new Date(Date.now() + backoffMinutes * 60 * 1000);
+
+          await supabaseAdmin
+            .from("automation_rule_runs")
+            .update({
+              status: "retry_pending",
+              error_message: message,
+              retry_count: retryCount,
+              next_retry_at: nextRetryAt.toISOString(),
+            })
+            .eq("id", activeRunId);
+
+          return new Response(JSON.stringify({
+            runId: activeRunId,
+            status: "retry_pending",
+            retry_count: retryCount,
+            next_retry_at: nextRetryAt.toISOString(),
+          }), {
+            status: 200,
+            headers: { ...CORS_HEADERS, "Content-Type": "application/json" },
+          });
+        }
+      }
+
       await supabaseAdmin
         .from("automation_rule_runs")
         .update({ status: "failed", error_message: message, finished_at: new Date().toISOString() })

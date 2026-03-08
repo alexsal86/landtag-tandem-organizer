@@ -19,6 +19,7 @@ const MODULE_OPTIONS = [
   { value: "decisions", label: "Entscheidungen" },
   { value: "knowledge", label: "Wissen" },
   { value: "casefiles", label: "Fallakten" },
+  { value: "contacts", label: "Kontakte" },
 ] as const;
 
 const CONDITION_OPERATORS = [
@@ -37,7 +38,7 @@ const ACTION_TYPES = [
   { value: "send_email_template", label: "E-Mail-Template senden" },
 ] as const;
 
-const STATUS_TABLE_OPTIONS = ["tasks", "decisions", "knowledge_documents", "casefiles"] as const;
+const STATUS_TABLE_OPTIONS = ["tasks", "decisions", "knowledge_documents", "casefiles", "contacts", "case_files"] as const;
 const TASK_PRIORITY_OPTIONS = ["low", "medium", "high", "urgent"] as const;
 
 const TRIGGER_TYPES = [
@@ -68,6 +69,12 @@ const FIELD_OPTIONS_BY_MODULE: Record<string, Array<{ value: string; label: stri
   casefiles: [
     { value: "status", label: "Status" },
     { value: "priority", label: "Priorität" },
+    { value: "processing_status", label: "Bearbeitungsstatus" },
+  ],
+  contacts: [
+    { value: "status", label: "Status" },
+    { value: "category", label: "Kategorie" },
+    { value: "updated_at", label: "Aktualisiert am" },
   ],
 };
 
@@ -127,12 +134,68 @@ export const RULE_TEMPLATES = [
     id: "casefile-critical-alert",
     name: "Vorgang auf kritisch gesetzt",
     description: "Benachrichtigt sofort alle Beteiligten, wenn ein Vorgang den Status 'kritisch' erhält.",
-    module: "cases",
+    module: "casefiles",
     triggerType: "record_changed",
     triggerField: "priority",
     triggerValue: "critical",
     conditions: [{ field: "status", operator: "not_equals", value: "closed" }],
     actions: [{ ...DEFAULT_ACTION_INIT, type: "create_notification", title: "Kritischer Vorgang", message: "Ein Vorgang wurde als kritisch eingestuft und erfordert sofortige Aufmerksamkeit.", table: "case_files" }],
+  },
+  // --- New templates ---
+  {
+    id: "contact-inactive-reminder",
+    name: "Kontakt ohne Aktivität → Erinnerung",
+    description: "Erinnert an Kontakte, die seit über 30 Tagen nicht aktualisiert wurden.",
+    module: "contacts",
+    triggerType: "schedule",
+    triggerField: "updated_at",
+    triggerValue: "30_days",
+    conditions: [{ field: "status", operator: "not_equals", value: "archived" }],
+    actions: [{ ...DEFAULT_ACTION_INIT, type: "create_notification", title: "Inaktiver Kontakt", message: "Ein Kontakt wurde seit 30 Tagen nicht mehr bearbeitet.", table: "contacts" }],
+  },
+  {
+    id: "casefile-closed-archive",
+    name: "Fallakte abgeschlossen → Archivierungs-Task",
+    description: "Erstellt automatisch eine Archivierungs-Aufgabe, wenn eine Fallakte auf 'abgeschlossen' gesetzt wird.",
+    module: "casefiles",
+    triggerType: "record_changed",
+    triggerField: "status",
+    triggerValue: "closed",
+    conditions: [{ field: "priority", operator: "not_equals", value: "critical" }],
+    actions: [{ ...DEFAULT_ACTION_INIT, type: "create_task", title: "Fallakte archivieren", message: "Bitte die abgeschlossene Fallakte prüfen und archivieren.", taskPriority: "low", table: "case_files" }],
+  },
+  {
+    id: "knowledge-created-review-task",
+    name: "Neuer Wissensartikel → Review-Aufgabe",
+    description: "Erstellt eine Review-Aufgabe, wenn ein neuer Wissensartikel erstellt wird.",
+    module: "knowledge",
+    triggerType: "record_changed",
+    triggerField: "status",
+    triggerValue: "draft",
+    conditions: [{ field: "status", operator: "equals", value: "draft" }],
+    actions: [{ ...DEFAULT_ACTION_INIT, type: "create_task", title: "Wissensartikel reviewen", message: "Ein neuer Wissensartikel wartet auf Review.", taskPriority: "medium", table: "knowledge_documents" }],
+  },
+  {
+    id: "task-high-priority-push",
+    name: "Aufgabe mit hoher Priorität → Push",
+    description: "Sendet eine Push-Benachrichtigung, wenn eine Aufgabe auf 'urgent' gesetzt wird.",
+    module: "tasks",
+    triggerType: "record_changed",
+    triggerField: "priority",
+    triggerValue: "urgent",
+    conditions: [{ field: "status", operator: "not_equals", value: "done" }],
+    actions: [{ ...DEFAULT_ACTION_INIT, type: "send_push_notification", title: "Dringende Aufgabe", message: "Eine Aufgabe wurde als dringend markiert und erfordert sofortige Bearbeitung.", table: "tasks" }],
+  },
+  {
+    id: "casefile-new-participant-notify",
+    name: "Neue Fallakte → Team benachrichtigen",
+    description: "Benachrichtigt das Team, wenn eine neue Fallakte mit hoher Priorität angelegt wird.",
+    module: "casefiles",
+    triggerType: "record_changed",
+    triggerField: "status",
+    triggerValue: "open",
+    conditions: [{ field: "priority", operator: "equals", value: "high" }],
+    actions: [{ ...DEFAULT_ACTION_INIT, type: "create_notification", title: "Neue wichtige Fallakte", message: "Eine neue Fallakte mit hoher Priorität wurde angelegt.", table: "case_files" }],
   },
 ] as const;
 
@@ -189,6 +252,7 @@ export type WizardForm = {
   triggerType: string;
   triggerField: string;
   triggerValue: string;
+  conditionLogic: "all" | "any";
   conditions: ConditionItem[];
   actions: ActionItem[];
   enabled: boolean;
@@ -201,6 +265,7 @@ export const DEFAULT_FORM: WizardForm = {
   triggerType: "record_changed",
   triggerField: "status",
   triggerValue: "",
+  conditionLogic: "all",
   conditions: [{ ...DEFAULT_CONDITION }],
   actions: [{ ...DEFAULT_ACTION }],
   enabled: true,
@@ -313,7 +378,6 @@ function ActionCard({
   const isTask = action.type === "create_task";
   const isEmail = action.type === "send_email_template";
 
-  // Load email templates for the email action
   const { currentTenant } = useTenant();
   const [emailTemplates, setEmailTemplates] = useState<Array<{ id: string; name: string; subject: string }>>([]);
 
@@ -505,7 +569,6 @@ export function AutomationRuleWizard({
     [form.module]
   );
 
-  // Helpers for array updates
   const updateCondition = (index: number, patch: Partial<ConditionItem>) => {
     setForm((prev) => {
       const next = [...prev.conditions];
@@ -550,7 +613,6 @@ export function AutomationRuleWizard({
     }));
   };
 
-  // Validation
   const stepValid = useMemo(() => {
     switch (currentStep) {
       case 0:
@@ -588,6 +650,7 @@ export function AutomationRuleWizard({
       triggerType: template.triggerType,
       triggerField: template.triggerField,
       triggerValue: template.triggerValue,
+      conditionLogic: "all",
       conditions: template.conditions.map((c) => ({ ...c })),
       actions: template.actions.map((a) => ({ ...a })),
       enabled: true,
@@ -604,7 +667,6 @@ export function AutomationRuleWizard({
     onOpenChange(val);
   };
 
-  // Summary
   const summaryLine = useMemo(() => {
     const mod = MODULE_OPTIONS.find((m) => m.value === form.module)?.label || form.module;
     const trigger = TRIGGER_TYPES.find((t) => t.value === form.triggerType)?.label || form.triggerType;
@@ -790,28 +852,75 @@ export function AutomationRuleWizard({
           </div>
         )}
 
-        {/* Step 3: Bedingungen (multi) */}
+        {/* Step 3: Bedingungen (multi) with AND/OR toggle */}
         {currentStep === 2 && (
           <div className="space-y-3 py-2">
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm font-medium">Bedingungen</p>
-                <p className="text-xs text-muted-foreground">Alle Bedingungen müssen erfüllt sein (UND-Verknüpfung).</p>
+                <p className="text-xs text-muted-foreground">
+                  {form.conditionLogic === "all"
+                    ? "Alle Bedingungen müssen erfüllt sein (UND-Verknüpfung)."
+                    : "Mindestens eine Bedingung muss erfüllt sein (ODER-Verknüpfung)."}
+                </p>
               </div>
               <Button variant="outline" size="sm" onClick={addCondition} className="gap-1">
                 <Plus className="h-3.5 w-3.5" /> Bedingung
               </Button>
             </div>
+
+            {/* AND/OR Toggle */}
+            <div className="flex items-center gap-2 rounded-md border p-2">
+              <span className="text-xs font-medium text-muted-foreground">Verknüpfung:</span>
+              <div className="flex rounded-md border overflow-hidden">
+                <button
+                  type="button"
+                  onClick={() => setForm((prev) => ({ ...prev, conditionLogic: "all" }))}
+                  className={cn(
+                    "px-3 py-1 text-xs font-medium transition-colors",
+                    form.conditionLogic === "all"
+                      ? "bg-primary text-primary-foreground"
+                      : "bg-background text-muted-foreground hover:bg-muted"
+                  )}
+                >
+                  UND
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setForm((prev) => ({ ...prev, conditionLogic: "any" }))}
+                  className={cn(
+                    "px-3 py-1 text-xs font-medium transition-colors",
+                    form.conditionLogic === "any"
+                      ? "bg-primary text-primary-foreground"
+                      : "bg-background text-muted-foreground hover:bg-muted"
+                  )}
+                >
+                  ODER
+                </button>
+              </div>
+              <Badge variant="outline" className="text-[10px]">
+                {form.conditionLogic === "all" ? "Alle müssen zutreffen" : "Mindestens eine"}
+              </Badge>
+            </div>
+
             {form.conditions.map((condition, i) => (
-              <ConditionCard
-                key={i}
-                condition={condition}
-                index={i}
-                fieldOptions={fieldOptions}
-                onChange={updateCondition}
-                onRemove={removeCondition}
-                canRemove={form.conditions.length > 1}
-              />
+              <div key={i}>
+                {i > 0 && (
+                  <div className="flex items-center justify-center py-1">
+                    <Badge variant="secondary" className="text-[10px]">
+                      {form.conditionLogic === "all" ? "UND" : "ODER"}
+                    </Badge>
+                  </div>
+                )}
+                <ConditionCard
+                  condition={condition}
+                  index={i}
+                  fieldOptions={fieldOptions}
+                  onChange={updateCondition}
+                  onRemove={removeCondition}
+                  canRemove={form.conditions.length > 1}
+                />
+              </div>
             ))}
           </div>
         )}
@@ -827,7 +936,7 @@ export function AutomationRuleWizard({
                 Wenn <span className="font-medium">{form.triggerField}</span> = „{form.triggerValue || "—"}"
               </p>
               <p className="text-sm text-muted-foreground">
-                {form.conditions.length} Bedingung{form.conditions.length !== 1 ? "en" : ""} · {form.actions.length} Aktion{form.actions.length !== 1 ? "en" : ""}
+                {form.conditions.length} Bedingung{form.conditions.length !== 1 ? "en" : ""} ({form.conditionLogic === "all" ? "UND" : "ODER"}) · {form.actions.length} Aktion{form.actions.length !== 1 ? "en" : ""}
               </p>
             </div>
 

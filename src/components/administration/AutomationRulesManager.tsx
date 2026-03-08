@@ -8,7 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/components/ui/use-toast";
-import { AlertTriangle, Clock, Download, Loader2, Pause, Play, Plus, Trash2, Upload, Zap } from "lucide-react";
+import { AlertTriangle, Clock, Download, Loader2, Pause, Play, Plus, ShieldAlert, Trash2, Upload, Zap } from "lucide-react";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { formatDistanceToNow } from "date-fns";
 import { de } from "date-fns/locale";
@@ -16,6 +16,8 @@ import { AutomationRuleWizard, DEFAULT_FORM, DEFAULT_ACTION, RULE_TEMPLATES, typ
 import { AutomationTemplateGallery } from "./AutomationTemplateGallery";
 import { AutomationRuleVersions } from "./AutomationRuleVersions";
 import { AutomationRuleExportDialog, AutomationRuleImportDialog } from "./AutomationRuleImportExport";
+import { AutomationErrorDashboard } from "./AutomationErrorDashboard";
+import { logAuditEvent, AuditActions } from "@/hooks/useAuditLog";
 
 type RuleRow = {
   id: string;
@@ -24,7 +26,7 @@ type RuleRow = {
   module: string;
   trigger_type: "record_changed" | "schedule" | "manual";
   trigger_config: Record<string, string>;
-  conditions: { all?: Array<{ field: string; operator: string; value: string }> };
+  conditions: { all?: Array<{ field: string; operator: string; value: string }>; any?: Array<{ field: string; operator: string; value: string }> };
   actions: Array<{ type: string; payload?: Record<string, string> }>;
   enabled: boolean;
   updated_at: string;
@@ -72,6 +74,11 @@ export function AutomationRulesManager() {
   const [versionsRuleName, setVersionsRuleName] = useState("");
   const [exportOpen, setExportOpen] = useState(false);
   const [importOpen, setImportOpen] = useState(false);
+  const [userRole, setUserRole] = useState<string | null>(null);
+
+  const isAdmin = userRole === "abgeordneter";
+  const canEdit = isAdmin;
+  const canToggle = isAdmin || userRole === "mitarbeiter";
 
   const filteredRuns = useMemo(() => {
     if (runStatusFilter === "all") return runs;
@@ -94,12 +101,29 @@ export function AutomationRulesManager() {
     }
     setAutomationsPaused(newVal);
     toast({ title: newVal ? "Alle Automations pausiert" : "Automations reaktiviert" });
+
+    logAuditEvent({
+      action: AuditActions.SETTINGS_CHANGED,
+      details: { type: "automation_kill_switch", paused: newVal, tenant_id: currentTenant.id },
+    });
   };
 
   const loadData = async () => {
     if (!currentTenant) return;
 
     setLoading(true);
+
+    // Load user role
+    if (user) {
+      const { data: membership } = await supabase
+        .from("user_tenant_memberships")
+        .select("role")
+        .eq("user_id", user.id)
+        .eq("tenant_id", currentTenant.id)
+        .eq("is_active", true)
+        .maybeSingle();
+      setUserRole(membership?.role || null);
+    }
 
     // Load pause state from tenant
     const { data: tenantData } = await supabase
@@ -167,6 +191,7 @@ export function AutomationRulesManager() {
       triggerType: template.triggerType,
       triggerField: template.triggerField,
       triggerValue: template.triggerValue,
+      conditionLogic: "all",
       conditions: template.conditions.map((c) => ({ ...c })),
       actions: template.actions.map((a) => ({ ...a })),
       enabled: true,
@@ -175,7 +200,12 @@ export function AutomationRulesManager() {
   };
 
   const startEdit = (rule: RuleRow) => {
-    const conditions: ConditionItem[] = (rule.conditions?.all || []).map((c) => ({
+    // Detect condition logic from stored format
+    const hasAny = !!(rule.conditions?.any);
+    const conditionLogic: "all" | "any" = hasAny ? "any" : "all";
+    const rawConditions = hasAny ? (rule.conditions?.any || []) : (rule.conditions?.all || []);
+
+    const conditions: ConditionItem[] = rawConditions.map((c) => ({
       field: c.field || "status",
       operator: c.operator || "equals",
       value: c.value || "",
@@ -208,6 +238,7 @@ export function AutomationRulesManager() {
       triggerType: rule.trigger_type,
       triggerField: (rule.trigger_config?.field as string) || "status",
       triggerValue: (rule.trigger_config?.value as string) || "",
+      conditionLogic,
       conditions,
       actions,
       enabled: rule.enabled,
@@ -247,7 +278,16 @@ export function AutomationRulesManager() {
       return;
     }
 
+    if (!canEdit) {
+      toast({ title: "Keine Berechtigung", description: "Nur Abgeordnete dürfen Regeln erstellen/ändern.", variant: "destructive" });
+      return;
+    }
+
     setSaving(true);
+    const conditionsPayload = form.conditionLogic === "any"
+      ? { any: form.conditions.map((c) => ({ field: c.field, operator: c.operator, value: c.value })) }
+      : { all: form.conditions.map((c) => ({ field: c.field, operator: c.operator, value: c.value })) };
+
     const payload = {
       tenant_id: currentTenant.id,
       name: form.name.trim(),
@@ -255,9 +295,7 @@ export function AutomationRulesManager() {
       module: form.module,
       trigger_type: form.triggerType,
       trigger_config: { field: form.triggerField, value: form.triggerValue },
-      conditions: {
-        all: form.conditions.map((c) => ({ field: c.field, operator: c.operator, value: c.value })),
-      },
+      conditions: conditionsPayload,
       actions: form.actions.map((a) => ({
         type: a.type,
         payload: {
@@ -291,6 +329,12 @@ export function AutomationRulesManager() {
       return;
     }
 
+    // Audit trail
+    logAuditEvent({
+      action: editingRuleId ? "automation.rule_updated" : "automation.rule_created",
+      details: { rule_name: form.name, module: form.module, rule_id: editingRuleId || "new" },
+    });
+
     toast({ title: editingRuleId ? "Regel aktualisiert" : "Regel erstellt" });
     resetForm();
     setWizardOpen(false);
@@ -298,14 +342,53 @@ export function AutomationRulesManager() {
   };
 
   const deleteRule = async (ruleId: string) => {
+    if (!canEdit) {
+      toast({ title: "Keine Berechtigung", description: "Nur Abgeordnete dürfen Regeln löschen.", variant: "destructive" });
+      return;
+    }
+
+    const ruleName = rules.find((r) => r.id === ruleId)?.name || ruleId;
     const { error } = await supabase.from("automation_rules").delete().eq("id", ruleId);
     if (error) {
       toast({ title: "Löschen fehlgeschlagen", description: error.message, variant: "destructive" });
       return;
     }
+
+    logAuditEvent({
+      action: "automation.rule_deleted",
+      details: { rule_id: ruleId, rule_name: ruleName },
+    });
+
     toast({ title: "Regel gelöscht" });
     if (editingRuleId === ruleId) resetForm();
     loadData();
+  };
+
+  const toggleRuleEnabled = async (rule: RuleRow, checked: boolean) => {
+    if (!canToggle) {
+      toast({ title: "Keine Berechtigung", variant: "destructive" });
+      return;
+    }
+
+    setRules((prev) =>
+      prev.map((r) => (r.id === rule.id ? { ...r, enabled: checked } : r))
+    );
+    const { error } = await supabase
+      .from("automation_rules")
+      .update({ enabled: checked })
+      .eq("id", rule.id);
+    if (error) {
+      setRules((prev) =>
+        prev.map((r) => (r.id === rule.id ? { ...r, enabled: !checked } : r))
+      );
+      toast({ title: "Fehler", description: error.message, variant: "destructive" });
+    } else {
+      toast({ title: checked ? "Regel aktiviert" : "Regel deaktiviert" });
+      logAuditEvent({
+        action: checked ? "automation.rule_enabled" : "automation.rule_disabled",
+        details: { rule_id: rule.id, rule_name: rule.name },
+      });
+    }
   };
 
   const triggerDryRun = async (rule?: RuleRow) => {
@@ -365,7 +448,6 @@ export function AutomationRulesManager() {
     loadData();
   };
 
-  // Dry-run handler for wizard (uses current form to find/save rule first)
   const handleWizardDryRun = () => {
     if (editingRuleId) {
       const rule = rules.find((r) => r.id === editingRuleId);
@@ -391,6 +473,17 @@ export function AutomationRulesManager() {
 
     return (
     <div className="space-y-6">
+      {/* Role hint for non-admins */}
+      {!canEdit && (
+        <Alert>
+          <ShieldAlert className="h-4 w-4" />
+          <AlertTitle>Eingeschränkte Rechte</AlertTitle>
+          <AlertDescription>
+            Du kannst Regeln aktivieren/deaktivieren, aber nur Abgeordnete dürfen Regeln erstellen, bearbeiten oder löschen.
+          </AlertDescription>
+        </Alert>
+      )}
+
       {/* Kill-Switch */}
       <Card>
         <CardContent className="flex items-center justify-between py-4">
@@ -410,7 +503,7 @@ export function AutomationRulesManager() {
             <Switch
               checked={automationsPaused}
               onCheckedChange={toggleAutomationsPaused}
-              disabled={togglingPause}
+              disabled={togglingPause || !canEdit}
               aria-label="Automations pausieren"
             />
           </div>
@@ -455,6 +548,9 @@ export function AutomationRulesManager() {
       {/* Template Gallery */}
       <AutomationTemplateGallery onUseTemplate={useTemplate} />
 
+      {/* Error Dashboard */}
+      <AutomationErrorDashboard onRetrigger={loadData} />
+
       {/* Rules list */}
       <Card>
         <CardHeader>
@@ -467,10 +563,10 @@ export function AutomationRulesManager() {
               <Button variant="outline" onClick={() => setExportOpen(true)}>
                 <Download className="h-4 w-4 mr-2" /> Export
               </Button>
-              <Button variant="outline" onClick={() => setImportOpen(true)}>
+              <Button variant="outline" onClick={() => setImportOpen(true)} disabled={!canEdit}>
                 <Upload className="h-4 w-4 mr-2" /> Import
               </Button>
-              <Button onClick={openNewWizard}>
+              <Button onClick={openNewWizard} disabled={!canEdit}>
                 <Plus className="h-4 w-4 mr-2" /> Neue Regel
               </Button>
             </div>
@@ -486,23 +582,8 @@ export function AutomationRulesManager() {
                   <div className="flex items-start gap-3">
                     <Switch
                       checked={rule.enabled}
-                      onCheckedChange={async (checked) => {
-                        setRules((prev) =>
-                          prev.map((r) => (r.id === rule.id ? { ...r, enabled: checked } : r))
-                        );
-                        const { error } = await supabase
-                          .from("automation_rules")
-                          .update({ enabled: checked })
-                          .eq("id", rule.id);
-                        if (error) {
-                          setRules((prev) =>
-                            prev.map((r) => (r.id === rule.id ? { ...r, enabled: !checked } : r))
-                          );
-                          toast({ title: "Fehler", description: error.message, variant: "destructive" });
-                        } else {
-                          toast({ title: checked ? "Regel aktiviert" : "Regel deaktiviert" });
-                        }
-                      }}
+                      onCheckedChange={(checked) => toggleRuleEnabled(rule, checked)}
+                      disabled={!canToggle}
                       aria-label={`Regel ${rule.name} ${rule.enabled ? "deaktivieren" : "aktivieren"}`}
                     />
                     <div className="space-y-1">
@@ -511,11 +592,14 @@ export function AutomationRulesManager() {
                       <div className="flex gap-2 flex-wrap">
                         <Badge variant="outline">{rule.module}</Badge>
                         <Badge variant="outline">{rule.trigger_type}</Badge>
+                        {rule.conditions?.any && (
+                          <Badge variant="secondary" className="text-[10px]">ODER</Badge>
+                        )}
                       </div>
                     </div>
                   </div>
                   <div className="flex gap-2 flex-wrap">
-                    <Button size="sm" variant="outline" onClick={() => startEdit(rule)}>
+                    <Button size="sm" variant="outline" onClick={() => startEdit(rule)} disabled={!canEdit}>
                       Bearbeiten
                     </Button>
                     <Button
@@ -547,7 +631,7 @@ export function AutomationRulesManager() {
                     >
                       <Zap className="h-4 w-4" />
                     </Button>
-                    <Button size="sm" variant="destructive" onClick={() => deleteRule(rule.id)}>
+                    <Button size="sm" variant="destructive" onClick={() => deleteRule(rule.id)} disabled={!canEdit}>
                       <Trash2 className="h-4 w-4" />
                     </Button>
                   </div>
