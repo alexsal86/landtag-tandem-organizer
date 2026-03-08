@@ -181,14 +181,14 @@ export const HabitsWidget: React.FC<HabitsWidgetProps> = ({
     try {
       const { data, error } = await supabase
         .from('habits')
-        .insert({
+        .insert([{
           user_id: user.id,
           name: newHabitName.trim(),
           color: '#10b981',
           frequency: 'daily',
           target_count: 1,
           category: 'personal'
-        })
+        }])
         .select()
         .single();
 
