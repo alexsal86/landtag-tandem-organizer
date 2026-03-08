@@ -101,7 +101,7 @@ export function AppointmentDetailsSidebar({
       if (error) throw error;
       setGuests(guestsData || []);
     } catch (error) {
-      console.error('Error fetching guests:', error);
+      debugConsole.error('Error fetching guests:', error);
     } finally {
       setIsLoadingGuests(false);
     }
