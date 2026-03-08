@@ -623,7 +623,7 @@ export const useNotifications = () => {
         
         // Re-subscribe if no active DB record OR endpoint mismatch
         if (!data || data.length === 0 || (currentEndpoint && dbEndpoint && currentEndpoint !== dbEndpoint)) {
-          console.log('🔄 Push subscription mismatch or missing, auto-renewing...', {
+          debugConsole.log('🔄 Push subscription mismatch or missing, auto-renewing...', {
             hasDbRecord: !!data?.length,
             endpointMatch: currentEndpoint === dbEndpoint
           });
