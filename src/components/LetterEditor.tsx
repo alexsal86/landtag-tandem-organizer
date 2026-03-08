@@ -261,13 +261,14 @@ const LetterEditor: React.FC<LetterEditorProps> = ({ letter, isOpen, onClose, on
     const varMap = buildVariableMap(
       { subject: editedLetter.subject, letterDate: editedLetter.letter_date, referenceNumber: editedLetter.reference_number },
       sender ? {
-        name: sender.name, organization: sender.organization, street: sender.street,
-        house_number: sender.house_number, postal_code: sender.postal_code, city: sender.city,
+        name: sender.name, organization: sender.organization,
+        street: (sender as any).street, house_number: (sender as any).house_number,
+        postal_code: (sender as any).postal_code, city: (sender as any).city,
         wahlkreis_street: sender.wahlkreis_street, wahlkreis_house_number: sender.wahlkreis_house_number,
         wahlkreis_postal_code: sender.wahlkreis_postal_code, wahlkreis_city: sender.wahlkreis_city,
         landtag_street: sender.landtag_street, landtag_house_number: sender.landtag_house_number,
         landtag_postal_code: sender.landtag_postal_code, landtag_city: sender.landtag_city,
-        phone: sender.phone, email: sender.email,
+        phone: sender.phone, email: (sender as any).email,
         wahlkreis_email: sender.wahlkreis_email, landtag_email: sender.landtag_email,
       } : null,
       recipientData,
