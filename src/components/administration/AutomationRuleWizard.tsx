@@ -278,6 +278,12 @@ export type WizardForm = {
   enabled: boolean;
 };
 
+export const DEFAULT_CONDITION_GROUP: ConditionGroup = {
+  logic: "all",
+  conditions: [{ ...DEFAULT_CONDITION }],
+  groups: [],
+};
+
 export const DEFAULT_FORM: WizardForm = {
   name: "",
   description: "",
@@ -287,6 +293,7 @@ export const DEFAULT_FORM: WizardForm = {
   triggerValue: "",
   conditionLogic: "all",
   conditions: [{ ...DEFAULT_CONDITION }],
+  conditionGroup: { ...DEFAULT_CONDITION_GROUP },
   actions: [{ ...DEFAULT_ACTION }],
   enabled: true,
 };
