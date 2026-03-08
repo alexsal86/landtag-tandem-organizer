@@ -42,7 +42,7 @@ export function useMeetingSidebarData(deps: UseMeetingSidebarDataDeps) {
       }
       setLinkedQuickNotes(data || []);
     } catch (error) {
-      console.error("Error loading linked quick notes:", error);
+      debugConsole.error("Error loading linked quick notes:", error);
     }
   };
 
