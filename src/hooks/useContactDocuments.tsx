@@ -112,7 +112,7 @@ export const useContactDocuments = (contactId?: string, contactTags?: string[]) 
         setTaggedDocuments([]);
       }
     } catch (error) {
-      console.error('Error fetching contact documents:', error);
+      debugConsole.error('Error fetching contact documents:', error);
     } finally {
       setLoading(false);
     }
