@@ -327,7 +327,7 @@ export const EventRSVPManager = ({ eventPlanningId, eventTitle }: EventRSVPManag
       setReminderDialogOpen(false);
       loadRSVPs();
     } catch (error) {
-      console.error('Error sending reminder:', error);
+      debugConsole.error('Error sending reminder:', error);
       toast({ title: "Fehler", description: "Erinnerung konnte nicht versendet werden.", variant: "destructive" });
     } finally {
       setSendingReminder(false);
