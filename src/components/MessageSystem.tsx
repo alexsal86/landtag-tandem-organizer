@@ -102,7 +102,7 @@ export function MessageSystem() {
       const { data: authoredMessages, error: authoredError } = authoredResponse;
 
       if (authoredError) {
-        console.error('Error fetching authored messages:', authoredError);
+        debugConsole.error('Error fetching authored messages:', authoredError);
         return;
       }
 
