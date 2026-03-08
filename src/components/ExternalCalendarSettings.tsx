@@ -119,7 +119,7 @@ export function ExternalCalendarSettings() {
       });
       fetchCalendars();
     } catch (error) {
-      console.error('Error adding calendar:', error);
+      debugConsole.error('Error adding calendar:', error);
       toast.error('Fehler beim Hinzufügen des Kalenders');
     }
   };
