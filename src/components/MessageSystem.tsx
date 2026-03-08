@@ -11,6 +11,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { useMessagesRealtime } from "@/hooks/useMessagesRealtime";
 import { MessageComposer } from "./MessageComposer";
 import { toast } from "@/hooks/use-toast";
+import { debugConsole } from "@/utils/debugConsole";
 
 interface ReceivedMessage {
   id: string;
