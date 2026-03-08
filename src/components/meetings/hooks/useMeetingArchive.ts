@@ -176,7 +176,7 @@ export function useMeetingArchive(deps: ArchiveDeps) {
       // Step 2: Process carryover items
       const carryoverItems = agendaItemsData?.filter(item => item.carry_over_to_next) || [];
       if (carryoverItems.length > 0) {
-        try { await processCarryoverItems(meeting, carryoverItems); } catch (e) { console.error('Carryover error (non-fatal):', e); }
+        try { await processCarryoverItems(meeting, carryoverItems); } catch (e) { debugConsole.error('Carryover error (non-fatal):', e); }
       }
 
       // Step 3a: Linked task results → child tasks
