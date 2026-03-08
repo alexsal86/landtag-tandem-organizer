@@ -50,7 +50,7 @@ export function RSSSettingsManager() {
 
     if (error && error.code !== 'PGRST116') {
       toast.error("Fehler beim Laden der Einstellungen");
-      console.error(error);
+      debugConsole.error(error);
     } else if (data) {
       form.reset({
         articles_per_feed: data.articles_per_feed,
