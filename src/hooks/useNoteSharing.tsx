@@ -130,7 +130,7 @@ export const useNoteSharing = (noteId?: string) => {
       loadShares();
       return true;
     } catch (error) {
-      console.error("Error removing share:", error);
+      debugConsole.error("Error removing share:", error);
       toast.error("Fehler beim Entfernen der Freigabe");
       return false;
     }
