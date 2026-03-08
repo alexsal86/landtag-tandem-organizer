@@ -329,7 +329,7 @@ export function CommentPlugin({ documentId }: { documentId?: string }) {
       // Get user profiles for the comment authors
       const userIds = [...new Set(commentsData?.map(comment => comment.user_id) || [])];
       
-      let profilesData = [];
+      let profilesData: Array<{ user_id: string; display_name: string | null; avatar_url: string | null }> = [];
       if (userIds.length > 0) {
         const { data: profiles, error: profilesError } = await supabase
           .from('profiles')
