@@ -263,7 +263,7 @@ export function AppointmentDetailsSidebar({
         // Insert updated guests with tokens
         const guestEntries = guests.map(guest => ({
           appointment_id: appointment.id,
-          tenant_id: currentTenant?.id,
+          tenant_id: currentTenant!.id,
           name: guest.name,
           email: guest.email,
           status: 'pending' as const,
@@ -835,17 +835,11 @@ export function AppointmentDetailsSidebar({
                       // Update local guests state immediately
                       const updatedGuestsWithId = updatedGuests.map((guest, index) => ({
                         id: guests[index]?.id || crypto.randomUUID(),
-                        appointment_id: appointment.id,
-                        tenant_id: currentTenant?.id || '',
                         name: guest.name,
                         email: guest.email,
                         status: 'pending' as const,
-                        invitation_token: crypto.randomUUID(),
-                        invited_at: null,
                         responded_at: null,
                         response_note: null,
-                        created_at: new Date().toISOString(),
-                        updated_at: new Date().toISOString()
                       }));
                       setGuests(updatedGuestsWithId);
                     }}

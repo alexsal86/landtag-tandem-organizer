@@ -59,8 +59,8 @@ export function ProtocolSearch({ protocolId, onResultSelect }: ProtocolSearchPro
       const speakers = [...new Set(data?.map(d => d.speaker_name).filter(Boolean) || [])];
       const parties = [...new Set(data?.map(d => d.speaker_party).filter(Boolean) || [])];
 
-      setAvailableSpeakers(speakers.sort());
-      setAvailableParties(parties.sort());
+      setAvailableSpeakers(speakers.filter((s): s is string => s !== null).sort());
+      setAvailableParties(parties.filter((p): p is string => p !== null).sort());
     } catch (error) {
       debugConsole.error('Error loading filter options:', error);
     }
@@ -99,7 +99,7 @@ export function ProtocolSearch({ protocolId, onResultSelect }: ProtocolSearchPro
             type: 'agenda_item',
             title: item.title,
             content: item.description || '',
-            page_number: item.page_number,
+            page_number: item.page_number ?? undefined,
             protocol_id: item.protocol_id,
             protocol_title: item.parliament_protocols.original_filename,
             protocol_date: item.parliament_protocols.protocol_date
@@ -136,9 +136,9 @@ export function ProtocolSearch({ protocolId, onResultSelect }: ProtocolSearchPro
             type: 'speech',
             title: `${speech.speaker_name} (${speech.speaker_party})`,
             content: speech.speech_content,
-            speaker: speech.speaker_name,
-            party: speech.speaker_party,
-            page_number: speech.page_number,
+            speaker: speech.speaker_name ?? undefined,
+            party: speech.speaker_party ?? undefined,
+            page_number: speech.page_number ?? undefined,
             protocol_id: speech.protocol_id,
             protocol_title: speech.parliament_protocols.original_filename,
             protocol_date: speech.parliament_protocols.protocol_date

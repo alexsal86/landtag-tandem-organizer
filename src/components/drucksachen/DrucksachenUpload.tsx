@@ -179,8 +179,8 @@ export function DrucksachenUpload({ onUploadSuccess, onProtocolsRefresh }: Druck
         i === index ? { ...f, status: 'processing', progress: 50 } : f
       ));
       
-      let parsedData = null;
-      let pdfMetadata = null;
+      let parsedData: { raw_text: string; agendaItems: any[]; speeches: any[]; sessions: any[] } | null = null;
+      let pdfMetadata: any = null;
       try {
         debugConsole.log('Starting local PDF analysis...');
         const pdfData = await parsePDFFile(fileData.file);

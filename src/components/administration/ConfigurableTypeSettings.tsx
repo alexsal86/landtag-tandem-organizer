@@ -111,7 +111,7 @@ export function ConfigurableTypeSettings({
       const insertData: any = {
         name: newItem.label.toLowerCase().replace(/\s+/g, '_'),
         label: newItem.label,
-        order_index: Math.max(...items.map(i => i.order_index), -1) + 1
+        order_index: Math.max(...items.map(i => i.order_index ?? 0), -1) + 1
       };
 
       if (hasColor) {
@@ -393,7 +393,7 @@ export function ConfigurableTypeSettings({
                             )}
                             <TableCell>
                               <Button
-                                onClick={() => toggleActive(item.id, item.is_active)}
+                                onClick={() => toggleActive(item.id, item.is_active ?? true)}
                                 size="sm"
                                 variant={item.is_active ? "default" : "secondary"}
                                 className="h-6 px-2 text-xs"
@@ -427,7 +427,7 @@ export function ConfigurableTypeSettings({
                                     <Button
                                       onClick={() => setEditingItem({ 
                                         id: item.id, 
-                                        label: item.label, 
+                                        label: item.label ?? '', 
                                         color: item.color ?? defaultColor, 
                                         icon: item.icon || undefined 
                                       })}

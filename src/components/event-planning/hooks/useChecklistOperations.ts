@@ -54,7 +54,7 @@ export function useChecklistOperations({
           setTimeout(async () => {
             if (selectedPlanningId) {
               const { data: freshItems } = await supabase.from("event_planning_checklist_items").select("*").eq("event_planning_id", selectedPlanningId).order("order_index", { ascending: true });
-              if (freshItems) setChecklistItems(freshItems.map(item => ({ ...item, sub_items: (item.sub_items || []) as { title: string; is_completed: boolean }[] })));
+              if (freshItems) setChecklistItems(freshItems.map(item => ({ ...item, sub_items: (item.sub_items || []) as { title: string; is_completed: boolean }[] })) as ChecklistItem[]);
             }
           }, 500);
           return;
@@ -80,7 +80,7 @@ export function useChecklistOperations({
       setTimeout(async () => {
         if (selectedPlanningId) {
           const { data: freshItems } = await supabase.from("event_planning_checklist_items").select("*").eq("event_planning_id", selectedPlanningId).order("order_index", { ascending: true });
-          if (freshItems) setChecklistItems(freshItems.map(item => ({ ...item, sub_items: (item.sub_items || []) as { title: string; is_completed: boolean }[] })));
+          if (freshItems) setChecklistItems(freshItems.map(item => ({ ...item, sub_items: (item.sub_items || []) as { title: string; is_completed: boolean }[] })) as ChecklistItem[]);
         }
       }, 500);
     }
@@ -101,7 +101,7 @@ export function useChecklistOperations({
     const { data, error } = await supabase.from("event_planning_checklist_items").insert([{ event_planning_id: selectedPlanningId, title, order_index: maxOrder + 1, type: itemType }]).select().single();
     if (error) { toast({ title: "Fehler", description: "Checklisten-Punkt konnte nicht hinzugefügt werden.", variant: "destructive" }); return; }
 
-    const transformedData = { ...data, sub_items: Array.isArray(data.sub_items) ? data.sub_items : (data.sub_items ? JSON.parse(data.sub_items as string) : []) };
+    const transformedData: ChecklistItem = { ...data, sub_items: Array.isArray(data.sub_items) ? data.sub_items as any : (data.sub_items ? JSON.parse(data.sub_items as string) : []) };
     setChecklistItems([...checklistItems, transformedData]);
     setNewChecklistItem("");
   };

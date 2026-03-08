@@ -139,7 +139,7 @@ export function EmailTemplateManager() {
       name: template.name,
       subject: template.subject,
       body_html: template.body_html,
-      category: template.category,
+      category: template.category ?? '',
       variables: template.variables || []
     });
     setShowDialog(true);
@@ -281,7 +281,7 @@ export function EmailTemplateManager() {
                     <CardDescription>{template.subject}</CardDescription>
                   </div>
                   <Badge variant="secondary">
-                    {getCategoryLabel(template.category)}
+                    {getCategoryLabel(template.category ?? '')}
                   </Badge>
                 </div>
               </CardHeader>

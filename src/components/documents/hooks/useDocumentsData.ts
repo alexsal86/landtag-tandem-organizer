@@ -29,7 +29,7 @@ export function useDocumentsData(activeTab: string) {
       setDocuments((data || []).map(doc => ({
         ...doc,
         archived_attachments: Array.isArray(doc.archived_attachments) ? doc.archived_attachments : []
-      })));
+      })) as Document[]);
     } catch (error: unknown) {
       toast({ title: "Fehler beim Laden", description: error instanceof Error ? error.message : String(error), variant: "destructive" });
     } finally {
@@ -53,7 +53,7 @@ export function useDocumentsData(activeTab: string) {
           .eq('folder_id', folder.id);
         return { ...folder, documentCount: count || 0 };
       }));
-      setFolders(foldersWithCounts);
+      setFolders(foldersWithCounts as DocumentFolder[]);
     } catch (error: unknown) {
       debugConsole.error('Error fetching folders:', error);
     }

@@ -190,7 +190,7 @@ export function useEmailComposer() {
         .eq("tenant_id", currentTenant!.id)
         .eq("is_active", true);
       if (error) throw error;
-      setSenderInfos(data || []);
+      setSenderInfos((data || []) as SenderInfo[]);
       const defaultSender = data?.find((s: any) => s.is_default);
       if (defaultSender) setSelectedSender(defaultSender.id);
       else if (data && data.length > 0) setSelectedSender(data[0].id);
@@ -224,7 +224,7 @@ export function useEmailComposer() {
           return { ...list, memberCount: count || 0 };
         })
       );
-      setDistributionLists(listsWithCounts);
+      setDistributionLists(listsWithCounts as DistributionList[]);
     } catch (error: unknown) {
       debugConsole.error("Error fetching distribution lists:", error);
     }
@@ -234,7 +234,7 @@ export function useEmailComposer() {
     try {
       const { data, error } = await supabase.from("contacts").select("id, name, email, organization, avatar_url, phone").eq("tenant_id", currentTenant!.id).not("email", "is", null).order("name");
       if (error) throw error;
-      setContacts(data || []);
+      setContacts((data || []) as Contact[]);
     } catch (error: unknown) {
       debugConsole.error("Error fetching contacts:", error);
     }

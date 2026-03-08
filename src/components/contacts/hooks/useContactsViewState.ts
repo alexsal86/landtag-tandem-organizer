@@ -14,8 +14,8 @@ import { debounce } from "@/utils/debounce";
 export interface DistributionList {
   id: string;
   name: string;
-  description?: string;
-  topic?: string;
+  description?: string | null;
+  topic?: string | null;
   created_at: string;
   member_count: number;
   members: Contact[];

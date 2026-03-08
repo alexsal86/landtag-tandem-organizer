@@ -16,10 +16,10 @@ import { useTenant } from '@/hooks/useTenant';
 interface Contact {
   id: string;
   name: string;
-  email?: string;
-  phone?: string;
-  organization?: string;
-  contact_type?: string;
+  email?: string | null;
+  phone?: string | null;
+  organization?: string | null;
+  contact_type?: string | null;
 }
 
 interface DuplicateMatch {
@@ -76,11 +76,11 @@ export function DuplicateContactsSheet({
       if (error) throw error;
 
       setProgress({ processed: 0, total: 0 });
-      const foundDuplicates = await findDuplicatesProgressive(data || [], {
+      const foundDuplicates = await findDuplicatesProgressive((data || []) as any, {
         chunkSize: 300,
         onProgress: (processed, total) => setProgress({ processed, total }),
       });
-      setDuplicates(foundDuplicates);
+      setDuplicates(foundDuplicates as any);
     } catch (error) {
       debugConsole.error('Error fetching contacts:', error);
     } finally {
@@ -232,8 +232,8 @@ export function DuplicateContactsSheet({
 
       {selectedMatch && (
         <MergeContactsDialog
-          contact1={selectedMatch.contact1}
-          contact2={selectedMatch.contact2}
+          contact1={selectedMatch.contact1 as any}
+          contact2={selectedMatch.contact2 as any}
           isOpen={!!selectedMatch}
           onClose={() => setSelectedMatch(null)}
           onMergeComplete={handleMergeComplete}

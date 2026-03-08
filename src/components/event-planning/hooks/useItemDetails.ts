@@ -52,7 +52,7 @@ export function useItemDetails({
         const { data: profilesData } = await supabase.from('profiles').select('user_id, display_name, avatar_url').in('user_id', userIds);
         profiles = profilesData || [];
       }
-      const formattedComments: PlanningComment[] = (comments || []).map(comment => ({ id: comment.id, planning_item_id: comment.planning_item_id, user_id: comment.user_id, content: comment.content, created_at: comment.created_at, profile: profiles.find(p => p.user_id === comment.user_id) || null }));
+      const formattedComments = (comments || []).map(comment => ({ id: comment.id, planning_item_id: comment.planning_item_id, user_id: comment.user_id, content: comment.content, created_at: comment.created_at, profile: profiles.find(p => p.user_id === comment.user_id) || null })) as PlanningComment[];
       setItemComments(prev => ({ ...prev, [itemId]: formattedComments }));
     } catch (error) { handleAppError(error, { context: 'loadItemComments' }); }
   };
@@ -61,7 +61,7 @@ export function useItemDetails({
     try {
       const { data, error } = await supabase.from('planning_item_subtasks').select('*').eq('planning_item_id', itemId).order('order_index', { ascending: true });
       if (error) throw error;
-      setItemSubtasks(prev => ({ ...prev, [itemId]: data || [] }));
+      setItemSubtasks(prev => ({ ...prev, [itemId]: (data || []) as PlanningSubtask[] }));
     } catch (error) { handleAppError(error, { context: 'loadItemSubtasks' }); }
   };
 
@@ -69,7 +69,7 @@ export function useItemDetails({
     try {
       const { data, error } = await supabase.from('planning_item_documents').select('*').eq('planning_item_id', itemId).order('created_at', { ascending: false });
       if (error) throw error;
-      setItemDocuments(prev => ({ ...prev, [itemId]: data || [] }));
+      setItemDocuments(prev => ({ ...prev, [itemId]: (data || []) as PlanningDocument[] }));
     } catch (error) { handleAppError(error, { context: 'loadItemDocuments' }); }
   };
 

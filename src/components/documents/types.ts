@@ -3,11 +3,11 @@ export interface DocumentFolder {
   user_id: string;
   tenant_id: string;
   name: string;
-  description?: string;
-  parent_folder_id?: string;
-  color: string;
-  icon: string;
-  order_index: number;
+  description?: string | null;
+  parent_folder_id?: string | null;
+  color: string | null;
+  icon: string | null;
+  order_index: number | null;
   created_at: string;
   updated_at: string;
   documentCount?: number;
@@ -16,20 +16,20 @@ export interface DocumentFolder {
 export interface Document {
   id: string;
   title: string;
-  description?: string;
+  description?: string | null;
   file_name: string;
   file_path: string;
-  file_size?: number;
-  file_type?: string;
-  category: string;
-  tags?: string[];
+  file_size?: number | null;
+  file_type?: string | null;
+  category: string | null;
+  tags?: string[] | null;
   status: string;
   created_at: string;
   updated_at: string;
-  document_type?: string;
-  source_letter_id?: string;
+  document_type?: string | null;
+  source_letter_id?: string | null;
   archived_attachments?: any[];
-  folder_id?: string;
+  folder_id?: string | null;
 }
 
 export interface Letter {

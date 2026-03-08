@@ -61,7 +61,7 @@ export interface ChecklistItem {
   title: string;
   is_completed: boolean;
   order_index: number;
-  type?: string;
+  type?: string | null;
   sub_items?: Array<{
     title: string;
     is_completed: boolean;
@@ -73,14 +73,14 @@ export interface PlanningSubtask {
   planning_item_id: string;
   user_id: string;
   description: string;
-  assigned_to?: string;
-  due_date?: string;
+  assigned_to?: string | null;
+  due_date?: string | null;
   is_completed: boolean;
   order_index: number;
   created_at: string;
   updated_at: string;
-  result_text?: string;
-  completed_at?: string;
+  result_text?: string | null;
+  completed_at?: string | null;
 }
 
 export interface PlanningComment {
@@ -90,9 +90,9 @@ export interface PlanningComment {
   content: string;
   created_at: string;
   profile?: {
-    display_name?: string;
-    avatar_url?: string;
-  };
+    display_name?: string | null;
+    avatar_url?: string | null;
+  } | null;
 }
 
 export interface PlanningDocument {
@@ -101,8 +101,8 @@ export interface PlanningDocument {
   user_id: string;
   file_name: string;
   file_path: string;
-  file_size?: number;
-  file_type?: string;
+  file_size?: number | null;
+  file_type?: string | null;
   created_at: string;
 }
 

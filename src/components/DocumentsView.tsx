@@ -181,7 +181,7 @@ export function DocumentsView() {
 
   const handleEditDocument = (doc: Document) => {
     setEditingDocument(doc); setEditTitle(doc.title); setEditDescription(doc.description || "");
-    setEditCategory(doc.category); setEditTags(doc.tags || []); setEditStatus(doc.status);
+    setEditCategory(doc.category ?? ''); setEditTags(doc.tags || []); setEditStatus(doc.status);
     setEditFolderId(doc.folder_id || ""); setShowEditDialog(true);
   };
 
@@ -354,7 +354,7 @@ export function DocumentsView() {
                 {currentFolderSubfolders.map(folder => (
                   <Card key={folder.id} className="hover:shadow-lg cursor-pointer transition-shadow overflow-hidden" onClick={() => setCurrentFolder(folder.id)}>
                     <CardContent className="p-4"><div className="flex items-center gap-3 min-w-0">
-                      <Folder className="h-8 w-8 flex-shrink-0" style={{ color: folder.color }} />
+                      <Folder className="h-8 w-8 flex-shrink-0" style={{ color: folder.color ?? undefined }} />
                       <div className="flex-1 min-w-0 overflow-hidden"><h3 className="font-semibold truncate">{folder.name}</h3><p className="text-xs text-muted-foreground">{folder.documentCount || 0} Dokument{folder.documentCount !== 1 ? 'e' : ''}</p></div>
                       <DropdownMenu><DropdownMenuTrigger asChild onClick={e => e.stopPropagation()}><Button variant="ghost" size="sm" className="h-8 w-8 p-0"><MoreVertical className="h-4 w-4" /></Button></DropdownMenuTrigger><DropdownMenuContent onClick={e => e.stopPropagation()}><DropdownMenuItem onClick={e => { e.stopPropagation(); ops.handleDeleteFolder(folder.id, data.folders); }}><Trash2 className="h-4 w-4 mr-2" />Löschen</DropdownMenuItem></DropdownMenuContent></DropdownMenu>
                     </div>{folder.description && <p className="text-xs text-muted-foreground mt-2 line-clamp-2">{folder.description}</p>}</CardContent>
@@ -373,10 +373,10 @@ export function DocumentsView() {
                     <CardHeader className="pb-3"><div className="flex items-start justify-between gap-2 min-w-0"><div className="flex items-center gap-2 min-w-0 flex-1 overflow-hidden"><FileText className="h-5 w-5 text-primary flex-shrink-0" /><CardTitle className="text-lg truncate">{doc.title}</CardTitle></div><Badge className={`${getStatusColor(doc.status)} flex-shrink-0`}>{STATUS_LABELS[doc.status] || doc.status}</Badge></div>{doc.description && <CardDescription className="line-clamp-2 break-words">{doc.description}</CardDescription>}</CardHeader>
                     <CardContent className="space-y-4">
                       <div className="space-y-2 text-sm text-muted-foreground">
-                        <div className="flex items-center gap-2"><Folder className="h-4 w-4 flex-shrink-0" /><span className="truncate">{getCategoryLabel(doc.category)}</span></div>
+                        <div className="flex items-center gap-2"><Folder className="h-4 w-4 flex-shrink-0" /><span className="truncate">{getCategoryLabel(doc.category ?? '')}</span></div>
                         <div className="flex items-center gap-2"><Calendar className="h-4 w-4 flex-shrink-0" /><span>{format(new Date(doc.created_at), "dd.MM.yyyy", { locale: de })}</span></div>
                         <div className="flex items-center gap-2"><FileType className="h-4 w-4 flex-shrink-0" /><span className="truncate">{doc.file_name}</span></div>
-                        <div><span>Größe: {formatFileSize(doc.file_size)}</span></div>
+                        <div><span>Größe: {formatFileSize(doc.file_size ?? undefined)}</span></div>
                       </div>
                       {doc.tags && doc.tags.length > 0 && <div className="flex flex-wrap gap-1">{doc.tags.map((tag, i) => <Badge key={i} variant="outline" className="text-xs"><Tag className="h-3 w-3 mr-1" />{tag}</Badge>)}</div>}
                       <DocumentContactManager documentId={doc.id} compact />
@@ -397,7 +397,7 @@ export function DocumentsView() {
             ) : (
               <Card><Table><TableHeader><TableRow><TableHead>Titel</TableHead><TableHead>Kategorie</TableHead><TableHead>Status</TableHead><TableHead>Erstellt</TableHead><TableHead>Größe</TableHead><TableHead>Kontakte</TableHead><TableHead className="text-right">Aktionen</TableHead></TableRow></TableHeader><TableBody>
                 {filteredDocuments.map(doc => (
-                  <TableRow key={doc.id}><TableCell className="font-medium"><div className="flex items-center gap-2"><FileText className="h-4 w-4 text-muted-foreground" /><div><div>{doc.title}</div>{doc.description && <div className="text-xs text-muted-foreground truncate max-w-[200px]">{doc.description}</div>}</div></div></TableCell><TableCell>{getCategoryLabel(doc.category)}</TableCell><TableCell><Badge className={getStatusColor(doc.status)}>{STATUS_LABELS[doc.status] || doc.status}</Badge></TableCell><TableCell>{format(new Date(doc.created_at), "dd.MM.yyyy", { locale: de })}</TableCell><TableCell>{formatFileSize(doc.file_size)}</TableCell><TableCell><DocumentContactManager documentId={doc.id} compact /></TableCell>
+                  <TableRow key={doc.id}><TableCell className="font-medium"><div className="flex items-center gap-2"><FileText className="h-4 w-4 text-muted-foreground" /><div><div>{doc.title}</div>{doc.description && <div className="text-xs text-muted-foreground truncate max-w-[200px]">{doc.description}</div>}</div></div></TableCell><TableCell>{getCategoryLabel(doc.category ?? '')}</TableCell><TableCell><Badge className={getStatusColor(doc.status)}>{STATUS_LABELS[doc.status] || doc.status}</Badge></TableCell><TableCell>{format(new Date(doc.created_at), "dd.MM.yyyy", { locale: de })}</TableCell><TableCell>{formatFileSize(doc.file_size ?? undefined)}</TableCell><TableCell><DocumentContactManager documentId={doc.id} compact /></TableCell>
                   <TableCell className="text-right"><TooltipProvider><div className="flex items-center gap-1 justify-end">
                     {doc.document_type === 'archived_letter' && doc.source_letter_id && <Tooltip><TooltipTrigger asChild><Button variant="ghost" size="sm" onClick={() => { setSelectedArchivedDocument(doc); setShowArchivedLetterDetails(true); }}><Info className="h-4 w-4" /></Button></TooltipTrigger><TooltipContent>Details</TooltipContent></Tooltip>}
                     {doc.document_type !== 'archived_letter' && <Tooltip><TooltipTrigger asChild><Button variant="ghost" size="sm" onClick={() => handleEditDocument(doc)}><Edit className="h-4 w-4" /></Button></TooltipTrigger><TooltipContent>Bearbeiten</TooltipContent></Tooltip>}
