@@ -622,7 +622,13 @@ export function AutomationRulesManager() {
           {rules.length === 0 ? (
             <p className="text-sm text-muted-foreground">Noch keine Regeln vorhanden.</p>
           ) : (
-            rules.map((rule) => (
+            rules.map((rule) => {
+              const stats = ruleStats[rule.id];
+              const successRate = stats && stats.total > 0 ? Math.round((stats.success / stats.total) * 100) : null;
+              const avgDuration = stats && stats.withDuration > 0 ? Math.round(stats.totalDurationMs / stats.withDuration / 1000) : null;
+              const nextRun = getNextRunTime(rule);
+
+              return (
               <div key={rule.id} className="border rounded-lg p-3">
                 <div className="flex items-start justify-between gap-4">
                   <div className="flex items-start gap-3">
@@ -641,12 +647,36 @@ export function AutomationRulesManager() {
                         {rule.conditions?.any && (
                           <Badge variant="secondary" className="text-[10px]">ODER</Badge>
                         )}
+                        {successRate !== null && (
+                          <TooltipProvider>
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <Badge variant={successRate >= 80 ? "default" : successRate >= 50 ? "secondary" : "destructive"} className="text-[10px]">
+                                  {successRate}% Erfolg
+                                </Badge>
+                              </TooltipTrigger>
+                              <TooltipContent>
+                                {stats.success}/{stats.total} Runs erfolgreich
+                                {avgDuration !== null && ` · Ø ${avgDuration}s`}
+                              </TooltipContent>
+                            </Tooltip>
+                          </TooltipProvider>
+                        )}
+                        {nextRun && rule.enabled && (
+                          <Badge variant="outline" className="text-[10px] gap-1">
+                            <Clock className="h-3 w-3" />
+                            Nächster Run: {formatDistanceToNow(nextRun, { addSuffix: true, locale: de })}
+                          </Badge>
+                        )}
                       </div>
                     </div>
                   </div>
                   <div className="flex gap-2 flex-wrap">
                     <Button size="sm" variant="outline" onClick={() => startEdit(rule)} disabled={!canEdit}>
                       Bearbeiten
+                    </Button>
+                    <Button size="sm" variant="outline" onClick={() => duplicateRule(rule)} disabled={!canEdit} title="Regel duplizieren">
+                      <Copy className="h-4 w-4" />
                     </Button>
                     <Button
                       size="sm"
@@ -686,7 +716,8 @@ export function AutomationRulesManager() {
                   Aktualisiert {formatDistanceToNow(new Date(rule.updated_at), { addSuffix: true, locale: de })}
                 </p>
               </div>
-            ))
+              );
+            })
           )}
         </CardContent>
       </Card>
