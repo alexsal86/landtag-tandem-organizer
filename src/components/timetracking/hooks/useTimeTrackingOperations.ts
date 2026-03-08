@@ -133,7 +133,7 @@ export function useTimeTrackingOperations({
   const handleRequestVacation = async () => {
     if (!userId || !vacationStartDate || !vacationEndDate) { toast.error("Bitte beide Felder"); return; }
     if (vacationEndDate < vacationStartDate) { toast.error("Das Enddatum darf nicht vor dem Startdatum liegen"); return; }
-    try { await supabase.from("leave_requests").insert({ user_id: userId, type: "vacation", start_date: vacationStartDate, end_date: vacationEndDate, reason: vacationReason || null, status: "pending" }); toast.success("Urlaubsantrag eingereicht"); setVacationStartDate(""); setVacationEndDate(""); setVacationReason(""); loadData(); } catch (error: any) { toast.error(error.message); }
+    try { await supabase.from("leave_requests").insert({ user_id: userId, type: "vacation", start_date: vacationStartDate, end_date: vacationEndDate, reason: vacationReason || null, status: "pending" }); toast.success("Urlaubsantrag eingereicht"); setVacationStartDate(""); setVacationEndDate(""); setVacationReason(""); loadData(); } catch (error: unknown) { toast.error(error instanceof Error ? error.message : "Fehler"); }
   };
 
   const handleReportSick = async () => {
