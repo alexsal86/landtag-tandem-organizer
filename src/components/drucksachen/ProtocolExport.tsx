@@ -111,7 +111,7 @@ export function ProtocolExport({ protocolId, protocolTitle }: ProtocolExportProp
 
       toast.success('CSV-Export erfolgreich erstellt');
     } catch (error) {
-      console.error('Error exporting CSV:', error);
+      debugConsole.error('Error exporting CSV:', error);
       toast.error('Fehler beim CSV-Export');
     } finally {
       setIsExporting(false);
