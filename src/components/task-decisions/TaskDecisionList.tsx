@@ -125,9 +125,6 @@ export const TaskDecisionList = () => {
         `)
         .eq('status', 'active');
 
-      console.log('All task decisions before filtering:', { assignedTaskDecisions, assignedError });
-
-      console.log('Assigned task decisions query result:', { assignedTaskDecisions, assignedError });
 
       if (assignedError) throw assignedError;
 
