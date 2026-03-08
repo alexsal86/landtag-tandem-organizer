@@ -1,4 +1,5 @@
 import React, { useMemo, useCallback, useEffect } from 'react';
+import { debugConsole } from '@/utils/debugConsole';
 import { Calendar, momentLocalizer, Views } from 'react-big-calendar';
 import withDragAndDrop from 'react-big-calendar/lib/addons/dragAndDrop';
 import moment from 'moment';
