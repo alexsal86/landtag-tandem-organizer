@@ -1,19 +1,41 @@
 
-## Benachrichtigungen & Badges für Vorgänge — Umgesetzt
 
-### Was wurde gemacht:
+## Plan: Archiv für Vorgänge (Case Items)
 
-1. **DB: Neue `notification_types` für Kategorie `cases`** (alle 3 Tenants)
-   - `case_item_created`, `case_item_assigned`, `case_item_status_changed`, `case_item_comment`
+### Überblick
+Ein neuer Status `archiviert` wird zum `case_item_status`-Enum hinzugefügt. Archivierte Vorgänge werden aus der normalen Liste ausgeblendet und über ein Archiv-Sheet (analog zu NotesArchiveDialog) erreichbar. Archivierung erfolgt per Kontextmenü in der Liste und per Button in der Detailansicht.
 
-2. **DB: `notification_navigation_mapping`** — alle 4 Typen auf `navigation_context = 'mywork'` gemappt, damit Sidebar-Badge korrekt zählt.
+### Änderungen
 
-3. **UI: `NotificationSettings.tsx`** — Kategorie `cases` / "Vorgänge" mit Icon 📋 eingefügt (Order 3).
+**1. Datenbank-Migration**
+- `ALTER TYPE public.case_item_status ADD VALUE 'archiviert';`
+- Keine Tabellenänderungen nötig, nur Enum-Erweiterung.
 
-4. **Code: `useCaseItems.tsx`** — `create_notification` RPC-Aufrufe bei:
-   - Vorgang erstellen → Benachrichtigung an zugewiesenen Owner
-   - Status-Änderung → Benachrichtigung an Ersteller + Owner
-   - Zuweisung-Änderung → Benachrichtigung an neuen Owner
-   - Kommentar/Interaktion → Benachrichtigung an Ersteller + Owner
+**2. `src/features/cases/items/components/MyWorkCaseItemsTab.tsx`**
+- Archivierte Vorgänge aus `visibleItems` filtern (`.filter(row => row.status !== 'archiviert')`)
+- Rechtsklick-Kontextmenü auf jede Item-Card: `ContextMenu` + `ContextMenuTrigger` wrappen die bestehende Card-`div`. Einträge: "Archivieren" (setzt Status auf `archiviert`), "Öffnen"
+- Archiv-Button oben rechts (Archive-Icon) öffnet ein Sheet mit archivierten Vorgängen
+- STATUS_STYLES/STATUS_LABELS um `archiviert` erweitern (grau)
 
-5. **Badge-System**: Sidebar-Badge für "Meine Arbeit" zählt nun auch Vorgang-Benachrichtigungen (via `navigation_context = 'mywork'` Trigger). Interne Tab-Badges bleiben über `useMyWorkNewCounts` (Zeitstempel-basiert).
+**3. Neues Component: `src/features/cases/items/components/CaseItemsArchiveSheet.tsx`**
+- Sheet (analog NotesArchiveDialog) zeigt archivierte Vorgänge
+- Lädt `case_items` mit `status = 'archiviert'` für den aktuellen Tenant
+- Jeder Eintrag hat einen "Wiederherstellen"-Button (setzt Status zurück auf `neu`)
+- Einfache Liste mit Titel, Kanal, Priorität und Datum
+
+**4. `src/features/cases/items/pages/CaseItemDetail.tsx`**
+- Button "Archivieren" in der Header-Zeile (neben Zurück-Button)
+- Klick setzt `status = 'archiviert'` und navigiert zurück zur Liste
+- Bei archiviertem Vorgang: stattdessen "Wiederherstellen"-Button anzeigen
+
+**5. `src/features/cases/items/hooks/useCaseItems.tsx`**
+- Status-Typ um `'archiviert'` erweitern
+- `archiveCaseItem(id)` Hilfsfunktion: `updateCaseItem(id, { status: 'archiviert' })`
+
+### Dateien
+- **Migration**: `case_item_status` Enum erweitern
+- `src/features/cases/items/components/MyWorkCaseItemsTab.tsx` — Kontextmenü + Archiv-Button
+- `src/features/cases/items/components/CaseItemsArchiveSheet.tsx` — Neues Sheet
+- `src/features/cases/items/pages/CaseItemDetail.tsx` — Archiv-Button
+- `src/features/cases/items/hooks/useCaseItems.tsx` — Typ-Erweiterung
+
