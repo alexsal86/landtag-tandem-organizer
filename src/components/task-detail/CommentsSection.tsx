@@ -1,4 +1,3 @@
-import React from "react";
 import { MessageCircle, User, Send, Edit2, Check, X, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import SimpleRichTextEditor from "@/components/ui/SimpleRichTextEditor";

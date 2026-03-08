@@ -1,4 +1,3 @@
-import React from "react";
 import { Paperclip, Upload, Download, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import type { TaskDocument } from "./types";
