@@ -1,4 +1,5 @@
 import { useState, useMemo } from "react";
+import { debugConsole } from "@/utils/debugConsole";
 import {
   CaseFileTimelineEntry,
   CaseFileNote,
