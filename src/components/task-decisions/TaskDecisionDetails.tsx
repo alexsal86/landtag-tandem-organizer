@@ -1018,7 +1018,7 @@ export const TaskDecisionDetails = ({ decisionId, isOpen, onClose, onArchived, h
                           <CollapsibleContent>
                             <ResponseHistoryTimeline 
                               participantId={participant.id}
-                              decisionId={decisionId}
+                              decisionId={decisionId!}
                             />
                           </CollapsibleContent>
                         </Collapsible>
@@ -1040,7 +1040,7 @@ export const TaskDecisionDetails = ({ decisionId, isOpen, onClose, onArchived, h
             </CardHeader>
             <CardContent>
               <DecisionFileUpload 
-                decisionId={decisionId}
+                decisionId={decisionId ?? undefined}
                 onFilesChange={loadDecisionDetails}
                 canUpload={true}
               />

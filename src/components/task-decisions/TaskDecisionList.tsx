@@ -166,7 +166,7 @@ export const TaskDecisionList = () => {
             description: item.description,
             created_at: item.created_at,
             created_by: item.created_by,
-            participant_id: userParticipant?.id || null,
+            participant_id: userParticipant?.id ?? '',
             task: {
               title: item.tasks?.title || 'Unbekannte Aufgabe',
             },

@@ -266,7 +266,7 @@ export function useTaskOperations({
     const phone = callLog.caller_phone;
     const name = callLog.caller_name || `Unbekannter Anrufer (${phone})`;
 
-    let archiveContact = null;
+    let archiveContact: any = null;
     if (phone) {
       const { data } = await supabase.from('contacts').select('*').eq('phone', phone).eq('contact_type', 'archive').eq('user_id', user!.id).single();
       archiveContact = data;

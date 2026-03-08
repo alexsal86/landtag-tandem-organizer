@@ -60,7 +60,7 @@ export function TaskCommentSidebar({
       // Build nested structure
       const commentsWithProfiles: CommentData[] = (data || []).map(c => ({
         ...c,
-        profile: profileMap.get(c.user_id) || null,
+        profile: profileMap.get(c.user_id) || undefined,
         replies: [],
       }));
 

@@ -15,7 +15,7 @@ interface Meeting {
   id: string;
   title: string;
   meeting_date: string;
-  meeting_time?: string;
+  meeting_time?: string | null;
 }
 
 interface TaskMeetingSelectorProps {
@@ -90,7 +90,7 @@ export function TaskMeetingSelector({
     }
   };
 
-  const formatMeetingDate = (dateStr: string, time?: string) => {
+  const formatMeetingDate = (dateStr: string, time?: string | null) => {
     const date = new Date(dateStr);
     const dateFormatted = format(date, "EEEE, d. MMM", { locale: de });
     if (time) {

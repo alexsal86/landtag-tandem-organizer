@@ -34,8 +34,8 @@ interface CallLog {
 interface Contact {
   id: string;
   name: string;
-  phone?: string;
-  email?: string;
+  phone?: string | null;
+  email?: string | null;
 }
 
 interface CallLogWidgetProps {
@@ -449,9 +449,9 @@ export const CallLogWidget: React.FC<CallLogWidgetProps> = ({
       const { data, error } = await supabase
         .from('contacts')
         .insert([{
-          user_id: user?.id,
+          user_id: user?.id ?? '',
           name: callerName.trim(),
-          phone: callerPhone.trim() || undefined,
+          phone: callerPhone.trim() || null,
         contact_type: 'person',
         category: 'citizen',
         tenant_id: currentTenant?.id || 'default-tenant-id'
@@ -461,7 +461,7 @@ export const CallLogWidget: React.FC<CallLogWidgetProps> = ({
 
       if (error) throw error;
 
-      setContacts(prev => [...prev, data]);
+      setContacts(prev => [...prev, { id: data.id, name: data.name, phone: data.phone, email: data.email }]);
       toast.success('Kontakt gespeichert');
     } catch (error) {
       debugConsole.error('Error saving contact:', error);

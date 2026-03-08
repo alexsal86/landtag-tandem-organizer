@@ -4,15 +4,15 @@ export interface Task {
   description: string;
   priority: "low" | "medium" | "high";
   status: "todo" | "in-progress" | "completed";
-  dueDate: string;
+  dueDate: string | null;
   category: "legislation" | "constituency" | "committee" | "personal" | "call_followup" | "call_follow_up";
   assignedTo?: string;
   progress?: number;
   created_at?: string;
   updated_at?: string;
   user_id?: string;
-  call_log_id?: string;
-  tenant_id?: string;
+  call_log_id?: string | null;
+  tenant_id?: string | null;
   source_type?: string | null;
   source_id?: string | null;
 }
@@ -28,24 +28,24 @@ export interface TaskComment {
 
 export interface Subtask {
   id: string;
-  task_id: string;
+  task_id: string | null;
   title: string;
-  description?: string;
+  description?: string | null;
   is_completed: boolean;
-  assigned_to?: string[];
+  assigned_to?: string[] | null;
   assigned_to_names?: string;
-  due_date?: string;
+  due_date?: string | null;
   order_index: number;
-  completed_at?: string;
-  result_text?: string;
-  planning_item_id?: string;
+  completed_at?: string | null;
+  result_text?: string | null;
+  planning_item_id?: string | null;
   source_type?: 'task_child' | 'planning' | 'call_followup';
-  checklist_item_title?: string;
-  call_log_id?: string;
+  checklist_item_title?: string | null;
+  call_log_id?: string | null;
   contact_name?: string;
-  priority?: string;
-  created_at?: string;
-  updated_at?: string;
+  priority?: string | null;
+  created_at?: string | null;
+  updated_at?: string | null;
 }
 
 export interface TodoItem {
@@ -60,8 +60,8 @@ export interface TodoItem {
 
 export interface SnoozeEntry {
   id: string;
-  task_id?: string;
-  subtask_id?: string;
+  task_id?: string | null;
+  subtask_id?: string | null;
   snoozed_until: string;
   task_title?: string;
   subtask_description?: string;

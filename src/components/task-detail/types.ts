@@ -4,12 +4,12 @@ export interface Task {
   description: string;
   priority: "low" | "medium" | "high";
   status: "todo" | "in-progress" | "completed";
-  dueDate: string;
+  dueDate: string | null;
   category: "legislation" | "constituency" | "committee" | "personal" | "call_followup" | "call_follow_up";
   assignedTo?: string;
   progress?: number;
-  call_log_id?: string;
-  tenant_id?: string;
+  call_log_id?: string | null;
+  tenant_id?: string | null;
 }
 
 export interface TaskDocument {
@@ -30,9 +30,9 @@ export interface TaskComment {
   content: string;
   created_at: string;
   profile?: {
-    display_name?: string;
-    avatar_url?: string;
-  };
+    display_name?: string | null;
+    avatar_url?: string | null;
+  } | null;
 }
 
 export interface Subtask {
@@ -42,7 +42,7 @@ export interface Subtask {
   title: string;
   description: string;
   assigned_to?: string;
-  due_date?: string;
+  due_date?: string | null;
   is_completed: boolean;
   order_index: number;
   created_at: string;
@@ -78,5 +78,5 @@ export const getCategoryColor = (category: Task["category"]) => {
   }
 };
 
-export const formatDate = (dateString: string) =>
-  new Date(dateString).toLocaleDateString("de-DE", { day: "2-digit", month: "2-digit", year: "numeric" });
+export const formatDate = (dateString: string | null) =>
+  dateString ? new Date(dateString).toLocaleDateString("de-DE", { day: "2-digit", month: "2-digit", year: "numeric" }) : '–';

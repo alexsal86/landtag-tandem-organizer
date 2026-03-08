@@ -61,12 +61,12 @@ export const TopicSelector: React.FC<TopicSelectorProps> = ({
               variant="secondary"
               className="gap-1 pr-1"
               style={{ 
-                backgroundColor: `${topic.color}20`,
-                borderColor: topic.color,
-                color: topic.color 
+                backgroundColor: `${topic.color ?? '#3b82f6'}20`,
+                borderColor: topic.color ?? undefined,
+                color: topic.color ?? undefined 
               }}
             >
-              {getIconComponent(topic.icon)}
+              {getIconComponent(topic.icon ?? '')}
               <span className="text-xs">{topic.label}</span>
               <button
                 onClick={(e) => removeTopic(topic.id, e)}
@@ -109,9 +109,9 @@ export const TopicSelector: React.FC<TopicSelectorProps> = ({
                   >
                     <div 
                       className="w-4 h-4 rounded-full flex items-center justify-center"
-                      style={{ backgroundColor: `${topic.color}30` }}
+                      style={{ backgroundColor: `${topic.color ?? '#3b82f6'}30` }}
                     >
-                      {getIconComponent(topic.icon, "h-2.5 w-2.5")}
+                      {getIconComponent(topic.icon ?? '', "h-2.5 w-2.5")}
                     </div>
                     <span className="flex-1">{topic.label}</span>
                     {selectedTopicIds.includes(topic.id) && (
@@ -157,13 +157,13 @@ export const TopicDisplay: React.FC<TopicDisplayProps> = ({
           key={topic.id}
           variant="secondary"
           className="gap-1 text-xs"
-          style={{ 
-            backgroundColor: `${topic.color}20`,
-            borderColor: topic.color,
-            color: topic.color 
+           style={{ 
+            backgroundColor: `${topic.color ?? '#3b82f6'}20`,
+            borderColor: topic.color ?? undefined,
+            color: topic.color ?? undefined 
           }}
         >
-          {getIconComponent(topic.icon)}
+          {getIconComponent(topic.icon ?? '')}
           {topic.label}
         </Badge>
       ))}

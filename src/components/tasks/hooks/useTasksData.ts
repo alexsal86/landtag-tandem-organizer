@@ -80,7 +80,7 @@ export function useTasksData() {
         .select('user_id, display_name')
         .order('display_name');
       if (error) throw error;
-      setUsers(data || []);
+      setUsers((data || []).map(u => ({ user_id: u.user_id, display_name: u.display_name ?? undefined })));
     } catch (error) {
       debugConsole.error('Error loading users:', error);
     }
@@ -105,7 +105,7 @@ export function useTasksData() {
         dueDate: task.due_date,
         category: task.category as Task['category'],
         assignedTo: Array.isArray(task.assigned_to) ? task.assigned_to.join(',') : (task.assigned_to || ''),
-        progress: task.progress,
+        progress: task.progress ?? undefined,
         created_at: task.created_at,
         updated_at: task.updated_at,
         user_id: task.user_id,
@@ -301,9 +301,11 @@ export function useTasksData() {
 
       const taskTitles: { [taskId: string]: string } = {};
       if (taskSnoozesData && taskSnoozesData.length > 0) {
-        const taskIds = taskSnoozesData.map(s => s.task_id);
-        const { data: tasksData } = await supabase.from('tasks').select('id, title').in('id', taskIds);
-        tasksData?.forEach(task => { taskTitles[task.id] = task.title; });
+        const taskIds = taskSnoozesData.map(s => s.task_id).filter((id): id is string => id != null);
+        if (taskIds.length > 0) {
+          const { data: tasksData } = await supabase.from('tasks').select('id, title').in('id', taskIds);
+          tasksData?.forEach(task => { taskTitles[task.id] = task.title; });
+        }
       }
 
       setAllSnoozes([
@@ -311,7 +313,7 @@ export function useTasksData() {
           id: snooze.id,
           task_id: snooze.task_id,
           snoozed_until: snooze.snoozed_until,
-          task_title: taskTitles[snooze.task_id] || 'Unbekannte Aufgabe',
+          task_title: snooze.task_id ? (taskTitles[snooze.task_id] || 'Unbekannte Aufgabe') : 'Unbekannte Aufgabe',
         })),
         ...(subtaskSnoozesData || []).map(snooze => ({
           id: snooze.id,
@@ -339,7 +341,7 @@ export function useTasksData() {
         id: todo.id,
         title: todo.title,
         category_label: todo.todo_categories.label,
-        category_color: todo.todo_categories.color,
+        category_color: todo.todo_categories.color ?? '',
         assigned_to: Array.isArray(todo.assigned_to) ? todo.assigned_to.join(',') : (todo.assigned_to || ''),
         due_date: todo.due_date,
         is_completed: todo.is_completed
@@ -408,7 +410,7 @@ export function useTasksData() {
               ...subtask, task_id: subtask.planning_item_id || subtask.id,
               title: checklistItemData?.title || subtask.description || 'Unterpunkt',
               task_title: planningTitle, source_type: 'planning' as const,
-              checklist_item_title: checklistItemData?.title, planning_item_id: subtask.planning_item_id,
+              checklist_item_title: checklistItemData?.title ?? null, planning_item_id: subtask.planning_item_id,
               assigned_to_names: resolvedAssignedTo, assigned_to: [subtask.assigned_to]
             });
           } catch {
