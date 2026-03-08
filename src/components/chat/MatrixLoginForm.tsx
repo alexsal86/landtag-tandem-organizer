@@ -178,7 +178,7 @@ export function MatrixLoginForm() {
         description: `Verbunden als ${confirmedUserId}`,
       });
     } catch (error) {
-      console.error('Matrix password login failed:', error instanceof Error ? error.message : 'Unbekannter Fehler');
+      debugConsole.error('Matrix password login failed:', error instanceof Error ? error.message : 'Unbekannter Fehler');
       toast({
         title: 'Anmeldung fehlgeschlagen',
         description: error instanceof Error ? error.message : 'Login konnte nicht durchgeführt werden',
