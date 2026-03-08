@@ -238,7 +238,7 @@ export function useDashboardLayout() {
         }
       }
     } catch (error) {
-      console.error('Failed to load layout from Supabase:', error);
+      debugConsole.error('Failed to load layout from Supabase:', error);
       // Fallback to localStorage
       try {
         const saved = localStorage.getItem(`dashboard-layout-${user.id}`);
