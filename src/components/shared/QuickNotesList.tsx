@@ -1086,7 +1086,7 @@ export function QuickNotesList({
       
       setConfirmDeleteLinkedNote(null);
     } catch (error) {
-      console.error("Error deleting note with links:", error);
+      debugConsole.error("Error deleting note with links:", error);
       toast.error("Fehler beim Löschen");
     }
   };
