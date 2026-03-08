@@ -259,7 +259,7 @@ export const HabitsWidget: React.FC<HabitsWidgetProps> = ({
       // Recalculate stats
       loadCompletions();
       
-      if (habit.todayCount + 1 >= habit.target_count) {
+      if (habit.todayCount + 1 >= (habit.target_count ?? 1)) {
         toast.success(`${habit.name} für heute abgeschlossen! 🎉`);
       } else {
         toast.success(`${habit.name} markiert (${habit.todayCount + 1}/${habit.target_count})`);
