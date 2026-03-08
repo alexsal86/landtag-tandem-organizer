@@ -1659,12 +1659,13 @@ export function MeetingsView() {
               if (!resultText || !(resultText as string).trim()) continue;
               
               const meetingContext = `Aus Besprechung "${meeting.title}" vom ${format(new Date(meeting.meeting_date), 'dd.MM.yyyy', { locale: de })}`;
-              await supabase.from('case_item_timeline_entries' as any).insert({
+              await supabase.from('case_item_timeline').insert({
                 case_item_id: caseItemId,
-                entry_type: 'meeting_result',
+                event_type: 'meeting_result',
                 title: `Ergebnis: ${meeting.title}`,
-                content: `${meetingContext}\n\n${resultText}`,
+                description: `${meetingContext}\n\n${resultText}`,
                 created_by: user.id,
+                tenant_id: currentTenant?.id || '',
               });
             }
           } catch (e) {
