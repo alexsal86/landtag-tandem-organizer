@@ -238,7 +238,7 @@ export function ContactDetailSheet({ contactId, isOpen, onClose, onContactUpdate
       setAllTags({ direct: directTags, inherited: inheritedTags });
       
     } catch (error) {
-      console.error('Error fetching contact:', error);
+      debugConsole.error('Error fetching contact:', error);
       toast({
         title: "Fehler",
         description: "Kontakt konnte nicht geladen werden.",
