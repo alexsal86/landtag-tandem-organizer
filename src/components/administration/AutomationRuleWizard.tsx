@@ -447,6 +447,40 @@ function ActionCard({
           </div>
         </div>
       )}
+
+      {isEmail && (
+        <div className="space-y-3">
+          <div className="space-y-1">
+            <Label className="text-xs">E-Mail-Template *</Label>
+            {emailTemplates.length === 0 ? (
+              <p className="text-xs text-muted-foreground italic">Keine aktiven Templates vorhanden. Erstelle Templates unter E-Mail → Vorlagen.</p>
+            ) : (
+              <Select value={action.emailTemplateId} onValueChange={(v) => onChange(index, { emailTemplateId: v })}>
+                <SelectTrigger className="h-8 text-xs">
+                  <SelectValue placeholder="Template wählen…" />
+                </SelectTrigger>
+                <SelectContent>
+                  {emailTemplates.map((t) => (
+                    <SelectItem key={t.id} value={t.id}>
+                      {t.name} — {t.subject}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            )}
+          </div>
+          <div className="grid gap-3 sm:grid-cols-2">
+            <div className="space-y-1">
+              <Label className="text-xs">Empfänger-E-Mail *</Label>
+              <Input className="h-8 text-xs" value={action.emailRecipient} onChange={(e) => onChange(index, { emailRecipient: e.target.value })} placeholder="empfaenger@example.com" />
+            </div>
+            <div className="space-y-1">
+              <Label className="text-xs">Empfänger-Name</Label>
+              <Input className="h-8 text-xs" value={action.emailRecipientName} onChange={(e) => onChange(index, { emailRecipientName: e.target.value })} placeholder="Optional" />
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
