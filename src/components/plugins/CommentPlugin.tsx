@@ -630,7 +630,7 @@ export function CommentPlugin({ documentId }: { documentId?: string }) {
         description: "Your comment has been saved successfully.",
       });
     } catch (error) {
-      console.error('Error saving comment:', error);
+      debugConsole.error('Error saving comment:', error);
       toast({
         title: "Error",
         description: "Failed to save comment. Please try again.",
