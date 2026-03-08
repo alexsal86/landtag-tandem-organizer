@@ -1,5 +1,6 @@
 import { useState, useEffect, useMemo } from "react";
 import { useSearchParams, useNavigate } from "react-router-dom";
+import { useNotificationHighlight } from "@/hooks/useNotificationHighlight";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -41,6 +42,7 @@ export function MyWorkTasksTab() {
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
   const { viewType, setViewType } = useViewPreference({ key: "mywork-tasks", defaultView: "card" });
+  const { isHighlighted, highlightRef } = useNotificationHighlight();
   
   const {
     assignedTasks,
@@ -701,6 +703,8 @@ export function MyWorkTasksTab() {
           <TaskCard
             key={task.id}
             task={task}
+            className={isHighlighted(task.id) ? 'notification-highlight' : undefined}
+            highlightRef={highlightRef(task.id)}
             subtasks={subtasks[task.id]}
             resolveAssigneeName={resolveAssigneeName}
             hasMeetingLink={!!(task.meeting_id || task.pending_for_jour_fixe)}
@@ -738,6 +742,8 @@ export function MyWorkTasksTab() {
           <TaskListRow
             key={task.id}
             task={task}
+            className={isHighlighted(task.id) ? 'notification-highlight' : undefined}
+            highlightRef={highlightRef(task.id)}
             subtasks={subtasks[task.id]}
             resolveAssigneeName={resolveAssigneeName}
             hasMeetingLink={!!(task.meeting_id || task.pending_for_jour_fixe)}

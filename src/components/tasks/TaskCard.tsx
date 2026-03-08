@@ -43,6 +43,8 @@ interface TaskCardProps {
   commentCount?: number;
   depth?: number;
   isLastChild?: boolean;
+  className?: string;
+  highlightRef?: (el: HTMLElement | null) => void;
   onComplete: (taskId: string) => void;
   onSubtaskComplete: (subtaskId: string) => void;
   onNavigate: (taskId: string) => void;
@@ -73,6 +75,8 @@ export function TaskCard({
   commentCount = 0,
   depth = 0,
   isLastChild = false,
+  className,
+  highlightRef,
   onComplete,
   onSubtaskComplete,
   onNavigate,
@@ -179,10 +183,12 @@ export function TaskCard({
 
   return (
     <div
+      ref={highlightRef}
       className={cn(
         "border border-border relative",
         isChildTask ? "rounded-none bg-muted/40" : "rounded-lg bg-card",
-        isChildTask && isLastChild && "rounded-br-lg"
+        isChildTask && isLastChild && "rounded-br-lg",
+        className,
       )}
     >
       <div

@@ -1,5 +1,6 @@
-import { type KeyboardEvent, useCallback, useEffect, useMemo, useState } from "react";
+import { type KeyboardEvent, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
+import { useNotificationHighlight } from "@/hooks/useNotificationHighlight";
 import { format, type Locale } from "date-fns";
 import { de } from "date-fns/locale";
 import { ArrowDown, ArrowUp, Briefcase, CalendarDays, CheckCircle2, ChevronRight, Circle, Clock, FileText, FolderOpen, Gavel, GripVertical, Inbox, Link2, Mail, MessageSquare, Phone, Plus, Search, Timer, UserRound, Users, Vote } from "lucide-react";
@@ -234,6 +235,7 @@ export function MyWorkCasesWorkspace() {
   const [searchParams, setSearchParams] = useSearchParams();
   const { createCaseItem } = useCaseItems();
   const { caseFileTypes } = useCaseFileTypes();
+  const { isHighlighted, highlightRef } = useNotificationHighlight();
 
   const {
     caseItems,
@@ -947,9 +949,9 @@ export function MyWorkCasesWorkspace() {
                                   <Draggable key={item.id} draggableId={item.id} index={index}>
                                     {(dragProvided, dragSnapshot) => (
                                       <div
-                                        ref={dragProvided.innerRef}
+                                        ref={(el) => { dragProvided.innerRef(el); if (isHighlighted(item.id) && el) highlightRef(item.id)(el); }}
                                         {...dragProvided.draggableProps}
-                                        className={cn("border-b", dragSnapshot.isDragging && "opacity-80 shadow-lg rounded-md bg-background")}
+                                        className={cn("border-b", dragSnapshot.isDragging && "opacity-80 shadow-lg rounded-md bg-background", isHighlighted(item.id) && "notification-highlight")}
                                       >
                                         <ContextMenu>
                                           <ContextMenuTrigger asChild>

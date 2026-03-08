@@ -10,6 +10,7 @@ import {
 import { DragDropContext, Droppable, Draggable } from "@hello-pangea/dnd";
 import { cn } from "@/lib/utils";
 import { useQuickNotes } from "@/hooks/useQuickNotes";
+import { useNotificationHighlight } from "@/hooks/useNotificationHighlight";
 import { NoteCard } from "@/components/shared/NoteCard";
 import { NoteDialogs } from "@/components/shared/NoteDialogs";
 
@@ -68,6 +69,7 @@ export function QuickNotesList({
   onNoteClick
 }: QuickNotesListProps) {
   const hook = useQuickNotes(refreshTrigger);
+  const { isHighlighted, highlightRef } = useNotificationHighlight();
 
   if (hook.loading) {
     return (
@@ -95,6 +97,8 @@ export function QuickNotesList({
     isExpanded: hook.expandedNotes.has(note.id),
     isDetailsExpanded: hook.expandedDetails.has(note.id),
     colorModeUpdating: hook.colorModeUpdating,
+    className: isHighlighted(note.id) ? 'notification-highlight' : undefined,
+    highlightRef: isHighlighted(note.id) ? highlightRef(note.id) : undefined,
     onNoteClick,
     onToggleExpand: hook.toggleNoteExpand,
     onToggleDetailsExpand: hook.toggleDetailsExpand,

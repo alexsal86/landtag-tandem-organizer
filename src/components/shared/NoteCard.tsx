@@ -33,6 +33,8 @@ interface NoteCardProps {
   isExpanded: boolean;
   isDetailsExpanded: boolean;
   colorModeUpdating: string | null;
+  className?: string;
+  highlightRef?: (el: HTMLElement | null) => void;
   onNoteClick?: (note: QuickNote) => void;
   onToggleExpand: (noteId: string, e: React.MouseEvent) => void;
   onToggleDetailsExpand: (noteId: string, e: React.MouseEvent) => void;
@@ -59,6 +61,7 @@ interface NoteCardProps {
 export function NoteCard({
   note, userId, showFollowUpBadge = false, dragHandleProps,
   isExpanded, isDetailsExpanded, colorModeUpdating,
+  className, highlightRef,
   onNoteClick, onToggleExpand, onToggleDetailsExpand,
   onTogglePin, onDelete, onArchive, onSetPriority, onSetColor, onSetColorMode,
   onSetFollowUp, onOpenDatePicker, onCreateTask, onRemoveTask,
@@ -73,7 +76,8 @@ export function NoteCard({
   return (
     <div
       key={note.id}
-      className="p-3 pb-12 rounded-lg border transition-all hover:shadow-sm border-l-4 group relative"
+      ref={highlightRef}
+      className={cn("p-3 pb-12 rounded-lg border transition-all hover:shadow-sm border-l-4 group relative", className)}
       style={{
         borderLeftColor: note.color || "#3b82f6",
         backgroundColor: note.color && note.color_full_card === true

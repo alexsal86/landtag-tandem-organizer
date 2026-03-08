@@ -40,6 +40,8 @@ interface TaskListRowProps {
   followUpDate?: string | null;
   commentCount?: number;
   depth?: number;
+  className?: string;
+  highlightRef?: (el: HTMLElement | null) => void;
   onComplete: (taskId: string) => void;
   onSubtaskComplete: (subtaskId: string) => void;
   onNavigate: (taskId: string) => void;
@@ -68,6 +70,8 @@ export function TaskListRow({
   followUpDate,
   commentCount = 0,
   depth = 0,
+  className,
+  highlightRef,
   onComplete,
   onSubtaskComplete,
   onNavigate,
@@ -149,7 +153,7 @@ export function TaskListRow({
   };
 
   return (
-    <div>
+    <div ref={highlightRef} className={className}>
       <div
         className="flex items-center gap-2 px-3 py-2 hover:bg-muted/50 transition-colors border-b"
         style={{ paddingLeft: `${12 + depth * 20}px` }}

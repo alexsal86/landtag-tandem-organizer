@@ -15,10 +15,10 @@ interface DeadlineItem {
 }
 
 const TYPE_CONFIG = {
-  task: { icon: CheckSquare, label: 'Aufgabe', tab: '/mywork?tab=tasks', color: 'text-blue-500' },
-  note: { icon: StickyNote, label: 'Notiz', tab: '/mywork?tab=capture', color: 'text-amber-500' },
-  case: { icon: Briefcase, label: 'Vorgang', tab: '/mywork?tab=cases', color: 'text-emerald-500' },
-  decision: { icon: Vote, label: 'Entscheidung', tab: '/mywork?tab=decisions', color: 'text-purple-500' },
+  task: { icon: CheckSquare, label: 'Aufgabe', tabBase: '/mywork?tab=tasks', color: 'text-blue-500' },
+  note: { icon: StickyNote, label: 'Notiz', tabBase: '/mywork?tab=capture', color: 'text-amber-500' },
+  case: { icon: Briefcase, label: 'Vorgang', tabBase: '/mywork?tab=cases', color: 'text-emerald-500' },
+  decision: { icon: Vote, label: 'Entscheidung', tabBase: '/mywork?tab=decisions', color: 'text-purple-500' },
 };
 
 export const DashboardTasksSection = () => {
@@ -118,7 +118,7 @@ export const DashboardTasksSection = () => {
       <div
         key={`${item.type}-${item.id}`}
         className="flex items-center gap-1.5 rounded px-1 py-0.5 text-sm text-foreground/90 cursor-pointer hover:bg-muted/40 transition-colors"
-        onClick={() => navigate(cfg.tab)}
+        onClick={() => navigate(`${cfg.tabBase}&highlight=${item.id}`)}
         title={`${cfg.label} – Klicken zum Öffnen, oder per Handle in den Tageszettel ziehen`}
       >
         <span
