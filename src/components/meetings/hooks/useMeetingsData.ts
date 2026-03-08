@@ -1,13 +1,13 @@
-import { useState, useEffect, useRef, useMemo } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useSearchParams } from "react-router-dom";
 import { useNotificationHighlight } from "@/hooks/useNotificationHighlight";
 import { useAuth } from "@/hooks/useAuth";
 import { useTenant } from "@/hooks/useTenant";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
-import { format, startOfDay, endOfDay, addDays } from "date-fns";
-import { de } from "date-fns/locale";
-import type { RecurrenceData, NewMeetingParticipant, AgendaItem, Meeting, MeetingTemplate, Profile, LinkedQuickNote, LinkedTask, LinkedCaseItem, RelevantDecision, MeetingUpcomingAppointment, MeetingParticipant, AgendaDocument } from "@/components/meetings/types";
+import { format } from "date-fns";
+import type { RecurrenceData, NewMeetingParticipant, AgendaItem, Meeting, MeetingTemplate, Profile, LinkedTask, MeetingParticipant, AgendaDocument } from "@/components/meetings/types";
+import { useMeetingSidebarData } from "./useMeetingSidebarData";
 
 export function useMeetingsData() {
   const [searchParams, setSearchParams] = useSearchParams();
@@ -24,11 +24,6 @@ export function useMeetingsData() {
   const [taskDocuments, setTaskDocuments] = useState<Record<string, AgendaDocument[]>>({});
   const [agendaDocuments, setAgendaDocuments] = useState<Record<string, AgendaDocument[]>>({});
   const [meetingTemplates, setMeetingTemplates] = useState<MeetingTemplate[]>([]);
-  const [linkedQuickNotes, setLinkedQuickNotes] = useState<LinkedQuickNote[]>([]);
-  const [meetingLinkedTasks, setMeetingLinkedTasks] = useState<LinkedTask[]>([]);
-  const [meetingRelevantDecisions, setMeetingRelevantDecisions] = useState<RelevantDecision[]>([]);
-  const [meetingLinkedCaseItems, setMeetingLinkedCaseItems] = useState<LinkedCaseItem[]>([]);
-  const [meetingUpcomingAppointments, setMeetingUpcomingAppointments] = useState<MeetingUpcomingAppointment[]>([]);
   const [isNewMeetingOpen, setIsNewMeetingOpen] = useState(false);
   const [newMeeting, setNewMeeting] = useState<Meeting>({
     title: "",
@@ -54,11 +49,16 @@ export function useMeetingsData() {
   const [isFocusMode, setIsFocusMode] = useState(false);
   const [meetingParticipants, setMeetingParticipants] = useState<MeetingParticipant[]>([]);
   const [currentUserIsParticipant, setCurrentUserIsParticipant] = useState(false);
-  const updateTimeouts = useRef<Record<string, NodeJS.Timeout>>({});
-  const [starredAppointmentIds, setStarredAppointmentIds] = useState<Set<string>>(new Set());
-  const [expandedApptNotes, setExpandedApptNotes] = useState<Set<string>>(new Set());
   const [showCarryoverBuffer, setShowCarryoverBuffer] = useState(false);
   const [carryoverBufferItems, setCarryoverBufferItems] = useState<AgendaItem[]>([]);
+
+  // Delegate sidebar data management to sub-hook
+  const sidebar = useMeetingSidebarData({
+    userId: user?.id,
+    tenantId: currentTenant?.id,
+    activeMeetingId,
+    toast,
+  });
 
   // URL action parameter
   useEffect(() => {
@@ -78,12 +78,12 @@ export function useMeetingsData() {
       if (meetingFromUrl && selectedMeeting?.id !== urlMeetingId) {
         setSelectedMeeting(meetingFromUrl);
         loadAgendaItems(urlMeetingId);
-        loadLinkedQuickNotes(urlMeetingId);
-        loadMeetingLinkedTasks(urlMeetingId);
-        loadMeetingLinkedCaseItems(urlMeetingId);
-        loadMeetingRelevantDecisions();
-        if (meetingFromUrl?.meeting_date) loadMeetingUpcomingAppointments(urlMeetingId, meetingFromUrl.meeting_date);
-        loadStarredAppointments(urlMeetingId);
+        sidebar.loadLinkedQuickNotes(urlMeetingId);
+        sidebar.loadMeetingLinkedTasks(urlMeetingId);
+        sidebar.loadMeetingLinkedCaseItems(urlMeetingId);
+        sidebar.loadMeetingRelevantDecisions();
+        if (meetingFromUrl?.meeting_date) sidebar.loadMeetingUpcomingAppointments(urlMeetingId, meetingFromUrl.meeting_date);
+        sidebar.loadStarredAppointments(urlMeetingId);
         searchParams.delete('id');
         setSearchParams(searchParams, { replace: true });
       }
@@ -114,12 +114,12 @@ export function useMeetingsData() {
         setSelectedMeeting(nextMeeting);
         if (nextMeeting.id) {
           loadAgendaItems(nextMeeting.id);
-          loadLinkedQuickNotes(nextMeeting.id);
-          loadMeetingLinkedTasks(nextMeeting.id);
-          loadMeetingLinkedCaseItems(nextMeeting.id);
-          loadMeetingRelevantDecisions();
-          loadMeetingUpcomingAppointments(nextMeeting.id, nextMeeting.meeting_date);
-          loadStarredAppointments(nextMeeting.id);
+          sidebar.loadLinkedQuickNotes(nextMeeting.id);
+          sidebar.loadMeetingLinkedTasks(nextMeeting.id);
+          sidebar.loadMeetingLinkedCaseItems(nextMeeting.id);
+          sidebar.loadMeetingRelevantDecisions();
+          sidebar.loadMeetingUpcomingAppointments(nextMeeting.id, nextMeeting.meeting_date);
+          sidebar.loadStarredAppointments(nextMeeting.id);
         }
       }
     }
@@ -128,19 +128,19 @@ export function useMeetingsData() {
   // Load linked data when selectedMeeting changes
   useEffect(() => {
     if (selectedMeeting?.id && !activeMeeting) {
-      loadLinkedQuickNotes(selectedMeeting.id);
-      loadMeetingLinkedTasks(selectedMeeting.id);
-      loadMeetingLinkedCaseItems(selectedMeeting.id);
-      loadMeetingRelevantDecisions();
-      if (selectedMeeting.meeting_date) loadMeetingUpcomingAppointments(selectedMeeting.id, selectedMeeting.meeting_date);
-      loadStarredAppointments(selectedMeeting.id);
+      sidebar.loadLinkedQuickNotes(selectedMeeting.id);
+      sidebar.loadMeetingLinkedTasks(selectedMeeting.id);
+      sidebar.loadMeetingLinkedCaseItems(selectedMeeting.id);
+      sidebar.loadMeetingRelevantDecisions();
+      if (selectedMeeting.meeting_date) sidebar.loadMeetingUpcomingAppointments(selectedMeeting.id, selectedMeeting.meeting_date);
+      sidebar.loadStarredAppointments(selectedMeeting.id);
     }
   }, [selectedMeeting?.id, activeMeeting]);
 
   // Cleanup timeouts
   useEffect(() => {
     return () => {
-      Object.values(updateTimeouts.current).forEach((timeout) => clearTimeout(timeout));
+      Object.values(sidebar.updateTimeouts.current).forEach((timeout) => clearTimeout(timeout));
     };
   }, []);
 
@@ -158,7 +158,7 @@ export function useMeetingsData() {
           for (const agendaItem of agendaItemsWithTasks) {
             const correspondingTask = tasks.find(task => task.id === agendaItem.task_id);
             if (correspondingTask) {
-              const updates: any = {};
+              const updates: Record<string, string | null | undefined> = {};
               if (agendaItem.title !== correspondingTask.title) updates.title = correspondingTask.title;
               if (agendaItem.description !== correspondingTask.description) updates.description = correspondingTask.description;
               if (Object.keys(updates).length > 0) {
@@ -290,7 +290,7 @@ export function useMeetingsData() {
     try {
       const { data, error } = await supabase.from('task_documents').select('*').in('task_id', taskIds);
       if (error) throw error;
-      const docsByTaskId: Record<string, any[]> = {};
+      const docsByTaskId: Record<string, AgendaDocument[]> = {};
       data?.forEach(doc => {
         if (!docsByTaskId[doc.task_id]) docsByTaskId[doc.task_id] = [];
         docsByTaskId[doc.task_id].push(doc);
@@ -410,168 +410,6 @@ export function useMeetingsData() {
     }
   };
 
-  const loadLinkedQuickNotes = async (meetingId: string) => {
-    try {
-      const { data, error } = await supabase
-        .from('quick_notes').select('*').eq('meeting_id', meetingId).order('created_at', { ascending: false });
-      if (error) { console.error('Error loading linked quick notes:', error); return; }
-      setLinkedQuickNotes(data || []);
-    } catch (error) {
-      console.error('Error loading linked quick notes:', error);
-    }
-  };
-
-  const loadMeetingLinkedTasks = async (meetingId: string) => {
-    try {
-      const { data, error } = await supabase
-        .from('tasks').select('id, title, description, due_date, priority, status, user_id').eq('meeting_id', meetingId).order('created_at', { ascending: false });
-      if (error) throw error;
-      setMeetingLinkedTasks(data || []);
-    } catch (error) {
-      console.error('Error loading meeting linked tasks:', error);
-      setMeetingLinkedTasks([]);
-    }
-  };
-
-  const loadMeetingLinkedCaseItems = async (meetingId: string) => {
-    if (!currentTenant?.id) return;
-    try {
-      const { data, error } = await supabase
-        .from('case_items').select('id, subject, status, priority, due_at, owner_user_id').eq('meeting_id', meetingId).neq('status', 'erledigt');
-      if (error) throw error;
-      setMeetingLinkedCaseItems(data || []);
-    } catch (error) {
-      console.error('Error loading meeting linked case items:', error);
-      setMeetingLinkedCaseItems([]);
-    }
-  };
-
-  const loadMeetingRelevantDecisions = async () => {
-    if (!currentTenant?.id || !user?.id) return;
-    try {
-      const nowDate = new Date();
-      const now = nowDate.toISOString();
-      const in7Days = addDays(nowDate, 7).toISOString();
-      const { data, error } = await supabase
-        .from('task_decisions')
-        .select('id, title, description, response_deadline, priority, created_by, status')
-        .eq('tenant_id', currentTenant.id).eq('status', 'active')
-        .or(`priority.gte.1,response_deadline.lt.${now},and(response_deadline.gte.${now},response_deadline.lte.${in7Days})`)
-        .order('priority', { ascending: false, nullsFirst: false })
-        .order('response_deadline', { ascending: true, nullsFirst: false });
-      if (error) throw error;
-
-      const decisionIds = (data || []).map(d => d.id);
-      let participantRows: Array<{ decision_id: string; user_id: string }> = [];
-      if (decisionIds.length > 0) {
-        const { data: participants, error: participantError } = await supabase
-          .from('task_decision_participants').select('decision_id, user_id').in('decision_id', decisionIds);
-        if (participantError) throw participantError;
-        participantRows = participants || [];
-      }
-
-      const relevant = (data || []).filter(decision =>
-        decision.created_by === user.id ||
-        participantRows.some(p => p.decision_id === decision.id && p.user_id === user.id)
-      );
-      setMeetingRelevantDecisions(relevant);
-    } catch (error) {
-      console.error('Error loading meeting relevant decisions:', error);
-      setMeetingRelevantDecisions([]);
-    }
-  };
-
-  const loadMeetingUpcomingAppointments = async (meetingId: string, meetingDate: string | Date) => {
-    if (!currentTenant?.id) return;
-    try {
-      const baseDate = typeof meetingDate === 'string' ? new Date(meetingDate) : meetingDate;
-      const start = startOfDay(baseDate);
-      const end = endOfDay(addDays(baseDate, 14));
-
-      const { data: internalData } = await supabase
-        .from('appointments').select('id, title, start_time, end_time, location, category, status')
-        .eq('tenant_id', currentTenant.id).gte('start_time', start.toISOString()).lte('start_time', end.toISOString())
-        .order('start_time', { ascending: true });
-
-      const { data: externalData } = await supabase
-        .from('external_events').select('id, title, start_time, end_time, location, external_calendars!inner(name, color, tenant_id)')
-        .eq('external_calendars.tenant_id', currentTenant.id).gte('start_time', start.toISOString()).lte('start_time', end.toISOString());
-
-      const all: MeetingUpcomingAppointment[] = [
-        ...(internalData || []).map(a => ({ ...a, isExternal: false as const })),
-        ...(externalData || []).map((e: { id: string; title: string; start_time: string; end_time: string; location?: string | null; external_calendars?: { name?: string; color?: string } }) => ({
-          id: e.id, title: e.title, start_time: e.start_time, end_time: e.end_time,
-          location: e.location, isExternal: true as const,
-          calendarName: e.external_calendars?.name, calendarColor: e.external_calendars?.color
-        }))
-      ].sort((a, b) => new Date(a.start_time).getTime() - new Date(b.start_time).getTime());
-      setMeetingUpcomingAppointments(all);
-    } catch (error) {
-      console.error('Error loading upcoming appointments:', error);
-      setMeetingUpcomingAppointments([]);
-    }
-  };
-
-  const loadStarredAppointments = async (meetingId: string) => {
-    if (!user?.id) return;
-    try {
-      const { data, error } = await supabase
-        .from('starred_appointments').select('id, appointment_id, external_event_id').eq('meeting_id', meetingId).eq('user_id', user.id);
-      if (error) throw error;
-      const ids = new Set<string>();
-      data?.forEach(item => {
-        if (item.appointment_id) ids.add(item.appointment_id);
-        if (item.external_event_id) ids.add(item.external_event_id);
-      });
-      setStarredAppointmentIds(ids);
-    } catch (error) {
-      console.error('Error loading starred appointments:', error);
-    }
-  };
-
-  const toggleStarAppointment = async (appt: any) => {
-    if (!activeMeeting?.id || !user?.id || !currentTenant?.id) return;
-    const isCurrentlyStarred = starredAppointmentIds.has(appt.id);
-    setStarredAppointmentIds(prev => {
-      const newSet = new Set(prev);
-      if (isCurrentlyStarred) newSet.delete(appt.id); else newSet.add(appt.id);
-      return newSet;
-    });
-    try {
-      if (isCurrentlyStarred) {
-        await supabase.from('starred_appointments').delete()
-          .eq('meeting_id', activeMeeting.id).eq('user_id', user.id)
-          .or(`appointment_id.eq.${appt.id},external_event_id.eq.${appt.id}`);
-      } else {
-        const insertData: any = { meeting_id: activeMeeting.id, user_id: user.id, tenant_id: currentTenant.id };
-        if (appt.isExternal) insertData.external_event_id = appt.id; else insertData.appointment_id = appt.id;
-        await supabase.from('starred_appointments').insert(insertData);
-      }
-    } catch (error) {
-      console.error('Error toggling star:', error);
-      setStarredAppointmentIds(prev => {
-        const newSet = new Set(prev);
-        if (isCurrentlyStarred) newSet.add(appt.id); else newSet.delete(appt.id);
-        return newSet;
-      });
-    }
-  };
-
-  const updateQuickNoteResult = async (noteId: string, result: string) => {
-    setLinkedQuickNotes(prev => prev.map(note => note.id === noteId ? { ...note, meeting_result: result } : note));
-    const timeoutKey = `quick-note-${noteId}-meeting_result`;
-    if (updateTimeouts.current[timeoutKey]) clearTimeout(updateTimeouts.current[timeoutKey]);
-    updateTimeouts.current[timeoutKey] = setTimeout(async () => {
-      try {
-        const { error } = await supabase.from('quick_notes').update({ meeting_result: result }).eq('id', noteId);
-        if (error) throw error;
-      } catch (error) {
-        console.error('Error updating quick note result:', error);
-        toast({ title: "Fehler", description: "Das Ergebnis konnte nicht gespeichert werden.", variant: "destructive" });
-      }
-    }, 500);
-  };
-
   const loadCarryoverBufferItems = async () => {
     if (!user?.id) return;
     try {
@@ -590,25 +428,25 @@ export function useMeetingsData() {
     if (activeMeetingId && activeMeetingId !== meeting.id) {
       setActiveMeeting(null);
       setActiveMeetingId(null);
-      setLinkedQuickNotes([]);
+      sidebar.setLinkedQuickNotes([]);
     }
     setActiveMeeting(meeting);
     setActiveMeetingId(meeting.id || null);
     if (meeting.id) {
       await loadAgendaItems(meeting.id);
-      await loadLinkedQuickNotes(meeting.id);
-      await loadMeetingLinkedTasks(meeting.id);
-      await loadMeetingLinkedCaseItems(meeting.id);
-      await loadMeetingRelevantDecisions();
-      await loadMeetingUpcomingAppointments(meeting.id, meeting.meeting_date);
-      await loadStarredAppointments(meeting.id);
+      await sidebar.loadLinkedQuickNotes(meeting.id);
+      await sidebar.loadMeetingLinkedTasks(meeting.id);
+      await sidebar.loadMeetingLinkedCaseItems(meeting.id);
+      await sidebar.loadMeetingRelevantDecisions();
+      await sidebar.loadMeetingUpcomingAppointments(meeting.id, meeting.meeting_date);
+      await sidebar.loadStarredAppointments(meeting.id);
     }
   };
 
   const stopMeeting = () => {
     setActiveMeeting(null);
     setActiveMeetingId(null);
-    setLinkedQuickNotes([]);
+    sidebar.setLinkedQuickNotes([]);
   };
 
   const updateMeeting = async (meetingId: string, updates: Partial<Meeting>, meetingTimeOverride?: string) => {
@@ -618,7 +456,7 @@ export function useMeetingsData() {
       setSelectedMeeting(prev => prev ? { ...prev, ...optimisticUpdates } : prev);
     }
     try {
-      const formattedUpdates: any = {
+      const formattedUpdates: Record<string, unknown> = {
         ...updates,
         meeting_date: updates.meeting_date instanceof Date ? format(updates.meeting_date, 'yyyy-MM-dd') : updates.meeting_date
       };
@@ -678,7 +516,7 @@ export function useMeetingsData() {
 
       setMeetings(prev => prev.filter(m => m.id !== meetingId));
       if (selectedMeeting?.id === meetingId) { setSelectedMeeting(null); setAgendaItems([]); }
-      if (activeMeetingId === meetingId) { setActiveMeeting(null); setActiveMeetingId(null); setLinkedQuickNotes([]); }
+      if (activeMeetingId === meetingId) { setActiveMeeting(null); setActiveMeetingId(null); sidebar.setLinkedQuickNotes([]); }
       toast({ title: "Meeting gelöscht", description: "Das Meeting wurde erfolgreich gelöscht." });
     } catch (error: unknown) {
       console.error('Delete meeting error:', error);
@@ -692,6 +530,10 @@ export function useMeetingsData() {
   };
 
   const getProfile = (userId: string) => profiles.find(p => p.user_id === userId);
+
+  // Wrap toggleStarAppointment to inject activeMeetingId
+  const toggleStarAppointment = (appt: Parameters<typeof sidebar.toggleStarAppointment>[0]) =>
+    sidebar.toggleStarAppointment(appt, activeMeetingId);
 
   return {
     // Auth & tenant
@@ -708,11 +550,12 @@ export function useMeetingsData() {
     taskDocuments,
     agendaDocuments, setAgendaDocuments,
     meetingTemplates,
-    linkedQuickNotes, setLinkedQuickNotes,
-    meetingLinkedTasks,
-    meetingRelevantDecisions,
-    meetingLinkedCaseItems,
-    meetingUpcomingAppointments,
+    linkedQuickNotes: sidebar.linkedQuickNotes,
+    setLinkedQuickNotes: sidebar.setLinkedQuickNotes,
+    meetingLinkedTasks: sidebar.meetingLinkedTasks,
+    meetingRelevantDecisions: sidebar.meetingRelevantDecisions,
+    meetingLinkedCaseItems: sidebar.meetingLinkedCaseItems,
+    meetingUpcomingAppointments: sidebar.meetingUpcomingAppointments,
     isNewMeetingOpen, setIsNewMeetingOpen,
     newMeeting, setNewMeeting,
     newMeetingTime, setNewMeetingTime,
@@ -724,8 +567,9 @@ export function useMeetingsData() {
     activeMeetingId, setActiveMeetingId,
     showArchive, setShowArchive,
     isFocusMode, setIsFocusMode,
-    starredAppointmentIds,
-    expandedApptNotes, setExpandedApptNotes,
+    starredAppointmentIds: sidebar.starredAppointmentIds,
+    expandedApptNotes: sidebar.expandedApptNotes,
+    setExpandedApptNotes: sidebar.setExpandedApptNotes,
     showCarryoverBuffer, setShowCarryoverBuffer,
     carryoverBufferItems,
     hasEditPermission,
@@ -733,15 +577,15 @@ export function useMeetingsData() {
     // Functions
     loadMeetings,
     loadAgendaItems,
-    loadLinkedQuickNotes,
-    loadMeetingLinkedTasks,
-    loadMeetingLinkedCaseItems,
-    loadMeetingRelevantDecisions,
-    loadMeetingUpcomingAppointments,
-    loadStarredAppointments,
+    loadLinkedQuickNotes: sidebar.loadLinkedQuickNotes,
+    loadMeetingLinkedTasks: sidebar.loadMeetingLinkedTasks,
+    loadMeetingLinkedCaseItems: sidebar.loadMeetingLinkedCaseItems,
+    loadMeetingRelevantDecisions: sidebar.loadMeetingRelevantDecisions,
+    loadMeetingUpcomingAppointments: sidebar.loadMeetingUpcomingAppointments,
+    loadStarredAppointments: sidebar.loadStarredAppointments,
     loadCarryoverBufferItems,
     toggleStarAppointment,
-    updateQuickNoteResult,
+    updateQuickNoteResult: sidebar.updateQuickNoteResult,
     startMeeting,
     stopMeeting,
     updateMeeting,
@@ -749,7 +593,7 @@ export function useMeetingsData() {
     uploadAgendaDocument,
     deleteAgendaDocument,
     getProfile,
-    updateTimeouts,
+    updateTimeouts: sidebar.updateTimeouts,
   };
 }
 
