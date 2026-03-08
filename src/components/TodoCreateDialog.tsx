@@ -72,7 +72,7 @@ export function TodoCreateDialog({ open, onOpenChange, onTodoCreated }: TodoCrea
 
   const loadUsers = async () => {
     try {
-      console.log('Loading users for TodoCreateDialog...');
+      debugConsole.log('Loading users for TodoCreateDialog...');
       const { data, error } = await supabase
         .from('profiles')
         .select('user_id, display_name')
