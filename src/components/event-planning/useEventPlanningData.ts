@@ -140,7 +140,7 @@ export function useEventPlanningData() {
         ]);
         loadViewPreferences();
       } catch (error) {
-        console.error('Error loading planning data:', error);
+        debugConsole.error('Error loading planning data:', error);
       }
     };
     
