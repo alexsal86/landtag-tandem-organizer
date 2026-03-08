@@ -23,9 +23,9 @@ export class CalendarEventAdapter {
     let startTime: Date;
     let endTime: Date;
 
-    console.log('🔄 Converting event to RBC:', event.id, event.title);
-    console.log('📅 Original date object:', event.date);
-    console.log('⏰ Original endTime object:', event.endTime);
+    debugConsole.log('🔄 Converting event to RBC:', event.id, event.title);
+    debugConsole.log('📅 Original date object:', event.date);
+    debugConsole.log('⏰ Original endTime object:', event.endTime);
 
     // Handle nested date objects from Supabase
     startTime = this.extractDateFromObject(event.date);
