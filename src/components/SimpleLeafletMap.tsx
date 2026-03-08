@@ -1,4 +1,5 @@
 import React, { useEffect, useRef } from 'react';
+import { debugConsole } from '@/utils/debugConsole';
 import 'leaflet/dist/leaflet.css';
 import '@/styles/leaflet-overrides.css';
 import * as L from 'leaflet';

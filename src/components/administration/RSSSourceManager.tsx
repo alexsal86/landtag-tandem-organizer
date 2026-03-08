@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { debugConsole } from "@/utils/debugConsole";
 import { Plus, GripVertical, Pencil, Trash2, TestTube, AlertCircle } from "lucide-react";
 import { DragDropContext, Droppable, Draggable, DropResult } from "@hello-pangea/dnd";
 import { Button } from "@/components/ui/button";
