@@ -1138,6 +1138,14 @@ export function MyWorkCasesWorkspace() {
                                               <CalendarDays className="mr-2 h-3 w-3" />
                                               Zum Jour Fixe hinzufügen
                                             </ContextMenuItem>
+                                            <ContextMenuSeparator />
+                                            <ContextMenuItem
+                                              className="text-destructive focus:text-destructive"
+                                              onClick={() => setDeleteConfirmItemId(item.id)}
+                                            >
+                                              <Trash2 className="mr-2 h-3 w-3" />
+                                              Vorgang löschen
+                                            </ContextMenuItem>
                                           </ContextMenuContent>
                                         </ContextMenu>
 
