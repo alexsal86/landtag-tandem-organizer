@@ -107,6 +107,7 @@ export function SystemAgendaItem({
       case 'tasks': return 'border-l-green-500';
       case 'birthdays': return 'border-l-pink-500';
       case 'decisions': return 'border-l-violet-500';
+      case 'case_items': return 'border-l-teal-500';
       default: return 'border-l-muted';
     }
   };
