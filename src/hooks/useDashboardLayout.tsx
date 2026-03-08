@@ -524,7 +524,7 @@ export function useDashboardLayout() {
     
     // Auto-save after a delay to ensure state is updated
     setTimeout(() => {
-      console.log('⏰ Auto-saving layout after widget addition...');
+      
       saveCurrentLayout();
     }, 500);
   };
