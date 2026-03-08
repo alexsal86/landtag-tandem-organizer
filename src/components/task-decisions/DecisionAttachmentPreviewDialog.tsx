@@ -5,6 +5,7 @@ import { Download, FileImage, FileSpreadsheet, FileText, FileIcon } from "lucide
 import { supabase } from "@/integrations/supabase/client";
 import * as XLSX from "xlsx";
 import { debugConsole } from '@/utils/debugConsole';
+import { sanitizeRichHtml } from '@/utils/htmlSanitizer';
 
 interface DecisionAttachmentPreviewDialogProps {
   open: boolean;
@@ -134,7 +135,7 @@ function ExcelPreview({ url }: { url: string }) {
     <div className="h-full w-full overflow-auto p-4 bg-background/70">
       <div
         className="text-sm [&_table]:w-full [&_table]:border-collapse [&_td]:border [&_td]:border-border [&_td]:px-2 [&_td]:py-1 [&_th]:border [&_th]:border-border [&_th]:px-2 [&_th]:py-1 [&_th]:bg-muted"
-        dangerouslySetInnerHTML={{ __html: html }}
+        dangerouslySetInnerHTML={{ __html: sanitizeRichHtml(html) }}
       />
     </div>
   );
@@ -173,7 +174,7 @@ function WordPreview({ url }: { url: string }) {
     <div className="h-full w-full overflow-auto p-6 bg-background/70">
       <div
         className="prose prose-sm max-w-none dark:prose-invert"
-        dangerouslySetInnerHTML={{ __html: html }}
+        dangerouslySetInnerHTML={{ __html: sanitizeRichHtml(html) }}
       />
     </div>
   );

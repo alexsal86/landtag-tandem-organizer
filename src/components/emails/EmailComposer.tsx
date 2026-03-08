@@ -8,6 +8,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Send, Users, UserCircle, X, Search, FileText, Eye, Mail, ChevronDown, Save, Calendar as CalendarIcon, Clock, AlertTriangle } from "lucide-react";
+import { sanitizeRichHtml } from '@/utils/htmlSanitizer';
 import { ScrollArea } from "@/components/ui/scroll-area";
 import SimpleRichTextEditor from "@/components/ui/SimpleRichTextEditor";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
@@ -193,7 +194,7 @@ export function EmailComposer() {
                 <div className="text-sm text-muted-foreground"><strong>Von:</strong> {hook.senderInfos.find((s) => s.id === hook.selectedSender)?.landtag_email || "Kein Absender"}</div>
                 <div className="text-sm text-muted-foreground"><strong>An:</strong> {hook.previewContact?.email || "Beispiel Empfänger"}</div>
                 <div className="font-bold mt-4">{hook.replaceVariables(hook.subject, hook.previewContact) || "(Kein Betreff)"}</div>
-                <div className="mt-2 text-sm" dangerouslySetInnerHTML={{ __html: hook.replaceVariables(hook.bodyHtml, hook.previewContact) }} />
+                <div className="mt-2 text-sm" dangerouslySetInnerHTML={{ __html: sanitizeRichHtml(hook.replaceVariables(hook.bodyHtml, hook.previewContact)) }} />
               </div>
             </DialogContent>
           </Dialog>

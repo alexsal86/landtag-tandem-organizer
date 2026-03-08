@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { debugConsole } from '@/utils/debugConsole';
+import { sanitizeRichHtml } from '@/utils/htmlSanitizer';
 import { Shield, QrCode, Key, Download, Copy, Check, AlertTriangle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -313,7 +314,7 @@ export function TwoFactorSettings() {
               {qrCode && (
                 <div 
                   className="flex justify-center p-4 bg-white rounded-lg"
-                  dangerouslySetInnerHTML={{ __html: qrCode }}
+                  dangerouslySetInnerHTML={{ __html: sanitizeRichHtml(qrCode) }}
                 />
               )}
               

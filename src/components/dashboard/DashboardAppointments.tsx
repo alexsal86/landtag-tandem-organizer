@@ -8,6 +8,7 @@ import { getCurrentTimeSlot, getCurrentDayOfWeek } from '@/utils/dashboard/timeU
 import { selectMessage } from '@/utils/dashboard/messageGenerator';
 import { getSpecialDayHint } from '@/utils/dashboard/specialDays';
 import { type DashboardData } from '@/hooks/useDashboardData';
+import { sanitizeRichHtml } from '@/utils/htmlSanitizer';
 
 interface Props {
   data: DashboardData;
@@ -77,7 +78,7 @@ export const DashboardAppointments = ({ data }: Props) => {
       {specialDayHint && (
         <div className="bg-amber-50 dark:bg-amber-950/30 border-l-2 border-amber-400 px-3 py-1.5 rounded text-sm text-foreground flex items-start gap-2">
           {HintIcon && <HintIcon className="h-4 w-4 mt-0.5 shrink-0 text-amber-600 dark:text-amber-400" />}
-          <span dangerouslySetInnerHTML={{ __html: specialDayHint.text.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>').replace(/\n/g, '<br/>') }} />
+          <span dangerouslySetInnerHTML={{ __html: sanitizeRichHtml(specialDayHint.text.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>').replace(/\n/g, '<br/>')) }} />
         </div>
       )}
 

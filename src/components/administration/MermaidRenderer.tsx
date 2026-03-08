@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { debugConsole } from '@/utils/debugConsole';
+import { sanitizeRichHtml } from '@/utils/htmlSanitizer';
 
 interface MermaidRendererProps {
   chart: string;
@@ -70,5 +71,5 @@ export function MermaidRenderer({ chart }: MermaidRendererProps) {
   if (error) return <p className="text-sm text-destructive">{error}</p>;
   if (!svg) return <p className="text-sm text-muted-foreground">Diagramm wird geladen…</p>;
 
-  return <div className="overflow-x-auto" dangerouslySetInnerHTML={{ __html: svg }} />;
+  return <div className="overflow-x-auto" dangerouslySetInnerHTML={{ __html: sanitizeRichHtml(svg) }} />;
 }

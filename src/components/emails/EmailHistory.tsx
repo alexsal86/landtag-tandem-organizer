@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { debugConsole } from '@/utils/debugConsole';
+import { sanitizeRichHtml } from '@/utils/htmlSanitizer';
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -499,7 +500,7 @@ export function EmailHistory() {
               </div>
               <div>
                 <Label>Nachricht</Label>
-                <div className="mt-1 p-4 border rounded" dangerouslySetInnerHTML={{ __html: selectedEmail.body_html }} />
+                <div className="mt-1 p-4 border rounded" dangerouslySetInnerHTML={{ __html: sanitizeRichHtml(selectedEmail.body_html) }} />
               </div>
             </div>
           )}

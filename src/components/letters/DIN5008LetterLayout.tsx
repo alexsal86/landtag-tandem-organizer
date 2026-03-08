@@ -5,6 +5,7 @@ import type { HeaderElement, TextElement, ShapeElement } from '@/components/canv
 import { type BlockLine, type BlockLineData, getBlockLineFontStack, isLineMode } from '@/components/letters/BlockLineEditor';
 import { buildFooterBlocksFromStored } from '@/components/letters/footerBlockUtils';
 import { SunflowerSVG, LionSVG, WappenSVG } from '@/components/letters/elements/shapeSVGs';
+import { sanitizeRichHtml, sanitizeCss } from '@/utils/htmlSanitizer';
 
 interface DIN5008LetterLayoutProps {
   template?: any;
@@ -601,7 +602,7 @@ export const DIN5008LetterLayout: React.FC<DIN5008LetterLayoutProps> = ({
               ))}
             </div>
           ) : template?.letterhead_html ? (
-            <div dangerouslySetInnerHTML={{ __html: template.letterhead_html }} />
+            <div dangerouslySetInnerHTML={{ __html: sanitizeRichHtml(template.letterhead_html) }} />
           ) : null}
         </div>
       )}
@@ -747,7 +748,7 @@ export const DIN5008LetterLayout: React.FC<DIN5008LetterLayoutProps> = ({
           {/* 1 blank line after salutation */}
           {salutation && <div style={{ height: '4.5mm' }} />}
           {/* Letter content */}
-          <div className="din5008-content-text" style={contentTextStyle} dangerouslySetInnerHTML={{ __html: content }} />
+          <div className="din5008-content-text" style={contentTextStyle} dangerouslySetInnerHTML={{ __html: sanitizeRichHtml(content) }} />
           {/* Closing formula + signature */}
           {!hideClosing && layout.closing?.formula && (
             <>
@@ -829,7 +830,7 @@ export const DIN5008LetterLayout: React.FC<DIN5008LetterLayoutProps> = ({
               backgroundColor: debugMode ? 'rgba(0,255,0,0.02)' : 'transparent',
               overflow: 'hidden'
             }}
-            dangerouslySetInnerHTML={{ __html: content }}
+            dangerouslySetInnerHTML={{ __html: sanitizeRichHtml(content) }}
             className="din5008-content-text"
           />
         </>
@@ -906,7 +907,7 @@ export const DIN5008LetterLayout: React.FC<DIN5008LetterLayoutProps> = ({
 
       {/* Custom CSS from template */}
       {template?.letterhead_css && (
-        <style dangerouslySetInnerHTML={{ __html: template.letterhead_css }} />
+        <style dangerouslySetInnerHTML={{ __html: sanitizeCss(template.letterhead_css) }} />
       )}
 
       {/* Debug Mode Overlays - Enhanced with precise measurements */}

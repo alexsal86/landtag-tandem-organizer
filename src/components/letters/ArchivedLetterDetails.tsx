@@ -8,6 +8,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { supabase } from '@/integrations/supabase/client';
 import { debugConsole } from '@/utils/debugConsole';
+import { sanitizeRichHtml } from '@/utils/htmlSanitizer';
 import { useToast } from '@/hooks/use-toast';
 import { format } from 'date-fns';
 import { de } from 'date-fns/locale';
@@ -248,7 +249,7 @@ export const ArchivedLetterDetails: React.FC<ArchivedLetterDetailsProps> = ({
                     <div>
                       <label className="text-sm font-medium text-muted-foreground">Inhalt</label>
                       <div className="bg-muted p-4 rounded mt-1 max-h-64 overflow-y-auto">
-                        <div dangerouslySetInnerHTML={{ __html: letterDetails.content }} />
+                        <div dangerouslySetInnerHTML={{ __html: sanitizeRichHtml(letterDetails.content) }} />
                       </div>
                     </div>
                   </CardContent>

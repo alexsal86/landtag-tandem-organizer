@@ -5,6 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { LetterTemplate, DEFAULT_ATTACHMENT_PREVIEW_LINES } from './types';
+import { sanitizeRichHtml } from '@/utils/htmlSanitizer';
 
 interface TemplateGridProps {
   templates: LetterTemplate[];
@@ -46,7 +47,7 @@ export const TemplateGrid: React.FC<TemplateGridProps> = ({
       <Dialog open={showPreview === template.id} onOpenChange={(open) => !open && setShowPreview(null)}>
         <DialogContent className="max-w-4xl max-h-[80vh] overflow-y-auto">
           <DialogHeader><DialogTitle>Vorschau: {template.name}</DialogTitle></DialogHeader>
-          <div className="border rounded-lg p-4 bg-white" dangerouslySetInnerHTML={{ __html: previewHtml }} />
+          <div className="border rounded-lg p-4 bg-white" dangerouslySetInnerHTML={{ __html: sanitizeRichHtml(previewHtml) }} />
         </DialogContent>
       </Dialog>
     );
