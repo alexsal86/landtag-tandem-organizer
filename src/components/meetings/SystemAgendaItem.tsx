@@ -315,6 +315,58 @@ export function SystemAgendaItem({
     );
   }
 
+  if (systemType === 'case_items') {
+    const priorityColors: Record<string, string> = {
+      dringend: 'text-red-600',
+      hoch: 'text-orange-500',
+      mittel: 'text-yellow-600',
+      niedrig: 'text-green-600',
+    };
+    const statusLabels: Record<string, string> = {
+      offen: 'Offen',
+      in_bearbeitung: 'In Bearbeitung',
+      wartend: 'Wartend',
+      entscheidung_abwartend: 'Entscheidung abw.',
+      geloest: 'Gelöst',
+      geschlossen: 'Geschlossen',
+    };
+
+    return (
+      <Card className={cn("border-l-4", getBorderColor(), className)}>
+        {renderHeader(
+          linkedCaseItems.length > 0 ? <Badge variant="secondary">{linkedCaseItems.length}</Badge> : undefined
+        )}
+        <CardContent className="px-3 pb-2 pt-0">
+          {linkedCaseItems.length > 0 ? (
+            <div className="space-y-2">
+              {linkedCaseItems.map((ci) => (
+                <div key={ci.id} className="p-3 bg-muted/50 rounded-md">
+                  <h4 className="font-semibold text-sm mb-1">{ci.subject || '(Kein Betreff)'}</h4>
+                  <div className="flex flex-wrap gap-2 text-xs text-muted-foreground mt-1">
+                    <Badge variant="outline" className="text-xs">
+                      {statusLabels[ci.status] || ci.status}
+                    </Badge>
+                    <span className={cn("font-medium", priorityColors[ci.priority] || '')}>
+                      {ci.priority}
+                    </span>
+                    {ci.due_at && (
+                      <span>Frist: {format(new Date(ci.due_at), "dd.MM.yyyy", { locale: de })}</span>
+                    )}
+                  </div>
+                  <ProfileBadge userId={ci.owner_user_id || undefined} profiles={profiles} />
+                </div>
+              ))}
+            </div>
+          ) : (
+            <p className="text-sm text-muted-foreground">
+              Keine Vorgänge für dieses Meeting vorhanden.
+            </p>
+          )}
+        </CardContent>
+      </Card>
+    );
+  }
+
   if (systemType === 'birthdays') {
     return (
       <BirthdayAgendaItem
