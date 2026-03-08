@@ -280,7 +280,7 @@ export function GlobalSearchCommand() {
       const { data } = await supabase
         .from('letters')
         .select('id, title, recipient_name, letter_date, subject, subject_line, reference_number')
-        .eq('tenant_id', currentTenant!.id)
+        .eq('tenant_id', currentTenant?.id ?? '')
         .or(`title.ilike.%${searchQuery}%,recipient_name.ilike.%${searchQuery}%,subject.ilike.%${searchQuery}%,subject_line.ilike.%${searchQuery}%,reference_number.ilike.%${searchQuery}%`)
         .order('letter_date', { ascending: false })
         .limit(10);
