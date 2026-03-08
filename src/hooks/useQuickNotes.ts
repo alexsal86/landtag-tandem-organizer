@@ -751,7 +751,7 @@ export function useQuickNotes(refreshTrigger?: number) {
     if (!editingNote || !user?.id) return;
     if (!stripHtml(editTitle) && !stripHtml(editContent)) { toast.error("Bitte Titel oder Inhalt eingeben"); return; }
     try {
-      await supabase.from("quick_note_versions").insert({ note_id: editingNote.id, title: editingNote.title, content: editingNote.content, user_id: user.id });
+      await supabase.from("quick_note_versions").insert([{ note_id: editingNote.id, title: editingNote.title, content: editingNote.content, user_id: user.id }]);
       let updateQuery = supabase.from("quick_notes").update({ title: editTitle.trim() || null, content: editContent.trim() }).eq("id", editingNote.id);
       if (editingNote.user_id === user.id) updateQuery = updateQuery.eq("user_id", user.id);
       const { data, error } = await updateQuery.select();
