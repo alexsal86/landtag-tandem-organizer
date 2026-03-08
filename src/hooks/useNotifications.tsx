@@ -167,7 +167,7 @@ export const useNotifications = () => {
 
       if (error) throw error;
     } catch (error) {
-      console.error('Error deleting notification:', error);
+      debugConsole.error('Error deleting notification:', error);
       // Reload to restore state
       loadNotifications();
     }
