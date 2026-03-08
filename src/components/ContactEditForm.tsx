@@ -170,7 +170,7 @@ export function ContactEditForm({ contact, onSuccess, onCancel }: ContactEditFor
       
       setInheritedTags((data?.tags as string[]) || []);
     } catch (error) {
-      console.error('Error fetching inherited tags:', error);
+      debugConsole.error('Error fetching inherited tags:', error);
       setInheritedTags([]);
     }
   };
