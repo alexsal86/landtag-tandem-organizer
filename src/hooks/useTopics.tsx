@@ -38,7 +38,7 @@ export const useTopics = () => {
 
       setTopics(data || []);
     } catch (error) {
-      console.error('Error in fetchTopics:', error);
+      debugConsole.error('Error in fetchTopics:', error);
     } finally {
       setLoading(false);
     }
