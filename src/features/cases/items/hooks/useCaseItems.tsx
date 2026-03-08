@@ -105,7 +105,7 @@ export const useCaseItems = () => {
       if (error) throw error;
       setCaseItems((data ?? []) as unknown as CaseItem[]);
     } catch (error) {
-      console.error("Error fetching case items:", error);
+      debugConsole.error("Error fetching case items:", error);
       toast({
         title: "Fehler",
         description: "Vorgänge konnten nicht geladen werden.",
