@@ -541,7 +541,7 @@ export function MyWorkView() {
             </Card>
             <div className="space-y-6">
               <Card className="p-5">
-                <DashboardAppointments />
+                <DashboardAppointments data={dashboardData} />
               </Card>
               <Card className="p-5">
                 <NewsWidget compact />

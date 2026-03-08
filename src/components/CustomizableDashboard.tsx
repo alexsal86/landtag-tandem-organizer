@@ -280,7 +280,7 @@ export const CustomizableDashboard: React.FC = () => {
         {/* Greeting (40%) + News (60%) */}
         <div className="grid grid-cols-1 lg:grid-cols-5 gap-6 mb-6">
           <div className="lg:col-span-2">
-            <DashboardGreetingSection />
+            <DashboardGreetingSection data={dashboardData} />
           </div>
           <div className="lg:col-span-3">
             <h2 className="text-2xl font-bold text-foreground mb-4">
