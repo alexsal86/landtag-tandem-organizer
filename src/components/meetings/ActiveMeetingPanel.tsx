@@ -328,7 +328,7 @@ export function ActiveMeetingPanel({
             placeholder="Unterpunkt"
           />
           <MultiUserAssignSelect
-            assignedTo={subItem.assigned_to}
+            assignedTo={subItem.assigned_to ?? null}
             profiles={profiles}
             onChange={(userIds) => onUpdateAgendaItem(allAgendaItems.findIndex(i => i.id === subItem.id), 'assigned_to', userIds.length > 0 ? userIds : null)}
             size="sm"
