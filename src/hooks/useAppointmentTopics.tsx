@@ -19,7 +19,7 @@ export const useAppointmentTopics = (appointmentId: string | undefined) => {
       if (error) throw error;
       setAssignedTopics(data?.map(t => t.topic_id) || []);
     } catch (error) {
-      console.error('Error fetching appointment topics:', error);
+      debugConsole.error('Error fetching appointment topics:', error);
     } finally {
       setLoading(false);
     }
