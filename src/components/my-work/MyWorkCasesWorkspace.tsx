@@ -19,6 +19,7 @@ import { CaseFileDetail, CaseFileCreateDialog } from "@/features/cases/files/com
 import { useCaseFileTypes } from "@/features/cases/files/hooks/useCaseFileTypes";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { CaseItemCreateDialog } from "@/components/my-work/CaseItemCreateDialog";
+import { CaseItemMeetingSelector } from "@/components/my-work/CaseItemMeetingSelector";
 import { StandaloneDecisionCreator } from "@/components/task-decisions/StandaloneDecisionCreator";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { CaseItemDetailPanel } from "@/components/my-work/CaseItemDetailPanel";
@@ -290,6 +291,10 @@ export function MyWorkCasesWorkspace() {
   const [decisionCreatorItemId, setDecisionCreatorItemId] = useState<string | null>(null);
   const [linkedDecisions, setLinkedDecisions] = useState<Record<string, Array<{ id: string; title: string; status: string; created_at: string; response_deadline: string | null }>>>({});
   const [loadingDecisions, setLoadingDecisions] = useState(false);
+
+  // Jour Fixe meeting selector state
+  const [isMeetingSelectorOpen, setIsMeetingSelectorOpen] = useState(false);
+  const [meetingSelectorItemId, setMeetingSelectorItemId] = useState<string | null>(null);
 
   const getItemSubject = useCallback((item: CaseItem) => item.subject || item.summary || item.resolution_summary || "Ohne Titel", []);
   const getItemDescription = useCallback((item: CaseItem) => richTextToPlain(item.summary || item.resolution_summary || ""), []);
@@ -1105,13 +1110,12 @@ export function MyWorkCasesWorkspace() {
                                               Entscheidung stellen
                                             </ContextMenuItem>
                                             <ContextMenuSeparator />
-                                            <ContextMenuItem onClick={() => runAsync(async () => {
-                                              const { error } = await supabase.from("case_items").update({ pending_for_jour_fixe: true }).eq("id", item.id);
-                                              if (error) { toast.error("Fehler beim Vormerken."); return; }
-                                              toast.success("Vorgang für Jour Fixe vorgemerkt.");
-                                            })}>
+                                            <ContextMenuItem onClick={() => {
+                                              setMeetingSelectorItemId(item.id);
+                                              setIsMeetingSelectorOpen(true);
+                                            }}>
                                               <CalendarDays className="mr-2 h-3 w-3" />
-                                              Für Jour Fixe vormerken
+                                              Zum Jour Fixe hinzufügen
                                             </ContextMenuItem>
                                           </ContextMenuContent>
                                         </ContextMenu>
@@ -1374,6 +1378,28 @@ export function MyWorkCasesWorkspace() {
               }}
             />
           )}
+
+          <CaseItemMeetingSelector
+            open={isMeetingSelectorOpen}
+            onOpenChange={(open) => {
+              setIsMeetingSelectorOpen(open);
+              if (!open) setMeetingSelectorItemId(null);
+            }}
+            onSelect={async (meetingId, meetingTitle) => {
+              if (!meetingSelectorItemId) return;
+              const { error } = await supabase.from("case_items").update({ meeting_id: meetingId, pending_for_jour_fixe: false }).eq("id", meetingSelectorItemId);
+              if (error) { toast.error("Fehler beim Zuordnen."); return; }
+              setCaseItems((prev) => prev.map((i) => i.id === meetingSelectorItemId ? { ...i, meeting_id: meetingId, pending_for_jour_fixe: false } as CaseItem : i));
+              toast.success(`Vorgang dem Meeting "${meetingTitle}" zugeordnet.`);
+            }}
+            onMarkForNextJourFixe={async () => {
+              if (!meetingSelectorItemId) return;
+              const { error } = await supabase.from("case_items").update({ pending_for_jour_fixe: true }).eq("id", meetingSelectorItemId);
+              if (error) { toast.error("Fehler beim Vormerken."); return; }
+              setCaseItems((prev) => prev.map((i) => i.id === meetingSelectorItemId ? { ...i, pending_for_jour_fixe: true } as CaseItem : i));
+              toast.success("Vorgang für Jour Fixe vorgemerkt.");
+            }}
+          />
         </>
       )}
     </>
