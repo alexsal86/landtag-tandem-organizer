@@ -257,7 +257,7 @@ export const TaskDecisionCreator = ({
         .single();
 
       if (tenantError || !tenantData) {
-        console.error('Tenant lookup error:', tenantError);
+        debugConsole.error('Tenant lookup error:', tenantError);
         throw new Error('Unable to determine user tenant');
       }
 
