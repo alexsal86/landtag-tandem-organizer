@@ -1,5 +1,6 @@
 import proj4 from 'proj4';
 import JSZip from 'jszip';
+import { debugConsole } from '@/utils/debugConsole';
 
 export interface GeoJsonFeature {
   type: 'Feature';
@@ -61,7 +62,7 @@ function reprojectGeometry(geometry: GeoJsonFeature['geometry'], sourceDef: stri
         const [lon, lat] = proj4(sourceDef, wgs84, [x, y]);
         return [lon, lat];
       } catch (e) {
-        console.warn('Failed to transform coordinate:', [x, y], e);
+        debugConsole.warn('Failed to transform coordinate:', [x, y], e);
         return [0, 0]; // fallback
       }
     })) as AnyCoords;
@@ -76,7 +77,7 @@ function reprojectGeometry(geometry: GeoJsonFeature['geometry'], sourceDef: stri
         const [lon, lat] = proj4(sourceDef, wgs84, [x, y]);
         return [lon, lat];
       } catch (e) {
-        console.warn('Failed to transform coordinate:', [x, y], e);
+        debugConsole.warn('Failed to transform coordinate:', [x, y], e);
         return [0, 0]; // fallback
       }
     }))) as AnyCoords;
@@ -148,11 +149,11 @@ function reprojectIfNeeded(fc: GeoJsonData): GeoJsonData {
       
       // Sanity check: longitude should be around 8-10 for Baden-Württemberg
       if (testLon < 7 || testLon > 11 || testLat < 47 || testLat > 50) {
-        console.warn('Transformation result seems incorrect, using fallback');
+        debugConsole.warn('Transformation result seems incorrect, using fallback');
         return fc; // Don't transform if result looks wrong
       }
     } catch (e) {
-      console.error('Test transformation failed:', e);
+      debugConsole.error('Test transformation failed:', e);
       return fc;
     }
   }
@@ -200,7 +201,7 @@ export const loadElectoralDistrictsGeoJson = async (): Promise<GeoJsonData> => {
       
       const res = await fetch(path);
       if (!res.ok) {
-        console.warn('Fetch failed for', path, res.status, res.statusText);
+        debugConsole.warn('Fetch failed for', path, res.status, res.statusText);
         continue;
       }
 
@@ -217,7 +218,7 @@ export const loadElectoralDistrictsGeoJson = async (): Promise<GeoJsonData> => {
           const text = await entry.async('text');
           fc = JSON.parse(text);
         } catch (e) {
-          console.warn('ZIP parsing failed for', path, e);
+          debugConsole.warn('ZIP parsing failed for', path, e);
           continue;
         }
       } else if (contentType.includes('application/json') || path.endsWith('.geojson') || path.endsWith('.json')) {

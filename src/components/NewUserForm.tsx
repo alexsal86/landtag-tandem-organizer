@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { debugConsole } from '@/utils/debugConsole';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -70,7 +71,7 @@ export const NewUserForm: React.FC<NewUserFormProps> = ({ onSuccess }) => {
       });
 
     } catch (error: unknown) {
-      console.error('Error creating user:', error);
+      debugConsole.error('Error creating user:', error);
       toast({
         title: 'Fehler beim Erstellen des Benutzers',
         description: error instanceof Error ? error.message : 'Ein unbekannter Fehler ist aufgetreten.',

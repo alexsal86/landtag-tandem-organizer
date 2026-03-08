@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from "react";
+import { debugConsole } from '@/utils/debugConsole';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -37,7 +38,7 @@ export function CombinedMessagesWidget({ configuration }: CombinedMessagesWidget
         setMessagesCount(unreadPersonalMessages.length);
       }
     } catch (error) {
-      console.error('Error fetching unread counts:', error);
+      debugConsole.error('Error fetching unread counts:', error);
     }
   }, [user]);
 

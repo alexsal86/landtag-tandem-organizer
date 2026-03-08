@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { debugConsole } from '@/utils/debugConsole';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -78,7 +79,7 @@ export const NewsWidget: React.FC<NewsWidgetProps> = ({ widgetId, compact = fals
       
       setArticles(data?.articles || []);
     } catch (err) {
-      console.error('Error fetching news:', err);
+      debugConsole.error('Error fetching news:', err);
       const errorMessage = err instanceof Error && err.message === 'Request timeout' 
         ? 'Zeitüberschreitung beim Laden der Nachrichten'
         : 'Fehler beim Laden der Nachrichten';

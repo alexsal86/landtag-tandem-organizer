@@ -1,5 +1,6 @@
 import { useMemo } from "react";
 import { format, parseISO, eachDayOfInterval } from "date-fns";
+import { debugConsole } from '@/utils/debugConsole';
 
 interface TimeEntryRow {
   id: string;
@@ -109,7 +110,7 @@ export function useCombinedTimeEntries({
           .filter(d => d >= monthStart && d <= monthEnd && d.getDay() !== 0 && d.getDay() !== 6)
           .forEach(day => sickDates.add(format(day, 'yyyy-MM-dd')));
       } catch (e) {
-        console.error('Error processing sick leave dates:', e);
+        debugConsole.error('Error processing sick leave dates:', e);
       }
     });
 
@@ -120,7 +121,7 @@ export function useCombinedTimeEntries({
           .filter(d => d >= monthStart && d <= monthEnd && d.getDay() !== 0 && d.getDay() !== 6)
           .forEach(day => vacationDates.add(format(day, 'yyyy-MM-dd')));
       } catch (e) {
-        console.error('Error processing vacation dates:', e);
+        debugConsole.error('Error processing vacation dates:', e);
       }
     });
 
@@ -131,7 +132,7 @@ export function useCombinedTimeEntries({
           .filter(d => d >= monthStart && d <= monthEnd && d.getDay() !== 0 && d.getDay() !== 6)
           .forEach(day => overtimeDates.add(format(day, 'yyyy-MM-dd')));
       } catch (e) {
-        console.error('Error processing overtime dates:', e);
+        debugConsole.error('Error processing overtime dates:', e);
       }
     });
 
@@ -159,7 +160,7 @@ export function useCombinedTimeEntries({
           type_class: config.holiday.className,
         });
       } catch (e) {
-        console.error('Error processing holiday:', e);
+        debugConsole.error('Error processing holiday:', e);
       }
     });
 
@@ -199,7 +200,7 @@ export function useCombinedTimeEntries({
               });
             });
         } catch (e) {
-          console.error('Error processing sick leave:', e);
+          debugConsole.error('Error processing sick leave:', e);
         }
       });
 
@@ -240,7 +241,7 @@ export function useCombinedTimeEntries({
               });
             });
         } catch (e) {
-          console.error('Error processing vacation leave:', e);
+          debugConsole.error('Error processing vacation leave:', e);
         }
       });
 
@@ -281,7 +282,7 @@ export function useCombinedTimeEntries({
               });
             });
         } catch (e) {
-          console.error('Error processing overtime leave:', e);
+          debugConsole.error('Error processing overtime leave:', e);
         }
       });
 
@@ -311,7 +312,7 @@ export function useCombinedTimeEntries({
             type_class: config.medical.className,
           });
         } catch (e) {
-          console.error('Error processing medical leave:', e);
+          debugConsole.error('Error processing medical leave:', e);
         }
       });
 
@@ -321,19 +322,19 @@ export function useCombinedTimeEntries({
 
       // IMPORTANT: Skip work entries on holidays/leave days
       if (holidayDates.has(dateStr)) {
-        console.warn(`Arbeitseintrag an Feiertag ignoriert: ${dateStr}`);
+        debugConsole.warn(`Arbeitseintrag an Feiertag ignoriert: ${dateStr}`);
         return;
       }
       if (sickDates.has(dateStr)) {
-        console.warn(`Arbeitseintrag an Krankheitstag ignoriert: ${dateStr}`);
+        debugConsole.warn(`Arbeitseintrag an Krankheitstag ignoriert: ${dateStr}`);
         return;
       }
       if (vacationDates.has(dateStr)) {
-        console.warn(`Arbeitseintrag an Urlaubstag ignoriert: ${dateStr}`);
+        debugConsole.warn(`Arbeitseintrag an Urlaubstag ignoriert: ${dateStr}`);
         return;
       }
       if (overtimeDates.has(dateStr)) {
-        console.warn(`Arbeitseintrag an Überstundenabbau-Tag ignoriert: ${dateStr}`);
+        debugConsole.warn(`Arbeitseintrag an Überstundenabbau-Tag ignoriert: ${dateStr}`);
         return;
       }
 

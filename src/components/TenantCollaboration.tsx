@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { debugConsole } from '@/utils/debugConsole';
 import { useAuth } from "@/hooks/useAuth";
 import { useTenant } from "@/hooks/useTenant";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -56,13 +57,13 @@ export function TenantCollaboration() {
         .or(`tenant_a_id.eq.${currentTenant.id},tenant_b_id.eq.${currentTenant.id}`);
 
       if (error) {
-        console.error("Error fetching collaborations:", error);
+        debugConsole.error("Error fetching collaborations:", error);
         return;
       }
 
       setCollaborations(data || []);
     } catch (error) {
-      console.error("Error in fetchCollaborations:", error);
+      debugConsole.error("Error in fetchCollaborations:", error);
     } finally {
       setLoading(false);
     }
@@ -79,13 +80,13 @@ export function TenantCollaboration() {
         .eq("is_active", true);
 
       if (error) {
-        console.error("Error fetching tenants:", error);
+        debugConsole.error("Error fetching tenants:", error);
         return;
       }
 
       setAvailableTenants(data || []);
     } catch (error) {
-      console.error("Error in fetchAvailableTenants:", error);
+      debugConsole.error("Error in fetchAvailableTenants:", error);
     }
   };
 
@@ -123,7 +124,7 @@ export function TenantCollaboration() {
       setIsCreateDialogOpen(false);
       fetchCollaborations();
     } catch (error) {
-      console.error("Error requesting collaboration:", error);
+      debugConsole.error("Error requesting collaboration:", error);
     }
   };
 
@@ -157,7 +158,7 @@ export function TenantCollaboration() {
 
       fetchCollaborations();
     } catch (error) {
-      console.error("Error approving collaboration:", error);
+      debugConsole.error("Error approving collaboration:", error);
     }
   };
 
@@ -184,7 +185,7 @@ export function TenantCollaboration() {
 
       fetchCollaborations();
     } catch (error) {
-      console.error("Error rejecting collaboration:", error);
+      debugConsole.error("Error rejecting collaboration:", error);
     }
   };
 

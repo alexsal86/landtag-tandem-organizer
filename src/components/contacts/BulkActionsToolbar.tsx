@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { debugConsole } from '@/utils/debugConsole';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { 
@@ -105,7 +106,7 @@ export function BulkActionsToolbar({
       setNewTag('');
       onActionComplete();
     } catch (error) {
-      console.error('Error adding tags:', error);
+      debugConsole.error('Error adding tags:', error);
       toast({
         title: 'Fehler',
         description: 'Tags konnten nicht hinzugefügt werden',
@@ -139,7 +140,7 @@ export function BulkActionsToolbar({
       setSelectedCategory('');
       onActionComplete();
     } catch (error) {
-      console.error('Error changing category:', error);
+      debugConsole.error('Error changing category:', error);
       toast({
         title: 'Fehler',
         description: 'Kategorie konnte nicht geändert werden',
@@ -194,7 +195,7 @@ export function BulkActionsToolbar({
       setDistributionListDescription('');
       onActionComplete();
     } catch (error) {
-      console.error('Error creating distribution list:', error);
+      debugConsole.error('Error creating distribution list:', error);
       toast({
         title: 'Fehler',
         description: 'Verteiler konnte nicht erstellt werden',
@@ -225,7 +226,7 @@ export function BulkActionsToolbar({
       setIsDeleteDialogOpen(false);
       onActionComplete();
     } catch (error) {
-      console.error('Error deleting contacts:', error);
+      debugConsole.error('Error deleting contacts:', error);
       toast({
         title: 'Fehler',
         description: 'Kontakte konnten nicht gelöscht werden',

@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { debugConsole } from '@/utils/debugConsole';
 
 export type FeatureFlags = {
   useReactBigCalendar: boolean;
@@ -24,7 +25,7 @@ export function useFeatureFlag() {
         const parsedFlags = JSON.parse(savedFlags);
         setFlags(prevFlags => ({ ...prevFlags, ...parsedFlags }));
       } catch (error) {
-        console.warn('Failed to parse feature flags from localStorage:', error);
+        debugConsole.warn('Failed to parse feature flags from localStorage:', error);
       }
     }
   }, []);

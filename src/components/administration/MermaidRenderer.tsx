@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import { debugConsole } from '@/utils/debugConsole';
 
 interface MermaidRendererProps {
   chart: string;
@@ -57,7 +58,7 @@ export function MermaidRenderer({ chart }: MermaidRendererProps) {
         if (active) setSvg(result.svg);
       })
       .catch((e) => {
-        console.error("Failed to render mermaid diagram", e);
+        debugConsole.error("Failed to render mermaid diagram", e);
         if (active) setError("Diagramm konnte nicht gerendert werden.");
       });
 

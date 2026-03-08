@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { debugConsole } from '@/utils/debugConsole';
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -256,7 +257,7 @@ export function MyWorkTeamTab() {
 
       setTeamMembers(members);
     } catch (error) {
-      console.error("Error loading team:", error);
+      debugConsole.error("Error loading team:", error);
     } finally {
       setLoading(false);
     }

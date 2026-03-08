@@ -1,3 +1,4 @@
+import { debugConsole } from '@/utils/debugConsole';
 // Synthesized notification sounds using Web Audio API
 export const NOTIFICATION_SOUNDS = [
   { value: 'ping', label: 'Ping' },
@@ -97,7 +98,7 @@ export function playNotificationSound(soundName: SoundName, volume: number = 0.5
         playPing(ctx, gainNode);
     }
   } catch (e) {
-    console.error('Error playing notification sound:', e);
+    debugConsole.error('Error playing notification sound:', e);
   }
 }
 

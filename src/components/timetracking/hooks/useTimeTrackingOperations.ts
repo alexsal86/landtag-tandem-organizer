@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { debugConsole } from '@/utils/debugConsole';
 import type { Database } from "@/integrations/supabase/types";
 import { toast } from "sonner";
 import { format, parseISO, eachDayOfInterval } from "date-fns";
@@ -112,7 +113,7 @@ export function useTimeTrackingOperations({
       if (error) throw error;
       if (!data || data.length === 0) { toast.error("Keine Berechtigung zum Bearbeiten dieses Eintrags"); return; }
       toast.success("Eintrag aktualisiert"); setIsEditDialogOpen(false); setEditingEntry(null); resetEntryForm(); loadData();
-    } catch (error: unknown) { console.error("Update error:", error); toast.error(error instanceof Error ? error.message : "Fehler beim Aktualisieren"); }
+    } catch (error: unknown) { debugConsole.error("Update error:", error); toast.error(error instanceof Error ? error.message : "Fehler beim Aktualisieren"); }
   };
 
   const handleDeleteEntry = async (entryId: string) => {
@@ -126,7 +127,7 @@ export function useTimeTrackingOperations({
       if (!data || data.length === 0) toast.warning("Eintrag wurde möglicherweise bereits gelöscht");
       else toast.success("Eintrag gelöscht");
       loadData();
-    } catch (error: unknown) { console.error("Delete error:", error); toast.error("Fehler beim Löschen: " + (error instanceof Error ? error.message : String(error))); }
+    } catch (error: unknown) { debugConsole.error("Delete error:", error); toast.error("Fehler beim Löschen: " + (error instanceof Error ? error.message : String(error))); }
   };
 
   // Leave request handlers
@@ -152,7 +153,7 @@ export function useTimeTrackingOperations({
       const { error } = await supabase.from("leave_requests").insert({ user_id: userId, type: "medical", start_date: medicalDate, end_date: medicalDate, medical_reason: medicalReason, start_time: medicalStartTime, end_time: medicalEndTime, minutes_counted: minutesCounted, reason: medicalNotes || null, status: "pending" }).select();
       if (error) throw error;
       toast.success("Arzttermin eingereicht"); setMedicalDate(""); setMedicalStartTime(""); setMedicalEndTime(""); setMedicalReason("acute"); setMedicalNotes(""); loadData();
-    } catch (error: unknown) { console.error("Medical appointment error:", error); toast.error(error instanceof Error ? error.message : "Fehler"); }
+    } catch (error: unknown) { debugConsole.error("Medical appointment error:", error); toast.error(error instanceof Error ? error.message : "Fehler"); }
   };
 
   const handleRequestOvertimeReduction = async () => {
@@ -165,7 +166,7 @@ export function useTimeTrackingOperations({
       const { error } = await supabase.from("leave_requests").insert({ user_id: userId, type: "overtime_reduction", start_date: overtimeStartDate, end_date: overtimeEndDate, reason: overtimeReason || null, status: "pending" }).select();
       if (error) throw error;
       toast.success("Überstundenabbau beantragt"); setOvertimeStartDate(""); setOvertimeEndDate(""); setOvertimeReason(""); loadData();
-    } catch (error: unknown) { console.error("Overtime reduction error:", error); toast.error(error instanceof Error ? error.message : "Fehler"); }
+    } catch (error: unknown) { debugConsole.error("Overtime reduction error:", error); toast.error(error instanceof Error ? error.message : "Fehler"); }
   };
 
   const removeLeaveCalendarEntry = async (leave: LeaveRow, type: string) => {
@@ -174,7 +175,7 @@ export function useTimeTrackingOperations({
       const { data: userProfile } = await supabase.from("profiles").select("display_name").eq("user_id", userId).single();
       const userName = userProfile?.display_name || "Mitarbeiter";
       await supabase.from("appointments").delete().eq("category", type).ilike("title", `%${userName}%`).gte("start_time", new Date(leave.start_date).toISOString());
-    } catch (error) { console.error("Error removing calendar entry:", error); }
+    } catch (error) { debugConsole.error("Error removing calendar entry:", error); }
   };
 
   const performCancelLeave = async (leaveId: string, leaves: LeaveRow[], type: "vacation" | "medical" | "overtime_reduction", successMsg: string) => {
@@ -187,7 +188,7 @@ export function useTimeTrackingOperations({
       if (newStatus === "cancelled") await removeLeaveCalendarEntry(leave, type);
       toast.success(newStatus === "cancelled" ? successMsg : "Stornierungsanfrage gesendet");
       loadData();
-    } catch (error: unknown) { console.error(`Error cancelling ${type}:`, error); toast.error("Fehler beim Stornieren"); }
+    } catch (error: unknown) { debugConsole.error(`Error cancelling ${type}:`, error); toast.error("Fehler beim Stornieren"); }
   };
 
   const handleCancelVacationRequest = (leaveId: string) => {

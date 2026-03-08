@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { debugConsole } from '@/utils/debugConsole';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
@@ -46,7 +47,7 @@ export function DocumentCategoryAdminSettings() {
       if (error) throw error;
       setCategories(data || []);
     } catch (error) {
-      console.error('Error loading document categories:', error);
+      debugConsole.error('Error loading document categories:', error);
       toast({ title: "Fehler", description: "Dokumenten-Kategorien konnten nicht geladen werden.", variant: "destructive" });
     } finally {
       setLoading(false);
@@ -72,7 +73,7 @@ export function DocumentCategoryAdminSettings() {
       setNewCategory(null);
       toast({ title: "Erfolg", description: "Kategorie wurde erfolgreich hinzugefügt." });
     } catch (error: unknown) {
-      console.error('Error adding category:', error);
+      debugConsole.error('Error adding category:', error);
       toast({ title: "Fehler", description: "Kategorie konnte nicht hinzugefügt werden.", variant: "destructive" });
     }
   };
@@ -94,7 +95,7 @@ export function DocumentCategoryAdminSettings() {
       setEditingCategory(null);
       toast({ title: "Erfolg", description: "Kategorie wurde erfolgreich aktualisiert." });
     } catch (error: unknown) {
-      console.error('Error updating category:', error);
+      debugConsole.error('Error updating category:', error);
       toast({ title: "Fehler", description: "Kategorie konnte nicht aktualisiert werden.", variant: "destructive" });
     }
   };
@@ -113,7 +114,7 @@ export function DocumentCategoryAdminSettings() {
       await loadCategories();
       toast({ title: "Erfolg", description: "Kategorie wurde erfolgreich gelöscht." });
     } catch (error: unknown) {
-      console.error('Error deleting category:', error);
+      debugConsole.error('Error deleting category:', error);
       toast({ title: "Fehler", description: "Kategorie konnte nicht gelöscht werden.", variant: "destructive" });
     }
   };
@@ -126,7 +127,7 @@ export function DocumentCategoryAdminSettings() {
       await loadCategories();
       toast({ title: "Erfolg", description: `Kategorie wurde ${!isActive ? 'aktiviert' : 'deaktiviert'}.` });
     } catch (error: unknown) {
-      console.error('Error toggling category:', error);
+      debugConsole.error('Error toggling category:', error);
       toast({ title: "Fehler", description: "Status konnte nicht geändert werden.", variant: "destructive" });
     }
   };
@@ -151,7 +152,7 @@ export function DocumentCategoryAdminSettings() {
       }
       toast({ title: "Erfolg", description: "Reihenfolge wurde gespeichert." });
     } catch (error) {
-      console.error('Error updating order:', error);
+      debugConsole.error('Error updating order:', error);
       toast({ title: "Fehler", description: "Reihenfolge konnte nicht gespeichert werden.", variant: "destructive" });
       loadCategories();
     }

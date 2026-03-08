@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { debugConsole } from '@/utils/debugConsole';
 import { Card, CardContent } from '@/components/ui/card';
 import { getWeather, getWeatherIcon, translateCondition, LOCATIONS } from '@/utils/dashboard/weatherApi';
 import type { WeatherData } from '@/utils/dashboard/weatherApi';
@@ -20,7 +21,7 @@ const WeatherCard = ({ location }: WeatherCardProps) => {
         const data = await getWeather(locationData.lat, locationData.lon);
         setWeather(data);
       } catch (error) {
-        console.error('Error fetching weather:', error);
+        debugConsole.error('Error fetching weather:', error);
         setWeather(null);
       } finally {
         setLoading(false);

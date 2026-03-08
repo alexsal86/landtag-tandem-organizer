@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { debugConsole } from '@/utils/debugConsole';
 import { useAuth } from "@/hooks/useAuth";
 import { useTenant } from "@/hooks/useTenant";
 
@@ -52,7 +53,7 @@ export const useDocumentContacts = (documentId?: string) => {
       if (error) throw error;
       setDocumentContacts(data as DocumentContact[]);
     } catch (error) {
-      console.error('Error fetching document contacts:', error);
+      debugConsole.error('Error fetching document contacts:', error);
     } finally {
       setLoading(false);
     }
@@ -79,7 +80,7 @@ export const useDocumentContacts = (documentId?: string) => {
       if (error) throw error;
       await fetchDocumentContacts();
     } catch (error: unknown) {
-      console.error('Error adding document contact:', error);
+      debugConsole.error('Error adding document contact:', error);
       throw error;
     }
   };
@@ -94,7 +95,7 @@ export const useDocumentContacts = (documentId?: string) => {
       if (error) throw error;
       await fetchDocumentContacts();
     } catch (error: unknown) {
-      console.error('Error removing document contact:', error);
+      debugConsole.error('Error removing document contact:', error);
       throw error;
     }
   };
@@ -117,7 +118,7 @@ export const useDocumentContacts = (documentId?: string) => {
       if (error) throw error;
       await fetchDocumentContacts();
     } catch (error: unknown) {
-      console.error('Error updating document contact:', error);
+      debugConsole.error('Error updating document contact:', error);
       throw error;
     }
   };

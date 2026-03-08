@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { debugConsole } from '@/utils/debugConsole';
 import { useForm } from "react-hook-form";
 import { useQueryClient } from "@tanstack/react-query";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
@@ -99,7 +100,7 @@ export function FundingDialog({ open, onOpenChange, initialContactId }: FundingD
       setParticipants(initialContactId ? [{ contact_id: initialContactId }] : []);
       onOpenChange(false);
     } catch (error) {
-      console.error('Error creating funding:', error);
+      debugConsole.error('Error creating funding:', error);
       toast.error("Fehler beim Erstellen der Förderung");
     } finally {
       setLoading(false);

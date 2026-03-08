@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import { debugConsole } from '@/utils/debugConsole';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -115,7 +116,7 @@ export function RealTimeSync({ currentLayout, onLayoutUpdate }: RealTimeSyncProp
       setupLayoutPersistence();
       
     } catch (error) {
-      console.error('Real-time sync initialization failed:', error);
+      debugConsole.error('Real-time sync initialization failed:', error);
       setIsConnected(false);
       setSyncErrors(prev => [...prev, 'Failed to initialize sync']);
     }
@@ -156,7 +157,7 @@ export function RealTimeSync({ currentLayout, onLayoutUpdate }: RealTimeSyncProp
         .subscribe();
 
     } catch (error) {
-      console.error('Layout persistence setup failed:', error);
+      debugConsole.error('Layout persistence setup failed:', error);
       setSyncErrors(prev => [...prev, 'Failed to setup persistence']);
     }
   };
@@ -171,7 +172,7 @@ export function RealTimeSync({ currentLayout, onLayoutUpdate }: RealTimeSyncProp
       setLastSyncTime(new Date());
       toast.info(`Layout updated by ${payload.user_email}`);
     } catch (error) {
-      console.error('Failed to apply remote layout update:', error);
+      debugConsole.error('Failed to apply remote layout update:', error);
       setSyncErrors(prev => [...prev, 'Failed to apply layout update']);
     } finally {
       setIsSyncing(false);
@@ -201,7 +202,7 @@ export function RealTimeSync({ currentLayout, onLayoutUpdate }: RealTimeSyncProp
       onLayoutUpdate(newLayout);
       setLastSyncTime(new Date());
     } catch (error) {
-      console.error('Failed to apply database layout update:', error);
+      debugConsole.error('Failed to apply database layout update:', error);
     }
   };
 
@@ -221,7 +222,7 @@ export function RealTimeSync({ currentLayout, onLayoutUpdate }: RealTimeSyncProp
         }
       });
     } catch (error) {
-      console.error('Failed to broadcast layout update:', error);
+      debugConsole.error('Failed to broadcast layout update:', error);
     }
   };
 

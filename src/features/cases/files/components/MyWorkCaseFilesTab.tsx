@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { debugConsole } from '@/utils/debugConsole';
 import { useSearchParams, useNavigate } from "react-router-dom";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -74,7 +75,7 @@ export function MyWorkCaseFilesTab() {
       if (error) throw error;
       setCaseFiles((data || []) as unknown as CaseFile[]);
     } catch (error) {
-      console.error("Error loading case files:", error);
+      debugConsole.error("Error loading case files:", error);
     } finally {
       setLoading(false);
     }

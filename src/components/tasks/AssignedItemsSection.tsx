@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { debugConsole } from '@/utils/debugConsole';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { RichTextDisplay } from "@/components/ui/RichTextDisplay";
 import { Button } from "@/components/ui/button";
@@ -319,7 +320,7 @@ export function AssignedItemsSection({
         });
         setTaskTopics(topicsMap);
       } catch (error) {
-        console.error('Error loading task topics:', error);
+        debugConsole.error('Error loading task topics:', error);
       }
     };
 

@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { debugConsole } from '@/utils/debugConsole';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -202,7 +203,7 @@ export const AppointmentPollCreator = ({ onClose }: { onClose: () => void }) => 
             // Generate token for external participants
             const { data: tokenData, error: tokenError } = await supabase.rpc('generate_participant_token');
             if (tokenError) {
-              console.error('Error generating token for', p.email, ':', tokenError);
+              debugConsole.error('Error generating token for', p.email, ':', tokenError);
               throw new Error(`Token-Generierung fehlgeschlagen für ${p.email}`);
             }
 
@@ -223,7 +224,7 @@ export const AppointmentPollCreator = ({ onClose }: { onClose: () => void }) => 
             });
           }
         } catch (error) {
-          console.error('Error processing participant', p.email, ':', error);
+          debugConsole.error('Error processing participant', p.email, ':', error);
           throw new Error(`Fehler beim Verarbeiten von Teilnehmer ${p.email}`);
         }
       }
@@ -234,7 +235,7 @@ export const AppointmentPollCreator = ({ onClose }: { onClose: () => void }) => 
         .insert(participantData);
 
       if (participantsError) {
-        console.error('Error creating participants:', participantsError);
+        debugConsole.error('Error creating participants:', participantsError);
         throw new Error(`Teilnehmer konnten nicht erstellt werden: ${participantsError.message}`);
       }
       
@@ -258,7 +259,7 @@ export const AppointmentPollCreator = ({ onClose }: { onClose: () => void }) => 
         });
 
         if (emailError) {
-          console.error('Error sending emails:', emailError);
+          debugConsole.error('Error sending emails:', emailError);
           toast({
             title: "E-Mail-Versendung fehlgeschlagen",
             description: `Die Abstimmung wurde erstellt, aber E-Mails konnten nicht versendet werden: ${emailError.message}`,
@@ -280,7 +281,7 @@ export const AppointmentPollCreator = ({ onClose }: { onClose: () => void }) => 
 
       onClose();
     } catch (error) {
-      console.error('Error creating poll:', error);
+      debugConsole.error('Error creating poll:', error);
       toast({
         title: "Fehler",
         description: "Die Abstimmung konnte nicht erstellt werden.",

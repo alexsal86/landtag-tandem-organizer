@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo, useRef } from "react";
+import { debugConsole } from '@/utils/debugConsole';
 import { useSearchParams } from "react-router-dom";
 import { useNotificationHighlight } from "@/hooks/useNotificationHighlight";
 import { Badge } from "@/components/ui/badge";
@@ -241,7 +242,7 @@ export function MyWorkDecisionsTab() {
       toast({ title: "Archiviert", description: "Entscheidung wurde archiviert." });
     } catch (error) {
       setDecisions(previousDecisions);
-      console.error('Error archiving:', error);
+      debugConsole.error('Error archiving:', error);
       toast({ title: "Fehler", description: "Archivierung fehlgeschlagen.", variant: "destructive" });
     } finally {
       setArchivingDecisionId(null);
@@ -260,7 +261,7 @@ export function MyWorkDecisionsTab() {
       setDeletingDecisionId(null);
     } catch (error) {
       setDecisions(previousDecisions);
-      console.error('Error deleting:', error);
+      debugConsole.error('Error deleting:', error);
       toast({ title: "Fehler", description: "Löschen fehlgeschlagen.", variant: "destructive" });
     }
   };
@@ -289,7 +290,7 @@ export function MyWorkDecisionsTab() {
       if (error) throw error;
       toast({ title: "Aufgabe erstellt", description: "Aufgabe wurde aus der Entscheidung erstellt." });
     } catch (error) {
-      console.error('Error creating task:', error);
+      debugConsole.error('Error creating task:', error);
       toast({ title: "Fehler", description: "Aufgabe konnte nicht erstellt werden.", variant: "destructive" });
     } finally {
       setCreatingTaskId(null);

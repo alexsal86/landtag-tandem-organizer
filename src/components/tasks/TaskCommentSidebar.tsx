@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from "react";
+import { debugConsole } from '@/utils/debugConsole';
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -83,7 +84,7 @@ export function TaskCommentSidebar({
 
       setComments(rootComments);
     } catch (error) {
-      console.error('Error loading comments:', error);
+      debugConsole.error('Error loading comments:', error);
       toast({
         title: "Fehler",
         description: "Kommentare konnten nicht geladen werden.",
@@ -124,7 +125,7 @@ export function TaskCommentSidebar({
       loadComments();
       onCommentAdded?.();
     } catch (error) {
-      console.error('Error submitting comment:', error);
+      debugConsole.error('Error submitting comment:', error);
       toast({
         title: "Fehler",
         description: "Kommentar konnte nicht gespeichert werden.",
@@ -154,7 +155,7 @@ export function TaskCommentSidebar({
       toast({ title: "Kommentar aktualisiert" });
       loadComments();
     } catch (error) {
-      console.error('Error updating comment:', error);
+      debugConsole.error('Error updating comment:', error);
       toast({
         title: "Fehler",
         description: "Kommentar konnte nicht bearbeitet werden.",
@@ -189,7 +190,7 @@ export function TaskCommentSidebar({
       loadComments();
       onCommentAdded?.();
     } catch (error) {
-      console.error('Error deleting comment:', error);
+      debugConsole.error('Error deleting comment:', error);
       toast({
         title: "Fehler",
         description: "Kommentar konnte nicht gelöscht werden.",

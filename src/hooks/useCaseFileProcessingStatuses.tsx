@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { debugConsole } from '@/utils/debugConsole';
 
 export interface CaseFileProcessingStatus {
   id: string;
@@ -35,7 +36,7 @@ export const useCaseFileProcessingStatuses = () => {
           is_active: d.is_active ?? true,
         })));
       } catch (error) {
-        console.error('Error loading processing statuses:', error);
+        debugConsole.error('Error loading processing statuses:', error);
       } finally {
         setLoading(false);
       }

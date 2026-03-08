@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { debugConsole } from '@/utils/debugConsole';
 import { ArrowRight, CheckCircle, Clock, Edit3, Send, AlertCircle, User, RotateCcw } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -8,7 +9,6 @@ import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { supabase } from '@/integrations/supabase/client';
-import { debugConsole } from '@/utils/debugConsole';
 import { useToast } from '@/hooks/use-toast';
 import {
   createLetterApprovalDecision,
@@ -101,7 +101,7 @@ export const LetterStatusWorkflow: React.FC<LetterStatusWorkflowProps> = ({
       if (error) throw error;
       setUsers(data || []);
     } catch (error) {
-      console.error('Error fetching users:', error);
+      debugConsole.error('Error fetching users:', error);
     }
   };
 

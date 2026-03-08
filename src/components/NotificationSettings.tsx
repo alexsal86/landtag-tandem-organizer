@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
+import { debugConsole } from '@/utils/debugConsole';
 import { Bell, Clock, Mail, Smartphone, ChevronDown, ChevronRight } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Switch } from '@/components/ui/switch';
@@ -192,7 +193,7 @@ export const NotificationSettings: React.FC = () => {
         .limit(1);
       setHasActiveSubscription(!!data && data.length > 0);
     } catch (error) {
-      console.error('Error checking active subscription:', error);
+      debugConsole.error('Error checking active subscription:', error);
       setHasActiveSubscription(false);
     }
   }, [user]);
@@ -244,7 +245,7 @@ export const NotificationSettings: React.FC = () => {
           setQuietHoursEnd(combined[0].quiet_hours_end || '08:00');
         }
       } catch (error) {
-        console.error('Error loading notification settings:', error);
+        debugConsole.error('Error loading notification settings:', error);
         toast({
           title: 'Fehler',
           description: 'Benachrichtigungseinstellungen konnten nicht geladen werden.',
@@ -323,7 +324,7 @@ export const NotificationSettings: React.FC = () => {
       setSettings(prev => prev.map(s =>
         s.notification_type_id === typeId ? { ...s, [field]: !value } : s
       ));
-      console.error('Error updating setting:', error);
+      debugConsole.error('Error updating setting:', error);
       toast({
         title: 'Fehler',
         description: 'Einstellung konnte nicht gespeichert werden.',
@@ -368,7 +369,7 @@ export const NotificationSettings: React.FC = () => {
       setSettings(prev => prev.map(s =>
         (s.type.category || 'system') === category ? { ...s, [field]: !value } : s
       ));
-      console.error('Error updating category settings:', error);
+      debugConsole.error('Error updating category settings:', error);
       toast({
         title: 'Fehler',
         description: 'Einstellungen konnten nicht gespeichert werden.',
@@ -410,7 +411,7 @@ export const NotificationSettings: React.FC = () => {
         description: 'Ruhezeiten wurden erfolgreich gespeichert.',
       });
     } catch (error) {
-      console.error('Error updating quiet hours:', error);
+      debugConsole.error('Error updating quiet hours:', error);
       toast({
         title: 'Fehler',
         description: 'Ruhezeiten konnten nicht gespeichert werden.',
@@ -434,7 +435,7 @@ export const NotificationSettings: React.FC = () => {
       await subscribeToPush();
       await checkActiveSubscription();
     } catch (error) {
-      console.error('Error renewing push subscription:', error);
+      debugConsole.error('Error renewing push subscription:', error);
     }
   };
 

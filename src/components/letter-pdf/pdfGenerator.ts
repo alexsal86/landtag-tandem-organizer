@@ -1,4 +1,5 @@
 import jsPDF from 'jspdf';
+import { debugConsole } from '@/utils/debugConsole';
 import { format } from 'date-fns';
 import { de } from 'date-fns/locale';
 import { HeaderRenderer } from '@/services/headerRenderer';
@@ -514,7 +515,7 @@ export async function generatePDF(options: GeneratePDFOptions): Promise<{ blob: 
       const attachment = attachments[i];
       try {
         const { data: fileData, error: fileError } = await supabase.storage.from('documents').download(attachment.file_path);
-        if (fileError) { console.error('Error downloading attachment:', fileError); continue; }
+        if (fileError) { debugConsole.error('Error downloading attachment:', fileError); continue; }
         
         pdf.addPage();
         currentPage++;
@@ -577,7 +578,7 @@ export async function generatePDF(options: GeneratePDFOptions): Promise<{ blob: 
                 pdf.setTextColor(0, 0, 0);
               }
             } catch (error) {
-              console.error('Error embedding attachment:', error);
+              debugConsole.error('Error embedding attachment:', error);
               pdf.setFontSize(11);
               pdf.setFont('helvetica', 'normal');
               pdf.text('Anhang konnte nicht eingebettet werden', attachmentMargin, attachmentMargin + 30);
@@ -587,7 +588,7 @@ export async function generatePDF(options: GeneratePDFOptions): Promise<{ blob: 
           reader.readAsDataURL(fileData);
         });
       } catch (error) {
-        console.error('Error processing attachment:', error);
+        debugConsole.error('Error processing attachment:', error);
         pdf.addPage();
         currentPage++;
         const attachmentMargin = 20;

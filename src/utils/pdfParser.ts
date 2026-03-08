@@ -1,4 +1,5 @@
 import * as pdfjsLib from 'pdfjs-dist';
+import { debugConsole } from '@/utils/debugConsole';
 
 // Configure PDF.js worker to use the file from public folder
 pdfjsLib.GlobalWorkerOptions.workerSrc = window.location.origin + "/pdf.worker.min.mjs";
@@ -61,7 +62,7 @@ export async function parsePDFFile(file: File): Promise<ParsedProtocol> {
         fullText += pageText + '\n\n';
         
       } catch (pageError) {
-        console.error(`Error processing page ${pageNum}:`, pageError);
+        debugConsole.error(`Error processing page ${pageNum}:`, pageError);
       }
     }
     
@@ -74,7 +75,7 @@ export async function parsePDFFile(file: File): Promise<ParsedProtocol> {
     };
     
   } catch (error) {
-    console.error('PDF parsing error:', error);
+    debugConsole.error('PDF parsing error:', error);
     throw new Error(`Fehler beim Parsen der PDF: ${error.message}`);
   }
 }
@@ -328,7 +329,7 @@ export function analyzeProtocolStructure(text: string): {
   }
   
   if (agendaItems.length === 0 && speeches.length === 0 && sessions.length === 0) {
-    console.warn('No structured data found in protocol text');
+    debugConsole.warn('No structured data found in protocol text');
   }
   
   return { agendaItems, speeches, sessions };

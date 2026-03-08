@@ -1,4 +1,5 @@
 import { supabase } from '@/integrations/supabase/client';
+import { debugConsole } from '@/utils/debugConsole';
 
 /**
  * Creates a decision for letter approval when transitioning to pending_approval.
@@ -30,7 +31,7 @@ export async function createLetterApprovalDecision(
       .single();
 
     if (decisionError) {
-      console.error('Error creating approval decision:', decisionError);
+      debugConsole.error('Error creating approval decision:', decisionError);
       return null;
     }
 
@@ -44,13 +45,13 @@ export async function createLetterApprovalDecision(
         });
 
       if (participantError) {
-        console.error('Error adding decision participant:', participantError);
+        debugConsole.error('Error adding decision participant:', participantError);
       }
     }
 
     return decision?.id || null;
   } catch (error) {
-    console.error('Error in createLetterApprovalDecision:', error);
+    debugConsole.error('Error in createLetterApprovalDecision:', error);
     return null;
   }
 }
@@ -78,7 +79,7 @@ export async function createLetterSendTask(
         tenant_id: tenantId,
       });
   } catch (error) {
-    console.error('Error creating send task:', error);
+    debugConsole.error('Error creating send task:', error);
   }
 }
 
@@ -113,6 +114,6 @@ export async function createLetterRevisionTask(
         tenant_id: tenantId,
       });
   } catch (error) {
-    console.error('Error creating revision task:', error);
+    debugConsole.error('Error creating revision task:', error);
   }
 }

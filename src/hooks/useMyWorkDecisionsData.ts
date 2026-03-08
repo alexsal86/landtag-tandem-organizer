@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { debugConsole } from '@/utils/debugConsole';
 import { MyWorkDecision, getResponseSummary } from "@/components/my-work/decisions/types";
 import type { ResponseOption } from "@/lib/decisionTemplates";
 
@@ -296,7 +297,7 @@ export function useMyWorkDecisionsData(userId?: string) {
       }
     } catch (error) {
       if (isCurrentRequest()) {
-        console.error("Error loading decisions:", error);
+        debugConsole.error("Error loading decisions:", error);
       }
     } finally {
       if (isCurrentRequest()) {

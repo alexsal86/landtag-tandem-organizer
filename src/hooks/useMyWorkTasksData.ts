@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { debugConsole } from '@/utils/debugConsole';
 
 export interface MyWorkTask {
   id: string;
@@ -187,7 +188,7 @@ export function useMyWorkTasksData(userId?: string) {
         taskCommentCounts: commentCounts,
       });
     } catch (error) {
-      console.error("Error loading tasks:", error);
+      debugConsole.error("Error loading tasks:", error);
     } finally {
       setLoading(false);
     }

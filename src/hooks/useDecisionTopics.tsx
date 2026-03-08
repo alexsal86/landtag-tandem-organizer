@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
+import { debugConsole } from '@/utils/debugConsole';
 
 export const useDecisionTopics = (decisionId: string | undefined) => {
   const [assignedTopics, setAssignedTopics] = useState<string[]>([]);
@@ -24,7 +25,7 @@ export const useDecisionTopics = (decisionId: string | undefined) => {
 
       setAssignedTopics(data?.map(item => item.topic_id) || []);
     } catch (error) {
-      console.error('Error fetching decision topics:', error);
+      debugConsole.error('Error fetching decision topics:', error);
     } finally {
       setLoading(false);
     }
@@ -50,7 +51,7 @@ export const useDecisionTopics = (decisionId: string | undefined) => {
       setAssignedTopics(prev => [...prev, topicId]);
       return true;
     } catch (error) {
-      console.error('Error assigning topic:', error);
+      debugConsole.error('Error assigning topic:', error);
       toast({
         title: "Fehler",
         description: "Thema konnte nicht zugewiesen werden.",
@@ -75,7 +76,7 @@ export const useDecisionTopics = (decisionId: string | undefined) => {
       setAssignedTopics(prev => prev.filter(id => id !== topicId));
       return true;
     } catch (error) {
-      console.error('Error removing topic:', error);
+      debugConsole.error('Error removing topic:', error);
       toast({
         title: "Fehler",
         description: "Thema konnte nicht entfernt werden.",
@@ -112,7 +113,7 @@ export const useDecisionTopics = (decisionId: string | undefined) => {
       setAssignedTopics(topicIds);
       return true;
     } catch (error) {
-      console.error('Error setting topics:', error);
+      debugConsole.error('Error setting topics:', error);
       toast({
         title: "Fehler",
         description: "Themen konnten nicht aktualisiert werden.",
@@ -147,7 +148,7 @@ export const saveDecisionTopics = async (decisionId: string, topicIds: string[])
     if (error) throw error;
     return true;
   } catch (error) {
-    console.error('Error saving decision topics:', error);
+    debugConsole.error('Error saving decision topics:', error);
     return false;
   }
 };

@@ -703,7 +703,7 @@ export const generateLetterPDF = async (letter: Letter): Promise<{ blob: Blob; f
     return { blob: pdfBlob, filename: fileName };
 
   } catch (error) {
-    console.error('Error generating PDF:', error);
+    debugConsole.error('Error generating PDF:', error);
     return null;
   }
 };

@@ -1,5 +1,6 @@
 import { useState, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
+import { debugConsole } from '@/utils/debugConsole';
 
 export interface DistrictDetectionResult {
   coordinates: { lat: number; lng: number };
@@ -82,12 +83,12 @@ export const useDistrictDetection = () => {
       });
 
       if (functionError) {
-        console.error('Function error:', functionError);
+        debugConsole.error('Function error:', functionError);
         throw new Error(functionError.message || 'Failed to detect district');
       }
 
       if (data?.error) {
-        console.error('Detection error:', data.error);
+        debugConsole.error('Detection error:', data.error);
         setError(data.error);
         return null;
       }
@@ -97,7 +98,7 @@ export const useDistrictDetection = () => {
       return data;
 
     } catch (err) {
-      console.error('Error detecting district:', err);
+      debugConsole.error('Error detecting district:', err);
       const errorMessage = err instanceof Error ? err.message : 'Unknown error occurred';
       setError(errorMessage);
       return null;
