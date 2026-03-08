@@ -14,7 +14,7 @@ import {
   SAVE_DEBOUNCE_MS, WEEK_DAYS, DEFAULT_DAY_TEMPLATES,
   toDayKey, extractLinesFromHtml, normalizeLineText, isRuleLine, parseRuleLine,
   toParagraphHtml, toRuleHtml, weekdayKey, normalizeDayTemplates,
-} from "./dayslipTypes";
+} from "../dayslipTypes";
 
 export function useDaySlipStore(userId?: string, tenantId?: string) {
   const [store, setStore] = useState<DaySlipStore>(() => {
