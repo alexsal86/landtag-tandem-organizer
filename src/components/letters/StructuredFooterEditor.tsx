@@ -202,7 +202,7 @@ export const StructuredFooterEditor: React.FC<StructuredFooterEditorProps> = ({
 
   const generateWahlkreisAddress = (): string => {
     if (!senderInfo) return '';
-    const parts = [];
+    const parts: string[] = [];
     if (senderInfo.wahlkreis_street && senderInfo.wahlkreis_house_number) {
       parts.push(`${senderInfo.wahlkreis_street} ${senderInfo.wahlkreis_house_number}`);
     }
