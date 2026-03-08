@@ -64,27 +64,7 @@ export const DashboardGreetingSection = ({ data }: Props) => {
       multipleSessions,
     });
 
-    const getRoleLeadLine = () => {
-      if (userRole === 'abgeordneter') {
-        if (hasPlenum || hasCommittee || multipleSessions)
-          return useTomorrowTone ? 'Für morgen stehen zentrale politische Termine und klare Entscheidungen im Fokus.' : 'Heute stehen zentrale politische Termine und klare Entscheidungen im Fokus.';
-        if (appointments.length === 0)
-          return useTomorrowTone ? 'Für morgen gibt es Raum für strategische Vorbereitung und Gespräche im Wahlkreis.' : 'Heute gibt es Raum für strategische Vorbereitung und Gespräche im Wahlkreis.';
-        return useTomorrowTone ? 'Für morgen liegt der Schwerpunkt auf Abstimmungen, Austausch und politischer Präsenz.' : 'Heute liegt der Schwerpunkt auf Abstimmungen, Austausch und politischer Präsenz.';
-      }
-      if (userRole === 'mitarbeiter') {
-        if (appointments.length >= 4) return useTomorrowTone ? 'Für morgen zählt ein guter Takt zwischen Terminen, Rückmeldungen und Umsetzung.' : 'Heute zählt ein guter Takt zwischen Terminen, Rückmeldungen und Umsetzung.';
-        if (openTasksCount >= 8) return useTomorrowTone ? 'Für morgen lohnt sich ein klarer Fokus auf Prioritäten und verlässliche Übergaben.' : 'Heute lohnt sich ein klarer Fokus auf Prioritäten und verlässliche Übergaben.';
-        return useTomorrowTone ? 'Für morgen geht es um saubere Umsetzung und verlässliche Abstimmung im Alltag.' : 'Heute geht es um saubere Umsetzung und verlässliche Abstimmung im Alltag.';
-      }
-      if (userRole === 'bueroleitung') return useTomorrowTone ? 'Für morgen zählt ein klarer Überblick über Team, Fristen und Prioritäten.' : 'Heute zählt ein klarer Überblick über Team, Fristen und Prioritäten.';
-      if (userRole === 'praktikant') return useTomorrowTone ? 'Morgen ist ein guter Tag, um dazuzulernen und Verantwortung zu übernehmen.' : 'Heute ist ein guter Tag, um dazuzulernen und Verantwortung zu übernehmen.';
-      return undefined;
-    };
-
-    const roleLine = getRoleLeadLine();
     let text = `${greeting}, ${userName}!\n\n`;
-    if (roleLine) text += `${roleLine}\n\n`;
     text += `${message.text}\n\n`;
 
     if (specialDayHint) text += `{{SPECIAL_DAY_PLACEHOLDER}}\n\n`;

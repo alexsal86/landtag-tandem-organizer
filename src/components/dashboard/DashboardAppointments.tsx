@@ -53,40 +53,9 @@ export const DashboardAppointments = ({ data }: Props) => {
     });
   }, [appointments, openTasksCount, completedTasksToday, userRole, hasPlenum, hasCommittee, timeSlot]);
 
-  const getRoleLeadLine = () => {
-    if (userRole === 'abgeordneter') {
-      if (hasPlenum || hasCommittee) return useTomorrowTone
-        ? 'Für morgen stehen zentrale politische Termine und klare Entscheidungen im Fokus.'
-        : 'Heute stehen zentrale politische Termine und klare Entscheidungen im Fokus.';
-      if (appointments.length === 0) return useTomorrowTone
-        ? 'Für morgen gibt es Raum für strategische Vorbereitung und Gespräche im Wahlkreis.'
-        : 'Heute gibt es Raum für strategische Vorbereitung und Gespräche im Wahlkreis.';
-      return useTomorrowTone
-        ? 'Für morgen liegt der Schwerpunkt auf Abstimmungen, Austausch und politischer Präsenz.'
-        : 'Heute liegt der Schwerpunkt auf Abstimmungen, Austausch und politischer Präsenz.';
-    }
-    if (userRole === 'mitarbeiter') {
-      if (appointments.length >= 4) return useTomorrowTone
-        ? 'Für morgen zählt ein guter Takt zwischen Terminen, Rückmeldungen und Umsetzung.'
-        : 'Heute zählt ein guter Takt zwischen Terminen, Rückmeldungen und Umsetzung.';
-      if (openTasksCount >= 8) return useTomorrowTone
-        ? 'Für morgen lohnt sich ein klarer Fokus auf Prioritäten und verlässliche Übergaben.'
-        : 'Heute lohnt sich ein klarer Fokus auf Prioritäten und verlässliche Übergaben.';
-      return useTomorrowTone
-        ? 'Für morgen geht es um saubere Umsetzung und verlässliche Abstimmung im Alltag.'
-        : 'Heute geht es um saubere Umsetzung und verlässliche Abstimmung im Alltag.';
-    }
-    if (userRole === 'bueroleitung') return useTomorrowTone
-      ? 'Für morgen zählt ein klarer Überblick über Team, Fristen und Prioritäten.'
-      : 'Heute zählt ein klarer Überblick über Team, Fristen und Prioritäten.';
-    if (userRole === 'praktikant') return useTomorrowTone
-      ? 'Morgen ist ein guter Tag, um dazuzulernen und Verantwortung zu übernehmen.'
-      : 'Heute ist ein guter Tag, um dazuzulernen und Verantwortung zu übernehmen.';
-    return null;
-  };
+  
 
   const specialDayHint = getSpecialDayHint(new Date(), specialDays);
-  const roleLine = getRoleLeadLine();
 
   if (isLoading) return <div className="animate-pulse h-32 bg-muted rounded-lg" />;
 
@@ -97,10 +66,9 @@ export const DashboardAppointments = ({ data }: Props) => {
 
   return (
     <div className="space-y-4">
-      {/* Rollenbasierte Zeile + kontextuelle Nachricht */}
-      {(roleLine || contextMessage) && (
-        <div className="text-sm text-muted-foreground space-y-1">
-          {roleLine && <p className="italic">{roleLine}</p>}
+      {/* Kontextuelle Nachricht */}
+      {contextMessage && (
+        <div className="text-sm text-muted-foreground">
           <p>{contextMessage.text}</p>
         </div>
       )}
@@ -114,7 +82,7 @@ export const DashboardAppointments = ({ data }: Props) => {
       )}
 
       {/* Separator zwischen Kontext und Terminliste */}
-      {(roleLine || contextMessage || specialDayHint) && <Separator className="my-2" />}
+      {(contextMessage || specialDayHint) && <Separator className="my-2" />}
 
       {/* Termine */}
       <div>
