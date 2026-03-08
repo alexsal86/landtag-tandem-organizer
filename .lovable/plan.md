@@ -1,19 +1,37 @@
 
-## Benachrichtigungen & Badges für Vorgänge — Umgesetzt
 
-### Was wurde gemacht:
+## Plan: Icons für Dashboard-Hinweise
 
-1. **DB: Neue `notification_types` für Kategorie `cases`** (alle 3 Tenants)
-   - `case_item_created`, `case_item_assigned`, `case_item_status_changed`, `case_item_comment`
+### Überblick
+Jeder Dashboard-Hinweis (SpecialDay) bekommt ein optionales `icon`-Feld mit einem Lucide-Icon-Namen. In der Administration kann man das Icon aus einer vordefinierten Auswahl wählen. Im Dashboard wird das Icon statt der Kerze 🕯️ angezeigt.
 
-2. **DB: `notification_navigation_mapping`** — alle 4 Typen auf `navigation_context = 'mywork'` gemappt, damit Sidebar-Badge korrekt zählt.
+### Änderungen
 
-3. **UI: `NotificationSettings.tsx`** — Kategorie `cases` / "Vorgänge" mit Icon 📋 eingefügt (Order 3).
+**1. `src/utils/dashboard/specialDays.ts`**
+- `SpecialDay`-Interface um `icon?: string` erweitern (Lucide-Icon-Name, z.B. `"Leaf"`, `"Heart"`)
+- Jedem `DEFAULT_SPECIAL_DAYS`-Eintrag ein passendes Icon zuweisen:
+  - Energiesparen → `Zap`, Gedenktag → `Flame`, Frauentag → `Heart`, Rassismus → `Users`, Tag der Erde → `Globe`, Befreiung → `Flag`, Europatag → `Star`, Grundgesetz → `BookOpen`, Umwelttag → `TreePine`, Antikriegstag → `Dove`/`HandHeart`, Weltkindertag → `Baby`, Deutsche Einheit → `Landmark`, Coming-out → `Rainbow`, 9. November → `Candle`, Ehrenamt → `HandHeart`, Menschenrechte → `Scale`
+- `getSpecialDayHint` gibt zusätzlich das Icon zurück (Rückgabetyp ändern zu `{ text: string; icon?: string } | null`)
+- `parseSpecialDaysSetting` akzeptiert `icon` als optionales Feld
+- `emptyEntry()` in DashboardHintSettings bekommt `icon: 'CalendarHeart'` als Default
 
-4. **Code: `useCaseItems.tsx`** — `create_notification` RPC-Aufrufe bei:
-   - Vorgang erstellen → Benachrichtigung an zugewiesenen Owner
-   - Status-Änderung → Benachrichtigung an Ersteller + Owner
-   - Zuweisung-Änderung → Benachrichtigung an neuen Owner
-   - Kommentar/Interaktion → Benachrichtigung an Ersteller + Owner
+**2. `src/components/administration/DashboardHintSettings.tsx`**
+- Grid um eine Icon-Spalte erweitern (zwischen Tag und Name)
+- Select/Dropdown mit ~20 vordefinierten Lucide-Icons (Label + Icon-Preview): `Zap`, `Flame`, `Heart`, `Users`, `Globe`, `Flag`, `Star`, `BookOpen`, `TreePine`, `HandHeart`, `Baby`, `Landmark`, `Rainbow`, `Candle`, `Scale`, `CalendarHeart`, `Megaphone`, `Shield`, `Sparkles`, `Sun`
+- Jeder Eintrag zeigt das gewählte Icon als Preview neben dem Select
+- `normalizedEntries` im Save inkludiert `icon`
 
-5. **Badge-System**: Sidebar-Badge für "Meine Arbeit" zählt nun auch Vorgang-Benachrichtigungen (via `navigation_context = 'mywork'` Trigger). Interne Tab-Badges bleiben über `useMyWorkNewCounts` (Zeitstempel-basiert).
+**3. `src/components/dashboard/DashboardAppointments.tsx`**
+- Statt `specialDayHint` als String: Objekt mit `text` + `icon` nutzen
+- Lucide-Icon dynamisch rendern via `icons[hint.icon]` aus `lucide-react`
+- Fallback auf `Candle`-Icon wenn kein Icon gesetzt
+
+**4. `src/components/dashboard/DashboardGreetingSection.tsx`**
+- Gleiche Anpassung: Icon aus dem Hint-Objekt nutzen statt Emoji
+
+**Dateien:**
+- `src/utils/dashboard/specialDays.ts` — Interface + Defaults + Parser + getSpecialDayHint
+- `src/components/administration/DashboardHintSettings.tsx` — Icon-Spalte mit Select
+- `src/components/dashboard/DashboardAppointments.tsx` — Icon-Rendering
+- `src/components/dashboard/DashboardGreetingSection.tsx` — Icon-Rendering
+
