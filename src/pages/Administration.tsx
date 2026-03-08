@@ -1242,7 +1242,7 @@ const [editingChild, setEditingChild] = useState<{ parentIndex: number; childInd
                                       // Update local state first (before loadData to avoid losing selection)
                                       setSelectedTemplate({
                                         ...selectedTemplate,
-                                        name: editingTemplateName.value
+                                        name: editingTemplateName!.value
                                       });
                                       
                                       await loadData();
