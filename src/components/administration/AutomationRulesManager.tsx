@@ -384,6 +384,9 @@ export function AutomationRulesManager() {
         runningDryRun={runningRuleId !== null}
       />
 
+      {/* Template Gallery */}
+      <AutomationTemplateGallery onUseTemplate={useTemplate} />
+
       {/* Rules list */}
       <Card>
         <CardHeader>
