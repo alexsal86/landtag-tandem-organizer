@@ -1121,7 +1121,7 @@ export function QuickNotesList({
       setNoteForMeeting(null);
       loadNotes();
     } catch (error) {
-      console.error('Error adding note to meeting:', error);
+      debugConsole.error('Error adding note to meeting:', error);
       toast.error("Fehler beim Hinzufügen zum Jour Fixe");
     }
   };
