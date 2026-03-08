@@ -168,7 +168,7 @@ export function ContactDetailPanel({ contactId, onClose, onContactUpdate }: Cont
       if (error) throw error;
       setActivities(data || []);
     } catch (error) {
-      console.error("Error fetching activities:", error);
+      debugConsole.error("Error fetching activities:", error);
     } finally {
       setActivitiesLoading(false);
     }
