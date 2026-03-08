@@ -10897,6 +10897,7 @@ export type Database = {
         | "in_klaerung"
         | "antwort_ausstehend"
         | "erledigt"
+        | "archiviert"
       flag_visibility: "public" | "private" | "team"
       leave_status:
         | "pending"
@@ -11064,6 +11065,7 @@ export const Constants = {
         "in_klaerung",
         "antwort_ausstehend",
         "erledigt",
+        "archiviert",
       ],
       flag_visibility: ["public", "private", "team"],
       leave_status: [
