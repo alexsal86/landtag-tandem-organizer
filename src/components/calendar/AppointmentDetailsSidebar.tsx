@@ -318,7 +318,7 @@ export function AppointmentDetailsSidebar({
       setIsEditing(false);
       onUpdate();
     } catch (error) {
-      console.error('Error updating appointment:', error);
+      debugConsole.error('Error updating appointment:', error);
       toast({
         title: "Fehler",
         description: "Der Termin konnte nicht aktualisiert werden.",
