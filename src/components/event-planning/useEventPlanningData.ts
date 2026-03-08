@@ -978,7 +978,7 @@ export function useEventPlanningData() {
         documentsMap[doc.planning_item_id].push({ ...doc, user_id: doc.user_id || user?.id || '' });
       });
       setItemDocuments(documentsMap);
-    } catch (error) { debugConsole.error('Error loading item counts:', error); }
+    } catch (error) { handleAppError(error, { context: 'loadAllItemCounts' }); }
   };
 
   const handleItemFileUpload = async (event: React.ChangeEvent<HTMLInputElement>, itemId: string) => {
