@@ -177,7 +177,7 @@ export const PartyAssociationsAdmin: React.FC = () => {
       resetForm();
       loadData();
     } catch (error) {
-      console.error('Error saving association:', error);
+      debugConsole.error('Error saving association:', error);
       toast.error('Fehler beim Speichern des Kreisverbands');
     }
   };
