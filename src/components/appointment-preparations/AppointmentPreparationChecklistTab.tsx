@@ -6,6 +6,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Badge } from "@/components/ui/badge";
 import { CheckSquareIcon, PlusIcon, TrashIcon, SaveIcon } from "lucide-react";
 import { AppointmentPreparation } from "@/hooks/useAppointmentPreparation";
+import { debugConsole } from "@/utils/debugConsole";
 
 interface AppointmentPreparationChecklistTabProps {
   preparation: AppointmentPreparation;
