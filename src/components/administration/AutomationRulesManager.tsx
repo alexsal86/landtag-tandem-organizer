@@ -18,14 +18,14 @@ import { AutomationRuleWizard, DEFAULT_FORM, DEFAULT_ACTION, RULE_TEMPLATES, typ
 // --- Helpers for nested condition group serialization ---
 
 /** Serialize a ConditionGroup tree into the DB JSON format */
-function serializeConditionGroup(group: ConditionGroup): Record<string, unknown> {
-  const items: unknown[] = group.conditions.map((c) => ({
+function serializeConditionGroup(group: ConditionGroup): Record<string, Json> {
+  const items: Json[] = group.conditions.map((c) => ({
     field: c.field,
     operator: c.operator,
     value: c.value,
   }));
   for (const sub of group.groups) {
-    items.push(serializeConditionGroup(sub));
+    items.push(serializeConditionGroup(sub) as unknown as Json);
   }
   return { [group.logic]: items };
 }
