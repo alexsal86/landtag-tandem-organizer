@@ -347,6 +347,7 @@ const SimpleRichTextEditor: React.FC<SimpleRichTextEditorProps> = ({
   onMentionInsert,
   onKeyDown,
   showToolbar = true,
+  autoFocus = false,
 }) => {
   const initialConfig = {
     namespace: 'SimpleRichTextEditor',
