@@ -385,6 +385,32 @@ export function AutomationRulesManager() {
 
     return (
     <div className="space-y-6">
+      {/* Kill-Switch */}
+      <Card>
+        <CardContent className="flex items-center justify-between py-4">
+          <div className="flex items-center gap-3">
+            <Pause className="h-5 w-5 text-muted-foreground" />
+            <div>
+              <p className="font-medium text-sm">Kill-Switch: Alle Automations pausieren</p>
+              <p className="text-xs text-muted-foreground">
+                {automationsPaused
+                  ? "Alle Regeln sind aktuell pausiert – keine automatischen Ausführungen."
+                  : "Automations sind aktiv und werden planmäßig ausgeführt."}
+              </p>
+            </div>
+          </div>
+          <div className="flex items-center gap-2">
+            {automationsPaused && <Badge variant="destructive">Pausiert</Badge>}
+            <Switch
+              checked={automationsPaused}
+              onCheckedChange={toggleAutomationsPaused}
+              disabled={togglingPause}
+              aria-label="Automations pausieren"
+            />
+          </div>
+        </CardContent>
+      </Card>
+
       {/* Failed runs alert banner */}
       {failedRunCount > 0 && (
         <Alert variant="destructive">

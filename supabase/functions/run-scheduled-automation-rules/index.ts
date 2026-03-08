@@ -46,7 +46,24 @@ Deno.serve(async (req) => {
     let executed = 0;
     const skipped: string[] = [];
 
+    // Collect paused tenants to skip
+    const tenantIds = [...new Set((rules || []).map((r: Rule) => r.tenant_id))];
+    const pausedTenants = new Set<string>();
+    for (const tid of tenantIds) {
+      const { data: t } = await supabase
+        .from("tenants")
+        .select("automations_paused")
+        .eq("id", tid)
+        .maybeSingle();
+      if (t?.automations_paused) pausedTenants.add(tid);
+    }
+
     for (const rule of (rules || []) as Rule[]) {
+      if (pausedTenants.has(rule.tenant_id)) {
+        skipped.push(`${rule.name}: tenant paused`);
+        continue;
+      }
+
       const minutesInterval = Math.max(1, Number(rule.trigger_config?.minutes_interval ?? 60));
 
       const { data: lastRun } = await supabase
