@@ -230,7 +230,7 @@ export function useLetterTemplateData() {
       name: template.name, letterhead_html: template.letterhead_html, letterhead_css: template.letterhead_css,
       response_time_days: template.response_time_days, default_sender_id: template.default_sender_id || '',
       default_info_blocks: template.default_info_blocks || [], header_elements: normalizedHeader as unknown[],
-      footer_blocks: footerData as unknown[],
+      footer_blocks: footerData as unknown as unknown[],
       layout_settings: { ...normalizedLayoutSettings, blockContent: { ...cleanedBlockContent, footer: footerData } } as LetterLayoutSettings,
     });
   };
