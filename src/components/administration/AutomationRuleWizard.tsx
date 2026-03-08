@@ -205,6 +205,9 @@ export type ActionItem = {
   table: string;
   recordId: string;
   status: string;
+  emailTemplateId: string;
+  emailRecipient: string;
+  emailRecipientName: string;
 };
 
 export const DEFAULT_ACTION: ActionItem = {
@@ -219,6 +222,9 @@ export const DEFAULT_ACTION: ActionItem = {
   table: "tasks",
   recordId: "",
   status: "",
+  emailTemplateId: "",
+  emailRecipient: "",
+  emailRecipientName: "",
 };
 
 export const DEFAULT_CONDITION: ConditionItem = {
