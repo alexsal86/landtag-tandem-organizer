@@ -42,9 +42,9 @@ interface Task {
   description: string;
   priority: "low" | "medium" | "high";
   status: "todo" | "in-progress" | "completed";
-  dueDate: string;
+  dueDate: string | null;
   category: "legislation" | "constituency" | "committee" | "personal";
-  assignedTo?: string; // Changed from string[] to string
+  assignedTo?: string;
   progress?: number;
 }
 
