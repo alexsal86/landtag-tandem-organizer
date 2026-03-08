@@ -284,7 +284,7 @@ export function TagAdminSettings() {
                                 <div className="flex items-center gap-2">
                                   <span
                                     className="inline-block w-3 h-3 rounded-full"
-                                    style={{ backgroundColor: tag.color }}
+                                    style={{ backgroundColor: tag.color ?? undefined }}
                                   />
                                   {(() => {
                                     const Icon = getIconComponent(tag.icon);
