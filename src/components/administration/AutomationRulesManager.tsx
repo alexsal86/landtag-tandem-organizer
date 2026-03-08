@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import type { Json } from "@/integrations/supabase/types";
 import { useAuth } from "@/hooks/useAuth";
 import { useTenant } from "@/hooks/useTenant";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -13,7 +14,56 @@ import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { formatDistanceToNow, addMinutes } from "date-fns";
 import { de } from "date-fns/locale";
-import { AutomationRuleWizard, DEFAULT_FORM, DEFAULT_ACTION, RULE_TEMPLATES, type WizardForm, type ActionItem, type ConditionItem } from "./AutomationRuleWizard";
+import { AutomationRuleWizard, DEFAULT_FORM, DEFAULT_ACTION, RULE_TEMPLATES, type WizardForm, type ActionItem, type ConditionItem, type ConditionGroup } from "./AutomationRuleWizard";
+
+// --- Helpers for nested condition group serialization ---
+
+/** Serialize a ConditionGroup tree into the DB JSON format */
+function serializeConditionGroup(group: ConditionGroup): Record<string, Json> {
+  const items: Json[] = group.conditions.map((c) => ({
+    field: c.field,
+    operator: c.operator,
+    value: c.value,
+  }));
+  for (const sub of group.groups) {
+    items.push(serializeConditionGroup(sub) as unknown as Json);
+  }
+  return { [group.logic]: items };
+}
+
+/** Parse DB JSON format back into a ConditionGroup tree */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function parseConditionGroup(raw: any): ConditionGroup {
+  if (!raw || typeof raw !== "object") {
+    return { logic: "all", conditions: [{ field: "status", operator: "equals", value: "" }], groups: [] };
+  }
+  const logic: "all" | "any" = raw.any ? "any" : "all";
+  const items: unknown[] = raw[logic] || [];
+  const conditions: ConditionItem[] = [];
+  const groups: ConditionGroup[] = [];
+
+  for (const item of items) {
+    if (item && typeof item === "object" && ("all" in (item as Record<string, unknown>) || "any" in (item as Record<string, unknown>))) {
+      groups.push(parseConditionGroup(item));
+    } else if (item && typeof item === "object" && "field" in (item as Record<string, unknown>)) {
+      const c = item as Record<string, string>;
+      conditions.push({ field: c.field || "status", operator: c.operator || "equals", value: c.value || "" });
+    }
+  }
+  if (conditions.length === 0 && groups.length === 0) {
+    conditions.push({ field: "status", operator: "equals", value: "" });
+  }
+  return { logic, conditions, groups };
+}
+
+/** Flatten a ConditionGroup tree into a flat list (for legacy compat) */
+function flattenConditions(group: ConditionGroup): ConditionItem[] {
+  const result = [...group.conditions];
+  for (const sub of group.groups) {
+    result.push(...flattenConditions(sub));
+  }
+  return result.length > 0 ? result : [{ field: "status", operator: "equals", value: "" }];
+}
 import { AutomationTemplateGallery } from "./AutomationTemplateGallery";
 import { AutomationRuleVersions } from "./AutomationRuleVersions";
 import { AutomationRuleExportDialog, AutomationRuleImportDialog } from "./AutomationRuleImportExport";
@@ -225,6 +275,7 @@ export function AutomationRulesManager() {
     const template = RULE_TEMPLATES.find((t) => t.id === templateId);
     if (!template) return;
     resetForm();
+    const conditions = template.conditions.map((c) => ({ ...c }));
     setForm((prev) => ({
       ...prev,
       name: template.name,
@@ -234,7 +285,8 @@ export function AutomationRulesManager() {
       triggerField: template.triggerField,
       triggerValue: template.triggerValue,
       conditionLogic: "all",
-      conditions: template.conditions.map((c) => ({ ...c })),
+      conditions,
+      conditionGroup: { logic: "all", conditions, groups: [] },
       actions: template.actions.map((a) => ({ ...a })),
       enabled: true,
     }));
@@ -242,17 +294,12 @@ export function AutomationRulesManager() {
   };
 
   const startEdit = (rule: RuleRow) => {
-    // Detect condition logic from stored format
-    const hasAny = !!(rule.conditions?.any);
-    const conditionLogic: "all" | "any" = hasAny ? "any" : "all";
-    const rawConditions = hasAny ? (rule.conditions?.any || []) : (rule.conditions?.all || []);
+    // Parse nested condition group from stored format
+    const conditionGroup = parseConditionGroup(rule.conditions);
 
-    const conditions: ConditionItem[] = rawConditions.map((c) => ({
-      field: c.field || "status",
-      operator: c.operator || "equals",
-      value: c.value || "",
-    }));
-    if (conditions.length === 0) conditions.push({ field: "status", operator: "equals", value: "" });
+    // Legacy flat fields for backward compat
+    const flatConditions = flattenConditions(conditionGroup);
+    const conditionLogic = conditionGroup.logic;
 
     const actions: ActionItem[] = (rule.actions || []).map((a) => ({
       type: a.type || "create_notification",
@@ -281,7 +328,8 @@ export function AutomationRulesManager() {
       triggerField: (rule.trigger_config?.field as string) || "status",
       triggerValue: (rule.trigger_config?.value as string) || "",
       conditionLogic,
-      conditions,
+      conditions: flatConditions,
+      conditionGroup,
       actions,
       enabled: rule.enabled,
     });
@@ -326,9 +374,7 @@ export function AutomationRulesManager() {
     }
 
     setSaving(true);
-    const conditionsPayload = form.conditionLogic === "any"
-      ? { any: form.conditions.map((c) => ({ field: c.field, operator: c.operator, value: c.value })) }
-      : { all: form.conditions.map((c) => ({ field: c.field, operator: c.operator, value: c.value })) };
+    const conditionsPayload = serializeConditionGroup(form.conditionGroup);
 
     const payload = {
       tenant_id: currentTenant.id,

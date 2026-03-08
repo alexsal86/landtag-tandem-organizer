@@ -11,7 +11,7 @@ import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { cn } from "@/lib/utils";
-import { ArrowLeft, ArrowRight, Check, Clock, Filter, Loader2, Play, Plus, Save, Trash2, Zap } from "lucide-react";
+import { ArrowLeft, ArrowRight, Check, Clock, Filter, FolderPlus, Loader2, Play, Plus, Save, Trash2, Zap } from "lucide-react";
 
 const MODULE_OPTIONS = [
   { value: "tasks", label: "Aufgaben" },
@@ -216,6 +216,12 @@ export type ConditionItem = {
   value: string;
 };
 
+export type ConditionGroup = {
+  logic: "all" | "any";
+  conditions: ConditionItem[];
+  groups: ConditionGroup[];
+};
+
 export type ActionItem = {
   type: string;
   targetUserId: string;
@@ -263,10 +269,33 @@ export type WizardForm = {
   triggerType: string;
   triggerField: string;
   triggerValue: string;
+  /** @deprecated kept for backward compat during migration */
   conditionLogic: "all" | "any";
+  /** @deprecated kept for backward compat during migration */
   conditions: ConditionItem[];
+  conditionGroup: ConditionGroup;
   actions: ActionItem[];
   enabled: boolean;
+};
+
+/** Recursively validate that all conditions in a group have non-empty values */
+export function validateConditionGroup(group: ConditionGroup): boolean {
+  const hasItems = group.conditions.length > 0 || group.groups.length > 0;
+  if (!hasItems) return false;
+  const conditionsValid = group.conditions.every((c) => c.value.trim().length > 0);
+  const groupsValid = group.groups.every((g) => validateConditionGroup(g));
+  return conditionsValid && groupsValid;
+}
+
+/** Count total conditions in a group tree */
+export function countConditions(group: ConditionGroup): number {
+  return group.conditions.length + group.groups.reduce((sum, g) => sum + countConditions(g), 0);
+}
+
+export const DEFAULT_CONDITION_GROUP: ConditionGroup = {
+  logic: "all",
+  conditions: [{ ...DEFAULT_CONDITION }],
+  groups: [],
 };
 
 export const DEFAULT_FORM: WizardForm = {
@@ -278,6 +307,7 @@ export const DEFAULT_FORM: WizardForm = {
   triggerValue: "",
   conditionLogic: "all",
   conditions: [{ ...DEFAULT_CONDITION }],
+  conditionGroup: { ...DEFAULT_CONDITION_GROUP },
   actions: [{ ...DEFAULT_ACTION }],
   enabled: true,
 };
@@ -560,6 +590,168 @@ function ActionCard({
   );
 }
 
+// --- Recursive ConditionGroup UI ---
+
+function ConditionGroupEditor({
+  group,
+  onChange,
+  onRemove,
+  fieldOptions,
+  depth = 0,
+  canRemove = false,
+}: {
+  group: ConditionGroup;
+  onChange: (updated: ConditionGroup) => void;
+  onRemove?: () => void;
+  fieldOptions: Array<{ value: string; label: string }>;
+  depth?: number;
+  canRemove?: boolean;
+}) {
+  const updateCondition = (index: number, patch: Partial<ConditionItem>) => {
+    const next = [...group.conditions];
+    next[index] = { ...next[index], ...patch };
+    onChange({ ...group, conditions: next });
+  };
+
+  const addCondition = () => {
+    onChange({
+      ...group,
+      conditions: [...group.conditions, { ...DEFAULT_CONDITION, field: fieldOptions[0]?.value || "status" }],
+    });
+  };
+
+  const removeCondition = (index: number) => {
+    const next = group.conditions.filter((_, i) => i !== index);
+    onChange({ ...group, conditions: next });
+  };
+
+  const addSubGroup = () => {
+    onChange({
+      ...group,
+      groups: [
+        ...group.groups,
+        { logic: group.logic === "all" ? "any" : "all", conditions: [{ ...DEFAULT_CONDITION, field: fieldOptions[0]?.value || "status" }], groups: [] },
+      ],
+    });
+  };
+
+  const updateSubGroup = (index: number, updated: ConditionGroup) => {
+    const next = [...group.groups];
+    next[index] = updated;
+    onChange({ ...group, groups: next });
+  };
+
+  const removeSubGroup = (index: number) => {
+    onChange({ ...group, groups: group.groups.filter((_, i) => i !== index) });
+  };
+
+  const toggleLogic = () => {
+    onChange({ ...group, logic: group.logic === "all" ? "any" : "all" });
+  };
+
+  const borderColor = depth === 0 ? "border-border" : group.logic === "all" ? "border-primary/30" : "border-accent/50";
+  const bgColor = depth === 0 ? "" : group.logic === "all" ? "bg-primary/5" : "bg-accent/10";
+
+  return (
+    <div className={cn("rounded-lg border p-3 space-y-2", borderColor, bgColor)}>
+      <div className="flex items-center justify-between gap-2">
+        <div className="flex items-center gap-2">
+          {/* Logic toggle */}
+          <div className="flex rounded-md border overflow-hidden">
+            <button
+              type="button"
+              onClick={toggleLogic}
+              className={cn(
+                "px-2.5 py-1 text-[11px] font-semibold transition-colors",
+                group.logic === "all"
+                  ? "bg-primary text-primary-foreground"
+                  : "bg-background text-muted-foreground hover:bg-muted"
+              )}
+            >
+              UND
+            </button>
+            <button
+              type="button"
+              onClick={toggleLogic}
+              className={cn(
+                "px-2.5 py-1 text-[11px] font-semibold transition-colors",
+                group.logic === "any"
+                  ? "bg-accent text-accent-foreground"
+                  : "bg-background text-muted-foreground hover:bg-muted"
+              )}
+            >
+              ODER
+            </button>
+          </div>
+          <span className="text-[10px] text-muted-foreground">
+            {group.logic === "all" ? "Alle müssen zutreffen" : "Mindestens eine"}
+          </span>
+          {depth > 0 && (
+            <Badge variant="outline" className="text-[9px]">Gruppe Ebene {depth + 1}</Badge>
+          )}
+        </div>
+        <div className="flex items-center gap-1">
+          {depth < 2 && (
+            <Button variant="ghost" size="sm" className="h-7 text-[11px] gap-1" onClick={addSubGroup}>
+              <FolderPlus className="h-3 w-3" /> Untergruppe
+            </Button>
+          )}
+          <Button variant="ghost" size="sm" className="h-7 text-[11px] gap-1" onClick={addCondition}>
+            <Plus className="h-3 w-3" /> Bedingung
+          </Button>
+          {canRemove && onRemove && (
+            <Button variant="ghost" size="sm" className="h-6 w-6 p-0" onClick={onRemove}>
+              <Trash2 className="h-3.5 w-3.5 text-destructive" />
+            </Button>
+          )}
+        </div>
+      </div>
+
+      {/* Conditions in this group */}
+      {group.conditions.map((condition, i) => (
+        <div key={`c-${i}`}>
+          {i > 0 && (
+            <div className="flex items-center justify-center py-0.5">
+              <Badge variant="secondary" className="text-[9px]">
+                {group.logic === "all" ? "UND" : "ODER"}
+              </Badge>
+            </div>
+          )}
+          <ConditionCard
+            condition={condition}
+            index={i}
+            fieldOptions={fieldOptions}
+            onChange={updateCondition}
+            onRemove={removeCondition}
+            canRemove={group.conditions.length + group.groups.length > 1}
+          />
+        </div>
+      ))}
+
+      {/* Sub-groups */}
+      {group.groups.map((sub, i) => (
+        <div key={`g-${i}`}>
+          {(group.conditions.length > 0 || i > 0) && (
+            <div className="flex items-center justify-center py-0.5">
+              <Badge variant="secondary" className="text-[9px]">
+                {group.logic === "all" ? "UND" : "ODER"}
+              </Badge>
+            </div>
+          )}
+          <ConditionGroupEditor
+            group={sub}
+            onChange={(updated) => updateSubGroup(i, updated)}
+            onRemove={() => removeSubGroup(i)}
+            fieldOptions={fieldOptions}
+            depth={depth + 1}
+            canRemove
+          />
+        </div>
+      ))}
+    </div>
+  );
+}
+
 // --- Main Wizard ---
 
 export function AutomationRuleWizard({
@@ -580,6 +772,11 @@ export function AutomationRuleWizard({
     [form.module]
   );
 
+  const updateConditionGroup = (updated: ConditionGroup) => {
+    setForm((prev) => ({ ...prev, conditionGroup: updated }));
+  };
+
+  // Legacy flat helpers kept for backward compat
   const updateCondition = (index: number, patch: Partial<ConditionItem>) => {
     setForm((prev) => {
       const next = [...prev.conditions];
@@ -631,7 +828,7 @@ export function AutomationRuleWizard({
       case 1:
         return form.triggerType === "schedule" || form.triggerType === "manual" || form.triggerType === "webhook" || form.triggerValue.trim().length > 0;
       case 2:
-        return form.conditions.length > 0 && form.conditions.every((c) => c.value.trim().length > 0);
+        return validateConditionGroup(form.conditionGroup);
       case 3: {
         return form.actions.length > 0 && form.actions.every((a) => {
           const isNotif = a.type === "create_notification" || a.type === "send_push_notification";
@@ -653,6 +850,7 @@ export function AutomationRuleWizard({
   const applyTemplate = (templateId: string) => {
     const template = RULE_TEMPLATES.find((t) => t.id === templateId);
     if (!template) return;
+    const conditions = template.conditions.map((c) => ({ ...c }));
     setForm((prev) => ({
       ...prev,
       name: template.name,
@@ -662,7 +860,8 @@ export function AutomationRuleWizard({
       triggerField: template.triggerField,
       triggerValue: template.triggerValue,
       conditionLogic: "all",
-      conditions: template.conditions.map((c) => ({ ...c })),
+      conditions,
+      conditionGroup: { logic: "all", conditions, groups: [] },
       actions: template.actions.map((a) => ({ ...a })),
       enabled: true,
     }));
@@ -880,76 +1079,22 @@ export function AutomationRuleWizard({
           </div>
         )}
 
-        {/* Step 3: Bedingungen (multi) with AND/OR toggle */}
+        {/* Step 3: Nested Condition Groups */}
         {currentStep === 2 && (
           <div className="space-y-3 py-2">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm font-medium">Bedingungen</p>
-                <p className="text-xs text-muted-foreground">
-                  {form.conditionLogic === "all"
-                    ? "Alle Bedingungen müssen erfüllt sein (UND-Verknüpfung)."
-                    : "Mindestens eine Bedingung muss erfüllt sein (ODER-Verknüpfung)."}
-                </p>
-              </div>
-              <Button variant="outline" size="sm" onClick={addCondition} className="gap-1">
-                <Plus className="h-3.5 w-3.5" /> Bedingung
-              </Button>
+            <div>
+              <p className="text-sm font-medium">Bedingungen</p>
+              <p className="text-xs text-muted-foreground">
+                Erstelle Bedingungsgruppen mit UND/ODER-Verknüpfung. Verschachtele Gruppen für komplexe Logik.
+              </p>
             </div>
 
-            {/* AND/OR Toggle */}
-            <div className="flex items-center gap-2 rounded-md border p-2">
-              <span className="text-xs font-medium text-muted-foreground">Verknüpfung:</span>
-              <div className="flex rounded-md border overflow-hidden">
-                <button
-                  type="button"
-                  onClick={() => setForm((prev) => ({ ...prev, conditionLogic: "all" }))}
-                  className={cn(
-                    "px-3 py-1 text-xs font-medium transition-colors",
-                    form.conditionLogic === "all"
-                      ? "bg-primary text-primary-foreground"
-                      : "bg-background text-muted-foreground hover:bg-muted"
-                  )}
-                >
-                  UND
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setForm((prev) => ({ ...prev, conditionLogic: "any" }))}
-                  className={cn(
-                    "px-3 py-1 text-xs font-medium transition-colors",
-                    form.conditionLogic === "any"
-                      ? "bg-primary text-primary-foreground"
-                      : "bg-background text-muted-foreground hover:bg-muted"
-                  )}
-                >
-                  ODER
-                </button>
-              </div>
-              <Badge variant="outline" className="text-[10px]">
-                {form.conditionLogic === "all" ? "Alle müssen zutreffen" : "Mindestens eine"}
-              </Badge>
-            </div>
-
-            {form.conditions.map((condition, i) => (
-              <div key={i}>
-                {i > 0 && (
-                  <div className="flex items-center justify-center py-1">
-                    <Badge variant="secondary" className="text-[10px]">
-                      {form.conditionLogic === "all" ? "UND" : "ODER"}
-                    </Badge>
-                  </div>
-                )}
-                <ConditionCard
-                  condition={condition}
-                  index={i}
-                  fieldOptions={fieldOptions}
-                  onChange={updateCondition}
-                  onRemove={removeCondition}
-                  canRemove={form.conditions.length > 1}
-                />
-              </div>
-            ))}
+            <ConditionGroupEditor
+              group={form.conditionGroup}
+              onChange={updateConditionGroup}
+              fieldOptions={fieldOptions}
+              depth={0}
+            />
           </div>
         )}
 
@@ -964,7 +1109,7 @@ export function AutomationRuleWizard({
                 Wenn <span className="font-medium">{form.triggerField}</span> = „{form.triggerValue || "—"}"
               </p>
               <p className="text-sm text-muted-foreground">
-                {form.conditions.length} Bedingung{form.conditions.length !== 1 ? "en" : ""} ({form.conditionLogic === "all" ? "UND" : "ODER"}) · {form.actions.length} Aktion{form.actions.length !== 1 ? "en" : ""}
+                {countConditions(form.conditionGroup)} Bedingung{countConditions(form.conditionGroup) !== 1 ? "en" : ""} ({form.conditionGroup.groups.length > 0 ? "verschachtelt" : form.conditionGroup.logic === "all" ? "UND" : "ODER"}) · {form.actions.length} Aktion{form.actions.length !== 1 ? "en" : ""}
               </p>
             </div>
 

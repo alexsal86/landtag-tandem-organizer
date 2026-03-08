@@ -40,3 +40,4 @@
 - **Regel-Statistiken** — Erfolgsrate (%) + Ø Laufzeit als Tooltip-Badge
 - **Notification-Kontext** — `rule_name`, `trigger_reason`, `run_id` in Notification-Payload
 - **Webhook-Trigger** — neue Edge Function `automation-webhook`, Secret-Authentifizierung, URL-Anzeige im Wizard
+- **Verschachtelte Condition-Gruppen** — rekursives AND/OR-Nesting bis 3 Ebenen im Wizard, backward-kompatible DB-Serialisierung
