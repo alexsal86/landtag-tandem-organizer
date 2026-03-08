@@ -90,6 +90,9 @@ export const EnhancedLexicalToolbar: React.FC<EnhancedLexicalToolbarProps> = ({
     interimTranscript,
     isListening,
     speechSupported,
+    lastRecognizedCommand,
+    sessionStartTime,
+    sessionWordCount,
     toggleSpeechRecognition,
     startSpeechRecognition,
     stopSpeechRecognition,
@@ -125,6 +128,77 @@ export const EnhancedLexicalToolbar: React.FC<EnhancedLexicalToolbarProps> = ({
             const selection = $getSelection();
             if ($isRangeSelection(selection)) {
               selection.insertText('\n');
+            }
+          });
+          break;
+        case 'delete-last-word':
+          editor.update(() => {
+            const selection = $getSelection();
+            if ($isRangeSelection(selection)) {
+              const anchor = selection.anchor;
+              const node = anchor.getNode();
+              if (node instanceof $createTextNode('').constructor) {
+                const text = node.getTextContent();
+                const trimmed = text.trimEnd();
+                const lastSpace = trimmed.lastIndexOf(' ');
+                if (lastSpace >= 0) {
+                  (node as import('lexical').TextNode).setTextContent(trimmed.slice(0, lastSpace + 1));
+                } else {
+                  (node as import('lexical').TextNode).setTextContent('');
+                }
+              }
+            }
+          });
+          break;
+        case 'delete-last-sentence':
+          editor.update(() => {
+            const selection = $getSelection();
+            if ($isRangeSelection(selection)) {
+              const node = selection.anchor.getNode();
+              const text = node.getTextContent();
+              const lastSentenceEnd = Math.max(text.lastIndexOf('. '), text.lastIndexOf('! '), text.lastIndexOf('? '));
+              if (lastSentenceEnd >= 0 && node instanceof $createTextNode('').constructor) {
+                (node as import('lexical').TextNode).setTextContent(text.slice(0, lastSentenceEnd + 2));
+              } else if (node instanceof $createTextNode('').constructor) {
+                (node as import('lexical').TextNode).setTextContent('');
+              }
+            }
+          });
+          break;
+        case 'select-all':
+          editor.update(() => {
+            const root = $getRoot();
+            root.selectStart();
+            $selectAll();
+          });
+          break;
+        case 'insert-heading':
+          editor.update(() => {
+            const selection = $getSelection();
+            if ($isRangeSelection(selection)) {
+              $setBlocksType(selection, () => $createHeadingNode(`h${command.level}` as HeadingTagType));
+            }
+          });
+          break;
+        case 'insert-quote':
+          editor.update(() => {
+            const selection = $getSelection();
+            if ($isRangeSelection(selection)) {
+              $setBlocksType(selection, () => $createQuoteNode());
+            }
+          });
+          break;
+        case 'replace-text':
+          editor.update(() => {
+            const selection = $getSelection();
+            if ($isRangeSelection(selection)) {
+              const node = selection.anchor.getNode();
+              const text = node.getTextContent();
+              if (node instanceof $createTextNode('').constructor && text.toLowerCase().includes(command.search.toLowerCase())) {
+                const idx = text.toLowerCase().indexOf(command.search.toLowerCase());
+                const newText = text.slice(0, idx) + command.replacement + text.slice(idx + command.search.length);
+                (node as import('lexical').TextNode).setTextContent(newText);
+              }
             }
           });
           break;
