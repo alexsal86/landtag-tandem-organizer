@@ -17,7 +17,7 @@ export function useCalendarOperations(refreshAppointments: () => void) {
       refreshAppointments();
       toast({ title: "Termin verschoben", description: `${event.title} wurde erfolgreich verschoben.` });
     } catch {
-      toast({ title: "Fehler", description: "Der Termin konnte nicht verschoben werden.", variant: "destructive" });
+      handleAppError(new Error('Termin konnte nicht verschoben werden'), { context: 'handleEventDrop', toast: { fn: toast, title: 'Fehler', description: 'Der Termin konnte nicht verschoben werden.' } });
     }
   };
 
