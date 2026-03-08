@@ -68,7 +68,7 @@ export function CaseItemsArchiveSheet({ open, onOpenChange, onRestore }: CaseIte
       if (error) throw error;
       setItems((data ?? []) as ArchivedItem[]);
     } catch (e) {
-      console.error("Error loading archived case items:", e);
+      debugConsole.error("Error loading archived case items:", e);
     } finally {
       setLoading(false);
     }
