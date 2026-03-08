@@ -40,7 +40,7 @@ export default function CreateTask() {
     topicIds: [] as string[],
   });
 
-  console.log('🔍 CreateTask component render - formData:', formData);
+  debugConsole.log('🔍 CreateTask component render - formData:', formData);
 
   // Load user profiles and task configurations
   useEffect(() => {
