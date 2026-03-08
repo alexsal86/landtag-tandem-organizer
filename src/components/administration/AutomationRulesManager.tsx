@@ -13,7 +13,56 @@ import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { formatDistanceToNow, addMinutes } from "date-fns";
 import { de } from "date-fns/locale";
-import { AutomationRuleWizard, DEFAULT_FORM, DEFAULT_ACTION, RULE_TEMPLATES, type WizardForm, type ActionItem, type ConditionItem } from "./AutomationRuleWizard";
+import { AutomationRuleWizard, DEFAULT_FORM, DEFAULT_ACTION, RULE_TEMPLATES, type WizardForm, type ActionItem, type ConditionItem, type ConditionGroup } from "./AutomationRuleWizard";
+
+// --- Helpers for nested condition group serialization ---
+
+/** Serialize a ConditionGroup tree into the DB JSON format */
+function serializeConditionGroup(group: ConditionGroup): Record<string, unknown> {
+  const items: unknown[] = group.conditions.map((c) => ({
+    field: c.field,
+    operator: c.operator,
+    value: c.value,
+  }));
+  for (const sub of group.groups) {
+    items.push(serializeConditionGroup(sub));
+  }
+  return { [group.logic]: items };
+}
+
+/** Parse DB JSON format back into a ConditionGroup tree */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function parseConditionGroup(raw: any): ConditionGroup {
+  if (!raw || typeof raw !== "object") {
+    return { logic: "all", conditions: [{ field: "status", operator: "equals", value: "" }], groups: [] };
+  }
+  const logic: "all" | "any" = raw.any ? "any" : "all";
+  const items: unknown[] = raw[logic] || [];
+  const conditions: ConditionItem[] = [];
+  const groups: ConditionGroup[] = [];
+
+  for (const item of items) {
+    if (item && typeof item === "object" && ("all" in (item as Record<string, unknown>) || "any" in (item as Record<string, unknown>))) {
+      groups.push(parseConditionGroup(item));
+    } else if (item && typeof item === "object" && "field" in (item as Record<string, unknown>)) {
+      const c = item as Record<string, string>;
+      conditions.push({ field: c.field || "status", operator: c.operator || "equals", value: c.value || "" });
+    }
+  }
+  if (conditions.length === 0 && groups.length === 0) {
+    conditions.push({ field: "status", operator: "equals", value: "" });
+  }
+  return { logic, conditions, groups };
+}
+
+/** Flatten a ConditionGroup tree into a flat list (for legacy compat) */
+function flattenConditions(group: ConditionGroup): ConditionItem[] {
+  const result = [...group.conditions];
+  for (const sub of group.groups) {
+    result.push(...flattenConditions(sub));
+  }
+  return result.length > 0 ? result : [{ field: "status", operator: "equals", value: "" }];
+}
 import { AutomationTemplateGallery } from "./AutomationTemplateGallery";
 import { AutomationRuleVersions } from "./AutomationRuleVersions";
 import { AutomationRuleExportDialog, AutomationRuleImportDialog } from "./AutomationRuleImportExport";
