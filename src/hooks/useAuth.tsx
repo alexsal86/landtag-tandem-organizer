@@ -47,7 +47,7 @@ const trackSession = async (userId: string) => {
         } as any);
     }
   } catch (error) {
-    console.error('Error tracking session:', error);
+    debugConsole.error('Error tracking session:', error);
   }
 };
 
