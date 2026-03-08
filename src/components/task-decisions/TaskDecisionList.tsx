@@ -15,7 +15,7 @@ import { useToast } from "@/hooks/use-toast";
 
 interface DecisionRequest {
   id: string;
-  task_id: string;
+  task_id: string | null;
   title: string;
   description: string | null;
   created_at: string;
