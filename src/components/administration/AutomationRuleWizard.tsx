@@ -38,7 +38,17 @@ const ACTION_TYPES = [
   { value: "send_email_template", label: "E-Mail-Template senden" },
 ] as const;
 
-const STATUS_TABLE_OPTIONS = ["tasks", "decisions", "knowledge_documents", "casefiles", "contacts", "case_files"] as const;
+/** Maps logical module names to actual DB table names */
+export const MODULE_TO_TABLE: Record<string, string> = {
+  tasks: "tasks",
+  meetings: "appointments",
+  decisions: "decisions",
+  knowledge: "knowledge_documents",
+  casefiles: "case_files",
+  contacts: "contacts",
+};
+
+const STATUS_TABLE_OPTIONS = ["tasks", "decisions", "knowledge_documents", "case_files", "contacts"] as const;
 const TASK_PRIORITY_OPTIONS = ["low", "medium", "high", "urgent"] as const;
 
 const TRIGGER_TYPES = [

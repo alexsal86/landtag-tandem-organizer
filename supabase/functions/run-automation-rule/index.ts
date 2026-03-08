@@ -384,13 +384,19 @@ serve(async (req) => {
           continue;
         }
 
-        const allowedTables = new Set(["tasks", "decisions", "knowledge_documents", "casefiles", "contacts", "case_files"]);
-        if (!allowedTables.has(tableName)) {
-          throw new Error(`Table not allowed: ${tableName}`);
+        // Map module aliases to real DB table names
+        const MODULE_TO_TABLE: Record<string, string> = {
+          casefiles: "case_files",
+          knowledge: "knowledge_documents",
+        };
+        const resolvedTable = MODULE_TO_TABLE[tableName] ?? tableName;
+        const allowedTables = new Set(["tasks", "decisions", "knowledge_documents", "contacts", "case_files"]);
+        if (!allowedTables.has(resolvedTable)) {
+          throw new Error(`Table not allowed: ${resolvedTable}`);
         }
 
         const { error: updateError } = await supabaseAdmin
-          .from(tableName)
+          .from(resolvedTable)
           .update({ status })
           .eq("id", recordId)
           .eq("tenant_id", rule.tenant_id);

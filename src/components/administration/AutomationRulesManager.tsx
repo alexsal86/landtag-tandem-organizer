@@ -391,6 +391,20 @@ export function AutomationRulesManager() {
     }
   };
 
+  /** Build sourcePayload from the **stored** rule config, not the wizard form */
+  const buildSourcePayloadFromRule = (rule: RuleRow): Record<string, string> => {
+    const triggerField = rule.trigger_config?.field ?? "status";
+    const triggerValue = rule.trigger_config?.value ?? "triggered";
+    const conditions = rule.conditions?.all ?? rule.conditions?.any ?? [];
+    const firstCondition = conditions[0];
+    return {
+      [triggerField]: triggerValue || "triggered",
+      ...(firstCondition ? { [firstCondition.field]: firstCondition.value || "condition-match" } : {}),
+      rule_name: rule.name,
+      module: rule.module,
+    };
+  };
+
   const triggerDryRun = async (rule?: RuleRow) => {
     const targetRule = rule || (editingRuleId ? rules.find((r) => r.id === editingRuleId) : null);
     if (!currentTenant || !user || !targetRule) return;
@@ -402,12 +416,7 @@ export function AutomationRulesManager() {
         ruleId: targetRule.id,
         dryRun: true,
         idempotencyKey,
-        sourcePayload: {
-          [form.triggerField]: form.triggerValue || "triggered",
-          ...(form.conditions[0] ? { [form.conditions[0].field]: form.conditions[0].value || "condition-match" } : {}),
-          rule_name: targetRule.name,
-          module: targetRule.module,
-        },
+        sourcePayload: buildSourcePayloadFromRule(targetRule),
       },
     });
 
@@ -430,12 +439,7 @@ export function AutomationRulesManager() {
         ruleId: rule.id,
         dryRun: false,
         idempotencyKey,
-        sourcePayload: {
-          [form.triggerField]: form.triggerValue || "triggered",
-          ...(form.conditions[0] ? { [form.conditions[0].field]: form.conditions[0].value || "condition-match" } : {}),
-          rule_name: rule.name,
-          module: rule.module,
-        },
+        sourcePayload: buildSourcePayloadFromRule(rule),
       },
     });
 
