@@ -222,7 +222,7 @@ export function useMyWorkDecisionsData(userId?: string) {
         const { data: profiles, error: profilesError } =
           allUserIds.length > 0
             ? await supabase.from("profiles").select("user_id, display_name, badge_color, avatar_url").in("user_id", allUserIds)
-            : { data: [] as ProfileRow[], error: null as any };
+            : { data: [] as ProfileRow[], error: null };
 
         if (!isCurrentRequest()) return;
 
