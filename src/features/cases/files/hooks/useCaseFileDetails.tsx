@@ -380,12 +380,12 @@ export const useCaseFileDetails = (caseFileId: string | null) => {
     try {
       const { error } = await supabase
         .from('case_file_contacts')
-        .insert({
+        .insert([{
           case_file_id: caseFileId,
           contact_id: contactId,
           role,
           notes,
-        });
+        }]);
 
       if (error) throw error;
       await fetchContacts();

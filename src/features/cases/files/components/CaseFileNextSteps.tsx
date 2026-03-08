@@ -174,7 +174,7 @@ export function CaseFileNextSteps({
       // Create sub-task
       const { data: newTask, error: taskError } = await supabase
         .from("tasks")
-        .insert({
+        .insert([{
           title: quickTaskTitle.trim(),
           status: "todo",
           priority: "medium",
@@ -183,7 +183,7 @@ export function CaseFileNextSteps({
           tenant_id: resolvedTenantId,
           assigned_to: assignedTo || user.id,
           parent_task_id: parentTaskId,
-        })
+        }])
         .select()
         .single();
 
