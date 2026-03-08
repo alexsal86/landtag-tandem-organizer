@@ -173,7 +173,7 @@ export function useAgendaOperations(deps: AgendaOpsDeps) {
 
       if (children.length > 0) {
         const childInserts = children.map(c => ({
-          meeting_id: selectedMeeting.id, title: c.title || '', description: c.description || null,
+          meeting_id: selectedMeeting.id!, title: c.title || '', description: c.description || null,
           assigned_to: Array.isArray(c.assigned_to) && c.assigned_to.length > 0 ? c.assigned_to.filter(Boolean) : null,
           notes: c.notes || null, is_completed: Boolean(c.is_completed), is_recurring: Boolean(c.is_recurring),
           task_id: c.task_id || null, order_index: c.order_index,
