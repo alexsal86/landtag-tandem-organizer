@@ -14,7 +14,7 @@ export const logAuditEvent = async ({ action, details, email }: AuditLogParams):
     });
     
     if (error) {
-      console.error('Failed to log audit event:', error);
+      debugConsole.error('Failed to log audit event:', error);
     }
   } catch (err) {
     // Silently fail - audit logging should not break the app
