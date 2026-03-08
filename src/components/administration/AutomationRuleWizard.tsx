@@ -676,7 +676,7 @@ function ConditionGroupEditor({
               className={cn(
                 "px-2.5 py-1 text-[11px] font-semibold transition-colors",
                 group.logic === "any"
-                  ? "bg-orange-500 text-white"
+                  ? "bg-accent text-accent-foreground"
                   : "bg-background text-muted-foreground hover:bg-muted"
               )}
             >
