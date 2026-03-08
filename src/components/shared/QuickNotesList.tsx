@@ -69,6 +69,7 @@ export function QuickNotesList({
   onNoteClick
 }: QuickNotesListProps) {
   const hook = useQuickNotes(refreshTrigger);
+  const { isHighlighted, highlightRef } = useNotificationHighlight();
 
   if (hook.loading) {
     return (
