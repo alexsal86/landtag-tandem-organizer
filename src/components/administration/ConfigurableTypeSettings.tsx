@@ -128,7 +128,7 @@ export function ConfigurableTypeSettings({
       setNewItem(null);
       toast({ title: "Erfolg", description: `${entityName} wurde erfolgreich hinzugefügt.` });
     } catch (error: unknown) {
-      console.error(`Error adding ${entityName}:`, error);
+      debugConsole.error(`Error adding ${entityName}:`, error);
       toast({ title: "Fehler", description: `${entityName} konnte nicht hinzugefügt werden.`, variant: "destructive" });
     }
   };
