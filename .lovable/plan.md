@@ -1,19 +1,28 @@
 
-## Benachrichtigungen & Badges für Vorgänge — Umgesetzt
 
-### Was wurde gemacht:
+# Template-Galerie: Lohnt sich das?
 
-1. **DB: Neue `notification_types` für Kategorie `cases`** (alle 3 Tenants)
-   - `case_item_created`, `case_item_assigned`, `case_item_status_changed`, `case_item_comment`
+## Ist-Zustand
+- 2 Templates existieren bereits im Wizard (Step 1, Select-Dropdown)
+- Mechanik funktioniert: `applyTemplate()` füllt das Formular vor
 
-2. **DB: `notification_navigation_mapping`** — alle 4 Typen auf `navigation_context = 'mywork'` gemappt, damit Sidebar-Badge korrekt zählt.
+## Was fehlt (laut Roadmap)
+3 weitere Einträge im `RULE_TEMPLATES`-Array:
 
-3. **UI: `NotificationSettings.tsx`** — Kategorie `cases` / "Vorgänge" mit Icon 📋 eingefügt (Order 3).
+| Template | Modul | Trigger | Action |
+|----------|-------|---------|--------|
+| Meeting in 48h ohne Vorbereitung | meetings | schedule | create_notification |
+| Entscheidung angenommen → Folge-Task | decisions | record_changed (status=accepted) | create_task |
+| Casefile Status kritisch | cases | record_changed (status=critical) | create_notification |
 
-4. **Code: `useCaseItems.tsx`** — `create_notification` RPC-Aufrufe bei:
-   - Vorgang erstellen → Benachrichtigung an zugewiesenen Owner
-   - Status-Änderung → Benachrichtigung an Ersteller + Owner
-   - Zuweisung-Änderung → Benachrichtigung an neuen Owner
-   - Kommentar/Interaktion → Benachrichtigung an Ersteller + Owner
+## Aufwand
+- **1 Datei**, **~60 Zeilen** Daten-Ergänzung in `AutomationRuleWizard.tsx`
+- Keine neuen Komponenten, keine DB-Änderung, keine Edge-Function-Änderung
 
-5. **Badge-System**: Sidebar-Badge für "Meine Arbeit" zählt nun auch Vorgang-Benachrichtigungen (via `navigation_context = 'mywork'` Trigger). Interne Tab-Badges bleiben über `useMyWorkNewCounts` (Zeitstempel-basiert).
+## Empfehlung
+Der Aufwand ist minimal (5 Minuten), aber der Nutzen für Erstnutzer:innen ist real — sie sehen sofort praxisnahe Beispiele für verschiedene Module. Wenn du willst, setze ich es kurz um. Alternativ können wir direkt zum nächsten größeren Feature springen:
+
+- **"Warum diese Notification?"** — Deep-Link von Notifications zur auslösenden Regel
+- **Rule-Versionierung** (Phase 4)
+- **Anderes Feature** außerhalb der Automations-Engine
+
