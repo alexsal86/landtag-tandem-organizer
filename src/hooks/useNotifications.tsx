@@ -292,12 +292,8 @@ export const useNotifications = () => {
   // Subscribe to push notifications
   const subscribeToPush = useCallback(async () => {
     if (!user || !pushSupported || pushPermission !== 'granted') {
-      console.log('❌ Cannot subscribe - requirements not met:', {
-        user: !!user,
-        pushSupported,
-        pushPermission
-      });
       return;
+    }
     }
 
     try {
