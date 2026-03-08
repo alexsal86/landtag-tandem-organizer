@@ -15,10 +15,10 @@ interface DeadlineItem {
 }
 
 const TYPE_CONFIG = {
-  task: { icon: CheckSquare, label: 'Aufgabe', tab: '/mywork?tab=tasks', color: 'text-blue-500' },
-  note: { icon: StickyNote, label: 'Notiz', tab: '/mywork?tab=capture', color: 'text-amber-500' },
-  case: { icon: Briefcase, label: 'Vorgang', tab: '/mywork?tab=cases', color: 'text-emerald-500' },
-  decision: { icon: Vote, label: 'Entscheidung', tab: '/mywork?tab=decisions', color: 'text-purple-500' },
+  task: { icon: CheckSquare, label: 'Aufgabe', tabBase: '/mywork?tab=tasks', color: 'text-blue-500' },
+  note: { icon: StickyNote, label: 'Notiz', tabBase: '/mywork?tab=capture', color: 'text-amber-500' },
+  case: { icon: Briefcase, label: 'Vorgang', tabBase: '/mywork?tab=cases', color: 'text-emerald-500' },
+  decision: { icon: Vote, label: 'Entscheidung', tabBase: '/mywork?tab=decisions', color: 'text-purple-500' },
 };
 
 export const DashboardTasksSection = () => {
