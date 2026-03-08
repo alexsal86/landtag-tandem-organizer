@@ -201,7 +201,7 @@ export function NotesArchive({ refreshTrigger, onRestore }: NotesArchiveProps) {
       toast.success("Notiz aus Archiv wiederhergestellt");
       onRestore?.();
     } catch (error) {
-      console.error("Error restoring from archive:", error);
+      debugConsole.error("Error restoring from archive:", error);
       toast.error("Fehler beim Wiederherstellen");
       // On error: reload archive list to ensure consistent state
       loadArchivedNotes();
