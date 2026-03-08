@@ -244,17 +244,12 @@ export function AutomationRulesManager() {
   };
 
   const startEdit = (rule: RuleRow) => {
-    // Detect condition logic from stored format
-    const hasAny = !!(rule.conditions?.any);
-    const conditionLogic: "all" | "any" = hasAny ? "any" : "all";
-    const rawConditions = hasAny ? (rule.conditions?.any || []) : (rule.conditions?.all || []);
+    // Parse nested condition group from stored format
+    const conditionGroup = parseConditionGroup(rule.conditions);
 
-    const conditions: ConditionItem[] = rawConditions.map((c) => ({
-      field: c.field || "status",
-      operator: c.operator || "equals",
-      value: c.value || "",
-    }));
-    if (conditions.length === 0) conditions.push({ field: "status", operator: "equals", value: "" });
+    // Legacy flat fields for backward compat
+    const flatConditions = flattenConditions(conditionGroup);
+    const conditionLogic = conditionGroup.logic;
 
     const actions: ActionItem[] = (rule.actions || []).map((a) => ({
       type: a.type || "create_notification",
@@ -283,7 +278,8 @@ export function AutomationRulesManager() {
       triggerField: (rule.trigger_config?.field as string) || "status",
       triggerValue: (rule.trigger_config?.value as string) || "",
       conditionLogic,
-      conditions,
+      conditions: flatConditions,
+      conditionGroup,
       actions,
       enabled: rule.enabled,
     });
