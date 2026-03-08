@@ -1,19 +1,15 @@
 
-## Benachrichtigungen & Badges für Vorgänge — Umgesetzt
 
-### Was wurde gemacht:
+## Problem
 
-1. **DB: Neue `notification_types` für Kategorie `cases`** (alle 3 Tenants)
-   - `case_item_created`, `case_item_assigned`, `case_item_status_changed`, `case_item_comment`
+Die Route `/employee-meeting/:meetingId` (Zeile 45 in `routes.tsx`) hat einen eigenen Param-Namen `meetingId`, aber `Index.tsx` liest `{ section, subId }` aus `useParams()`. Dadurch sind sowohl `section` als auch `subId` `undefined`, und die Seite zeigt nichts an.
 
-2. **DB: `notification_navigation_mapping`** — alle 4 Typen auf `navigation_context = 'mywork'` gemappt, damit Sidebar-Badge korrekt zählt.
+Die generische Route `/:section/:subId` (Zeile 49) würde korrekt funktionieren — `section` wäre "employee-meeting" und `subId` die Meeting-ID.
 
-3. **UI: `NotificationSettings.tsx`** — Kategorie `cases` / "Vorgänge" mit Icon 📋 eingefügt (Order 3).
+## Lösung
 
-4. **Code: `useCaseItems.tsx`** — `create_notification` RPC-Aufrufe bei:
-   - Vorgang erstellen → Benachrichtigung an zugewiesenen Owner
-   - Status-Änderung → Benachrichtigung an Ersteller + Owner
-   - Zuweisung-Änderung → Benachrichtigung an neuen Owner
-   - Kommentar/Interaktion → Benachrichtigung an Ersteller + Owner
+**Zeile 45 in `src/router/routes.tsx` entfernen.** Die generische `/:section/:subId`-Route übernimmt dann automatisch das Matching, und `Index.tsx` erkennt `section === "employee-meeting"` mit dem korrekten `subId`.
 
-5. **Badge-System**: Sidebar-Badge für "Meine Arbeit" zählt nun auch Vorgang-Benachrichtigungen (via `navigation_context = 'mywork'` Trigger). Interne Tab-Badges bleiben über `useMyWorkNewCounts` (Zeitstempel-basiert).
+### Datei
+- `src/router/routes.tsx` — Zeile 45 (`<Route path="/employee-meeting/:meetingId" .../>`) löschen
+
