@@ -252,7 +252,7 @@ export function useLetterOperations(opts: UseLetterOperationsOptions) {
       fetchComments();
       toast({ title: 'Kommentar hinzugefügt', description: 'Der Kommentar wurde erfolgreich hinzugefügt.' });
     } catch (error) {
-      console.error('Error adding comment:', error);
+      debugConsole.error('Error adding comment:', error);
       toast({ title: 'Fehler', description: 'Der Kommentar konnte nicht hinzugefügt werden.', variant: 'destructive' });
     }
   }, [letter?.id, userId, fetchComments, toast]);
