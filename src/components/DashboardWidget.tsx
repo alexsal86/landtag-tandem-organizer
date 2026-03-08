@@ -709,13 +709,13 @@ export function DashboardWidget({ widget, isDragging, isEditMode, onResize, onDe
           widgetSize={typeof widget.widgetSize === 'string' ? widget.widgetSize : typeof widget.size === 'string' ? widget.size : '2x2'}
           isVisible={showOverlayMenu}
           onClose={() => setShowOverlayMenu(false)}
-          onResize={(widgetId, newSize) => {
-            console.log('Card overlay menu resize called:', widgetId, newSize);
-            if (onResize) {
-              onResize(widgetId, newSize);
-              setShowOverlayMenu(false);
-            } else {
-              console.warn('No onResize function provided to DashboardWidget');
+            onResize={(widgetId, newSize) => {
+              debugConsole.log('Card overlay menu resize called:', widgetId, newSize);
+              if (onResize) {
+                onResize(widgetId, newSize);
+                setShowOverlayMenu(false);
+              } else {
+                debugConsole.warn('No onResize function provided to DashboardWidget');
             }
           }}
           onMinimize={() => {}}
