@@ -1171,22 +1171,24 @@ export function MyWorkCasesWorkspace() {
                       <FolderOpen className="h-4 w-4" />
                       FallAkten
                     </CardTitle>
-                    <Button size="sm" onClick={() => handleCreateCaseFile()}>
-                      <Plus className="mr-1 h-4 w-4" />
-                      Neu
-                    </Button>
+                    <div className="flex items-center gap-2">
+                      <Button size="sm" onClick={() => handleCreateCaseFile()}>
+                        <Plus className="mr-1 h-4 w-4" />
+                        Neu
+                      </Button>
+                      <div className="relative">
+                        <Search className="pointer-events-none absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
+                        <Input
+                          value={fileFilterQuery}
+                          onChange={(e) => setFileFilterQuery(e.target.value)}
+                          placeholder="Filtern…"
+                          className="pl-8 h-8 w-36"
+                        />
+                      </div>
+                    </div>
                   </div>
                 </CardHeader>
                 <CardContent className="space-y-3">
-                  <div className="relative">
-                    <Search className="pointer-events-none absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
-                    <Input
-                      value={fileFilterQuery}
-                      onChange={(e) => setFileFilterQuery(e.target.value)}
-                      placeholder="FallAkten filtern…"
-                      className="pl-8"
-                    />
-                  </div>
                   <div className="space-y-1.5 pr-2">
                     <div className="space-y-1.5">
                       {filteredCaseFiles.length === 0 ? (
