@@ -1,3 +1,4 @@
+import { debugConsole } from '@/utils/debugConsole';
 // Synthesized notification sounds using Web Audio API
 export const NOTIFICATION_SOUNDS = [
   { value: 'ping', label: 'Ping' },
