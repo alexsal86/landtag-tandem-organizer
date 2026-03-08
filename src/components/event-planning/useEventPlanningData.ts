@@ -874,7 +874,7 @@ export function useEventPlanningData() {
       const { data: comments, error } = await supabase.from('planning_item_comments').select('*').eq('planning_item_id', itemId).order('created_at', { ascending: true });
       if (error) throw error;
       const userIds = [...new Set(comments?.map(c => c.user_id) || [])];
-      let profiles: any[] = [];
+      let profiles: Array<{ user_id: string; display_name: string | null; avatar_url: string | null }> = [];
       if (userIds.length > 0) {
         const { data: profilesData } = await supabase.from('profiles').select('user_id, display_name, avatar_url').in('user_id', userIds);
         profiles = profilesData || [];
