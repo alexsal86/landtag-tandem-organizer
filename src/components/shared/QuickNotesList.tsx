@@ -1198,7 +1198,7 @@ export function QuickNotesList({
       toast.success("Notiz vom Jour Fixe entfernt");
       loadNotes();
     } catch (error) {
-      console.error('Error removing note from meeting:', error);
+      debugConsole.error('Error removing note from meeting:', error);
       toast.error("Fehler beim Entfernen");
     }
   };
