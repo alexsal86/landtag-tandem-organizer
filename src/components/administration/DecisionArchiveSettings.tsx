@@ -62,7 +62,7 @@ export const DecisionArchiveSettings = () => {
         setAutoDeleteDays(settings.auto_delete_after_days?.toString() ?? '');
       }
     } catch (error: any) {
-      console.error('Error loading settings:', error);
+      debugConsole.error('Error loading settings:', error);
       toast({
         title: 'Fehler',
         description: 'Einstellungen konnten nicht geladen werden.',
