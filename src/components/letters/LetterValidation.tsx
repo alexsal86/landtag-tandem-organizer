@@ -144,11 +144,9 @@ export const LetterValidation: React.FC<LetterValidationProps> = ({
     }
   };
 
-  const getAlertVariant = (type: string) => {
+  const getAlertVariant = (type: string): 'destructive' | 'default' => {
     switch (type) {
       case 'error': return 'destructive';
-      case 'warning': return 'default';
-      case 'info': return 'default';
       default: return 'default';
     }
   };
