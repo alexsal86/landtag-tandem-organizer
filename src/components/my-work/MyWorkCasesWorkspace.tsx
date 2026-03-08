@@ -266,7 +266,7 @@ export function MyWorkCasesWorkspace() {
 
   const runAsync = useCallback((action: () => Promise<unknown>) => {
     action().catch((error) => {
-      console.error("Unerwarteter Fehler:", error);
+      debugConsole.error("Unerwarteter Fehler:", error);
       toast.error("Aktion konnte nicht ausgeführt werden.");
     });
   }, []);
