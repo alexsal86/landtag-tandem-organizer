@@ -17,6 +17,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { useTenant } from '@/hooks/useTenant';
 import { DashboardWidget } from './DashboardWidget';
 import { DashboardGreetingSection } from './dashboard/DashboardGreetingSection';
+import { useDashboardData } from '@/hooks/useDashboardData';
 import { DashboardCoverImage } from './dashboard/DashboardCoverImage';
 import { QuickActionsWidget } from './widgets/QuickActionsWidget';
 import { NewsWidget } from './widgets/NewsWidget';

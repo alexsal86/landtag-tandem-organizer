@@ -34,6 +34,7 @@ const MyWorkFeedbackFeedTab = lazyWithRetry(() => import("./my-work/MyWorkFeedba
 import { DashboardHeader } from "./dashboard/DashboardHeader";
 import { DashboardTasksSection } from "./dashboard/DashboardTasksSection";
 import { DashboardAppointments } from "./dashboard/DashboardAppointments";
+import { useDashboardData } from "@/hooks/useDashboardData";
 import { canViewTab, getRoleFlags, type UserRole } from "@/components/my-work/tabVisibility";
 import { MyWorkTabErrorState } from "@/components/my-work/MyWorkTabErrorState";
 import { NewsWidget } from "./widgets/NewsWidget";
