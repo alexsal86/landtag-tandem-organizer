@@ -1,4 +1,5 @@
 import PostalMime from 'postal-mime';
+import { debugConsole } from '@/utils/debugConsole';
 
 export interface EmailMetadata {
   subject: string;
