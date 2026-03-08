@@ -29,7 +29,7 @@ interface SystemAgendaItemProps {
   isEmbedded?: boolean;
   defaultCollapsed?: boolean;
   /** Profiles passed through to child components like BirthdayAgendaItem */
-  allProfiles?: ProfileInfo[];
+  allProfiles?: Profile[];
 }
 
 function ProfileBadge({ userId, profiles }: { userId?: string; profiles?: ProfileInfo[] }) {
