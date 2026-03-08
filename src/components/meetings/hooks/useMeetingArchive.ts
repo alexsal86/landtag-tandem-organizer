@@ -322,11 +322,12 @@ export function useMeetingArchive(deps: ArchiveDeps) {
       // Step 5c: Process case item results
       try {
         for (const ci of meetingLinkedCaseItems) {
-          if ((ci as any).meeting_result?.trim()) {
-            await supabase.from('case_item_notes' as any).insert({ // case_item_notes not in generated types
-              case_item_id: ci.id, content: (ci as any).meeting_result,
+          const meetingResult = (ci as { meeting_result?: string }).meeting_result;
+          if (meetingResult?.trim()) {
+            await supabase.from('case_item_notes' as 'case_items').insert({
+              case_item_id: ci.id, content: meetingResult,
               created_by: user.id, note_type: 'meeting_result',
-            });
+            } as Record<string, unknown>);
           }
         }
       } catch (e) { console.error('Error processing case item results (non-fatal):', e); }
