@@ -268,6 +268,7 @@ export function MyWorkQuickCapture({ onNoteSaved }: MyWorkQuickCaptureProps) {
           placeholder="Titel (@ für Mentions)"
           minHeight="44px"
           showToolbar={false}
+          autoFocus
         />
         <div className="min-h-[120px]">
           <SimpleRichTextEditor
