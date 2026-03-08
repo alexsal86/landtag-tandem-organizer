@@ -53,7 +53,7 @@ export const useDocumentContacts = (documentId?: string) => {
       if (error) throw error;
       setDocumentContacts(data as DocumentContact[]);
     } catch (error) {
-      console.error('Error fetching document contacts:', error);
+      debugConsole.error('Error fetching document contacts:', error);
     } finally {
       setLoading(false);
     }
