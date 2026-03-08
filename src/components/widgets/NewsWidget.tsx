@@ -255,7 +255,7 @@ export const NewsWidget: React.FC<NewsWidgetProps> = ({ widgetId, compact = fals
                     
                     {article.description && (
                       <p className="text-xs text-muted-foreground line-clamp-2 mb-2">
-                        {article.description}
+                        {decodeHtmlEntities(article.description)}
                       </p>
                     )}
                     
