@@ -57,6 +57,7 @@ function ensureChannel(userId: string) {
       event: '*',
       schema: 'public',
       table: 'message_confirmations',
+      filter: `user_id=eq.${userId}`,
     }, notifyListeners)
     .subscribe();
 }

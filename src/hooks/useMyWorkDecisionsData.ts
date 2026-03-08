@@ -329,9 +329,9 @@ export function useMyWorkDecisionsData(userId?: string) {
 
     const channel = supabase
       .channel(`my-work-decisions-${userId}`)
-      .on("postgres_changes", { event: "*", schema: "public", table: "task_decisions" }, scheduleRefresh)
-      .on("postgres_changes", { event: "*", schema: "public", table: "task_decision_participants" }, scheduleRefresh)
-      .on("postgres_changes", { event: "*", schema: "public", table: "task_decision_responses" }, scheduleRefresh)
+      .on("postgres_changes", { event: "*", schema: "public", table: "task_decisions", filter: `user_id=eq.${userId}` }, scheduleRefresh)
+      .on("postgres_changes", { event: "*", schema: "public", table: "task_decision_participants", filter: `user_id=eq.${userId}` }, scheduleRefresh)
+      .on("postgres_changes", { event: "*", schema: "public", table: "task_decision_responses", filter: `user_id=eq.${userId}` }, scheduleRefresh)
       .subscribe();
 
     return () => {

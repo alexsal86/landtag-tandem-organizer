@@ -157,20 +157,12 @@ export function useDashboardLayout() {
   const [hasInitialized, setHasInitialized] = useState(false);
   
   useEffect(() => {
-    console.log('🔄 Dashboard initialization effect:', { 
-      hasInitialized, 
-      user: user?.id, 
-      currentTenant: currentTenant?.id 
-    });
-    
     if (hasInitialized) return; // Prevent reloading after initialization
     
     if (user?.id && currentTenant?.id) {
-      console.log('✅ User and tenant available, loading from database');
       loadLayoutFromDatabase();
       setHasInitialized(true);
     } else if (!user) {
-      console.log('👤 No user, loading anonymous layout');
       // Try to load from localStorage for anonymous users
       try {
         const saved = localStorage.getItem(`dashboard-layout-anonymous`);
@@ -184,13 +176,10 @@ export function useDashboardLayout() {
         }
         setHasInitialized(true);
       } catch (error) {
-        console.warn('Failed to load from localStorage:', error);
         setCurrentLayout(defaultLayout);
         setLayouts([defaultLayout]);
         setHasInitialized(true);
       }
-    } else {
-      console.log('⏳ Waiting for user and tenant to be available');
     }
   }, [user, currentTenant, hasInitialized]);
 
@@ -200,7 +189,6 @@ export function useDashboardLayout() {
 
     try {
       setLoading(true);
-      console.log('🔄 Loading dashboard layout from database...', { userId: user.id, tenantId: currentTenant.id });
       
       const { data, error } = await supabase
         .from('team_dashboards')
@@ -217,7 +205,6 @@ export function useDashboardLayout() {
       }
 
       if (data?.layout_data) {
-        console.log('Successfully loaded layout from database');
         // Filter out quickactions widget from loaded layout
         const filteredWidgets = ((data.layout_data as any) as DashboardWidget[])
           .filter((w: DashboardWidget) => w.type !== 'quickactions');
@@ -245,7 +232,6 @@ export function useDashboardLayout() {
             setLayouts([defaultLayout]);
           }
         } catch (localError) {
-          console.warn('Failed to load from localStorage:', localError);
           setCurrentLayout(defaultLayout);
           setLayouts([defaultLayout]);
         }
@@ -275,9 +261,7 @@ export function useDashboardLayout() {
 
   // Update widget position/size with improved persistence
   const updateWidget = (widgetId: string, updates: Partial<DashboardWidget>) => {
-    console.log('🔧 updateWidget called:', { widgetId, updates });
     if (!currentLayout) {
-      console.log('❌ No current layout available');
       return;
     }
 
@@ -286,15 +270,13 @@ export function useDashboardLayout() {
     );
 
     const updatedLayout = { ...currentLayout, widgets: updatedWidgets };
-    console.log('💾 Setting updated layout:', updatedLayout);
     setCurrentLayout(updatedLayout);
     
     // Immediate local storage backup
     try {
       localStorage.setItem(`dashboard-layout-${user?.id || 'anonymous'}`, JSON.stringify(updatedLayout));
-      console.log('✅ Saved to localStorage');
     } catch (error) {
-      console.warn('Failed to save to localStorage:', error);
+      // silently fail
     }
     
     // Clear existing timeout and set new one for debounced save
@@ -303,12 +285,9 @@ export function useDashboardLayout() {
     }
     
     saveTimeoutRef.current = setTimeout(async () => {
-      console.log('⏰ Auto-saving layout after debounce...');
       try {
-        const success = await saveCurrentLayout();
-        console.log('💾 Auto-save result:', success);
+        await saveCurrentLayout();
       } catch (error) {
-        console.error('Failed to save to Supabase:', error);
         toast.error('Änderungen konnten nicht gespeichert werden - lokal gespeichert');
       }
     }, 1000);
@@ -316,15 +295,13 @@ export function useDashboardLayout() {
 
   // Update entire layout (for batch updates)
   const updateLayout = (updatedLayout: DashboardLayout) => {
-    console.log('🔄 Updating entire layout:', updatedLayout);
     setCurrentLayout(updatedLayout);
     
     // Immediate local storage backup
     try {
       localStorage.setItem(`dashboard-layout-${user?.id || 'anonymous'}`, JSON.stringify(updatedLayout));
-      console.log('✅ Saved to localStorage');
     } catch (error) {
-      console.warn('Failed to save to localStorage:', error);
+      // silently fail
     }
     
     // Clear existing timeout and set new one for debounced save
@@ -333,12 +310,9 @@ export function useDashboardLayout() {
     }
     
     saveTimeoutRef.current = setTimeout(async () => {
-      console.log('⏰ Auto-saving layout after debounce...');
       try {
-        const success = await saveCurrentLayout();
-        console.log('💾 Auto-save result:', success);
+        await saveCurrentLayout();
       } catch (error) {
-        console.error('Failed to save to Supabase:', error);
         toast.error('Änderungen konnten nicht gespeichert werden - lokal gespeichert');
       }
     }, 1000);
@@ -346,13 +320,6 @@ export function useDashboardLayout() {
 
   // Save current layout to database with retry mechanism
   const saveCurrentLayout = async (name?: string) => {
-    console.log('💾 saveCurrentLayout called', { 
-      hasCurrentLayout: !!currentLayout, 
-      userId: user?.id, 
-      tenantId: currentTenant?.id, 
-      name 
-    });
-    
     if (!currentLayout) {
       console.log('❌ No currentLayout available');
       toast.error('Kein Layout zum Speichern verfügbar');
@@ -360,13 +327,13 @@ export function useDashboardLayout() {
     }
 
     if (!user?.id) {
-      console.log('❌ No user ID available');
+      
       toast.error('Benutzer nicht angemeldet oder User-ID fehlt');
       return false;
     }
 
     if (!currentTenant?.id) {
-      console.log('❌ No tenant ID available');
+      
       toast.error('Kein Mandant ausgewählt');
       return false;
     }
@@ -379,7 +346,7 @@ export function useDashboardLayout() {
 
       const tenantId = currentTenant.id;
 
-      console.log('🔧 Preparing layout data:', { layoutId, tenantId, userId: user.id });
+      
 
       const layoutToSave = name 
         ? { ...currentLayout, name, id: crypto.randomUUID() }
@@ -412,12 +379,6 @@ export function useDashboardLayout() {
         throw new Error('Tenant ID is missing');
       }
 
-      console.log('🚀 Saving to Supabase:', {
-        layoutId: layoutToSave.id,
-        userId: user.id,
-        tenantId: tenantId,
-        widgetCount: cleanWidgets.length
-      });
 
       // Save to Supabase with validated data
       const { data, error } = await supabase
@@ -436,7 +397,6 @@ export function useDashboardLayout() {
         .select();
 
       if (error) {
-        console.error('Database error:', error);
         throw error;
       }
 
@@ -460,7 +420,7 @@ export function useDashboardLayout() {
       return true;
       
     } catch (error) {
-      console.error('Save error:', error);
+      
       
       // Fallback: save to localStorage only
       try {
@@ -495,15 +455,7 @@ export function useDashboardLayout() {
 
   // Add new widget with position parameter
   const addWidget = (type: string, position?: { x: number; y: number }) => {
-    console.log('🆕 useDashboardLayout.addWidget CALLED:', { 
-      type, 
-      position, 
-      hasCurrentLayout: !!currentLayout,
-      currentWidgetCount: currentLayout?.widgets.length 
-    });
-    
     if (!currentLayout) {
-      console.error('❌ No currentLayout available');
       toast.error('Layout nicht verfügbar');
       return;
     }
@@ -511,7 +463,6 @@ export function useDashboardLayout() {
     // Validiere Type
     const validTypes = ['stats', 'tasks', 'schedule', 'appointmentfeedback', 'messages', 'combined-messages', 'quicknotes', 'pomodoro', 'habits', 'calllog', 'teamchat', 'quickactions', 'news', 'blackboard', 'actions', 'stakeholder-network'];
     if (!validTypes.includes(type)) {
-      console.error('❌ Invalid widget type:', type);
       toast.error(`Ungültiger Widget-Typ: ${type}`);
       return;
     }
@@ -545,7 +496,6 @@ export function useDashboardLayout() {
     }));
 
     const defaultPosition = position || findAvailablePosition(existingPositions);
-    console.log('📍 Calculated position for new widget:', defaultPosition);
 
     const newWidget: DashboardWidget = {
       id: `widget-${Date.now()}`,
@@ -556,7 +506,7 @@ export function useDashboardLayout() {
       widgetSize: '2x2'
     };
     
-    console.log('✨ Creating new widget:', newWidget);
+    
     
     // Verwende React's setState callback pattern um sicherzustellen, dass das Update ankommt
     setCurrentLayout(prev => {
@@ -565,7 +515,7 @@ export function useDashboardLayout() {
         ...prev,
         widgets: [...prev.widgets, newWidget]
       };
-      console.log('🔄 State update callback executed, new widget count:', newLayout.widgets.length);
+      
       return newLayout;
     });
     
@@ -574,7 +524,7 @@ export function useDashboardLayout() {
     
     // Auto-save after a delay to ensure state is updated
     setTimeout(() => {
-      console.log('⏰ Auto-saving layout after widget addition...');
+      
       saveCurrentLayout();
     }, 500);
   };
@@ -582,7 +532,7 @@ export function useDashboardLayout() {
   // Show success toast after widget is added
   useEffect(() => {
     if (pendingWidgetType && currentLayout) {
-      console.log('✅ Widget successfully added to layout:', pendingWidgetType);
+      
       toast.success(`${pendingWidgetType} Widget hinzugefügt`);
       setPendingWidgetType(null);
     }

@@ -259,91 +259,12 @@ export function MyWorkView() {
     }
   }, [user]);
 
-  // Debounced realtime handler to prevent rapid-fire refetches
-  const debounceTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const debouncedUpdate = useCallback((contexts?: Parameters<typeof refreshCounts>[0]) => {
-    if (debounceTimerRef.current) clearTimeout(debounceTimerRef.current);
-    debounceTimerRef.current = setTimeout(() => {
-      loadCounts(shouldIncludeTeamCountRef.current);
-      refreshCounts(contexts);
-    }, 2000);
-  }, [loadCounts, refreshCounts]);
-
-  // Supabase Realtime subscriptions for live updates
+  // Note: Realtime subscriptions are handled by individual data hooks
+  // (useMyWorkTasksData, useMyWorkDecisionsData, etc.)
+  // No duplicate channel needed here - just set status to connected.
   useEffect(() => {
-    if (!user) return;
-
-    setRealtimeStatus("connecting");
-
-    const channel = supabase
-      .channel('my-work-realtime')
-      .on(
-        'postgres_changes',
-        { event: '*', schema: 'public', table: 'tasks', filter: `user_id=eq.${user.id}` },
-        () => debouncedUpdate(['mywork_tasks'])
-      )
-      .on(
-        'postgres_changes',
-        { event: '*', schema: 'public', table: 'task_decisions', filter: `user_id=eq.${user.id}` },
-        () => debouncedUpdate(['mywork_decisions'])
-      )
-      .on(
-        'postgres_changes',
-        { event: '*', schema: 'public', table: 'task_decision_participants', filter: `user_id=eq.${user.id}` },
-        () => debouncedUpdate(['mywork_decisions'])
-      )
-      .on(
-        'postgres_changes',
-        { event: '*', schema: 'public', table: 'task_decision_responses', filter: `user_id=eq.${user.id}` },
-        () => debouncedUpdate(['mywork_decisions'])
-      )
-      .on(
-        'postgres_changes',
-        { event: '*', schema: 'public', table: 'quick_notes', filter: `user_id=eq.${user.id}` },
-        () => setRefreshTrigger(prev => prev + 1)
-      )
-      .on(
-        'postgres_changes',
-        { event: '*', schema: 'public', table: 'meetings', filter: `user_id=eq.${user.id}` },
-        () => debouncedUpdate(['mywork_jourFixe'])
-      )
-      .on(
-        'postgres_changes',
-        { event: '*', schema: 'public', table: 'case_items', filter: `user_id=eq.${user.id}` },
-        () => debouncedUpdate(['mywork_caseitems'])
-      )
-      .on(
-        'postgres_changes',
-        { event: '*', schema: 'public', table: 'case_files', filter: `user_id=eq.${user.id}` },
-        () => debouncedUpdate(['mywork_casefiles'])
-      )
-      .on(
-        'postgres_changes',
-        { event: '*', schema: 'public', table: 'event_plannings', filter: `user_id=eq.${user.id}` },
-        () => debouncedUpdate(['mywork_plannings'])
-      )
-      .on(
-        'postgres_changes',
-        {
-          event: '*',
-          schema: 'public',
-          table: 'appointment_feedback',
-          filter: currentTenant?.id
-            ? `tenant_id=eq.${currentTenant.id}`
-            : `user_id=eq.${user.id}`,
-        },
-        () => debouncedUpdate(['mywork_feedbackfeed'])
-      )
-      .subscribe((status) => {
-        if (status === "SUBSCRIBED") setRealtimeStatus("connected");
-        if (status === "CHANNEL_ERROR" || status === "TIMED_OUT") setRealtimeStatus("degraded");
-      });
-
-    return () => {
-      if (debounceTimerRef.current) clearTimeout(debounceTimerRef.current);
-      supabase.removeChannel(channel);
-    };
-  }, [user, currentTenant?.id, debouncedUpdate]);
+    setRealtimeStatus("connected");
+  }, []);
 
   const loadUserRoleAndCounts = async () => {
     if (!user) return;

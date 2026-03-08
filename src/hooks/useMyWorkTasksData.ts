@@ -224,8 +224,8 @@ export function useMyWorkTasksData(userId?: string) {
 
     const channel = supabase
       .channel(`my-work-tasks-${userId}`)
-      .on("postgres_changes", { event: "*", schema: "public", table: "tasks" }, scheduleRefresh)
-      .on("postgres_changes", { event: "*", schema: "public", table: "task_snoozes" }, scheduleRefresh)
+      .on("postgres_changes", { event: "*", schema: "public", table: "tasks", filter: `user_id=eq.${userId}` }, scheduleRefresh)
+      .on("postgres_changes", { event: "*", schema: "public", table: "task_snoozes", filter: `user_id=eq.${userId}` }, scheduleRefresh)
       .on("postgres_changes", { event: "*", schema: "public", table: "task_comments" }, scheduleRefresh)
       .subscribe();
 
