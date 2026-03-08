@@ -615,32 +615,32 @@ export function FocusModeView({
                   </Badge>
                 )}
               </div>
-              {sourceType === 'quick_note' && sourceData.content && (
+              {sourceType === 'quick_note' && (src.content as string) && (
                 <div className="mt-1">
-                  <RichTextDisplay content={sourceData.content} className="text-sm text-muted-foreground line-clamp-2" />
+                  <RichTextDisplay content={src.content as string} className="text-sm text-muted-foreground line-clamp-2" />
                 </div>
               )}
               {sourceType === 'task' && (
                 <div className="mt-1">
-                  {sourceData.description && (
-                    <RichTextDisplay content={sourceData.description} className="text-sm text-muted-foreground" />
+                  {(src.description as string) && (
+                    <RichTextDisplay content={src.description as string} className="text-sm text-muted-foreground" />
                   )}
                   <div className="flex items-center gap-2 mt-1">
-                    {sourceData.due_date && (
+                    {(src.due_date as string) && (
                       <span className="text-xs text-muted-foreground">
-                        Frist: {format(new Date(sourceData.due_date), "dd.MM.yyyy", { locale: de })}
+                        Frist: {format(new Date(src.due_date as string), "dd.MM.yyyy", { locale: de })}
                       </span>
                     )}
-                    {sourceData.priority && (
+                    {(src.priority as string) && (
                       <Badge variant="outline" className="text-xs">
-                        {sourceData.priority}
+                        {src.priority as string}
                       </Badge>
                     )}
                   </div>
                 </div>
               )}
-              {(sourceType === 'quick_note' || sourceType === 'task') && sourceData.user_id && (() => {
-                const profile = profiles.find(p => p.user_id === sourceData.user_id);
+              {(sourceType === 'quick_note' || sourceType === 'task') && (src.user_id as string) && (() => {
+                const profile = profiles.find(p => p.user_id === (src.user_id as string));
                 return profile ? (
                   <div className="flex items-center gap-1.5 mt-1">
                     <Avatar className="h-5 w-5">
@@ -652,13 +652,13 @@ export function FocusModeView({
                     <span className="text-xs text-muted-foreground">{profile.display_name}</span>
                   </div>
                 ) : (
-                  <span className="text-xs text-muted-foreground">von {getDisplayName(sourceData.user_id)}</span>
+                  <span className="text-xs text-muted-foreground">von {getDisplayName(src.user_id as string)}</span>
                 );
               })()}
               {sourceType === 'appointment' && (
                 <p className="text-xs text-muted-foreground mt-1">
-                  {sourceData.start_time && format(new Date(sourceData.start_time), "dd.MM.yyyy HH:mm", { locale: de })}
-                  {sourceData.location && ` • ${sourceData.location}`}
+                  {(src.start_time as string) && format(new Date(src.start_time as string), "dd.MM.yyyy HH:mm", { locale: de })}
+                  {(src.location as string) && ` • ${src.location as string}`}
                 </p>
               )}
 
