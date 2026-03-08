@@ -315,6 +315,20 @@ export function MyWorkJourFixeTab() {
                           ))}
                         </ul>
                       )}
+                      {item.system_type === 'case_items' && caseItems.length > 0 && (
+                        <ul className="ml-6 mt-1 space-y-0.5">
+                          {caseItems.map((ci) => (
+                            <li key={ci.id} className="flex items-center gap-1.5 text-muted-foreground">
+                              <Briefcase className="h-2.5 w-2.5 text-teal-500" />
+                              <span>{ci.subject || 'Ohne Betreff'}</span>
+                              <Badge variant="outline" className="text-[10px] px-1 py-0 h-4">{ci.status}</Badge>
+                              {getOwnerLabel(ci.owner_user_id ?? undefined) && (
+                                <span className="text-muted-foreground/80">({getOwnerLabel(ci.owner_user_id ?? undefined)})</span>
+                              )}
+                            </li>
+                          ))}
+                        </ul>
+                      )}
                       {subItems.length > 0 && (
                         <ul className="ml-6 mt-1 space-y-0.5">
                           {subItems.map((subItem, subIndex) => {
