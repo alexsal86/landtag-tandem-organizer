@@ -140,7 +140,7 @@ export function useMeetingArchive(deps: ArchiveDeps) {
         .from('meeting_agenda_items').select('order_index, title, source_meeting_id')
         .eq('meeting_id', meetingId).eq('parent_id', reviewParentId).order('order_index', { ascending: false });
 
-      const existingSet = new Set((existingItems || []).map((i: any) => `${i.source_meeting_id}::${i.title}`));
+      const existingSet = new Set((existingItems || []).map(i => `${i.source_meeting_id}::${i.title}`));
       let nextOrderIndex = (existingItems?.[0]?.order_index || 0) + 1;
 
       for (const item of pendingItems) {
