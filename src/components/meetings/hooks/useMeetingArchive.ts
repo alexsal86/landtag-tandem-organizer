@@ -307,7 +307,7 @@ export function useMeetingArchive(deps: ArchiveDeps) {
           }
         }
         if (childTasksToCreate.length > 0) {
-          try { await supabase.from('tasks').insert(childTasksToCreate); } catch (e) { console.error('Error creating child tasks (non-fatal):', e); }
+          try { await supabase.from('tasks').insert(childTasksToCreate); } catch (e) { debugConsole.error('Error creating child tasks (non-fatal):', e); }
         }
       }
 
