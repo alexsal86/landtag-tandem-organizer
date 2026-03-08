@@ -2187,7 +2187,7 @@ export function MeetingsView() {
     setAgendaItems(next);
   };
 
-  const addSystemAgendaItem = async (systemType: 'upcoming_appointments' | 'quick_notes' | 'tasks' | 'birthdays' | 'decisions', parentItem?: AgendaItem) => {
+  const addSystemAgendaItem = async (systemType: 'upcoming_appointments' | 'quick_notes' | 'tasks' | 'birthdays' | 'decisions' | 'case_items', parentItem?: AgendaItem) => {
     if (!selectedMeeting?.id) return;
     
     // Check if already exists
@@ -2205,7 +2205,8 @@ export function MeetingsView() {
       'quick_notes': 'Meine Notizen',
       'tasks': 'Aufgaben',
       'birthdays': 'Geburtstage',
-      'decisions': 'Entscheidungen'
+      'decisions': 'Entscheidungen',
+      'case_items': 'Vorgänge'
     };
 
     try {
