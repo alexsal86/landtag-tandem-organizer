@@ -212,7 +212,7 @@ export const EventRSVPManager = ({ eventPlanningId, eventTitle }: EventRSVPManag
       setDialogOpen(false);
       loadRSVPs();
     } catch (error) {
-      console.error('Error saving draft:', error);
+      debugConsole.error('Error saving draft:', error);
       toast({ title: "Fehler", description: "Vormerken fehlgeschlagen.", variant: "destructive" });
     } finally {
       setSending(false);
