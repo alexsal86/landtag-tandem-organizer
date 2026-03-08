@@ -159,7 +159,7 @@ export const HabitsWidget: React.FC<HabitsWidgetProps> = ({
         const dateStr = checkDate.toISOString().split('T')[0];
         
         const dayCompletion = habitCompletions.find(c => c.completion_date === dateStr);
-        if (dayCompletion && dayCompletion.count >= habit.target_count) {
+        if (dayCompletion && dayCompletion.count >= (habit.target_count ?? 1)) {
           completedDays++;
         }
       }
