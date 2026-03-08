@@ -336,7 +336,7 @@ export function ContactEditForm({ contact, onSuccess, onCancel }: ContactEditFor
         return;
       }
 
-      console.log('Contact updated successfully:', data);
+      debugConsole.log('Contact updated successfully:', data);
 
       toast({
         title: "Kontakt aktualisiert",
