@@ -225,7 +225,7 @@ export function MyWorkCaseItemsTab() {
 
       await loadCaseItems();
     } catch (error) {
-      console.error("Error escalating case item:", error);
+      debugConsole.error("Error escalating case item:", error);
       toast({
         title: "Fehler",
         description: "Eskalation konnte nicht verarbeitet werden.",
