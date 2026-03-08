@@ -394,7 +394,7 @@ export function useAgendaOperations(deps: AgendaOpsDeps) {
         if (existingItems.length > 0) {
           const { error } = await supabase.from('meeting_agenda_items').upsert(
             existingItems.map(item => ({
-              id: item.id, order_index: item.order_index, meeting_id: selectedMeeting.id,
+              id: item.id!, order_index: item.order_index, meeting_id: selectedMeeting.id!,
               title: item.title, description: item.description || '',
               assigned_to: Array.isArray(item.assigned_to) ? item.assigned_to : (item.assigned_to ? [item.assigned_to] : []),
               parent_id: item.parent_id, updated_at: new Date().toISOString()

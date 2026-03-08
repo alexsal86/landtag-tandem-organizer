@@ -93,7 +93,7 @@ export function PendingJourFixeNotes({ className, onNotesLinked }: PendingJourFi
     return null;
   }
 
-  const getPriorityColor = (level?: number) => {
+  const getPriorityColor = (level?: number | null) => {
     switch (level) {
       case 3: return 'text-destructive';
       case 2: return 'text-amber-500';

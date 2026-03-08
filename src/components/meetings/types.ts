@@ -93,7 +93,7 @@ export interface LinkedTask {
 /** A case item linked to a meeting (select subset from case_items table) */
 export interface LinkedCaseItem {
   id: string;
-  subject: string;
+  subject: string | null;
   status: string;
   priority?: string | null;
   due_at?: string | null;

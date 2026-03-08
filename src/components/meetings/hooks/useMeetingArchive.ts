@@ -183,7 +183,7 @@ export function useMeetingArchive(deps: ArchiveDeps) {
       const itemsWithLinkedTaskResult = agendaItemsData?.filter(item => item.task_id && item.result_text?.trim()) || [];
       for (const item of itemsWithLinkedTaskResult) {
         try {
-          const { data: existingTask } = await supabase.from('tasks').select('id, user_id, assigned_to, tenant_id').eq('id', item.task_id).maybeSingle();
+          const { data: existingTask } = await supabase.from('tasks').select('id, user_id, assigned_to, tenant_id').eq('id', item.task_id!).maybeSingle();
           if (existingTask) {
             const meetingContext = `Ergebnis aus Besprechung "${meeting.title}" vom ${format(new Date(meeting.meeting_date), 'dd.MM.yyyy', { locale: de })}`;
             await supabase.from('tasks').insert([{
