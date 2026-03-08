@@ -2,6 +2,7 @@ import { useLocation, useNavigate } from "react-router-dom";
 import { useEffect } from "react";
 import { SearchX, ArrowLeft, Home } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { debugConsole } from "@/utils/debugConsole";
 
 const NotFound = () => {
   const location = useLocation();
