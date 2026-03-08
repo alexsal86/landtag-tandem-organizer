@@ -376,7 +376,7 @@ export function DrucksachenUpload({ onUploadSuccess, onProtocolsRefresh }: Druck
         .single();
 
       if (dbError) {
-        console.error('Database insertion failed:', dbError);
+        debugConsole.error('Database insertion failed:', dbError);
         throw new Error(`Datenbankfehler: ${dbError.message}`);
       }
 
