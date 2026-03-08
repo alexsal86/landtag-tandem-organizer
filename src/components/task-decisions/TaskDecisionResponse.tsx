@@ -148,7 +148,7 @@ export const TaskDecisionResponse = ({
         .maybeSingle();
 
       if (checkError) {
-        console.error('Error checking existing response:', checkError);
+        debugConsole.error('Error checking existing response:', checkError);
         throw new Error('Antwort konnte nicht überprüft werden');
       }
 
