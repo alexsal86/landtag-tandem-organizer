@@ -131,7 +131,7 @@ export function AppointmentDetailsSidebar({
         setFeedback(null);
       }
     } catch (error) {
-      console.error('Error fetching feedback:', error);
+      debugConsole.error('Error fetching feedback:', error);
     }
   };
 
