@@ -151,7 +151,7 @@ export function useTasksData() {
           taskId: comment.task_id,
           content: comment.content,
           userId: comment.user_id,
-          userName: (comment.profiles as { display_name: string } | null)?.display_name || 'Unbekannter Benutzer',
+          userName: ((comment as any).profiles as { display_name: string } | null)?.display_name || 'Unbekannter Benutzer',
           createdAt: comment.created_at
         });
       });
