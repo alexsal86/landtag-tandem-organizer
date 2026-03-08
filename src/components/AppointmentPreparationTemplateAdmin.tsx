@@ -105,7 +105,7 @@ export default function AppointmentPreparationTemplateAdmin() {
         // Create new template
         const { error } = await supabase
           .from('appointment_preparation_templates')
-          .insert({
+          .insert([{
             tenant_id: currentTenant?.id ?? '',
             name: templateData.name,
             description: templateData.description,
@@ -113,7 +113,7 @@ export default function AppointmentPreparationTemplateAdmin() {
             is_default: templateData.is_default || false,
             is_active: true,
             created_by: (await supabase.auth.getUser()).data.user?.id ?? '',
-          });
+          }]);
 
         if (error) throw error;
 
