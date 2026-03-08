@@ -479,7 +479,7 @@ export function useTasksData() {
 
       setAssignedSubtasks(allSubtasks);
     } catch (error) {
-      console.error('Critical error loading assigned subtasks:', error);
+      debugConsole.error('Critical error loading assigned subtasks:', error);
     }
   };
 
