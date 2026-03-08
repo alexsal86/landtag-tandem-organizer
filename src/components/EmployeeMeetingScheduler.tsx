@@ -126,7 +126,7 @@ export function EmployeeMeetingScheduler({
         .eq("status", "pending");
 
       if (requestUpdateError) {
-        console.error("Error auto-resolving meeting requests:", requestUpdateError);
+        debugConsole.error("Error auto-resolving meeting requests:", requestUpdateError);
       }
 
       // Create calendar entry if checkbox is active
