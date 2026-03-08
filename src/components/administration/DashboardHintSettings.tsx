@@ -55,7 +55,7 @@ export const DashboardHintSettings = () => {
         const parsedDays = parseSpecialDaysSetting(data?.setting_value);
         setEntries(parsedDays || DEFAULT_SPECIAL_DAYS);
       } catch (error) {
-        console.error('Error loading dashboard hint settings:', error);
+        debugConsole.error('Error loading dashboard hint settings:', error);
         toast({
           title: 'Fehler',
           description: 'Dashboard-Hinweise konnten nicht geladen werden.',
