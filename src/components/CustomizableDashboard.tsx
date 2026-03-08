@@ -215,8 +215,6 @@ export const CustomizableDashboard: React.FC = () => {
       y = maxY;
     }
 
-    console.log('📍 Calculated position:', { x, y });
-    console.log('🚀 Calling addWidget with:', { type: widgetType, position: { x, y } });
     
     // Widget hinzufügen - Toast wird im Hook gemacht
     addWidget(widgetType, { x, y });

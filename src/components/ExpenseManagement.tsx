@@ -194,7 +194,7 @@ export const ExpenseManagement = () => {
         console.error('Receipt upload failed, aborting expense creation');
         return;
       }
-      console.log('Receipt uploaded successfully to:', receiptPath);
+      
     }
 
     const { error } = await supabase

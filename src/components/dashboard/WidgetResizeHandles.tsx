@@ -76,7 +76,7 @@ export const WidgetResizeHandles: React.FC<WidgetResizeHandlesProps> = ({
       }
       
       const newSize = `${newW}x${newH}`;
-      console.log('Attempting to resize to:', newSize, 'from current:', widget.size);
+      
       if (WIDGET_SIZES.includes(newSize)) {
         // Get current size string for comparison
         const currentSizeString = typeof widget.size === 'string' ? widget.size : 
