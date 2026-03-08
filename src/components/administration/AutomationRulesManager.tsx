@@ -158,6 +158,9 @@ export function AutomationRulesManager() {
       table: (a.payload?.table as string) || "tasks",
       recordId: (a.payload?.record_id as string) || "",
       status: (a.payload?.status as string) || "",
+      emailTemplateId: (a.payload?.template_id as string) || "",
+      emailRecipient: (a.payload?.recipient_email as string) || "",
+      emailRecipientName: (a.payload?.recipient_name as string) || "",
     }));
     if (actions.length === 0) actions.push({ ...DEFAULT_ACTION });
 
