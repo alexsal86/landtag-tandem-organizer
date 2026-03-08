@@ -133,7 +133,7 @@ export function SuperadminTenantManagement() {
 
       setAllUsers(data.users || []);
     } catch (error: unknown) {
-      console.error("Error loading users:", error);
+      debugConsole.error("Error loading users:", error);
       toast({ title: "Fehler", description: error instanceof Error ? error.message : "Benutzer konnten nicht geladen werden", variant: "destructive" });
     } finally {
       setUsersLoading(false);
