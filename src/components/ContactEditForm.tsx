@@ -311,7 +311,7 @@ export function ContactEditForm({ contact, onSuccess, onCancel }: ContactEditFor
         updated_at: new Date().toISOString()
       };
 
-      console.log('Updating contact with final data:', finalUpdateData);
+      debugConsole.log('Updating contact with final data:', finalUpdateData);
 
       const { error, data } = await supabase
         .from('contacts')
