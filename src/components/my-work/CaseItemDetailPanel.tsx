@@ -13,6 +13,7 @@ import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/component
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
 import SimpleRichTextEditor from "@/components/ui/SimpleRichTextEditor";
+import { debugConsole } from "@/utils/debugConsole";
 import type { EditableCaseItem, TimelineInteractionType } from "@/components/my-work/hooks/useCaseItemEdit";
 
 type TimelineEntry = {
