@@ -7,7 +7,7 @@ import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { format, startOfDay, endOfDay, addDays } from "date-fns";
 import { de } from "date-fns/locale";
-import type { RecurrenceData, NewMeetingParticipant, AgendaItem, Meeting, MeetingTemplate, Profile } from "@/components/meetings/types";
+import type { RecurrenceData, NewMeetingParticipant, AgendaItem, Meeting, MeetingTemplate, Profile, LinkedQuickNote, LinkedTask, LinkedCaseItem, RelevantDecision, MeetingUpcomingAppointment, MeetingParticipant, AgendaDocument } from "@/components/meetings/types";
 
 export function useMeetingsData() {
   const [searchParams, setSearchParams] = useSearchParams();
