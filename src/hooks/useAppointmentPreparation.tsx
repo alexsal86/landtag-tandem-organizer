@@ -15,7 +15,7 @@ export interface AppointmentPreparation {
   created_at: string;
   updated_at: string;
   is_archived: boolean;
-  archived_at?: string;
+  archived_at?: string | null;
   preparation_data: {
     objectives?: string;
     key_topics?: string;

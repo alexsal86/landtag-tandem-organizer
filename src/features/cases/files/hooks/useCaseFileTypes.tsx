@@ -9,7 +9,7 @@ export interface CaseFileType {
   name: string;
   label: string;
   icon: string | null;
-  color: string;
+  color: string | null;
   order_index: number;
   is_active: boolean;
   created_at: string;

@@ -31,7 +31,7 @@ interface Task {
   description: string;
   priority: "low" | "medium" | "high";
   status: "todo" | "in-progress" | "completed";
-  dueDate: string;
+  dueDate: string | null;
   category: string;
   assignedTo?: string;
   user_id?: string;
@@ -40,14 +40,14 @@ interface Task {
 
 interface Subtask {
   id: string;
-  task_id: string;
+  task_id: string | null;
   title: string;
-  description?: string;
+  description?: string | null;
   is_completed: boolean;
-  assigned_to?: string[];
+  assigned_to?: string[] | null;
   assigned_to_names?: string;
-  due_date?: string;
-  priority?: string;
+  due_date?: string | null;
+  priority?: string | null;
   task_title?: string;
 }
 

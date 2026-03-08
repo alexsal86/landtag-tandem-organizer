@@ -222,7 +222,7 @@ const mapMatrixEventToMessage = (room: sdk.Room, event: sdk.MatrixEvent): Matrix
     replyTo,
     reactions: new Map(),
     mediaContent: !isStillEncrypted && isMedia ? {
-      msgtype: content.msgtype,
+      msgtype: content.msgtype || 'm.file',
       body: content.body,
       url: content.url,
       info: content.info,

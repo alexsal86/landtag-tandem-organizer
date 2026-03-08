@@ -366,11 +366,11 @@ export const HabitsWidget: React.FC<HabitsWidgetProps> = ({
                         {/* Progress */}
                         <div className="flex items-center gap-2">
                           <Progress 
-                            value={(habit.todayCount / habit.target_count) * 100} 
+                            value={(habit.todayCount / (habit.target_count ?? 1)) * 100} 
                             className="flex-1 h-2"
                           />
                           <span className="text-xs text-muted-foreground">
-                            {habit.todayCount}/{habit.target_count}
+                            {habit.todayCount}/{habit.target_count ?? 1}
                           </span>
                         </div>
                         

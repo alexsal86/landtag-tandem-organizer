@@ -288,7 +288,7 @@ export function CaseFileUnifiedTimeline({
                                 <Icon className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
                                 {isDocument ? (
                                   <button
-                                    onClick={() => handleOpenDocument(item.meta.documentId, item.meta.fileName)}
+                                    onClick={() => handleOpenDocument(item.meta?.documentId, item.meta?.fileName)}
                                     className="text-sm font-medium text-primary hover:underline text-left flex items-center gap-1"
                                   >
                                     {item.title}

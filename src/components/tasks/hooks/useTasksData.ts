@@ -419,8 +419,8 @@ export function useTasksData() {
               title: subtask.description || 'Unterpunkt',
               task_title: 'Unbekannte Planung', source_type: 'planning' as const,
               planning_item_id: subtask.planning_item_id,
-              assigned_to_names: resolveUserNames([subtask.assigned_to]),
-              assigned_to: [subtask.assigned_to]
+              assigned_to_names: resolveUserNames([subtask.assigned_to].filter(Boolean) as string[]),
+              assigned_to: [subtask.assigned_to].filter(Boolean) as string[]
             });
           }
         }
