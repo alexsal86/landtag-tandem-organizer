@@ -31,7 +31,6 @@ interface GuestData {
 
 function GuestResponse() {
   const { token } = useParams<{ token: string }>();
-  const navigate = useNavigate();
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [appointment, setAppointment] = useState<AppointmentData | null>(null);

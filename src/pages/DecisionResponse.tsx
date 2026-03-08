@@ -253,7 +253,6 @@ export default function DecisionResponse() {
   }
 
   // Check if any option requires comment for special handling
-  const optionRequiringComment = responseOptions.find(o => o.requires_comment);
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center p-4">
