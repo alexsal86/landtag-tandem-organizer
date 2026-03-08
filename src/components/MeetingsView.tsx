@@ -5317,6 +5317,7 @@ export function MeetingsView() {
 
               {/* Pending Jour Fixe Notes Preview */}
               <PendingJourFixeNotes className="mt-4" />
+              <PendingJourFixeCaseItems className="mt-4" />
 
               {/* Upcoming Appointments Preview - NUR wenn nicht bereits in Agenda */}
               {!agendaItems.some(item => item.system_type === 'upcoming_appointments') && (
