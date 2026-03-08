@@ -73,20 +73,36 @@ export function useMeetingsData() {
   // URL id parameter for deep-linking
   useEffect(() => {
     const urlMeetingId = searchParams.get('id');
-    if (urlMeetingId && meetings.length > 0) {
-      const meetingFromUrl = meetings.find(m => m.id === urlMeetingId);
-      if (meetingFromUrl && selectedMeeting?.id !== urlMeetingId) {
-        setSelectedMeeting(meetingFromUrl);
-        loadAgendaItems(urlMeetingId);
-        sidebar.loadLinkedQuickNotes(urlMeetingId);
-        sidebar.loadMeetingLinkedTasks(urlMeetingId);
-        sidebar.loadMeetingLinkedCaseItems(urlMeetingId);
-        sidebar.loadMeetingRelevantDecisions();
-        if (meetingFromUrl?.meeting_date) sidebar.loadMeetingUpcomingAppointments(urlMeetingId, meetingFromUrl.meeting_date);
-        sidebar.loadStarredAppointments(urlMeetingId);
-        searchParams.delete('id');
-        setSearchParams(searchParams, { replace: true });
-      }
+    if (!urlMeetingId || meetings.length === 0) return;
+
+    const selectMeeting = (meeting: any) => {
+      if (selectedMeeting?.id === urlMeetingId) return;
+      const normalized = { ...meeting, meeting_date: meeting.meeting_date instanceof Date ? meeting.meeting_date : new Date(meeting.meeting_date) };
+      setSelectedMeeting(normalized);
+      loadAgendaItems(urlMeetingId);
+      sidebar.loadLinkedQuickNotes(urlMeetingId);
+      sidebar.loadMeetingLinkedTasks(urlMeetingId);
+      sidebar.loadMeetingLinkedCaseItems(urlMeetingId);
+      sidebar.loadMeetingRelevantDecisions();
+      if (normalized.meeting_date) sidebar.loadMeetingUpcomingAppointments(urlMeetingId, normalized.meeting_date);
+      sidebar.loadStarredAppointments(urlMeetingId);
+      searchParams.delete('id');
+      setSearchParams(searchParams, { replace: true });
+    };
+
+    const meetingFromUrl = meetings.find(m => m.id === urlMeetingId);
+    if (meetingFromUrl) {
+      selectMeeting(meetingFromUrl);
+    } else {
+      // Meeting not in loaded list (e.g. past meeting) — fetch directly
+      supabase
+        .from('meetings')
+        .select('*')
+        .eq('id', urlMeetingId)
+        .maybeSingle()
+        .then(({ data }) => {
+          if (data) selectMeeting(data);
+        });
     }
   }, [searchParams, meetings]);
 
