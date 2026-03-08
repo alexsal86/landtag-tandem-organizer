@@ -239,7 +239,7 @@ export const CallLogWidget: React.FC<CallLogWidgetProps> = ({
 
           const { error: appointmentError } = await supabase
             .from('appointments')
-            .insert({
+            .insert([{
               user_id: user.id,
               call_log_id: data.id,
               title: `Follow-up: ${contactName}`,
@@ -250,7 +250,7 @@ export const CallLogWidget: React.FC<CallLogWidgetProps> = ({
               priority: priority,
               status: 'planned',
               tenant_id: currentTenant?.id || 'default-tenant-id'
-            });
+            }]);
 
           if (appointmentError) {
             debugConsole.error('Error creating follow-up appointment:', appointmentError);
