@@ -42,7 +42,7 @@ export const UserStatusSelector: React.FC<UserStatusSelectorProps> = ({ children
     loading 
   } = useUserStatus();
   
-  const [profileData, setProfileData] = useState<{ display_name?: string; avatar_url?: string } | null>(null);
+  const [profileData, setProfileData] = useState<{ display_name?: string | null; avatar_url?: string | null } | null>(null);
   
   const [isOpen, setIsOpen] = useState(false);
   const [selectedType, setSelectedType] = useState<string>('online');
