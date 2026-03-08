@@ -295,7 +295,7 @@ const SimpleLeafletMap: React.FC<LeafletKarlsruheMapProps> = ({
         // Use boundary_districts directly from associations, independent of the districts array
         association.boundary_districts?.forEach((boundaryDistrict) => {
           if (!boundaryDistrict.center_coordinates) {
-            console.warn(`No center_coordinates for district: ${boundaryDistrict.district_number}`);
+            debugConsole.warn(`No center_coordinates for district: ${boundaryDistrict.district_number}`);
             return;
           }
           
