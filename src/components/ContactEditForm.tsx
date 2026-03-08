@@ -352,9 +352,9 @@ export function ContactEditForm({ contact, onSuccess, onCancel }: ContactEditFor
           body: { contactId: contact.id }
         }).then(({ data, error }) => {
           if (!error && data?.coordinates) {
-            console.log('✅ Geocoding erfolgreich:', data.coordinates);
+            debugConsole.log('✅ Geocoding erfolgreich:', data.coordinates);
           } else if (error) {
-            console.error('❌ Geocoding fehlgeschlagen:', error);
+            debugConsole.error('❌ Geocoding fehlgeschlagen:', error);
           }
         });
       }
