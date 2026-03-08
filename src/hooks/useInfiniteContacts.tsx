@@ -4,6 +4,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { useTenant } from "@/hooks/useTenant";
 import { useToast } from "@/hooks/use-toast";
 import { debounce } from "@/utils/debounce";
+import { debugConsole } from '@/utils/debugConsole';
 
 export interface Contact {
   id: string;
@@ -151,7 +152,7 @@ export const useInfiniteContacts = ({
 
       return true;
     } catch (error) {
-      console.error('Error inserting sample contacts:', error);
+      debugConsole.error('Error inserting sample contacts:', error);
       toast({
         title: "Fehler",
         description: "Beispielkontakte konnten nicht erstellt werden.",
@@ -183,7 +184,7 @@ export const useInfiniteContacts = ({
       const { data, error, count } = await query;
 
       if (error) {
-        console.error('Supabase query error:', error);
+        debugConsole.error('Supabase query error:', error);
         throw error;
       }
 
@@ -281,7 +282,7 @@ export const useInfiniteContacts = ({
       setHasMore(formattedContacts.length === ITEMS_PER_PAGE);
 
     } catch (error) {
-      console.error('Error fetching contacts:', error);
+      debugConsole.error('Error fetching contacts:', error);
       toast({
         title: "Fehler",
         description: "Kontakte konnten nicht geladen werden.",
@@ -322,7 +323,7 @@ export const useInfiniteContacts = ({
           : "Kontakt aus Favoriten entfernt",
       });
     } catch (error) {
-      console.error('Error toggling favorite:', error);
+      debugConsole.error('Error toggling favorite:', error);
       toast({
         title: "Fehler",
         description: "Favorit konnte nicht aktualisiert werden.",

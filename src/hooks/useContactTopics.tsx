@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { debugConsole } from '@/utils/debugConsole';
 
 export const useContactTopics = (contactId: string | undefined) => {
   const [assignedTopics, setAssignedTopics] = useState<string[]>([]);
@@ -18,7 +19,7 @@ export const useContactTopics = (contactId: string | undefined) => {
       if (error) throw error;
       setAssignedTopics(data?.map(t => t.topic_id) || []);
     } catch (error) {
-      console.error('Error fetching contact topics:', error);
+      debugConsole.error('Error fetching contact topics:', error);
     } finally {
       setLoading(false);
     }
@@ -40,7 +41,7 @@ export const useContactTopics = (contactId: string | undefined) => {
       setAssignedTopics(prev => [...prev, topicId]);
       return true;
     } catch (error) {
-      console.error('Error assigning topic:', error);
+      debugConsole.error('Error assigning topic:', error);
       return false;
     }
   };
@@ -59,7 +60,7 @@ export const useContactTopics = (contactId: string | undefined) => {
       setAssignedTopics(prev => prev.filter(id => id !== topicId));
       return true;
     } catch (error) {
-      console.error('Error removing topic:', error);
+      debugConsole.error('Error removing topic:', error);
       return false;
     }
   };
@@ -86,7 +87,7 @@ export const useContactTopics = (contactId: string | undefined) => {
       setAssignedTopics(topicIds);
       return true;
     } catch (error) {
-      console.error('Error setting topics:', error);
+      debugConsole.error('Error setting topics:', error);
       return false;
     }
   };

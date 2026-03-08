@@ -1,6 +1,7 @@
 import { useCallback, useRef, useState } from "react";
 import { addDays, parseISO } from "date-fns";
 import { supabase } from "@/integrations/supabase/client";
+import { debugConsole } from '@/utils/debugConsole';
 
 export interface AgendaItem {
   id: string;
@@ -118,7 +119,7 @@ export function useMyWorkJourFixeSystemData(userId?: string, tenantId?: string) 
       if (!isCurrentRequest()) return;
 
       if (notesResult.error) {
-        console.error("Error loading quick notes for meeting:", { meetingId, error: notesResult.error });
+        debugConsole.error("Error loading quick notes for meeting:", { meetingId, error: notesResult.error });
       } else {
         const notes = notesResult.data || [];
         notes.forEach((note) => note.user_id && encounteredUserIds.add(note.user_id));
@@ -126,7 +127,7 @@ export function useMyWorkJourFixeSystemData(userId?: string, tenantId?: string) 
       }
 
       if (tasksResult.error) {
-        console.error("Error loading tasks for meeting:", { meetingId, error: tasksResult.error });
+        debugConsole.error("Error loading tasks for meeting:", { meetingId, error: tasksResult.error });
       } else {
         const tasks = tasksResult.data || [];
         tasks.forEach((task) => task.user_id && encounteredUserIds.add(task.user_id));
@@ -134,7 +135,7 @@ export function useMyWorkJourFixeSystemData(userId?: string, tenantId?: string) 
       }
 
       if (decisionsResult.error) {
-        console.error("Error loading decisions for meeting:", { meetingId, error: decisionsResult.error });
+        debugConsole.error("Error loading decisions for meeting:", { meetingId, error: decisionsResult.error });
         setMeetingDecisions((prev) => ({ ...prev, [meetingId]: [] }));
       } else {
         const decisions = decisionsResult.data || [];
@@ -154,7 +155,7 @@ export function useMyWorkJourFixeSystemData(userId?: string, tenantId?: string) 
       }
 
       if (contactsResult.error) {
-        console.error("Error loading birthdays for meeting:", { meetingId, error: contactsResult.error });
+        debugConsole.error("Error loading birthdays for meeting:", { meetingId, error: contactsResult.error });
         setMeetingBirthdays((prev) => ({ ...prev, [meetingId]: [] }));
       } else {
         const contacts = contactsResult.data || [];
@@ -195,7 +196,7 @@ export function useMyWorkJourFixeSystemData(userId?: string, tenantId?: string) 
       }
 
       if (caseItemsResult.error) {
-        console.error("Error loading case items for meeting:", { meetingId, error: caseItemsResult.error });
+        debugConsole.error("Error loading case items for meeting:", { meetingId, error: caseItemsResult.error });
         setMeetingCaseItems((prev) => ({ ...prev, [meetingId]: [] }));
       } else {
         const items = (caseItemsResult.data || []) as CaseItemData[];
@@ -222,7 +223,7 @@ export function useMyWorkJourFixeSystemData(userId?: string, tenantId?: string) 
         });
       } catch (error) {
         if (isCurrentRequest()) {
-          console.error("Error loading profiles for meeting system data:", { meetingId, error });
+          debugConsole.error("Error loading profiles for meeting system data:", { meetingId, error });
         }
       }
     },

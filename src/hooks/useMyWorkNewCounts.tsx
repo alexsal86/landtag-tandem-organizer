@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from './useAuth';
+import { debugConsole } from '@/utils/debugConsole';
 
 export interface NewCounts {
   tasks: number;
@@ -127,7 +128,7 @@ export function useMyWorkNewCounts(): MyWorkNewCountsResult {
             setNewCounts(DEFAULT_COUNTS);
           }
 
-          console.warn('get_my_work_new_counts RPC is unavailable; new badges are reset to 0.');
+          debugConsole.warn('get_my_work_new_counts RPC is unavailable; new badges are reset to 0.');
           return;
         }
 
@@ -149,7 +150,7 @@ export function useMyWorkNewCounts(): MyWorkNewCountsResult {
         };
       });
     } catch (error) {
-      console.error('Error loading new counts via RPC:', error);
+      debugConsole.error('Error loading new counts via RPC:', error);
     } finally {
       if (isMountedRef.current) {
         setIsLoading(false);
@@ -226,7 +227,7 @@ export function useMyWorkNewCounts(): MyWorkNewCountsResult {
         timestamp: now,
       }));
     } catch (error) {
-      console.error('Error marking tab as visited:', error);
+      debugConsole.error('Error marking tab as visited:', error);
     }
   }, [user]);
 

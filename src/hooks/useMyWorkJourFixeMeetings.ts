@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { debugConsole } from '@/utils/debugConsole';
 
 export interface MeetingParticipant {
   user_id: string;
@@ -67,7 +68,7 @@ export function useMyWorkJourFixeMeetings(userId?: string) {
 
       if (isMountedRef.current) setMeetingParticipants(participantsByMeeting);
     } catch (error) {
-      console.error('Error loading participants:', error);
+      debugConsole.error('Error loading participants:', error);
     }
   }, []);
 
@@ -162,7 +163,7 @@ export function useMyWorkJourFixeMeetings(userId?: string) {
         setPastMeetings(past);
       }
     } catch (error) {
-      console.error("Error loading meetings:", error);
+      debugConsole.error("Error loading meetings:", error);
     } finally {
       if (isMountedRef.current) setLoading(false);
     }

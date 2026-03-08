@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/components/ui/use-toast";
 import { useTenant } from "@/hooks/useTenant";
+import { debugConsole } from '@/utils/debugConsole';
 
 export interface Topic {
   id: string;
@@ -31,13 +32,13 @@ export const useTopics = () => {
         .order('order_index');
 
       if (error) {
-        console.error('Error fetching topics:', error);
+        debugConsole.error('Error fetching topics:', error);
         return;
       }
 
       setTopics(data || []);
     } catch (error) {
-      console.error('Error in fetchTopics:', error);
+      debugConsole.error('Error in fetchTopics:', error);
     } finally {
       setLoading(false);
     }
@@ -83,7 +84,7 @@ export const useTopics = () => {
       toast({ title: "Thema erstellt", description: `"${topicData.label}" wurde hinzugefügt.` });
       return data;
     } catch (error: unknown) {
-      console.error('Error creating topic:', error);
+      debugConsole.error('Error creating topic:', error);
       toast({ 
         title: "Fehler", 
         description: error instanceof Error ? error.message : "Thema konnte nicht erstellt werden.", 
@@ -108,7 +109,7 @@ export const useTopics = () => {
       toast({ title: "Thema aktualisiert" });
       return data;
     } catch (error: unknown) {
-      console.error('Error updating topic:', error);
+      debugConsole.error('Error updating topic:', error);
       toast({ 
         title: "Fehler", 
         description: error instanceof Error ? error.message : "Thema konnte nicht aktualisiert werden.", 
@@ -131,7 +132,7 @@ export const useTopics = () => {
       toast({ title: "Thema gelöscht" });
       return true;
     } catch (error: unknown) {
-      console.error('Error deleting topic:', error);
+      debugConsole.error('Error deleting topic:', error);
       toast({ 
         title: "Fehler", 
         description: error instanceof Error ? error.message : "Thema konnte nicht gelöscht werden.", 
@@ -155,7 +156,7 @@ export const useTopics = () => {
       }
       await fetchTopics();
     } catch (error) {
-      console.error('Error updating order:', error);
+      debugConsole.error('Error updating order:', error);
     }
   };
 
@@ -192,7 +193,7 @@ export const useCaseFileTopics = (caseFileId: string | undefined) => {
       if (error) throw error;
       setAssignedTopics(data?.map(t => t.topic_id) || []);
     } catch (error) {
-      console.error('Error fetching case file topics:', error);
+      debugConsole.error('Error fetching case file topics:', error);
     } finally {
       setLoading(false);
     }
@@ -214,7 +215,7 @@ export const useCaseFileTopics = (caseFileId: string | undefined) => {
       setAssignedTopics(prev => [...prev, topicId]);
       return true;
     } catch (error) {
-      console.error('Error assigning topic:', error);
+      debugConsole.error('Error assigning topic:', error);
       return false;
     }
   };
@@ -233,7 +234,7 @@ export const useCaseFileTopics = (caseFileId: string | undefined) => {
       setAssignedTopics(prev => prev.filter(id => id !== topicId));
       return true;
     } catch (error) {
-      console.error('Error removing topic:', error);
+      debugConsole.error('Error removing topic:', error);
       return false;
     }
   };
@@ -260,7 +261,7 @@ export const useCaseFileTopics = (caseFileId: string | undefined) => {
       setAssignedTopics(topicIds);
       return true;
     } catch (error) {
-      console.error('Error setting topics:', error);
+      debugConsole.error('Error setting topics:', error);
       return false;
     }
   };

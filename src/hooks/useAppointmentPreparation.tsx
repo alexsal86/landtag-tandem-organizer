@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
+import { debugConsole } from '@/utils/debugConsole';
 
 export interface AppointmentPreparation {
   id: string;
@@ -81,7 +82,7 @@ export function useAppointmentPreparation(preparationId: string | undefined) {
         });
       }
     } catch (err) {
-      console.error('Error fetching preparation:', err);
+      debugConsole.error('Error fetching preparation:', err);
       setError(err instanceof Error ? err.message : 'Unknown error');
     } finally {
       setLoading(false);
@@ -105,7 +106,7 @@ export function useAppointmentPreparation(preparationId: string | undefined) {
       // Refresh data after update
       await fetchPreparation();
     } catch (err) {
-      console.error('Error updating preparation:', err);
+      debugConsole.error('Error updating preparation:', err);
       throw err;
     }
   };
@@ -125,7 +126,7 @@ export function useAppointmentPreparation(preparationId: string | undefined) {
 
       if (archiveError) throw archiveError;
     } catch (err) {
-      console.error('Error archiving preparation:', err);
+      debugConsole.error('Error archiving preparation:', err);
       throw err;
     }
   };

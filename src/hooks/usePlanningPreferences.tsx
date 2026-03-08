@@ -3,6 +3,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { useTenant } from "@/hooks/useTenant";
 import { toast } from "sonner";
+import { debugConsole } from '@/utils/debugConsole';
 
 export interface DefaultCollaborator {
   user_id: string;
@@ -60,7 +61,7 @@ export const usePlanningPreferences = () => {
         setDefaultCollaborators([]);
       }
     } catch (error) {
-      console.error("Error loading planning preferences:", error);
+      debugConsole.error("Error loading planning preferences:", error);
     } finally {
       setLoading(false);
     }
@@ -92,7 +93,7 @@ export const usePlanningPreferences = () => {
 
       return true;
     } catch (error) {
-      console.error("Error saving planning preferences:", error);
+      debugConsole.error("Error saving planning preferences:", error);
       toast.error("Fehler beim Speichern der Voreinstellungen");
       return false;
     }

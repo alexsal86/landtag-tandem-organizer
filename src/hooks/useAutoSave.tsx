@@ -1,6 +1,7 @@
 import { useEffect, useRef, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
+import { debugConsole } from '@/utils/debugConsole';
 
 interface UseAutoSaveProps {
   documentId: string;
@@ -35,7 +36,7 @@ export function useAutoSave({
         .eq('id', documentId);
 
       if (error) {
-        console.error('Error saving document:', error);
+        debugConsole.error('Error saving document:', error);
         toast({
           title: "Fehler beim Speichern",
           description: "Das Dokument konnte nicht gespeichert werden.",
@@ -45,7 +46,7 @@ export function useAutoSave({
         lastSavedContentRef.current = contentToSave;
       }
     } catch (error) {
-      console.error('Error in auto-save:', error);
+      debugConsole.error('Error in auto-save:', error);
       toast({
         title: "Fehler beim Speichern",
         description: "Ein unerwarteter Fehler ist aufgetreten.",

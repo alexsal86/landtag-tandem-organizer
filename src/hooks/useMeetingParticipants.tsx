@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
+import { debugConsole } from '@/utils/debugConsole';
 
 export interface MeetingParticipant {
   id: string;
@@ -55,7 +56,7 @@ export function useMeetingParticipants(meetingId?: string) {
       
       setParticipants(transformedData);
     } catch (error) {
-      console.error('Error loading participants:', error);
+      debugConsole.error('Error loading participants:', error);
     } finally {
       setLoading(false);
     }
@@ -112,7 +113,7 @@ export function useMeetingParticipants(meetingId?: string) {
       setParticipants(prev => [...prev, newParticipant]);
       return newParticipant;
     } catch (error) {
-      console.error('Error adding participant:', error);
+      debugConsole.error('Error adding participant:', error);
       toast({
         title: "Fehler",
         description: "Teilnehmer konnte nicht hinzugefügt werden.",
@@ -135,7 +136,7 @@ export function useMeetingParticipants(meetingId?: string) {
         prev.map(p => p.id === participantId ? { ...p, ...updates } : p)
       );
     } catch (error) {
-      console.error('Error updating participant:', error);
+      debugConsole.error('Error updating participant:', error);
       toast({
         title: "Fehler",
         description: "Teilnehmer konnte nicht aktualisiert werden.",
@@ -155,7 +156,7 @@ export function useMeetingParticipants(meetingId?: string) {
 
       setParticipants(prev => prev.filter(p => p.id !== participantId));
     } catch (error) {
-      console.error('Error removing participant:', error);
+      debugConsole.error('Error removing participant:', error);
       toast({
         title: "Fehler",
         description: "Teilnehmer konnte nicht entfernt werden.",
