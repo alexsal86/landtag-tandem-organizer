@@ -131,7 +131,7 @@ export const HabitsWidget: React.FC<HabitsWidgetProps> = ({
       // Today's count
       const todayCompletion = habitCompletions.find(c => c.completion_date === today);
       const todayCount = todayCompletion?.count || 0;
-      const isCompletedToday = todayCount >= habit.target_count;
+      const isCompletedToday = todayCount >= (habit.target_count ?? 1);
       
       // Calculate streak
       let currentStreak = 0;
