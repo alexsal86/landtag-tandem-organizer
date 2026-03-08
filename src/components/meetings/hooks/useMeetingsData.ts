@@ -347,7 +347,7 @@ export function useMeetingsData() {
         }
       }
     } catch (error) {
-      console.error('Error loading meeting templates:', error);
+      debugConsole.error('Error loading meeting templates:', error);
     }
   };
 
