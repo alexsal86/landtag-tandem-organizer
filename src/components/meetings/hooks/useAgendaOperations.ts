@@ -153,7 +153,7 @@ export function useAgendaOperations(deps: AgendaOpsDeps) {
       const children = ordered.filter(i => i.parentLocalKey);
 
       const parentInserts = parents.map(p => ({
-        meeting_id: selectedMeeting.id, title: p.title || '', description: p.description || null,
+        meeting_id: selectedMeeting.id!, title: p.title || '', description: p.description || null,
         assigned_to: Array.isArray(p.assigned_to) && p.assigned_to.length > 0 ? p.assigned_to.filter(Boolean) : null,
         notes: p.notes || null, is_completed: Boolean(p.is_completed), is_recurring: Boolean(p.is_recurring),
         task_id: p.task_id || null, order_index: p.order_index, system_type: p.system_type || null,
