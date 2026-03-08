@@ -117,7 +117,7 @@ function ExcelPreview({ url }: { url: string }) {
         const rendered = XLSX.utils.sheet_to_html(firstSheet, { editable: false });
         if (!cancelled) setHtml(rendered);
       } catch (e) {
-        console.error("Excel render error:", e);
+        debugConsole.error("Excel render error:", e);
         if (!cancelled) setError(true);
       } finally {
         if (!cancelled) setLoading(false);
