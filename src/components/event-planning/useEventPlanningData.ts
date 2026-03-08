@@ -939,7 +939,7 @@ export function useEventPlanningData() {
       loadItemComments(itemId);
       loadAllItemCounts();
       toast({ title: "Kommentar hinzugefügt", description: "Ihr Kommentar wurde erfolgreich hinzugefügt." });
-    } catch (error) { debugConsole.error('Error adding comment:', error); toast({ title: "Fehler", description: "Kommentar konnte nicht hinzugefügt werden.", variant: "destructive" }); }
+    } catch (error) { handleAppError(error, { context: 'addItemCommentForItem', toast: { fn: toast, title: 'Fehler', description: 'Kommentar konnte nicht hinzugefügt werden.' } }); }
   };
 
   const loadAllItemCounts = async (items?: ChecklistItem[]) => {
