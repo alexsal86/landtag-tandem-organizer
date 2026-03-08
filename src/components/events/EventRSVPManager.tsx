@@ -279,7 +279,7 @@ export const EventRSVPManager = ({ eventPlanningId, eventTitle }: EventRSVPManag
       setShowEmailEditor(false);
       loadRSVPs();
     } catch (error) {
-      console.error('Error sending invitations:', error);
+      debugConsole.error('Error sending invitations:', error);
       toast({ title: "Fehler", description: "Einladungen konnten nicht versendet werden.", variant: "destructive" });
     } finally {
       setSending(false);
