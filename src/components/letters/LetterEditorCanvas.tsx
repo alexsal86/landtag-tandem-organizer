@@ -1,4 +1,5 @@
 import React, { useEffect, useState, useRef, useCallback } from 'react';
+import { sanitizeRichHtml } from '@/utils/htmlSanitizer';
 import { ZoomIn, ZoomOut, RotateCcw, Layout, Pencil } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -438,7 +439,7 @@ export const LetterEditorCanvas: React.FC<LetterEditorCanvasProps> = ({
     <>
       <div
         className="din5008-content-text"
-        dangerouslySetInnerHTML={{ __html: renderedHtml }}
+        dangerouslySetInnerHTML={{ __html: sanitizeRichHtml(renderedHtml) }}
       />
       {renderClosing()}
       {renderAttachments()}

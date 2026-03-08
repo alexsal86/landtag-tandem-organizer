@@ -108,8 +108,8 @@ export function MessageSystem() {
 
       // Convert received messages to the Message interface format, excluding own authored messages
       const convertedReceivedMessages: Message[] = (receivedMessages || [])
-        .filter(msg => msg.author_id !== user.id) // Exclude own messages
-        .map(msg => ({
+        .filter((msg: any) => msg.author_id !== user.id) // Exclude own messages
+        .map((msg: any) => ({
           id: msg.id,
           title: msg.title,
           content: msg.content,
@@ -127,15 +127,15 @@ export function MessageSystem() {
         }));
 
       // Separate read messages for user archive
-      const unreadMessages = convertedReceivedMessages.filter(msg => !msg.has_read);
-      const readMessages = convertedReceivedMessages.filter(msg => msg.has_read);
+      const unreadMessages = convertedReceivedMessages.filter((msg: any) => !msg.has_read);
+      const readMessages = convertedReceivedMessages.filter((msg: any) => msg.has_read);
 
       setActiveMessages(unreadMessages);
       setArchivedUserMessages(readMessages);
       
       // For authored messages, fetch detailed recipient and confirmation data
       const sentMessagesWithDetails = await Promise.all(
-        (authoredMessages || []).map(async (msg) => {
+        (authoredMessages || []).map(async (msg: any) => {
           let recipients: any[] = [];
           let confirmations: any[] = [];
 

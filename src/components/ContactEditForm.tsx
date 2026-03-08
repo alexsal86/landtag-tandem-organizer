@@ -295,7 +295,7 @@ export function ContactEditForm({ contact, onSuccess, onCancel }: ContactEditFor
       }
 
       // Clean date fields - convert empty strings to null for database
-      const cleanedUpdateData = { ...updateData };
+      const cleanedUpdateData: Record<string, any> = { ...updateData };
       const dateFields = ['birthday', 'founding_date', 'contract_start_date', 'contract_end_date', 'gdpr_consent_date'];
       
       dateFields.forEach(field => {

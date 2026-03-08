@@ -41,7 +41,7 @@ export const useTemplateFormTabs = ({
   editingTemplate, senderInfos, infoBlocks,
   handleCreateTemplate, resetForm, setShowCreateDialog,
   getBlockItems, setBlockItems, currentTenant, toast,
-}) => {
+}: TemplateFormTabsProps) => {
   const isMobile = useIsMobile();
 
   const getMarginsForRect = useCallback((rect: TabRect): MarginKey[] => {
@@ -213,7 +213,7 @@ export const useTemplateFormTabs = ({
             <SelectTrigger><SelectValue placeholder="Absenderinformation auswählen..." /></SelectTrigger>
             <SelectContent>
               <SelectItem value="none">Keine Auswahl</SelectItem>
-              {senderInfos.map((sender) => (
+              {senderInfos.map((sender: SenderInformation) => (
                 <SelectItem key={sender.id} value={sender.id}>{sender.name} - {sender.organization}{sender.is_default && " (Standard)"}</SelectItem>
               ))}
             </SelectContent>
@@ -222,7 +222,7 @@ export const useTemplateFormTabs = ({
         <div>
           <Label>Standard-Informationsblöcke</Label>
           <div className="space-y-2 max-h-40 overflow-y-auto">
-            {infoBlocks.map((block) => (
+            {infoBlocks.map((block: InformationBlock) => (
               <div key={block.id} className="flex items-center space-x-2">
                 <Checkbox id={`block-${block.id}`} checked={formData.default_info_blocks.includes(block.id)} onCheckedChange={(checked) => {
                   if (checked) { setFormData((prev: any) => ({ ...prev, default_info_blocks: [...prev.default_info_blocks, block.id] })); }

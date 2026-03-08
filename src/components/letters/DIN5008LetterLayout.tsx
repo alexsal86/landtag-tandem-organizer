@@ -158,7 +158,7 @@ export const DIN5008LetterLayout: React.FC<DIN5008LetterLayoutProps> = ({
       // Check if this is the simple {name, address} format
       if (address.address && typeof address.address === 'string') {
         // Split address string into lines and filter empty lines
-        const addressLines = address.address.split('\n').filter(line => line.trim());
+        const addressLines = address.address.split('\n').filter((line: string) => line.trim());
         
         // Prevent duplication: skip first line if it matches the name
         if (addressLines.length > 0 && addressLines[0].trim() === address.name?.trim()) {
@@ -189,7 +189,7 @@ export const DIN5008LetterLayout: React.FC<DIN5008LetterLayoutProps> = ({
       if (address.recipient_name) parts.push(address.recipient_name);
       if (address.recipient_address) {
         // Split address string into lines and add each non-empty line
-        const addressLines = address.recipient_address.split('\n').filter(line => line.trim());
+        const addressLines = address.recipient_address.split('\n').filter((line: string) => line.trim());
         parts.push(...addressLines);
       }
     }
@@ -639,7 +639,7 @@ export const DIN5008LetterLayout: React.FC<DIN5008LetterLayoutProps> = ({
                 </div>
               ) : senderInfo?.return_address_line ? (
                 <div style={{ fontSize: `${returnAddressFontSizePt}pt`, lineHeight: '1.0', maxWidth: '75mm' }}>
-                  {senderInfo.return_address_line.split('\n').filter((line) => line.trim()).map((line, index, arr) => (
+                  {senderInfo.return_address_line.split('\n').filter((line: string) => line.trim()).map((line: string, index: number, arr: string[]) => (
                     <div key={`${line}-${index}`}>
                       <span style={index === arr.length - 1 ? { display: 'inline-block', borderBottom: '0.5pt solid #000', paddingBottom: '0.3mm' } : { display: 'inline-block' }}>
                         {line}

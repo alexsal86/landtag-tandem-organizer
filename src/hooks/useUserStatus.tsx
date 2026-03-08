@@ -437,7 +437,7 @@ export const useUserStatus = () => {
       };
     }
 
-    const fallbacks = {
+    const fallbacks: Record<string, { emoji: string; color: string; label: string }> = {
       online: { emoji: '🟢', color: 'hsl(142, 76%, 36%)', label: 'Online' },
       meeting: { emoji: '🔴', color: 'hsl(0, 84%, 60%)', label: 'In Besprechung' },
       break: { emoji: '🟡', color: 'hsl(48, 96%, 53%)', label: 'Pause' },

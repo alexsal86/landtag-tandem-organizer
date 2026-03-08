@@ -123,14 +123,15 @@ export function TaskArchiveView() {
         .select('decision_id, response_type')
         .in('decision_id', decisionIds);
 
-      const responseCounts = (responses || []).reduce((acc, response) => {
+      const responseCounts = (responses || []).reduce<Record<string, { yes: number; no: number; question: number }>>((acc, response) => {
         const decisionId = response.decision_id;
         if (!acc[decisionId]) {
           acc[decisionId] = { yes: 0, no: 0, question: 0 };
         }
-        acc[decisionId][response.response_type]++;
+        const rt = response.response_type as 'yes' | 'no' | 'question';
+        acc[decisionId][rt]++;
         return acc;
-      }, {} as Record<string, { yes: number; no: number; question: number }>);
+      }, {});
 
       const formattedDecisions: ArchivedDecision[] = (data || []).map(decision => ({
         id: decision.id,

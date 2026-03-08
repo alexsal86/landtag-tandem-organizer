@@ -50,7 +50,7 @@ export function AppointmentPreparationDataTab({
 }: AppointmentPreparationDataTabProps) {
   const extendedPreparation = preparation as ExtendedAppointmentPreparation;
   
-  const [editData, setEditData] = useState({
+  const [editData, setEditData] = useState<Record<string, string>>({
     ...preparation.preparation_data,
     contact_name: (extendedPreparation.contact_name || ""),
     contact_info: (extendedPreparation.contact_info || ""),
@@ -609,7 +609,7 @@ export function AppointmentPreparationDataTab({
                       <div key={field.key} className="space-y-2">
                         <label className="text-sm font-medium">{field.label}</label>
                         
-                        {field.type === "select" ? (
+                        {(field as any).type === "select" ? (
                           <div className="space-y-2">
                             <Select
                               value={editData[field.key] || ""}
@@ -635,7 +635,7 @@ export function AppointmentPreparationDataTab({
                               />
                             )}
                           </div>
-                        ) : field.multiline ? (
+                        ) : (field as any).multiline ? (
                           <Textarea
                             value={editData[field.key] || ""}
                             onChange={(e) => handleFieldChange(field.key, e.target.value)}

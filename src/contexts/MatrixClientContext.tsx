@@ -766,7 +766,7 @@ export function MatrixClientProvider({ children }: { children: ReactNode }) {
           try {
             const localpart = creds.userId.split(':')[0].substring(1);
             await crypto.bootstrapCrossSigning({
-              authUploadDeviceSigningKeys: async (makeRequest) => {
+              authUploadDeviceSigningKeys: async (makeRequest: any) => {
                 await (makeRequest as any)({
                   type: 'm.login.password',
                   identifier: { type: 'm.id.user', user: localpart },
