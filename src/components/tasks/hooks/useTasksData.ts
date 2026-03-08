@@ -301,9 +301,11 @@ export function useTasksData() {
 
       const taskTitles: { [taskId: string]: string } = {};
       if (taskSnoozesData && taskSnoozesData.length > 0) {
-        const taskIds = taskSnoozesData.map(s => s.task_id);
-        const { data: tasksData } = await supabase.from('tasks').select('id, title').in('id', taskIds);
-        tasksData?.forEach(task => { taskTitles[task.id] = task.title; });
+        const taskIds = taskSnoozesData.map(s => s.task_id).filter((id): id is string => id != null);
+        if (taskIds.length > 0) {
+          const { data: tasksData } = await supabase.from('tasks').select('id, title').in('id', taskIds);
+          tasksData?.forEach(task => { taskTitles[task.id] = task.title; });
+        }
       }
 
       setAllSnoozes([
@@ -311,7 +313,7 @@ export function useTasksData() {
           id: snooze.id,
           task_id: snooze.task_id,
           snoozed_until: snooze.snoozed_until,
-          task_title: taskTitles[snooze.task_id] || 'Unbekannte Aufgabe',
+          task_title: snooze.task_id ? (taskTitles[snooze.task_id] || 'Unbekannte Aufgabe') : 'Unbekannte Aufgabe',
         })),
         ...(subtaskSnoozesData || []).map(snooze => ({
           id: snooze.id,
