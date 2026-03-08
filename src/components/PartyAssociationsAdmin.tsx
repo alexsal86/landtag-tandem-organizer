@@ -23,6 +23,7 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
+import { debugConsole } from '@/utils/debugConsole';
 import { Plus, Edit, Trash2, MapPin } from 'lucide-react';
 import { PartyAssociation } from '@/hooks/usePartyAssociations';
 import { useTenant } from '@/hooks/useTenant';
