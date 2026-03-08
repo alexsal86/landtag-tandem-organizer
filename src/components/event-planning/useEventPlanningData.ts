@@ -200,7 +200,7 @@ export function useEventPlanningData() {
 
     try {
       setLoading(true);
-      const timeoutId = setTimeout(() => { console.error('Supabase query timeout'); setLoading(false); }, 10000);
+      const timeoutId = setTimeout(() => { debugConsole.error('Supabase query timeout'); setLoading(false); }, 10000);
 
       const { data, error } = await supabase
         .from("event_plannings")
