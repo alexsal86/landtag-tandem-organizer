@@ -333,7 +333,7 @@ export function useDashboardLayout() {
     }
 
     if (!currentTenant?.id) {
-      console.log('❌ No tenant ID available');
+      
       toast.error('Kein Mandant ausgewählt');
       return false;
     }
