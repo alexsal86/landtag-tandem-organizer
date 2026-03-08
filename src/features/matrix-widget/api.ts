@@ -53,7 +53,7 @@ export async function saveWidgetMessageFeedback(params: {
       bot_reply: params.botReply,
       source: "matrix_widget_prototype",
     },
-  });
+  }]);
 }
 
 export async function fetchWidgetFeedbackStats(tenantId: string): Promise<WidgetFeedbackStats> {
