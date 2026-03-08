@@ -330,7 +330,7 @@ export function useCombinedTimeEntries({
         return;
       }
       if (vacationDates.has(dateStr)) {
-        console.warn(`Arbeitseintrag an Urlaubstag ignoriert: ${dateStr}`);
+        debugConsole.warn(`Arbeitseintrag an Urlaubstag ignoriert: ${dateStr}`);
         return;
       }
       if (overtimeDates.has(dateStr)) {
