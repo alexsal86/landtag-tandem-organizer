@@ -76,7 +76,7 @@ export function DashboardCoverImage({ userId }: DashboardCoverImageProps) {
       setCoverUrl(randomUrl);
       setPosition("center");
     } catch (error) {
-      console.error("Error loading cover image:", error);
+      debugConsole.error("Error loading cover image:", error);
       // Fallback to a simple gradient
       setCoverUrl(null);
     } finally {
