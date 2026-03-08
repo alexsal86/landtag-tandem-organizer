@@ -949,9 +949,9 @@ export function MyWorkCasesWorkspace() {
                                   <Draggable key={item.id} draggableId={item.id} index={index}>
                                     {(dragProvided, dragSnapshot) => (
                                       <div
-                                        ref={dragProvided.innerRef}
+                                        ref={(el) => { dragProvided.innerRef(el); if (isHighlighted(item.id) && el) highlightRef(item.id)(el); }}
                                         {...dragProvided.draggableProps}
-                                        className={cn("border-b", dragSnapshot.isDragging && "opacity-80 shadow-lg rounded-md bg-background")}
+                                        className={cn("border-b", dragSnapshot.isDragging && "opacity-80 shadow-lg rounded-md bg-background", isHighlighted(item.id) && "notification-highlight")}
                                       >
                                         <ContextMenu>
                                           <ContextMenuTrigger asChild>
