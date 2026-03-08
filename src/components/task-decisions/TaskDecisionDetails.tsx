@@ -55,7 +55,7 @@ interface Participant {
     response_type: string;
     comment: string | null;
     created_at: string;
-    creator_response?: string;
+    creator_response?: string | null;
     parent_response_id?: string | null;
   }>;
 }
