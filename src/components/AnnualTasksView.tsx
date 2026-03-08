@@ -180,10 +180,10 @@ export function AnnualTasksView() {
       }
 
       const { data: completionsData, error: completionsError } = await supabase
-        .from("annual_task_completions" as any)
+        .from("annual_task_completions")
         .select("*")
         .in("annual_task_id", taskIds)
-        .eq("year", currentYear) as { data: AnnualTaskCompletion[] | null; error: any };
+        .eq("year", currentYear);
 
       if (completionsError) throw completionsError;
 
