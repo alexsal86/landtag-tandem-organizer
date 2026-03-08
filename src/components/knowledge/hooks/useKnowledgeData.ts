@@ -61,7 +61,7 @@ export function useKnowledgeData() {
   const fetchAllDocumentTopics = useCallback(async (docIds: string[]) => {
     if (docIds.length === 0) return;
     const { data, error } = await supabase.from('knowledge_document_topics').select('document_id, topic_id').in('document_id', docIds);
-    if (error) { console.error('Error fetching document topics:', error); return; }
+    if (error) { debugConsole.error('Error fetching document topics:', error); return; }
     const map: Record<string, string[]> = {};
     data?.forEach(item => { if (!map[item.document_id]) map[item.document_id] = []; map[item.document_id].push(item.topic_id); });
     setDocumentTopicsMap(map);
@@ -69,7 +69,7 @@ export function useKnowledgeData() {
 
   const fetchDocumentTopicsById = useCallback(async (docId: string) => {
     const { data, error } = await supabase.from('knowledge_document_topics').select('topic_id').eq('document_id', docId);
-    if (error) { console.error('Error fetching document topics:', error); return; }
+    if (error) { debugConsole.error('Error fetching document topics:', error); return; }
     setDocumentTopicsMap(prev => ({ ...prev, [docId]: (data ?? []).map(i => i.topic_id) }));
   }, []);
 
