@@ -69,22 +69,15 @@ export function EmailTemplateManager() {
     try {
       const { data, error } = await supabase
         .from('email_templates')
-        .select('id, tenant_id, name, subject, body_html, category, variables, is_active, created_at, updated_at')
+        .select('id, tenant_id, name, subject, body_html, variables, is_active, created_at, updated_at')
         .eq('tenant_id', currentTenant.id)
         .order('created_at', { ascending: false });
 
       if (error) throw error;
       setTemplates((data || []).map(t => ({
-        id: t.id,
-        tenant_id: t.tenant_id,
-        name: t.name,
-        subject: t.subject,
-        body_html: t.body_html,
-        category: t.category || 'general',
-        variables: Array.isArray(t.variables) ? t.variables : [],
-        is_active: t.is_active,
-        created_at: t.created_at,
-        updated_at: t.updated_at,
+        ...t,
+        category: (t as any).category || 'general',
+        variables: Array.isArray(t.variables) ? t.variables : []
       })) as EmailTemplate[]);
     } catch (error: any) {
       toast({
