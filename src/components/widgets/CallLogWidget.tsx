@@ -210,7 +210,7 @@ export const CallLogWidget: React.FC<CallLogWidgetProps> = ({
 
           const { data: subtaskData, error: subtaskError } = await supabase
             .from('tasks')
-            .insert({
+            .insert([{
               user_id: user.id,
               title: `Follow-up: ${contactName}`,
               description: `Grund: ${notes}\nTermin: ${followUpDate ? new Date(followUpDate).toLocaleDateString('de-DE') : 'Bald'}\nHauptaufgabe: Call Follow-ups`,
@@ -220,7 +220,7 @@ export const CallLogWidget: React.FC<CallLogWidgetProps> = ({
               due_date: followUpDate ? new Date(followUpDate).toISOString() : new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),
               call_log_id: data.id,
               tenant_id: currentTenant?.id || 'default-tenant-id'
-          })
+          }])
           .select('id')
           .single();
 
