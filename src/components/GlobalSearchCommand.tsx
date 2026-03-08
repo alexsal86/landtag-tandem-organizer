@@ -255,7 +255,7 @@ export function GlobalSearchCommand() {
       let query = supabase
         .from('documents')
         .select('id, title, description, category, status, file_name, document_type, file_type, tags')
-        .eq('tenant_id', currentTenant!.id)
+        .eq('tenant_id', currentTenant?.id ?? '')
         .or(`title.ilike.%${searchQuery}%,description.ilike.%${searchQuery}%,file_name.ilike.%${searchQuery}%,document_type.ilike.%${searchQuery}%,file_type.ilike.%${searchQuery}%`);
       
       if (filters.category) {
