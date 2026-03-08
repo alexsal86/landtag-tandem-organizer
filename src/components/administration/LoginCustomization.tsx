@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import type { UnsplashAttribution } from '@/components/dashboard/UnsplashImagePicker';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
