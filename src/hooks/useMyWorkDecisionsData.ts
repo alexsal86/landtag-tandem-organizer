@@ -248,13 +248,13 @@ export function useMyWorkDecisionsData(userId?: string) {
               avatar_url: profileMap.get(p.user_id)?.avatar_url || null,
             },
             responses: (p.task_decision_responses || [])
-              .sort((a: any, b: any) => {
+              .sort((a, b) => {
                 const aIsChild = !!a.parent_response_id;
                 const bIsChild = !!b.parent_response_id;
                 if (aIsChild !== bIsChild) return aIsChild ? 1 : -1;
                 return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
               })
-              .map((r: any) => ({ ...r, response_type: r.response_type as string })),
+              .map((r) => ({ ...r, response_type: r.response_type as string })),
           });
         });
 
