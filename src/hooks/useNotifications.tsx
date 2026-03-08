@@ -387,10 +387,8 @@ export const useNotifications = () => {
         const p256dhBase64 = btoa(String.fromCharCode(...new Uint8Array(p256dh)));
         const authBase64 = btoa(String.fromCharCode(...new Uint8Array(auth)));
 
-        console.log('🔑 Keys converted to base64:', {
-          p256dh_length: p256dhBase64.length,
-          auth_length: authBase64.length
-        });
+
+        // Save to database
 
         // Save to database
         const { error } = await supabase
