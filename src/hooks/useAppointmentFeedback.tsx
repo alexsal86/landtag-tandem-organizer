@@ -131,7 +131,7 @@ export const useAppointmentFeedback = () => {
         .order('start_time', { ascending: false });
 
       if (eventsError) {
-        console.error('Error fetching external events:', eventsError);
+        debugConsole.error('Error fetching external events:', eventsError);
         return [];
       }
 
