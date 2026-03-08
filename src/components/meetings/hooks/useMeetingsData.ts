@@ -1,5 +1,6 @@
 import { useState, useEffect, useMemo, useRef } from "react";
 import { debugConsole } from '@/utils/debugConsole';
+import { handleAppError } from '@/utils/errorHandler';
 import { useSearchParams } from "react-router-dom";
 import { useNotificationHighlight } from "@/hooks/useNotificationHighlight";
 import { useAuth } from "@/hooks/useAuth";
