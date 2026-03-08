@@ -127,16 +127,18 @@ export function useLetterTemplateData() {
     const cleanedFooterBlocks = stripBlobUrls(formData.footer_blocks);
     const cleanedLayoutSettings = stripBlobUrlsFromLayoutSettings(normalizeLayoutBlockContentImages(formData.layout_settings));
     try {
-      const { error } = await supabase.from('letter_templates').insert({
+      // Supabase JSON columns require flexible types - cast at DB boundary
+      const insertData: Record<string, unknown> = {
         name: formData.name.trim(), letterhead_html: formData.letterhead_html, letterhead_css: formData.letterhead_css,
         response_time_days: formData.response_time_days, tenant_id: currentTenant.id, created_by: user.id,
         is_default: false, is_active: true, default_sender_id: formData.default_sender_id || null,
         default_info_blocks: formData.default_info_blocks.length > 0 ? formData.default_info_blocks : null,
-        header_layout_type: cleanedHeaderElements.length > 0 ? 'structured' : 'html',
-        header_text_elements: cleanedHeaderElements.length > 0 ? cleanedHeaderElements : null,
-        footer_blocks: Array.isArray(cleanedFooterBlocks) ? (cleanedFooterBlocks.length > 0 ? cleanedFooterBlocks : null) : cleanedFooterBlocks,
-        layout_settings: cleanedLayoutSettings as unknown as Record<string, unknown>,
-      } as Record<string, unknown>);
+        header_layout_type: Array.isArray(cleanedHeaderElements) && cleanedHeaderElements.length > 0 ? 'structured' : 'html',
+        header_text_elements: Array.isArray(cleanedHeaderElements) && cleanedHeaderElements.length > 0 ? cleanedHeaderElements : null,
+        footer_blocks: Array.isArray(cleanedFooterBlocks) ? ((cleanedFooterBlocks as unknown[]).length > 0 ? cleanedFooterBlocks : null) : cleanedFooterBlocks,
+        layout_settings: cleanedLayoutSettings,
+      };
+      const { error } = await supabase.from('letter_templates').insert(insertData as typeof insertData & { name: string; letterhead_html: string; letterhead_css: string; response_time_days: number; tenant_id: string; created_by: string });
       if (error) throw error;
       toast({ title: "Template erstellt" });
       setShowCreateDialog(false);
