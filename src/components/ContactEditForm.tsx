@@ -284,7 +284,7 @@ export function ContactEditForm({ contact, onSuccess, onCancel }: ContactEditFor
             fetchOrganizations();
           }
         } catch (orgError) {
-          console.warn('Could not create organization:', orgError);
+          debugConsole.warn('Could not create organization:', orgError);
         }
       }
 
