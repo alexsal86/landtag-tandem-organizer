@@ -81,7 +81,7 @@ export const DecisionEmailTemplates = () => {
       if (error) throw error;
       setTemplate(data);
     } catch (error) {
-      console.error('Error creating default template:', error);
+      debugConsole.error('Error creating default template:', error);
     }
   };
 
