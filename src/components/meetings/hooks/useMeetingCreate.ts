@@ -104,7 +104,7 @@ export function useMeetingCreate(deps: UseMeetingCreateDeps) {
             toast({ title: "Notizen verknüpft", description: `${pendingNotes.length} vorgemerkte Notiz(en) wurden automatisch hinzugefügt.` });
           }
         }
-      } catch (e) { console.error('Error processing pending notes:', e); }
+      } catch (e) { debugConsole.error('Error processing pending notes:', e); }
 
       // Auto-create future recurring meetings
       if (newMeetingRecurrence.enabled && newMeeting.template_id) {
