@@ -441,7 +441,7 @@ export function ContactEditForm({ contact, onSuccess, onCancel }: ContactEditFor
         });
 
       if (uploadError) {
-        console.error('Upload error:', uploadError);
+        debugConsole.error('Upload error:', uploadError);
         throw uploadError;
       }
 
