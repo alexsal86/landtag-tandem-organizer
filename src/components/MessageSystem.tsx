@@ -92,7 +92,7 @@ export function MessageSystem() {
       const { data: receivedMessages, error: receivedError } = receivedResponse;
 
       if (receivedError) {
-        console.error('Error fetching received messages:', receivedError);
+        debugConsole.error('Error fetching received messages:', receivedError);
         return;
       }
 
