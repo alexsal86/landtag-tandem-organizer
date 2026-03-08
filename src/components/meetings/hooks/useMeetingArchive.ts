@@ -344,7 +344,7 @@ export function useMeetingArchive(deps: ArchiveDeps) {
               return s.appointment_id;
             });
             const externalEventIds = starredAppts.filter(s => s.external_event_id).map(s => {
-              starredAssignmentMap.set(s.external_event_id!, (s as any).assigned_to || null);
+              starredAssignmentMap.set(s.external_event_id!, s.assigned_to || null);
               return s.external_event_id;
             });
 
