@@ -235,8 +235,6 @@ export const TaskDecisionCreator = ({
 
     setIsLoading(true);
     try {
-      console.log('Starting decision creation...');
-      
       // Get current user first and validate
       const { data: userData, error: userError } = await supabase.auth.getUser();
       if (userError) {
