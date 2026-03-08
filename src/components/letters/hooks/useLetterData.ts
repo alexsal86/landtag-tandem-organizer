@@ -160,7 +160,7 @@ export function useLetterData({ isOpen, tenantId, letterId }: UseLetterDataOptio
         .from('profiles')
         .select('user_id, display_name, avatar_url')
         .in('user_id', userIds);
-      if (error) { console.error('Error fetching user profiles:', error); return; }
+      if (error) { debugConsole.error('Error fetching user profiles:', error); return; }
       const profilesMap = profiles?.reduce((acc, profile) => {
         acc[profile.user_id] = { display_name: profile.display_name || 'Unbekannter Benutzer', avatar_url: profile.avatar_url };
         return acc;
