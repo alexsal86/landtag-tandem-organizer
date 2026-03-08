@@ -231,7 +231,7 @@ export const MatrixSettings: React.FC = () => {
         description: `Matrix-Abonnement wurde ${isActive ? "aktiviert" : "deaktiviert"}.`,
       });
     } catch (error) {
-      console.error("Error updating subscription:", error);
+      debugConsole.error("Error updating subscription:", error);
       toast({
         title: "Fehler",
         description: "Ein unerwarteter Fehler ist aufgetreten.",
