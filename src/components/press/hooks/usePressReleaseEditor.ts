@@ -223,13 +223,14 @@ export function usePressReleaseEditor({ pressReleaseId, initialDraft, onBack }: 
         setPressRelease(newPr);
         toast({ title: "Pressemitteilung erstellt" });
       }
-    } catch (error: any) {
-      if (error?.message?.includes("Failed to fetch") || error?.message?.includes("NetworkError")) {
+    } catch (error: unknown) {
+      const msg = error instanceof Error ? error.message : String(error);
+      if (msg?.includes("Failed to fetch") || msg?.includes("NetworkError")) {
         if (pressRelease) setTimeout(() => loadPressRelease(pressRelease.id), 500);
         toast({ title: "Gespeichert" });
         return;
       }
-      toast({ title: "Fehler beim Speichern", description: error.message, variant: "destructive" });
+      toast({ title: "Fehler beim Speichern", description: msg, variant: "destructive" });
     } finally {
       setSaving(false);
     }
