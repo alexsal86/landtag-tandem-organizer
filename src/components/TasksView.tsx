@@ -182,7 +182,7 @@ export function TasksView() {
   // Load tasks from database
   useEffect(() => {
     const loadAllData = async () => {
-      console.log('Starting to load all data...');
+      
       
       // Load users first, since we need them for UUID resolution
       await loadUsers();
