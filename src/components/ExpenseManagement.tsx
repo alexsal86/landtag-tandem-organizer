@@ -179,7 +179,7 @@ export const ExpenseManagement = () => {
   };
 
   const addExpense = async () => {
-    console.log('Adding expense with data:', newExpense);
+    
     
     if (!newExpense.amount || !newExpense.category_id) {
       toast({ title: "Fehler", description: "Betrag und Kategorie sind erforderlich", variant: "destructive" });
