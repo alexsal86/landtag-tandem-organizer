@@ -254,7 +254,7 @@ export function AutomationRulesManager() {
 
   const loadRunSteps = async (runId: string) => {
     const { data, error } = await supabase
-      .from("automation_rule_run_steps" as any)
+      .from("automation_rule_run_steps")
       .select("id, run_id, step_order, step_type, status, result_payload, error_message")
       .eq("run_id", runId)
       .order("step_order", { ascending: true });
