@@ -80,7 +80,7 @@ export function LoginCustomization() {
         });
       }
     } catch (error) {
-      console.error('Error loading data:', error);
+      debugConsole.error('Error loading data:', error);
       toast({
         title: 'Fehler',
         description: 'Daten konnten nicht geladen werden.',
