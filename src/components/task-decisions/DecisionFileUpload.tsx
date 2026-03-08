@@ -448,7 +448,7 @@ export function DecisionFileUpload({
           onPreviewOpen={() => setPreviewDialog({ open: true, filePath: file.file_path, fileName: file.file_name })}
           onDownload={() => downloadFile(file.file_path, file.file_name)}
           onRemove={file.uploaded_by ? async () => {
-            if (await canDelete(file.uploaded_by)) {
+            if (await canDelete(file.uploaded_by!)) {
               removeFile(file.id!, file.file_path);
             } else {
               toast({
