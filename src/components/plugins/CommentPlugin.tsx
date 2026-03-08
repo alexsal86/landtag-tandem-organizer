@@ -387,7 +387,7 @@ export function CommentPlugin({ documentId }: { documentId?: string }) {
       // Add highlights for existing comments
       highlightExistingComments(commentsWithProfiles);
     } catch (error) {
-      console.error('Error loading comments:', error);
+      debugConsole.error('Error loading comments:', error);
       toast({
         title: "Fehler",
         description: "Kommentare konnten nicht geladen werden.",
