@@ -1022,7 +1022,7 @@ export function useEventPlanningData() {
       a.href = url; a.download = doc.file_name;
       document.body.appendChild(a); a.click();
       document.body.removeChild(a); URL.revokeObjectURL(url);
-    } catch (error) { debugConsole.error('Error downloading document:', error); toast({ title: "Fehler", description: "Das Dokument konnte nicht heruntergeladen werden.", variant: "destructive" }); }
+    } catch (error) { handleAppError(error, { context: 'downloadItemDocument', toast: { fn: toast, title: 'Fehler', description: 'Das Dokument konnte nicht heruntergeladen werden.' } }); }
   };
 
   const deleteItemComment = async (comment: PlanningComment) => {
