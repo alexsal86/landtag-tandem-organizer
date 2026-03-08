@@ -245,7 +245,7 @@ export function useAgendaOperations(deps: AgendaOpsDeps) {
       }
       toast({ title: "Aufgabe hinzugefügt", description: `"${task.title}" wurde als Unterpunkt zu "${parentItem.title}" hinzugefügt.` });
     } catch (error) {
-      console.error('Error saving task to agenda:', error);
+      debugConsole.error('Error saving task to agenda:', error);
       toast({ title: "Fehler", description: "Aufgabe konnte nicht gespeichert werden.", variant: "destructive" });
     }
   };
