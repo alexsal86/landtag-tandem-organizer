@@ -3,6 +3,7 @@ import { Button } from "@/components/ui/button";
 import { Download } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { generateLetterDOCX } from "@/utils/letterDOCXGenerator";
+import { debugConsole } from '@/utils/debugConsole';
 
 interface Letter {
   id: string;
