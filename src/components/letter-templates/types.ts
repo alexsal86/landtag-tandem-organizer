@@ -14,10 +14,11 @@ export interface LetterTemplate {
   updated_at: string;
   tenant_id: string;
   default_sender_id?: string | null;
-  default_info_blocks?: any;
-  header_layout_type?: any;
-  header_text_elements?: any;
-  layout_settings?: any;
+  default_info_blocks?: string[] | null;
+  header_layout_type?: string | null;
+  header_text_elements?: unknown;
+  footer_blocks?: unknown;
+  layout_settings?: LetterLayoutSettings | null;
 }
 
 export interface SenderInformation {
@@ -70,9 +71,10 @@ export const extractStoragePathFromUrl = (value?: string | null): string | null 
   }
 };
 
-export const normalizeImageItem = (item: any): any => {
-  if (!item || item.type !== 'image') return item;
-  const storagePath = item.storagePath || extractStoragePathFromUrl(item.imageUrl);
+export const normalizeImageItem = <T>(item: T): T => {
+  if (!item || typeof item !== 'object' || (item as Record<string, unknown>).type !== 'image') return item;
+  const rec = item as Record<string, unknown>;
+  const storagePath = rec.storagePath as string | undefined || extractStoragePathFromUrl(rec.imageUrl as string | undefined);
   if (!storagePath) return item;
   const { data: { publicUrl } } = supabase.storage.from('letter-assets').getPublicUrl(storagePath);
   return { ...item, storagePath, imageUrl: publicUrl };
@@ -102,7 +104,7 @@ export const normalizeLayoutBlockContentImages = (layoutSettings: LetterLayoutSe
     },
   });
 
-  const blockContent = ((layoutSettings as any).blockContent || {}) as Record<string, any[]>;
+  const blockContent = ((layoutSettings as unknown as Record<string, unknown>).blockContent || {}) as Record<string, unknown[]>;
   const normalizedContent = Object.fromEntries(
     Object.entries(blockContent).map(([key, items]) => {
       if (!Array.isArray(items)) return [key, items];
@@ -116,7 +118,7 @@ export const normalizeLayoutBlockContentImages = (layoutSettings: LetterLayoutSe
 
 const DEFAULT_ATTACHMENT_PREVIEW_LINES = ['- Antrag_2026-02-15.pdf', '- Stellungnahme_Verkehrsausschuss.docx', '- Anlagenverzeichnis.xlsx'];
 
-export const createDefaultAttachmentElements = () => ([{
+export const createDefaultAttachmentElements = (): Record<string, unknown>[] => ([{
   id: `attachments-default-${Date.now()}`,
   type: 'text',
   x: 0,
@@ -129,6 +131,6 @@ export const createDefaultAttachmentElements = () => ([{
   fontWeight: 'bold',
   color: '#000000',
   textLineHeight: 1.2,
-}] as any[]);
+}]);
 
 export { DEFAULT_ATTACHMENT_PREVIEW_LINES };

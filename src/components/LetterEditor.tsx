@@ -667,8 +667,8 @@ const LetterEditor: React.FC<LetterEditorProps> = ({ letter, isOpen, onClose, on
                   onSubjectChange={(value) => setEditedLetter(prev => ({ ...prev, subject: value, title: value }))}
                   onRecipientNameChange={(value) => setEditedLetter(prev => ({ ...prev, recipient_name: value }))}
                   onRecipientAddressChange={(value) => setEditedLetter(prev => ({ ...prev, recipient_address: value }))}
-                  onRecipientContactSelect={(contact) => {
-                    const recipientAddress = (contact as any).formatted_address || contact.address || '';
+                   onRecipientContactSelect={(contact) => {
+                    const recipientAddress = ('formatted_address' in contact ? (contact as { formatted_address?: string }).formatted_address : undefined) || contact.address || '';
                     setEditedLetter(prev => ({ ...prev, contact_id: contact.id, recipient_name: contact.name, recipient_address: recipientAddress }));
                   }}
                   onSenderChange={(value) => setEditedLetter(prev => ({ ...prev, sender_info_id: value || undefined }))}
@@ -707,7 +707,7 @@ const LetterEditor: React.FC<LetterEditorProps> = ({ letter, isOpen, onClose, on
         onReviewAssigned={async () => {
           fetchCollaborators();
           setShowAssignmentDialog(false);
-          setEditedLetter(prev => ({ ...prev, status: 'review' as any }));
+          setEditedLetter(prev => ({ ...prev, status: 'review' }));
           setIsProofreadingMode(true);
           setSaving(true);
           try {
@@ -717,7 +717,7 @@ const LetterEditor: React.FC<LetterEditorProps> = ({ letter, isOpen, onClose, on
         }}
         onSkipReview={async () => {
           setShowAssignmentDialog(false);
-          setEditedLetter(prev => ({ ...prev, status: 'approved' as any }));
+          setEditedLetter(prev => ({ ...prev, status: 'approved' }));
           setIsProofreadingMode(false);
           setSaving(true);
           try {

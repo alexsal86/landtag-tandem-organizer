@@ -332,7 +332,7 @@ export function DistrictDetailDialog({ district, open, onOpenChange }: DistrictD
                       <div>
                         <CardTitle className="text-base">{note.title}</CardTitle>
                         <CardDescription className="flex items-center gap-2">
-                          <Badge variant={getPriorityColor(note.priority) as any}>
+                          <Badge variant={getPriorityColor(note.priority) as "default" | "secondary" | "destructive" | "outline"}>
                             {note.priority === "high" ? "Hoch" : note.priority === "medium" ? "Mittel" : "Niedrig"}
                           </Badge>
                           <Badge variant="outline">{getCategoryLabel(note.category)}</Badge>

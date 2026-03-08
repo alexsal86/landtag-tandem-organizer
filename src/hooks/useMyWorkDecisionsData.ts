@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { MyWorkDecision, getResponseSummary } from "@/components/my-work/decisions/types";
+import type { ResponseOption } from "@/lib/decisionTemplates";
 
 const isEmailFile = (name: string) => /\.(eml|msg)$/i.test(name);
 const DECISIONS_CACHE_TTL_MS = 30_000;
@@ -12,15 +13,21 @@ interface DecisionsCacheEntry {
 
 const decisionsCache = new Map<string, DecisionsCacheEntry>();
 
-const computeAttachmentInfo = (attachments: any[]) => {
+interface DecisionAttachment {
+  id: string;
+  file_name: string;
+  file_path: string;
+}
+
+const computeAttachmentInfo = (attachments: DecisionAttachment[]) => {
   const all = attachments || [];
-  const emails = all.filter((a: any) => isEmailFile(a.file_name));
-  const files = all.filter((a: any) => !isEmailFile(a.file_name));
+  const emails = all.filter((a) => isEmailFile(a.file_name));
+  const files = all.filter((a) => !isEmailFile(a.file_name));
   return {
     attachmentCount: all.length,
     emailAttachmentCount: emails.length,
-    emailAttachments: emails.map((a: any) => ({ id: a.id, file_name: a.file_name, file_path: a.file_path })),
-    fileAttachments: files.map((a: any) => ({ id: a.id, file_name: a.file_name, file_path: a.file_path })),
+    emailAttachments: emails.map((a) => ({ id: a.id, file_name: a.file_name, file_path: a.file_path })),
+    fileAttachments: files.map((a) => ({ id: a.id, file_name: a.file_name, file_path: a.file_path })),
   };
 };
 
@@ -94,7 +101,7 @@ export function useMyWorkDecisionsData(userId?: string) {
       const creatorData = creatorResult.data || [];
       const publicData = publicResult.data || [];
 
-      const participantDecisions: MyWorkDecision[] = participantData.map((item: any) => {
+      const participantDecisions: MyWorkDecision[] = participantData.map((item) => {
         const attInfo = computeAttachmentInfo(item.task_decisions.task_decision_attachments);
         return {
           id: item.task_decisions.id,
@@ -113,13 +120,13 @@ export function useMyWorkDecisionsData(userId?: string) {
           visible_to_all: item.task_decisions.visible_to_all,
           priority: item.task_decisions.priority ?? 0,
           ...attInfo,
-          response_options: Array.isArray(item.task_decisions.response_options) ? item.task_decisions.response_options : undefined,
+          response_options: Array.isArray(item.task_decisions.response_options) ? item.task_decisions.response_options as unknown as ResponseOption[] : undefined,
         };
       });
 
-      const creatorDecisions: MyWorkDecision[] = creatorData.map((item: any) => {
+      const creatorDecisions: MyWorkDecision[] = creatorData.map((item) => {
         const participants = item.task_decision_participants || [];
-        const pendingCount = participants.filter((p: any) => !p.task_decision_responses || p.task_decision_responses.length === 0).length;
+        const pendingCount = participants.filter((p) => !p.task_decision_responses || p.task_decision_responses.length === 0).length;
         const attInfo = computeAttachmentInfo(item.task_decision_attachments);
 
         return {
@@ -138,17 +145,17 @@ export function useMyWorkDecisionsData(userId?: string) {
           visible_to_all: item.visible_to_all,
           priority: item.priority ?? 0,
           ...attInfo,
-          response_options: Array.isArray(item.response_options) ? item.response_options : undefined,
+          response_options: Array.isArray(item.response_options) ? item.response_options as unknown as ResponseOption[] : undefined,
         };
       });
 
       const participantDecisionIds = new Set(participantDecisions.map((d) => d.id));
       const publicDecisions: MyWorkDecision[] = publicData
-        .filter((item: any) => !participantDecisionIds.has(item.id))
-        .map((item: any) => {
+        .filter((item) => !participantDecisionIds.has(item.id))
+        .map((item) => {
           const participants = item.task_decision_participants || [];
-          const userParticipant = participants.find((p: any) => p.user_id === userId);
-          const pendingCount = participants.filter((p: any) => !p.task_decision_responses || p.task_decision_responses.length === 0).length;
+          const userParticipant = participants.find((p) => p.user_id === userId);
+          const pendingCount = participants.filter((p) => !p.task_decision_responses || p.task_decision_responses.length === 0).length;
           const attInfo = computeAttachmentInfo(item.task_decision_attachments);
 
           return {
@@ -168,7 +175,7 @@ export function useMyWorkDecisionsData(userId?: string) {
             visible_to_all: true,
             priority: item.priority ?? 0,
             ...attInfo,
-            response_options: Array.isArray(item.response_options) ? item.response_options : undefined,
+            response_options: Array.isArray(item.response_options) ? item.response_options as unknown as ResponseOption[] : undefined,
           };
         });
 
@@ -216,7 +223,7 @@ export function useMyWorkDecisionsData(userId?: string) {
         const { data: profiles, error: profilesError } =
           allUserIds.length > 0
             ? await supabase.from("profiles").select("user_id, display_name, badge_color, avatar_url").in("user_id", allUserIds)
-            : { data: [] as ProfileRow[], error: null as any };
+            : { data: [] as ProfileRow[], error: null };
 
         if (!isCurrentRequest()) return;
 
@@ -230,7 +237,7 @@ export function useMyWorkDecisionsData(userId?: string) {
           topicsByDecision.get(t.decision_id)!.push(t.topic_id);
         });
 
-        const participantsByDecision = new Map<string, any[]>();
+        const participantsByDecision = new Map<string, NonNullable<MyWorkDecision['participants']>[number][]>();
         participantsWithProfiles.forEach((p) => {
           if (!participantsByDecision.has(p.decision_id)) participantsByDecision.set(p.decision_id, []);
           participantsByDecision.get(p.decision_id)!.push({
@@ -242,13 +249,13 @@ export function useMyWorkDecisionsData(userId?: string) {
               avatar_url: profileMap.get(p.user_id)?.avatar_url || null,
             },
             responses: (p.task_decision_responses || [])
-              .sort((a: any, b: any) => {
+              .sort((a, b) => {
                 const aIsChild = !!a.parent_response_id;
                 const bIsChild = !!b.parent_response_id;
                 if (aIsChild !== bIsChild) return aIsChild ? 1 : -1;
                 return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
               })
-              .map((r: any) => ({ ...r, response_type: r.response_type as string })),
+              .map((r) => ({ ...r, response_type: r.response_type as string })),
           });
         });
 

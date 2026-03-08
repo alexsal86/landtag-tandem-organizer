@@ -39,8 +39,8 @@ export function useLetterTemplateData() {
     response_time_days: 21,
     default_sender_id: '',
     default_info_blocks: [] as string[],
-    header_elements: [] as any[],
-    footer_blocks: [] as any[],
+    header_elements: [] as unknown[],
+    footer_blocks: [] as unknown[],
     layout_settings: DEFAULT_DIN5008_LAYOUT as LetterLayoutSettings,
   });
 
@@ -60,7 +60,7 @@ export function useLetterTemplateData() {
         .from('letter_templates').select('id, name, letterhead_html, letterhead_css, response_time_days, is_default, is_active, tenant_id, created_by, default_sender_id, default_info_blocks, header_layout_type, header_text_elements, footer_blocks, layout_settings, created_at, updated_at').eq('tenant_id', currentTenant.id)
         .eq('is_active', true).order('is_default', { ascending: false }).order('name');
       if (error) throw error;
-      setTemplates(data || []);
+      setTemplates((data || []) as unknown as LetterTemplate[]);
     } catch (error) {
       debugConsole.error('Error fetching templates:', error);
       toast({ title: "Fehler", description: "Templates konnten nicht geladen werden.", variant: "destructive" });
@@ -87,52 +87,58 @@ export function useLetterTemplateData() {
     } catch (error) { debugConsole.error('Error fetching info blocks:', error); }
   };
 
-  const stripBlobUrls = (elements: any): any => {
-    if (Array.isArray(elements)) return elements.map(({ blobUrl, ...rest }) => rest);
-    if (elements && typeof elements === 'object' && (elements as any).mode === 'lines' && Array.isArray((elements as any).lines)) {
-      return { ...elements, lines: (elements as any).lines.map(({ blobUrl, ...rest }: any) => rest) };
-    }
-    if (elements && typeof elements === 'object' && Array.isArray((elements as any).blocks)) {
-      return {
-        ...elements,
-        blocks: (elements as any).blocks.map((block: any) => ({
-          ...block, lines: Array.isArray(block?.lines) ? block.lines.map(({ blobUrl, ...rest }: any) => rest) : [],
-        })),
-      };
+  const stripBlobUrls = (elements: unknown): unknown => {
+    if (Array.isArray(elements)) return elements.map(({ blobUrl, ...rest }: Record<string, unknown>) => rest);
+    if (elements && typeof elements === 'object') {
+      const obj = elements as Record<string, unknown>;
+      if (obj.mode === 'lines' && Array.isArray(obj.lines)) {
+        return { ...obj, lines: (obj.lines as Record<string, unknown>[]).map(({ blobUrl, ...rest }) => rest) };
+      }
+      if (Array.isArray(obj.blocks)) {
+        return {
+          ...obj,
+          blocks: (obj.blocks as Record<string, unknown>[]).map((block) => ({
+            ...block, lines: Array.isArray((block as Record<string, unknown>)?.lines) ? ((block as Record<string, unknown>).lines as Record<string, unknown>[]).map(({ blobUrl, ...rest }) => rest) : [],
+          })),
+        };
+      }
     }
     return elements;
   };
 
-  const stripBlobUrlsFromLayoutSettings = (settings: any): any => {
+  const stripBlobUrlsFromLayoutSettings = (settings: LetterLayoutSettings): LetterLayoutSettings => {
     if (!settings || typeof settings !== 'object') return settings;
     const cleaned = { ...settings };
-    if (cleaned.blockContent && typeof cleaned.blockContent === 'object') {
-      const cleanedBlocks: any = {};
-      for (const [key, items] of Object.entries(cleaned.blockContent)) {
+    const bc = (cleaned as unknown as Record<string, unknown>).blockContent;
+    if (bc && typeof bc === 'object') {
+      const cleanedBlocks: Record<string, unknown> = {};
+      for (const [key, items] of Object.entries(bc as Record<string, unknown>)) {
         if (key === 'header') continue;
         cleanedBlocks[key] = Array.isArray(items) ? stripBlobUrls(items) : items;
       }
-      cleaned.blockContent = cleanedBlocks;
+      (cleaned as unknown as Record<string, unknown>).blockContent = cleanedBlocks;
     }
     return cleaned;
   };
 
   const handleCreateTemplate = async () => {
     if (!currentTenant || !user || !formData.name.trim()) return;
-    const cleanedHeaderElements = stripBlobUrls(formData.header_elements);
+    const cleanedHeaderElements = stripBlobUrls(formData.header_elements) as unknown[];
     const cleanedFooterBlocks = stripBlobUrls(formData.footer_blocks);
     const cleanedLayoutSettings = stripBlobUrlsFromLayoutSettings(normalizeLayoutBlockContentImages(formData.layout_settings));
     try {
-      const { error } = await supabase.from('letter_templates').insert({
+      // Supabase JSON columns require flexible types - cast at DB boundary
+      const insertData: Record<string, unknown> = {
         name: formData.name.trim(), letterhead_html: formData.letterhead_html, letterhead_css: formData.letterhead_css,
         response_time_days: formData.response_time_days, tenant_id: currentTenant.id, created_by: user.id,
         is_default: false, is_active: true, default_sender_id: formData.default_sender_id || null,
         default_info_blocks: formData.default_info_blocks.length > 0 ? formData.default_info_blocks : null,
-        header_layout_type: cleanedHeaderElements.length > 0 ? 'structured' : 'html',
-        header_text_elements: cleanedHeaderElements.length > 0 ? cleanedHeaderElements : null,
-        footer_blocks: Array.isArray(cleanedFooterBlocks) ? (cleanedFooterBlocks.length > 0 ? cleanedFooterBlocks : null) : cleanedFooterBlocks,
-        layout_settings: cleanedLayoutSettings as any,
-      });
+        header_layout_type: Array.isArray(cleanedHeaderElements) && cleanedHeaderElements.length > 0 ? 'structured' : 'html',
+        header_text_elements: Array.isArray(cleanedHeaderElements) && cleanedHeaderElements.length > 0 ? cleanedHeaderElements : null,
+        footer_blocks: Array.isArray(cleanedFooterBlocks) ? ((cleanedFooterBlocks as unknown[]).length > 0 ? cleanedFooterBlocks : null) : cleanedFooterBlocks,
+        layout_settings: cleanedLayoutSettings,
+      };
+      const { error } = await supabase.from('letter_templates').insert(insertData as typeof insertData & { name: string; letterhead_html: string; letterhead_css: string; response_time_days: number; tenant_id: string; created_by: string });
       if (error) throw error;
       toast({ title: "Template erstellt" });
       setShowCreateDialog(false);
@@ -147,19 +153,20 @@ export function useLetterTemplateData() {
 
   const handleUpdateTemplate = async () => {
     if (!editingTemplate) return;
-    const cleanedHeaderElements = stripBlobUrls(formData.header_elements);
+    const cleanedHeaderElements = stripBlobUrls(formData.header_elements) as unknown[];
     const cleanedFooterBlocks = stripBlobUrls(formData.footer_blocks);
     const cleanedLayoutSettings = stripBlobUrlsFromLayoutSettings(normalizeLayoutBlockContentImages(formData.layout_settings));
     try {
-      const { error } = await supabase.from('letter_templates').update({
+      const updateData: Record<string, unknown> = {
         name: formData.name.trim(), letterhead_html: formData.letterhead_html, letterhead_css: formData.letterhead_css,
         response_time_days: formData.response_time_days, default_sender_id: formData.default_sender_id || null,
         default_info_blocks: formData.default_info_blocks.length > 0 ? formData.default_info_blocks : null,
         header_layout_type: cleanedHeaderElements.length > 0 ? 'structured' : 'html',
         header_text_elements: cleanedHeaderElements.length > 0 ? cleanedHeaderElements : null,
-        footer_blocks: Array.isArray(cleanedFooterBlocks) ? (cleanedFooterBlocks.length > 0 ? cleanedFooterBlocks : null) : cleanedFooterBlocks,
-        layout_settings: cleanedLayoutSettings as any, updated_at: new Date().toISOString(),
-      }).eq('id', editingTemplate.id);
+        footer_blocks: Array.isArray(cleanedFooterBlocks) ? ((cleanedFooterBlocks as unknown[]).length > 0 ? cleanedFooterBlocks : null) : cleanedFooterBlocks,
+        layout_settings: cleanedLayoutSettings, updated_at: new Date().toISOString(),
+      };
+      const { error } = await supabase.from('letter_templates').update(updateData as typeof updateData & { name: string }).eq('id', editingTemplate.id);
       if (error) throw error;
       toast({ title: "Template aktualisiert" });
       setEditingTemplate(null); resetForm(); fetchTemplates();
@@ -188,31 +195,32 @@ export function useLetterTemplateData() {
       default_sender_id: '', default_info_blocks: [], header_elements: [], footer_blocks: [],
       layout_settings: {
         ...DEFAULT_DIN5008_LAYOUT,
-        blockContent: { ...((DEFAULT_DIN5008_LAYOUT as any).blockContent || {}), attachments: createDefaultAttachmentElements() },
-      } as any,
+        blockContent: { ...(DEFAULT_DIN5008_LAYOUT.blockContent || {}), attachments: createDefaultAttachmentElements() },
+      } as LetterLayoutSettings,
     });
   };
 
   const startEditing = (template: LetterTemplate) => {
     setEditingTemplate(template);
     setActiveTab('canvas-designer');
-    let headerElements: any[] = [];
+    let headerElements: unknown[] = [];
     if (template.header_text_elements) {
       if (typeof template.header_text_elements === 'string') { try { headerElements = JSON.parse(template.header_text_elements); } catch { headerElements = []; } }
       else if (Array.isArray(template.header_text_elements)) { headerElements = template.header_text_elements; }
     }
-    let rawFooterBlocks: any = [];
-    if ((template as any).footer_blocks) {
-      if (typeof (template as any).footer_blocks === 'string') { try { rawFooterBlocks = JSON.parse((template as any).footer_blocks); } catch { rawFooterBlocks = []; } }
-      else { rawFooterBlocks = (template as any).footer_blocks; }
+    let rawFooterBlocks: unknown = [];
+    if (template.footer_blocks) {
+      if (typeof template.footer_blocks === 'string') { try { rawFooterBlocks = JSON.parse(template.footer_blocks); } catch { rawFooterBlocks = []; } }
+      else { rawFooterBlocks = template.footer_blocks; }
     }
     const footerLines = parseFooterLinesForEditor(rawFooterBlocks);
     const normalizedLayoutSettings = normalizeLayoutBlockContentImages(template.layout_settings || DEFAULT_DIN5008_LAYOUT);
-    const legacyHeaderElements = (((normalizedLayoutSettings as any).blockContent || {}).header || []) as any[];
+    const bc = ((normalizedLayoutSettings as unknown as Record<string, unknown>).blockContent || {}) as Record<string, unknown[]>;
+    const legacyHeaderElements = (bc.header || []) as unknown[];
     const headerSource = headerElements.length > 0 ? headerElements : (Array.isArray(legacyHeaderElements) ? legacyHeaderElements : []);
     const normalizedHeader = headerSource.map(normalizeImageItem);
     const normalizedFooter = footerLines.map(normalizeImageItem);
-    const cleanedBlockContent = { ...(((normalizedLayoutSettings as any).blockContent || {}) as Record<string, any[]>) };
+    const cleanedBlockContent = { ...bc };
     delete cleanedBlockContent.header;
     if (!Array.isArray(cleanedBlockContent.attachments) || cleanedBlockContent.attachments.length === 0) {
       cleanedBlockContent.attachments = createDefaultAttachmentElements();
@@ -221,9 +229,9 @@ export function useLetterTemplateData() {
     setFormData({
       name: template.name, letterhead_html: template.letterhead_html, letterhead_css: template.letterhead_css,
       response_time_days: template.response_time_days, default_sender_id: template.default_sender_id || '',
-      default_info_blocks: template.default_info_blocks || [], header_elements: normalizedHeader,
-      footer_blocks: footerData as any,
-      layout_settings: { ...normalizedLayoutSettings, blockContent: { ...cleanedBlockContent, footer: footerData } as any },
+      default_info_blocks: template.default_info_blocks || [], header_elements: normalizedHeader as unknown[],
+      footer_blocks: footerData as unknown as unknown[],
+      layout_settings: { ...normalizedLayoutSettings, blockContent: { ...cleanedBlockContent, footer: footerData } } as LetterLayoutSettings,
     });
   };
 
@@ -235,14 +243,14 @@ export function useLetterTemplateData() {
 
   type BlockEditorKey = 'addressField' | 'returnAddress' | 'infoBlock' | 'subject' | 'attachments' | 'footer';
 
-  const getBlockItems = (blockKey: BlockEditorKey) => {
-    const content = ((formData.layout_settings as any).blockContent || {}) as Record<string, any[]>;
+  const getBlockItems = (blockKey: BlockEditorKey): unknown[] => {
+    const content = ((formData.layout_settings as unknown as Record<string, unknown>).blockContent || {}) as Record<string, unknown[]>;
     return content[blockKey] || [];
   };
 
-  const setBlockItems = (blockKey: BlockEditorKey, items: any[]) => {
+  const setBlockItems = (blockKey: BlockEditorKey, items: unknown[]) => {
     updateLayoutSettings((layout) => {
-      const current = ((layout as any).blockContent || {}) as Record<string, any[]>;
+      const current = ((layout as unknown as Record<string, unknown>).blockContent || {}) as Record<string, unknown[]>;
       return { ...layout, blockContent: { ...current, [blockKey]: items } } as LetterLayoutSettings;
     });
   };

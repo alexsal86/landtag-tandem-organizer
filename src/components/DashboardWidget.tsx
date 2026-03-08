@@ -72,6 +72,8 @@ interface Subtask {
   assigned_to_names?: string;
 }
 
+type TaskOrSubtask = (Task & { type: 'task' }) | (Subtask & { type: 'subtask' });
+
 interface PendingTask {
   id: string;
   title: string;
@@ -385,9 +387,9 @@ export function DashboardWidget({ widget, isDragging, isEditMode, onResize, onDe
           return !subtaskSnoozes[subtask.id] || new Date(subtaskSnoozes[subtask.id]) <= new Date();
         });
 
-        const allItems = [
-          ...filteredAssignedTasks.map(task => ({ ...task, type: 'task' })),
-          ...filteredAssignedSubtasks.map(subtask => ({ ...subtask, type: 'subtask' }))
+        const allItems: TaskOrSubtask[] = [
+          ...filteredAssignedTasks.map(task => ({ ...task, type: 'task' as const })),
+          ...filteredAssignedSubtasks.map(subtask => ({ ...subtask, type: 'subtask' as const }))
         ].slice(0, 6);
 
         return (
@@ -410,7 +412,7 @@ export function DashboardWidget({ widget, isDragging, isEditMode, onResize, onDe
                   >
                     <div className="flex items-center gap-3 flex-1 min-w-0">
                       <Checkbox
-                        checked={isTask ? (item as any).status === "completed" : (item as any).is_completed}
+                        checked={item.type === 'task' ? item.status === "completed" : item.is_completed}
                         onCheckedChange={async (checked) => {
                           if (checked) {
                             if (isTask) {
@@ -444,9 +446,9 @@ export function DashboardWidget({ widget, isDragging, isEditMode, onResize, onDe
                         {item.description && (
                           <p className="text-sm text-muted-foreground truncate">{item.description}</p>
                         )}
-                        {!isTask && ((item as any).assigned_to_names || (item as any).assigned_to) && (
+                        {item.type === 'subtask' && (item.assigned_to_names || item.assigned_to) && (
                           <div className="text-sm text-muted-foreground truncate">
-                            Zuständig: {(item as any).assigned_to_names || resolveUserNames((item as any).assigned_to)}
+                            Zuständig: {item.assigned_to_names || resolveUserNames(item.assigned_to)}
                           </div>
                         )}
                         {isSnoozed && (
