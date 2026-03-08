@@ -68,6 +68,10 @@ export function AutomationRulesManager() {
   const [runStatusFilter, setRunStatusFilter] = useState<string>("all");
   const [automationsPaused, setAutomationsPaused] = useState(false);
   const [togglingPause, setTogglingPause] = useState(false);
+  const [versionsRuleId, setVersionsRuleId] = useState<string | null>(null);
+  const [versionsRuleName, setVersionsRuleName] = useState("");
+  const [exportOpen, setExportOpen] = useState(false);
+  const [importOpen, setImportOpen] = useState(false);
 
   const filteredRuns = useMemo(() => {
     if (runStatusFilter === "all") return runs;
