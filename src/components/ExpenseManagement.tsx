@@ -162,7 +162,7 @@ export const ExpenseManagement = () => {
     // Korrigiere den Pfad: user_id/receipts/filename statt receipts/user_id-filename
     const filePath = `${user?.id}/receipts/${fileName}`;
 
-    console.log('Uploading to path:', filePath);
+    
 
     const { error: uploadError } = await supabase.storage
       .from('documents')
