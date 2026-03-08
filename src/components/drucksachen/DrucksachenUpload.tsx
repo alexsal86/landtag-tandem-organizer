@@ -266,11 +266,11 @@ export function DrucksachenUpload({ onUploadSuccess, onProtocolsRefresh }: Druck
         });
         
         if (analysisError) {
-          console.warn('Database insertion error:', analysisError);
+          debugConsole.warn('Database insertion error:', analysisError);
           // Still mark as completed with warning
           toast.warning('PDF hochgeladen, aber Datenbankfehler bei der Analyse');
         } else {
-          console.log('Database insertion completed:', analysisResult);
+          debugConsole.log('Database insertion completed:', analysisResult);
           toast.success('PDF erfolgreich analysiert und gespeichert');
         }
       } catch (error) {
