@@ -157,7 +157,7 @@ export function RealTimeSync({ currentLayout, onLayoutUpdate }: RealTimeSyncProp
         .subscribe();
 
     } catch (error) {
-      console.error('Layout persistence setup failed:', error);
+      debugConsole.error('Layout persistence setup failed:', error);
       setSyncErrors(prev => [...prev, 'Failed to setup persistence']);
     }
   };
