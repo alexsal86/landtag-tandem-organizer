@@ -36,8 +36,9 @@ export function useContactImport() {
   }, [user, currentTenant]);
 
   const fetchExistingContacts = async () => {
+    if (!currentTenant) return;
     try {
-      const { data, error } = await supabase.from("contacts").select("id, name, email, phone, organization, organization_id").eq("tenant_id", currentTenant!.id).order("name");
+      const { data, error } = await supabase.from("contacts").select("id, name, email, phone, organization, organization_id").eq("tenant_id", currentTenant.id).order("name");
       if (error) throw error;
       setExistingContacts(data?.map((c) => ({ id: c.id, name: c.name, email: c.email, phone: c.phone, organization: c.organization, organization_id: c.organization_id })) || []);
     } catch (error) { debugConsole.error("Error fetching existing contacts:", error); }
