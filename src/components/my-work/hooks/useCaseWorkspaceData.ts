@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import { supabase } from "@/integrations/supabase/client";
+import { debugConsole } from "@/utils/debugConsole";
 import type { CaseItemIntakePayload } from "@/features/cases/items/types";
 
 export type CaseItem = {
