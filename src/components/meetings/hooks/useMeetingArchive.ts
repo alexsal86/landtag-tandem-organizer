@@ -263,10 +263,10 @@ export function useMeetingArchive(deps: ArchiveDeps) {
               tenant_id: currentTenant?.id || '',
               due_date: new Date(new Date(meeting.meeting_date).getTime() + 3 * 24 * 60 * 60 * 1000).toISOString(),
             };
-          }).filter(Boolean);
+          }).filter((t): t is NonNullable<typeof t> => t !== null);
 
           if (tasksToInsert.length > 0) {
-            await supabase.from('tasks').insert(tasksToInsert as any[]);
+            await supabase.from('tasks').insert(tasksToInsert);
           }
         } catch (e) { console.error('Error processing birthday tasks (non-fatal):', e); }
       }
