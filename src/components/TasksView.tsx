@@ -580,7 +580,7 @@ export function TasksView() {
       }
 
       // 3. Get call follow-up tasks assigned to this user
-      console.log('📞 Loading call follow-up tasks...');
+      
       const { data: callFollowupData, error: callFollowupError } = await supabase
         .from('tasks')
         .select('*')
