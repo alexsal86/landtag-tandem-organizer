@@ -85,7 +85,7 @@ export function useTimeTrackingOperations({
       await validateDailyLimit(entryDate, gross);
       await supabase.from("time_entries").insert({ user_id: userId, work_date: entryDate, started_at: start.toISOString(), ended_at: end.toISOString(), minutes: gross - pause, pause_minutes: pause, notes: notes || null });
       toast.success("Gespeichert"); resetEntryForm(); loadData();
-    } catch (error: any) { toast.error(error.message); }
+    } catch (error: unknown) { toast.error(error instanceof Error ? error.message : "Fehler beim Speichern"); }
   };
 
   const handleEditEntry = (entry: TimeEntryRow) => {
