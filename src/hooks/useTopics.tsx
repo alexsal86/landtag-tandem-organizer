@@ -25,7 +25,7 @@ export const useTopics = () => {
       setLoading(true);
       const { data, error } = await supabase
         .from('topics')
-        .select('*')
+        .select('id, name, label, icon, color, description, order_index, is_active, created_at, updated_at')
         .order('order_index');
 
       if (error) {

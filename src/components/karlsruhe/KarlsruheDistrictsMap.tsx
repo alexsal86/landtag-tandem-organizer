@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState, useCallback } from 'react';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
+import '@/styles/leaflet-overrides.css';
 import { KarlsruheDistrict } from '@/hooks/useKarlsruheDistricts';
 import { MapFlag } from '@/hooks/useMapFlags';
 import { MapFlagType } from '@/hooks/useMapFlagTypes';

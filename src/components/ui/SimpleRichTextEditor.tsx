@@ -1,3 +1,4 @@
+import '@/styles/lexical-editor.css';
 import React, { useCallback, useEffect, useRef } from 'react';
 import { LexicalComposer } from '@lexical/react/LexicalComposer';
 import { RichTextPlugin } from '@lexical/react/LexicalRichTextPlugin';

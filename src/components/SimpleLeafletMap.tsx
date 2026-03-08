@@ -1,5 +1,6 @@
 import React, { useEffect, useRef } from 'react';
 import 'leaflet/dist/leaflet.css';
+import '@/styles/leaflet-overrides.css';
 import * as L from 'leaflet';
 import { ElectionDistrict } from '@/hooks/useElectionDistricts';
 import { PartyAssociation, usePartyAssociations } from '@/hooks/usePartyAssociations';

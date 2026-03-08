@@ -24,7 +24,7 @@ export const useDocumentCategories = () => {
       setLoading(true);
       const { data, error } = await supabase
         .from('document_categories')
-        .select('*')
+        .select('id, name, label, color, icon, is_active, order_index')
         .eq('is_active', true)
         .order('order_index');
 
@@ -41,27 +41,7 @@ export const useDocumentCategories = () => {
     }
   };
 
-  // Listen for changes to categories
-  useEffect(() => {
-    const channel = supabase
-      .channel('document-categories-changes')
-      .on(
-        'postgres_changes',
-        {
-          event: '*',
-          schema: 'public',
-          table: 'document_categories',
-        },
-        () => {
-          fetchCategories();
-        }
-      )
-      .subscribe();
-
-    return () => {
-      supabase.removeChannel(channel);
-    };
-  }, []);
+  // Categories change rarely - no realtime needed, use refreshCategories() when needed
 
   return { 
     categories, 

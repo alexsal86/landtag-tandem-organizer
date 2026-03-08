@@ -2,6 +2,7 @@ import React, { useEffect, useRef } from 'react';
 import { MapContainer, TileLayer, Polygon, Marker, Popup, useMap } from 'react-leaflet';
 import * as L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
+import '@/styles/leaflet-overrides.css';
 import { ElectionDistrict } from '@/hooks/useElectionDistricts';
 import { Badge } from '@/components/ui/badge';
 import { MapPin, Users, Square } from 'lucide-react';

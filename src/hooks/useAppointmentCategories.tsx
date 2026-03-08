@@ -17,7 +17,7 @@ export const useAppointmentCategories = () => {
     queryFn: async () => {
       const { data, error } = await supabase
         .from('appointment_categories')
-        .select('*')
+        .select('id, name, label, color, icon, is_active, order_index')
         .eq('is_active', true)
         .order('order_index');
 

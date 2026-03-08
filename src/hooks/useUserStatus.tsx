@@ -106,7 +106,7 @@ export const useUserStatus = () => {
     const loadStatusOptions = async () => {
       const { data, error } = await supabase
         .from('admin_status_options')
-        .select('*')
+        .select('id, name, emoji, color, sort_order')
         .eq('is_active', true)
         .order('sort_order');
 
@@ -129,7 +129,7 @@ export const useUserStatus = () => {
       setLoading(true);
       const { data, error } = await supabase
         .from('user_status')
-        .select('*')
+        .select('id, user_id, status_type, custom_message, emoji, color, notifications_enabled, auto_away_enabled, last_activity, status_until')
         .eq('user_id', user.id)
         .single();
 
@@ -296,7 +296,7 @@ export const useUserStatus = () => {
       // Only fetch statuses for users in the same tenant
       const { data: statuses } = await supabase
         .from('user_status')
-        .select('*')
+        .select('id, user_id, status_type, custom_message, emoji, color, notifications_enabled, auto_away_enabled, last_activity, status_until')
         .eq('tenant_id', currentTenant?.id)
         .in('user_id', onlineUserIds);
 
