@@ -141,7 +141,7 @@ export const DefaultGuestsAdmin: React.FC = () => {
       setEditingId(null);
       fetchDefaultGuests();
     } catch (error: unknown) {
-      console.error('Error updating default guest:', error);
+      debugConsole.error('Error updating default guest:', error);
       toast.error('Fehler beim Aktualisieren des Standard-Gastes');
     }
   };
