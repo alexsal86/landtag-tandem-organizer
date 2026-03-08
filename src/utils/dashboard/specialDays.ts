@@ -116,7 +116,7 @@ export const getSpecialDayHint = (
   const today = specialDays.find((specialDay) => specialDay.month === month && specialDay.day === day);
   if (today) {
     return {
-      text: `**Heute ist ${today.name}.** ${today.hint}`,
+      text: `**Heute ist ${today.name}.**\n${today.hint}`,
       icon: today.icon,
     };
   }
