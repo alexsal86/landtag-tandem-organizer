@@ -96,6 +96,7 @@ export function MyWorkCaseItemsTab() {
   const [assignedToMeOnly, setAssignedToMeOnly] = useState(false);
   const [sortBy, setSortBy] = useState<SortBy>("updated_desc");
   const [createOpen, setCreateOpen] = useState(false);
+  const [archiveOpen, setArchiveOpen] = useState(false);
   const [highlightedItemId, setHighlightedItemId] = useState<string | null>(null);
 
   const { createCaseItem } = useCaseItems();
