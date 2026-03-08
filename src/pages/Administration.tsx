@@ -539,7 +539,7 @@ const [editingChild, setEditingChild] = useState<{ parentIndex: number; childInd
       if (items === planningTemplateItems) {
         toast({ title: "Gespeichert", description: "Template erfolgreich aktualisiert." });
       }
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error(error);
       toast({ title: "Fehler", description: "Fehler beim Speichern.", variant: "destructive" });
     }
