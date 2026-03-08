@@ -316,8 +316,8 @@ export function useAgendaOperations(deps: AgendaOpsDeps) {
           }
         }
         toast({ title: "Punkt gelöscht", description: "Der Agenda-Punkt wurde erfolgreich gelöscht." });
-      } catch (error: any) {
-        const errorMessage = error?.message || '';
+      } catch (error: unknown) {
+        const errorMessage = error instanceof Error ? error.message : '';
         const isNetworkError = errorMessage.includes('Failed to fetch') || errorMessage.includes('NetworkError') || errorMessage.includes('TypeError');
         if (!isNetworkError) {
           setAgendaItems(previousItems);

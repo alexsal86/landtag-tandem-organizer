@@ -763,8 +763,8 @@ export function AdminTimeTrackingView() {
       setInitialBalanceMinutes("");
       loadMonthData();
       refetchYearlyBalance();
-    } catch (error: any) {
-      toast.error(error.message || "Fehler beim Speichern");
+    } catch (error: unknown) {
+      toast.error(error instanceof Error ? error.message : "Fehler beim Speichern");
     }
   };
 

@@ -680,10 +680,11 @@ export function useMeetingsData() {
       if (selectedMeeting?.id === meetingId) { setSelectedMeeting(null); setAgendaItems([]); }
       if (activeMeetingId === meetingId) { setActiveMeeting(null); setActiveMeetingId(null); setLinkedQuickNotes([]); }
       toast({ title: "Meeting gelöscht", description: "Das Meeting wurde erfolgreich gelöscht." });
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Delete meeting error:', error);
+      const msg = error instanceof Error ? error.message : '';
       let errorMessage = 'Das Meeting konnte nicht gelöscht werden.';
-      if (error.message?.includes('violates foreign key constraint')) {
+      if (msg.includes('violates foreign key constraint')) {
         errorMessage = 'Das Meeting kann nicht gelöscht werden, da noch verknüpfte Daten existieren.';
       }
       toast({ title: "Fehler", description: errorMessage, variant: "destructive" });
