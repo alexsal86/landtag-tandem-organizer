@@ -156,7 +156,7 @@ const CaseItemDetail = () => {
 
     const [{ data: files }, { data: itemTimeline }] = await Promise.all([
       supabase.from("case_files").select("id, title").eq("tenant_id", currentTenant.id).in("status", ["active", "pending"]).order("updated_at", { ascending: false }).limit(20),
-      supabase.from("case_item_interactions").select("id, created_at, subject").eq("case_item_id", caseItemId).order("created_at", { ascending: false }).limit(20),
+      supabase.from("case_item_interactions").select("id, created_at, subject").eq("case_item_id", caseItemId).order("created_at", { ascending: false }).limit(20) as any,
     ]);
 
     setAssignableFiles(files ?? []);
