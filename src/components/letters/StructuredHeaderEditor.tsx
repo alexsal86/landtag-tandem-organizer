@@ -324,7 +324,7 @@ export const StructuredHeaderEditor: React.FC<StructuredHeaderEditorProps> = ({ 
           if (!urlData?.publicUrl) continue;
           blobUrlMapRef.current.set(filePath, urlData.publicUrl);
           loaded.push({ name: file.name, path: filePath, blobUrl: urlData.publicUrl });
-        } catch (e) { console.error('Error downloading', file.name, e); }
+        } catch (e) { debugConsole.error('Error downloading', file.name, e); }
       }
       setGalleryImages((previous) => {
         previous.forEach((img) => URL.revokeObjectURL(img.blobUrl));
