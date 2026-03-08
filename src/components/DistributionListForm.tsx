@@ -84,7 +84,7 @@ export function DistributionListForm({ distributionListId, onSuccess, onBack }: 
     try {
       const { data: distributionList, error: listError } = await supabase
         .from('distribution_lists')
-        .select('*')
+        .select('id, name, description, topic')
         .eq('id', distributionListId)
         .single();
 
