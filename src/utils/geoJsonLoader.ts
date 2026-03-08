@@ -1,5 +1,6 @@
 import proj4 from 'proj4';
 import JSZip from 'jszip';
+import { debugConsole } from '@/utils/debugConsole';
 
 export interface GeoJsonFeature {
   type: 'Feature';
