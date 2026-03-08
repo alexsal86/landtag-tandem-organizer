@@ -30,9 +30,7 @@ const TaskArchiveView = lazyWithRetry(() =>
 );
 const Auth = lazyWithRetry(() => import("./pages/Auth"));
 const NotFound = lazyWithRetry(() => import("./pages/NotFound"));
-const MatrixClientProvider = lazyWithRetry(() =>
-  import("@/contexts/MatrixClientContext").then((module) => ({ default: module.MatrixClientProvider })),
-);
+import { MatrixUnreadProvider } from "@/contexts/MatrixUnreadContext";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -73,8 +71,7 @@ const AppContent = () => {
       <Toaster />
       <Sonner />
       <BrowserRouter>
-        <Suspense fallback={<div className="min-h-screen bg-gradient-subtle flex items-center justify-center" />}>
-          <MatrixClientProvider>
+          <MatrixUnreadProvider>
             <GlobalSearchCommand />
             <GlobalQuickNoteDialog open={quickNoteOpen} onOpenChange={setQuickNoteOpen} />
             <GlobalDaySlipPanel />
@@ -113,8 +110,7 @@ const AppContent = () => {
               <Route path="*" element={<NotFound />} />
               </Routes>
             </Suspense>
-          </MatrixClientProvider>
-        </Suspense>
+          </MatrixUnreadProvider>
       </BrowserRouter>
       </>
     );

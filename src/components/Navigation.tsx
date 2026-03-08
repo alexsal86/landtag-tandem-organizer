@@ -1,5 +1,5 @@
 import { Calendar, Users, CheckSquare, Home, FileText, MessageSquare, MessageSquareText, Contact, Database, Clock, CalendarPlus, Shield, Vote, MapPin, Archive, Briefcase } from "lucide-react";
-import { useMatrixClient } from "@/contexts/MatrixClientContext";
+import { useMatrixUnread } from "@/contexts/MatrixUnreadContext";
 import { NavigationBadge } from "./NavigationBadge";
 import { useNavigationNotifications } from "@/hooks/useNavigationNotifications";
 import { useNotifications } from "@/contexts/NotificationContext";
@@ -36,7 +36,7 @@ export function Navigation({ activeSection, onSectionChange }: NavigationProps) 
   const { toast } = useToast();
   const { navigationCounts, hasNewSinceLastVisit, markNavigationAsVisited } = useNavigationNotifications();
   const { notifications } = useNotifications();
-  const { totalUnreadCount: matrixUnreadCount } = useMatrixClient();
+  const { totalUnreadCount: matrixUnreadCount } = useMatrixUnread();
   const appSettings = useAppSettings();
   
   const [isAdmin, setIsAdmin] = useState(false);

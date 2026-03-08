@@ -7,7 +7,7 @@ import {
   UserCog,
   HelpCircle
 } from "lucide-react";
-import { useMatrixClient } from "@/contexts/MatrixClientContext";
+import { useMatrixUnread } from "@/contexts/MatrixUnreadContext";
 import { useNavigationNotifications } from "@/hooks/useNavigationNotifications";
 import { useAuth } from "@/hooks/useAuth";
 import { useAppSettings } from "@/hooks/useAppSettings";
@@ -39,7 +39,7 @@ export function AppNavigation({
 }: NavigationProps) {
   const { user } = useAuth();
   const { navigationCounts, markNavigationAsVisited } = useNavigationNotifications();
-  const { totalUnreadCount: matrixUnreadCount } = useMatrixClient();
+  const { totalUnreadCount: matrixUnreadCount } = useMatrixUnread();
   const appSettings = useAppSettings();
   useFavicon(appSettings.app_logo_url);
   

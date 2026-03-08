@@ -1,4 +1,5 @@
 import React, { createContext, useContext, useState, useEffect, useCallback, useRef, ReactNode } from 'react';
+import { useMatrixUnread } from '@/contexts/MatrixUnreadContext';
 import * as sdk from 'matrix-js-sdk';
 import { CryptoEvent } from 'matrix-js-sdk';
 import { VerifierEvent, VerificationPhase, type Verifier } from 'matrix-js-sdk/lib/crypto-api/verification';
@@ -397,6 +398,7 @@ const MatrixClientContext = createContext<MatrixClientContextType>(defaultMatrix
 export function MatrixClientProvider({ children }: { children: ReactNode }) {
   const { user } = useAuth();
   const { currentTenant } = useTenant();
+  const { setLiveUnreadCount } = useMatrixUnread();
 
   // State
   const [client, setClient] = useState<sdk.MatrixClient | null>(null);
@@ -1627,6 +1629,11 @@ export function MatrixClientProvider({ children }: { children: ReactNode }) {
   // ─── Context value ───────────────────────────────────────────────────────
 
   const totalUnreadCount = rooms.reduce((sum, room) => sum + room.unreadCount, 0);
+
+  // Sync live count to the lightweight MatrixUnreadProvider
+  useEffect(() => {
+    setLiveUnreadCount(totalUnreadCount);
+  }, [totalUnreadCount, setLiveUnreadCount]);
 
   const value: MatrixClientContextType = {
     client,
