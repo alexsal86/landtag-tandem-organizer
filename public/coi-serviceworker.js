@@ -23,6 +23,16 @@ if (typeof window === 'undefined') {
     const r = e.request;
     if (r.cache === "only-if-cached" && r.mode !== "same-origin") return;
 
+    // ── Skip Vite dev requests to preserve React-refresh preamble ──
+    const url = new URL(r.url);
+    const isViteDevRequest =
+      url.pathname.includes('node_modules/.vite/') ||
+      url.pathname.includes('/@vite/') ||
+      url.pathname.includes('/@react-refresh') ||
+      url.pathname.startsWith('/src/') ||
+      url.searchParams.has('t');
+    if (isViteDevRequest) return;
+
     // ── Determine if we should skip COOP/COEP isolation ──
 
     // 1) Explicit iframe sub-resource
