@@ -828,7 +828,7 @@ export function QuickNotesList({
       setConfirmRemoveDecision(null);
       loadNotes();
     } catch (error) {
-      console.error("Error removing decision:", error);
+      debugConsole.error("Error removing decision:", error);
       toast.error("Fehler beim Zurücknehmen der Entscheidung");
     }
   };
