@@ -324,7 +324,7 @@ export const useCaseFileDetails = (caseFileId: string | null) => {
       .order("created_at", { ascending: false }) as any);
 
     if (error) {
-      console.error("Error fetching interactions:", error);
+      debugConsole.error("Error fetching interactions:", error);
       return;
     }
 
