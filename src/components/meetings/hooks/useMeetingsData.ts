@@ -121,7 +121,7 @@ export function useMeetingsData() {
 
   // Auto-select next upcoming meeting (skip if URL deep-link is present)
   useEffect(() => {
-    if (meetings.length > 0 && !selectedMeeting && !activeMeeting && !searchParams.get('id')) {
+    if (meetings.length > 0 && !selectedMeeting && !activeMeeting && !searchParams.get('id') && !deepLinkIdRef.current) {
       const now = new Date();
       const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate());
       const nextMeeting = meetings
