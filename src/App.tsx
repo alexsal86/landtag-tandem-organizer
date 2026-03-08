@@ -30,9 +30,7 @@ const TaskArchiveView = lazyWithRetry(() =>
 );
 const Auth = lazyWithRetry(() => import("./pages/Auth"));
 const NotFound = lazyWithRetry(() => import("./pages/NotFound"));
-const MatrixClientProvider = lazyWithRetry(() =>
-  import("@/contexts/MatrixClientContext").then((module) => ({ default: module.MatrixClientProvider })),
-);
+import { MatrixUnreadProvider } from "@/contexts/MatrixUnreadContext";
 
 const queryClient = new QueryClient({
   defaultOptions: {
