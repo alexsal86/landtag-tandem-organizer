@@ -82,7 +82,7 @@ export const CustomizableDashboard: React.FC = () => {
 
   // Convert our widget format to react-grid-layout format
   const gridLayouts = useMemo(() => {
-    if (!currentLayout?.widgets) return { lg: [] };
+    if (!currentLayout?.widgets) return { lg: [] as Layout[], md: [] as Layout[], sm: [] as Layout[], xs: [] as Layout[], xxs: [] as Layout[] };
     
     const gridItems: Layout[] = currentLayout.widgets.map(widget => {
       // Parse size string (e.g., "3x2" -> {w: 3, h: 2})
