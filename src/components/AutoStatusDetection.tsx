@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { useUserStatus } from '@/hooks/useUserStatus';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
+import { debugConsole } from '@/utils/debugConsole';
 import { toast } from 'sonner';
 import { Activity, Clock, Settings2, Zap } from 'lucide-react';
 
