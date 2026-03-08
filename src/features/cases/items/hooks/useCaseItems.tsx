@@ -301,6 +301,26 @@ export const useCaseItems = () => {
         description: "Interaktion wurde hinzugefügt.",
       });
 
+      // Notify case item owner/creator about the new comment
+      const caseItem = caseItems.find(ci => ci.id === data.case_item_id);
+      if (caseItem) {
+        const notifyIds = new Set<string>();
+        if (caseItem.user_id && caseItem.user_id !== user.id) notifyIds.add(caseItem.user_id);
+        if (caseItem.owner_user_id && caseItem.owner_user_id !== user.id) notifyIds.add(caseItem.owner_user_id);
+        for (const recipientId of notifyIds) {
+          supabase.rpc("create_notification", {
+            user_id_param: recipientId,
+            type_name: "case_item_comment",
+            title_param: "Neuer Kommentar zum Vorgang",
+            message_param: `Neuer Kommentar zum Vorgang "${caseItem.subject || 'Ohne Betreff'}".`,
+            priority_param: "medium",
+            data_param: JSON.stringify({ case_item_id: caseItem.id }),
+          }).then(({ error: nErr }) => {
+            if (nErr) console.warn("Notification error (case_item_comment):", nErr);
+          });
+        }
+      }
+
       return interaction as unknown as CaseItemInteraction;
     } catch (error) {
       console.error("Error creating case item interaction:", error);
