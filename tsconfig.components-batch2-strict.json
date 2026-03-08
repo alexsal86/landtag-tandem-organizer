@@ -1,0 +1,24 @@
+{
+  "extends": "./tsconfig.app.json",
+  "compilerOptions": {
+    "strict": false,
+    "strictNullChecks": true,
+    "noImplicitAny": false,
+    "noUnusedLocals": false,
+    "noUnusedParameters": false
+  },
+  "include": [
+    "src/components/appointments/**/*.ts",
+    "src/components/appointments/**/*.tsx",
+    "src/components/calendar/**/*.ts",
+    "src/components/calendar/**/*.tsx",
+    "src/components/contacts/**/*.ts",
+    "src/components/contacts/**/*.tsx",
+    "src/components/tasks/**/*.ts",
+    "src/components/tasks/**/*.tsx",
+    "src/components/documents/**/*.ts",
+    "src/components/documents/**/*.tsx",
+    "src/components/contact-import/**/*.ts",
+    "src/components/contact-import/**/*.tsx"
+  ]
+}
