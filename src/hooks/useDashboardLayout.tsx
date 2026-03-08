@@ -397,7 +397,6 @@ export function useDashboardLayout() {
         .select();
 
       if (error) {
-        console.error('Database error:', error);
         throw error;
       }
 
