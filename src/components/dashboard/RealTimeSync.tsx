@@ -202,7 +202,7 @@ export function RealTimeSync({ currentLayout, onLayoutUpdate }: RealTimeSyncProp
       onLayoutUpdate(newLayout);
       setLastSyncTime(new Date());
     } catch (error) {
-      console.error('Failed to apply database layout update:', error);
+      debugConsole.error('Failed to apply database layout update:', error);
     }
   };
 
