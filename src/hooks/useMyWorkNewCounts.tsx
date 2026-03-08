@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from './useAuth';
+import { debugConsole } from '@/utils/debugConsole';
 
 export interface NewCounts {
   tasks: number;
