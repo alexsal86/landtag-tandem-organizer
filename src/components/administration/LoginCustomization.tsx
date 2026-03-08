@@ -104,7 +104,7 @@ export function LoginCustomization() {
         logo_url: logoUrl || null,
         background_image_url: customization.background_image_url,
         background_position: customization.background_position,
-        background_attribution: customization.background_attribution,
+        background_attribution: customization.background_attribution as unknown as Record<string, string> | null,
         primary_color: customization.primary_color,
         accent_color: customization.accent_color,
         tagline: customization.tagline,
