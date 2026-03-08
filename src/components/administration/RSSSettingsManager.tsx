@@ -87,7 +87,7 @@ export function RSSSettingsManager() {
       toast.success("Einstellungen gespeichert");
     } catch (error: unknown) {
       toast.error(error instanceof Error ? error.message : "Fehler beim Speichern");
-      console.error(error);
+      debugConsole.error(error);
     } finally {
       setSaving(false);
     }
