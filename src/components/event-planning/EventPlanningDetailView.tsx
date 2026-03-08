@@ -141,7 +141,7 @@ export function EventPlanningDetailView(data: EventPlanningDataReturn) {
                     {uniquePlanningCollaborators.slice(0, 5).map((collab) => (
                       <div key={collab.id} className="relative">
                         <Avatar className={cn("h-8 w-8 border-2 hover:z-10 transition-transform hover:scale-110", collab.can_edit ? "border-primary ring-2 ring-primary/20" : "border-muted-foreground/30 opacity-60")}>
-                          <AvatarImage src={collab.profiles?.avatar_url} />
+                          <AvatarImage src={collab.profiles?.avatar_url ?? undefined} />
                           <AvatarFallback className={collab.can_edit ? "bg-primary/10" : "bg-muted"}>{collab.profiles?.display_name?.charAt(0) || 'U'}</AvatarFallback>
                         </Avatar>
                         {!collab.can_edit && <div className="absolute -bottom-1 -right-1 bg-background rounded-full p-0.5"><Eye className="h-3 w-3 text-muted-foreground" /></div>}
