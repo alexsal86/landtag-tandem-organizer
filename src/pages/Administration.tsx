@@ -53,6 +53,7 @@ import { SuperadminTenantManagement } from "@/components/administration/Superadm
 import { GeoDataImport } from "@/components/administration/GeoDataImport";
 import { MyWorkSystemOverview } from "@/components/administration/MyWorkSystemOverview";
 import { DashboardHintSettings } from "@/components/administration/DashboardHintSettings";
+import { MotivationalMessagesOverview } from "@/components/administration/MotivationalMessagesOverview";
 import { StakeholderNetworkTagSettings } from "@/components/administration/StakeholderNetworkTagSettings";
 import { PushNotificationTest } from "@/components/PushNotificationTest";
 import { VapidKeyTest } from "@/components/VapidKeyTest";
