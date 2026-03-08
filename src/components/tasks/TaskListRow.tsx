@@ -40,6 +40,8 @@ interface TaskListRowProps {
   followUpDate?: string | null;
   commentCount?: number;
   depth?: number;
+  className?: string;
+  highlightRef?: (el: HTMLElement | null) => void;
   onComplete: (taskId: string) => void;
   onSubtaskComplete: (subtaskId: string) => void;
   onNavigate: (taskId: string) => void;
