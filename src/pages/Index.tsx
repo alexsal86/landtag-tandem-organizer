@@ -46,6 +46,7 @@ import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { SubNavigation } from "@/components/layout/SubNavigation";
 import { MobileSubNavigation } from "@/components/layout/MobileSubNavigation";
 const CreateContact = lazyWithRetry(() => import("./CreateContact"));
+const NotFound = lazyWithRetry(() => import("./NotFound"));
 
 const Index = () => {
   const { user, loading: authLoading } = useAuth();
@@ -216,7 +217,7 @@ const Index = () => {
       case "profile-edit":
         return <EditProfile />;
       default:
-        return <Dashboard />;
+        return <NotFound />;
     }
   };
 
