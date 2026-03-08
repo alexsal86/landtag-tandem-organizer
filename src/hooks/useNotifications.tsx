@@ -309,7 +309,7 @@ export const useNotifications = () => {
 
       // Get existing subscription or create new one
       let subscription = await (registration as any).pushManager.getSubscription();
-      console.log('📋 Existing subscription:', !!subscription);
+      
       
       // Always check if we need to create a new subscription
       // Either no subscription exists OR the database subscription is inactive
