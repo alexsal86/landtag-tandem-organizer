@@ -41,7 +41,7 @@ export function TodoCreateDialog({ open, onOpenChange, onTodoCreated }: TodoCrea
 
   useEffect(() => {
     if (open) {
-      console.log('Dialog opened, loading categories...');
+      debugConsole.log('Dialog opened, loading categories...');
       loadCategories();
       loadUsers();
     }
