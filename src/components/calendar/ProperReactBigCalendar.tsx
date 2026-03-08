@@ -170,7 +170,7 @@ const ProperReactBigCalendar: React.FC<ProperReactBigCalendarProps> = ({
 
   // Day prop getter for today highlighting
   const dayPropGetter = useCallback((date: Date) => {
-    const isToday = moment(date).isSame(moment(), 'day');
+    const isToday = isSameDay(date, new Date());
     return {
       className: isToday ? 'rbc-today' : '',
       style: {}
