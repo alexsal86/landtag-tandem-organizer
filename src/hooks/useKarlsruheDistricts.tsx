@@ -1,6 +1,7 @@
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useEffect, useState } from 'react';
+import { debugConsole } from '@/utils/debugConsole';
 
 export interface KarlsruheDistrict {
   id: string;
@@ -36,7 +37,7 @@ export const useKarlsruheDistricts = () => {
     const importDistricts = async () => {
       if (!isLoading && districts && districts.length === 0 && !isFetching) {
         setIsFetching(true);
-        console.log('No districts found, importing from official GeoJSON...');
+        debugConsole.log('No districts found, importing from official GeoJSON...');
 
         try {
           const { error: functionError } = await supabase.functions.invoke(
@@ -44,14 +45,14 @@ export const useKarlsruheDistricts = () => {
           );
 
           if (functionError) {
-            console.error('Error importing districts:', functionError);
+            debugConsole.error('Error importing districts:', functionError);
           } else {
-            console.log('Districts imported successfully');
+            debugConsole.log('Districts imported successfully');
             // Refetch the data
             await refetch();
           }
         } catch (err) {
-          console.error('Error invoking edge function:', err);
+          debugConsole.error('Error invoking edge function:', err);
         } finally {
           setIsFetching(false);
         }

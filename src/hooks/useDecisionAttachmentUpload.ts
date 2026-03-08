@@ -1,4 +1,5 @@
 import { supabase } from '@/integrations/supabase/client';
+import { debugConsole } from '@/utils/debugConsole';
 import {
   getUploadContentType,
   getUploadContentTypeCandidates,
@@ -117,13 +118,13 @@ async function uploadOneFile(
     try {
       emailMeta = (await parseEmlFile(file)).metadata;
     } catch (error) {
-      console.error('EML parse error during upload:', error);
+      debugConsole.error('EML parse error during upload:', error);
     }
   } else if (!emailMeta && isMsgFile(file)) {
     try {
       emailMeta = (await parseMsgFile(file)).metadata;
     } catch (error) {
-      console.error('MSG parse error during upload:', error);
+      debugConsole.error('MSG parse error during upload:', error);
     }
   }
 

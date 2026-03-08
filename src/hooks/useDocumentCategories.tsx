@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { debugConsole } from '@/utils/debugConsole';
 
 interface DocumentCategory {
   id: string;
@@ -29,13 +30,13 @@ export const useDocumentCategories = () => {
         .order('order_index');
 
       if (error) {
-        console.error('Error fetching document categories:', error);
+        debugConsole.error('Error fetching document categories:', error);
         return;
       }
 
       setCategories(data || []);
     } catch (error) {
-      console.error('Error in fetchCategories:', error);
+      debugConsole.error('Error in fetchCategories:', error);
     } finally {
       setLoading(false);
     }
