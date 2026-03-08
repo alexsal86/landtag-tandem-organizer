@@ -318,13 +318,13 @@ export function useEventPlanningData() {
     if (!currentTenant) return;
     try {
       const { data: memberships, error: memberError } = await supabase.from("user_tenant_memberships").select("user_id").eq("tenant_id", currentTenant.id).eq("is_active", true);
-      if (memberError) { console.error("Error fetching memberships:", memberError); return; }
+      if (memberError) { debugConsole.error("Error fetching memberships:", memberError); return; }
       if (!memberships || memberships.length === 0) { setAllProfiles([]); return; }
       const userIds = memberships.map(m => m.user_id);
       const { data: profiles, error: profileError } = await supabase.from("profiles").select("user_id, display_name, avatar_url").in("user_id", userIds);
-      if (profileError) { console.error("Error fetching profiles:", profileError); return; }
+      if (profileError) { debugConsole.error("Error fetching profiles:", profileError); return; }
       setAllProfiles(profiles || []);
-    } catch (error) { console.error("Error in fetchAllProfiles:", error); }
+    } catch (error) { debugConsole.error("Error in fetchAllProfiles:", error); }
   };
 
   const fetchAvailableContacts = async () => {
