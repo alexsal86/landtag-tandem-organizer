@@ -294,7 +294,7 @@ export const useCaseFileDetails = (caseFileId: string | null) => {
       if (error) throw error;
       setNotes((data || []) as CaseFileNote[]);
     } catch (error) {
-      console.error('Error fetching notes:', error);
+      debugConsole.error('Error fetching notes:', error);
     }
   }, [caseFileId]);
 
