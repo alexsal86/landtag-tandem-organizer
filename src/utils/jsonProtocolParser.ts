@@ -8,7 +8,7 @@ interface JSONProtocolStructure {
   };
   speeches: Array<{
     index: number;
-    speaker: string;
+    speaker: string | { name: string; role?: string; party?: string };
     role?: string;
     party?: string;
     text: string;
