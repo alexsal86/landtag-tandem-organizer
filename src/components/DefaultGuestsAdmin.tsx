@@ -162,7 +162,7 @@ export const DefaultGuestsAdmin: React.FC = () => {
       toast.success('Standard-Gast gelöscht');
       fetchDefaultGuests();
     } catch (error: unknown) {
-      console.error('Error deleting default guest:', error);
+      debugConsole.error('Error deleting default guest:', error);
       toast.error('Fehler beim Löschen des Standard-Gastes');
     }
   };
