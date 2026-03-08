@@ -209,7 +209,7 @@ export const useCaseFileTopics = (caseFileId: string | undefined) => {
     try {
       const { error } = await supabase
         .from('case_file_topics')
-        .insert({ case_file_id: caseFileId, topic_id: topicId });
+        .insert([{ case_file_id: caseFileId, topic_id: topicId }]);
 
       if (error) throw error;
       setAssignedTopics(prev => [...prev, topicId]);

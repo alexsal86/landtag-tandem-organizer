@@ -35,7 +35,7 @@ export const useKnowledgeDocumentTopics = (documentId: string | undefined) => {
     try {
       const { error } = await supabase
         .from('knowledge_document_topics')
-        .insert({ document_id: documentId, topic_id: topicId });
+        .insert([{ document_id: documentId, topic_id: topicId }]);
 
       if (error) throw error;
       setAssignedTopics(prev => [...prev, topicId]);

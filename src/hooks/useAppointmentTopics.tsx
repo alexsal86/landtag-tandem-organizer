@@ -35,7 +35,7 @@ export const useAppointmentTopics = (appointmentId: string | undefined) => {
     try {
       const { error } = await supabase
         .from('appointment_topics')
-        .insert({ appointment_id: appointmentId, topic_id: topicId });
+        .insert([{ appointment_id: appointmentId, topic_id: topicId }]);
 
       if (error) throw error;
       setAssignedTopics(prev => [...prev, topicId]);

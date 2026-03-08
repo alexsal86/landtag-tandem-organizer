@@ -41,10 +41,10 @@ export const useDecisionTopics = (decisionId: string | undefined) => {
     try {
       const { error } = await supabase
         .from('task_decision_topics')
-        .insert({
+        .insert([{
           decision_id: decisionId,
           topic_id: topicId
-        });
+        }]);
 
       if (error) throw error;
 

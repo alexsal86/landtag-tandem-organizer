@@ -35,7 +35,7 @@ export const useTaskTopics = (taskId: string | undefined) => {
     try {
       const { error } = await supabase
         .from('task_topics')
-        .insert({ task_id: taskId, topic_id: topicId });
+        .insert([{ task_id: taskId, topic_id: topicId }]);
 
       if (error) throw error;
       setAssignedTopics(prev => [...prev, topicId]);
