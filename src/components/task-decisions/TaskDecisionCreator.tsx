@@ -244,7 +244,7 @@ export const TaskDecisionCreator = ({
       }
       
       if (!userData.user) {
-        console.error('No user found');
+        debugConsole.error('No user found');
         throw new Error('User not authenticated');
       }
 
