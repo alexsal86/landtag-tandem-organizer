@@ -186,7 +186,7 @@ const LetterAttachmentManager: React.FC<LetterAttachmentManagerProps> = ({
     try {
       const { data, error } = await supabase.storage
         .from('documents')
-        .download(attachment.file_path);
+        .download(attachment.file_path!);
 
       if (error) throw error;
 
