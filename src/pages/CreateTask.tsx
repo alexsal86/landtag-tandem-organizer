@@ -84,7 +84,7 @@ export default function CreateTask() {
           setFormData(prev => ({ ...prev, category: categories[0].name }));
         }
       } catch (error) {
-        console.error('Error loading data:', error);
+        debugConsole.error('Error loading data:', error);
       }
     };
 
