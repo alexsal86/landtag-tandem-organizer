@@ -1,11 +1,23 @@
 import { supabase } from "@/integrations/supabase/client";
 import { format } from "date-fns";
-import type { RecurrenceData, NewMeetingParticipant, Meeting, MeetingTemplate, Profile } from "@/components/meetings/types";
+import type { RecurrenceData, NewMeetingParticipant, AgendaItem, Meeting, MeetingTemplate, Profile } from "@/components/meetings/types";
+
+interface AuthUser {
+  id: string;
+}
+
+interface Tenant {
+  id: string;
+}
+
+interface ToastFn {
+  (opts: { title: string; description: string; variant?: "default" | "destructive" }): void;
+}
 
 interface UseMeetingCreateDeps {
-  user: any;
-  currentTenant: any;
-  toast: any;
+  user: AuthUser | null;
+  currentTenant: Tenant | null;
+  toast: ToastFn;
   newMeeting: Meeting;
   newMeetingTime: string;
   newMeetingParticipants: NewMeetingParticipant[];
@@ -15,7 +27,7 @@ interface UseMeetingCreateDeps {
   profiles: Profile[];
   setMeetings: React.Dispatch<React.SetStateAction<Meeting[]>>;
   setSelectedMeeting: React.Dispatch<React.SetStateAction<Meeting | null>>;
-  setAgendaItems: React.Dispatch<React.SetStateAction<any[]>>;
+  setAgendaItems: React.Dispatch<React.SetStateAction<AgendaItem[]>>;
   setIsNewMeetingOpen: React.Dispatch<React.SetStateAction<boolean>>;
   setNewMeeting: React.Dispatch<React.SetStateAction<Meeting>>;
   setNewMeetingParticipants: React.Dispatch<React.SetStateAction<NewMeetingParticipant[]>>;
