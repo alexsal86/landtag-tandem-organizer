@@ -779,7 +779,7 @@ export function QuickNotesList({
       
       toast.success(fullCard ? "Ganze Card eingefärbt" : "Nur Kante eingefärbt");
     } catch (error) {
-      console.error("Error setting color mode:", error);
+      debugConsole.error("Error setting color mode:", error);
       setNotes(prev => prev.map(n => 
         n.id === noteId ? { ...n, color_full_card: previousValue } : n
       ));
