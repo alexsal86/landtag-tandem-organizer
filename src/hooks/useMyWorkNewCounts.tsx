@@ -128,7 +128,7 @@ export function useMyWorkNewCounts(): MyWorkNewCountsResult {
             setNewCounts(DEFAULT_COUNTS);
           }
 
-          console.warn('get_my_work_new_counts RPC is unavailable; new badges are reset to 0.');
+          debugConsole.warn('get_my_work_new_counts RPC is unavailable; new badges are reset to 0.');
           return;
         }
 
