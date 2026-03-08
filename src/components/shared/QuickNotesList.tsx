@@ -669,7 +669,7 @@ export function QuickNotesList({
       toast.success(level > 0 ? `Level ${level} gesetzt` : "Priorität entfernt");
       loadNotes();
     } catch (error) {
-      console.error("Error setting priority:", error);
+      debugConsole.error("Error setting priority:", error);
       toast.error("Fehler beim Setzen der Priorität");
     }
   };
