@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useRef } from "react";
 import { useSearchParams } from "react-router-dom";
 import { useNotificationHighlight } from "@/hooks/useNotificationHighlight";
 import { useAuth } from "@/hooks/useAuth";
@@ -51,6 +51,7 @@ export function useMeetingsData() {
   const [currentUserIsParticipant, setCurrentUserIsParticipant] = useState(false);
   const [showCarryoverBuffer, setShowCarryoverBuffer] = useState(false);
   const [carryoverBufferItems, setCarryoverBufferItems] = useState<AgendaItem[]>([]);
+  const deepLinkIdRef = useRef<string | null>(searchParams.get('id'));
 
   // Delegate sidebar data management to sub-hook
   const sidebar = useMeetingSidebarData({
@@ -88,6 +89,7 @@ export function useMeetingsData() {
       sidebar.loadStarredAppointments(urlMeetingId);
       searchParams.delete('id');
       setSearchParams(searchParams, { replace: true });
+      deepLinkIdRef.current = null;
     };
 
     const meetingFromUrl = meetings.find(m => m.id === urlMeetingId);
@@ -119,7 +121,7 @@ export function useMeetingsData() {
 
   // Auto-select next upcoming meeting (skip if URL deep-link is present)
   useEffect(() => {
-    if (meetings.length > 0 && !selectedMeeting && !activeMeeting && !searchParams.get('id')) {
+    if (meetings.length > 0 && !selectedMeeting && !activeMeeting && !searchParams.get('id') && !deepLinkIdRef.current) {
       const now = new Date();
       const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate());
       const nextMeeting = meetings
