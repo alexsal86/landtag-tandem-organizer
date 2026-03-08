@@ -489,7 +489,7 @@ export function MyWorkTasksTab() {
     if (!meetingTaskId || !user) return;
     
     try {
-      console.log('Marking task for next jour fixe:', meetingTaskId);
+      debugConsole.log('Marking task for next jour fixe:', meetingTaskId);
       
       const { data, error } = await supabase
         .from('tasks')
