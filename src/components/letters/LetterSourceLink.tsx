@@ -37,7 +37,7 @@ export function LetterSourceLink({ letterId, className }: LetterSourceLinkProps)
       if (error) throw error;
       setPreview(data as LetterPreview);
     } catch (error) {
-      console.error("Error loading letter preview:", error);
+      debugConsole.error("Error loading letter preview:", error);
     } finally {
       setLoading(false);
     }

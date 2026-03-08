@@ -141,7 +141,7 @@ export function TaskDocumentDialog({
       setDocuments(prev => prev.filter(d => d.id !== doc.id));
       toast({ title: "Dokument gelöscht" });
     } catch (error) {
-      console.error("Error deleting document:", error);
+      debugConsole.error("Error deleting document:", error);
       toast({ title: "Fehler beim Löschen", variant: "destructive" });
     }
   };

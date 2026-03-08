@@ -152,7 +152,7 @@ export function useKnowledgeData() {
       toast({ title: "Gespeichert", description: "Das Dokument wurde gespeichert." });
       setSelectedDocument(prev => prev ? { ...prev, content: editorContent } : null);
     } catch (error) {
-      console.error('Error saving document:', error);
+      debugConsole.error('Error saving document:', error);
       toast({ title: "Fehler beim Speichern", description: "Das Dokument konnte nicht gespeichert werden.", variant: "destructive" });
     }
   };

@@ -197,7 +197,7 @@ export const PartyAssociationsAdmin: React.FC = () => {
       toast.success('Kreisverband gelöscht');
       loadData();
     } catch (error) {
-      console.error('Error deleting association:', error);
+      debugConsole.error('Error deleting association:', error);
       toast.error('Fehler beim Löschen des Kreisverbands');
     }
   };

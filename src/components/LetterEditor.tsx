@@ -190,7 +190,7 @@ const LetterEditor: React.FC<LetterEditorProps> = ({ letter, isOpen, onClose, on
       setCurrentTemplate(data);
       if (data) ops.applyTemplateDefaults(data);
     } catch (error) {
-      console.error('Error fetching current template:', error);
+      debugConsole.error('Error fetching current template:', error);
     }
   };
 

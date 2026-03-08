@@ -457,7 +457,7 @@ export const generateLetterPDF = async (letter: Letter): Promise<{ blob: Blob; f
                    leftMargin + imgPosition.x * 0.264583 + 2, 
                    20 + imgPosition.y * 0.264583 + 10);
         } catch (error) {
-          console.warn('Error rendering header image:', error);
+          debugConsole.warn('Error rendering header image:', error);
         }
       }
     } else if (template?.letterhead_html) {

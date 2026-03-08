@@ -118,7 +118,7 @@ export function validateJSONProtocol(data: any): boolean {
     
     return true;
   } catch (error) {
-    console.error('JSON validation error:', error);
+    // JSON validation error - silently return false
     return false;
   }
 }

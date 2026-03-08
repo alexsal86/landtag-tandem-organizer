@@ -154,7 +154,7 @@ export function LetterOccasionManager() {
         is_active: true,
       }).select().maybeSingle();
       if (data) insertedOccasions.push(data);
-      if (error) console.error('Seed error for', o.key, error);
+      if (error) debugConsole.error('Seed error for', o.key, error);
     }
     if (insertedOccasions.length > 0) {
       setOccasions(insertedOccasions);

@@ -363,7 +363,7 @@ export async function generateLetterDOCX(letter: Letter): Promise<{ blob: Blob; 
     return { blob, filename };
 
   } catch (error) {
-    console.error('Error generating DOCX:', error);
+    debugConsole.error('Error generating DOCX:', error);
     return null;
   }
 }

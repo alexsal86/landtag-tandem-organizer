@@ -317,7 +317,7 @@ export function TaskArchiveModal({ isOpen, onClose, onTaskRestored }: TaskArchiv
         return;
       }
       
-      console.error('Error restoring archived task:', error);
+      debugConsole.error('Error restoring archived task:', error);
       toast({
         title: "Fehler",
         description: "Aufgabe konnte nicht wiederhergestellt werden.",

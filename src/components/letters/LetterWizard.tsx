@@ -96,7 +96,7 @@ export const LetterWizard: React.FC<LetterWizardProps> = ({ onComplete, onCancel
     if (!currentTenant) return;
     const { data } = await supabase
       .from('letter_occasions')
-      .select('*')
+      .select('key, label, description, icon, color, default_template_id, template_match_patterns, is_active')
       .eq('tenant_id', currentTenant.id)
       .eq('is_active', true)
       .order('sort_order');

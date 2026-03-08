@@ -87,7 +87,7 @@ export const MatrixMorningSettings: React.FC = () => {
         });
 
       if (error) {
-        console.error('Error saving settings:', error);
+        debugConsole.error('Error saving settings:', error);
         toast({
           title: 'Fehler',
           description: 'Morgengruß-Einstellungen konnten nicht gespeichert werden.',
@@ -102,7 +102,7 @@ export const MatrixMorningSettings: React.FC = () => {
         description: 'Morgengruß-Einstellungen wurden erfolgreich gespeichert.',
       });
     } catch (error) {
-      console.error('Error saving settings:', error);
+      debugConsole.error('Error saving settings:', error);
       toast({
         title: 'Fehler',
         description: 'Ein unerwarteter Fehler ist aufgetreten.',

@@ -52,7 +52,7 @@ export function EmployeeMeetingRequestDialog() {
       setReason("");
       setUrgency("medium");
     } catch (error: any) {
-      console.error("Error creating meeting request:", error);
+      debugConsole.error("Error creating meeting request:", error);
       toast({
         title: "Fehler",
         description: error.message || "Gesprächswunsch konnte nicht erstellt werden",

@@ -259,7 +259,7 @@ export const useCaseFiles = () => {
       await fetchCaseFiles();
       return true;
     } catch (error) {
-      console.error('Error deleting case file:', error);
+      debugConsole.error('Error deleting case file:', error);
       toast({
         title: "Fehler",
         description: "FallAkte konnte nicht gelöscht werden.",

@@ -30,7 +30,7 @@ export const useMapFlags = () => {
       
       const { data, error } = await supabase
         .from('map_flags')
-        .select('*')
+        .select('id, tenant_id, flag_type_id, title, description, coordinates, created_by, created_at, updated_at, metadata, tags')
         .eq('tenant_id', currentTenant.id)
         .order('created_at', { ascending: false });
 

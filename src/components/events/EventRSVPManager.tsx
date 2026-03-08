@@ -395,7 +395,7 @@ export const EventRSVPManager = ({ eventPlanningId, eventTitle }: EventRSVPManag
       setRsvps(prev => prev.filter(r => r.id !== rsvpId));
       toast({ title: "Einladung entfernt" });
     } catch (error) {
-      console.error('Error deleting RSVP:', error);
+      debugConsole.error('Error deleting RSVP:', error);
     }
   };
 
