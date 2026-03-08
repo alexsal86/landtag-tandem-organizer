@@ -125,7 +125,7 @@ export function EmailTemplateManager() {
     } catch (error: unknown) {
       toast({
         title: "Fehler beim Speichern",
-        description: error.message,
+        description: error instanceof Error ? error.message : String(error),
         variant: "destructive",
       });
     } finally {
