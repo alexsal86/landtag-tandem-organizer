@@ -86,7 +86,7 @@ export function TenantCollaboration() {
 
       setAvailableTenants(data || []);
     } catch (error) {
-      console.error("Error in fetchAvailableTenants:", error);
+      debugConsole.error("Error in fetchAvailableTenants:", error);
     }
   };
 
