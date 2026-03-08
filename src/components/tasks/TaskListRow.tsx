@@ -153,7 +153,7 @@ export function TaskListRow({
   };
 
   return (
-    <div>
+    <div ref={highlightRef} className={className}>
       <div
         className="flex items-center gap-2 px-3 py-2 hover:bg-muted/50 transition-colors border-b"
         style={{ paddingLeft: `${12 + depth * 20}px` }}
