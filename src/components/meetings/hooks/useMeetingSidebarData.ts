@@ -65,9 +65,10 @@ export function useMeetingSidebarData(deps: UseMeetingSidebarDataDeps) {
     try {
       const { data, error } = await supabase
         .from("case_items")
-        .select("id, subject, status, priority, due_at, owner_user_id")
-        .eq("meeting_id", meetingId)
-        .neq("status", "erledigt");
+        .select("id, subject, status, priority, due_at, owner_user_id, pending_for_jour_fixe")
+        .eq("tenant_id", tenantId)
+        .neq("status", "erledigt")
+        .or(`meeting_id.eq.${meetingId},pending_for_jour_fixe.eq.true`);
       if (error) throw error;
       setMeetingLinkedCaseItems(data || []);
     } catch (error) {
