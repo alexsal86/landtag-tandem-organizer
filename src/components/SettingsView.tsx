@@ -120,7 +120,7 @@ export function SettingsView() {
       setNewPassword("");
       setConfirmPassword("");
     } catch (error: unknown) {
-      console.error('Password change error:', error);
+      debugConsole.error('Password change error:', error);
       toast({
         title: "Fehler",
         description: error instanceof Error ? error.message : "Passwort konnte nicht geändert werden.",

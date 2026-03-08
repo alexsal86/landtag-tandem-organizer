@@ -108,7 +108,7 @@ export const VapidKeyTest: React.FC = () => {
       setIsRunning(false);
     }
 
-    console.log('🔑 === VAPID KEY TEST BEENDET ===');
+    debugConsole.log('🔑 === VAPID KEY TEST BEENDET ===');
   };
 
   const getStatusIcon = (status: 'pending' | 'success' | 'error') => {

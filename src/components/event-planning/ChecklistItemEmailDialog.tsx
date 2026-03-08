@@ -170,7 +170,7 @@ export function ChecklistItemEmailDialog({
       onSaved();
       onOpenChange(false);
     } catch (error: unknown) {
-      console.error("Error deleting email action:", error);
+      debugConsole.error("Error deleting email action:", error);
       toast({
         title: "Fehler",
         description: "E-Mail-Automatisierung konnte nicht gelöscht werden.",

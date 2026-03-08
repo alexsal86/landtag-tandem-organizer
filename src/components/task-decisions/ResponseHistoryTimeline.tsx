@@ -55,7 +55,7 @@ export const ResponseHistoryTimeline = ({ participantId, decisionId }: ResponseH
         })));
       }
     } catch (error) {
-      console.error('Error loading history:', error);
+      debugConsole.error('Error loading history:', error);
     } finally {
       setIsLoading(false);
     }

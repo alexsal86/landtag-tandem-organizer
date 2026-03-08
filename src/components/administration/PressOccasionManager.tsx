@@ -107,7 +107,7 @@ export function PressOccasionManager() {
       .maybeSingle();
 
     if (error) {
-      console.error('Error loading press occasions:', error);
+      debugConsole.error('Error loading press occasions:', error);
       setLoading(false);
       return;
     }

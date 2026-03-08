@@ -196,7 +196,7 @@ export const QuickActionsWidget: React.FC<QuickActionsWidgetProps> = ({
         setTempButtonSize(parsed.buttonSize || 'md');
         setTempGlobalIconSize(parsed.globalIconSize || 'md');
       } catch (error) {
-        console.error('Failed to load QuickActions configuration:', error);
+        debugConsole.error('Failed to load QuickActions configuration:', error);
       }
     }
   }, [user?.id]);

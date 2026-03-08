@@ -82,7 +82,7 @@ export function TodoCreateDialog({ open, onOpenChange, onTodoCreated }: TodoCrea
       debugConsole.log('Users loaded for TodoCreateDialog:', data);
       setUsers(data || []);
     } catch (error) {
-      console.error('Error loading users:', error);
+      debugConsole.error('Error loading users:', error);
       setUsers([]); // Ensure users is always an array
     }
   };

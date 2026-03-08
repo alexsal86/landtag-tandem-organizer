@@ -64,7 +64,7 @@ export function VacationHistoryDialog({
       const years = (data || []).map(h => h.year);
       setAvailableYears([...new Set(years)].sort((a, b) => b - a));
     } catch (error) {
-      console.error("Error loading vacation history:", error);
+      debugConsole.error("Error loading vacation history:", error);
     } finally {
       setLoading(false);
     }

@@ -221,7 +221,7 @@ export default function EnhancedLexicalEditor({
       TrackDeleteNode,
     ],
     onError: (error: Error) => {
-      console.error('Lexical error:', error);
+      debugConsole.error('Lexical error:', error);
     },
   }), [editable]);
 
