@@ -94,7 +94,7 @@ export const EventRSVPManager = ({ eventPlanningId, eventTitle }: EventRSVPManag
     try {
       const { data, error } = await supabase
         .from('event_rsvps')
-        .select('*')
+        .select('id, email, name, status, comment, responded_at, invited_at, token, invitation_sent, reminder_sent_at, reminder_count, notes_sent, custom_message, created_at')
         .eq('event_planning_id', eventPlanningId)
         .order('created_at', { ascending: false });
 
