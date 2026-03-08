@@ -113,7 +113,7 @@ export function AppointmentFileUpload({
         });
 
       } catch (error) {
-        console.error('Upload error:', error);
+        debugConsole.error('Upload error:', error);
         updatedFiles[index] = {
           ...updatedFiles[index],
           uploading: false,
