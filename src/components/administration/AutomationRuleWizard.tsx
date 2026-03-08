@@ -329,6 +329,8 @@ function ActionCard({
         if (data) setEmailTemplates(data);
       });
   }, [isEmail, currentTenant?.id]);
+
+  return (
     <div className="rounded-md border bg-muted/20 p-3 space-y-3">
       <div className="flex items-center justify-between">
         <span className="text-xs font-medium text-muted-foreground">
