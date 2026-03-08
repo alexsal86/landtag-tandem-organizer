@@ -7,6 +7,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { useMessagesRealtime } from "@/hooks/useMessagesRealtime";
 import { toast } from "@/hooks/use-toast";
+import { debugConsole } from '@/utils/debugConsole';
 
 interface BlackBoardMessage {
   id: string;
