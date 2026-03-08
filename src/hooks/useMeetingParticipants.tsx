@@ -136,7 +136,7 @@ export function useMeetingParticipants(meetingId?: string) {
         prev.map(p => p.id === participantId ? { ...p, ...updates } : p)
       );
     } catch (error) {
-      console.error('Error updating participant:', error);
+      debugConsole.error('Error updating participant:', error);
       toast({
         title: "Fehler",
         description: "Teilnehmer konnte nicht aktualisiert werden.",
