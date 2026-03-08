@@ -61,7 +61,7 @@ export const usePlanningPreferences = () => {
         setDefaultCollaborators([]);
       }
     } catch (error) {
-      console.error("Error loading planning preferences:", error);
+      debugConsole.error("Error loading planning preferences:", error);
     } finally {
       setLoading(false);
     }
