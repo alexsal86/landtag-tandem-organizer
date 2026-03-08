@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { debugConsole } from '@/utils/debugConsole';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { TopicDisplay } from "@/components/topics/TopicSelector";
 import { Badge } from "@/components/ui/badge";
