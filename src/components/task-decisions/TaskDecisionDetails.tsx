@@ -383,12 +383,12 @@ export const TaskDecisionDetails = ({ decisionId, isOpen, onClose, onArchived, h
     try {
       const { error } = await supabase
         .from('task_decision_comments')
-        .insert({
+        .insert([{
           decision_id: decisionId,
           user_id: currentUserId,
           parent_id: parentId,
           content: commentContent.trim(),
-        });
+        }]);
 
       if (error) throw error;
 

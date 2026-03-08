@@ -171,12 +171,12 @@ export function SuperadminTenantManagement() {
         // Create new tenant
         const { data: newTenant, error } = await supabase
           .from("tenants")
-          .insert({
+          .insert([{
             name: formName.trim(),
             description: formDescription.trim() || null,
             is_active: formIsActive,
             settings: {},
-          })
+          }])
           .select('id')
           .single();
 

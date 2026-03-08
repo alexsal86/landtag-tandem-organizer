@@ -255,7 +255,7 @@ export function MyWorkTimeTrackingTab() {
     try {
       await validateDailyLimit(entryDate, gross);
 
-      const { error } = await supabase.from("time_entries").insert({
+      const { error } = await supabase.from("time_entries").insert([{
         user_id: user.id,
         work_date: entryDate,
         started_at: start.toISOString(),
@@ -263,7 +263,7 @@ export function MyWorkTimeTrackingTab() {
         minutes: gross - pause,
         pause_minutes: pause,
         notes: notes || null,
-      });
+      }]);
 
       if (error) throw error;
 

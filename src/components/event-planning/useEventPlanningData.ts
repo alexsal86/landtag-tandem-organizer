@@ -645,7 +645,7 @@ export function useEventPlanningData() {
       const filePath = `${currentTenant.id}/general/${selectedPlanning.id}/${fileName}`;
       const { error: uploadError } = await supabase.storage.from('planning-documents').upload(filePath, file);
       if (uploadError) { toast({ title: "Fehler", description: `Upload fehlgeschlagen: ${uploadError.message}`, variant: "destructive" }); continue; }
-      const { error: dbError } = await supabase.from('event_planning_documents').insert({ event_planning_id: selectedPlanning.id, file_path: filePath, file_name: file.name, file_size: file.size, file_type: file.type, uploaded_by: user.id, tenant_id: currentTenant.id });
+      const { error: dbError } = await supabase.from('event_planning_documents').insert([{ event_planning_id: selectedPlanning.id, file_path: filePath, file_name: file.name, file_size: file.size, file_type: file.type, uploaded_by: user.id, tenant_id: currentTenant.id }]);
       if (dbError) toast({ title: "Fehler", description: "Dokument-Metadaten konnten nicht gespeichert werden", variant: "destructive" });
     }
     await loadGeneralDocuments(selectedPlanning.id);
