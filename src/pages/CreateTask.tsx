@@ -169,7 +169,7 @@ export default function CreateTask() {
           throw new Error(insertError.message);
         }
 
-        console.log('✅ Task created successfully:', insertedTask);
+        debugConsole.log('✅ Task created successfully:', insertedTask);
         
         // Save topics if any selected
         if (formData.topicIds.length > 0) {
