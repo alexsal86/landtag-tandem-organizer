@@ -183,7 +183,7 @@ export const CallLogWidget: React.FC<CallLogWidgetProps> = ({
           // Create main task
           const { data: mainTaskData, error: mainTaskError } = await supabase
             .from('tasks')
-            .insert({
+            .insert([{
               user_id: user.id,
               title: 'Call Follow-ups',
               description: 'Sammlung aller Follow-ups aus Anrufprotokollen',
@@ -192,7 +192,7 @@ export const CallLogWidget: React.FC<CallLogWidgetProps> = ({
               category: 'call_follow_up',
               due_date: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
               tenant_id: currentTenant?.id || 'default-tenant-id'
-            })
+            }])
             .select('id')
             .single();
 
