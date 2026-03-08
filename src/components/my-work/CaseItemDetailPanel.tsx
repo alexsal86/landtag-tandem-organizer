@@ -490,7 +490,7 @@ export function CaseItemDetailPanel({
               </div>
             </div>
           )}
-          <Button disabled={!editableCaseItem.category} onClick={onSave}>Speichern</Button>
+          
         </div>
 
         <div className="space-y-3">
