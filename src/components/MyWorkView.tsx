@@ -456,7 +456,7 @@ export function MyWorkView() {
       {activeTab === "dashboard" && (
         <div className="space-y-6">
           <DashboardHeader />
-          <div className="grid grid-cols-1 lg:grid-cols-[3fr_2fr] gap-6 max-w-6xl">
+          <div className="grid grid-cols-1 lg:grid-cols-[3fr_2fr] gap-6 max-w-6xl items-start">
             <Card className="p-5">
               <DashboardTasksSection />
             </Card>
