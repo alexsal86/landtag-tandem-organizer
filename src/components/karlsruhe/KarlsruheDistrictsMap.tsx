@@ -8,6 +8,7 @@ import { MapFlagType } from '@/hooks/useMapFlagTypes';
 import { useMapFlagStakeholders } from '@/hooks/useMapFlagStakeholders';
 import { supabase } from '@/integrations/supabase/client';
 import { lucideIconToSvg, isLucideIcon } from '@/utils/lucideIconToSvg';
+import { debugConsole } from '@/utils/debugConsole';
 import { RoutingMachine } from './RoutingMachine';
 import 'leaflet.heat';
 // @ts-ignore
@@ -356,7 +357,7 @@ export const KarlsruheDistrictsMap = ({
   useEffect(() => {
     if (!mapReady) return;
 
-    console.log('Setting up realtime subscription for contacts');
+    debugConsole.log('Setting up realtime subscription for contacts');
 
     const channel = supabase
       .channel('contacts_map_changes')
@@ -367,17 +368,17 @@ export const KarlsruheDistrictsMap = ({
         filter: `contact_type=eq.organization`
       }, (payload) => {
         const updated = payload.new as any;
-        console.log('Contact updated via realtime:', updated);
+        debugConsole.log('Contact updated via realtime:', updated);
         
         if (updated.coordinates) {
-          console.log('Coordinates found, reloading stakeholders...');
+          debugConsole.log('Coordinates found, reloading stakeholders...');
           loadStakeholders();
         }
       })
       .subscribe();
     
     return () => {
-      console.log('Cleaning up realtime subscription');
+      debugConsole.log('Cleaning up realtime subscription');
       supabase.removeChannel(channel);
     };
   }, [mapReady, loadStakeholders]);

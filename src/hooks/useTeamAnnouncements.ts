@@ -3,6 +3,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { useTenant } from "@/hooks/useTenant";
 import { toast } from "sonner";
+import { debugConsole } from "@/utils/debugConsole";
 
 export interface TeamAnnouncement {
   id: string;
@@ -46,16 +47,14 @@ export function useTeamAnnouncements() {
     }
 
     try {
-      // Fetch all announcements for this tenant
       const { data: announcementsData, error: announcementsError } = await supabase
         .from("team_announcements")
-        .select("*")
+        .select("id, tenant_id, author_id, title, message, priority, starts_at, expires_at, is_active, created_at, updated_at")
         .eq("tenant_id", currentTenant.id)
         .order("created_at", { ascending: false });
 
       if (announcementsError) throw announcementsError;
 
-      // Fetch user's dismissals
       const { data: dismissalsData, error: dismissalsError } = await supabase
         .from("team_announcement_dismissals")
         .select("announcement_id")
@@ -65,7 +64,6 @@ export function useTeamAnnouncements() {
 
       const dismissedIds = new Set(dismissalsData?.map(d => d.announcement_id) || []);
 
-      // Fetch author profiles
       const authorIds = [...new Set(announcementsData?.map(a => a.author_id) || [])];
       const { data: profilesData } = await supabase
         .from("profiles")
@@ -74,7 +72,6 @@ export function useTeamAnnouncements() {
 
       const profileMap = new Map(profilesData?.map(p => [p.user_id, p.display_name]) || []);
 
-      // Enrich announcements with author names and dismissal status
       const enrichedAnnouncements = (announcementsData || []).map(announcement => ({
         ...announcement,
         priority: announcement.priority as TeamAnnouncement['priority'],
@@ -84,7 +81,6 @@ export function useTeamAnnouncements() {
 
       setAnnouncements(enrichedAnnouncements);
 
-      // Filter active announcements for banner display
       const now = new Date();
       const active = enrichedAnnouncements.filter(a => {
         if (!a.is_active) return false;
@@ -94,7 +90,6 @@ export function useTeamAnnouncements() {
         return true;
       });
 
-      // Sort by priority (critical > warning > info > success) then by date
       const priorityOrder = { critical: 0, warning: 1, info: 2, success: 3 };
       active.sort((a, b) => {
         const priorityDiff = priorityOrder[a.priority] - priorityOrder[b.priority];
@@ -104,18 +99,16 @@ export function useTeamAnnouncements() {
 
       setActiveAnnouncements(active);
     } catch (error) {
-      console.error("Error fetching announcements:", error);
+      debugConsole.error("Error fetching announcements:", error);
     } finally {
       setLoading(false);
     }
   }, [user?.id, currentTenant?.id]);
 
-  // Fetch on mount and when dependencies change
   useEffect(() => {
     fetchAnnouncements();
   }, [fetchAnnouncements]);
 
-  // Set up realtime subscription
   useEffect(() => {
     if (!currentTenant?.id) return;
 
@@ -151,7 +144,6 @@ export function useTeamAnnouncements() {
     };
   }, [currentTenant?.id, fetchAnnouncements]);
 
-  // Check for expired announcements every 60 seconds
   useEffect(() => {
     const interval = setInterval(() => {
       const now = new Date();
@@ -187,7 +179,6 @@ export function useTeamAnnouncements() {
 
       if (error) throw error;
 
-      // Push notification to all tenant members (except author)
       try {
         const { data: members } = await supabase
           .from("user_tenant_memberships")
@@ -210,33 +201,29 @@ export function useTeamAnnouncements() {
           await Promise.allSettled(notifications);
         }
       } catch (pushErr) {
-        console.error("Error sending announcement notifications:", pushErr);
+        debugConsole.error("Error sending announcement notifications:", pushErr);
       }
 
       toast.success("Mitteilung erstellt");
       await fetchAnnouncements();
       return newAnnouncement;
     } catch (error) {
-      console.error("Error creating announcement:", error);
+      debugConsole.error("Error creating announcement:", error);
       toast.error("Fehler beim Erstellen der Mitteilung");
       return null;
     }
   };
 
   const updateAnnouncement = async (id: string, data: Partial<CreateAnnouncementData & { is_active: boolean }>) => {
-    // Store previous state for rollback
     const previousAnnouncements = [...announcements];
     const previousActiveAnnouncements = [...activeAnnouncements];
     
-    // Optimistic update
     setAnnouncements(prev => prev.map(a => 
       a.id === id ? { ...a, ...data } : a
     ));
     
-    // Update activeAnnouncements if is_active changed
     if (data.is_active !== undefined) {
       if (!data.is_active) {
-        // Deactivated - remove from active
         setActiveAnnouncements(prev => prev.filter(a => a.id !== id));
       }
     }
@@ -250,24 +237,21 @@ export function useTeamAnnouncements() {
         .single();
 
       if (error) {
-        console.error("Update error details:", error);
+        debugConsole.error("Update error details:", error);
         throw error;
       }
 
-      // Update successful - update local state with returned data
       if (updateData) {
         setAnnouncements(prev => prev.map(a => 
           a.id === id ? { ...a, ...updateData, priority: updateData.priority as TeamAnnouncement['priority'] } : a
         ));
         
-        // Recalculate activeAnnouncements based on is_active state
         if (updateData.is_active) {
           const now = new Date();
           const isExpired = updateData.expires_at && new Date(updateData.expires_at) < now;
           const isScheduled = updateData.starts_at && new Date(updateData.starts_at) > now;
           
           if (!isExpired && !isScheduled) {
-            // Add to active if not already there
             setActiveAnnouncements(prev => {
               if (prev.find(a => a.id === id)) return prev;
               const existingAnnouncement = announcements.find(a => a.id === id);
@@ -278,21 +262,18 @@ export function useTeamAnnouncements() {
             });
           }
         } else {
-          // Deactivated - remove from active
           setActiveAnnouncements(prev => prev.filter(a => a.id !== id));
         }
       }
 
       toast.success("Mitteilung aktualisiert");
-      // Force refetch to ensure consistent state
       await fetchAnnouncements();
       return true;
     } catch (error: any) {
-      console.error("Error updating announcement:", error);
-      console.error("Error code:", error?.code);
-      console.error("Error message:", error?.message);
+      debugConsole.error("Error updating announcement:", error);
+      debugConsole.error("Error code:", error?.code);
+      debugConsole.error("Error message:", error?.message);
       
-      // Rollback on error
       setAnnouncements(previousAnnouncements);
       setActiveAnnouncements(previousActiveAnnouncements);
       toast.error(`Fehler: ${error?.message || 'Unbekannter Fehler'}`);
@@ -313,7 +294,7 @@ export function useTeamAnnouncements() {
       await fetchAnnouncements();
       return true;
     } catch (error) {
-      console.error("Error deleting announcement:", error);
+      debugConsole.error("Error deleting announcement:", error);
       toast.error("Fehler beim Löschen");
       return false;
     }
@@ -335,7 +316,6 @@ export function useTeamAnnouncements() {
 
       if (error) throw error;
 
-      // Optimistic update
       setActiveAnnouncements(prev => prev.filter(a => a.id !== announcementId));
       setAnnouncements(prev => 
         prev.map(a => a.id === announcementId ? { ...a, is_dismissed: true } : a)
@@ -344,7 +324,7 @@ export function useTeamAnnouncements() {
       toast.success("Als erledigt markiert");
       return true;
     } catch (error) {
-      console.error("Error dismissing announcement:", error);
+      debugConsole.error("Error dismissing announcement:", error);
       toast.error("Fehler beim Markieren");
       return false;
     }
@@ -366,7 +346,7 @@ export function useTeamAnnouncements() {
       toast.success("Erledigt-Markierung aufgehoben");
       return true;
     } catch (error) {
-      console.error("Error undoing dismissal:", error);
+      debugConsole.error("Error undoing dismissal:", error);
       return false;
     }
   };
@@ -402,7 +382,6 @@ export function useAnnouncementProgress(announcementId: string) {
       }
 
       try {
-        // Fetch dismissals for this announcement
         const { data: dismissalsData, error: dismissalsError } = await supabase
           .from("team_announcement_dismissals")
           .select("user_id, dismissed_at")
@@ -410,7 +389,6 @@ export function useAnnouncementProgress(announcementId: string) {
 
         if (dismissalsError) throw dismissalsError;
 
-        // Fetch team member count
         const { data: membersData, error: membersError } = await supabase
           .from("user_tenant_memberships")
           .select("user_id")
@@ -419,7 +397,6 @@ export function useAnnouncementProgress(announcementId: string) {
 
         if (membersError) throw membersError;
 
-        // Fetch profiles for dismissed users
         const dismissedUserIds = dismissalsData?.map(d => d.user_id) || [];
         const { data: profilesData } = await supabase
           .from("profiles")
@@ -440,7 +417,7 @@ export function useAnnouncementProgress(announcementId: string) {
           dismissals,
         });
       } catch (error) {
-        console.error("Error fetching progress:", error);
+        debugConsole.error("Error fetching progress:", error);
       } finally {
         setLoading(false);
       }

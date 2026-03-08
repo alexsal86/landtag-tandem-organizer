@@ -70,7 +70,7 @@ const LetterDetail = () => {
     setLoading(true);
     const { data } = await supabase
       .from('letters')
-      .select('*')
+      .select('id, title, content, content_html, content_nodes, recipient_name, recipient_address, contact_id, template_id, subject, reference_number, sender_info_id, information_block_ids, letter_date, status, sent_date, sent_method, expected_response_date, created_by, created_at, updated_at, tenant_id, show_pagination')
       .eq('id', letterId)
       .eq('tenant_id', currentTenant.id)
       .maybeSingle();

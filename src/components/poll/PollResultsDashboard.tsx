@@ -10,6 +10,7 @@ import { de } from 'date-fns/locale';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { useTenant } from '@/hooks/useTenant';
+import { debugConsole } from '@/utils/debugConsole';
 
 interface TimeSlot {
   id: string;
@@ -71,17 +72,15 @@ export const PollResultsDashboard = ({ pollId, onConfirmSlot }: PollResultsDashb
   useEffect(() => {
     const loadPollResults = async () => {
       try {
-        // Load poll information
         const { data: pollData, error: pollError } = await supabase
           .from('appointment_polls')
-          .select('*')
+          .select('id, title, description, deadline, status, user_id')
           .eq('id', pollId)
           .single();
 
         if (pollError) throw pollError;
         setPoll(pollData);
 
-        // Load creator name
         const { data: profile } = await supabase
           .from('profiles')
           .select('display_name')
@@ -89,25 +88,22 @@ export const PollResultsDashboard = ({ pollId, onConfirmSlot }: PollResultsDashb
           .maybeSingle();
         setCreatorName(profile?.display_name || 'Unbekannt');
 
-        // Load time slots
         const { data: slotsData, error: slotsError } = await supabase
           .from('poll_time_slots')
-          .select('*')
+          .select('id, start_time, end_time, order_index')
           .eq('poll_id', pollId)
           .order('order_index');
 
         if (slotsError) throw slotsError;
 
-        // Load participants
         const { data: participantsData, error: participantsError } = await supabase
           .from('poll_participants')
-          .select('*')
+          .select('id, name, email, is_external')
           .eq('poll_id', pollId);
 
         if (participantsError) throw participantsError;
         setParticipants(participantsData || []);
 
-        // Load responses with participant data
         const { data: responsesData, error: responsesError } = await supabase
           .from('poll_responses')
           .select(`
@@ -146,7 +142,7 @@ export const PollResultsDashboard = ({ pollId, onConfirmSlot }: PollResultsDashb
         setSlotResults(results);
 
       } catch (error) {
-        console.error('Error loading poll results:', error);
+        debugConsole.error('Error loading poll results:', error);
         toast({
           title: "Fehler",
           description: "Die Umfrageergebnisse konnten nicht geladen werden.",
@@ -233,7 +229,7 @@ export const PollResultsDashboard = ({ pollId, onConfirmSlot }: PollResultsDashb
       }
 
     } catch (error) {
-      console.error('Error confirming slot:', error);
+      debugConsole.error('Error confirming slot:', error);
       toast({
         title: "Fehler",
         description: "Der Termin konnte nicht bestätigt werden.",
@@ -244,7 +240,7 @@ export const PollResultsDashboard = ({ pollId, onConfirmSlot }: PollResultsDashb
 
   const resendInvitation = async (participantEmail: string) => {
     try {
-      console.log('Resending invitation to:', participantEmail);
+      debugConsole.log('Resending invitation to:', participantEmail);
       
       const { data, error } = await supabase.functions.invoke('resend-poll-invitation', {
         body: {
@@ -254,11 +250,11 @@ export const PollResultsDashboard = ({ pollId, onConfirmSlot }: PollResultsDashb
       });
 
       if (error) {
-        console.error('Function invocation error:', error);
+        debugConsole.error('Function invocation error:', error);
         throw error;
       }
 
-      console.log('Resend invitation response:', data);
+      debugConsole.log('Resend invitation response:', data);
 
       toast({
         title: "Einladung gesendet",
@@ -266,7 +262,7 @@ export const PollResultsDashboard = ({ pollId, onConfirmSlot }: PollResultsDashb
       });
 
     } catch (error: any) {
-      console.error('Error resending invitation:', error);
+      debugConsole.error('Error resending invitation:', error);
       const errorMessage = error?.message || 'Unbekannter Fehler';
       toast({
         title: "Fehler",

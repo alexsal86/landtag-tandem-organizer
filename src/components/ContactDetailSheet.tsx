@@ -10,6 +10,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
+import { debugConsole } from "@/utils/debugConsole";
 import { ContactEditForm } from "./ContactEditForm";
 import { CallLogWidget } from "@/components/widgets/CallLogWidget";
 import { formatGermanDate } from "@/lib/utils";
@@ -156,7 +157,7 @@ export function ContactDetailSheet({ contactId, isOpen, onClose, onContactUpdate
       setLoadingCallLogs(true);
       const { data, error } = await supabase
         .from('call_logs')
-        .select('*')
+        .select('id, contact_id, caller_name, caller_phone, call_type, duration_minutes, call_date, notes, follow_up_required, follow_up_date, follow_up_completed, completion_notes, priority, created_at, created_by_name')
         .or(`contact_id.eq.${contactId},caller_phone.ilike.%${contact?.phone || ''}%`)
         .order('call_date', { ascending: false });
 
@@ -164,7 +165,7 @@ export function ContactDetailSheet({ contactId, isOpen, onClose, onContactUpdate
 
       setCallLogs((data || []) as CallLog[]);
     } catch (error) {
-      console.error('Error fetching call logs:', error);
+      debugConsole.error('Error fetching call logs:', error);
     } finally {
       setLoadingCallLogs(false);
     }
@@ -191,7 +192,7 @@ export function ContactDetailSheet({ contactId, isOpen, onClose, onContactUpdate
 
       setActivities(data || []);
     } catch (error) {
-      console.error("Error fetching activities:", error);
+      debugConsole.error("Error fetching activities:", error);
     } finally {
       setActivitiesLoading(false);
     }
@@ -237,7 +238,7 @@ export function ContactDetailSheet({ contactId, isOpen, onClose, onContactUpdate
       setAllTags({ direct: directTags, inherited: inheritedTags });
       
     } catch (error) {
-      console.error('Error fetching contact:', error);
+      debugConsole.error('Error fetching contact:', error);
       toast({
         title: "Fehler",
         description: "Kontakt konnte nicht geladen werden.",
@@ -268,7 +269,7 @@ export function ContactDetailSheet({ contactId, isOpen, onClose, onContactUpdate
       onContactUpdate();
       onClose();
     } catch (error) {
-      console.error('Error deleting contact:', error);
+      debugConsole.error('Error deleting contact:', error);
       toast({
         title: "Fehler",
         description: "Kontakt konnte nicht gelöscht werden.",

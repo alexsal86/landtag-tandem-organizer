@@ -3,6 +3,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { useTenant } from "@/hooks/useTenant";
 import { useToast } from "@/hooks/use-toast";
+import { debugConsole } from "@/utils/debugConsole";
 import type { Document, DocumentFolder, Letter } from "../types";
 
 export function useDocumentsData(activeTab: string) {
@@ -48,13 +49,13 @@ export function useDocumentsData(activeTab: string) {
       const foldersWithCounts = await Promise.all((data || []).map(async (folder) => {
         const { count } = await supabase
           .from('documents')
-          .select('*', { count: 'exact', head: true })
+          .select('id', { count: 'exact', head: true })
           .eq('folder_id', folder.id);
         return { ...folder, documentCount: count || 0 };
       }));
       setFolders(foldersWithCounts);
     } catch (error: any) {
-      console.error('Error fetching folders:', error);
+      debugConsole.error('Error fetching folders:', error);
     }
   };
 

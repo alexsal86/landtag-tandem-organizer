@@ -1,61 +1,61 @@
 
+Ziel: Rückmeldungs-Feed stabil sichtbar machen und gleichzeitig die aktuellen Build-Blocker entfernen, damit die Fixes überhaupt wieder ausgeliefert werden.
 
-# console.log Migration + select('*') Optimierung
+1) Diagnose (aus Code + DB)
+- Do I know what the issue is? Ja.
+- Es gibt aktuell 2 Ebenen von Problemen:
+  1. Build ist kaputt (TypeScript):
+     - `src/components/ui/calendar.tsx`: doppelte Keys im `classNames`-Objekt (`caption_label`, `dropdowns`, `dropdown`) → TS1117.
+     - `src/components/task-decisions/DecisionOverview.tsx`: `ResponseOption`-Typ ohne `requires_comment` → TS2339.
+  2. Feed-Logik ist instabil/zu restriktiv:
+     - `src/components/my-work/MyWorkFeedbackFeedTab.tsx` übergibt `completedTo: new Date().toISOString()` bei jedem Render.
+       Dadurch ändert sich der React-Query-Key permanent (`useTeamFeedbackFeed`), was zu dauerndem Neu-Laden bzw. instabilem Feed führt.
+     - `useTeamFeedbackFeed` filtert hart auf `.not('notes','is',null)`. Damit verschwinden abgeschlossene Rückmeldungen ohne Notiz (z. B. nur Anhang/Aufgabe), obwohl sie fachlich oft relevant sind.
+- DB-Check:
+  - `appointment_feedback` hat Daten (u. a. completed in den letzten 7 Tagen vorhanden).
+  - RLS auf `appointment_feedback` erlaubt tenant-basiertes Lesen (`tenant_id = ANY(get_user_tenant_ids(auth.uid()))`), also kein offensichtlicher RLS-Blocker für Team-Feed im Tenant.
 
-## Umfang-Realitaet
+2) Umsetzungsplan (in Reihenfolge)
+A. Build sofort reparieren (Blocker)
+- `calendar.tsx`: doppelte Objekt-Keys entfernen, nur eine konsistente Definition für `caption_label`, `dropdowns`, `dropdown` behalten.
+- `DecisionOverview.tsx`: lokalen `ResponseOption`-Typ um `requires_comment?: boolean` ergänzen (oder auf den zentralen Typ aus `decisionTemplates` umstellen).
 
-Die tatsaechliche Groesse ist erheblich:
-- **console.log/warn/error**: 6.643 Aufrufe in 326 Dateien (nicht 38 wie urspruenglich geschaetzt)
-- **select('*')**: 736 Aufrufe in 90 Dateien
-- **Bereits migriert**: 24 Dateien haben debugConsole-Import (teils noch mit verbleibenden console-Aufrufen)
+B. Feed-Query stabilisieren
+- `MyWorkFeedbackFeedTab.tsx`:
+  - `completedTo` nicht mehr bei jedem Render neu erzeugen.
+  - Entweder:
+    - `completedTo` ganz weglassen (nur `completedFrom` + order/limit), oder
+    - `completedTo` per `useMemo/useState` nur bei Filterwechsel neu setzen.
+- `useTeamFeedbackFeed.ts`:
+  - Query-Key nur mit stabilen Filterwerten.
+  - Zeitfilter robust halten (kein per-render Drift).
 
-Das ist in einer einzelnen Nachricht nicht umsetzbar. Ich schlage folgendes Batch-Vorgehen vor:
+C. Sichtbarkeit der Rückmeldungen fachlich korrigieren
+- `useTeamFeedbackFeed.ts`:
+  - Notiz-Pflicht entfernen oder erweitern:
+    - statt nur `notes is not null` auch Einträge mit `has_documents = true` oder `has_tasks = true` zulassen.
+  - Ergebnis: auch „abgeschlossen ohne Notiz, aber mit Anhang/Aufgabe“ erscheint im Feed.
 
-## Batch-Strategie
+D. Fehler nicht mehr als „keine Daten“ maskieren
+- `MyWorkFeedbackFeedTab.tsx`:
+  - `isError` + `error` aus Query auslesen.
+  - Bei Fehler einen klaren Error-State anzeigen (statt „Keine passenden Rückmeldungen gefunden“), inkl. Retry-Button (`refetch`).
 
-### Batch 1 (diese Nachricht): Die 20 wichtigsten Dateien
-**console.log Migration** (~12 Dateien mit hoechster Frequenz):
-- `TodoCreateDialog.tsx`, `DashboardWidget.tsx`, `KarlsruheDistrictsMap.tsx`
-- `DirectPushTest.tsx`, `PushNotificationTest.tsx`
-- `MyWorkTasksTab.tsx`, `ContactDetailSheet.tsx`
-- `LetterTemplateSelector.tsx`, `MeetingProtocolView.tsx`
-- `MeetingArchiveView.tsx`, `PollResultsDashboard.tsx`
-- `useTeamAnnouncements.ts`
+E. Quercheck auf Seiteneffekte
+- `useMyWorkNewCounts.tsx` zählt derzeit ebenfalls nur `completed + notes not null`; ggf. auf dieselbe fachliche Logik angleichen, damit Badge und Feed konsistent sind.
 
-**select('*') Optimierung** (~8 Dateien):
-- `useDocumentsData.ts`, `StatusAdminSettings.tsx`, `ContactDetailSheet.tsx`
-- `MeetingProtocolView.tsx`, `MeetingArchiveView.tsx`
-- `LetterTemplateSelector.tsx`, `LetterDetail.tsx`
-- `CallLogWidget.tsx`
+3) Validierung nach Umsetzung
+- Build grün ohne TS-Fehler.
+- Im Tab „Meine Arbeit > Rückmeldungen“:
+  - Keine Endlos-Ladeanzeige.
+  - Team-Einträge der letzten 7/14 Tage sichtbar.
+  - Filter (Sicht/Zeitraum/Anhänge/Aufgaben) funktionieren.
+  - Bei absichtlichem Query-Fehler erscheint Error-State statt Empty-State.
+- Schneller Datenabgleich:
+  - Feed-Anzahl grob konsistent mit SQL-Count für completed im Zeitraum (unter Berücksichtigung der Filter).
 
-### Batch 2-5 (Folgenachrichten)
-Jeweils ~20-25 Dateien pro Nachricht, priorisiert nach:
-1. Dateien die sowohl console.log als auch select('*') haben (Doppel-Optimierung)
-2. Hooks und Daten-Layer (groesster Performance-Impact)
-3. UI-Komponenten (geringerer Impact)
-
-### Nicht migriert: Edge Functions
-Die 53 Edge Functions in `supabase/functions/` behalten `console.log` -- dort ist es der korrekte Logging-Mechanismus (Deno runtime, keine Browser-Umgebung).
-
-## Technischer Ansatz
-
-**console.log**: 
-- Import `debugConsole` hinzufuegen
-- Alle `console.log(` → `debugConsole.log(`
-- Alle `console.error(` → `debugConsole.error(`  
-- Alle `console.warn(` → `debugConsole.warn(`
-
-**select('*')**:
-- Pro Query analysieren welche Felder downstream genutzt werden
-- Explizite Spaltenliste erstellen
-- Bei komplexen Queries wo das gesamte Objekt weitergereicht wird (z.B. an PDF-Generatoren): alle relevanten Spalten der Tabelle explizit auflisten
-
-## Erwartung
-
-Nach allen Batches:
-- 0 verbleibende `console.log` im Frontend-Code
-- 0 verbleibende `select('*')` in Supabase-Queries
-- Geschaetzter Egress-Reduktion: 20-40% bei datenintensiven Tabellen (contacts, meetings, letters)
-
-Soll ich mit Batch 1 starten?
-
+4) Warum das den aktuellen Zustand löst
+- Solange Build fehlschlägt, werden vorherige Fixes teils nicht wirksam.
+- Selbst bei laufendem Build kann der Feed durch den „beweglichen“ `completedTo`-Key instabil bleiben.
+- Zusätzlich blendet der harte Notiz-Filter valide Rückmeldungen aus.
+- Mit den vier Korrekturen (Build, stabiler Query-Key, fachlich korrekter Filter, echter Error-State) wird die Ursachekette vollständig geschlossen.

@@ -28,6 +28,7 @@ import { MultiSelect } from "@/components/ui/multi-select-simple";
 import { Input } from "@/components/ui/input";
 import { addDays, isAfter, isBefore, startOfDay } from "date-fns";
 import { cn } from "@/lib/utils";
+import { debugConsole } from "@/utils/debugConsole";
 
 interface Profile {
   user_id: string;
@@ -116,7 +117,7 @@ export function MyWorkTasksTab() {
         .order('order_index');
       setTaskStatuses(statuses || []);
     } catch (error) {
-      console.error('Error loading task statuses:', error);
+      debugConsole.error('Error loading task statuses:', error);
     }
   };
 
@@ -130,7 +131,7 @@ export function MyWorkTasksTab() {
       if (error) throw error;
       setProfiles(data || []);
     } catch (error) {
-      console.error('Error loading profiles:', error);
+      debugConsole.error('Error loading profiles:', error);
     }
   };
 
@@ -179,7 +180,7 @@ export function MyWorkTasksTab() {
       setShowCelebration(true);
       toast({ title: "Aufgabe erledigt und archiviert" });
     } catch (error: any) {
-      console.error("Error completing task:", error);
+      debugConsole.error("Error completing task:", error);
       toast({ title: "Fehler", variant: "destructive" });
     }
   };
@@ -206,7 +207,7 @@ export function MyWorkTasksTab() {
       toast({ title: "Unteraufgabe erledigt" });
     } catch (error) {
       setSubtasks(previousSubtasks);
-      console.error("Error completing subtask:", error);
+      debugConsole.error("Error completing subtask:", error);
       toast({ title: "Fehler", variant: "destructive" });
     }
   };
@@ -232,7 +233,7 @@ export function MyWorkTasksTab() {
       });
       toast({ title: "Titel aktualisiert" });
     } catch (error) {
-      console.error("Error updating title:", error);
+      debugConsole.error("Error updating title:", error);
       toast({ title: "Fehler beim Speichern", variant: "destructive" });
     }
   };
@@ -258,7 +259,7 @@ export function MyWorkTasksTab() {
       });
       toast({ title: "Beschreibung aktualisiert" });
     } catch (error) {
-      console.error("Error updating description:", error);
+      debugConsole.error("Error updating description:", error);
       toast({ title: "Fehler beim Speichern", variant: "destructive" });
     }
   };
@@ -285,7 +286,7 @@ export function MyWorkTasksTab() {
       });
       toast({ title: "Frist aktualisiert" });
     } catch (error) {
-      console.error("Error updating due date:", error);
+      debugConsole.error("Error updating due date:", error);
       toast({ title: "Fehler beim Speichern", variant: "destructive" });
     }
   };
@@ -333,7 +334,7 @@ export function MyWorkTasksTab() {
       setSnoozeDialogOpen(false);
       setSnoozeTaskId(null);
     } catch (error) {
-      console.error("Error setting snooze:", error);
+      debugConsole.error("Error setting snooze:", error);
       toast({ title: "Fehler", variant: "destructive" });
     }
   };
@@ -366,7 +367,7 @@ export function MyWorkTasksTab() {
       setSnoozeDialogOpen(false);
       setSnoozeTaskId(null);
     } catch (error) {
-      console.error("Error clearing snooze:", error);
+      debugConsole.error("Error clearing snooze:", error);
       toast({ title: "Fehler", variant: "destructive" });
     }
   };
@@ -381,7 +382,7 @@ export function MyWorkTasksTab() {
         return next;
       });
     } catch (error) {
-      console.error("Error clearing snooze:", error);
+      debugConsole.error("Error clearing snooze:", error);
       toast({ title: "Fehler", variant: "destructive" });
     }
   };
@@ -419,7 +420,7 @@ export function MyWorkTasksTab() {
       setAssignTaskId(null);
       setAssignSelectedUserIds([]);
     } catch (error) {
-      console.error("Error updating assignee:", error);
+      debugConsole.error("Error updating assignee:", error);
       toast({ title: "Fehler", variant: "destructive" });
     }
   };
@@ -448,7 +449,7 @@ export function MyWorkTasksTab() {
     if (!meetingTaskId || !user) return;
     
     try {
-      console.log('Adding task to meeting:', { taskId: meetingTaskId, meetingId });
+      debugConsole.log('Adding task to meeting:', { taskId: meetingTaskId, meetingId });
       
       const { data, error } = await supabase
         .from('tasks')
@@ -457,7 +458,7 @@ export function MyWorkTasksTab() {
         .select();
 
       if (error) {
-        console.error('Error adding task to meeting:', error);
+        debugConsole.error('Error adding task to meeting:', error);
         toast({ 
           title: "Fehler", 
           description: error.message || "Aufgabe konnte nicht zugeordnet werden.",
@@ -477,7 +478,7 @@ export function MyWorkTasksTab() {
       
       toast({ title: `Aufgabe zu "${meetingTitle}" hinzugefügt` });
     } catch (error: any) {
-      console.error('Error adding task to meeting:', error);
+      debugConsole.error('Error adding task to meeting:', error);
       toast({ title: "Fehler", description: error.message, variant: "destructive" });
     } finally {
       setMeetingTaskId(null);
@@ -488,7 +489,7 @@ export function MyWorkTasksTab() {
     if (!meetingTaskId || !user) return;
     
     try {
-      console.log('Marking task for next jour fixe:', meetingTaskId);
+      debugConsole.log('Marking task for next jour fixe:', meetingTaskId);
       
       const { data, error } = await supabase
         .from('tasks')
@@ -497,7 +498,7 @@ export function MyWorkTasksTab() {
         .select();
 
       if (error) {
-        console.error('Error marking task:', error);
+        debugConsole.error('Error marking task:', error);
         toast({ 
           title: "Fehler", 
           description: error.message || "Aufgabe konnte nicht vorgemerkt werden.",
@@ -508,7 +509,7 @@ export function MyWorkTasksTab() {
       
       toast({ title: "Aufgabe für nächsten Jour Fixe vorgemerkt" });
     } catch (error: any) {
-      console.error('Error marking task for next jour fixe:', error);
+      debugConsole.error('Error marking task for next jour fixe:', error);
       toast({ title: "Fehler", description: error.message, variant: "destructive" });
     } finally {
       setMeetingTaskId(null);
@@ -552,7 +553,7 @@ export function MyWorkTasksTab() {
         ],
       }));
     } catch (error) {
-      console.error("Error creating child task:", error);
+      debugConsole.error("Error creating child task:", error);
       toast({ title: "Fehler", description: "Unteraufgabe konnte nicht erstellt werden.", variant: "destructive" });
     }
   };
@@ -618,7 +619,7 @@ export function MyWorkTasksTab() {
         return next;
       });
     } catch (error) {
-      console.error("Error updating task:", error);
+      debugConsole.error("Error updating task:", error);
       toast({ title: "Fehler beim Speichern", variant: "destructive" });
     }
   };

@@ -14,6 +14,7 @@ import { useTenant } from '@/hooks/useTenant';
 import { useAuth } from '@/hooks/useAuth';
 import { useToast } from '@/hooks/use-toast';
 import LetterTemplateManager from '@/components/LetterTemplateManager';
+import { debugConsole } from '@/utils/debugConsole';
 
 interface LetterTemplate {
   id: string;
@@ -40,11 +41,6 @@ const LetterTemplateSelector: React.FC<LetterTemplateSelectorProps> = ({
   onSelect,
   selectedTemplate
 }) => {
-  console.log('=== LETTERT TEMPLATE SELECTOR RENDER ===');
-  console.log('onSelect function:', onSelect);
-  console.log('typeof onSelect:', typeof onSelect);
-  console.log('=== END LETTERT TEMPLATE SELECTOR RENDER ===');
-  
   const { currentTenant } = useTenant();
   const { user } = useAuth();
   const { toast } = useToast();
@@ -79,7 +75,7 @@ const LetterTemplateSelector: React.FC<LetterTemplateSelectorProps> = ({
     try {
       const { data, error } = await supabase
         .from('letter_templates')
-        .select('*')
+        .select('id, name, letterhead_html, letterhead_css, response_time_days, is_default, is_active, created_by, created_at, updated_at, tenant_id, default_sender_id, default_info_blocks')
         .eq('tenant_id', currentTenant.id)
         .eq('is_active', true)
         .order('is_default', { ascending: false })
@@ -88,7 +84,7 @@ const LetterTemplateSelector: React.FC<LetterTemplateSelectorProps> = ({
       if (error) throw error;
       setTemplates(data || []);
     } catch (error) {
-      console.error('Error fetching templates:', error);
+      debugConsole.error('Error fetching templates:', error);
       toast({
         title: "Fehler",
         description: "Templates konnten nicht geladen werden.",
@@ -113,7 +109,7 @@ const LetterTemplateSelector: React.FC<LetterTemplateSelectorProps> = ({
       if (error) throw error;
       setSenderInfos(data || []);
     } catch (error) {
-      console.error('Error fetching sender infos:', error);
+      debugConsole.error('Error fetching sender infos:', error);
     }
   };
 
@@ -131,7 +127,7 @@ const LetterTemplateSelector: React.FC<LetterTemplateSelectorProps> = ({
       if (error) throw error;
       setInfoBlocks(data || []);
     } catch (error) {
-      console.error('Error fetching info blocks:', error);
+      debugConsole.error('Error fetching info blocks:', error);
     }
   };
 
@@ -170,7 +166,7 @@ const LetterTemplateSelector: React.FC<LetterTemplateSelectorProps> = ({
       });
       fetchTemplates();
     } catch (error) {
-      console.error('Error creating template:', error);
+      debugConsole.error('Error creating template:', error);
       toast({
         title: "Fehler",
         description: "Template konnte nicht erstellt werden.",
@@ -248,117 +244,117 @@ const LetterTemplateSelector: React.FC<LetterTemplateSelectorProps> = ({
                 Template erstellen
               </Button>
             </DialogTrigger>
-          <DialogContent className="max-w-2xl">
-            <DialogHeader>
-              <DialogTitle>Neues Brief-Template erstellen</DialogTitle>
-            </DialogHeader>
-            <div className="space-y-4">
-              <div>
-                <Label htmlFor="template-name">Name</Label>
-                <Input
-                  id="template-name"
-                  value={newTemplate.name}
-                  onChange={(e) => setNewTemplate(prev => ({ ...prev, name: e.target.value }))}
-                  placeholder="Template-Name eingeben..."
-                />
-              </div>
-              
-              <div>
-                <Label htmlFor="letterhead-html">Briefkopf HTML</Label>
-                <Textarea
-                  id="letterhead-html"
-                  value={newTemplate.letterhead_html}
-                  onChange={(e) => setNewTemplate(prev => ({ ...prev, letterhead_html: e.target.value }))}
-                  placeholder="HTML für den Briefkopf..."
-                  rows={4}
-                />
-              </div>
-              
-              <div>
-                <Label htmlFor="letterhead-css">Briefkopf CSS</Label>
-                <Textarea
-                  id="letterhead-css"
-                  value={newTemplate.letterhead_css}
-                  onChange={(e) => setNewTemplate(prev => ({ ...prev, letterhead_css: e.target.value }))}
-                  placeholder="CSS-Stile für den Briefkopf..."
-                  rows={4}
-                />
-              </div>
-              
-              <div>
-                <Label htmlFor="response-time">Antwortzeit (Tage)</Label>
-                <Input
-                  id="response-time"
-                  type="number"
-                  value={newTemplate.response_time_days}
-                  onChange={(e) => setNewTemplate(prev => ({ ...prev, response_time_days: parseInt(e.target.value) || 21 }))}
-                  min="1"
-                  max="365"
-                />
-              </div>
-              
-              <div>
-                <Label htmlFor="default-sender">Standard-Absenderinformation</Label>
-                <Select value={newTemplate.default_sender_id || "none"} onValueChange={(value) => setNewTemplate(prev => ({ ...prev, default_sender_id: value === "none" ? "" : value }))}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Absenderinformation auswählen..." />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="none">Keine Auswahl</SelectItem>
-                    {senderInfos.map((sender) => (
-                      <SelectItem key={sender.id} value={sender.id}>
-                        {sender.name} - {sender.organization}
-                        {sender.is_default && " (Standard)"}
-                      </SelectItem>
+            <DialogContent className="max-w-2xl">
+              <DialogHeader>
+                <DialogTitle>Neues Brief-Template erstellen</DialogTitle>
+              </DialogHeader>
+              <div className="space-y-4">
+                <div>
+                  <Label htmlFor="template-name">Name</Label>
+                  <Input
+                    id="template-name"
+                    value={newTemplate.name}
+                    onChange={(e) => setNewTemplate(prev => ({ ...prev, name: e.target.value }))}
+                    placeholder="Template-Name eingeben..."
+                  />
+                </div>
+                
+                <div>
+                  <Label htmlFor="letterhead-html">Briefkopf HTML</Label>
+                  <Textarea
+                    id="letterhead-html"
+                    value={newTemplate.letterhead_html}
+                    onChange={(e) => setNewTemplate(prev => ({ ...prev, letterhead_html: e.target.value }))}
+                    placeholder="HTML für den Briefkopf..."
+                    rows={4}
+                  />
+                </div>
+                
+                <div>
+                  <Label htmlFor="letterhead-css">Briefkopf CSS</Label>
+                  <Textarea
+                    id="letterhead-css"
+                    value={newTemplate.letterhead_css}
+                    onChange={(e) => setNewTemplate(prev => ({ ...prev, letterhead_css: e.target.value }))}
+                    placeholder="CSS-Stile für den Briefkopf..."
+                    rows={4}
+                  />
+                </div>
+                
+                <div>
+                  <Label htmlFor="response-time">Antwortzeit (Tage)</Label>
+                  <Input
+                    id="response-time"
+                    type="number"
+                    value={newTemplate.response_time_days}
+                    onChange={(e) => setNewTemplate(prev => ({ ...prev, response_time_days: parseInt(e.target.value) || 21 }))}
+                    min="1"
+                    max="365"
+                  />
+                </div>
+                
+                <div>
+                  <Label htmlFor="default-sender">Standard-Absenderinformation</Label>
+                  <Select value={newTemplate.default_sender_id || "none"} onValueChange={(value) => setNewTemplate(prev => ({ ...prev, default_sender_id: value === "none" ? "" : value }))}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Absenderinformation auswählen..." />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="none">Keine Auswahl</SelectItem>
+                      {senderInfos.map((sender) => (
+                        <SelectItem key={sender.id} value={sender.id}>
+                          {sender.name} - {sender.organization}
+                          {sender.is_default && " (Standard)"}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                
+                <div>
+                  <Label>Standard-Informationsblöcke</Label>
+                  <div className="space-y-2 max-h-32 overflow-y-auto">
+                    {infoBlocks.map((block) => (
+                      <div key={block.id} className="flex items-center space-x-2">
+                        <Checkbox
+                          id={`block-${block.id}`}
+                          checked={newTemplate.default_info_blocks.includes(block.id)}
+                          onCheckedChange={(checked) => {
+                            if (checked) {
+                              setNewTemplate(prev => ({
+                                ...prev,
+                                default_info_blocks: [...prev.default_info_blocks, block.id]
+                              }));
+                            } else {
+                              setNewTemplate(prev => ({
+                                ...prev,
+                                default_info_blocks: prev.default_info_blocks.filter(id => id !== block.id)
+                              }));
+                            }
+                          }}
+                        />
+                        <Label htmlFor={`block-${block.id}`} className="text-sm">
+                          {block.label} {block.is_default && "(Standard)"}
+                        </Label>
+                      </div>
                     ))}
-                  </SelectContent>
-                </Select>
-              </div>
-              
-              <div>
-                <Label>Standard-Informationsblöcke</Label>
-                <div className="space-y-2 max-h-32 overflow-y-auto">
-                  {infoBlocks.map((block) => (
-                    <div key={block.id} className="flex items-center space-x-2">
-                      <Checkbox
-                        id={`block-${block.id}`}
-                        checked={newTemplate.default_info_blocks.includes(block.id)}
-                        onCheckedChange={(checked) => {
-                          if (checked) {
-                            setNewTemplate(prev => ({
-                              ...prev,
-                              default_info_blocks: [...prev.default_info_blocks, block.id]
-                            }));
-                          } else {
-                            setNewTemplate(prev => ({
-                              ...prev,
-                              default_info_blocks: prev.default_info_blocks.filter(id => id !== block.id)
-                            }));
-                          }
-                        }}
-                      />
-                      <Label htmlFor={`block-${block.id}`} className="text-sm">
-                        {block.label} {block.is_default && "(Standard)"}
-                      </Label>
-                    </div>
-                  ))}
-                  {infoBlocks.length === 0 && (
-                    <p className="text-sm text-muted-foreground">Keine Informationsblöcke verfügbar</p>
-                  )}
+                    {infoBlocks.length === 0 && (
+                      <p className="text-sm text-muted-foreground">Keine Informationsblöcke verfügbar</p>
+                    )}
+                  </div>
+                </div>
+                
+                <div className="flex justify-end space-x-2">
+                  <Button variant="outline" onClick={() => setShowCreateDialog(false)}>
+                    Abbrechen
+                  </Button>
+                  <Button onClick={handleCreateTemplate}>
+                    Template erstellen
+                  </Button>
                 </div>
               </div>
-              
-              <div className="flex justify-end space-x-2">
-                <Button variant="outline" onClick={() => setShowCreateDialog(false)}>
-                  Abbrechen
-                </Button>
-                <Button onClick={handleCreateTemplate}>
-                  Template erstellen
-                </Button>
-              </div>
-            </div>
-          </DialogContent>
-        </Dialog>
+            </DialogContent>
+          </Dialog>
         </div>
       </div>
 
@@ -371,10 +367,7 @@ const LetterTemplateSelector: React.FC<LetterTemplateSelectorProps> = ({
               selectedTemplate?.id === template.id ? 'ring-2 ring-primary' : ''
             }`}
             onClick={() => {
-              console.log('=== TEMPLATE CLICKED (DEFAULT) ===');
-              console.log('Clicked template:', template);
               onSelect(template as any);
-              console.log('=== onSelect called ===');
             }}
           >
             <CardHeader className="pb-3">
@@ -400,10 +393,7 @@ const LetterTemplateSelector: React.FC<LetterTemplateSelectorProps> = ({
               selectedTemplate?.id === template.id ? 'ring-2 ring-primary' : ''
             }`}
             onClick={() => {
-              console.log('=== TEMPLATE CLICKED (CUSTOM) ===');
-              console.log('Clicked template:', template);
               onSelect(template);
-              console.log('=== onSelect called ===');
             }}
           >
             <CardHeader className="pb-3">

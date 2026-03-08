@@ -5,6 +5,7 @@ import { format } from "date-fns";
 import { de } from "date-fns/locale";
 import { useToast } from "@/components/ui/use-toast";
 import { supabase } from "@/integrations/supabase/client";
+import { debugConsole } from "@/utils/debugConsole";
 
 interface AgendaItem {
   id: string;
@@ -60,7 +61,7 @@ export function MeetingProtocolView({ meetingId, onBack }: MeetingProtocolViewPr
       // Load meeting details
       const { data: meetingData, error: meetingError } = await supabase
         .from('meetings')
-        .select('*')
+        .select('id, title, description, meeting_date, location, status')
         .eq('id', meetingId)
         .single();
 
@@ -69,7 +70,7 @@ export function MeetingProtocolView({ meetingId, onBack }: MeetingProtocolViewPr
       // Load agenda items
       const { data: agendaData, error: agendaError } = await supabase
         .from('meeting_agenda_items')
-        .select('*')
+        .select('id, title, description, notes, result_text, assigned_to, order_index')
         .eq('meeting_id', meetingId)
         .order('order_index');
 
@@ -127,7 +128,7 @@ export function MeetingProtocolView({ meetingId, onBack }: MeetingProtocolViewPr
       setProfiles(profilesData || []);
       setStarredAppointments(starredList);
     } catch (error) {
-      console.error('Error loading meeting protocol:', error);
+      debugConsole.error('Error loading meeting protocol:', error);
       toast({
         title: "Fehler",
         description: "Das Besprechungsprotokoll konnte nicht geladen werden.",

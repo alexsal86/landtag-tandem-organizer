@@ -4,6 +4,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Badge } from '@/components/ui/badge';
 import { CheckCircle2, XCircle, Clock, Zap } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
+import { debugConsole } from '@/utils/debugConsole';
 
 interface DirectTestResult {
   step: string;
@@ -17,7 +18,7 @@ export const DirectPushTest: React.FC = () => {
   const [isRunning, setIsRunning] = useState(false);
 
   const runDirectPushTest = async () => {
-    console.log('🔥 === DIREKTER PUSH TEST GESTARTET ===');
+    debugConsole.log('🔥 === DIREKTER PUSH TEST GESTARTET ===');
     setIsRunning(true);
     
     try {
@@ -28,19 +29,17 @@ export const DirectPushTest: React.FC = () => {
         logs: ['🔥 Direkter Test gestartet']
       });
 
-      // Send real push notification directly
-      console.log('🚀 Calling send-push-notification Edge Function directly...');
+      debugConsole.log('🚀 Calling send-push-notification Edge Function directly...');
       
-      // First check if we have valid push subscriptions
       const { data: subscriptions, error: subError } = await supabase
         .from('push_subscriptions')
-        .select('*')
+        .select('id, user_id, is_active')
         .eq('is_active', true);
         
-      console.log('📋 Current active subscriptions:', subscriptions);
+      debugConsole.log('📋 Current active subscriptions:', subscriptions);
       
       if (subError) {
-        console.error('❌ Subscription check error:', subError);
+        debugConsole.error('❌ Subscription check error:', subError);
       }
       
       if (!subscriptions || subscriptions.length === 0) {
@@ -66,7 +65,7 @@ export const DirectPushTest: React.FC = () => {
         }
       });
 
-      console.log('📤 Direct Push Edge Function response:', response);
+      debugConsole.log('📤 Direct Push Edge Function response:', response);
 
       const logs = [
         '🔥 Direkter Test gestartet',
@@ -75,7 +74,7 @@ export const DirectPushTest: React.FC = () => {
       ];
 
       if (response.error) {
-        console.error('❌ Direct Push Edge Function error:', response.error);
+        debugConsole.error('❌ Direct Push Edge Function error:', response.error);
         setTestResult({
           step: 'Direkter Push-Test',
           status: 'error',
@@ -86,7 +85,7 @@ export const DirectPushTest: React.FC = () => {
       }
 
       const responseData = response.data;
-      console.log('📊 Direct Push Response data:', responseData);
+      debugConsole.log('📊 Direct Push Response data:', responseData);
       
       logs.push(`📊 Data: ${JSON.stringify(responseData, null, 2)}`);
 
@@ -107,7 +106,7 @@ export const DirectPushTest: React.FC = () => {
       }
 
     } catch (error) {
-      console.error('❌ Direct push test error:', error);
+      debugConsole.error('❌ Direct push test error:', error);
       setTestResult({
         step: 'Direkter Push-Test fehlgeschlagen',
         status: 'error',
@@ -118,7 +117,7 @@ export const DirectPushTest: React.FC = () => {
       setIsRunning(false);
     }
 
-    console.log('🔥 === DIREKTER PUSH TEST BEENDET ===');
+    debugConsole.log('🔥 === DIREKTER PUSH TEST BEENDET ===');
   };
 
   const getStatusIcon = (status: 'pending' | 'success' | 'error') => {

@@ -10,6 +10,7 @@ import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { useTenant } from '@/hooks/useTenant';
+import { debugConsole } from '@/utils/debugConsole';
 
 interface CallLog {
   id: string;
@@ -97,7 +98,7 @@ export const CallLogWidget: React.FC<CallLogWidgetProps> = ({
     try {
       const { data, error } = await supabase
         .from('call_logs')
-        .select('*')
+        .select('id, contact_id, caller_name, caller_phone, call_type, duration_minutes, call_date, notes, follow_up_required, follow_up_date, follow_up_completed, completion_notes, priority, created_at, created_by_name')
         .eq('user_id', user.id)
         .order('call_date', { ascending: false })
         .limit(50);
@@ -105,7 +106,7 @@ export const CallLogWidget: React.FC<CallLogWidgetProps> = ({
       if (error) throw error;
       setCallLogs((data || []) as CallLog[]);
     } catch (error) {
-      console.error('Error loading call logs:', error);
+      debugConsole.error('Error loading call logs:', error);
       toast.error('Fehler beim Laden der Anrufliste');
     } finally {
       setLoading(false);
@@ -125,7 +126,7 @@ export const CallLogWidget: React.FC<CallLogWidgetProps> = ({
       if (error) throw error;
       setContacts(data || []);
     } catch (error) {
-      console.error('Error loading contacts:', error);
+      debugConsole.error('Error loading contacts:', error);
     }
   };
 
@@ -196,7 +197,7 @@ export const CallLogWidget: React.FC<CallLogWidgetProps> = ({
             .single();
 
           if (mainTaskError || !mainTaskData) {
-            console.error('Error creating main task:', mainTaskError);
+            debugConsole.error('Error creating main task:', mainTaskError);
             return;
           }
           mainTaskId = mainTaskData.id;
@@ -224,10 +225,9 @@ export const CallLogWidget: React.FC<CallLogWidgetProps> = ({
           .single();
 
         if (subtaskError || !subtaskData) {
-          console.error('Error creating subtask:', subtaskError);
+          debugConsole.error('Error creating subtask:', subtaskError);
         } else {
-          // Task linking is handled via call_log_id in tasks table
-          console.log('Subtask created successfully:', subtaskData.id);
+          debugConsole.log('Subtask created successfully:', subtaskData.id);
         }
 
         // Create calendar appointment if follow-up has a date
@@ -253,9 +253,9 @@ export const CallLogWidget: React.FC<CallLogWidgetProps> = ({
             });
 
           if (appointmentError) {
-            console.error('Error creating follow-up appointment:', appointmentError);
+            debugConsole.error('Error creating follow-up appointment:', appointmentError);
           } else {
-            console.log('Follow-up appointment created successfully');
+            debugConsole.log('Follow-up appointment created successfully');
           }
         }
       }
@@ -264,7 +264,7 @@ export const CallLogWidget: React.FC<CallLogWidgetProps> = ({
       resetForm();
       toast.success('Anruf protokolliert');
     } catch (error) {
-      console.error('Error creating call log:', error);
+      debugConsole.error('Error creating call log:', error);
       toast.error('Fehler beim Protokollieren des Anrufs');
     }
   };
@@ -281,7 +281,7 @@ export const CallLogWidget: React.FC<CallLogWidgetProps> = ({
       await loadCallLogs();
       toast.success('Anruf aus Liste entfernt');
     } catch (error) {
-      console.error('Error deleting call log:', error);
+      debugConsole.error('Error deleting call log:', error);
       toast.error('Fehler beim Entfernen des Anrufs');
     }
   };
@@ -305,7 +305,7 @@ export const CallLogWidget: React.FC<CallLogWidgetProps> = ({
         .eq('call_log_id', id);
       
       if (taskError) {
-        console.error('Error updating task:', taskError);
+        debugConsole.error('Error updating task:', taskError);
       }
 
       // Update the associated appointment if it exists (add "Erledigt:" prefix instead of deleting)
@@ -326,14 +326,14 @@ export const CallLogWidget: React.FC<CallLogWidgetProps> = ({
           .eq('call_log_id', id);
         
         if (appointmentError) {
-          console.error('Error updating appointment:', appointmentError);
+          debugConsole.error('Error updating appointment:', appointmentError);
         }
       }
 
       await loadCallLogs();
       toast.success('Follow-up abgeschlossen');
     } catch (error) {
-      console.error('Error marking follow-up complete:', error);
+      debugConsole.error('Error marking follow-up complete:', error);
       toast.error('Fehler beim Abschließen des Follow-ups');
     }
   };
@@ -464,7 +464,7 @@ export const CallLogWidget: React.FC<CallLogWidgetProps> = ({
       setContacts(prev => [...prev, data]);
       toast.success('Kontakt gespeichert');
     } catch (error) {
-      console.error('Error saving contact:', error);
+      debugConsole.error('Error saving contact:', error);
       toast.error('Fehler beim Speichern des Kontakts');
     }
   };
