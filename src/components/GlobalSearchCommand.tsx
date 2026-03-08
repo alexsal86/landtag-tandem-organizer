@@ -727,7 +727,7 @@ export function GlobalSearchCommand() {
         )}
 
         {caseFiles && caseFiles.length > 0 && (
-          <CommandGroup heading="📁 FallAkten">
+          <CommandGroup heading="📁 Fallakten">
             {caseFiles.map((caseFile) => (
               <CommandItem
                 key={caseFile.id}

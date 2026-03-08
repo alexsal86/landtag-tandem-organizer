@@ -62,7 +62,7 @@ export function Navigation({ activeSection, onSectionChange }: NavigationProps) 
     { id: "contacts", label: "Kontakte", icon: Contact },
     { id: "tasks", label: "Aufgaben", icon: CheckSquare },
     { id: "decisions", label: "Entscheidungen", icon: Vote },
-    { id: "casefiles", label: "FallAkten", icon: Briefcase },
+    { id: "casefiles", label: "Fallakten", icon: Briefcase },
     { id: "meetings", label: "Jour fixe", icon: MessageSquare },
     { id: "eventplanning", label: "Planungen", icon: CalendarPlus },
     { id: "karten", label: "Karten", icon: MapPin },

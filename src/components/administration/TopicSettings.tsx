@@ -176,7 +176,7 @@ export const TopicSettings = () => {
         {/* Module usage legend */}
         <div className="flex flex-wrap gap-4 mb-6 p-3 bg-muted/50 rounded-lg text-sm text-muted-foreground">
           <span className="flex items-center gap-1.5">
-            <Briefcase className="h-3.5 w-3.5" /> FallAkten
+            <Briefcase className="h-3.5 w-3.5" /> Fallakten
           </span>
           <span className="flex items-center gap-1.5">
             <Users className="h-3.5 w-3.5" /> Kontakte

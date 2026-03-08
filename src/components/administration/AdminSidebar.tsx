@@ -119,7 +119,7 @@ export const adminMenuItems: AdminMenuItem[] = [
       { id: "todos", label: "ToDos", icon: ListTodo },
       { id: "decisions", label: "Entscheidungen", icon: Gavel },
       { id: "documents", label: "Dokumenttypen", icon: File },
-      { id: "casefiles", label: "FallAkten-Typen", icon: Briefcase },
+      { id: "casefiles", label: "Fallakten-Typen", icon: Briefcase },
       { id: "stakeholder-network-tags", label: "Stakeholder-Netzwerk", icon: Network },
     ],
   },
