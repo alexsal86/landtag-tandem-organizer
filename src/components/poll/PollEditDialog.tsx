@@ -17,7 +17,7 @@ import { ContactSelector } from '@/components/ContactSelector';
 
 interface PollParticipant {
   id: string;
-  name: string;
+  name: string | null;
   email: string;
   is_external: boolean;
   isNew?: boolean;
@@ -131,7 +131,7 @@ export const PollEditDialog = ({
     setSaving(true);
     
     try {
-      const changes = [];
+      const changes: string[] = [];
       if (title !== currentTitle) changes.push(`Titel geändert von "${currentTitle}" zu "${title}"`);
       if (description !== currentDescription) changes.push(`Beschreibung ${currentDescription ? 'geändert' : 'hinzugefügt'}`);
       if (deadline?.toISOString() !== currentDeadline) {
@@ -168,7 +168,7 @@ export const PollEditDialog = ({
           description: currentDescription,
           deadline: currentDeadline,
           changes_summary: changes.join('; '),
-          created_by: (await supabase.auth.getUser()).data.user?.id
+          created_by: (await supabase.auth.getUser()).data.user?.id ?? ''
         }]);
 
       // Update poll
@@ -201,7 +201,7 @@ export const PollEditDialog = ({
 
       // Add new participants
       if (newParticipants.length > 0) {
-        const participantData = [];
+        const participantData: Array<{ poll_id: string; email: string; name: string | null; is_external: boolean; token: string | null }> = [];
         for (const p of newParticipants) {
           if (p.is_external) {
             const { data: tokenData } = await supabase.rpc('generate_participant_token');

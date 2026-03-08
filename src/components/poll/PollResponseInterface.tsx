@@ -21,16 +21,17 @@ interface TimeSlot {
 interface Poll {
   id: string;
   title: string;
-  description?: string;
-  deadline?: string;
+  description?: string | null;
+  deadline?: string | null;
   status: string;
 }
 
 interface Participant {
   id: string;
-  name: string;
+  name: string | null;
   email: string;
   is_external?: boolean;
+  token?: string | null;
 }
 
 interface Response {
@@ -89,7 +90,7 @@ export const PollResponseInterface = ({ pollId, token, participantId, isPreview 
         setTimeSlots(slotsData || []);
 
         // Load or create participant
-        let currentParticipant = null;
+        let currentParticipant: Participant | null = null;
         
         if (participantId) {
           // Internal participant

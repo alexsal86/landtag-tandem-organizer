@@ -19,8 +19,8 @@ import { AppointmentPollCreator } from './AppointmentPollCreator';
 interface Poll {
   id: string;
   title: string;
-  description?: string;
-  deadline?: string;
+  description?: string | null;
+  deadline?: string | null;
   status: string;
   created_at: string;
   participant_count: number;
@@ -472,8 +472,8 @@ export const PollListView = () => {
                       <PollEditDialog
                         pollId={poll.id}
                         currentTitle={poll.title}
-                        currentDescription={poll.description}
-                        currentDeadline={poll.deadline}
+                        currentDescription={poll.description ?? undefined}
+                        currentDeadline={poll.deadline ?? undefined}
                         onUpdate={loadPolls}
                       />
                       <Button

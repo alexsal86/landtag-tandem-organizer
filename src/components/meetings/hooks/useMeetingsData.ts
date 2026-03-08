@@ -249,11 +249,11 @@ export function useMeetingsData() {
   const loadMeetings = async () => {
     try {
       const { data: ownMeetings, error: ownError } = await supabase
-        .from('meetings').select('*').eq('user_id', user?.id).neq('status', 'archived').order('meeting_date', { ascending: false });
+        .from('meetings').select('*').eq('user_id', user?.id ?? '').neq('status', 'archived').order('meeting_date', { ascending: false });
       if (ownError) throw ownError;
 
       const { data: participantMeetings, error: participantError } = await supabase
-        .from('meeting_participants').select('meeting_id, meetings(*)').eq('user_id', user?.id);
+        .from('meeting_participants').select('meeting_id, meetings(*)').eq('user_id', user?.id ?? '');
       if (participantError) debugConsole.error('Error loading participant meetings:', participantError);
 
       const ownMeetingIds = new Set((ownMeetings || []).map(m => m.id));
@@ -325,7 +325,7 @@ export function useMeetingsData() {
       const { data, error } = await supabase
         .from('meeting_templates').select('*').order('is_default', { ascending: false }).order('name');
       if (error) throw error;
-      setMeetingTemplates(data || []);
+      setMeetingTemplates((data || []) as MeetingTemplate[]);
 
       const defaultTemplate = data?.find(t => t.is_default);
       if (defaultTemplate) {
@@ -363,7 +363,7 @@ export function useMeetingsData() {
         sortedItems.push({ ...main, localKey: main.id, parentLocalKey: undefined });
         const children = (data || []).filter(item => item.parent_id === main.id).sort((a, b) => a.order_index - b.order_index);
         children.forEach(child => {
-          sortedItems.push({ ...child, localKey: child.id, parentLocalKey: child.parent_id });
+          sortedItems.push({ ...child, localKey: child.id, parentLocalKey: child.parent_id ?? undefined });
         });
       });
       setAgendaItems(sortedItems);

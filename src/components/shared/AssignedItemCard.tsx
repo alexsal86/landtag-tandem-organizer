@@ -248,7 +248,7 @@ export function AssignedItemCard({
               {creatorUserId && (
                 <UserBadge
                   userId={creatorUserId}
-                  displayName={creatorName}
+                  displayName={creatorName ?? null}
                   badgeColor={creatorBadgeColor}
                   size="sm"
                 />

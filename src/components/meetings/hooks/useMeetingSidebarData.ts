@@ -146,14 +146,7 @@ export function useMeetingSidebarData(deps: UseMeetingSidebarDataDeps) {
       const all: MeetingUpcomingAppointment[] = [
         ...(internalData || []).map((a) => ({ ...a, isExternal: false as const })),
         ...(externalData || []).map(
-          (e: {
-            id: string;
-            title: string;
-            start_time: string;
-            end_time: string;
-            location?: string | null;
-            external_calendars?: { name?: string; color?: string };
-          }) => ({
+          (e: any) => ({
             id: e.id,
             title: e.title,
             start_time: e.start_time,

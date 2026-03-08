@@ -112,7 +112,7 @@ export function MeetingTemplateParticipantsEditor({
       const users: User[] = (data || []).map(profile => ({
         id: profile.user_id,
         display_name: profile.display_name || 'Unbekannt',
-        avatar_url: profile.avatar_url
+        avatar_url: profile.avatar_url ?? undefined
       }));
 
       setParticipantUsers(users);

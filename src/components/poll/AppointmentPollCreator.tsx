@@ -194,7 +194,7 @@ export const AppointmentPollCreator = ({ onClose }: { onClose: () => void }) => 
 
       // Create participants with improved error handling
       
-      const participantData = [];
+      const participantData: Array<{ poll_id: string; email: string; name: string; is_external: boolean; token: string | null }> = [];
       
       // Process each participant individually to avoid conflicts
       for (const p of participants) {

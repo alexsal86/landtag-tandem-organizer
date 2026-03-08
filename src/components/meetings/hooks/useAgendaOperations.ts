@@ -101,7 +101,7 @@ export function useAgendaOperations(deps: AgendaOpsDeps) {
         }]).select().single();
       if (error) throw error;
 
-      const newItem: AgendaItem = { ...savedItem, localKey: savedItem.id, parentLocalKey: parentId || undefined };
+      const newItem: AgendaItem = { ...savedItem, carry_over_to_next: savedItem.carry_over_to_next ?? undefined, localKey: savedItem.id, parentLocalKey: parentId || undefined };
       const next = [...agendaItems];
       next.splice(insertIndex, 0, newItem);
       const reindexed = next.map((it, idx) => ({ ...it, order_index: idx }));
@@ -153,7 +153,7 @@ export function useAgendaOperations(deps: AgendaOpsDeps) {
       const children = ordered.filter(i => i.parentLocalKey);
 
       const parentInserts = parents.map(p => ({
-        meeting_id: selectedMeeting.id, title: p.title || '', description: p.description || null,
+        meeting_id: selectedMeeting.id!, title: p.title || '', description: p.description || null,
         assigned_to: Array.isArray(p.assigned_to) && p.assigned_to.length > 0 ? p.assigned_to.filter(Boolean) : null,
         notes: p.notes || null, is_completed: Boolean(p.is_completed), is_recurring: Boolean(p.is_recurring),
         task_id: p.task_id || null, order_index: p.order_index, system_type: p.system_type || null,
@@ -173,7 +173,7 @@ export function useAgendaOperations(deps: AgendaOpsDeps) {
 
       if (children.length > 0) {
         const childInserts = children.map(c => ({
-          meeting_id: selectedMeeting.id, title: c.title || '', description: c.description || null,
+          meeting_id: selectedMeeting.id!, title: c.title || '', description: c.description || null,
           assigned_to: Array.isArray(c.assigned_to) && c.assigned_to.length > 0 ? c.assigned_to.filter(Boolean) : null,
           notes: c.notes || null, is_completed: Boolean(c.is_completed), is_recurring: Boolean(c.is_recurring),
           task_id: c.task_id || null, order_index: c.order_index,
@@ -229,7 +229,7 @@ export function useAgendaOperations(deps: AgendaOpsDeps) {
         }]).select().single();
       if (taskError) throw taskError;
 
-      const newSubItem: AgendaItem = { ...taskData, localKey: taskData.id, parentLocalKey: parentId };
+      const newSubItem: AgendaItem = { ...taskData, carry_over_to_next: taskData.carry_over_to_next ?? undefined, localKey: taskData.id, parentLocalKey: parentId };
       const updatedItems = [...agendaItems];
       updatedItems.splice(parentIndex + 1, 0, newSubItem);
       const reindexedItems = updatedItems.map((item, idx) => ({ ...item, order_index: idx }));
@@ -361,8 +361,8 @@ export function useAgendaOperations(deps: AgendaOpsDeps) {
       allItems.splice(destination.index, 0, draggedItem);
       children.reverse().forEach((child, index) => { allItems.splice(destination.index + 1 + index, 0, child); });
     } else {
-      let newParentItem = null;
-      let newParentKey = null;
+      let newParentItem: typeof allItems[number] | null = null;
+      let newParentKey: string | null | undefined = null;
       for (let i = destination.index - 1; i >= 0; i--) {
         const potentialParent = allItems[i];
         if (!potentialParent.parent_id && !potentialParent.parentLocalKey) {
@@ -373,7 +373,7 @@ export function useAgendaOperations(deps: AgendaOpsDeps) {
       }
       if (newParentItem) {
         draggedItem.parent_id = newParentItem.id || null;
-        draggedItem.parentLocalKey = newParentKey;
+        draggedItem.parentLocalKey = newParentKey ?? undefined;
       } else {
         draggedItem.parent_id = null;
         draggedItem.parentLocalKey = undefined;
@@ -394,7 +394,7 @@ export function useAgendaOperations(deps: AgendaOpsDeps) {
         if (existingItems.length > 0) {
           const { error } = await supabase.from('meeting_agenda_items').upsert(
             existingItems.map(item => ({
-              id: item.id, order_index: item.order_index, meeting_id: selectedMeeting.id,
+              id: item.id!, order_index: item.order_index, meeting_id: selectedMeeting.id!,
               title: item.title, description: item.description || '',
               assigned_to: Array.isArray(item.assigned_to) ? item.assigned_to : (item.assigned_to ? [item.assigned_to] : []),
               parent_id: item.parent_id, updated_at: new Date().toISOString()

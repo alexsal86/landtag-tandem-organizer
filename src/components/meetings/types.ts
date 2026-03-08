@@ -34,7 +34,7 @@ export interface AgendaItem {
   parent_id?: string | null;
   file_path?: string | null;
   result_text?: string | null;
-  carry_over_to_next?: boolean;
+  carry_over_to_next?: boolean | null;
   sub_items?: AgendaItem[] | unknown;
   source_meeting_id?: string | null;
   carried_over_from?: string | null;
@@ -42,8 +42,8 @@ export interface AgendaItem {
   original_meeting_title?: string | null;
   carryover_notes?: string | null;
   system_type?: string | null;
-  is_optional?: boolean;
-  is_visible?: boolean;
+  is_optional?: boolean | null;
+  is_visible?: boolean | null;
   // lokale Hilfskeys für Hierarchie vor dem Speichern
   localKey?: string;
   parentLocalKey?: string;
@@ -93,7 +93,7 @@ export interface LinkedTask {
 /** A case item linked to a meeting (select subset from case_items table) */
 export interface LinkedCaseItem {
   id: string;
-  subject: string;
+  subject: string | null;
   status: string;
   priority?: string | null;
   due_at?: string | null;
@@ -160,16 +160,16 @@ export interface MeetingTemplateItem {
 
 export interface Meeting {
   id?: string;
-  tenant_id?: string;
-  user_id?: string;
+  tenant_id?: string | null;
+  user_id?: string | null;
   title: string;
-  description?: string;
+  description?: string | null;
   meeting_date: string | Date;
-  meeting_time?: string;
-  location?: string;
+  meeting_time?: string | null;
+  location?: string | null;
   status: string;
-  template_id?: string;
-  is_public?: boolean;
+  template_id?: string | null;
+  is_public?: boolean | null;
   created_at?: string;
   updated_at?: string;
   lastUpdate?: number;
@@ -178,12 +178,12 @@ export interface Meeting {
 export interface MeetingTemplate {
   id: string;
   name: string;
-  description?: string;
+  description?: string | null;
   template_items: MeetingTemplateItem[] | unknown;
   default_participants?: string[] | null;
   default_recurrence?: RecurrenceData | unknown;
-  is_default?: boolean;
-  auto_create_count?: number;
+  is_default?: boolean | null;
+  auto_create_count?: number | null;
 }
 
 export interface Profile {

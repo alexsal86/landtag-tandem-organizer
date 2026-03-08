@@ -27,7 +27,7 @@ interface Comment {
   text: string;
   author: string;
   authorName: string;
-  avatarUrl?: string;
+  avatarUrl?: string | null;
   timestamp: string;
   position: number;
   length: number;
@@ -194,7 +194,7 @@ const CommentThread: React.FC<{
       <div className="flex items-start justify-between">
         <div className="flex items-center space-x-2">
           <Avatar className="h-6 w-6">
-            <AvatarImage src={comment.avatarUrl} />
+            <AvatarImage src={comment.avatarUrl ?? undefined} />
             <AvatarFallback className="text-xs">
               {comment.authorName.charAt(0).toUpperCase()}
             </AvatarFallback>
@@ -329,7 +329,7 @@ export function CommentPlugin({ documentId }: { documentId?: string }) {
       // Get user profiles for the comment authors
       const userIds = [...new Set(commentsData?.map(comment => comment.user_id) || [])];
       
-      let profilesData = [];
+      let profilesData: Array<{ user_id: string; display_name: string | null; avatar_url: string | null }> = [];
       if (userIds.length > 0) {
         const { data: profiles, error: profilesError } = await supabase
           .from('profiles')
@@ -519,7 +519,7 @@ export function CommentPlugin({ documentId }: { documentId?: string }) {
         .from('letter_comments')
         .insert([{
           letter_id: documentId,
-          user_id: (await supabase.auth.getUser()).data.user?.id,
+          user_id: (await supabase.auth.getUser()).data.user?.id ?? '',
           content: text,
           text_position: textPosition,
           text_length: textLength
@@ -546,7 +546,7 @@ export function CommentPlugin({ documentId }: { documentId?: string }) {
             
             // Find the text node that contains our text
             let currentOffset = 0;
-            let targetNode = null;
+            let targetNode: any = null;
             let startOffset = 0;
             let endOffset = 0;
             
@@ -678,7 +678,7 @@ export function CommentPlugin({ documentId }: { documentId?: string }) {
         .from('letter_comments')
         .insert([{
           letter_id: documentId,
-          user_id: (await supabase.auth.getUser()).data.user?.id,
+          user_id: (await supabase.auth.getUser()).data.user?.id ?? '',
           content: text,
           parent_comment_id: commentId,
           comment_type: 'reply'

@@ -124,7 +124,7 @@ export function useMeetingArchive(deps: ArchiveDeps) {
     for (const item of carriedItems) {
       await supabase.from('carryover_items').delete()
         .eq('user_id', user.id).eq('template_id', meeting.template_id!)
-        .eq('title', item.title).eq('original_meeting_id', item.source_meeting_id);
+        .eq('title', item.title).eq('original_meeting_id', item.source_meeting_id!);
     }
     await loadCarryoverBufferItems();
   };
@@ -183,7 +183,7 @@ export function useMeetingArchive(deps: ArchiveDeps) {
       const itemsWithLinkedTaskResult = agendaItemsData?.filter(item => item.task_id && item.result_text?.trim()) || [];
       for (const item of itemsWithLinkedTaskResult) {
         try {
-          const { data: existingTask } = await supabase.from('tasks').select('id, user_id, assigned_to, tenant_id').eq('id', item.task_id).maybeSingle();
+          const { data: existingTask } = await supabase.from('tasks').select('id, user_id, assigned_to, tenant_id').eq('id', item.task_id!).maybeSingle();
           if (existingTask) {
             const meetingContext = `Ergebnis aus Besprechung "${meeting.title}" vom ${format(new Date(meeting.meeting_date), 'dd.MM.yyyy', { locale: de })}`;
             await supabase.from('tasks').insert([{
@@ -273,7 +273,7 @@ export function useMeetingArchive(deps: ArchiveDeps) {
       }
 
       // Step 4: Follow-up task with subtasks
-      let followUpTask = null;
+      let followUpTask: any = null;
       try {
         const { data: createdTask, error: taskError } = await supabase.from('tasks').insert([{
           user_id: user.id,
@@ -359,11 +359,11 @@ export function useMeetingArchive(deps: ArchiveDeps) {
             const starredAssignmentMap = new Map<string, string[] | null>();
             const appointmentIds = starredAppts.filter(s => s.appointment_id).map(s => {
               starredAssignmentMap.set(s.appointment_id!, s.assigned_to || null);
-              return s.appointment_id;
+              return s.appointment_id!;
             });
             const externalEventIds = starredAppts.filter(s => s.external_event_id).map(s => {
               starredAssignmentMap.set(s.external_event_id!, s.assigned_to || null);
-              return s.external_event_id;
+              return s.external_event_id!;
             });
 
             const allAppointments: Array<{ id: string; title: string; start_time: string }> = [];

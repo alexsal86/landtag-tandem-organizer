@@ -328,7 +328,7 @@ export function ActiveMeetingPanel({
             placeholder="Unterpunkt"
           />
           <MultiUserAssignSelect
-            assignedTo={subItem.assigned_to}
+            assignedTo={subItem.assigned_to ?? null}
             profiles={profiles}
             onChange={(userIds) => onUpdateAgendaItem(allAgendaItems.findIndex(i => i.id === subItem.id), 'assigned_to', userIds.length > 0 ? userIds : null)}
             size="sm"
@@ -418,7 +418,7 @@ export function ActiveMeetingPanel({
                   />
                   <div className="flex items-center gap-2">
                     <MultiUserAssignSelect
-                      assignedTo={item.assigned_to}
+                      assignedTo={item.assigned_to ?? null}
                       profiles={profiles}
                       onChange={(userIds) => onUpdateAgendaItem(allAgendaItems.findIndex(i => i.id === item.id), 'assigned_to', userIds.length > 0 ? userIds : null)}
                       size="sm"

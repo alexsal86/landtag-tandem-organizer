@@ -427,7 +427,7 @@ const LetterAttachmentManager: React.FC<LetterAttachmentManagerProps> = ({
                       )}
                     </div>
                     <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                      <span>{formatFileSize(attachment.file_size)}</span>
+                      <span>{formatFileSize(attachment.file_size ?? undefined)}</span>
                       {attachment.file_type && (
                         <>
                           <span>•</span>

@@ -163,7 +163,7 @@ export function SystemAgendaItem({
         {renderHeader()}
         <CardContent className="px-3 pb-2 pt-0">
           <UpcomingAppointmentsSection 
-            meetingDate={meetingDate} 
+            meetingDate={meetingDate!} 
             meetingId={meetingId}
             allowStarring={allowStarring}
             profiles={profiles}
@@ -314,7 +314,7 @@ export function SystemAgendaItem({
                     <Badge variant="outline" className="text-xs">
                       {statusLabels[ci.status] || ci.status}
                     </Badge>
-                    <span className={cn("font-medium", priorityColors[ci.priority] || '')}>
+                    <span className={cn("font-medium", ci.priority ? priorityColors[ci.priority] : '')}>
                       {ci.priority}
                     </span>
                     {ci.due_at && (

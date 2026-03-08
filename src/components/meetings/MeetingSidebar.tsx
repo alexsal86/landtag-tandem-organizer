@@ -204,17 +204,17 @@ export function MeetingSidebar({
                         <Popover>
                           <PopoverTrigger asChild>
                             <Button variant="outline" size="sm" className="w-full justify-start text-left font-normal text-xs">
-                              {format(new Date(editingMeeting.meeting_date), "dd.MM.yy", { locale: de })}
+                              {format(new Date(editingMeeting!.meeting_date), "dd.MM.yy", { locale: de })}
                             </Button>
                           </PopoverTrigger>
                           <PopoverContent className="w-auto p-0" align="start">
-                            <Calendar mode="single" selected={new Date(editingMeeting.meeting_date)} onSelect={(date) => date && onSetEditingMeeting({ ...editingMeeting, meeting_date: date })} initialFocus />
+                            <Calendar mode="single" selected={new Date(editingMeeting!.meeting_date)} onSelect={(date) => date && onSetEditingMeeting({ ...editingMeeting!, meeting_date: date } as Meeting)} initialFocus />
                           </PopoverContent>
                         </Popover>
                       </div>
                       <div>
                         <label className="text-xs font-medium text-muted-foreground">Uhrzeit</label>
-                        <TimePickerCombobox value={(editingMeeting.meeting_time || '10:00').substring(0, 5)} onChange={(time) => onSetEditingMeeting({ ...editingMeeting, meeting_time: time })} />
+                        <TimePickerCombobox value={(editingMeeting!.meeting_time || '10:00').substring(0, 5)} onChange={(time) => onSetEditingMeeting({ ...editingMeeting!, meeting_time: time } as Meeting)} />
                       </div>
                     </div>
                     <div>
@@ -222,7 +222,7 @@ export function MeetingSidebar({
                       {meeting.id && <InlineMeetingParticipantsEditor meetingId={meeting.id} />}
                     </div>
                     <div className="flex items-center space-x-2 p-2 bg-muted/50 rounded-md">
-                      <Checkbox id={`edit_public_${meeting.id}`} checked={editingMeeting?.is_public || false} onCheckedChange={(checked) => onSetEditingMeeting({ ...editingMeeting, is_public: !!checked })} />
+                      <Checkbox id={`edit_public_${meeting.id}`} checked={editingMeeting?.is_public || false} onCheckedChange={(checked) => onSetEditingMeeting({ ...editingMeeting!, is_public: !!checked } as Meeting)} />
                       <label htmlFor={`edit_public_${meeting.id}`} className="text-xs cursor-pointer">Öffentlich</label>
                     </div>
                   </div>

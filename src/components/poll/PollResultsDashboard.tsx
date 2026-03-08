@@ -22,15 +22,15 @@ interface TimeSlot {
 interface Poll {
   id: string;
   title: string;
-  description?: string;
-  deadline?: string;
+  description?: string | null;
+  deadline?: string | null;
   status: string;
   user_id: string;
 }
 
 interface Participant {
   id: string;
-  name: string;
+  name: string | null;
   email: string;
   is_external: boolean;
 }
@@ -191,7 +191,7 @@ export const PollResultsDashboard = ({ pollId, onConfirmSlot }: PollResultsDashb
       const { data: appointment, error: appointmentError } = await supabase
         .from('appointments')
         .insert([{
-          user_id: poll?.user_id,
+          user_id: poll?.user_id ?? '',
           poll_id: pollId,
           start_time: slot.start_time,
           end_time: slot.end_time,

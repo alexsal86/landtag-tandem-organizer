@@ -271,7 +271,7 @@ export function AgendaEditorPanel({
                                   ) : (
                                     <Textarea value={item.description || ''} onChange={(e) => onUpdateAgendaItem(index, 'description', e.target.value)} placeholder="Beschreibung" className="min-h-[60px]" />
                                   )}
-                                  <MultiUserAssignSelect assignedTo={item.assigned_to} profiles={profiles}
+                                  <MultiUserAssignSelect assignedTo={item.assigned_to ?? null} profiles={profiles}
                                     onChange={(userIds) => onUpdateAgendaItem(index, 'assigned_to', userIds.length > 0 ? userIds : null)} size="sm" />
 
                                   {/* Task documents */}

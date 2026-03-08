@@ -15,7 +15,7 @@ import { useToast } from "@/hooks/use-toast";
 
 interface DecisionRequest {
   id: string;
-  task_id: string;
+  task_id: string | null;
   title: string;
   description: string | null;
   created_at: string;
@@ -482,8 +482,8 @@ export const TaskDecisionList = () => {
                         Rückfrage von 
                         <UserBadge 
                           userId={participant.user_id}
-                          displayName={participant.profile?.display_name}
-                          badgeColor={participant.profile?.badge_color}
+                          displayName={participant.profile?.display_name ?? null}
+                          badgeColor={participant.profile?.badge_color ?? null}
                           size="sm"
                         />
                       </span>

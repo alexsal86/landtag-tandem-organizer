@@ -15,7 +15,7 @@ interface UploadedFile {
   file_name: string;
   file_path: string;
   file_size: number;
-  file_type?: string;
+  file_type?: string | null;
   uploaded_by?: string;
   uploader_name?: string;
   created_at?: string;
@@ -95,7 +95,7 @@ export function DecisionFileUpload({
       const { data, error } = await supabase
         .from('task_decision_attachments')
         .select('*')
-        .eq('decision_id', decisionId)
+        .eq('decision_id', decisionId!)
         .order('created_at', { ascending: false });
 
       if (error) throw error;
@@ -420,7 +420,7 @@ export function DecisionFileUpload({
     const { data: decision } = await supabase
       .from('task_decisions')
       .select('created_by')
-      .eq('id', decisionId)
+      .eq('id', decisionId!)
       .single();
     return decision?.created_by === user.id;
   };
@@ -448,7 +448,7 @@ export function DecisionFileUpload({
           onPreviewOpen={() => setPreviewDialog({ open: true, filePath: file.file_path, fileName: file.file_name })}
           onDownload={() => downloadFile(file.file_path, file.file_name)}
           onRemove={file.uploaded_by ? async () => {
-            if (await canDelete(file.uploaded_by)) {
+            if (await canDelete(file.uploaded_by!)) {
               removeFile(file.id!, file.file_path);
             } else {
               toast({
@@ -482,7 +482,7 @@ export function DecisionFileUpload({
           </Button>
           {file.uploaded_by && (
             <Button type="button" variant="ghost" size="sm" onClick={async () => {
-              if (await canDelete(file.uploaded_by)) {
+              if (await canDelete(file.uploaded_by!)) {
                 removeFile(file.id!, file.file_path);
               } else {
                 toast({ title: 'Keine Berechtigung', description: 'Sie können nur Ihre eigenen Dateien löschen.', variant: 'destructive' });

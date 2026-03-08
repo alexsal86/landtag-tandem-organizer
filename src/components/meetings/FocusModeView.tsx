@@ -32,12 +32,12 @@ import type { LinkedQuickNote, LinkedTask, LinkedCaseItem, MeetingUpcomingAppoin
 interface AgendaItem {
   id?: string;
   title: string;
-  description?: string;
+  description?: string | null;
   assigned_to?: string[] | null;
   notes?: string | null;
   is_completed: boolean;
   result_text?: string | null;
-  carry_over_to_next?: boolean;
+  carry_over_to_next?: boolean | null;
   order_index: number;
   parent_id?: string | null;
   parentLocalKey?: string;
@@ -48,7 +48,7 @@ interface Meeting {
   id?: string;
   title: string;
   meeting_date: string | Date;
-  meeting_time?: string;
+  meeting_time?: string | null;
 }
 
 interface Profile {
