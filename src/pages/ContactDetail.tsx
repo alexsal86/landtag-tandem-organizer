@@ -15,16 +15,16 @@ import { debugConsole } from "@/utils/debugConsole";
 interface Contact {
   id: string;
   name: string;
-  role?: string;
-  organization?: string;
-  email?: string;
-  phone?: string;
-  location?: string;
-  category?: "citizen" | "colleague" | "lobbyist" | "media" | "business";
-  priority?: "low" | "medium" | "high";
-  last_contact?: string;
-  avatar_url?: string;
-  notes?: string;
+  role?: string | null;
+  organization?: string | null;
+  email?: string | null;
+  phone?: string | null;
+  location?: string | null;
+  category?: "citizen" | "colleague" | "lobbyist" | "media" | "business" | null;
+  priority?: "low" | "medium" | "high" | null;
+  last_contact?: string | null;
+  avatar_url?: string | null;
+  notes?: string | null;
 }
 
 export default function ContactDetail() {
