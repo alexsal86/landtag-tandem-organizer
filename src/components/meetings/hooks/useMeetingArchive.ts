@@ -347,7 +347,7 @@ export function useMeetingArchive(deps: ArchiveDeps) {
             }
           }
         }
-      } catch (e) { console.error('Error processing case item results (non-fatal):', e); }
+      } catch (e) { debugConsole.error('Error processing case item results (non-fatal):', e); }
 
       // Step 5d: Starred appointments → tasks
       try {
