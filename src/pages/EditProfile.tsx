@@ -13,6 +13,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { useTenant } from "@/hooks/useTenant";
 import { ImageCropper } from "@/components/ui/ImageCropper";
 import { ActiveSessionsCard } from "@/components/account/ActiveSessionsCard";
+import { debugConsole } from "@/utils/debugConsole";
 
 interface ProfileData {
   display_name: string;
