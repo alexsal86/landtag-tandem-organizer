@@ -33,7 +33,7 @@ export const useCaseFileTypes = () => {
       console.error('Error fetching case file types:', error);
       toast({
         title: "Fehler",
-        description: "FallAkten-Typen konnten nicht geladen werden.",
+        description: "Fallakten-Typen konnten nicht geladen werden.",
         variant: "destructive",
       });
     } finally {
