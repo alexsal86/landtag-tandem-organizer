@@ -324,13 +324,26 @@ export function useMeetingArchive(deps: ArchiveDeps) {
         for (const ci of meetingLinkedCaseItems) {
           const meetingResult = (ci as { meeting_result?: string }).meeting_result;
           if (meetingResult?.trim()) {
-            // case_item_notes is not in generated types – use rpc or raw query
-            await supabase.rpc('exec_sql' as never, {
-              sql: `INSERT INTO case_item_notes (case_item_id, content, created_by, note_type) VALUES ($1, $2, $3, $4)`,
-              params: [ci.id, meetingResult, user.id, 'meeting_result'],
-            } as never).catch(() => {
-              // Fallback: table may not exist yet, silently ignore
-            });
+            // case_item_notes is not in generated Supabase types – use fetch directly
+            try {
+              const url = `${import.meta.env.VITE_SUPABASE_URL}/rest/v1/case_item_notes`;
+              await fetch(url, {
+                method: 'POST',
+                headers: {
+                  'Content-Type': 'application/json',
+                  'apikey': import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY,
+                  'Authorization': `Bearer ${(await supabase.auth.getSession()).data.session?.access_token}`,
+                },
+                body: JSON.stringify({
+                  case_item_id: ci.id,
+                  content: meetingResult,
+                  created_by: user.id,
+                  note_type: 'meeting_result',
+                }),
+              });
+            } catch {
+              // Table may not exist yet
+            }
           }
         }
       } catch (e) { console.error('Error processing case item results (non-fatal):', e); }
