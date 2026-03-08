@@ -22,8 +22,8 @@ interface TimeSlot {
 interface Poll {
   id: string;
   title: string;
-  description?: string;
-  deadline?: string;
+  description?: string | null;
+  deadline?: string | null;
   status: string;
   user_id: string;
 }
