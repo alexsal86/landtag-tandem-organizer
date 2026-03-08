@@ -202,7 +202,7 @@ export const PollListView = () => {
 
       loadPolls();
     } catch (error) {
-      console.error('Error restoring poll:', error);
+      debugConsole.error('Error restoring poll:', error);
       toast({
         title: "Fehler",
         description: "Die Abstimmung konnte nicht wiederhergestellt werden.",
