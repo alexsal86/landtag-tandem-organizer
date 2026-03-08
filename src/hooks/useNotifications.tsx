@@ -366,7 +366,7 @@ export const useNotifications = () => {
           throw error;
         }
       } else {
-        console.log('ℹ️ Using existing active subscription');
+        
       }
 
       if (subscription) {
