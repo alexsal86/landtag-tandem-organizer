@@ -497,11 +497,11 @@ export function useMeetingsData() {
         .from('external_events').select('id, title, start_time, end_time, location, external_calendars!inner(name, color, tenant_id)')
         .eq('external_calendars.tenant_id', currentTenant.id).gte('start_time', start.toISOString()).lte('start_time', end.toISOString());
 
-      const all = [
-        ...(internalData || []).map(a => ({ ...a, isExternal: false })),
-        ...(externalData || []).map((e: any) => ({
+      const all: MeetingUpcomingAppointment[] = [
+        ...(internalData || []).map(a => ({ ...a, isExternal: false as const })),
+        ...(externalData || []).map((e: { id: string; title: string; start_time: string; end_time: string; location?: string | null; external_calendars?: { name?: string; color?: string } }) => ({
           id: e.id, title: e.title, start_time: e.start_time, end_time: e.end_time,
-          location: e.location, isExternal: true,
+          location: e.location, isExternal: true as const,
           calendarName: e.external_calendars?.name, calendarColor: e.external_calendars?.color
         }))
       ].sort((a, b) => new Date(a.start_time).getTime() - new Date(b.start_time).getTime());
