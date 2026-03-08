@@ -226,7 +226,7 @@ export function useLetterOperations(opts: UseLetterOperationsOptions) {
                 : 'Brief wurde als versendet markiert. Archivierung wird im Hintergrund verarbeitet.',
             });
           } catch (archiveError) {
-            console.error('Archive process error:', archiveError);
+            debugConsole.error('Archive process error:', archiveError);
             toast({ title: 'Archivierungsfehler', description: 'Der Brief wurde versendet, aber die Archivierung ist fehlgeschlagen.', variant: 'destructive' });
           }
         }
