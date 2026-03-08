@@ -100,7 +100,7 @@ export const DashboardDefaultCover = () => {
         description: "Standard-Cover wurde erfolgreich gesetzt",
       });
     } catch (error) {
-      console.error("Error saving default cover:", error);
+      debugConsole.error("Error saving default cover:", error);
       toast({
         title: "Fehler",
         description: "Standard-Cover konnte nicht gespeichert werden",
