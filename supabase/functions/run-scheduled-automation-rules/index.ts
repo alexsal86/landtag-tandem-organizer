@@ -82,6 +82,11 @@ Deno.serve(async (req) => {
         }
       }
 
+      // Deterministic idempotency key: rule ID + 5-min time window
+      // Prevents duplicate execution if the cron fires twice in the same window
+      const timeSlot = Math.floor(now / (5 * 60 * 1000));
+      const deterministicKey = `${rule.id}-sched-${timeSlot}`;
+
       const response = await fetch(`${supabaseUrl}/functions/v1/run-automation-rule`, {
         method: "POST",
         headers: {
@@ -93,7 +98,7 @@ Deno.serve(async (req) => {
         body: JSON.stringify({
           ruleId: rule.id,
           dryRun: false,
-          idempotencyKey: crypto.randomUUID(),
+          idempotencyKey: deterministicKey,
           sourcePayload: {
             source: "scheduled",
             tenant_id: rule.tenant_id,
