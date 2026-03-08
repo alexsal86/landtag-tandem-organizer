@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { ImageIcon, X } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 import { UnsplashImagePicker, UnsplashAttribution } from "@/components/dashboard/UnsplashImagePicker";
+import { debugConsole } from '@/utils/debugConsole';
 
 export const DashboardDefaultCover = () => {
   const [defaultCoverUrl, setDefaultCoverUrl] = useState<string | null>(null);
@@ -44,7 +45,7 @@ export const DashboardDefaultCover = () => {
         attributionData?.setting_value ? JSON.parse(attributionData.setting_value) : null
       );
     } catch (error) {
-      console.error("Error loading default cover:", error);
+      debugConsole.error("Error loading default cover:", error);
       toast({
         title: "Fehler",
         description: "Standard-Cover konnte nicht geladen werden",
@@ -99,7 +100,7 @@ export const DashboardDefaultCover = () => {
         description: "Standard-Cover wurde erfolgreich gesetzt",
       });
     } catch (error) {
-      console.error("Error saving default cover:", error);
+      debugConsole.error("Error saving default cover:", error);
       toast({
         title: "Fehler",
         description: "Standard-Cover konnte nicht gespeichert werden",
@@ -124,7 +125,7 @@ export const DashboardDefaultCover = () => {
         description: "Standard-Cover wurde entfernt",
       });
     } catch (error) {
-      console.error("Error removing default cover:", error);
+      debugConsole.error("Error removing default cover:", error);
       toast({
         title: "Fehler",
         description: "Standard-Cover konnte nicht entfernt werden",

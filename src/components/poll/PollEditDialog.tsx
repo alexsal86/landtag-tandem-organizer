@@ -8,6 +8,7 @@ import { Badge } from '@/components/ui/badge';
 import { Calendar } from '@/components/ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { CalendarIcon, Edit, Save, Plus, X, Users, Mail, Trash2 } from 'lucide-react';
+import { debugConsole } from '@/utils/debugConsole';
 import { format } from 'date-fns';
 import { de } from 'date-fns/locale';
 import { supabase } from '@/integrations/supabase/client';
@@ -76,7 +77,7 @@ export const PollEditDialog = ({
       setParticipants((data || []).map(p => ({ ...p, isNew: false })));
       setRemovedParticipantIds([]);
     } catch (error) {
-      console.error('Error loading participants:', error);
+      debugConsole.error('Error loading participants:', error);
     } finally {
       setLoadingParticipants(false);
     }
@@ -247,7 +248,7 @@ export const PollEditDialog = ({
       onUpdate();
 
     } catch (error) {
-      console.error('Error updating poll:', error);
+      debugConsole.error('Error updating poll:', error);
       toast({
         title: "Fehler",
         description: "Die Änderungen konnten nicht gespeichert werden.",

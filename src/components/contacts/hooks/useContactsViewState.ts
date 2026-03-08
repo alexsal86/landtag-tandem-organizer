@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo } from "react";
+import { debugConsole } from '@/utils/debugConsole';
 import { useNavigate, useParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
@@ -108,7 +109,7 @@ export function useContactsViewState() {
         members: list.distribution_list_members?.map((m: any) => m.contacts) || [],
       })) || []);
     } catch (error) {
-      console.error('Error fetching distribution lists:', error);
+      debugConsole.error('Error fetching distribution lists:', error);
       toast({ title: "Fehler", description: "Verteiler konnten nicht geladen werden.", variant: "destructive" });
     } finally { setDistributionListsLoading(false); }
   };
@@ -120,7 +121,7 @@ export function useContactsViewState() {
       toast({ title: "Erfolg", description: "Verteiler wurde erfolgreich gelöscht." });
       fetchDistributionLists();
     } catch (error) {
-      console.error('Error deleting distribution list:', error);
+      debugConsole.error('Error deleting distribution list:', error);
       toast({ title: "Fehler", description: "Verteiler konnte nicht gelöscht werden.", variant: "destructive" });
     }
   };
@@ -132,7 +133,7 @@ export function useContactsViewState() {
       toast({ title: "Kontakt gelöscht", description: `${contactName} wurde erfolgreich gelöscht.` });
       refreshContacts();
     } catch (error) {
-      console.error('Error deleting contact:', error);
+      debugConsole.error('Error deleting contact:', error);
       toast({ title: "Fehler", description: "Kontakt konnte nicht gelöscht werden.", variant: "destructive" });
     }
   };

@@ -7,6 +7,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { useMessagesRealtime } from "@/hooks/useMessagesRealtime";
 import { toast } from "@/hooks/use-toast";
+import { debugConsole } from '@/utils/debugConsole';
 
 interface BlackBoardMessage {
   id: string;
@@ -32,7 +33,7 @@ export function BlackBoard() {
         .rpc('get_user_messages', { user_id_param: user.id });
 
       if (error) {
-        console.error('Error fetching public messages:', error);
+        debugConsole.error('Error fetching public messages:', error);
         return;
       }
 
@@ -55,7 +56,7 @@ export function BlackBoard() {
 
       setMessages(relevantMessages);
     } catch (error) {
-      console.error('Error fetching public messages:', error);
+      debugConsole.error('Error fetching public messages:', error);
     } finally {
       setLoading(false);
     }
@@ -88,7 +89,7 @@ export function BlackBoard() {
 
       fetchPublicMessages();
     } catch (error) {
-      console.error('Error confirming message:', error);
+      debugConsole.error('Error confirming message:', error);
       toast({
         title: "Fehler",
         description: "Die Bekanntmachung konnte nicht bestätigt werden.",

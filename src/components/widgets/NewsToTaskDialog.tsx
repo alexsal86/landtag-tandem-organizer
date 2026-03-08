@@ -7,6 +7,7 @@ import { Label } from '@/components/ui/label';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { CheckSquare, Loader2 } from 'lucide-react';
+import { debugConsole } from '@/utils/debugConsole';
 import { MultiSelect } from '@/components/ui/multi-select';
 import { Calendar } from '@/components/ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
@@ -86,7 +87,7 @@ export const NewsToTaskDialog: React.FC<NewsToTaskDialogProps> = ({
 
       setUsers(profiles || []);
     } catch (error) {
-      console.error('Error loading data:', error);
+      debugConsole.error('Error loading data:', error);
     }
   };
 
@@ -144,7 +145,7 @@ export const NewsToTaskDialog: React.FC<NewsToTaskDialogProps> = ({
       setPriority('medium');
       onOpenChange(false);
     } catch (error) {
-      console.error('Error creating task:', error);
+      debugConsole.error('Error creating task:', error);
       toast.error('Fehler beim Erstellen der Aufgabe');
     } finally {
       setLoading(false);

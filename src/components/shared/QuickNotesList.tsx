@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback, useMemo, useRef, type KeyboardEvent } from "react";
+import { debugConsole } from '@/utils/debugConsole';
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -370,13 +371,13 @@ export function QuickNotesList({
           .eq("user_id", user.id);
 
         if (cleanupError) {
-          console.error("Error cleaning up inactive meeting links:", cleanupError);
+          debugConsole.error("Error cleaning up inactive meeting links:", cleanupError);
         }
       }
 
       setNotes([...ownWithDetails, ...sharedNotes].map(normalizeMeetingLink));
     } catch (error) {
-      console.error("Error loading notes:", error);
+      debugConsole.error("Error loading notes:", error);
     } finally {
       setLoading(false);
     }
@@ -454,7 +455,7 @@ export function QuickNotesList({
           });
           newNotified.push(note.id);
         } catch (e) {
-          console.error('Follow-up notification error:', e);
+          debugConsole.error('Follow-up notification error:', e);
         }
       });
       
@@ -569,7 +570,7 @@ export function QuickNotesList({
       toast.success(note.is_pinned ? "Notiz losgelöst" : "Notiz angepinnt");
       loadNotes();
     } catch (error) {
-      console.error("Error toggling pin:", error);
+      debugConsole.error("Error toggling pin:", error);
       toast.error("Fehler beim Ändern");
     }
   };
@@ -603,7 +604,7 @@ export function QuickNotesList({
       toast.success("Notiz in Papierkorb verschoben (wird nach 30 Tagen gelöscht)");
       loadNotes();
     } catch (error) {
-      console.error("Error deleting note:", error);
+      debugConsole.error("Error deleting note:", error);
       toast.error("Fehler beim Löschen");
     }
   };
@@ -614,7 +615,7 @@ export function QuickNotesList({
       return;
     }
 
-    console.log("Archiving note:", { noteId, userId: user.id });
+    debugConsole.log("Archiving note:", { noteId, userId: user.id });
 
     try {
       const { data, error } = await supabase
@@ -627,7 +628,7 @@ export function QuickNotesList({
         .eq("user_id", user.id)
         .select();
 
-      console.log("Archive result:", { data, error });
+      debugConsole.log("Archive result:", { data, error });
 
       if (error) throw error;
       
@@ -639,7 +640,7 @@ export function QuickNotesList({
       toast.success("Notiz archiviert");
       loadNotes();
     } catch (error) {
-      console.error("Error archiving note:", error);
+      debugConsole.error("Error archiving note:", error);
       toast.error("Fehler beim Archivieren");
     }
   };
@@ -668,7 +669,7 @@ export function QuickNotesList({
       toast.success(level > 0 ? `Level ${level} gesetzt` : "Priorität entfernt");
       loadNotes();
     } catch (error) {
-      console.error("Error setting priority:", error);
+      debugConsole.error("Error setting priority:", error);
       toast.error("Fehler beim Setzen der Priorität");
     }
   };
@@ -718,7 +719,7 @@ export function QuickNotesList({
       toast.success(color ? "Farbe gesetzt" : "Farbe entfernt");
       loadNotes();
     } catch (error) {
-      console.error("Error setting color:", error);
+      debugConsole.error("Error setting color:", error);
       toast.error("Fehler beim Setzen der Farbe");
     }
   };
@@ -727,7 +728,7 @@ export function QuickNotesList({
   const handleSetColorMode = async (noteId: string, fullCard: boolean) => {
     // Prevent double execution
     if (colorModeUpdating) {
-      console.log("Color mode update already in progress, skipping");
+      debugConsole.log("Color mode update already in progress, skipping");
       return;
     }
     
@@ -767,7 +768,7 @@ export function QuickNotesList({
         .select();
 
       if (error || !data || data.length === 0) {
-        console.error("Update error:", error);
+        debugConsole.error("Update error:", error);
         // Rollback
         setNotes(prev => prev.map(n => 
           n.id === noteId ? { ...n, color_full_card: previousValue } : n
@@ -778,7 +779,7 @@ export function QuickNotesList({
       
       toast.success(fullCard ? "Ganze Card eingefärbt" : "Nur Kante eingefärbt");
     } catch (error) {
-      console.error("Error setting color mode:", error);
+      debugConsole.error("Error setting color mode:", error);
       setNotes(prev => prev.map(n => 
         n.id === noteId ? { ...n, color_full_card: previousValue } : n
       ));
@@ -827,7 +828,7 @@ export function QuickNotesList({
       setConfirmRemoveDecision(null);
       loadNotes();
     } catch (error) {
-      console.error("Error removing decision:", error);
+      debugConsole.error("Error removing decision:", error);
       toast.error("Fehler beim Zurücknehmen der Entscheidung");
     }
   };
@@ -845,7 +846,7 @@ export function QuickNotesList({
       
       loadNotes();
     } catch (error) {
-      console.error(`Error cleaning up ${field}:`, error);
+      debugConsole.error(`Error cleaning up ${field}:`, error);
     }
   };
 
@@ -887,14 +888,14 @@ export function QuickNotesList({
         .eq("user_id", user.id);
 
       if (error) {
-        console.error("Error updating priority via drag:", error);
+        debugConsole.error("Error updating priority via drag:", error);
         loadNotes(); // Rollback on error
         toast.error("Fehler beim Verschieben");
       } else {
         toast.success(destLevel > 0 ? `Level ${destLevel} gesetzt` : "Priorität entfernt");
       }
     } catch (error) {
-      console.error("Error in drag handler:", error);
+      debugConsole.error("Error in drag handler:", error);
       loadNotes();
     }
   };
@@ -919,7 +920,7 @@ export function QuickNotesList({
       return;
     }
 
-    console.log("Setting follow-up:", { noteId, date, userId: user.id });
+    debugConsole.log("Setting follow-up:", { noteId, date, userId: user.id });
 
     try {
       const { data, error } = await supabase
@@ -929,7 +930,7 @@ export function QuickNotesList({
         .eq("user_id", user.id)
         .select();
 
-      console.log("Follow-up result:", { data, error });
+      debugConsole.log("Follow-up result:", { data, error });
 
       if (error) throw error;
 
@@ -943,7 +944,7 @@ export function QuickNotesList({
       setDatePickerOpen(false);
       setNoteForDatePicker(null);
     } catch (error) {
-      console.error("Error setting follow-up:", error);
+      debugConsole.error("Error setting follow-up:", error);
       toast.error("Fehler beim Setzen der Wiedervorlage");
     }
   };
@@ -996,7 +997,7 @@ export function QuickNotesList({
       toast.success("Aufgabe erstellt");
       loadNotes();
     } catch (error) {
-      console.error('Error creating task from note:', error);
+      debugConsole.error('Error creating task from note:', error);
       toast.error("Fehler beim Erstellen der Aufgabe");
     }
   };
@@ -1013,7 +1014,7 @@ export function QuickNotesList({
 
       // Task might already be deleted - that's ok (PGRST116 = no rows found)
       if (taskError && !taskError.message.includes('0 rows')) {
-        console.warn('Task deletion warning:', taskError);
+        debugConsole.warn('Task deletion warning:', taskError);
         // Continue anyway as long as it's not a critical error
       }
 
@@ -1026,7 +1027,7 @@ export function QuickNotesList({
 
       // Only throw if it's a real error
       if (noteError) {
-        console.warn('Note update warning:', noteError);
+        debugConsole.warn('Note update warning:', noteError);
         // Still consider success if the link was effectively removed
       }
       
@@ -1034,7 +1035,7 @@ export function QuickNotesList({
       setConfirmDeleteTaskNote(null);
       loadNotes();
     } catch (error) {
-      console.error('Error removing task from note:', error);
+      debugConsole.error('Error removing task from note:', error);
       toast.error("Fehler beim Entfernen der Aufgabe");
     }
   };
@@ -1085,7 +1086,7 @@ export function QuickNotesList({
       
       setConfirmDeleteLinkedNote(null);
     } catch (error) {
-      console.error("Error deleting note with links:", error);
+      debugConsole.error("Error deleting note with links:", error);
       toast.error("Fehler beim Löschen");
     }
   };
@@ -1120,7 +1121,7 @@ export function QuickNotesList({
       setNoteForMeeting(null);
       loadNotes();
     } catch (error) {
-      console.error('Error adding note to meeting:', error);
+      debugConsole.error('Error adding note to meeting:', error);
       toast.error("Fehler beim Hinzufügen zum Jour Fixe");
     }
   };
@@ -1149,7 +1150,7 @@ export function QuickNotesList({
       toast.success("Notiz für nächsten Jour Fixe vorgemerkt");
       loadNotes();
     } catch (error) {
-      console.error('Error marking for Jour Fixe:', error);
+      debugConsole.error('Error marking for Jour Fixe:', error);
       toast.error("Fehler beim Vormerken");
     }
   };
@@ -1165,7 +1166,7 @@ export function QuickNotesList({
       toast.success("Vormerkung entfernt");
       loadNotes();
     } catch (error) {
-      console.error('Error removing from Jour Fixe queue:', error);
+      debugConsole.error('Error removing from Jour Fixe queue:', error);
       toast.error("Fehler beim Entfernen der Vormerkung");
     }
   };
@@ -1197,7 +1198,7 @@ export function QuickNotesList({
       toast.success("Notiz vom Jour Fixe entfernt");
       loadNotes();
     } catch (error) {
-      console.error('Error removing note from meeting:', error);
+      debugConsole.error('Error removing note from meeting:', error);
       toast.error("Fehler beim Entfernen");
     }
   };
@@ -1256,7 +1257,7 @@ export function QuickNotesList({
       setEditingNote(null);
       loadNotes();
     } catch (error) {
-      console.error("Error updating note:", error);
+      debugConsole.error("Error updating note:", error);
       toast.error("Fehler beim Speichern");
     }
   };
@@ -1303,7 +1304,7 @@ export function QuickNotesList({
       .order("created_at", { ascending: false });
     
     if (error) {
-      console.error("Error loading versions:", error);
+      debugConsole.error("Error loading versions:", error);
       toast.error("Fehler beim Laden der Versionen");
       return;
     }
@@ -1342,7 +1343,7 @@ export function QuickNotesList({
       setVersionHistoryOpen(false);
       loadNotes();
     } catch (error) {
-      console.error("Error restoring version:", error);
+      debugConsole.error("Error restoring version:", error);
       toast.error("Fehler beim Wiederherstellen");
     }
   };
@@ -1412,7 +1413,7 @@ export function QuickNotesList({
       });
       loadNotes();
     } catch (error) {
-      console.error('Error splitting note:', error);
+      debugConsole.error('Error splitting note:', error);
       toast.error("Fehler beim Aufteilen der Notiz");
     }
   };

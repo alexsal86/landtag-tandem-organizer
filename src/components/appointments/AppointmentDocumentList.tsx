@@ -4,6 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Download, Trash2, File } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
+import { debugConsole } from '@/utils/debugConsole';
 
 interface AppointmentDocument {
   id: string;
@@ -49,7 +50,7 @@ export function AppointmentDocumentList({
         description: `${document.file_name} wird heruntergeladen.`,
       });
     } catch (error) {
-      console.error('Download error:', error);
+      debugConsole.error('Download error:', error);
       toast({
         title: "Download fehlgeschlagen",
         description: "Die Datei konnte nicht heruntergeladen werden.",
@@ -82,7 +83,7 @@ export function AppointmentDocumentList({
         description: `${document.file_name} wurde gelöscht.`,
       });
     } catch (error) {
-      console.error('Delete error:', error);
+      debugConsole.error('Delete error:', error);
       toast({
         title: "Löschung fehlgeschlagen",
         description: "Die Datei konnte nicht gelöscht werden.",

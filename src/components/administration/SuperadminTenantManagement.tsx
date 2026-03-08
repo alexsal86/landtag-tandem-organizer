@@ -1,6 +1,7 @@
 import { useState, useEffect, useMemo } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
+import { debugConsole } from '@/utils/debugConsole';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
@@ -90,7 +91,7 @@ export function SuperadminTenantManagement() {
       setRoleCheckLoading(true);
       const { data, error } = await supabase.rpc('is_superadmin', { _user_id: user.id });
       if (error) {
-        console.error('Error checking platform role:', error);
+        debugConsole.error('Error checking platform role:', error);
         setIsPlatformAdmin(false);
       } else {
         setIsPlatformAdmin(Boolean(data));
@@ -113,7 +114,7 @@ export function SuperadminTenantManagement() {
 
       setTenants(data || []);
     } catch (error) {
-      console.error("Error loading tenants:", error);
+      debugConsole.error("Error loading tenants:", error);
       toast({ title: "Fehler", description: "Tenants konnten nicht geladen werden", variant: "destructive" });
     } finally {
       setLoading(false);
@@ -132,7 +133,7 @@ export function SuperadminTenantManagement() {
 
       setAllUsers(data.users || []);
     } catch (error: unknown) {
-      console.error("Error loading users:", error);
+      debugConsole.error("Error loading users:", error);
       toast({ title: "Fehler", description: error instanceof Error ? error.message : "Benutzer konnten nicht geladen werden", variant: "destructive" });
     } finally {
       setUsersLoading(false);
@@ -188,7 +189,7 @@ export function SuperadminTenantManagement() {
           });
           
           if (initError) {
-            console.error('Error initializing tenant:', initError);
+            debugConsole.error('Error initializing tenant:', initError);
             // Don't fail the whole operation, just log
           }
         }
@@ -200,7 +201,7 @@ export function SuperadminTenantManagement() {
       resetTenantForm();
       loadTenants();
     } catch (error: unknown) {
-      console.error("Save tenant error:", error);
+      debugConsole.error("Save tenant error:", error);
       toast({ title: "Fehler", description: error instanceof Error ? error.message : "Speichern fehlgeschlagen", variant: "destructive" });
     }
   };
@@ -258,7 +259,7 @@ export function SuperadminTenantManagement() {
       loadTenants();
       loadAllUsers();
     } catch (error: unknown) {
-      console.error("Create user error:", error);
+      debugConsole.error("Create user error:", error);
       toast({ title: "Fehler", description: error instanceof Error ? error.message : "Erstellen fehlgeschlagen", variant: "destructive" });
     }
   };

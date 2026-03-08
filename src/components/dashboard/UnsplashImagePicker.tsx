@@ -7,6 +7,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Search, Upload, Loader2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
+import { debugConsole } from '@/utils/debugConsole';
 
 export interface UnsplashAttribution {
   photographer: string;
@@ -74,7 +75,7 @@ export function UnsplashImagePicker({
 
       setImages(data.results);
     } catch (error) {
-      console.error("Error searching Unsplash:", error);
+      debugConsole.error("Error searching Unsplash:", error);
       toast({
         title: "Suchfehler",
         description: "Die Unsplash-Suche konnte nicht durchgeführt werden.",
@@ -137,7 +138,7 @@ export function UnsplashImagePicker({
         description: "Dein Bild wurde hochgeladen.",
       });
     } catch (error) {
-      console.error("Error uploading file:", error);
+      debugConsole.error("Error uploading file:", error);
       toast({
         title: "Upload fehlgeschlagen",
         description: "Das Bild konnte nicht hochgeladen werden.",

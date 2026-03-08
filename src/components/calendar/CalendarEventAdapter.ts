@@ -1,4 +1,5 @@
 import { CalendarEvent } from "./types";
+import { debugConsole } from '@/utils/debugConsole';
 
 // React Big Calendar event interface
 export interface RBCEvent {
@@ -22,9 +23,9 @@ export class CalendarEventAdapter {
     let startTime: Date;
     let endTime: Date;
 
-    console.log('🔄 Converting event to RBC:', event.id, event.title);
-    console.log('📅 Original date object:', event.date);
-    console.log('⏰ Original endTime object:', event.endTime);
+    debugConsole.log('🔄 Converting event to RBC:', event.id, event.title);
+    debugConsole.log('📅 Original date object:', event.date);
+    debugConsole.log('⏰ Original endTime object:', event.endTime);
 
     // Handle nested date objects from Supabase
     startTime = this.extractDateFromObject(event.date);
@@ -52,16 +53,16 @@ export class CalendarEventAdapter {
 
     // Validate the extracted dates
     if (!this.isValidDate(startTime)) {
-      console.error('❌ Invalid start date for event:', event.id, startTime);
+      debugConsole.error('❌ Invalid start date for event:', event.id, startTime);
       startTime = new Date(); // Fallback to current time
     }
     
     if (!this.isValidDate(endTime)) {
-      console.error('❌ Invalid end date for event:', event.id, endTime);
+      debugConsole.error('❌ Invalid end date for event:', event.id, endTime);
       endTime = new Date(startTime.getTime() + 60 * 60 * 1000); // Fallback to 1h later
     }
 
-    console.log('✅ Converted dates - start:', startTime, 'end:', endTime);
+    debugConsole.log('✅ Converted dates - start:', startTime, 'end:', endTime);
 
     return {
       id: event.id,
@@ -187,7 +188,7 @@ export class CalendarEventAdapter {
       return new Date(dateObj);
     }
 
-    console.warn('⚠️ Unknown date format:', dateObj);
+    debugConsole.warn('⚠️ Unknown date format:', dateObj);
     return new Date();
   }
 
@@ -213,7 +214,7 @@ export class CalendarEventAdapter {
       const normalizedEnd = new Date(startTime);
       normalizedEnd.setHours(23, 59, 59, 999);
       
-      console.log('🎂 CalendarEventAdapter: Normalized birthday end time:', {
+      debugConsole.log('🎂 CalendarEventAdapter: Normalized birthday end time:', {
         title: eventInfo.title,
         original: endTime.toISOString(),
         normalized: normalizedEnd.toISOString(),
@@ -232,7 +233,7 @@ export class CalendarEventAdapter {
       const normalizedEnd = new Date(startTime);
       normalizedEnd.setHours(23, 59, 59, 999);
       
-      console.log('🔧 CalendarEventAdapter: Normalized all-day end time:', {
+      debugConsole.log('🔧 CalendarEventAdapter: Normalized all-day end time:', {
         original: endTime.toISOString(),
         normalized: normalizedEnd.toISOString(),
         startDay: startTime.toDateString(),
@@ -280,7 +281,7 @@ export class CalendarEventAdapter {
       const normalizedEnd = new Date(startTime);
       normalizedEnd.setHours(23, 59, 59, 999);
       
-      console.log('🔧 CalendarEventAdapter: Normalized external all-day end time:', {
+      debugConsole.log('🔧 CalendarEventAdapter: Normalized external all-day end time:', {
         original: endTime.toISOString(),
         normalized: normalizedEnd.toISOString(),
         startDay: startTime.toDateString(),
