@@ -361,7 +361,7 @@ export const TaskDecisionCreator = ({
         });
 
         if (notificationError) {
-          console.error('Error creating notification for user:', userId, notificationError);
+          debugConsole.error('Error creating notification for user:', userId, notificationError);
         }
       }
 
