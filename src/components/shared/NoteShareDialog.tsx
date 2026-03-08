@@ -93,7 +93,7 @@ export const NoteShareDialog = ({
         .in("user_id", userIds);
 
       if (profileError) {
-        console.error("Error loading profiles:", profileError);
+        debugConsole.error("Error loading profiles:", profileError);
         return;
       }
 
