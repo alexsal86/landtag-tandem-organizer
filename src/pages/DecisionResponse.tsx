@@ -7,6 +7,7 @@ import { CheckCircle, XCircle, Loader2, Check, X, MessageCircle, Circle, Star } 
 import { supabase } from "@/integrations/supabase/client";
 import SimpleRichTextEditor from "@/components/ui/SimpleRichTextEditor";
 import { ResponseOption, getColorClasses, getDefaultOptions } from "@/lib/decisionTemplates";
+import { debugConsole } from "@/utils/debugConsole";
 
 const getIcon = (iconName?: string, className = "h-4 w-4") => {
   switch (iconName) {
