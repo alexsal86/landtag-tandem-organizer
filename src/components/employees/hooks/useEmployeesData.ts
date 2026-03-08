@@ -38,7 +38,7 @@ export function useEmployeesData() {
         .select("role")
         .eq("user_id", user.id)
         .single();
-      if (error) console.error(error);
+      if (error) debugConsole.error(error);
       setIsAdmin(roleData?.role === "abgeordneter");
     };
     run();
