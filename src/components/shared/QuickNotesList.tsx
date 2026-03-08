@@ -615,7 +615,7 @@ export function QuickNotesList({
       return;
     }
 
-    console.log("Archiving note:", { noteId, userId: user.id });
+    debugConsole.log("Archiving note:", { noteId, userId: user.id });
 
     try {
       const { data, error } = await supabase
