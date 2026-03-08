@@ -378,7 +378,7 @@ export const KarlsruheDistrictsMap = ({
       .subscribe();
     
     return () => {
-      console.log('Cleaning up realtime subscription');
+      debugConsole.log('Cleaning up realtime subscription');
       supabase.removeChannel(channel);
     };
   }, [mapReady, loadStakeholders]);

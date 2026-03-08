@@ -619,7 +619,7 @@ export function MyWorkTasksTab() {
         return next;
       });
     } catch (error) {
-      console.error("Error updating task:", error);
+      debugConsole.error("Error updating task:", error);
       toast({ title: "Fehler beim Speichern", variant: "destructive" });
     }
   };

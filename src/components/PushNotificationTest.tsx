@@ -6,6 +6,7 @@ import { Badge } from '@/components/ui/badge';
 import { useNotifications } from '@/hooks/useNotifications';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
+import { debugConsole } from '@/utils/debugConsole';
 
 interface TestResult {
   step: string;
@@ -22,340 +23,202 @@ export const PushNotificationTest: React.FC = () => {
   const { toast } = useToast();
 
   const runRealPushTest = async () => {
-    console.log('=== ECHTER PUSH TEST GESTARTET ===');
-    console.log('🔧 Testing with updated VAPID keys and full system...');
+    debugConsole.log('=== ECHTER PUSH TEST GESTARTET ===');
+    debugConsole.log('🔧 Testing with updated VAPID keys and full system...');
     setIsRealTestRunning(true);
     
     try {
       setRealTestResult({ step: 'Starte echten Push-Test mit neuen VAPID-Keys...', status: 'pending', message: 'VAPID-Konfiguration wird getestet...' });
 
-      // Check prerequisites
       if (!pushSupported) {
-        setRealTestResult({ 
-          step: 'Browser-Support fehlt', 
-          status: 'error',
-          message: '❌ Browser unterstützt keine Push-Notifications'
-        });
+        setRealTestResult({ step: 'Browser-Support fehlt', status: 'error', message: '❌ Browser unterstützt keine Push-Notifications' });
         return;
       }
 
       if (pushPermission !== 'granted') {
-        setRealTestResult({ 
-          step: 'Berechtigung fehlt', 
-          status: 'error',
-          message: '❌ Push-Berechtigung nicht erteilt. Bitte erst den normalen Test durchführen.'
-        });
+        setRealTestResult({ step: 'Berechtigung fehlt', status: 'error', message: '❌ Push-Berechtigung nicht erteilt. Bitte erst den normalen Test durchführen.' });
         return;
       }
 
-      // Step 1: Ensure subscription exists
       setRealTestResult({ step: 'Subscription prüfen', status: 'pending', message: 'Prüfe Push-Subscription...' });
       
       try {
         await subscribeToPush();
-        setRealTestResult({ 
-          step: 'Subscription bereit', 
-          status: 'success',
-          message: '✅ Push-Subscription ist bereit'
-        });
+        setRealTestResult({ step: 'Subscription bereit', status: 'success', message: '✅ Push-Subscription ist bereit' });
       } catch (error) {
-        console.error('❌ Subscription error:', error);
-        setRealTestResult({ 
-          step: 'Subscription Fehler', 
-          status: 'error',
-          message: `❌ Fehler bei Subscription: ${error instanceof Error ? error.message : 'Unbekannter Fehler'}`
-        });
+        debugConsole.error('❌ Subscription error:', error);
+        setRealTestResult({ step: 'Subscription Fehler', status: 'error', message: `❌ Fehler bei Subscription: ${error instanceof Error ? error.message : 'Unbekannter Fehler'}` });
         return;
       }
 
-      // Step 2: Send real push notification
       setRealTestResult({ step: 'Echte Push-Notification senden', status: 'pending', message: 'Sende echte Browser-Push-Notification...' });
 
-      console.log('🚀 Invoking REAL push notification...');
+      debugConsole.log('🚀 Invoking REAL push notification...');
       
       const response = await supabase.functions.invoke('send-push-notification', {
         body: { 
           title: 'Echte Push-Notification! 🔔',
           message: 'Dies ist eine echte Browser-Push-Notification!',
           priority: 'high',
-          data: {
-            real_push: true,
-            test_timestamp: new Date().toISOString()
-          }
+          data: { real_push: true, test_timestamp: new Date().toISOString() }
         }
       });
 
-      console.log('📤 Real Push Edge Function response:', response);
+      debugConsole.log('📤 Real Push Edge Function response:', response);
 
       if (response.error) {
-        console.error('❌ Real Push Edge Function error:', response.error);
-        setRealTestResult({
-          step: 'Echte Push-Notification senden',
-          status: 'error',
-          message: `❌ Edge Function Fehler: ${response.error.message || 'Unbekannter Fehler'}`
-        });
+        debugConsole.error('❌ Real Push Edge Function error:', response.error);
+        setRealTestResult({ step: 'Echte Push-Notification senden', status: 'error', message: `❌ Edge Function Fehler: ${response.error.message || 'Unbekannter Fehler'}` });
         return;
       }
 
       const responseData = response.data;
-      console.log('📊 Real Push Response data:', responseData);
+      debugConsole.log('📊 Real Push Response data:', responseData);
       
       if (responseData && responseData.sent > 0) {
-        setRealTestResult({
-          step: 'Echter Test erfolgreich!',
-          status: 'success',
-          message: `✅ ${responseData.sent} echte Push-Notification(en) erfolgreich gesendet! Schau in deine Browser-Benachrichtigungen.`
-        });
-        
-        toast({
-          title: 'Echter Push-Test erfolgreich!',
-          description: 'Du solltest jetzt eine echte Browser-Push-Notification sehen.',
-        });
+        setRealTestResult({ step: 'Echter Test erfolgreich!', status: 'success', message: `✅ ${responseData.sent} echte Push-Notification(en) erfolgreich gesendet! Schau in deine Browser-Benachrichtigungen.` });
+        toast({ title: 'Echter Push-Test erfolgreich!', description: 'Du solltest jetzt eine echte Browser-Push-Notification sehen.' });
       } else if (responseData && responseData.message && responseData.message.includes('noch in Entwicklung')) {
-        // Handle "not implemented yet" response
-        setRealTestResult({
-          step: 'Echte Push-Notifications in Entwicklung',
-          status: 'pending',
-          message: `ℹ️ ${responseData.message}`
-        });
-        
-        toast({
-          title: 'Feature in Entwicklung',
-          description: 'Echte Browser-Push-Notifications werden gerade implementiert.',
-          variant: 'default',
-        });
+        setRealTestResult({ step: 'Echte Push-Notifications in Entwicklung', status: 'pending', message: `ℹ️ ${responseData.message}` });
+        toast({ title: 'Feature in Entwicklung', description: 'Echte Browser-Push-Notifications werden gerade implementiert.', variant: 'default' });
       } else {
-        setRealTestResult({
-          step: 'Echter Test fehlgeschlagen',
-          status: 'error',
-          message: `⚠️ Keine echten Benachrichtigungen erfolgreich gesendet. ${responseData?.failed || 'Unbekannt'} von ${responseData?.total_subscriptions || 'unbekannt'} fehlgeschlagen.`
-        });
-        
-        toast({
-          title: 'Echter Push-Test fehlgeschlagen',
-          description: 'Echte Push-Notifications konnten nicht gesendet werden.',
-          variant: 'destructive',
-        });
+        setRealTestResult({ step: 'Echter Test fehlgeschlagen', status: 'error', message: `⚠️ Keine echten Benachrichtigungen erfolgreich gesendet. ${responseData?.failed || 'Unbekannt'} von ${responseData?.total_subscriptions || 'unbekannt'} fehlgeschlagen.` });
+        toast({ title: 'Echter Push-Test fehlgeschlagen', description: 'Echte Push-Notifications konnten nicht gesendet werden.', variant: 'destructive' });
       }
 
     } catch (error) {
-      console.error('❌ Real push test error:', error);
-      setRealTestResult({
-        step: 'Echter Test fehlgeschlagen',
-        status: 'error',
-        message: error instanceof Error ? error.message : 'Unbekannter Fehler beim echten Push-Test',
-      });
-
-      toast({
-        title: 'Echter Push-Test fehlgeschlagen',
-        description: 'Es ist ein unerwarteter Fehler beim echten Push-Test aufgetreten.',
-        variant: 'destructive',
-      });
+      debugConsole.error('❌ Real push test error:', error);
+      setRealTestResult({ step: 'Echter Test fehlgeschlagen', status: 'error', message: error instanceof Error ? error.message : 'Unbekannter Fehler beim echten Push-Test' });
+      toast({ title: 'Echter Push-Test fehlgeschlagen', description: 'Es ist ein unerwarteter Fehler beim echten Push-Test aufgetreten.', variant: 'destructive' });
     } finally {
       setIsRealTestRunning(false);
     }
     
-    console.log('=== ECHTER PUSH TEST BEENDET ===');
+    debugConsole.log('=== ECHTER PUSH TEST BEENDET ===');
   };
 
   const runPushTest = async () => {
-    console.log('=== PUSH TEST GESTARTET ===');
+    debugConsole.log('=== PUSH TEST GESTARTET ===');
     setIsRunning(true);
     
     try {
       setTestResult({ step: 'Starte Push-Test...', status: 'pending', message: '' });
 
-      // Step 1: Check browser support
-      console.log('Step 1: Browser Support Check');
-      console.log('pushSupported:', pushSupported);
+      debugConsole.log('Step 1: Browser Support Check');
+      debugConsole.log('pushSupported:', pushSupported);
       
-      setTestResult({ 
-        step: 'Browser-Support prüfen', 
-        status: pushSupported ? 'success' : 'error',
-        message: pushSupported ? '✅ Push-Notifications werden unterstützt' : '❌ Browser unterstützt keine Push-Notifications'
-      });
+      setTestResult({ step: 'Browser-Support prüfen', status: pushSupported ? 'success' : 'error', message: pushSupported ? '✅ Push-Notifications werden unterstützt' : '❌ Browser unterstützt keine Push-Notifications' });
 
       if (!pushSupported) {
-        console.log('❌ Test beendet: Browser-Support fehlt');
+        debugConsole.log('❌ Test beendet: Browser-Support fehlt');
         return;
       }
 
-      // Step 2: Check permission
-      console.log('Step 2: Permission Check');
-      console.log('Current pushPermission:', pushPermission);
+      debugConsole.log('Step 2: Permission Check');
+      debugConsole.log('Current pushPermission:', pushPermission);
       
       if (pushPermission !== 'granted') {
         setTestResult({ step: 'Berechtigung anfordern', status: 'pending', message: 'Fordere Push-Berechtigung an...' });
         
         try {
-          console.log('Requesting push permission...');
+          debugConsole.log('Requesting push permission...');
           const permission = await requestPushPermission();
-          console.log('Permission result:', permission);
+          debugConsole.log('Permission result:', permission);
           
-          setTestResult({ 
-            step: 'Berechtigung anfordern', 
-            status: permission ? 'success' : 'error',
-            message: permission ? '✅ Berechtigung erfolgreich erteilt' : '❌ Berechtigung verweigert'
-          });
+          setTestResult({ step: 'Berechtigung anfordern', status: permission ? 'success' : 'error', message: permission ? '✅ Berechtigung erfolgreich erteilt' : '❌ Berechtigung verweigert' });
 
           if (!permission) {
-            console.log('❌ Test beendet: Berechtigung verweigert');
+            debugConsole.log('❌ Test beendet: Berechtigung verweigert');
             return;
           }
         } catch (error) {
-          console.error('❌ Permission error:', error);
-          setTestResult({ 
-            step: 'Berechtigung anfordern', 
-            status: 'error',
-            message: `❌ Fehler beim Anfordern der Berechtigung: ${error instanceof Error ? error.message : 'Unbekannter Fehler'}`
-          });
+          debugConsole.error('❌ Permission error:', error);
+          setTestResult({ step: 'Berechtigung anfordern', status: 'error', message: `❌ Fehler beim Anfordern der Berechtigung: ${error instanceof Error ? error.message : 'Unbekannter Fehler'}` });
           return;
         }
       } else {
-        console.log('✅ Permission already granted');
-        setTestResult({ 
-          step: 'Berechtigung prüfen', 
-          status: 'success',
-          message: '✅ Push-Berechtigung bereits erteilt'
-        });
+        debugConsole.log('✅ Permission already granted');
+        setTestResult({ step: 'Berechtigung prüfen', status: 'success', message: '✅ Push-Berechtigung bereits erteilt' });
       }
 
-      // Step 3: Create/verify subscription
-      console.log('Step 3: Push Subscription');
+      debugConsole.log('Step 3: Push Subscription');
       setTestResult({ step: 'Push-Subscription erstellen', status: 'pending', message: 'Erstelle Subscription...' });
       
       try {
-        console.log('Calling subscribeToPush...');
+        debugConsole.log('Calling subscribeToPush...');
         await subscribeToPush();
-        console.log('✅ subscribeToPush completed successfully');
+        debugConsole.log('✅ subscribeToPush completed successfully');
         
-        setTestResult({ 
-          step: 'Push-Subscription erstellen', 
-          status: 'success',
-          message: '✅ Subscription erfolgreich erstellt'
-        });
+        setTestResult({ step: 'Push-Subscription erstellen', status: 'success', message: '✅ Subscription erfolgreich erstellt' });
       } catch (error) {
-        console.error('❌ Push subscription error:', error);
-        setTestResult({ 
-          step: 'Push-Subscription erstellen', 
-          status: 'error',
-          message: `❌ Fehler beim Erstellen der Subscription: ${error instanceof Error ? error.message : 'Unbekannter Fehler'}`
-        });
+        debugConsole.error('❌ Push subscription error:', error);
+        setTestResult({ step: 'Push-Subscription erstellen', status: 'error', message: `❌ Fehler beim Erstellen der Subscription: ${error instanceof Error ? error.message : 'Unbekannter Fehler'}` });
         return;
       }
 
-      // Step 4: Verify subscription in database
-      console.log('Step 4: Database Verification');
+      debugConsole.log('Step 4: Database Verification');
       setTestResult({ step: 'Subscription in Datenbank prüfen', status: 'pending', message: 'Prüfe Datenbank...' });
       
       try {
         const { data: subscriptions, error } = await supabase
           .from('push_subscriptions')
-          .select('*')
+          .select('id, user_id, is_active')
           .eq('is_active', true);
           
-        console.log('Database subscriptions:', subscriptions);
-        console.log('Database error:', error);
+        debugConsole.log('Database subscriptions:', subscriptions);
+        debugConsole.log('Database error:', error);
         
         if (error) throw error;
         
         if (!subscriptions || subscriptions.length === 0) {
-          setTestResult({ 
-            step: 'Subscription in Datenbank prüfen', 
-            status: 'error',
-            message: '❌ Keine aktive Subscription in der Datenbank gefunden'
-          });
+          setTestResult({ step: 'Subscription in Datenbank prüfen', status: 'error', message: '❌ Keine aktive Subscription in der Datenbank gefunden' });
           return;
         }
         
-        setTestResult({ 
-          step: 'Subscription in Datenbank prüfen', 
-          status: 'success',
-          message: `✅ ${subscriptions.length} aktive Subscription(s) in der Datenbank`
-        });
+        setTestResult({ step: 'Subscription in Datenbank prüfen', status: 'success', message: `✅ ${subscriptions.length} aktive Subscription(s) in der Datenbank` });
       } catch (error) {
-        console.error('❌ Database check error:', error);
-        setTestResult({ 
-          step: 'Subscription in Datenbank prüfen', 
-          status: 'error',
-          message: `❌ Datenbankfehler: ${error instanceof Error ? error.message : 'Unbekannter Fehler'}`
-        });
+        debugConsole.error('❌ Database check error:', error);
+        setTestResult({ step: 'Subscription in Datenbank prüfen', status: 'error', message: `❌ Datenbankfehler: ${error instanceof Error ? error.message : 'Unbekannter Fehler'}` });
         return;
       }
 
-      // Step 5: Test notification
-      console.log('Step 5: Send Test Notification');
+      debugConsole.log('Step 5: Send Test Notification');
       setTestResult({ step: 'Test-Benachrichtigung senden', status: 'pending', message: 'Sende Test-Benachrichtigung...' });
 
-      console.log('🚀 Invoking push notification test...');
+      debugConsole.log('🚀 Invoking push notification test...');
       
       const response = await supabase.functions.invoke('send-push-notification', {
-        body: { 
-          type: 'test',
-          title: 'Push-Test erfolgreich! 🎉',
-          message: 'Das Push-Notification System funktioniert korrekt.',
-          priority: 'high'
-        }
+        body: { type: 'test', title: 'Push-Test erfolgreich! 🎉', message: 'Das Push-Notification System funktioniert korrekt.', priority: 'high' }
       });
 
-      console.log('📤 Edge Function response:', response);
+      debugConsole.log('📤 Edge Function response:', response);
 
       if (response.error) {
-        console.error('❌ Edge Function error:', response.error);
-        setTestResult({
-          step: 'Test-Benachrichtigung senden',
-          status: 'error',
-          message: `❌ Edge Function Fehler: ${response.error.message || 'Unbekannter Fehler'}`
-        });
+        debugConsole.error('❌ Edge Function error:', response.error);
+        setTestResult({ step: 'Test-Benachrichtigung senden', status: 'error', message: `❌ Edge Function Fehler: ${response.error.message || 'Unbekannter Fehler'}` });
         return;
       }
 
       const responseData = response.data;
-      console.log('📊 Response data:', responseData);
+      debugConsole.log('📊 Response data:', responseData);
       
       if (responseData && responseData.sent > 0) {
-        setTestResult({
-          step: 'Test abgeschlossen!',
-          status: 'success',
-          message: `✅ ${responseData.sent} Benachrichtigung(en) erfolgreich gesendet!`
-        });
-        
-        toast({
-          title: 'Test erfolgreich!',
-          description: 'Push-Benachrichtigungen funktionieren korrekt.',
-        });
+        setTestResult({ step: 'Test abgeschlossen!', status: 'success', message: `✅ ${responseData.sent} Benachrichtigung(en) erfolgreich gesendet!` });
+        toast({ title: 'Test erfolgreich!', description: 'Push-Benachrichtigungen funktionieren korrekt.' });
       } else {
-        setTestResult({
-          step: 'Test abgeschlossen',
-          status: 'error',
-          message: `⚠️ Test abgeschlossen, aber keine Benachrichtigungen erfolgreich gesendet. ${responseData?.failed || 'Unbekannt'} von ${responseData?.total_subscriptions || 'unbekannt'} fehlgeschlagen.`
-        });
-        
-        toast({
-          title: 'Test teilweise erfolgreich',
-          description: 'Test durchgeführt, aber Benachrichtigungen konnten nicht gesendet werden.',
-          variant: 'destructive',
-        });
+        setTestResult({ step: 'Test abgeschlossen', status: 'error', message: `⚠️ Test abgeschlossen, aber keine Benachrichtigungen erfolgreich gesendet. ${responseData?.failed || 'Unbekannt'} von ${responseData?.total_subscriptions || 'unbekannt'} fehlgeschlagen.` });
+        toast({ title: 'Test teilweise erfolgreich', description: 'Test durchgeführt, aber Benachrichtigungen konnten nicht gesendet werden.', variant: 'destructive' });
       }
 
     } catch (error) {
-      console.error('❌ Overall test error:', error);
-      setTestResult({
-        step: 'Test fehlgeschlagen',
-        status: 'error',
-        message: error instanceof Error ? error.message : 'Unbekannter Fehler beim Push-Test',
-      });
-
-      toast({
-        title: 'Test fehlgeschlagen',
-        description: 'Es ist ein unerwarteter Fehler beim Push-Test aufgetreten.',
-        variant: 'destructive',
-      });
+      debugConsole.error('❌ Overall test error:', error);
+      setTestResult({ step: 'Test fehlgeschlagen', status: 'error', message: error instanceof Error ? error.message : 'Unbekannter Fehler beim Push-Test' });
+      toast({ title: 'Test fehlgeschlagen', description: 'Es ist ein unerwarteter Fehler beim Push-Test aufgetreten.', variant: 'destructive' });
     } finally {
       setIsRunning(false);
     }
     
-    console.log('=== PUSH TEST BEENDET ===');
+    debugConsole.log('=== PUSH TEST BEENDET ===');
   };
 
   const getStatusIcon = (status: 'pending' | 'success' | 'error') => {

@@ -48,7 +48,7 @@ export const StatusAdminSettings: React.FC = () => {
     setLoading(true);
     const { data, error } = await supabase
       .from('admin_status_options')
-      .select('*')
+      .select('id, name, emoji, color, sort_order, is_active, created_at, updated_at')
       .order('sort_order');
 
     if (error) {

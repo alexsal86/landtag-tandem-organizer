@@ -464,7 +464,7 @@ export const CallLogWidget: React.FC<CallLogWidgetProps> = ({
       setContacts(prev => [...prev, data]);
       toast.success('Kontakt gespeichert');
     } catch (error) {
-      console.error('Error saving contact:', error);
+      debugConsole.error('Error saving contact:', error);
       toast.error('Fehler beim Speichern des Kontakts');
     }
   };

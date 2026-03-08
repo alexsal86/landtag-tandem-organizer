@@ -12,6 +12,7 @@ import { useToast } from "@/components/ui/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { MeetingProtocolView } from "./MeetingProtocolView";
+import { debugConsole } from "@/utils/debugConsole";
 
 interface ArchivedMeeting {
   id: string;
@@ -50,31 +51,28 @@ export function MeetingArchiveView({ onBack }: MeetingArchiveViewProps) {
     try {
       setLoading(true);
       
-      // 1. Load meetings where user is the creator
       const { data: ownMeetings, error: ownError } = await supabase
         .from('meetings')
-        .select('*')
+        .select('id, title, description, meeting_date, location, status, created_at, updated_at, user_id, is_public')
         .eq('user_id', user?.id)
         .eq('status', 'archived')
         .order('meeting_date', { ascending: false });
 
       if (ownError) throw ownError;
       
-      // 2. Load meetings where user is a participant
       const { data: participantMeetings, error: participantError } = await supabase
         .from('meeting_participants')
-        .select('meeting_id, meetings(*)')
+        .select('meeting_id, meetings(id, title, description, meeting_date, location, status, created_at, updated_at, user_id, is_public)')
         .eq('user_id', user?.id);
 
       if (participantError) {
-        console.error('Error loading participant meetings:', participantError);
+        debugConsole.error('Error loading participant meetings:', participantError);
       }
       
       const participantArchivedMeetings = (participantMeetings || [])
         .filter(p => p.meetings && p.meetings.status === 'archived')
         .map(p => p.meetings);
       
-      // 3. Load public archived meetings from the same tenant (excluding already loaded)
       const existingMeetingIds = new Set([
         ...(ownMeetings || []).map(m => m.id),
         ...participantArchivedMeetings.map(m => m?.id).filter(Boolean)
@@ -84,19 +82,18 @@ export function MeetingArchiveView({ onBack }: MeetingArchiveViewProps) {
       if (currentTenant?.id) {
         const { data: publicData, error: publicError } = await supabase
           .from('meetings')
-          .select('*')
+          .select('id, title, description, meeting_date, location, status, created_at, updated_at, user_id, is_public')
           .eq('status', 'archived')
           .eq('is_public', true)
           .eq('tenant_id', currentTenant.id);
         
         if (publicError) {
-          console.error('Error loading public meetings:', publicError);
+          debugConsole.error('Error loading public meetings:', publicError);
         } else {
           publicMeetings = (publicData || []).filter(m => !existingMeetingIds.has(m.id));
         }
       }
       
-      // Combine and deduplicate
       const allMeetingsMap = new Map();
       [...(ownMeetings || []), ...participantArchivedMeetings, ...publicMeetings]
         .filter(Boolean)
@@ -107,7 +104,7 @@ export function MeetingArchiveView({ onBack }: MeetingArchiveViewProps) {
       
       setArchivedMeetings(allMeetings);
     } catch (error) {
-      console.error('Error loading archived meetings:', error);
+      debugConsole.error('Error loading archived meetings:', error);
       toast({
         title: "Fehler",
         description: "Archivierte Besprechungen konnten nicht geladen werden.",
@@ -124,19 +121,16 @@ export function MeetingArchiveView({ onBack }: MeetingArchiveViewProps) {
 
   const deleteMeeting = async (meetingId: string) => {
     try {
-      // Delete agenda items first
       await supabase
         .from('meeting_agenda_items')
         .delete()
         .eq('meeting_id', meetingId);
 
-      // Delete the meeting
       await supabase
         .from('meetings')
         .delete()
         .eq('id', meetingId);
 
-      // Reload the list
       await loadArchivedMeetings();
       
       toast({
@@ -144,7 +138,7 @@ export function MeetingArchiveView({ onBack }: MeetingArchiveViewProps) {
         description: "Die archivierte Besprechung wurde erfolgreich gelöscht."
       });
     } catch (error) {
-      console.error('Error deleting meeting:', error);
+      debugConsole.error('Error deleting meeting:', error);
       toast({
         title: "Fehler",
         description: "Die Besprechung konnte nicht gelöscht werden.",
@@ -167,7 +161,7 @@ export function MeetingArchiveView({ onBack }: MeetingArchiveViewProps) {
         description: "Die Besprechung wurde aus dem Archiv wiederhergestellt."
       });
     } catch (error) {
-      console.error('Error restoring meeting:', error);
+      debugConsole.error('Error restoring meeting:', error);
       toast({
         title: "Fehler",
         description: "Die Besprechung konnte nicht wiederhergestellt werden.",
