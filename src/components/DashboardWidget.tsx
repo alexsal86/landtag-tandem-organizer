@@ -346,7 +346,7 @@ export function DashboardWidget({ widget, isDragging, isEditMode, onResize, onDe
             configuration={widget.configuration}
             onConfigurationChange={(config) => {
               // Update widget configuration if we have an update function
-              console.log('Configuration changed for quickactions widget:', config);
+              debugConsole.log('Configuration changed for quickactions widget:', config);
             }}
           />
         );
