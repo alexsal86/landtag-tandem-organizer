@@ -275,7 +275,7 @@ export function useMeetingArchive(deps: ArchiveDeps) {
       // Step 4: Follow-up task with subtasks
       let followUpTask = null;
       try {
-        const { data: createdTask, error: taskError } = await supabase.from('tasks').insert({
+        const { data: createdTask, error: taskError } = await supabase.from('tasks').insert([{
           user_id: user.id,
           title: `Nachbereitung ${meeting.title} vom ${format(new Date(), 'dd.MM.yyyy')}`,
           description: `Nachbereitung der Besprechung "${meeting.title}"`,
@@ -283,7 +283,7 @@ export function useMeetingArchive(deps: ArchiveDeps) {
           tenant_id: currentTenant?.id || '',
           due_date: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),
           assigned_to: user.id,
-        }).select().single();
+        }]).select().single();
         if (taskError) throw taskError;
         followUpTask = createdTask;
       } catch (e) { debugConsole.error('Error creating follow-up task (non-fatal):', e); }
