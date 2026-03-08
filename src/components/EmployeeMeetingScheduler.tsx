@@ -155,7 +155,7 @@ export function EmployeeMeetingScheduler({
           });
 
         if (calendarError) {
-          console.error("Calendar entry error:", calendarError);
+          debugConsole.error("Calendar entry error:", calendarError);
           toast({
             title: "Hinweis",
             description: "Gespräch erstellt, aber Kalendereintrag konnte nicht angelegt werden",
