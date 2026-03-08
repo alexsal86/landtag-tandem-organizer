@@ -366,9 +366,9 @@ export function useDaySlipStore(userId?: string, tenantId?: string) {
 
   const createFromLine = useCallback(async (lineText: string, target: "note" | "task") => {
     if (!userId || !lineText.trim()) return;
-    if (target === "note") { await supabase.from("quick_notes").insert({ user_id: userId, title: lineText, content: `Aus Tageszettel (${todayKey})` }); return; }
+    if (target === "note") { await supabase.from("quick_notes").insert([{ user_id: userId, title: lineText, content: `Aus Tageszettel (${todayKey})` }]); return; }
     if (!tenantId) return;
-    await supabase.from("tasks").insert({ user_id: userId, tenant_id: tenantId, title: lineText, description: `Aus Tageszettel (${todayKey})`, status: "open", priority: "medium", category: "allgemein" });
+    await supabase.from("tasks").insert([{ user_id: userId, tenant_id: tenantId, title: lineText, description: `Aus Tageszettel (${todayKey})`, status: "open", priority: "medium", category: "allgemein" }]);
   }, [userId, tenantId, todayKey]);
 
   const persistResolvedItems = useCallback(async () => {
