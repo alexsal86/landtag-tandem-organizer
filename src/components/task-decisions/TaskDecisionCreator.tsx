@@ -247,8 +247,6 @@ export const TaskDecisionCreator = ({
         throw new Error('User not authenticated');
       }
 
-      console.log('User authenticated:', userData.user.id);
-
       // Get user's tenant
       const { data: tenantData, error: tenantError } = await supabase
         .from('user_tenant_memberships')
