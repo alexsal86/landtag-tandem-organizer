@@ -182,8 +182,7 @@ export function useLetterTemplateData() {
       toast({ title: "Template gelöscht" });
       fetchTemplates();
     } catch (error) {
-      debugConsole.error('Error deleting template:', error);
-      toast({ title: "Fehler", description: "Template konnte nicht gelöscht werden.", variant: "destructive" });
+      handleAppError(error, { context: 'handleDeleteTemplate', toast: { fn: toast, title: 'Fehler', description: 'Template konnte nicht gelöscht werden.' } });
     }
   };
 

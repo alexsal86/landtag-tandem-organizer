@@ -423,8 +423,7 @@ export function useMeetingsData() {
       setAgendaDocuments(prev => ({ ...prev, [agendaItemId]: (prev[agendaItemId] || []).filter(doc => doc.id !== documentId) }));
       toast({ title: "Dokument entfernt", description: "Das Dokument wurde erfolgreich entfernt." });
     } catch (error) {
-      debugConsole.error('Error deleting agenda document:', error);
-      toast({ title: "Fehler", description: "Dokument konnte nicht entfernt werden.", variant: "destructive" });
+      handleAppError(error, { context: 'deleteAgendaDocument', toast: { fn: toast, title: 'Fehler', description: 'Dokument konnte nicht entfernt werden.' } });
     }
   };
 

@@ -50,7 +50,7 @@ export function Navigation({ activeSection, onSectionChange }: NavigationProps) 
   // Get notifications for a specific context (first 3)
   const getContextNotifications = (context: string) => {
     return notifications
-      .filter(notification => (notification as any).navigation_context === context && !notification.is_read)
+      .filter(notification => 'navigation_context' in notification && (notification as { navigation_context?: string }).navigation_context === context && !notification.is_read)
       .slice(0, 3);
   };
 
