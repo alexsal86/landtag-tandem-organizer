@@ -46,6 +46,7 @@ const STATUS_STYLES: Record<string, string> = {
   in_klaerung: "bg-amber-500 text-black",
   antwort_ausstehend: "bg-violet-500 text-white",
   erledigt: "bg-emerald-600 text-white",
+  archiviert: "bg-slate-400 text-white",
 };
 
 const PRIORITY_LABELS: Record<string, string> = {
