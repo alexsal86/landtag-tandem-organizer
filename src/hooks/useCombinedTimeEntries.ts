@@ -1,5 +1,6 @@
 import { useMemo } from "react";
 import { format, parseISO, eachDayOfInterval } from "date-fns";
+import { debugConsole } from '@/utils/debugConsole';
 
 interface TimeEntryRow {
   id: string;
