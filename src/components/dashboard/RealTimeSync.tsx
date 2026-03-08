@@ -79,12 +79,8 @@ export function RealTimeSync({ currentLayout, onLayoutUpdate }: RealTimeSyncProp
           }));
           setConnectedUsers(users);
         })
-        .on('presence', { event: 'join' }, ({ newPresences }) => {
-          console.log('User joined:', newPresences);
-        })
-        .on('presence', { event: 'leave' }, ({ leftPresences }) => {
-          console.log('User left:', leftPresences);
-        });
+        .on('presence', { event: 'join' }, () => {})
+        .on('presence', { event: 'leave' }, () => {});
 
       // Subscribe to dashboard changes
       channel
