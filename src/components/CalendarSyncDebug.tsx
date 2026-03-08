@@ -42,7 +42,7 @@ export function CalendarSyncDebug() {
       setValidationResult(data);
       toast.success('Kalender-Validierung abgeschlossen');
     } catch (error) {
-      console.error('Validation error:', error);
+      debugConsole.error('Validation error:', error);
       toast.error('Fehler bei der Validierung: ' + (error as Error).message);
     } finally {
       setLoading(false);
