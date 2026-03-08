@@ -138,7 +138,7 @@ export function useAgendaOperations(deps: AgendaOpsDeps) {
           loadAgendaItems(selectedMeeting.id);
         }
       } catch (error) {
-        console.error('Auto-save error:', error);
+        debugConsole.error('Auto-save error:', error);
       }
     }
   };
