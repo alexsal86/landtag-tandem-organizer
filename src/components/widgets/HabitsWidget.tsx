@@ -242,12 +242,12 @@ export const HabitsWidget: React.FC<HabitsWidgetProps> = ({
         // Create new completion
         const { data, error } = await supabase
           .from('habit_completions')
-          .insert({
+          .insert([{
             user_id: user.id,
             habit_id: habitId,
             completion_date: today,
             count: 1
-          })
+          }])
           .select()
           .single();
 

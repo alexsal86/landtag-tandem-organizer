@@ -41,7 +41,7 @@ export async function saveWidgetMessageFeedback(params: {
   visitorMessage?: string;
   botReply: string;
 }) {
-  return supabase.from("matrix_widget_message_feedback").insert({
+  return supabase.from("matrix_widget_message_feedback").insert([{
     tenant_id: params.tenantId,
     conversation_id: params.conversationId,
     widget_message_id: params.widgetMessageId,

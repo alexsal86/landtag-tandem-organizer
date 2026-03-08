@@ -448,14 +448,14 @@ export const CallLogWidget: React.FC<CallLogWidgetProps> = ({
     try {
       const { data, error } = await supabase
         .from('contacts')
-        .insert({
+        .insert([{
           user_id: user?.id,
           name: callerName.trim(),
           phone: callerPhone.trim() || undefined,
         contact_type: 'person',
         category: 'citizen',
         tenant_id: currentTenant?.id || 'default-tenant-id'
-        })
+        }])
         .select()
         .single();
 
