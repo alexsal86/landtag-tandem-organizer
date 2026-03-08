@@ -228,7 +228,7 @@ export const useNotifications = () => {
       localStorage.setItem('notifications_marked_read', Date.now().toString());
       localStorage.removeItem('notifications_marked_read');
     } catch (error: any) {
-      console.error('Error marking all notifications as read:', error);
+      debugConsole.error('Error marking all notifications as read:', error);
       
       // Check if it's a network error - the operation may have succeeded
       const isNetworkError = error?.message?.includes('Failed to fetch') || 
