@@ -515,7 +515,7 @@ export function useDashboardLayout() {
         ...prev,
         widgets: [...prev.widgets, newWidget]
       };
-      console.log('🔄 State update callback executed, new widget count:', newLayout.widgets.length);
+      
       return newLayout;
     });
     
