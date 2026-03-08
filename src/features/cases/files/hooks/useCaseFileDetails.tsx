@@ -548,8 +548,9 @@ export const useCaseFileDetails = (caseFileId: string | null) => {
       
       toast({ title: "Termin hinzugefügt" });
       return true;
-    } catch (error: any) {
-      if (error.code === '23505') {
+    } catch (error: unknown) {
+      const code = error && typeof error === 'object' && 'code' in error ? (error as { code: string }).code : '';
+      if (code === '23505') {
         toast({ title: "Termin bereits verknüpft", variant: "destructive" });
       } else {
         toast({ title: "Fehler beim Hinzufügen", variant: "destructive" });
