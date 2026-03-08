@@ -368,7 +368,7 @@ export const TaskDecisionDetails = ({ decisionId, isOpen, onClose, onArchived, h
       setReplyingToId(null);
       loadDecisionDetails();
     } catch (error) {
-      console.error('Error sending participant reply:', error);
+      debugConsole.error('Error sending participant reply:', error);
       toast({ title: "Fehler", description: "Antwort konnte nicht gesendet werden.", variant: "destructive" });
     } finally {
       setIsLoading(false);
