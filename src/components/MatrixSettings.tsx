@@ -265,7 +265,7 @@ export const MatrixSettings: React.FC = () => {
         );
 
       if (error) {
-        console.error("Error updating Matrix settings:", error);
+        debugConsole.error("Error updating Matrix settings:", error);
         toast({
           title: "Fehler",
           description: "Matrix-Einstellungen konnten nicht gespeichert werden.",
