@@ -103,7 +103,7 @@ export function TaskArchiveModal({ isOpen, onClose, onTaskRestored }: TaskArchiv
     try {
       const { data, error } = await supabase
         .from('task_archive_settings')
-        .select('*')
+        .select('auto_delete_after_days')
         .single();
 
       if (error && error.code !== 'PGRST116') throw error;
