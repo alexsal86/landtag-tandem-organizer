@@ -37,7 +37,7 @@ export function useMeetingSidebarData(deps: UseMeetingSidebarDataDeps) {
         .eq("meeting_id", meetingId)
         .order("created_at", { ascending: false });
       if (error) {
-        console.error("Error loading linked quick notes:", error);
+        debugConsole.error("Error loading linked quick notes:", error);
         return;
       }
       setLinkedQuickNotes(data || []);
