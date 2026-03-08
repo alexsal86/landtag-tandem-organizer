@@ -606,10 +606,8 @@ export function TasksView() {
           return isAssigned;
         });
 
-        console.log('📞 Filtered call follow-up tasks for user:', userCallFollowups.length);
 
         for (const followupTask of userCallFollowups) {
-          console.log('📝 Processing call follow-up task:', followupTask.id);
           
           try {
             const assignees = Array.isArray(followupTask.assigned_to) 
