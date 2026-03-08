@@ -69,7 +69,7 @@ export function DistributionListForm({ distributionListId, onSuccess, onBack }: 
       setContacts(data || []);
       setFilteredContacts(data || []);
     } catch (error) {
-      console.error('Error fetching contacts:', error);
+      debugConsole.error('Error fetching contacts:', error);
       toast({
         title: "Fehler",
         description: "Kontakte konnten nicht geladen werden.",
