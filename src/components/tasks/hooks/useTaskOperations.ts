@@ -282,13 +282,13 @@ export function useTaskOperations({
         `Follow-Up Ergebnis: ${resultText || 'Keine Notizen'}`;
       await supabase.from('contacts').update({ notes: newNotes, last_contact: 'heute', updated_at: new Date().toISOString() }).eq('id', archiveContact.id);
     } else {
-      await supabase.from('contacts').insert({
+      await supabase.from('contacts').insert([{
         user_id: user!.id, name, phone, contact_type: 'archive',
         category: 'citizen', priority: 'low', last_contact: 'heute',
         notes: `=== CALL FOLLOW-UP ARCHIV ===\nUrsprünglicher Anruf: ${new Date(callLog.call_date).toLocaleString('de-DE')}\nAnruftyp: ${callLog.call_type === 'incoming' ? 'Eingehend' : 'Ausgehend'}\nPriorität: ${callLog.priority}\nUrsprüngliche Notizen: ${callLog.notes || 'Keine'}\nFollow-Up Ergebnis: ${resultText || 'Keine Notizen'}\n\nDieser Kontakt wurde automatisch aus Call Follow-Ups erstellt.`,
         additional_info: 'Automatisch erstellt aus Call Follow-Up',
         tenant_id: currentTenant?.id || ''
-      });
+      }]);
     }
 
     await supabase.from('call_logs').update({ follow_up_completed: true, completion_notes: resultText || null }).eq('id', callLog.id);
