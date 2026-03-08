@@ -277,7 +277,26 @@ const CaseItemDetail = () => {
               </Card>
             ) : (
               <div className="max-w-5xl mx-auto space-y-4">
-                <Button variant="outline" onClick={() => navigate("/mywork")}> <ArrowLeft className="h-4 w-4 mr-2" /> Zurück</Button>
+                <div className="flex items-center gap-2">
+                  <Button variant="outline" onClick={() => navigate("/mywork")}> <ArrowLeft className="h-4 w-4 mr-2" /> Zurück</Button>
+                  {caseItem.status === "archiviert" ? (
+                    <Button variant="outline" onClick={async () => {
+                      await supabase.from("case_items").update({ status: "neu" } as any).eq("id", caseItem.id);
+                      toast({ title: "Wiederhergestellt", description: "Vorgang wurde wiederhergestellt." });
+                      loadData();
+                    }}>
+                      <RotateCcw className="h-4 w-4 mr-2" /> Wiederherstellen
+                    </Button>
+                  ) : (
+                    <Button variant="outline" onClick={async () => {
+                      await supabase.from("case_items").update({ status: "archiviert" } as any).eq("id", caseItem.id);
+                      toast({ title: "Archiviert", description: "Vorgang wurde archiviert." });
+                      navigate("/mywork");
+                    }}>
+                      <Archive className="h-4 w-4 mr-2" /> Archivieren
+                    </Button>
+                  )}
+                </div>
 
                 <Card>
                   <CardHeader className="flex flex-row items-center justify-between">

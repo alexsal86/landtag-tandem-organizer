@@ -10,7 +10,7 @@ export interface CaseItem {
   user_id: string;
   tenant_id: string;
   source_channel: "phone" | "email" | "social" | "in_person" | "other";
-  status: "neu" | "in_klaerung" | "antwort_ausstehend" | "erledigt";
+  status: "neu" | "in_klaerung" | "antwort_ausstehend" | "erledigt" | "archiviert";
   priority: "low" | "medium" | "high" | "urgent";
   owner_user_id: string | null;
   contact_id: string | null;
