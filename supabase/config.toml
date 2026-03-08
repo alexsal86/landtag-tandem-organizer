@@ -150,3 +150,10 @@ verify_jwt = true
 
 [functions.global-logout]
 verify_jwt = true
+
+[functions.run-automation-rule]
+verify_jwt = true
+
+[functions.run-scheduled-automation-rules]
+verify_jwt = false
+schedule = "*/5 * * * *"

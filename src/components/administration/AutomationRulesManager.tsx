@@ -756,13 +756,41 @@ export function AutomationRulesManager() {
             rules.map((rule) => (
               <div key={rule.id} className="border rounded-lg p-3">
                 <div className="flex items-start justify-between gap-4">
-                  <div className="space-y-1">
-                    <p className="font-medium">{rule.name}</p>
-                    <p className="text-xs text-muted-foreground">{rule.description || "Keine Beschreibung"}</p>
-                    <div className="flex gap-2 flex-wrap">
-                      <Badge variant="outline">{rule.module}</Badge>
-                      <Badge variant="outline">{rule.trigger_type}</Badge>
-                      <Badge variant={rule.enabled ? "default" : "secondary"}>{rule.enabled ? "Aktiv" : "Inaktiv"}</Badge>
+                  <div className="flex items-start gap-3">
+                    <Switch
+                      checked={rule.enabled}
+                      onCheckedChange={async (checked) => {
+                        // Optimistic update
+                        setRules((prev) =>
+                          prev.map((r) => (r.id === rule.id ? { ...r, enabled: checked } : r))
+                        );
+                        const { error } = await supabase
+                          .from("automation_rules")
+                          .update({ enabled: checked })
+                          .eq("id", rule.id);
+                        if (error) {
+                          // Revert on error
+                          setRules((prev) =>
+                            prev.map((r) => (r.id === rule.id ? { ...r, enabled: !checked } : r))
+                          );
+                          toast({
+                            title: "Fehler",
+                            description: error.message,
+                            variant: "destructive",
+                          });
+                        } else {
+                          toast({ title: checked ? "Regel aktiviert" : "Regel deaktiviert" });
+                        }
+                      }}
+                      aria-label={`Regel ${rule.name} ${rule.enabled ? "deaktivieren" : "aktivieren"}`}
+                    />
+                    <div className="space-y-1">
+                      <p className="font-medium">{rule.name}</p>
+                      <p className="text-xs text-muted-foreground">{rule.description || "Keine Beschreibung"}</p>
+                      <div className="flex gap-2 flex-wrap">
+                        <Badge variant="outline">{rule.module}</Badge>
+                        <Badge variant="outline">{rule.trigger_type}</Badge>
+                      </div>
                     </div>
                   </div>
                   <div className="flex gap-2">
@@ -770,7 +798,7 @@ export function AutomationRulesManager() {
                     <Button size="sm" variant="outline" onClick={() => triggerDryRun(rule)} disabled={runningRuleId === rule.id}>
                       {runningRuleId === rule.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <Play className="h-4 w-4" />}
                     </Button>
-                    <Button size="sm" onClick={() => triggerRunNow(rule)} disabled={runningRuleId === rule.id}>
+                    <Button size="sm" onClick={() => triggerRunNow(rule)} disabled={runningRuleId === rule.id || !rule.enabled}>
                       <Zap className="h-4 w-4" />
                     </Button>
                     <Button size="sm" variant="destructive" onClick={() => deleteRule(rule.id)}>
