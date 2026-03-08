@@ -286,7 +286,7 @@ export const useAppointmentFeedback = () => {
       queryClient.invalidateQueries({ queryKey: ['appointment-feedback-external'] });
     },
     onError: (error) => {
-      console.error('Error updating feedback:', error);
+      debugConsole.error('Error updating feedback:', error);
       toast({
         title: 'Fehler',
         description: 'Feedback konnte nicht aktualisiert werden.',
