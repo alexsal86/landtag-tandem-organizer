@@ -449,10 +449,13 @@ export const LetterEditorCanvas: React.FC<LetterEditorCanvasProps> = ({
   const renderPage = (pageIndex: number) => {
     const isFirst = pageIndex === 0;
     const localTopMm = isFirst ? contentStartMm : page2TopMm;
-    const bodyHeightMm = isFirst ? page1BodyMm : pageNBodyMm;
 
-    // Offset directly from snapped values — no re-snapping needed
-    const offsetMm = isFirst ? 0 : page1BodyMm + (pageIndex - 1) * pageNBodyMm;
+    // Use measured page offsets for offset and body height
+    const offsetMm = pageOffsets[pageIndex] ?? 0;
+    const nextOffset = pageOffsets[pageIndex + 1] ?? flowHeightMm;
+    const bodyHeightMm = isFirst
+      ? Math.min(page1BodyMmRaw, nextOffset - offsetMm)
+      : Math.min(pageNBodyMmRaw, nextOffset - offsetMm);
 
     return (
       <div
