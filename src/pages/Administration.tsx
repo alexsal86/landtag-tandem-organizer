@@ -413,7 +413,7 @@ const [editingChild, setEditingChild] = useState<{ parentIndex: number; childInd
       setEditingTemplateName({ id: data.id, value: data.name });
       
       toast({ title: "Template erstellt", description: "Neues Meeting-Template wurde angelegt." });
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Error creating template:', error);
       toast({ title: "Fehler", description: "Template konnte nicht erstellt werden.", variant: "destructive" });
     }
