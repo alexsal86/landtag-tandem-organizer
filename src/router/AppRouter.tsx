@@ -18,6 +18,7 @@ export const AppRouter = () => {
 
   return (
     <>
+      <SkipToContent />
       <Toaster />
       <Sonner />
       <BrowserRouter>
