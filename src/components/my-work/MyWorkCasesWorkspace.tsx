@@ -263,7 +263,13 @@ export function MyWorkCasesWorkspace() {
   const [detailItemId, setDetailItemId] = useState<string | null>(null);
   const [detailFileId, setDetailFileId] = useState<string | null>(null);
   const { editableCaseItem, setEditableCaseItem, updateEdit, appendTimelineEvent, deleteTimelineEvent } = useCaseItemEdit();
-  const [itemSort, setItemSort] = useState<{ key: CaseItemSortKey; direction: SortDirection }>({ key: "received", direction: "desc" });
+  const [itemSort, setItemSort] = useState<{
+    primary: { key: CaseItemSortKey; direction: SortDirection };
+    secondary: { enabled: boolean; direction: SortDirection };
+  }>({
+    primary: { key: "received", direction: "desc" },
+    secondary: { enabled: false, direction: "asc" },
+  });
 
   // Keyboard focus index for arrow/enter navigation (kept "inactive" until the user interacts)
   const [focusedItemIndex, setFocusedItemIndex] = useState<number>(-1);
@@ -432,12 +438,14 @@ export function MyWorkCasesWorkspace() {
 
   const sortedCaseItems = useMemo(() => {
     const priorityRank: Record<string, number> = { low: 1, medium: 2, high: 3, urgent: 4 };
-    const directionFactor = itemSort.direction === "asc" ? 1 : -1;
+    const primaryDirectionFactor = itemSort.primary.direction === "asc" ? 1 : -1;
+    const secondaryDirectionFactor = itemSort.secondary.direction === "asc" ? 1 : -1;
 
     return [...filteredCaseItems].sort((a, b) => {
       const aAssignee = getAssigneeIds(a).map((id) => teamUsers.find((member) => member.id === id)?.name || "").join(", ");
       const bAssignee = getAssigneeIds(b).map((id) => teamUsers.find((member) => member.id === id)?.name || "").join(", ");
 
+      // Primary sort
       const aValue: string | number = {
         channel: sourceChannelMeta[a.source_channel || ""]?.label || a.source_channel || "",
         subject: getItemSubject(a),
@@ -448,7 +456,7 @@ export function MyWorkCasesWorkspace() {
         category: getCategory(a),
         priority: priorityRank[a.priority || ""] || 0,
         assignee: aAssignee,
-      }[itemSort.key];
+      }[itemSort.primary.key];
 
       const bValue: string | number = {
         channel: sourceChannelMeta[b.source_channel || ""]?.label || b.source_channel || "",
@@ -460,23 +468,53 @@ export function MyWorkCasesWorkspace() {
         category: getCategory(b),
         priority: priorityRank[b.priority || ""] || 0,
         assignee: bAssignee,
-      }[itemSort.key];
+      }[itemSort.primary.key];
 
+      let primaryResult = 0;
       if (typeof aValue === "number" && typeof bValue === "number") {
-        return (aValue - bValue) * directionFactor;
+        primaryResult = (aValue - bValue) * primaryDirectionFactor;
+      } else {
+        primaryResult = String(aValue).localeCompare(String(bValue), "de", { sensitivity: "base" }) * primaryDirectionFactor;
       }
 
-      return String(aValue).localeCompare(String(bValue), "de", { sensitivity: "base" }) * directionFactor;
+      // If primary values are equal and secondary sort is enabled, sort by assignee
+      if (primaryResult === 0 && itemSort.secondary.enabled) {
+        return aAssignee.localeCompare(bAssignee, "de", { sensitivity: "base" }) * secondaryDirectionFactor;
+      }
+
+      return primaryResult;
     });
   }, [caseFilesById, filteredCaseItems, getAssigneeIds, getCategory, getItemDescription, getItemSubject, itemSort, teamUsers]);
 
   const toggleSort = useCallback((key: CaseItemSortKey, direction: SortDirection) => {
-    setItemSort((prev) => (prev.key === key && prev.direction === direction ? prev : { key, direction }));
+    setItemSort((prev) => 
+      prev.primary.key === key && prev.primary.direction === direction 
+        ? prev 
+        : { ...prev, primary: { key, direction } }
+    );
+  }, []);
+
+  const toggleSecondarySort = useCallback(() => {
+    setItemSort((prev) => ({
+      ...prev,
+      secondary: { ...prev.secondary, enabled: !prev.secondary.enabled },
+    }));
+  }, []);
+
+  const toggleSecondaryDirection = useCallback(() => {
+    setItemSort((prev) => ({
+      ...prev,
+      secondary: {
+        ...prev.secondary,
+        direction: prev.secondary.direction === "asc" ? "desc" : "asc",
+      },
+    }));
   }, []);
 
   const isSortActive = useCallback(
-    (key: CaseItemSortKey, direction: SortDirection) => itemSort.key === key && itemSort.direction === direction,
-    [itemSort.direction, itemSort.key],
+    (key: CaseItemSortKey, direction: SortDirection) => 
+      itemSort.primary.key === key && itemSort.primary.direction === direction,
+    [itemSort.primary.direction, itemSort.primary.key],
   );
 
   const sortButtonClass = useCallback(
@@ -999,7 +1037,65 @@ export function MyWorkCasesWorkspace() {
                                 <span className="group inline-flex items-center gap-0.5">Kategorie<button type="button" className={sortButtonClass("category", "asc")} onClick={() => toggleSort("category", "asc")} aria-label="Kategorie aufsteigend sortieren"><ArrowUp className="h-3 w-3" /></button><button type="button" className={sortButtonClass("category", "desc")} onClick={() => toggleSort("category", "desc")} aria-label="Kategorie absteigend sortieren"><ArrowDown className="h-3 w-3" /></button></span>
                                 <span className="group inline-flex items-center gap-0.5">Status<button type="button" className={sortButtonClass("status", "asc")} onClick={() => toggleSort("status", "asc")} aria-label="Status aufsteigend sortieren"><ArrowUp className="h-3 w-3" /></button><button type="button" className={sortButtonClass("status", "desc")} onClick={() => toggleSort("status", "desc")} aria-label="Status absteigend sortieren"><ArrowDown className="h-3 w-3" /></button></span>
                                 <span className="group inline-flex items-center justify-center gap-0.5"><button type="button" className={sortButtonClass("priority", "asc")} onClick={() => toggleSort("priority", "asc")} aria-label="Priorität aufsteigend sortieren"><ArrowUp className="h-3 w-3" /></button><button type="button" className={sortButtonClass("priority", "desc")} onClick={() => toggleSort("priority", "desc")} aria-label="Priorität absteigend sortieren"><ArrowDown className="h-3 w-3" /></button></span>
-                                <span className="group inline-flex items-center gap-0.5">Bearbeiter<button type="button" className={sortButtonClass("assignee", "asc")} onClick={() => toggleSort("assignee", "asc")} aria-label="Bearbeiter aufsteigend sortieren"><ArrowUp className="h-3 w-3" /></button><button type="button" className={sortButtonClass("assignee", "desc")} onClick={() => toggleSort("assignee", "desc")} aria-label="Bearbeiter absteigend sortieren"><ArrowDown className="h-3 w-3" /></button></span>
+                                <span className="group inline-flex items-center gap-0.5">
+                                  Bearbeiter
+                                  <button type="button" className={sortButtonClass("assignee", "asc")} onClick={() => toggleSort("assignee", "asc")} aria-label="Bearbeiter aufsteigend sortieren"><ArrowUp className="h-3 w-3" /></button>
+                                  <button type="button" className={sortButtonClass("assignee", "desc")} onClick={() => toggleSort("assignee", "desc")} aria-label="Bearbeiter absteigend sortieren"><ArrowDown className="h-3 w-3" /></button>
+                                  <TooltipProvider>
+                                    <Tooltip>
+                                      <TooltipTrigger asChild>
+                                        <button
+                                          type="button"
+                                          className={cn(
+                                            "rounded p-0.5 ml-1 transition-all hover:bg-muted",
+                                            itemSort.secondary.enabled && "bg-primary/15 text-primary"
+                                          )}
+                                          onClick={toggleSecondarySort}
+                                          aria-label="Als zweite Sortierung verwenden"
+                                        >
+                                          <Link2 className="h-3 w-3" />
+                                        </button>
+                                      </TooltipTrigger>
+                                      <TooltipContent>
+                                        <div className="text-xs">
+                                          {itemSort.secondary.enabled ? (
+                                            <>2. Sortierung nach Bearbeiter aktiv (deaktivieren)</>
+                                          ) : (
+                                            <>Als 2. Sortierung aktivieren</>
+                                          )}
+                                        </div>
+                                      </TooltipContent>
+                                    </Tooltip>
+                                  </TooltipProvider>
+                                  {itemSort.secondary.enabled && (
+                                    <TooltipProvider>
+                                      <Tooltip>
+                                        <TooltipTrigger asChild>
+                                          <button
+                                            type="button"
+                                            className={cn(
+                                              "rounded p-0.5 transition-all hover:bg-muted",
+                                              itemSort.secondary.direction === "asc" ? "bg-primary/15 text-primary" : "opacity-60"
+                                            )}
+                                            onClick={toggleSecondaryDirection}
+                                            aria-label="Richtung der zweiten Sortierung wechseln"
+                                          >
+                                            {itemSort.secondary.direction === "asc" ? (
+                                              <ArrowUp className="h-3 w-3" />
+                                            ) : (
+                                              <ArrowDown className="h-3 w-3" />
+                                            )}
+                                          </button>
+                                        </TooltipTrigger>
+                                        <TooltipContent>
+                                          <div className="text-xs">
+                                            2. Sortierung: {itemSort.secondary.direction === "asc" ? "A-Z" : "Z-A"}
+                                          </div>
+                                        </TooltipContent>
+                                      </Tooltip>
+                                    </TooltipProvider>
+                                  )}
+                                </span>
                               </div>
                               {sortedCaseItems.map((item, index) => {
                                 const linkedFile = item.case_file_id ? caseFilesById[item.case_file_id] : null;
