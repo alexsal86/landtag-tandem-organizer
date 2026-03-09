@@ -47,6 +47,7 @@ export function ContactQuickActions({
               <Button
                 size="sm"
                 variant="ghost"
+                aria-label="E-Mail senden"
                 onClick={(e) => {
                   e.stopPropagation();
                   handleEmail();
@@ -68,6 +69,7 @@ export function ContactQuickActions({
               <Button
                 size="sm"
                 variant="ghost"
+                aria-label="Anrufen"
                 onClick={(e) => {
                   e.stopPropagation();
                   handleCall();
@@ -89,6 +91,7 @@ export function ContactQuickActions({
               <Button
                 size="sm"
                 variant="ghost"
+                aria-label="Termin erstellen"
                 onClick={(e) => {
                   e.stopPropagation();
                   onCreateAppointment(contact.id);
@@ -110,6 +113,7 @@ export function ContactQuickActions({
               <Button
                 size="sm"
                 variant="ghost"
+                aria-label="Zu Verteiler hinzufügen"
                 onClick={(e) => {
                   e.stopPropagation();
                   onAddToDistribution(contact.id);

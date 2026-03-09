@@ -1,58 +1,43 @@
 
+## Code-Qualität — Status
 
-## Offene Punkte: SEO & Accessibility, Design & UX, Testing & Stabilität
+### Erledigt
 
-### Was bereits erledigt ist
-- SEO-Metadaten (OG, Twitter, JSON-LD, lang="de", canonical)
-- SkipToContent-Link + `id="main-content"` auf Index/LetterDetail
-- Security-Headers (CSP, X-Content-Type-Options, Referrer-Policy)
-- `strictNullChecks: true` und `noImplicitAny: true` in tsconfig.app
-- 19 Test-Dateien mit ~112 Tests vorhanden
-- Lexical-Dedupe-Plugin für Build-Stabilität
+- **strictNullChecks: true** — aktiviert, alle Build-Fehler behoben
+- **noImplicitAny: true** — aktiviert, alle Build-Fehler behoben
+- **DOMPurify** als zentraler HTML-Sanitizer — alle `dangerouslySetInnerHTML` nutzen jetzt `sanitizeRichHtml()`
+- **Tenant-Access Guard** für Edge Functions — existiert in `supabase/functions/_shared/tenant-access.ts`
+- **ESLint `no-unused-vars: warn`** — aktiviert mit `argsIgnorePattern: '^_'`, erste Bereinigungsrunde in Pages/Hooks abgeschlossen
+- **Standalone `React`-Imports entfernt** — ~60 Dateien bereinigt
+- **State-Mutation fix** — `existingContacts.push()` → immutables Update in `useContactImport.ts`
+- **Non-null Assertion Guards** — `user!.id` / `currentTenant!.id` durch Early-Return-Guards ersetzt (~11 Dateien)
+- **Leere catch-Blöcke** — kritische Stellen in MatrixContext & DaySlipStore mit `debugConsole.warn` versehen
+- **JSON-Protocol Speaker-Normalisierung** — `speaker: string | { name }` korrekt normalisiert
 
----
+### Noch offen
 
-### Was noch aussteht
-
-#### 1. Accessibility (A11y)
-
-| Maßnahme | Detail |
-|----------|--------|
-| `id="main-content"` fehlt auf weiteren Seiten | Nur `Index.tsx` und `LetterDetail.tsx` haben es — alle anderen Routen (z. B. Kontakte, Kalender, Aufgaben) brauchen ein `<main id="main-content">` |
-| Fehlende `aria-label` auf Icon-Only-Buttons | Systematisch alle `<Button size="icon">` ohne `aria-label` ergänzen (Navigation, Toolbar, Sidebar) |
-| Fokus-Management bei Dialogen/Modals | Prüfen, ob Fokus beim Öffnen in den Dialog springt und beim Schließen zurückkehrt (Radix macht das meist, aber custom Overlays ggf. nicht) |
-| Kontrast-Check | Einige `text-muted-foreground`-Elemente auf kleinen Schriftgrößen könnten WCAG AA nicht erfüllen |
-| `alt`-Texte für Bilder | Avatare, Wappen-SVGs und hochgeladene Bilder systematisch prüfen |
-
-#### 2. Design & UX
-
-| Maßnahme | Detail |
-|----------|--------|
-| Konsistente Spacing/Typography-Skala | Aktuell gemischt `text-sm`, `text-base`, `text-xs` ohne klares System — ein Design-Token-Set definieren |
-| Mobile Navigation | Prüfen ob Bottom-Nav auf kleinen Screens gut funktioniert, Touch-Targets ≥ 44px |
-| Loading-States vereinheitlichen | Unterschiedliche Skeleton/Spinner-Patterns in verschiedenen Modulen → ein `<PageSkeleton>` |
-| Error-States | Einheitliche Error-Boundary-UI statt leerer Screens bei Fehlern |
-| Dark Mode Feinschliff | Schatten, Borders und Hover-States im Dark Mode prüfen |
-
-#### 3. Testing & Stabilität
-
-| Maßnahme | Detail |
-|----------|--------|
-| `strict: true` in tsconfig | Noch auf `false` — aktivieren würde `strictBindCallApply`, `strictFunctionTypes`, `strictPropertyInitialization`, `noImplicitThis` einschalten |
-| Kritische Hooks testen | `useAuth`, `useTenant`, `useContacts`, `useDaySlipStore` haben keine Tests |
-| E2E-Smoke-Test | Kein E2E-Framework vorhanden — zumindest Login → Dashboard → Navigation testen |
-| Edge-Function-Tests | `supabase--test_edge_functions` nutzen für die wichtigsten Functions |
-| ESLint `rules-of-hooks` Fehler | Laut docs gibt es noch Hook-Abhängigkeitswarnungen und echte Fehler |
+1. **`strict: true` aktivieren** — beinhaltet `strictBindCallApply`, `strictFunctionTypes`, `strictPropertyInitialization`, `noImplicitThis`, `alwaysStrict`
+2. **Tote Imports weiter bereinigen** — ~65 standalone `React`-Imports in Components prüfen, weitere lucide-Icons und ungenutzte Variablen entfernen (ESLint-Regel zeigt Warnungen)
+3. **`no-explicit-any` schrittweise einführen** — nach Abschluss der `no-unused-vars`-Bereinigung
+4. **Edge Functions `verify_jwt`-Audit** — ~20 Functions mit `verify_jwt = false` klassifizieren und absichern
+5. **CORS einschränken** — `Access-Control-Allow-Origin: *` durch Allowlist ersetzen für sensible Operationen
 
 ---
 
-### Vorgeschlagene Reihenfolge
+## No-Code Automations-Hub — Status
 
-1. **A11y Quick-Wins** — `main`-Landmark auf alle Seiten, `aria-label` auf Icon-Buttons, `alt`-Texte
-2. **Design-Konsistenz** — Einheitliche Loading/Error-States, Typography-Tokens
-3. **TypeScript `strict: true`** — schrittweise aktivieren und Fehler fixen
-4. **Tests für kritische Hooks** — `useAuth`, `useTenant` mit Vitest testen
-5. **Mobile UX** — Touch-Targets, Bottom-Nav, responsive Dialoge prüfen
+### Erledigt
 
-Soll ich mit Punkt 1 (A11y Quick-Wins) beginnen, oder willst du eine andere Reihenfolge?
-
+- 4-Step Wizard (Grundlagen → Trigger → Bedingungen → Aktionen)
+- 10 Templates, Template-Galerie mit Suche/Filter
+- Kill-Switch, Dry-Run, Run-Now, Run-Historie mit Step-Logs
+- Error-Dashboard mit Retry, Regel-Versionierung, Import/Export
+- Rate Limiting, Idempotency, Audit-Trail
+- 5 Action-Typen, 5 Condition-Operators, 4 Trigger-Typen (inkl. Webhook)
+- Rollenbasierte Zugriffskontrolle
+- **Regel duplizieren** — Copy-Button pro Regel-Karte
+- **Nächste geplante Ausführung** — Badge für schedule-Regeln
+- **Regel-Statistiken** — Erfolgsrate (%) + Ø Laufzeit als Tooltip-Badge
+- **Notification-Kontext** — `rule_name`, `trigger_reason`, `run_id` in Notification-Payload
+- **Webhook-Trigger** — neue Edge Function `automation-webhook`, Secret-Authentifizierung, URL-Anzeige im Wizard
+- **Verschachtelte Condition-Gruppen** — rekursives AND/OR-Nesting bis 3 Ebenen im Wizard, backward-kompatible DB-Serialisierung

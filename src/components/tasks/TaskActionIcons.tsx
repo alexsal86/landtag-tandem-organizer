@@ -51,6 +51,7 @@ export function TaskActionIcons({
               <Button
                 variant="ghost"
                 size="icon"
+                aria-label="Wiedervorlage"
                 className={cn(
                   "h-6 w-6 hover:bg-muted/80 rounded-full",
                   hasReminder && "text-amber-600"
@@ -73,6 +74,7 @@ export function TaskActionIcons({
               <Button
                 variant="ghost"
                 size="icon"
+                aria-label={assignTooltipText || "Zuweisen"}
                 className={cn(
                   "h-6 w-6 hover:bg-muted/80 rounded-full",
                   hasMultipleAssignees && "text-cyan-600"
@@ -95,6 +97,7 @@ export function TaskActionIcons({
               <Button
                 variant="ghost"
                 size="icon"
+                aria-label="Kommentare"
                 className={cn(
                   "h-6 w-6 hover:bg-muted/80 rounded-full relative",
                   (hasComments || commentCount > 0) && "text-blue-600"
@@ -122,6 +125,7 @@ export function TaskActionIcons({
               <Button
                 variant="ghost"
                 size="icon"
+                aria-label="Entscheidung anfordern"
                 className="h-6 w-6 hover:bg-muted/80 rounded-full"
                 onClick={(e) => {
                   e.stopPropagation();
@@ -141,6 +145,7 @@ export function TaskActionIcons({
               <Button
                 variant="ghost"
                 size="icon"
+                aria-label="Dokumente"
                 className={cn(
                   "h-6 w-6 hover:bg-muted/80 rounded-full",
                   hasDocuments && "text-amber-600"
@@ -163,6 +168,7 @@ export function TaskActionIcons({
               <Button
                 variant="ghost"
                 size="icon"
+                aria-label="Jour Fixe"
                 className={cn(
                   "h-6 w-6 hover:bg-muted/80 rounded-full",
                   hasMeetingLink && "text-purple-600"
@@ -186,6 +192,7 @@ export function TaskActionIcons({
               <Button
                 variant="ghost"
                 size="icon"
+                aria-label="Aufgabe bearbeiten"
                 className="h-6 w-6 hover:bg-muted/80 rounded-full"
                 onClick={(e) => {
                   e.stopPropagation();
@@ -204,6 +211,7 @@ export function TaskActionIcons({
               <Button
                 variant="ghost"
                 size="icon"
+                aria-label="Unteraufgabe erstellen"
                 className="h-6 w-6 hover:bg-muted/80 rounded-full"
                 onClick={(e) => {
                   e.stopPropagation();

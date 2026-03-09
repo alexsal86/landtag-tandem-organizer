@@ -174,7 +174,7 @@ const Auth = () => {
   }
 
   return (
-    <div className="min-h-screen flex flex-col lg:flex-row">
+    <main id="main-content" className="min-h-screen flex flex-col lg:flex-row" tabIndex={-1}>
       {/* Left Side - Branding & Background */}
       <div 
         className="hidden lg:flex lg:w-2/5 relative overflow-hidden"
@@ -433,7 +433,7 @@ const Auth = () => {
           </CardContent>
         </Card>
       </div>
-    </div>
+    </main>
   );
 };
 

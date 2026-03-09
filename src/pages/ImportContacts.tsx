@@ -54,7 +54,7 @@ export default function ImportContacts() {
     <SidebarProvider>
       <div className="flex min-h-screen bg-gradient-subtle w-full">
         <Navigation activeSection="contacts" onSectionChange={handleSectionChange} />
-        <main className="flex-1 overflow-hidden">
+        <main id="main-content" className="flex-1 overflow-hidden" tabIndex={-1}>
           <div className="h-full p-6">
             <div className="max-w-6xl mx-auto h-full">
               <ContactImport />

@@ -21,7 +21,7 @@ export default function PollGuest() {
   }
 
   return (
-    <div className="min-h-screen bg-background p-4">
+    <main id="main-content" className="min-h-screen bg-background p-4" tabIndex={-1}>
       <div className="container mx-auto py-8">
         <PollResponseInterface 
           pollId={pollId} 
@@ -29,6 +29,6 @@ export default function PollGuest() {
           isPreview={isPreview}
         />
       </div>
-    </div>
+    </main>
   );
 }

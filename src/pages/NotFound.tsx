@@ -16,7 +16,7 @@ const NotFound = () => {
   }, [location.pathname]);
 
   return (
-    <div className="min-h-[60vh] flex items-center justify-center px-6 py-16">
+    <main id="main-content" className="min-h-[60vh] flex items-center justify-center px-6 py-16" tabIndex={-1}>
       <div className="text-center max-w-md space-y-6">
         <div className="mx-auto w-20 h-20 rounded-2xl bg-muted flex items-center justify-center">
           <SearchX className="h-10 w-10 text-muted-foreground" />
@@ -43,7 +43,7 @@ const NotFound = () => {
           </Button>
         </div>
       </div>
-    </div>
+    </main>
   );
 };
 
