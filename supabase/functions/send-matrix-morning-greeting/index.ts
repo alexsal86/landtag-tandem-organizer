@@ -85,6 +85,10 @@ serve(async (req) => {
     return new Response(null, { headers: corsHeaders });
   }
 
+  if (!requireServiceRole(req)) {
+    return forbiddenResponse();
+  }
+
   try {
     const supabaseAdmin = createClient(
       Deno.env.get("SUPABASE_URL") ?? "",
