@@ -221,7 +221,7 @@ const ProperReactBigCalendar: React.FC<ProperReactBigCalendarProps> = ({
   }, [onEventResize]);
 
   return (
-    <div className="h-full w-full bg-background min-h-[600px]">
+    <div className="h-full w-full bg-background min-h-[calc(100vh-220px)]">
       <DnDCalendar
         localizer={localizer}
         events={rbcEvents}
@@ -274,7 +274,7 @@ const ProperReactBigCalendar: React.FC<ProperReactBigCalendarProps> = ({
           },
         }}
         className="rbc-calendar"
-        style={{ height: '100%', minHeight: '500px' }}
+        style={{ height: '100%', minHeight: 'calc(100vh - 260px)' }}
       />
     </div>
   );

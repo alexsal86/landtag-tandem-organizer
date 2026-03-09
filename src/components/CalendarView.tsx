@@ -107,8 +107,8 @@ export function CalendarView() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-subtle p-6">
-      <div className="flex gap-4 transition-all duration-300">
+    <div className="min-h-screen bg-gradient-subtle">
+      <div className="flex min-h-screen transition-all duration-300">
         <div className="w-[320px] shrink-0">
           <CalendarHeader
             currentDate={currentDate}
@@ -121,7 +121,7 @@ export function CalendarView() {
         </div>
 
         {sidebarOpen && selectedAppointment && (
-          <div className="w-[420px] shrink-0 border border-border rounded-lg mr-4 overflow-hidden" style={{ height: "calc(600px + 57px)" }}>
+          <div className="w-[420px] shrink-0 border-x border-border overflow-hidden">
             <AppointmentDetailsSidebar
               appointment={selectedAppointment}
               open={sidebarOpen}
@@ -131,7 +131,7 @@ export function CalendarView() {
           </div>
         )}
 
-        <div className="flex-1 min-w-0 transition-all duration-300">
+        <div className="flex-1 min-w-0 p-6 transition-all duration-300">
             <Card className="bg-card shadow-card border-border">
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
@@ -139,7 +139,7 @@ export function CalendarView() {
                   {view === "polls" ? "Terminabstimmungen" : "Terminkalender"}
                 </CardTitle>
               </CardHeader>
-            <CardContent className="p-0 h-[600px]">
+            <CardContent className="p-0 min-h-[calc(100vh-220px)]">
               {view === "polls" ? (
                 <PollListView />
               ) : loading ? (

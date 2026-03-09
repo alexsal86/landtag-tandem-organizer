@@ -21,8 +21,8 @@ export function CalendarHeader({ currentDate, view, onNavigateDate, onToday, onV
   const navigate = useNavigate();
 
   return (
-    <div className="h-full rounded-lg border border-border bg-card p-4">
-      <div className="mb-6">
+    <div className="h-full border-r bg-muted/30 p-4">
+      <div className="mb-6 border-b pb-4">
         <h1 className="text-2xl font-bold text-foreground mb-1">Terminkalender</h1>
         <p className="text-muted-foreground text-sm">{formatDate(currentDate)}</p>
       </div>
@@ -37,7 +37,7 @@ export function CalendarHeader({ currentDate, view, onNavigateDate, onToday, onV
         </Button>
       </div>
 
-      <div className="rounded-md border border-border p-3 space-y-3">
+      <div className="space-y-3">
         <p className="text-sm font-medium capitalize">{formatMonth(currentDate)}</p>
 
         <div className="flex items-center gap-2">
@@ -53,8 +53,14 @@ export function CalendarHeader({ currentDate, view, onNavigateDate, onToday, onV
         </div>
 
         <div className="grid grid-cols-2 gap-2">
+          <Button variant={view === "day" ? "default" : "outline"} size="sm" onClick={() => onViewChange("day")}>
+            Tag
+          </Button>
           <Button variant={view === "week" ? "default" : "outline"} size="sm" onClick={() => onViewChange("week")}>
             Woche
+          </Button>
+          <Button variant={view === "month" ? "default" : "outline"} size="sm" onClick={() => onViewChange("month")}>
+            Monat
           </Button>
           <Button variant={view === "agenda" ? "default" : "outline"} size="sm" onClick={() => onViewChange("agenda")}>
             Agenda
