@@ -88,7 +88,7 @@ export const useTaskTopics = (taskId: string | undefined) => {
       setAssignedTopics(topicIds);
       return true;
     } catch (error) {
-      debugConsole.error('Error setting topics:', error);
+      handleAppError(error, { context: 'useTaskTopics.setTopics' });
       return false;
     }
   };
