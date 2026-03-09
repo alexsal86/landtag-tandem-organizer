@@ -29,6 +29,7 @@ export interface QuickNote {
   task_id?: string;
   meeting_id?: string;
   decision_id?: string;
+  case_item_id?: string;
   priority_level?: number;
   follow_up_date?: string;
   is_archived?: boolean;
