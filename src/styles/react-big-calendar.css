@@ -296,11 +296,6 @@
   height: 100%;
 }
 
-.rbc-time-header {
-  position: sticky;
-  top: 0;
-  z-index: 20;
-}
 
 .rbc-time-content {
   overflow: visible;
