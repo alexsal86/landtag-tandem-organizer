@@ -152,6 +152,7 @@ export function NoteCard({
               <div className="hidden group-hover:flex items-center gap-1.5 flex-wrap">
                 {note.task_id && <NoteLinkedBadge type="task" id={note.task_id} label="Aufgabe" />}
                 {note.decision_id && <NoteLinkedBadge type="decision" id={note.decision_id} label="Entscheidung" />}
+                {note.case_item_id && <NoteLinkedBadge type="case_item" id={note.case_item_id} label="Vorgang" />}
                 {note.meeting_id && (
                   <NoteLinkedBadge type="meeting" id={note.meeting_id} label={note.meetings?.meeting_date ? `JF: ${format(new Date(note.meetings.meeting_date), "dd.MM.", { locale: de })}` : "Jour Fixe"} />
                 )}
