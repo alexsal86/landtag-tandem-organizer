@@ -59,7 +59,7 @@ const interactionTypeOptions: Array<{ value: TimelineInteractionType | "entschei
   { value: "treffen", label: "Treffen", icon: Users },
   { value: "gespraech", label: "Gespräch", icon: MessageSquare },
   { value: "notiz", label: "Notiz", icon: MessageSquare },
-  { value: "entscheidung", label: "Entscheidung stellen", icon: Gavel },
+  { value: "entscheidung", label: "Entscheidung", icon: Gavel },
 ];
 
 export function CaseItemDetailPanel({
