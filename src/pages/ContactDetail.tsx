@@ -388,6 +388,6 @@ export default function ContactDetail() {
           </TabsContent>
         </Tabs>
       </div>
-    </div>
+    </main>
   );
 }

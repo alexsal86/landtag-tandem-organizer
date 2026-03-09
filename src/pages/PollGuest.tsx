@@ -29,6 +29,6 @@ export default function PollGuest() {
           isPreview={isPreview}
         />
       </div>
-    </div>
+    </main>
   );
 }

@@ -253,6 +253,6 @@ export default function AppointmentPreparationDetail() {
           </div>
         </Tabs>
       </div>
-    </div>
+    </main>
   );
 }

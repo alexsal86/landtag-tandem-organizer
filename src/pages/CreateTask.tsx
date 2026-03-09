@@ -342,6 +342,6 @@ export default function CreateTask() {
           </CardContent>
         </Card>
       </div>
-    </div>
+    </main>
   );
 }
