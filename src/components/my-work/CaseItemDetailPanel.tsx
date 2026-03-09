@@ -495,7 +495,9 @@ export function CaseItemDetailPanel({
                   );
                 }
 
-                const selected = editableCaseItem.interactionType === option.value;
+                // wir wissen hier, dass value eine TimelineInteractionType ist, da wir "entscheidung" abgefangen haben.
+                const typeValue = option.value as TimelineInteractionType;
+                const selected = editableCaseItem.interactionType === typeValue;
                 const OptionIcon = option.icon;
                 return (
                   <Button
@@ -510,7 +512,7 @@ export function CaseItemDetailPanel({
                         setShowInteractionComposer(false);
                         return;
                       }
-                      onUpdate({ interactionType: option.value });
+                      onUpdate({ interactionType: typeValue });
                       setShowInteractionComposer(true);
                     }}
                   >
