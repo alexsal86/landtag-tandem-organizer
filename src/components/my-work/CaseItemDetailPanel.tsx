@@ -362,21 +362,106 @@ export function CaseItemDetailPanel({
                   {timelineEntries.map((entry, index) => {
                     const isLastEntry = index === timelineEntries.length - 1;
                     const isFrist = entry.title === "Frist";
+
+                    const decisionId = entry.id.startsWith("dec-") ? entry.id.slice(4) : null;
+                    const decision = decisionId ? (linkedDecisions.find((d) => d.id === decisionId) ?? null) : null;
+                    const decisionMeta = decision ? getDecisionIcon(decision) : null;
+                    const CircleIcon = decisionMeta ? decisionMeta.icon : entry.icon;
+
+                    const participants = decision?.task_decision_participants || [];
+                    const counts = decision ? getDecisionCounts(decision) : null;
+
                     return (
                       <div key={entry.id} className="relative">
                         {/* Vertical line */}
                         {!isLastEntry && <span className="absolute -left-[17px] top-[12px] bottom-[-16px] w-0.5 bg-border" />}
+
                         {/* Circle — vertically aligned to the date text */}
-                        <span className={`absolute -left-[27px] top-[2px] h-5 w-5 rounded-full ${entry.accentClass} flex items-center justify-center text-white`}>
-                          {entry.icon ? <entry.icon className="h-3 w-3" /> : null}
+                        <span
+                          className={cn(
+                            "absolute -left-[27px] top-[2px] h-5 w-5 rounded-full flex items-center justify-center",
+                            decision ? "bg-background border border-border" : `${entry.accentClass} text-white`,
+                          )}
+                        >
+                          {CircleIcon ? <CircleIcon className={cn("h-3 w-3", decisionMeta?.iconClass)} /> : null}
                         </span>
-                        <div className="group py-1 text-xs">
+
+                        <div className={cn("group py-1 text-xs", decisionId && "cursor-pointer")}
+                        >
                           <p className="text-[10px] font-medium text-muted-foreground">
                             {formatTimelineDateOnly(entry.timestamp)}
                             <span className="ml-1.5 opacity-0 transition-opacity duration-200 ease-out group-hover:opacity-100 group-focus-within:opacity-100">{formatTimelineTimeOnly(entry.timestamp)} Uhr</span>
                           </p>
+
                           <div className="flex items-start justify-between gap-2">
-                            <p className={cn("font-bold leading-4", isFrist && "text-amber-700 dark:text-amber-400")}>{entry.title}</p>
+                            {decision ? (
+                              <HoverCard openDelay={350} closeDelay={100}>
+                                <HoverCardTrigger asChild>
+                                  <button
+                                    type="button"
+                                    className={cn("font-bold leading-4 text-left hover:underline")}
+                                    onClick={() => openDecision(decisionId!)}
+                                  >
+                                    {entry.title}
+                                  </button>
+                                </HoverCardTrigger>
+
+                                <HoverCardContent align="start" className="w-80">
+                                  <div className="space-y-2">
+                                    <div>
+                                      <p className="text-sm font-semibold text-foreground">{decision.title}</p>
+                                      <p className="mt-1 text-xs text-muted-foreground whitespace-pre-wrap">
+                                        {decision.description ? toPlainText(decision.description) : "Keine Beschreibung."}
+                                      </p>
+                                    </div>
+
+                                    {decision.response_deadline && (
+                                      <p className="text-xs text-muted-foreground">
+                                        Antwort bis <span className="font-medium text-foreground">{formatDecisionDate(decision.response_deadline)}</span>
+                                      </p>
+                                    )}
+
+                                    {counts && (
+                                      <div className="text-xs text-muted-foreground">
+                                        <span className="font-medium text-foreground">{counts.responded}</span>/{counts.total} beantwortet · {counts.pending} ausstehend
+                                      </div>
+                                    )}
+
+                                    {counts && (
+                                      <div className="flex flex-wrap gap-x-3 gap-y-1 text-xs">
+                                        {counts.yes > 0 && <span className="text-success">Ja {counts.yes}</span>}
+                                        {counts.question > 0 && <span className="text-secondary">Rückfrage {counts.question}</span>}
+                                        {counts.no > 0 && <span className="text-destructive">Nein {counts.no}</span>}
+                                      </div>
+                                    )}
+
+                                    <div className="space-y-1">
+                                      <p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">Teilnehmer</p>
+                                      {participants.length > 0 ? (
+                                        <ul className="space-y-1">
+                                          {participants.slice(0, 8).map((p) => (
+                                            <li key={p.id} className="flex items-center justify-between gap-2 text-xs">
+                                              <span className="truncate">{teamUsersById.get(p.user_id)?.name || "Unbekannt"}</span>
+                                              <span className="text-muted-foreground">{(p.task_decision_responses?.length ?? 0) > 0 ? "beantwortet" : "ausstehend"}</span>
+                                            </li>
+                                          ))}
+                                          {participants.length > 8 && (
+                                            <li className="text-xs text-muted-foreground">+{participants.length - 8} weitere…</li>
+                                          )}
+                                        </ul>
+                                      ) : (
+                                        <p className="text-xs text-muted-foreground">Keine Teilnehmer.</p>
+                                      )}
+                                    </div>
+
+                                    <p className="text-[10px] text-muted-foreground">Klick öffnet Details</p>
+                                  </div>
+                                </HoverCardContent>
+                              </HoverCard>
+                            ) : (
+                              <p className={cn("font-bold leading-4", isFrist && "text-amber-700 dark:text-amber-400")}>{entry.title}</p>
+                            )}
+
                             {entry.canDelete && entry.onDelete ? (
                               <TooltipProvider>
                                 <Tooltip>
@@ -411,7 +496,10 @@ export function CaseItemDetailPanel({
                               </TooltipProvider>
                             ) : null}
                           </div>
-                          {entry.safeNoteHtml && <div className="mt-1 font-normal text-muted-foreground" dangerouslySetInnerHTML={{ __html: entry.safeNoteHtml }} />}
+
+                          {entry.safeNoteHtml && (
+                            <div className="mt-1 font-normal text-muted-foreground" dangerouslySetInnerHTML={{ __html: entry.safeNoteHtml }} />
+                          )}
                         </div>
                       </div>
                     );
