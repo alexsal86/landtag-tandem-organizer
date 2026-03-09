@@ -9,7 +9,7 @@ import {
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { Calendar } from "@/components/ui/calendar";
-import { CheckSquare, Vote, Calendar as CalendarIcon, RotateCcw, Clock } from "lucide-react";
+import { CheckSquare, Vote, Calendar as CalendarIcon, RotateCcw, Clock, FileText } from "lucide-react";
 import SimpleRichTextEditor from "@/components/ui/SimpleRichTextEditor";
 import { MeetingNoteSelector } from "@/components/widgets/MeetingNoteSelector";
 import { NoteShareDialog } from "@/components/shared/NoteShareDialog";
