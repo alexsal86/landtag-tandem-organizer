@@ -222,6 +222,63 @@ export function CaseItemDetailPanel({
     return format(parsed, "HH:mm", { locale: de });
   };
 
+  const teamUsersById = useMemo(() => new Map(teamUsers.map((u) => [u.id, u] as const)), [teamUsers]);
+
+  const [selectedDecisionId, setSelectedDecisionId] = useState<string | null>(null);
+  const [isDecisionDetailsOpen, setIsDecisionDetailsOpen] = useState(false);
+
+  const toPlainText = (value: string) => value
+    .replace(/<br\s*\/?>/gi, "\n")
+    .replace(/<[^>]+>/g, " ")
+    .replace(/&nbsp;/gi, " ")
+    .replace(/&amp;/gi, "&")
+    .replace(/&lt;/gi, "<")
+    .replace(/&gt;/gi, ">")
+    .replace(/\s+/g, " ")
+    .trim();
+
+  const getDecisionCounts = (decision: LinkedDecision) => {
+    const participants = decision.task_decision_participants || [];
+    const counts = { yes: 0, no: 0, question: 0, pending: 0, responded: 0, total: participants.length };
+
+    participants.forEach((p) => {
+      const responseType = p.task_decision_responses?.[0]?.response_type;
+      if (!responseType) {
+        counts.pending += 1;
+        return;
+      }
+      counts.responded += 1;
+      if (responseType === "yes") counts.yes += 1;
+      else if (responseType === "no") counts.no += 1;
+      else if (responseType === "question") counts.question += 1;
+      else counts.yes += 1; // custom options → zählen als beantwortet
+    });
+
+    return counts;
+  };
+
+  const getDecisionIcon = (decision: LinkedDecision) => {
+    const participants = decision.task_decision_participants || [];
+    const userParticipant = currentUserId ? participants.find((p) => p.user_id === currentUserId) ?? null : null;
+    const userHasResponded = !currentUserId
+      ? true
+      : decision.created_by === currentUserId
+        ? true
+        : !userParticipant
+          ? true
+          : (userParticipant.task_decision_responses?.length ?? 0) > 0;
+
+    return {
+      icon: userHasResponded ? CheckCircle2 : Clock,
+      iconClass: userHasResponded ? "text-success" : "text-warning",
+    };
+  };
+
+  const openDecision = (decisionId: string) => {
+    setSelectedDecisionId(decisionId);
+    setIsDecisionDetailsOpen(true);
+  };
+
   return (
     <div className="mx-2 mb-3 rounded-md border bg-muted/20 p-3 space-y-4">
       <div className="grid gap-4 lg:grid-cols-[minmax(230px,1fr)_minmax(0,2.8fr)]">
