@@ -1568,7 +1568,10 @@ export function MyWorkCasesWorkspace() {
                                               <p className="text-sm font-medium line-clamp-1 flex-1">{cf.title}</p>
                                             </div>
                                             <div className="mt-1.5 flex items-center justify-between text-xs text-muted-foreground">
-                                              {cf.reference_number && <span>{cf.reference_number}</span>}
+                                              <div className="flex items-center gap-2">
+                                                {cf.reference_number && <span>{cf.reference_number}</span>}
+                                                {caseFileStatusBadge(cf.status)}
+                                              </div>
                                               {linkedCount > 0 && (
                                                 <span>
                                                   <FileText className="inline h-3 w-3 mr-0.5" />

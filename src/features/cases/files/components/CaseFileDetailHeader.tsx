@@ -39,7 +39,7 @@ export function CaseFileDetailHeader({
         Zurück
       </Button>
 
-      {/* Top: Title + Actions */}
+      {/* Title + Status Badges + Delete Button */}
       <div className="flex items-start justify-between gap-4">
         <div className="flex-1 min-w-0">
           <h1 className="text-xl font-bold">{caseFile.title}</h1>
@@ -52,50 +52,8 @@ export function CaseFileDetailHeader({
             <p className="text-sm text-muted-foreground mt-1">{caseFile.description}</p>
           )}
         </div>
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button variant="outline" size="icon" className="h-8 w-8 shrink-0">
-              <MoreVertical className="h-4 w-4" />
-            </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end">
-            <DropdownMenuItem onClick={onEdit}>
-              <Edit2 className="mr-2 h-4 w-4" />
-              Bearbeiten
-            </DropdownMenuItem>
-            <DropdownMenuSeparator />
-            <DropdownMenuItem onClick={onDelete} className="text-destructive">
-              <Trash2 className="mr-2 h-4 w-4" />
-              Löschen
-            </DropdownMenuItem>
-          </DropdownMenuContent>
-        </DropdownMenu>
-      </div>
-
-      {/* Bottom: Badges left, Quick actions right */}
-      <div className="flex items-center justify-between flex-wrap gap-2 pt-1">
-        {/* Quick-Action Buttons */}
-        <div className="flex items-center gap-2 flex-wrap">
-          <Button size="sm" variant="outline" onClick={onAddNote}>
-            <StickyNote className="mr-1.5 h-3.5 w-3.5" />
-            Notiz
-          </Button>
-          <Button size="sm" variant="outline" onClick={onAddTask}>
-            <CheckSquare className="mr-1.5 h-3.5 w-3.5" />
-            Aufgabe
-          </Button>
-          <Button size="sm" variant="outline" onClick={onAddAppointment}>
-            <Calendar className="mr-1.5 h-3.5 w-3.5" />
-            Termin
-          </Button>
-          <Button size="sm" variant="outline" onClick={onAddDocument}>
-            <FileText className="mr-1.5 h-3.5 w-3.5" />
-            Dokument
-          </Button>
-        </div>
-
-        {/* Processing Status Badge only */}
-        <div className="flex items-center gap-2 flex-wrap">
+        <div className="flex items-center gap-2 shrink-0">
+          {/* Processing Status Badges */}
           {activeProcessingStatuses.map((ps: any) => {
             const PIcon = getIconComponent(ps?.icon);
             return (
@@ -105,6 +63,10 @@ export function CaseFileDetailHeader({
               </Badge>
             );
           })}
+          <Button variant="destructive" size="sm" onClick={onDelete}>
+            <Trash2 className="mr-1.5 h-4 w-4" />
+            Löschen
+          </Button>
         </div>
       </div>
     </div>

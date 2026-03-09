@@ -170,12 +170,24 @@ export function CaseFileUnifiedTimeline({
         description: l.letter?.subject || null,
         meta: { status: l.letter?.status },
       })),
+      ...interactions.map((i) => ({
+        id: `interaction-${i.id}`,
+        category: "interaction" as const,
+        event_date: i.created_at,
+        title: `${i.interaction_type}: ${i.subject}`,
+        description: i.details,
+        meta: {
+          type: i.interaction_type,
+          direction: i.direction,
+          isResolution: i.is_resolution,
+        },
+      })),
     ];
 
     return items.sort(
       (a, b) => new Date(b.event_date).getTime() - new Date(a.event_date).getTime()
     );
-  }, [timeline, notes, documents, tasks, appointments, letters]);
+  }, [timeline, notes, documents, tasks, appointments, letters, interactions]);
 
   const filteredItems = useMemo(() => {
     let items = unifiedItems;
