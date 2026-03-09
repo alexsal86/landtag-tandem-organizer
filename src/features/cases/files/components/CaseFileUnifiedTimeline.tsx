@@ -7,6 +7,7 @@ import {
   CaseFileTask,
   CaseFileAppointment,
   CaseFileLetter,
+  CaseItemInteraction,
 } from "@/features/cases/files/hooks";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
