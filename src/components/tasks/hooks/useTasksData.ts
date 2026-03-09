@@ -434,8 +434,9 @@ export function useTasksData(options?: { enabled?: boolean }) {
     }
   };
 
-  // Initial load
+  // Initial load - only when enabled
   useEffect(() => {
+    if (!enabled) return;
     const loadAllData = async () => {
       await loadUsers();
       await Promise.all([
@@ -445,7 +446,7 @@ export function useTasksData(options?: { enabled?: boolean }) {
       await loadAssignedSubtasks();
     };
     loadAllData();
-  }, []);
+  }, [enabled]);
 
   return {
     tasks, setTasks, loading, taskComments, taskCategories, taskStatuses,
