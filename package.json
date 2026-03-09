@@ -154,5 +154,21 @@
     "eslint-plugin-react-refresh": "^0.4.5",
     "typescript": "^5.2.2",
     "vite": "^5.0.8"
+  },
+  "overrides": {
+    "lexical": "0.40.0",
+    "@lexical/code": "0.40.0",
+    "@lexical/file": "0.40.0",
+    "@lexical/hashtag": "0.40.0",
+    "@lexical/html": "0.40.0",
+    "@lexical/link": "0.40.0",
+    "@lexical/list": "0.40.0",
+    "@lexical/mark": "0.40.0",
+    "@lexical/markdown": "0.40.0",
+    "@lexical/plain-text": "0.40.0",
+    "@lexical/react": "0.40.0",
+    "@lexical/rich-text": "0.40.0",
+    "@lexical/table": "0.40.0",
+    "@lexical/yjs": "0.40.0"
   }
 }
