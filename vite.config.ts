@@ -31,6 +31,22 @@ export default defineConfig(({ mode }) => ({
     componentTagger(),
   ].filter(Boolean),
   resolve: {
+    dedupe: [
+      'lexical',
+      '@lexical/code',
+      '@lexical/file',
+      '@lexical/hashtag',
+      '@lexical/html',
+      '@lexical/link',
+      '@lexical/list',
+      '@lexical/mark',
+      '@lexical/markdown',
+      '@lexical/plain-text',
+      '@lexical/react',
+      '@lexical/rich-text',
+      '@lexical/table',
+      '@lexical/yjs',
+    ],
     alias: {
       "@": path.resolve(__dirname, "./src"),
       "@radix-ui/react-compose-refs": path.resolve(__dirname, "./src/lib/radix-compose-refs-patch.ts"),
