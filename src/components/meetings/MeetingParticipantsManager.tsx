@@ -79,7 +79,7 @@ export function MeetingParticipantsManager({
         <div className="flex gap-2">
           <div className="flex-1">
             <UserSelector
-              onSelect={handleAddUser}
+              onSelect={(user) => handleAddUser({ ...user, avatar_url: user.avatar_url ?? undefined })}
               placeholder="Teammitglied hinzufügen..."
               clearAfterSelect
               excludeUserIds={excludedUserIds}
