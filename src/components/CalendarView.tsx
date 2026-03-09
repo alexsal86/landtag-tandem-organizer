@@ -131,7 +131,7 @@ export function CalendarView() {
           </div>
         )}
 
-        <div className="flex-1 min-w-0 min-h-0 p-6 transition-all duration-300 overflow-hidden">
+        <div className="flex-1 min-w-0 min-h-0 p-6 pr-0 transition-all duration-300 overflow-hidden">
             <Card className="bg-card shadow-card border-border h-full min-h-0 flex flex-col">
               {view === "polls" && (
                 <CardHeader>
