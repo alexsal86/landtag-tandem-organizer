@@ -56,7 +56,7 @@ export const ReceivedMessageCard: React.FC<{
 
 ReceivedMessageCard.displayName = 'ReceivedMessageCard';
 
-export const SentMessageCard: React.FC<{ message: Message; userId?: string }> = ({ message, userId }) => {
+export const SentMessageCard: React.FC<{ message: Message; userId?: string }> = React.memo(({ message, userId }) => {
   const getStatus = () => {
     if (message.is_for_all_users) return { total: 0, read: message.confirmations?.length || 0 };
     const total = message.recipients?.length || 0;
