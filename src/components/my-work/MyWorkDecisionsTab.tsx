@@ -304,6 +304,121 @@ export function MyWorkDecisionsTab() {
     }
   };
 
+  // Context menu handlers
+  const handleUpdateDeadline = async (decisionId: string, date: string | null) => {
+    try {
+      const { error } = await supabase
+        .from('task_decisions')
+        .update({ response_deadline: date } as any)
+        .eq('id', decisionId);
+      if (error) throw error;
+      setDecisions(prev => prev.map(d => d.id === decisionId ? { ...d, response_deadline: date } : d));
+      toast({ title: "Gespeichert", description: date ? "Antwortfrist wurde geändert." : "Antwortfrist wurde entfernt." });
+    } catch (error) {
+      debugConsole.error('Error updating deadline:', error);
+      toast({ title: "Fehler", description: "Frist konnte nicht geändert werden.", variant: "destructive" });
+    }
+  };
+
+  const handleTogglePublic = async (decisionId: string, currentValue: boolean) => {
+    const newValue = !currentValue;
+    try {
+      const { error } = await supabase
+        .from('task_decisions')
+        .update({ visible_to_all: newValue } as any)
+        .eq('id', decisionId);
+      if (error) throw error;
+      setDecisions(prev => prev.map(d => d.id === decisionId ? { ...d, visible_to_all: newValue } : d));
+      toast({ title: newValue ? "Öffentlich" : "Nicht öffentlich", description: newValue ? "Entscheidung ist jetzt öffentlich." : "Entscheidung ist jetzt nicht mehr öffentlich." });
+    } catch (error) {
+      debugConsole.error('Error toggling public:', error);
+      toast({ title: "Fehler", description: "Sichtbarkeit konnte nicht geändert werden.", variant: "destructive" });
+    }
+  };
+
+  const handleAddParticipants = async (decisionId: string, userIds: string[]) => {
+    if (userIds.length === 0) return;
+    try {
+      const rows = userIds.map(uid => ({ decision_id: decisionId, user_id: uid }));
+      const { error } = await supabase.from('task_decision_participants').insert(rows);
+      if (error) throw error;
+      toast({ title: "Hinzugefügt", description: `${userIds.length} Teilnehmer hinzugefügt.` });
+      scheduleDecisionsRefresh(0);
+    } catch (error) {
+      debugConsole.error('Error adding participants:', error);
+      toast({ title: "Fehler", description: "Teilnehmer konnten nicht hinzugefügt werden.", variant: "destructive" });
+    }
+  };
+
+  const handleRemoveParticipant = async (decisionId: string, userId: string) => {
+    try {
+      const { error } = await supabase
+        .from('task_decision_participants')
+        .delete()
+        .eq('decision_id', decisionId)
+        .eq('user_id', userId);
+      if (error) throw error;
+      toast({ title: "Entfernt", description: "Teilnehmer wurde entfernt." });
+      scheduleDecisionsRefresh(0);
+    } catch (error) {
+      debugConsole.error('Error removing participant:', error);
+      toast({ title: "Fehler", description: "Teilnehmer konnte nicht entfernt werden.", variant: "destructive" });
+    }
+  };
+
+  const handleTogglePriority = async (decisionId: string, currentPriority: number) => {
+    const newPriority = currentPriority > 0 ? 0 : 1;
+    try {
+      const { error } = await supabase
+        .from('task_decisions')
+        .update({ priority: newPriority } as any)
+        .eq('id', decisionId);
+      if (error) throw error;
+      setDecisions(prev => prev.map(d => d.id === decisionId ? { ...d, priority: newPriority } : d));
+      toast({ title: newPriority > 0 ? "Prioritär" : "Priorität entfernt" });
+    } catch (error) {
+      debugConsole.error('Error toggling priority:', error);
+      toast({ title: "Fehler", description: "Priorität konnte nicht geändert werden.", variant: "destructive" });
+    }
+  };
+
+  const handleAddToJourFixe = (decisionId: string) => {
+    setMeetingSelectorDecisionId(decisionId);
+    setMeetingSelectorOpen(true);
+  };
+
+  const handleMeetingSelected = async (meetingId: string) => {
+    if (!meetingSelectorDecisionId) return;
+    try {
+      const { error } = await supabase
+        .from('task_decisions')
+        .update({ meeting_id: meetingId, pending_for_jour_fixe: false } as any)
+        .eq('id', meetingSelectorDecisionId);
+      if (error) throw error;
+      toast({ title: "Zugeordnet", description: "Entscheidung wurde dem Jour Fixe zugeordnet." });
+    } catch (error) {
+      debugConsole.error('Error assigning to meeting:', error);
+      toast({ title: "Fehler", description: "Zuordnung fehlgeschlagen.", variant: "destructive" });
+    }
+    setMeetingSelectorDecisionId(null);
+  };
+
+  const handleMarkForNextJourFixe = async () => {
+    if (!meetingSelectorDecisionId) return;
+    try {
+      const { error } = await supabase
+        .from('task_decisions')
+        .update({ pending_for_jour_fixe: true, meeting_id: null } as any)
+        .eq('id', meetingSelectorDecisionId);
+      if (error) throw error;
+      toast({ title: "Vorgemerkt", description: "Entscheidung wurde für den nächsten Jour Fixe vorgemerkt." });
+    } catch (error) {
+      debugConsole.error('Error marking for jour fixe:', error);
+      toast({ title: "Fehler", description: "Vormerkung fehlgeschlagen.", variant: "destructive" });
+    }
+    setMeetingSelectorDecisionId(null);
+  };
+
   const visibleDecisionTabs = decisionTabOrder.filter((tab) => !hiddenDecisionTabs.includes(tab));
 
   useEffect(() => {
