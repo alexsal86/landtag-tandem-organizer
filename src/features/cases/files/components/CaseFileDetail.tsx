@@ -21,10 +21,6 @@ import { CaseFileDetailHeader } from "./CaseFileDetailHeader";
 import { CaseFileLeftSidebar } from "./CaseFileLeftSidebar";
 import { CaseFileRightSidebar } from "./CaseFileRightSidebar";
 import { CaseFileUnifiedTimeline } from "./CaseFileUnifiedTimeline";
-import { CallNoteQuickCapture } from "@/components/my-work/CallNoteQuickCapture";
-import { EmailQuickCapture } from "@/components/my-work/EmailQuickCapture";
-import { SocialHintQuickCapture } from "@/components/my-work/SocialHintQuickCapture";
-import { CaseItemInteractionsTimeline } from "./CaseItemInteractionsTimeline";
 
 // Tab dialogs — still needed for Add actions
 import { CaseFileContactsTab } from "./tabs/CaseFileContactsTab";
