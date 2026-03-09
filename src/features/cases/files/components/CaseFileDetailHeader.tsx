@@ -5,24 +5,7 @@ import { useCaseFileProcessingStatuses } from "@/hooks/useCaseFileProcessingStat
 import { icons, LucideIcon } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import {
-  Edit2,
-  Trash2,
-  MoreVertical,
-  StickyNote,
-  CheckSquare,
-  Calendar,
-  FileText,
-  ArrowLeft,
-} from "lucide-react";
-import { cn } from "@/lib/utils";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
+import { Trash2, ArrowLeft } from "lucide-react";
 
 interface CaseFileDetailHeaderProps {
   caseFile: CaseFile;
