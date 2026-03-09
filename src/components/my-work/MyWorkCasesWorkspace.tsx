@@ -855,20 +855,32 @@ export function MyWorkCasesWorkspace() {
     })));
 
     if (detailItemId) {
-      entries.push(...(linkedDecisions[detailItemId] || [])
-        .map((decision) => ({
-          id: `dec-${decision.id}`,
-          timestamp: decision.created_at,
-          title: `Entscheidung: ${decision.title}`,
-          note: `Status: ${decision.status}`,
-          safeNoteHtml: sanitizeTimelineNote(`Status: ${decision.status}`),
-          accentClass: decision.status === "completed" ? "bg-emerald-500" : "bg-fuchsia-600",
-          icon: Gavel,
-        })));
+      const currentUserId = user?.id || null;
+      entries.push(
+        ...(linkedDecisions[detailItemId] || []).map((decision) => {
+          const participants = decision.task_decision_participants || [];
+          const userParticipant = currentUserId ? participants.find((p) => p.user_id === currentUserId) ?? null : null;
+          const userHasResponded = !currentUserId
+            ? true
+            : decision.created_by === currentUserId
+              ? true
+              : !userParticipant
+                ? true
+                : (userParticipant.task_decision_responses?.length ?? 0) > 0;
+
+          return {
+            id: `dec-${decision.id}`,
+            timestamp: decision.created_at,
+            title: `Entscheidung: ${decision.title}`,
+            accentClass: "bg-muted",
+            icon: userHasResponded ? CheckCircle2 : Clock,
+          };
+        }),
+      );
     }
 
     return entries.sort((a, b) => toTimeSafe(a.timestamp) - toTimeSafe(b.timestamp));
-  }, [deleteTimelineEvent, detailItemId, editableCaseItem, linkedDecisions]);
+  }, [deleteTimelineEvent, detailItemId, editableCaseItem, linkedDecisions, user?.id]);
 
   const handleCaseItemSave = async () => {
     if (!detailItemId || !editableCaseItem) return;
