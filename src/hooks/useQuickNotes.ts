@@ -99,9 +99,11 @@ export function useQuickNotes(refreshTrigger?: number) {
   const [confirmDeleteTaskNote, setConfirmDeleteTaskNote] = useState<QuickNote | null>(null);
   const [confirmDeleteLinkedNote, setConfirmDeleteLinkedNote] = useState<QuickNote | null>(null);
   const [confirmRemoveDecision, setConfirmRemoveDecision] = useState<QuickNote | null>(null);
+  const [confirmRemoveCaseItem, setConfirmRemoveCaseItem] = useState<QuickNote | null>(null);
   const [deleteLinkedTask, setDeleteLinkedTask] = useState(true);
   const [deleteLinkedDecision, setDeleteLinkedDecision] = useState(true);
   const [deleteLinkedMeeting, setDeleteLinkedMeeting] = useState(false);
+  const [deleteLinkedCaseItem, setDeleteLinkedCaseItem] = useState(true);
 
   // ── Data Loading ──────────────────────────────────────────────────────
 
