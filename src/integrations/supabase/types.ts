@@ -2368,7 +2368,6 @@ export type Database = {
           follow_up_at: string | null
           id: string
           intake_payload: Json | null
-          visible_to_all: boolean
           is_legal_relevant: boolean
           is_political_relevant: boolean
           last_modified_at: string
@@ -2389,6 +2388,7 @@ export type Database = {
           tenant_id: string
           updated_at: string
           user_id: string
+          visible_to_all: boolean
         }
         Insert: {
           case_file_id?: string | null
@@ -2403,7 +2403,6 @@ export type Database = {
           follow_up_at?: string | null
           id?: string
           intake_payload?: Json | null
-          visible_to_all?: boolean
           is_legal_relevant?: boolean
           is_political_relevant?: boolean
           last_modified_at?: string
@@ -2424,6 +2423,7 @@ export type Database = {
           tenant_id: string
           updated_at?: string
           user_id: string
+          visible_to_all?: boolean
         }
         Update: {
           case_file_id?: string | null
@@ -2438,7 +2438,6 @@ export type Database = {
           follow_up_at?: string | null
           id?: string
           intake_payload?: Json | null
-          visible_to_all?: boolean
           is_legal_relevant?: boolean
           is_political_relevant?: boolean
           last_modified_at?: string
@@ -2459,6 +2458,7 @@ export type Database = {
           tenant_id?: string
           updated_at?: string
           user_id?: string
+          visible_to_all?: boolean
         }
         Relationships: [
           {

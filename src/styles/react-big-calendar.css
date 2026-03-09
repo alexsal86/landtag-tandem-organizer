@@ -11,6 +11,9 @@
   background: hsl(var(--card));
   border: 1px solid hsl(var(--border));
   border-radius: calc(var(--radius));
+  display: flex;
+  flex-direction: column;
+  height: 100%;
 }
 
 /* Header styling */
@@ -113,6 +116,7 @@
   border-bottom: 1px solid hsl(var(--border));
   padding: 1rem;
   margin-bottom: 0;
+  flex-shrink: 0;
 }
 
 .rbc-toolbar-label {
@@ -288,9 +292,16 @@
   border-bottom: 1px solid hsl(var(--border) / 0.3);
 }
 
-.rbc-time-view,
+.rbc-time-view {
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+}
+
 .rbc-time-content {
-  overflow: visible;
+  overflow-y: auto;
+  flex: 1;
 }
 
 .rbc-time-slot {
