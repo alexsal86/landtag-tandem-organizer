@@ -624,6 +624,16 @@ export function MyWorkDecisionsTab() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      <CaseItemMeetingSelector
+        open={meetingSelectorOpen}
+        onOpenChange={(open) => {
+          setMeetingSelectorOpen(open);
+          if (!open) setMeetingSelectorDecisionId(null);
+        }}
+        onSelect={handleMeetingSelected}
+        onMarkForNextJourFixe={handleMarkForNextJourFixe}
+      />
     </>
   );
 }
