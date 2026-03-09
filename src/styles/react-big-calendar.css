@@ -209,6 +209,7 @@
   top: 0;
   z-index: 20;
   background: hsl(var(--background));
+  flex-shrink: 0;
 }
 
 .rbc-time-view .rbc-header {
@@ -291,15 +292,16 @@
 
 .rbc-time-view {
   border: 1px solid hsl(var(--border));
-  overflow-y: auto;
-  overflow-x: hidden;
+  overflow: hidden;
   height: 100%;
 }
 
 
 .rbc-time-content {
-  overflow: visible;
+  overflow-y: auto;
+  overflow-x: hidden;
   flex: 1;
+  min-height: 0;
 }
 
 .rbc-time-slot {
