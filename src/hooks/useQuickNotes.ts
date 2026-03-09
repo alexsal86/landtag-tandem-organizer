@@ -805,25 +805,24 @@ export function useQuickNotes(refreshTrigger?: number) {
         ? stripHtml(note.title)
         : plainContent.substring(0, 100);
       
-      const mapPriority = (level: number | undefined | null): 'niedrig' | 'mittel' | 'hoch' => {
-        if (!level || level <= 1) return 'niedrig';
-        if (level === 2) return 'mittel';
-        return 'hoch';
+      const mapPriority = (level: number | undefined | null): 'low' | 'medium' | 'high' => {
+        if (!level || level <= 1) return 'low';
+        if (level === 2) return 'medium';
+        return 'high';
       };
 
       const { data: caseItem, error: caseError } = await supabase
         .from('case_items')
         .insert([{
           tenant_id: currentTenant.id,
-          created_by: user.id,
+          user_id: user.id,
           subject: itemSubject,
           summary: note.content,
           status: 'neu',
           priority: mapPriority(note.priority_level),
-          category: 'Allgemein',
           source_channel: 'other',
         } as any])
-        .select().single();
+        .select('id').single();
       
       if (caseError) throw caseError;
       
