@@ -202,9 +202,6 @@
 }
 
 /* Week/Day view specific */
-.rbc-time-view {
-  border: 1px solid hsl(var(--border));
-}
 
 .rbc-time-header {
   border-bottom: 1px solid hsl(var(--border));
