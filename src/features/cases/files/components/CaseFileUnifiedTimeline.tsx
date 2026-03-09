@@ -55,6 +55,7 @@ interface CaseFileUnifiedTimelineProps {
   tasks: CaseFileTask[];
   appointments: CaseFileAppointment[];
   letters: CaseFileLetter[];
+  interactions: CaseItemInteraction[];
   onAddTimelineEntry: () => void;
   onDeleteTimelineEntry: (id: string) => Promise<boolean>;
 }
