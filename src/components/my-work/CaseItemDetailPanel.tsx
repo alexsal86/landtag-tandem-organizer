@@ -457,32 +457,6 @@ export function CaseItemDetailPanel({
             </CollapsibleContent>
           </Collapsible>
 
-          <div className="space-y-2 rounded-md border bg-background p-3">
-            <Label className="font-bold flex items-center gap-1.5"><Vote className="h-4 w-4" />Verknüpfte Entscheidungen</Label>
-            {loadingDecisions ? (
-              <div className="flex items-center gap-2 text-xs text-muted-foreground"><Loader2 className="h-3.5 w-3.5 animate-spin" />Lade Entscheidungen…</div>
-            ) : linkedDecisions.length === 0 ? (
-              <p className="text-xs text-muted-foreground">Keine Entscheidungen verknüpft.</p>
-            ) : (
-              <div className="space-y-2">
-                {linkedDecisions.map((decision) => (
-                  <div key={decision.id} className="rounded border p-2 text-xs">
-                    <div className="flex items-center justify-between gap-2">
-                      <p className="font-semibold truncate">{decision.title}</p>
-                      <span className="text-muted-foreground">{decision.status}</span>
-                    </div>
-                    <p className="text-muted-foreground">Erstellt: {formatDecisionDate(decision.created_at)}</p>
-                    {decision.response_deadline && <p className="text-muted-foreground">Frist: {formatDecisionDate(decision.response_deadline)}</p>}
-                  </div>
-                ))}
-              </div>
-            )}
-            <div className="flex flex-wrap gap-2">
-              <Button type="button" variant="outline" size="sm" onClick={onDecisionRequest}><Gavel className="mr-1 h-3.5 w-3.5" />Entscheidung stellen</Button>
-              <Button type="button" variant="outline" size="sm" onClick={onDecisionReceived} disabled={editableCaseItem.status !== "entscheidung_abwartend"}>Eingegangen</Button>
-            </div>
-          </div>
-
           {editableCaseItem.status === "erledigt" && (
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
               <div className="space-y-1.5">
