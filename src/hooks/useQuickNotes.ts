@@ -797,6 +797,59 @@ export function useQuickNotes(refreshTrigger?: number) {
     }
   };
 
+  const createCaseItemFromNote = async (note: QuickNote) => {
+    if (!user || !currentTenant) { toast.error("Nicht angemeldet"); return; }
+    try {
+      const plainContent = stripHtml(note.content);
+      const itemSubject = note.title
+        ? stripHtml(note.title)
+        : plainContent.substring(0, 100);
+      
+      const mapPriority = (level: number | undefined | null): 'niedrig' | 'mittel' | 'hoch' => {
+        if (!level || level <= 1) return 'niedrig';
+        if (level === 2) return 'mittel';
+        return 'hoch';
+      };
+
+      const { data: caseItem, error: caseError } = await supabase
+        .from('case_items')
+        .insert([{
+          tenant_id: currentTenant.id,
+          created_by: user.id,
+          subject: itemSubject,
+          summary: note.content,
+          status: 'neu',
+          priority: mapPriority(note.priority_level),
+          category: 'Allgemein',
+          source_channel: 'other',
+        } as any])
+        .select().single();
+      
+      if (caseError) throw caseError;
+      
+      await supabase.from("quick_notes").update({ case_item_id: caseItem.id }).eq("id", note.id);
+      toast.success("Vorgang erstellt");
+      loadNotes();
+    } catch (error) {
+      debugConsole.error('Error creating case item from note:', error);
+      toast.error("Fehler beim Erstellen des Vorgangs");
+    }
+  };
+
+  const removeCaseItemFromNote = async (note: QuickNote) => {
+    if (!note.case_item_id || !user?.id) return;
+    try {
+      await supabase.from('case_items').update({ status: 'archiviert' }).eq('id', note.case_item_id);
+      await supabase.from("quick_notes").update({ case_item_id: null }).eq("id", note.id).eq("user_id", user.id);
+      toast.success("Vorgang archiviert und von Notiz entfernt");
+      setConfirmRemoveCaseItem(null);
+      loadNotes();
+    } catch (error) {
+      debugConsole.error('Error removing case item from note:', error);
+      toast.error("Fehler beim Entfernen des Vorgangs");
+    }
+  };
+
   const splitNoteIntoBullets = async (note: QuickNote) => {
     if (!user) return;
     const listItemRegex = /<li[^>]*>(.*?)<\/li>/gi;
