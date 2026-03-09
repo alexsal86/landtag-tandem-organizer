@@ -19,6 +19,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { CaseItemsArchiveSheet } from "@/features/cases/items/components/CaseItemsArchiveSheet";
 import { CaseItemCreateDialog } from "@/components/my-work/CaseItemCreateDialog";
+import { CaseItemMeetingSelector } from "@/components/my-work/CaseItemMeetingSelector";
 import { useAuth } from "@/hooks/useAuth";
 import { useTenant } from "@/hooks/useTenant";
 import { useToast } from "@/hooks/use-toast";
