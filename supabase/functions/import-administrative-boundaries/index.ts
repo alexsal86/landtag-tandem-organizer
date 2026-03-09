@@ -60,7 +60,7 @@ serve(async (req) => {
     if (deleteError) {
       console.error('Error clearing existing administrative boundaries:', deleteError);
       return new Response(
-        JSON.stringify({ error: 'Failed to clear existing data', details: deleteError.message }),
+        JSON.stringify({ error: 'Failed to clear existing data' }),
         { 
           status: 500, 
           headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
