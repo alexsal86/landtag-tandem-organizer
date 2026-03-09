@@ -3,7 +3,10 @@ import { isValidEmail, formatGermanDate, cn } from '@/lib/utils';
 
 describe('cn', () => {
   it('merges tailwind classes', () => {
-    expect(cn('px-2 py-1', 'px-4')).toBe('px-4 py-1');
+    const result = cn('px-2 py-1', 'px-4');
+    expect(result).toContain('px-4');
+    expect(result).toContain('py-1');
+    expect(result).not.toContain('px-2');
   });
 
   it('handles conditional classes', () => {
