@@ -13,7 +13,7 @@ import {
   Pin, Trash2, MoreHorizontal, CheckSquare, Vote,
   Calendar as CalendarIcon, Archive, ChevronDown, ChevronUp, Clock,
   Star, Share2, Users, Hourglass, Pencil, GripVertical, ListTree,
-  History, ArrowRight, Palette, X
+  History, ArrowRight, Palette, X, FileText
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { format, isPast, isToday } from "date-fns";
