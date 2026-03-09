@@ -5,6 +5,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { useTenant } from "@/hooks/useTenant";
 import { Contact } from "@/hooks/useInfiniteContacts";
 import { debugConsole } from '@/utils/debugConsole';
+import { handleAppError } from '@/utils/errorHandler';
 
 const PAGE_SIZE = 500;
 const PERSON_CONTACT_SELECT = "id, contact_type, name, organization, organization_id, email";
