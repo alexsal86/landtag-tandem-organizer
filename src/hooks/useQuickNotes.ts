@@ -649,11 +649,12 @@ export function useQuickNotes(refreshTrigger?: number) {
   };
 
   const handleDeleteWithConfirmation = (note: QuickNote) => {
-    const hasLinks = note.task_id || note.decision_id || note.meeting_id;
+    const hasLinks = note.task_id || note.decision_id || note.meeting_id || note.case_item_id;
     if (hasLinks) {
       setDeleteLinkedTask(!!note.task_id);
       setDeleteLinkedDecision(!!note.decision_id);
       setDeleteLinkedMeeting(false);
+      setDeleteLinkedCaseItem(!!note.case_item_id);
       setConfirmDeleteLinkedNote(note);
     } else {
       handleDelete(note.id);
