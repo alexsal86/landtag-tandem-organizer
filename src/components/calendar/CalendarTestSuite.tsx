@@ -151,7 +151,7 @@ export function CalendarTestSuite() {
       return {
         name: 'Performance Test',
         status: 'fail',
-        details: `Performance test failed: ${error.message}`
+        details: `Performance test failed: ${error instanceof Error ? error.message : String(error)}`
       };
     }
   };
