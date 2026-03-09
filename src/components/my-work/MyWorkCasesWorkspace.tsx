@@ -265,7 +265,8 @@ export function MyWorkCasesWorkspace() {
   const { editableCaseItem, setEditableCaseItem, updateEdit, appendTimelineEvent, deleteTimelineEvent } = useCaseItemEdit();
   const [itemSort, setItemSort] = useState<{ key: CaseItemSortKey; direction: SortDirection }>({ key: "received", direction: "desc" });
 
-  const [focusedItemIndex, setFocusedItemIndex] = useState(0);
+  // Keyboard focus index for arrow/enter navigation (kept "inactive" until the user interacts)
+  const [focusedItemIndex, setFocusedItemIndex] = useState<number>(-1);
 
   const runAsync = useCallback((action: () => Promise<unknown>) => {
     action().catch((error) => {
@@ -610,28 +611,32 @@ export function MyWorkCasesWorkspace() {
   };
 
   useEffect(() => {
-    if (!sortedCaseItems.length) {
-      setFocusedItemIndex(0);
-      return;
-    }
-    setFocusedItemIndex((prev) => Math.min(prev, sortedCaseItems.length - 1));
+    setFocusedItemIndex((prev) => {
+      if (!sortedCaseItems.length) return -1;
+      if (prev < 0) return -1;
+      return Math.min(prev, sortedCaseItems.length - 1);
+    });
   }, [sortedCaseItems.length]);
 
   const handleListKeyDown = useCallback((event: KeyboardEvent<HTMLDivElement>) => {
     if (!sortedCaseItems.length) return;
+
     if (event.key === "ArrowDown") {
       event.preventDefault();
-      setFocusedItemIndex((prev) => Math.min(prev + 1, sortedCaseItems.length - 1));
+      setFocusedItemIndex((prev) => (prev < 0 ? 0 : Math.min(prev + 1, sortedCaseItems.length - 1)));
       return;
     }
+
     if (event.key === "ArrowUp") {
       event.preventDefault();
-      setFocusedItemIndex((prev) => Math.max(prev - 1, 0));
+      setFocusedItemIndex((prev) => (prev < 0 ? sortedCaseItems.length - 1 : Math.max(prev - 1, 0)));
       return;
     }
+
     if (event.key === "Enter") {
       event.preventDefault();
-      const item = sortedCaseItems[focusedItemIndex];
+      const index = focusedItemIndex < 0 ? 0 : focusedItemIndex;
+      const item = sortedCaseItems[index];
       if (item) handleSelectCaseItem(item);
     }
   }, [focusedItemIndex, sortedCaseItems]);
@@ -978,7 +983,7 @@ export function MyWorkCasesWorkspace() {
                                               className={cn(
                                                 "w-full px-2 py-2 text-left transition-colors hover:bg-muted/40",
                                                 isActive && "bg-primary/5",
-                                                focusedItemIndex === index && "ring-1 ring-primary/40",
+                                                focusedItemIndex >= 0 && focusedItemIndex === index && "ring-1 ring-primary/40",
                                               )}
                                               onClick={() => handleSelectCaseItem(item)}
                                             >

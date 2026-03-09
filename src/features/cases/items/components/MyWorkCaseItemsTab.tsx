@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { format, isPast, isToday } from "date-fns";
 import { de } from "date-fns/locale";
-import { AlertCircle, Archive, ArrowUpDown, Briefcase, CalendarClock, ExternalLink, Plus, Search } from "lucide-react";
+import { AlertCircle, Archive, ArrowUpDown, Briefcase, CalendarClock, CalendarDays, ExternalLink, Plus, Search } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -19,6 +19,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { CaseItemsArchiveSheet } from "@/features/cases/items/components/CaseItemsArchiveSheet";
 import { CaseItemCreateDialog } from "@/components/my-work/CaseItemCreateDialog";
+import { CaseItemMeetingSelector } from "@/components/my-work/CaseItemMeetingSelector";
 import { useAuth } from "@/hooks/useAuth";
 import { useTenant } from "@/hooks/useTenant";
 import { useToast } from "@/hooks/use-toast";
@@ -99,6 +100,10 @@ export function MyWorkCaseItemsTab() {
   const [createOpen, setCreateOpen] = useState(false);
   const [archiveOpen, setArchiveOpen] = useState(false);
   const [highlightedItemId, setHighlightedItemId] = useState<string | null>(null);
+
+  // Jour Fixe meeting selector state (ContextMenu)
+  const [meetingSelectorOpen, setMeetingSelectorOpen] = useState(false);
+  const [meetingSelectorItemId, setMeetingSelectorItemId] = useState<string | null>(null);
 
   const { createCaseItem } = useCaseItems();
 
@@ -350,6 +355,51 @@ export function MyWorkCaseItemsTab() {
         onOpenChange={setArchiveOpen}
         onRestore={() => loadCaseItems()}
       />
+      <CaseItemMeetingSelector
+        open={meetingSelectorOpen}
+        onOpenChange={(open) => {
+          setMeetingSelectorOpen(open);
+          if (!open) setMeetingSelectorItemId(null);
+        }}
+        onSelect={async (meetingId, meetingTitle) => {
+          if (!meetingSelectorItemId) return;
+
+          const { error } = await supabase
+            .from("case_items")
+            .update({ meeting_id: meetingId, pending_for_jour_fixe: false } as any)
+            .eq("id", meetingSelectorItemId);
+
+          if (error) {
+            debugConsole.error("Error linking case item to meeting:", error);
+            toast({ title: "Fehler", description: "Zuordnung zum Jour Fixe fehlgeschlagen.", variant: "destructive" });
+            return;
+          }
+
+          setItems((prev) =>
+            prev.map((row) =>
+              row.id === meetingSelectorItemId ? { ...row, meeting_id: meetingId, pending_for_jour_fixe: false } : row
+            )
+          );
+          toast({ title: "Zugeordnet", description: `Vorgang dem Meeting „${meetingTitle}“ zugeordnet.` });
+        }}
+        onMarkForNextJourFixe={async () => {
+          if (!meetingSelectorItemId) return;
+
+          const { error } = await supabase
+            .from("case_items")
+            .update({ pending_for_jour_fixe: true } as any)
+            .eq("id", meetingSelectorItemId);
+
+          if (error) {
+            debugConsole.error("Error marking case item for next Jour Fixe:", error);
+            toast({ title: "Fehler", description: "Vormerken für Jour Fixe fehlgeschlagen.", variant: "destructive" });
+            return;
+          }
+
+          setItems((prev) => prev.map((row) => (row.id === meetingSelectorItemId ? { ...row, pending_for_jour_fixe: true } : row)));
+          toast({ title: "Vorgemerkt", description: "Vorgang für den nächsten Jour Fixe vorgemerkt." });
+        }}
+      />
 
       <Card>
         <CardContent className="p-4 space-y-3">
@@ -557,6 +607,13 @@ export function MyWorkCaseItemsTab() {
                     <ContextMenuItem onClick={() => navigate(`/?section=casefiles&caseItemId=${item.id}`)}>
                       <ExternalLink className="mr-2 h-4 w-4" />
                       Öffnen
+                    </ContextMenuItem>
+                    <ContextMenuItem onClick={() => {
+                      setMeetingSelectorItemId(item.id);
+                      setMeetingSelectorOpen(true);
+                    }}>
+                      <CalendarDays className="mr-2 h-4 w-4" />
+                      Zum Jour Fixe hinzufügen
                     </ContextMenuItem>
                     <ContextMenuItem onClick={() => handleArchive(item.id)}>
                       <Archive className="mr-2 h-4 w-4" />
