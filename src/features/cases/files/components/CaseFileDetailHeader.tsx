@@ -13,6 +13,7 @@ import {
   CheckSquare,
   Calendar,
   FileText,
+  ArrowLeft,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import {
@@ -59,6 +60,12 @@ export function CaseFileDetailHeader({
 
   return (
     <div className="bg-card border rounded-lg p-4 space-y-3">
+      {/* Back Button */}
+      <Button variant="ghost" size="sm" onClick={onBack} className="gap-1.5 -ml-2 -mt-1 mb-1">
+        <ArrowLeft className="h-4 w-4" />
+        Zurück
+      </Button>
+
       {/* Top: Title + Actions */}
       <div className="flex items-start justify-between gap-4">
         <div className="flex-1 min-w-0">
