@@ -100,6 +100,10 @@ export function MyWorkCaseItemsTab() {
   const [archiveOpen, setArchiveOpen] = useState(false);
   const [highlightedItemId, setHighlightedItemId] = useState<string | null>(null);
 
+  // Jour Fixe meeting selector state (ContextMenu)
+  const [meetingSelectorOpen, setMeetingSelectorOpen] = useState(false);
+  const [meetingSelectorItemId, setMeetingSelectorItemId] = useState<string | null>(null);
+
   const { createCaseItem } = useCaseItems();
 
   const loadCaseItems = useCallback(async () => {
