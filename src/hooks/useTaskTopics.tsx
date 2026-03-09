@@ -61,7 +61,7 @@ export const useTaskTopics = (taskId: string | undefined) => {
       setAssignedTopics(prev => prev.filter(id => id !== topicId));
       return true;
     } catch (error) {
-      debugConsole.error('Error removing topic:', error);
+      handleAppError(error, { context: 'useTaskTopics.remove' });
       return false;
     }
   };
