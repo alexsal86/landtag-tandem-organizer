@@ -524,6 +524,23 @@ export function CaseItemDetailPanel({
             <CollapsibleContent className="space-y-3 px-3 pb-3">
               <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                 <div className="space-y-1.5">
+                  <Label className="font-bold" htmlFor="detail-received">Eingangsdatum</Label>
+                  <Input id="detail-received" type="date" value={editableCaseItem.sourceReceivedAt} onChange={(event) => onUpdate({ sourceReceivedAt: event.target.value })} />
+                </div>
+                <div className="space-y-1.5">
+                  <Label className="font-bold">Kategorie *</Label>
+                  <Select value={editableCaseItem.category} onValueChange={(value) => onUpdate({ category: value })}>
+                    <SelectTrigger><SelectValue placeholder="Kategorie wählen" /></SelectTrigger>
+                    <SelectContent>
+                      {categoryOptions.map((categoryOption) => (
+                        <SelectItem key={categoryOption} value={categoryOption}>{categoryOption}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                <div className="space-y-1.5">
                   <Label className="font-bold">Status</Label>
                   <Select value={editableCaseItem.status} onValueChange={(value) => onUpdate({ status: value })}>
                     <SelectTrigger><SelectValue /></SelectTrigger>
@@ -535,13 +552,14 @@ export function CaseItemDetailPanel({
                   </Select>
                 </div>
                 <div className="space-y-1.5">
-                  <Label className="font-bold">Kategorie *</Label>
-                  <Select value={editableCaseItem.category} onValueChange={(value) => onUpdate({ category: value })}>
-                    <SelectTrigger><SelectValue placeholder="Kategorie wählen" /></SelectTrigger>
+                  <Label className="font-bold">Priorität</Label>
+                  <Select value={editableCaseItem.priority} onValueChange={(value) => onUpdate({ priority: value })}>
+                    <SelectTrigger><SelectValue /></SelectTrigger>
                     <SelectContent>
-                      {categoryOptions.map((categoryOption) => (
-                        <SelectItem key={categoryOption} value={categoryOption}>{categoryOption}</SelectItem>
-                      ))}
+                      <SelectItem value="low">Niedrig</SelectItem>
+                      <SelectItem value="medium">Mittel</SelectItem>
+                      <SelectItem value="high">Hoch</SelectItem>
+                      <SelectItem value="urgent">Dringend</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
