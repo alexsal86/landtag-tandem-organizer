@@ -298,6 +298,13 @@ serve(async (req) => {
     return new Response(null, { headers: corsHeaders });
   }
 
+  // Require service role (called by pg_net trigger)
+  if (!requireServiceRole(req)) {
+    return new Response(JSON.stringify({ error: 'Unauthorized' }), {
+      status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+    });
+  }
+
   // GET: Return VAPID public key
   if (req.method === 'GET') {
     const vapidPublicKey = Deno.env.get('VAPID_PUBLIC_KEY');
