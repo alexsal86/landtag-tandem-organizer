@@ -222,10 +222,10 @@ const ProperReactBigCalendar: React.FC<ProperReactBigCalendarProps> = ({
         date={date}
         onNavigate={onNavigate}
         onView={onView}
-        onSelectEvent={handleSelectEvent}
+        onSelectEvent={(event: object) => handleSelectEvent(event as RBCEvent)}
         onSelectSlot={handleSelectSlot}
-        onEventDrop={handleEventDrop}
-        onEventResize={handleEventResize}
+        onEventDrop={(args: any) => handleEventDrop(args)}
+        onEventResize={(args: any) => handleEventResize(args)}
         eventPropGetter={eventPropGetter as any}
         dayPropGetter={dayPropGetter}
         messages={messages}

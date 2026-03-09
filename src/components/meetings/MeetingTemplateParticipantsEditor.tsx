@@ -45,7 +45,7 @@ interface MeetingTemplateParticipantsEditorProps {
 interface User {
   id: string;
   display_name: string;
-  avatar_url?: string;
+  avatar_url?: string | null;
 }
 
 // Helper to normalize participants to ParticipantWithRole format

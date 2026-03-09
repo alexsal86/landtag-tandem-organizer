@@ -231,7 +231,7 @@ export function CalendarTestSuite() {
       return {
         name: 'Conflict Detection',
         status: 'fail',
-        details: `Conflict detection failed: ${error.message}`
+        details: `Conflict detection failed: ${error instanceof Error ? error.message : String(error)}`
       };
     }
   };
