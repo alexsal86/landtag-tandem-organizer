@@ -1015,7 +1015,7 @@ export function MyWorkCasesWorkspace() {
                 <CardContent className="space-y-3 pt-5 overflow-hidden">
                   <Droppable droppableId="case-items-list" isDropDisabled>
                     {(provided) => (
-                      <div className="space-y-1.5 pr-2 overflow-x-auto">
+                      <div className="space-y-1.5 pr-2">
                         <div ref={provided.innerRef} {...provided.droppableProps} className="space-y-1.5" tabIndex={0} onKeyDown={handleListKeyDown}>
                           {sortedCaseItems.length === 0 ? (
                             <div className="rounded-md border border-dashed p-4 text-sm text-muted-foreground space-y-3">
