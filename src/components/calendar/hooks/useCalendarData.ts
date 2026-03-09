@@ -60,6 +60,8 @@ export function useCalendarData(currentDate: Date, view: string) {
         supabase
           .from("appointments")
           .select(APPOINTMENT_SELECT)
+          .lte("start_time", endDate.toISOString())
+          .or(`recurrence_end_date.is.null,recurrence_end_date.gte.${startDate.toISOString().split("T")[0]}`)
           .not("recurrence_rule", "is", null)
           .order("start_time", { ascending: true }),
       ]);
@@ -80,9 +82,19 @@ export function useCalendarData(currentDate: Date, view: string) {
 
   const processAppointments = async (appointmentsData: any[], startDate: Date, endDate: Date) => {
     try {
-      const { data: categoriesData } = await supabase
-        .from("appointment_categories")
-        .select("name, color");
+      const [
+        { data: categoriesData },
+        { data: userData },
+        { data: leaveRequests },
+      ] = await Promise.all([
+        supabase.from("appointment_categories").select("name, color"),
+        supabase.auth.getUser(),
+        supabase
+          .from("leave_requests")
+          .select("*, profiles!leave_requests_user_id_fkey(display_name)")
+          .or(`and(start_date.lte.${endDate.toISOString().split("T")[0]},end_date.gte.${startDate.toISOString().split("T")[0]})`)
+          .in("status", ["approved", "pending"]),
+      ]);
 
       const categoryColors = new Map<string, string>();
       categoriesData?.forEach((cat: any) => categoryColors.set(cat.name, cat.color));
@@ -100,21 +112,36 @@ export function useCalendarData(currentDate: Date, view: string) {
         }
       }
 
+      const sourceAppointmentIds = Array.from(new Set(expandedAppointments
+        .map((appointment) => (appointment._originalId ?? appointment.id) as string)
+        .filter(Boolean)));
+
+      const { data: contactsRows } = sourceAppointmentIds.length > 0
+        ? await supabase
+            .from("appointment_contacts")
+            .select("appointment_id, role, contacts (id, name)")
+            .in("appointment_id", sourceAppointmentIds)
+        : { data: [] as any[] };
+
+      const participantsByAppointmentId = new Map<string, Array<{ id: string; name: string; role: string }>>();
+      for (const row of contactsRows || []) {
+        const appointmentId = row.appointment_id as string;
+        const existing = participantsByAppointmentId.get(appointmentId) || [];
+        existing.push({
+          id: (row.contacts as any)?.id || "",
+          name: (row.contacts as any)?.name || "Unknown",
+          role: row.role || "participant",
+        });
+        participantsByAppointmentId.set(appointmentId, existing);
+      }
+
       for (const appointment of expandedAppointments) {
         const startTime = new Date(appointment.start_time);
         const endTime = new Date(appointment.end_time);
         const durationHours = ((endTime.getTime() - startTime.getTime()) / (1000 * 60 * 60)).toFixed(1);
 
-        const { data: contactsData } = await supabase
-          .from("appointment_contacts")
-          .select(`role, contacts (id, name)`)
-          .eq("appointment_id", appointment.id);
-
-        const participants = contactsData?.map((c: any) => ({
-          id: c.contacts?.id || "",
-          name: c.contacts?.name || "Unknown",
-          role: c.role || "participant",
-        })) || [];
+        const sourceId = appointment._originalId ?? appointment.id;
+        const participants = participantsByAppointmentId.get(sourceId) || [];
 
         formattedEvents.push({
           id: appointment.id,
@@ -183,7 +210,6 @@ export function useCalendarData(currentDate: Date, view: string) {
       }
 
       // Event planning blocked times
-      const { data: userData } = await supabase.auth.getUser();
       const currentUserId = userData.user?.id;
 
       const { data: eventPlanningData } = await supabase
@@ -213,13 +239,6 @@ export function useCalendarData(currentDate: Date, view: string) {
           }
         }
       }
-
-      // Vacation / vacation request events
-      const { data: leaveRequests } = await supabase
-        .from("leave_requests")
-        .select("*, profiles!leave_requests_user_id_fkey(display_name)")
-        .or(`and(start_date.lte.${endDate.toISOString().split("T")[0]},end_date.gte.${startDate.toISOString().split("T")[0]})`)
-        .in("status", ["approved", "pending"]);
 
       if (leaveRequests) {
         for (const leave of leaveRequests) {
