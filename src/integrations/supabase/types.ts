@@ -9530,6 +9530,8 @@ export type Database = {
           created_by: string
           description: string | null
           id: string
+          meeting_id: string | null
+          pending_for_jour_fixe: boolean
           priority: number | null
           response_deadline: string | null
           response_options: Json | null
@@ -9549,6 +9551,8 @@ export type Database = {
           created_by: string
           description?: string | null
           id?: string
+          meeting_id?: string | null
+          pending_for_jour_fixe?: boolean
           priority?: number | null
           response_deadline?: string | null
           response_options?: Json | null
@@ -9568,6 +9572,8 @@ export type Database = {
           created_by?: string
           description?: string | null
           id?: string
+          meeting_id?: string | null
+          pending_for_jour_fixe?: boolean
           priority?: number | null
           response_deadline?: string | null
           response_options?: Json | null
@@ -9585,6 +9591,13 @@ export type Database = {
             columns: ["case_item_id"]
             isOneToOne: false
             referencedRelation: "case_items"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "task_decisions_meeting_id_fkey"
+            columns: ["meeting_id"]
+            isOneToOne: false
+            referencedRelation: "meetings"
             referencedColumns: ["id"]
           },
           {
