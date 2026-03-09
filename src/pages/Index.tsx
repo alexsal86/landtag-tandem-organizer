@@ -157,64 +157,69 @@ const Index = () => {
     );
   }
 
+  /** Wraps a section component with its own ErrorBoundary for isolated crash recovery */
+  const withSectionBoundary = (label: string, node: React.ReactNode) => (
+    <ErrorBoundary fallbackMessage={`Der Bereich „${label}" konnte nicht geladen werden. Bitte laden Sie die Seite neu.`}>
+      {node}
+    </ErrorBoundary>
+  );
+
   const renderActiveSection = () => {
     switch (activeSection) {
       case 'dashboard':
-        return <CustomizableDashboard />;
+        return withSectionBoundary('Dashboard', <CustomizableDashboard />);
       case "mywork":
-        return <MyWorkView />;
+        return withSectionBoundary('Meine Arbeit', <MyWorkView />);
       case "calendar":
-        return <CalendarView />;
+        return withSectionBoundary('Kalender', <CalendarView />);
       case "contacts":
         if (subId === "new" || isCreateContactRoute) {
-          return <CreateContact />;
+          return withSectionBoundary('Kontakt erstellen', <CreateContact />);
         }
-
-        return <ContactsView />;
+        return withSectionBoundary('Kontakte', <ContactsView />);
       case "tasks":
-        return <TasksView />;
+        return withSectionBoundary('Aufgaben', <TasksView />);
       case "decisions":
-        return <DecisionOverview />;
+        return withSectionBoundary('Entscheidungen', <DecisionOverview />);
       case "time":
-        return <TimeTrackingView />;
+        return withSectionBoundary('Zeiterfassung', <TimeTrackingView />);
       case "meetings":
-        return <MeetingsView />;
+        return withSectionBoundary('Sitzungen', <MeetingsView />);
       case "eventplanning":
-        return <EventPlanningView />;
+        return withSectionBoundary('Veranstaltungen', <EventPlanningView />);
       case "karten":
-        return <MapsView />;
+        return withSectionBoundary('Karten', <MapsView />);
       case "kreisverbände":
-        return <PartyAssociationsMapView />;
+        return withSectionBoundary('Kreisverbände', <PartyAssociationsMapView />);
       case "documents":
         if (section === 'letters' && subId) {
-          return <LetterDetail />;
+          return withSectionBoundary('Brief', <LetterDetail />);
         }
-
-        return <DocumentsView />;
+        return withSectionBoundary('Dokumente', <DocumentsView />);
       case "knowledge":
-        return <KnowledgeBaseView />;
+        return withSectionBoundary('Wissensdatenbank', <KnowledgeBaseView />);
       case "settings":
-        return <Suspense fallback={null}><MatrixClientProvider><SettingsView /></MatrixClientProvider></Suspense>;
+        return withSectionBoundary('Einstellungen', <Suspense fallback={null}><MatrixClientProvider><SettingsView /></MatrixClientProvider></Suspense>);
       case "employee":
-        return <EmployeesView />;
+        return withSectionBoundary('Mitarbeiter', <EmployeesView />);
       case "employee-meeting":
-        return subId ? <EmployeeMeetingDetail /> : <EmployeesView />;
+        return withSectionBoundary('Mitarbeiter-Sitzung', subId ? <EmployeeMeetingDetail /> : <EmployeesView />);
       case "administration":
-        return <Administration />;
+        return withSectionBoundary('Verwaltung', <Administration />);
       case "drucksachen":
-        return <DrucksachenView />;
+        return withSectionBoundary('Drucksachen', <DrucksachenView />);
       case "casefiles":
-        return <CaseFilesView />;
+        return withSectionBoundary('Vorgänge', <CaseFilesView />);
       case "chat":
-        return <Suspense fallback={null}><MatrixClientProvider><MatrixChatView /></MatrixClientProvider></Suspense>;
+        return withSectionBoundary('Chat', <Suspense fallback={null}><MatrixClientProvider><MatrixChatView /></MatrixClientProvider></Suspense>);
       case "calls":
-        return <CallsView />;
+        return withSectionBoundary('Anrufe', <CallsView />);
       case "daten":
-        return <DataView />;
+        return withSectionBoundary('Daten', <DataView />);
       case "notifications":
-        return <NotificationsPage />;
+        return withSectionBoundary('Benachrichtigungen', <NotificationsPage />);
       case "profile-edit":
-        return <EditProfile />;
+        return withSectionBoundary('Profil bearbeiten', <EditProfile />);
       default:
         return <NotFound />;
     }

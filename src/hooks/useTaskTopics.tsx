@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { debugConsole } from "@/utils/debugConsole";
+import { handleAppError } from "@/utils/errorHandler";
 
 export const useTaskTopics = (taskId: string | undefined) => {
   const [assignedTopics, setAssignedTopics] = useState<string[]>([]);
@@ -19,7 +20,7 @@ export const useTaskTopics = (taskId: string | undefined) => {
       if (error) throw error;
       setAssignedTopics(data?.map(t => t.topic_id) || []);
     } catch (error) {
-      debugConsole.error('Error fetching task topics:', error);
+      handleAppError(error, { context: 'useTaskTopics.fetch' });
     } finally {
       setLoading(false);
     }
@@ -41,7 +42,7 @@ export const useTaskTopics = (taskId: string | undefined) => {
       setAssignedTopics(prev => [...prev, topicId]);
       return true;
     } catch (error) {
-      debugConsole.error('Error assigning topic:', error);
+      handleAppError(error, { context: 'useTaskTopics.assign' });
       return false;
     }
   };
@@ -60,7 +61,7 @@ export const useTaskTopics = (taskId: string | undefined) => {
       setAssignedTopics(prev => prev.filter(id => id !== topicId));
       return true;
     } catch (error) {
-      debugConsole.error('Error removing topic:', error);
+      handleAppError(error, { context: 'useTaskTopics.remove' });
       return false;
     }
   };
@@ -87,7 +88,7 @@ export const useTaskTopics = (taskId: string | undefined) => {
       setAssignedTopics(topicIds);
       return true;
     } catch (error) {
-      debugConsole.error('Error setting topics:', error);
+      handleAppError(error, { context: 'useTaskTopics.setTopics' });
       return false;
     }
   };
@@ -115,7 +116,7 @@ export const useCreateTaskWithTopics = () => {
       if (error) throw error;
       return true;
     } catch (error) {
-      debugConsole.error('Error saving task topics:', error);
+      handleAppError(error, { context: 'useCreateTaskWithTopics.save' });
       return false;
     }
   };
