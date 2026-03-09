@@ -28,7 +28,7 @@ export const ReceivedMessageCard: React.FC<{
   message: Message;
   isRead: boolean;
   onMarkRead: (id: string, isForAll: boolean) => void;
-}> = ({ message, isRead, onMarkRead }) => (
+}> = React.memo(({ message, isRead, onMarkRead }) => (
   <div className={`p-3 border rounded-lg ${isRead ? 'bg-muted/30' : 'bg-background border-primary/20'}`}>
     <div className="flex items-start justify-between">
       <div className="flex-1">
