@@ -119,9 +119,8 @@ serve(async (req) => {
       headers: { ...CORS_HEADERS, "Content-Type": "application/json" },
     });
   } catch (error) {
-    const message = error instanceof Error ? error.message : "Unknown webhook error";
-    console.error("automation-webhook error:", message);
-    return new Response(JSON.stringify({ error: message }), {
+    console.error("automation-webhook error:", error);
+    return new Response(JSON.stringify({ error: "Internal server error" }), {
       status: 500,
       headers: { ...CORS_HEADERS, "Content-Type": "application/json" },
     });
