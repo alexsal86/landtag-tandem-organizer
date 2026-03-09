@@ -71,6 +71,7 @@ const Index = () => {
   };
   
   const [activeSection, setActiveSection] = useState(() => getActiveSectionFromPath(location.pathname));
+  const isCalendar = activeSection === "calendar";
   const isCreateContactRoute = activeSection === "contacts" && new URLSearchParams(location.search).get("action") === "new";
   
   // Dialog state management
@@ -248,7 +249,7 @@ const Index = () => {
             onSectionChange={handleSectionChange}
           />
         </div>
-        <div className="flex flex-col flex-1 overflow-y-auto h-screen">
+        <div className={`flex flex-col flex-1 h-screen ${isCalendar ? "overflow-hidden min-h-0" : "overflow-y-auto"}`}>
           {/* Header und SubNavigation fixiert am oberen Rand */}
           <div className="hidden md:block sticky top-0 z-40">
             <AppHeader />
@@ -272,7 +273,7 @@ const Index = () => {
               />
             ) : null}
           </div>
-          <main id="main-content" className="flex-1 bg-gradient-to-b from-background to-muted/20" tabIndex={-1}>
+          <main id="main-content" className="flex-1 min-h-0 bg-gradient-to-b from-background to-muted/20" tabIndex={-1}>
             <ErrorBoundary>
               <Suspense fallback={
                 <div className="flex items-center justify-center h-64">
