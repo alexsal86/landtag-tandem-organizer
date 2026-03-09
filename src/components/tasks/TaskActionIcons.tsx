@@ -145,6 +145,7 @@ export function TaskActionIcons({
               <Button
                 variant="ghost"
                 size="icon"
+                aria-label="Dokumente"
                 className={cn(
                   "h-6 w-6 hover:bg-muted/80 rounded-full",
                   hasDocuments && "text-amber-600"
