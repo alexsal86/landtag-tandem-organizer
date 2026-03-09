@@ -509,15 +509,9 @@ export function CaseItemDetailPanel({
             </div>
           </div>
 
-          <div className="grid grid-cols-1 gap-3">
-            <div className="space-y-1.5">
-              <Label className="font-bold" htmlFor="detail-received">Eingangsdatum</Label>
-              <Input id="detail-received" type="date" value={editableCaseItem.sourceReceivedAt} onChange={(event) => onUpdate({ sourceReceivedAt: event.target.value })} />
-            </div>
-            <div className="space-y-1.5">
-              <Label className="font-bold" htmlFor="detail-due">Fällig am</Label>
-              <Input id="detail-due" type="date" value={editableCaseItem.dueAt} onChange={(event) => onUpdate({ dueAt: event.target.value })} />
-            </div>
+          <div className="space-y-1.5">
+            <Label className="font-bold" htmlFor="detail-due">Fällig am</Label>
+            <Input id="detail-due" type="date" value={editableCaseItem.dueAt} onChange={(event) => onUpdate({ dueAt: event.target.value })} />
           </div>
 
           <Collapsible open={showMetaFields} onOpenChange={setShowMetaFields} className="rounded-md border bg-background">
