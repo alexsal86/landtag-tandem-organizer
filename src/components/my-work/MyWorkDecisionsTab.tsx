@@ -18,13 +18,16 @@ import { useDecisionRefreshScheduler } from "@/hooks/useDecisionRefreshScheduler
 import { useMyWorkDecisionsData } from "@/hooks/useMyWorkDecisionsData";
 import { useMyWorkDecisionsSidebarData } from "@/hooks/useMyWorkDecisionsSidebarData";
 import { useMyWorkSettings, DecisionTabId } from "@/hooks/useMyWorkSettings";
+import { useTenantUsers } from "@/hooks/useTenantUsers";
 import { TaskDecisionDetails } from "@/components/task-decisions/TaskDecisionDetails";
 import { StandaloneDecisionCreator } from "@/components/task-decisions/StandaloneDecisionCreator";
 import { DecisionEditDialog } from "@/components/task-decisions/DecisionEditDialog";
 import { DecisionComments } from "@/components/task-decisions/DecisionComments";
 import { DefaultParticipantsDialog } from "@/components/task-decisions/DefaultParticipantsDialog";
+import { CaseItemMeetingSelector } from "@/components/my-work/CaseItemMeetingSelector";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { MyWorkDecisionCard } from "./decisions/MyWorkDecisionCard";
+import { DecisionContextMenu } from "./decisions/DecisionContextMenu";
 import { MyWorkDecisionSidebar } from "./decisions/MyWorkDecisionSidebar";
 import { MyWorkDecision, getResponseSummary } from "./decisions/types";
 
@@ -52,6 +55,10 @@ export function MyWorkDecisionsTab() {
   const [commentsDecisionTitle, setCommentsDecisionTitle] = useState("");
   const [defaultParticipantsOpen, setDefaultParticipantsOpen] = useState(false);
   const latestLoadRequestRef = useRef(0);
+  const [meetingSelectorOpen, setMeetingSelectorOpen] = useState(false);
+  const [meetingSelectorDecisionId, setMeetingSelectorDecisionId] = useState<string | null>(null);
+
+  const { users: tenantUsers } = useTenantUsers();
 
   const { decisions, setDecisions, loading, loadDecisions } = useMyWorkDecisionsData(user?.id);
   const { isHighlighted, highlightRef } = useNotificationHighlight();
@@ -297,6 +304,121 @@ export function MyWorkDecisionsTab() {
     }
   };
 
+  // Context menu handlers
+  const handleUpdateDeadline = async (decisionId: string, date: string | null) => {
+    try {
+      const { error } = await supabase
+        .from('task_decisions')
+        .update({ response_deadline: date } as any)
+        .eq('id', decisionId);
+      if (error) throw error;
+      setDecisions(prev => prev.map(d => d.id === decisionId ? { ...d, response_deadline: date } : d));
+      toast({ title: "Gespeichert", description: date ? "Antwortfrist wurde geändert." : "Antwortfrist wurde entfernt." });
+    } catch (error) {
+      debugConsole.error('Error updating deadline:', error);
+      toast({ title: "Fehler", description: "Frist konnte nicht geändert werden.", variant: "destructive" });
+    }
+  };
+
+  const handleTogglePublic = async (decisionId: string, currentValue: boolean) => {
+    const newValue = !currentValue;
+    try {
+      const { error } = await supabase
+        .from('task_decisions')
+        .update({ visible_to_all: newValue } as any)
+        .eq('id', decisionId);
+      if (error) throw error;
+      setDecisions(prev => prev.map(d => d.id === decisionId ? { ...d, visible_to_all: newValue } : d));
+      toast({ title: newValue ? "Öffentlich" : "Nicht öffentlich", description: newValue ? "Entscheidung ist jetzt öffentlich." : "Entscheidung ist jetzt nicht mehr öffentlich." });
+    } catch (error) {
+      debugConsole.error('Error toggling public:', error);
+      toast({ title: "Fehler", description: "Sichtbarkeit konnte nicht geändert werden.", variant: "destructive" });
+    }
+  };
+
+  const handleAddParticipants = async (decisionId: string, userIds: string[]) => {
+    if (userIds.length === 0) return;
+    try {
+      const rows = userIds.map(uid => ({ decision_id: decisionId, user_id: uid }));
+      const { error } = await supabase.from('task_decision_participants').insert(rows);
+      if (error) throw error;
+      toast({ title: "Hinzugefügt", description: `${userIds.length} Teilnehmer hinzugefügt.` });
+      scheduleDecisionsRefresh(0);
+    } catch (error) {
+      debugConsole.error('Error adding participants:', error);
+      toast({ title: "Fehler", description: "Teilnehmer konnten nicht hinzugefügt werden.", variant: "destructive" });
+    }
+  };
+
+  const handleRemoveParticipant = async (decisionId: string, userId: string) => {
+    try {
+      const { error } = await supabase
+        .from('task_decision_participants')
+        .delete()
+        .eq('decision_id', decisionId)
+        .eq('user_id', userId);
+      if (error) throw error;
+      toast({ title: "Entfernt", description: "Teilnehmer wurde entfernt." });
+      scheduleDecisionsRefresh(0);
+    } catch (error) {
+      debugConsole.error('Error removing participant:', error);
+      toast({ title: "Fehler", description: "Teilnehmer konnte nicht entfernt werden.", variant: "destructive" });
+    }
+  };
+
+  const handleTogglePriority = async (decisionId: string, currentPriority: number) => {
+    const newPriority = currentPriority > 0 ? 0 : 1;
+    try {
+      const { error } = await supabase
+        .from('task_decisions')
+        .update({ priority: newPriority } as any)
+        .eq('id', decisionId);
+      if (error) throw error;
+      setDecisions(prev => prev.map(d => d.id === decisionId ? { ...d, priority: newPriority } : d));
+      toast({ title: newPriority > 0 ? "Prioritär" : "Priorität entfernt" });
+    } catch (error) {
+      debugConsole.error('Error toggling priority:', error);
+      toast({ title: "Fehler", description: "Priorität konnte nicht geändert werden.", variant: "destructive" });
+    }
+  };
+
+  const handleAddToJourFixe = (decisionId: string) => {
+    setMeetingSelectorDecisionId(decisionId);
+    setMeetingSelectorOpen(true);
+  };
+
+  const handleMeetingSelected = async (meetingId: string) => {
+    if (!meetingSelectorDecisionId) return;
+    try {
+      const { error } = await supabase
+        .from('task_decisions')
+        .update({ meeting_id: meetingId, pending_for_jour_fixe: false } as any)
+        .eq('id', meetingSelectorDecisionId);
+      if (error) throw error;
+      toast({ title: "Zugeordnet", description: "Entscheidung wurde dem Jour Fixe zugeordnet." });
+    } catch (error) {
+      debugConsole.error('Error assigning to meeting:', error);
+      toast({ title: "Fehler", description: "Zuordnung fehlgeschlagen.", variant: "destructive" });
+    }
+    setMeetingSelectorDecisionId(null);
+  };
+
+  const handleMarkForNextJourFixe = async () => {
+    if (!meetingSelectorDecisionId) return;
+    try {
+      const { error } = await supabase
+        .from('task_decisions')
+        .update({ pending_for_jour_fixe: true, meeting_id: null } as any)
+        .eq('id', meetingSelectorDecisionId);
+      if (error) throw error;
+      toast({ title: "Vorgemerkt", description: "Entscheidung wurde für den nächsten Jour Fixe vorgemerkt." });
+    } catch (error) {
+      debugConsole.error('Error marking for jour fixe:', error);
+      toast({ title: "Fehler", description: "Vormerkung fehlgeschlagen.", variant: "destructive" });
+    }
+    setMeetingSelectorDecisionId(null);
+  };
+
   const visibleDecisionTabs = decisionTabOrder.filter((tab) => !hiddenDecisionTabs.includes(tab));
 
   useEffect(() => {
@@ -388,25 +510,41 @@ export function MyWorkDecisionsTab() {
                 ) : (
                   <div className="space-y-2">
                     {filteredDecisions.map(decision => (
-                      <MyWorkDecisionCard
+                      <DecisionContextMenu
                         key={decision.id}
                         decision={decision}
-                        isHighlighted={isHighlighted(decision.id)}
-                        highlightRef={highlightRef(decision.id)}
-                        onOpenDetails={handleOpenDetails}
-                        onEdit={setEditingDecisionId}
+                        isCreator={decision.isCreator}
+                        currentUserId={user?.id || ""}
+                        tenantUsers={tenantUsers}
+                        existingParticipantIds={(decision.participants || []).map(p => p.user_id)}
+                        onUpdateDeadline={handleUpdateDeadline}
+                        onTogglePublic={handleTogglePublic}
+                        onAddParticipants={handleAddParticipants}
+                        onRemoveParticipant={handleRemoveParticipant}
                         onArchive={archiveDecision}
                         onDelete={setDeletingDecisionId}
-                        onCreateTask={createTaskFromDecision}
-                        onResponseSubmitted={() => scheduleDecisionsRefresh(0)}
-                        onOpenComments={(id, title) => { setCommentsDecisionId(id); setCommentsDecisionTitle(title); }}
-                        onReply={sendActivityReply}
-                        commentCount={getCommentCount(decision.id)}
-                        creatingTaskId={creatingTaskId}
-                        archivingDecisionId={archivingDecisionId}
-                        deletingDecisionId={deletingDecisionId}
-                        currentUserId={user?.id || ""}
-                      />
+                        onAddToJourFixe={handleAddToJourFixe}
+                        onTogglePriority={handleTogglePriority}
+                      >
+                        <MyWorkDecisionCard
+                          decision={decision}
+                          isHighlighted={isHighlighted(decision.id)}
+                          highlightRef={highlightRef(decision.id)}
+                          onOpenDetails={handleOpenDetails}
+                          onEdit={setEditingDecisionId}
+                          onArchive={archiveDecision}
+                          onDelete={setDeletingDecisionId}
+                          onCreateTask={createTaskFromDecision}
+                          onResponseSubmitted={() => scheduleDecisionsRefresh(0)}
+                          onOpenComments={(id, title) => { setCommentsDecisionId(id); setCommentsDecisionTitle(title); }}
+                          onReply={sendActivityReply}
+                          commentCount={getCommentCount(decision.id)}
+                          creatingTaskId={creatingTaskId}
+                          archivingDecisionId={archivingDecisionId}
+                          deletingDecisionId={deletingDecisionId}
+                          currentUserId={user?.id || ""}
+                        />
+                      </DecisionContextMenu>
                     ))}
                   </div>
                 )}
@@ -486,6 +624,16 @@ export function MyWorkDecisionsTab() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      <CaseItemMeetingSelector
+        open={meetingSelectorOpen}
+        onOpenChange={(open) => {
+          setMeetingSelectorOpen(open);
+          if (!open) setMeetingSelectorDecisionId(null);
+        }}
+        onSelect={handleMeetingSelected}
+        onMarkForNextJourFixe={handleMarkForNextJourFixe}
+      />
     </>
   );
 }
