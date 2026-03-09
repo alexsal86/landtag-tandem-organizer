@@ -9,6 +9,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import { Switch } from "@/components/ui/switch";
 import { supabase } from "@/integrations/supabase/client";
 import { CaseItemFormData, useCaseItems } from "@/features/cases/items/hooks";
 import { useAuth } from "@/hooks/useAuth";
@@ -64,6 +65,7 @@ export function CaseItemCreateDialog({ open, onOpenChange, onCreated, createCase
   const [priority, setPriority] = useState<NonNullable<CaseItemFormData["priority"]>>("medium");
   const [selectedAssigneeIds, setSelectedAssigneeIds] = useState<string[]>(defaultAssigneeId ? [defaultAssigneeId] : []);
   const [category, setCategory] = useState("");
+  const [isPublic, setIsPublic] = useState(false);
   const [sourceReceivedDate, setSourceReceivedDate] = useState("");
   const [dueDate, setDueDate] = useState("");
   const [submitting, setSubmitting] = useState(false);
@@ -88,6 +90,7 @@ export function CaseItemCreateDialog({ open, onOpenChange, onCreated, createCase
       setSearchResults([]);
       setShowSearchResults(false);
       setSelectedAssigneeIds(defaultAssigneeId ? [defaultAssigneeId] : []);
+      setIsPublic(false);
       setDefaultDates();
     }
   }, [defaultAssigneeId, open]);
@@ -153,6 +156,7 @@ export function CaseItemCreateDialog({ open, onOpenChange, onCreated, createCase
       contact_id: selectedContactId,
       reporter_name: contactName.trim() || null,
       reporter_contact: getReporterContact(),
+      is_public: isPublic,
       intake_payload: {
         category,
         assignee_ids: selectedAssigneeIds,
@@ -187,6 +191,7 @@ export function CaseItemCreateDialog({ open, onOpenChange, onCreated, createCase
     setPriority("medium");
     setSelectedAssigneeIds(defaultAssigneeId ? [defaultAssigneeId] : []);
     setCategory("");
+    setIsPublic(false);
     setDefaultDates();
     onOpenChange(false);
   };
@@ -206,6 +211,14 @@ export function CaseItemCreateDialog({ open, onOpenChange, onCreated, createCase
           )}
 
           {submitError && <p className="text-sm text-destructive">{submitError}</p>}
+
+          <div className="flex items-center justify-between rounded-md border p-3">
+            <div className="space-y-0.5">
+              <Label htmlFor="case-item-is-public" className="font-bold">Öffentlich sichtbar</Label>
+              <p className="text-xs text-muted-foreground">Alle Mitglieder des Mandanten dürfen den Vorgang lesen.</p>
+            </div>
+            <Switch id="case-item-is-public" checked={isPublic} onCheckedChange={setIsPublic} />
+          </div>
 
           <div className="space-y-2">
             <Label className="font-bold">Kanal</Label>

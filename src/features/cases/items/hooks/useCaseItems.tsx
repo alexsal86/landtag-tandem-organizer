@@ -16,6 +16,7 @@ export interface CaseItem {
   owner_user_id: string | null;
   contact_id: string | null;
   due_at: string | null;
+  is_public: boolean;
   follow_up_at: string | null;
   subject: string | null;
   summary: string | null;
@@ -69,6 +70,7 @@ export interface CaseItemFormData {
   resolution_summary?: string | null;
   case_file_id?: string | null;
   case_scale?: string | null;
+  is_public?: boolean;
 }
 
 export interface CaseItemInteractionFormData {
@@ -98,7 +100,7 @@ export const useCaseItems = () => {
       setLoading(true);
       const { data, error } = await supabase
         .from("case_items")
-        .select("id, user_id, tenant_id, source_channel, status, priority, owner_user_id, contact_id, due_at, follow_up_at, subject, summary, source_received_at, source_reference, reporter_name, reporter_contact, intake_payload, confidentiality_level, contains_personal_data, resolution_summary, case_file_id, case_scale, created_at, updated_at")
+        .select("id, user_id, tenant_id, source_channel, status, priority, owner_user_id, contact_id, due_at, is_public, follow_up_at, subject, summary, source_received_at, source_reference, reporter_name, reporter_contact, intake_payload, confidentiality_level, contains_personal_data, resolution_summary, case_file_id, case_scale, created_at, updated_at")
         .eq("tenant_id", currentTenant.id)
         .order("updated_at", { ascending: false });
 
@@ -135,6 +137,7 @@ export const useCaseItems = () => {
         summary: data.summary ?? null,
         resolution_summary: data.resolution_summary ?? null,
         due_at: data.due_at ?? null,
+        is_public: data.is_public ?? false,
         follow_up_at: data.follow_up_at ?? null,
         owner_user_id: data.owner_user_id ?? null,
         contact_id: data.contact_id ?? null,

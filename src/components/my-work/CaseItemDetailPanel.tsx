@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { format } from "date-fns";
 import { de } from "date-fns/locale";
-import { AlertCircle, Check, CheckCircle2, ChevronDown, Clock, ExternalLink, Gavel, Loader2, Mail, MessageSquare, Phone, Search, Trash2, Users, Vote } from "lucide-react";
+import { AlertCircle, Check, CheckCircle2, ChevronDown, Clock, ExternalLink, Gavel, Globe, Loader2, Mail, MessageSquare, Phone, Search, Trash2, Users, Vote } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useTenant } from "@/hooks/useTenant";
 import { Button } from "@/components/ui/button";
@@ -11,6 +11,7 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import { Switch } from "@/components/ui/switch";
 import { HoverCard, HoverCardContent, HoverCardTrigger } from "@/components/ui/hover-card";
 import { cn } from "@/lib/utils";
 import SimpleRichTextEditor from "@/components/ui/SimpleRichTextEditor";
@@ -564,6 +565,17 @@ export function CaseItemDetailPanel({
                   </Select>
                 </div>
               </div>
+              <div className="space-y-1.5">
+                <Label className="font-bold">Sichtbarkeit</Label>
+                <div className="flex items-center justify-between rounded-md border p-2">
+                  <div className="flex items-center gap-2 text-sm">
+                    <Globe className="h-4 w-4 text-emerald-600" />
+                    <span>{editableCaseItem.isPublic ? "Öffentlich im Mandanten" : "Intern"}</span>
+                  </div>
+                  <Switch checked={editableCaseItem.isPublic} onCheckedChange={(checked) => onUpdate({ isPublic: checked })} />
+                </div>
+              </div>
+
               <div className="space-y-1.5">
                 <Label className="font-bold">Bearbeiter</Label>
                 <div className="flex flex-wrap gap-2 rounded-md border p-2">
