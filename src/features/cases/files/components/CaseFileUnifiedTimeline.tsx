@@ -39,7 +39,7 @@ import { supabase } from "@/integrations/supabase/client";
 
 interface UnifiedTimelineItem {
   id: string;
-  category: "timeline" | "note" | "document" | "task" | "appointment" | "letter";
+  category: "timeline" | "note" | "document" | "task" | "appointment" | "letter" | "interaction";
   event_date: string;
   title: string;
   description: string | null;
