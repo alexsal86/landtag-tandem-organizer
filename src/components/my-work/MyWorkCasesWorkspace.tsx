@@ -438,12 +438,14 @@ export function MyWorkCasesWorkspace() {
 
   const sortedCaseItems = useMemo(() => {
     const priorityRank: Record<string, number> = { low: 1, medium: 2, high: 3, urgent: 4 };
-    const directionFactor = itemSort.direction === "asc" ? 1 : -1;
+    const primaryDirectionFactor = itemSort.primary.direction === "asc" ? 1 : -1;
+    const secondaryDirectionFactor = itemSort.secondary.direction === "asc" ? 1 : -1;
 
     return [...filteredCaseItems].sort((a, b) => {
       const aAssignee = getAssigneeIds(a).map((id) => teamUsers.find((member) => member.id === id)?.name || "").join(", ");
       const bAssignee = getAssigneeIds(b).map((id) => teamUsers.find((member) => member.id === id)?.name || "").join(", ");
 
+      // Primary sort
       const aValue: string | number = {
         channel: sourceChannelMeta[a.source_channel || ""]?.label || a.source_channel || "",
         subject: getItemSubject(a),
@@ -454,7 +456,7 @@ export function MyWorkCasesWorkspace() {
         category: getCategory(a),
         priority: priorityRank[a.priority || ""] || 0,
         assignee: aAssignee,
-      }[itemSort.key];
+      }[itemSort.primary.key];
 
       const bValue: string | number = {
         channel: sourceChannelMeta[b.source_channel || ""]?.label || b.source_channel || "",
@@ -466,13 +468,21 @@ export function MyWorkCasesWorkspace() {
         category: getCategory(b),
         priority: priorityRank[b.priority || ""] || 0,
         assignee: bAssignee,
-      }[itemSort.key];
+      }[itemSort.primary.key];
 
+      let primaryResult = 0;
       if (typeof aValue === "number" && typeof bValue === "number") {
-        return (aValue - bValue) * directionFactor;
+        primaryResult = (aValue - bValue) * primaryDirectionFactor;
+      } else {
+        primaryResult = String(aValue).localeCompare(String(bValue), "de", { sensitivity: "base" }) * primaryDirectionFactor;
       }
 
-      return String(aValue).localeCompare(String(bValue), "de", { sensitivity: "base" }) * directionFactor;
+      // If primary values are equal and secondary sort is enabled, sort by assignee
+      if (primaryResult === 0 && itemSort.secondary.enabled) {
+        return aAssignee.localeCompare(bAssignee, "de", { sensitivity: "base" }) * secondaryDirectionFactor;
+      }
+
+      return primaryResult;
     });
   }, [caseFilesById, filteredCaseItems, getAssigneeIds, getCategory, getItemDescription, getItemSubject, itemSort, teamUsers]);
 
