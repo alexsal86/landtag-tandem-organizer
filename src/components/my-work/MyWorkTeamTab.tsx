@@ -382,8 +382,7 @@ export function MyWorkTeamTab() {
             );
           })
         )}
-        </div>
       </div>
-    </ScrollArea>
+    </div>
   );
 }
