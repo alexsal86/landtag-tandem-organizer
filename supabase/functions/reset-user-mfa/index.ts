@@ -110,7 +110,7 @@ serve(async (req) => {
     console.error('Error resetting MFA:', error);
     return new Response(
       JSON.stringify({
-        error: error instanceof Error ? error.message : String(error)
+        error: 'Internal server error'
       }),
       {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
