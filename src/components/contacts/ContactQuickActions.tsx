@@ -113,6 +113,7 @@ export function ContactQuickActions({
               <Button
                 size="sm"
                 variant="ghost"
+                aria-label="Zu Verteiler hinzufügen"
                 onClick={(e) => {
                   e.stopPropagation();
                   onAddToDistribution(contact.id);
