@@ -103,11 +103,14 @@ const Index = () => {
     setActiveSection(newSection);
   }, [location.pathname]);
 
-  // Handle navigation to sections
-  const handleSectionChange = (section: string) => {
+  // Handle navigation to sections – wrapped in startTransition for non-blocking rendering
+  const handleSectionChange = useCallback((section: string) => {
+    prefetchRoute(section);
     const path = section === 'dashboard' ? '/' : `/${section}`;
-    navigate(path);
-  };
+    startTransition(() => {
+      navigate(path);
+    });
+  }, [navigate]);
   
   // Handle dialog close
   const handleCreateAppointmentDialogChange = (open: boolean) => {

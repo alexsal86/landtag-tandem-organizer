@@ -17,26 +17,27 @@ interface SubNavigationProps {
   onItemChange: (id: string) => void;
 }
 
-export function SubNavigation({ items, activeItem, onItemChange }: SubNavigationProps) {
+export const SubNavigation = memo(function SubNavigation({ items, activeItem, onItemChange }: SubNavigationProps) {
   const { navigationCounts } = useNavigationNotifications();
+
+  const handleMouseEnter = useCallback((id: string) => {
+    prefetchRoute(id);
+  }, []);
   
   if (items.length <= 1) return null;
-
-  const getBadgeCount = (itemId: string): number => {
-    return navigationCounts[itemId] || 0;
-  };
 
   return (
     <div className="h-10 border-b border-border bg-background flex items-center px-4 gap-1">
       {items.map((item) => {
         const Icon = item.icon;
         const isActive = activeItem === item.id;
-        const badgeCount = getBadgeCount(item.id);
+        const badgeCount = navigationCounts[item.id] || 0;
         
         return (
           <button
             key={item.id}
             onClick={() => onItemChange(item.id)}
+            onMouseEnter={() => handleMouseEnter(item.id)}
             className={cn(
               "px-3 py-1.5 text-sm rounded-md transition-colors flex items-center gap-1.5",
               isActive
@@ -56,4 +57,4 @@ export function SubNavigation({ items, activeItem, onItemChange }: SubNavigation
       })}
     </div>
   );
-}
+});
