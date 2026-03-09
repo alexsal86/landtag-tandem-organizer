@@ -97,6 +97,7 @@ export function TaskActionIcons({
               <Button
                 variant="ghost"
                 size="icon"
+                aria-label="Kommentare"
                 className={cn(
                   "h-6 w-6 hover:bg-muted/80 rounded-full relative",
                   (hasComments || commentCount > 0) && "text-blue-600"
