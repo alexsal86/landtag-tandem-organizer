@@ -487,12 +487,34 @@ export function MyWorkCasesWorkspace() {
   }, [caseFilesById, filteredCaseItems, getAssigneeIds, getCategory, getItemDescription, getItemSubject, itemSort, teamUsers]);
 
   const toggleSort = useCallback((key: CaseItemSortKey, direction: SortDirection) => {
-    setItemSort((prev) => (prev.key === key && prev.direction === direction ? prev : { key, direction }));
+    setItemSort((prev) => 
+      prev.primary.key === key && prev.primary.direction === direction 
+        ? prev 
+        : { ...prev, primary: { key, direction } }
+    );
+  }, []);
+
+  const toggleSecondarySort = useCallback(() => {
+    setItemSort((prev) => ({
+      ...prev,
+      secondary: { ...prev.secondary, enabled: !prev.secondary.enabled },
+    }));
+  }, []);
+
+  const toggleSecondaryDirection = useCallback(() => {
+    setItemSort((prev) => ({
+      ...prev,
+      secondary: {
+        ...prev.secondary,
+        direction: prev.secondary.direction === "asc" ? "desc" : "asc",
+      },
+    }));
   }, []);
 
   const isSortActive = useCallback(
-    (key: CaseItemSortKey, direction: SortDirection) => itemSort.key === key && itemSort.direction === direction,
-    [itemSort.direction, itemSort.key],
+    (key: CaseItemSortKey, direction: SortDirection) => 
+      itemSort.primary.key === key && itemSort.primary.direction === direction,
+    [itemSort.primary.direction, itemSort.primary.key],
   );
 
   const sortButtonClass = useCallback(
