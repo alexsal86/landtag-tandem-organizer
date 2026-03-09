@@ -145,6 +145,7 @@ export function NoteCard({
               <div className="flex items-center gap-1.5 group-hover:hidden">
                 {note.task_id && <div className="w-1.5 h-1.5 bg-blue-500" title="Aufgabe" />}
                 {note.decision_id && <div className="w-1.5 h-1.5 bg-purple-500" title="Entscheidung" />}
+                {note.case_item_id && <div className="w-1.5 h-1.5 bg-teal-500" title="Vorgang" />}
                 {note.meeting_id && <div className="w-1.5 h-1.5 bg-emerald-500" title="Jour Fixe" />}
                 {hasShared && <div className="w-1.5 h-1.5 bg-violet-500" title={note.is_shared ? `Geteilt von ${note.owner?.display_name || 'Unbekannt'}` : "Geteilt"} />}
               </div>
