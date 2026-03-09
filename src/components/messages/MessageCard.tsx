@@ -28,7 +28,7 @@ export const ReceivedMessageCard: React.FC<{
   message: Message;
   isRead: boolean;
   onMarkRead: (id: string, isForAll: boolean) => void;
-}> = ({ message, isRead, onMarkRead }) => (
+}> = React.memo(({ message, isRead, onMarkRead }) => (
   <div className={`p-3 border rounded-lg ${isRead ? 'bg-muted/30' : 'bg-background border-primary/20'}`}>
     <div className="flex items-start justify-between">
       <div className="flex-1">
@@ -52,9 +52,11 @@ export const ReceivedMessageCard: React.FC<{
       )}
     </div>
   </div>
-);
+));
 
-export const SentMessageCard: React.FC<{ message: Message; userId?: string }> = ({ message, userId }) => {
+ReceivedMessageCard.displayName = 'ReceivedMessageCard';
+
+export const SentMessageCard: React.FC<{ message: Message; userId?: string }> = React.memo(({ message, userId }) => {
   const getStatus = () => {
     if (message.is_for_all_users) return { total: 0, read: message.confirmations?.length || 0 };
     const total = message.recipients?.length || 0;
@@ -113,9 +115,11 @@ export const SentMessageCard: React.FC<{ message: Message; userId?: string }> = 
       </div>
     </div>
   );
-};
+});
 
-export const ArchivedMessageCard: React.FC<{ message: Message; userId?: string }> = ({ message, userId }) => (
+SentMessageCard.displayName = 'SentMessageCard';
+
+export const ArchivedMessageCard: React.FC<{ message: Message; userId?: string }> = React.memo(({ message, userId }) => (
   <div className="p-3 border rounded-lg bg-muted/30">
     <div className="flex items-start justify-between">
       <div className="flex-1">
@@ -161,7 +165,9 @@ export const ArchivedMessageCard: React.FC<{ message: Message; userId?: string }
       </div>
     </div>
   </div>
-);
+));
+
+ArchivedMessageCard.displayName = 'ArchivedMessageCard';
 
 export const PaginationControls: React.FC<{
   currentPage: number;

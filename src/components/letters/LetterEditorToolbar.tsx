@@ -37,7 +37,7 @@ interface LetterEditorToolbarProps {
   onAutoSaveSchedule: () => void;
 }
 
-export const LetterEditorToolbar: React.FC<LetterEditorToolbarProps> = ({
+export const LetterEditorToolbar: React.FC<LetterEditorToolbarProps> = React.memo(({
   letter, editedLetter, setEditedLetter, currentTemplate, canEdit,
   saving, lastSaved, hasUnsavedChanges, activeUsers,
   showDINPreview, setShowDINPreview, showBriefDetails, setShowBriefDetails,
@@ -224,4 +224,6 @@ export const LetterEditorToolbar: React.FC<LetterEditorToolbarProps> = ({
       </div>
     </div>
   );
-};
+});
+
+LetterEditorToolbar.displayName = 'LetterEditorToolbar';

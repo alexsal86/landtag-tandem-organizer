@@ -78,7 +78,7 @@ const categoryLabels: Record<string, string> = {
   citizen: 'Bürger', colleague: 'Kollege', business: 'Wirtschaft', media: 'Medien', lobbyist: 'Lobbyist',
 };
 
-export const ContactInfoTab: React.FC<ContactInfoTabProps> = ({ contact, allTags }) => {
+export const ContactInfoTab: React.FC<ContactInfoTabProps> = React.memo(({ contact, allTags }) => {
   return (
     <div className="space-y-4">
       {/* Classification */}
@@ -216,4 +216,6 @@ export const ContactInfoTab: React.FC<ContactInfoTabProps> = ({ contact, allTags
       {contact.last_contact && (<Card><CardContent className="p-4"><h3 className="font-semibold mb-2">Letzter Kontakt</h3><p className="text-sm text-muted-foreground">{contact.last_contact}</p></CardContent></Card>)}
     </div>
   );
-};
+});
+
+ContactInfoTab.displayName = 'ContactInfoTab';

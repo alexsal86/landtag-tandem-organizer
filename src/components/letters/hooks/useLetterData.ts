@@ -1,4 +1,5 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useCallback } from 'react';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import type { Contact, LetterTemplate, LetterCollaborator, Letter } from '../types';
 import { debugConsole } from '@/utils/debugConsole';
@@ -19,140 +20,164 @@ interface UseLetterDataOptions {
   letterId?: string;
 }
 
+const STALE_TIME = 2 * 60 * 1000; // 2 minutes
+
+async function fetchContacts(tenantId: string): Promise<Contact[]> {
+  const { data, error } = await supabase
+    .from('contacts')
+    .select('id, name, organization, gender, last_name, private_street, private_house_number, private_postal_code, private_city, private_country, business_street, business_house_number, business_postal_code, business_city, business_country')
+    .eq('tenant_id', tenantId)
+    .order('name');
+  if (error) throw error;
+  return data || [];
+}
+
+async function fetchTemplates(tenantId: string): Promise<LetterTemplate[]> {
+  const { data, error } = await supabase
+    .from('letter_templates')
+    .select('*')
+    .eq('tenant_id', tenantId)
+    .eq('is_active', true)
+    .order('is_default', { ascending: false })
+    .order('name');
+  if (error) throw error;
+  return data || [];
+}
+
+async function fetchSenderInfos(tenantId: string): Promise<SenderInformation[]> {
+  const { data, error } = await supabase
+    .from('sender_information')
+    .select('*')
+    .eq('tenant_id', tenantId)
+    .eq('is_active', true)
+    .order('is_default', { ascending: false })
+    .order('name');
+  if (error) throw error;
+  return data || [];
+}
+
+async function fetchInformationBlocks(tenantId: string): Promise<InformationBlock[]> {
+  const { data, error } = await supabase
+    .from('information_blocks')
+    .select('*')
+    .eq('tenant_id', tenantId)
+    .eq('is_active', true)
+    .order('is_default', { ascending: false })
+    .order('name');
+  if (error) throw error;
+  return data || [];
+}
+
+async function fetchAttachments(letterId: string): Promise<LetterAttachment[]> {
+  const { data, error } = await supabase
+    .from('letter_attachments')
+    .select('*')
+    .eq('letter_id', letterId)
+    .order('created_at');
+  if (error) throw error;
+  return data || [];
+}
+
+async function fetchComments(letterId: string): Promise<LetterComment[]> {
+  const { data, error } = await supabase
+    .from('letter_comments')
+    .select('id, content, text_position, text_length, resolved, comment_type, created_at, user_id')
+    .eq('letter_id', letterId)
+    .order('created_at');
+  if (error) throw error;
+  return (data || []) as LetterComment[];
+}
+
+async function fetchCollaborators(letterId: string): Promise<LetterCollaborator[]> {
+  const { data, error } = await supabase
+    .from('letter_collaborators')
+    .select('id, user_id, created_at')
+    .eq('letter_id', letterId);
+  if (error) throw error;
+
+  if (data && data.length > 0) {
+    const userIds = data.map(c => c.user_id);
+    const { data: profiles } = await supabase
+      .from('profiles')
+      .select('user_id, display_name')
+      .in('user_id', userIds);
+
+    return data.map(item => ({
+      ...item,
+      role: 'reviewer',
+      profiles: profiles?.find(p => p.user_id === item.user_id) || { display_name: 'Unbekannt' },
+    }));
+  }
+  return [];
+}
+
 export function useLetterData({ isOpen, tenantId, letterId }: UseLetterDataOptions) {
-  const [contacts, setContacts] = useState<Contact[]>([]);
-  const [templates, setTemplates] = useState<LetterTemplate[]>([]);
-  const [senderInfos, setSenderInfos] = useState<SenderInformation[]>([]);
-  const [informationBlocks, setInformationBlocks] = useState<InformationBlock[]>([]);
-  const [attachments, setAttachments] = useState<LetterAttachment[]>([]);
-  const [collaborators, setCollaborators] = useState<LetterCollaborator[]>([]);
-  const [comments, setComments] = useState<LetterComment[]>([]);
+  const queryClient = useQueryClient();
   const [userProfiles, setUserProfiles] = useState<Record<string, { display_name: string; avatar_url?: string }>>({});
 
-  const fetchContacts = useCallback(async () => {
-    if (!tenantId) return;
-    try {
-      const { data, error } = await supabase
-        .from('contacts')
-        .select('id, name, organization, gender, last_name, private_street, private_house_number, private_postal_code, private_city, private_country, business_street, business_house_number, business_postal_code, business_city, business_country')
-        .eq('tenant_id', tenantId)
-        .order('name');
-      if (error) throw error;
-      setContacts(data || []);
-    } catch (error) {
-      debugConsole.error('Error fetching contacts:', error);
-    }
-  }, [tenantId]);
+  const enabled = isOpen && !!tenantId;
+  const letterEnabled = enabled && !!letterId;
 
-  const fetchTemplates = useCallback(async () => {
-    if (!tenantId) return;
-    try {
-      const { data, error } = await supabase
-        .from('letter_templates')
-        .select('*')
-        .eq('tenant_id', tenantId)
-        .eq('is_active', true)
-        .order('is_default', { ascending: false })
-        .order('name');
-      if (error) throw error;
-      setTemplates(data || []);
-    } catch (error) {
-      debugConsole.error('Error fetching templates:', error);
-    }
-  }, [tenantId]);
+  const contactsQuery = useQuery({
+    queryKey: ['letter-contacts', tenantId],
+    queryFn: () => fetchContacts(tenantId!),
+    enabled,
+    staleTime: STALE_TIME,
+  });
 
-  const fetchSenderInfos = useCallback(async () => {
-    if (!tenantId) return;
-    try {
-      const { data, error } = await supabase
-        .from('sender_information')
-        .select('*')
-        .eq('tenant_id', tenantId)
-        .eq('is_active', true)
-        .order('is_default', { ascending: false })
-        .order('name');
-      if (error) throw error;
-      setSenderInfos(data || []);
-    } catch (error) {
-      debugConsole.error('Error fetching sender infos:', error);
-    }
-  }, [tenantId]);
+  const templatesQuery = useQuery({
+    queryKey: ['letter-templates', tenantId],
+    queryFn: () => fetchTemplates(tenantId!),
+    enabled,
+    staleTime: STALE_TIME,
+  });
 
-  const fetchInformationBlocks = useCallback(async () => {
-    if (!tenantId) return;
-    try {
-      const { data, error } = await supabase
-        .from('information_blocks')
-        .select('*')
-        .eq('tenant_id', tenantId)
-        .eq('is_active', true)
-        .order('is_default', { ascending: false })
-        .order('name');
-      if (error) throw error;
-      setInformationBlocks(data || []);
-    } catch (error) {
-      debugConsole.error('Error fetching information blocks:', error);
-    }
-  }, [tenantId]);
+  const senderInfosQuery = useQuery({
+    queryKey: ['letter-sender-infos', tenantId],
+    queryFn: () => fetchSenderInfos(tenantId!),
+    enabled,
+    staleTime: STALE_TIME,
+  });
 
-  const fetchAttachments = useCallback(async () => {
-    if (!letterId) return;
-    try {
-      const { data, error } = await supabase
-        .from('letter_attachments')
-        .select('*')
-        .eq('letter_id', letterId)
-        .order('created_at');
-      if (error) throw error;
-      setAttachments(data || []);
-    } catch (error) {
-      debugConsole.error('Error fetching attachments:', error);
-    }
-  }, [letterId]);
+  const informationBlocksQuery = useQuery({
+    queryKey: ['letter-info-blocks', tenantId],
+    queryFn: () => fetchInformationBlocks(tenantId!),
+    enabled,
+    staleTime: STALE_TIME,
+  });
 
-  const fetchComments = useCallback(async () => {
-    if (!letterId) return;
-    try {
-      const { data, error } = await supabase
-        .from('letter_comments')
-        .select(`id, content, text_position, text_length, resolved, comment_type, created_at, user_id`)
-        .eq('letter_id', letterId)
-        .order('created_at');
-      if (error) throw error;
-      setComments((data || []) as LetterComment[]);
-    } catch (error) {
-      debugConsole.error('Error fetching comments:', error);
-    }
-  }, [letterId]);
+  const attachmentsQuery = useQuery({
+    queryKey: ['letter-attachments', letterId],
+    queryFn: () => fetchAttachments(letterId!),
+    enabled: letterEnabled,
+    staleTime: STALE_TIME,
+  });
 
-  const fetchCollaborators = useCallback(async () => {
-    if (!letterId) return;
-    try {
-      const { data, error } = await supabase
-        .from('letter_collaborators')
-        .select('id, user_id, created_at')
-        .eq('letter_id', letterId);
-      if (error) throw error;
+  const commentsQuery = useQuery({
+    queryKey: ['letter-comments', letterId],
+    queryFn: () => fetchComments(letterId!),
+    enabled: letterEnabled,
+    staleTime: STALE_TIME,
+  });
 
-      if (data && data.length > 0) {
-        const userIds = data.map(c => c.user_id);
-        const { data: profiles } = await supabase
-          .from('profiles')
-          .select('user_id, display_name')
-          .in('user_id', userIds);
+  const collaboratorsQuery = useQuery({
+    queryKey: ['letter-collaborators', letterId],
+    queryFn: () => fetchCollaborators(letterId!),
+    enabled: letterEnabled,
+    staleTime: STALE_TIME,
+  });
 
-        setCollaborators(data.map(item => ({
-          ...item,
-          role: 'reviewer',
-          profiles: profiles?.find(p => p.user_id === item.user_id) || { display_name: 'Unbekannt' },
-        })));
-      } else {
-        setCollaborators([]);
-      }
-    } catch (error) {
-      debugConsole.error('Error fetching collaborators:', error);
-    }
-  }, [letterId]);
+  const refetchAttachments = useCallback(() => {
+    queryClient.invalidateQueries({ queryKey: ['letter-attachments', letterId] });
+  }, [queryClient, letterId]);
+
+  const refetchComments = useCallback(() => {
+    queryClient.invalidateQueries({ queryKey: ['letter-comments', letterId] });
+  }, [queryClient, letterId]);
+
+  const refetchCollaborators = useCallback(() => {
+    queryClient.invalidateQueries({ queryKey: ['letter-collaborators', letterId] });
+  }, [queryClient, letterId]);
 
   const fetchWorkflowUserProfiles = useCallback(async (letter?: Letter) => {
     if (!letter) return;
@@ -181,33 +206,18 @@ export function useLetterData({ isOpen, tenantId, letterId }: UseLetterDataOptio
     }
   }, []);
 
-  // Initial data fetch
-  useEffect(() => {
-    if (isOpen && tenantId) {
-      fetchContacts();
-      fetchTemplates();
-      fetchSenderInfos();
-      fetchInformationBlocks();
-      if (letterId) {
-        fetchComments();
-        fetchCollaborators();
-        fetchAttachments();
-      }
-    }
-  }, [isOpen, tenantId, letterId, fetchContacts, fetchTemplates, fetchSenderInfos, fetchInformationBlocks, fetchComments, fetchCollaborators, fetchAttachments]);
-
   return {
-    contacts,
-    templates,
-    senderInfos,
-    informationBlocks,
-    attachments,
-    collaborators,
-    comments,
+    contacts: contactsQuery.data ?? [],
+    templates: templatesQuery.data ?? [],
+    senderInfos: senderInfosQuery.data ?? [],
+    informationBlocks: informationBlocksQuery.data ?? [],
+    attachments: attachmentsQuery.data ?? [],
+    collaborators: collaboratorsQuery.data ?? [],
+    comments: commentsQuery.data ?? [],
     userProfiles,
-    fetchAttachments,
-    fetchComments,
-    fetchCollaborators,
+    fetchAttachments: refetchAttachments,
+    fetchComments: refetchComments,
+    fetchCollaborators: refetchCollaborators,
     fetchWorkflowUserProfiles,
   };
 }
