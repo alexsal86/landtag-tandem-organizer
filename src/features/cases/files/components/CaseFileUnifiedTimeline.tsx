@@ -67,6 +67,7 @@ const CATEGORY_CONFIG = {
   task: { icon: CheckSquare, label: "Aufgabe", color: "bg-green-500" },
   appointment: { icon: Calendar, label: "Termin", color: "bg-blue-500" },
   letter: { icon: Mail, label: "Brief", color: "bg-cyan-500" },
+  interaction: { icon: MessageSquare, label: "Interaktion", color: "bg-indigo-500" },
 };
 
 const FILTER_TABS = [
