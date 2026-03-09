@@ -337,7 +337,7 @@ export function TaskCard({
       </div>
 
       {hasSubtasks && (
-        <div className="border-t bg-muted/30 pl-4">
+        <div className="border-t border-border ml-6 border-l">
           {childTasks.map((childTask, index) => (
             <TaskCard
               key={childTask.id}
