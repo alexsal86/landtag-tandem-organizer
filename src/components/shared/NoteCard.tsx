@@ -272,6 +272,15 @@ export function NoteCard({
                     <Vote className="h-3 w-3 mr-2" />Als Entscheidung
                   </DropdownMenuItem>
                 )}
+                {note.case_item_id ? (
+                  <DropdownMenuItem onClick={() => onRemoveCaseItem(note)} className="text-teal-600">
+                    <FileText className="h-3 w-3 mr-2" />Vorgang entfernen
+                  </DropdownMenuItem>
+                ) : (
+                  <DropdownMenuItem onClick={() => onCreateCaseItem(note)}>
+                    <FileText className="h-3 w-3 mr-2" />Als Vorgang
+                  </DropdownMenuItem>
+                )}
                 {note.meeting_id ? (
                   <DropdownMenuItem onClick={() => onRemoveFromMeeting(note.id)} className="text-emerald-600">
                     <CalendarIcon className="h-3 w-3 mr-2" />Von Jour Fixe entfernen
