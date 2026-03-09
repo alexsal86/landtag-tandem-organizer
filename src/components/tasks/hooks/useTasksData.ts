@@ -426,58 +426,6 @@ export function useTasksData() {
         }
       }
 
-      // 3. Call follow-up tasks
-      const { data: callFollowupData } = await supabase
-        .from('tasks')
-        .select('id, title, description, assigned_to, due_date, status, created_at, updated_at, priority, call_log_id, user_id')
-        .eq('category', 'call_follow_up')
-        .neq('status', 'completed');
-
-      const userCallFollowups = (callFollowupData || []).filter(task => {
-        const assignees = Array.isArray(task.assigned_to)
-          ? task.assigned_to
-          : (task.assigned_to || '').split(',').map(a => a.trim());
-        return assignees.includes(user.id) || assignees.includes(user.email || '') || task.user_id === user.id;
-      });
-
-      for (const followupTask of userCallFollowups) {
-        try {
-          const assignees = Array.isArray(followupTask.assigned_to)
-            ? followupTask.assigned_to
-            : (followupTask.assigned_to || '').split(',').map(a => a.trim());
-          const resolvedAssignedTo = await resolveUserNamesAsync(assignees);
-          let contactName = 'Unbekannter Kontakt';
-          if (followupTask.call_log_id) {
-            const { data: callLogData } = await supabase.from('call_logs').select('contact_id').eq('id', followupTask.call_log_id).single();
-            if (callLogData?.contact_id) {
-              const { data: contactData } = await supabase.from('contacts').select('name').eq('id', callLogData.contact_id).single();
-              contactName = contactData?.name || contactName;
-            }
-          }
-          allSubtasks.push({
-            id: followupTask.id, title: followupTask.title, description: followupTask.description,
-            task_id: followupTask.id, task_title: `Follow-Up: ${contactName}`, source_type: 'call_followup',
-            assigned_to: assignees, due_date: followupTask.due_date,
-            is_completed: followupTask.status === 'completed', created_at: followupTask.created_at,
-            updated_at: followupTask.updated_at, priority: followupTask.priority,
-            call_log_id: followupTask.call_log_id, contact_name: contactName,
-            order_index: 0, assigned_to_names: resolvedAssignedTo
-          });
-        } catch {
-          const assignees = Array.isArray(followupTask.assigned_to)
-            ? followupTask.assigned_to
-            : (followupTask.assigned_to || '').split(',').map(a => a.trim());
-          allSubtasks.push({
-            id: followupTask.id, title: followupTask.title, description: followupTask.description,
-            task_id: followupTask.id, task_title: `Follow-Up: Unbekannter Kontakt`, source_type: 'call_followup',
-            assigned_to: assignees, due_date: followupTask.due_date,
-            is_completed: followupTask.status === 'completed', created_at: followupTask.created_at,
-            updated_at: followupTask.updated_at, priority: followupTask.priority,
-            call_log_id: followupTask.call_log_id, contact_name: 'Unbekannter Kontakt',
-            order_index: 0, assigned_to_names: resolveUserNames(assignees)
-          });
-        }
-      }
 
       setAssignedSubtasks(allSubtasks);
     } catch (error) {
