@@ -4,6 +4,7 @@ import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { MatrixUnreadProvider } from "@/contexts/MatrixUnreadContext";
 import { GlobalOverlays } from "@/components/layout/GlobalOverlays";
+import { SkipToContent } from "@/components/shared/SkipToContent";
 import { AppRoutes } from "./routes";
 
 export const AppRouter = () => {
