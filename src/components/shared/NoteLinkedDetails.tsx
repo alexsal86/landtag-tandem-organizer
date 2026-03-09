@@ -12,13 +12,16 @@ import { DecisionResponseSummary } from "@/components/shared/DecisionResponseSum
 interface NoteLinkedDetailsProps {
   taskId?: string | null;
   decisionId?: string | null;
+  caseItemId?: string | null;
   meetingId?: string | null;
   isExpanded: boolean;
   onTaskNotFound?: () => void;
   onDecisionNotFound?: () => void;
+  onCaseItemNotFound?: () => void;
   onMeetingNotFound?: () => void;
   taskArchivedInfo?: { id: string; title: string; archived_at: string } | null;
   decisionArchivedInfo?: { id: string; title: string; archived_at: string } | null;
+  caseItemArchivedInfo?: { id: string; title: string; archived_at: string } | null;
   meetingArchivedInfo?: { id: string; title: string; archived_at: string } | null;
 }
 
