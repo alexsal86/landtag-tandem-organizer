@@ -510,25 +510,41 @@ export function MyWorkDecisionsTab() {
                 ) : (
                   <div className="space-y-2">
                     {filteredDecisions.map(decision => (
-                      <MyWorkDecisionCard
+                      <DecisionContextMenu
                         key={decision.id}
                         decision={decision}
-                        isHighlighted={isHighlighted(decision.id)}
-                        highlightRef={highlightRef(decision.id)}
-                        onOpenDetails={handleOpenDetails}
-                        onEdit={setEditingDecisionId}
+                        isCreator={decision.isCreator}
+                        currentUserId={user?.id || ""}
+                        tenantUsers={tenantUsers}
+                        existingParticipantIds={(decision.participants || []).map(p => p.user_id)}
+                        onUpdateDeadline={handleUpdateDeadline}
+                        onTogglePublic={handleTogglePublic}
+                        onAddParticipants={handleAddParticipants}
+                        onRemoveParticipant={handleRemoveParticipant}
                         onArchive={archiveDecision}
                         onDelete={setDeletingDecisionId}
-                        onCreateTask={createTaskFromDecision}
-                        onResponseSubmitted={() => scheduleDecisionsRefresh(0)}
-                        onOpenComments={(id, title) => { setCommentsDecisionId(id); setCommentsDecisionTitle(title); }}
-                        onReply={sendActivityReply}
-                        commentCount={getCommentCount(decision.id)}
-                        creatingTaskId={creatingTaskId}
-                        archivingDecisionId={archivingDecisionId}
-                        deletingDecisionId={deletingDecisionId}
-                        currentUserId={user?.id || ""}
-                      />
+                        onAddToJourFixe={handleAddToJourFixe}
+                        onTogglePriority={handleTogglePriority}
+                      >
+                        <MyWorkDecisionCard
+                          decision={decision}
+                          isHighlighted={isHighlighted(decision.id)}
+                          highlightRef={highlightRef(decision.id)}
+                          onOpenDetails={handleOpenDetails}
+                          onEdit={setEditingDecisionId}
+                          onArchive={archiveDecision}
+                          onDelete={setDeletingDecisionId}
+                          onCreateTask={createTaskFromDecision}
+                          onResponseSubmitted={() => scheduleDecisionsRefresh(0)}
+                          onOpenComments={(id, title) => { setCommentsDecisionId(id); setCommentsDecisionTitle(title); }}
+                          onReply={sendActivityReply}
+                          commentCount={getCommentCount(decision.id)}
+                          creatingTaskId={creatingTaskId}
+                          archivingDecisionId={archivingDecisionId}
+                          deletingDecisionId={deletingDecisionId}
+                          currentUserId={user?.id || ""}
+                        />
+                      </DecisionContextMenu>
                     ))}
                   </div>
                 )}
