@@ -250,7 +250,7 @@ export default function EditContact() {
             activeSection="contacts"
             onSectionChange={handleSectionChange}
           />
-          <main className="flex-1 p-6">
+          <main id="main-content" className="flex-1 p-6" tabIndex={-1}>
             <div className="max-w-4xl mx-auto">
               <div className="flex items-center mb-6">
                 <Button variant="outline" onClick={() => navigate("/contacts")}>

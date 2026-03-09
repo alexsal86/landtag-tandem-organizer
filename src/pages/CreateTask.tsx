@@ -206,7 +206,7 @@ export default function CreateTask() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-subtle p-6">
+    <main id="main-content" className="min-h-screen bg-gradient-subtle p-6" tabIndex={-1}>
       <div className="max-w-2xl mx-auto">
         {/* Header */}
         <div className="mb-8">
