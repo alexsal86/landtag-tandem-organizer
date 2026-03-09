@@ -36,12 +36,13 @@ type CaseFile = {
   case_type: string | null;
 };
 
-const interactionTypeOptions: Array<{ value: TimelineInteractionType; label: string; icon: typeof Phone }> = [
+const interactionTypeOptions: Array<{ value: TimelineInteractionType | "entscheidung"; label: string; icon: typeof Phone }> = [
   { value: "anruf", label: "Anruf", icon: Phone },
   { value: "mail", label: "Mail", icon: Mail },
   { value: "treffen", label: "Treffen", icon: Users },
   { value: "gespraech", label: "Gespräch", icon: MessageSquare },
   { value: "notiz", label: "Notiz", icon: MessageSquare },
+  { value: "entscheidung", label: "Entscheidung stellen", icon: Gavel },
 ];
 
 export function CaseItemDetailPanel({
@@ -456,32 +457,6 @@ export function CaseItemDetailPanel({
             </CollapsibleContent>
           </Collapsible>
 
-          <div className="space-y-2 rounded-md border bg-background p-3">
-            <Label className="font-bold flex items-center gap-1.5"><Vote className="h-4 w-4" />Verknüpfte Entscheidungen</Label>
-            {loadingDecisions ? (
-              <div className="flex items-center gap-2 text-xs text-muted-foreground"><Loader2 className="h-3.5 w-3.5 animate-spin" />Lade Entscheidungen…</div>
-            ) : linkedDecisions.length === 0 ? (
-              <p className="text-xs text-muted-foreground">Keine Entscheidungen verknüpft.</p>
-            ) : (
-              <div className="space-y-2">
-                {linkedDecisions.map((decision) => (
-                  <div key={decision.id} className="rounded border p-2 text-xs">
-                    <div className="flex items-center justify-between gap-2">
-                      <p className="font-semibold truncate">{decision.title}</p>
-                      <span className="text-muted-foreground">{decision.status}</span>
-                    </div>
-                    <p className="text-muted-foreground">Erstellt: {formatDecisionDate(decision.created_at)}</p>
-                    {decision.response_deadline && <p className="text-muted-foreground">Frist: {formatDecisionDate(decision.response_deadline)}</p>}
-                  </div>
-                ))}
-              </div>
-            )}
-            <div className="flex flex-wrap gap-2">
-              <Button type="button" variant="outline" size="sm" onClick={onDecisionRequest}><Gavel className="mr-1 h-3.5 w-3.5" />Entscheidung stellen</Button>
-              <Button type="button" variant="outline" size="sm" onClick={onDecisionReceived} disabled={editableCaseItem.status !== "entscheidung_abwartend"}>Eingegangen</Button>
-            </div>
-          </div>
-
           {editableCaseItem.status === "erledigt" && (
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
               <div className="space-y-1.5">
@@ -502,7 +477,27 @@ export function CaseItemDetailPanel({
             <p className="font-bold">Interaktion erfassen</p>
             <div className="flex flex-wrap gap-2 xl:flex-nowrap">
               {interactionTypeOptions.map((option) => {
-                const selected = editableCaseItem.interactionType === option.value;
+                // Special handling for "Entscheidung stellen" button
+                if (option.value === "entscheidung") {
+                  const OptionIcon = option.icon;
+                  return (
+                    <Button
+                      key={option.value}
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      className="flex-1 justify-start"
+                      onClick={onDecisionRequest}
+                    >
+                      <OptionIcon className="mr-1 h-3.5 w-3.5" />
+                      {option.label}
+                    </Button>
+                  );
+                }
+
+                // wir wissen hier, dass value eine TimelineInteractionType ist, da wir "entscheidung" abgefangen haben.
+                const typeValue = option.value as TimelineInteractionType;
+                const selected = editableCaseItem.interactionType === typeValue;
                 const OptionIcon = option.icon;
                 return (
                   <Button
@@ -517,7 +512,7 @@ export function CaseItemDetailPanel({
                         setShowInteractionComposer(false);
                         return;
                       }
-                      onUpdate({ interactionType: option.value });
+                      onUpdate({ interactionType: typeValue });
                       setShowInteractionComposer(true);
                     }}
                   >
