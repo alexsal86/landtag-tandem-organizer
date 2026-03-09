@@ -131,15 +131,17 @@ export function CalendarView() {
           </div>
         )}
 
-        <div className="flex-1 min-w-0 p-6 transition-all duration-300">
-            <Card className="bg-card shadow-card border-border">
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <Calendar className="h-5 w-5 text-primary" />
-                  {view === "polls" ? "Terminabstimmungen" : "Terminkalender"}
-                </CardTitle>
-              </CardHeader>
-            <CardContent className="p-0 min-h-[calc(100vh-220px)]">
+        <div className="flex-1 min-w-0 p-6 transition-all duration-300 overflow-hidden">
+            <Card className="bg-card shadow-card border-border h-[calc(100vh-120px)] flex flex-col">
+              {view === "polls" && (
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <Calendar className="h-5 w-5 text-primary" />
+                    Terminabstimmungen
+                  </CardTitle>
+                </CardHeader>
+              )}
+            <CardContent className="p-0 flex-1 overflow-hidden">
               {view === "polls" ? (
                 <PollListView />
               ) : loading ? (

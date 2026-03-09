@@ -288,9 +288,16 @@
   border-bottom: 1px solid hsl(var(--border) / 0.3);
 }
 
-.rbc-time-view,
+.rbc-time-view {
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+}
+
 .rbc-time-content {
-  overflow: visible;
+  overflow-y: auto;
+  flex: 1;
 }
 
 .rbc-time-slot {
