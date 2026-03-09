@@ -167,7 +167,7 @@ export function AppointmentDetailsSidebar({
       debugConsole.error('Error sending invitations:', error);
       toast({
         title: "Fehler",
-        description: `Die Einladungen konnten nicht versendet werden: ${error.message}`,
+        description: `Die Einladungen konnten nicht versendet werden: ${error instanceof Error ? error.message : 'Unbekannter Fehler'}`,
         variant: "destructive"
       });
     } finally {

@@ -45,7 +45,7 @@ interface MeetingTemplateParticipantsEditorProps {
 interface User {
   id: string;
   display_name: string;
-  avatar_url?: string;
+  avatar_url?: string | null;
 }
 
 // Helper to normalize participants to ParticipantWithRole format
@@ -204,7 +204,7 @@ export function MeetingTemplateParticipantsEditor({
                   className="flex items-center gap-2 p-1.5 rounded-md border bg-muted/50 text-sm"
                 >
                   <Avatar className="h-6 w-6">
-                    <AvatarImage src={user.avatar_url} />
+                    <AvatarImage src={user.avatar_url ?? undefined} />
                     <AvatarFallback className="text-[10px]">
                       {getInitials(user.display_name)}
                     </AvatarFallback>
@@ -303,7 +303,7 @@ export function MeetingTemplateParticipantsEditor({
                   className="flex items-center gap-3 p-2 rounded-md border bg-muted/50"
                 >
                   <Avatar className="h-8 w-8">
-                    <AvatarImage src={user.avatar_url} />
+                    <AvatarImage src={user.avatar_url ?? undefined} />
                     <AvatarFallback className="text-xs">
                       {getInitials(user.display_name)}
                     </AvatarFallback>

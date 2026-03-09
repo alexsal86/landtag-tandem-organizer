@@ -209,7 +209,7 @@ export function useContactImport() {
 
   const handleDuplicateSkip = () => { if (currentDuplicate) { setSkippedCount((p) => p + 1); setDuplicateWarnings((p) => [...p, `Zeile ${currentDuplicate.rowIndex + 1}: ${currentDuplicate.newContact.name} übersprungen`]); continueImport(); } };
   const handleDuplicateImportAnyway = async () => { if (currentDuplicate) { await importContact(currentDuplicate.rowIndex); continueImport(); } };
-  const handleDuplicateApplyToAll = (action: "skip" | "import") => { setDuplicateStrategy(action); if (action === "skip") handleDuplicateSkip(); else handleDuplicateImportAnyway(); };
+  const handleDuplicateApplyToAll = (action: "skip" | "overwrite" | "import") => { if (action === "overwrite") return; setDuplicateStrategy(action); if (action === "skip") handleDuplicateSkip(); else handleDuplicateImportAnyway(); };
 
   const reset = () => { setFile(null); setData([]); setFieldMappings([]); setStep("upload"); setProgress(0); setImportedCount(0); setSkippedCount(0); setErrors([]); setDuplicateWarnings([]); setCurrentDuplicate(null); setDuplicateStrategy("ask"); setImportQueue([]); };
 

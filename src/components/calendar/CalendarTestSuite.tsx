@@ -97,7 +97,7 @@ export function CalendarTestSuite() {
       return {
         name: 'Component Rendering',
         status: 'fail',
-        details: `Rendering failed: ${error.message}`
+        details: `Rendering failed: ${error instanceof Error ? error.message : String(error)}`
       };
     }
   };
@@ -117,7 +117,7 @@ export function CalendarTestSuite() {
       return {
         name: 'Event Display',
         status: 'fail',
-        details: `Event display failed: ${error.message}`
+        details: `Event display failed: ${error instanceof Error ? error.message : String(error)}`
       };
     }
   };
@@ -151,7 +151,7 @@ export function CalendarTestSuite() {
       return {
         name: 'Performance Test',
         status: 'fail',
-        details: `Performance test failed: ${error.message}`
+        details: `Performance test failed: ${error instanceof Error ? error.message : String(error)}`
       };
     }
   };
@@ -174,7 +174,7 @@ export function CalendarTestSuite() {
       return {
         name: 'View Switching',
         status: 'fail',
-        details: `View switching failed: ${error.message}`
+        details: `View switching failed: ${error instanceof Error ? error.message : String(error)}`
       };
     }
   };
@@ -197,7 +197,7 @@ export function CalendarTestSuite() {
       return {
         name: 'Drag & Drop',
         status: 'fail',
-        details: `Drag & drop failed: ${error.message}`
+        details: `Drag & drop failed: ${error instanceof Error ? error.message : String(error)}`
       };
     }
   };
@@ -231,7 +231,7 @@ export function CalendarTestSuite() {
       return {
         name: 'Conflict Detection',
         status: 'fail',
-        details: `Conflict detection failed: ${error.message}`
+        details: `Conflict detection failed: ${error instanceof Error ? error.message : String(error)}`
       };
     }
   };

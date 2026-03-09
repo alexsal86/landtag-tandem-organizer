@@ -17,7 +17,7 @@ export function useAgendaOperations(deps: AgendaOpsDeps) {
     profiles, loadAgendaItems, updateTimeouts, uploadAgendaDocument,
   } = deps;
 
-  const updateAgendaItemResult = async (itemId: string, field: string, value: string) => {
+  const updateAgendaItemResult = async (itemId: string, field: 'carry_over_to_next' | 'result_text' | string, value: unknown) => {
     setAgendaItems(prev => prev.map(item => item.id === itemId ? { ...item, [field]: value } : item));
     if (['result_text', 'notes', 'description'].includes(field)) {
       const timeoutKey = `${itemId}-${field}`;
