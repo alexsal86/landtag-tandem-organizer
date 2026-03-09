@@ -4,7 +4,7 @@ import { ArrowRight } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 interface NoteLinkedBadgeProps {
-  type: 'task' | 'decision' | 'meeting';
+  type: 'task' | 'decision' | 'meeting' | 'case_item';
   id: string;
   label: string;
   className?: string;
@@ -17,6 +17,7 @@ export function NoteLinkedBadge({ type, id, label, className }: NoteLinkedBadgeP
     switch (type) {
       case 'task': return `/tasks?id=${id}`;
       case 'decision': return `/mywork?tab=decisions&id=${id}`;
+      case 'case_item': return `/vorgaenge/${id}`;
       case 'meeting': return `/meetings?id=${id}`;
     }
   };
@@ -27,6 +28,8 @@ export function NoteLinkedBadge({ type, id, label, className }: NoteLinkedBadgeP
         return 'text-blue-700 bg-blue-100 border-blue-300 hover:bg-blue-200 dark:text-blue-300 dark:bg-blue-900/50 dark:border-blue-700 dark:hover:bg-blue-800/50';
       case 'decision': 
         return 'text-purple-700 bg-purple-100 border-purple-300 hover:bg-purple-200 dark:text-purple-300 dark:bg-purple-900/50 dark:border-purple-700 dark:hover:bg-purple-800/50';
+      case 'case_item':
+        return 'text-teal-700 bg-teal-100 border-teal-300 hover:bg-teal-200 dark:text-teal-300 dark:bg-teal-900/50 dark:border-teal-700 dark:hover:bg-teal-800/50';
       case 'meeting': 
         return 'text-emerald-700 bg-emerald-100 border-emerald-300 hover:bg-emerald-200 dark:text-emerald-300 dark:bg-emerald-900/50 dark:border-emerald-700 dark:hover:bg-emerald-800/50';
     }

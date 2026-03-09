@@ -9,7 +9,7 @@ import {
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { Calendar } from "@/components/ui/calendar";
-import { CheckSquare, Vote, Calendar as CalendarIcon, RotateCcw, Clock } from "lucide-react";
+import { CheckSquare, Vote, Calendar as CalendarIcon, RotateCcw, Clock, FileText } from "lucide-react";
 import SimpleRichTextEditor from "@/components/ui/SimpleRichTextEditor";
 import { MeetingNoteSelector } from "@/components/widgets/MeetingNoteSelector";
 import { NoteShareDialog } from "@/components/shared/NoteShareDialog";
@@ -77,12 +77,18 @@ interface NoteDialogsProps {
   setConfirmRemoveDecision: (note: QuickNote | null) => void;
   removeDecisionFromNote: (note: QuickNote) => void;
 
+  confirmRemoveCaseItem: QuickNote | null;
+  setConfirmRemoveCaseItem: (note: QuickNote | null) => void;
+  removeCaseItemFromNote: (note: QuickNote) => void;
+
   confirmDeleteLinkedNote: QuickNote | null;
   setConfirmDeleteLinkedNote: (note: QuickNote | null) => void;
   deleteLinkedTask: boolean;
   setDeleteLinkedTask: (val: boolean) => void;
   deleteLinkedDecision: boolean;
   setDeleteLinkedDecision: (val: boolean) => void;
+  deleteLinkedCaseItem: boolean;
+  setDeleteLinkedCaseItem: (val: boolean) => void;
   deleteLinkedMeeting: boolean;
   setDeleteLinkedMeeting: (val: boolean) => void;
   handleDeleteNoteWithLinks: () => void;
@@ -264,6 +270,22 @@ export function NoteDialogs(props: NoteDialogsProps) {
         </AlertDialogContent>
       </AlertDialog>
 
+      {/* Confirm Remove Case Item */}
+      <AlertDialog open={!!props.confirmRemoveCaseItem} onOpenChange={(open) => !open && props.setConfirmRemoveCaseItem(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Vorgang entfernen?</AlertDialogTitle>
+            <AlertDialogDescription>Der Vorgang wird archiviert und von dieser Notiz entfernt.</AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Abbrechen</AlertDialogCancel>
+            <AlertDialogAction onClick={() => { if (props.confirmRemoveCaseItem) props.removeCaseItemFromNote(props.confirmRemoveCaseItem); }}>
+              Archivieren
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
       {/* Confirm Delete Note with Links */}
       <AlertDialog open={!!props.confirmDeleteLinkedNote} onOpenChange={(open) => !open && props.setConfirmDeleteLinkedNote(null)}>
         <AlertDialogContent>
@@ -285,6 +307,14 @@ export function NoteDialogs(props: NoteDialogsProps) {
                 <Checkbox id="delete-decision" checked={props.deleteLinkedDecision} onCheckedChange={(checked) => props.setDeleteLinkedDecision(!!checked)} />
                 <label htmlFor="delete-decision" className="text-sm flex items-center gap-2 cursor-pointer">
                   <Vote className="h-4 w-4 text-purple-600" />Verknüpfte Entscheidung auch löschen
+                </label>
+              </div>
+            )}
+            {props.confirmDeleteLinkedNote?.case_item_id && (
+              <div className="flex items-center gap-3">
+                <Checkbox id="delete-case-item" checked={props.deleteLinkedCaseItem} onCheckedChange={(checked) => props.setDeleteLinkedCaseItem(!!checked)} />
+                <label htmlFor="delete-case-item" className="text-sm flex items-center gap-2 cursor-pointer">
+                  <FileText className="h-4 w-4 text-teal-600" />Verknüpften Vorgang archivieren
                 </label>
               </div>
             )}

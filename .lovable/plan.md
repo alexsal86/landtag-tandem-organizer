@@ -1,132 +1,43 @@
 
-# Plan: Vorgang aus Quick Note erstellen
+## Code-Qualität — Status
 
-## Übersicht
-Der Benutzer möchte die Möglichkeit haben, aus einer Quick Note einen Vorgang (case_item) zu erstellen, analog zu den bestehenden Funktionen "Als Aufgabe" und "Als Entscheidung".
+### Erledigt
 
-## Aktuelle Implementierung
-Nach Analyse des Codes:
-- **NoteCard.tsx** enthält Buttons/Icons für "Als Aufgabe" (CheckSquare) und "Als Entscheidung" (Vote)
-- **useQuickNotes.ts** hat die Funktion `createTaskFromNote()` die:
-  - Eine Aufgabe in der `tasks` Tabelle erstellt
-  - Die `task_id` in `quick_notes` speichert
-  - Die Aufgabe mit Titel/Beschreibung aus der Notiz befüllt
-- **NoteDialogs.tsx** enthält den `NoteDecisionCreator` für Entscheidungen
-- Die `quick_notes` Tabelle hat bereits Felder für `task_id` und `decision_id`
+- **strictNullChecks: true** — aktiviert, alle Build-Fehler behoben
+- **noImplicitAny: true** — aktiviert, alle Build-Fehler behoben
+- **DOMPurify** als zentraler HTML-Sanitizer — alle `dangerouslySetInnerHTML` nutzen jetzt `sanitizeRichHtml()`
+- **Tenant-Access Guard** für Edge Functions — existiert in `supabase/functions/_shared/tenant-access.ts`
+- **ESLint `no-unused-vars: warn`** — aktiviert mit `argsIgnorePattern: '^_'`, erste Bereinigungsrunde in Pages/Hooks abgeschlossen
+- **Standalone `React`-Imports entfernt** — ~60 Dateien bereinigt
+- **State-Mutation fix** — `existingContacts.push()` → immutables Update in `useContactImport.ts`
+- **Non-null Assertion Guards** — `user!.id` / `currentTenant!.id` durch Early-Return-Guards ersetzt (~11 Dateien)
+- **Leere catch-Blöcke** — kritische Stellen in MatrixContext & DaySlipStore mit `debugConsole.warn` versehen
+- **JSON-Protocol Speaker-Normalisierung** — `speaker: string | { name }` korrekt normalisiert
 
-## Benötigte Änderungen
+### Noch offen
 
-### 1. Datenbankschema prüfen
-Die `quick_notes` Tabelle hat **kein** `case_item_id` Feld. Dies muss hinzugefügt werden.
+1. **`strict: true` aktivieren** — beinhaltet `strictBindCallApply`, `strictFunctionTypes`, `strictPropertyInitialization`, `noImplicitThis`, `alwaysStrict`
+2. **Tote Imports weiter bereinigen** — ~65 standalone `React`-Imports in Components prüfen, weitere lucide-Icons und ungenutzte Variablen entfernen (ESLint-Regel zeigt Warnungen)
+3. **`no-explicit-any` schrittweise einführen** — nach Abschluss der `no-unused-vars`-Bereinigung
+4. **Edge Functions `verify_jwt`-Audit** — ~20 Functions mit `verify_jwt = false` klassifizieren und absichern
+5. **CORS einschränken** — `Access-Control-Allow-Origin: *` durch Allowlist ersetzen für sensible Operationen
 
-### 2. Migration erstellen
-SQL-Migration für neues Feld in `quick_notes`:
-```sql
-ALTER TABLE quick_notes 
-ADD COLUMN case_item_id uuid REFERENCES case_items(id) ON DELETE SET NULL;
-```
+---
 
-### 3. UI-Komponenten erweitern
+## No-Code Automations-Hub — Status
 
-**NoteCard.tsx** (Zeilen 197-205):
-- Neuen Button/Tooltip für "Als Vorgang" hinzufügen
-- Icon: `FileText` oder `ListTree` (für case_item)
-- Zwischen "Als Entscheidung" und "Wiedervorlage" platzieren
-- Logik: `note.case_item_id ? onRemoveCaseItem(note) : onCreateCaseItem(note)`
+### Erledigt
 
-**NoteCard.tsx** Dropdown-Menü (Zeilen 248-265):
-- Neue Menüeinträge analog zu Task/Decision hinzufügen
-
-**NoteCard.tsx** Bottom Bar (Zeilen 144-147):
-- Neuer Indikator-Punkt für `case_item_id` (z.B. orange/teal Farbe)
-
-**NoteCard.tsx** Linked Badges (Zeilen 150-153):
-- Badge für verknüpften Vorgang anzeigen
-
-### 4. Hook erweitern
-
-**useQuickNotes.ts**:
-- `createCaseItemFromNote(note: QuickNote)` Funktion hinzufügen:
-  ```typescript
-  const createCaseItemFromNote = async (note: QuickNote) => {
-    if (!user || !currentTenant) return;
-    
-    const plainContent = stripHtml(note.content);
-    const itemSubject = note.title 
-      ? stripHtml(note.title) 
-      : plainContent.substring(0, 100);
-    
-    const { data: caseItem, error } = await supabase
-      .from('case_items')
-      .insert({
-        tenant_id: currentTenant.id,
-        created_by: user.id,
-        subject: itemSubject,
-        description: note.content,
-        source_channel: 'other',
-        status: 'neu',
-        priority: 'mittel',
-        category: 'Allgemein'
-      })
-      .select()
-      .single();
-    
-    if (error) throw error;
-    
-    await supabase
-      .from('quick_notes')
-      .update({ case_item_id: caseItem.id })
-      .eq('id', note.id);
-    
-    toast.success('Vorgang erstellt');
-    loadNotes();
-  };
-  ```
-
-- `removeCaseItemFromNote(note: QuickNote)` für Entfernung
-- Confirmation-Dialog State für `confirmDeleteCaseItemNote`
-- Export der neuen Funktionen
-
-### 5. Props erweitern
-
-**NoteCard.tsx** Interface:
-- `onCreateCaseItem: (note: QuickNote) => void`
-- `onRemoveCaseItem: (note: QuickNote) => void`
-
-**QuickNotesList.tsx**:
-- Props an NoteCard durchreichen
-
-**NoteDialogs.tsx**:
-- Confirmation-Dialog für Vorgang-Entfernung hinzufügen (ähnlich wie Task-Confirmation)
-
-### 6. TypeScript Types
-
-**QuickNote Interface** erweitern:
-```typescript
-interface QuickNote {
-  // ... existing fields
-  case_item_id?: string | null;
-}
-```
-
-### 7. Optional: Link zu Vorgang-Details
-
-**NoteLinkedBadge.tsx**:
-- Neuer Type `'case_item'` hinzufügen
-- Navigation zu `/my-work/cases/:id` implementieren
-
-## Betroffene Dateien
-1. `supabase/migrations/` - Neue Migration
-2. `src/components/shared/NoteCard.tsx` - UI für Button/Badge
-3. `src/hooks/useQuickNotes.ts` - Logik für Erstellung/Entfernung
-4. `src/components/shared/NoteDialogs.tsx` - Confirmation-Dialog
-5. `src/components/shared/QuickNotesList.tsx` - Props durchreichen
-6. `src/components/shared/NoteLinkedBadge.tsx` - Badge-Link (optional)
-7. `src/integrations/supabase/types.ts` - Auto-generiert nach Migration
-
-## Reihenfolge
-1. Migration ausführen (case_item_id Spalte hinzufügen)
-2. Hook-Funktionen implementieren
-3. UI-Komponenten erweitern
-4. Dialoge hinzufügen
-5. Props durchreichen
+- 4-Step Wizard (Grundlagen → Trigger → Bedingungen → Aktionen)
+- 10 Templates, Template-Galerie mit Suche/Filter
+- Kill-Switch, Dry-Run, Run-Now, Run-Historie mit Step-Logs
+- Error-Dashboard mit Retry, Regel-Versionierung, Import/Export
+- Rate Limiting, Idempotency, Audit-Trail
+- 5 Action-Typen, 5 Condition-Operators, 4 Trigger-Typen (inkl. Webhook)
+- Rollenbasierte Zugriffskontrolle
+- **Regel duplizieren** — Copy-Button pro Regel-Karte
+- **Nächste geplante Ausführung** — Badge für schedule-Regeln
+- **Regel-Statistiken** — Erfolgsrate (%) + Ø Laufzeit als Tooltip-Badge
+- **Notification-Kontext** — `rule_name`, `trigger_reason`, `run_id` in Notification-Payload
+- **Webhook-Trigger** — neue Edge Function `automation-webhook`, Secret-Authentifizierung, URL-Anzeige im Wizard
+- **Verschachtelte Condition-Gruppen** — rekursives AND/OR-Nesting bis 3 Ebenen im Wizard, backward-kompatible DB-Serialisierung

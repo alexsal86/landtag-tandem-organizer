@@ -3,7 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Collapsible, CollapsibleContent } from "@/components/ui/collapsible";
-import { CheckSquare, Vote, Calendar as CalendarIcon, ArrowRight, Trash2, Archive } from "lucide-react";
+import { CheckSquare, Vote, Calendar as CalendarIcon, ArrowRight, Trash2, Archive, FileText } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { format } from "date-fns";
 import { de } from "date-fns/locale";
@@ -12,13 +12,16 @@ import { DecisionResponseSummary } from "@/components/shared/DecisionResponseSum
 interface NoteLinkedDetailsProps {
   taskId?: string | null;
   decisionId?: string | null;
+  caseItemId?: string | null;
   meetingId?: string | null;
   isExpanded: boolean;
   onTaskNotFound?: () => void;
   onDecisionNotFound?: () => void;
+  onCaseItemNotFound?: () => void;
   onMeetingNotFound?: () => void;
   taskArchivedInfo?: { id: string; title: string; archived_at: string } | null;
   decisionArchivedInfo?: { id: string; title: string; archived_at: string } | null;
+  caseItemArchivedInfo?: { id: string; title: string; archived_at: string } | null;
   meetingArchivedInfo?: { id: string; title: string; archived_at: string } | null;
 }
 
@@ -33,6 +36,12 @@ interface MeetingData {
   title: string;
   meeting_date: string;
   status: string | null;
+}
+
+interface CaseItemData {
+  subject: string | null;
+  status: string;
+  priority: string | null;
 }
 
 function NoteTaskStatus({ taskId, onNotFound }: { taskId: string; onNotFound?: () => void }) {
@@ -173,19 +182,100 @@ function NoteMeetingStatus({ meetingId, onNotFound }: { meetingId: string; onNot
   );
 }
 
+function NoteCaseItemStatus({ caseItemId, onNotFound }: { caseItemId: string; onNotFound?: () => void }) {
+  const [caseItem, setCaseItem] = useState<CaseItemData | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [notFound, setNotFound] = useState(false);
+  const navigate = useNavigate();
+  
+  useEffect(() => {
+    const loadCaseItem = async () => {
+      const { data, error } = await supabase
+        .from('case_items')
+        .select('subject, status, priority')
+        .eq('id', caseItemId)
+        .single();
+      
+      if (error || !data) {
+        setNotFound(true);
+        onNotFound?.();
+        setCaseItem(null);
+      } else {
+        setCaseItem(data);
+      }
+      setLoading(false);
+    };
+    loadCaseItem();
+  }, [caseItemId, onNotFound]);
+  
+  if (loading) return <Skeleton className="h-4 w-32 mt-1" />;
+  
+  if (notFound) {
+    return (
+      <div className="text-xs text-destructive flex items-center gap-1 mt-1">
+        <Trash2 className="h-3 w-3" />
+        Vorgang wurde gelöscht
+      </div>
+    );
+  }
+  
+  if (!caseItem) return <span className="text-xs text-muted-foreground">Vorgang nicht gefunden</span>;
+  
+  const getStatusLabel = (status: string) => {
+    switch (status) {
+      case 'neu': return 'Neu';
+      case 'in_bearbeitung': return 'In Bearbeitung';
+      case 'wartend': return 'Wartend';
+      case 'erledigt': return 'Erledigt';
+      case 'archiviert': return 'Archiviert';
+      default: return status;
+    }
+  };
+  
+  const getStatusVariant = (status: string): "default" | "secondary" | "outline" => {
+    switch (status) {
+      case 'erledigt': return 'default';
+      case 'in_bearbeitung': return 'secondary';
+      default: return 'outline';
+    }
+  };
+  
+  return (
+    <div 
+      className="text-xs text-muted-foreground mt-1 space-y-1 cursor-pointer hover:bg-muted/30 rounded p-1 -m-1 transition-colors"
+      onClick={() => navigate(`/vorgaenge/${caseItemId}`)}
+    >
+      <p className="truncate font-medium text-foreground">{caseItem.subject}</p>
+      <div className="flex items-center gap-2 flex-wrap">
+        <Badge variant={getStatusVariant(caseItem.status)} className="text-xs h-5">
+          {getStatusLabel(caseItem.status)}
+        </Badge>
+        {caseItem.priority && (
+          <span className="text-muted-foreground">
+            Priorität: {caseItem.priority}
+          </span>
+        )}
+      </div>
+    </div>
+  );
+}
+
 export function NoteLinkedDetails({ 
   taskId, 
-  decisionId, 
+  decisionId,
+  caseItemId, 
   meetingId, 
   isExpanded,
   onTaskNotFound,
   onDecisionNotFound,
+  onCaseItemNotFound,
   onMeetingNotFound,
   taskArchivedInfo,
   decisionArchivedInfo,
+  caseItemArchivedInfo,
   meetingArchivedInfo
 }: NoteLinkedDetailsProps) {
-  const hasLinks = taskId || decisionId || meetingId || taskArchivedInfo || decisionArchivedInfo || meetingArchivedInfo;
+  const hasLinks = taskId || decisionId || caseItemId || meetingId || taskArchivedInfo || decisionArchivedInfo || caseItemArchivedInfo || meetingArchivedInfo;
   const navigate = useNavigate();
   
   if (!hasLinks) return null;
@@ -256,6 +346,37 @@ export function NoteLinkedDetails({
             <div className="text-xs text-muted-foreground mt-1">
               <p className="truncate">{decisionArchivedInfo.title}</p>
               <p className="text-[10px]">Archiviert: {format(new Date(decisionArchivedInfo.archived_at), "dd.MM.yyyy", { locale: de })}</p>
+            </div>
+          </div>
+        )}
+        
+        {/* Case Item Status */}
+        {caseItemId && (
+          <div className="p-2 bg-teal-50 dark:bg-teal-950/30 rounded-md border border-teal-100 dark:border-teal-900 group/case">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2 text-teal-600">
+                <FileText className="h-4 w-4" />
+                <span className="text-xs font-medium">Vorgang</span>
+              </div>
+              <ArrowRight 
+                className="h-4 w-4 text-teal-600 opacity-0 group-hover/case:opacity-100 transition-opacity cursor-pointer"
+                onClick={() => navigate(`/vorgaenge/${caseItemId}`)}
+              />
+            </div>
+            <NoteCaseItemStatus caseItemId={caseItemId} onNotFound={onCaseItemNotFound} />
+          </div>
+        )}
+        
+        {/* Archived Case Item Info */}
+        {!caseItemId && caseItemArchivedInfo && (
+          <div className="p-2 bg-teal-50/50 dark:bg-teal-950/20 rounded-md border border-teal-100/50 dark:border-teal-900/50">
+            <div className="flex items-center gap-2 text-teal-600/70">
+              <Archive className="h-4 w-4" />
+              <span className="text-xs font-medium">Vorgang (archiviert)</span>
+            </div>
+            <div className="text-xs text-muted-foreground mt-1">
+              <p className="truncate">{caseItemArchivedInfo.title}</p>
+              <p className="text-[10px]">Archiviert: {format(new Date(caseItemArchivedInfo.archived_at), "dd.MM.yyyy", { locale: de })}</p>
             </div>
           </div>
         )}

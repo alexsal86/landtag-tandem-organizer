@@ -29,6 +29,7 @@ export interface QuickNote {
   task_id?: string;
   meeting_id?: string;
   decision_id?: string;
+  case_item_id?: string;
   priority_level?: number;
   follow_up_date?: string;
   is_archived?: boolean;
@@ -120,6 +121,8 @@ export function QuickNotesList({
     onOpenVersionHistory: hook.openVersionHistory,
     onSplitNote: hook.splitNoteIntoBullets,
     onShare: (n: QuickNote) => { hook.setNoteForShare(n); hook.setShareDialogOpen(true); },
+    onCreateCaseItem: hook.createCaseItemFromNote,
+    onRemoveCaseItem: hook.setConfirmRemoveCaseItem,
   });
 
   return (
@@ -273,12 +276,17 @@ export function QuickNotesList({
         confirmRemoveDecision={hook.confirmRemoveDecision}
         setConfirmRemoveDecision={hook.setConfirmRemoveDecision}
         removeDecisionFromNote={hook.removeDecisionFromNote}
+        confirmRemoveCaseItem={hook.confirmRemoveCaseItem}
+        setConfirmRemoveCaseItem={hook.setConfirmRemoveCaseItem}
+        removeCaseItemFromNote={hook.removeCaseItemFromNote}
         confirmDeleteLinkedNote={hook.confirmDeleteLinkedNote}
         setConfirmDeleteLinkedNote={hook.setConfirmDeleteLinkedNote}
         deleteLinkedTask={hook.deleteLinkedTask}
         setDeleteLinkedTask={hook.setDeleteLinkedTask}
         deleteLinkedDecision={hook.deleteLinkedDecision}
         setDeleteLinkedDecision={hook.setDeleteLinkedDecision}
+        deleteLinkedCaseItem={hook.deleteLinkedCaseItem}
+        setDeleteLinkedCaseItem={hook.setDeleteLinkedCaseItem}
         deleteLinkedMeeting={hook.deleteLinkedMeeting}
         setDeleteLinkedMeeting={hook.setDeleteLinkedMeeting}
         handleDeleteNoteWithLinks={hook.handleDeleteNoteWithLinks}

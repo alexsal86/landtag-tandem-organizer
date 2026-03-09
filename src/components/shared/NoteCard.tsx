@@ -13,7 +13,7 @@ import {
   Pin, Trash2, MoreHorizontal, CheckSquare, Vote,
   Calendar as CalendarIcon, Archive, ChevronDown, ChevronUp, Clock,
   Star, Share2, Users, Hourglass, Pencil, GripVertical, ListTree,
-  History, ArrowRight, Palette, X
+  History, ArrowRight, Palette, X, FileText
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { format, isPast, isToday } from "date-fns";
@@ -50,6 +50,8 @@ interface NoteCardProps {
   onRemoveTask: (note: QuickNote) => void;
   onCreateDecision: (note: QuickNote) => void;
   onRemoveDecision: (note: QuickNote) => void;
+  onCreateCaseItem: (note: QuickNote) => void;
+  onRemoveCaseItem: (note: QuickNote) => void;
   onOpenMeetingSelector: (note: QuickNote) => void;
   onRemoveFromMeeting: (noteId: string) => void;
   onOpenEdit: (note: QuickNote) => void;
@@ -65,7 +67,8 @@ export function NoteCard({
   onNoteClick, onToggleExpand, onToggleDetailsExpand,
   onTogglePin, onDelete, onArchive, onSetPriority, onSetColor, onSetColorMode,
   onSetFollowUp, onOpenDatePicker, onCreateTask, onRemoveTask,
-  onCreateDecision, onRemoveDecision, onOpenMeetingSelector, onRemoveFromMeeting,
+  onCreateDecision, onRemoveDecision, onCreateCaseItem, onRemoveCaseItem,
+  onOpenMeetingSelector, onRemoveFromMeeting,
   onOpenEdit, onOpenVersionHistory, onSplitNote, onShare,
 }: NoteCardProps) {
   const fullText = note.content.replace(/<[^>]*>/g, '');
@@ -143,12 +146,14 @@ export function NoteCard({
               <div className="flex items-center gap-1.5 group-hover:hidden">
                 {note.task_id && <div className="w-1.5 h-1.5 bg-blue-500" title="Aufgabe" />}
                 {note.decision_id && <div className="w-1.5 h-1.5 bg-purple-500" title="Entscheidung" />}
+                {note.case_item_id && <div className="w-1.5 h-1.5 bg-teal-500" title="Vorgang" />}
                 {note.meeting_id && <div className="w-1.5 h-1.5 bg-emerald-500" title="Jour Fixe" />}
                 {hasShared && <div className="w-1.5 h-1.5 bg-violet-500" title={note.is_shared ? `Geteilt von ${note.owner?.display_name || 'Unbekannt'}` : "Geteilt"} />}
               </div>
               <div className="hidden group-hover:flex items-center gap-1.5 flex-wrap">
                 {note.task_id && <NoteLinkedBadge type="task" id={note.task_id} label="Aufgabe" />}
                 {note.decision_id && <NoteLinkedBadge type="decision" id={note.decision_id} label="Entscheidung" />}
+                {note.case_item_id && <NoteLinkedBadge type="case_item" id={note.case_item_id} label="Vorgang" />}
                 {note.meeting_id && (
                   <NoteLinkedBadge type="meeting" id={note.meeting_id} label={note.meetings?.meeting_date ? `JF: ${format(new Date(note.meetings.meeting_date), "dd.MM.", { locale: de })}` : "Jour Fixe"} />
                 )}
@@ -203,6 +208,11 @@ export function NoteCard({
                         <Vote className="h-3 w-3" />
                       </Button>
                     </TooltipTrigger><TooltipContent side="top">{note.decision_id ? "Entscheidung zurücknehmen" : "Als Entscheidung"}</TooltipContent></Tooltip>
+                    <Tooltip><TooltipTrigger asChild>
+                      <Button variant="ghost" size="icon" className={cn("h-6 w-6 hover:bg-muted/80 rounded-full", note.case_item_id && "text-teal-600")} onClick={(e) => { e.stopPropagation(); note.case_item_id ? onRemoveCaseItem(note) : onCreateCaseItem(note); }}>
+                        <FileText className="h-3 w-3" />
+                      </Button>
+                    </TooltipTrigger><TooltipContent side="top">{note.case_item_id ? "Vorgang entfernen" : "Als Vorgang"}</TooltipContent></Tooltip>
                     <Tooltip><TooltipTrigger asChild>
                       <Button variant="ghost" size="icon" className={cn("h-6 w-6 hover:bg-muted/80 rounded-full", note.follow_up_date && "text-amber-600")} onClick={(e) => { e.stopPropagation(); onOpenDatePicker(note); }}>
                         <Clock className="h-3 w-3" />
@@ -261,6 +271,15 @@ export function NoteCard({
                 ) : (
                   <DropdownMenuItem onClick={() => onCreateDecision(note)}>
                     <Vote className="h-3 w-3 mr-2" />Als Entscheidung
+                  </DropdownMenuItem>
+                )}
+                {note.case_item_id ? (
+                  <DropdownMenuItem onClick={() => onRemoveCaseItem(note)} className="text-teal-600">
+                    <FileText className="h-3 w-3 mr-2" />Vorgang entfernen
+                  </DropdownMenuItem>
+                ) : (
+                  <DropdownMenuItem onClick={() => onCreateCaseItem(note)}>
+                    <FileText className="h-3 w-3 mr-2" />Als Vorgang
                   </DropdownMenuItem>
                 )}
                 {note.meeting_id ? (
@@ -396,6 +415,7 @@ export function NoteCard({
         <NoteLinkedDetails
           taskId={note.task_id}
           decisionId={note.decision_id}
+          caseItemId={note.case_item_id}
           meetingId={note.meeting_id}
           isExpanded={isDetailsExpanded}
         />

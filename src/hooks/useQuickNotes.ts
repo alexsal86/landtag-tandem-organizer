@@ -99,9 +99,11 @@ export function useQuickNotes(refreshTrigger?: number) {
   const [confirmDeleteTaskNote, setConfirmDeleteTaskNote] = useState<QuickNote | null>(null);
   const [confirmDeleteLinkedNote, setConfirmDeleteLinkedNote] = useState<QuickNote | null>(null);
   const [confirmRemoveDecision, setConfirmRemoveDecision] = useState<QuickNote | null>(null);
+  const [confirmRemoveCaseItem, setConfirmRemoveCaseItem] = useState<QuickNote | null>(null);
   const [deleteLinkedTask, setDeleteLinkedTask] = useState(true);
   const [deleteLinkedDecision, setDeleteLinkedDecision] = useState(true);
   const [deleteLinkedMeeting, setDeleteLinkedMeeting] = useState(false);
+  const [deleteLinkedCaseItem, setDeleteLinkedCaseItem] = useState(true);
 
   // ── Data Loading ──────────────────────────────────────────────────────
 
@@ -114,7 +116,7 @@ export function useQuickNotes(refreshTrigger?: number) {
           .from("quick_notes")
           .select(`
             id, title, content, color, color_full_card, is_pinned, created_at, updated_at, user_id,
-            is_archived, task_id, meeting_id, decision_id, priority_level, follow_up_date, pending_for_jour_fixe,
+            is_archived, task_id, meeting_id, decision_id, case_item_id, priority_level, follow_up_date, pending_for_jour_fixe,
             task_archived_info, decision_archived_info, meeting_archived_info,
             meetings!meeting_id(title, meeting_date, status)
           `)
@@ -178,7 +180,7 @@ export function useQuickNotes(refreshTrigger?: number) {
           .from("quick_notes")
           .select(`
             id, title, content, color, color_full_card, is_pinned, created_at, updated_at, user_id,
-            is_archived, task_id, meeting_id, decision_id, priority_level, follow_up_date, pending_for_jour_fixe,
+            is_archived, task_id, meeting_id, decision_id, case_item_id, priority_level, follow_up_date, pending_for_jour_fixe,
             task_archived_info, decision_archived_info, meeting_archived_info,
             meetings!meeting_id(title, meeting_date, status)
           `)
@@ -210,7 +212,7 @@ export function useQuickNotes(refreshTrigger?: number) {
           .from("quick_notes")
           .select(`
             id, title, content, color, color_full_card, is_pinned, created_at, updated_at, user_id,
-            is_archived, task_id, meeting_id, decision_id, priority_level, follow_up_date, pending_for_jour_fixe,
+            is_archived, task_id, meeting_id, decision_id, case_item_id, priority_level, follow_up_date, pending_for_jour_fixe,
             task_archived_info, decision_archived_info, meeting_archived_info,
             meetings!meeting_id(title, meeting_date, status)
           `)
@@ -647,11 +649,12 @@ export function useQuickNotes(refreshTrigger?: number) {
   };
 
   const handleDeleteWithConfirmation = (note: QuickNote) => {
-    const hasLinks = note.task_id || note.decision_id || note.meeting_id;
+    const hasLinks = note.task_id || note.decision_id || note.meeting_id || note.case_item_id;
     if (hasLinks) {
       setDeleteLinkedTask(!!note.task_id);
       setDeleteLinkedDecision(!!note.decision_id);
       setDeleteLinkedMeeting(false);
+      setDeleteLinkedCaseItem(!!note.case_item_id);
       setConfirmDeleteLinkedNote(note);
     } else {
       handleDelete(note.id);
@@ -670,6 +673,9 @@ export function useQuickNotes(refreshTrigger?: number) {
       }
       if (note.meeting_id && deleteLinkedMeeting) {
         await supabase.from("quick_notes").update({ meeting_id: null, added_to_meeting_at: null }).eq("id", note.id).eq("user_id", user.id);
+      }
+      if (note.case_item_id && deleteLinkedCaseItem) {
+        await supabase.from('case_items').update({ status: 'archiviert' }).eq('id', note.case_item_id);
       }
       await handleDelete(note.id);
       setConfirmDeleteLinkedNote(null);
@@ -791,6 +797,59 @@ export function useQuickNotes(refreshTrigger?: number) {
     }
   };
 
+  const createCaseItemFromNote = async (note: QuickNote) => {
+    if (!user || !currentTenant) { toast.error("Nicht angemeldet"); return; }
+    try {
+      const plainContent = stripHtml(note.content);
+      const itemSubject = note.title
+        ? stripHtml(note.title)
+        : plainContent.substring(0, 100);
+      
+      const mapPriority = (level: number | undefined | null): 'niedrig' | 'mittel' | 'hoch' => {
+        if (!level || level <= 1) return 'niedrig';
+        if (level === 2) return 'mittel';
+        return 'hoch';
+      };
+
+      const { data: caseItem, error: caseError } = await supabase
+        .from('case_items')
+        .insert([{
+          tenant_id: currentTenant.id,
+          created_by: user.id,
+          subject: itemSubject,
+          summary: note.content,
+          status: 'neu',
+          priority: mapPriority(note.priority_level),
+          category: 'Allgemein',
+          source_channel: 'other',
+        } as any])
+        .select().single();
+      
+      if (caseError) throw caseError;
+      
+      await supabase.from("quick_notes").update({ case_item_id: caseItem.id }).eq("id", note.id);
+      toast.success("Vorgang erstellt");
+      loadNotes();
+    } catch (error) {
+      debugConsole.error('Error creating case item from note:', error);
+      toast.error("Fehler beim Erstellen des Vorgangs");
+    }
+  };
+
+  const removeCaseItemFromNote = async (note: QuickNote) => {
+    if (!note.case_item_id || !user?.id) return;
+    try {
+      await supabase.from('case_items').update({ status: 'archiviert' }).eq('id', note.case_item_id);
+      await supabase.from("quick_notes").update({ case_item_id: null }).eq("id", note.id).eq("user_id", user.id);
+      toast.success("Vorgang archiviert und von Notiz entfernt");
+      setConfirmRemoveCaseItem(null);
+      loadNotes();
+    } catch (error) {
+      debugConsole.error('Error removing case item from note:', error);
+      toast.error("Fehler beim Entfernen des Vorgangs");
+    }
+  };
+
   const splitNoteIntoBullets = async (note: QuickNote) => {
     if (!user) return;
     const listItemRegex = /<li[^>]*>(.*?)<\/li>/gi;
@@ -901,9 +960,11 @@ export function useQuickNotes(refreshTrigger?: number) {
     confirmDeleteTaskNote, setConfirmDeleteTaskNote,
     confirmDeleteLinkedNote, setConfirmDeleteLinkedNote,
     confirmRemoveDecision, setConfirmRemoveDecision,
+    confirmRemoveCaseItem, setConfirmRemoveCaseItem,
     deleteLinkedTask, setDeleteLinkedTask,
     deleteLinkedDecision, setDeleteLinkedDecision,
     deleteLinkedMeeting, setDeleteLinkedMeeting,
+    deleteLinkedCaseItem, setDeleteLinkedCaseItem,
 
     // Actions
     loadNotes,
@@ -911,6 +972,7 @@ export function useQuickNotes(refreshTrigger?: number) {
     handleSetPriority, handleSetColor, handleSetColorMode,
     handleSetFollowUp, handleDeleteWithConfirmation, handleDeleteNoteWithLinks,
     createTaskFromNote, removeTaskFromNote, removeDecisionFromNote,
+    createCaseItemFromNote, removeCaseItemFromNote,
     addNoteToMeeting, markForNextJourFixe, removeFromJourFixeQueue, removeNoteFromMeeting,
     openEditDialog, handleSaveEdit,
     openVersionHistory, restoreVersion,
