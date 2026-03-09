@@ -1215,7 +1215,8 @@ export function MyWorkCasesWorkspace() {
                                                 statusOptions={statusOptions.map(({ value, label }) => ({ value, label }))}
                                                 categoryOptions={categoryOptions}
                                                 teamUsers={teamUsers}
-                                                linkedDecisions={detailItemId ? (linkedDecisions[detailItemId] || []) : []}
+                                                currentUserId={user?.id || null}
+                                                linkedDecisions={linkedDecisions[item.id] || []}
                                                 loadingDecisions={loadingDecisions}
                                                 timelineEntries={timelineEntries}
                                                 toEditorHtml={toEditorHtml}
