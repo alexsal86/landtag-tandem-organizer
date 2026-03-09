@@ -1,10 +1,11 @@
-import { useState, useEffect, Suspense, useMemo } from "react";
+import { useState, useEffect, Suspense, useMemo, useCallback, startTransition } from "react";
 import { lazyWithRetry } from "@/lib/lazyWithRetry";
 import { useNavigate, useLocation, useParams } from "react-router-dom";
 import { ThemeProvider } from "next-themes";
 import { useAuth } from "@/hooks/useAuth";
 import { useTenant } from "@/hooks/useTenant";
 import { AppNavigation, getNavigationGroups } from "@/components/AppNavigation";
+import { prefetchRoute } from "@/lib/routePrefetch";
 
 // Lazy load all major view components for better initial load performance
 const CustomizableDashboard = lazyWithRetry(() => import("@/components/CustomizableDashboard").then(m => ({ default: m.CustomizableDashboard })));
