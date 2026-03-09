@@ -292,8 +292,7 @@ export function MyWorkTeamTab() {
   }
 
   return (
-    <ScrollArea className="h-[600px]">
-      <div className="space-y-6 p-4">
+    <div className="space-y-6 p-4">
         {/* Team Announcements Manager - only for admins */}
         {isAdmin && (
           <TeamAnnouncementsManager />
