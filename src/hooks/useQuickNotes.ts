@@ -212,7 +212,7 @@ export function useQuickNotes(refreshTrigger?: number) {
           .from("quick_notes")
           .select(`
             id, title, content, color, color_full_card, is_pinned, created_at, updated_at, user_id,
-            is_archived, task_id, meeting_id, decision_id, priority_level, follow_up_date, pending_for_jour_fixe,
+            is_archived, task_id, meeting_id, decision_id, case_item_id, priority_level, follow_up_date, pending_for_jour_fixe,
             task_archived_info, decision_archived_info, meeting_archived_info,
             meetings!meeting_id(title, meeting_date, status)
           `)
