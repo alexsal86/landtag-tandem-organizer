@@ -608,6 +608,13 @@ export function MyWorkCaseItemsTab() {
                       <ExternalLink className="mr-2 h-4 w-4" />
                       Öffnen
                     </ContextMenuItem>
+                    <ContextMenuItem onClick={() => {
+                      setMeetingSelectorItemId(item.id);
+                      setMeetingSelectorOpen(true);
+                    }}>
+                      <CalendarDays className="mr-2 h-4 w-4" />
+                      Zum Jour Fixe hinzufügen
+                    </ContextMenuItem>
                     <ContextMenuItem onClick={() => handleArchive(item.id)}>
                       <Archive className="mr-2 h-4 w-4" />
                       Archivieren
