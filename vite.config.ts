@@ -31,6 +31,22 @@ export default defineConfig(({ mode }) => ({
     componentTagger(),
   ].filter(Boolean),
   resolve: {
+    dedupe: [
+      'lexical',
+      '@lexical/code',
+      '@lexical/file',
+      '@lexical/hashtag',
+      '@lexical/html',
+      '@lexical/link',
+      '@lexical/list',
+      '@lexical/mark',
+      '@lexical/markdown',
+      '@lexical/plain-text',
+      '@lexical/react',
+      '@lexical/rich-text',
+      '@lexical/table',
+      '@lexical/yjs',
+    ],
     alias: {
       "@": path.resolve(__dirname, "./src"),
       "@radix-ui/react-compose-refs": path.resolve(__dirname, "./src/lib/radix-compose-refs-patch.ts"),
@@ -59,7 +75,7 @@ export default defineConfig(({ mode }) => ({
       output: {
         manualChunks: {
           'vendor-react': ['react', 'react-dom', 'react-router-dom', '@tanstack/react-query'],
-          'vendor-editor': ['lexical', '@lexical/rich-text', '@lexical/list', '@lexical/link', '@lexical/markdown', '@lexical/html', '@lexical/code', '@lexical/table', '@lexical/yjs'],
+          'vendor-editor': ['lexical', '@lexical/react', '@lexical/rich-text', '@lexical/list', '@lexical/link', '@lexical/markdown', '@lexical/html', '@lexical/code', '@lexical/table', '@lexical/yjs', '@lexical/plain-text', '@lexical/hashtag', '@lexical/mark', '@lexical/file'],
           'vendor-matrix': ['matrix-js-sdk', 'yjs', 'y-websocket', 'y-indexeddb'],
           'vendor-pdf': ['pdfjs-dist', 'jspdf', 'docx'],
           'vendor-charts-maps': ['recharts', 'leaflet', 'react-leaflet', 'proj4'],

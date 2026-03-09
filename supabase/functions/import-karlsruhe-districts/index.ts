@@ -68,7 +68,7 @@ serve(async (req) => {
     console.log('Fetching GeoJSON from GitHub raw content...');
     
     // Fetch the GeoJSON file from GitHub raw content
-    const geoJsonUrl = `https://raw.githubusercontent.com/alexsal86/landtag-tandem-organizer/main/public/data/karlsruhe-stadtteile.geojson`;
+    const geoJsonUrl = `https://raw.githubusercontent.com/alexsal86/landtagsos/main/public/data/karlsruhe-stadtteile.geojson`;
     const response = await fetch(geoJsonUrl, {
       headers: {
         'Accept': 'application/json',
