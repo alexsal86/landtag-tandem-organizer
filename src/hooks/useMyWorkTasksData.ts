@@ -113,21 +113,17 @@ export function useMyWorkTasksData(userId?: string) {
       const grouped: Record<string, MyWorkTask[]> = {};
       const tenantIds = [...new Set([...createdByMe, ...assignedByOthers].map((task) => task.tenant_id).filter(Boolean))] as string[];
 
-      const subtasksQuery = supabase
-        .from("tasks")
-        .select(TASK_LIST_SELECT)
-        .neq("status", "completed")
-        .not("parent_task_id", "is", null)
-        .order("due_date", { ascending: true, nullsFirst: false });
-
-      const [snoozesResult, subtasksResult, commentsResult] = await Promise.all([
+      const [snoozesResult, subtasksResult, commentsResult] = await Promise.allSettled([
         supabase
           .from("task_snoozes")
           .select("task_id, snoozed_until")
           .eq("user_id", userId),
-        tenantIds.length > 0
-          ? subtasksQuery.in("tenant_id", tenantIds)
-          : subtasksQuery,
+        supabase
+          .from("tasks")
+          .select(TASK_LIST_SELECT)
+          .in("parent_task_id", allTaskIds)
+          .neq("status", "completed")
+          .order("due_date", { ascending: true, nullsFirst: false }),
         supabase
           .from("task_comments")
           .select("task_id")
