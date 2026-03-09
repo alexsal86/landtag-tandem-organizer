@@ -102,7 +102,7 @@ serve(async (req) => {
     if (insertError) {
       console.error('Error inserting administrative boundaries:', insertError);
       return new Response(
-        JSON.stringify({ error: 'Failed to insert data', details: insertError.message }),
+        JSON.stringify({ error: 'Failed to insert data' }),
         { 
           status: 500, 
           headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
