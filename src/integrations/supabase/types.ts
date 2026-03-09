@@ -8456,6 +8456,7 @@ export type Database = {
         Row: {
           added_to_meeting_at: string | null
           archived_at: string | null
+          case_item_id: string | null
           category: string | null
           color: string | null
           color_full_card: boolean | null
@@ -8484,6 +8485,7 @@ export type Database = {
         Insert: {
           added_to_meeting_at?: string | null
           archived_at?: string | null
+          case_item_id?: string | null
           category?: string | null
           color?: string | null
           color_full_card?: boolean | null
@@ -8512,6 +8514,7 @@ export type Database = {
         Update: {
           added_to_meeting_at?: string | null
           archived_at?: string | null
+          case_item_id?: string | null
           category?: string | null
           color?: string | null
           color_full_card?: boolean | null
@@ -8538,6 +8541,13 @@ export type Database = {
           user_id?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "quick_notes_case_item_id_fkey"
+            columns: ["case_item_id"]
+            isOneToOne: false
+            referencedRelation: "case_items"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "quick_notes_decision_id_fkey"
             columns: ["decision_id"]
