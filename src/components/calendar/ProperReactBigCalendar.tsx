@@ -36,6 +36,18 @@ const localizer = dateFnsLocalizer({
 // Create DnD Calendar with drag and drop support
 const DnDCalendar = withDragAndDrop(Calendar);
 
+const WeekHeader = ({ date }: { date: Date }) => {
+  const isToday = isSameDay(date, new Date());
+  return (
+    <div className="rbc-custom-week-header">
+      <span className="rbc-custom-weekday">{format(date, 'EEE', { locale: de }).toUpperCase()}</span>
+      <span className={isToday ? 'rbc-custom-day rbc-custom-day--today' : 'rbc-custom-day'}>
+        {format(date, 'd', { locale: de })}
+      </span>
+    </div>
+  );
+};
+
 // German messages for React Big Calendar
 const messages = {
   allDay: 'Ganztägig',
@@ -255,7 +267,12 @@ const ProperReactBigCalendar: React.FC<ProperReactBigCalendarProps> = ({
         step={30}
         timeslots={2}
         views={[Views.MONTH, Views.WEEK, Views.DAY, Views.AGENDA]}
-        defaultView={Views.MONTH}
+        defaultView={Views.WEEK}
+        components={{
+          week: {
+            header: WeekHeader,
+          },
+        }}
         className="rbc-calendar"
         style={{ height: '100%', minHeight: '500px' }}
       />

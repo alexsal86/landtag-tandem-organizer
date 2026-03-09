@@ -206,6 +206,43 @@
   border-bottom: 1px solid hsl(var(--border));
 }
 
+.rbc-time-view .rbc-header {
+  background: hsl(var(--background));
+  color: hsl(var(--foreground));
+  padding: 0.4rem 0.5rem;
+}
+
+.rbc-custom-week-header {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.2rem;
+}
+
+.rbc-custom-weekday {
+  font-size: 0.7rem;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  color: hsl(var(--muted-foreground));
+}
+
+.rbc-custom-day {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2rem;
+  height: 2rem;
+  border-radius: 9999px;
+  font-size: 1.15rem;
+  font-weight: 600;
+  color: hsl(var(--foreground));
+}
+
+.rbc-custom-day--today {
+  background: hsl(var(--primary));
+  color: hsl(var(--primary-foreground));
+}
+
 .rbc-timeslot-group {
   border-bottom: 1px solid hsl(var(--border) / 0.3);
 }

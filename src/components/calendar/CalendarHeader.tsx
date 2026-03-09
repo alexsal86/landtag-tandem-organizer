@@ -14,47 +14,51 @@ interface CalendarHeaderProps {
 const formatDate = (date: Date) =>
   date.toLocaleDateString("de-DE", { weekday: "long", year: "numeric", month: "long", day: "numeric" });
 
+const formatMonth = (date: Date) =>
+  date.toLocaleDateString("de-DE", { month: "long", year: "numeric" });
+
 export function CalendarHeader({ currentDate, view, onNavigateDate, onToday, onViewChange, onShowPolls }: CalendarHeaderProps) {
   const navigate = useNavigate();
 
   return (
-    <div className="mb-8">
-      <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4 mb-4">
-        <div>
-          <h1 className="text-2xl sm:text-3xl font-bold text-foreground mb-2">Terminkalender</h1>
-          <p className="text-muted-foreground text-sm sm:text-base">{formatDate(currentDate)}</p>
-        </div>
-        <div className="flex flex-wrap gap-2">
-          <Button className="gap-2 min-h-[44px]" onClick={() => navigate("/calendar?action=create-appointment")}>
-            <Plus className="h-4 w-4" />
-            <span className="hidden sm:inline">Neuer Termin</span>
-            <span className="sm:hidden">Neu</span>
-          </Button>
-          <Button variant="outline" className="gap-2 min-h-[44px]" onClick={onShowPolls}>
-            Abstimmungen
-          </Button>
-        </div>
+    <div className="h-full rounded-lg border border-border bg-card p-4">
+      <div className="mb-6">
+        <h1 className="text-2xl font-bold text-foreground mb-1">Terminkalender</h1>
+        <p className="text-muted-foreground text-sm">{formatDate(currentDate)}</p>
       </div>
 
-      <div className="flex flex-col sm:flex-row sm:justify-between gap-4">
+      <div className="space-y-2 mb-6">
+        <Button className="w-full justify-start gap-2 min-h-[44px]" onClick={() => navigate("/calendar?action=create-appointment")}>
+          <Plus className="h-4 w-4" />
+          Neuer Termin
+        </Button>
+        <Button variant="outline" className="w-full justify-start gap-2 min-h-[44px]" onClick={onShowPolls}>
+          Abstimmungen
+        </Button>
+      </div>
+
+      <div className="rounded-md border border-border p-3 space-y-3">
+        <p className="text-sm font-medium capitalize">{formatMonth(currentDate)}</p>
+
         <div className="flex items-center gap-2">
-          <Button variant="outline" size="sm" onClick={() => onNavigateDate("prev")} className="min-h-[44px] min-w-[44px]">
+          <Button variant="outline" size="sm" onClick={() => onNavigateDate("prev")} className="min-h-[38px] min-w-[38px] px-2">
             <ChevronLeft className="h-4 w-4" />
           </Button>
-          <Button variant="outline" size="sm" onClick={onToday} className="min-h-[44px]">
+          <Button variant="outline" size="sm" onClick={onToday} className="min-h-[38px] flex-1">
             Heute
           </Button>
-          <Button variant="outline" size="sm" onClick={() => onNavigateDate("next")} className="min-h-[44px] min-w-[44px]">
+          <Button variant="outline" size="sm" onClick={() => onNavigateDate("next")} className="min-h-[38px] min-w-[38px] px-2">
             <ChevronRight className="h-4 w-4" />
           </Button>
         </div>
 
-        <div className="flex gap-2 overflow-x-auto pb-2">
-          {(["day", "week", "month", "agenda"] as const).map((vt) => (
-            <Button key={vt} variant={view === vt ? "default" : "outline"} size="sm" onClick={() => onViewChange(vt)} className="whitespace-nowrap min-h-[44px]">
-              {vt === "day" ? "Tag" : vt === "week" ? "Woche" : vt === "month" ? "Monat" : "Agenda"}
-            </Button>
-          ))}
+        <div className="grid grid-cols-2 gap-2">
+          <Button variant={view === "week" ? "default" : "outline"} size="sm" onClick={() => onViewChange("week")}>
+            Woche
+          </Button>
+          <Button variant={view === "agenda" ? "default" : "outline"} size="sm" onClick={() => onViewChange("agenda")}>
+            Agenda
+          </Button>
         </div>
       </div>
     </div>
