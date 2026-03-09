@@ -1037,7 +1037,65 @@ export function MyWorkCasesWorkspace() {
                                 <span className="group inline-flex items-center gap-0.5">Kategorie<button type="button" className={sortButtonClass("category", "asc")} onClick={() => toggleSort("category", "asc")} aria-label="Kategorie aufsteigend sortieren"><ArrowUp className="h-3 w-3" /></button><button type="button" className={sortButtonClass("category", "desc")} onClick={() => toggleSort("category", "desc")} aria-label="Kategorie absteigend sortieren"><ArrowDown className="h-3 w-3" /></button></span>
                                 <span className="group inline-flex items-center gap-0.5">Status<button type="button" className={sortButtonClass("status", "asc")} onClick={() => toggleSort("status", "asc")} aria-label="Status aufsteigend sortieren"><ArrowUp className="h-3 w-3" /></button><button type="button" className={sortButtonClass("status", "desc")} onClick={() => toggleSort("status", "desc")} aria-label="Status absteigend sortieren"><ArrowDown className="h-3 w-3" /></button></span>
                                 <span className="group inline-flex items-center justify-center gap-0.5"><button type="button" className={sortButtonClass("priority", "asc")} onClick={() => toggleSort("priority", "asc")} aria-label="Priorität aufsteigend sortieren"><ArrowUp className="h-3 w-3" /></button><button type="button" className={sortButtonClass("priority", "desc")} onClick={() => toggleSort("priority", "desc")} aria-label="Priorität absteigend sortieren"><ArrowDown className="h-3 w-3" /></button></span>
-                                <span className="group inline-flex items-center gap-0.5">Bearbeiter<button type="button" className={sortButtonClass("assignee", "asc")} onClick={() => toggleSort("assignee", "asc")} aria-label="Bearbeiter aufsteigend sortieren"><ArrowUp className="h-3 w-3" /></button><button type="button" className={sortButtonClass("assignee", "desc")} onClick={() => toggleSort("assignee", "desc")} aria-label="Bearbeiter absteigend sortieren"><ArrowDown className="h-3 w-3" /></button></span>
+                                <span className="group inline-flex items-center gap-0.5">
+                                  Bearbeiter
+                                  <button type="button" className={sortButtonClass("assignee", "asc")} onClick={() => toggleSort("assignee", "asc")} aria-label="Bearbeiter aufsteigend sortieren"><ArrowUp className="h-3 w-3" /></button>
+                                  <button type="button" className={sortButtonClass("assignee", "desc")} onClick={() => toggleSort("assignee", "desc")} aria-label="Bearbeiter absteigend sortieren"><ArrowDown className="h-3 w-3" /></button>
+                                  <TooltipProvider>
+                                    <Tooltip>
+                                      <TooltipTrigger asChild>
+                                        <button
+                                          type="button"
+                                          className={cn(
+                                            "rounded p-0.5 ml-1 transition-all hover:bg-muted",
+                                            itemSort.secondary.enabled && "bg-primary/15 text-primary"
+                                          )}
+                                          onClick={toggleSecondarySort}
+                                          aria-label="Als zweite Sortierung verwenden"
+                                        >
+                                          <Link2 className="h-3 w-3" />
+                                        </button>
+                                      </TooltipTrigger>
+                                      <TooltipContent>
+                                        <div className="text-xs">
+                                          {itemSort.secondary.enabled ? (
+                                            <>2. Sortierung nach Bearbeiter aktiv (deaktivieren)</>
+                                          ) : (
+                                            <>Als 2. Sortierung aktivieren</>
+                                          )}
+                                        </div>
+                                      </TooltipContent>
+                                    </Tooltip>
+                                  </TooltipProvider>
+                                  {itemSort.secondary.enabled && (
+                                    <TooltipProvider>
+                                      <Tooltip>
+                                        <TooltipTrigger asChild>
+                                          <button
+                                            type="button"
+                                            className={cn(
+                                              "rounded p-0.5 transition-all hover:bg-muted",
+                                              itemSort.secondary.direction === "asc" ? "bg-primary/15 text-primary" : "opacity-60"
+                                            )}
+                                            onClick={toggleSecondaryDirection}
+                                            aria-label="Richtung der zweiten Sortierung wechseln"
+                                          >
+                                            {itemSort.secondary.direction === "asc" ? (
+                                              <ArrowUp className="h-3 w-3" />
+                                            ) : (
+                                              <ArrowDown className="h-3 w-3" />
+                                            )}
+                                          </button>
+                                        </TooltipTrigger>
+                                        <TooltipContent>
+                                          <div className="text-xs">
+                                            2. Sortierung: {itemSort.secondary.direction === "asc" ? "A-Z" : "Z-A"}
+                                          </div>
+                                        </TooltipContent>
+                                      </Tooltip>
+                                    </TooltipProvider>
+                                  )}
+                                </span>
                               </div>
                               {sortedCaseItems.map((item, index) => {
                                 const linkedFile = item.case_file_id ? caseFilesById[item.case_file_id] : null;
