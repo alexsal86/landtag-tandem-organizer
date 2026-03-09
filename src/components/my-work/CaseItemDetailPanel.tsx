@@ -509,15 +509,9 @@ export function CaseItemDetailPanel({
             </div>
           </div>
 
-          <div className="grid grid-cols-1 gap-3">
-            <div className="space-y-1.5">
-              <Label className="font-bold" htmlFor="detail-received">Eingangsdatum</Label>
-              <Input id="detail-received" type="date" value={editableCaseItem.sourceReceivedAt} onChange={(event) => onUpdate({ sourceReceivedAt: event.target.value })} />
-            </div>
-            <div className="space-y-1.5">
-              <Label className="font-bold" htmlFor="detail-due">Fällig am</Label>
-              <Input id="detail-due" type="date" value={editableCaseItem.dueAt} onChange={(event) => onUpdate({ dueAt: event.target.value })} />
-            </div>
+          <div className="space-y-1.5">
+            <Label className="font-bold" htmlFor="detail-due">Fällig am</Label>
+            <Input id="detail-due" type="date" value={editableCaseItem.dueAt} onChange={(event) => onUpdate({ dueAt: event.target.value })} />
           </div>
 
           <Collapsible open={showMetaFields} onOpenChange={setShowMetaFields} className="rounded-md border bg-background">
@@ -530,15 +524,8 @@ export function CaseItemDetailPanel({
             <CollapsibleContent className="space-y-3 px-3 pb-3">
               <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                 <div className="space-y-1.5">
-                  <Label className="font-bold">Status</Label>
-                  <Select value={editableCaseItem.status} onValueChange={(value) => onUpdate({ status: value })}>
-                    <SelectTrigger><SelectValue /></SelectTrigger>
-                    <SelectContent>
-                      {statusOptions.map((statusOption) => (
-                        <SelectItem key={statusOption.value} value={statusOption.value}>{statusOption.label}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                  <Label className="font-bold" htmlFor="detail-received">Eingangsdatum</Label>
+                  <Input id="detail-received" type="date" value={editableCaseItem.sourceReceivedAt} onChange={(event) => onUpdate({ sourceReceivedAt: event.target.value })} />
                 </div>
                 <div className="space-y-1.5">
                   <Label className="font-bold">Kategorie *</Label>
@@ -554,6 +541,17 @@ export function CaseItemDetailPanel({
               </div>
               <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                 <div className="space-y-1.5">
+                  <Label className="font-bold">Status</Label>
+                  <Select value={editableCaseItem.status} onValueChange={(value) => onUpdate({ status: value })}>
+                    <SelectTrigger><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      {statusOptions.map((statusOption) => (
+                        <SelectItem key={statusOption.value} value={statusOption.value}>{statusOption.label}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-1.5">
                   <Label className="font-bold">Priorität</Label>
                   <Select value={editableCaseItem.priority} onValueChange={(value) => onUpdate({ priority: value })}>
                     <SelectTrigger><SelectValue /></SelectTrigger>
@@ -565,29 +563,29 @@ export function CaseItemDetailPanel({
                     </SelectContent>
                   </Select>
                 </div>
-                <div className="space-y-1.5">
-                  <Label className="font-bold">Bearbeiter</Label>
-                  <div className="flex flex-wrap gap-2 rounded-md border p-2">
-                    {teamUsers.map((member) => {
-                      const selected = editableCaseItem.assigneeIds.includes(member.id);
-                      return (
-                        <Button
-                          key={member.id}
-                          type="button"
-                          size="sm"
-                          variant={selected ? "default" : "outline"}
-                          onClick={() => {
-                            const next = selected
-                              ? editableCaseItem.assigneeIds.filter((id) => id !== member.id)
-                              : [...editableCaseItem.assigneeIds, member.id];
-                            onUpdate({ assigneeIds: next });
-                          }}
-                        >
-                          {member.name}
-                        </Button>
-                      );
-                    })}
-                  </div>
+              </div>
+              <div className="space-y-1.5">
+                <Label className="font-bold">Bearbeiter</Label>
+                <div className="flex flex-wrap gap-2 rounded-md border p-2">
+                  {teamUsers.map((member) => {
+                    const selected = editableCaseItem.assigneeIds.includes(member.id);
+                    return (
+                      <Button
+                        key={member.id}
+                        type="button"
+                        size="sm"
+                        variant={selected ? "default" : "outline"}
+                        onClick={() => {
+                          const next = selected
+                            ? editableCaseItem.assigneeIds.filter((id) => id !== member.id)
+                            : [...editableCaseItem.assigneeIds, member.id];
+                          onUpdate({ assigneeIds: next });
+                        }}
+                      >
+                        {member.name}
+                      </Button>
+                    );
+                  })}
                 </div>
               </div>
 
