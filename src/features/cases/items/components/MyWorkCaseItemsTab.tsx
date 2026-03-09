@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { format, isPast, isToday } from "date-fns";
 import { de } from "date-fns/locale";
-import { AlertCircle, Archive, ArrowUpDown, Briefcase, CalendarClock, ExternalLink, Plus, Search } from "lucide-react";
+import { AlertCircle, Archive, ArrowUpDown, Briefcase, CalendarClock, CalendarDays, ExternalLink, Plus, Search } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";

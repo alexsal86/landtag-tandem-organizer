@@ -265,7 +265,8 @@ export function MyWorkCasesWorkspace() {
   const { editableCaseItem, setEditableCaseItem, updateEdit, appendTimelineEvent, deleteTimelineEvent } = useCaseItemEdit();
   const [itemSort, setItemSort] = useState<{ key: CaseItemSortKey; direction: SortDirection }>({ key: "received", direction: "desc" });
 
-  const [focusedItemIndex, setFocusedItemIndex] = useState(0);
+  // Keyboard focus index for arrow/enter navigation (kept "inactive" until the user interacts)
+  const [focusedItemIndex, setFocusedItemIndex] = useState<number>(-1);
 
   const runAsync = useCallback((action: () => Promise<unknown>) => {
     action().catch((error) => {
