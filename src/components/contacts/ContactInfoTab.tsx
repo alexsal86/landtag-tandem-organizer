@@ -78,7 +78,7 @@ const categoryLabels: Record<string, string> = {
   citizen: 'Bürger', colleague: 'Kollege', business: 'Wirtschaft', media: 'Medien', lobbyist: 'Lobbyist',
 };
 
-export const ContactInfoTab: React.FC<ContactInfoTabProps> = ({ contact, allTags }) => {
+export const ContactInfoTab: React.FC<ContactInfoTabProps> = React.memo(({ contact, allTags }) => {
   return (
     <div className="space-y-4">
       {/* Classification */}
