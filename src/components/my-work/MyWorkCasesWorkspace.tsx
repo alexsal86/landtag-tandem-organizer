@@ -1015,7 +1015,7 @@ export function MyWorkCasesWorkspace() {
                 <CardContent className="space-y-3 pt-5 overflow-hidden">
                   <Droppable droppableId="case-items-list" isDropDisabled>
                     {(provided) => (
-                      <div className="space-y-1.5 pr-2 overflow-x-auto">
+                      <div className="space-y-1.5 pr-2">
                         <div ref={provided.innerRef} {...provided.droppableProps} className="space-y-1.5" tabIndex={0} onKeyDown={handleListKeyDown}>
                           {sortedCaseItems.length === 0 ? (
                             <div className="rounded-md border border-dashed p-4 text-sm text-muted-foreground space-y-3">
@@ -1024,7 +1024,7 @@ export function MyWorkCasesWorkspace() {
                             </div>
                           ) : (
                             <div className="space-y-1.5">
-                              <div className="hidden grid-cols-[28px_40px_minmax(160px,1.1fr)_minmax(260px,2.4fr)_88px_88px_minmax(110px,0.8fr)_minmax(120px,0.8fr)_52px_112px] gap-2 border-b px-2 pb-1 text-[11px] font-medium uppercase tracking-wide text-muted-foreground lg:grid">
+                              <div className="hidden xl:grid grid-cols-[28px_40px_minmax(140px,1fr)_minmax(200px,2fr)_80px_80px_minmax(90px,0.8fr)_minmax(100px,0.8fr)_50px_100px] gap-2 border-b px-2 pb-1 text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
                                 <span />
                                 <span className="group inline-flex items-center justify-center gap-0.5">
                                   <button type="button" className={sortButtonClass("channel", "asc")} onClick={() => toggleSort("channel", "asc")} aria-label="Kanal aufsteigend sortieren"><ArrowUp className="h-3 w-3" /></button>
@@ -1128,7 +1128,7 @@ export function MyWorkCasesWorkspace() {
                                               )}
                                               onClick={() => handleSelectCaseItem(item)}
                                             >
-                                              <div className="hidden h-12 grid-cols-[28px_40px_minmax(160px,1.1fr)_minmax(260px,2.4fr)_88px_88px_minmax(110px,0.8fr)_minmax(120px,0.8fr)_52px_112px] items-center gap-2 text-xs text-muted-foreground lg:grid">
+                                              <div className="hidden xl:grid h-12 grid-cols-[28px_40px_minmax(140px,1fr)_minmax(200px,2fr)_80px_80px_minmax(90px,0.8fr)_minmax(100px,0.8fr)_50px_100px] items-center gap-2 text-xs text-muted-foreground">
                                                 {/* Drag handle */}
                                                 <span
                                                   {...dragProvided.dragHandleProps}
@@ -1200,10 +1200,99 @@ export function MyWorkCasesWorkspace() {
                                                   </DropdownMenu>
                                                 </div>
                                               </div>
-                                              <div className="space-y-1 lg:hidden">
-                                                <p className="truncate text-sm font-medium">{getItemSubject(item)}</p>
-                                                <p className="text-xs text-muted-foreground">{category || "Kategorie fehlt"}</p>
-                                                {contactDisplay && <p className="text-xs text-muted-foreground">Kontakt: {contactDisplay}</p>}
+                                              {/* Mobile/Tablet Card View */}
+                                              <div className="space-y-3 xl:hidden">
+                                                <div className="flex items-start justify-between gap-3">
+                                                  <div className="flex-1 min-w-0">
+                                                    <div className="flex items-center gap-2 mb-1">
+                                                      <span className="rounded-sm bg-muted p-1 text-muted-foreground">
+                                                        <ChannelIcon className="h-3 w-3" />
+                                                      </span>
+                                                      <p className="truncate text-sm font-medium flex-1">{getItemSubject(item)}</p>
+                                                      {linkedFile && (
+                                                        <TooltipProvider delayDuration={200}>
+                                                          <Tooltip>
+                                                            <TooltipTrigger asChild>
+                                                              <Link2 className="h-3.5 w-3.5 text-blue-500 shrink-0" />
+                                                            </TooltipTrigger>
+                                                            <TooltipContent side="top" className="text-xs">
+                                                              <p className="font-medium">„{linkedFile.title}"</p>
+                                                              {linkedFile.reference_number && <p className="text-muted-foreground">{linkedFile.reference_number}</p>}
+                                                            </TooltipContent>
+                                                          </Tooltip>
+                                                        </TooltipProvider>
+                                                      )}
+                                                    </div>
+                                                    {getItemDescription(item) && (
+                                                      <p className="text-xs text-muted-foreground line-clamp-2 mb-2">{getItemDescription(item)}</p>
+                                                    )}
+                                                    <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
+                                                      {category ? (
+                                                        <Badge variant="outline" className="text-[10px] px-1.5 py-0">{category}</Badge>
+                                                      ) : (
+                                                        <Badge variant="outline" className="text-[10px] px-1.5 py-0 border-amber-500/40 text-amber-600">Kategorie fehlt</Badge>
+                                                      )}
+                                                      <Badge variant="outline" className={cn("text-[10px] px-1.5 py-0", getStatusMeta(item.status).badgeClass)}>
+                                                        {getStatusMeta(item.status).label}
+                                                      </Badge>
+                                                      <span className="inline-flex items-center gap-1" title={priorityMeta(item.priority).label}>
+                                                        <Circle className={cn("h-2.5 w-2.5 fill-current", priorityMeta(item.priority).color)} />
+                                                      </span>
+                                                      {contactDisplay && (
+                                                        <span className="text-[10px]">👤 {contactDisplay}</span>
+                                                      )}
+                                                    </div>
+                                                  </div>
+                                                  <span
+                                                    {...dragProvided.dragHandleProps}
+                                                    className="inline-flex items-center justify-center cursor-grab text-muted-foreground/50 hover:text-muted-foreground pt-1"
+                                                    onClick={(e) => e.stopPropagation()}
+                                                  >
+                                                    <GripVertical className="h-4 w-4" />
+                                                  </span>
+                                                </div>
+                                                <div className="flex items-center justify-between gap-3 pt-2 border-t">
+                                                  <div className="flex items-center gap-3 text-[11px] text-muted-foreground">
+                                                    <span className="inline-flex items-center gap-1">
+                                                      <Inbox className="h-3 w-3" />
+                                                      {formatDateSafe(item.source_received_at, "dd.MM.yy", "–", { locale: de })}
+                                                    </span>
+                                                    {item.due_at && (
+                                                      <span className="inline-flex items-center gap-1">
+                                                        <Clock className="h-3 w-3" />
+                                                        {formatDateSafe(item.due_at, "dd.MM.yy", "–", { locale: de })}
+                                                      </span>
+                                                    )}
+                                                  </div>
+                                                  <div className="flex items-center gap-2" onClick={(event) => event.stopPropagation()}>
+                                                    <div className="flex items-center -space-x-2">
+                                                      {assignees.slice(0, 2).map((member) => (
+                                                        <Avatar key={member.id} className="h-6 w-6 border bg-background">
+                                                          <AvatarImage src={member.avatarUrl || undefined} />
+                                                          <AvatarFallback className="text-[10px]">{getInitials(member.name)}</AvatarFallback>
+                                                        </Avatar>
+                                                      ))}
+                                                    </div>
+                                                    <DropdownMenu>
+                                                      <DropdownMenuTrigger asChild>
+                                                        <Button type="button" size="icon" variant="outline" className="h-6 w-6">
+                                                          <Plus className="h-3 w-3" />
+                                                        </Button>
+                                                      </DropdownMenuTrigger>
+                                                      <DropdownMenuContent align="end" className="w-56">
+                                                        {teamUsers.map((member) => (
+                                                          <DropdownMenuCheckboxItem
+                                                            key={member.id}
+                                                            checked={assigneeIds.includes(member.id)}
+                                                            onCheckedChange={(checked) => { runAsync(() => handleAssigneeToggle(item, member.id, checked === true)); }}
+                                                          >
+                                                            {member.name}
+                                                          </DropdownMenuCheckboxItem>
+                                                        ))}
+                                                      </DropdownMenuContent>
+                                                    </DropdownMenu>
+                                                  </div>
+                                                </div>
                                               </div>
                                             </button>
                                           </ContextMenuTrigger>
