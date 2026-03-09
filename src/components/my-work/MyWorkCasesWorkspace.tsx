@@ -263,7 +263,13 @@ export function MyWorkCasesWorkspace() {
   const [detailItemId, setDetailItemId] = useState<string | null>(null);
   const [detailFileId, setDetailFileId] = useState<string | null>(null);
   const { editableCaseItem, setEditableCaseItem, updateEdit, appendTimelineEvent, deleteTimelineEvent } = useCaseItemEdit();
-  const [itemSort, setItemSort] = useState<{ key: CaseItemSortKey; direction: SortDirection }>({ key: "received", direction: "desc" });
+  const [itemSort, setItemSort] = useState<{
+    primary: { key: CaseItemSortKey; direction: SortDirection };
+    secondary: { enabled: boolean; direction: SortDirection };
+  }>({
+    primary: { key: "received", direction: "desc" },
+    secondary: { enabled: false, direction: "asc" },
+  });
 
   // Keyboard focus index for arrow/enter navigation (kept "inactive" until the user interacts)
   const [focusedItemIndex, setFocusedItemIndex] = useState<number>(-1);
