@@ -213,11 +213,11 @@ const ProperReactBigCalendar: React.FC<ProperReactBigCalendarProps> = ({
       <DnDCalendar
         localizer={localizer}
         events={rbcEvents}
-        startAccessor={(event: RBCEvent) => event.start}
-        endAccessor={(event: RBCEvent) => event.end}
-        titleAccessor={(event: RBCEvent) => event.title}
-        allDayAccessor={(event: RBCEvent) => event.allDay || false}
-        resourceAccessor={(event: RBCEvent) => event.resource}
+        startAccessor={(event: object) => (event as RBCEvent).start}
+        endAccessor={(event: object) => (event as RBCEvent).end}
+        titleAccessor={(event: object) => (event as RBCEvent).title}
+        allDayAccessor={(event: object) => (event as RBCEvent).allDay || false}
+        resourceAccessor={(event: object) => (event as RBCEvent).resource}
         view={view as any}
         date={date}
         onNavigate={onNavigate}
