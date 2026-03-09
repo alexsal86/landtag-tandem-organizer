@@ -1128,7 +1128,7 @@ export function MyWorkCasesWorkspace() {
                                               )}
                                               onClick={() => handleSelectCaseItem(item)}
                                             >
-                                              <div className="hidden h-12 grid-cols-[28px_40px_minmax(160px,1.1fr)_minmax(260px,2.4fr)_88px_88px_minmax(110px,0.8fr)_minmax(120px,0.8fr)_52px_112px] items-center gap-2 text-xs text-muted-foreground lg:grid">
+                                              <div className="hidden xl:grid h-12 grid-cols-[28px_40px_minmax(140px,1fr)_minmax(200px,2fr)_80px_80px_minmax(90px,0.8fr)_minmax(100px,0.8fr)_50px_100px] items-center gap-2 text-xs text-muted-foreground">
                                                 {/* Drag handle */}
                                                 <span
                                                   {...dragProvided.dragHandleProps}
