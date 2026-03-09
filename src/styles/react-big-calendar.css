@@ -9,7 +9,7 @@
 .rbc-calendar {
   font-family: inherit;
   background: hsl(var(--card));
-  border: 1px solid hsl(var(--border));
+  border: none;
   border-radius: calc(var(--radius));
   display: flex;
   flex-direction: column;
@@ -127,7 +127,7 @@
 
 /* Month view specific */
 .rbc-month-view {
-  border: 1px solid hsl(var(--border));
+  border: none;
   min-height: 500px;
 }
 
@@ -291,7 +291,7 @@
 }
 
 .rbc-time-view {
-  border: 1px solid hsl(var(--border));
+  border: none;
   overflow: hidden;
   height: 100%;
 }
