@@ -10,7 +10,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { UserBadge } from "@/components/ui/user-badge";
 import { RichTextDisplay } from "@/components/ui/RichTextDisplay";
 import SimpleRichTextEditor from "@/components/ui/SimpleRichTextEditor";
-import { Check, X, MessageCircle, Send, Archive, History, Paperclip, Vote, CheckCircle2, XCircle, HelpCircle, Reply, Edit, CornerDownRight } from "lucide-react";
+import { Check, X, MessageCircle, Send, Archive, History, Paperclip, Vote, CheckCircle2, XCircle, HelpCircle, Reply, Edit, CornerDownRight, CalendarDays } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { ResponseHistoryTimeline } from "./ResponseHistoryTimeline";
@@ -18,6 +18,7 @@ import { CommentThread, CommentData } from "./CommentThread";
 import { DecisionFileUpload } from "./DecisionFileUpload";
 import { TaskDecisionResponse } from "./TaskDecisionResponse";
 import { DecisionEditDialog } from "./DecisionEditDialog";
+import { CaseItemMeetingSelector } from "@/components/my-work/CaseItemMeetingSelector";
 import { cn } from "@/lib/utils";
 import { formatDistanceToNow } from "date-fns";
 import { de } from "date-fns/locale";
@@ -84,6 +85,7 @@ export const TaskDecisionDetails = ({ decisionId, isOpen, onClose, onArchived, h
   const [replyingToId, setReplyingToId] = useState<string | null>(null);
   const [replyText, setReplyText] = useState("");
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
+  const [meetingSelectorOpen, setMeetingSelectorOpen] = useState(false);
   const [activeHighlightCommentId, setActiveHighlightCommentId] = useState<string | null>(null);
   const [activeHighlightResponseId, setActiveHighlightResponseId] = useState<string | null>(null);
   const { toast } = useToast();
@@ -559,6 +561,41 @@ export const TaskDecisionDetails = ({ decisionId, isOpen, onClose, onArchived, h
     }
   };
 
+
+  const handleMeetingSelected = async (meetingId: string) => {
+    if (!decision?.id) return;
+    try {
+      const { error } = await supabase
+        .from('task_decisions')
+        .update({ meeting_id: meetingId, pending_for_jour_fixe: false } as any)
+        .eq('id', decision.id);
+      if (error) throw error;
+      setDecision((prev: any) => prev ? { ...prev, meeting_id: meetingId, pending_for_jour_fixe: false } : prev);
+      toast({ title: "Zugeordnet", description: "Entscheidung wurde dem Jour Fixe zugeordnet." });
+    } catch (error) {
+      debugConsole.error('Error assigning to meeting:', error);
+      toast({ title: "Fehler", description: "Zuordnung fehlgeschlagen.", variant: "destructive" });
+    }
+    setMeetingSelectorOpen(false);
+  };
+
+  const handleMarkForNextJourFixe = async () => {
+    if (!decision?.id) return;
+    try {
+      const { error } = await supabase
+        .from('task_decisions')
+        .update({ pending_for_jour_fixe: true, meeting_id: null } as any)
+        .eq('id', decision.id);
+      if (error) throw error;
+      setDecision((prev: any) => prev ? { ...prev, meeting_id: null, pending_for_jour_fixe: true } : prev);
+      toast({ title: "Vorgemerkt", description: "Entscheidung wurde für den nächsten Jour Fixe vorgemerkt." });
+    } catch (error) {
+      debugConsole.error('Error marking for jour fixe:', error);
+      toast({ title: "Fehler", description: "Vormerkung fehlgeschlagen.", variant: "destructive" });
+    }
+    setMeetingSelectorOpen(false);
+  };
+
   const getResponseSummary = () => {
     const responseOptions: ResponseOption[] = (decision?.response_options && Array.isArray(decision.response_options))
       ? decision.response_options
@@ -734,28 +771,39 @@ export const TaskDecisionDetails = ({ decisionId, isOpen, onClose, onArchived, h
         <DialogHeader>
           <div className="flex items-center justify-between">
             <DialogTitle>{decision.title}</DialogTitle>
-            {isCreator && (
-              <div className="flex items-center gap-2">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => setIsEditDialogOpen(true)}
-                  disabled={isLoading}
-                >
-                  <Edit className="h-4 w-4 mr-2" />
-                  Bearbeiten
-                </Button>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={archiveDecision}
-                  disabled={isLoading}
-                >
-                  <Archive className="h-4 w-4 mr-2" />
-                  Archivieren
-                </Button>
-              </div>
-            )}
+            <div className="flex items-center gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setMeetingSelectorOpen(true)}
+                disabled={isLoading}
+              >
+                <CalendarDays className="h-4 w-4 mr-2" />
+                Zum Jour Fixe hinzufügen
+              </Button>
+              {isCreator && (
+                <>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setIsEditDialogOpen(true)}
+                    disabled={isLoading}
+                  >
+                    <Edit className="h-4 w-4 mr-2" />
+                    Bearbeiten
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={archiveDecision}
+                    disabled={isLoading}
+                  >
+                    <Archive className="h-4 w-4 mr-2" />
+                    Archivieren
+                  </Button>
+                </>
+              )}
+            </div>
           </div>
           <p className="text-sm text-muted-foreground">
             Aufgabe: {decision.tasks?.title}
@@ -1060,6 +1108,13 @@ export const TaskDecisionDetails = ({ decisionId, isOpen, onClose, onArchived, h
           }}
         />
       )}
+
+      <CaseItemMeetingSelector
+        open={meetingSelectorOpen}
+        onOpenChange={setMeetingSelectorOpen}
+        onSelect={handleMeetingSelected}
+        onMarkForNextJourFixe={handleMarkForNextJourFixe}
+      />
     </Dialog>
   );
 };
