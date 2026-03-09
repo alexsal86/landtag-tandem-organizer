@@ -291,7 +291,7 @@
 }
 
 .rbc-time-view {
-  border: none;
+  border: none !important;
   overflow: hidden;
   height: 100%;
 }
