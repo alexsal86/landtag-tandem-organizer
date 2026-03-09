@@ -960,9 +960,11 @@ export function useQuickNotes(refreshTrigger?: number) {
     confirmDeleteTaskNote, setConfirmDeleteTaskNote,
     confirmDeleteLinkedNote, setConfirmDeleteLinkedNote,
     confirmRemoveDecision, setConfirmRemoveDecision,
+    confirmRemoveCaseItem, setConfirmRemoveCaseItem,
     deleteLinkedTask, setDeleteLinkedTask,
     deleteLinkedDecision, setDeleteLinkedDecision,
     deleteLinkedMeeting, setDeleteLinkedMeeting,
+    deleteLinkedCaseItem, setDeleteLinkedCaseItem,
 
     // Actions
     loadNotes,
