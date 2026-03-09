@@ -189,9 +189,10 @@ export function TaskCard({
     <div
       ref={getHighlightRef ? getHighlightRef(task.id) : highlightRef}
       className={cn(
-        "border border-border relative",
-        isChildTask ? "rounded-none bg-muted/40" : "rounded-lg bg-card",
-        isChildTask && isLastChild && "rounded-br-lg",
+        "relative",
+        isChildTask
+          ? "border-b border-border last:border-b-0 bg-muted/40"
+          : "border border-border rounded-lg bg-card",
         isHighlighted?.(task.id) && "notification-highlight",
         className,
       )}
