@@ -104,12 +104,7 @@ export function CaseFileDetail({ caseFileId, onBack }: CaseFileDetailProps) {
       <CaseFileDetailHeader
         caseFile={caseFile}
         onBack={onBack}
-        onEdit={() => setEditDialogOpen(true)}
         onDelete={() => setDeleteDialogOpen(true)}
-        onAddNote={() => setShowAddNote(true)}
-        onAddTask={() => setShowAddTask(true)}
-        onAddAppointment={() => setShowAddAppointment(true)}
-        onAddDocument={() => setShowAddDocument(true)}
       />
 
       {/* Three-Column Layout */}
