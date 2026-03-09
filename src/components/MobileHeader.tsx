@@ -198,6 +198,7 @@ export function MobileHeader() {
             <Button 
               variant="ghost" 
               size="icon"
+              aria-label="Suche schließen"
               onClick={() => {
                 setShowMobileSearch(false);
                 setSearchQuery("");
