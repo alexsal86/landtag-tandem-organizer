@@ -1,7 +1,7 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { format } from "date-fns";
 import { de } from "date-fns/locale";
-import { AlertCircle, Check, ChevronDown, ExternalLink, Gavel, Loader2, Mail, MessageSquare, Phone, Search, Trash2, Users, Vote } from "lucide-react";
+import { AlertCircle, Check, CheckCircle2, ChevronDown, Clock, ExternalLink, Gavel, Loader2, Mail, MessageSquare, Phone, Search, Trash2, Users, Vote } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useTenant } from "@/hooks/useTenant";
 import { Button } from "@/components/ui/button";
@@ -11,9 +11,11 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import { HoverCard, HoverCardContent, HoverCardTrigger } from "@/components/ui/hover-card";
 import { cn } from "@/lib/utils";
 import SimpleRichTextEditor from "@/components/ui/SimpleRichTextEditor";
 import { debugConsole } from "@/utils/debugConsole";
+import { TaskDecisionDetails } from "@/components/task-decisions/TaskDecisionDetails";
 import type { EditableCaseItem, TimelineInteractionType } from "@/components/my-work/hooks/useCaseItemEdit";
 
 type TimelineEntry = {
@@ -36,6 +38,21 @@ type CaseFile = {
   case_type: string | null;
 };
 
+type LinkedDecision = {
+  id: string;
+  title: string;
+  description: string | null;
+  status: string;
+  created_at: string;
+  response_deadline: string | null;
+  created_by: string | null;
+  task_decision_participants: Array<{
+    id: string;
+    user_id: string;
+    task_decision_responses: Array<{ id: string; response_type: string }>;
+  }>;
+};
+
 const interactionTypeOptions: Array<{ value: TimelineInteractionType | "entscheidung"; label: string; icon: typeof Phone }> = [
   { value: "anruf", label: "Anruf", icon: Phone },
   { value: "mail", label: "Mail", icon: Mail },
@@ -52,6 +69,7 @@ export function CaseItemDetailPanel({
   statusOptions,
   categoryOptions,
   teamUsers,
+  currentUserId,
   linkedDecisions,
   loadingDecisions,
   timelineEntries,
@@ -81,7 +99,8 @@ export function CaseItemDetailPanel({
   statusOptions: Array<{ value: string; label: string }>;
   categoryOptions: readonly string[];
   teamUsers: Array<{ id: string; name: string; avatarUrl: string | null }>;
-  linkedDecisions: Array<{ id: string; title: string; status: string; created_at: string; response_deadline: string | null }>;
+  currentUserId: string | null;
+  linkedDecisions: LinkedDecision[];
   loadingDecisions: boolean;
   timelineEntries: TimelineEntry[];
   toEditorHtml: (value: string | null | undefined) => string;
