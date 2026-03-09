@@ -55,6 +55,10 @@ export function MyWorkDecisionsTab() {
   const [commentsDecisionTitle, setCommentsDecisionTitle] = useState("");
   const [defaultParticipantsOpen, setDefaultParticipantsOpen] = useState(false);
   const latestLoadRequestRef = useRef(0);
+  const [meetingSelectorOpen, setMeetingSelectorOpen] = useState(false);
+  const [meetingSelectorDecisionId, setMeetingSelectorDecisionId] = useState<string | null>(null);
+
+  const { users: tenantUsers } = useTenantUsers();
 
   const { decisions, setDecisions, loading, loadDecisions } = useMyWorkDecisionsData(user?.id);
   const { isHighlighted, highlightRef } = useNotificationHighlight();
