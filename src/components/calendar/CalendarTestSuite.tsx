@@ -97,7 +97,7 @@ export function CalendarTestSuite() {
       return {
         name: 'Component Rendering',
         status: 'fail',
-        details: `Rendering failed: ${error.message}`
+        details: `Rendering failed: ${error instanceof Error ? error.message : String(error)}`
       };
     }
   };
