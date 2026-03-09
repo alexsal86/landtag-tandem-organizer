@@ -111,9 +111,8 @@ export function useMyWorkTasksData(userId?: string) {
       }
 
       const grouped: Record<string, MyWorkTask[]> = {};
-      const tenantIds = [...new Set([...createdByMe, ...assignedByOthers].map((task) => task.tenant_id).filter(Boolean))] as string[];
 
-      const [snoozesResult, subtasksResult, commentsResult] = await Promise.allSettled([
+      const [snoozesSettled, subtasksSettled, commentsSettled] = await Promise.allSettled([
         supabase
           .from("task_snoozes")
           .select("task_id, snoozed_until")
@@ -130,11 +129,9 @@ export function useMyWorkTasksData(userId?: string) {
           .in("task_id", allTaskIds),
       ]);
 
-      if (snoozesResult.error) throw snoozesResult.error;
-      if (subtasksResult.error) throw subtasksResult.error;
-
-      const snoozesData = snoozesResult.data || [];
-      const allSubtasksData = subtasksResult.data || [];
+      const snoozesData = snoozesSettled.status === 'fulfilled' && !snoozesSettled.value.error ? snoozesSettled.value.data || [] : [];
+      const allSubtasksData: MyWorkTask[] = subtasksSettled.status === 'fulfilled' && !subtasksSettled.value.error ? subtasksSettled.value.data || [] : [];
+      const commentsData = commentsSettled.status === 'fulfilled' && !commentsSettled.value.error ? commentsSettled.value.data || [] : [];
 
       const childrenByParent = new Map<string, MyWorkTask[]>();
       allSubtasksData.forEach((task) => {
@@ -169,7 +166,7 @@ export function useMyWorkTasksData(userId?: string) {
       setTaskSnoozes(snoozeMap);
 
       const commentCounts: Record<string, number> = {};
-      (commentsResult.data || []).forEach((comment) => {
+      commentsData.forEach((comment) => {
         if (!comment.task_id) return;
         commentCounts[comment.task_id] = (commentCounts[comment.task_id] || 0) + 1;
       });
