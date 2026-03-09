@@ -523,11 +523,16 @@ serve(async (req) => {
 
   } catch (error) {
     console.error('Error in manage-tenant-user:', error);
+    const status = error instanceof HttpError ? error.status : 400;
+    // Only expose message for known HttpError (controlled), otherwise generic
+    const safeMessage = error instanceof HttpError
+      ? error.message
+      : 'Internal server error';
     return new Response(JSON.stringify({ 
       success: false,
-      error: error instanceof Error ? error.message : String(error) 
+      error: safeMessage,
     }), {
-      status: error instanceof HttpError ? error.status : 400,
+      status,
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });
   }

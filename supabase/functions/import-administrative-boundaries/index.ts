@@ -60,7 +60,7 @@ serve(async (req) => {
     if (deleteError) {
       console.error('Error clearing existing administrative boundaries:', deleteError);
       return new Response(
-        JSON.stringify({ error: 'Failed to clear existing data', details: deleteError.message }),
+        JSON.stringify({ error: 'Failed to clear existing data' }),
         { 
           status: 500, 
           headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
@@ -102,7 +102,7 @@ serve(async (req) => {
     if (insertError) {
       console.error('Error inserting administrative boundaries:', insertError);
       return new Response(
-        JSON.stringify({ error: 'Failed to insert data', details: insertError.message }),
+        JSON.stringify({ error: 'Failed to insert data' }),
         { 
           status: 500, 
           headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
@@ -126,7 +126,7 @@ serve(async (req) => {
   } catch (error) {
     console.error('Unexpected error:', error);
     return new Response(
-      JSON.stringify({ error: 'Internal server error', details: error instanceof Error ? error.message : String(error) }),
+      JSON.stringify({ error: 'Internal server error' }),
       { 
         status: 500, 
         headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
