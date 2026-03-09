@@ -6,7 +6,8 @@ import { useAuth } from "@/hooks/useAuth";
 import { useTenant } from "@/hooks/useTenant";
 import type { Task, TaskComment, Subtask, TodoItem, SnoozeEntry } from "../types";
 
-export function useTasksData() {
+export function useTasksData(options?: { enabled?: boolean }) {
+  const enabled = options?.enabled !== false;
   const { user } = useAuth();
   const { currentTenant } = useTenant();
   const [searchParams] = useSearchParams();
