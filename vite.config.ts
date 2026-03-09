@@ -1,4 +1,4 @@
-import { defineConfig } from "vite";
+import { defineConfig, type Plugin } from "vite";
 import react from "@vitejs/plugin-react-swc";
 import path from "path";
 import { componentTagger } from "lovable-tagger";
@@ -11,6 +11,32 @@ const securityHeaders = {
   'Permissions-Policy': 'camera=(), microphone=(self), geolocation=()',
 };
 
+// Plugin to force nested @lexical/* transitive deps to resolve to top-level 0.40.0 versions.
+// Prevents 0.41.x copies (which depend on @lexical/extension + toggleTextFormatType) from being used.
+function lexicalDedupePlugin(): Plugin {
+  const topLevelNodeModules = path.resolve(__dirname, 'node_modules');
+
+  return {
+    name: 'lexical-dedupe',
+    enforce: 'pre',
+    resolveId(source, importer) {
+      // Only intercept when a nested @lexical package tries to import lexical or @lexical/*
+      if (!importer || !source) return null;
+
+      const isLexicalImport = source === 'lexical' || source.startsWith('@lexical/');
+      if (!isLexicalImport) return null;
+
+      // Check if the importer is inside a nested node_modules (e.g. node_modules/@lexical/markdown/node_modules/...)
+      const importerRelative = path.relative(topLevelNodeModules, importer);
+      const nestedNmIndex = importerRelative.indexOf('node_modules');
+      if (nestedNmIndex === -1) return null;
+
+      // Redirect to top-level resolution
+      return this.resolve(source, path.resolve(topLevelNodeModules, '_virtual_root.js'), { skipSelf: true });
+    },
+  };
+}
+
 // https://vitejs.dev/config/
 export default defineConfig(({ mode }) => ({
   server: {
@@ -22,6 +48,7 @@ export default defineConfig(({ mode }) => ({
     headers: securityHeaders,
   },
   plugins: [
+    lexicalDedupePlugin(),
     react(),
     nodePolyfills({
       include: ['buffer', 'process'],
@@ -31,41 +58,10 @@ export default defineConfig(({ mode }) => ({
     componentTagger(),
   ].filter(Boolean),
   resolve: {
-    dedupe: [
-      'lexical',
-      '@lexical/code',
-      '@lexical/file',
-      '@lexical/hashtag',
-      '@lexical/html',
-      '@lexical/link',
-      '@lexical/list',
-      '@lexical/mark',
-      '@lexical/markdown',
-      '@lexical/plain-text',
-      '@lexical/react',
-      '@lexical/rich-text',
-      '@lexical/table',
-      '@lexical/yjs',
-    ],
     alias: {
       "@": path.resolve(__dirname, "./src"),
       "@radix-ui/react-compose-refs": path.resolve(__dirname, "./src/lib/radix-compose-refs-patch.ts"),
       "@radix-ui/react-slot": path.resolve(__dirname, "./src/lib/radix-slot-patch.tsx"),
-      // Force all @lexical packages to top-level node_modules (prevent nested 0.41.x)
-      "lexical": path.resolve(__dirname, "node_modules/lexical"),
-      "@lexical/code": path.resolve(__dirname, "node_modules/@lexical/code"),
-      "@lexical/file": path.resolve(__dirname, "node_modules/@lexical/file"),
-      "@lexical/hashtag": path.resolve(__dirname, "node_modules/@lexical/hashtag"),
-      "@lexical/html": path.resolve(__dirname, "node_modules/@lexical/html"),
-      "@lexical/link": path.resolve(__dirname, "node_modules/@lexical/link"),
-      "@lexical/list": path.resolve(__dirname, "node_modules/@lexical/list"),
-      "@lexical/mark": path.resolve(__dirname, "node_modules/@lexical/mark"),
-      "@lexical/markdown": path.resolve(__dirname, "node_modules/@lexical/markdown"),
-      "@lexical/plain-text": path.resolve(__dirname, "node_modules/@lexical/plain-text"),
-      "@lexical/react": path.resolve(__dirname, "node_modules/@lexical/react"),
-      "@lexical/rich-text": path.resolve(__dirname, "node_modules/@lexical/rich-text"),
-      "@lexical/table": path.resolve(__dirname, "node_modules/@lexical/table"),
-      "@lexical/yjs": path.resolve(__dirname, "node_modules/@lexical/yjs"),
     },
   },
   optimizeDeps: {
@@ -79,9 +75,6 @@ export default defineConfig(({ mode }) => ({
     ],
     exclude: [
       '@matrix-org/matrix-sdk-crypto-wasm',
-      // '@radix-ui/react-compose-refs',
-      // '@radix-ui/react-slot',
-      // '@radix-ui/react-primitive',
     ],
   },
   build: {
@@ -90,7 +83,7 @@ export default defineConfig(({ mode }) => ({
       output: {
         manualChunks: {
           'vendor-react': ['react', 'react-dom', 'react-router-dom', '@tanstack/react-query'],
-          'vendor-editor': ['lexical', '@lexical/react', '@lexical/rich-text', '@lexical/list', '@lexical/link', '@lexical/markdown', '@lexical/html', '@lexical/code', '@lexical/table', '@lexical/yjs', '@lexical/plain-text', '@lexical/hashtag', '@lexical/mark', '@lexical/file'],
+          'vendor-editor': ['lexical', '@lexical/rich-text', '@lexical/list', '@lexical/link', '@lexical/markdown', '@lexical/html', '@lexical/code', '@lexical/table', '@lexical/yjs'],
           'vendor-matrix': ['matrix-js-sdk', 'yjs', 'y-websocket', 'y-indexeddb'],
           'vendor-pdf': ['pdfjs-dist', 'jspdf', 'docx'],
           'vendor-charts-maps': ['recharts', 'leaflet', 'react-leaflet', 'proj4'],
