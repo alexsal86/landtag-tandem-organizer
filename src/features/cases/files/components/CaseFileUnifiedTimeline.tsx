@@ -86,6 +86,7 @@ export function CaseFileUnifiedTimeline({
   tasks,
   appointments,
   letters,
+  interactions,
   onAddTimelineEntry,
   onDeleteTimelineEntry,
 }: CaseFileUnifiedTimelineProps) {
