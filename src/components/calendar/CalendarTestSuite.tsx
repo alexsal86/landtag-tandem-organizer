@@ -197,7 +197,7 @@ export function CalendarTestSuite() {
       return {
         name: 'Drag & Drop',
         status: 'fail',
-        details: `Drag & drop failed: ${error.message}`
+        details: `Drag & drop failed: ${error instanceof Error ? error.message : String(error)}`
       };
     }
   };
