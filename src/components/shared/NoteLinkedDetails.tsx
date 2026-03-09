@@ -39,7 +39,7 @@ interface MeetingData {
 }
 
 interface CaseItemData {
-  subject: string;
+  subject: string | null;
   status: string;
   priority: string | null;
 }

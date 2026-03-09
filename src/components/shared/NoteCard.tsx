@@ -67,7 +67,8 @@ export function NoteCard({
   onNoteClick, onToggleExpand, onToggleDetailsExpand,
   onTogglePin, onDelete, onArchive, onSetPriority, onSetColor, onSetColorMode,
   onSetFollowUp, onOpenDatePicker, onCreateTask, onRemoveTask,
-  onCreateDecision, onRemoveDecision, onOpenMeetingSelector, onRemoveFromMeeting,
+  onCreateDecision, onRemoveDecision, onCreateCaseItem, onRemoveCaseItem,
+  onOpenMeetingSelector, onRemoveFromMeeting,
   onOpenEdit, onOpenVersionHistory, onSplitNote, onShare,
 }: NoteCardProps) {
   const fullText = note.content.replace(/<[^>]*>/g, '');
