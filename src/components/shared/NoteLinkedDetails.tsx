@@ -38,6 +38,12 @@ interface MeetingData {
   status: string | null;
 }
 
+interface CaseItemData {
+  subject: string;
+  status: string;
+  priority: string | null;
+}
+
 function NoteTaskStatus({ taskId, onNotFound }: { taskId: string; onNotFound?: () => void }) {
   const [task, setTask] = useState<TaskData | null>(null);
   const [loading, setLoading] = useState(true);
