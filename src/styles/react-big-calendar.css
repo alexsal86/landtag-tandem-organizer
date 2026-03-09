@@ -290,14 +290,20 @@
 }
 
 .rbc-time-view {
-  overflow: hidden;
-  display: flex;
-  flex-direction: column;
+  border: 1px solid hsl(var(--border));
+  overflow-y: auto;
+  overflow-x: hidden;
   height: 100%;
 }
 
+.rbc-time-header {
+  position: sticky;
+  top: 0;
+  z-index: 20;
+}
+
 .rbc-time-content {
-  overflow-y: auto;
+  overflow: visible;
   flex: 1;
 }
 
