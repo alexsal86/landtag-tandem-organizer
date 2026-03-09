@@ -107,9 +107,9 @@ export function CalendarView() {
   };
 
   return (
-    <div className="h-screen overflow-hidden bg-gradient-subtle">
-      <div className="flex h-screen transition-all duration-300">
-        <div className="w-[320px] shrink-0">
+    <div className="h-full overflow-hidden bg-gradient-subtle">
+      <div className="flex h-full min-h-0 transition-all duration-300">
+        <div className="w-[320px] shrink-0 min-h-0">
           <CalendarHeader
             currentDate={currentDate}
             view={view}
@@ -121,7 +121,7 @@ export function CalendarView() {
         </div>
 
         {sidebarOpen && selectedAppointment && (
-          <div className="w-[420px] shrink-0 border-x border-border overflow-hidden">
+          <div className="w-[420px] shrink-0 min-h-0 border-x border-border overflow-hidden">
             <AppointmentDetailsSidebar
               appointment={selectedAppointment}
               open={sidebarOpen}
@@ -131,8 +131,8 @@ export function CalendarView() {
           </div>
         )}
 
-        <div className="flex-1 min-w-0 p-6 transition-all duration-300 overflow-hidden">
-            <Card className="bg-card shadow-card border-border h-[calc(100vh-120px)] flex flex-col">
+        <div className="flex-1 min-w-0 min-h-0 p-6 transition-all duration-300 overflow-hidden">
+            <Card className="bg-card shadow-card border-border h-full min-h-0 flex flex-col">
               {view === "polls" && (
                 <CardHeader>
                   <CardTitle className="flex items-center gap-2">
@@ -141,7 +141,7 @@ export function CalendarView() {
                   </CardTitle>
                 </CardHeader>
               )}
-            <CardContent className="p-0 flex-1 overflow-hidden">
+            <CardContent className="p-0 flex-1 min-h-0 overflow-hidden">
               {view === "polls" ? (
                 <PollListView />
               ) : loading ? (
