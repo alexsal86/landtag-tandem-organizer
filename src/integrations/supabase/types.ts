@@ -5567,6 +5567,60 @@ export type Database = {
           },
         ]
       }
+      knowledge_document_versions: {
+        Row: {
+          change_summary: string | null
+          content: string | null
+          content_html: string | null
+          created_at: string
+          created_by: string
+          document_id: string
+          id: string
+          tenant_id: string
+          title: string
+          version_number: number
+        }
+        Insert: {
+          change_summary?: string | null
+          content?: string | null
+          content_html?: string | null
+          created_at?: string
+          created_by: string
+          document_id: string
+          id?: string
+          tenant_id: string
+          title: string
+          version_number: number
+        }
+        Update: {
+          change_summary?: string | null
+          content?: string | null
+          content_html?: string | null
+          created_at?: string
+          created_by?: string
+          document_id?: string
+          id?: string
+          tenant_id?: string
+          title?: string
+          version_number?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "knowledge_document_versions_document_id_fkey"
+            columns: ["document_id"]
+            isOneToOne: false
+            referencedRelation: "knowledge_documents"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "knowledge_document_versions_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       knowledge_documents: {
         Row: {
           category: string | null

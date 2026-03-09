@@ -15,6 +15,8 @@ import { useTopics } from '@/hooks/useTopics';
 import { useKnowledgeDocumentTopics } from '@/hooks/useKnowledgeDocumentTopics';
 import { TopicSelector, TopicDisplay } from '@/components/topics/TopicSelector';
 import { useKnowledgeData } from './knowledge/hooks/useKnowledgeData';
+import { useKnowledgeVersionHistory } from './knowledge/hooks/useKnowledgeVersionHistory';
+import { KnowledgeVersionHistory } from './knowledge/KnowledgeVersionHistory';
 import { useAuth } from '@/hooks/useAuth';
 
 const KnowledgeBaseView = () => {
@@ -27,6 +29,7 @@ const KnowledgeBaseView = () => {
   const { getActiveTopics } = useTopics();
 
   const data = useKnowledgeData();
+  const { createVersion } = useKnowledgeVersionHistory(data.selectedDocument?.id);
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedTopicFilter, setSelectedTopicFilter] = useState<string | null>(null);
   const [newDocument, setNewDocument] = useState({ title: '', content: '', is_published: false, selectedTopics: [] as string[] });
@@ -170,8 +173,9 @@ const KnowledgeBaseView = () => {
               </div>
               <div className="flex items-center gap-2">
                 <div className="hidden md:block"><TopicSelector selectedTopicIds={selectedDocTopics} onTopicsChange={(ids) => { setSelectedDocTopics(ids); data.setHasUnsavedChanges(true); }} placeholder="Themen..." compact /></div>
+                <KnowledgeVersionHistory documentId={data.selectedDocument.id} currentContent={data.editorContent} currentTitle={data.selectedDocument.title} tenantId={data.selectedDocument.tenant_id || ''} />
                 {data.selectedDocument.created_by === user?.id && <Button variant="outline" size="sm" onClick={data.handleToggleLock} title={data.selectedDocument.is_locked ? "Entsperren" : "Sperren"}>{data.selectedDocument.is_locked ? <Unlock className="h-4 w-4" /> : <Lock className="h-4 w-4" />}</Button>}
-                {canEdit && <Button variant="default" size="sm" onClick={() => data.handleSaveDocument(selectedDocTopics, setSelectedDocTopics)} disabled={!data.hasUnsavedChanges}><Save className="h-4 w-4 mr-1" />Speichern</Button>}
+                {canEdit && <Button variant="default" size="sm" onClick={async () => { await createVersion({ id: data.selectedDocument!.id, title: data.selectedDocument!.title, content: data.selectedDocument!.content, tenant_id: data.selectedDocument!.tenant_id }); data.handleSaveDocument(selectedDocTopics, setSelectedDocTopics); }} disabled={!data.hasUnsavedChanges}><Save className="h-4 w-4 mr-1" />Speichern</Button>}
                 <Button variant="outline" size="sm" onClick={() => { if (data.hasUnsavedChanges && !confirm('Sie haben ungespeicherte Änderungen. Trotzdem schließen?')) return; navigate('/knowledge', { replace: true }); }}>Schließen</Button>
               </div>
             </div>
