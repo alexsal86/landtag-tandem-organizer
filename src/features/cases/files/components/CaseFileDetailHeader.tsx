@@ -16,12 +16,7 @@ interface CaseFileDetailHeaderProps {
 export function CaseFileDetailHeader({
   caseFile,
   onBack,
-  onEdit,
   onDelete,
-  onAddNote,
-  onAddTask,
-  onAddAppointment,
-  onAddDocument,
 }: CaseFileDetailHeaderProps) {
   const statusConfig = CASE_STATUSES.find((s) => s.value === caseFile.status);
   const { statuses: processingStatuses } = useCaseFileProcessingStatuses();
