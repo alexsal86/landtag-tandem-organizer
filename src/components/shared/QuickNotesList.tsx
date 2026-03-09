@@ -285,6 +285,8 @@ export function QuickNotesList({
         setDeleteLinkedTask={hook.setDeleteLinkedTask}
         deleteLinkedDecision={hook.deleteLinkedDecision}
         setDeleteLinkedDecision={hook.setDeleteLinkedDecision}
+        deleteLinkedCaseItem={hook.deleteLinkedCaseItem}
+        setDeleteLinkedCaseItem={hook.setDeleteLinkedCaseItem}
         deleteLinkedMeeting={hook.deleteLinkedMeeting}
         setDeleteLinkedMeeting={hook.setDeleteLinkedMeeting}
         handleDeleteNoteWithLinks={hook.handleDeleteNoteWithLinks}

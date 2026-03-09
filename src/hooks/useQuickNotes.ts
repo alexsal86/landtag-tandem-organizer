@@ -972,6 +972,7 @@ export function useQuickNotes(refreshTrigger?: number) {
     handleSetPriority, handleSetColor, handleSetColorMode,
     handleSetFollowUp, handleDeleteWithConfirmation, handleDeleteNoteWithLinks,
     createTaskFromNote, removeTaskFromNote, removeDecisionFromNote,
+    createCaseItemFromNote, removeCaseItemFromNote,
     addNoteToMeeting, markForNextJourFixe, removeFromJourFixeQueue, removeNoteFromMeeting,
     openEditDialog, handleSaveEdit,
     openVersionHistory, restoreVersion,

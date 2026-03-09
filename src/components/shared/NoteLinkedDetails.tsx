@@ -350,6 +350,37 @@ export function NoteLinkedDetails({
           </div>
         )}
         
+        {/* Case Item Status */}
+        {caseItemId && (
+          <div className="p-2 bg-teal-50 dark:bg-teal-950/30 rounded-md border border-teal-100 dark:border-teal-900 group/case">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2 text-teal-600">
+                <FileText className="h-4 w-4" />
+                <span className="text-xs font-medium">Vorgang</span>
+              </div>
+              <ArrowRight 
+                className="h-4 w-4 text-teal-600 opacity-0 group-hover/case:opacity-100 transition-opacity cursor-pointer"
+                onClick={() => navigate(`/vorgaenge/${caseItemId}`)}
+              />
+            </div>
+            <NoteCaseItemStatus caseItemId={caseItemId} onNotFound={onCaseItemNotFound} />
+          </div>
+        )}
+        
+        {/* Archived Case Item Info */}
+        {!caseItemId && caseItemArchivedInfo && (
+          <div className="p-2 bg-teal-50/50 dark:bg-teal-950/20 rounded-md border border-teal-100/50 dark:border-teal-900/50">
+            <div className="flex items-center gap-2 text-teal-600/70">
+              <Archive className="h-4 w-4" />
+              <span className="text-xs font-medium">Vorgang (archiviert)</span>
+            </div>
+            <div className="text-xs text-muted-foreground mt-1">
+              <p className="truncate">{caseItemArchivedInfo.title}</p>
+              <p className="text-[10px]">Archiviert: {format(new Date(caseItemArchivedInfo.archived_at), "dd.MM.yyyy", { locale: de })}</p>
+            </div>
+          </div>
+        )}
+        
         {/* Meeting Status */}
         {meetingId && (
           <div className="p-2 bg-emerald-50 dark:bg-emerald-950/30 rounded-md border border-emerald-100 dark:border-emerald-900 group/meeting">

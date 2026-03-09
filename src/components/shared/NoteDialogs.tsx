@@ -310,6 +310,14 @@ export function NoteDialogs(props: NoteDialogsProps) {
                 </label>
               </div>
             )}
+            {props.confirmDeleteLinkedNote?.case_item_id && (
+              <div className="flex items-center gap-3">
+                <Checkbox id="delete-case-item" checked={props.deleteLinkedCaseItem} onCheckedChange={(checked) => props.setDeleteLinkedCaseItem(!!checked)} />
+                <label htmlFor="delete-case-item" className="text-sm flex items-center gap-2 cursor-pointer">
+                  <FileText className="h-4 w-4 text-teal-600" />Verknüpften Vorgang archivieren
+                </label>
+              </div>
+            )}
             {props.confirmDeleteLinkedNote?.meeting_id && (
               <div className="flex items-center gap-3">
                 <Checkbox id="delete-meeting" checked={props.deleteLinkedMeeting} onCheckedChange={(checked) => props.setDeleteLinkedMeeting(!!checked)} />

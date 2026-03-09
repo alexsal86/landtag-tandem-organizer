@@ -414,6 +414,7 @@ export function NoteCard({
         <NoteLinkedDetails
           taskId={note.task_id}
           decisionId={note.decision_id}
+          caseItemId={note.case_item_id}
           meetingId={note.meeting_id}
           isExpanded={isDetailsExpanded}
         />
