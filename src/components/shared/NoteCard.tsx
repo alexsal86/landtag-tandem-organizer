@@ -50,6 +50,8 @@ interface NoteCardProps {
   onRemoveTask: (note: QuickNote) => void;
   onCreateDecision: (note: QuickNote) => void;
   onRemoveDecision: (note: QuickNote) => void;
+  onCreateCaseItem: (note: QuickNote) => void;
+  onRemoveCaseItem: (note: QuickNote) => void;
   onOpenMeetingSelector: (note: QuickNote) => void;
   onRemoveFromMeeting: (noteId: string) => void;
   onOpenEdit: (note: QuickNote) => void;
