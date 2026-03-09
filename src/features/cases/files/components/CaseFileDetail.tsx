@@ -5,7 +5,7 @@ import { useCaseFileTopics } from "@/hooks/useTopics";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { ArrowLeft } from "lucide-react";
+import { ArrowLeft, MessageSquare, CheckSquare, Calendar, FileText } from "lucide-react";
 import {
   AlertDialog,
   AlertDialogAction,
