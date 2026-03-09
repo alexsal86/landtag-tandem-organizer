@@ -77,6 +77,10 @@ interface NoteDialogsProps {
   setConfirmRemoveDecision: (note: QuickNote | null) => void;
   removeDecisionFromNote: (note: QuickNote) => void;
 
+  confirmRemoveCaseItem: QuickNote | null;
+  setConfirmRemoveCaseItem: (note: QuickNote | null) => void;
+  removeCaseItemFromNote: (note: QuickNote) => void;
+
   confirmDeleteLinkedNote: QuickNote | null;
   setConfirmDeleteLinkedNote: (note: QuickNote | null) => void;
   deleteLinkedTask: boolean;
