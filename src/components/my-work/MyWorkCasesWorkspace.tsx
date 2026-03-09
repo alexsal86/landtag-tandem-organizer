@@ -983,7 +983,7 @@ export function MyWorkCasesWorkspace() {
                                               className={cn(
                                                 "w-full px-2 py-2 text-left transition-colors hover:bg-muted/40",
                                                 isActive && "bg-primary/5",
-                                                focusedItemIndex === index && "ring-1 ring-primary/40",
+                                                focusedItemIndex >= 0 && focusedItemIndex === index && "ring-1 ring-primary/40",
                                               )}
                                               onClick={() => handleSelectCaseItem(item)}
                                             >
