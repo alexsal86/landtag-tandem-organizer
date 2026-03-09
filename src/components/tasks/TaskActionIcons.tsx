@@ -192,6 +192,7 @@ export function TaskActionIcons({
               <Button
                 variant="ghost"
                 size="icon"
+                aria-label="Aufgabe bearbeiten"
                 className="h-6 w-6 hover:bg-muted/80 rounded-full"
                 onClick={(e) => {
                   e.stopPropagation();
