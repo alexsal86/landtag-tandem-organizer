@@ -276,6 +276,9 @@ export function QuickNotesList({
         confirmRemoveDecision={hook.confirmRemoveDecision}
         setConfirmRemoveDecision={hook.setConfirmRemoveDecision}
         removeDecisionFromNote={hook.removeDecisionFromNote}
+        confirmRemoveCaseItem={hook.confirmRemoveCaseItem}
+        setConfirmRemoveCaseItem={hook.setConfirmRemoveCaseItem}
+        removeCaseItemFromNote={hook.removeCaseItemFromNote}
         confirmDeleteLinkedNote={hook.confirmDeleteLinkedNote}
         setConfirmDeleteLinkedNote={hook.setConfirmDeleteLinkedNote}
         deleteLinkedTask={hook.deleteLinkedTask}
