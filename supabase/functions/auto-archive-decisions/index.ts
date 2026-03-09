@@ -210,7 +210,7 @@ serve(withSafeHandler("auto-archive-decisions", async (req) => {
       }
     );
 
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('Error in auto-archive-decisions:', error);
     return new Response(
       JSON.stringify({ error: 'Internal server error' }),
@@ -220,4 +220,4 @@ serve(withSafeHandler("auto-archive-decisions", async (req) => {
       }
     );
   }
-});
+}));

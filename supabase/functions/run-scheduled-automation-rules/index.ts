@@ -19,17 +19,13 @@ Deno.serve(async (req) => {
   }
 
   try {
+    if (!requireServiceRole(req)) {
+      return forbiddenResponse();
+    }
+
     const supabaseUrl = Deno.env.get("SUPABASE_URL") ?? "";
     const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
     const automationSecret = Deno.env.get("AUTOMATION_CRON_SECRET") ?? "";
-
-    const internalSecret = req.headers.get("x-automation-secret") ?? "";
-    if (!automationSecret || internalSecret !== automationSecret) {
-      return new Response(JSON.stringify({ error: "Forbidden" }), {
-        status: 403,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
-    }
 
     const supabase = createClient(supabaseUrl, serviceRoleKey);
 

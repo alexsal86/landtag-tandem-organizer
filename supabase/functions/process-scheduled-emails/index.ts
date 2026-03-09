@@ -115,7 +115,7 @@ serve(withSafeHandler("process-scheduled-emails", async (req) => {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       }
     );
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Error in process-scheduled-emails function:", error);
     return new Response(
       JSON.stringify({ error: "Internal server error" }),
@@ -125,4 +125,4 @@ serve(withSafeHandler("process-scheduled-emails", async (req) => {
       }
     );
   }
-});
+}));

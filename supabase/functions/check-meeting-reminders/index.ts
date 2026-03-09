@@ -272,7 +272,7 @@ serve(withSafeHandler("check-meeting-reminders", async (req: Request) => {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       }
     );
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Error in check-meeting-reminders function:", error);
     return new Response(
       JSON.stringify({ error: "Internal server error" }),
@@ -282,4 +282,4 @@ serve(withSafeHandler("check-meeting-reminders", async (req: Request) => {
       }
     );
   }
-});
+}));

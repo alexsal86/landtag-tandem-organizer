@@ -482,7 +482,7 @@ serve(async (req) => {
     console.error('❌ Function error:', error);
     return new Response(JSON.stringify({
       success: false,
-      error: error instanceof Error ? error.message : String(error),
+      error: 'Internal server error',
       sent: 0, failed: 0, total_subscriptions: 0
     }), {
       status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' }
