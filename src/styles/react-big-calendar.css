@@ -11,6 +11,9 @@
   background: hsl(var(--card));
   border: 1px solid hsl(var(--border));
   border-radius: calc(var(--radius));
+  display: flex;
+  flex-direction: column;
+  height: 100%;
 }
 
 /* Header styling */
