@@ -211,6 +211,7 @@ export function TaskActionIcons({
               <Button
                 variant="ghost"
                 size="icon"
+                aria-label="Unteraufgabe erstellen"
                 className="h-6 w-6 hover:bg-muted/80 rounded-full"
                 onClick={(e) => {
                   e.stopPropagation();
