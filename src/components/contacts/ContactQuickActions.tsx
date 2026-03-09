@@ -47,6 +47,7 @@ export function ContactQuickActions({
               <Button
                 size="sm"
                 variant="ghost"
+                aria-label="E-Mail senden"
                 onClick={(e) => {
                   e.stopPropagation();
                   handleEmail();
