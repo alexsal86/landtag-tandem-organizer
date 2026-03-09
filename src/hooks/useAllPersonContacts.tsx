@@ -67,7 +67,7 @@ export const useAllPersonContacts = () => {
 
       setPersonContacts(allContacts);
     } catch (error) {
-      debugConsole.error("Error in fetchPersonContacts:", error);
+      handleAppError(error, { context: 'useAllPersonContacts.fetch' });
     } finally {
       setLoading(false);
     }

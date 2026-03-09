@@ -37,7 +37,7 @@ export const useCaseFileProcessingStatuses = () => {
           is_active: d.is_active ?? true,
         })));
       } catch (error) {
-        debugConsole.error('Error loading processing statuses:', error);
+        handleAppError(error, { context: 'useCaseFileProcessingStatuses.load' });
       } finally {
         setLoading(false);
       }

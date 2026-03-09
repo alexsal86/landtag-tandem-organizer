@@ -20,7 +20,7 @@ export const useTaskTopics = (taskId: string | undefined) => {
       if (error) throw error;
       setAssignedTopics(data?.map(t => t.topic_id) || []);
     } catch (error) {
-      debugConsole.error('Error fetching task topics:', error);
+      handleAppError(error, { context: 'useTaskTopics.fetch' });
     } finally {
       setLoading(false);
     }

@@ -298,7 +298,7 @@ export function useMyWorkDecisionsData(userId?: string) {
       }
     } catch (error) {
       if (isCurrentRequest()) {
-        debugConsole.error("Error loading decisions:", error);
+        handleAppError(error, { context: 'useMyWorkDecisionsData.loadDecisions' });
       }
     } finally {
       if (isCurrentRequest()) {
