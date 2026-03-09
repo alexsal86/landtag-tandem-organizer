@@ -355,6 +355,51 @@ export function MyWorkCaseItemsTab() {
         onOpenChange={setArchiveOpen}
         onRestore={() => loadCaseItems()}
       />
+      <CaseItemMeetingSelector
+        open={meetingSelectorOpen}
+        onOpenChange={(open) => {
+          setMeetingSelectorOpen(open);
+          if (!open) setMeetingSelectorItemId(null);
+        }}
+        onSelect={async (meetingId, meetingTitle) => {
+          if (!meetingSelectorItemId) return;
+
+          const { error } = await supabase
+            .from("case_items")
+            .update({ meeting_id: meetingId, pending_for_jour_fixe: false } as any)
+            .eq("id", meetingSelectorItemId);
+
+          if (error) {
+            debugConsole.error("Error linking case item to meeting:", error);
+            toast({ title: "Fehler", description: "Zuordnung zum Jour Fixe fehlgeschlagen.", variant: "destructive" });
+            return;
+          }
+
+          setItems((prev) =>
+            prev.map((row) =>
+              row.id === meetingSelectorItemId ? { ...row, meeting_id: meetingId, pending_for_jour_fixe: false } : row
+            )
+          );
+          toast({ title: "Zugeordnet", description: `Vorgang dem Meeting „${meetingTitle}“ zugeordnet.` });
+        }}
+        onMarkForNextJourFixe={async () => {
+          if (!meetingSelectorItemId) return;
+
+          const { error } = await supabase
+            .from("case_items")
+            .update({ pending_for_jour_fixe: true } as any)
+            .eq("id", meetingSelectorItemId);
+
+          if (error) {
+            debugConsole.error("Error marking case item for next Jour Fixe:", error);
+            toast({ title: "Fehler", description: "Vormerken für Jour Fixe fehlgeschlagen.", variant: "destructive" });
+            return;
+          }
+
+          setItems((prev) => prev.map((row) => (row.id === meetingSelectorItemId ? { ...row, pending_for_jour_fixe: true } : row)));
+          toast({ title: "Vorgemerkt", description: "Vorgang für den nächsten Jour Fixe vorgemerkt." });
+        }}
+      />
 
       <Card>
         <CardContent className="p-4 space-y-3">
