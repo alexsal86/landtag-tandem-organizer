@@ -182,19 +182,100 @@ function NoteMeetingStatus({ meetingId, onNotFound }: { meetingId: string; onNot
   );
 }
 
+function NoteCaseItemStatus({ caseItemId, onNotFound }: { caseItemId: string; onNotFound?: () => void }) {
+  const [caseItem, setCaseItem] = useState<CaseItemData | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [notFound, setNotFound] = useState(false);
+  const navigate = useNavigate();
+  
+  useEffect(() => {
+    const loadCaseItem = async () => {
+      const { data, error } = await supabase
+        .from('case_items')
+        .select('subject, status, priority')
+        .eq('id', caseItemId)
+        .single();
+      
+      if (error || !data) {
+        setNotFound(true);
+        onNotFound?.();
+        setCaseItem(null);
+      } else {
+        setCaseItem(data);
+      }
+      setLoading(false);
+    };
+    loadCaseItem();
+  }, [caseItemId, onNotFound]);
+  
+  if (loading) return <Skeleton className="h-4 w-32 mt-1" />;
+  
+  if (notFound) {
+    return (
+      <div className="text-xs text-destructive flex items-center gap-1 mt-1">
+        <Trash2 className="h-3 w-3" />
+        Vorgang wurde gelöscht
+      </div>
+    );
+  }
+  
+  if (!caseItem) return <span className="text-xs text-muted-foreground">Vorgang nicht gefunden</span>;
+  
+  const getStatusLabel = (status: string) => {
+    switch (status) {
+      case 'neu': return 'Neu';
+      case 'in_bearbeitung': return 'In Bearbeitung';
+      case 'wartend': return 'Wartend';
+      case 'erledigt': return 'Erledigt';
+      case 'archiviert': return 'Archiviert';
+      default: return status;
+    }
+  };
+  
+  const getStatusVariant = (status: string): "default" | "secondary" | "outline" => {
+    switch (status) {
+      case 'erledigt': return 'default';
+      case 'in_bearbeitung': return 'secondary';
+      default: return 'outline';
+    }
+  };
+  
+  return (
+    <div 
+      className="text-xs text-muted-foreground mt-1 space-y-1 cursor-pointer hover:bg-muted/30 rounded p-1 -m-1 transition-colors"
+      onClick={() => navigate(`/vorgaenge/${caseItemId}`)}
+    >
+      <p className="truncate font-medium text-foreground">{caseItem.subject}</p>
+      <div className="flex items-center gap-2 flex-wrap">
+        <Badge variant={getStatusVariant(caseItem.status)} className="text-xs h-5">
+          {getStatusLabel(caseItem.status)}
+        </Badge>
+        {caseItem.priority && (
+          <span className="text-muted-foreground">
+            Priorität: {caseItem.priority}
+          </span>
+        )}
+      </div>
+    </div>
+  );
+}
+
 export function NoteLinkedDetails({ 
   taskId, 
-  decisionId, 
+  decisionId,
+  caseItemId, 
   meetingId, 
   isExpanded,
   onTaskNotFound,
   onDecisionNotFound,
+  onCaseItemNotFound,
   onMeetingNotFound,
   taskArchivedInfo,
   decisionArchivedInfo,
+  caseItemArchivedInfo,
   meetingArchivedInfo
 }: NoteLinkedDetailsProps) {
-  const hasLinks = taskId || decisionId || meetingId || taskArchivedInfo || decisionArchivedInfo || meetingArchivedInfo;
+  const hasLinks = taskId || decisionId || caseItemId || meetingId || taskArchivedInfo || decisionArchivedInfo || caseItemArchivedInfo || meetingArchivedInfo;
   const navigate = useNavigate();
   
   if (!hasLinks) return null;
