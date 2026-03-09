@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import { debugConsole } from '@/utils/debugConsole';
+import { getErrorMessage } from '@/utils/errorHandler';
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { useTenant } from "@/hooks/useTenant";
@@ -804,34 +805,46 @@ export function useQuickNotes(refreshTrigger?: number) {
       const itemSubject = note.title
         ? stripHtml(note.title)
         : plainContent.substring(0, 100);
-      
+
       const mapPriority = (level: number | undefined | null): 'low' | 'medium' | 'high' => {
         if (!level || level <= 1) return 'low';
         if (level === 2) return 'medium';
         return 'high';
       };
 
-      const { data: caseItem, error: caseError } = await supabase
+      // Generate ID client-side so we can link the note even if RLS blocks returning rows
+      const caseItemId = crypto.randomUUID();
+
+      const { error: caseError } = await supabase
         .from('case_items')
-        .insert([{
-          tenant_id: currentTenant.id,
-          user_id: user.id,
-          subject: itemSubject,
-          summary: note.content,
-          status: 'neu',
-          priority: mapPriority(note.priority_level),
-          source_channel: 'other',
-        } as any])
-        .select('id').single();
-      
+        .insert([
+          {
+            id: caseItemId,
+            tenant_id: currentTenant.id,
+            user_id: user.id,
+            subject: itemSubject,
+            summary: note.content,
+            status: 'neu',
+            priority: mapPriority(note.priority_level),
+            source_channel: 'other',
+          } as any,
+        ], { returning: 'minimal' } as any);
+
       if (caseError) throw caseError;
-      
-      await supabase.from("quick_notes").update({ case_item_id: caseItem.id }).eq("id", note.id);
+
+      const { error: linkError } = await supabase
+        .from("quick_notes")
+        .update({ case_item_id: caseItemId })
+        .eq("id", note.id)
+        .eq("user_id", user.id);
+
+      if (linkError) throw linkError;
+
       toast.success("Vorgang erstellt");
       loadNotes();
     } catch (error) {
       debugConsole.error('Error creating case item from note:', error);
-      toast.error("Fehler beim Erstellen des Vorgangs");
+      toast.error(getErrorMessage(error));
     }
   };
 
