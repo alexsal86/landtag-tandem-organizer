@@ -621,6 +621,18 @@ export function MyWorkCaseItemsTab() {
                       <ExternalLink className="mr-2 h-4 w-4" />
                       Öffnen
                     </ContextMenuItem>
+                    {item.case_file_id && (
+                      <ContextMenuItem onClick={() => navigate(`/casefiles?caseFileId=${item.case_file_id}`)}>
+                        <Briefcase className="mr-2 h-4 w-4" />
+                        In Akte öffnen
+                      </ContextMenuItem>
+                    )}
+                    {!item.case_file_id && (
+                      <ContextMenuItem onClick={() => handleEscalation(item.id, "create")} disabled={processingItemId === item.id}>
+                        <Briefcase className="mr-2 h-4 w-4" />
+                        In Akte überführen
+                      </ContextMenuItem>
+                    )}
                     <ContextMenuItem onClick={() => {
                       setMeetingSelectorItemId(item.id);
                       setMeetingSelectorOpen(true);
