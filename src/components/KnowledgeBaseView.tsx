@@ -15,6 +15,8 @@ import { useTopics } from '@/hooks/useTopics';
 import { useKnowledgeDocumentTopics } from '@/hooks/useKnowledgeDocumentTopics';
 import { TopicSelector, TopicDisplay } from '@/components/topics/TopicSelector';
 import { useKnowledgeData } from './knowledge/hooks/useKnowledgeData';
+import { useKnowledgeVersionHistory } from './knowledge/hooks/useKnowledgeVersionHistory';
+import { KnowledgeVersionHistory } from './knowledge/KnowledgeVersionHistory';
 import { useAuth } from '@/hooks/useAuth';
 
 const KnowledgeBaseView = () => {
