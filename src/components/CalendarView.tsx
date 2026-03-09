@@ -107,8 +107,8 @@ export function CalendarView() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-subtle">
-      <div className="flex min-h-screen transition-all duration-300">
+    <div className="h-screen overflow-hidden bg-gradient-subtle">
+      <div className="flex h-screen transition-all duration-300">
         <div className="w-[320px] shrink-0">
           <CalendarHeader
             currentDate={currentDate}
