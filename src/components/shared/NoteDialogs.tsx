@@ -87,6 +87,8 @@ interface NoteDialogsProps {
   setDeleteLinkedTask: (val: boolean) => void;
   deleteLinkedDecision: boolean;
   setDeleteLinkedDecision: (val: boolean) => void;
+  deleteLinkedCaseItem: boolean;
+  setDeleteLinkedCaseItem: (val: boolean) => void;
   deleteLinkedMeeting: boolean;
   setDeleteLinkedMeeting: (val: boolean) => void;
   handleDeleteNoteWithLinks: () => void;
