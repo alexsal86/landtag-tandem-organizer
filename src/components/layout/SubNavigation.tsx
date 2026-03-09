@@ -1,7 +1,9 @@
+import { memo, useCallback } from "react";
 import { cn } from "@/lib/utils";
 import { LucideIcon } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { useNavigationNotifications } from "@/hooks/useNavigationNotifications";
+import { prefetchRoute } from "@/lib/routePrefetch";
 
 interface SubNavigationItem {
   id: string;
