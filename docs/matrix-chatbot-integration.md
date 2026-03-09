@@ -6,7 +6,7 @@ Besucher:innen der Webseite sollen:
 
 1. schnell Antworten auf häufige Fragen bekommen,
 2. bei Bedarf direkt eine Anfrage an das Team senden,
-3. und alles soll im bestehenden Landtag-Tandem-Organizer nachvollziehbar und bearbeitbar sein.
+3. und alles soll im bestehenden LandtagsOS nachvollziehbar und bearbeitbar sein.
 
 ## Empfohlene Gesamtarchitektur
 

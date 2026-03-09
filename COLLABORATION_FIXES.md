@@ -1,4 +1,4 @@
-# Landtag Tandem Organizer - Editor Collaboration & Knowledge Management Fixes
+# LandtagsOS - Editor Collaboration & Knowledge Management Fixes
 
 ## Zusammenfassung der identifizierten Probleme
 
