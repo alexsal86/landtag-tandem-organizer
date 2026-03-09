@@ -6,7 +6,8 @@ import { useAuth } from "@/hooks/useAuth";
 import { useTenant } from "@/hooks/useTenant";
 import type { Task, TaskComment, Subtask, TodoItem, SnoozeEntry } from "../types";
 
-export function useTasksData() {
+export function useTasksData(options?: { enabled?: boolean }) {
+  const enabled = options?.enabled !== false;
   const { user } = useAuth();
   const { currentTenant } = useTenant();
   const [searchParams] = useSearchParams();
@@ -202,7 +203,8 @@ export function useTasksData() {
 
   const loadTaskDocumentCounts = async () => {
     try {
-      const { data, error } = await supabase.from('task_documents').select('task_id, id');
+      const { data, error } = await supabase.from('task_documents').select('task_id')
+        .order('created_at', { ascending: false });
       if (error) throw error;
       const counts: { [taskId: string]: number } = {};
       (data || []).forEach(doc => { counts[doc.task_id] = (counts[doc.task_id] || 0) + 1; });
@@ -433,8 +435,9 @@ export function useTasksData() {
     }
   };
 
-  // Initial load
+  // Initial load - only when enabled
   useEffect(() => {
+    if (!enabled) return;
     const loadAllData = async () => {
       await loadUsers();
       await Promise.all([
@@ -444,7 +447,7 @@ export function useTasksData() {
       await loadAssignedSubtasks();
     };
     loadAllData();
-  }, []);
+  }, [enabled]);
 
   return {
     tasks, setTasks, loading, taskComments, taskCategories, taskStatuses,

@@ -10877,6 +10877,10 @@ export type Database = {
         }[]
       }
       get_daily_hours: { Args: { _user_id: string }; Returns: number }
+      get_dashboard_data: {
+        Args: { p_tenant_id: string; p_user_id: string }
+        Returns: Json
+      }
       get_globally_shared_user_ids: {
         Args: { _user_id: string }
         Returns: string[]

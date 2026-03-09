@@ -4,7 +4,6 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { useTenant } from '@/hooks/useTenant';
 import { useAppointmentFeedback } from '@/hooks/useAppointmentFeedback';
-import { getCurrentTimeSlot } from '@/utils/dashboard/timeUtils';
 import {
   DEFAULT_SPECIAL_DAYS,
   parseSpecialDaysSetting,
@@ -61,47 +60,7 @@ export const useDashboardData = (): DashboardData => {
     return feedbackAppointments?.filter(a => a.feedback?.feedback_status === 'pending').length ?? 0;
   }, [feedbackAppointments]);
 
-  // Load user profile + role
-  useEffect(() => {
-    if (!user?.id) return;
-    Promise.all([
-      supabase.from('profiles').select('display_name').eq('user_id', user.id).maybeSingle(),
-      supabase.from('user_roles').select('role').eq('user_id', user.id).maybeSingle(),
-    ]).then(([profileRes, roleRes]) => {
-      setUserName(profileRes.data?.display_name || user.email?.split('@')[0] || 'Nutzer');
-      setUserRole(roleRes.data?.role || '');
-    });
-  }, [user]);
-
-  // Load task stats
-  useEffect(() => {
-    if (!user?.id) return;
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-
-    Promise.all([
-      supabase.from('tasks').select('*', { count: 'exact', head: true })
-        .or(`assigned_to.eq.${user.id},assigned_to.ilike.%${user.id}%,user_id.eq.${user.id}`)
-        .neq('status', 'completed'),
-      supabase.from('tasks').select('*', { count: 'exact', head: true })
-        .or(`assigned_to.eq.${user.id},assigned_to.ilike.%${user.id}%,user_id.eq.${user.id}`)
-        .eq('status', 'completed').gte('updated_at', today.toISOString()),
-      supabase.from('tasks').select('id, title')
-        .or(`assigned_to.eq.${user.id},assigned_to.ilike.%${user.id}%,user_id.eq.${user.id}`)
-        .neq('status', 'completed')
-        .order('due_date', { ascending: true, nullsFirst: false }),
-    ]).then(([openRes, completedRes, titlesRes]) => {
-      setOpenTasksCount(openRes.count || 0);
-      setCompletedTasksToday(completedRes.count || 0);
-      setOpenTaskTitles(
-        (titlesRes.data || [])
-          .filter(t => Boolean(t.title?.trim()))
-          .map(t => ({ id: t.id, title: t.title!.trim() }))
-      );
-    });
-  }, [user]);
-
-  // Load special days
+  // Load special days (lightweight, kept separate)
   useEffect(() => {
     const load = async () => {
       try {
@@ -117,63 +76,92 @@ export const useDashboardData = (): DashboardData => {
     load();
   }, [currentTenant?.id]);
 
-  // Load appointments (today + tomorrow fallback), no limit
+  // Main dashboard data via single RPC call (replaces 5+ individual queries)
   useEffect(() => {
     const load = async () => {
       if (!user?.id || !currentTenant?.id) return;
-      const now = new Date();
-      const today = new Date(); today.setHours(0, 0, 0, 0);
-      const dayAfterTomorrow = new Date(today); dayAfterTomorrow.setDate(dayAfterTomorrow.getDate() + 2);
-      const yesterday = new Date(today); yesterday.setDate(yesterday.getDate() - 1);
-      const threeDaysAhead = new Date(today); threeDaysAhead.setDate(threeDaysAhead.getDate() + 3);
 
-      const [{ data: normal }, { data: allDay }] = await Promise.all([
-        supabase.from('appointments').select('id, title, start_time, end_time, is_all_day')
-          .eq('tenant_id', currentTenant.id).eq('is_all_day', false)
-          .gte('start_time', today.toISOString()).lt('start_time', dayAfterTomorrow.toISOString())
-          .order('start_time', { ascending: true }),
-        supabase.from('appointments').select('id, title, start_time, end_time, is_all_day')
-          .eq('tenant_id', currentTenant.id).eq('is_all_day', true)
-          .gte('start_time', yesterday.toISOString()).lt('start_time', threeDaysAhead.toISOString())
-          .order('start_time', { ascending: true }),
-      ]);
+      try {
+        const { data, error } = await (supabase as any).rpc('get_dashboard_data', {
+          p_user_id: user.id,
+          p_tenant_id: currentTenant.id,
+        });
 
-      const externalResult = await (supabase as any).from('external_events')
-        .select('id, title, start_time, end_time, all_day, external_calendars!inner(tenant_id)')
-        .eq('external_calendars.tenant_id', currentTenant.id)
-        .gte('start_time', yesterday.toISOString()).lt('start_time', threeDaysAhead.toISOString())
-        .order('start_time', { ascending: true });
+        if (error) throw error;
 
-      const external: AppointmentData[] = (externalResult.data || []).map((e: any) => ({
-        id: e.id, title: e.title, start_time: e.start_time, end_time: e.end_time, is_all_day: e.all_day ?? false,
-      }));
+        const rpcResult = data as {
+          display_name: string;
+          role: string;
+          open_tasks_count: number;
+          completed_today: number;
+          open_task_titles: { id: string; title: string }[];
+          appointments: AppointmentData[];
+        };
 
-      const all = [...(normal || []), ...(allDay || []), ...external];
+        setUserName(rpcResult.display_name || user.email?.split('@')[0] || 'Nutzer');
+        setUserRole(rpcResult.role || '');
+        setOpenTasksCount(rpcResult.open_tasks_count);
+        setCompletedTasksToday(rpcResult.completed_today);
+        setOpenTaskTitles(rpcResult.open_task_titles || []);
 
-      const todayUpcoming = all.filter(event => {
-        const localDate = new Date(new Date(event.start_time).toLocaleString('en-US', { timeZone: 'Europe/Berlin' }));
-        if (localDate.toDateString() !== today.toDateString()) return false;
-        if (event.is_all_day) return true;
-        const endTime = event.end_time ? new Date(event.end_time) : new Date(new Date(event.start_time).getTime() + 3600000);
-        return endTime > now;
-      });
-
-      if (todayUpcoming.length === 0) {
+        // Process appointments: filter today/tomorrow like before
+        const now = new Date();
+        const today = new Date(); today.setHours(0, 0, 0, 0);
         const tomorrowDate = new Date(today); tomorrowDate.setDate(tomorrowDate.getDate() + 1);
-        setAppointments(
-          all.filter(e => {
-            const ld = new Date(new Date(e.start_time).toLocaleString('en-US', { timeZone: 'Europe/Berlin' }));
-            return ld.toDateString() === tomorrowDate.toDateString();
-          }).sort((a, b) => new Date(a.start_time).getTime() - new Date(b.start_time).getTime())
-        );
-        setIsShowingTomorrow(true);
-      } else {
-        setAppointments(
-          todayUpcoming.sort((a, b) => new Date(a.start_time).getTime() - new Date(b.start_time).getTime())
-        );
-        setIsShowingTomorrow(false);
+
+        // Also fetch external events (not in RPC since they use a different schema pattern)
+        let externalAppointments: AppointmentData[] = [];
+        try {
+          const externalResult = await (supabase as any).from('external_events')
+            .select('id, title, start_time, end_time, all_day, external_calendars!inner(tenant_id)')
+            .eq('external_calendars.tenant_id', currentTenant.id)
+            .gte('start_time', new Date(today.getTime() - 86400000).toISOString())
+            .lt('start_time', new Date(today.getTime() + 3 * 86400000).toISOString())
+            .order('start_time', { ascending: true });
+
+          externalAppointments = (externalResult.data || []).map((e: any) => ({
+            id: e.id, title: e.title, start_time: e.start_time,
+            end_time: e.end_time, is_all_day: e.all_day ?? false,
+          }));
+        } catch { /* external events are optional */ }
+
+        const all = [...(rpcResult.appointments || []), ...externalAppointments];
+
+        const todayUpcoming = all.filter(event => {
+          const localDate = new Date(new Date(event.start_time).toLocaleString('en-US', { timeZone: 'Europe/Berlin' }));
+          if (localDate.toDateString() !== today.toDateString()) return false;
+          if (event.is_all_day) return true;
+          const endTime = event.end_time ? new Date(event.end_time) : new Date(new Date(event.start_time).getTime() + 3600000);
+          return endTime > now;
+        });
+
+        if (todayUpcoming.length === 0) {
+          setAppointments(
+            all.filter(e => {
+              const ld = new Date(new Date(e.start_time).toLocaleString('en-US', { timeZone: 'Europe/Berlin' }));
+              return ld.toDateString() === tomorrowDate.toDateString();
+            }).sort((a, b) => new Date(a.start_time).getTime() - new Date(b.start_time).getTime())
+          );
+          setIsShowingTomorrow(true);
+        } else {
+          setAppointments(
+            todayUpcoming.sort((a, b) => new Date(a.start_time).getTime() - new Date(b.start_time).getTime())
+          );
+          setIsShowingTomorrow(false);
+        }
+      } catch (error) {
+        // Fallback: if RPC doesn't exist yet, load data the old way
+        try {
+          const [profileRes, roleRes] = await Promise.all([
+            supabase.from('profiles').select('display_name').eq('user_id', user.id).maybeSingle(),
+            supabase.from('user_roles').select('role').eq('user_id', user.id).maybeSingle(),
+          ]);
+          setUserName(profileRes.data?.display_name || user.email?.split('@')[0] || 'Nutzer');
+          setUserRole(roleRes.data?.role || '');
+        } catch { /* ignore fallback errors */ }
+      } finally {
+        setIsLoading(false);
       }
-      setIsLoading(false);
     };
     load();
   }, [user, currentTenant]);
