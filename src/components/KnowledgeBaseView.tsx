@@ -29,6 +29,7 @@ const KnowledgeBaseView = () => {
   const { getActiveTopics } = useTopics();
 
   const data = useKnowledgeData();
+  const { createVersion } = useKnowledgeVersionHistory(data.selectedDocument?.id);
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedTopicFilter, setSelectedTopicFilter] = useState<string | null>(null);
   const [newDocument, setNewDocument] = useState({ title: '', content: '', is_published: false, selectedTopics: [] as string[] });
