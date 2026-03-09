@@ -1,13 +1,14 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="de">
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>LandtagsOS</title>
-    <meta name="description" content="Digitale Arbeitsplattform für politische Büros – Termine, Kontakte, Vorgänge und mehr." />
-    <meta name="author" content="Landtag Tandem Organizer Team" />
-    
-    
+    <title>LandtagsOS – Digitale Arbeitsplattform für politische Büros</title>
+    <meta name="description" content="LandtagsOS: Termine, Kontakte, Vorgänge, Wissensdatenbank und Teamkoordination für Landtagsbüros – alles in einer Plattform." />
+    <meta name="author" content="LandtagsOS" />
+    <meta name="robots" content="index, follow" />
+    <link rel="canonical" href="https://landtagsos.app/" />
+
     <!-- Google Fonts: Arvo + Source Sans Pro (preloaded for faster paint) -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -19,15 +20,32 @@
     <meta property="og:description" content="Digitale Arbeitsplattform für politische Büros – Termine, Kontakte, Vorgänge und mehr." />
     <meta property="og:type" content="website" />
     <meta property="og:image" content="/assets/wappen-bw.svg?v=1" />
+    <meta property="og:url" content="https://landtagsos.app/" />
+    <meta property="og:locale" content="de_DE" />
 
     <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="LandtagsOS" />
+    <meta name="twitter:description" content="Digitale Arbeitsplattform für politische Büros." />
     <meta name="twitter:image" content="/assets/wappen-bw.svg?v=1" />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <link rel="alternate icon" href="/favicon.ico" />
+
+    <!-- JSON-LD Structured Data -->
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "WebApplication",
+      "name": "LandtagsOS",
+      "description": "Digitale Arbeitsplattform für politische Büros – Termine, Kontakte, Vorgänge und Teamkoordination.",
+      "applicationCategory": "BusinessApplication",
+      "operatingSystem": "Web",
+      "inLanguage": "de"
+    }
+    </script>
   </head>
 
   <body>
-    <div id="root"><div style="display:flex;align-items:center;justify-content:center;height:100vh"><p style="color:#888">Laden…</p></div></div>
+    <div id="root" role="application" aria-label="LandtagsOS"><div style="display:flex;align-items:center;justify-content:center;height:100vh"><p style="color:#888">Laden…</p></div></div>
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>
