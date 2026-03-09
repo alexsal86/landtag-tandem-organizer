@@ -116,6 +116,7 @@
   border-bottom: 1px solid hsl(var(--border));
   padding: 1rem;
   margin-bottom: 0;
+  flex-shrink: 0;
 }
 
 .rbc-toolbar-label {
