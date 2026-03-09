@@ -1,10 +1,6 @@
 import { serve } from "https://deno.land/std@0.177.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
-
-const corsHeaders = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
-};
+import { requireServiceRole, corsHeaders, forbiddenResponse } from "../_shared/security.ts";
 
 // Berechne deutsche Feiertage (bundesweit + Baden-Württemberg)
 function calculateGermanHolidays(year: number) {
@@ -60,6 +56,10 @@ serve(async (req) => {
     return new Response('ok', { headers: corsHeaders });
   }
 
+  if (!requireServiceRole(req)) {
+    return forbiddenResponse();
+  }
+
   try {
     const supabaseUrl = Deno.env.get('SUPABASE_URL');
     const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
@@ -109,7 +109,7 @@ serve(async (req) => {
   } catch (error) {
     console.error('Error in sync-holidays:', error);
     return new Response(
-      JSON.stringify({ error: (error as Error).message }),
+      JSON.stringify({ error: 'Internal server error' }),
       { 
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
         status: 500 

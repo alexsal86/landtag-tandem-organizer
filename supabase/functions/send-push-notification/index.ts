@@ -1,9 +1,9 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.49.1'
+import { requireServiceRole, corsHeaders as sharedCorsHeaders } from "../_shared/security.ts";
 
 const corsHeaders = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version',
+  ...sharedCorsHeaders,
 }
 
 console.log("Push notification function initialized (WebCrypto-based)");
@@ -298,6 +298,13 @@ serve(async (req) => {
     return new Response(null, { headers: corsHeaders });
   }
 
+  // Require service role (called by pg_net trigger)
+  if (!requireServiceRole(req)) {
+    return new Response(JSON.stringify({ error: 'Unauthorized' }), {
+      status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+    });
+  }
+
   // GET: Return VAPID public key
   if (req.method === 'GET') {
     const vapidPublicKey = Deno.env.get('VAPID_PUBLIC_KEY');
@@ -475,7 +482,7 @@ serve(async (req) => {
     console.error('❌ Function error:', error);
     return new Response(JSON.stringify({
       success: false,
-      error: error instanceof Error ? error.message : String(error),
+      error: 'Internal server error',
       sent: 0, failed: 0, total_subscriptions: 0
     }), {
       status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' }

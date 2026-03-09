@@ -1,11 +1,6 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.57.4";
-
-const corsHeaders = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
-};
-
+import { requireServiceRole, corsHeaders, forbiddenResponse, withSafeHandler } from "../_shared/security.ts";
 interface Employee {
   user_id: string;
   admin_id: string;
@@ -31,9 +26,9 @@ interface ActionItem {
   conducted_by?: string;
 }
 
-serve(async (req: Request) => {
-  if (req.method === "OPTIONS") {
-    return new Response(null, { headers: corsHeaders });
+serve(withSafeHandler("check-meeting-reminders", async (req: Request) => {
+  if (!requireServiceRole(req)) {
+    return forbiddenResponse();
   }
 
   try {
@@ -277,7 +272,7 @@ serve(async (req: Request) => {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       }
     );
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Error in check-meeting-reminders function:", error);
     return new Response(
       JSON.stringify({ error: "Internal server error" }),
@@ -287,4 +282,4 @@ serve(async (req: Request) => {
       }
     );
   }
-});
+}));

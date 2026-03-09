@@ -1,15 +1,10 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.39.3";
+import { requireServiceRole, corsHeaders, forbiddenResponse, withSafeHandler } from "../_shared/security.ts";
 
-const corsHeaders = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
-};
-
-serve(async (req) => {
-  // Handle CORS preflight requests
-  if (req.method === "OPTIONS") {
-    return new Response(null, { headers: corsHeaders });
+serve(withSafeHandler("process-scheduled-emails", async (req) => {
+  if (!requireServiceRole(req)) {
+    return forbiddenResponse();
   }
 
   try {
@@ -120,7 +115,7 @@ serve(async (req) => {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       }
     );
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Error in process-scheduled-emails function:", error);
     return new Response(
       JSON.stringify({ error: "Internal server error" }),
@@ -130,4 +125,4 @@ serve(async (req) => {
       }
     );
   }
-});
+}));

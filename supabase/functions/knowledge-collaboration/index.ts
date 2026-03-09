@@ -1,9 +1,6 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
-
-const corsHeaders = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
-};
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { corsHeaders } from "../_shared/security.ts";
 
 interface CollaborationMessage {
   type: 'ready' | 'connected' | 'ping' | 'pong' | 'error';
@@ -42,6 +39,23 @@ serve(async (req) => {
   if (!documentId || !userId || !authToken) {
     console.log(`[COLLABORATION] ❌ Missing required parameters`);
     return new Response('Missing required parameters', { status: 400 });
+  }
+
+  // Validate the auth token
+  try {
+    const supabaseUrl = Deno.env.get("SUPABASE_URL") ?? "";
+    const supabaseAnonKey = Deno.env.get("SUPABASE_ANON_KEY") ?? "";
+    const supabase = createClient(supabaseUrl, supabaseAnonKey, {
+      global: { headers: { Authorization: `Bearer ${authToken}` } },
+    });
+    const { data, error } = await supabase.auth.getUser(authToken);
+    if (error || !data?.user) {
+      console.log(`[COLLABORATION] ❌ Invalid auth token`);
+      return new Response('Unauthorized', { status: 401 });
+    }
+  } catch {
+    console.log(`[COLLABORATION] ❌ Auth validation failed`);
+    return new Response('Unauthorized', { status: 401 });
   }
 
   console.log(`[COLLABORATION] 🔄 Upgrading to WebSocket...`);
