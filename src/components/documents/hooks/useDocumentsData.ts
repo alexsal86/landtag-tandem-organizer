@@ -125,7 +125,8 @@ export function useDocumentsData(activeTab: string) {
 
   return {
     documents, letters, folders, loading, setLoading,
-    fetchDocuments, fetchFolders, fetchLetters,
+    fetchDocuments, fetchFolders, fetchLetters, loadMoreDocuments,
+    hasMore, totalDocuments, currentPage,
     user, currentTenant,
   };
 }
