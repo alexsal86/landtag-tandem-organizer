@@ -115,7 +115,7 @@ export function DecisionContextMenu({
   return (
     <>
       <ContextMenu>
-        <ContextMenuTrigger asChild>{children}</ContextMenuTrigger>
+        <ContextMenuTrigger>{children}</ContextMenuTrigger>
         <ContextMenuContent className="w-56">
           {/* 1. Deadline */}
           {isCreator && (
