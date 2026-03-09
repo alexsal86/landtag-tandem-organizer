@@ -33,19 +33,6 @@ export default defineConfig(({ mode }) => ({
   resolve: {
     dedupe: [
       'lexical',
-      '@lexical/code',
-      '@lexical/file',
-      '@lexical/hashtag',
-      '@lexical/html',
-      '@lexical/link',
-      '@lexical/list',
-      '@lexical/mark',
-      '@lexical/markdown',
-      '@lexical/plain-text',
-      '@lexical/react',
-      '@lexical/rich-text',
-      '@lexical/table',
-      '@lexical/yjs',
     ],
     alias: {
       "@": path.resolve(__dirname, "./src"),
