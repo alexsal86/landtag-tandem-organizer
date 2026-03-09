@@ -174,7 +174,7 @@ export function CalendarTestSuite() {
       return {
         name: 'View Switching',
         status: 'fail',
-        details: `View switching failed: ${error.message}`
+        details: `View switching failed: ${error instanceof Error ? error.message : String(error)}`
       };
     }
   };
