@@ -19,7 +19,7 @@ export function CalendarView() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const [currentDate, setCurrentDate] = useState(new Date());
-  const [view, setView] = useState<"day" | "week" | "month" | "agenda" | "polls">("day");
+  const [view, setView] = useState<"day" | "week" | "month" | "agenda" | "polls">("week");
   const [selectedAppointment, setSelectedAppointment] = useState<CalendarEvent | null>(null);
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [preparationSidebarOpen, setPreparationSidebarOpen] = useState(false);
@@ -107,19 +107,21 @@ export function CalendarView() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-subtle p-6">
-      <CalendarHeader
-        currentDate={currentDate}
-        view={view}
-        onNavigateDate={navigateDate}
-        onToday={() => setCurrentDate(new Date())}
-        onViewChange={(v) => setView(v as typeof view)}
-        onShowPolls={() => setView("polls")}
-      />
+    <div className="min-h-screen bg-gradient-subtle">
+      <div className="flex min-h-screen transition-all duration-300">
+        <div className="w-[320px] shrink-0">
+          <CalendarHeader
+            currentDate={currentDate}
+            view={view}
+            onNavigateDate={navigateDate}
+            onToday={() => setCurrentDate(new Date())}
+            onViewChange={(v) => setView(v as typeof view)}
+            onShowPolls={() => setView("polls")}
+          />
+        </div>
 
-      <div className="flex gap-0 transition-all duration-300">
         {sidebarOpen && selectedAppointment && (
-          <div className="w-[420px] shrink-0 border border-border rounded-lg mr-4 overflow-hidden" style={{ height: "calc(600px + 57px)" }}>
+          <div className="w-[420px] shrink-0 border-x border-border overflow-hidden">
             <AppointmentDetailsSidebar
               appointment={selectedAppointment}
               open={sidebarOpen}
@@ -129,19 +131,15 @@ export function CalendarView() {
           </div>
         )}
 
-        <div className="flex-1 min-w-0 transition-all duration-300">
-          <Card className="bg-card shadow-card border-border">
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Calendar className="h-5 w-5 text-primary" />
-                {view === "day" && "Tagesansicht"}
-                {view === "week" && "Wochenansicht"}
-                {view === "month" && "Monatsansicht"}
-                {view === "agenda" && "Agenda"}
-                {view === "polls" && "Terminabstimmungen"}
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="p-0 h-[600px]">
+        <div className="flex-1 min-w-0 p-6 transition-all duration-300">
+            <Card className="bg-card shadow-card border-border">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Calendar className="h-5 w-5 text-primary" />
+                  {view === "polls" ? "Terminabstimmungen" : "Terminkalender"}
+                </CardTitle>
+              </CardHeader>
+            <CardContent className="p-0 min-h-[calc(100vh-220px)]">
               {view === "polls" ? (
                 <PollListView />
               ) : loading ? (
