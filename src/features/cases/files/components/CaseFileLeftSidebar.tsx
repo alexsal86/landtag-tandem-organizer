@@ -99,9 +99,11 @@ export function CaseFileLeftSidebar({
                   {item.contact.organization}
                 </div>
               )}
-              <Badge variant="secondary" className="text-[10px] mt-1 h-5">
-                {getRoleLabel(item.role)}
-              </Badge>
+              {item.role && (
+                <div className="text-xs text-muted-foreground truncate mt-0.5">
+                  {getRoleLabel(item.role)}
+                </div>
+              )}
             </div>
             <div className="flex items-center gap-0.5 shrink-0">
               {item.contact?.phone && (

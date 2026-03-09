@@ -7,6 +7,7 @@ import {
   CaseFileTask,
   CaseFileAppointment,
   CaseFileLetter,
+  CaseItemInteraction,
 } from "@/features/cases/files/hooks";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -38,7 +39,7 @@ import { supabase } from "@/integrations/supabase/client";
 
 interface UnifiedTimelineItem {
   id: string;
-  category: "timeline" | "note" | "document" | "task" | "appointment" | "letter";
+  category: "timeline" | "note" | "document" | "task" | "appointment" | "letter" | "interaction";
   event_date: string;
   title: string;
   description: string | null;
@@ -54,6 +55,7 @@ interface CaseFileUnifiedTimelineProps {
   tasks: CaseFileTask[];
   appointments: CaseFileAppointment[];
   letters: CaseFileLetter[];
+  interactions: CaseItemInteraction[];
   onAddTimelineEntry: () => void;
   onDeleteTimelineEntry: (id: string) => Promise<boolean>;
 }
@@ -65,6 +67,7 @@ const CATEGORY_CONFIG = {
   task: { icon: CheckSquare, label: "Aufgabe", color: "bg-green-500" },
   appointment: { icon: Calendar, label: "Termin", color: "bg-blue-500" },
   letter: { icon: Mail, label: "Brief", color: "bg-cyan-500" },
+  interaction: { icon: MessageSquare, label: "Interaktion", color: "bg-indigo-500" },
 };
 
 const FILTER_TABS = [
@@ -83,6 +86,7 @@ export function CaseFileUnifiedTimeline({
   tasks,
   appointments,
   letters,
+  interactions,
   onAddTimelineEntry,
   onDeleteTimelineEntry,
 }: CaseFileUnifiedTimelineProps) {
@@ -166,12 +170,24 @@ export function CaseFileUnifiedTimeline({
         description: l.letter?.subject || null,
         meta: { status: l.letter?.status },
       })),
+      ...interactions.map((i) => ({
+        id: `interaction-${i.id}`,
+        category: "interaction" as const,
+        event_date: i.created_at,
+        title: `${i.interaction_type}: ${i.subject}`,
+        description: i.details,
+        meta: {
+          type: i.interaction_type,
+          direction: i.direction,
+          isResolution: i.is_resolution,
+        },
+      })),
     ];
 
     return items.sort(
       (a, b) => new Date(b.event_date).getTime() - new Date(a.event_date).getTime()
     );
-  }, [timeline, notes, documents, tasks, appointments, letters]);
+  }, [timeline, notes, documents, tasks, appointments, letters, interactions]);
 
   const filteredItems = useMemo(() => {
     let items = unifiedItems;

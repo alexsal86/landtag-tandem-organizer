@@ -5,7 +5,7 @@ import { useCaseFileTopics } from "@/hooks/useTopics";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { ArrowLeft } from "lucide-react";
+import { ArrowLeft, MessageSquare, CheckSquare, Calendar, FileText } from "lucide-react";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -21,10 +21,6 @@ import { CaseFileDetailHeader } from "./CaseFileDetailHeader";
 import { CaseFileLeftSidebar } from "./CaseFileLeftSidebar";
 import { CaseFileRightSidebar } from "./CaseFileRightSidebar";
 import { CaseFileUnifiedTimeline } from "./CaseFileUnifiedTimeline";
-import { CallNoteQuickCapture } from "@/components/my-work/CallNoteQuickCapture";
-import { EmailQuickCapture } from "@/components/my-work/EmailQuickCapture";
-import { SocialHintQuickCapture } from "@/components/my-work/SocialHintQuickCapture";
-import { CaseItemInteractionsTimeline } from "./CaseItemInteractionsTimeline";
 
 // Tab dialogs — still needed for Add actions
 import { CaseFileContactsTab } from "./tabs/CaseFileContactsTab";
@@ -108,12 +104,7 @@ export function CaseFileDetail({ caseFileId, onBack }: CaseFileDetailProps) {
       <CaseFileDetailHeader
         caseFile={caseFile}
         onBack={onBack}
-        onEdit={() => setEditDialogOpen(true)}
         onDelete={() => setDeleteDialogOpen(true)}
-        onAddNote={() => setShowAddNote(true)}
-        onAddTask={() => setShowAddTask(true)}
-        onAddAppointment={() => setShowAddAppointment(true)}
-        onAddDocument={() => setShowAddDocument(true)}
       />
 
       {/* Three-Column Layout */}
@@ -132,13 +123,28 @@ export function CaseFileDetail({ caseFileId, onBack }: CaseFileDetailProps) {
 
         {/* Center: Unified Timeline */}
         <div className="flex-1 min-w-0 space-y-4">
-          <div className="grid grid-cols-1 xl:grid-cols-3 gap-3">
-            <CallNoteQuickCapture caseFileId={caseFile.id} onCreate={details.addInteraction} />
-            <EmailQuickCapture caseFileId={caseFile.id} onCreate={details.addInteraction} />
-            <SocialHintQuickCapture caseFileId={caseFile.id} onCreate={details.addInteraction} />
+          {/* Interaction Bar */}
+          <div className="rounded-md border bg-background p-3 space-y-2">
+            <p className="font-bold">Interaktion erfassen</p>
+            <div className="flex flex-wrap gap-2">
+              <Button size="sm" variant="outline" onClick={() => setShowAddNote(true)}>
+                <MessageSquare className="mr-1.5 h-3.5 w-3.5" />
+                Notiz
+              </Button>
+              <Button size="sm" variant="outline" onClick={() => setShowAddTask(true)}>
+                <CheckSquare className="mr-1.5 h-3.5 w-3.5" />
+                Aufgabe
+              </Button>
+              <Button size="sm" variant="outline" onClick={() => setShowAddAppointment(true)}>
+                <Calendar className="mr-1.5 h-3.5 w-3.5" />
+                Termin
+              </Button>
+              <Button size="sm" variant="outline" onClick={() => setShowAddDocument(true)}>
+                <FileText className="mr-1.5 h-3.5 w-3.5" />
+                Dokument
+              </Button>
+            </div>
           </div>
-
-          <CaseItemInteractionsTimeline interactions={interactions} />
 
           <CaseFileUnifiedTimeline
             timeline={timeline}
@@ -147,6 +153,7 @@ export function CaseFileDetail({ caseFileId, onBack }: CaseFileDetailProps) {
             tasks={tasks}
             appointments={appointments}
             letters={letters}
+            interactions={interactions}
             onAddTimelineEntry={() => setShowAddTimeline(true)}
             onDeleteTimelineEntry={details.deleteTimelineEntry}
           />
