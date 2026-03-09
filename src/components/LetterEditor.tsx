@@ -1,22 +1,16 @@
 import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { Save, X, Users, Eye, EyeOff, AlertTriangle, Edit3, FileText, MessageSquare, Ruler, Paperclip, Settings, Layout, Building, Info } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Textarea } from '@/components/ui/textarea';
-import EnhancedLexicalEditor from './EnhancedLexicalEditor';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Switch } from '@/components/ui/switch';
-import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
-import { DropdownMenu, DropdownMenuContent, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
+import EnhancedLexicalEditor from './EnhancedLexicalEditor';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { useTenant } from '@/hooks/useTenant';
 
 import ReviewAssignmentDialog from './ReviewAssignmentDialog';
-import LetterAttachmentManager from './letters/LetterAttachmentManager';
 import { DIN5008LetterLayout } from './letters/DIN5008LetterLayout';
 import { LetterEditorCanvas } from './letters/LetterEditorCanvas';
+import { LetterEditorToolbar } from './letters/LetterEditorToolbar';
 import { buildVariableMap, substituteVariables, substituteBlockLines, isLineMode } from '@/lib/letterVariables';
 import type { HeaderElement } from '@/components/canvas-engine/types';
 import type { BlockLine } from '@/components/letters/BlockLineEditor';
@@ -72,18 +66,12 @@ const LetterEditor: React.FC<LetterEditorProps> = ({ letter, isOpen, onClose, on
   const draftInitializedRef = useRef(false);
   const liveSyncTimerRef = useRef<NodeJS.Timeout>(null);
 
-  // Data hooks
   const {
     contacts, templates, senderInfos, informationBlocks, attachments,
     collaborators, comments, userProfiles,
     fetchAttachments, fetchComments, fetchCollaborators, fetchWorkflowUserProfiles,
-  } = useLetterData({
-    isOpen,
-    tenantId: currentTenant?.id,
-    letterId: letter?.id,
-  });
+  } = useLetterData({ isOpen, tenantId: currentTenant?.id, letterId: letter?.id });
 
-  // Permission computation
   const isCreator = user?.id === letter?.created_by;
   const isReviewer = collaborators.some(c => c.user_id === user?.id);
   const currentStatus = editedLetter.status || 'draft';
@@ -92,7 +80,6 @@ const LetterEditor: React.FC<LetterEditorProps> = ({ letter, isOpen, onClose, on
     (isReviewer && (currentStatus === 'review' || currentStatus === 'pending_approval'))
   ));
 
-  // Operations hook
   const ops = useLetterOperations({
     letter, editedLetter, setEditedLetter, canEdit,
     userId: user?.id, tenantId: currentTenant?.id,
@@ -100,8 +87,6 @@ const LetterEditor: React.FC<LetterEditorProps> = ({ letter, isOpen, onClose, on
     onSave, setSaving, setLastSaved, setIsProofreadingMode, setShowAssignmentDialog,
     fetchComments, fetchCollaborators, senderInfos, informationBlocks,
   });
-
-  // --- Effects ---
 
   // Initialize draft content
   useEffect(() => {
@@ -115,15 +100,9 @@ const LetterEditor: React.FC<LetterEditorProps> = ({ letter, isOpen, onClose, on
 
   const applyDraftToPreview = useCallback(() => {
     latestContentRef.current = { content: draftContent?.trim() || '', contentNodes: draftContentNodes || null };
-    setEditedLetter(prev => ({
-      ...prev,
-      content: draftContent?.trim() || '',
-      content_nodes: draftContentNodes || null,
-      content_html: draftContentHtml || undefined,
-    }));
+    setEditedLetter(prev => ({ ...prev, content: draftContent?.trim() || '', content_nodes: draftContentNodes || null, content_html: draftContentHtml || undefined }));
   }, [draftContent, draftContentNodes, draftContentHtml]);
 
-  // Live-sync draft to preview
   useEffect(() => {
     if (!showTextSplitEditor || !draftInitializedRef.current) return;
     if (liveSyncTimerRef.current) clearTimeout(liveSyncTimerRef.current);
@@ -131,14 +110,11 @@ const LetterEditor: React.FC<LetterEditorProps> = ({ letter, isOpen, onClose, on
     return () => { if (liveSyncTimerRef.current) clearTimeout(liveSyncTimerRef.current); };
   }, [draftContent, draftContentNodes, draftContentHtml, showTextSplitEditor, applyDraftToPreview]);
 
-  // Letter prop effect
   useEffect(() => {
     if (letter) {
       draftInitializedRef.current = false;
       setEditedLetter({ ...letter, content_html: letter.content_html || '', content_nodes: letter.content_nodes || null });
-      setDraftContent(letter.content || '');
-      setDraftContentNodes(letter.content_nodes || null);
-      setDraftContentHtml(letter.content_html || null);
+      setDraftContent(letter.content || ''); setDraftContentNodes(letter.content_nodes || null); setDraftContentHtml(letter.content_html || null);
       latestContentRef.current = { content: letter.content || '', contentNodes: letter.content_nodes || null };
       draftInitializedRef.current = true;
       setIsProofreadingMode(letter.status === 'review');
@@ -147,23 +123,12 @@ const LetterEditor: React.FC<LetterEditorProps> = ({ letter, isOpen, onClose, on
       const currentDate = new Date().toISOString().split('T')[0];
       setEditedLetter({ title: '', content: '', content_html: '', content_nodes: null, recipient_name: '', recipient_address: '', status: 'draft', letter_date: currentDate });
       setDraftContent(''); setDraftContentNodes(null); setDraftContentHtml(null);
-      draftInitializedRef.current = true;
-      setIsProofreadingMode(false);
-      setShowPagination(true);
+      draftInitializedRef.current = true; setIsProofreadingMode(false); setShowPagination(true);
     }
   }, [letter]);
 
-  // Pagination from letter
-  useEffect(() => {
-    if (letter && letter.show_pagination !== undefined) setShowPagination(letter.show_pagination);
-  }, [letter?.show_pagination]);
-
-  // Fetch workflow user profiles
-  useEffect(() => {
-    if (isOpen && currentTenant && letter?.id) fetchWorkflowUserProfiles(letter);
-  }, [isOpen, currentTenant, letter?.id]);
-
-  // Fetch template
+  useEffect(() => { if (letter && letter.show_pagination !== undefined) setShowPagination(letter.show_pagination); }, [letter?.show_pagination]);
+  useEffect(() => { if (isOpen && currentTenant && letter?.id) fetchWorkflowUserProfiles(letter); }, [isOpen, currentTenant, letter?.id]);
   useEffect(() => {
     if (isOpen && currentTenant && senderInfos.length > 0 && informationBlocks.length > 0) {
       const templateId = editedLetter?.template_id || letter?.template_id;
@@ -171,13 +136,10 @@ const LetterEditor: React.FC<LetterEditorProps> = ({ letter, isOpen, onClose, on
     }
   }, [isOpen, currentTenant, editedLetter?.template_id, letter?.template_id, letter?.id, senderInfos.length, informationBlocks.length]);
 
-  // Auto-save
   useEffect(() => {
     if (!canEdit || isUpdatingFromRemoteRef.current || !letter?.id) return;
     if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current);
-    saveTimeoutRef.current = setTimeout(() => {
-      if (!isUpdatingFromRemoteRef.current && letter?.id) ops.handleAutoSave();
-    }, 3000);
+    saveTimeoutRef.current = setTimeout(() => { if (!isUpdatingFromRemoteRef.current && letter?.id) ops.handleAutoSave(); }, 3000);
     return () => { if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current); };
   }, [editedLetter, canEdit, letter?.id, showPagination]);
 
@@ -189,93 +151,56 @@ const LetterEditor: React.FC<LetterEditorProps> = ({ letter, isOpen, onClose, on
       if (error) throw error;
       setCurrentTemplate(data as LetterTemplate);
       if (data) ops.applyTemplateDefaults(data as LetterTemplate);
-    } catch (error) {
-      debugConsole.error('Error fetching current template:', error);
-    }
+    } catch (error) { debugConsole.error('Error fetching current template:', error); }
   };
 
   const handleTemplateChange = async (templateId: string) => {
     if (!templateId || templateId === 'none') {
       setEditedLetter(prev => ({ ...prev, template_id: undefined, sender_info_id: '', information_block_ids: [] }));
-      setCurrentTemplate(null);
-      return;
+      setCurrentTemplate(null); return;
     }
     const template = templates.find(t => t.id === templateId);
-    if (template) {
-      setEditedLetter(prev => ({ ...prev, template_id: templateId }));
-      setCurrentTemplate(template);
-      ops.applyTemplateDefaults(template);
-    }
+    if (template) { setEditedLetter(prev => ({ ...prev, template_id: templateId })); setCurrentTemplate(template); ops.applyTemplateDefaults(template); }
   };
 
   const handleContactSelect = (contactId: string) => {
     const contact = contacts.find(c => c.id === contactId);
     if (contact) {
       const hasBusinessAddress = !!(contact.business_street || contact.business_postal_code || contact.business_city);
-      const address = formatContactAddress(contact, hasBusinessAddress);
-      setEditedLetter(prev => ({ ...prev, contact_id: contactId, recipient_name: contact.name, recipient_address: address }));
+      setEditedLetter(prev => ({ ...prev, contact_id: contactId, recipient_name: contact.name, recipient_address: formatContactAddress(contact, hasBusinessAddress) }));
     }
   };
 
-  const handleProofreadingToggle = () => {
-    const newMode = !isProofreadingMode;
-    setIsProofreadingMode(newMode);
-    if (newMode && editedLetter.status === 'draft') ops.handleStatusTransition('review');
-    else if (!newMode && editedLetter.status === 'review') ops.handleStatusTransition('draft');
-  };
-
   const hasUnsavedChanges = !isUpdatingFromRemoteRef.current && letter && (
-    editedLetter.title !== letter.title ||
-    editedLetter.content !== letter.content ||
-    editedLetter.recipient_name !== letter.recipient_name ||
-    editedLetter.recipient_address !== letter.recipient_address ||
-    editedLetter.subject !== letter.subject ||
-    editedLetter.reference_number !== letter.reference_number ||
+    editedLetter.title !== letter.title || editedLetter.content !== letter.content ||
+    editedLetter.recipient_name !== letter.recipient_name || editedLetter.recipient_address !== letter.recipient_address ||
+    editedLetter.subject !== letter.subject || editedLetter.reference_number !== letter.reference_number ||
     editedLetter.sender_info_id !== letter.sender_info_id ||
     JSON.stringify(editedLetter.information_block_ids || []) !== JSON.stringify(letter.information_block_ids || []) ||
-    editedLetter.letter_date !== letter.letter_date ||
-    editedLetter.status !== letter.status ||
+    editedLetter.letter_date !== letter.letter_date || editedLetter.status !== letter.status ||
     showPagination !== (letter.show_pagination || false)
   );
 
-  // Substituted blocks for canvas
   const substitutedBlocks = useMemo(() => {
     if (!currentTemplate) return { canvasBlocks: {}, lineBlocks: {} };
     const blockContent = currentTemplate?.layout_settings?.blockContent as Record<string, any> | undefined;
     if (!blockContent) return { canvasBlocks: {}, lineBlocks: {} };
-
     const sender = senderInfos.find(s => s.id === editedLetter.sender_info_id);
     const contact = contacts.find(c => c.name === editedLetter.recipient_name);
     const infoBlock = informationBlocks.find(b => editedLetter.information_block_ids?.includes(b.id));
-
     const recipientData = contact ? {
-      name: contact.name,
-      street: [contact.private_street, contact.private_house_number].filter(Boolean).join(' ') || [contact.business_street, contact.business_house_number].filter(Boolean).join(' '),
-      postal_code: contact.private_postal_code || contact.business_postal_code || '',
-      city: contact.private_city || contact.business_city || '',
-      country: contact.private_country || contact.business_country || '',
-      gender: contact.gender || '',
-      last_name: contact.last_name || contact.name?.split(' ').pop() || '',
+      name: contact.name, street: [contact.private_street, contact.private_house_number].filter(Boolean).join(' ') || [contact.business_street, contact.business_house_number].filter(Boolean).join(' '),
+      postal_code: contact.private_postal_code || contact.business_postal_code || '', city: contact.private_city || contact.business_city || '',
+      country: contact.private_country || contact.business_country || '', gender: contact.gender || '', last_name: contact.last_name || contact.name?.split(' ').pop() || '',
     } : editedLetter.recipient_name ? { name: editedLetter.recipient_name, street: '', postal_code: '', city: '', country: '' } : null;
-
     const varMap = buildVariableMap(
       { subject: editedLetter.subject, letterDate: editedLetter.letter_date, referenceNumber: editedLetter.reference_number },
-      sender ? {
-        name: sender.name, organization: sender.organization,
-        street: (sender as any).street, house_number: (sender as any).house_number,
-        postal_code: (sender as any).postal_code, city: (sender as any).city,
-        wahlkreis_street: sender.wahlkreis_street ?? undefined, wahlkreis_house_number: sender.wahlkreis_house_number ?? undefined,
-        wahlkreis_postal_code: sender.wahlkreis_postal_code ?? undefined, wahlkreis_city: sender.wahlkreis_city ?? undefined,
-        landtag_street: sender.landtag_street ?? undefined, landtag_house_number: sender.landtag_house_number ?? undefined,
-        landtag_postal_code: sender.landtag_postal_code ?? undefined, landtag_city: sender.landtag_city ?? undefined,
-        phone: sender.phone ?? undefined, email: (sender as any).email,
-        wahlkreis_email: sender.wahlkreis_email ?? undefined, landtag_email: sender.landtag_email ?? undefined,
-      } : null,
-      recipientData,
-      infoBlock ? { reference: (infoBlock.block_data as any)?.reference_pattern, handler: (infoBlock.block_data as any)?.contact_name, our_reference: '' } : null,
-      attachments,
+      sender ? { name: sender.name, organization: sender.organization, street: (sender as any).street, house_number: (sender as any).house_number, postal_code: (sender as any).postal_code, city: (sender as any).city,
+        wahlkreis_street: sender.wahlkreis_street ?? undefined, wahlkreis_house_number: sender.wahlkreis_house_number ?? undefined, wahlkreis_postal_code: sender.wahlkreis_postal_code ?? undefined, wahlkreis_city: sender.wahlkreis_city ?? undefined,
+        landtag_street: sender.landtag_street ?? undefined, landtag_house_number: sender.landtag_house_number ?? undefined, landtag_postal_code: sender.landtag_postal_code ?? undefined, landtag_city: sender.landtag_city ?? undefined,
+        phone: sender.phone ?? undefined, email: (sender as any).email, wahlkreis_email: sender.wahlkreis_email ?? undefined, landtag_email: sender.landtag_email ?? undefined } : null,
+      recipientData, infoBlock ? { reference: (infoBlock.block_data as any)?.reference_pattern, handler: (infoBlock.block_data as any)?.contact_name, our_reference: '' } : null, attachments
     );
-
     const canvasBlocks: Record<string, HeaderElement[]> = {};
     const lineBlocks: Record<string, BlockLine[]> = {};
     for (const [key, data] of Object.entries(blockContent)) {
@@ -307,216 +232,57 @@ const LetterEditor: React.FC<LetterEditorProps> = ({ letter, isOpen, onClose, on
     return salutationTemplate;
   }, [currentTemplate, editedLetter.recipient_name, contacts]);
 
+  const getLayoutSettings = () => {
+    const ls = currentTemplate?.layout_settings;
+    if (!ls) return undefined;
+    const closingFormula = editedLetter.closing_formula || ls.closing?.formula;
+    const closingName = editedLetter.closing_name || ls.closing?.signatureName;
+    if (closingFormula || closingName) return { ...ls, closing: { ...(ls.closing || {}), formula: closingFormula || '', signatureName: closingName || '' } };
+    return ls;
+  };
+
   if (!isOpen) return null;
 
   return (
     <div className="flex flex-col h-full bg-background border rounded-lg overflow-hidden">
-      {/* Header */}
-      <div className="flex-none border-b bg-card/50 p-4">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <FileText className="h-5 w-5 text-primary" />
-            <div className="flex items-center gap-2">
-              <span className="font-medium">{letter ? 'Brief bearbeiten' : 'Neuer Brief'}</span>
-              {activeUsers.length > 0 && (
-                <Badge variant="secondary" className="text-xs"><Users className="h-3 w-3 mr-1" />{activeUsers.length}</Badge>
-              )}
-            </div>
-          </div>
-          <div className="flex items-center gap-2">
-            {saving && <Badge variant="outline" className="text-xs animate-pulse">•••</Badge>}
-            {lastSaved && !saving && (
-              <Badge variant="outline" className="text-xs opacity-60">✓ {lastSaved.toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' })}</Badge>
-            )}
-            {hasUnsavedChanges && !saving && (
-              <Badge variant="outline" className="text-xs border-amber-200 text-amber-700">
-                <AlertTriangle className="h-3 w-3 mr-1" />Wird gespeichert...
-              </Badge>
-            )}
+      <LetterEditorToolbar
+        letter={letter}
+        editedLetter={editedLetter}
+        setEditedLetter={setEditedLetter}
+        currentTemplate={currentTemplate}
+        canEdit={canEdit}
+        saving={saving}
+        lastSaved={lastSaved}
+        hasUnsavedChanges={!!hasUnsavedChanges}
+        activeUsers={activeUsers}
+        showDINPreview={showDINPreview}
+        setShowDINPreview={setShowDINPreview}
+        showBriefDetails={showBriefDetails}
+        setShowBriefDetails={setShowBriefDetails}
+        showPagination={showPagination}
+        setShowPagination={setShowPagination}
+        attachments={attachments}
+        fetchAttachments={fetchAttachments}
+        senderInfos={senderInfos}
+        informationBlocks={informationBlocks}
+        templates={templates}
+        computedSalutation={computedSalutation}
+        onTemplateChange={handleTemplateChange}
+        onAutoSaveSchedule={() => {
+          if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current);
+          saveTimeoutRef.current = setTimeout(() => ops.handleAutoSave(), 1000);
+        }}
+      />
 
-            <Button variant={showDINPreview ? 'default' : 'outline'} size="sm" onClick={() => setShowDINPreview(!showDINPreview)}>
-              <Eye className="h-4 w-4 mr-2" />Druckvorschau
-            </Button>
-            <Button variant={showBriefDetails ? 'default' : 'outline'} size="sm" onClick={() => setShowBriefDetails(!showBriefDetails)}>
-              <FileText className="h-4 w-4 mr-2" />Briefdetails
-            </Button>
-
-            {/* Anlagen Dropdown */}
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button variant="outline" size="sm"><Paperclip className="h-4 w-4 mr-2" />Anlagen</Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="w-[420px] p-3">
-                {letter?.id ? (
-                  <LetterAttachmentManager letterId={letter.id} attachments={attachments as any} onAttachmentUpdate={fetchAttachments} readonly={!canEdit} />
-                ) : (
-                  <div className="p-4 text-center text-muted-foreground border border-dashed rounded-lg">
-                    <FileText className="h-8 w-8 mx-auto mb-2 opacity-50" />
-                    <p className="font-medium">Anlagen verfügbar nach dem Speichern</p>
-                    <p className="text-sm">Speichern Sie den Brief zuerst, um Anlagen hinzufügen zu können.</p>
-                  </div>
-                )}
-              </DropdownMenuContent>
-            </DropdownMenu>
-
-            {/* Basisinformationen Dropdown */}
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button variant="outline" size="sm"><FileText className="h-4 w-4 mr-2" />Basisinformationen</Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="w-[520px] p-3 max-h-[70vh] overflow-y-auto">
-                <div className="space-y-4">
-                  <div>
-                    <Label htmlFor="subject">Betreff</Label>
-                    <Input id="subject" value={editedLetter.subject || ''} onChange={(e) => setEditedLetter(prev => ({ ...prev, subject: e.target.value, title: e.target.value }))} disabled={!canEdit} placeholder="Betreff des Briefes" />
-                  </div>
-                  <div>
-                    <Label htmlFor="salutation-override">Anrede</Label>
-                    <Input id="salutation-override" value={editedLetter.salutation_override || ''} onChange={(e) => setEditedLetter(prev => ({ ...prev, salutation_override: e.target.value }))} disabled={!canEdit} placeholder={computedSalutation} />
-                    <p className="text-xs text-muted-foreground mt-1">Leer lassen für automatische Anrede</p>
-                  </div>
-                  <div>
-                    <Label htmlFor="closing-formula">Abschlussformel</Label>
-                    <Input id="closing-formula" value={editedLetter.closing_formula || ''} onChange={(e) => setEditedLetter(prev => ({ ...prev, closing_formula: e.target.value }))} disabled={!canEdit} placeholder={currentTemplate?.layout_settings?.closing?.formula || 'Mit freundlichen Grüßen'} />
-                  </div>
-                  <div>
-                    <Label htmlFor="closing-name">Unterschrift</Label>
-                    <Input id="closing-name" value={editedLetter.closing_name || ''} onChange={(e) => setEditedLetter(prev => ({ ...prev, closing_name: e.target.value }))} disabled={!canEdit} placeholder={currentTemplate?.layout_settings?.closing?.signatureName || 'Name'} />
-                  </div>
-                  <div>
-                    <Label htmlFor="reference-number">Aktenzeichen</Label>
-                    <Input id="reference-number" value={editedLetter.reference_number || ''} onChange={(e) => setEditedLetter(prev => ({ ...prev, reference_number: e.target.value }))} disabled={!canEdit} placeholder="z.B. AZ-2024-001" />
-                  </div>
-                  <div>
-                    <Label htmlFor="letter-date">Briefdatum</Label>
-                    <Input id="letter-date" type="date" value={editedLetter.letter_date || ''} onChange={(e) => setEditedLetter(prev => ({ ...prev, letter_date: e.target.value }))} disabled={!canEdit} />
-                  </div>
-                  <div>
-                    <Label htmlFor="expected-response-date">Erwartete Antwort bis</Label>
-                    <Input id="expected-response-date" type="date" value={editedLetter.expected_response_date || ''} onChange={(e) => setEditedLetter(prev => ({ ...prev, expected_response_date: e.target.value }))} disabled={!canEdit} />
-                  </div>
-                  <div>
-                    <Label htmlFor="recipient-name">Empfänger</Label>
-                    <Input id="recipient-name" value={editedLetter.recipient_name || ''} onChange={(e) => setEditedLetter(prev => ({ ...prev, recipient_name: e.target.value }))} disabled={!canEdit} placeholder="Name des Empfängers" />
-                  </div>
-                  <div>
-                    <Label htmlFor="recipient-address">Empfängeradresse</Label>
-                    <Textarea id="recipient-address" value={editedLetter.recipient_address || ''} onChange={(e) => setEditedLetter(prev => ({ ...prev, recipient_address: e.target.value }))} disabled={!canEdit} placeholder="Adresse des Empfängers" rows={3} />
-                  </div>
-                </div>
-              </DropdownMenuContent>
-            </DropdownMenu>
-
-            {/* Layout Dropdown */}
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button variant="outline" size="sm"><Settings className="h-4 w-4 mr-2" />Layout</Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="w-[520px] p-3 max-h-[70vh] overflow-y-auto">
-                <div className="space-y-4">
-                  <div className="flex items-center space-x-2">
-                    <Switch id="pagination" checked={showPagination} onCheckedChange={(checked) => {
-                      setShowPagination(checked);
-                      if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current);
-                      saveTimeoutRef.current = setTimeout(() => ops.handleAutoSave(), 1000);
-                    }} disabled={!canEdit} />
-                    <Label htmlFor="pagination">Paginierung anzeigen</Label>
-                  </div>
-                  <div>
-                    <Label htmlFor="sender-info">Absenderinformation</Label>
-                    <Select value={editedLetter.sender_info_id || 'none'} onValueChange={(value) => setEditedLetter(prev => ({ ...prev, sender_info_id: value === 'none' ? undefined : value }))} disabled={!canEdit}>
-                      <SelectTrigger><SelectValue placeholder="Absender auswählen..." /></SelectTrigger>
-                      <SelectContent className="z-[100]">
-                        <SelectItem value="none">Kein Absender</SelectItem>
-                        {senderInfos.map((info) => (
-                          <SelectItem key={info.id} value={info.id}>
-                            <div className="flex items-center gap-2">
-                              <Building className="h-4 w-4" />{info.name}
-                              {info.is_default && <Badge variant="secondary" className="text-xs">Standard</Badge>}
-                            </div>
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <div>
-                    <Label>Informationsblöcke</Label>
-                    <div className="space-y-2 mt-2">
-                      {informationBlocks.map((block) => (
-                        <div key={block.id} className="flex items-center space-x-2">
-                          <input type="checkbox" id={`block-${block.id}`} checked={editedLetter.information_block_ids?.includes(block.id) || false}
-                            onChange={(e) => {
-                              const currentIds = editedLetter.information_block_ids || [];
-                              const newIds = e.target.checked ? [...currentIds, block.id] : currentIds.filter(id => id !== block.id);
-                              setEditedLetter(prev => ({ ...prev, information_block_ids: newIds }));
-                            }} disabled={!canEdit} className="rounded border border-input" />
-                          <Label htmlFor={`block-${block.id}`} className="text-sm">
-                            <div className="flex items-center gap-2">
-                              <Info className="h-4 w-4" />{block.label}
-                              {block.is_default && <Badge variant="secondary" className="text-xs">Standard</Badge>}
-                            </div>
-                          </Label>
-                        </div>
-                      ))}
-                      {informationBlocks.length === 0 && <p className="text-sm text-muted-foreground">Keine Informationsblöcke verfügbar</p>}
-                    </div>
-                  </div>
-                  <div>
-                    <Label htmlFor="template-select">Brief-Template</Label>
-                    <div className="flex items-center gap-2 mb-2">
-                      <Layout className="h-4 w-4 text-primary" />
-                      <span className="text-sm font-medium">{currentTemplate ? currentTemplate.name : 'Kein Template ausgewählt'}</span>
-                    </div>
-                    <Select value={editedLetter.template_id || 'none'} onValueChange={handleTemplateChange} disabled={!canEdit}>
-                      <SelectTrigger><SelectValue placeholder="Template auswählen..." /></SelectTrigger>
-                      <SelectContent className="z-[100]">
-                        <SelectItem value="none">Kein Template</SelectItem>
-                        {templates.map((template) => (
-                          <SelectItem key={template.id} value={template.id}>
-                            <div className="flex items-center justify-between w-full">
-                              <span>{template.name}</span>
-                              {template.is_default && <Badge variant="secondary" className="ml-2 text-xs">Standard</Badge>}
-                            </div>
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                </div>
-              </DropdownMenuContent>
-            </DropdownMenu>
-
-            {editedLetter.status !== 'approved' && editedLetter.status !== 'sent' && (
-              <Button variant={isProofreadingMode ? 'default' : 'outline'} size="sm" onClick={handleProofreadingToggle}>
-                <MessageSquare className="h-4 w-4 mr-2" />Korrekturlesen
-              </Button>
-            )}
-
-            <Button onClick={() => ops.handleManualSave(latestContentRef.current.content, latestContentRef.current.contentNodes)} disabled={!canEdit || saving} size="sm">
-              <Save className="h-4 w-4 mr-2" />Speichern
-            </Button>
-            <Button variant="ghost" size="sm" onClick={onClose}><X className="h-4 w-4" /></Button>
-          </div>
+      {!canEdit && editedLetter.status === 'sent' && (
+        <div className="bg-muted p-3 rounded-lg flex items-center gap-2 text-sm mt-3 mx-4">
+          <EyeOff className="h-4 w-4" />Dieser Brief ist versendet und kann nicht mehr bearbeitet werden.
         </div>
-
-        {!canEdit && editedLetter.status === 'sent' && (
-          <div className="bg-muted p-3 rounded-lg flex items-center gap-2 text-sm mt-3">
-            <EyeOff className="h-4 w-4" />Dieser Brief ist versendet und kann nicht mehr bearbeitet werden.
-          </div>
-        )}
-      </div>
+      )}
 
       {showBriefDetails && (
-        <LetterBriefDetails
-          editedLetter={editedLetter}
-          setEditedLetter={setEditedLetter}
-          canEdit={canEdit}
-          isReviewer={isReviewer}
-          userProfiles={userProfiles}
-          onStatusTransition={ops.handleStatusTransition}
-          onReturnLetter={ops.handleReturnLetter}
-          broadcastContentChange={ops.broadcastContentChange}
-        />
+        <LetterBriefDetails editedLetter={editedLetter} setEditedLetter={setEditedLetter} canEdit={canEdit} isReviewer={isReviewer} userProfiles={userProfiles}
+          onStatusTransition={ops.handleStatusTransition} onReturnLetter={ops.handleReturnLetter} broadcastContentChange={ops.broadcastContentChange} />
       )}
 
       {/* Content */}
@@ -527,9 +293,7 @@ const LetterEditor: React.FC<LetterEditorProps> = ({ letter, isOpen, onClose, on
               <div className="flex-none flex items-center justify-between p-3 border-b bg-muted/30">
                 <h3 className="text-sm font-medium">Druckvorschau (schreibgeschützt)</h3>
                 <div className="flex items-center gap-2">
-                  <Button variant={showLayoutDebug ? 'default' : 'outline'} size="sm" className="h-7" onClick={() => setShowLayoutDebug(!showLayoutDebug)}>
-                    <Ruler className="h-3.5 w-3.5 mr-1" />Layout
-                  </Button>
+                  <Button variant={showLayoutDebug ? 'default' : 'outline'} size="sm" className="h-7" onClick={() => setShowLayoutDebug(!showLayoutDebug)}><Ruler className="h-3.5 w-3.5 mr-1" />Layout</Button>
                   <Button variant="outline" size="sm" className="h-7 px-2" onClick={() => setPreviewZoom(Math.max(0.3, previewZoom - 0.1))}>-</Button>
                   <span className="text-xs min-w-[40px] text-center">{Math.round(previewZoom * 100)}%</span>
                   <Button variant="outline" size="sm" className="h-7 px-2" onClick={() => setPreviewZoom(Math.min(1.2, previewZoom + 0.1))}>+</Button>
@@ -539,37 +303,17 @@ const LetterEditor: React.FC<LetterEditorProps> = ({ letter, isOpen, onClose, on
               <div className="flex-1 overflow-auto bg-muted/50 p-6">
                 <div style={{ transform: `scale(${previewZoom})`, transformOrigin: 'top center', marginBottom: `${(previewZoom - 1) * 297}mm` }}>
                   <div className="mx-auto" style={{ width: '210mm', boxShadow: '0 4px 24px rgba(0,0,0,0.12)' }}>
-                    <DIN5008LetterLayout
-                      template={currentTemplate}
-                      senderInfo={senderInfos.find(s => s.id === editedLetter.sender_info_id)}
+                    <DIN5008LetterLayout template={currentTemplate} senderInfo={senderInfos.find(s => s.id === editedLetter.sender_info_id)}
                       informationBlock={informationBlocks.find(b => editedLetter.information_block_ids?.includes(b.id))}
                       recipientAddress={editedLetter.recipient_address ? { name: editedLetter.recipient_name, address: editedLetter.recipient_address } : null}
-                      subject={editedLetter.subject}
-                      letterDate={editedLetter.letter_date}
-                      referenceNumber={editedLetter.reference_number}
-                      content={editedLetter.content_html || editedLetter.content || ''}
-                      attachments={attachments}
-                      showPagination={showPagination}
-                      debugMode={showLayoutDebug}
-                      salutation={editedLetter.salutation_override || computedSalutation}
-                      layoutSettings={(() => {
-                        const ls = currentTemplate?.layout_settings;
-                        if (!ls) return undefined;
-                        const closingFormula = editedLetter.closing_formula || ls.closing?.formula;
-                        const closingName = editedLetter.closing_name || ls.closing?.signatureName;
-                        if (closingFormula || closingName) return { ...ls, closing: { ...(ls.closing || {}), formula: closingFormula || '', signatureName: closingName || '' } };
-                        return ls;
-                      })()}
-                      addressFieldElements={substitutedBlocks.canvasBlocks.addressField}
-                      returnAddressElements={substitutedBlocks.canvasBlocks.returnAddress}
-                      infoBlockElements={substitutedBlocks.canvasBlocks.infoBlock}
-                      subjectElements={substitutedBlocks.canvasBlocks.subject}
-                      attachmentElements={substitutedBlocks.canvasBlocks.attachments}
-                      footerTextElements={substitutedBlocks.canvasBlocks.footer}
-                      addressFieldLines={substitutedBlocks.lineBlocks.addressField}
-                      returnAddressLines={substitutedBlocks.lineBlocks.returnAddress}
-                      infoBlockLines={substitutedBlocks.lineBlocks.infoBlock}
-                    />
+                      subject={editedLetter.subject} letterDate={editedLetter.letter_date} referenceNumber={editedLetter.reference_number}
+                      content={editedLetter.content_html || editedLetter.content || ''} attachments={attachments} showPagination={showPagination} debugMode={showLayoutDebug}
+                      salutation={editedLetter.salutation_override || computedSalutation} layoutSettings={getLayoutSettings()}
+                      addressFieldElements={substitutedBlocks.canvasBlocks.addressField} returnAddressElements={substitutedBlocks.canvasBlocks.returnAddress}
+                      infoBlockElements={substitutedBlocks.canvasBlocks.infoBlock} subjectElements={substitutedBlocks.canvasBlocks.subject}
+                      attachmentElements={substitutedBlocks.canvasBlocks.attachments} footerTextElements={substitutedBlocks.canvasBlocks.footer}
+                      addressFieldLines={substitutedBlocks.lineBlocks.addressField} returnAddressLines={substitutedBlocks.lineBlocks.returnAddress}
+                      infoBlockLines={substitutedBlocks.lineBlocks.infoBlock} />
                   </div>
                 </div>
               </div>
@@ -580,35 +324,20 @@ const LetterEditor: React.FC<LetterEditorProps> = ({ letter, isOpen, onClose, on
                 <div className="w-[52%] min-w-[420px] border-r bg-background flex flex-col">
                   <div className="flex items-center justify-between gap-2 px-3 py-2 border-b bg-muted/20">
                     <div className="flex items-center gap-2">
-                      <Edit3 className="h-4 w-4 text-muted-foreground" />
-                      <h3 className="text-sm font-medium">Brieftext</h3>
+                      <Edit3 className="h-4 w-4 text-muted-foreground" /><h3 className="text-sm font-medium">Brieftext</h3>
                       <Badge variant="secondary" className="text-[10px] px-1.5 py-0">Live</Badge>
                     </div>
                     <Button size="sm" variant="default" className="h-7 px-2" disabled={!canEdit || saving}
                       onClick={() => ops.handleManualSave(latestContentRef.current.content, latestContentRef.current.contentNodes)}>
                       <Save className="h-3.5 w-3.5 mr-1" />Speichern
                     </Button>
-                    <Button size="sm" variant="ghost" className="h-7 px-2" onClick={() => setShowTextSplitEditor(false)}>
-                      <X className="h-3.5 w-3.5" />
-                    </Button>
+                    <Button size="sm" variant="ghost" className="h-7 px-2" onClick={() => setShowTextSplitEditor(false)}><X className="h-3.5 w-3.5" /></Button>
                   </div>
                   <div className="flex-1 overflow-auto p-3">
-                    <EnhancedLexicalEditor
-                      key={letter?.id || 'new'}
-                      content={draftContent || letter?.content || ''}
-                      contentNodes={draftContentNodes ?? letter?.content_nodes ?? undefined}
-                      onChange={(nextContent, nextNodes, nextHtml) => {
-                        setDraftContent(nextContent || '');
-                        setDraftContentNodes(nextNodes && nextNodes.trim() !== '' ? nextNodes : null);
-                        setDraftContentHtml(nextHtml || null);
-                      }}
-                      placeholder="Brieftext hier eingeben..."
-                      documentId={letter?.id}
-                      showToolbar={canEdit}
-                      editable={canEdit}
-                      onMentionInsert={(userId) => pendingMentionsRef.current.add(userId)}
-                      defaultFontFamily={templateDefaultFontFamily}
-                    />
+                    <EnhancedLexicalEditor key={letter?.id || 'new'} content={draftContent || letter?.content || ''} contentNodes={draftContentNodes ?? letter?.content_nodes ?? undefined}
+                      onChange={(nextContent, nextNodes, nextHtml) => { setDraftContent(nextContent || ''); setDraftContentNodes(nextNodes && nextNodes.trim() !== '' ? nextNodes : null); setDraftContentHtml(nextHtml || null); }}
+                      placeholder="Brieftext hier eingeben..." documentId={letter?.id} showToolbar={canEdit} editable={canEdit}
+                      onMentionInsert={(userId) => pendingMentionsRef.current.add(userId)} defaultFontFamily={templateDefaultFontFamily} />
                   </div>
                 </div>
               )}
@@ -616,115 +345,52 @@ const LetterEditor: React.FC<LetterEditorProps> = ({ letter, isOpen, onClose, on
                 {!showTextSplitEditor && (
                   <div className="flex items-center gap-2 mb-3">
                     <Button size="sm" variant="outline" onClick={() => {
-                      if (!showTextSplitEditor) {
-                        setDraftContent(editedLetter.content || '');
-                        setDraftContentNodes(editedLetter.content_nodes || null);
-                        setDraftContentHtml(editedLetter.content_html || null);
-                      }
-                      setShowTextSplitEditor(true);
-                    }}>
-                      <Edit3 className="h-4 w-4 mr-2" />Editor öffnen
-                    </Button>
+                      setDraftContent(editedLetter.content || ''); setDraftContentNodes(editedLetter.content_nodes || null); setDraftContentHtml(editedLetter.content_html || null); setShowTextSplitEditor(true);
+                    }}><Edit3 className="h-4 w-4 mr-2" />Editor öffnen</Button>
                   </div>
                 )}
-                <LetterEditorCanvas
-                  template={currentTemplate}
-                  subject={editedLetter.subject}
-                  salutation={editedLetter.salutation_override || computedSalutation}
-                  content={editedLetter.content_html || editedLetter.content || ''}
-                  contentNodes={editedLetter.content_nodes}
+                <LetterEditorCanvas template={currentTemplate} subject={editedLetter.subject} salutation={editedLetter.salutation_override || computedSalutation}
+                  content={editedLetter.content_html || editedLetter.content || ''} contentNodes={editedLetter.content_nodes}
                   recipientAddress={editedLetter.recipient_address ? { name: editedLetter.recipient_name, address: editedLetter.recipient_address } : undefined}
-                  letterDate={editedLetter.letter_date}
-                  referenceNumber={editedLetter.reference_number}
-                  attachments={attachments}
-                  showPagination={showPagination}
-                  senderInfo={senderInfos.find(s => s.id === editedLetter.sender_info_id)}
-                  informationBlock={informationBlocks.find(b => editedLetter.information_block_ids?.includes(b.id))}
-                  layoutSettings={(() => {
-                    const ls = currentTemplate?.layout_settings;
-                    if (!ls) return undefined;
-                    const closingFormula = editedLetter.closing_formula || ls.closing?.formula;
-                    const closingName = editedLetter.closing_name || ls.closing?.signatureName;
-                    if (closingFormula || closingName) return { ...ls, closing: { ...(ls.closing || {}), formula: closingFormula || '', signatureName: closingName || '' } };
-                    return ls;
-                  })()}
+                  letterDate={editedLetter.letter_date} referenceNumber={editedLetter.reference_number} attachments={attachments}
+                  showPagination={showPagination} senderInfo={senderInfos.find(s => s.id === editedLetter.sender_info_id)}
+                  informationBlock={informationBlocks.find(b => editedLetter.information_block_ids?.includes(b.id))} layoutSettings={getLayoutSettings()}
                   displayContentHtml={editedLetter.content_html || editedLetter.content || ''}
-                  addressFieldElements={substitutedBlocks.canvasBlocks.addressField}
-                  returnAddressElements={substitutedBlocks.canvasBlocks.returnAddress}
-                  infoBlockElements={substitutedBlocks.canvasBlocks.infoBlock}
-                  subjectElements={substitutedBlocks.canvasBlocks.subject}
-                  attachmentElements={substitutedBlocks.canvasBlocks.attachments}
-                  footerTextElements={substitutedBlocks.canvasBlocks.footer}
-                  addressFieldLines={substitutedBlocks.lineBlocks.addressField}
-                  returnAddressLines={substitutedBlocks.lineBlocks.returnAddress}
-                  infoBlockLines={substitutedBlocks.lineBlocks.infoBlock}
-                  canEdit={canEdit}
-                  documentId={letter?.id}
-                  onContentChange={(content, nodes, html) => {
-                    setDraftContent(content || '');
-                    setDraftContentNodes(nodes && nodes.trim() !== '' ? nodes : null);
-                    setDraftContentHtml(html || null);
-                  }}
+                  addressFieldElements={substitutedBlocks.canvasBlocks.addressField} returnAddressElements={substitutedBlocks.canvasBlocks.returnAddress}
+                  infoBlockElements={substitutedBlocks.canvasBlocks.infoBlock} subjectElements={substitutedBlocks.canvasBlocks.subject}
+                  attachmentElements={substitutedBlocks.canvasBlocks.attachments} footerTextElements={substitutedBlocks.canvasBlocks.footer}
+                  addressFieldLines={substitutedBlocks.lineBlocks.addressField} returnAddressLines={substitutedBlocks.lineBlocks.returnAddress}
+                  infoBlockLines={substitutedBlocks.lineBlocks.infoBlock} canEdit={canEdit} documentId={letter?.id}
+                  onContentChange={(content, nodes, html) => { setDraftContent(content || ''); setDraftContentNodes(nodes && nodes.trim() !== '' ? nodes : null); setDraftContentHtml(html || null); }}
                   onSubjectChange={(value) => setEditedLetter(prev => ({ ...prev, subject: value, title: value }))}
                   onRecipientNameChange={(value) => setEditedLetter(prev => ({ ...prev, recipient_name: value }))}
                   onRecipientAddressChange={(value) => setEditedLetter(prev => ({ ...prev, recipient_address: value }))}
-                   onRecipientContactSelect={(contact) => {
+                  onRecipientContactSelect={(contact) => {
                     const recipientAddress = ('formatted_address' in contact ? (contact as { formatted_address?: string }).formatted_address : undefined) || contact.address || '';
                     setEditedLetter(prev => ({ ...prev, contact_id: contact.id, recipient_name: contact.name, recipient_address: recipientAddress }));
                   }}
                   onSenderChange={(value) => setEditedLetter(prev => ({ ...prev, sender_info_id: value || undefined }))}
                   onInfoBlockChange={(newIds) => setEditedLetter(prev => ({ ...prev, information_block_ids: newIds }))}
-                  onAttachmentNameChange={(attachmentId, displayName) =>
-                    ops.handleAttachmentNameChange(attachmentId, displayName, attachments, () => fetchAttachments())
-                  }
-                  senderInfos={senderInfos}
-                  informationBlocks={informationBlocks}
-                  selectedSenderId={editedLetter.sender_info_id}
-                  selectedRecipientContactId={editedLetter.contact_id}
-                  selectedInfoBlockIds={editedLetter.information_block_ids || []}
-                  templateName={currentTemplate?.name}
-                  zoom={previewZoom}
-                  onZoomChange={setPreviewZoom}
-                />
+                  onAttachmentNameChange={(attachmentId, displayName) => ops.handleAttachmentNameChange(attachmentId, displayName, attachments, () => fetchAttachments())}
+                  senderInfos={senderInfos} informationBlocks={informationBlocks} selectedSenderId={editedLetter.sender_info_id}
+                  selectedRecipientContactId={editedLetter.contact_id} selectedInfoBlockIds={editedLetter.information_block_ids || []}
+                  templateName={currentTemplate?.name} zoom={previewZoom} onZoomChange={setPreviewZoom} />
               </div>
             </div>
           )}
         </div>
       </div>
 
-      {/* Comment Dialog */}
-      {showCommentDialog && (
-        <LetterCommentDialog
-          onSubmit={(content) => { ops.handleAddComment(content); setShowCommentDialog(false); }}
-          onClose={() => setShowCommentDialog(false)}
-        />
-      )}
+      {showCommentDialog && <LetterCommentDialog onSubmit={(content) => { ops.handleAddComment(content); setShowCommentDialog(false); }} onClose={() => setShowCommentDialog(false)} />}
 
-      {/* Reviewer Assignment Dialog */}
-      <ReviewAssignmentDialog
-        isOpen={showAssignmentDialog}
-        onClose={() => setShowAssignmentDialog(false)}
-        letterId={letter?.id || ''}
+      <ReviewAssignmentDialog isOpen={showAssignmentDialog} onClose={() => setShowAssignmentDialog(false)} letterId={letter?.id || ''}
         onReviewAssigned={async () => {
-          fetchCollaborators();
-          setShowAssignmentDialog(false);
-          setEditedLetter(prev => ({ ...prev, status: 'review' }));
-          setIsProofreadingMode(true);
-          setSaving(true);
-          try {
-            const { error } = await supabase.from('letters').update({ status: 'review', updated_at: new Date().toISOString() }).eq('id', letter!.id);
-            if (error) throw error;
-          } catch (error) { debugConsole.error('Error saving status:', error); } finally { setSaving(false); }
+          fetchCollaborators(); setShowAssignmentDialog(false); setEditedLetter(prev => ({ ...prev, status: 'review' })); setIsProofreadingMode(true); setSaving(true);
+          try { const { error } = await supabase.from('letters').update({ status: 'review', updated_at: new Date().toISOString() }).eq('id', letter!.id); if (error) throw error; } catch (error) { debugConsole.error('Error saving status:', error); } finally { setSaving(false); }
         }}
         onSkipReview={async () => {
-          setShowAssignmentDialog(false);
-          setEditedLetter(prev => ({ ...prev, status: 'approved' }));
-          setIsProofreadingMode(false);
-          setSaving(true);
-          try {
-            const { error } = await supabase.from('letters').update({ status: 'approved', updated_at: new Date().toISOString() }).eq('id', letter!.id);
-            if (error) throw error;
-          } catch (error) { debugConsole.error('Error saving status:', error); } finally { setSaving(false); }
+          setShowAssignmentDialog(false); setEditedLetter(prev => ({ ...prev, status: 'approved' })); setIsProofreadingMode(false); setSaving(true);
+          try { const { error } = await supabase.from('letters').update({ status: 'approved', updated_at: new Date().toISOString() }).eq('id', letter!.id); if (error) throw error; } catch (error) { debugConsole.error('Error saving status:', error); } finally { setSaving(false); }
         }}
       />
     </div>
