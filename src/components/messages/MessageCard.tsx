@@ -115,7 +115,9 @@ export const SentMessageCard: React.FC<{ message: Message; userId?: string }> = 
       </div>
     </div>
   );
-};
+});
+
+SentMessageCard.displayName = 'SentMessageCard';
 
 export const ArchivedMessageCard: React.FC<{ message: Message; userId?: string }> = ({ message, userId }) => (
   <div className="p-3 border rounded-lg bg-muted/30">
