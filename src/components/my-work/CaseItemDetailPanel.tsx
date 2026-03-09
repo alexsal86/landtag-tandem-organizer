@@ -477,6 +477,24 @@ export function CaseItemDetailPanel({
             <p className="font-bold">Interaktion erfassen</p>
             <div className="flex flex-wrap gap-2 xl:flex-nowrap">
               {interactionTypeOptions.map((option) => {
+                // Special handling for "Entscheidung stellen" button
+                if (option.value === "entscheidung") {
+                  const OptionIcon = option.icon;
+                  return (
+                    <Button
+                      key={option.value}
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      className="flex-1 justify-start"
+                      onClick={onDecisionRequest}
+                    >
+                      <OptionIcon className="mr-1 h-3.5 w-3.5" />
+                      {option.label}
+                    </Button>
+                  );
+                }
+
                 const selected = editableCaseItem.interactionType === option.value;
                 const OptionIcon = option.icon;
                 return (
