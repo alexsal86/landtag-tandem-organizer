@@ -270,6 +270,22 @@ export function NoteDialogs(props: NoteDialogsProps) {
         </AlertDialogContent>
       </AlertDialog>
 
+      {/* Confirm Remove Case Item */}
+      <AlertDialog open={!!props.confirmRemoveCaseItem} onOpenChange={(open) => !open && props.setConfirmRemoveCaseItem(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Vorgang entfernen?</AlertDialogTitle>
+            <AlertDialogDescription>Der Vorgang wird archiviert und von dieser Notiz entfernt.</AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Abbrechen</AlertDialogCancel>
+            <AlertDialogAction onClick={() => { if (props.confirmRemoveCaseItem) props.removeCaseItemFromNote(props.confirmRemoveCaseItem); }}>
+              Archivieren
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
       {/* Confirm Delete Note with Links */}
       <AlertDialog open={!!props.confirmDeleteLinkedNote} onOpenChange={(open) => !open && props.setConfirmDeleteLinkedNote(null)}>
         <AlertDialogContent>
