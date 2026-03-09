@@ -113,17 +113,16 @@ const Index = () => {
   }, [navigate]);
   
   // Handle dialog close
-  const handleCreateAppointmentDialogChange = (open: boolean) => {
+  const handleCreateAppointmentDialogChange = useCallback((open: boolean) => {
     setShowCreateAppointmentDialog(open);
     if (!open) {
-      // Remove action parameter from URL when closing dialog
       const urlParams = new URLSearchParams(location.search);
       urlParams.delete('action');
       const newSearch = urlParams.toString();
       const newUrl = newSearch ? `${location.pathname}?${newSearch}` : location.pathname;
       navigate(newUrl, { replace: true });
     }
-  };
+  }, [location.search, location.pathname, navigate]);
 
   useEffect(() => {
     // Allow access to knowledge section without authentication (demo mode)
