@@ -203,7 +203,8 @@ export function useTasksData(options?: { enabled?: boolean }) {
 
   const loadTaskDocumentCounts = async () => {
     try {
-      const { data, error } = await supabase.from('task_documents').select('task_id, id');
+      const { data, error } = await supabase.from('task_documents').select('task_id')
+        .order('created_at', { ascending: false });
       if (error) throw error;
       const counts: { [taskId: string]: number } = {};
       (data || []).forEach(doc => { counts[doc.task_id] = (counts[doc.task_id] || 0) + 1; });
