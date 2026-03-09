@@ -208,6 +208,11 @@ export function NoteCard({
                       </Button>
                     </TooltipTrigger><TooltipContent side="top">{note.decision_id ? "Entscheidung zurücknehmen" : "Als Entscheidung"}</TooltipContent></Tooltip>
                     <Tooltip><TooltipTrigger asChild>
+                      <Button variant="ghost" size="icon" className={cn("h-6 w-6 hover:bg-muted/80 rounded-full", note.case_item_id && "text-teal-600")} onClick={(e) => { e.stopPropagation(); note.case_item_id ? onRemoveCaseItem(note) : onCreateCaseItem(note); }}>
+                        <FileText className="h-3 w-3" />
+                      </Button>
+                    </TooltipTrigger><TooltipContent side="top">{note.case_item_id ? "Vorgang entfernen" : "Als Vorgang"}</TooltipContent></Tooltip>
+                    <Tooltip><TooltipTrigger asChild>
                       <Button variant="ghost" size="icon" className={cn("h-6 w-6 hover:bg-muted/80 rounded-full", note.follow_up_date && "text-amber-600")} onClick={(e) => { e.stopPropagation(); onOpenDatePicker(note); }}>
                         <Clock className="h-3 w-3" />
                       </Button>
