@@ -16,9 +16,9 @@ interface Decision {
   status: string;
 }
 
-serve(async (req) => {
-  if (req.method === 'OPTIONS') {
-    return new Response(null, { headers: corsHeaders });
+serve(withSafeHandler("auto-archive-decisions", async (req) => {
+  if (!requireServiceRole(req)) {
+    return forbiddenResponse();
   }
 
   try {
