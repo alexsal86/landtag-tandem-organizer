@@ -4,7 +4,7 @@ import { ArrowRight } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 interface NoteLinkedBadgeProps {
-  type: 'task' | 'decision' | 'meeting';
+  type: 'task' | 'decision' | 'meeting' | 'case_item';
   id: string;
   label: string;
   className?: string;
