@@ -26,9 +26,9 @@ interface ActionItem {
   conducted_by?: string;
 }
 
-serve(async (req: Request) => {
-  if (req.method === "OPTIONS") {
-    return new Response(null, { headers: corsHeaders });
+serve(withSafeHandler("check-meeting-reminders", async (req: Request) => {
+  if (!requireServiceRole(req)) {
+    return forbiddenResponse();
   }
 
   try {
