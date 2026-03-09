@@ -119,7 +119,7 @@ export const SentMessageCard: React.FC<{ message: Message; userId?: string }> = 
 
 SentMessageCard.displayName = 'SentMessageCard';
 
-export const ArchivedMessageCard: React.FC<{ message: Message; userId?: string }> = ({ message, userId }) => (
+export const ArchivedMessageCard: React.FC<{ message: Message; userId?: string }> = React.memo(({ message, userId }) => (
   <div className="p-3 border rounded-lg bg-muted/30">
     <div className="flex items-start justify-between">
       <div className="flex-1">
