@@ -1,7 +1,8 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.56.1";
+import { requireServiceRole, corsHeaders as sharedCorsHeaders, forbiddenResponse } from "../_shared/security.ts";
 
 const corsHeaders = {
-  "Access-Control-Allow-Origin": "*",
+  ...sharedCorsHeaders,
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-automation-secret",
 };
 
