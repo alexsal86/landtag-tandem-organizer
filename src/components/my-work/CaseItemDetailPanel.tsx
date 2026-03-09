@@ -729,6 +729,14 @@ export function CaseItemDetailPanel({
         </div>
       </div>
 
+      <TaskDecisionDetails
+        decisionId={selectedDecisionId}
+        isOpen={isDecisionDetailsOpen}
+        onClose={() => {
+          setIsDecisionDetailsOpen(false);
+          setSelectedDecisionId(null);
+        }}
+      />
 
       <div className="mt-4 pt-4 border-t border-dashed flex items-center justify-between">
         <Button disabled={!editableCaseItem.category} onClick={onSave}>Speichern</Button>
