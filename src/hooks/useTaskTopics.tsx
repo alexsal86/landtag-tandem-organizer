@@ -116,7 +116,7 @@ export const useCreateTaskWithTopics = () => {
       if (error) throw error;
       return true;
     } catch (error) {
-      debugConsole.error('Error saving task topics:', error);
+      handleAppError(error, { context: 'useCreateTaskWithTopics.save' });
       return false;
     }
   };
