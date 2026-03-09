@@ -4,6 +4,7 @@ import { TenantProvider } from "@/hooks/useTenant";
 import { NotificationProvider } from "@/contexts/NotificationContext";
 import { AppSettingsProvider } from "@/hooks/useAppSettings";
 import { TooltipProvider } from "@/components/ui/tooltip";
+import { AppHeadManager } from "@/components/AppHeadManager";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -23,6 +24,7 @@ export const AppProviders = ({ children }: { children: React.ReactNode }) => (
         <AppSettingsProvider>
           <NotificationProvider>
             <TooltipProvider>
+              <AppHeadManager />
               {children}
             </TooltipProvider>
           </NotificationProvider>
