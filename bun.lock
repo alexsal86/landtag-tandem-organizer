@@ -130,6 +130,22 @@
       },
     },
   },
+  "overrides": {
+    "@lexical/code": "0.40.0",
+    "@lexical/file": "0.40.0",
+    "@lexical/hashtag": "0.40.0",
+    "@lexical/html": "0.40.0",
+    "@lexical/link": "0.40.0",
+    "@lexical/list": "0.40.0",
+    "@lexical/mark": "0.40.0",
+    "@lexical/markdown": "0.40.0",
+    "@lexical/plain-text": "0.40.0",
+    "@lexical/react": "0.40.0",
+    "@lexical/rich-text": "0.40.0",
+    "@lexical/table": "0.40.0",
+    "@lexical/yjs": "0.40.0",
+    "lexical": "0.40.0",
+  },
   "packages": {
     "@adobe/css-tools": ["@adobe/css-tools@4.4.4", "", {}, "sha512-Elp+iwUx5rN5+Y8xLt5/GRoG20WGoDCQ/1Fb+1LiGtvwbDavuSk0jhD/eZdckHAuzcDzccnkv+rEjyWfRx18gg=="],
 
