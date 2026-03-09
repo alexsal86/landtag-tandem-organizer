@@ -91,6 +91,7 @@ export function ContactQuickActions({
               <Button
                 size="sm"
                 variant="ghost"
+                aria-label="Termin erstellen"
                 onClick={(e) => {
                   e.stopPropagation();
                   onCreateAppointment(contact.id);
