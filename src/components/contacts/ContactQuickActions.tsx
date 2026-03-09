@@ -69,6 +69,7 @@ export function ContactQuickActions({
               <Button
                 size="sm"
                 variant="ghost"
+                aria-label="Anrufen"
                 onClick={(e) => {
                   e.stopPropagation();
                   handleCall();
