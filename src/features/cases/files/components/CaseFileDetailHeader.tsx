@@ -10,12 +10,7 @@ import { Trash2, ArrowLeft } from "lucide-react";
 interface CaseFileDetailHeaderProps {
   caseFile: CaseFile;
   onBack: () => void;
-  onEdit: () => void;
   onDelete: () => void;
-  onAddNote: () => void;
-  onAddTask: () => void;
-  onAddAppointment: () => void;
-  onAddDocument: () => void;
 }
 
 export function CaseFileDetailHeader({
