@@ -308,6 +308,15 @@
   border-top: 1px solid hsl(var(--border) / 0.2);
 }
 
+/* Time gutter: hide 00:00 and align labels to their hour line */
+.rbc-time-gutter .rbc-timeslot-group:first-child .rbc-label {
+  display: none;
+}
+
+.rbc-time-gutter .rbc-timeslot-group .rbc-label {
+  transform: translateY(-50%);
+}
+
 /* Current time indicator */
 .rbc-current-time-indicator {
   background-color: hsl(var(--destructive));
