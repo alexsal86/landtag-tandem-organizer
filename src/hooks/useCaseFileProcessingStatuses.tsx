@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { debugConsole } from '@/utils/debugConsole';
+import { handleAppError } from '@/utils/errorHandler';
 
 export interface CaseFileProcessingStatus {
   id: string;
