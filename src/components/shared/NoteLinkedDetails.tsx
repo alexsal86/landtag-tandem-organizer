@@ -3,7 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Collapsible, CollapsibleContent } from "@/components/ui/collapsible";
-import { CheckSquare, Vote, Calendar as CalendarIcon, ArrowRight, Trash2, Archive } from "lucide-react";
+import { CheckSquare, Vote, Calendar as CalendarIcon, ArrowRight, Trash2, Archive, FileText } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { format } from "date-fns";
 import { de } from "date-fns/locale";
