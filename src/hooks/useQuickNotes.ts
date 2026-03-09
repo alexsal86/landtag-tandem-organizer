@@ -674,6 +674,9 @@ export function useQuickNotes(refreshTrigger?: number) {
       if (note.meeting_id && deleteLinkedMeeting) {
         await supabase.from("quick_notes").update({ meeting_id: null, added_to_meeting_at: null }).eq("id", note.id).eq("user_id", user.id);
       }
+      if (note.case_item_id && deleteLinkedCaseItem) {
+        await supabase.from('case_items').update({ status: 'archiviert' }).eq('id', note.case_item_id);
+      }
       await handleDelete(note.id);
       setConfirmDeleteLinkedNote(null);
     } catch (error) {
