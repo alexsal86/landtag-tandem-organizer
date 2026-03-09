@@ -557,48 +557,61 @@ export function MyWorkCaseItemsTab() {
                         </div>
 
                         <div className="flex shrink-0 items-center gap-1">
-                          {!item.case_file_id && (
-                            <>
-                              <Button
-                                size="sm"
-                                disabled={processingItemId === item.id}
-                                onClick={() => handleEscalation(item.id, "create")}
-                              >
-                                In Akte überführen
-                              </Button>
-                              <select
-                                className="h-9 rounded-md border bg-background px-2 text-sm"
-                                value={selectedCaseFileByItemId[item.id] ?? ""}
-                                onChange={(event) =>
-                                  setSelectedCaseFileByItemId((prev) => ({ ...prev, [item.id]: event.target.value }))
-                                }
-                                disabled={processingItemId === item.id}
-                              >
-                                <option value="">Bestehende Akte wählen</option>
-                                {caseFiles.map((caseFile) => (
-                                  <option key={caseFile.id} value={caseFile.id}>{caseFile.title}</option>
-                                ))}
-                              </select>
-                              <Button
-                                size="sm"
-                                variant="outline"
-                                disabled={processingItemId === item.id || !selectedCaseFileByItemId[item.id]}
-                                onClick={() => handleEscalation(item.id, "assign")}
-                              >
-                                Bestehender Akte zuordnen
-                              </Button>
-                            </>
-                          )}
-                          <Button size="sm" variant="outline" onClick={() => navigate(`/?section=casefiles&caseItemId=${item.id}`)}>
-                            <ExternalLink className="mr-1 h-3.5 w-3.5" />
-                            Öffnen
-                          </Button>
-                          {item.case_file_id && (
-                            <Button size="sm" variant="ghost" onClick={() => navigate(`/casefiles?caseFileId=${item.case_file_id}`)}>
-                              <Briefcase className="mr-1 h-3.5 w-3.5" />
-                              In Akte öffnen
+                          {/* Desktop: Full buttons */}
+                          <div className="hidden lg:flex items-center gap-1">
+                            {!item.case_file_id && (
+                              <>
+                                <Button
+                                  size="sm"
+                                  disabled={processingItemId === item.id}
+                                  onClick={() => handleEscalation(item.id, "create")}
+                                >
+                                  In Akte überführen
+                                </Button>
+                                <select
+                                  className="h-9 rounded-md border bg-background px-2 text-sm"
+                                  value={selectedCaseFileByItemId[item.id] ?? ""}
+                                  onChange={(event) =>
+                                    setSelectedCaseFileByItemId((prev) => ({ ...prev, [item.id]: event.target.value }))
+                                  }
+                                  disabled={processingItemId === item.id}
+                                >
+                                  <option value="">Bestehende Akte wählen</option>
+                                  {caseFiles.map((caseFile) => (
+                                    <option key={caseFile.id} value={caseFile.id}>{caseFile.title}</option>
+                                  ))}
+                                </select>
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  disabled={processingItemId === item.id || !selectedCaseFileByItemId[item.id]}
+                                  onClick={() => handleEscalation(item.id, "assign")}
+                                >
+                                  Bestehender Akte zuordnen
+                                </Button>
+                              </>
+                            )}
+                            <Button size="sm" variant="outline" onClick={() => navigate(`/?section=casefiles&caseItemId=${item.id}`)}>
+                              <ExternalLink className="mr-1 h-3.5 w-3.5" />
+                              Öffnen
                             </Button>
-                          )}
+                            {item.case_file_id && (
+                              <Button size="sm" variant="ghost" onClick={() => navigate(`/casefiles?caseFileId=${item.case_file_id}`)}>
+                                <Briefcase className="mr-1 h-3.5 w-3.5" />
+                                In Akte öffnen
+                              </Button>
+                            )}
+                          </div>
+                          
+                          {/* Mobile: Only open button */}
+                          <Button 
+                            size="sm" 
+                            variant="outline" 
+                            onClick={() => navigate(`/?section=casefiles&caseItemId=${item.id}`)}
+                            className="lg:hidden"
+                          >
+                            <ExternalLink className="h-3.5 w-3.5" />
+                          </Button>
                         </div>
                       </div>
                     </div>
@@ -608,6 +621,18 @@ export function MyWorkCaseItemsTab() {
                       <ExternalLink className="mr-2 h-4 w-4" />
                       Öffnen
                     </ContextMenuItem>
+                    {item.case_file_id && (
+                      <ContextMenuItem onClick={() => navigate(`/casefiles?caseFileId=${item.case_file_id}`)}>
+                        <Briefcase className="mr-2 h-4 w-4" />
+                        In Akte öffnen
+                      </ContextMenuItem>
+                    )}
+                    {!item.case_file_id && (
+                      <ContextMenuItem onClick={() => handleEscalation(item.id, "create")} disabled={processingItemId === item.id}>
+                        <Briefcase className="mr-2 h-4 w-4" />
+                        In Akte überführen
+                      </ContextMenuItem>
+                    )}
                     <ContextMenuItem onClick={() => {
                       setMeetingSelectorItemId(item.id);
                       setMeetingSelectorOpen(true);
