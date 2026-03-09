@@ -1,7 +1,7 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { format } from "date-fns";
 import { de } from "date-fns/locale";
-import { AlertCircle, Check, ChevronDown, ExternalLink, Gavel, Loader2, Mail, MessageSquare, Phone, Search, Trash2, Users, Vote } from "lucide-react";
+import { AlertCircle, Check, CheckCircle2, ChevronDown, Clock, ExternalLink, Gavel, Loader2, Mail, MessageSquare, Phone, Search, Trash2, Users, Vote } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useTenant } from "@/hooks/useTenant";
 import { Button } from "@/components/ui/button";
@@ -11,9 +11,11 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import { HoverCard, HoverCardContent, HoverCardTrigger } from "@/components/ui/hover-card";
 import { cn } from "@/lib/utils";
 import SimpleRichTextEditor from "@/components/ui/SimpleRichTextEditor";
 import { debugConsole } from "@/utils/debugConsole";
+import { TaskDecisionDetails } from "@/components/task-decisions/TaskDecisionDetails";
 import type { EditableCaseItem, TimelineInteractionType } from "@/components/my-work/hooks/useCaseItemEdit";
 
 type TimelineEntry = {
@@ -36,6 +38,21 @@ type CaseFile = {
   case_type: string | null;
 };
 
+type LinkedDecision = {
+  id: string;
+  title: string;
+  description: string | null;
+  status: string;
+  created_at: string;
+  response_deadline: string | null;
+  created_by: string | null;
+  task_decision_participants: Array<{
+    id: string;
+    user_id: string;
+    task_decision_responses: Array<{ id: string; response_type: string }>;
+  }>;
+};
+
 const interactionTypeOptions: Array<{ value: TimelineInteractionType | "entscheidung"; label: string; icon: typeof Phone }> = [
   { value: "anruf", label: "Anruf", icon: Phone },
   { value: "mail", label: "Mail", icon: Mail },
@@ -52,6 +69,7 @@ export function CaseItemDetailPanel({
   statusOptions,
   categoryOptions,
   teamUsers,
+  currentUserId,
   linkedDecisions,
   loadingDecisions,
   timelineEntries,
@@ -81,7 +99,8 @@ export function CaseItemDetailPanel({
   statusOptions: Array<{ value: string; label: string }>;
   categoryOptions: readonly string[];
   teamUsers: Array<{ id: string; name: string; avatarUrl: string | null }>;
-  linkedDecisions: Array<{ id: string; title: string; status: string; created_at: string; response_deadline: string | null }>;
+  currentUserId: string | null;
+  linkedDecisions: LinkedDecision[];
   loadingDecisions: boolean;
   timelineEntries: TimelineEntry[];
   toEditorHtml: (value: string | null | undefined) => string;
@@ -203,6 +222,63 @@ export function CaseItemDetailPanel({
     return format(parsed, "HH:mm", { locale: de });
   };
 
+  const teamUsersById = useMemo(() => new Map(teamUsers.map((u) => [u.id, u] as const)), [teamUsers]);
+
+  const [selectedDecisionId, setSelectedDecisionId] = useState<string | null>(null);
+  const [isDecisionDetailsOpen, setIsDecisionDetailsOpen] = useState(false);
+
+  const toPlainText = (value: string) => value
+    .replace(/<br\s*\/?>/gi, "\n")
+    .replace(/<[^>]+>/g, " ")
+    .replace(/&nbsp;/gi, " ")
+    .replace(/&amp;/gi, "&")
+    .replace(/&lt;/gi, "<")
+    .replace(/&gt;/gi, ">")
+    .replace(/\s+/g, " ")
+    .trim();
+
+  const getDecisionCounts = (decision: LinkedDecision) => {
+    const participants = decision.task_decision_participants || [];
+    const counts = { yes: 0, no: 0, question: 0, pending: 0, responded: 0, total: participants.length };
+
+    participants.forEach((p) => {
+      const responseType = p.task_decision_responses?.[0]?.response_type;
+      if (!responseType) {
+        counts.pending += 1;
+        return;
+      }
+      counts.responded += 1;
+      if (responseType === "yes") counts.yes += 1;
+      else if (responseType === "no") counts.no += 1;
+      else if (responseType === "question") counts.question += 1;
+      else counts.yes += 1; // custom options → zählen als beantwortet
+    });
+
+    return counts;
+  };
+
+  const getDecisionIcon = (decision: LinkedDecision) => {
+    const participants = decision.task_decision_participants || [];
+    const userParticipant = currentUserId ? participants.find((p) => p.user_id === currentUserId) ?? null : null;
+    const userHasResponded = !currentUserId
+      ? true
+      : decision.created_by === currentUserId
+        ? true
+        : !userParticipant
+          ? true
+          : (userParticipant.task_decision_responses?.length ?? 0) > 0;
+
+    return {
+      icon: userHasResponded ? CheckCircle2 : Clock,
+      iconClass: userHasResponded ? "text-success" : "text-warning",
+    };
+  };
+
+  const openDecision = (decisionId: string) => {
+    setSelectedDecisionId(decisionId);
+    setIsDecisionDetailsOpen(true);
+  };
+
   return (
     <div className="mx-2 mb-3 rounded-md border bg-muted/20 p-3 space-y-4">
       <div className="grid gap-4 lg:grid-cols-[minmax(230px,1fr)_minmax(0,2.8fr)]">
@@ -286,21 +362,106 @@ export function CaseItemDetailPanel({
                   {timelineEntries.map((entry, index) => {
                     const isLastEntry = index === timelineEntries.length - 1;
                     const isFrist = entry.title === "Frist";
+
+                    const decisionId = entry.id.startsWith("dec-") ? entry.id.slice(4) : null;
+                    const decision = decisionId ? (linkedDecisions.find((d) => d.id === decisionId) ?? null) : null;
+                    const decisionMeta = decision ? getDecisionIcon(decision) : null;
+                    const CircleIcon = decisionMeta ? decisionMeta.icon : entry.icon;
+
+                    const participants = decision?.task_decision_participants || [];
+                    const counts = decision ? getDecisionCounts(decision) : null;
+
                     return (
                       <div key={entry.id} className="relative">
                         {/* Vertical line */}
                         {!isLastEntry && <span className="absolute -left-[17px] top-[12px] bottom-[-16px] w-0.5 bg-border" />}
+
                         {/* Circle — vertically aligned to the date text */}
-                        <span className={`absolute -left-[27px] top-[2px] h-5 w-5 rounded-full ${entry.accentClass} flex items-center justify-center text-white`}>
-                          {entry.icon ? <entry.icon className="h-3 w-3" /> : null}
+                        <span
+                          className={cn(
+                            "absolute -left-[27px] top-[2px] h-5 w-5 rounded-full flex items-center justify-center",
+                            decision ? "bg-background border border-border" : `${entry.accentClass} text-white`,
+                          )}
+                        >
+                          {CircleIcon ? <CircleIcon className={cn("h-3 w-3", decisionMeta?.iconClass)} /> : null}
                         </span>
-                        <div className="group py-1 text-xs">
+
+                        <div className={cn("group py-1 text-xs", decisionId && "cursor-pointer")}
+                        >
                           <p className="text-[10px] font-medium text-muted-foreground">
                             {formatTimelineDateOnly(entry.timestamp)}
                             <span className="ml-1.5 opacity-0 transition-opacity duration-200 ease-out group-hover:opacity-100 group-focus-within:opacity-100">{formatTimelineTimeOnly(entry.timestamp)} Uhr</span>
                           </p>
+
                           <div className="flex items-start justify-between gap-2">
-                            <p className={cn("font-bold leading-4", isFrist && "text-amber-700 dark:text-amber-400")}>{entry.title}</p>
+                            {decision ? (
+                              <HoverCard openDelay={350} closeDelay={100}>
+                                <HoverCardTrigger asChild>
+                                  <button
+                                    type="button"
+                                    className={cn("font-bold leading-4 text-left hover:underline")}
+                                    onClick={() => openDecision(decisionId!)}
+                                  >
+                                    {entry.title}
+                                  </button>
+                                </HoverCardTrigger>
+
+                                <HoverCardContent align="start" className="w-80">
+                                  <div className="space-y-2">
+                                    <div>
+                                      <p className="text-sm font-semibold text-foreground">{decision.title}</p>
+                                      <p className="mt-1 text-xs text-muted-foreground whitespace-pre-wrap">
+                                        {decision.description ? toPlainText(decision.description) : "Keine Beschreibung."}
+                                      </p>
+                                    </div>
+
+                                    {decision.response_deadline && (
+                                      <p className="text-xs text-muted-foreground">
+                                        Antwort bis <span className="font-medium text-foreground">{formatDecisionDate(decision.response_deadline)}</span>
+                                      </p>
+                                    )}
+
+                                    {counts && (
+                                      <div className="text-xs text-muted-foreground">
+                                        <span className="font-medium text-foreground">{counts.responded}</span>/{counts.total} beantwortet · {counts.pending} ausstehend
+                                      </div>
+                                    )}
+
+                                    {counts && (
+                                      <div className="flex flex-wrap gap-x-3 gap-y-1 text-xs">
+                                        {counts.yes > 0 && <span className="text-success">Ja {counts.yes}</span>}
+                                        {counts.question > 0 && <span className="text-secondary">Rückfrage {counts.question}</span>}
+                                        {counts.no > 0 && <span className="text-destructive">Nein {counts.no}</span>}
+                                      </div>
+                                    )}
+
+                                    <div className="space-y-1">
+                                      <p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">Teilnehmer</p>
+                                      {participants.length > 0 ? (
+                                        <ul className="space-y-1">
+                                          {participants.slice(0, 8).map((p) => (
+                                            <li key={p.id} className="flex items-center justify-between gap-2 text-xs">
+                                              <span className="truncate">{teamUsersById.get(p.user_id)?.name || "Unbekannt"}</span>
+                                              <span className="text-muted-foreground">{(p.task_decision_responses?.length ?? 0) > 0 ? "beantwortet" : "ausstehend"}</span>
+                                            </li>
+                                          ))}
+                                          {participants.length > 8 && (
+                                            <li className="text-xs text-muted-foreground">+{participants.length - 8} weitere…</li>
+                                          )}
+                                        </ul>
+                                      ) : (
+                                        <p className="text-xs text-muted-foreground">Keine Teilnehmer.</p>
+                                      )}
+                                    </div>
+
+                                    <p className="text-[10px] text-muted-foreground">Klick öffnet Details</p>
+                                  </div>
+                                </HoverCardContent>
+                              </HoverCard>
+                            ) : (
+                              <p className={cn("font-bold leading-4", isFrist && "text-amber-700 dark:text-amber-400")}>{entry.title}</p>
+                            )}
+
                             {entry.canDelete && entry.onDelete ? (
                               <TooltipProvider>
                                 <Tooltip>
@@ -335,7 +496,10 @@ export function CaseItemDetailPanel({
                               </TooltipProvider>
                             ) : null}
                           </div>
-                          {entry.safeNoteHtml && <div className="mt-1 font-normal text-muted-foreground" dangerouslySetInnerHTML={{ __html: entry.safeNoteHtml }} />}
+
+                          {entry.safeNoteHtml && (
+                            <div className="mt-1 font-normal text-muted-foreground" dangerouslySetInnerHTML={{ __html: entry.safeNoteHtml }} />
+                          )}
                         </div>
                       </div>
                     );
@@ -565,6 +729,14 @@ export function CaseItemDetailPanel({
         </div>
       </div>
 
+      <TaskDecisionDetails
+        decisionId={selectedDecisionId}
+        isOpen={isDecisionDetailsOpen}
+        onClose={() => {
+          setIsDecisionDetailsOpen(false);
+          setSelectedDecisionId(null);
+        }}
+      />
 
       <div className="mt-4 pt-4 border-t border-dashed flex items-center justify-between">
         <Button disabled={!editableCaseItem.category} onClick={onSave}>Speichern</Button>

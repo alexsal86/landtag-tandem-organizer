@@ -291,10 +291,26 @@ export function MyWorkCasesWorkspace() {
     return true;
   }, [setCaseItems]);
 
+  // Decision integration types
+  type LinkedDecision = {
+    id: string;
+    title: string;
+    description: string | null;
+    status: string;
+    created_at: string;
+    response_deadline: string | null;
+    created_by: string | null;
+    task_decision_participants: Array<{
+      id: string;
+      user_id: string;
+      task_decision_responses: Array<{ id: string; response_type: string }>;
+    }>;
+  };
+
   // Decision integration state
   const [isDecisionCreatorOpen, setIsDecisionCreatorOpen] = useState(false);
   const [decisionCreatorItemId, setDecisionCreatorItemId] = useState<string | null>(null);
-  const [linkedDecisions, setLinkedDecisions] = useState<Record<string, Array<{ id: string; title: string; status: string; created_at: string; response_deadline: string | null }>>>({});
+  const [linkedDecisions, setLinkedDecisions] = useState<Record<string, LinkedDecision[]>>({});
   const [loadingDecisions, setLoadingDecisions] = useState(false);
 
   // Jour Fixe meeting selector state
@@ -350,11 +366,28 @@ export function MyWorkCasesWorkspace() {
     try {
       const { data, error } = await supabase
         .from("task_decisions")
-        .select("id, title, status, created_at, response_deadline")
+        .select(`
+          id,
+          title,
+          description,
+          status,
+          created_at,
+          response_deadline,
+          created_by,
+          task_decision_participants (
+            id,
+            user_id,
+            task_decision_responses (id, response_type)
+          )
+        `)
         .eq("case_item_id", itemId)
         .order("created_at", { ascending: false });
-      if (!error && data) {
-        setLinkedDecisions((prev) => ({ ...prev, [itemId]: data as any }));
+
+      if (!error) {
+        setLinkedDecisions((prev) => ({
+          ...prev,
+          [itemId]: ((data ?? []) as unknown as LinkedDecision[]),
+        }));
       }
     } catch (e) {
       debugConsole.error("Error loading linked decisions:", e);
@@ -822,20 +855,32 @@ export function MyWorkCasesWorkspace() {
     })));
 
     if (detailItemId) {
-      entries.push(...(linkedDecisions[detailItemId] || [])
-        .map((decision) => ({
-          id: `dec-${decision.id}`,
-          timestamp: decision.created_at,
-          title: `Entscheidung: ${decision.title}`,
-          note: `Status: ${decision.status}`,
-          safeNoteHtml: sanitizeTimelineNote(`Status: ${decision.status}`),
-          accentClass: decision.status === "completed" ? "bg-emerald-500" : "bg-fuchsia-600",
-          icon: Gavel,
-        })));
+      const currentUserId = user?.id || null;
+      entries.push(
+        ...(linkedDecisions[detailItemId] || []).map((decision) => {
+          const participants = decision.task_decision_participants || [];
+          const userParticipant = currentUserId ? participants.find((p) => p.user_id === currentUserId) ?? null : null;
+          const userHasResponded = !currentUserId
+            ? true
+            : decision.created_by === currentUserId
+              ? true
+              : !userParticipant
+                ? true
+                : (userParticipant.task_decision_responses?.length ?? 0) > 0;
+
+          return {
+            id: `dec-${decision.id}`,
+            timestamp: decision.created_at,
+            title: `Entscheidung: ${decision.title}`,
+            accentClass: "bg-muted",
+            icon: userHasResponded ? CheckCircle2 : Clock,
+          };
+        }),
+      );
     }
 
     return entries.sort((a, b) => toTimeSafe(a.timestamp) - toTimeSafe(b.timestamp));
-  }, [deleteTimelineEvent, detailItemId, editableCaseItem, linkedDecisions]);
+  }, [deleteTimelineEvent, detailItemId, editableCaseItem, linkedDecisions, user?.id]);
 
   const handleCaseItemSave = async () => {
     if (!detailItemId || !editableCaseItem) return;
@@ -1170,7 +1215,8 @@ export function MyWorkCasesWorkspace() {
                                                 statusOptions={statusOptions.map(({ value, label }) => ({ value, label }))}
                                                 categoryOptions={categoryOptions}
                                                 teamUsers={teamUsers}
-                                                linkedDecisions={detailItemId ? (linkedDecisions[detailItemId] || []) : []}
+                                                currentUserId={user?.id || null}
+                                                linkedDecisions={linkedDecisions[item.id] || []}
                                                 loadingDecisions={loadingDecisions}
                                                 timelineEntries={timelineEntries}
                                                 toEditorHtml={toEditorHtml}
