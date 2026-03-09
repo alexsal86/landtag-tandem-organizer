@@ -1,0 +1,51 @@
+/**
+ * Route prefetching utilities.
+ * Preloads lazy-loaded chunks on hover / idle so navigation feels instant.
+ */
+
+type ImportFn = () => Promise<unknown>;
+
+const prefetchMap: Record<string, ImportFn> = {
+  dashboard: () => import("@/components/CustomizableDashboard"),
+  mywork: () => import("@/components/MyWorkView"),
+  calendar: () => import("@/components/CalendarView"),
+  contacts: () => import("@/components/ContactsView"),
+  tasks: () => import("@/components/TasksView"),
+  decisions: () => import("@/components/task-decisions/DecisionOverview"),
+  meetings: () => import("@/components/MeetingsView"),
+  documents: () => import("@/components/DocumentsView"),
+  knowledge: () => import("@/components/KnowledgeBaseView"),
+  settings: () => import("@/components/SettingsView"),
+  employee: () => import("@/components/EmployeesView"),
+  time: () => import("@/components/TimeTrackingView"),
+  eventplanning: () => import("@/components/EventPlanningView"),
+  casefiles: () => import("@/components/CaseFilesView"),
+  calls: () => import("@/components/CallsView"),
+  daten: () => import("@/components/DataView"),
+  drucksachen: () => import("@/components/DrucksachenView"),
+  chat: () => import("@/components/chat/MatrixChatView"),
+  administration: () => import("@/pages/Administration"),
+};
+
+const prefetched = new Set<string>();
+
+/** Eagerly load the chunk for a section (idempotent, fire-and-forget). */
+export function prefetchRoute(sectionId: string): void {
+  if (prefetched.has(sectionId)) return;
+  const loader = prefetchMap[sectionId];
+  if (!loader) return;
+  prefetched.add(sectionId);
+  // Use requestIdleCallback where available, else setTimeout
+  const schedule = typeof requestIdleCallback === "function" ? requestIdleCallback : (cb: () => void) => setTimeout(cb, 50);
+  schedule(() => {
+    loader().catch(() => {
+      // Remove from set so a retry is possible
+      prefetched.delete(sectionId);
+    });
+  });
+}
+
+/** Prefetch all routes that belong to a navigation group's sub-items. */
+export function prefetchGroup(subItemIds: string[]): void {
+  subItemIds.forEach(prefetchRoute);
+}

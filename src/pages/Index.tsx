@@ -1,10 +1,11 @@
-import { useState, useEffect, Suspense, useMemo } from "react";
+import { useState, useEffect, Suspense, useMemo, useCallback, startTransition } from "react";
 import { lazyWithRetry } from "@/lib/lazyWithRetry";
 import { useNavigate, useLocation, useParams } from "react-router-dom";
 import { ThemeProvider } from "next-themes";
 import { useAuth } from "@/hooks/useAuth";
 import { useTenant } from "@/hooks/useTenant";
 import { AppNavigation, getNavigationGroups } from "@/components/AppNavigation";
+import { prefetchRoute } from "@/lib/routePrefetch";
 
 // Lazy load all major view components for better initial load performance
 const CustomizableDashboard = lazyWithRetry(() => import("@/components/CustomizableDashboard").then(m => ({ default: m.CustomizableDashboard })));
@@ -102,24 +103,26 @@ const Index = () => {
     setActiveSection(newSection);
   }, [location.pathname]);
 
-  // Handle navigation to sections
-  const handleSectionChange = (section: string) => {
+  // Handle navigation to sections – wrapped in startTransition for non-blocking rendering
+  const handleSectionChange = useCallback((section: string) => {
+    prefetchRoute(section);
     const path = section === 'dashboard' ? '/' : `/${section}`;
-    navigate(path);
-  };
+    startTransition(() => {
+      navigate(path);
+    });
+  }, [navigate]);
   
   // Handle dialog close
-  const handleCreateAppointmentDialogChange = (open: boolean) => {
+  const handleCreateAppointmentDialogChange = useCallback((open: boolean) => {
     setShowCreateAppointmentDialog(open);
     if (!open) {
-      // Remove action parameter from URL when closing dialog
       const urlParams = new URLSearchParams(location.search);
       urlParams.delete('action');
       const newSearch = urlParams.toString();
       const newUrl = newSearch ? `${location.pathname}?${newSearch}` : location.pathname;
       navigate(newUrl, { replace: true });
     }
-  };
+  }, [location.search, location.pathname, navigate]);
 
   useEffect(() => {
     // Allow access to knowledge section without authentication (demo mode)
