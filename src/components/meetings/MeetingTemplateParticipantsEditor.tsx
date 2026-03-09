@@ -204,7 +204,7 @@ export function MeetingTemplateParticipantsEditor({
                   className="flex items-center gap-2 p-1.5 rounded-md border bg-muted/50 text-sm"
                 >
                   <Avatar className="h-6 w-6">
-                    <AvatarImage src={user.avatar_url} />
+                    <AvatarImage src={user.avatar_url ?? undefined} />
                     <AvatarFallback className="text-[10px]">
                       {getInitials(user.display_name)}
                     </AvatarFallback>
