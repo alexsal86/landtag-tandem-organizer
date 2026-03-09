@@ -215,7 +215,11 @@
 .rbc-time-view .rbc-header {
   background: hsl(var(--background));
   color: hsl(var(--foreground));
-  padding: 0.4rem 0.5rem;
+  min-height: 4.5rem;
+  padding: 0.5rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .rbc-custom-week-header {
@@ -252,7 +256,11 @@
 .rbc-time-view .rbc-header {
   background: hsl(var(--background));
   color: hsl(var(--foreground));
-  padding: 0.4rem 0.5rem;
+  min-height: 4.5rem;
+  padding: 0.5rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .rbc-custom-week-header {
