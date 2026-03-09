@@ -117,7 +117,7 @@ export function CalendarTestSuite() {
       return {
         name: 'Event Display',
         status: 'fail',
-        details: `Event display failed: ${error.message}`
+        details: `Event display failed: ${error instanceof Error ? error.message : String(error)}`
       };
     }
   };
