@@ -36,12 +36,13 @@ type CaseFile = {
   case_type: string | null;
 };
 
-const interactionTypeOptions: Array<{ value: TimelineInteractionType; label: string; icon: typeof Phone }> = [
+const interactionTypeOptions: Array<{ value: TimelineInteractionType | "entscheidung"; label: string; icon: typeof Phone }> = [
   { value: "anruf", label: "Anruf", icon: Phone },
   { value: "mail", label: "Mail", icon: Mail },
   { value: "treffen", label: "Treffen", icon: Users },
   { value: "gespraech", label: "Gespräch", icon: MessageSquare },
   { value: "notiz", label: "Notiz", icon: MessageSquare },
+  { value: "entscheidung", label: "Entscheidung stellen", icon: Gavel },
 ];
 
 export function CaseItemDetailPanel({
