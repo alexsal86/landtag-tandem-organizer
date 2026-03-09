@@ -611,28 +611,32 @@ export function MyWorkCasesWorkspace() {
   };
 
   useEffect(() => {
-    if (!sortedCaseItems.length) {
-      setFocusedItemIndex(0);
-      return;
-    }
-    setFocusedItemIndex((prev) => Math.min(prev, sortedCaseItems.length - 1));
+    setFocusedItemIndex((prev) => {
+      if (!sortedCaseItems.length) return -1;
+      if (prev < 0) return -1;
+      return Math.min(prev, sortedCaseItems.length - 1);
+    });
   }, [sortedCaseItems.length]);
 
   const handleListKeyDown = useCallback((event: KeyboardEvent<HTMLDivElement>) => {
     if (!sortedCaseItems.length) return;
+
     if (event.key === "ArrowDown") {
       event.preventDefault();
-      setFocusedItemIndex((prev) => Math.min(prev + 1, sortedCaseItems.length - 1));
+      setFocusedItemIndex((prev) => (prev < 0 ? 0 : Math.min(prev + 1, sortedCaseItems.length - 1)));
       return;
     }
+
     if (event.key === "ArrowUp") {
       event.preventDefault();
-      setFocusedItemIndex((prev) => Math.max(prev - 1, 0));
+      setFocusedItemIndex((prev) => (prev < 0 ? sortedCaseItems.length - 1 : Math.max(prev - 1, 0)));
       return;
     }
+
     if (event.key === "Enter") {
       event.preventDefault();
-      const item = sortedCaseItems[focusedItemIndex];
+      const index = focusedItemIndex < 0 ? 0 : focusedItemIndex;
+      const item = sortedCaseItems[index];
       if (item) handleSelectCaseItem(item);
     }
   }, [focusedItemIndex, sortedCaseItems]);
