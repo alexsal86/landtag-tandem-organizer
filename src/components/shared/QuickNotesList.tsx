@@ -121,6 +121,8 @@ export function QuickNotesList({
     onOpenVersionHistory: hook.openVersionHistory,
     onSplitNote: hook.splitNoteIntoBullets,
     onShare: (n: QuickNote) => { hook.setNoteForShare(n); hook.setShareDialogOpen(true); },
+    onCreateCaseItem: hook.createCaseItemFromNote,
+    onRemoveCaseItem: hook.setConfirmRemoveCaseItem,
   });
 
   return (
