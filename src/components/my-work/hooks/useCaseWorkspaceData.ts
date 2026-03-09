@@ -6,6 +6,7 @@ import type { CaseItemIntakePayload } from "@/features/cases/items/types";
 
 export type CaseItem = {
   id: string;
+  visible_to_all: boolean;
   subject: string | null;
   resolution_summary: string | null;
   summary: string | null;
@@ -109,7 +110,7 @@ export const useCaseWorkspaceData = ({ tenantId, userId }: { tenantId?: string; 
     if (!tenantId) return [] as CaseItem[];
     const { data, error } = await supabase
       .from("case_items")
-      .select("id, subject, summary, resolution_summary, source_channel, source_received_at, status, completion_note, completed_at, priority, due_at, case_file_id, user_id, owner_user_id, intake_payload, updated_at")
+      .select("id, visible_to_all, subject, summary, resolution_summary, source_channel, source_received_at, status, completion_note, completed_at, priority, due_at, case_file_id, user_id, owner_user_id, intake_payload, updated_at")
       .eq("tenant_id", tenantId)
       .order("updated_at", { ascending: false, nullsFirst: false })
       .range(offset, offset + PAGE_SIZE - 1);

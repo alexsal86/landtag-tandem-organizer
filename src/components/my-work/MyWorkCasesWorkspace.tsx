@@ -3,7 +3,7 @@ import { useNavigate, useSearchParams } from "react-router-dom";
 import { useNotificationHighlight } from "@/hooks/useNotificationHighlight";
 import { format, type Locale } from "date-fns";
 import { de } from "date-fns/locale";
-import { ArrowDown, ArrowUp, Briefcase, CalendarDays, CheckCircle2, ChevronRight, Circle, Clock, FileText, FolderOpen, Gavel, GripVertical, Inbox, Link2, Mail, MessageSquare, Phone, Plus, Search, Timer, Trash2, UserRound, Users, Vote } from "lucide-react";
+import { ArrowDown, ArrowUp, Briefcase, CalendarDays, CheckCircle2, ChevronRight, Circle, Clock, FileText, FolderOpen, Gavel, Globe, GripVertical, Inbox, Link2, Mail, MessageSquare, Phone, Plus, Search, Timer, Trash2, UserRound, Users, Vote } from "lucide-react";
 import { DragDropContext, Droppable, Draggable, type DropResult } from "@hello-pangea/dnd";
 import { sanitizeRichHtml } from "@/utils/htmlSanitizer";
 import { RichTextDisplay } from "@/components/ui/RichTextDisplay";
@@ -615,6 +615,17 @@ export function MyWorkCasesWorkspace() {
     if (ok) toast.success(`Priorität auf "${priorityOptions.find((p) => p.value === newPriority)?.label || newPriority}" gesetzt.`);
   };
 
+
+  const handleQuickVisibilityChange = async (item: CaseItem, nextPublic: boolean) => {
+    const ok = await applyItemOptimisticUpdate(
+      item.id,
+      (row) => ({ ...row, visible_to_all: nextPublic }),
+      () => supabase.from("case_items").update({ visible_to_all: nextPublic } as any).eq("id", item.id),
+      "Sichtbarkeit konnte nicht geändert werden.",
+    );
+    if (ok) toast.success(nextPublic ? "Vorgang ist jetzt öffentlich." : "Vorgang ist jetzt nicht öffentlich.");
+  };
+
   const handleQuickLinkToFile = async (item: CaseItem, caseFileId: string) => {
     const ok = await applyItemOptimisticUpdate(
       item.id,
@@ -669,6 +680,7 @@ export function MyWorkCasesWorkspace() {
       category: getCategory(item),
       priority: item.priority || "medium",
       assigneeIds: getAssigneeIds(item),
+      visibleToAll: item.visible_to_all === true,
       timelineEvents: parseTimelineEvents(item.intake_payload),
       interactionType: "",
       interactionContact: getContactDetail(item.intake_payload) || getContactName(item.intake_payload),
@@ -952,6 +964,7 @@ export function MyWorkCasesWorkspace() {
       due_at: editableCaseItem.dueAt ? new Date(`${editableCaseItem.dueAt}T12:00:00`).toISOString() : null,
       priority: editableCaseItem.priority as any,
       owner_user_id: editableCaseItem.assigneeIds[0] || null,
+      visible_to_all: editableCaseItem.visibleToAll,
       intake_payload: intakePayload as any,
       contact_id: editableCaseItem.selectedContactId || null,
       reporter_name: parsedName,
@@ -1144,6 +1157,7 @@ export function MyWorkCasesWorkspace() {
                                                 </span>
                                                 <span className="truncate text-sm font-medium text-foreground inline-flex items-center gap-1">
                                                   {getItemSubject(item)}
+                                                  {item.visible_to_all && <Globe className="h-3.5 w-3.5 text-emerald-600 shrink-0" />}
                                                   {/* 3c: Link indicator */}
                                                   {linkedFile && (
                                                     <TooltipProvider delayDuration={200}>
@@ -1331,6 +1345,10 @@ export function MyWorkCasesWorkspace() {
                                                 ))}
                                               </ContextMenuSubContent>
                                             </ContextMenuSub>
+                                            <ContextMenuItem onClick={() => runAsync(() => handleQuickVisibilityChange(item, !item.visible_to_all))}>
+                                              <Globe className="mr-2 h-3 w-3" />
+                                              {item.visible_to_all ? "Nicht öffentlich machen" : "Öffentlich machen"}
+                                            </ContextMenuItem>
                                             <ContextMenuSeparator />
                                             {/* Link to file submenu */}
                                             <ContextMenuSub>

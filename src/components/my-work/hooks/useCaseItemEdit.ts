@@ -23,6 +23,7 @@ export type EditableCaseItem = {
   category: string;
   priority: string;
   assigneeIds: string[];
+  visibleToAll: boolean;
   timelineEvents: TimelineEvent[];
   interactionType: TimelineInteractionType | "";
   interactionContact: string;
