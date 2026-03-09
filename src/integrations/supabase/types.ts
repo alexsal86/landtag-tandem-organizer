@@ -2368,6 +2368,7 @@ export type Database = {
           follow_up_at: string | null
           id: string
           intake_payload: Json | null
+          is_public: boolean
           is_legal_relevant: boolean
           is_political_relevant: boolean
           last_modified_at: string
@@ -2402,6 +2403,7 @@ export type Database = {
           follow_up_at?: string | null
           id?: string
           intake_payload?: Json | null
+          is_public?: boolean
           is_legal_relevant?: boolean
           is_political_relevant?: boolean
           last_modified_at?: string
@@ -2436,6 +2438,7 @@ export type Database = {
           follow_up_at?: string | null
           id?: string
           intake_payload?: Json | null
+          is_public?: boolean
           is_legal_relevant?: boolean
           is_political_relevant?: boolean
           last_modified_at?: string
