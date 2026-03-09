@@ -1,43 +1,40 @@
 
-## Code-Qualität — Status
 
-### Erledigt
+## Edge Functions `verify_jwt`-Audit & Absicherung
 
-- **strictNullChecks: true** — aktiviert, alle Build-Fehler behoben
-- **noImplicitAny: true** — aktiviert, alle Build-Fehler behoben
-- **DOMPurify** als zentraler HTML-Sanitizer — alle `dangerouslySetInnerHTML` nutzen jetzt `sanitizeRichHtml()`
-- **Tenant-Access Guard** für Edge Functions — existiert in `supabase/functions/_shared/tenant-access.ts`
-- **ESLint `no-unused-vars: warn`** — aktiviert mit `argsIgnorePattern: '^_'`, erste Bereinigungsrunde in Pages/Hooks abgeschlossen
-- **Standalone `React`-Imports entfernt** — ~60 Dateien bereinigt
-- **State-Mutation fix** — `existingContacts.push()` → immutables Update in `useContactImport.ts`
-- **Non-null Assertion Guards** — `user!.id` / `currentTenant!.id` durch Early-Return-Guards ersetzt (~11 Dateien)
-- **Leere catch-Blöcke** — kritische Stellen in MatrixContext & DaySlipStore mit `debugConsole.warn` versehen
-- **JSON-Protocol Speaker-Normalisierung** — `speaker: string | { name }` korrekt normalisiert
+Aktuell haben **18 Functions** `verify_jwt = false` gesetzt. Davon hat nur `log-audit-event` einen funktionierenden Auth-Guard. Die restlichen 17 sind ungeschützt und damit öffentlich aufrufbar.
 
-### Noch offen
+### Klassifizierung
 
-1. **`strict: true` aktivieren** — beinhaltet `strictBindCallApply`, `strictFunctionTypes`, `strictPropertyInitialization`, `noImplicitThis`, `alwaysStrict`
-2. **Tote Imports weiter bereinigen** — ~65 standalone `React`-Imports in Components prüfen, weitere lucide-Icons und ungenutzte Variablen entfernen (ESLint-Regel zeigt Warnungen)
-3. **`no-explicit-any` schrittweise einführen** — nach Abschluss der `no-unused-vars`-Bereinigung
-4. **Edge Functions `verify_jwt`-Audit** — ~20 Functions mit `verify_jwt = false` klassifizieren und absichern
-5. **CORS einschränken** — `Access-Control-Allow-Origin: *` durch Allowlist ersetzen für sensible Operationen
+**Gruppe A — Cron/Interne Trigger** (dürfen nicht von Endnutzern aufgerufen werden):
+- `auto-archive-decisions`, `check-meeting-reminders`, `send-matrix-morning-greeting`, `process-scheduled-emails`, `create-daily-appointment-feedback`, `execute-annual-tasks`, `sync-holidays`, `run-scheduled-automation-rules`
+- **Maßnahme:** `requireServiceRole(req)` aus `_shared/security.ts` am Anfang prüfen. Supabase Cron sendet automatisch den Service-Role-Key.
 
----
+**Gruppe B — Token-/Secret-basierte Endpoints** (eigene Auth-Logik):
+- `process-decision-response` (Teilnehmer-Token), `automation-webhook` (Webhook-Secret), `matrix-decision-handler` (Matrix-Bot)
+- **Maßnahme:** Bestehende Token-Validierung beibehalten, aber `withSafeHandler` wrappen für sichere Fehlerbehandlung. Input-Validierung verschärfen.
 
-## No-Code Automations-Hub — Status
+**Gruppe C — WebSocket/Collaboration** (benötigen verify_jwt=false wegen Upgrade):
+- `yjs-collaboration`, `knowledge-collaboration`
+- **Maßnahme:** Intern den JWT aus dem Query-Parameter oder Header manuell validieren via `requireAuth`.
 
-### Erledigt
+**Gruppe D — Falsch konfiguriert** (sollten verify_jwt=true oder requireAuth haben):
+- `send-push-notification`, `fetch-karlsruhe-districts`
+- **Maßnahme:** Entweder `verify_jwt = true` setzen oder `requireAuth` Guard einbauen.
 
-- 4-Step Wizard (Grundlagen → Trigger → Bedingungen → Aktionen)
-- 10 Templates, Template-Galerie mit Suche/Filter
-- Kill-Switch, Dry-Run, Run-Now, Run-Historie mit Step-Logs
-- Error-Dashboard mit Retry, Regel-Versionierung, Import/Export
-- Rate Limiting, Idempotency, Audit-Trail
-- 5 Action-Typen, 5 Condition-Operators, 4 Trigger-Typen (inkl. Webhook)
-- Rollenbasierte Zugriffskontrolle
-- **Regel duplizieren** — Copy-Button pro Regel-Karte
-- **Nächste geplante Ausführung** — Badge für schedule-Regeln
-- **Regel-Statistiken** — Erfolgsrate (%) + Ø Laufzeit als Tooltip-Badge
-- **Notification-Kontext** — `rule_name`, `trigger_reason`, `run_id` in Notification-Payload
-- **Webhook-Trigger** — neue Edge Function `automation-webhook`, Secret-Authentifizierung, URL-Anzeige im Wizard
-- **Verschachtelte Condition-Gruppen** — rekursives AND/OR-Nesting bis 3 Ebenen im Wizard, backward-kompatible DB-Serialisierung
+### Umsetzungsschritte
+
+1. **Gruppe A (8 Functions):** `requireServiceRole`-Guard + `withSafeHandler` einbauen. Sofort 401 bei fehlendem/falschem Service-Role-Key.
+
+2. **Gruppe B (3 Functions):** `withSafeHandler` wrappen, Stack-Trace-Leaks entfernen, bestehende Auth-Logik validieren.
+
+3. **Gruppe C (2 Functions):** Manuellen `requireAuth`-Check einbauen bevor die WebSocket-Verbindung akzeptiert wird.
+
+4. **Gruppe D (2 Functions):** `verify_jwt = true` in `config.toml` setzen ODER `requireAuth`-Guard einbauen.
+
+5. **`plan.md` aktualisieren:** Punkt 4 ("Edge Functions verify_jwt-Audit") als erledigt markieren.
+
+### Ergebnis
+
+Alle 18 ungesicherten Functions erhalten einen passenden Guard. Keine Function ist mehr ohne Authentifizierung aufrufbar, und keine gibt Stack-Traces an Clients zurück.
+
