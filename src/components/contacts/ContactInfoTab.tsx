@@ -216,4 +216,6 @@ export const ContactInfoTab: React.FC<ContactInfoTabProps> = React.memo(({ conta
       {contact.last_contact && (<Card><CardContent className="p-4"><h3 className="font-semibold mb-2">Letzter Kontakt</h3><p className="text-sm text-muted-foreground">{contact.last_contact}</p></CardContent></Card>)}
     </div>
   );
-};
+});
+
+ContactInfoTab.displayName = 'ContactInfoTab';

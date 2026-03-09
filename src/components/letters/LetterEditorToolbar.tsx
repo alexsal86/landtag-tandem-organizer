@@ -224,4 +224,6 @@ export const LetterEditorToolbar: React.FC<LetterEditorToolbarProps> = React.mem
       </div>
     </div>
   );
-};
+});
+
+LetterEditorToolbar.displayName = 'LetterEditorToolbar';

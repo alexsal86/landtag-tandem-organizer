@@ -165,7 +165,9 @@ export const ArchivedMessageCard: React.FC<{ message: Message; userId?: string }
       </div>
     </div>
   </div>
-);
+));
+
+ArchivedMessageCard.displayName = 'ArchivedMessageCard';
 
 export const PaginationControls: React.FC<{
   currentPage: number;
