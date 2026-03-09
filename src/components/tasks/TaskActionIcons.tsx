@@ -74,6 +74,7 @@ export function TaskActionIcons({
               <Button
                 variant="ghost"
                 size="icon"
+                aria-label={assignTooltipText || "Zuweisen"}
                 className={cn(
                   "h-6 w-6 hover:bg-muted/80 rounded-full",
                   hasMultipleAssignees && "text-cyan-600"
