@@ -194,7 +194,7 @@ export const AppHeader = ({ onOpenSearch }: AppHeaderProps) => {
         {/* Online Users */}
         <Popover>
           <PopoverTrigger asChild>
-            <Button variant="ghost" size="sm" className="relative h-8 w-8 p-0">
+            <Button variant="ghost" size="sm" className="relative h-8 w-8 p-0" aria-label="Online-Benutzer anzeigen">
               {onlineUsers.length === 0 ? (
                 <div className="h-6 w-6 rounded-full bg-muted border-2 border-muted-foreground/30 flex items-center justify-center">
                   <span className="text-muted-foreground text-[10px]">○</span>
