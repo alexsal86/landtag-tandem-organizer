@@ -168,6 +168,7 @@ export function TaskActionIcons({
               <Button
                 variant="ghost"
                 size="icon"
+                aria-label="Jour Fixe"
                 className={cn(
                   "h-6 w-6 hover:bg-muted/80 rounded-full",
                   hasMeetingLink && "text-purple-600"
