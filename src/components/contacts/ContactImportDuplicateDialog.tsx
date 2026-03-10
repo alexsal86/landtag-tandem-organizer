@@ -13,6 +13,7 @@ import { AlertCircle, Users, Mail, Phone, Building } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 
 interface Contact {
+  id: string;
   name: string;
   email?: string | null;
   phone?: string | null;
@@ -33,7 +34,7 @@ interface ContactImportDuplicateDialogProps {
   onOverwrite: (contactId: string) => void;
   onMerge: (contactId: string) => void;
   onImportAnyway: () => void;
-  onApplyToAll: (action: 'skip' | 'overwrite' | 'import') => void;
+  onApplyToAll: (action: 'skip' | 'overwrite' | 'merge' | 'import') => void;
 }
 
 export function ContactImportDuplicateDialog({
@@ -168,10 +169,27 @@ export function ContactImportDuplicateDialog({
                 Trotzdem importieren
               </Button>
             </div>
+
+            <div className="grid grid-cols-2 gap-2">
+              <Button
+                variant="outline"
+                onClick={() => topDuplicate && onOverwrite(topDuplicate.contact.id)}
+                disabled={!topDuplicate}
+              >
+                Überschreiben
+              </Button>
+              <Button
+                variant="secondary"
+                onClick={() => topDuplicate && onMerge(topDuplicate.contact.id)}
+                disabled={!topDuplicate}
+              >
+                Zusammenführen
+              </Button>
+            </div>
             
             <div className="border-t pt-2 mt-2">
               <p className="text-xs text-muted-foreground mb-2">Aktion auf alle anwenden:</p>
-              <div className="grid grid-cols-3 gap-2">
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
                 <Button
                   size="sm"
                   variant="outline"
@@ -179,6 +197,22 @@ export function ContactImportDuplicateDialog({
                   className="text-xs"
                 >
                   Alle überspringen
+                </Button>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => onApplyToAll('overwrite')}
+                  className="text-xs"
+                >
+                  Alle überschreiben
+                </Button>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => onApplyToAll('merge')}
+                  className="text-xs"
+                >
+                  Alle zusammenführen
                 </Button>
                 <Button
                   size="sm"
