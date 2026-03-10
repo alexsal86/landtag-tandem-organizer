@@ -6,6 +6,7 @@ import { formatDistanceToNow } from "date-fns";
 import { de } from "date-fns/locale";
 import { EmployeeMeetingRequestDialog } from "@/components/EmployeeMeetingRequestDialog";
 import { EmployeeMeetingHistory } from "@/components/EmployeeMeetingHistory";
+import { Loader2 } from "lucide-react";
 import { EmployeeSettingsRow, LeaveAgg, Profile } from "./types";
 
 interface EmployeeSelfViewProps {
@@ -28,6 +29,12 @@ export function EmployeeSelfView({ loading, selfSettings, selfLeaveAgg, selfProf
       <header>
         <h1 className="text-2xl font-semibold">Mitarbeiter</h1>
         <p className="text-muted-foreground">Ihre Einstellungen & Abwesenheiten</p>
+        {loading && (
+          <div className="mt-2 inline-flex items-center gap-2 text-sm text-muted-foreground">
+            <Loader2 className="h-4 w-4 animate-spin" />
+            Lade Ihre Mitarbeiterdaten ...
+          </div>
+        )}
       </header>
 
       <section className="px-4 sm:px-6 grid grid-cols-1 md:grid-cols-4 gap-4">

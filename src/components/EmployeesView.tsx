@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Calendar, BarChart3, Clock } from "lucide-react";
+import { Calendar, BarChart3, Clock, Loader2 } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "./ui/dialog";
 import { EmployeeMeetingScheduler } from "./EmployeeMeetingScheduler";
@@ -61,6 +61,12 @@ export function EmployeesView() {
           <div>
             <h1 className="text-2xl font-semibold">Mitarbeiterverwaltung</h1>
             <p className="text-muted-foreground">Überblick über Mitarbeitende, Stunden & Abwesenheiten</p>
+            {data.loading && (
+              <div className="mt-2 inline-flex items-center gap-2 text-sm text-muted-foreground">
+                <Loader2 className="h-4 w-4 animate-spin" />
+                Lade Mitarbeiterdaten ...
+              </div>
+            )}
           </div>
           <div className="flex items-center gap-2 flex-wrap">
             <Button variant="outline" onClick={() => setYearlyStatsOpen(true)} className="flex items-center gap-2">
