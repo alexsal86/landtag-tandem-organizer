@@ -103,7 +103,7 @@ function NoteTaskStatus({ taskId, onNotFound }: { taskId: string; onNotFound?: (
   return (
     <div 
       className="text-xs text-muted-foreground mt-1 space-y-1 cursor-pointer hover:bg-muted/30 rounded p-1 -m-1 transition-colors"
-      onClick={() => navigate(`/tasks?id=${taskId}`)}
+      onClick={() => navigate(`/tasks?highlight=${taskId}`)}
     >
       <p className="truncate font-medium text-foreground">{task.title}</p>
       <div className="flex items-center gap-2 flex-wrap">
@@ -167,7 +167,7 @@ function NoteMeetingStatus({ meetingId, onNotFound }: { meetingId: string; onNot
   return (
     <div 
       className="text-xs text-muted-foreground mt-1 space-y-1 cursor-pointer hover:bg-muted/30 rounded p-1 -m-1 transition-colors"
-      onClick={() => navigate(`/meetings?id=${meetingId}`)}
+      onClick={() => navigate(`/meetings?highlight=${meetingId}`)}
     >
       <p className="truncate font-medium text-foreground">{meeting.title}</p>
       <div className="flex items-center gap-2 flex-wrap">
@@ -243,7 +243,7 @@ function NoteCaseItemStatus({ caseItemId, onNotFound }: { caseItemId: string; on
   return (
     <div 
       className="text-xs text-muted-foreground mt-1 space-y-1 cursor-pointer hover:bg-muted/30 rounded p-1 -m-1 transition-colors"
-      onClick={() => navigate(`/vorgaenge/${caseItemId}`)}
+      onClick={() => navigate(`/mywork?tab=cases&highlight=${caseItemId}`)}
     >
       <p className="truncate font-medium text-foreground">{caseItem.subject}</p>
       <div className="flex items-center gap-2 flex-wrap">
@@ -293,7 +293,7 @@ export function NoteLinkedDetails({
               </div>
               <ArrowRight 
                 className="h-4 w-4 text-blue-600 opacity-0 group-hover/task:opacity-100 transition-opacity cursor-pointer"
-                onClick={() => navigate(`/tasks?id=${taskId}`)}
+                onClick={() => navigate(`/tasks?highlight=${taskId}`)}
               />
             </div>
             <NoteTaskStatus taskId={taskId} onNotFound={onTaskNotFound} />
@@ -324,7 +324,7 @@ export function NoteLinkedDetails({
               </div>
               <ArrowRight 
                 className="h-4 w-4 text-purple-600 opacity-0 group-hover/decision:opacity-100 transition-opacity cursor-pointer"
-                onClick={() => navigate(`/decisions?id=${decisionId}`)}
+                onClick={() => navigate(`/decisions?highlight=${decisionId}`)}
               />
             </div>
             <div className="mt-1">
@@ -360,7 +360,7 @@ export function NoteLinkedDetails({
               </div>
               <ArrowRight 
                 className="h-4 w-4 text-teal-600 opacity-0 group-hover/case:opacity-100 transition-opacity cursor-pointer"
-                onClick={() => navigate(`/vorgaenge/${caseItemId}`)}
+                onClick={() => navigate(`/mywork?tab=cases&highlight=${caseItemId}`)}
               />
             </div>
             <NoteCaseItemStatus caseItemId={caseItemId} onNotFound={onCaseItemNotFound} />
@@ -391,7 +391,7 @@ export function NoteLinkedDetails({
               </div>
               <ArrowRight 
                 className="h-4 w-4 text-emerald-600 opacity-0 group-hover/meeting:opacity-100 transition-opacity cursor-pointer"
-                onClick={() => navigate(`/meetings?id=${meetingId}`)}
+                onClick={() => navigate(`/meetings?highlight=${meetingId}`)}
               />
             </div>
             <NoteMeetingStatus meetingId={meetingId} onNotFound={onMeetingNotFound} />

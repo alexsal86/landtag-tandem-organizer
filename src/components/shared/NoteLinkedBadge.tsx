@@ -15,10 +15,10 @@ export function NoteLinkedBadge({ type, id, label, className }: NoteLinkedBadgeP
   
   const getPath = () => {
     switch (type) {
-      case 'task': return `/tasks?id=${id}`;
-      case 'decision': return `/mywork?tab=decisions&id=${id}`;
-      case 'case_item': return `/vorgaenge/${id}`;
-      case 'meeting': return `/meetings?id=${id}`;
+      case 'task': return `/tasks?highlight=${id}`;
+      case 'decision': return `/decisions?highlight=${id}`;
+      case 'case_item': return `/mywork?tab=cases&highlight=${id}`;
+      case 'meeting': return `/meetings?highlight=${id}`;
     }
   };
   
