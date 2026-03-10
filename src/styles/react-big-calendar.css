@@ -199,6 +199,12 @@
   min-height: 0;
 }
 
+/* 8px overhang: day-column gridlines extend into gutter area (Google style) */
+.rbc-time-content > .rbc-day-slot:first-of-type {
+  margin-left: -8px;
+  padding-left: 8px;
+}
+
 /* ── Time gutter: labels ON the line (Google style) ── */
 .rbc-time-gutter .rbc-timeslot-group {
   position: relative;
