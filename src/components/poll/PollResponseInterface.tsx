@@ -40,6 +40,13 @@ interface Response {
   comment?: string;
 }
 
+const isAbortError = (error: unknown) => {
+  if (!error || typeof error !== 'object') return false;
+
+  const abortError = error as { name?: string; code?: string };
+  return abortError.name === 'AbortError' || abortError.code === 'ABORT_ERR';
+};
+
 interface PollResponseInterfaceProps {
   pollId: string;
   token?: string;
@@ -58,6 +65,9 @@ export const PollResponseInterface = ({ pollId, token, participantId, isPreview 
   const [generalComment, setGeneralComment] = useState('');
 
   useEffect(() => {
+    let isEffectActive = true;
+    const abortController = new AbortController();
+
     const loadPollData = async () => {
       try {
         // Load poll information
@@ -65,6 +75,7 @@ export const PollResponseInterface = ({ pollId, token, participantId, isPreview 
           .from('appointment_polls')
           .select('id, title, description, deadline, status')
           .eq('id', pollId)
+          .abortSignal(abortController.signal)
           .maybeSingle();
 
         if (pollError) {
@@ -74,6 +85,7 @@ export const PollResponseInterface = ({ pollId, token, participantId, isPreview 
         if (!pollData) {
           throw new Error('Abstimmung nicht gefunden oder ungültiger Link.');
         }
+        if (!isEffectActive) return;
         setPoll(pollData);
 
         // Load time slots
@@ -81,12 +93,14 @@ export const PollResponseInterface = ({ pollId, token, participantId, isPreview 
           .from('poll_time_slots')
           .select('id, start_time, end_time, order_index')
           .eq('poll_id', pollId)
+          .abortSignal(abortController.signal)
           .order('order_index');
 
         if (slotsError) {
           debugConsole.error('Time slots loading error:', slotsError);
           throw slotsError;
         }
+        if (!isEffectActive) return;
         setTimeSlots(slotsData || []);
 
         // Load or create participant
@@ -98,6 +112,7 @@ export const PollResponseInterface = ({ pollId, token, participantId, isPreview 
             .from('poll_participants')
             .select('id, name, email, is_external, token')
             .eq('id', participantId)
+            .abortSignal(abortController.signal)
             .single();
 
           if (participantError) throw participantError;
@@ -109,6 +124,7 @@ export const PollResponseInterface = ({ pollId, token, participantId, isPreview 
             .select('id, name, email, is_external, token')
             .eq('poll_id', pollId)
             .eq('token', token)
+            .abortSignal(abortController.signal)
             .maybeSingle();
 
           if (participantError) throw participantError;
@@ -120,6 +136,7 @@ export const PollResponseInterface = ({ pollId, token, participantId, isPreview 
             .select('id, name, email, is_external, token')
             .eq('poll_id', pollId)
             .eq('is_external', true)
+            .abortSignal(abortController.signal)
             .maybeSingle();
 
           if (!participantError && participantData) {
@@ -127,6 +144,7 @@ export const PollResponseInterface = ({ pollId, token, participantId, isPreview 
           }
         }
 
+        if (!isEffectActive) return;
         setParticipant(currentParticipant);
 
         // Load existing responses
@@ -135,7 +153,8 @@ export const PollResponseInterface = ({ pollId, token, participantId, isPreview 
             .from('poll_responses')
             .select('id, time_slot_id, status, comment')
             .eq('poll_id', pollId)
-            .eq('participant_id', currentParticipant.id);
+            .eq('participant_id', currentParticipant.id)
+            .abortSignal(abortController.signal);
 
           if (!responsesError && responsesData) {
             const responsesMap: Record<string, Response> = {};
@@ -146,11 +165,16 @@ export const PollResponseInterface = ({ pollId, token, participantId, isPreview 
                 comment: response.comment || ''
               };
             });
+            if (!isEffectActive) return;
             setResponses(responsesMap);
           }
         }
 
       } catch (error) {
+        if (isAbortError(error)) {
+          return;
+        }
+
         debugConsole.error('Error loading poll data:', error);
         toast({
           title: "Fehler",
@@ -158,11 +182,18 @@ export const PollResponseInterface = ({ pollId, token, participantId, isPreview 
           variant: "destructive",
         });
       } finally {
-        setLoading(false);
+        if (isEffectActive) {
+          setLoading(false);
+        }
       }
     };
 
     loadPollData();
+
+    return () => {
+      isEffectActive = false;
+      abortController.abort();
+    };
   }, [pollId, token, participantId, toast]);
 
   const updateResponse = (timeSlotId: string, status: 'available' | 'tentative' | 'unavailable') => {
