@@ -188,6 +188,15 @@ export const PollResultsDashboard = ({ pollId, onConfirmSlot }: PollResultsDashb
       const slot = slotResults.find(r => r.timeSlot.id === slotId)?.timeSlot;
       if (!slot) return;
 
+      if (!currentTenant?.id) {
+        toast({
+          title: "Hinweis",
+          description: "Kein Tenant-Kontext verfügbar",
+          variant: "destructive",
+        });
+        return;
+      }
+
       const { data: appointment, error: appointmentError } = await supabase
         .from('appointments')
         .insert([{
@@ -200,7 +209,7 @@ export const PollResultsDashboard = ({ pollId, onConfirmSlot }: PollResultsDashb
           category: 'meeting',
           status: 'confirmed',
           priority: 'high',
-          tenant_id: currentTenant?.id || 'default'
+          tenant_id: currentTenant.id
         }])
         .select()
         .single();
