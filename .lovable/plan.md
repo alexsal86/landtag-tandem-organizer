@@ -1,43 +1,39 @@
 
-## Code-Qualität — Status
 
-### Erledigt
+## Kalender-UI Überarbeitung (8 Punkte)
 
-- **strictNullChecks: true** — aktiviert, alle Build-Fehler behoben
-- **noImplicitAny: true** — aktiviert, alle Build-Fehler behoben
-- **DOMPurify** als zentraler HTML-Sanitizer — alle `dangerouslySetInnerHTML` nutzen jetzt `sanitizeRichHtml()`
-- **Tenant-Access Guard** für Edge Functions — existiert in `supabase/functions/_shared/tenant-access.ts`
-- **ESLint `no-unused-vars: warn`** — aktiviert mit `argsIgnorePattern: '^_'`, erste Bereinigungsrunde in Pages/Hooks abgeschlossen
-- **Standalone `React`-Imports entfernt** — ~60 Dateien bereinigt
-- **State-Mutation fix** — `existingContacts.push()` → immutables Update in `useContactImport.ts`
-- **Non-null Assertion Guards** — `user!.id` / `currentTenant!.id` durch Early-Return-Guards ersetzt (~11 Dateien)
-- **Leere catch-Blöcke** — kritische Stellen in MatrixContext & DaySlipStore mit `debugConsole.warn` versehen
-- **JSON-Protocol Speaker-Normalisierung** — `speaker: string | { name }` korrekt normalisiert
+### 1. Uhrzeiten auf der Linie positionieren
+Die Uhrzeiten-Labels im Time-Gutter werden per `transform: translateY(-50%)` bereits verschoben. Zusätzlich muss die vertikale Ausrichtung so angepasst werden, dass die Labels exakt auf der Trennlinie sitzen — wie bei Google Kalender. Der `.rbc-label` bekommt `position: relative` und die Timeslot-Gruppe ein korrektes Padding, damit der Text mittig auf der Linie liegt.
 
-### Noch offen
+### 2. Header-Ebenen korrigieren
+Aktuell gibt es doppelte CSS-Definitionen für `.rbc-time-view .rbc-header`, `.rbc-custom-week-header`, etc. (Zeilen 215-254 und 256-295). Die Duplikate werden entfernt. Der allgemeine `.rbc-header` (Zeile 20-26) mit `background: hsl(var(--accent))` überschreibt die Time-View-Header-Styles — dieser muss auf den Month-View beschränkt werden, damit sich die Ebenen nicht vermischen.
 
-1. ~~**`strict: true` aktivieren**~~ ✅ — war bereits aktiv in `tsconfig.app.json` inkl. `strictNullChecks` und `noImplicitAny`
-2. **Tote Imports weiter bereinigen** — ~65 standalone `React`-Imports in Components prüfen, weitere lucide-Icons und ungenutzte Variablen entfernen (ESLint-Regel zeigt Warnungen)
-3. **`no-explicit-any` schrittweise einführen** — nach Abschluss der `no-unused-vars`-Bereinigung
-4. ~~**Edge Functions `verify_jwt`-Audit**~~ ✅ — alle 18 Functions mit `verify_jwt = false` klassifiziert und abgesichert: Cron-Functions mit `requireServiceRole`, WebSocket mit `requireAuth`, Token-Endpoints mit eigener Validierung, `send-push-notification` + `fetch-karlsruhe-districts` mit Service-Role-Guard
-5. **CORS einschränken** — `Access-Control-Allow-Origin: *` durch Allowlist ersetzen für sensible Operationen
+### 3. Kalender-Refresh optimieren
+`useCalendarData` nutzt `useState` + `useEffect` mit direktem `setLoading(true)` bei jedem Fetch. Beim Tab-Wechsel im Browser triggert der `useEffect` erneut. Lösung: Umstellung auf `useQuery` (React Query) mit `staleTime` von z.B. 5 Minuten, sodass bei Rückkehr zum Tab kein erneuter Fetch nötig ist, solange die Daten frisch sind. `refetchOnWindowFocus: false` verhindert den automatischen Refresh.
 
----
+### 4. Aktuelle-Zeit-Linie mit Punkt
+CSS für `.rbc-current-time-indicator`: Höhe auf 2px belassen, aber ein `::before` Pseudo-Element hinzufügen — ein roter Kreis (8px Durchmesser) am linken Rand. Farbe bleibt `hsl(var(--destructive))`.
 
-## No-Code Automations-Hub — Status
+### 5. Abstand nach unten verkleinern
+In `CalendarView.tsx` hat der Kalender-Container `p-6 pr-0`. Das Padding-Bottom wird auf `pb-2` reduziert.
 
-### Erledigt
+### 6. Scrollbar ohne Pfeile (Google-Style)
+Custom CSS mit `scrollbar-width: thin` und WebKit-Scrollbar-Styles: Pfeile (`scrollbar-button`) auf `display: none`, schmaler Track, halbtransparenter Thumb mit Rundung.
 
-- 4-Step Wizard (Grundlagen → Trigger → Bedingungen → Aktionen)
-- 10 Templates, Template-Galerie mit Suche/Filter
-- Kill-Switch, Dry-Run, Run-Now, Run-Historie mit Step-Logs
-- Error-Dashboard mit Retry, Regel-Versionierung, Import/Export
-- Rate Limiting, Idempotency, Audit-Trail
-- 5 Action-Typen, 5 Condition-Operators, 4 Trigger-Typen (inkl. Webhook)
-- Rollenbasierte Zugriffskontrolle
-- **Regel duplizieren** — Copy-Button pro Regel-Karte
-- **Nächste geplante Ausführung** — Badge für schedule-Regeln
-- **Regel-Statistiken** — Erfolgsrate (%) + Ø Laufzeit als Tooltip-Badge
-- **Notification-Kontext** — `rule_name`, `trigger_reason`, `run_id` in Notification-Payload
-- **Webhook-Trigger** — neue Edge Function `automation-webhook`, Secret-Authentifizierung, URL-Anzeige im Wizard
-- **Verschachtelte Condition-Gruppen** — rekursives AND/OR-Nesting bis 3 Ebenen im Wizard, backward-kompatible DB-Serialisierung
+### 7. Toolbar über dem Kalender: Heute + Pfeile + Monat + KW
+Die bestehende `CalendarHeader`-Sidebar (links, 320px) wird grundlegend umgebaut. Der Navigationsbereich (Heute-Button, Pfeile, Monatsanzeige, KW) wird aus der Sidebar herausgelöst und als horizontale Toolbar über dem Kalender platziert. Layout:
+- Links: "Heute"-Button, dann `<` `>` Pfeile, dann Monatsname in großer Schrift, dann "KW xx"
+- Die Sidebar behält nur "Neuer Termin" und "Abstimmungen"
+
+Konkret: In `CalendarView.tsx` wird über der Card eine neue Toolbar-Zeile eingefügt. Die KW-Berechnung nutzt `getISOWeek` aus date-fns.
+
+### 8. Tag/Woche/Monat/Agenda als Dropdown rechts
+Statt der 4 Buttons in der Sidebar wird ein `Select` (Radix) oder `DropdownMenu` am rechten Rand der neuen Toolbar platziert. Labels: Tag, Woche, Monat, Agenda.
+
+### Dateien die geändert werden
+
+- **`src/components/CalendarView.tsx`**: Neue Toolbar über dem Kalender (Heute, Pfeile, Monat, KW, View-Dropdown). Sidebar vereinfachen. Padding anpassen.
+- **`src/components/calendar/CalendarHeader.tsx`**: Navigation und View-Buttons entfernen, nur Aktions-Buttons behalten.
+- **`src/styles/react-big-calendar.css`**: Doppelte Definitionen entfernen, Header-Ebenen fixen, Uhrzeit-Positionierung, Zeitlinie mit Punkt, Scrollbar-Styling.
+- **`src/components/calendar/hooks/useCalendarData.ts`**: Umstellung auf React Query mit `staleTime` und `refetchOnWindowFocus: false`.
+
