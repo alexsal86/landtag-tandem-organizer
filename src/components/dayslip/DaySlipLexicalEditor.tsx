@@ -30,13 +30,25 @@ import { parseRuleLine } from "./dayslipTypes";
 
 // ─── Lexical Plugins ─────────────────────────────────────────────────────────
 
-function InitialContentPlugin({ initialHtml, initialNodes, dayKey }: { initialHtml: string; initialNodes?: string; dayKey: string }) {
+/**
+ * Lädt den initialen Editor-Inhalt genau einmal pro Rehydrate-Key.
+ *
+ * Wichtig: Solange `dayKey` (und optional `forceReloadToken`) gleich bleiben,
+ * wird absichtlich kein erneutes Reload ausgeführt. So überschreiben laufende
+ * lokale Edits nicht versehentlich den aktuellen Editor-State.
+ *
+ * Falls externe Syncs denselben `dayKey` mit neuem Inhalt liefern, kann über
+ * `forceReloadToken` eine explizite Rehydrate-Strategie implementiert werden
+ * (z. B. Versionsnummer oder Content-Hash).
+ */
+function InitialContentPlugin({ initialHtml, initialNodes, dayKey, forceReloadToken }: { initialHtml: string; initialNodes?: string; dayKey: string; forceReloadToken?: string | number }) {
   const [editor] = useLexicalComposerContext();
   const loadedForDayRef = useRef<string | null>(null);
+  const reloadKey = `${dayKey}::${forceReloadToken ?? ""}`;
 
   useEffect(() => {
-    if (loadedForDayRef.current === dayKey) return;
-    loadedForDayRef.current = dayKey;
+    if (loadedForDayRef.current === reloadKey) return;
+    loadedForDayRef.current = reloadKey;
     editor.update(() => {
       const root = $getRoot();
       root.clear();
@@ -52,7 +64,7 @@ function InitialContentPlugin({ initialHtml, initialNodes, dayKey }: { initialHt
       }
       root.append($createDaySlipLineNode());
     });
-  }, [dayKey, editor, initialHtml, initialNodes]);
+  }, [reloadKey, editor, initialHtml, initialNodes]);
 
   return null;
 }
@@ -129,6 +141,8 @@ export interface DaySlipEditorProps {
   initialHtml: string;
   initialNodes?: string;
   dayKey: string;
+  /** Optionales Rehydrate-Token für explizite Reloads bei unverändertem `dayKey`. */
+  forceReloadToken?: string | number;
   resolveMode: boolean;
   editorConfig: Parameters<typeof LexicalComposer>[0]["initialConfig"];
   onEditorChange: (editorState: EditorState, editor: LexicalEditor) => void;
@@ -140,7 +154,7 @@ export interface DaySlipEditorProps {
 }
 
 export const DaySlipLexicalEditor = memo(function DaySlipLexicalEditor(props: DaySlipEditorProps) {
-  const { initialHtml, initialNodes, dayKey, resolveMode, editorConfig, onEditorChange, onEditorReady, onEditorClick, onEditorContextMenu, onDrop, hidden } = props;
+  const { initialHtml, initialNodes, dayKey, forceReloadToken, resolveMode, editorConfig, onEditorChange, onEditorReady, onEditorClick, onEditorContextMenu, onDrop, hidden } = props;
   const [isFocused, setIsFocused] = useState(false);
   const handleFocusChange = useCallback((focused: boolean) => setIsFocused(focused), []);
 
@@ -172,7 +186,7 @@ export const DaySlipLexicalEditor = memo(function DaySlipLexicalEditor(props: Da
         <HorizontalRulePlugin />
         <DaySlipEnterBehaviorPlugin />
         <FocusPlugin onFocusChange={handleFocusChange} />
-        <InitialContentPlugin initialHtml={initialHtml} initialNodes={initialNodes} dayKey={dayKey} />
+        <InitialContentPlugin initialHtml={initialHtml} initialNodes={initialNodes} dayKey={dayKey} forceReloadToken={forceReloadToken} />
       </LexicalComposer>
     </div>
   );
