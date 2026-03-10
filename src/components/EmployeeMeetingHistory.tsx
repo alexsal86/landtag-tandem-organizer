@@ -44,6 +44,7 @@ export function EmployeeMeetingHistory({ employeeId, showFilters = true, refresh
   const [meetings, setMeetings] = useState<Meeting[]>([]);
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [typeFilter, setTypeFilter] = useState<string>("all");
+  const [deletingMeetingId, setDeletingMeetingId] = useState<string | null>(null);
 
   const loadMeetings = useCallback(async () => {
     if (!user || !currentTenant) return;
@@ -139,15 +140,13 @@ export function EmployeeMeetingHistory({ employeeId, showFilters = true, refresh
 
   const handleDeleteMeeting = async (meetingId: string, e: React.MouseEvent) => {
     e.stopPropagation();
+    if (deletingMeetingId) return;
+
+    setDeletingMeetingId(meetingId);
     try {
-      // Delete related data first
-      await supabase.from("employee_meeting_action_items").delete().eq("meeting_id", meetingId);
-      
-      
-      const { error } = await supabase
-        .from("employee_meetings")
-        .delete()
-        .eq("id", meetingId);
+      const { error } = await supabase.rpc("delete_employee_meeting", {
+        p_meeting_id: meetingId,
+      });
 
       if (error) throw error;
 
@@ -160,9 +159,11 @@ export function EmployeeMeetingHistory({ employeeId, showFilters = true, refresh
       debugConsole.error("Error deleting meeting:", error);
       toast({
         title: "Fehler",
-        description: "Das Gespräch konnte nicht gelöscht werden.",
+        description: "Das Gespräch konnte nicht gelöscht werden. Es wurden keine Teil-Löschungen übernommen.",
         variant: "destructive",
       });
+    } finally {
+      setDeletingMeetingId(null);
     }
   };
 
@@ -324,8 +325,13 @@ export function EmployeeMeetingHistory({ employeeId, showFilters = true, refresh
                             size="icon"
                             className="h-8 w-8 text-muted-foreground hover:text-destructive"
                             onClick={(e) => e.stopPropagation()}
+                            disabled={deletingMeetingId === meeting.id}
                           >
-                            <Trash2 className="h-4 w-4" />
+                            {deletingMeetingId === meeting.id ? (
+                              <Loader2 className="h-4 w-4 animate-spin" />
+                            ) : (
+                              <Trash2 className="h-4 w-4" />
+                            )}
                           </Button>
                         </AlertDialogTrigger>
                         <AlertDialogContent onClick={(e) => e.stopPropagation()}>
@@ -340,8 +346,9 @@ export function EmployeeMeetingHistory({ employeeId, showFilters = true, refresh
                             <AlertDialogAction
                               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
                               onClick={(e) => handleDeleteMeeting(meeting.id, e)}
+                              disabled={deletingMeetingId === meeting.id}
                             >
-                              Löschen
+                              {deletingMeetingId === meeting.id ? "Lösche..." : "Löschen"}
                             </AlertDialogAction>
                           </AlertDialogFooter>
                         </AlertDialogContent>

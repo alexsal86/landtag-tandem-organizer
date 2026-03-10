@@ -68,18 +68,7 @@ export function EmployeeMeetingRequestManager({ onPendingCountChange, onMeetingS
     setSchedulerOpen(true);
   };
 
-  const handleSchedulerClose = async (meetingId?: string) => {
-    if (scheduledRequestId) {
-      await supabase
-        .from("employee_meeting_requests")
-        .update({
-          status: "completed",
-          updated_at: new Date().toISOString(),
-          scheduled_meeting_id: meetingId ?? null,
-        })
-        .eq("id", scheduledRequestId);
-    }
-
+  const handleSchedulerClose = async () => {
     setSchedulerOpen(false);
     setSelectedEmployee(null);
     setScheduledRequestId(null);
@@ -301,6 +290,7 @@ export function EmployeeMeetingRequestManager({ onPendingCountChange, onMeetingS
         <EmployeeMeetingScheduler
           employeeId={selectedEmployee.id}
           employeeName={selectedEmployee.name}
+          requestId={scheduledRequestId}
           open={schedulerOpen}
           onOpenChange={setSchedulerOpen}
           onScheduled={handleSchedulerClose}

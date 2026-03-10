@@ -17,6 +17,7 @@ export function useEmployeesData() {
   const { toast } = useToast();
 
   const [isAdmin, setIsAdmin] = useState(false);
+  const [roleResolved, setRoleResolved] = useState(false);
   const [loading, setLoading] = useState(true);
   const [employees, setEmployees] = useState<Employee[]>([]);
   const [leaves, setLeaves] = useState<Record<string, LeaveAgg>>({});
@@ -42,8 +43,16 @@ export function useEmployeesData() {
 
   // Admin check
   useEffect(() => {
-    if (!user) return;
+    if (!user) {
+      setIsAdmin(false);
+      setRoleResolved(true);
+      setLoading(false);
+      return;
+    }
+
     const run = async () => {
+      setRoleResolved(false);
+      setLoading(true);
       const { data: roleData, error } = await supabase
         .from("user_roles")
         .select("role")
@@ -51,12 +60,15 @@ export function useEmployeesData() {
         .single();
       if (error) debugConsole.error(error);
       setIsAdmin(roleData?.role === "abgeordneter");
+      setRoleResolved(true);
     };
     run();
   }, [user]);
 
   // Load admin data
   useEffect(() => {
+    if (!roleResolved || !isAdmin) return;
+
     const load = async () => {
       if (!user || !currentTenant) return;
       setLoading(true);
@@ -204,7 +216,7 @@ export function useEmployeesData() {
 
   // Load self data for non-admin users
   useEffect(() => {
-    if (!user || isAdmin) return;
+    if (!roleResolved || !user || isAdmin) return;
 
     const checkEmployeeStatus = async () => {
       const { data: hasSettings } = await supabase
@@ -236,8 +248,6 @@ export function useEmployeesData() {
 
         if (!settingsRes.data) {
           toast({ title: "Keine Mitarbeitereinstellungen", description: "Falls der Administrator soeben Daten eingetragen hat, laden Sie die Seite neu (F5).", variant: "destructive" });
-        } else {
-          toast({ title: "Daten geladen", description: "Mitarbeitereinstellungen erfolgreich geladen." });
         }
 
         setSelfSettings((settingsRes.data as EmployeeSettingsRow) || null);
@@ -268,7 +278,7 @@ export function useEmployeesData() {
     };
 
     checkEmployeeStatus();
-  }, [user, isAdmin, toast]);
+  }, [user, isAdmin, roleResolved, toast]);
 
   return {
     isAdmin, loading, employees, setEmployees, leaves, pendingLeaves, setPendingLeaves,

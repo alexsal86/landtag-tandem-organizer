@@ -10900,6 +10900,20 @@ export type Database = {
         }
         Returns: string
       }
+      reconcile_employee_meeting_requests: {
+        Args: {
+          p_employee_id?: string | null
+          p_explicit_request_id?: string | null
+          p_meeting_id?: string | null
+          p_source?: string
+          p_tenant_id: string
+          p_time_window_days?: number
+        }
+        Returns: {
+          linked_meeting_id: string
+          updated_request_id: string
+        }[]
+      }
       create_poll_notification: {
         Args: {
           _notification_type: string
@@ -10907,6 +10921,10 @@ export type Database = {
           _poll_id: string
         }
         Returns: string
+      }
+      delete_employee_meeting: {
+        Args: { p_meeting_id: string }
+        Returns: undefined
       }
       execute_archive_sick_days: {
         Args: { p_tenant_id: string }

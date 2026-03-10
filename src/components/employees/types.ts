@@ -59,6 +59,94 @@ export type LeaveAgg = {
   pending: Record<LeaveType, number>;
 };
 
+export type EmployeeMeetingType =
+  | "annual_review"
+  | "probation_review"
+  | "development_review"
+  | "regular"
+  | "probation"
+  | "development"
+  | "performance"
+  | "conflict";
+
+export type EmployeeMeetingStatus =
+  | "scheduled"
+  | "in_progress"
+  | "completed"
+  | "cancelled"
+  | "cancelled_by_employee"
+  | "rescheduled";
+
+export type MeetingPreparationData = {
+  notes?: string;
+  private_notes?: string;
+};
+
+export type ProtocolData = {
+  wellbeing_mood?: string;
+  wellbeing_workload?: string;
+  wellbeing_balance?: string;
+  wellbeing_mood_rating?: number;
+  wellbeing_workload_rating?: number;
+  wellbeing_balance_rating?: number;
+  review_successes?: string;
+  review_challenges?: string;
+  review_learnings?: string;
+  projects_status?: string;
+  projects_blockers?: string;
+  projects_support?: string;
+  development_skills?: string;
+  development_training?: string;
+  development_career?: string;
+  team_dynamics?: string;
+  team_communication?: string;
+  goals?: string;
+  feedback_mutual?: string;
+  next_steps?: string;
+};
+
+export type ActionItemOwner = "employee" | "supervisor" | "both";
+export type ActionItemStatus = "open" | "in_progress" | "completed";
+
+export type ActionItem = {
+  id?: string;
+  description: string;
+  owner: ActionItemOwner;
+  assigned_to?: string;
+  due_date?: string;
+  status: ActionItemStatus;
+  notes?: string;
+  completed_at?: string;
+  created_at?: string;
+  updated_at?: string;
+  meeting_id?: string;
+  tenant_id?: string;
+  task_id?: string;
+};
+
+type MeetingParticipant = {
+  display_name?: string | null;
+};
+
+export type EmployeeMeeting = {
+  id: string;
+  employee_id: string;
+  conducted_by: string;
+  meeting_date: string;
+  meeting_type: EmployeeMeetingType;
+  status: EmployeeMeetingStatus;
+  protocol_data?: ProtocolData | null;
+  employee_preparation?: MeetingPreparationData | null;
+  supervisor_preparation?: MeetingPreparationData | null;
+  shared_during_meeting?: boolean | null;
+  cancellation_reason?: string | null;
+  reschedule_request_reason?: string | null;
+  employee_name?: string;
+  supervisor_name?: string;
+  employee?: MeetingParticipant | null;
+  supervisor?: MeetingParticipant | null;
+};
+
 /** Calculate working days between two dates (excluding weekends) */
 export function calculateWorkingDays(startDate: string, endDate: string): number {
   const start = new Date(startDate);

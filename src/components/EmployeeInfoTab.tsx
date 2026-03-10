@@ -30,6 +30,7 @@ interface HistoryRow {
   annual_vacation_days: number;
   valid_from: string;
   valid_until: string | null;
+  changed_by: string | null;
   change_reason: string | null;
   created_at: string | null;
 }
