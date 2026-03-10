@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useMemo } from "react";
 import type { Dispatch, SetStateAction } from "react";
 import { debugConsole } from "@/utils/debugConsole";
 import { useNavigate, useParams } from "react-router-dom";
@@ -90,8 +90,6 @@ export interface UseContactsViewStateResult {
 }
 
 export function useContactsViewState(): UseContactsViewStateResult {
-  const [allTags] = useState<string[]>([]);
-
   const navigate = useNavigate();
   const { subId } = useParams();
   const { user } = useAuth();
@@ -142,6 +140,21 @@ export function useContactsViewState(): UseContactsViewStateResult {
     ],
     [contacts, totalCount],
   );
+
+  const allTags = useMemo(() => {
+    const tags = new Set<string>();
+
+    for (const contact of contacts) {
+      for (const tag of contact.tags ?? []) {
+        const normalizedTag = tag.trim();
+        if (normalizedTag) {
+          tags.add(normalizedTag);
+        }
+      }
+    }
+
+    return [...tags].sort((a, b) => a.localeCompare(b, "de"));
+  }, [contacts]);
 
   const handleDeleteContact = async (contactId: string, contactName: string) => {
     try {
