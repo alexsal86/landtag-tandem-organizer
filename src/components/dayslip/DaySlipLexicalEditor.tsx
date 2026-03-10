@@ -109,6 +109,19 @@ function EditorEditablePlugin({ editable }: { editable: boolean }) {
   return null;
 }
 
+function EditorReadyPlugin({ onEditorReady }: { onEditorReady: (editor: LexicalEditor) => void }) {
+  const [editor] = useLexicalComposerContext();
+  const readyCalledRef = useRef(false);
+
+  useEffect(() => {
+    if (readyCalledRef.current) return;
+    readyCalledRef.current = true;
+    onEditorReady(editor);
+  }, [editor, onEditorReady]);
+
+  return null;
+}
+
 // ─── DaySlipEditor Component ─────────────────────────────────────────────────
 
 export interface DaySlipEditorProps {
@@ -153,7 +166,7 @@ export const DaySlipLexicalEditor = memo(function DaySlipLexicalEditor(props: Da
           <FloatingTextFormatToolbar />
         </div>
         <OnChangePlugin onChange={onEditorChange} />
-        <OnChangePlugin onChange={(_, editor) => { onEditorReady(editor); }} ignoreSelectionChange />
+        <EditorReadyPlugin onEditorReady={onEditorReady} />
         <HistoryPlugin />
         <HorizontalRulePlugin />
         <DaySlipEnterBehaviorPlugin />
