@@ -15,8 +15,7 @@ import { de } from 'date-fns/locale';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { useToast } from '@/hooks/use-toast';
-import { ContactSelector } from '@/components/ContactSelector';
-import { isValidEmail } from '@/lib/utils';
+import { ContactSelector, type ContactSelectorContact } from '@/components/ContactSelector';
 
 interface TimeSlot {
   id: string;
@@ -96,7 +95,7 @@ export const AppointmentPollCreator = ({ onClose }: { onClose: () => void }) => 
     setTimeSlots(timeSlots.filter(slot => slot.id !== id));
   };
 
-  const addParticipantFromContact = (contact: any) => {
+  const addParticipantFromContact = (contact: ContactSelectorContact) => {
     if (!contact.email) {
       toast({
         title: "Keine E-Mail-Adresse",

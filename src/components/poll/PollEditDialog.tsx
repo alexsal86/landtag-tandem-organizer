@@ -13,8 +13,7 @@ import { format } from 'date-fns';
 import { de } from 'date-fns/locale';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
-import { ContactSelector } from '@/components/ContactSelector';
-import { isValidEmail } from '@/lib/utils';
+import { ContactSelector, type ContactSelectorContact } from '@/components/ContactSelector';
 
 interface PollParticipant {
   id: string;
@@ -86,7 +85,7 @@ export const PollEditDialog = ({
     }
   };
 
-  const addParticipantFromContact = (contact: any) => {
+  const addParticipantFromContact = (contact: ContactSelectorContact) => {
     if (!contact.email) {
       toast({ title: "Keine E-Mail", description: "Kontakt hat keine E-Mail-Adresse.", variant: "destructive" });
       return;
