@@ -204,7 +204,26 @@ export const PollEditDialog = ({
         const participantData: Array<{ poll_id: string; email: string; name: string | null; is_external: boolean; token: string | null }> = [];
         for (const p of newParticipants) {
           if (p.is_external) {
-            const { data: tokenData } = await supabase.rpc('generate_participant_token');
+            const { data: tokenData, error: tokenError } = await supabase.rpc('generate_participant_token');
+
+            if (tokenError) {
+              toast({
+                title: 'Fehler bei Token-Erstellung',
+                description: `Für den externen Teilnehmer ${p.email} konnte kein Token erstellt werden.`,
+                variant: 'destructive',
+              });
+              return;
+            }
+
+            if (!tokenData || !tokenData.trim()) {
+              toast({
+                title: 'Ungültiger Teilnehmer-Token',
+                description: `Für den externen Teilnehmer ${p.email} wurde ein leerer Token zurückgegeben.`,
+                variant: 'destructive',
+              });
+              return;
+            }
+
             participantData.push({
               poll_id: pollId,
               email: p.email,
