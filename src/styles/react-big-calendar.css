@@ -237,7 +237,7 @@
 }
 
 .rbc-time-gutter .rbc-timeslot-group {
-  border-bottom: 1px solid hsl(var(--border) / 0.6);
+  border-bottom: none;
 }
 
 .rbc-time-slot {

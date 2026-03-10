@@ -100,45 +100,6 @@ const ProperReactBigCalendar: React.FC<ProperReactBigCalendarProps> = ({
 }) => {
   const calendarContainerRef = useRef<HTMLDivElement>(null);
 
-  useEffect(() => {
-    const root = calendarContainerRef.current;
-    if (!root) {
-      return;
-    }
-
-    const insertSeparatorColumn = () => {
-      const timeContents = root.querySelectorAll('.rbc-time-content');
-
-      timeContents.forEach((timeContent) => {
-        const gutter = timeContent.querySelector('.rbc-time-gutter.rbc-time-column');
-        if (!gutter) {
-          return;
-        }
-
-        const nextElement = gutter.nextElementSibling;
-        if (nextElement?.classList.contains('rbc-time-separator-column')) {
-          return;
-        }
-
-        const separatorColumn = document.createElement('div');
-        separatorColumn.className = 'rbc-time-separator-column';
-        separatorColumn.setAttribute('aria-hidden', 'true');
-        timeContent.insertBefore(separatorColumn, nextElement);
-      });
-    };
-
-    insertSeparatorColumn();
-
-    const observer = new MutationObserver(() => {
-      insertSeparatorColumn();
-    });
-
-    observer.observe(root, { childList: true, subtree: true });
-
-    return () => {
-      observer.disconnect();
-    };
-  }, []);
 
   // No locale setup needed - date-fns localizer handles it
 
