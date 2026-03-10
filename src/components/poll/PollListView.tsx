@@ -5,6 +5,16 @@ import { Badge } from '@/components/ui/badge';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 import { Calendar, Users, Clock, ExternalLink, BarChart3, Trash2, Plus, Archive, CheckCircle, XCircle, RotateCcw, AlertCircle, Copy } from 'lucide-react';
 import { format } from 'date-fns';
 import { de } from 'date-fns/locale';
@@ -37,6 +47,7 @@ export const PollListView = () => {
   const [selectedPoll, setSelectedPoll] = useState<string | null>(null);
   const [showCreatePoll, setShowCreatePoll] = useState(false);
   const [activeTab, setActiveTab] = useState<'active' | 'archive'>('active');
+  const [deleteDialog, setDeleteDialog] = useState<{ pollId: string; mode: 'delete' | 'hard-delete' } | null>(null);
 
   // Filter polls by status
   const activePolls = polls.filter(p => p.status === 'active');
@@ -165,10 +176,6 @@ export const PollListView = () => {
   };
 
   const permanentlyDeletePoll = async (pollId: string) => {
-    if (!window.confirm('Diese Aktion löscht die Abstimmung unwiderruflich. Alle Daten gehen verloren. Fortfahren?')) {
-      return;
-    }
-
     try {
       const { error } = await supabase
         .from('appointment_polls')
@@ -212,10 +219,6 @@ export const PollListView = () => {
   };
 
   const deletePoll = async (pollId: string) => {
-    if (!window.confirm('Möchten Sie diese Terminabstimmung wirklich löschen? Diese Aktion kann nicht rückgängig gemacht werden.')) {
-      return;
-    }
-
     try {
       // Send deletion notifications first
       await supabase.functions.invoke('send-poll-notifications', {
@@ -248,6 +251,18 @@ export const PollListView = () => {
         variant: "destructive",
       });
     }
+  };
+
+  const confirmDeleteAction = async () => {
+    if (!deleteDialog) return;
+
+    if (deleteDialog.mode === 'hard-delete') {
+      await permanentlyDeletePoll(deleteDialog.pollId);
+    } else {
+      await deletePoll(deleteDialog.pollId);
+    }
+
+    setDeleteDialog(null);
   };
 
   if (showCreatePoll) {
@@ -414,7 +429,7 @@ export const PollListView = () => {
                       <Button
                         size="sm"
                         variant="destructive"
-                        onClick={() => permanentlyDeletePoll(poll.id)}
+                        onClick={() => setDeleteDialog({ pollId: poll.id, mode: 'hard-delete' })}
                         title="Endgültig löschen"
                       >
                         <Trash2 className="h-4 w-4" />
@@ -432,7 +447,7 @@ export const PollListView = () => {
                       <Button
                         size="sm"
                         variant="destructive"
-                        onClick={() => deletePoll(poll.id)}
+                        onClick={() => setDeleteDialog({ pollId: poll.id, mode: 'delete' })}
                         title="Abstimmung löschen"
                       >
                         <Trash2 className="h-4 w-4" />
@@ -553,6 +568,32 @@ export const PollListView = () => {
           </Tabs>
         )}
       </CardContent>
+
+      <AlertDialog open={!!deleteDialog} onOpenChange={(open) => !open && setDeleteDialog(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>
+              {deleteDialog?.mode === 'hard-delete'
+                ? 'Abstimmung endgültig löschen?'
+                : 'Abstimmung löschen?'}
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              {deleteDialog?.mode === 'hard-delete'
+                ? 'Diese Aktion löscht die Abstimmung unwiderruflich. Alle Daten gehen verloren.'
+                : 'Möchten Sie diese Terminabstimmung wirklich löschen? Diese Aktion kann nicht rückgängig gemacht werden.'}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Abbrechen</AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              onClick={confirmDeleteAction}
+            >
+              {deleteDialog?.mode === 'hard-delete' ? 'Endgültig löschen' : 'Löschen'}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </Card>
   );
 };
