@@ -129,7 +129,15 @@ export const useCaseItems = () => {
     }
 
     try {
+      // Pre-flight: check if tenant is in user's active memberships
+      const { data: tenantCheck } = await supabase
+        .rpc("get_user_tenant_ids", { _user_id: user.id });
+      debugConsole.log("[createCaseItem] user tenant ids:", tenantCheck, "current tenant:", currentTenant.id);
+
+      const caseItemId = crypto.randomUUID();
+
       const insertData = {
+        id: caseItemId,
         source_channel: data.source_channel,
         status: data.status ?? "neu",
         priority: data.priority ?? "medium",
@@ -156,18 +164,16 @@ export const useCaseItems = () => {
 
       debugConsole.log("[createCaseItem] insertData:", JSON.stringify(insertData, null, 2));
 
-      const { data: inserted, error } = await supabase
+      const { error } = await supabase
         .from("case_items")
-        .insert(insertData as any)
-        .select("id")
-        .single();
+        .insert(insertData as any);
 
       if (error) {
         debugConsole.error("[createCaseItem] Supabase error:", error.message, error.code, error.details, error.hint);
         throw error;
       }
 
-      debugConsole.log("[createCaseItem] inserted:", inserted);
+      debugConsole.log("[createCaseItem] inserted with id:", caseItemId);
 
       toast({
         title: "Erfolgreich",
@@ -182,14 +188,14 @@ export const useCaseItems = () => {
           title_param: "Vorgang zugewiesen",
           message_param: `Ihnen wurde der Vorgang "${data.subject || 'Ohne Betreff'}" zugewiesen.`,
           priority_param: "medium",
-          data_param: JSON.stringify({ case_item_id: inserted?.id }),
+          data_param: JSON.stringify({ case_item_id: caseItemId }),
         }).then(({ error: nErr }) => {
           if (nErr) debugConsole.warn("Notification error (case_item_assigned):", nErr);
         });
       }
 
       await fetchCaseItems();
-      return (inserted ?? { id: "new" }) as unknown as CaseItem;
+      return { id: caseItemId } as unknown as CaseItem;
     } catch (error: unknown) {
       debugConsole.error("Error creating case item:", error);
       let detail = "Unbekannter Fehler";
