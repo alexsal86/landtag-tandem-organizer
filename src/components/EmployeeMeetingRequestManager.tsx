@@ -51,57 +51,14 @@ export function EmployeeMeetingRequestManager({ onPendingCountChange }: MeetingR
     if (!user || !currentTenant) return;
     setLoading(true);
     try {
-      const { data: requestsData, error: requestsError } = await supabase
-        .from("employee_meeting_requests")
-        .select("id, employee_id, reason, status, created_at, scheduled_meeting_id")
-        .eq("status", "pending")
-        .is("scheduled_meeting_id", null)
-        .eq("tenant_id", currentTenant.id)
-        .order("created_at", { ascending: false });
+      const { error: reconcileError } = await supabase.rpc("reconcile_employee_meeting_requests", {
+        p_tenant_id: currentTenant.id,
+        p_source: "manager_cleanup",
+        p_time_window_days: 45,
+      });
 
-      if (requestsError) throw requestsError;
-
-      const employeeIds = Array.from(new Set(requestsData?.map((r) => r.employee_id) || []));
-
-      // Cleanup: pending requests are considered processed if a meeting was already created afterwards
-      if (employeeIds.length > 0 && requestsData && requestsData.length > 0) {
-        const { data: existingMeetings } = await supabase
-          .from("employee_meetings")
-          .select("id, employee_id, created_at")
-          .in("employee_id", employeeIds)
-          .eq("tenant_id", currentTenant.id);
-
-        const latestMeetingByEmployee = new Map<string, { id: string; created_at: string }>();
-        (existingMeetings || []).forEach((meeting: any) => {
-          const current = latestMeetingByEmployee.get(meeting.employee_id);
-          if (!current || new Date(meeting.created_at).getTime() > new Date(current.created_at).getTime()) {
-            latestMeetingByEmployee.set(meeting.employee_id, { id: meeting.id, created_at: meeting.created_at });
-          }
-        });
-
-        const staleRequestUpdates = requestsData
-          .filter((request) => {
-            const latestMeeting = latestMeetingByEmployee.get(request.employee_id);
-            return latestMeeting && new Date(latestMeeting.created_at).getTime() >= new Date(request.created_at).getTime();
-          })
-          .map((request) => {
-            const latestMeeting = latestMeetingByEmployee.get(request.employee_id);
-            return latestMeeting
-              ? supabase
-                  .from("employee_meeting_requests")
-                  .update({
-                    status: "completed",
-                    scheduled_meeting_id: latestMeeting.id,
-                    updated_at: new Date().toISOString(),
-                  })
-                  .eq("id", request.id)
-              : null;
-          })
-          .filter(Boolean) as PromiseLike<unknown>[];
-
-        if (staleRequestUpdates.length > 0) {
-          await Promise.all(staleRequestUpdates);
-        }
+      if (reconcileError) {
+        debugConsole.error("Error reconciling pending meeting requests:", reconcileError);
       }
 
       const { data: refreshedRequests, error: refreshedRequestsError } = await supabase
@@ -153,18 +110,7 @@ export function EmployeeMeetingRequestManager({ onPendingCountChange }: MeetingR
     setSchedulerOpen(true);
   };
 
-  const handleSchedulerClose = async (meetingId?: string) => {
-    if (scheduledRequestId) {
-      await supabase
-        .from("employee_meeting_requests")
-        .update({
-          status: "completed",
-          updated_at: new Date().toISOString(),
-          scheduled_meeting_id: meetingId ?? null,
-        })
-        .eq("id", scheduledRequestId);
-    }
-
+  const handleSchedulerClose = async () => {
     setSchedulerOpen(false);
     setSelectedEmployee(null);
     setScheduledRequestId(null);
@@ -387,6 +333,7 @@ export function EmployeeMeetingRequestManager({ onPendingCountChange }: MeetingR
         <EmployeeMeetingScheduler
           employeeId={selectedEmployee.id}
           employeeName={selectedEmployee.name}
+          requestId={scheduledRequestId}
           open={schedulerOpen}
           onOpenChange={setSchedulerOpen}
           onScheduled={handleSchedulerClose}
