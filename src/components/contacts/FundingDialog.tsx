@@ -11,7 +11,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { supabase } from "@/integrations/supabase/client";
 import { useTenant } from "@/hooks/useTenant";
 import { useAuth } from "@/hooks/useAuth";
-import { toast } from "sonner";
+import { useToast } from "@/hooks/use-toast";
 import { ContactSelector } from "../ContactSelector";
 
 interface FundingFormData {
@@ -50,11 +50,16 @@ export function FundingDialog({ open, onOpenChange, initialContactId }: FundingD
   const { currentTenant } = useTenant();
   const { user } = useAuth();
   const queryClient = useQueryClient();
+  const { toast } = useToast();
 
   const onSubmit = async (data: FundingFormData) => {
     if (!currentTenant || !user) return;
     if (participants.length === 0) {
-      toast.error("Bitte mindestens einen Teilnehmer hinzufügen");
+      toast({
+        title: "Fehler",
+        description: "Bitte mindestens einen Teilnehmer hinzufügen",
+        variant: "destructive",
+      });
       return;
     }
 
@@ -94,14 +99,21 @@ export function FundingDialog({ open, onOpenChange, initialContactId }: FundingD
 
       if (participantsError) throw participantsError;
 
-      toast.success("Förderung erfolgreich erstellt");
+      toast({
+        title: "Erfolg",
+        description: "Förderung erfolgreich erstellt",
+      });
       queryClient.invalidateQueries({ queryKey: ['contact-fundings'] });
       reset();
       setParticipants(initialContactId ? [{ contact_id: initialContactId }] : []);
       onOpenChange(false);
     } catch (error) {
       debugConsole.error('Error creating funding:', error);
-      toast.error("Fehler beim Erstellen der Förderung");
+      toast({
+        title: "Fehler",
+        description: "Fehler beim Erstellen der Förderung",
+        variant: "destructive",
+      });
     } finally {
       setLoading(false);
     }
