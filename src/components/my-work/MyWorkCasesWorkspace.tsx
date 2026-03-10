@@ -1150,15 +1150,10 @@ export function MyWorkCasesWorkspace() {
                                                 >
                                                   <GripVertical className="h-4 w-4" />
                                                 </span>
-                                                <span className="inline-flex" title={channel?.label || "Kanal unbekannt"}>
+                                                <span className="inline-flex items-center gap-1.5" title={channel?.label || "Kanal unbekannt"}>
                                                   <span className="flex h-7 w-7 items-center justify-center rounded-md bg-muted text-muted-foreground">
                                                     <ChannelIcon className="h-4 w-4" />
                                                   </span>
-                                                </span>
-                                                <span className="truncate text-sm font-medium text-foreground inline-flex items-center gap-1">
-                                                  {getItemSubject(item)}
-                                                </span>
-                                                <span className="inline-flex items-center gap-1">
                                                   {item.visible_to_all && <Globe className="h-3.5 w-3.5 text-blue-500 shrink-0" />}
                                                   {/* 3c: Link indicator */}
                                                   {linkedFile && (
@@ -1174,6 +1169,9 @@ export function MyWorkCasesWorkspace() {
                                                       </Tooltip>
                                                     </TooltipProvider>
                                                   )}
+                                                </span>
+                                                <span className="truncate text-sm font-medium text-foreground inline-flex items-center gap-1">
+                                                  {getItemSubject(item)}
                                                 </span>
                                                 <span className="truncate text-sm font-medium text-foreground" title={getItemDescription(item) || "–"}>{getItemDescription(item) || "–"}</span>
                                                 <span>{formatDateSafe(item.source_received_at, "dd.MM.yy", "–", { locale: de, warnKey: `${item.id}:source_received_at:list`, warnItemId: item.id, warnField: "source_received_at" })}</span>
