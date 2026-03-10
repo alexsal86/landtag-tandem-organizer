@@ -10908,6 +10908,10 @@ export type Database = {
         }
         Returns: string
       }
+      delete_employee_meeting: {
+        Args: { p_meeting_id: string }
+        Returns: undefined
+      }
       execute_archive_sick_days: {
         Args: { p_tenant_id: string }
         Returns: Json
