@@ -61,6 +61,79 @@ export function AgendaEditorPanel({
 }: AgendaEditorPanelProps) {
   const { toast } = useToast();
 
+  const showDocumentActionError = (action: 'download' | 'upload' | 'delete', error: unknown) => {
+    debugConsole.error(`${action[0].toUpperCase()}${action.slice(1)} error:`, error);
+
+    const actionText: Record<typeof action, string> = {
+      download: 'Datei konnte nicht heruntergeladen werden.',
+      upload: 'Dokument konnte nicht hochgeladen werden.',
+      delete: 'Dokument konnte nicht gelöscht werden.',
+    };
+
+    const titleText: Record<typeof action, string> = {
+      download: 'Download-Fehler',
+      upload: 'Upload-Fehler',
+      delete: 'Lösch-Fehler',
+    };
+
+    toast({
+      title: titleText[action],
+      description: actionText[action],
+      variant: 'destructive',
+    });
+  };
+
+  const persistAgendaItemIfNeeded = async (item: AgendaItem, index: number) => {
+    if (item.id) return item.id;
+
+    const { data: savedItem, error: saveError } = await supabase
+      .from('meeting_agenda_items')
+      .insert([
+        {
+          meeting_id: selectedMeeting.id,
+          title: item.title || 'Agenda-Punkt',
+          description: item.description || '',
+          notes: item.notes || '',
+          parent_id: item.parent_id || null,
+          order_index: item.order_index,
+          is_completed: false,
+          is_recurring: false,
+        },
+      ])
+      .select()
+      .single();
+
+    if (saveError) throw saveError;
+
+    onSetAgendaItems((prevItems) => prevItems.map((prevItem, prevIndex) => (
+      prevIndex === index ? { ...prevItem, id: savedItem.id } : prevItem
+    )));
+
+    return savedItem.id;
+  };
+
+  const handleAgendaDocumentUpload = async (item: AgendaItem, index: number) => {
+    const fileInput = document.createElement('input');
+    fileInput.type = 'file';
+    fileInput.accept = '.pdf,.doc,.docx,.txt,.png,.jpg,.jpeg';
+
+    fileInput.onchange = async (e) => {
+      const file = (e.target as HTMLInputElement).files?.[0];
+
+      if (!file || !selectedMeeting?.id) return;
+
+      try {
+        const itemId = await persistAgendaItemIfNeeded(item, index);
+        await onUploadAgendaDocument(itemId, file);
+        toast({ title: 'Dokument hochgeladen', description: 'Das Dokument wurde erfolgreich hinzugefügt.' });
+      } catch (error) {
+        showDocumentActionError('upload', error);
+      }
+    };
+
+    fileInput.click();
+  };
+
   return (
     <>
       <div className="flex justify-between items-center">
@@ -290,7 +363,7 @@ export function AgendaEditorPanel({
                                                   if (error) throw error;
                                                   const url = URL.createObjectURL(data);
                                                   const a = document.createElement('a'); a.href = url; a.download = doc.file_name || 'download'; a.click(); URL.revokeObjectURL(url);
-                                                 } catch (error) { debugConsole.error('Download error:', error); toast({ title: "Download-Fehler", description: "Datei konnte nicht heruntergeladen werden.", variant: "destructive" }); }
+                                                 } catch (error) { showDocumentActionError('download', error); }
                                               }}>
                                               <Download className="h-3 w-3" />
                                             </Button>
@@ -324,7 +397,7 @@ export function AgendaEditorPanel({
                                                       const { data, error } = await supabase.storage.from('documents').download(doc.file_path);
                                                       if (error) throw error;
                                                       const url = URL.createObjectURL(data); const a = document.createElement('a'); a.href = url; a.download = doc.file_name; a.click(); URL.revokeObjectURL(url);
-                                                    } catch (error) { debugConsole.error('Download error:', error); toast({ title: "Download-Fehler", description: "Datei konnte nicht heruntergeladen werden.", variant: "destructive" }); }
+                                                    } catch (error) { showDocumentActionError('download', error); }
                                                   }}>
                                                   <Download className="h-4 w-4" />
                                                 </Button>
@@ -340,37 +413,7 @@ export function AgendaEditorPanel({
                                     <label className="text-sm font-medium">Dokument hinzufügen</label>
                                     <div className="flex items-center gap-2">
                                       <Button variant="outline" size="sm" className="flex-1"
-                                        onClick={async () => {
-                                          const fileInput = document.createElement('input');
-                                          fileInput.type = 'file';
-                                          fileInput.accept = '.pdf,.doc,.docx,.txt,.png,.jpg,.jpeg';
-                                          fileInput.onchange = async (e) => {
-                                            const file = (e.target as HTMLInputElement).files?.[0];
-                                            if (file && selectedMeeting?.id) {
-                                              try {
-                                                let itemId = item.id;
-                                                if (!itemId) {
-                                                  const { data: savedItem, error: saveError } = await supabase
-                                                    .from('meeting_agenda_items').insert([{
-                                                      meeting_id: selectedMeeting.id, title: item.title || 'Agenda-Punkt',
-                                                      description: item.description || '', notes: item.notes || '',
-                                                      parent_id: item.parent_id || null, order_index: item.order_index,
-                                                      is_completed: false, is_recurring: false,
-                                                    }]).select().single();
-                                                  if (saveError) throw saveError;
-                                                  itemId = savedItem.id;
-                                                  // Note: we can't easily update local state here without the index
-                                                }
-                                                await onUploadAgendaDocument(itemId!, file);
-                                                toast({ title: "Dokument hochgeladen", description: "Das Dokument wurde erfolgreich hinzugefügt." });
-                                              } catch (error) {
-                                                debugConsole.error('Upload error:', error);
-                                                toast({ title: "Upload-Fehler", description: "Dokument konnte nicht hochgeladen werden.", variant: "destructive" });
-                                              }
-                                            }
-                                          };
-                                          fileInput.click();
-                                        }}>
+                                        onClick={() => handleAgendaDocumentUpload(item, index)}>
                                         <Upload className="h-4 w-4 mr-2" /> Dokument hinzufügen
                                       </Button>
                                     </div>
