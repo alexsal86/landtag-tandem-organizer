@@ -22,6 +22,14 @@ import { RichTextDisplay } from "@/components/ui/RichTextDisplay";
 import { cn } from "@/lib/utils";
 import type { ActionItem, ActionItemOwner, EmployeeMeeting, MeetingPreparationData, ProtocolData } from "@/components/employees/types";
 
+const ACTION_ITEM_MIN_LENGTH = 3;
+
+function extractPlainTextFromHtml(html: string | undefined | null): string {
+  if (!html) return '';
+  const doc = new DOMParser().parseFromString(html, 'text/html');
+  return (doc.body.textContent || '').trim();
+}
+
 interface EmployeeMeetingProtocolProps {
   meetingId: string;
   onBack?: () => void;
