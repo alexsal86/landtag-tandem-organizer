@@ -10900,6 +10900,16 @@ export type Database = {
         }
         Returns: string
       }
+      create_appointment_poll_with_details: {
+        Args: {
+          p_deadline?: string | null
+          p_description?: string | null
+          p_participants?: Json
+          p_time_slots?: Json
+          p_title: string
+        }
+        Returns: string
+      }
       reconcile_employee_meeting_requests: {
         Args: {
           p_employee_id?: string | null
@@ -10994,6 +11004,21 @@ export type Database = {
           id: string
           is_for_all_users: boolean
           status: string
+          title: string
+        }[]
+      }
+      get_user_polls_with_aggregation: {
+        Args: Record<PropertyKey, never>
+        Returns: {
+          created_at: string
+          creator_name: string
+          deadline: string | null
+          description: string | null
+          id: string
+          participant_count: number
+          response_count: number
+          status: string
+          time_slots_count: number
           title: string
         }[]
       }

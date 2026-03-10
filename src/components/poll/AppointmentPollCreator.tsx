@@ -50,6 +50,8 @@ export const AppointmentPollCreator = ({ onClose }: { onClose: () => void }) => 
   const [endTime, setEndTime] = useState('10:00');
   const [newParticipantEmail, setNewParticipantEmail] = useState('');
 
+  const normalizeEmail = (email: string) => email.trim().toLowerCase();
+
   const addTimeSlot = () => {
     if (!selectedDate) {
       toast({
@@ -104,7 +106,9 @@ export const AppointmentPollCreator = ({ onClose }: { onClose: () => void }) => 
     }
 
     // Check if participant already exists
-    if (participants.find(p => p.email === contact.email)) {
+    const normalizedContactEmail = normalizeEmail(contact.email);
+
+    if (participants.find(p => normalizeEmail(p.email) === normalizedContactEmail)) {
       toast({
         title: "Bereits hinzugefügt",
         description: "Dieser Kontakt wurde bereits hinzugefügt.",
@@ -116,7 +120,7 @@ export const AppointmentPollCreator = ({ onClose }: { onClose: () => void }) => 
     const participant: Participant = {
       id: Date.now().toString(),
       type: 'internal',
-      email: contact.email,
+      email: normalizedContactEmail,
       name: contact.name
     };
 
@@ -124,13 +128,33 @@ export const AppointmentPollCreator = ({ onClose }: { onClose: () => void }) => 
   };
 
   const addExternalParticipant = () => {
-    if (!newParticipantEmail) return;
+    const normalizedEmail = normalizeEmail(newParticipantEmail);
+
+    if (!normalizedEmail) return;
+
+    if (!isValidEmail(normalizedEmail)) {
+      toast({
+        title: "Ungültige E-Mail-Adresse",
+        description: "Bitte geben Sie eine gültige E-Mail-Adresse ein.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (participants.find(p => normalizeEmail(p.email) === normalizedEmail)) {
+      toast({
+        title: "Bereits hinzugefügt",
+        description: "Dieser Teilnehmer wurde bereits hinzugefügt.",
+        variant: "destructive",
+      });
+      return;
+    }
 
     const participant: Participant = {
       id: Date.now().toString(),
       type: 'external',
-      email: newParticipantEmail,
-      name: newParticipantEmail.split('@')[0]
+      email: normalizedEmail,
+      name: normalizedEmail.split('@')[0]
     };
 
     setParticipants([...participants, participant]);
@@ -154,34 +178,29 @@ export const AppointmentPollCreator = ({ onClose }: { onClose: () => void }) => 
     setLoading(true);
 
     try {
-      // Create poll
-      const { data: poll, error: pollError } = await supabase
-        .from('appointment_polls')
-        .insert([{
-          user_id: user.id,
-          title,
-          description,
-          deadline: deadline?.toISOString(),
-          status: 'active'
-        }])
-        .select()
-        .single();
-
-      if (pollError) throw pollError;
-
-      // Create time slots
       const timeSlotData = timeSlots.map((slot, index) => ({
-        poll_id: poll.id,
         start_time: new Date(`${format(slot.date, 'yyyy-MM-dd')}T${slot.startTime}:00`).toISOString(),
         end_time: new Date(`${format(slot.date, 'yyyy-MM-dd')}T${slot.endTime}:00`).toISOString(),
         order_index: index
       }));
 
-      const { error: slotsError } = await supabase
-        .from('poll_time_slots')
-        .insert(timeSlotData);
+      const participantData = participants.map((participant) => ({
+        email: participant.email,
+        name: participant.name,
+        is_external: participant.type === 'external'
+      }));
 
-      if (slotsError) throw slotsError;
+      const { data: pollId, error: createPollError } = await supabase.rpc('create_appointment_poll_with_details', {
+        p_title: title,
+        p_description: description || null,
+        p_deadline: deadline?.toISOString() ?? null,
+        p_time_slots: timeSlotData,
+        p_participants: participantData,
+      });
+
+      if (createPollError || !pollId) {
+        throw new Error(createPollError?.message || 'Unbekannter Fehler beim Erstellen der Abstimmung');
+      }
 
       // Get current user profile for creator name
       const { data: profile } = await supabase
@@ -192,55 +211,6 @@ export const AppointmentPollCreator = ({ onClose }: { onClose: () => void }) => 
 
       const creatorName = profile?.display_name || user.email || 'Unbekannt';
 
-      // Create participants with improved error handling
-      
-      const participantData: Array<{ poll_id: string; email: string; name: string; is_external: boolean; token: string | null }> = [];
-      
-      // Process each participant individually to avoid conflicts
-      for (const p of participants) {
-        try {
-          if (p.type === 'external') {
-            // Generate token for external participants
-            const { data: tokenData, error: tokenError } = await supabase.rpc('generate_participant_token');
-            if (tokenError) {
-              debugConsole.error('Error generating token for', p.email, ':', tokenError);
-              throw new Error(`Token-Generierung fehlgeschlagen für ${p.email}`);
-            }
-
-            participantData.push({
-              poll_id: poll.id,
-              email: p.email,
-              name: p.name,
-              is_external: true,
-              token: tokenData
-            });
-          } else {
-            participantData.push({
-              poll_id: poll.id,
-              email: p.email,
-              name: p.name,
-              is_external: false,
-              token: null
-            });
-          }
-        } catch (error) {
-          debugConsole.error('Error processing participant', p.email, ':', error);
-          throw new Error(`Fehler beim Verarbeiten von Teilnehmer ${p.email}`);
-        }
-      }
-      
-      
-      const { error: participantsError } = await supabase
-        .from('poll_participants')
-        .insert(participantData);
-
-      if (participantsError) {
-        debugConsole.error('Error creating participants:', participantsError);
-        throw new Error(`Teilnehmer konnten nicht erstellt werden: ${participantsError.message}`);
-      }
-      
-      
-
       // Send invitations to external participants
       const externalEmails = participants
         .filter(p => p.type === 'external')
@@ -250,7 +220,7 @@ export const AppointmentPollCreator = ({ onClose }: { onClose: () => void }) => 
         
         const { data: emailData, error: emailError } = await supabase.functions.invoke('send-poll-invitation', {
           body: {
-            pollId: poll.id,
+            pollId,
             participantEmails: externalEmails,
             pollTitle: title,
             pollDescription: description,
@@ -282,9 +252,10 @@ export const AppointmentPollCreator = ({ onClose }: { onClose: () => void }) => 
       onClose();
     } catch (error) {
       debugConsole.error('Error creating poll:', error);
+      const errorMessage = error instanceof Error ? error.message : 'Die Abstimmung konnte nicht erstellt werden.';
       toast({
         title: "Fehler",
-        description: "Die Abstimmung konnte nicht erstellt werden.",
+        description: errorMessage,
         variant: "destructive",
       });
     } finally {
@@ -459,7 +430,7 @@ export const AppointmentPollCreator = ({ onClose }: { onClose: () => void }) => 
                 value={newParticipantEmail}
                 onChange={(e) => setNewParticipantEmail(e.target.value)}
                 placeholder="externe@email.de"
-                onKeyPress={(e) => e.key === 'Enter' && addExternalParticipant()}
+                onKeyDown={(e) => e.key === 'Enter' && addExternalParticipant()}
               />
               <Button onClick={addExternalParticipant} size="sm" variant="outline">
                 <Plus className="h-4 w-4" />
