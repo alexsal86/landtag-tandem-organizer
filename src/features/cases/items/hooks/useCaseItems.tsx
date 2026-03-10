@@ -154,13 +154,20 @@ export const useCaseItems = () => {
         tenant_id: currentTenant.id,
       };
 
+      debugConsole.log("[createCaseItem] insertData:", JSON.stringify(insertData, null, 2));
+
       const { data: inserted, error } = await supabase
         .from("case_items")
         .insert(insertData as any)
         .select("id")
         .single();
 
-      if (error) throw error;
+      if (error) {
+        debugConsole.error("[createCaseItem] Supabase error:", error.message, error.code, error.details, error.hint);
+        throw error;
+      }
+
+      debugConsole.log("[createCaseItem] inserted:", inserted);
 
       toast({
         title: "Erfolgreich",
