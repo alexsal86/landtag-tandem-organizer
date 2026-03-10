@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import type { Dispatch, SetStateAction } from "react";
+import { useLocation } from "react-router-dom";
 
 export type ContactViewMode = "grid" | "list";
 export type ContactsTab = "contacts" | "stakeholders" | "stakeholder-network" | "distribution-lists" | "archive";
@@ -35,6 +36,7 @@ export interface UseContactsViewPreferencesResult {
 }
 
 export function useContactsViewPreferences(subId?: string): UseContactsViewPreferencesResult {
+  const location = useLocation();
   const [viewMode, setViewMode] = useState<ContactViewMode>(() => getInitialViewMode(CONTACTS_VIEW_MODE_STORAGE_KEY));
   const [stakeholderViewMode, setStakeholderViewMode] = useState<ContactViewMode>(() =>
     getInitialViewMode(STAKEHOLDERS_VIEW_MODE_STORAGE_KEY),
@@ -47,15 +49,20 @@ export function useContactsViewPreferences(subId?: string): UseContactsViewPrefe
   const [showScrollTop, setShowScrollTop] = useState(false);
 
   useEffect(() => {
-    if (subId === "netzwerk") {
+    if (subId === "netzwerk" || location.pathname === "/contacts/netzwerk") {
       setActiveTab("stakeholder-network");
       return;
     }
 
-    if (subId === "stakeholder") {
+    if (subId === "stakeholder" || location.pathname === "/contacts/stakeholder") {
       setActiveTab("stakeholders");
+      return;
     }
-  }, [subId]);
+
+    if (location.pathname === "/contacts") {
+      setActiveTab("contacts");
+    }
+  }, [subId, location.pathname]);
 
   useEffect(() => {
     const handleScroll = () => setShowScrollTop(window.scrollY > 500);
