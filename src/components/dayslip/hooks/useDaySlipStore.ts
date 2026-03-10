@@ -45,7 +45,6 @@ export function useDaySlipStore(userId?: string, tenantId?: string) {
   const dirtyDaysRef = useRef<Set<string>>(new Set());
   const storeRef = useRef<DaySlipStore>(store);
   const dbLoadedRef = useRef(false);
-  const [weekPlanInjected, setWeekPlanInjected] = useState(false);
 
   const todayKey = toDayKey(new Date());
   const todayData = store[todayKey] ?? { html: "", plainText: "", nodes: "", struckLineIds: [], lineTimestamps: {} };
@@ -426,18 +425,27 @@ export function useDaySlipStore(userId?: string, tenantId?: string) {
 
   // Week plan injection
   useEffect(() => {
-    if (weekPlanInjected) return;
+    if (todayData.weekPlanInjected) return;
     const planned = getWeekPlanForDay(todayKey);
     if (!planned || planned.length === 0) return;
-    setWeekPlanInjected(true);
+    setStoreAndTrack((prev) => {
+      const day = prev[todayKey] ?? { html: "", plainText: "" };
+      if (day.weekPlanInjected) return prev;
+      return { ...prev, [todayKey]: { ...day, weekPlanInjected: true } };
+    }, todayKey);
     appendLinesToToday(planned);
-  }, [todayKey, weekPlanInjected, appendLinesToToday]);
+  }, [todayData.weekPlanInjected, todayKey, appendLinesToToday, setStoreAndTrack]);
 
   const handleApplyWeekPlan = useCallback((days: Record<string, string[]>) => {
+    setStoreAndTrack((prev) => {
+      const day = prev[todayKey] ?? { html: "", plainText: "" };
+      if (day.weekPlanInjected) return prev;
+      return { ...prev, [todayKey]: { ...day, weekPlanInjected: true } };
+    }, todayKey);
+
     const todayItems = days[todayKey];
     if (todayItems && todayItems.length > 0) appendLinesToToday(todayItems);
-    setWeekPlanInjected(true);
-  }, [todayKey, appendLinesToToday]);
+  }, [todayKey, appendLinesToToday, setStoreAndTrack]);
 
   const editorConfig = useMemo(() => ({
     namespace: "DaySlipEditor",
@@ -460,7 +468,7 @@ export function useDaySlipStore(userId?: string, tenantId?: string) {
     toggleStrike, appendLinesToToday, insertStructuredLines, deleteLine,
     toggleResolveLine, createFromLine, persistResolvedItems,
     onEditorChange, handleEditorReady, handleApplyWeekPlan,
-    editorConfig, weekPlanInjected, setWeekPlanInjected,
+    editorConfig,
   };
 }
 

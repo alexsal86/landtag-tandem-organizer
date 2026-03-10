@@ -11,6 +11,7 @@ export interface DaySlipDayData {
   resolved?: Array<{ lineId: string; text: string; target: ResolveTarget }>;
   completedAt?: string;
   recurringInjected?: boolean;
+  weekPlanInjected?: boolean;
   lineTimestamps?: Record<string, { addedAt: string; checkedAt?: string }>;
   dayMood?: 1 | 2 | 3 | 4 | 5;
 }
