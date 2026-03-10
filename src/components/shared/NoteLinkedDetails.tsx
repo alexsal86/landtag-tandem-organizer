@@ -41,7 +41,6 @@ interface MeetingData {
 interface CaseItemData {
   subject: string | null;
   status: string;
-  priority: string | null;
 }
 
 function NoteTaskStatus({ taskId, onNotFound }: { taskId: string; onNotFound?: () => void }) {
@@ -192,7 +191,7 @@ function NoteCaseItemStatus({ caseItemId, onNotFound }: { caseItemId: string; on
     const loadCaseItem = async () => {
       const { data, error } = await supabase
         .from('case_items')
-        .select('subject, status, priority')
+        .select('subject, status')
         .eq('id', caseItemId)
         .single();
       
@@ -250,11 +249,6 @@ function NoteCaseItemStatus({ caseItemId, onNotFound }: { caseItemId: string; on
         <Badge variant={getStatusVariant(caseItem.status)} className="text-xs h-5">
           {getStatusLabel(caseItem.status)}
         </Badge>
-        {caseItem.priority && (
-          <span className="text-muted-foreground">
-            Priorität: {caseItem.priority}
-          </span>
-        )}
       </div>
     </div>
   );
