@@ -15,6 +15,7 @@ import { de } from 'date-fns/locale';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { useToast } from '@/hooks/use-toast';
+import { isValidEmail } from '@/lib/utils';
 import { ContactSelector, type ContactSelectorContact } from '@/components/ContactSelector';
 
 interface TimeSlot {
@@ -192,8 +193,8 @@ export const AppointmentPollCreator = ({ onClose }: { onClose: () => void }) => 
 
       const { data: pollId, error: createPollError } = await supabase.rpc('create_appointment_poll_with_details', {
         p_title: title,
-        p_description: description || null,
-        p_deadline: deadline?.toISOString() ?? null,
+        p_description: description || undefined,
+        p_deadline: deadline?.toISOString() ?? undefined,
         p_time_slots: timeSlotData,
         p_participants: participantData,
       });

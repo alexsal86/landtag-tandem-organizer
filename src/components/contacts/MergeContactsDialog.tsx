@@ -216,7 +216,7 @@ export function MergeContactsDialog({
                     <RadioGroupItem value={contact1.id} id="primary1" />
                     <Label htmlFor="primary1" className="flex items-center gap-2 cursor-pointer">
                       <Avatar className="h-8 w-8">
-                        <AvatarImage src={contact1.avatar_url} />
+                        <AvatarImage src={contact1.avatar_url ?? undefined} />
                         <AvatarFallback>{getInitials(contact1.name)}</AvatarFallback>
                       </Avatar>
                       <span>{contact1.name}</span>
@@ -226,7 +226,7 @@ export function MergeContactsDialog({
                     <RadioGroupItem value={contact2.id} id="primary2" />
                     <Label htmlFor="primary2" className="flex items-center gap-2 cursor-pointer">
                       <Avatar className="h-8 w-8">
-                        <AvatarImage src={contact2.avatar_url} />
+                        <AvatarImage src={contact2.avatar_url ?? undefined} />
                         <AvatarFallback>{getInitials(contact2.name)}</AvatarFallback>
                       </Avatar>
                       <span>{contact2.name}</span>
@@ -276,7 +276,7 @@ export function MergeContactsDialog({
                             }`}
                           >
                             {value1 ? (
-                              <span className="text-sm">{value1}</span>
+                              <span className="text-sm">{String(value1)}</span>
                             ) : (
                               <span className="text-sm text-muted-foreground">Kein Wert</span>
                             )}
@@ -297,7 +297,7 @@ export function MergeContactsDialog({
                             }`}
                           >
                             {value2 ? (
-                              <span className="text-sm">{value2}</span>
+                              <span className="text-sm">{String(value2)}</span>
                             ) : (
                               <span className="text-sm text-muted-foreground">Kein Wert</span>
                             )}

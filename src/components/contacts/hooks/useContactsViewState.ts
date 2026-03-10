@@ -67,7 +67,7 @@ export interface UseContactsViewStateResult {
   hasMore: boolean;
   totalCount: number;
   loadMore: () => void;
-  toggleFavorite: (id: string) => Promise<void>;
+  toggleFavorite: (id: string, isFavorite: boolean) => Promise<void>;
   refreshContacts: () => void;
   contactsCount: number;
   stakeholdersCount: number;

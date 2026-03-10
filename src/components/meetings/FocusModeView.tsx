@@ -141,11 +141,11 @@ export function FocusModeView({
     if (!sourceId) return false;
 
     if (sourceType === 'quick_note') {
-      return Boolean((src.meeting_result as string | null | undefined)?.trim());
+      return Boolean((src?.meeting_result as string | null | undefined)?.trim());
     }
 
-    if (sourceType === 'task' && (src.meeting_result as string | null | undefined)) {
-      return Boolean((src.meeting_result as string).trim());
+    if (sourceType === 'task' && (src?.meeting_result as string | null | undefined)) {
+      return Boolean((src?.meeting_result as string).trim());
     }
 
     if (!parentItem) return false;

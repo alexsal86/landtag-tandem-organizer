@@ -150,7 +150,7 @@ export const useDecisionCreator = ({
         const stored = localStorage.getItem("default_decision_settings");
         if (stored) {
           defaultSettings = JSON.parse(stored);
-          defaultIds = defaultSettings.participants || [];
+          defaultIds = defaultSettings?.participants || [];
         } else {
           const oldStored = localStorage.getItem("default_decision_participants");
           if (oldStored) {

@@ -13,6 +13,7 @@ import { format } from 'date-fns';
 import { de } from 'date-fns/locale';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
+import { isValidEmail } from '@/lib/utils';
 import { ContactSelector, type ContactSelectorContact } from '@/components/ContactSelector';
 
 interface PollParticipant {

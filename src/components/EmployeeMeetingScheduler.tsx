@@ -167,7 +167,7 @@ export function EmployeeMeetingScheduler({
         p_tenant_id: currentTenant.id,
         p_meeting_id: meeting.id,
         p_employee_id: employeeId,
-        p_explicit_request_id: requestId ?? null,
+        p_explicit_request_id: requestId ?? undefined,
         p_source: requestId ? "scheduler_explicit" : "scheduler_auto",
         p_time_window_days: 45,
       });
