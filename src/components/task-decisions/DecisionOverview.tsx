@@ -176,6 +176,7 @@ export const DecisionOverview = () => {
     setIsLoading(true);
     
     try {
+      // Core action: Persist creator response/follow-up
       const actionError = mode === 'creator_response'
         ? (await supabase
             .from('task_decision_responses')
@@ -205,7 +206,7 @@ export const DecisionOverview = () => {
 
       if (actionError) throw actionError;
 
-      // Erfolg melden sofort
+      // Erfolg nur für Kernaktion
       toast({
         title: "Erfolgreich",
         description: mode === 'creator_response' ? "Antwort wurde gesendet." : "Rückmeldung wurde gesendet.",
@@ -213,7 +214,10 @@ export const DecisionOverview = () => {
 
       setCreatorResponses(prev => ({ ...prev, [responseId]: '' }));
 
-      // Best-effort: Notification senden (in separatem try/catch)
+      // Nach Kernaktion immer neu laden, um konsistenten Stand zu erhalten
+      if (user?.id) await loadDecisionRequests(user.id);
+
+      // Side effect (non-blocking): Notification senden
       try {
         if (mode !== 'creator_response') return;
 
@@ -247,13 +251,10 @@ export const DecisionOverview = () => {
           }
         }
       } catch (notifError) {
-        debugConsole.warn('Notification send failed (non-critical):', notifError);
+        debugConsole.warn('Creator response notification failed (core action succeeded):', notifError);
       }
-
-      // Liste neu laden
-      if (user?.id) await loadDecisionRequests(user.id);
     } catch (error) {
-      debugConsole.error('Error sending creator response:', error);
+      debugConsole.error('Creator response core action failed:', error);
       toast({
         title: "Fehler",
         description: "Antwort konnte nicht gesendet werden.",
