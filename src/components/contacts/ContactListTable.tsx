@@ -7,7 +7,8 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/comp
 import { Mail, Phone, MapPin, Building, User, Star, ChevronUp, ChevronDown, ChevronRight, FileText } from "lucide-react";
 import { Contact } from "@/hooks/useInfiniteContacts";
 import { ContactDocumentRows } from "./ContactDocumentRows";
-import { getInitials, getGenderLabel } from "./hooks/useContactsViewState";
+import { getGenderLabel } from "./hooks/useContactsViewState";
+import { getInitials } from "./utils/contactFormatters";
 import { useToast } from "@/hooks/use-toast";
 
 interface ContactListTableProps {

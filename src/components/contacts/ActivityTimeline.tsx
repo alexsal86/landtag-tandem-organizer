@@ -17,6 +17,7 @@ import { Card } from '@/components/ui/card';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
+import { getInitials } from '@/components/contacts/utils/contactFormatters';
 
 export interface Activity {
   id: string;
@@ -85,15 +86,6 @@ const getActivityColor = (type: string) => {
   }
 };
 
-const getInitials = (name: string | null | undefined): string => {
-  if (!name) return '?';
-  return name
-    .split(' ')
-    .map(n => n[0])
-    .join('')
-    .toUpperCase()
-    .slice(0, 2);
-};
 
 export function ActivityTimeline({ activities, loading = false }: ActivityTimelineProps) {
   const [expandedActivities, setExpandedActivities] = React.useState<Set<string>>(new Set());
