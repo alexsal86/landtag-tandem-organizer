@@ -63,6 +63,7 @@ export const PollResponseInterface = ({ pollId, token, participantId, isPreview 
   const [participant, setParticipant] = useState<Participant | null>(null);
   const [responses, setResponses] = useState<Record<string, Response>>({});
   const [generalComment, setGeneralComment] = useState('');
+  const [accessError, setAccessError] = useState<string | null>(null);
 
   useEffect(() => {
     let isEffectActive = true;
@@ -103,19 +104,27 @@ export const PollResponseInterface = ({ pollId, token, participantId, isPreview 
         if (!isEffectActive) return;
         setTimeSlots(slotsData || []);
 
-        // Load or create participant
+        // Load participant for response access
         let currentParticipant: Participant | null = null;
-        
+
+        if (!isPreview && !participantId && !token) {
+          throw new Error('Fehlende Zugriffsdaten. Bitte öffnen Sie den Link erneut oder melden Sie sich intern mit einer gültigen Teilnehmer-ID an.');
+        }
+
         if (participantId) {
           // Internal participant
           const { data: participantData, error: participantError } = await supabase
             .from('poll_participants')
             .select('id, name, email, is_external, token')
+            .eq('poll_id', pollId)
             .eq('id', participantId)
-            .abortSignal(abortController.signal)
-            .single();
+            .eq('is_external', false)
+            .maybeSingle();
 
           if (participantError) throw participantError;
+          if (!participantData) {
+            throw new Error('Ungültige oder nicht autorisierte interne Teilnehmer-ID.');
+          }
           currentParticipant = participantData;
         } else if (token) {
           // External participant with token
@@ -128,20 +137,14 @@ export const PollResponseInterface = ({ pollId, token, participantId, isPreview 
             .maybeSingle();
 
           if (participantError) throw participantError;
-          currentParticipant = participantData;
-        } else {
-          // Try to find participant without token (fallback for old links)
-          const { data: participantData, error: participantError } = await supabase
-            .from('poll_participants')
-            .select('id, name, email, is_external, token')
-            .eq('poll_id', pollId)
-            .eq('is_external', true)
-            .abortSignal(abortController.signal)
-            .maybeSingle();
-
-          if (!participantError && participantData) {
-            currentParticipant = participantData;
+          if (!participantData) {
+            throw new Error('Ungültiger oder abgelaufener Teilnehmer-Token.');
           }
+          currentParticipant = participantData;
+        }
+
+        if (!isPreview && !currentParticipant) {
+          throw new Error('Kein autorisierter Teilnehmer für diese Abstimmung gefunden.');
         }
 
         if (!isEffectActive) return;
@@ -176,9 +179,13 @@ export const PollResponseInterface = ({ pollId, token, participantId, isPreview 
         }
 
         debugConsole.error('Error loading poll data:', error);
+        const errorMessage = error instanceof Error
+          ? error.message
+          : 'Die Abstimmung konnte nicht geladen werden.';
+        setAccessError(errorMessage);
         toast({
           title: "Fehler",
-          description: "Die Abstimmung konnte nicht geladen werden.",
+          description: errorMessage,
           variant: "destructive",
         });
       } finally {
@@ -326,7 +333,7 @@ export const PollResponseInterface = ({ pollId, token, participantId, isPreview 
     return (
       <Card className="w-full max-w-2xl mx-auto">
         <CardContent className="p-6 text-center">
-          <div className="text-red-500">Kein gültiger Teilnehmer-Token gefunden.</div>
+          <div className="text-red-500">{accessError || 'Ungültige Zugriffsdaten. Bitte nutzen Sie einen gültigen Link oder eine autorisierte interne Teilnehmer-ID.'}</div>
         </CardContent>
       </Card>
     );
