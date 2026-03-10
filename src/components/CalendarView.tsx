@@ -1,8 +1,13 @@
 import { useState, useEffect, useRef, startTransition } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
-import { Calendar } from "lucide-react";
+import { Calendar, ChevronLeft, ChevronRight } from "lucide-react";
+import { getISOWeek } from "date-fns";
+import { de } from "date-fns/locale";
+import { format } from "date-fns";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { ProperReactBigCalendar } from "./calendar/ProperReactBigCalendar";
 import { AppointmentDetailsSidebar } from "./calendar/AppointmentDetailsSidebar";
 import AppointmentPreparationSidebar from "./AppointmentPreparationSidebar";
@@ -12,14 +17,22 @@ import { useCalendarData } from "./calendar/hooks/useCalendarData";
 import { useCalendarOperations } from "./calendar/hooks/useCalendarOperations";
 import type { CalendarEvent } from "./calendar/types";
 
-// Re-export for backward compatibility
 export type { CalendarEvent } from "./calendar/types";
+
+type CalendarViewType = "day" | "week" | "month" | "agenda" | "polls";
+
+const viewLabels: Record<string, string> = {
+  day: "Tag",
+  week: "Woche",
+  month: "Monat",
+  agenda: "Agenda",
+};
 
 export function CalendarView() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const [currentDate, setCurrentDate] = useState(new Date());
-  const [view, setView] = useState<"day" | "week" | "month" | "agenda" | "polls">("week");
+  const [view, setView] = useState<CalendarViewType>("week");
   const [selectedAppointment, setSelectedAppointment] = useState<CalendarEvent | null>(null);
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [preparationSidebarOpen, setPreparationSidebarOpen] = useState(false);
@@ -29,7 +42,7 @@ export function CalendarView() {
   const { appointments, loading, refreshAppointments } = useCalendarData(currentDate, view);
   const { handleEventDrop, handleEventResize } = useCalendarOperations(refreshAppointments);
 
-  // Deep-link support: /calendar?highlight=<id>
+  // Deep-link support
   useEffect(() => {
     const highlightId = searchParams.get("highlight");
     const dateParam = searchParams.get("date");
@@ -55,7 +68,6 @@ export function CalendarView() {
     (async () => {
       const isExt = highlightId.startsWith("external-");
       const id = isExt ? highlightId.replace(/^external-/, "") : highlightId;
-
       let data: any = null;
       let error: any = null;
 
@@ -106,20 +118,20 @@ export function CalendarView() {
     startTransition(() => setCurrentDate(d));
   };
 
+  const monthLabel = format(currentDate, "MMMM yyyy", { locale: de });
+  const kwLabel = `KW ${getISOWeek(currentDate)}`;
+
   return (
     <div className="h-full overflow-hidden bg-gradient-subtle">
       <div className="flex h-full min-h-0 transition-all duration-300">
+        {/* Sidebar */}
         <div className="w-[320px] shrink-0 min-h-0">
           <CalendarHeader
-            currentDate={currentDate}
-            view={view}
-            onNavigateDate={navigateDate}
-            onToday={() => setCurrentDate(new Date())}
-            onViewChange={(v) => setView(v as typeof view)}
             onShowPolls={() => setView("polls")}
           />
         </div>
 
+        {/* Detail sidebar */}
         {sidebarOpen && selectedAppointment && (
           <div className="w-[420px] shrink-0 min-h-0 border-x border-border overflow-hidden">
             <AppointmentDetailsSidebar
@@ -131,16 +143,71 @@ export function CalendarView() {
           </div>
         )}
 
-        <div className="flex-1 min-w-0 min-h-0 p-6 pr-0 transition-all duration-300 overflow-hidden">
-            <Card className="bg-card shadow-card border-0 h-full min-h-0 flex flex-col">
-              {view === "polls" && (
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
-                    <Calendar className="h-5 w-5 text-primary" />
-                    Terminabstimmungen
-                  </CardTitle>
-                </CardHeader>
-              )}
+        {/* Main calendar area */}
+        <div className="flex-1 min-w-0 min-h-0 flex flex-col transition-all duration-300 overflow-hidden pl-6 pt-4 pb-1 pr-0">
+          {/* Google-style toolbar */}
+          <div className="flex items-center justify-between pr-4 pb-3">
+            <div className="flex items-center gap-3">
+              <Button
+                variant="outline"
+                size="sm"
+                className="h-9 px-4 text-sm font-medium"
+                onClick={() => setCurrentDate(new Date())}
+              >
+                Heute
+              </Button>
+              <div className="flex items-center gap-0.5">
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-9 w-9"
+                  onClick={() => navigateDate("prev")}
+                >
+                  <ChevronLeft className="h-5 w-5" />
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-9 w-9"
+                  onClick={() => navigateDate("next")}
+                >
+                  <ChevronRight className="h-5 w-5" />
+                </Button>
+              </div>
+              <h1 className="text-xl font-semibold text-foreground capitalize">
+                {monthLabel}
+              </h1>
+              <span className="text-sm text-muted-foreground font-medium">
+                {kwLabel}
+              </span>
+            </div>
+
+            <Select
+              value={view === "polls" ? "polls" : view}
+              onValueChange={(v) => setView(v as CalendarViewType)}
+            >
+              <SelectTrigger className="w-[120px] h-9">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="day">Tag</SelectItem>
+                <SelectItem value="week">Woche</SelectItem>
+                <SelectItem value="month">Monat</SelectItem>
+                <SelectItem value="agenda">Agenda</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+
+          {/* Calendar card */}
+          <Card className="bg-card shadow-card border-0 flex-1 min-h-0 flex flex-col">
+            {view === "polls" && (
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Calendar className="h-5 w-5 text-primary" />
+                  Terminabstimmungen
+                </CardTitle>
+              </CardHeader>
+            )}
             <CardContent className="p-0 flex-1 min-h-0 overflow-hidden">
               {view === "polls" ? (
                 <PollListView />
@@ -152,7 +219,7 @@ export function CalendarView() {
                   view={view}
                   date={currentDate}
                   onNavigate={setCurrentDate}
-                  onView={(v) => setView(v as typeof view)}
+                  onView={(v) => setView(v as CalendarViewType)}
                   onEventSelect={(a) => { setSelectedAppointment(a); setSidebarOpen(true); }}
                   onEventDrop={handleEventDrop}
                   onEventResize={handleEventResize}
