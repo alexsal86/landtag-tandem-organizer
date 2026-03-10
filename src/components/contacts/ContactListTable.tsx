@@ -52,7 +52,6 @@ export function ContactListTable({
             <TableHead className="w-14">Avatar</TableHead>
             <SortableTableHead sortKey="gender" sortColumn={sortColumn} sortDirection={sortDirection} onSort={onSort}>Anrede</SortableTableHead>
             <SortableTableHead sortKey="name" sortColumn={sortColumn} sortDirection={sortDirection} onSort={onSort}>Name</SortableTableHead>
-            <SortableTableHead sortKey="gender" sortColumn={sortColumn} sortDirection={sortDirection} onSort={onSort}>Anrede</SortableTableHead>
             <SortableTableHead sortKey="organization" sortColumn={sortColumn} sortDirection={sortDirection} onSort={onSort}>Organisation/Rolle</SortableTableHead>
             <SortableTableHead sortKey="email" sortColumn={sortColumn} sortDirection={sortDirection} onSort={onSort}>Kontakt</SortableTableHead>
             <SortableTableHead sortKey="address" sortColumn={sortColumn} sortDirection={sortDirection} onSort={onSort}>Adresse</SortableTableHead>
@@ -85,9 +84,6 @@ export function ContactListTable({
                       <div className="flex flex-wrap gap-1 mt-1">{contact.tags.slice(0, 3).map(tag => <Badge key={tag} variant="secondary" className="text-xs px-1 py-0">{tag}</Badge>)}</div>
                     )}
                   </div>
-                </TableCell>
-                <TableCell>
-                  <Badge variant="outline" className="text-xs">{contact.contact_type === "organization" ? "Org." : getGenderLabel(contact.gender ?? undefined) || "–"}</Badge>
                 </TableCell>
                 <TableCell>
                   <div className="flex flex-col">
