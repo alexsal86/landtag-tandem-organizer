@@ -50,6 +50,7 @@ vi.mock("@/integrations/supabase/client", () => ({
 }));
 
 import type { AgendaItem, Meeting, LinkedQuickNote, LinkedCaseItem, Profile } from "@/components/meetings/types";
+import { mapBirthdayAssignedToValue } from "../useMeetingArchive";
 
 describe("useMeetingArchive - transferItemsToMeeting logic", () => {
   beforeEach(() => {
@@ -138,6 +139,17 @@ describe("useMeetingArchive - birthday task creation logic", () => {
     const selectedIds = Object.keys(parsed).filter(id => parsed[id]?.action);
 
     expect(selectedIds).toHaveLength(0);
+  });
+
+  it("maps birthday task assignee to a single string user id", () => {
+    const profiles: Pick<Profile, 'user_id'>[] = [
+      { user_id: 'profile-user-1' },
+      { user_id: 'profile-user-2' },
+    ];
+
+    expect(mapBirthdayAssignedToValue(['explicit-user-1', 'explicit-user-2'], profiles, 'fallback-user')).toBe('explicit-user-1');
+    expect(mapBirthdayAssignedToValue([], profiles, 'fallback-user')).toBe('profile-user-1');
+    expect(mapBirthdayAssignedToValue([], [], 'fallback-user')).toBe('fallback-user');
   });
 });
 
