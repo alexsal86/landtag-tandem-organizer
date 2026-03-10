@@ -68,6 +68,8 @@ interface NavigableItem {
   sourceData?: unknown;
 }
 
+type SystemSubItemResultEntry = string | { result?: string; completed?: boolean };
+
 interface FocusModeViewProps {
   meeting: Meeting;
   agendaItems: AgendaItem[];
@@ -109,7 +111,7 @@ export function FocusModeView({
 }: FocusModeViewProps) {
   const [flatFocusIndex, setFlatFocusIndex] = useState(0);
   const [showLegend, setShowLegend] = useState(false);
-  const [completedSystemSubItems, setCompletedSystemSubItems] = useState<Set<string>>(new Set());
+  const [optimisticSystemSubItemCompletion, setOptimisticSystemSubItemCompletion] = useState<Record<string, boolean>>({});
   const [showArchiveConfirm, setShowArchiveConfirm] = useState(false);
   const [showAssignDialog, setShowAssignDialog] = useState(false);
   const itemRefs = useRef<(HTMLDivElement | null)[]>([]);
@@ -117,6 +119,41 @@ export function FocusModeView({
   // Ref to track when dialog just closed to prevent Enter from marking items
   const justClosedDialogRef = useRef(false);
   const showAssignDialogRef = useRef(showAssignDialog);
+
+  const parseSystemSubItemResults = useCallback((resultText?: string | null): Record<string, SystemSubItemResultEntry> => {
+    if (!resultText) return {};
+    try {
+      const parsed = JSON.parse(resultText);
+      return parsed && typeof parsed === 'object' ? (parsed as Record<string, SystemSubItemResultEntry>) : {};
+    } catch {
+      return {};
+    }
+  }, []);
+
+  const getSystemResultText = useCallback((entry: SystemSubItemResultEntry | undefined): string => {
+    if (typeof entry === 'string') return entry;
+    return entry?.result || '';
+  }, []);
+
+  const getPersistentSystemSubItemCompletion = useCallback((sourceType: NavigableItem['sourceType'], sourceData: unknown, parentItem?: AgendaItem | null) => {
+    const src = sourceData as Record<string, unknown> | undefined;
+    const sourceId = src?.id as string | undefined;
+    if (!sourceId) return false;
+
+    if (sourceType === 'quick_note') {
+      return Boolean((src.meeting_result as string | null | undefined)?.trim());
+    }
+
+    if (sourceType === 'task' && (src.meeting_result as string | null | undefined)) {
+      return Boolean((src.meeting_result as string).trim());
+    }
+
+    if (!parentItem) return false;
+
+    const entry = parseSystemSubItemResults(parentItem.result_text)[sourceId];
+    if (typeof entry === 'string') return Boolean(entry.trim());
+    return Boolean(entry?.completed ?? entry?.result?.trim());
+  }, [parseSystemSubItemResults]);
 
   // Build flat list of all navigable items (main items + sub-items + system sub-items)
   const allNavigableItems: NavigableItem[] = useMemo(() => {
@@ -129,11 +166,12 @@ export function FocusModeView({
   ) => {
     if (systemItem.system_type === 'quick_notes' && linkedQuickNotes.length > 0) {
       linkedQuickNotes.forEach((note, i) => {
+        const persistedCompleted = getPersistentSystemSubItemCompletion('quick_note', note, parentForChildren);
         result.push({
           item: {
             id: `note-${note.id}`,
             title: note.title || `Notiz ${i + 1}`,
-            is_completed: false,
+            is_completed: persistedCompleted,
             order_index: systemItem.order_index + i + 1,
             system_type: 'quick_note_item',
           } as AgendaItem,
@@ -149,11 +187,12 @@ export function FocusModeView({
     }
     if (systemItem.system_type === 'upcoming_appointments' && upcomingAppointments.length > 0) {
       upcomingAppointments.forEach((appt, i) => {
+        const persistedCompleted = getPersistentSystemSubItemCompletion('appointment', appt, parentForChildren);
         result.push({
           item: {
             id: `appt-${appt.id}`,
             title: appt.title || `Termin ${i + 1}`,
-            is_completed: false,
+            is_completed: persistedCompleted,
             order_index: systemItem.order_index + i + 1,
             system_type: 'appointment_item',
           } as AgendaItem,
@@ -169,11 +208,12 @@ export function FocusModeView({
     }
     if (systemItem.system_type === 'tasks' && linkedTasks.length > 0) {
       linkedTasks.forEach((task, i) => {
+        const persistedCompleted = getPersistentSystemSubItemCompletion('task', task, parentForChildren);
         result.push({
           item: {
             id: `task-${task.id}`,
             title: task.title || `Aufgabe ${i + 1}`,
-            is_completed: false,
+            is_completed: persistedCompleted,
             order_index: systemItem.order_index + i + 1,
             system_type: 'task_item',
           } as AgendaItem,
@@ -189,11 +229,12 @@ export function FocusModeView({
     }
     if (systemItem.system_type === 'case_items' && linkedCaseItems.length > 0) {
       linkedCaseItems.forEach((ci: any, i: number) => {
+        const persistedCompleted = getPersistentSystemSubItemCompletion('task', ci, parentForChildren);
         result.push({
           item: {
             id: `caseitem-${ci.id}`,
             title: ci.subject || `Vorgang ${i + 1}`,
-            is_completed: false,
+            is_completed: persistedCompleted,
             order_index: systemItem.order_index + i + 1,
             system_type: 'case_item_item',
           } as AgendaItem,
@@ -260,7 +301,20 @@ export function FocusModeView({
     });
     
     return result;
-  }, [agendaItems, linkedQuickNotes, upcomingAppointments, linkedTasks, linkedCaseItems]);
+  }, [agendaItems, getPersistentSystemSubItemCompletion, linkedQuickNotes, upcomingAppointments, linkedTasks, linkedCaseItems]);
+
+  useEffect(() => {
+    setOptimisticSystemSubItemCompletion(prev => {
+      const next: Record<string, boolean> = {};
+      allNavigableItems.forEach(n => {
+        if (!n.isSystemSubItem || !n.item.id) return;
+        if (Object.prototype.hasOwnProperty.call(prev, n.item.id)) {
+          next[n.item.id] = prev[n.item.id];
+        }
+      });
+      return next;
+    });
+  }, [allNavigableItems]);
 
   // Get current focused navigable item
   const currentNavigable = allNavigableItems[flatFocusIndex];
@@ -285,13 +339,22 @@ export function FocusModeView({
   // Auto-complete parent when all sub-items are completed
   const handleItemComplete = useCallback((navigable: NavigableItem, isCompleted: boolean) => {
     if (navigable.isSystemSubItem) {
-      // System sub-items are synthetic - track completion locally
-      setCompletedSystemSubItems(prev => {
-        const newSet = new Set(prev);
-        if (isCompleted) newSet.add(navigable.item.id!);
-        else newSet.delete(navigable.item.id!);
-        return newSet;
-      });
+      if (navigable.item.id) {
+        setOptimisticSystemSubItemCompletion(prev => ({ ...prev, [navigable.item.id!]: isCompleted }));
+      }
+
+      const source = navigable.sourceData as Record<string, unknown> | undefined;
+      const sourceId = source?.id as string | undefined;
+      if (sourceId && navigable.parentItem?.id && (navigable.sourceType === 'appointment' || navigable.sourceType === 'task')) {
+        const results = parseSystemSubItemResults(navigable.parentItem.result_text);
+        const previousEntry = results[sourceId];
+        const nextResult = typeof previousEntry === 'string' ? previousEntry : previousEntry?.result || '';
+        results[sourceId] = {
+          result: nextResult,
+          completed: isCompleted,
+        };
+        onUpdateResult(navigable.parentItem.id, 'result_text', JSON.stringify(results));
+      }
       
       // Check if all system siblings under the same parent are now complete
       if (isCompleted && navigable.parentItem) {
@@ -300,7 +363,9 @@ export function FocusModeView({
           n.isSystemSubItem && n.parentItem?.id === parentId
         );
         const allSiblingsComplete = siblings.every(s =>
-          s.item.id === navigable.item.id ? true : completedSystemSubItems.has(s.item.id!)
+          s.item.id === navigable.item.id
+            ? true
+            : Boolean(s.item.id ? (optimisticSystemSubItemCompletion[s.item.id] ?? s.item.is_completed) : s.item.is_completed)
         );
         if (allSiblingsComplete && !navigable.parentItem.is_completed) {
           const parentGlobalIndex = agendaItems.findIndex(i => i.id === parentId);
@@ -334,7 +399,7 @@ export function FocusModeView({
         }
       }
     }
-  }, [agendaItems, allNavigableItems, completedSystemSubItems, onUpdateItem]);
+  }, [agendaItems, allNavigableItems, onUpdateItem, onUpdateResult, optimisticSystemSubItemCompletion, parseSystemSubItemResults]);
 
   // Check if all items are completed
   const checkAllCompleted = useCallback(() => {
@@ -348,7 +413,7 @@ export function FocusModeView({
     currentNavigable,
     currentItem,
     currentGlobalIndex,
-    completedSystemSubItems,
+    optimisticSystemSubItemCompletion,
   });
   const handleItemCompleteRef = useRef(handleItemComplete);
   const checkAllCompletedRef = useRef(checkAllCompleted);
@@ -361,7 +426,7 @@ export function FocusModeView({
       currentNavigable,
       currentItem,
       currentGlobalIndex,
-      completedSystemSubItems,
+      optimisticSystemSubItemCompletion,
     };
     handleItemCompleteRef.current = handleItemComplete;
     checkAllCompletedRef.current = checkAllCompleted;
@@ -372,7 +437,7 @@ export function FocusModeView({
     currentNavigable,
     currentItem,
     currentGlobalIndex,
-    completedSystemSubItems,
+    optimisticSystemSubItemCompletion,
     handleItemComplete,
     checkAllCompleted,
   ]);
@@ -385,7 +450,7 @@ export function FocusModeView({
         currentNavigable,
         currentItem,
         currentGlobalIndex,
-        completedSystemSubItems,
+        optimisticSystemSubItemCompletion,
       } = keyboardContextRef.current;
 
       // If assignment dialog is open OR just closed, block keyboard events
@@ -444,7 +509,7 @@ export function FocusModeView({
             
             if (childrenInNav.length > 0) {
               const firstUncompleted = childrenInNav.find(n => {
-                if (n.isSystemSubItem) return !completedSystemSubItems.has(n.item.id!);
+                if (n.isSystemSubItem) return !(n.item.id ? (optimisticSystemSubItemCompletion[n.item.id] ?? n.item.is_completed) : n.item.is_completed);
                 return !n.item.is_completed;
               });
               if (firstUncompleted) {
@@ -456,7 +521,7 @@ export function FocusModeView({
             
             // Toggle completion
             if (currentNavigable.isSystemSubItem) {
-              const isNowCompleted = !completedSystemSubItems.has(currentItem.id!);
+              const isNowCompleted = !(currentItem.id ? (optimisticSystemSubItemCompletion[currentItem.id] ?? currentItem.is_completed) : currentItem.is_completed);
               handleItemCompleteRef.current(currentNavigable, isNowCompleted);
               if (isNowCompleted) {
                 setTimeout(() => {
@@ -588,16 +653,12 @@ export function FocusModeView({
       const getSubItemResult = () => {
         if (sourceType === 'quick_note') return (src.meeting_result as string) || '';
         if (sourceType === 'appointment' && parentItem) {
-          try {
-            const results = JSON.parse(parentItem.result_text || '{}');
-            return results[src.id as string] || '';
-          } catch { return ''; }
+          const results = parseSystemSubItemResults(parentItem.result_text);
+          return getSystemResultText(results[src.id as string]);
         }
         if (sourceType === 'task' && parentItem) {
-          try {
-            const results = JSON.parse(parentItem.result_text || '{}');
-            return results[src.id as string] || '';
-          } catch { return ''; }
+          const results = parseSystemSubItemResults(parentItem.result_text);
+          return getSystemResultText(results[src.id as string]);
         }
         return '';
       };
@@ -606,17 +667,22 @@ export function FocusModeView({
         if (sourceType === 'quick_note' && onUpdateNoteResult) {
           onUpdateNoteResult(src.id as string, value);
         } else if ((sourceType === 'task' || sourceType === 'appointment') && parentItem?.id) {
-          try {
-            const results = JSON.parse(parentItem.result_text || '{}');
-            results[src.id as string] = value;
-            onUpdateResult(parentItem.id, 'result_text', JSON.stringify(results));
-          } catch {
-            onUpdateResult(parentItem.id, 'result_text', JSON.stringify({ [src.id as string]: value }));
-          }
+          const results = parseSystemSubItemResults(parentItem.result_text);
+          const sourceId = src.id as string;
+          const previousEntry = results[sourceId];
+          const completed = typeof previousEntry === 'string'
+            ? Boolean(previousEntry.trim())
+            : Boolean(previousEntry?.completed ?? previousEntry?.result?.trim());
+
+          results[sourceId] = {
+            result: value,
+            completed,
+          };
+          onUpdateResult(parentItem.id, 'result_text', JSON.stringify(results));
         }
       };
 
-      const isItemCompleted = completedSystemSubItems.has(item.id!);
+      const isItemCompleted = Boolean(item.id ? (optimisticSystemSubItemCompletion[item.id] ?? item.is_completed) : item.is_completed);
 
       return (
         <div
