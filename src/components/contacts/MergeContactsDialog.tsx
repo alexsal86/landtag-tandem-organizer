@@ -134,28 +134,36 @@ export function MergeContactsDialog({
 
       // Update all references to secondary contact
       // Update call_logs
-      await supabase
+      const { error: callLogsUpdateError } = await supabase
         .from('call_logs')
         .update({ contact_id: primaryContact })
         .eq('contact_id', secondaryContactId);
 
+      if (callLogsUpdateError) throw callLogsUpdateError;
+
       // Update appointment_contacts
-      await supabase
+      const { error: appointmentContactsUpdateError } = await supabase
         .from('appointment_contacts')
         .update({ contact_id: primaryContact })
         .eq('contact_id', secondaryContactId);
 
+      if (appointmentContactsUpdateError) throw appointmentContactsUpdateError;
+
       // Update contact_activities
-      await supabase
+      const { error: contactActivitiesUpdateError } = await supabase
         .from('contact_activities')
         .update({ contact_id: primaryContact })
         .eq('contact_id', secondaryContactId);
 
+      if (contactActivitiesUpdateError) throw contactActivitiesUpdateError;
+
       // Update distribution_list_members
-      await supabase
+      const { error: distributionListMembersUpdateError } = await supabase
         .from('distribution_list_members')
         .update({ contact_id: primaryContact })
         .eq('contact_id', secondaryContactId);
+
+      if (distributionListMembersUpdateError) throw distributionListMembersUpdateError;
 
       // Log merge activity
       const { data: userData } = await supabase.auth.getUser();
@@ -166,7 +174,7 @@ export function MergeContactsDialog({
         .single();
 
       if (userData.user && contactData) {
-        await supabase
+        const { error: mergeActivityInsertError } = await supabase
           .from('contact_activities')
           .insert([{
             contact_id: primaryContact,
@@ -180,6 +188,8 @@ export function MergeContactsDialog({
               merged_contact_name: secondaryContactId === contact1.id ? contact1.name : contact2.name,
             },
           }]);
+
+        if (mergeActivityInsertError) throw mergeActivityInsertError;
       }
 
       // Delete secondary contact
