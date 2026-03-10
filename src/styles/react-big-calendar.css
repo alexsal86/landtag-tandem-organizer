@@ -216,11 +216,11 @@
 
 .rbc-time-gutter .rbc-timeslot-group .rbc-label {
   position: relative;
-  top: 0;
+  top: -14px;
   transform: translateY(-50%);
-  font-size: 1.9rem;
+  font-size: 0.9rem;
   line-height: 1;
-  font-weight: 500;
+  font-weight: 600;
   color: hsl(var(--foreground));
   padding-right: 14px;
   text-align: right;
