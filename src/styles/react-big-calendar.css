@@ -206,8 +206,53 @@
 
 .rbc-time-gutter {
   background: hsl(var(--muted) / 0.45);
-  border-right: 1px solid hsl(var(--border));
+  border-right: none;
   min-width: 136px;
+}
+
+.rbc-time-separator-column {
+  width: 8px;
+  min-width: 8px;
+  flex: 0 0 8px;
+  background: hsl(var(--background));
+  border-top: none;
+  border-bottom: none;
+  border-left: none;
+  border-right: none;
+  position: relative;
+}
+
+.rbc-time-separator-column::before,
+.rbc-time-separator-column::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  pointer-events: none;
+}
+
+.rbc-time-separator-column::before {
+  top: 0;
+  bottom: 0;
+  background-image: repeating-linear-gradient(
+    to bottom,
+    transparent 0,
+    transparent calc(60px - 1px),
+    hsl(var(--border) / 0.3) calc(60px - 1px),
+    hsl(var(--border) / 0.3) 60px
+  );
+}
+
+.rbc-time-separator-column::after {
+  top: 30px;
+  bottom: 0;
+  background-image: repeating-linear-gradient(
+    to bottom,
+    transparent 0,
+    transparent calc(60px - 1px),
+    hsl(var(--border) / 0.15) calc(60px - 1px),
+    hsl(var(--border) / 0.15) 60px
+  );
 }
 
 .rbc-time-gutter .rbc-timeslot-group .rbc-time-slot {
