@@ -165,21 +165,8 @@ export const useSpeechDictation = ({ editor, insertText, dispatchCommand }: UseS
     speechAdapter.onError = setSpeechError;
 
     speechAdapter.onInterimTranscript = (text) => {
-      const { command, contentText } = parseSpeechInput(text);
-      setInterimTranscript(contentText);
-      updateInterimNode(contentText);
-
-      if (command?.type === 'stop-listening') {
-        if (contentText) {
-          commitContentText(contentText);
-        } else {
-          editor.update(() => {
-            clearInterimNode();
-          });
-          setInterimTranscript('');
-        }
-        speechAdapter.stop();
-      }
+      setInterimTranscript(text);
+      updateInterimNode(text);
     };
 
     speechAdapter.onFinalTranscript = (text) => {
