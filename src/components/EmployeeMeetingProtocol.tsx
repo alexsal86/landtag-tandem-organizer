@@ -65,6 +65,17 @@ interface ActionItem {
   task_id?: string;
 }
 
+const ACTION_ITEM_MIN_LENGTH = 3;
+
+function extractPlainTextFromHtml(content: string) {
+  return content
+    .replace(/<[^>]*>/g, " ")
+    .replace(/&nbsp;/gi, " ")
+    .replace(/\u00A0/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
 // ─── Rating Scale Component ──────────────────────────────
 function RatingScale({ 
   value, 
@@ -486,7 +497,27 @@ export function EmployeeMeetingProtocol({ meetingId, onBack }: EmployeeMeetingPr
   };
 
   const addActionItem = async () => {
-    if (!newActionItem.description.trim() || !currentTenant) return;
+    if (!currentTenant) return;
+
+    const plainDescription = extractPlainTextFromHtml(newActionItem.description);
+    if (!plainDescription) {
+      toast({
+        title: "Validierung",
+        description: "Bitte eine Maßnahme mit Inhalt eingeben.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (plainDescription.length < ACTION_ITEM_MIN_LENGTH) {
+      toast({
+        title: "Validierung",
+        description: `Bitte mindestens ${ACTION_ITEM_MIN_LENGTH} Zeichen eingeben.`,
+        variant: "destructive",
+      });
+      return;
+    }
+
     try {
       const { data, error } = await supabase
         .from("employee_meeting_action_items")
@@ -963,7 +994,10 @@ export function EmployeeMeetingProtocol({ meetingId, onBack }: EmployeeMeetingPr
                     <Input type="date" value={newActionItem.due_date || ""} onChange={(e) => setNewActionItem({ ...newActionItem, due_date: e.target.value })} />
                   </div>
                 </div>
-                <Button onClick={addActionItem} disabled={!newActionItem.description.trim()}>
+                <Button
+                  onClick={addActionItem}
+                  disabled={extractPlainTextFromHtml(newActionItem.description).length < ACTION_ITEM_MIN_LENGTH}
+                >
                   <Plus className="h-4 w-4 mr-2" />
                   Hinzufügen
                 </Button>
