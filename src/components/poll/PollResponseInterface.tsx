@@ -40,6 +40,13 @@ interface Response {
   comment?: string;
 }
 
+const isAbortError = (error: unknown) => {
+  if (!error || typeof error !== 'object') return false;
+
+  const abortError = error as { name?: string; code?: string };
+  return abortError.name === 'AbortError' || abortError.code === 'ABORT_ERR';
+};
+
 interface PollResponseInterfaceProps {
   pollId: string;
   token?: string;
@@ -56,8 +63,12 @@ export const PollResponseInterface = ({ pollId, token, participantId, isPreview 
   const [participant, setParticipant] = useState<Participant | null>(null);
   const [responses, setResponses] = useState<Record<string, Response>>({});
   const [generalComment, setGeneralComment] = useState('');
+  const [accessError, setAccessError] = useState<string | null>(null);
 
   useEffect(() => {
+    let isEffectActive = true;
+    const abortController = new AbortController();
+
     const loadPollData = async () => {
       try {
         // Load poll information
@@ -65,6 +76,7 @@ export const PollResponseInterface = ({ pollId, token, participantId, isPreview 
           .from('appointment_polls')
           .select('id, title, description, deadline, status')
           .eq('id', pollId)
+          .abortSignal(abortController.signal)
           .maybeSingle();
 
         if (pollError) {
@@ -74,6 +86,7 @@ export const PollResponseInterface = ({ pollId, token, participantId, isPreview 
         if (!pollData) {
           throw new Error('Abstimmung nicht gefunden oder ungültiger Link.');
         }
+        if (!isEffectActive) return;
         setPoll(pollData);
 
         // Load time slots
@@ -81,26 +94,37 @@ export const PollResponseInterface = ({ pollId, token, participantId, isPreview 
           .from('poll_time_slots')
           .select('id, start_time, end_time, order_index')
           .eq('poll_id', pollId)
+          .abortSignal(abortController.signal)
           .order('order_index');
 
         if (slotsError) {
           debugConsole.error('Time slots loading error:', slotsError);
           throw slotsError;
         }
+        if (!isEffectActive) return;
         setTimeSlots(slotsData || []);
 
-        // Load or create participant
+        // Load participant for response access
         let currentParticipant: Participant | null = null;
-        
+
+        if (!isPreview && !participantId && !token) {
+          throw new Error('Fehlende Zugriffsdaten. Bitte öffnen Sie den Link erneut oder melden Sie sich intern mit einer gültigen Teilnehmer-ID an.');
+        }
+
         if (participantId) {
           // Internal participant
           const { data: participantData, error: participantError } = await supabase
             .from('poll_participants')
             .select('id, name, email, is_external, token')
+            .eq('poll_id', pollId)
             .eq('id', participantId)
-            .single();
+            .eq('is_external', false)
+            .maybeSingle();
 
           if (participantError) throw participantError;
+          if (!participantData) {
+            throw new Error('Ungültige oder nicht autorisierte interne Teilnehmer-ID.');
+          }
           currentParticipant = participantData;
         } else if (token) {
           // External participant with token
@@ -109,24 +133,21 @@ export const PollResponseInterface = ({ pollId, token, participantId, isPreview 
             .select('id, name, email, is_external, token')
             .eq('poll_id', pollId)
             .eq('token', token)
+            .abortSignal(abortController.signal)
             .maybeSingle();
 
           if (participantError) throw participantError;
-          currentParticipant = participantData;
-        } else {
-          // Try to find participant without token (fallback for old links)
-          const { data: participantData, error: participantError } = await supabase
-            .from('poll_participants')
-            .select('id, name, email, is_external, token')
-            .eq('poll_id', pollId)
-            .eq('is_external', true)
-            .maybeSingle();
-
-          if (!participantError && participantData) {
-            currentParticipant = participantData;
+          if (!participantData) {
+            throw new Error('Ungültiger oder abgelaufener Teilnehmer-Token.');
           }
+          currentParticipant = participantData;
         }
 
+        if (!isPreview && !currentParticipant) {
+          throw new Error('Kein autorisierter Teilnehmer für diese Abstimmung gefunden.');
+        }
+
+        if (!isEffectActive) return;
         setParticipant(currentParticipant);
 
         // Load existing responses
@@ -135,7 +156,8 @@ export const PollResponseInterface = ({ pollId, token, participantId, isPreview 
             .from('poll_responses')
             .select('id, time_slot_id, status, comment')
             .eq('poll_id', pollId)
-            .eq('participant_id', currentParticipant.id);
+            .eq('participant_id', currentParticipant.id)
+            .abortSignal(abortController.signal);
 
           if (!responsesError && responsesData) {
             const responsesMap: Record<string, Response> = {};
@@ -146,23 +168,39 @@ export const PollResponseInterface = ({ pollId, token, participantId, isPreview 
                 comment: response.comment || ''
               };
             });
+            if (!isEffectActive) return;
             setResponses(responsesMap);
           }
         }
 
       } catch (error) {
+        if (isAbortError(error)) {
+          return;
+        }
+
         debugConsole.error('Error loading poll data:', error);
+        const errorMessage = error instanceof Error
+          ? error.message
+          : 'Die Abstimmung konnte nicht geladen werden.';
+        setAccessError(errorMessage);
         toast({
           title: "Fehler",
-          description: "Die Abstimmung konnte nicht geladen werden.",
+          description: errorMessage,
           variant: "destructive",
         });
       } finally {
-        setLoading(false);
+        if (isEffectActive) {
+          setLoading(false);
+        }
       }
     };
 
     loadPollData();
+
+    return () => {
+      isEffectActive = false;
+      abortController.abort();
+    };
   }, [pollId, token, participantId, toast]);
 
   const updateResponse = (timeSlotId: string, status: 'available' | 'tentative' | 'unavailable') => {
@@ -295,7 +333,7 @@ export const PollResponseInterface = ({ pollId, token, participantId, isPreview 
     return (
       <Card className="w-full max-w-2xl mx-auto">
         <CardContent className="p-6 text-center">
-          <div className="text-red-500">Kein gültiger Teilnehmer-Token gefunden.</div>
+          <div className="text-red-500">{accessError || 'Ungültige Zugriffsdaten. Bitte nutzen Sie einen gültigen Link oder eine autorisierte interne Teilnehmer-ID.'}</div>
         </CardContent>
       </Card>
     );

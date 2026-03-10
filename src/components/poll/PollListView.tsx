@@ -52,69 +52,22 @@ export const PollListView = () => {
     if (!user) return;
 
     try {
-      const { data: pollsData, error } = await supabase
-        .from('appointment_polls')
-        .select(`
-          id,
-          title,
-          description,
-          deadline,
-          status,
-          created_at,
-          poll_participants!inner(count),
-          poll_responses!inner(count),
-          poll_time_slots!inner(count)
-        `)
-        .eq('user_id', user.id)
-        .order('created_at', { ascending: false });
+      const { data: pollsData, error } = await supabase.rpc('get_user_polls_with_aggregation');
 
       if (error) throw error;
 
-      // Transform the data to get counts
-      const transformedPolls = await Promise.all(
-        (pollsData || []).map(async (poll) => {
-          // Get participant count
-          const { count: participantCount } = await supabase
-            .from('poll_participants')
-            .select('*', { count: 'exact', head: true })
-            .eq('poll_id', poll.id);
-
-          // Get response count (unique participants who responded)
-          const { data: responseData } = await supabase
-            .from('poll_responses')
-            .select('participant_id')
-            .eq('poll_id', poll.id);
-
-          const uniqueParticipants = new Set(responseData?.map(r => r.participant_id));
-          const responseCount = uniqueParticipants.size;
-
-          // Get time slots count
-          const { count: timeSlotsCount } = await supabase
-            .from('poll_time_slots')
-            .select('*', { count: 'exact', head: true })
-            .eq('poll_id', poll.id);
-
-          // Get creator name
-          const { data: profile } = await supabase
-            .from('profiles')
-            .select('display_name')
-            .eq('user_id', (poll as any).user_id || user!.id)
-            .maybeSingle();
-
-          return {
-            id: poll.id,
-            title: poll.title,
-            description: poll.description,
-            deadline: poll.deadline,
-            status: poll.status,
-            created_at: poll.created_at,
-            participant_count: participantCount || 0,
-            response_count: responseCount,
-            time_slots_count: timeSlotsCount || 0,
-            creator_name: profile?.display_name || 'Unbekannt'
-          };
-        })
-      );
+      const transformedPolls: Poll[] = (pollsData || []).map((poll) => ({
+        id: poll.id,
+        title: poll.title,
+        description: poll.description,
+        deadline: poll.deadline,
+        status: poll.status,
+        created_at: poll.created_at,
+        participant_count: poll.participant_count ?? 0,
+        response_count: poll.response_count ?? 0,
+        time_slots_count: poll.time_slots_count ?? 0,
+        creator_name: poll.creator_name || 'Unbekannt'
+      }));
 
       // Sort polls: active polls first, then completed/cancelled at the bottom
       const sortedPolls = transformedPolls.sort((a, b) => {

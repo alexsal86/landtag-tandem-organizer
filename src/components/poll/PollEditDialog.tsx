@@ -13,7 +13,7 @@ import { format } from 'date-fns';
 import { de } from 'date-fns/locale';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
-import { ContactSelector } from '@/components/ContactSelector';
+import { ContactSelector, type ContactSelectorContact } from '@/components/ContactSelector';
 
 interface PollParticipant {
   id: string;
@@ -53,6 +53,8 @@ export const PollEditDialog = ({
   const [newParticipantEmail, setNewParticipantEmail] = useState('');
   const [loadingParticipants, setLoadingParticipants] = useState(false);
 
+  const normalizeEmail = (email: string) => email.trim().toLowerCase();
+
   useEffect(() => {
     setTitle(currentTitle);
     setDescription(currentDescription || '');
@@ -83,34 +85,44 @@ export const PollEditDialog = ({
     }
   };
 
-  const addParticipantFromContact = (contact: any) => {
+  const addParticipantFromContact = (contact: ContactSelectorContact) => {
     if (!contact.email) {
       toast({ title: "Keine E-Mail", description: "Kontakt hat keine E-Mail-Adresse.", variant: "destructive" });
       return;
     }
-    if (participants.find(p => p.email === contact.email && !removedParticipantIds.includes(p.id))) {
+    const normalizedContactEmail = normalizeEmail(contact.email);
+
+    if (participants.find(p => normalizeEmail(p.email) === normalizedContactEmail && !removedParticipantIds.includes(p.id))) {
       toast({ title: "Bereits vorhanden", description: "Dieser Teilnehmer ist bereits hinzugefügt.", variant: "destructive" });
       return;
     }
     setParticipants(prev => [...prev, {
       id: `new-${Date.now()}`,
       name: contact.name,
-      email: contact.email,
+      email: normalizedContactEmail,
       is_external: false,
       isNew: true
     }]);
   };
 
   const addExternalParticipant = () => {
-    if (!newParticipantEmail) return;
-    if (participants.find(p => p.email === newParticipantEmail && !removedParticipantIds.includes(p.id))) {
+    const normalizedEmail = normalizeEmail(newParticipantEmail);
+
+    if (!normalizedEmail) return;
+
+    if (!isValidEmail(normalizedEmail)) {
+      toast({ title: "Ungültige E-Mail", description: "Bitte geben Sie eine gültige E-Mail-Adresse ein.", variant: "destructive" });
+      return;
+    }
+
+    if (participants.find(p => normalizeEmail(p.email) === normalizedEmail && !removedParticipantIds.includes(p.id))) {
       toast({ title: "Bereits vorhanden", description: "Dieser Teilnehmer ist bereits hinzugefügt.", variant: "destructive" });
       return;
     }
     setParticipants(prev => [...prev, {
       id: `new-${Date.now()}`,
-      name: newParticipantEmail.split('@')[0],
-      email: newParticipantEmail,
+      name: normalizedEmail.split('@')[0],
+      email: normalizedEmail,
       is_external: true,
       isNew: true
     }]);
@@ -204,7 +216,26 @@ export const PollEditDialog = ({
         const participantData: Array<{ poll_id: string; email: string; name: string | null; is_external: boolean; token: string | null }> = [];
         for (const p of newParticipants) {
           if (p.is_external) {
-            const { data: tokenData } = await supabase.rpc('generate_participant_token');
+            const { data: tokenData, error: tokenError } = await supabase.rpc('generate_participant_token');
+
+            if (tokenError) {
+              toast({
+                title: 'Fehler bei Token-Erstellung',
+                description: `Für den externen Teilnehmer ${p.email} konnte kein Token erstellt werden.`,
+                variant: 'destructive',
+              });
+              return;
+            }
+
+            if (!tokenData || !tokenData.trim()) {
+              toast({
+                title: 'Ungültiger Teilnehmer-Token',
+                description: `Für den externen Teilnehmer ${p.email} wurde ein leerer Token zurückgegeben.`,
+                variant: 'destructive',
+              });
+              return;
+            }
+
             participantData.push({
               poll_id: pollId,
               email: p.email,

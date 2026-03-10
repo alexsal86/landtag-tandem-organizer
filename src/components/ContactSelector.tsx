@@ -10,8 +10,10 @@ import { debugConsole } from '@/utils/debugConsole';
 import { useTenant } from '@/hooks/useTenant';
 import { debounce } from '@/utils/debounce';
 
-interface Contact {
+export interface Contact {
   id: string;
+  user_id?: string;
+  tenant_id?: string;
   name: string;
   organization?: string;
   email?: string;
@@ -35,12 +37,14 @@ interface Contact {
   address?: string;
 }
 
-interface ContactWithAddress extends Contact {
+export interface ContactWithAddress extends Contact {
   formatted_address?: string;
 }
 
+export type ContactSelectorContact = ContactWithAddress;
+
 interface ContactSelectorProps {
-  onSelect: (contact: ContactWithAddress) => void;
+  onSelect: (contact: ContactSelectorContact) => void;
   selectedContactId?: string;
   placeholder?: string;
   className?: string;
