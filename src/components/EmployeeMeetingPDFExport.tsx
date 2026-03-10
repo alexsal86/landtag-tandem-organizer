@@ -3,14 +3,31 @@ import { format } from 'date-fns';
 import { de } from 'date-fns/locale';
 import { Button } from '@/components/ui/button';
 import { FileDown } from 'lucide-react';
+import type { ActionItem, EmployeeMeeting, EmployeeMeetingType, MeetingPreparationData, ProtocolData } from '@/components/employees/types';
 
 interface EmployeeMeetingPDFExportProps {
-  meeting: any;
-  protocolData: any;
-  actionItems: any[];
-  employeePrep?: any;
-  supervisorPrep?: any;
+  meeting: EmployeeMeeting;
+  protocolData: ProtocolData;
+  actionItems: ActionItem[];
+  employeePrep?: MeetingPreparationData;
+  supervisorPrep?: MeetingPreparationData;
 }
+
+
+const getMeetingTypeLabel = (meetingType: EmployeeMeetingType) => {
+  if (meetingType === 'annual_review') return 'Jahresgespräch';
+  if (meetingType === 'probation_review') return 'Probezeit-Gespräch';
+  if (meetingType === 'development_review') return 'Entwicklungsgespräch';
+  return 'Sonstiges';
+};
+
+const getMeetingParticipantName = (meeting: EmployeeMeeting, role: 'employee' | 'supervisor') => {
+  if (role === 'employee') {
+    return meeting.employee?.display_name ?? meeting.employee_name ?? 'N/A';
+  }
+
+  return meeting.supervisor?.display_name ?? meeting.supervisor_name ?? 'N/A';
+};
 
 export function EmployeeMeetingPDFExport({
   meeting,
@@ -73,16 +90,13 @@ export function EmployeeMeetingPDFExport({
     
     pdf.setFontSize(11);
     pdf.setFont('helvetica', 'normal');
-    pdf.text(`Mitarbeiter: ${meeting.employee?.display_name || 'N/A'}`, leftMargin, currentY);
+    pdf.text(`Mitarbeiter: ${getMeetingParticipantName(meeting, 'employee')}`, leftMargin, currentY);
     currentY += 6;
-    pdf.text(`Gesprächsleitung: ${meeting.supervisor?.display_name || 'N/A'}`, leftMargin, currentY);
+    pdf.text(`Gesprächsleitung: ${getMeetingParticipantName(meeting, 'supervisor')}`, leftMargin, currentY);
     currentY += 6;
     pdf.text(`Datum: ${format(new Date(meeting.meeting_date), 'PPP', { locale: de })}`, leftMargin, currentY);
     currentY += 6;
-    pdf.text(`Gesprächstyp: ${meeting.meeting_type === 'annual_review' ? 'Jahresgespräch' : 
-              meeting.meeting_type === 'probation_review' ? 'Probezeit-Gespräch' : 
-              meeting.meeting_type === 'development_review' ? 'Entwicklungsgespräch' : 
-              'Sonstiges'}`, leftMargin, currentY);
+    pdf.text(`Gesprächstyp: ${getMeetingTypeLabel(meeting.meeting_type)}`, leftMargin, currentY);
     currentY += 10;
     
     pdf.setDrawColor(200, 200, 200);
@@ -269,7 +283,7 @@ export function EmployeeMeetingPDFExport({
     pdf.text('Vorgesetzte/r', leftMargin + sigWidth + 20, currentY);
     
     // ============ EXPORT ============
-    const filename = `Mitarbeitergespraech_${meeting.employee?.display_name?.replace(/\s/g, '_')}_${format(new Date(meeting.meeting_date), 'yyyy-MM-dd')}.pdf`;
+    const filename = `Mitarbeitergespraech_${getMeetingParticipantName(meeting, 'employee').replace(/\s/g, '_')}_${format(new Date(meeting.meeting_date), 'yyyy-MM-dd')}.pdf`;
     pdf.save(filename);
   };
 
