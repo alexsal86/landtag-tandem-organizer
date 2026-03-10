@@ -10997,6 +10997,21 @@ export type Database = {
           title: string
         }[]
       }
+      get_user_polls_with_aggregation: {
+        Args: Record<PropertyKey, never>
+        Returns: {
+          created_at: string
+          creator_name: string
+          deadline: string | null
+          description: string | null
+          id: string
+          participant_count: number
+          response_count: number
+          status: string
+          time_slots_count: number
+          title: string
+        }[]
+      }
       get_user_primary_tenant_id: {
         Args: { _user_id: string }
         Returns: string
