@@ -207,7 +207,7 @@
 .rbc-time-gutter {
   background: hsl(var(--muted) / 0.45);
   border-right: 1px solid hsl(var(--border));
-  min-width: 132px;
+  min-width: 136px;
 }
 
 .rbc-time-gutter .rbc-timeslot-group .rbc-time-slot {
@@ -218,7 +218,7 @@
   position: relative;
   top: 0;
   transform: translateY(-50%);
-  font-size: 2rem;
+  font-size: 1.9rem;
   line-height: 1;
   font-weight: 500;
   color: hsl(var(--foreground));
