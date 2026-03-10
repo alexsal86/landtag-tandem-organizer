@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { useTenant } from "@/hooks/useTenant";
@@ -9,6 +9,7 @@ import {
   Employee, EmployeeSettingsRow, Profile, LeaveAgg, LeaveType, PendingLeaveRequest,
   calculateWorkingDays, initLeaveAgg,
 } from "../types";
+import { fetchPendingMeetingRequestsCount } from "./meetingRequests";
 
 export function useEmployeesData() {
   const { user } = useAuth();
@@ -29,6 +30,16 @@ export function useEmployeesData() {
   const [selfLeaveAgg, setSelfLeaveAgg] = useState<LeaveAgg | null>(null);
   const [selfProfile, setSelfProfile] = useState<Profile | null>(null);
   const [selfLastMeetingId, setSelfLastMeetingId] = useState<string | null>(null);
+
+  const reloadPendingRequestsCount = useCallback(async () => {
+    if (!currentTenant) return;
+    try {
+      const count = await fetchPendingMeetingRequestsCount(currentTenant.id);
+      setPendingRequestsCount(count);
+    } catch (error) {
+      debugConsole.error("Error loading pending request count:", error);
+    }
+  }, [currentTenant]);
 
   // Admin check
   useEffect(() => {
@@ -99,7 +110,7 @@ export function useEmployeesData() {
           supabase.from("leave_requests").select("id, user_id, type, status, start_date, end_date")
             .in("status", ["pending", "cancel_requested"] as any).in("user_id", managedIds),
           supabase.from("sick_days").select("user_id").in("user_id", managedIds),
-          supabase.from("employee_meeting_requests").select("employee_id").eq("status", "pending").in("employee_id", managedIds),
+          supabase.from("employee_meeting_requests").select("employee_id, scheduled_meeting_id").eq("status", "pending").is("scheduled_meeting_id", null).in("employee_id", managedIds),
           supabase.from("employee_meetings").select("id, employee_id, meeting_date").in("employee_id", managedIds).order("meeting_date", { ascending: false }),
         ]);
 
@@ -126,7 +137,7 @@ export function useEmployeesData() {
         (meetingRequestsRes.data || []).forEach((req: any) => {
           meetingRequestCounts[req.employee_id] = (meetingRequestCounts[req.employee_id] || 0) + 1;
         });
-        setPendingRequestsCount((meetingRequestsRes.data || []).length);
+        await reloadPendingRequestsCount();
 
         const joined: Employee[] = managedIds.map((uid) => {
           const s = settingsMap.get(uid);
@@ -201,7 +212,7 @@ export function useEmployeesData() {
       }
     };
     load();
-  }, [user, currentTenant, isAdmin, roleResolved, toast]);
+  }, [user, currentTenant, toast, reloadPendingRequestsCount]);
 
   // Load self data for non-admin users
   useEffect(() => {
@@ -271,7 +282,7 @@ export function useEmployeesData() {
 
   return {
     isAdmin, loading, employees, setEmployees, leaves, pendingLeaves, setPendingLeaves,
-    sickDays, pendingRequestsCount, setPendingRequestsCount,
+    sickDays, pendingRequestsCount, setPendingRequestsCount, reloadPendingRequestsCount,
     selfSettings, selfLeaveAgg, selfProfile, selfLastMeetingId,
   };
 }

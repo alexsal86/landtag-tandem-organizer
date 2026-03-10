@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Calendar, BarChart3, Clock, Loader2 } from "lucide-react";
@@ -28,6 +28,12 @@ export function EmployeesView() {
   const [selectedEmployee, setSelectedEmployee] = useState<{ id: string; name: string } | null>(null);
   const [requestManagerOpen, setRequestManagerOpen] = useState(false);
   const [yearlyStatsOpen, setYearlyStatsOpen] = useState(false);
+  const [meetingHistoryRefreshTrigger, setMeetingHistoryRefreshTrigger] = useState(0);
+
+  const reloadMeetingFlows = useCallback(async () => {
+    setMeetingHistoryRefreshTrigger((prev) => prev + 1);
+    await data.reloadPendingRequestsCount();
+  }, [data.reloadPendingRequestsCount]);
 
   // SEO
   useEffect(() => {
@@ -106,7 +112,7 @@ export function EmployeesView() {
             onScheduleMeeting={(emp) => { setSelectedEmployee(emp); setSchedulerOpen(true); }}
           />
           <section className="pb-6">
-            <EmployeeMeetingHistory showFilters={true} />
+            <EmployeeMeetingHistory showFilters={true} refreshTrigger={meetingHistoryRefreshTrigger} />
           </section>
         </TabsContent>
 
@@ -121,14 +127,18 @@ export function EmployeesView() {
           employeeName={selectedEmployee.name}
           open={schedulerOpen}
           onOpenChange={setSchedulerOpen}
-          onScheduled={() => { setSchedulerOpen(false); setSelectedEmployee(null); window.location.reload(); }}
+          onScheduled={async () => {
+            setSchedulerOpen(false);
+            setSelectedEmployee(null);
+            await reloadMeetingFlows();
+          }}
         />
       )}
 
       <Dialog open={requestManagerOpen} onOpenChange={setRequestManagerOpen}>
         <DialogContent className="max-w-4xl max-h-[80vh] overflow-y-auto">
           <DialogHeader><DialogTitle>Gesprächsanfragen verwalten</DialogTitle></DialogHeader>
-          <EmployeeMeetingRequestManager onPendingCountChange={data.setPendingRequestsCount} />
+          <EmployeeMeetingRequestManager onPendingCountChange={data.setPendingRequestsCount} onMeetingScheduled={reloadMeetingFlows} />
         </DialogContent>
       </Dialog>
 

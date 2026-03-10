@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { useTenant } from "@/hooks/useTenant";
@@ -14,79 +14,32 @@ import { de } from "date-fns/locale";
 import { Calendar, CheckCircle2, Loader2, X, AlertCircle } from "lucide-react";
 import { EmployeeMeetingScheduler } from "./EmployeeMeetingScheduler";
 import { debugConsole } from "@/utils/debugConsole";
+import { fetchPendingMeetingRequests, PendingMeetingRequest } from "./employees/hooks/meetingRequests";
 
 interface MeetingRequestManagerProps {
   onPendingCountChange?: (count: number) => void;
+  onMeetingScheduled?: () => void | Promise<void>;
 }
 
-interface MeetingRequest {
-  id: string;
-  employee_id: string;
-  reason: string;
-  status: string;
-  created_at: string;
-  employee_name?: string;
-}
-
-export function EmployeeMeetingRequestManager({ onPendingCountChange }: MeetingRequestManagerProps) {
+export function EmployeeMeetingRequestManager({ onPendingCountChange, onMeetingScheduled }: MeetingRequestManagerProps) {
   const { user } = useAuth();
   const { currentTenant } = useTenant();
   const { toast } = useToast();
   const [loading, setLoading] = useState(true);
-  const [requests, setRequests] = useState<MeetingRequest[]>([]);
+  const [requests, setRequests] = useState<PendingMeetingRequest[]>([]);
   const [declineDialogOpen, setDeclineDialogOpen] = useState(false);
-  const [selectedRequest, setSelectedRequest] = useState<MeetingRequest | null>(null);
+  const [selectedRequest, setSelectedRequest] = useState<PendingMeetingRequest | null>(null);
   const [declineReason, setDeclineReason] = useState("");
   const [declining, setDeclining] = useState(false);
   const [schedulerOpen, setSchedulerOpen] = useState(false);
   const [selectedEmployee, setSelectedEmployee] = useState<{ id: string; name: string } | null>(null);
   const [scheduledRequestId, setScheduledRequestId] = useState<string | null>(null);
 
-  useEffect(() => {
-    if (!user || !currentTenant) return;
-    loadRequests();
-  }, [user, currentTenant]);
-
-  const loadRequests = async () => {
+  const loadRequests = useCallback(async () => {
     if (!user || !currentTenant) return;
     setLoading(true);
     try {
-      const { error: reconcileError } = await supabase.rpc("reconcile_employee_meeting_requests", {
-        p_tenant_id: currentTenant.id,
-        p_source: "manager_cleanup",
-        p_time_window_days: 45,
-      });
-
-      if (reconcileError) {
-        debugConsole.error("Error reconciling pending meeting requests:", reconcileError);
-      }
-
-      const { data: refreshedRequests, error: refreshedRequestsError } = await supabase
-        .from("employee_meeting_requests")
-        .select("id, employee_id, reason, status, created_at")
-        .eq("status", "pending")
-        .is("scheduled_meeting_id", null)
-        .eq("tenant_id", currentTenant.id)
-        .order("created_at", { ascending: false });
-
-      if (refreshedRequestsError) throw refreshedRequestsError;
-
-      const effectiveRequests = refreshedRequests || [];
-
-      // Get employee names
-      const effectiveEmployeeIds = effectiveRequests.map((r) => r.employee_id);
-      const { data: profiles } = await supabase
-        .from("profiles")
-        .select("user_id, display_name")
-        .in("user_id", effectiveEmployeeIds);
-
-      const profileMap = new Map(profiles?.map((p) => [p.user_id, p.display_name]) || []);
-
-      const enrichedRequests: MeetingRequest[] = effectiveRequests.map((r) => ({
-        ...r,
-        employee_name: profileMap.get(r.employee_id) || "Unbekannt",
-      }));
-
+      const enrichedRequests = await fetchPendingMeetingRequests(currentTenant.id);
       setRequests(enrichedRequests);
       onPendingCountChange?.(enrichedRequests.length);
     } catch (error: unknown) {
@@ -99,9 +52,14 @@ export function EmployeeMeetingRequestManager({ onPendingCountChange }: MeetingR
     } finally {
       setLoading(false);
     }
-  };
+  }, [currentTenant, onPendingCountChange, toast, user]);
 
-  const handleSchedule = (request: MeetingRequest) => {
+  useEffect(() => {
+    if (!user || !currentTenant) return;
+    loadRequests();
+  }, [user, currentTenant, loadRequests]);
+
+  const handleSchedule = (request: PendingMeetingRequest) => {
     setScheduledRequestId(request.id);
     setSelectedEmployee({
       id: request.employee_id,
@@ -114,11 +72,10 @@ export function EmployeeMeetingRequestManager({ onPendingCountChange }: MeetingR
     setSchedulerOpen(false);
     setSelectedEmployee(null);
     setScheduledRequestId(null);
-    // Refresh requests after scheduling
-    await loadRequests();
+    await Promise.all([loadRequests(), Promise.resolve(onMeetingScheduled?.())]);
   };
 
-  const handleDecline = (request: MeetingRequest) => {
+  const handleDecline = (request: PendingMeetingRequest) => {
     setSelectedRequest(request);
     setDeclineDialogOpen(true);
   };
@@ -160,7 +117,7 @@ export function EmployeeMeetingRequestManager({ onPendingCountChange }: MeetingR
       setDeclineDialogOpen(false);
       setDeclineReason("");
       setSelectedRequest(null);
-      loadRequests();
+      await loadRequests();
     } catch (error: unknown) {
       debugConsole.error("Error declining request:", error);
       toast({
@@ -173,7 +130,7 @@ export function EmployeeMeetingRequestManager({ onPendingCountChange }: MeetingR
     }
   };
 
-  const handleMarkCompleted = async (request: MeetingRequest) => {
+  const handleMarkCompleted = async (request: PendingMeetingRequest) => {
     try {
       const { error } = await supabase
         .from("employee_meeting_requests")
@@ -190,7 +147,7 @@ export function EmployeeMeetingRequestManager({ onPendingCountChange }: MeetingR
         description: "Die Anfrage wurde als erledigt markiert.",
       });
 
-      loadRequests();
+      await loadRequests();
     } catch (error: unknown) {
       debugConsole.error("Error marking as completed:", error);
       toast({
