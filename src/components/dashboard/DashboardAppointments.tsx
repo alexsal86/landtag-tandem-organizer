@@ -127,13 +127,16 @@ export const DashboardAppointments = ({ data }: Props) => {
 
       {/* Feedback Reminder */}
       {feedbackReminderVisible && (
-        <button
-          type="button"
-          onClick={() => navigate('/mywork?tab=appointmentfeedback')}
-          className="text-sm text-primary hover:underline flex items-center gap-1"
-        >
-          🔔 {pendingFeedbackCount} offene{pendingFeedbackCount === 1 ? 's' : ''} Termin-Feedback{pendingFeedbackCount !== 1 ? 's' : ''} – jetzt bearbeiten
-        </button>
+        <>
+          <Separator className="my-2" />
+          <button
+            type="button"
+            onClick={() => navigate('/mywork?tab=appointmentfeedback')}
+            className="text-sm text-destructive font-semibold hover:underline flex items-center gap-1"
+          >
+            🔔 {pendingFeedbackCount} offene{pendingFeedbackCount === 1 ? 's' : ''} Termin-Feedback{pendingFeedbackCount !== 1 ? 's' : ''} – jetzt bearbeiten
+          </button>
+        </>
       )}
     </div>
   );

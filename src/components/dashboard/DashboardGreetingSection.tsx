@@ -9,6 +9,7 @@ import { selectMessage } from '@/utils/dashboard/messageGenerator';
 import { getWeatherHint, WeatherToggle } from '@/components/dashboard/DashboardWeather';
 import { getSpecialDayHint, type SpecialDayHint } from '@/utils/dashboard/specialDays';
 import { type DashboardData } from '@/hooks/useDashboardData';
+import { Separator } from '@/components/ui/separator';
 
 interface Props {
   data: DashboardData;
@@ -156,7 +157,8 @@ export const DashboardGreetingSection = ({ data }: Props) => {
       </span>
       {feedbackReminderVisible && (
         <div className="mt-3">
-          <button type="button" onClick={() => navigate('/mywork?tab=appointmentfeedback')} className="text-sm text-primary hover:underline flex items-center gap-1">
+          <Separator className="mb-3" />
+          <button type="button" onClick={() => navigate('/mywork?tab=appointmentfeedback')} className="text-sm text-destructive font-semibold hover:underline flex items-center gap-1">
             🔔 {pendingFeedbackCount} offene{pendingFeedbackCount === 1 ? 's' : ''} Termin-Feedback{pendingFeedbackCount !== 1 ? 's' : ''} – jetzt bearbeiten
           </button>
         </div>

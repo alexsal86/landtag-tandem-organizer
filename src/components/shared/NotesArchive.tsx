@@ -1,7 +1,6 @@
 import { useState, useEffect, useCallback } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { ScrollArea } from "@/components/ui/scroll-area";
 import {
   Dialog,
   DialogContent,
@@ -270,10 +269,14 @@ export function NotesArchive({ refreshTrigger, onRestore }: NotesArchiveProps) {
   }
 
   return (
-    <>
+    <div className="flex h-full min-h-0 flex-col gap-2">
       {/* Archived Notes Section */}
       {archivedNotes.length > 0 && (
-        <Collapsible open={isArchivedExpanded} onOpenChange={setIsArchivedExpanded}>
+        <Collapsible
+          open={isArchivedExpanded}
+          onOpenChange={setIsArchivedExpanded}
+          className={cn("flex min-h-0 flex-col", isArchivedExpanded && "flex-1")}
+        >
           <CollapsibleTrigger className="flex items-center justify-between w-full px-4 py-2 rounded hover:bg-muted/50 transition-colors">
             <div className="flex items-center gap-2">
               <ChevronDown
@@ -290,9 +293,9 @@ export function NotesArchive({ refreshTrigger, onRestore }: NotesArchiveProps) {
             </div>
           </CollapsibleTrigger>
 
-          <CollapsibleContent>
-            <ScrollArea className="max-h-[250px]">
-              <div className="space-y-2 p-2">
+          <CollapsibleContent className="min-h-0 flex-1 overflow-hidden">
+            <div className="h-full overflow-y-auto pt-2">
+              <div className="space-y-2 px-2 pb-2">
                 {archivedNotes.map((note) => (
                   <div
                     key={note.id}
@@ -329,14 +332,18 @@ export function NotesArchive({ refreshTrigger, onRestore }: NotesArchiveProps) {
                   </div>
                 ))}
               </div>
-            </ScrollArea>
+            </div>
           </CollapsibleContent>
         </Collapsible>
       )}
 
       {/* Trash Section */}
       {notes.length > 0 && (
-        <Collapsible open={isExpanded} onOpenChange={setIsExpanded}>
+        <Collapsible
+          open={isExpanded}
+          onOpenChange={setIsExpanded}
+          className={cn("flex min-h-0 flex-col", isExpanded && "flex-1")}
+        >
           <CollapsibleTrigger className="flex items-center justify-between w-full px-4 py-2 rounded hover:bg-muted/50 transition-colors">
             <div className="flex items-center gap-2">
               <ChevronDown
@@ -353,9 +360,9 @@ export function NotesArchive({ refreshTrigger, onRestore }: NotesArchiveProps) {
             </div>
           </CollapsibleTrigger>
 
-        <CollapsibleContent>
-          <ScrollArea className="max-h-[250px]">
-            <div className="space-y-2 p-2">
+        <CollapsibleContent className="min-h-0 flex-1 overflow-hidden">
+          <div className="h-full overflow-y-auto pt-2">
+            <div className="space-y-2 px-2 pb-2">
               {notes.map((note) => {
                 const daysRemaining = getDaysRemaining(note.permanent_delete_at);
                 const isUrgent = daysRemaining <= 3;
@@ -440,7 +447,7 @@ export function NotesArchive({ refreshTrigger, onRestore }: NotesArchiveProps) {
                 );
               })}
               </div>
-            </ScrollArea>
+            </div>
           </CollapsibleContent>
         </Collapsible>
       )}
@@ -468,6 +475,6 @@ export function NotesArchive({ refreshTrigger, onRestore }: NotesArchiveProps) {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
-    </>
+    </div>
   );
 }
