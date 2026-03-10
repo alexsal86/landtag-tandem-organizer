@@ -145,43 +145,98 @@ export function useAgendaOperations(deps: AgendaOpsDeps) {
 
   const saveAgendaItems = async () => {
     if (!selectedMeeting?.id) return;
+
+    const toDbPayload = (item: AgendaItem, orderIndex: number, parentId: string | null = null) => ({
+      meeting_id: selectedMeeting.id!,
+      title: item.title || '',
+      description: item.description || null,
+      assigned_to: Array.isArray(item.assigned_to) && item.assigned_to.length > 0 ? item.assigned_to.filter(Boolean) : null,
+      notes: item.notes || null,
+      is_completed: Boolean(item.is_completed),
+      is_recurring: Boolean(item.is_recurring),
+      task_id: item.task_id || null,
+      order_index: orderIndex,
+      parent_id: parentId,
+      system_type: item.system_type || null,
+      is_optional: Boolean(item.is_optional),
+      is_visible: item.is_visible !== false,
+    });
+
     try {
-      const ordered = agendaItems.filter(i => i.title.trim()).map((it, idx) => ({ ...it, order_index: idx }));
-      await supabase.from('meeting_agenda_items').delete().eq('meeting_id', selectedMeeting.id);
+      const ordered = agendaItems
+        .filter(item => item.title.trim())
+        .map((item, index) => ({ ...item, order_index: index }));
 
-      const parents = ordered.filter(i => !i.parentLocalKey);
-      const children = ordered.filter(i => i.parentLocalKey);
+      const { data: existingRows, error: existingError } = await supabase
+        .from('meeting_agenda_items')
+        .select('id')
+        .eq('meeting_id', selectedMeeting.id);
+      if (existingError) throw existingError;
 
-      const parentInserts = parents.map(p => ({
-        meeting_id: selectedMeeting.id!, title: p.title || '', description: p.description || null,
-        assigned_to: Array.isArray(p.assigned_to) && p.assigned_to.length > 0 ? p.assigned_to.filter(Boolean) : null,
-        notes: p.notes || null, is_completed: Boolean(p.is_completed), is_recurring: Boolean(p.is_recurring),
-        task_id: p.task_id || null, order_index: p.order_index, system_type: p.system_type || null,
-        is_optional: Boolean(p.is_optional), is_visible: p.is_visible !== false,
-      }));
+      const existingIds = new Set((existingRows || []).map(row => row.id));
+      const incomingIds = new Set(ordered.map(item => item.id).filter((id): id is string => Boolean(id)));
+      const idsToDelete = [...existingIds].filter(id => !incomingIds.has(id));
 
-      let parentIdByLocalKey: Record<string, string> = {};
-      if (parentInserts.length > 0) {
-        const { data: insertedParents, error: insErr } = await supabase
-          .from('meeting_agenda_items').insert(parentInserts).select();
-        if (insErr) throw insErr;
-        insertedParents?.forEach((row, idx) => {
-          const localKey = parents[idx].localKey || `${parents[idx].title}-${parents[idx].order_index}`;
-          parentIdByLocalKey[localKey] = row.id;
-        });
+      const getStableKey = (item: AgendaItem) => item.id || item.localKey || `${item.title}-${item.order_index}`;
+      const parentItems = ordered.filter(item => !(item.parent_id || item.parentLocalKey));
+      const childItems = ordered.filter(item => item.parent_id || item.parentLocalKey);
+      const persistedIdByStableKey = new Map<string, string>();
+
+      for (const parent of parentItems) {
+        const payload = toDbPayload(parent, parent.order_index, null);
+        if (parent.id) {
+          const { data, error } = await supabase
+            .from('meeting_agenda_items')
+            .upsert({ id: parent.id, ...payload }, { onConflict: 'id' })
+            .select('id')
+            .single();
+          if (error) throw error;
+          persistedIdByStableKey.set(getStableKey(parent), data.id);
+          persistedIdByStableKey.set(parent.id, data.id);
+        } else {
+          const { data, error } = await supabase
+            .from('meeting_agenda_items')
+            .insert(payload)
+            .select('id')
+            .single();
+          if (error) throw error;
+          persistedIdByStableKey.set(getStableKey(parent), data.id);
+          if (parent.localKey) persistedIdByStableKey.set(parent.localKey, data.id);
+        }
       }
 
-      if (children.length > 0) {
-        const childInserts = children.map(c => ({
-          meeting_id: selectedMeeting.id!, title: c.title || '', description: c.description || null,
-          assigned_to: Array.isArray(c.assigned_to) && c.assigned_to.length > 0 ? c.assigned_to.filter(Boolean) : null,
-          notes: c.notes || null, is_completed: Boolean(c.is_completed), is_recurring: Boolean(c.is_recurring),
-          task_id: c.task_id || null, order_index: c.order_index,
-          parent_id: c.parentLocalKey ? parentIdByLocalKey[c.parentLocalKey] || null : null,
-          system_type: c.system_type || null, is_optional: Boolean(c.is_optional), is_visible: c.is_visible !== false,
-        }));
-        const { error: childErr } = await supabase.from('meeting_agenda_items').insert(childInserts);
-        if (childErr) throw childErr;
+      for (const child of childItems) {
+        const parentRef = child.parent_id || child.parentLocalKey || null;
+        const resolvedParentId = parentRef ? persistedIdByStableKey.get(parentRef) || child.parent_id || null : null;
+        const payload = toDbPayload(child, child.order_index, resolvedParentId);
+
+        if (child.id) {
+          const { data, error } = await supabase
+            .from('meeting_agenda_items')
+            .upsert({ id: child.id, ...payload }, { onConflict: 'id' })
+            .select('id')
+            .single();
+          if (error) throw error;
+          persistedIdByStableKey.set(getStableKey(child), data.id);
+          persistedIdByStableKey.set(child.id, data.id);
+        } else {
+          const { data, error } = await supabase
+            .from('meeting_agenda_items')
+            .insert(payload)
+            .select('id')
+            .single();
+          if (error) throw error;
+          persistedIdByStableKey.set(getStableKey(child), data.id);
+          if (child.localKey) persistedIdByStableKey.set(child.localKey, data.id);
+        }
+      }
+
+      if (idsToDelete.length > 0) {
+        const { error: deleteError } = await supabase
+          .from('meeting_agenda_items')
+          .delete()
+          .in('id', idsToDelete);
+        if (deleteError) throw deleteError;
       }
 
       toast({ title: 'Agenda gespeichert', description: 'Die Agenda wurde erfolgreich gespeichert.' });
