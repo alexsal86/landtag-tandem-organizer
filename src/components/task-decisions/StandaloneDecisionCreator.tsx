@@ -1,5 +1,3 @@
-import { useState, useMemo, useEffect, useCallback } from "react";
-import { debugConsole } from '@/utils/debugConsole';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -8,16 +6,12 @@ import SimpleRichTextEditor from "@/components/ui/SimpleRichTextEditor";
 import { MultiSelect } from "@/components/ui/multi-select-simple";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Vote, Mail, Plus, MessageSquare, Globe, Star, Loader2 } from "lucide-react";
-import { supabase } from "@/integrations/supabase/client";
-import { useToast } from "@/hooks/use-toast";
 import { DecisionFileUpload } from "./DecisionFileUpload";
-import { useDecisionAttachmentUpload } from "@/hooks/useDecisionAttachmentUpload";
-import type { EmailMetadata } from "@/utils/emlParser";
 import { TopicSelector } from "@/components/topics/TopicSelector";
-import { saveDecisionTopics } from "@/hooks/useDecisionTopics";
 import { ResponseOptionsEditor } from "./ResponseOptionsEditor";
 import { ResponseOptionsPreview } from "./ResponseOptionsPreview";
-import { DECISION_TEMPLATES, DEFAULT_TEMPLATE_ID, ResponseOption, getTemplateById } from "@/lib/decisionTemplates";
+import { DECISION_TEMPLATES } from "@/lib/decisionTemplates";
+import { useDecisionCreator } from "./hooks/useDecisionCreator";
 interface StandaloneDecisionCreatorProps {
   onDecisionCreated: () => void;
   variant?: 'button' | 'icon';
@@ -29,10 +23,6 @@ interface StandaloneDecisionCreatorProps {
   onCreatedWithId?: (decisionId: string) => void;
 }
 
-interface Profile {
-  user_id: string;
-  display_name: string | null;
-}
 
 export const StandaloneDecisionCreator = ({ 
   onDecisionCreated, 
@@ -44,480 +34,50 @@ export const StandaloneDecisionCreator = ({
   defaultDescription,
   onCreatedWithId,
 }: StandaloneDecisionCreatorProps) => {
-  const [internalIsOpen, setInternalIsOpen] = useState(false);
-  
-  // Use external state if provided, otherwise use internal state
-  const isOpen = externalIsOpen !== undefined ? externalIsOpen : internalIsOpen;
-  const setIsOpen = (open: boolean) => {
-    if (!open && isLoading) return;
-    if (onOpenChange) {
-      onOpenChange(open);
-    } else {
-      setInternalIsOpen(open);
-    }
-  };
-  const [title, setTitle] = useState(defaultTitle || "");
-  const [description, setDescription] = useState(defaultDescription || "");
-  const [responseDeadline, setResponseDeadline] = useState("");
-  const [selectedUsers, setSelectedUsers] = useState<string[]>([]);
-  const [profiles, setProfiles] = useState<Profile[]>([]);
-  const [profilesLoaded, setProfilesLoaded] = useState(false);
-  const [isLoading, setIsLoading] = useState(false);
-  const [uploadStatus, setUploadStatus] = useState<string | null>(null);
-  const [sendByEmail, setSendByEmail] = useState(true);
-  const [sendViaMatrix, setSendViaMatrix] = useState(true);
-  const [visibleToAll, setVisibleToAll] = useState(true);
-  const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
-  const [selectedFileMetadata, setSelectedFileMetadata] = useState<Record<string, EmailMetadata | null>>({});
-  const [selectedTopicIds, setSelectedTopicIds] = useState<string[]>([]);
-  const [priority, setPriority] = useState(false);
-  const [selectedTemplateId, setSelectedTemplateId] = useState(DEFAULT_TEMPLATE_ID);
-  const defaultTemplate = getTemplateById(DEFAULT_TEMPLATE_ID);
-  const [customOptions, setCustomOptions] = useState<ResponseOption[]>(
-    defaultTemplate ? defaultTemplate.options.map(o => ({ ...o })) : [
-      { key: "option_1", label: "Option 1", color: "blue" },
-      { key: "option_2", label: "Option 2", color: "green" }
-    ]
-  );
-  const { toast } = useToast();
-  const { uploadDecisionAttachments } = useDecisionAttachmentUpload();
-
-  const currentOptions = useMemo(() => {
-    return customOptions;
-  }, [customOptions]);
-
-  // Sync template options into customOptions when template changes
-  const handleTemplateChange = (templateId: string) => {
-    setSelectedTemplateId(templateId);
-    if (templateId !== "custom") {
-      const tpl = getTemplateById(templateId);
-      if (tpl) {
-        setCustomOptions(tpl.options.map(o => ({ ...o })));
-      }
-    }
-  };
-
-  const loadProfiles = useCallback(async () => {
-    
-    try {
-      // Get current user's tenant
-      const { data: userData } = await supabase.auth.getUser();
-      if (!userData.user) {
-        
-        return;
-      }
-
-      const { data: tenantData } = await supabase
-        .from('user_tenant_memberships')
-        .select('tenant_id')
-        .eq('user_id', userData.user.id)
-        .eq('is_active', true)
-        .single();
-
-      
-
-      if (!tenantData?.tenant_id) {
-        setProfiles([]);
-        setProfilesLoaded(true);
-        return;
-      }
-
-      const { data: tenantMembers } = await supabase
-        .from('user_tenant_memberships')
-        .select('user_id')
-        .eq('tenant_id', tenantData.tenant_id)
-        .eq('is_active', true);
-
-      const tenantUserIdsArray = tenantMembers?.map(m => m.user_id) || [];
-      const tenantUserIds = new Set(tenantUserIdsArray);
-
-      if (tenantUserIdsArray.length > 0) {
-        const { data, error } = await supabase
-          .from('profiles')
-          .select('user_id, display_name')
-          .in('user_id', tenantUserIdsArray)
-          .order('display_name');
-
-        if (error) throw error;
-        setProfiles(data || []);
-      } else {
-        setProfiles([]);
-      }
-
-      // Pre-select from localStorage defaults first, then fall back to Abgeordneter
-      if (selectedUsers.length === 0) {
-        // Check localStorage for default settings
-        let defaultIds: string[] = [];
-        let defaultSettings: any = null;
-        try {
-          const stored = localStorage.getItem('default_decision_settings');
-          if (stored) {
-            defaultSettings = JSON.parse(stored);
-            defaultIds = defaultSettings.participants || [];
-          } else {
-            // Legacy key
-            const oldStored = localStorage.getItem('default_decision_participants');
-            if (oldStored) defaultIds = JSON.parse(oldStored);
-          }
-        } catch (e) {
-          debugConsole.error('Error loading default participants:', e);
-        }
-
-        if (defaultSettings) {
-          if (typeof defaultSettings.visibleToAll === 'boolean') setVisibleToAll(defaultSettings.visibleToAll);
-          if (typeof defaultSettings.sendByEmail === 'boolean') setSendByEmail(defaultSettings.sendByEmail);
-          if (typeof defaultSettings.sendViaMatrix === 'boolean') setSendViaMatrix(defaultSettings.sendViaMatrix);
-        }
-
-        if (defaultIds.length > 0) {
-          const validDefaults = defaultIds.filter(id => tenantUserIds.has(id) && id !== userData.user.id);
-          if (validDefaults.length > 0) {
-            setSelectedUsers(validDefaults);
-            setProfilesLoaded(true);
-            return;
-          }
-        }
-
-        const { data: roleData } = await supabase
-          .from('user_roles')
-          .select('user_id')
-          .eq('role', 'abgeordneter');
-
-        if (roleData && roleData.length > 0) {
-          const abgeordneteInTenant = roleData
-            .filter(r => tenantUserIds.has(r.user_id))
-            .map(r => r.user_id);
-
-          setSelectedUsers(abgeordneteInTenant);
-        }
-      }
-      
-      setProfilesLoaded(true);
-    } catch (error) {
-      setUploadStatus(null);
-      debugConsole.error('Error loading profiles:', error);
-      setProfilesLoaded(true);
-    }
-  }, []);
-
-  const handleSubmit = async () => {
-    if (!title.trim()) {
-      toast({
-        title: "Fehler",
-        description: "Bitte geben Sie einen Titel ein.",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    // For non-public decisions, at least one user must be selected
-    if (!visibleToAll && selectedUsers.length === 0) {
-      toast({
-        title: "Fehler",
-        description: "Bitte wählen Sie mindestens einen Benutzer aus oder machen Sie die Entscheidung öffentlich.",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    setIsLoading(true);
-    try {
-      
-      
-      // Get current user first and validate
-      const { data: userData, error: userError } = await supabase.auth.getUser();
-      if (userError) {
-        debugConsole.error('Auth error:', userError);
-        throw new Error(`Authentication error: ${userError.message}`);
-      }
-      
-      if (!userData.user) {
-        debugConsole.error('No user found');
-        throw new Error('User not authenticated');
-      }
-
-      
-
-      // Get user's tenant
-      const { data: tenantData, error: tenantError } = await supabase
-        .from('user_tenant_memberships')
-        .select('tenant_id')
-        .eq('user_id', userData.user.id)
-        .eq('is_active', true)
-        .single();
-
-      if (tenantError || !tenantData) {
-        debugConsole.error('Tenant lookup error:', tenantError);
-        throw new Error('Unable to determine user tenant');
-      }
-
-      const { data: tenantMembers } = await supabase
-        .from('user_tenant_memberships')
-        .select('user_id')
-        .eq('tenant_id', tenantData.tenant_id)
-        .eq('is_active', true);
-      const tenantUserIds = new Set(tenantMembers?.map(m => m.user_id) || []);
-      const validSelectedUsers = selectedUsers.filter(userId => tenantUserIds.has(userId));
-
-      if (!visibleToAll && validSelectedUsers.length === 0) {
-        toast({
-          title: "Fehler",
-          description: "Bitte wählen Sie mindestens einen Benutzer aus Ihrem Tenant aus oder machen Sie die Entscheidung öffentlich.",
-          variant: "destructive",
-        });
-        return;
-      }
-
-      const insertData = {
-        task_id: null as string | null,
-        title: title.trim(),
-        description: description.trim() || null,
-        response_deadline: responseDeadline ? new Date(responseDeadline).toISOString() : null,
-        created_by: userData.user.id,
-        tenant_id: tenantData.tenant_id,
-        visible_to_all: visibleToAll,
-        response_options: JSON.parse(JSON.stringify(currentOptions)),
-        priority: priority ? 1 : 0,
-        case_item_id: caseItemId || null,
-      };
-      
-      
-      
-      // Create the decision
-      const { data: decision, error: decisionError } = await supabase
-        .from('task_decisions')
-        .insert(insertData)
-        .select()
-        .single();
-
-      if (decisionError) {
-        debugConsole.error('Decision creation error:', decisionError);
-        throw decisionError;
-      }
-
-      
-
-      // Upload files if any were selected
-      if (selectedFiles.length > 0) {
-        const uploadResult = await uploadDecisionAttachments({
-          decisionId: decision.id,
-          userId: userData.user.id,
-          files: selectedFiles,
-          metadataByIdentity: selectedFileMetadata,
-          rollbackOnAnyFailure: true,
-          onFileStart: (file, index, total) => {
-            setUploadStatus(`Lade Anhang ${index + 1}/${total}: ${file.name}`);
-          },
-        });
-
-        if (uploadResult.failed.length > 0) {
-          await supabase.from('task_decisions').delete().eq('id', decision.id);
-          throw new Error(`Anhänge konnten nicht gespeichert werden: ${uploadResult.failed.map(f => `${f.fileName}: ${f.reason}`).join(' | ')}`);
-        }
-      }
-
-      // Save topics
-      if (selectedTopicIds.length > 0) {
-        await saveDecisionTopics(decision.id, selectedTopicIds);
-      }
-
-      // Add participants (only if users are selected)
-      if (validSelectedUsers.length > 0) {
-        const participants = validSelectedUsers.map(userId => ({
-          decision_id: decision.id,
-          user_id: userId,
-        }));
-
-        
-
-        const { error: participantsError } = await supabase
-          .from('task_decision_participants')
-          .insert(participants);
-
-        if (participantsError) {
-          debugConsole.error('Participants creation error:', participantsError);
-          throw participantsError;
-        }
-
-        
-      }
-
-      // Send notifications to participants
-      for (const userId of validSelectedUsers) {
-        const { error: notificationError } = await supabase.rpc('create_notification', {
-          user_id_param: userId,
-          type_name: 'task_decision_request',
-          title_param: 'Neue Entscheidungsanfrage',
-          message_param: `Sie wurden um eine Entscheidung gebeten: "${title.trim()}"`,
-          data_param: JSON.stringify({
-            decision_id: decision.id,
-            decision_title: title.trim()
-          }),
-          priority_param: 'medium'
-        });
-
-        if (notificationError) {
-          debugConsole.error('Error creating notification for user:', userId, notificationError);
-        }
-      }
-
-      // Send Matrix notifications if requested
-      if (sendViaMatrix) {
-        try {
-          toast({
-            title: "Matrix-Nachrichten werden versendet...",
-            description: "Die Matrix-Entscheidungsanfragen werden an die ausgewählten Teilnehmer gesendet.",
-          });
-
-          const { data: matrixResult, error: matrixError } = await supabase.functions.invoke('matrix-bot-handler', {
-            body: {
-              type: 'decision',
-              decisionId: decision.id,
-              participantIds: validSelectedUsers,
-              decisionTitle: title.trim(),
-              decisionDescription: description.trim() || null,
-            },
-          });
-
-          if (matrixError) {
-            debugConsole.error('Error sending Matrix decisions:', matrixError);
-            toast({
-              title: "Matrix-Fehler",
-              description: `Matrix-Nachrichten konnten nicht versendet werden: ${matrixError.message}`,
-              variant: "destructive",
-            });
-          } else if (matrixResult) {
-            const successCount = matrixResult.sent || 0;
-            const totalCount = matrixResult.total_participants || validSelectedUsers.length;
-            
-            if (successCount > 0) {
-              toast({
-                title: "Matrix-Nachrichten versendet",
-                description: `${successCount}/${totalCount} Matrix-Entscheidungen erfolgreich versendet.`,
-              });
-            } else {
-              toast({
-                title: "Matrix-Warnung",
-                description: "Keine Matrix-Nachrichten konnten versendet werden. Überprüfen Sie die Matrix-Konfiguration.",
-                variant: "destructive",
-              });
-            }
-          }
-        } catch (matrixError: any) {
-          debugConsole.error('Error sending Matrix decisions:', matrixError);
-          toast({
-            title: "Matrix-Fehler",
-            description: `Unerwarteter Fehler beim Matrix-Versand: ${matrixError.message}`,
-            variant: "destructive",
-          });
-        }
-      }
-
-      // Send email invitations if requested
-      if (sendByEmail) {
-        try {
-          toast({
-            title: "E-Mails werden versendet...",
-            description: "Die E-Mail-Einladungen werden an die ausgewählten Teilnehmer gesendet.",
-          });
-
-          const { data: emailResult, error: emailError } = await supabase.functions.invoke('send-decision-email', {
-            body: {
-              decisionId: decision.id,
-              taskId: null, // No task for standalone decisions
-              participantIds: validSelectedUsers,
-              decisionTitle: title.trim(),
-              decisionDescription: description.trim() || null,
-              tenantId: tenantData.tenant_id,
-            },
-          });
-
-          if (emailError) {
-            debugConsole.error('Error sending decision emails:', emailError);
-            toast({
-              title: "E-Mail-Fehler",
-              description: `E-Mails konnten nicht versendet werden: ${emailError.message}`,
-              variant: "destructive",
-            });
-          } else if (emailResult) {
-            const successCount = emailResult.results?.filter((r: any) => r.success).length || 0;
-            const totalCount = emailResult.results?.length || validSelectedUsers.length;
-            
-            if (successCount > 0) {
-              toast({
-                title: "E-Mails versendet",
-                description: `${successCount}/${totalCount} E-Mail-Einladungen erfolgreich versendet.`,
-              });
-            } else {
-              toast({
-                title: "E-Mail-Warnung",
-                description: "Keine E-Mails konnten versendet werden. Überprüfen Sie die E-Mail-Konfiguration.",
-                variant: "destructive",
-              });
-            }
-          }
-        } catch (emailError: any) {
-          debugConsole.error('Error sending decision emails:', emailError);
-          toast({
-            title: "E-Mail-Fehler",
-            description: `Unerwarteter Fehler beim E-Mail-Versand: ${emailError.message}`,
-            variant: "destructive",
-          });
-        }
-      }
-
-      toast({
-        title: "Erfolgreich",
-        description: sendByEmail || sendViaMatrix
-          ? "Entscheidungsanfrage wurde erstellt und Versand wird geprüft."
-          : "Entscheidungsanfrage wurde erstellt.",
-      });
-
-      // Reset form
-      setTitle("");
-      setDescription("");
-      setResponseDeadline("");
-      setSelectedUsers([]);
-      setSelectedFiles([]);
-      setSelectedFileMetadata({});
-      setSelectedTopicIds([]);
-      setSelectedTemplateId(DEFAULT_TEMPLATE_ID);
-      const resetTpl = getTemplateById(DEFAULT_TEMPLATE_ID);
-      setCustomOptions(resetTpl ? resetTpl.options.map(o => ({ ...o })) : []);
-      setSendByEmail(false);
-      setSendViaMatrix(false);
-      setVisibleToAll(true);
-      setProfilesLoaded(false);
-      setIsOpen(false);
-      onDecisionCreated();
-      if (onCreatedWithId && decision?.id) onCreatedWithId(decision.id);
-    } catch (error) {
-      setUploadStatus(null);
-      debugConsole.error('Error creating decision:', error);
-      toast({
-        title: "Fehler",
-        description: error instanceof Error ? error.message : "Entscheidungsanfrage konnte nicht erstellt werden.",
-        variant: "destructive",
-      });
-    } finally {
-      setIsLoading(false);
-      setUploadStatus(null);
-    }
-  };
-
-  useEffect(() => {
-    if (isOpen && !profilesLoaded) {
-      void loadProfiles();
-    }
-  }, [isOpen, profilesLoaded, loadProfiles]);
-
-  const userOptions = useMemo(() => {
-    if (!Array.isArray(profiles)) return [];
-    return profiles.map(profile => ({
-      value: profile.user_id,
-      label: profile.display_name || 'Unbekannter Benutzer',
-    }));
-  }, [profiles]);
+  const {
+    isOpen,
+    handleOpenChange,
+    loadProfiles,
+    handleSubmit,
+    title,
+    setTitle,
+    description,
+    setDescription,
+    responseDeadline,
+    setResponseDeadline,
+    selectedUsers,
+    setSelectedUsers,
+    profilesLoaded,
+    userOptions,
+    isLoading,
+    uploadStatus,
+    sendByEmail,
+    setSendByEmail,
+    sendViaMatrix,
+    setSendViaMatrix,
+    visibleToAll,
+    setVisibleToAll,
+    setSelectedFiles,
+    setSelectedFileMetadata,
+    selectedTopicIds,
+    setSelectedTopicIds,
+    priority,
+    setPriority,
+    selectedTemplateId,
+    handleTemplateChange,
+    customOptions,
+    setCustomOptions,
+    currentOptions,
+  } = useDecisionCreator({
+    taskId: undefined,
+    caseItemId,
+    isOpen: externalIsOpen,
+    onOpenChange,
+    initialTitle: defaultTitle,
+    initialDescription: defaultDescription,
+    onDecisionCreated,
+    onCreatedWithId,
+  });
 
   const TriggerButton = variant === 'icon' ? (
     <Button 
@@ -539,7 +99,7 @@ export const StandaloneDecisionCreator = ({
   );
 
   return (
-    <Dialog open={isOpen} onOpenChange={setIsOpen}>
+    <Dialog open={isOpen} onOpenChange={handleOpenChange}>
       <DialogTrigger asChild>
         {TriggerButton}
       </DialogTrigger>
@@ -714,7 +274,7 @@ export const StandaloneDecisionCreator = ({
         <div className="flex justify-end space-x-2 pt-4 border-t">
           <Button 
             variant="outline" 
-            onClick={() => setIsOpen(false)}
+            onClick={() => handleOpenChange(false)}
             disabled={isLoading}
           >
             Abbrechen
