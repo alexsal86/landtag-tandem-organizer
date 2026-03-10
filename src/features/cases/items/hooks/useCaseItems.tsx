@@ -129,7 +129,15 @@ export const useCaseItems = () => {
     }
 
     try {
+      // Pre-flight: check if tenant is in user's active memberships
+      const { data: tenantCheck } = await supabase
+        .rpc("get_user_tenant_ids", { _user_id: user.id });
+      debugConsole.log("[createCaseItem] user tenant ids:", tenantCheck, "current tenant:", currentTenant.id);
+
+      const caseItemId = crypto.randomUUID();
+
       const insertData = {
+        id: caseItemId,
         source_channel: data.source_channel,
         status: data.status ?? "neu",
         priority: data.priority ?? "medium",
@@ -156,11 +164,9 @@ export const useCaseItems = () => {
 
       debugConsole.log("[createCaseItem] insertData:", JSON.stringify(insertData, null, 2));
 
-      const { data: inserted, error } = await supabase
+      const { error } = await supabase
         .from("case_items")
-        .insert(insertData as any)
-        .select("id")
-        .single();
+        .insert(insertData as any);
 
       if (error) {
         debugConsole.error("[createCaseItem] Supabase error:", error.message, error.code, error.details, error.hint);
