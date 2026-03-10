@@ -8,7 +8,6 @@ import { Briefcase, ExternalLink, Calendar } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { useTenant } from "@/hooks/useTenant";
-import { cn } from "@/lib/utils";
 import { format } from "date-fns";
 import { de } from "date-fns/locale";
 
@@ -28,12 +27,6 @@ interface CaseFile {
   assigned_to: string | null;
 }
 
-const STATUS_COLORS: Record<string, string> = {
-  active: "bg-green-500",
-  pending: "bg-yellow-500",
-  closed: "bg-blue-500",
-  archived: "bg-gray-500",
-};
 
 export function MyWorkCaseFilesTab() {
   const { user } = useAuth();
@@ -94,16 +87,6 @@ export function MyWorkCaseFilesTab() {
     }
   };
 
-  const getStatusLabel = (status: string) => {
-    switch (status) {
-      case "active": return "Aktiv";
-      case "pending": return "Wartend";
-      case "closed": return "Abgeschlossen";
-      case "archived": return "Archiviert";
-      default: return status;
-    }
-  };
-
 
   if (loading) {
     return (
@@ -129,23 +112,10 @@ export function MyWorkCaseFilesTab() {
               key={caseFile.id}
               className="flex items-start gap-3 p-3 rounded-lg border bg-card hover:bg-muted/50 transition-colors"
             >
-              <div className="mt-0.5">
-                <div
-                  className={cn(
-                    "w-2 h-2 rounded-full",
-                    STATUS_COLORS[caseFile.status] || "bg-gray-500"
-                  )}
-                />
-              </div>
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-2 flex-wrap">
                   <span className="font-medium text-sm">{caseFile.title}</span>
                   {getPriorityBadge(caseFile.priority)}
-                  {caseFile.status !== "active" && (
-                    <Badge variant="outline" className="text-xs">
-                      {getStatusLabel(caseFile.status)}
-                    </Badge>
-                  )}
                 </div>
                 {caseFile.reference_number && (
                   <p className="text-xs text-muted-foreground mt-0.5">Az: {caseFile.reference_number}</p>
