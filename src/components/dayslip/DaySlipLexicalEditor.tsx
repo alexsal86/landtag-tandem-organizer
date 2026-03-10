@@ -15,6 +15,7 @@ import {
   $getSelection,
   $isRangeSelection,
   COMMAND_PRIORITY_CRITICAL,
+  COMMAND_PRIORITY_NORMAL,
   type EditorState,
   type LexicalEditor,
   KEY_ENTER_COMMAND,
@@ -96,8 +97,8 @@ function DaySlipEnterBehaviorPlugin() {
 function FocusPlugin({ onFocusChange }: { onFocusChange: (focused: boolean) => void }) {
   const [editor] = useLexicalComposerContext();
   useEffect(() => {
-    const unregFocus = editor.registerCommand(FOCUS_COMMAND, () => { onFocusChange(true); return false; }, COMMAND_PRIORITY_CRITICAL);
-    const unregBlur = editor.registerCommand(BLUR_COMMAND, () => { onFocusChange(false); return false; }, COMMAND_PRIORITY_CRITICAL);
+    const unregFocus = editor.registerCommand(FOCUS_COMMAND, () => { onFocusChange(true); return false; }, COMMAND_PRIORITY_NORMAL);
+    const unregBlur = editor.registerCommand(BLUR_COMMAND, () => { onFocusChange(false); return false; }, COMMAND_PRIORITY_NORMAL);
     return () => { unregFocus(); unregBlur(); };
   }, [editor, onFocusChange]);
   return null;
