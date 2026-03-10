@@ -4,7 +4,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { debugConsole } from "@/utils/debugConsole";
 import type { Contact } from "@/hooks/useInfiniteContacts";
 import type { User } from "@supabase/supabase-js";
-import type { ToastProps } from "@/components/ui/toast";
+import type { ToasterToast } from "@/hooks/use-toast";
 
 export interface DistributionList {
   id: string;
