@@ -1,5 +1,5 @@
 import React from 'react';
-import { ChevronRight, ChevronUp, ChevronDown, Building, User, Mail, Phone, MapPin, Edit, Tag, Users, Star, FileText } from 'lucide-react';
+import { ChevronRight, ChevronUp, ChevronDown, Building, User, Mail, Phone, MapPin, Edit, Tag, Users, Star, FileText, Eye } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
@@ -136,6 +136,9 @@ export function StakeholderListView({
                   </TableCell>
                   <TableCell>
                     <div className="flex gap-1">
+                      <Button variant="ghost" size="sm" className="h-6 w-6 p-0" onClick={() => onContactClick(stakeholder.id)}>
+                        <Eye className="h-3 w-3" />
+                      </Button>
                       <Link to={`/contacts/${stakeholder.id}/edit`}><Button variant="ghost" size="sm" className="h-6 w-6 p-0"><Edit className="h-3 w-3" /></Button></Link>
                       <Button variant="ghost" size="sm" className="h-6 w-6 p-0" onClick={() => onDistributionClick(stakeholder)}><Users className="h-3 w-3" /></Button>
                     </div>

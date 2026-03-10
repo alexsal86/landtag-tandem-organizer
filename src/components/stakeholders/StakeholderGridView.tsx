@@ -1,5 +1,5 @@
 import React from 'react';
-import { ChevronRight, Building, User, Mail, Phone, MapPin, Plus, Edit, Tag, Users, Star, FileText } from 'lucide-react';
+import { ChevronRight, Building, User, Mail, Phone, MapPin, Plus, Edit, Tag, Users, Star, FileText, Eye } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -103,6 +103,9 @@ export function StakeholderGridView({
                   </div>
 
                   <div className="flex gap-2 pt-2">
+                    <Button variant="outline" size="sm" className="gap-1" onClick={(e) => { e.stopPropagation(); onContactClick(stakeholder.id); }}>
+                      <Eye className="h-3 w-3" />Details
+                    </Button>
                     <Link to={`/contacts/${stakeholder.id}/edit`}><Button variant="outline" size="sm" className="gap-1"><Edit className="h-3 w-3" />Bearbeiten</Button></Link>
                     <Button variant="outline" size="sm" className="gap-1" onClick={(e) => { e.stopPropagation(); onDistributionClick(stakeholder); }}>
                       <Users className="h-3 w-3" />Verteiler erstellen
