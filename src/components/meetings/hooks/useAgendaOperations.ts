@@ -123,6 +123,8 @@ export function useAgendaOperations(deps: AgendaOpsDeps) {
     let normalizedValue = value;
     if (field === 'assigned_to' && Array.isArray(value)) normalizedValue = value.flat();
 
+    const previousAgendaItems = [...agendaItems];
+    const previousItem = previousAgendaItems[index] ? { ...previousAgendaItems[index] } : null;
     const updated = [...agendaItems];
     updated[index] = { ...updated[index], [field]: normalizedValue };
     setAgendaItems(updated);
@@ -133,12 +135,56 @@ export function useAgendaOperations(deps: AgendaOpsDeps) {
         if (field === 'assigned_to') {
           dbValue = normalizedValue && Array.isArray(normalizedValue) && normalizedValue.length > 0 ? normalizedValue.flat() : null;
         }
-        await supabase.from('meeting_agenda_items').update({ [field]: dbValue }).eq('id', updated[index].id);
+
+        const persistUpdate = async () => {
+          const { error } = await supabase
+            .from('meeting_agenda_items')
+            .update({ [field]: dbValue })
+            .eq('id', updated[index].id);
+          if (error) throw error;
+        };
+
+        let retries = 2;
+        while (true) {
+          try {
+            await persistUpdate();
+            break;
+          } catch (error) {
+            const errorMessage = error instanceof Error ? error.message : String(error);
+            const isRetryable = /failed to fetch|network|timeout|temporar/i.test(errorMessage);
+            if (!isRetryable || retries === 0) throw error;
+            const delayMs = (3 - retries) * 300;
+            await new Promise(resolve => setTimeout(resolve, delayMs));
+            retries -= 1;
+          }
+        }
+
         if (activeMeeting && activeMeeting.id === selectedMeeting.id) {
           loadAgendaItems(selectedMeeting.id);
         }
       } catch (error) {
         debugConsole.error('Auto-save error:', error);
+        if (previousItem) {
+          const rollbackItems = [...previousAgendaItems];
+          rollbackItems[index] = previousItem;
+          setAgendaItems(rollbackItems);
+        } else {
+          setAgendaItems(previousAgendaItems);
+        }
+
+        const errorMessage = error instanceof Error ? error.message : String(error);
+        const isConflictError = /conflict|409|stale/i.test(errorMessage);
+        if (isConflictError) {
+          await loadAgendaItems(selectedMeeting.id);
+        }
+
+        toast({
+          title: 'Speichern fehlgeschlagen',
+          description: isConflictError
+            ? 'Die Agenda wurde zwischenzeitlich geändert. Wir haben die aktuellen Daten neu geladen.'
+            : 'Die Änderung konnte nicht gespeichert werden. Lokale Änderungen wurden zurückgesetzt.',
+          variant: 'destructive',
+        });
       }
     }
   };
