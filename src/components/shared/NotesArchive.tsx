@@ -1,7 +1,6 @@
 import { useState, useEffect, useCallback } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { ScrollArea } from "@/components/ui/scroll-area";
 import {
   Dialog,
   DialogContent,
@@ -291,8 +290,8 @@ export function NotesArchive({ refreshTrigger, onRestore }: NotesArchiveProps) {
           </CollapsibleTrigger>
 
           <CollapsibleContent>
-            <ScrollArea className="max-h-[250px]">
-              <div className="space-y-2 p-2">
+            <div className="max-h-[250px] overflow-y-auto p-2">
+              <div className="space-y-2">
                 {archivedNotes.map((note) => (
                   <div
                     key={note.id}
@@ -329,7 +328,7 @@ export function NotesArchive({ refreshTrigger, onRestore }: NotesArchiveProps) {
                   </div>
                 ))}
               </div>
-            </ScrollArea>
+            </div>
           </CollapsibleContent>
         </Collapsible>
       )}
@@ -354,8 +353,8 @@ export function NotesArchive({ refreshTrigger, onRestore }: NotesArchiveProps) {
           </CollapsibleTrigger>
 
         <CollapsibleContent>
-          <ScrollArea className="max-h-[250px]">
-            <div className="space-y-2 p-2">
+          <div className="max-h-[250px] overflow-y-auto p-2">
+            <div className="space-y-2">
               {notes.map((note) => {
                 const daysRemaining = getDaysRemaining(note.permanent_delete_at);
                 const isUrgent = daysRemaining <= 3;
@@ -440,7 +439,7 @@ export function NotesArchive({ refreshTrigger, onRestore }: NotesArchiveProps) {
                 );
               })}
               </div>
-            </ScrollArea>
+            </div>
           </CollapsibleContent>
         </Collapsible>
       )}
