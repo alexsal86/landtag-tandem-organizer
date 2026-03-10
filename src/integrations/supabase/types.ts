@@ -10866,6 +10866,16 @@ export type Database = {
         Args: { p_decision_id: string }
         Returns: undefined
       }
+      create_appointment_poll_with_details: {
+        Args: {
+          p_deadline?: string
+          p_description?: string
+          p_participants?: Json
+          p_time_slots?: Json
+          p_title: string
+        }
+        Returns: string
+      }
       create_default_checklist_items:
         | { Args: { planning_id: string }; Returns: undefined }
         | {
@@ -10899,30 +10909,6 @@ export type Database = {
           user_id_param: string
         }
         Returns: string
-      }
-      create_appointment_poll_with_details: {
-        Args: {
-          p_deadline?: string | null
-          p_description?: string | null
-          p_participants?: Json
-          p_time_slots?: Json
-          p_title: string
-        }
-        Returns: string
-      }
-      reconcile_employee_meeting_requests: {
-        Args: {
-          p_employee_id?: string | null
-          p_explicit_request_id?: string | null
-          p_meeting_id?: string | null
-          p_source?: string
-          p_tenant_id: string
-          p_time_window_days?: number
-        }
-        Returns: {
-          linked_meeting_id: string
-          updated_request_id: string
-        }[]
       }
       create_poll_notification: {
         Args: {
@@ -11008,12 +10994,12 @@ export type Database = {
         }[]
       }
       get_user_polls_with_aggregation: {
-        Args: Record<PropertyKey, never>
+        Args: never
         Returns: {
           created_at: string
           creator_name: string
-          deadline: string | null
-          description: string | null
+          deadline: string
+          description: string
           id: string
           participant_count: number
           response_count: number
@@ -11084,6 +11070,20 @@ export type Database = {
           user_id_param: string
         }
         Returns: undefined
+      }
+      reconcile_employee_meeting_requests: {
+        Args: {
+          p_employee_id?: string
+          p_explicit_request_id?: string
+          p_meeting_id?: string
+          p_source?: string
+          p_tenant_id: string
+          p_time_window_days?: number
+        }
+        Returns: {
+          linked_meeting_id: string
+          updated_request_id: string
+        }[]
       }
       send_message: {
         Args: {
