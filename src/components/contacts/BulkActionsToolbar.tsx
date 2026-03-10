@@ -40,18 +40,10 @@ import {
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { useTenant } from '@/hooks/useTenant';
-
-interface Contact {
-  id: string;
-  name: string;
-  email?: string | null;
-  phone?: string | null;
-  category?: string | null;
-  tags?: string[] | null;
-}
+import type { Contact } from '@/types/contact';
 
 interface BulkActionsToolbarProps {
-  selectedContacts: Contact[];
+  selectedContacts: Pick<Contact, "id" | "name" | "email" | "phone" | "category" | "tags">[];
   onClearSelection: () => void;
   onActionComplete: () => void;
   allTags: string[];
