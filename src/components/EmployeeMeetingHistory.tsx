@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { debugConsole } from '@/utils/debugConsole';
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
@@ -32,9 +32,10 @@ interface Meeting {
 interface EmployeeMeetingHistoryProps {
   employeeId?: string; // Optional: Filter by specific employee
   showFilters?: boolean;
+  refreshTrigger?: number;
 }
 
-export function EmployeeMeetingHistory({ employeeId, showFilters = true }: EmployeeMeetingHistoryProps) {
+export function EmployeeMeetingHistory({ employeeId, showFilters = true, refreshTrigger = 0 }: EmployeeMeetingHistoryProps) {
   const navigate = useNavigate();
   const { user } = useAuth();
   const { currentTenant } = useTenant();
@@ -44,12 +45,7 @@ export function EmployeeMeetingHistory({ employeeId, showFilters = true }: Emplo
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [typeFilter, setTypeFilter] = useState<string>("all");
 
-  useEffect(() => {
-    if (!user || !currentTenant) return;
-    loadMeetings();
-  }, [user, currentTenant, employeeId, statusFilter, typeFilter]);
-
-  const loadMeetings = async () => {
+  const loadMeetings = useCallback(async () => {
     if (!user || !currentTenant) return;
     setLoading(true);
     try {
@@ -134,7 +130,12 @@ export function EmployeeMeetingHistory({ employeeId, showFilters = true }: Emplo
     } finally {
       setLoading(false);
     }
-  };
+  }, [currentTenant, employeeId, statusFilter, toast, typeFilter, user]);
+
+  useEffect(() => {
+    if (!user || !currentTenant) return;
+    loadMeetings();
+  }, [user, currentTenant, employeeId, statusFilter, typeFilter, refreshTrigger, loadMeetings]);
 
   const handleDeleteMeeting = async (meetingId: string, e: React.MouseEvent) => {
     e.stopPropagation();
