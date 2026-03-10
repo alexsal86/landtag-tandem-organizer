@@ -10,6 +10,7 @@ import { useCounts } from "@/hooks/useCounts";
 import { useAllPersonContacts } from "@/hooks/useAllPersonContacts";
 import { useContactDocumentCounts } from "@/hooks/useContactDocumentCounts";
 import { debounce } from "@/utils/debounce";
+import { getInitials } from "../utils/contactFormatters";
 
 export interface DistributionList {
   id: string;
@@ -220,9 +221,7 @@ export function getPriorityColor(priority: Contact["priority"]) {
   }
 }
 
-export function getInitials(name: string) {
-  return name.split(" ").map(n => n[0]).join("").toUpperCase();
-}
+export { getInitials };
 
 export function getGenderLabel(gender?: string) {
   if (gender === "m") return "Herr";

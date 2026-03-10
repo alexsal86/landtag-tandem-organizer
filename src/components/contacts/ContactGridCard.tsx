@@ -6,7 +6,8 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Mail, Phone, MapPin, Building, Star, Trash2 } from "lucide-react";
 import { Contact } from "@/hooks/useInfiniteContacts";
 import { ContactQuickActions } from "./ContactQuickActions";
-import { getPriorityColor, getInitials } from "./hooks/useContactsViewState";
+import { getPriorityColor } from "./hooks/useContactsViewState";
+import { getInitials } from "./utils/contactFormatters";
 
 interface ContactGridCardProps {
   contact: Contact;

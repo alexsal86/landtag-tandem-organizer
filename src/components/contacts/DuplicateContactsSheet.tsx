@@ -12,6 +12,7 @@ import { findDuplicatesProgressive } from '@/utils/duplicateDetection';
 import { MergeContactsDialog } from './MergeContactsDialog';
 import { supabase } from '@/integrations/supabase/client';
 import { useTenant } from '@/hooks/useTenant';
+import { getInitials } from './utils/contactFormatters';
 
 interface Contact {
   id: string;
@@ -35,9 +36,7 @@ interface DuplicateContactsSheetProps {
   onDuplicatesResolved: () => void;
 }
 
-const getInitials = (name: string) => {
-  return name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2);
-};
+
 
 const getScoreColor = (score: number) => {
   if (score >= 90) return 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-300';
