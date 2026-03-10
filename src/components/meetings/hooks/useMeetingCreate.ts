@@ -149,16 +149,46 @@ export function useMeetingCreate(deps: UseMeetingCreateDeps) {
       }
 
       // Load agenda and apply carryover
-      setTimeout(async () => {
+      try {
         await loadAgendaItems(data.id);
-        if (data.template_id) await loadAndApplyCarryoverItems(data.id, data.template_id);
-        if (currentTenant && user) {
-          const { data: allMeetings } = await supabase
+      } catch (e) {
+        debugConsole.error('Error loading agenda items for new meeting:', e);
+        toast({
+          title: "Agenda konnte nicht geladen werden",
+          description: "Das Meeting wurde erstellt, aber die Agenda konnte nicht sofort geladen werden.",
+          variant: "destructive"
+        });
+      }
+
+      if (data.template_id) {
+        try {
+          await loadAndApplyCarryoverItems(data.id, data.template_id);
+        } catch (e) {
+          debugConsole.error('Error applying carryover items for new meeting:', e);
+          toast({
+            title: "Übertragspunkte konnten nicht angewendet werden",
+            description: "Das Meeting wurde erstellt, aber Übertragspunkte konnten nicht automatisch übernommen werden.",
+            variant: "destructive"
+          });
+        }
+      }
+
+      if (currentTenant && user) {
+        try {
+          const { data: allMeetings, error: reloadError } = await supabase
             .from('meetings').select('*').eq('tenant_id', currentTenant.id).eq('user_id', user.id)
             .neq('status', 'archived').order('meeting_date', { ascending: false });
+          if (reloadError) throw reloadError;
           if (allMeetings) setMeetings(allMeetings.map(m => ({ ...m, meeting_date: new Date(m.meeting_date) })));
+        } catch (e) {
+          debugConsole.error('Error reloading meetings after create:', e);
+          toast({
+            title: "Meetingliste konnte nicht aktualisiert werden",
+            description: "Das Meeting wurde erstellt, aber die Liste konnte nicht neu geladen werden.",
+            variant: "destructive"
+          });
         }
-      }, 500);
+      }
 
       setIsNewMeetingOpen(false);
       setNewMeeting({ title: "", description: "", meeting_date: new Date(), location: "", status: "planned", is_public: false });
