@@ -8,8 +8,16 @@ const CONTACTS_VIEW_MODE_STORAGE_KEY = "contacts-view-mode";
 const STAKEHOLDERS_VIEW_MODE_STORAGE_KEY = "stakeholders-view-mode";
 const DISTRIBUTION_VIEW_MODE_STORAGE_KEY = "distribution-view-mode";
 
+const getStoredValue = (key: string): string | null => {
+  if (typeof window === "undefined") {
+    return null;
+  }
+
+  return window.localStorage.getItem(key);
+};
+
 const getInitialViewMode = (key: string): ContactViewMode => {
-  const value = localStorage.getItem(key);
+  const value = getStoredValue(key);
   return value === "list" ? "list" : "grid";
 };
 
