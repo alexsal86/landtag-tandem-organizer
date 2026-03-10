@@ -10,15 +10,11 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { TaskDecisionResponse } from "./TaskDecisionResponse";
 import { RichTextDisplay } from "@/components/ui/RichTextDisplay";
 import SimpleRichTextEditor from "@/components/ui/SimpleRichTextEditor";
-import { TaskDecisionDetails } from "./TaskDecisionDetails";
 import { StandaloneDecisionCreator } from "./StandaloneDecisionCreator";
-import { DecisionEditDialog } from "./DecisionEditDialog";
-import { DefaultParticipantsDialog } from "./DefaultParticipantsDialog";
-
 import { DecisionSidebar } from "./DecisionSidebar";
-import { DecisionComments } from "./DecisionComments";
 import { DecisionCardActivity } from "./DecisionCardActivity";
-import { DecisionAttachmentPreviewDialog } from "./DecisionAttachmentPreviewDialog";
+import { DecisionDialogs } from "./DecisionDialogs";
+import { DecisionCardList } from "./DecisionCardList";
 import { UserBadge } from "@/components/ui/user-badge";
 import { AvatarStack } from "@/components/ui/AvatarStack";
 import { TopicDisplay } from "@/components/topics/TopicSelector";
@@ -32,13 +28,15 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator } from "@/components/ui/dropdown-menu";
-import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { useTenant } from "@/hooks/useTenant";
 import { useToast } from "@/hooks/use-toast";
 import { useMyWorkSettings, DecisionTabId } from "@/hooks/useMyWorkSettings";
+import { useDecisionOverviewData } from "./hooks/useDecisionOverviewData";
+import { getAvatarParticipants, getBorderColor, getResponseSummary } from "./utils/decisionOverview";
+import type { DecisionRequest } from "./utils/decisionOverview";
 
 // Truncated description component
 const TruncatedDescription = ({ content, maxLength = 150 }: { content: string; maxLength?: number }) => {
@@ -83,65 +81,6 @@ const TruncatedDescription = ({ content, maxLength = 150 }: { content: string; m
 };
 
 
-interface ResponseOption {
-  key: string;
-  label: string;
-  description?: string | null;
-  color?: string;
-  requires_comment?: boolean;
-}
-
-interface DecisionRequest {
-  id: string;
-  task_id: string | null;
-  title: string;
-  description: string | null;
-  response_deadline: string | null;
-  created_at: string;
-  created_by: string;
-  participant_id: string | null;
-  visible_to_all?: boolean;
-  status: string;
-  archived_at: string | null;
-  archived_by: string | null;
-  task: {
-    title: string;
-  } | null;
-  hasResponded: boolean;
-  isParticipant?: boolean;
-  isStandalone: boolean;
-  isCreator: boolean;
-  attachmentCount?: number;
-  attachmentFiles?: Array<{ id: string; file_name: string; file_path: string }>;
-  topicIds?: string[];
-  priority?: number;
-  response_options?: ResponseOption[];
-  creator?: {
-    user_id: string;
-    display_name: string | null;
-    badge_color: string | null;
-    avatar_url: string | null;
-  };
-  participants?: Array<{
-    id: string;
-    user_id: string;
-    profile?: {
-      display_name: string | null;
-      badge_color: string | null;
-      avatar_url: string | null;
-    };
-    responses: Array<{
-      id: string;
-      response_type: string;
-      comment: string | null;
-      creator_response: string | null;
-      parent_response_id?: string | null;
-      created_at: string;
-      updated_at?: string;
-    }>;
-  }>;
-}
-
 export const DecisionOverview = () => {
   const [searchParams, setSearchParams] = useSearchParams();
   const { user } = useAuth();
@@ -149,7 +88,7 @@ export const DecisionOverview = () => {
   const { toast } = useToast();
   const { decisionTabOrder, hiddenDecisionTabs, updateDecisionTabSettings } = useMyWorkSettings();
   const { isHighlighted, highlightRef } = useNotificationHighlight();
-  const [decisions, setDecisions] = useState<DecisionRequest[]>([]);
+  const { decisions, loadDecisionRequests } = useDecisionOverviewData();
   const [selectedDecisionId, setSelectedDecisionId] = useState<string | null>(null);
   const [isDetailsOpen, setIsDetailsOpen] = useState(false);
   const [highlightCommentId, setHighlightCommentId] = useState<string | null>(null);
@@ -225,315 +164,6 @@ export const DecisionOverview = () => {
       setActiveTab(targetTab);
     }
   }, [decisions, searchParams]);
-
-  const loadDecisionRequests = async (currentUserId: string) => {
-    try {
-      // Load active decisions where user is a participant
-      const { data: participantDecisions, error: participantError } = await supabase
-        .from('task_decision_participants')
-        .select(`
-          id,
-          decision_id,
-          task_decisions!inner (
-            id,
-            task_id,
-            title,
-            description,
-            response_deadline,
-            created_at,
-            created_by,
-            status,
-            archived_at,
-            archived_by,
-            visible_to_all,
-            priority,
-            response_options,
-            tasks (
-              title
-            ),
-            task_decision_attachments (count)
-          ),
-          task_decision_responses (
-            id
-          )
-        `)
-        .eq('user_id', currentUserId)
-        .in('task_decisions.status', ['active', 'open']);
-
-      if (participantError) throw participantError;
-
-      // Load all active decisions created by user, assigned to user, or visible to all
-      const { data: allDecisions, error: allError } = await supabase
-        .from('task_decisions')
-        .select(`
-          id,
-          task_id,
-          title,
-          description,
-          response_deadline,
-          created_at,
-          created_by,
-          status,
-          archived_at,
-          archived_by,
-          visible_to_all,
-          priority,
-          response_options,
-          tasks (
-            title,
-            assigned_to
-          ),
-          task_decision_participants (
-            id,
-            user_id,
-            task_decision_responses (
-              id
-            )
-          ),
-          task_decision_attachments (count)
-        `)
-        .in('status', ['active', 'open']);
-
-      if (allError) throw allError;
-
-      // Load archived decisions
-      const { data: archivedDecisions, error: archivedError } = await supabase
-        .from('task_decisions')
-        .select(`
-          id,
-          task_id,
-          title,
-          description,
-          response_deadline,
-          created_at,
-          created_by,
-          status,
-          archived_at,
-          archived_by,
-          visible_to_all,
-          priority,
-          response_options,
-          tasks (
-            title,
-            assigned_to
-          ),
-          task_decision_participants (
-            id,
-            user_id,
-            task_decision_responses (
-              id
-            )
-          ),
-          task_decision_attachments (count)
-        `)
-        .eq('status', 'archived');
-
-      if (archivedError) throw archivedError;
-
-      // Combine active and archived decisions
-      const combinedDecisions = [...(allDecisions || []), ...(archivedDecisions || [])];
-
-      // Format participant decisions
-      const formattedParticipantData = participantDecisions?.map(item => ({
-        id: item.task_decisions.id,
-        task_id: item.task_decisions.task_id,
-        title: item.task_decisions.title,
-        description: item.task_decisions.description,
-        created_at: item.task_decisions.created_at,
-        response_deadline: item.task_decisions.response_deadline,
-        created_by: item.task_decisions.created_by,
-        status: item.task_decisions.status,
-        archived_at: item.task_decisions.archived_at,
-        archived_by: item.task_decisions.archived_by,
-        visible_to_all: item.task_decisions.visible_to_all,
-        priority: item.task_decisions.priority ?? 0,
-        response_options: item.task_decisions.response_options,
-        participant_id: item.id,
-        task: item.task_decisions.tasks ? {
-          title: item.task_decisions.tasks.title,
-        } : null,
-        hasResponded: item.task_decision_responses.length > 0,
-        isParticipant: true,
-        isStandalone: !item.task_decisions.task_id,
-        isCreator: item.task_decisions.created_by === currentUserId,
-        attachmentCount: item.task_decisions.task_decision_attachments?.[0]?.count || 0,
-      })) || [];
-
-      // Format all decisions - filter for relevant ones
-      const formattedAllData = combinedDecisions
-        ?.filter(item => {
-          const isCreator = item.created_by === currentUserId;
-          const isParticipant = item.task_decision_participants.some(p => p.user_id === currentUserId);
-          const assignedTo = item.tasks?.assigned_to;
-          const isAssigned = assignedTo ? assignedTo.includes(currentUserId) : false;
-          const isVisibleToAll = item.visible_to_all === true;
-          return isCreator || isParticipant || isAssigned || isVisibleToAll;
-        })
-        ?.map(item => {
-          const userParticipant = item.task_decision_participants.find(p => p.user_id === currentUserId);
-          return {
-            id: item.id,
-            task_id: item.task_id,
-            title: item.title,
-            description: item.description,
-            created_at: item.created_at,
-            response_deadline: item.response_deadline,
-            created_by: item.created_by,
-            status: item.status,
-            archived_at: item.archived_at,
-            archived_by: item.archived_by,
-            visible_to_all: item.visible_to_all,
-            priority: item.priority ?? 0,
-            response_options: item.response_options,
-            participant_id: userParticipant?.id || null,
-            task: item.tasks ? {
-              title: item.tasks.title,
-            } : null,
-            hasResponded: userParticipant ? userParticipant.task_decision_responses.length > 0 : false,
-            isParticipant: !!userParticipant,
-            isStandalone: !item.task_id,
-            isCreator: item.created_by === currentUserId,
-            attachmentCount: item.task_decision_attachments?.[0]?.count || 0,
-          };
-        }) || [];
-
-      // Merge and deduplicate
-      const decisionsMap = new Map<string, any>();
-      formattedAllData.forEach(decision => {
-        decisionsMap.set(decision.id, decision);
-      });
-      formattedParticipantData.forEach(participantDecision => {
-        const existing = decisionsMap.get(participantDecision.id);
-        if (existing) {
-          decisionsMap.set(participantDecision.id, {
-            ...existing,
-            participant_id: participantDecision.participant_id,
-            hasResponded: participantDecision.hasResponded,
-            isParticipant: true,
-          });
-        } else {
-          decisionsMap.set(participantDecision.id, participantDecision);
-        }
-      });
-
-      const allDecisionsList = Array.from(decisionsMap.values());
-
-      // Load participants and responses
-      if (allDecisionsList.length > 0) {
-        const decisionIds = allDecisionsList.map(d => d.id);
-
-        const { data: participantsData, error: participantsError } = await supabase
-          .from('task_decision_participants')
-          .select(`
-            id,
-            user_id,
-            decision_id,
-            task_decision_responses (
-              id,
-              response_type,
-              comment,
-              creator_response,
-              parent_response_id,
-              created_at,
-              updated_at
-            )
-          `)
-          .in('decision_id', decisionIds);
-
-        if (participantsError) throw participantsError;
-
-        const { data: topicsData, error: topicsError } = await supabase
-          .from('task_decision_topics')
-          .select('decision_id, topic_id')
-          .in('decision_id', decisionIds);
-
-        if (topicsError) throw topicsError;
-
-        const topicsByDecision = new Map<string, string[]>();
-        topicsData?.forEach(topic => {
-          if (!topicsByDecision.has(topic.decision_id)) {
-            topicsByDecision.set(topic.decision_id, []);
-          }
-          topicsByDecision.get(topic.decision_id)!.push(topic.topic_id);
-        });
-
-        const allUserIds = [...new Set([
-          ...participantsData?.map(p => p.user_id) || [],
-          ...allDecisionsList.map(d => d.created_by)
-        ])];
-        const { data: profiles } = await supabase
-          .from('profiles')
-          .select('user_id, display_name, badge_color, avatar_url')
-          .in('user_id', allUserIds);
-
-        const profileMap = new Map(profiles?.map(p => [p.user_id, p]) || []);
-
-        const participantsByDecision = new Map();
-        participantsData?.forEach(participant => {
-          if (!participantsByDecision.has(participant.decision_id)) {
-            participantsByDecision.set(participant.decision_id, []);
-          }
-          participantsByDecision.get(participant.decision_id).push({
-            id: participant.id,
-            user_id: participant.user_id,
-            profile: {
-              display_name: profileMap.get(participant.user_id)?.display_name || null,
-              badge_color: profileMap.get(participant.user_id)?.badge_color || null,
-              avatar_url: profileMap.get(participant.user_id)?.avatar_url || null,
-            },
-            responses: (participant.task_decision_responses || [])
-              .sort((a, b) => {
-                const aIsChild = !!a.parent_response_id;
-                const bIsChild = !!b.parent_response_id;
-                if (aIsChild !== bIsChild) return aIsChild ? 1 : -1;
-                return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
-              }),
-          });
-        });
-
-        allDecisionsList.forEach((decision: any) => {
-          decision.participants = participantsByDecision.get(decision.id) || [];
-          decision.topicIds = topicsByDecision.get(decision.id) || [];
-          const creatorProfile = profileMap.get(decision.created_by);
-          decision.creator = {
-            user_id: decision.created_by,
-            display_name: creatorProfile?.display_name || null,
-            badge_color: creatorProfile?.badge_color || null,
-            avatar_url: creatorProfile?.avatar_url || null,
-          };
-        });
-      }
-
-      // Sort decisions
-      allDecisionsList.sort((a, b) => {
-        // Priority first
-        const priorityA = a.priority ?? 0;
-        const priorityB = b.priority ?? 0;
-        if (priorityA !== priorityB) return priorityB - priorityA;
-
-        const summaryA = getResponseSummary(a.participants);
-        const summaryB = getResponseSummary(b.participants);
-        
-        const aIsUnansweredParticipant = a.isParticipant && !a.hasResponded;
-        const bIsUnansweredParticipant = b.isParticipant && !b.hasResponded;
-        
-        if (aIsUnansweredParticipant && !bIsUnansweredParticipant) return -1;
-        if (!aIsUnansweredParticipant && bIsUnansweredParticipant) return 1;
-        
-        const aHasQuestions = summaryA.questionCount > 0;
-        const bHasQuestions = summaryB.questionCount > 0;
-        
-        if (aHasQuestions && !bHasQuestions) return -1;
-        if (!aHasQuestions && bHasQuestions) return 1;
-        
-        return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
-      });
-
-      setDecisions(allDecisionsList);
-    } catch (error) {
-      debugConsole.error('Error loading decision requests:', error);
-    }
-  };
 
   const sendCreatorResponse = async (
     responseId: string,
@@ -769,69 +399,6 @@ export const DecisionOverview = () => {
       toast({ title: "Fehler", description: "Aufgabe konnte nicht erstellt werden.", variant: "destructive" });
       setCreatingTaskFromDecisionId(null);
     }
-  };
-
-  const getResponseSummary = (participants: DecisionRequest['participants'] = []) => {
-    const yesCount = participants.filter(p => p.responses.length > 0 && p.responses[0].response_type === 'yes').length;
-    const noCount = participants.filter(p => p.responses.length > 0 && p.responses[0].response_type === 'no').length;
-    const questionCount = participants.filter(p => p.responses.length > 0 && p.responses[0].response_type === 'question').length;
-    const otherCount = participants.filter(p => {
-      if (p.responses.length === 0) return false;
-      const rt = p.responses[0].response_type;
-      return rt !== 'yes' && rt !== 'no' && rt !== 'question';
-    }).length;
-    const pending = participants.length - (yesCount + noCount + questionCount + otherCount);
-    return { yesCount, noCount, questionCount, otherCount, pending, total: participants.length };
-  };
-
-  const isStandardTemplate = (options?: ResponseOption[]) => {
-    if (!options || options.length === 0) return true;
-    const keys = options.map(o => o.key).sort();
-    if (keys.length === 2 && keys[0] === 'no' && keys[1] === 'yes') return true;
-    if (keys.length === 3 && keys[0] === 'no' && keys[1] === 'question' && keys[2] === 'yes') return true;
-    return false;
-  };
-
-  const getBorderColor = (decision: DecisionRequest, summary: ReturnType<typeof getResponseSummary>) => {
-    const responseOptions = decision.response_options;
-
-    if (!isStandardTemplate(responseOptions) && responseOptions && decision.participants) {
-      const optionCounts: Record<string, number> = {};
-      decision.participants.forEach((participant) => {
-        const responseType = participant.responses[0]?.response_type;
-        if (responseType) optionCounts[responseType] = (optionCounts[responseType] || 0) + 1;
-      });
-
-      const sortedOptions = [...responseOptions].sort((a, b) => {
-        const countDiff = (optionCounts[b.key] || 0) - (optionCounts[a.key] || 0);
-        if (countDiff !== 0) return countDiff;
-        return responseOptions.findIndex((opt) => opt.key === a.key) - responseOptions.findIndex((opt) => opt.key === b.key);
-      });
-
-      const winningOption = sortedOptions[0];
-      const winningCount = winningOption ? (optionCounts[winningOption.key] || 0) : 0;
-      if (summary.pending > 0 || summary.total === 0 || !winningOption || winningCount === 0) return 'border-l-gray-400';
-
-      const borderColorMap: Record<string, string> = {
-        green: 'border-l-green-600',
-        red: 'border-l-red-600',
-        orange: 'border-l-orange-500',
-        yellow: 'border-l-yellow-500',
-        blue: 'border-l-blue-600',
-        purple: 'border-l-purple-600',
-        lime: 'border-l-lime-600',
-        gray: 'border-l-gray-400',
-      };
-      return borderColorMap[winningOption.color || 'gray'] || 'border-l-gray-400';
-    }
-
-    const hasResponses = summary.yesCount + summary.noCount + summary.questionCount > 0;
-    const allResponsesReceived = summary.pending === 0;
-
-    if (summary.questionCount > 0) return 'border-l-orange-500';
-    if (!allResponsesReceived || !hasResponses) return 'border-l-gray-400';
-    if (summary.yesCount > summary.noCount) return 'border-l-green-500';
-    return 'border-l-red-600';
   };
 
   // Sidebar data
@@ -1159,13 +726,7 @@ export const DecisionOverview = () => {
     const summary = getResponseSummary(decision.participants);
     
     // Prepare avatar stack data
-    const avatarParticipants = (decision.participants || []).map(p => ({
-      user_id: p.user_id,
-      display_name: p.profile?.display_name || null,
-      badge_color: p.profile?.badge_color || null,
-      avatar_url: p.profile?.avatar_url || null,
-      response_type: p.responses[0]?.response_type || null,
-    }));
+    const avatarParticipants = getAvatarParticipants(decision);
 
   const getInitials = (name: string | null) => {
       if (!name) return '?';
@@ -1620,23 +1181,12 @@ export const DecisionOverview = () => {
         <div className="grid grid-cols-1 lg:grid-cols-[1fr_340px] gap-6">
           {/* Main Content */}
           <TabsContent value={activeTab} className="mt-0 space-y-3">
-            {filteredDecisions.length === 0 ? (
-              <div className="text-center py-12 text-muted-foreground">
-                {activeTab === "for-me" && "Keine offenen Entscheidungen für Sie."}
-                {activeTab === "answered" && "Keine beantworteten Entscheidungen vorhanden."}
-                {activeTab === "my-decisions" && "Sie haben noch keine Entscheidungsanfragen erstellt."}
-                {activeTab === "public" && "Keine öffentlichen Entscheidungen vorhanden."}
-                {activeTab === "questions" && "Keine offenen Rückfragen vorhanden."}
-                {activeTab === "archived" && "Keine archivierten Entscheidungen vorhanden."}
-              </div>
-            ) : (
-              <div className="space-y-3">
-                {activeTab === "archived" 
-                  ? filteredDecisions.map(renderArchivedCard)
-                  : filteredDecisions.map(renderCompactCard)
-                }
-              </div>
-            )}
+            <DecisionCardList
+              activeTab={activeTab}
+              filteredDecisions={filteredDecisions}
+              renderArchivedCard={renderArchivedCard}
+              renderCompactCard={renderCompactCard}
+            />
           </TabsContent>
 
           {/* Right Sidebar */}
@@ -1653,77 +1203,37 @@ export const DecisionOverview = () => {
         </div>
       </Tabs>
 
-      {/* Dialogs */}
-      {selectedDecisionId && (
-        <TaskDecisionDetails
-          decisionId={selectedDecisionId}
-          isOpen={isDetailsOpen}
-          onClose={handleCloseDetails}
-          onArchived={handleDecisionArchived}
-          highlightCommentId={highlightCommentId}
-          highlightResponseId={highlightResponseId}
-        />
-      )}
-
-      {editingDecisionId && (
-        <DecisionEditDialog
-          decisionId={editingDecisionId}
-          isOpen={true}
-          onClose={() => setEditingDecisionId(null)}
-          onUpdated={() => {
-            setEditingDecisionId(null);
-            if (user?.id) loadDecisionRequests(user.id);
-          }}
-        />
-      )}
-
-      {/* Comments Sheet */}
-      {commentsDecisionId && (
-        <DecisionComments
-          decisionId={commentsDecisionId}
-          decisionTitle={commentsDecisionTitle}
-          isOpen={!!commentsDecisionId}
-          onClose={() => setCommentsDecisionId(null)}
-          onCommentAdded={() => {
-            refreshCommentCounts();
-            if (user?.id) loadDecisionRequests(user.id);
-          }}
-        />
-      )}
-
-      <DefaultParticipantsDialog
-        open={defaultParticipantsOpen}
-        onOpenChange={setDefaultParticipantsOpen}
-        decisionTabSettings={{
-          order: decisionTabOrder,
-          hiddenTabs: hiddenDecisionTabs,
-          onSave: updateDecisionTabSettings,
+      <DecisionDialogs
+        selectedDecisionId={selectedDecisionId}
+        isDetailsOpen={isDetailsOpen}
+        onCloseDetails={handleCloseDetails}
+        onArchived={handleDecisionArchived}
+        highlightCommentId={highlightCommentId}
+        highlightResponseId={highlightResponseId}
+        editingDecisionId={editingDecisionId}
+        setEditingDecisionId={setEditingDecisionId}
+        onUpdated={() => {
+          setEditingDecisionId(null);
+          if (user?.id) loadDecisionRequests(user.id);
         }}
+        commentsDecisionId={commentsDecisionId}
+        commentsDecisionTitle={commentsDecisionTitle}
+        onCloseComments={() => setCommentsDecisionId(null)}
+        onCommentAdded={() => {
+          refreshCommentCounts();
+          if (user?.id) loadDecisionRequests(user.id);
+        }}
+        defaultParticipantsOpen={defaultParticipantsOpen}
+        onDefaultParticipantsOpenChange={setDefaultParticipantsOpen}
+        decisionTabOrder={decisionTabOrder}
+        hiddenDecisionTabs={hiddenDecisionTabs}
+        updateDecisionTabSettings={updateDecisionTabSettings}
+        previewAttachment={previewAttachment}
+        onPreviewAttachmentChange={() => setPreviewAttachment(null)}
+        deletingDecisionId={deletingDecisionId}
+        setDeletingDecisionId={setDeletingDecisionId}
+        onDeleteDecision={handleDeleteDecision}
       />
-
-      <DecisionAttachmentPreviewDialog
-        open={!!previewAttachment}
-        onOpenChange={() => setPreviewAttachment(null)}
-        filePath={previewAttachment?.file_path || ''}
-        fileName={previewAttachment?.file_name || ''}
-      />
-
-      <AlertDialog open={!!deletingDecisionId} onOpenChange={() => setDeletingDecisionId(null)}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Entscheidung endgültig löschen?</AlertDialogTitle>
-            <AlertDialogDescription>
-              Diese Aktion löscht die Entscheidung unwiderruflich. Alle zugehörigen Antworten und Kommentare werden ebenfalls gelöscht.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Abbrechen</AlertDialogCancel>
-            <AlertDialogAction onClick={handleDeleteDecision} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
-              Endgültig löschen
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
     </div>
   );
 };
