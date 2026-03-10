@@ -614,6 +614,7 @@ export function useMeetingsData() {
     meetingRelevantDecisions: sidebar.meetingRelevantDecisions,
     meetingLinkedCaseItems: sidebar.meetingLinkedCaseItems,
     meetingUpcomingAppointments: sidebar.meetingUpcomingAppointments,
+    isMeetingLinkedDataLoading: sidebar.isMeetingLinkedDataLoading,
     isNewMeetingOpen, setIsNewMeetingOpen,
     newMeeting, setNewMeeting,
     newMeetingTime, setNewMeetingTime,

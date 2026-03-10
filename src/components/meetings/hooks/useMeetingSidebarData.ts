@@ -27,10 +27,21 @@ export function useMeetingSidebarData(deps: UseMeetingSidebarDataDeps) {
   const [meetingUpcomingAppointments, setMeetingUpcomingAppointments] = useState<MeetingUpcomingAppointment[]>([]);
   const [starredAppointmentIds, setStarredAppointmentIds] = useState<Set<string>>(new Set());
   const [expandedApptNotes, setExpandedApptNotes] = useState<Set<string>>(new Set());
+  const [loadingCounter, setLoadingCounter] = useState(0);
   const updateTimeouts = useRef<Record<string, NodeJS.Timeout>>({});
 
-  const loadLinkedQuickNotes = async (meetingId: string) => {
+  const withLoading = async <T,>(loader: () => Promise<T>): Promise<T> => {
+    setLoadingCounter((prev) => prev + 1);
     try {
+      return await loader();
+    } finally {
+      setLoadingCounter((prev) => Math.max(0, prev - 1));
+    }
+  };
+
+  const loadLinkedQuickNotes = async (meetingId: string) => {
+    await withLoading(async () => {
+      try {
       const { data, error } = await supabase
         .from("quick_notes")
         .select("*")
@@ -40,30 +51,34 @@ export function useMeetingSidebarData(deps: UseMeetingSidebarDataDeps) {
         debugConsole.error("Error loading linked quick notes:", error);
         return;
       }
-      setLinkedQuickNotes(data || []);
-    } catch (error) {
-      debugConsole.error("Error loading linked quick notes:", error);
-    }
+        setLinkedQuickNotes(data || []);
+      } catch (error) {
+        debugConsole.error("Error loading linked quick notes:", error);
+      }
+    });
   };
 
   const loadMeetingLinkedTasks = async (meetingId: string) => {
-    try {
+    await withLoading(async () => {
+      try {
       const { data, error } = await supabase
         .from("tasks")
         .select("id, title, description, due_date, priority, status, user_id")
         .eq("meeting_id", meetingId)
         .order("created_at", { ascending: false });
       if (error) throw error;
-      setMeetingLinkedTasks(data || []);
-    } catch (error) {
-      debugConsole.error("Error loading meeting linked tasks:", error);
-      setMeetingLinkedTasks([]);
-    }
+        setMeetingLinkedTasks(data || []);
+      } catch (error) {
+        debugConsole.error("Error loading meeting linked tasks:", error);
+        setMeetingLinkedTasks([]);
+      }
+    });
   };
 
   const loadMeetingLinkedCaseItems = async (meetingId: string) => {
     if (!tenantId) return;
-    try {
+    await withLoading(async () => {
+      try {
       const { data, error } = await supabase
         .from("case_items")
         .select("id, subject, status, priority, due_at, owner_user_id, pending_for_jour_fixe")
@@ -71,16 +86,18 @@ export function useMeetingSidebarData(deps: UseMeetingSidebarDataDeps) {
         .neq("status", "erledigt")
         .or(`meeting_id.eq.${meetingId},pending_for_jour_fixe.eq.true`);
       if (error) throw error;
-      setMeetingLinkedCaseItems(data || []);
-    } catch (error) {
-      debugConsole.error("Error loading meeting linked case items:", error);
-      setMeetingLinkedCaseItems([]);
-    }
+        setMeetingLinkedCaseItems(data || []);
+      } catch (error) {
+        debugConsole.error("Error loading meeting linked case items:", error);
+        setMeetingLinkedCaseItems([]);
+      }
+    });
   };
 
   const loadMeetingRelevantDecisions = async () => {
     if (!tenantId || !userId) return;
-    try {
+    await withLoading(async () => {
+      try {
       const nowDate = new Date();
       const now = nowDate.toISOString();
       const in7Days = addDays(nowDate, 7).toISOString();
@@ -112,16 +129,18 @@ export function useMeetingSidebarData(deps: UseMeetingSidebarDataDeps) {
           decision.created_by === userId ||
           participantRows.some((p) => p.decision_id === decision.id && p.user_id === userId)
       );
-      setMeetingRelevantDecisions(relevant);
-    } catch (error) {
-      debugConsole.error("Error loading meeting relevant decisions:", error);
-      setMeetingRelevantDecisions([]);
-    }
+        setMeetingRelevantDecisions(relevant);
+      } catch (error) {
+        debugConsole.error("Error loading meeting relevant decisions:", error);
+        setMeetingRelevantDecisions([]);
+      }
+    });
   };
 
   const loadMeetingUpcomingAppointments = async (meetingId: string, meetingDate: string | Date) => {
     if (!tenantId) return;
-    try {
+    await withLoading(async () => {
+      try {
       const baseDate = typeof meetingDate === "string" ? new Date(meetingDate) : meetingDate;
       const start = startOfDay(baseDate);
       const end = endOfDay(addDays(baseDate, 14));
@@ -158,11 +177,12 @@ export function useMeetingSidebarData(deps: UseMeetingSidebarDataDeps) {
           })
         ),
       ].sort((a, b) => new Date(a.start_time).getTime() - new Date(b.start_time).getTime());
-      setMeetingUpcomingAppointments(all);
-    } catch (error) {
-      debugConsole.error("Error loading upcoming appointments:", error);
-      setMeetingUpcomingAppointments([]);
-    }
+        setMeetingUpcomingAppointments(all);
+      } catch (error) {
+        debugConsole.error("Error loading upcoming appointments:", error);
+        setMeetingUpcomingAppointments([]);
+      }
+    });
   };
 
   const loadStarredAppointments = async (meetingId: string) => {
@@ -260,6 +280,7 @@ export function useMeetingSidebarData(deps: UseMeetingSidebarDataDeps) {
     starredAppointmentIds,
     expandedApptNotes,
     setExpandedApptNotes,
+    isMeetingLinkedDataLoading: loadingCounter > 0,
     // Functions
     loadLinkedQuickNotes,
     loadMeetingLinkedTasks,
