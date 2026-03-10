@@ -66,6 +66,7 @@ export function MultiUserAssignSelect({
               <div className="flex -space-x-2">
                 {selectedProfiles.slice(0, 3).map(profile => (
                   <Avatar key={profile.user_id} className={cn(size === 'sm' ? 'h-5 w-5' : 'h-6 w-6', 'border-2 border-background')}>
+                    <AvatarImage src={profile.avatar_url ?? undefined} />
                     <AvatarFallback className="text-[10px]">
                       {getInitials(profile.display_name)}
                     </AvatarFallback>
@@ -94,6 +95,7 @@ export function MultiUserAssignSelect({
                   onCheckedChange={() => toggleUser(profile.user_id)}
                 />
                 <Avatar className="h-6 w-6">
+                  <AvatarImage src={profile.avatar_url ?? undefined} />
                   <AvatarFallback className="text-xs">
                     {getInitials(profile.display_name)}
                   </AvatarFallback>
