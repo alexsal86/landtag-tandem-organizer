@@ -173,7 +173,7 @@ export const useCaseItems = () => {
         throw error;
       }
 
-      debugConsole.log("[createCaseItem] inserted:", inserted);
+      debugConsole.log("[createCaseItem] inserted with id:", caseItemId);
 
       toast({
         title: "Erfolgreich",
@@ -188,14 +188,14 @@ export const useCaseItems = () => {
           title_param: "Vorgang zugewiesen",
           message_param: `Ihnen wurde der Vorgang "${data.subject || 'Ohne Betreff'}" zugewiesen.`,
           priority_param: "medium",
-          data_param: JSON.stringify({ case_item_id: inserted?.id }),
+          data_param: JSON.stringify({ case_item_id: caseItemId }),
         }).then(({ error: nErr }) => {
           if (nErr) debugConsole.warn("Notification error (case_item_assigned):", nErr);
         });
       }
 
       await fetchCaseItems();
-      return (inserted ?? { id: "new" }) as unknown as CaseItem;
+      return { id: caseItemId } as unknown as CaseItem;
     } catch (error: unknown) {
       debugConsole.error("Error creating case item:", error);
       let detail = "Unbekannter Fehler";
