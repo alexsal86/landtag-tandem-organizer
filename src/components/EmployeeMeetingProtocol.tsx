@@ -235,6 +235,8 @@ export function EmployeeMeetingProtocol({ meetingId, onBack }: EmployeeMeetingPr
   const [saveState, setSaveState] = useState<"saved" | "saving" | "unsaved">("saved");
   const [lastSaved, setLastSaved] = useState<Date | null>(null);
   const autoSaveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const saveProtocolRef = useRef<(isAutoSave?: boolean) => Promise<void>>(async () => {});
+  const savingRef = useRef(false);
   const dataChangedRef = useRef(false);
 
   // Cancel/reschedule dialog state (must be before early returns)
@@ -320,25 +322,11 @@ export function EmployeeMeetingProtocol({ meetingId, onBack }: EmployeeMeetingPr
     }
   };
 
-  // Debounced auto-save (3s after last change)
-  const triggerAutoSave = useCallback(() => {
-    dataChangedRef.current = true;
-    setSaveState("unsaved");
-    if (autoSaveTimerRef.current) clearTimeout(autoSaveTimerRef.current);
-    autoSaveTimerRef.current = setTimeout(() => {
-      saveProtocol(true);
-    }, 3000);
-  }, []);
-
-  // Cleanup timer
-  useEffect(() => {
-    return () => {
-      if (autoSaveTimerRef.current) clearTimeout(autoSaveTimerRef.current);
-    };
-  }, []);
-
-  const saveProtocol = async (isAutoSave = false) => {
+  const saveProtocol = useCallback(async (isAutoSave = false) => {
     if (!meeting || !user) return;
+    if (savingRef.current) return;
+
+    savingRef.current = true;
     setSaving(true);
     setSaveState("saving");
     try {
@@ -370,9 +358,31 @@ export function EmployeeMeetingProtocol({ meetingId, onBack }: EmployeeMeetingPr
         toast({ title: "Fehler", description: "Protokoll konnte nicht gespeichert werden", variant: "destructive" });
       }
     } finally {
+      savingRef.current = false;
       setSaving(false);
     }
-  };
+  }, [meeting, user, protocolData, employeePrep, supervisorPrep, privateNotes, isEmployee, isSupervisor, meetingId, toast]);
+
+  useEffect(() => {
+    saveProtocolRef.current = saveProtocol;
+  }, [saveProtocol]);
+
+  // Debounced auto-save (3s after last change)
+  const triggerAutoSave = useCallback(() => {
+    dataChangedRef.current = true;
+    setSaveState("unsaved");
+    if (autoSaveTimerRef.current) clearTimeout(autoSaveTimerRef.current);
+    autoSaveTimerRef.current = setTimeout(() => {
+      void saveProtocolRef.current(true);
+    }, 3000);
+  }, [saveProtocol]);
+
+  // Cleanup timer
+  useEffect(() => {
+    return () => {
+      if (autoSaveTimerRef.current) clearTimeout(autoSaveTimerRef.current);
+    };
+  }, []);
 
   const sharePreparation = async () => {
     if (!meeting) return;
