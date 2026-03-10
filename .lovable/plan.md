@@ -1,43 +1,70 @@
 
-## Code-Qualität — Status
 
-### Erledigt
+## Analyse: Speech Recognition Bugs
 
-- **strictNullChecks: true** — aktiviert, alle Build-Fehler behoben
-- **noImplicitAny: true** — aktiviert, alle Build-Fehler behoben
-- **DOMPurify** als zentraler HTML-Sanitizer — alle `dangerouslySetInnerHTML` nutzen jetzt `sanitizeRichHtml()`
-- **Tenant-Access Guard** für Edge Functions — existiert in `supabase/functions/_shared/tenant-access.ts`
-- **ESLint `no-unused-vars: warn`** — aktiviert mit `argsIgnorePattern: '^_'`, erste Bereinigungsrunde in Pages/Hooks abgeschlossen
-- **Standalone `React`-Imports entfernt** — ~60 Dateien bereinigt
-- **State-Mutation fix** — `existingContacts.push()` → immutables Update in `useContactImport.ts`
-- **Non-null Assertion Guards** — `user!.id` / `currentTenant!.id` durch Early-Return-Guards ersetzt (~11 Dateien)
-- **Leere catch-Blöcke** — kritische Stellen in MatrixContext & DaySlipStore mit `debugConsole.warn` versehen
-- **JSON-Protocol Speaker-Normalisierung** — `speaker: string | { name }` korrekt normalisiert
-
-### Noch offen
-
-1. ~~**`strict: true` aktivieren**~~ ✅ — war bereits aktiv in `tsconfig.app.json` inkl. `strictNullChecks` und `noImplicitAny`
-2. **Tote Imports weiter bereinigen** — ~65 standalone `React`-Imports in Components prüfen, weitere lucide-Icons und ungenutzte Variablen entfernen (ESLint-Regel zeigt Warnungen)
-3. **`no-explicit-any` schrittweise einführen** — nach Abschluss der `no-unused-vars`-Bereinigung
-4. ~~**Edge Functions `verify_jwt`-Audit**~~ ✅ — alle 18 Functions mit `verify_jwt = false` klassifiziert und abgesichert: Cron-Functions mit `requireServiceRole`, WebSocket mit `requireAuth`, Token-Endpoints mit eigener Validierung, `send-push-notification` + `fetch-karlsruhe-districts` mit Service-Role-Guard
-5. **CORS einschränken** — `Access-Control-Allow-Origin: *` durch Allowlist ersetzen für sensible Operationen
+Ich habe die drei Kernkomponenten (`speechToTextAdapter.ts`, `useSpeechDictation.ts`, `speechCommandUtils.ts`) intensiv analysiert und zwei konkrete Bugs sowie mehrere Verbesserungsmöglichkeiten identifiziert.
 
 ---
 
-## No-Code Automations-Hub — Status
+### Bug 1: "Stopp" stoppt die Aufnahme nicht (kritisch)
 
-### Erledigt
+**Ursache in `useSpeechDictation.ts`, Zeilen 200-205:**
 
-- 4-Step Wizard (Grundlagen → Trigger → Bedingungen → Aktionen)
-- 10 Templates, Template-Galerie mit Suche/Filter
-- Kill-Switch, Dry-Run, Run-Now, Run-Historie mit Step-Logs
-- Error-Dashboard mit Retry, Regel-Versionierung, Import/Export
-- Rate Limiting, Idempotency, Audit-Trail
-- 5 Action-Typen, 5 Condition-Operators, 4 Trigger-Typen (inkl. Webhook)
-- Rollenbasierte Zugriffskontrolle
-- **Regel duplizieren** — Copy-Button pro Regel-Karte
-- **Nächste geplante Ausführung** — Badge für schedule-Regeln
-- **Regel-Statistiken** — Erfolgsrate (%) + Ø Laufzeit als Tooltip-Badge
-- **Notification-Kontext** — `rule_name`, `trigger_reason`, `run_id` in Notification-Payload
-- **Webhook-Trigger** — neue Edge Function `automation-webhook`, Secret-Authentifizierung, URL-Anzeige im Wizard
-- **Verschachtelte Condition-Gruppen** — rekursives AND/OR-Nesting bis 3 Ebenen im Wizard, backward-kompatible DB-Serialisierung
+```text
+onFinalTranscript handler:
+  if (command.type === 'stop-listening') {
+    if (!contentText) {        ← NUR wenn kein Text davor steht
+      speechAdapter.stop();    ← wird stop() aufgerufen
+    }
+    return;                    ← sonst wird NICHT gestoppt
+  }
+```
+
+Wenn der Nutzer z.B. "Etwas Text Stopp" sagt, wird `contentText = "etwas text"` erkannt und committed — aber `speechAdapter.stop()` wird **nie aufgerufen**, weil `!contentText` false ist. Die Aufnahme läuft weiter.
+
+**Fix:** `speechAdapter.stop()` immer aufrufen, unabhängig ob contentText vorhanden ist.
+
+---
+
+### Bug 2: Text wird doppelt/dreifach eingefügt (kritisch)
+
+**Ursache: Sowohl der Interim- als auch der Final-Handler committen denselben Text.**
+
+Ablauf bei "Hallo Stopp":
+1. `onInterimTranscript("Hallo Stopp")` → erkennt Stop-Kommando → `commitContentText("hallo")` → `speechAdapter.stop()`
+2. Bevor der Browser die Recognition tatsächlich stoppt, feuert `onFinalTranscript("Hallo Stopp")` → erkennt Stop-Kommando → `commitContentText("hallo")` erneut
+
+Der Dedup-Guard `lastInsertedSegmentRef` schützt nur den Pfad ohne Interim-Node (Zeile 135). Wenn der erste Commit über den Interim-Node-Pfad (Zeile 124-133) läuft und der zweite Commit keinen Interim-Node mehr findet, wird der Text ein zweites Mal über `insertTextRef.current()` eingefügt.
+
+**Zusätzlich:** Auch ohne Stop-Kommando kann bei `continuous: true` der Browser denselben finalen Transkript-Abschnitt erneut liefern, wenn die `consumeFinalTranscriptDelta`-Logik bei abweichendem Wortlaut den vollen Text zurückgibt (Zeile 222-223 im Adapter).
+
+**Fix:**
+- Nach dem Commit über den Interim-Node-Pfad ebenfalls `lastInsertedSegmentRef` setzen (passiert bereits, aber der Guard muss auch den Interim-Pfad abdecken)
+- Im Stop-Kommando-Pfad: Wenn der Interim-Handler bereits committed hat, den Final-Handler abbrechen lassen. Dazu einen `stoppingRef` einführen, der gesetzt wird wenn interim-stop feuert, und im final-handler geprüft wird.
+- Alternative: Interim-Handler sollte bei Stop-Erkennung **nicht** selbst committen, sondern nur den Adapter stoppen. Der Final-Handler committed dann als einzige Stelle.
+
+---
+
+### Vorgeschlagene Änderungen
+
+**Datei: `src/hooks/useSpeechDictation.ts`**
+
+1. **Stop-Bug fixen (Zeile 200-205):** `speechAdapter.stop()` immer aufrufen, nicht nur bei leerem contentText.
+
+2. **Doppel-Commit eliminieren:** Die Stop-Erkennung im `onInterimTranscript`-Handler entfernen. Nur der `onFinalTranscript`-Handler soll bei Stop committen und stoppen. Der Interim-Handler zeigt weiterhin den visuellen Interim-Node, erkennt aber keine Kommandos mehr. Dadurch gibt es genau eine Commit-Stelle.
+
+3. **Robusteren Dedup-Guard:** Nach jedem Commit (beide Pfade) `lastInsertedSegmentRef` aktualisieren und am Anfang von `commitContentText` prüfen — so wird identischer Text nie doppelt eingefügt.
+
+**Datei: `src/lib/speechToTextAdapter.ts`**
+
+4. **Session-Restart Dedup verbessern:** Beim automatischen Restart (`onend` mit `shouldListen=true`) den `finalizedTranscriptBuffer` **nicht** zurücksetzen. Da `event.results` in der neuen Session ohnehin leer startet, gibt es kein Akkumulations-Problem, aber das Nicht-Zurücksetzen verhindert, dass Text, der kurz vor Session-Ende final wurde, in der neuen Session nochmal emittiert wird.
+
+---
+
+### Zusammenfassung der Dateien
+
+| Datei | Änderung |
+|---|---|
+| `src/hooks/useSpeechDictation.ts` | Stop immer auslösen; Interim-Handler: kein Commit bei Stop; robusterer Dedup-Guard |
+| `src/lib/speechToTextAdapter.ts` | `resetSessionDedupeState()` bei Auto-Restart entfernen |
+
