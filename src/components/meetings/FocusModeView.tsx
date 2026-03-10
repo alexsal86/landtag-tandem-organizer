@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useMemo } from 'react';
+import { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Checkbox } from '@/components/ui/checkbox';
@@ -116,6 +116,7 @@ export function FocusModeView({
   const mainContainerRef = useRef<HTMLDivElement>(null);
   // Ref to track when dialog just closed to prevent Enter from marking items
   const justClosedDialogRef = useRef(false);
+  const showAssignDialogRef = useRef(showAssignDialog);
 
   // Build flat list of all navigable items (main items + sub-items + system sub-items)
   const allNavigableItems: NavigableItem[] = useMemo(() => {
@@ -282,7 +283,7 @@ export function FocusModeView({
   };
 
   // Auto-complete parent when all sub-items are completed
-  const handleItemComplete = (navigable: NavigableItem, isCompleted: boolean) => {
+  const handleItemComplete = useCallback((navigable: NavigableItem, isCompleted: boolean) => {
     if (navigable.isSystemSubItem) {
       // System sub-items are synthetic - track completion locally
       setCompletedSystemSubItems(prev => {
@@ -333,19 +334,62 @@ export function FocusModeView({
         }
       }
     }
-  };
+  }, [agendaItems, allNavigableItems, completedSystemSubItems, onUpdateItem]);
 
   // Check if all items are completed
-  const checkAllCompleted = () => {
+  const checkAllCompleted = useCallback(() => {
     const mainItemsAfter = agendaItems.filter(item => !item.parent_id && !item.parentLocalKey);
     return mainItemsAfter.every(item => item.is_completed);
-  };
+  }, [agendaItems]);
+
+  const keyboardContextRef = useRef({
+    flatFocusIndex,
+    allNavigableItems,
+    currentNavigable,
+    currentItem,
+    currentGlobalIndex,
+    completedSystemSubItems,
+  });
+  const handleItemCompleteRef = useRef(handleItemComplete);
+  const checkAllCompletedRef = useRef(checkAllCompleted);
+
+  useEffect(() => {
+    showAssignDialogRef.current = showAssignDialog;
+    keyboardContextRef.current = {
+      flatFocusIndex,
+      allNavigableItems,
+      currentNavigable,
+      currentItem,
+      currentGlobalIndex,
+      completedSystemSubItems,
+    };
+    handleItemCompleteRef.current = handleItemComplete;
+    checkAllCompletedRef.current = checkAllCompleted;
+  }, [
+    flatFocusIndex,
+    showAssignDialog,
+    allNavigableItems,
+    currentNavigable,
+    currentItem,
+    currentGlobalIndex,
+    completedSystemSubItems,
+    handleItemComplete,
+    checkAllCompleted,
+  ]);
 
   // Keyboard navigation
-  useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
+  const handleKeyDown = useCallback((e: KeyboardEvent) => {
+      const {
+        flatFocusIndex,
+        allNavigableItems,
+        currentNavigable,
+        currentItem,
+        currentGlobalIndex,
+        completedSystemSubItems,
+      } = keyboardContextRef.current;
+
       // If assignment dialog is open OR just closed, block keyboard events
-      if (showAssignDialog || justClosedDialogRef.current) {
+      if (showAssignDialogRef.current || justClosedDialogRef.current) {
         if (e.key === 'Escape') {
           e.preventDefault();
           setShowAssignDialog(false);
@@ -413,10 +457,10 @@ export function FocusModeView({
             // Toggle completion
             if (currentNavigable.isSystemSubItem) {
               const isNowCompleted = !completedSystemSubItems.has(currentItem.id!);
-              handleItemComplete(currentNavigable, isNowCompleted);
+              handleItemCompleteRef.current(currentNavigable, isNowCompleted);
               if (isNowCompleted) {
                 setTimeout(() => {
-                  if (checkAllCompleted()) {
+                  if (checkAllCompletedRef.current()) {
                     setShowArchiveConfirm(true);
                   } else {
                     setFlatFocusIndex(prev => Math.min(prev + 1, allNavigableItems.length - 1));
@@ -425,10 +469,10 @@ export function FocusModeView({
               }
             } else if (currentGlobalIndex !== -1) {
               const isNowCompleted = !currentItem.is_completed;
-              handleItemComplete(currentNavigable, isNowCompleted);
+              handleItemCompleteRef.current(currentNavigable, isNowCompleted);
               if (isNowCompleted) {
                 setTimeout(() => {
-                  if (checkAllCompleted()) {
+                  if (checkAllCompletedRef.current()) {
                     setShowArchiveConfirm(true);
                   } else {
                     setFlatFocusIndex(prev => Math.min(prev + 1, allNavigableItems.length - 1));
@@ -492,11 +536,12 @@ export function FocusModeView({
           setShowLegend(true);
           break;
       }
-    };
+    }, [onClose, onToggleStar, onUpdateResult]);
 
+  useEffect(() => {
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [flatFocusIndex, allNavigableItems.length, currentItem, currentGlobalIndex, currentNavigable, onUpdateItem, onUpdateResult, onClose, showAssignDialog]);
+  }, [handleKeyDown]);
 
   // Auto-scroll to focused item
   useEffect(() => {
