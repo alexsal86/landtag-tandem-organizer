@@ -48,6 +48,7 @@ export function useDaySlipStore(userId?: string, tenantId?: string) {
 
   const todayKey = toDayKey(new Date());
   const todayData = store[todayKey] ?? { html: "", plainText: "", nodes: "", struckLineIds: [], lineTimestamps: {} };
+  const todayLineEntries = useMemo(() => extractLinesFromHtml(todayData.html), [todayData.html]);
 
   // ─── DB Load & Migration ──────────────────────────────────────────────
   useEffect(() => {
@@ -219,7 +220,7 @@ export function useDaySlipStore(userId?: string, tenantId?: string) {
     return Array.from(merged.values());
   }, [store, yesterdayKey]);
 
-  const allLineEntries = useMemo(() => extractLinesFromHtml(todayData.html), [todayData.html]);
+  const allLineEntries = todayLineEntries;
   const struckLineIds = useMemo(() => todayData.struckLineIds ?? todayData.struckLines ?? [], [todayData.struckLineIds, todayData.struckLines]);
   const resolvedItems = useMemo<ResolvedItem[]>(() => (todayData.resolved ?? []).map((item) => ({ lineId: item.lineId ?? crypto.randomUUID(), text: item.text, target: item.target })), [todayData.resolved]);
   const resolvedByLineId = useMemo(() => new Map(resolvedItems.map((item) => [item.lineId, item.target])), [resolvedItems]);
@@ -267,14 +268,14 @@ export function useDaySlipStore(userId?: string, tenantId?: string) {
     }
     setStoreAndTrack((prev) => {
       const day = prev[todayKey] ?? { html: "", plainText: "", nodes: "", struckLineIds: [] };
-      const existingLines = extractLinesFromHtml(day.html);
+      const existingLines = day.html === todayData.html ? todayLineEntries : extractLinesFromHtml(day.html);
       const existingTexts = new Set(existingLines.map((l) => normalizeLineText(l.text)));
       const toAppend = normalizedLines.filter((l) => !existingTexts.has(normalizeLineText(l))).map((text) => ({ id: crypto.randomUUID(), text }));
       if (toAppend.length === 0) return prev;
       const merged = [...existingLines, ...toAppend];
       return { ...prev, [todayKey]: { ...day, html: merged.map(toParagraphHtml).join(""), plainText: merged.map((e) => e.text).join("\n"), nodes: undefined } };
     }, todayKey);
-  }, [todayKey, setStoreAndTrack]);
+  }, [todayData.html, todayKey, todayLineEntries, setStoreAndTrack]);
 
   const insertStructuredLines = useCallback((lines: string[]) => {
     const editor = editorRef.current;
@@ -287,7 +288,7 @@ export function useDaySlipStore(userId?: string, tenantId?: string) {
           if (!parsed.isRule) return toParagraphHtml({ id: crypto.randomUUID(), text: line });
           return toRuleHtml(parsed.label);
         }).join("");
-        const existingLines = extractLinesFromHtml(day.html);
+        const existingLines = day.html === todayData.html ? todayLineEntries : extractLinesFromHtml(day.html);
         const extra = lines.map((text) => ({ id: crypto.randomUUID(), text }));
         const merged = [...existingLines, ...extra];
         return { ...prev, [todayKey]: { ...day, html: `${day.html ?? ""}${structuredHtml}`, plainText: merged.map((l) => l.text).join("\n"), nodes: undefined } };
@@ -308,7 +309,7 @@ export function useDaySlipStore(userId?: string, tenantId?: string) {
         root.append(paragraph);
       });
     });
-  }, [todayKey, setStoreAndTrack]);
+  }, [todayData.html, todayKey, todayLineEntries, setStoreAndTrack]);
 
   const deleteLine = useCallback((lineId: string) => {
     if (editorRef.current) {
@@ -322,12 +323,12 @@ export function useDaySlipStore(userId?: string, tenantId?: string) {
     setStoreAndTrack((prev) => {
       const day = prev[todayKey];
       if (!day) return prev;
-      const lines = extractLinesFromHtml(day.html).filter((l) => l.id !== lineId);
+      const lines = (day.html === todayData.html ? todayLineEntries : extractLinesFromHtml(day.html)).filter((l) => l.id !== lineId);
       const lineTimestamps = { ...(day.lineTimestamps ?? {}) };
       delete lineTimestamps[lineId];
       return { ...prev, [todayKey]: { ...day, html: lines.map(toParagraphHtml).join(""), plainText: lines.map((l) => l.text).join("\n"), struckLineIds: (day.struckLineIds ?? day.struckLines ?? []).filter((id) => id !== lineId), resolved: (day.resolved ?? []).filter((item) => item.lineId !== lineId), lineTimestamps } };
     }, todayKey);
-  }, [todayKey, setStoreAndTrack]);
+  }, [todayData.html, todayKey, todayLineEntries, setStoreAndTrack]);
 
   const syncResolveExport = useCallback((lineId: string, text: string, target: ResolveTarget, isUndo: boolean) => {
     if (target === "archived" || target === "snoozed") return;
