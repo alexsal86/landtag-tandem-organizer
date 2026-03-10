@@ -55,7 +55,7 @@ export const ContactInfoTab: React.FC<ContactInfoTabProps> = React.memo(({ conta
           <div className="grid grid-cols-2 gap-3">
             <div>
               <p className="text-xs text-muted-foreground mb-1">Kategorie</p>
-              <Badge className={getCategoryColor(contact.category)}>{categoryLabels[contact.category || ''] || 'Keine'}</Badge>
+              <Badge className={getCategoryColor(contact.category ?? undefined)}>{categoryLabels[contact.category || ''] || 'Keine'}</Badge>
             </div>
             <div>
               <p className="text-xs text-muted-foreground mb-1">Priorität</p>

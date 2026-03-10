@@ -90,7 +90,7 @@ export function AgendaEditorPanel({
       .from('meeting_agenda_items')
       .insert([
         {
-          meeting_id: selectedMeeting.id,
+          meeting_id: selectedMeeting.id!,
           title: item.title || 'Agenda-Punkt',
           description: item.description || '',
           notes: item.notes || '',

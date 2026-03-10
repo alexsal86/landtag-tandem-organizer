@@ -499,7 +499,7 @@ export function EmployeeMeetingProtocol({ meetingId, onBack }: EmployeeMeetingPr
           tenant_id: currentTenant.id,
           description: newActionItem.description,
           owner: newActionItem.owner,
-          assigned_to: newActionItem.assigned_to || (isEmployee ? meeting.employee_id : meeting.conducted_by),
+          assigned_to: newActionItem.assigned_to || (isEmployee ? meeting?.employee_id : meeting?.conducted_by),
           due_date: newActionItem.due_date,
           status: "open",
         }])

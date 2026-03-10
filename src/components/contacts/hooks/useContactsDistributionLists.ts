@@ -16,7 +16,7 @@ export interface DistributionList {
   members: Contact[];
 }
 
-type ToastFn = (props: ToastProps) => void;
+type ToastFn = (props: Omit<ToasterToast, "id">) => void;
 
 export interface UseContactsDistributionListsResult {
   distributionLists: DistributionList[];

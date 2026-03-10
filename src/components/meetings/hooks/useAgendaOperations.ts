@@ -140,7 +140,7 @@ export function useAgendaOperations(deps: AgendaOpsDeps) {
           const { error } = await supabase
             .from('meeting_agenda_items')
             .update({ [field]: dbValue })
-            .eq('id', updated[index].id);
+            .eq('id', updated[index].id!);
           if (error) throw error;
         };
 

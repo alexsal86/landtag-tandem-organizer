@@ -297,7 +297,7 @@ export function MergeContactsDialog({
                             }`}
                           >
                             {value2 ? (
-                              <span className="text-sm">{value2}</span>
+                              <span className="text-sm">{String(value2)}</span>
                             ) : (
                               <span className="text-sm text-muted-foreground">Kein Wert</span>
                             )}
