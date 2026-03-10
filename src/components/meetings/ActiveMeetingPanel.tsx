@@ -7,6 +7,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Input } from '@/components/ui/input';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
+import { Skeleton } from '@/components/ui/skeleton';
 import { CalendarDays, Clock, StickyNote, ListTodo, Download, Maximize2, Star, MessageSquarePlus, Eye, Plus, Scale, Briefcase } from 'lucide-react';
 import { RichTextDisplay } from '@/components/ui/RichTextDisplay';
 import { MultiUserAssignSelect } from './MultiUserAssignSelect';
@@ -39,6 +40,7 @@ interface ActiveMeetingPanelProps {
   onUpdateNoteResult: (noteId: string, result: string) => void;
   onToggleStar: (appt: MeetingUpcomingAppointment) => void;
   onToggleVisibility: (itemId: string, currentVisibility: boolean) => void;
+  isLoading?: boolean;
 }
 
 export function ActiveMeetingPanel({
@@ -62,6 +64,7 @@ export function ActiveMeetingPanel({
   onUpdateNoteResult,
   onToggleStar,
   onToggleVisibility,
+  isLoading = false,
 }: ActiveMeetingPanelProps) {
   const { toast } = useToast();
 
@@ -101,6 +104,18 @@ export function ActiveMeetingPanel({
     }
   });
 
+
+  const renderLoadingState = (label: string) => (
+    <div className="pl-4 space-y-2">
+      <div className="flex items-center gap-2 text-sm text-muted-foreground">
+        <Clock className="h-4 w-4 animate-spin" />
+        <span>{label} werden geladen ...</span>
+      </div>
+      <Skeleton className="h-16 w-full" />
+      <Skeleton className="h-16 w-full" />
+    </div>
+  );
+
   const renderAppointmentNotes = (parentItem: AgendaItem) => {
     const apptResults = (() => { try { return JSON.parse(parentItem.result_text || '{}'); } catch { return {}; } })();
     return upcomingAppointments.length > 0 ? (
@@ -133,7 +148,7 @@ export function ActiveMeetingPanel({
           )}
         </div>
       ))
-    ) : <p className="text-sm text-muted-foreground pl-4">Keine Termine in den nächsten 2 Wochen.</p>;
+    ) : isLoading ? renderLoadingState('Termine') : <p className="text-sm text-muted-foreground pl-4">Keine Termine in den nächsten 2 Wochen.</p>;
   };
 
   const renderQuickNotes = (parentItem: AgendaItem) => (
@@ -159,7 +174,7 @@ export function ActiveMeetingPanel({
           <Textarea value={note.meeting_result || ''} onChange={(e) => onUpdateNoteResult(note.id, e.target.value)} placeholder="Ergebnis für diese Notiz..." className="min-h-[60px] text-xs" />
         </div>
       </div>
-    )) : <p className="text-sm text-muted-foreground pl-4">Keine Notizen vorhanden.</p>
+    )) : isLoading ? renderLoadingState('Notizen') : <p className="text-sm text-muted-foreground pl-4">Keine Notizen vorhanden.</p>
   );
 
   const renderLinkedTasks = (parentItem: AgendaItem) => {
@@ -190,7 +205,7 @@ export function ActiveMeetingPanel({
           }} placeholder="Ergebnis für diese Aufgabe..." className="min-h-[60px] text-xs" />
         </div>
       </div>
-    )) : <p className="text-sm text-muted-foreground pl-4">Keine Aufgaben vorhanden.</p>;
+    )) : isLoading ? renderLoadingState('Aufgaben') : <p className="text-sm text-muted-foreground pl-4">Keine Aufgaben vorhanden.</p>;
   };
 
   const renderDecisions = (parentItem: AgendaItem) => {
@@ -212,7 +227,7 @@ export function ActiveMeetingPanel({
           }} placeholder="Ergebnis für diese Entscheidung..." className="min-h-[60px] text-xs" />
         </div>
       </div>
-    )) : <p className="text-sm text-muted-foreground pl-4">Keine Entscheidungen vorhanden.</p>;
+    )) : isLoading ? renderLoadingState('Entscheidungen') : <p className="text-sm text-muted-foreground pl-4">Keine Entscheidungen vorhanden.</p>;
   };
 
   const renderCaseItems = (parentItem: AgendaItem) => {
@@ -232,7 +247,7 @@ export function ActiveMeetingPanel({
           }} placeholder="Ergebnis für diesen Vorgang..." className="min-h-[60px] text-xs" />
         </div>
       </div>
-    )) : <p className="text-sm text-muted-foreground pl-4">Keine Vorgänge vorhanden.</p>;
+    )) : isLoading ? renderLoadingState('Vorgänge') : <p className="text-sm text-muted-foreground pl-4">Keine Vorgänge vorhanden.</p>;
   };
 
   const renderSystemContent = (item: AgendaItem, prefix?: string) => {
@@ -507,7 +522,7 @@ export function ActiveMeetingPanel({
               </div>
             ))}
 
-            {meetingItems.filter(item => !item.parent_id && !item.parentLocalKey).length === 0 && (
+            {meetingItems.filter(item => !item.parent_id && !item.parentLocalKey).length === 0 && !isLoading && (
               <div className="text-center py-8 text-muted-foreground">
                 <Clock className="h-12 w-12 mx-auto mb-4" />
                 <p>Keine Agenda-Punkte für diese Besprechung gefunden.</p>
@@ -515,7 +530,7 @@ export function ActiveMeetingPanel({
             )}
 
             {/* Quick Notes Section */}
-            {linkedQuickNotes.length > 0 && (
+            {linkedQuickNotes.length > 0 && !isLoading && (
               <div className="mt-8 pt-6 border-t border-dashed">
                 <div className="flex items-center gap-2 mb-4">
                   <StickyNote className="h-5 w-5 text-amber-500" />

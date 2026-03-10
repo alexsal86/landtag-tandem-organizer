@@ -141,6 +141,7 @@ export function MeetingsView() {
                 onUpdateNoteResult={data.updateQuickNoteResult}
                 onToggleStar={data.toggleStarAppointment}
                 onToggleVisibility={agendaOps.toggleOptionalItemVisibility}
+                isLoading={data.isMeetingLinkedDataLoading}
               />
             )}
 
