@@ -20,60 +20,11 @@ import { EmployeeMeetingPDFExport } from "@/components/EmployeeMeetingPDFExport"
 import SimpleRichTextEditor from "@/components/ui/SimpleRichTextEditor";
 import { RichTextDisplay } from "@/components/ui/RichTextDisplay";
 import { cn } from "@/lib/utils";
+import type { ActionItem, ActionItemOwner, EmployeeMeeting, MeetingPreparationData, ProtocolData } from "@/components/employees/types";
 
 interface EmployeeMeetingProtocolProps {
   meetingId: string;
   onBack?: () => void;
-}
-
-interface ProtocolData {
-  wellbeing_mood?: string;
-  wellbeing_workload?: string;
-  wellbeing_balance?: string;
-  wellbeing_mood_rating?: number;
-  wellbeing_workload_rating?: number;
-  wellbeing_balance_rating?: number;
-  review_successes?: string;
-  review_challenges?: string;
-  review_learnings?: string;
-  projects_status?: string;
-  projects_blockers?: string;
-  projects_support?: string;
-  development_skills?: string;
-  development_training?: string;
-  development_career?: string;
-  team_dynamics?: string;
-  team_communication?: string;
-  goals?: string;
-  feedback_mutual?: string;
-  next_steps?: string;
-}
-
-interface ActionItem {
-  id?: string;
-  description: string;
-  owner: string;
-  assigned_to?: string;
-  due_date?: string;
-  status: string;
-  notes?: string;
-  completed_at?: string;
-  created_at?: string;
-  updated_at?: string;
-  meeting_id?: string;
-  tenant_id?: string;
-  task_id?: string;
-}
-
-const ACTION_ITEM_MIN_LENGTH = 3;
-
-function extractPlainTextFromHtml(content: string) {
-  return content
-    .replace(/<[^>]*>/g, " ")
-    .replace(/&nbsp;/gi, " ")
-    .replace(/\u00A0/g, " ")
-    .replace(/\s+/g, " ")
-    .trim();
 }
 
 // ─── Rating Scale Component ──────────────────────────────
@@ -212,14 +163,14 @@ export function EmployeeMeetingProtocol({ meetingId, onBack }: EmployeeMeetingPr
 
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
-  const [meeting, setMeeting] = useState<any>(null);
+  const [meeting, setMeeting] = useState<EmployeeMeeting | null>(null);
   const [isEmployee, setIsEmployee] = useState(false);
   const [isSupervisor, setIsSupervisor] = useState(false);
 
   // Protocol data
   const [protocolData, setProtocolData] = useState<ProtocolData>({});
-  const [employeePrep, setEmployeePrep] = useState<any>({});
-  const [supervisorPrep, setSupervisorPrep] = useState<any>({});
+  const [employeePrep, setEmployeePrep] = useState<MeetingPreparationData>({});
+  const [supervisorPrep, setSupervisorPrep] = useState<MeetingPreparationData>({});
   const [privateNotes, setPrivateNotes] = useState("");
   const [sharedDuringMeeting, setSharedDuringMeeting] = useState(false);
 
@@ -282,7 +233,7 @@ export function EmployeeMeetingProtocol({ meetingId, onBack }: EmployeeMeetingPr
         supervisor_name: profileMap.get(meetingData.conducted_by) || "Vorgesetzter",
       };
 
-      setMeeting(enrichedMeeting);
+      setMeeting(enrichedMeeting as EmployeeMeeting);
       const uid = user?.id;
       setIsEmployee(meetingData.employee_id === uid);
       setIsSupervisor(meetingData.conducted_by === uid);
@@ -291,14 +242,14 @@ export function EmployeeMeetingProtocol({ meetingId, onBack }: EmployeeMeetingPr
         setProtocolData(meetingData.protocol_data as ProtocolData);
       }
       if (meetingData.employee_preparation) {
-        const empPrep = meetingData.employee_preparation as any;
+        const empPrep = meetingData.employee_preparation as MeetingPreparationData;
         setEmployeePrep(empPrep);
         if (uid === meetingData.employee_id && empPrep?.private_notes) {
           setPrivateNotes(empPrep.private_notes);
         }
       }
       if (meetingData.supervisor_preparation) {
-        const supPrep = meetingData.supervisor_preparation as any;
+        const supPrep = meetingData.supervisor_preparation as MeetingPreparationData;
         setSupervisorPrep(supPrep);
         if (uid === meetingData.conducted_by && supPrep?.private_notes) {
           setPrivateNotes(supPrep.private_notes);
@@ -330,7 +281,11 @@ export function EmployeeMeetingProtocol({ meetingId, onBack }: EmployeeMeetingPr
     setSaving(true);
     setSaveState("saving");
     try {
-      const updates: any = { protocol_data: protocolData };
+      const updates: {
+      protocol_data: ProtocolData;
+      employee_preparation?: MeetingPreparationData;
+      supervisor_preparation?: MeetingPreparationData;
+    } = { protocol_data: protocolData };
       if (isEmployee) {
         updates.employee_preparation = { ...employeePrep, private_notes: privateNotes };
       } else if (isSupervisor) {
@@ -416,7 +371,7 @@ export function EmployeeMeetingProtocol({ meetingId, onBack }: EmployeeMeetingPr
   const updateStatus = async (newStatus: string) => {
     if (!meeting) return;
     try {
-      const updates: any = { status: newStatus };
+      const updates: { status: string; completed_at?: string } = { status: newStatus };
       if (newStatus === "completed") {
         updates.completed_at = new Date().toISOString();
       }
@@ -990,7 +945,7 @@ export function EmployeeMeetingProtocol({ meetingId, onBack }: EmployeeMeetingPr
                 <div className="grid grid-cols-2 gap-4">
                   <div>
                     <Label>Verantwortlich</Label>
-                    <Select value={newActionItem.owner} onValueChange={(value: any) => setNewActionItem({ ...newActionItem, owner: value })}>
+                    <Select value={newActionItem.owner} onValueChange={(value) => setNewActionItem({ ...newActionItem, owner: value as ActionItemOwner })}>
                       <SelectTrigger><SelectValue /></SelectTrigger>
                       <SelectContent>
                         <SelectItem value="employee">Mitarbeiter</SelectItem>
