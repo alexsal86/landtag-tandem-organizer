@@ -93,8 +93,6 @@ export function WeekPlanningBanner({ recurringItems, onApplyPlan }: WeekPlanning
   const applyPlan = useCallback(() => {
     const plan: WeekPlan = { weekStartKey: mondayKey, applied: true, dismissed: false, days: planDays };
     setWeekPlan(plan);
-    // Also write to localStorage for getWeekPlanForDay
-    try { localStorage.setItem(WEEK_PLAN_KEY, JSON.stringify(plan)); } catch {}
     onApplyPlan(planDays);
     setShowBanner(false);
     setPlanningMode(false);
