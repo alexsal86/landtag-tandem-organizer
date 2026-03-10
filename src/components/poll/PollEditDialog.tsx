@@ -14,6 +14,7 @@ import { de } from 'date-fns/locale';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { ContactSelector } from '@/components/ContactSelector';
+import { isValidEmail } from '@/lib/utils';
 
 interface PollParticipant {
   id: string;
@@ -53,6 +54,8 @@ export const PollEditDialog = ({
   const [newParticipantEmail, setNewParticipantEmail] = useState('');
   const [loadingParticipants, setLoadingParticipants] = useState(false);
 
+  const normalizeEmail = (email: string) => email.trim().toLowerCase();
+
   useEffect(() => {
     setTitle(currentTitle);
     setDescription(currentDescription || '');
@@ -88,29 +91,39 @@ export const PollEditDialog = ({
       toast({ title: "Keine E-Mail", description: "Kontakt hat keine E-Mail-Adresse.", variant: "destructive" });
       return;
     }
-    if (participants.find(p => p.email === contact.email && !removedParticipantIds.includes(p.id))) {
+    const normalizedContactEmail = normalizeEmail(contact.email);
+
+    if (participants.find(p => normalizeEmail(p.email) === normalizedContactEmail && !removedParticipantIds.includes(p.id))) {
       toast({ title: "Bereits vorhanden", description: "Dieser Teilnehmer ist bereits hinzugefügt.", variant: "destructive" });
       return;
     }
     setParticipants(prev => [...prev, {
       id: `new-${Date.now()}`,
       name: contact.name,
-      email: contact.email,
+      email: normalizedContactEmail,
       is_external: false,
       isNew: true
     }]);
   };
 
   const addExternalParticipant = () => {
-    if (!newParticipantEmail) return;
-    if (participants.find(p => p.email === newParticipantEmail && !removedParticipantIds.includes(p.id))) {
+    const normalizedEmail = normalizeEmail(newParticipantEmail);
+
+    if (!normalizedEmail) return;
+
+    if (!isValidEmail(normalizedEmail)) {
+      toast({ title: "Ungültige E-Mail", description: "Bitte geben Sie eine gültige E-Mail-Adresse ein.", variant: "destructive" });
+      return;
+    }
+
+    if (participants.find(p => normalizeEmail(p.email) === normalizedEmail && !removedParticipantIds.includes(p.id))) {
       toast({ title: "Bereits vorhanden", description: "Dieser Teilnehmer ist bereits hinzugefügt.", variant: "destructive" });
       return;
     }
     setParticipants(prev => [...prev, {
       id: `new-${Date.now()}`,
-      name: newParticipantEmail.split('@')[0],
-      email: newParticipantEmail,
+      name: normalizedEmail.split('@')[0],
+      email: normalizedEmail,
       is_external: true,
       isNew: true
     }]);

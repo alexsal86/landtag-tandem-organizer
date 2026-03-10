@@ -16,6 +16,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { useToast } from '@/hooks/use-toast';
 import { ContactSelector } from '@/components/ContactSelector';
+import { isValidEmail } from '@/lib/utils';
 
 interface TimeSlot {
   id: string;
@@ -49,6 +50,8 @@ export const AppointmentPollCreator = ({ onClose }: { onClose: () => void }) => 
   const [startTime, setStartTime] = useState('09:00');
   const [endTime, setEndTime] = useState('10:00');
   const [newParticipantEmail, setNewParticipantEmail] = useState('');
+
+  const normalizeEmail = (email: string) => email.trim().toLowerCase();
 
   const addTimeSlot = () => {
     if (!selectedDate) {
@@ -104,7 +107,9 @@ export const AppointmentPollCreator = ({ onClose }: { onClose: () => void }) => 
     }
 
     // Check if participant already exists
-    if (participants.find(p => p.email === contact.email)) {
+    const normalizedContactEmail = normalizeEmail(contact.email);
+
+    if (participants.find(p => normalizeEmail(p.email) === normalizedContactEmail)) {
       toast({
         title: "Bereits hinzugefügt",
         description: "Dieser Kontakt wurde bereits hinzugefügt.",
@@ -116,7 +121,7 @@ export const AppointmentPollCreator = ({ onClose }: { onClose: () => void }) => 
     const participant: Participant = {
       id: Date.now().toString(),
       type: 'internal',
-      email: contact.email,
+      email: normalizedContactEmail,
       name: contact.name
     };
 
@@ -124,13 +129,33 @@ export const AppointmentPollCreator = ({ onClose }: { onClose: () => void }) => 
   };
 
   const addExternalParticipant = () => {
-    if (!newParticipantEmail) return;
+    const normalizedEmail = normalizeEmail(newParticipantEmail);
+
+    if (!normalizedEmail) return;
+
+    if (!isValidEmail(normalizedEmail)) {
+      toast({
+        title: "Ungültige E-Mail-Adresse",
+        description: "Bitte geben Sie eine gültige E-Mail-Adresse ein.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (participants.find(p => normalizeEmail(p.email) === normalizedEmail)) {
+      toast({
+        title: "Bereits hinzugefügt",
+        description: "Dieser Teilnehmer wurde bereits hinzugefügt.",
+        variant: "destructive",
+      });
+      return;
+    }
 
     const participant: Participant = {
       id: Date.now().toString(),
       type: 'external',
-      email: newParticipantEmail,
-      name: newParticipantEmail.split('@')[0]
+      email: normalizedEmail,
+      name: normalizedEmail.split('@')[0]
     };
 
     setParticipants([...participants, participant]);
