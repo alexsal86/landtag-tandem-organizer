@@ -62,6 +62,7 @@ export function usePressReleaseEditor({ pressReleaseId, initialDraft, onBack }: 
   const [pressRelease, setPressRelease] = useState<PressRelease | null>(null);
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [hasUnsyncedChanges, setHasUnsyncedChanges] = useState(false);
   const [isAdmin, setIsAdmin] = useState(false);
 
   // Form
@@ -214,6 +215,7 @@ export function usePressReleaseEditor({ pressReleaseId, initialDraft, onBack }: 
         }
 
         await loadPressRelease(pressRelease.id);
+        setHasUnsyncedChanges(false);
         toast({ title: "Gespeichert" });
       } else {
         const { data: newPr, error } = await supabase
@@ -222,13 +224,18 @@ export function usePressReleaseEditor({ pressReleaseId, initialDraft, onBack }: 
           .select().single();
         if (error) throw error;
         setPressRelease(newPr);
+        setHasUnsyncedChanges(false);
         toast({ title: "Pressemitteilung erstellt" });
       }
     } catch (error: unknown) {
       const msg = error instanceof Error ? error.message : String(error);
       if (msg?.includes("Failed to fetch") || msg?.includes("NetworkError")) {
-        if (pressRelease) setTimeout(() => loadPressRelease(pressRelease.id), 500);
-        toast({ title: "Gespeichert" });
+        setHasUnsyncedChanges(true);
+        toast({
+          title: "Speicherstatus unsicher",
+          description: "Netzwerkfehler: Änderungen sind nur lokal vorhanden. Bitte erneut speichern, sobald die Verbindung wieder stabil ist.",
+          variant: "destructive",
+        });
         return;
       }
       toast({ title: "Fehler beim Speichern", description: msg, variant: "destructive" });
@@ -308,6 +315,7 @@ export function usePressReleaseEditor({ pressReleaseId, initialDraft, onBack }: 
     publisherName, emailSenderName, wizardMeta,
     showRevisionDialog, setShowRevisionDialog, showGhostDialog, setShowGhostDialog, isPublishing,
     pendingMentionsRef, parseTags,
+    hasUnsyncedChanges,
     status, editable,
     handleSave, handleSubmitForApproval, handleApprove, handleRejectWithComment, handlePublishToGhost,
     pressReleaseId: pressReleaseId,

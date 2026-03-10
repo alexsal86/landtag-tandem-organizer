@@ -459,7 +459,7 @@ export const AppointmentPollCreator = ({ onClose }: { onClose: () => void }) => 
                 value={newParticipantEmail}
                 onChange={(e) => setNewParticipantEmail(e.target.value)}
                 placeholder="externe@email.de"
-                onKeyPress={(e) => e.key === 'Enter' && addExternalParticipant()}
+                onKeyDown={(e) => e.key === 'Enter' && addExternalParticipant()}
               />
               <Button onClick={addExternalParticipant} size="sm" variant="outline">
                 <Plus className="h-4 w-4" />
