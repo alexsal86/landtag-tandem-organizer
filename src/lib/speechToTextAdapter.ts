@@ -167,7 +167,7 @@ export class WebSpeechToTextAdapter implements SpeechToTextAdapter {
 
       if (this.shouldListen) {
         // Browser beendet Session regelmäßig; bei aktiver Aufnahme automatisch neu starten.
-        this.resetSessionDedupeState();
+        // Buffer NICHT zurücksetzen – verhindert Re-Emission von Text bei Session-Neustart.
         this.startRecognition();
         return;
       }

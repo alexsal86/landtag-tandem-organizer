@@ -105,6 +105,14 @@ export const useSpeechDictation = ({ editor, insertText, dispatchCommand }: UseS
   const commitContentText = useCallback((contentText: string) => {
     const formattedText = formatDictatedText(contentText);
 
+    // Dedup guard: skip if identical to last inserted segment
+    if (formattedText && lastInsertedSegmentRef.current === formattedText) {
+      // Still clean up interim node if present
+      editor.update(() => { clearInterimNode(); });
+      setInterimTranscript('');
+      return;
+    }
+
     // Count words for session stats
     if (formattedText) {
       const wordCount = formattedText.split(/\s+/).filter(Boolean).length;
@@ -125,21 +133,21 @@ export const useSpeechDictation = ({ editor, insertText, dispatchCommand }: UseS
       if (interimNode instanceof TextNode) {
         if (textToInsert) {
           interimNode.replace($createTextNode(textToInsert));
-          lastInsertedSegmentRef.current = textToInsert;
+          lastInsertedSegmentRef.current = formattedText;
         } else {
           interimNode.remove();
         }
         return;
       }
 
-      if (!textToInsert || lastInsertedSegmentRef.current === textToInsert) return;
+      if (!textToInsert) return;
 
       insertTextRef.current(textToInsert);
-      lastInsertedSegmentRef.current = textToInsert;
+      lastInsertedSegmentRef.current = formattedText;
     });
 
     setInterimTranscript('');
-  }, [editor, takeInterimNode]);
+  }, [editor, takeInterimNode, clearInterimNode]);
 
   // Setup effect
   useEffect(() => {
