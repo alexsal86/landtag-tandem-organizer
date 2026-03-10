@@ -204,6 +204,12 @@
   position: relative;
 }
 
+.rbc-time-gutter {
+  background: hsl(var(--muted) / 0.45);
+  border-right: 1px solid hsl(var(--border));
+  min-width: 132px;
+}
+
 .rbc-time-gutter .rbc-timeslot-group .rbc-time-slot {
   border-top: none;
 }
@@ -212,9 +218,11 @@
   position: relative;
   top: 0;
   transform: translateY(-50%);
-  font-size: 0.7rem;
-  color: hsl(var(--muted-foreground));
-  padding-right: 8px;
+  font-size: 2rem;
+  line-height: 1;
+  font-weight: 500;
+  color: hsl(var(--foreground));
+  padding-right: 14px;
   text-align: right;
 }
 
@@ -226,6 +234,10 @@
 /* Timeslot borders */
 .rbc-timeslot-group {
   border-bottom: 1px solid hsl(var(--border) / 0.3);
+}
+
+.rbc-time-gutter .rbc-timeslot-group {
+  border-bottom: 1px solid hsl(var(--border) / 0.6);
 }
 
 .rbc-time-slot {
