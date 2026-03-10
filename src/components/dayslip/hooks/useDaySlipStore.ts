@@ -465,24 +465,39 @@ export function useDaySlipStore(userId?: string, tenantId?: string) {
 }
 
 // Helper: migrate a localStorage key to user_preferences if not yet in DB
-async function migratePreference(userId: string, tenantId: string | undefined, dbKey: string, localKey: string) {
+async function migratePreference(userId: string, tenantId: string | undefined, dbKey: string, localKey: string): Promise<boolean> {
   try {
-    const { data } = await supabase
+    const { data, error: selectError } = await supabase
       .from("user_preferences")
       .select("id")
       .eq("user_id", userId)
       .eq("key", dbKey)
       .maybeSingle();
 
-    if (data) return; // already in DB
+    if (selectError) {
+      debugConsole.error("useDaySlipStore: preference migration lookup failed", { dbKey, localKey, selectError });
+      return false;
+    }
+
+    if (data) return true; // already in DB
 
     const raw = localStorage.getItem(localKey);
-    if (!raw) return;
+    if (!raw) return true;
 
     const parsed = JSON.parse(raw);
-    await supabase.from("user_preferences").upsert(
+    const { error: upsertError } = await supabase.from("user_preferences").upsert(
       { user_id: userId, tenant_id: tenantId || null, key: dbKey, value: parsed, updated_at: new Date().toISOString() } as any,
       { onConflict: "user_id,tenant_id,key" }
     );
-  } catch {}
+
+    if (upsertError) {
+      debugConsole.error("useDaySlipStore: preference migration upsert failed", { dbKey, localKey, upsertError });
+      return false;
+    }
+
+    return true;
+  } catch (error) {
+    debugConsole.warn("useDaySlipStore: preference migration failed", { dbKey, localKey, error });
+    return false;
+  }
 }
