@@ -142,6 +142,28 @@ const ProperReactBigCalendar: React.FC<ProperReactBigCalendarProps> = ({
     return validEvents;
   }, [events]);
 
+  const overlappingEventIds = useMemo(() => {
+    const overlappingIds = new Set<string>();
+
+    for (let i = 0; i < rbcEvents.length; i += 1) {
+      const currentEvent = rbcEvents[i];
+
+      for (let j = i + 1; j < rbcEvents.length; j += 1) {
+        const comparisonEvent = rbcEvents[j];
+        const hasOverlap = currentEvent.start < comparisonEvent.end && comparisonEvent.start < currentEvent.end;
+
+        if (!hasOverlap) {
+          continue;
+        }
+
+        overlappingIds.add(String(currentEvent.id));
+        overlappingIds.add(String(comparisonEvent.id));
+      }
+    }
+
+    return overlappingIds;
+  }, [rbcEvents]);
+
   // Event prop getter for custom styling with Grünen-CI colors
   const eventPropGetter = useCallback((event: RBCEvent) => {
     const originalEvent = event.resource as CalendarEvent;
@@ -160,9 +182,10 @@ const ProperReactBigCalendar: React.FC<ProperReactBigCalendarProps> = ({
     };
 
     const bgColor = categoryColors[originalEvent?.type || 'default'] || categoryColors.default;
+    const hasOverlap = overlappingEventIds.has(String(event.id));
     
     style.backgroundColor = bgColor;
-    style.borderLeft = `3px solid ${bgColor}`;
+    style.border = hasOverlap ? '2px solid white' : 'none';
     style.color = 'white';
 
     if (originalEvent?.type) {
@@ -178,7 +201,7 @@ const ProperReactBigCalendar: React.FC<ProperReactBigCalendarProps> = ({
       className, 
       style 
     };
-  }, []);
+  }, [overlappingEventIds]);
 
   // Day prop getter for today highlighting
   const dayPropGetter = useCallback((date: Date) => {
