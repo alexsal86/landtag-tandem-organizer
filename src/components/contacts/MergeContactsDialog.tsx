@@ -226,7 +226,7 @@ export function MergeContactsDialog({
                     <RadioGroupItem value={contact2.id} id="primary2" />
                     <Label htmlFor="primary2" className="flex items-center gap-2 cursor-pointer">
                       <Avatar className="h-8 w-8">
-                        <AvatarImage src={contact2.avatar_url} />
+                        <AvatarImage src={contact2.avatar_url ?? undefined} />
                         <AvatarFallback>{getInitials(contact2.name)}</AvatarFallback>
                       </Avatar>
                       <span>{contact2.name}</span>
