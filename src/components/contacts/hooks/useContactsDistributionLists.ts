@@ -4,7 +4,6 @@ import { supabase } from "@/integrations/supabase/client";
 import { debugConsole } from "@/utils/debugConsole";
 import type { Contact } from "@/hooks/useInfiniteContacts";
 import type { User } from "@supabase/supabase-js";
-import type { ToasterToast } from "@/hooks/use-toast";
 
 export interface DistributionList {
   id: string;
@@ -16,7 +15,7 @@ export interface DistributionList {
   members: Contact[];
 }
 
-type ToastFn = (props: Omit<ToasterToast, "id">) => void;
+type ToastFn = (props: { title?: string; description?: string; variant?: "default" | "destructive" }) => void;
 
 export interface UseContactsDistributionListsResult {
   distributionLists: DistributionList[];
