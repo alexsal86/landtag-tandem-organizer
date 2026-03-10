@@ -193,9 +193,7 @@ export const useSpeechDictation = ({ editor, insertText, dispatchCommand }: UseS
         }
 
         if (command.type === 'stop-listening') {
-          if (!contentText) {
-            speechAdapter.stop();
-          }
+          speechAdapter.stop();
           return;
         }
 
