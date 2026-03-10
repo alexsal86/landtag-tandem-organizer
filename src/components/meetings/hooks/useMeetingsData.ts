@@ -62,6 +62,16 @@ export function useMeetingsData() {
     activeMeetingId,
     toast,
   });
+  const {
+    loadLinkedQuickNotes,
+    loadMeetingLinkedTasks,
+    loadMeetingLinkedCaseItems,
+    loadMeetingRelevantDecisions,
+    loadMeetingUpcomingAppointments,
+    loadStarredAppointments,
+    updateTimeouts,
+  } = sidebar;
+  const searchMeetingId = searchParams.get('id');
 
   // URL action parameter
   useEffect(() => {
@@ -83,12 +93,12 @@ export function useMeetingsData() {
       const normalized = { ...meeting, meeting_date: meeting.meeting_date instanceof Date ? meeting.meeting_date : new Date(meeting.meeting_date) };
       setSelectedMeeting(normalized);
       loadAgendaItems(urlMeetingId);
-      sidebar.loadLinkedQuickNotes(urlMeetingId);
-      sidebar.loadMeetingLinkedTasks(urlMeetingId);
-      sidebar.loadMeetingLinkedCaseItems(urlMeetingId);
-      sidebar.loadMeetingRelevantDecisions();
-      if (normalized.meeting_date) sidebar.loadMeetingUpcomingAppointments(urlMeetingId, normalized.meeting_date);
-      sidebar.loadStarredAppointments(urlMeetingId);
+      loadLinkedQuickNotes(urlMeetingId);
+      loadMeetingLinkedTasks(urlMeetingId);
+      loadMeetingLinkedCaseItems(urlMeetingId);
+      loadMeetingRelevantDecisions();
+      if (normalized.meeting_date) loadMeetingUpcomingAppointments(urlMeetingId, normalized.meeting_date);
+      loadStarredAppointments(urlMeetingId);
       searchParams.delete('id');
       setSearchParams(searchParams, { replace: true });
       deepLinkIdRef.current = null;
@@ -108,7 +118,18 @@ export function useMeetingsData() {
           if (data) selectMeeting(data);
         });
     }
-  }, [searchParams, meetings]);
+  }, [
+    searchParams,
+    meetings,
+    selectedMeeting,
+    setSearchParams,
+    loadLinkedQuickNotes,
+    loadMeetingLinkedTasks,
+    loadMeetingLinkedCaseItems,
+    loadMeetingRelevantDecisions,
+    loadMeetingUpcomingAppointments,
+    loadStarredAppointments,
+  ]);
 
   // Load data on mount
   useEffect(() => {
@@ -123,7 +144,7 @@ export function useMeetingsData() {
 
   // Auto-select next upcoming meeting (skip if URL deep-link is present)
   useEffect(() => {
-    if (meetings.length > 0 && !selectedMeeting && !activeMeeting && !searchParams.get('id') && !deepLinkIdRef.current) {
+    if (meetings.length > 0 && !selectedMeeting && !activeMeeting && !searchMeetingId && !deepLinkIdRef.current) {
       const now = new Date();
       const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate());
       const nextMeeting = meetings
@@ -134,35 +155,55 @@ export function useMeetingsData() {
         setSelectedMeeting(nextMeeting);
         if (nextMeeting.id) {
           loadAgendaItems(nextMeeting.id);
-          sidebar.loadLinkedQuickNotes(nextMeeting.id);
-          sidebar.loadMeetingLinkedTasks(nextMeeting.id);
-          sidebar.loadMeetingLinkedCaseItems(nextMeeting.id);
-          sidebar.loadMeetingRelevantDecisions();
-          sidebar.loadMeetingUpcomingAppointments(nextMeeting.id, nextMeeting.meeting_date);
-          sidebar.loadStarredAppointments(nextMeeting.id);
+          loadLinkedQuickNotes(nextMeeting.id);
+          loadMeetingLinkedTasks(nextMeeting.id);
+          loadMeetingLinkedCaseItems(nextMeeting.id);
+          loadMeetingRelevantDecisions();
+          loadMeetingUpcomingAppointments(nextMeeting.id, nextMeeting.meeting_date);
+          loadStarredAppointments(nextMeeting.id);
         }
       }
     }
-  }, [meetings]);
+  }, [
+    meetings,
+    selectedMeeting,
+    activeMeeting,
+    searchMeetingId,
+    loadLinkedQuickNotes,
+    loadMeetingLinkedTasks,
+    loadMeetingLinkedCaseItems,
+    loadMeetingRelevantDecisions,
+    loadMeetingUpcomingAppointments,
+    loadStarredAppointments,
+  ]);
 
   // Load linked data when selectedMeeting changes
   useEffect(() => {
     if (selectedMeeting?.id && !activeMeeting) {
-      sidebar.loadLinkedQuickNotes(selectedMeeting.id);
-      sidebar.loadMeetingLinkedTasks(selectedMeeting.id);
-      sidebar.loadMeetingLinkedCaseItems(selectedMeeting.id);
-      sidebar.loadMeetingRelevantDecisions();
-      if (selectedMeeting.meeting_date) sidebar.loadMeetingUpcomingAppointments(selectedMeeting.id, selectedMeeting.meeting_date);
-      sidebar.loadStarredAppointments(selectedMeeting.id);
+      loadLinkedQuickNotes(selectedMeeting.id);
+      loadMeetingLinkedTasks(selectedMeeting.id);
+      loadMeetingLinkedCaseItems(selectedMeeting.id);
+      loadMeetingRelevantDecisions();
+      if (selectedMeeting.meeting_date) loadMeetingUpcomingAppointments(selectedMeeting.id, selectedMeeting.meeting_date);
+      loadStarredAppointments(selectedMeeting.id);
     }
-  }, [selectedMeeting?.id, activeMeeting]);
+  }, [
+    selectedMeeting,
+    activeMeeting,
+    loadLinkedQuickNotes,
+    loadMeetingLinkedTasks,
+    loadMeetingLinkedCaseItems,
+    loadMeetingRelevantDecisions,
+    loadMeetingUpcomingAppointments,
+    loadStarredAppointments,
+  ]);
 
   // Cleanup timeouts
   useEffect(() => {
     return () => {
-      Object.values(sidebar.updateTimeouts.current).forEach((timeout) => clearTimeout(timeout));
+      Object.values(updateTimeouts.current).forEach((timeout) => clearTimeout(timeout));
     };
-  }, []);
+  }, [updateTimeouts]);
 
   // Sync task changes to meeting agenda items
   useEffect(() => {
