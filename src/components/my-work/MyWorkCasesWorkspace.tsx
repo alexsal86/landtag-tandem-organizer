@@ -1188,20 +1188,21 @@ export function MyWorkCasesWorkspace() {
                                                   )}
                                                 </span>
                                                 <div className="flex min-w-0 items-center gap-2" onClick={(event) => event.stopPropagation()}>
-                                                    <div className="flex items-center -space-x-2">
-                                                      {assignees.slice(0, 3).map((member) => (
-                                                        <Avatar key={member.id} className="h-6 w-6 border bg-background">
-                                                          <AvatarImage src={member.avatarUrl || undefined} />
-                                                          <AvatarFallback className="text-[10px]">{getInitials(member.name)}</AvatarFallback>
-                                                        </Avatar>
-                                                      ))}
-                                                    </div>
-                                                    <DropdownMenu>
-                                                      <DropdownMenuTrigger asChild>
-                                                        <Button type="button" size="icon" variant="outline" className="-ml-1 h-6 w-6 rounded-full border bg-background p-0">
-                                                          <Plus className="h-3.5 w-3.5" />
-                                                        </Button>
-                                                      </DropdownMenuTrigger>
+                                                    <div className="relative inline-flex items-end justify-center pb-1">
+                                                      <div className="flex items-center -space-x-2">
+                                                        {assignees.slice(0, 3).map((member) => (
+                                                          <Avatar key={member.id} className="h-6 w-6 border bg-background">
+                                                            <AvatarImage src={member.avatarUrl || undefined} />
+                                                            <AvatarFallback className="text-[10px]">{getInitials(member.name)}</AvatarFallback>
+                                                          </Avatar>
+                                                        ))}
+                                                      </div>
+                                                      <DropdownMenu>
+                                                        <DropdownMenuTrigger asChild>
+                                                          <Button type="button" size="icon" variant="outline" className="absolute left-1/2 top-full h-5 w-5 -translate-x-1/2 -translate-y-1/2 rounded-full border bg-background p-0 shadow-sm">
+                                                            <Plus className="h-3 w-3" />
+                                                          </Button>
+                                                        </DropdownMenuTrigger>
                                                       <DropdownMenuContent align="end" className="w-56">
                                                       {teamUsers.map((member) => (
                                                         <DropdownMenuCheckboxItem
@@ -1212,8 +1213,9 @@ export function MyWorkCasesWorkspace() {
                                                           {member.name}
                                                         </DropdownMenuCheckboxItem>
                                                       ))}
-                                                    </DropdownMenuContent>
-                                                  </DropdownMenu>
+                                                      </DropdownMenuContent>
+                                                    </DropdownMenu>
+                                                  </div>
                                                 </div>
                                               </div>
                                               {/* Mobile/Tablet Card View */}
@@ -1282,20 +1284,21 @@ export function MyWorkCasesWorkspace() {
                                                     )}
                                                   </div>
                                                   <div className="flex items-center gap-2" onClick={(event) => event.stopPropagation()}>
-                                                    <div className="flex items-center -space-x-2">
-                                                      {assignees.slice(0, 2).map((member) => (
-                                                        <Avatar key={member.id} className="h-6 w-6 border bg-background">
-                                                          <AvatarImage src={member.avatarUrl || undefined} />
-                                                          <AvatarFallback className="text-[10px]">{getInitials(member.name)}</AvatarFallback>
-                                                        </Avatar>
-                                                      ))}
-                                                    </div>
-                                                    <DropdownMenu>
-                                                      <DropdownMenuTrigger asChild>
-                                                        <Button type="button" size="icon" variant="outline" className="-ml-1 h-6 w-6 rounded-full border bg-background p-0">
-                                                          <Plus className="h-3 w-3" />
-                                                        </Button>
-                                                      </DropdownMenuTrigger>
+                                                    <div className="relative inline-flex items-end justify-center pb-1">
+                                                      <div className="flex items-center -space-x-2">
+                                                        {assignees.slice(0, 2).map((member) => (
+                                                          <Avatar key={member.id} className="h-6 w-6 border bg-background">
+                                                            <AvatarImage src={member.avatarUrl || undefined} />
+                                                            <AvatarFallback className="text-[10px]">{getInitials(member.name)}</AvatarFallback>
+                                                          </Avatar>
+                                                        ))}
+                                                      </div>
+                                                      <DropdownMenu>
+                                                        <DropdownMenuTrigger asChild>
+                                                          <Button type="button" size="icon" variant="outline" className="absolute left-1/2 top-full h-5 w-5 -translate-x-1/2 -translate-y-1/2 rounded-full border bg-background p-0 shadow-sm">
+                                                            <Plus className="h-3 w-3" />
+                                                          </Button>
+                                                        </DropdownMenuTrigger>
                                                       <DropdownMenuContent align="end" className="w-56">
                                                         {teamUsers.map((member) => (
                                                           <DropdownMenuCheckboxItem
@@ -1306,8 +1309,9 @@ export function MyWorkCasesWorkspace() {
                                                             {member.name}
                                                           </DropdownMenuCheckboxItem>
                                                         ))}
-                                                      </DropdownMenuContent>
-                                                    </DropdownMenu>
+                                                        </DropdownMenuContent>
+                                                      </DropdownMenu>
+                                                    </div>
                                                   </div>
                                                 </div>
                                               </div>
