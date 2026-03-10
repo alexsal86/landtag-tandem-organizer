@@ -9,7 +9,7 @@ export function ContactImport() {
     data, fieldMappings, step, progress, importedCount, skippedCount, errors,
     duplicateWarnings, currentDuplicate, duplicateStrategy, setDuplicateStrategy,
     handleFileUpload, updateFieldMapping, proceedToPreview, startImport, reset, downloadTemplate,
-    handleDuplicateSkip, handleDuplicateImportAnyway, handleDuplicateApplyToAll,
+    handleDuplicateSkip, handleDuplicateOverwrite, handleDuplicateMerge, handleDuplicateImportAnyway, handleDuplicateApplyToAll,
   } = useContactImport();
 
   return (
@@ -36,8 +36,8 @@ export function ContactImport() {
           newContact={currentDuplicate.newContact}
           duplicates={currentDuplicate.duplicates}
           onSkip={handleDuplicateSkip}
-          onOverwrite={() => {}}
-          onMerge={() => {}}
+          onOverwrite={handleDuplicateOverwrite}
+          onMerge={handleDuplicateMerge}
           onImportAnyway={handleDuplicateImportAnyway}
           onApplyToAll={handleDuplicateApplyToAll}
         />

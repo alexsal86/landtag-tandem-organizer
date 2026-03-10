@@ -24,7 +24,7 @@ export function useContactImport() {
   const [existingContacts, setExistingContacts] = useState<Contact[]>([]);
   const [duplicateWarnings, setDuplicateWarnings] = useState<string[]>([]);
   const [currentDuplicate, setCurrentDuplicate] = useState<{ newContact: Contact; duplicates: DuplicateMatch[]; rowIndex: number } | null>(null);
-  const [duplicateStrategy, setDuplicateStrategy] = useState<"ask" | "skip" | "import">("ask");
+  const [duplicateStrategy, setDuplicateStrategy] = useState<"ask" | "skip" | "overwrite" | "merge" | "import">("ask");
   const [importQueue, setImportQueue] = useState<number[]>([]);
 
   const { toast } = useToast();
@@ -189,6 +189,8 @@ export function useContactImport() {
     const duplicates = findPotentialDuplicates(currentContactData, existingContacts);
     if (duplicates.length > 0 && duplicateStrategy === "ask") { setCurrentDuplicate({ newContact: currentContactData, duplicates, rowIndex }); return; }
     if (duplicates.length > 0 && duplicateStrategy === "skip") { setSkippedCount((prev) => prev + 1); setDuplicateWarnings((prev) => [...prev, `Zeile ${rowIndex + 1}: ${contactData.name} übersprungen (Duplikat)`]); continueImport(); return; }
+    if (duplicates.length > 0 && duplicateStrategy === "overwrite") { setDuplicateWarnings((prev) => [...prev, `Zeile ${rowIndex + 1}: ${contactData.name} als Überschreiben behandelt (noch nicht implementiert, importiert)`]); }
+    if (duplicates.length > 0 && duplicateStrategy === "merge") { setDuplicateWarnings((prev) => [...prev, `Zeile ${rowIndex + 1}: ${contactData.name} als Zusammenführen behandelt (noch nicht implementiert, importiert)`]); }
     await importContact(rowIndex);
     setProgress(((rowIndex + 1) / data.length) * 100);
     continueImport();
@@ -209,7 +211,42 @@ export function useContactImport() {
 
   const handleDuplicateSkip = () => { if (currentDuplicate) { setSkippedCount((p) => p + 1); setDuplicateWarnings((p) => [...p, `Zeile ${currentDuplicate.rowIndex + 1}: ${currentDuplicate.newContact.name} übersprungen`]); continueImport(); } };
   const handleDuplicateImportAnyway = async () => { if (currentDuplicate) { await importContact(currentDuplicate.rowIndex); continueImport(); } };
-  const handleDuplicateApplyToAll = (action: "skip" | "overwrite" | "import") => { if (action === "overwrite") return; setDuplicateStrategy(action); if (action === "skip") handleDuplicateSkip(); else handleDuplicateImportAnyway(); };
+  const handleDuplicateOverwrite = async (_contactId: string) => {
+    if (currentDuplicate) {
+      setDuplicateWarnings((p) => [...p, `Zeile ${currentDuplicate.rowIndex + 1}: Überschreiben gewählt (noch nicht implementiert, importiert)`]);
+      await importContact(currentDuplicate.rowIndex);
+      continueImport();
+    }
+  };
+  const handleDuplicateMerge = async (_contactId: string) => {
+    if (currentDuplicate) {
+      setDuplicateWarnings((p) => [...p, `Zeile ${currentDuplicate.rowIndex + 1}: Zusammenführen gewählt (noch nicht implementiert, importiert)`]);
+      await importContact(currentDuplicate.rowIndex);
+      continueImport();
+    }
+  };
+  const handleDuplicateApplyToAll = (action: "skip" | "overwrite" | "merge" | "import") => {
+    setDuplicateStrategy(action);
+    if (action === "skip") {
+      handleDuplicateSkip();
+      return;
+    }
+    if (action === "overwrite") {
+      const topDuplicateId = currentDuplicate?.duplicates[0]?.contact.id;
+      if (topDuplicateId) {
+        void handleDuplicateOverwrite(topDuplicateId);
+      }
+      return;
+    }
+    if (action === "merge") {
+      const topDuplicateId = currentDuplicate?.duplicates[0]?.contact.id;
+      if (topDuplicateId) {
+        void handleDuplicateMerge(topDuplicateId);
+      }
+      return;
+    }
+    void handleDuplicateImportAnyway();
+  };
 
   const reset = () => { setFile(null); setData([]); setFieldMappings([]); setStep("upload"); setProgress(0); setImportedCount(0); setSkippedCount(0); setErrors([]); setDuplicateWarnings([]); setCurrentDuplicate(null); setDuplicateStrategy("ask"); setImportQueue([]); };
 
@@ -228,6 +265,6 @@ export function useContactImport() {
     file, data, fieldMappings, step, progress, importedCount, skippedCount, errors,
     duplicateWarnings, currentDuplicate, duplicateStrategy, setDuplicateStrategy,
     handleFileUpload, updateFieldMapping, proceedToPreview, startImport, reset, downloadTemplate,
-    handleDuplicateSkip, handleDuplicateImportAnyway, handleDuplicateApplyToAll,
+    handleDuplicateSkip, handleDuplicateOverwrite, handleDuplicateMerge, handleDuplicateImportAnyway, handleDuplicateApplyToAll,
   };
 }
