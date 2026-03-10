@@ -1,4 +1,4 @@
-import { useMemo } from "react";
+import { useCallback, useEffect, useMemo, useRef } from "react";
 import { Calendar } from "lucide-react";
 
 type RecurringTemplate = {
@@ -21,6 +21,24 @@ interface WeeklyRoutineGridProps {
 }
 
 export function WeeklyRoutineGrid({ recurringItems, onChangeWeekday }: WeeklyRoutineGridProps) {
+  const gridRef = useRef<HTMLDivElement | null>(null);
+
+  const clearDropIndicators = useCallback(() => {
+    const grid = gridRef.current;
+    if (!grid) return;
+
+    grid
+      .querySelectorAll(".border-primary\\/40, .bg-primary\\/5")
+      .forEach((target) => target.classList.remove("border-primary/40", "bg-primary/5"));
+  }, []);
+
+  useEffect(() => {
+    window.addEventListener("dragend", clearDropIndicators);
+    return () => {
+      window.removeEventListener("dragend", clearDropIndicators);
+    };
+  }, [clearDropIndicators]);
+
   const columns = useMemo(() => {
     return GRID_DAYS.map((day) => {
       const items = recurringItems.filter(
@@ -35,7 +53,7 @@ export function WeeklyRoutineGrid({ recurringItems, onChangeWeekday }: WeeklyRou
   if (!hasItems) return null;
 
   return (
-    <div className="space-y-2 rounded-lg border border-border/60 p-3">
+    <div ref={gridRef} className="space-y-2 rounded-lg border border-border/60 p-3">
       <p className="flex items-center gap-1.5 text-xs font-medium uppercase tracking-wide text-muted-foreground">
         <Calendar className="h-3.5 w-3.5" />
         Wochenroutine
@@ -52,9 +70,11 @@ export function WeeklyRoutineGrid({ recurringItems, onChangeWeekday }: WeeklyRou
                   key={`${col.key}-${item.id}`}
                   draggable
                   onDragStart={(e) => {
+                    clearDropIndicators();
                     e.dataTransfer.setData("application/x-routine-id", item.id);
                     e.dataTransfer.effectAllowed = "move";
                   }}
+                  onDragEnd={clearDropIndicators}
                   className="cursor-grab rounded border border-border/50 bg-muted/40 px-1.5 py-1 text-[10px] leading-tight text-foreground/80 hover:bg-muted/60 active:cursor-grabbing truncate"
                   title={`${item.text} (${item.weekday === "all" ? "Jeden Tag" : item.weekday})`}
                 >
@@ -68,7 +88,7 @@ export function WeeklyRoutineGrid({ recurringItems, onChangeWeekday }: WeeklyRou
               onDragLeave={(e) => { e.currentTarget.classList.remove("border-primary/40", "bg-primary/5"); }}
               onDrop={(e) => {
                 e.preventDefault();
-                e.currentTarget.classList.remove("border-primary/40", "bg-primary/5");
+                clearDropIndicators();
                 const routineId = e.dataTransfer.getData("application/x-routine-id");
                 if (routineId) {
                   onChangeWeekday(routineId, col.key);
