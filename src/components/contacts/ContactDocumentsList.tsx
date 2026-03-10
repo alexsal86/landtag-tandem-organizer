@@ -5,8 +5,8 @@ import { Button } from "@/components/ui/button";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { useContactDocuments } from "@/hooks/useContactDocuments";
-import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
+import { downloadDocument } from "./utils/downloadDocument";
 
 interface ContactDocumentsListProps {
   contactId: string;
@@ -24,33 +24,23 @@ export function ContactDocumentsList({ contactId, contactTags = [], documentCoun
   const { toast } = useToast();
 
   const handleDownload = async (filePath: string, fileName: string) => {
-    try {
-      const { data, error } = await supabase.storage
-        .from('documents')
-        .download(filePath);
-
-      if (error) throw error;
-
-      const url = URL.createObjectURL(data);
-      const link = document.createElement('a');
-      link.href = url;
-      link.download = fileName;
-      document.body.appendChild(link);
-      link.click();
-      URL.revokeObjectURL(url);
-      document.body.removeChild(link);
-
-      toast({
-        title: "Download erfolgreich",
-        description: `${fileName} wurde heruntergeladen.`,
-      });
-    } catch (error: unknown) {
-      toast({
-        title: "Download-Fehler",
-        description: error instanceof Error ? error.message : "Download fehlgeschlagen",
-        variant: "destructive",
-      });
-    }
+    await downloadDocument({
+      filePath,
+      fileName,
+      onSuccess: () => {
+        toast({
+          title: "Download erfolgreich",
+          description: `${fileName} wurde heruntergeladen.`,
+        });
+      },
+      onError: (error) => {
+        toast({
+          title: "Download-Fehler",
+          description: error instanceof Error ? error.message : "Download fehlgeschlagen",
+          variant: "destructive",
+        });
+      },
+    });
   };
 
   if (documentCount.total === 0) {

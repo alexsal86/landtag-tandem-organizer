@@ -18,11 +18,11 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { supabase } from "@/integrations/supabase/client";
 import { debugConsole } from "@/utils/debugConsole";
 import { useToast } from "@/hooks/use-toast";
 import { useState } from "react";
 import type { Document, DirectDocument } from "@/hooks/useContactDocuments";
+import { downloadDocument } from "./utils/downloadDocument";
 
 interface ContactDocumentListProps {
   documents: (Document | DirectDocument)[];
@@ -61,32 +61,24 @@ export function ContactDocumentList({ documents, type, contactTags = [], onRemov
   const [removingDocId, setRemovingDocId] = useState<string | null>(null);
 
   const handleDownload = async (document: Document | DirectDocument) => {
-    try {
-      const { data, error } = await supabase.storage
-        .from('documents')
-        .download(document.file_path);
-
-      if (error) throw error;
-
-      const url = URL.createObjectURL(data);
-      const a = window.document.createElement('a');
-      a.href = url;
-      a.download = document.file_name;
-      a.click();
-      URL.revokeObjectURL(url);
-
-      toast({
-        title: "Download gestartet",
-        description: `${document.file_name} wird heruntergeladen.`,
-      });
-    } catch (error) {
-      debugConsole.error('Error downloading document:', error);
-      toast({
-        title: "Fehler",
-        description: "Dokument konnte nicht heruntergeladen werden.",
-        variant: "destructive",
-      });
-    }
+    await downloadDocument({
+      filePath: document.file_path,
+      fileName: document.file_name,
+      onSuccess: () => {
+        toast({
+          title: "Download gestartet",
+          description: `${document.file_name} wird heruntergeladen.`,
+        });
+      },
+      onError: (error) => {
+        debugConsole.error('Error downloading document:', error);
+        toast({
+          title: "Fehler",
+          description: "Dokument konnte nicht heruntergeladen werden.",
+          variant: "destructive",
+        });
+      },
+    });
   };
 
   const handleRemove = async (documentContactId: string) => {
