@@ -60,6 +60,7 @@ export function CommentThread({
   const [isSubmitting, setIsSubmitting] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
   const repliesRef = useRef<HTMLDivElement>(null);
+  const measureRafIdRef = useRef<number | null>(null);
   const hasReplies = Boolean(comment.replies?.length);
   const [parentLineHeight, setParentLineHeight] = useState<number | null>(null);
 
@@ -80,10 +81,25 @@ export function CommentThread({
       const lineEnd = lastChildTop - containerTop;
       setParentLineHeight(Math.max(0, lineEnd - lineStart));
     };
-    measure();
-    const observer = new ResizeObserver(measure);
+
+    const scheduleMeasure = () => {
+      if (measureRafIdRef.current != null) return;
+      measureRafIdRef.current = requestAnimationFrame(() => {
+        measureRafIdRef.current = null;
+        measure();
+      });
+    };
+
+    scheduleMeasure();
+    const observer = new ResizeObserver(scheduleMeasure);
     observer.observe(repliesRef.current);
-    return () => observer.disconnect();
+    return () => {
+      observer.disconnect();
+      if (measureRafIdRef.current != null) {
+        cancelAnimationFrame(measureRafIdRef.current);
+        measureRafIdRef.current = null;
+      }
+    };
   }, [hasReplies, comment.replies?.length]);
 
   const isOwnComment = currentUserId === comment.user_id;
