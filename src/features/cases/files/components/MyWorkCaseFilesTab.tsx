@@ -141,9 +141,11 @@ export function MyWorkCaseFilesTab() {
                 <div className="flex items-center gap-2 flex-wrap">
                   <span className="font-medium text-sm">{caseFile.title}</span>
                   {getPriorityBadge(caseFile.priority)}
-                  <Badge variant="outline" className="text-xs">
-                    {getStatusLabel(caseFile.status)}
-                  </Badge>
+                  {caseFile.status !== "active" && (
+                    <Badge variant="outline" className="text-xs">
+                      {getStatusLabel(caseFile.status)}
+                    </Badge>
+                  )}
                 </div>
                 {caseFile.reference_number && (
                   <p className="text-xs text-muted-foreground mt-0.5">Az: {caseFile.reference_number}</p>
