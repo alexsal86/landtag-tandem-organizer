@@ -4,40 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent } from '@/components/ui/card';
 import { formatGermanDate } from '@/lib/utils';
-
-interface Contact {
-  id: string;
-  contact_type: "person" | "organization";
-  name: string;
-  role?: string;
-  organization?: string;
-  email?: string;
-  phone?: string;
-  birthday?: string;
-  website?: string;
-  linkedin?: string;
-  twitter?: string;
-  facebook?: string;
-  instagram?: string;
-  xing?: string;
-  category?: "citizen" | "colleague" | "lobbyist" | "media" | "business";
-  priority?: "low" | "medium" | "high";
-  last_contact?: string;
-  notes?: string;
-  additional_info?: string;
-  legal_form?: string;
-  industry?: string;
-  main_contact_person?: string;
-  business_description?: string;
-  tags?: string[];
-  business_street?: string;
-  business_house_number?: string;
-  business_postal_code?: string;
-  business_city?: string;
-  business_country?: string;
-  address?: string;
-  location?: string;
-}
+import type { Contact } from '@/types/contact';
 
 interface ContactInfoTabProps {
   contact: Contact;

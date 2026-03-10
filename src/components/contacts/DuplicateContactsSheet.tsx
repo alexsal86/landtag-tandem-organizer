@@ -13,19 +13,11 @@ import { MergeContactsDialog } from './MergeContactsDialog';
 import { supabase } from '@/integrations/supabase/client';
 import { useTenant } from '@/hooks/useTenant';
 import { getInitials } from './utils/contactFormatters';
-
-interface Contact {
-  id: string;
-  name: string;
-  email?: string | null;
-  phone?: string | null;
-  organization?: string | null;
-  contact_type?: string | null;
-}
+import type { Contact } from '@/types/contact';
 
 interface DuplicateMatch {
-  contact1: Contact;
-  contact2: Contact;
+  contact1: Pick<Contact, "id" | "name" | "email" | "phone" | "organization" | "contact_type">;
+  contact2: Pick<Contact, "id" | "name" | "email" | "phone" | "organization" | "contact_type">;
   matchScore: number;
   matchReasons: string[];
 }

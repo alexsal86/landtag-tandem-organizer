@@ -18,37 +18,11 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { User, Mail, Phone, Building, MapPin, Calendar, FileText } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
-
-interface Contact {
-  id: string;
-  name: string;
-  email?: string;
-  phone?: string;
-  organization?: string;
-  organization_id?: string;
-  location?: string;
-  address?: string;
-  birthday?: string;
-  website?: string;
-  role?: string;
-  category?: string;
-  priority?: string;
-  notes?: string;
-  additional_info?: string;
-  avatar_url?: string;
-  contact_type?: string;
-  tags?: string[];
-  linkedin?: string;
-  twitter?: string;
-  facebook?: string;
-  instagram?: string;
-  xing?: string;
-  [key: string]: any;
-}
+import type { MergeContact } from '@/types/contact';
 
 interface MergeContactsDialogProps {
-  contact1: Contact;
-  contact2: Contact;
+  contact1: MergeContact;
+  contact2: MergeContact;
   isOpen: boolean;
   onClose: () => void;
   onMergeComplete: () => void;
@@ -88,8 +62,8 @@ export function MergeContactsDialog({
     }));
   };
 
-  const getMergedData = (): Partial<Contact> => {
-    const merged: Partial<Contact> = {};
+  const getMergedData = (): Partial<MergeContact> => {
+    const merged: Partial<MergeContact> = {};
     
     // For each field, use the selected value or default to primary contact
     fieldConfig.forEach(({ key }) => {

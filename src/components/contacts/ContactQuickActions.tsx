@@ -7,16 +7,10 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from '@/components/ui/tooltip';
-
-interface Contact {
-  id: string;
-  name: string;
-  email?: string | null;
-  phone?: string | null;
-}
+import type { Contact } from '@/types/contact';
 
 interface ContactQuickActionsProps {
-  contact: Contact;
+  contact: Pick<Contact, "id" | "email" | "phone">;
   onAddToDistribution?: (contactId: string) => void;
   onCreateAppointment?: (contactId: string) => void;
 }

@@ -11,24 +11,17 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { AlertCircle, Users, Mail, Phone, Building } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
-
-interface Contact {
-  id: string;
-  name: string;
-  email?: string | null;
-  phone?: string | null;
-  organization?: string | null;
-}
+import type { ImportContact } from "@/types/contact";
 
 interface DuplicateMatch {
-  contact: Contact;
+  contact: ImportContact;
   score: number;
   reasons: string[];
 }
 
 interface ContactImportDuplicateDialogProps {
   open: boolean;
-  newContact: Contact;
+  newContact: ImportContact;
   duplicates: DuplicateMatch[];
   onSkip: () => void;
   onOverwrite: (contactId: string) => void;
