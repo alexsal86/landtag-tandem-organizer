@@ -4,8 +4,8 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { FileText, Download, ExternalLink } from "lucide-react";
 import { useContactDocuments } from "@/hooks/useContactDocuments";
-import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+import { downloadDocument } from "./utils/downloadDocument";
 
 interface ContactDocumentRowsProps {
   contactId: string;
@@ -16,25 +16,14 @@ export function ContactDocumentRows({ contactId, contactTags }: ContactDocumentR
   const { directDocuments, taggedDocuments, loading } = useContactDocuments(contactId, contactTags);
 
   const handleDownload = async (filePath: string, fileName: string) => {
-    try {
-      const { data, error } = await supabase.storage
-        .from('documents')
-        .download(filePath);
-
-      if (error) throw error;
-
-      const url = window.URL.createObjectURL(data);
-      const link = document.createElement('a');
-      link.href = url;
-      link.download = fileName;
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-      window.URL.revokeObjectURL(url);
-    } catch (error: unknown) {
-      debugConsole.error('Error downloading document:', error);
-      toast.error('Fehler beim Herunterladen des Dokuments');
-    }
+    await downloadDocument({
+      filePath,
+      fileName,
+      onError: (error) => {
+        debugConsole.error('Error downloading document:', error);
+        toast.error('Fehler beim Herunterladen des Dokuments');
+      },
+    });
   };
 
   const handleOpenDocument = (documentId: string) => {
