@@ -1,7 +1,7 @@
 import { useCallback, useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { StickyNote, Globe, Archive, Search, X } from "lucide-react";
+import { Globe, Archive, Search, X } from "lucide-react";
 import { QuickNotesList } from "@/components/shared/QuickNotesList";
 import { GlobalNoteShareDialog } from "@/components/shared/GlobalNoteShareDialog";
 import { NotesArchiveDialog } from "@/components/shared/NotesArchiveDialog";
@@ -41,10 +41,7 @@ export function MyWorkNotesList({ refreshTrigger }: MyWorkNotesListProps) {
       <Card className="flex-1">
         <CardHeader className="pb-3">
           <div className="flex items-center justify-between">
-            <CardTitle className="text-lg flex items-center gap-2">
-              <StickyNote className="h-5 w-5" />
-              Meine Notizen
-            </CardTitle>
+            <CardTitle className="text-lg">Meine Notizen</CardTitle>
             <div className="flex items-center gap-2">
               <div className="relative w-56">
                 <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
