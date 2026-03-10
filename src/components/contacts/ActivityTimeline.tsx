@@ -149,6 +149,7 @@ export function ActivityTimeline({ activities, loading = false }: ActivityTimeli
       {activities.map((activity, index) => {
         const isExpanded = expandedActivities.has(activity.id);
         const hasDescription = activity.description && activity.description.length > 0;
+        const isLongDescription = (activity.description?.length ?? 0) > 100;
 
         return (
           <div key={activity.id} className="relative">
@@ -189,14 +190,14 @@ export function ActivityTimeline({ activities, loading = false }: ActivityTimeli
 
                 {/* Description (collapsible if long) */}
                 {hasDescription && (
-                  <Collapsible open={isExpanded} onOpenChange={() => toggleActivity(activity.id)}>
-                    <div className="mt-3">
-                      <CollapsibleContent>
-                        <p className="text-sm text-muted-foreground whitespace-pre-wrap">
-                          {activity.description}
-                        </p>
-                      </CollapsibleContent>
-                      {(activity.description?.length ?? 0) > 100 && (
+                  <div className="mt-3">
+                    {isLongDescription ? (
+                      <Collapsible open={isExpanded} onOpenChange={() => toggleActivity(activity.id)}>
+                        <CollapsibleContent>
+                          <p className="text-sm text-muted-foreground whitespace-pre-wrap">
+                            {activity.description}
+                          </p>
+                        </CollapsibleContent>
                         <CollapsibleTrigger asChild>
                           <Button
                             variant="ghost"
@@ -216,9 +217,13 @@ export function ActivityTimeline({ activities, loading = false }: ActivityTimeli
                             )}
                           </Button>
                         </CollapsibleTrigger>
-                      )}
-                    </div>
-                  </Collapsible>
+                      </Collapsible>
+                    ) : (
+                      <p className="text-sm text-muted-foreground whitespace-pre-wrap">
+                        {activity.description}
+                      </p>
+                    )}
+                  </div>
                 )}
 
                 {/* Metadata tags */}
