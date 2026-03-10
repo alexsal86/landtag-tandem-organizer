@@ -1,11 +1,19 @@
+import { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { Plus, Users, Edit, Trash2 } from "lucide-react";
 import { DistributionListForm } from "@/components/DistributionListForm";
 import { DistributionList } from "./hooks/useContactsViewState";
-import { Contact } from "@/hooks/useInfiniteContacts";
 
 interface DistributionListsTabProps {
   distributionLists: DistributionList[];
@@ -23,6 +31,16 @@ export function DistributionListsTab({
   distributionLists, distributionListsLoading, creatingDistribution, editingDistributionListId,
   setCreatingDistribution, setEditingDistributionListId, fetchDistributionLists, deleteDistributionList, onContactClick,
 }: DistributionListsTabProps) {
+  const [deleteListId, setDeleteListId] = useState<string | null>(null);
+
+  const deleteTargetList = distributionLists.find((list) => list.id === deleteListId) ?? null;
+
+  const handleConfirmDelete = () => {
+    if (!deleteListId) return;
+    deleteDistributionList(deleteListId);
+    setDeleteListId(null);
+  };
+
   if (creatingDistribution || editingDistributionListId) {
     return (
       <DistributionListForm
@@ -58,7 +76,7 @@ export function DistributionListsTab({
               <div className="flex gap-2">
                 <Button variant="outline" size="sm" className="gap-1" onClick={() => setEditingDistributionListId(list.id)}><Edit className="h-4 w-4" />Bearbeiten</Button>
                 <Button variant="outline" size="sm" className="gap-1 text-destructive hover:text-destructive"
-                  onClick={() => { if (confirm(`Sind Sie sicher, dass Sie den Verteiler "${list.name}" löschen möchten?`)) deleteDistributionList(list.id); }}>
+                  onClick={() => setDeleteListId(list.id)}>
                   <Trash2 className="h-4 w-4" />Löschen
                 </Button>
               </div>
@@ -113,6 +131,27 @@ export function DistributionListsTab({
           </CardContent>
         </Card>
       )}
+
+      <Dialog open={Boolean(deleteListId)} onOpenChange={(open) => { if (!open) setDeleteListId(null); }}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Verteiler löschen?</DialogTitle>
+            <DialogDescription>
+              {deleteTargetList
+                ? `Sind Sie sicher, dass Sie den Verteiler "${deleteTargetList.name}" löschen möchten? Diese Aktion kann nicht rückgängig gemacht werden.`
+                : "Möchten Sie diesen Verteiler wirklich löschen?"}
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setDeleteListId(null)}>
+              Abbrechen
+            </Button>
+            <Button variant="destructive" onClick={handleConfirmDelete}>
+              Löschen
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
