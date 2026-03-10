@@ -43,6 +43,7 @@ export function useDaySlipStore(userId?: string, tenantId?: string) {
   const saveTimeoutRef = useRef<ReturnType<typeof setTimeout>>(null);
   const dbSaveTimeoutRef = useRef<ReturnType<typeof setTimeout>>(null);
   const dirtyDaysRef = useRef<Set<string>>(new Set());
+  const storeRef = useRef<DaySlipStore>(store);
   const dbLoadedRef = useRef(false);
   const [weekPlanInjected, setWeekPlanInjected] = useState(false);
 
@@ -134,6 +135,7 @@ export function useDaySlipStore(userId?: string, tenantId?: string) {
 
   // ─── Persist store (localStorage + DB) ─────────────────────────────────
   useEffect(() => {
+    storeRef.current = store;
     if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current);
     saveTimeoutRef.current = setTimeout(() => {
       try { localStorage.setItem(STORAGE_KEY, JSON.stringify(store)); } catch {}
@@ -147,7 +149,7 @@ export function useDaySlipStore(userId?: string, tenantId?: string) {
     const dirtyKeys = Array.from(dirtyDaysRef.current);
     dirtyDaysRef.current.clear();
 
-    const currentStore = store;
+    const currentStore = storeRef.current;
     const rows = dirtyKeys
       .filter(dk => currentStore[dk])
       .map(dk => ({
@@ -161,7 +163,7 @@ export function useDaySlipStore(userId?: string, tenantId?: string) {
     if (rows.length > 0) {
       supabase.from("day_slips").upsert(rows as any, { onConflict: "user_id,day_key" }).then();
     }
-  }, [userId, tenantId, store]);
+  }, [userId, tenantId]);
 
   useEffect(() => {
     if (!userId || dirtyDaysRef.current.size === 0) return;
@@ -174,6 +176,7 @@ export function useDaySlipStore(userId?: string, tenantId?: string) {
   const setStoreAndTrack = useCallback((updater: (prev: DaySlipStore) => DaySlipStore, ...dirtyKeys: string[]) => {
     setStore(prev => {
       const next = updater(prev);
+      storeRef.current = next;
       dirtyKeys.forEach(k => dirtyDaysRef.current.add(k));
       return next;
     });
