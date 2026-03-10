@@ -192,7 +192,12 @@ export const useCaseItems = () => {
       return (inserted ?? { id: "new" }) as unknown as CaseItem;
     } catch (error: unknown) {
       debugConsole.error("Error creating case item:", error);
-      const detail = error instanceof Error ? error.message : String(error);
+      let detail = "Unbekannter Fehler";
+      if (error instanceof Error) {
+        detail = error.message;
+      } else if (error && typeof error === "object" && "message" in error) {
+        detail = (error as any).message;
+      }
       toast({
         title: "Fehler beim Erstellen",
         description: detail,
