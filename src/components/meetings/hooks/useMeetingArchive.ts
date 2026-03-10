@@ -12,6 +12,20 @@ type ArchiveDeps = Pick<MeetingsDataReturn,
   'setSelectedMeeting' | 'setIsFocusMode'
 >;
 
+export const mapBirthdayAssignedToValue = (
+  assignedToFromResult: string[] | undefined,
+  profiles: Pick<Profile, 'user_id'>[],
+  fallbackUserId: string,
+): string => {
+  const explicitAssignees = (assignedToFromResult || []).filter(Boolean);
+  if (explicitAssignees.length > 0) return explicitAssignees[0];
+
+  const profileAssignees = profiles.map(profile => profile.user_id).filter(Boolean);
+  if (profileAssignees.length > 0) return profileAssignees[0];
+
+  return fallbackUserId;
+};
+
 export function useMeetingArchive(deps: ArchiveDeps) {
   const {
     user, currentTenant, toast, profiles, linkedQuickNotes, meetingLinkedCaseItems,
@@ -255,7 +269,7 @@ export function useMeetingArchive(deps: ArchiveDeps) {
             if (!action) return null;
             const birthdayDate = contact.birthday ? format(new Date(contact.birthday), 'dd.MM.yyyy', { locale: de }) : 'unbekannt';
             const assignedUserIds = result.assigned_to && result.assigned_to.length > 0 ? result.assigned_to : profiles.map(p => p.user_id);
-            const assignedToValue = `{${assignedUserIds.join(',')}}`;
+            const assignedToValue = mapBirthdayAssignedToValue(result.assigned_to, profiles, user.id);
             const assigneeNames = assignedUserIds.map(id => { const p = profiles.find(pr => pr.user_id === id); return p?.display_name || 'Unbekannt'; }).join(', ');
             return {
               user_id: user.id,
