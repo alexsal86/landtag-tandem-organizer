@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect } from 'react';
 import { debugConsole } from '@/utils/debugConsole';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
@@ -47,7 +47,6 @@ export function EmailPreviewDialog({ open, onOpenChange, filePath, fileName }: E
   const [loading, setLoading] = useState(false);
   const [email, setEmail] = useState<ParsedEmail | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const iframeRef = useRef<HTMLIFrameElement>(null);
 
   useEffect(() => {
     if (open && filePath) {
@@ -98,29 +97,22 @@ export function EmailPreviewDialog({ open, onOpenChange, filePath, fileName }: E
     }
   };
 
-  useEffect(() => {
-    if (email?.htmlBody && iframeRef.current) {
-      const doc = iframeRef.current.contentDocument;
-      if (doc) {
-        doc.open();
-        doc.write(`
-          <!DOCTYPE html>
-          <html>
-          <head>
-            <meta charset="utf-8">
-            <style>
-              body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; font-size: 14px; padding: 16px; color: #333; margin: 0; }
-              img { max-width: 100%; height: auto; }
-              a { color: hsl(var(--primary)); }
-            </style>
-          </head>
-          <body>${email.htmlBody}</body>
-          </html>
-        `);
-        doc.close();
-      }
-    }
-  }, [email?.htmlBody]);
+  const iframeSrcDoc = email?.htmlBody
+    ? `
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <meta charset="utf-8">
+        <style>
+          body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; font-size: 14px; padding: 16px; color: #333; margin: 0; }
+          img { max-width: 100%; height: auto; }
+          a { color: hsl(var(--primary)); }
+        </style>
+      </head>
+      <body>${email.htmlBody}</body>
+      </html>
+    `
+    : undefined;
 
   const downloadAttachment = (att: { filename: string; mimeType: string; content: Uint8Array }) => {
     const blob = new Blob([new Uint8Array(att.content)], { type: att.mimeType });
@@ -176,9 +168,10 @@ export function EmailPreviewDialog({ open, onOpenChange, filePath, fileName }: E
             {/* Body */}
             {email.htmlBody ? (
               <iframe
-                ref={iframeRef}
                 className="w-full border border-border rounded min-h-[300px]"
-                sandbox="allow-same-origin"
+                // Intentionally no sandbox permissions: scripts/forms/popups/same-origin stay blocked.
+                sandbox=""
+                srcDoc={iframeSrcDoc}
                 title="E-Mail Inhalt"
               />
             ) : email.textBody ? (
