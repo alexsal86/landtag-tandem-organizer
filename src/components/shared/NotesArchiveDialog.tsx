@@ -1,4 +1,3 @@
-import { useState } from "react";
 import { Archive } from "lucide-react";
 import {
   Sheet,
@@ -24,7 +23,7 @@ export function NotesArchiveDialog({
 }: NotesArchiveDialogProps) {
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
-      <SheetContent side="right" className="w-full sm:max-w-md overflow-y-auto">
+      <SheetContent side="right" className="flex h-full w-full flex-col overflow-hidden sm:max-w-md">
         <SheetHeader className="pb-4">
           <SheetTitle className="flex items-center gap-2">
             <Archive className="h-5 w-5" />
@@ -35,7 +34,7 @@ export function NotesArchiveDialog({
           </SheetDescription>
         </SheetHeader>
         
-        <div className="mt-4">
+        <div className="mt-4 min-h-0 flex-1">
           <NotesArchive 
             refreshTrigger={refreshTrigger} 
             onRestore={() => {
