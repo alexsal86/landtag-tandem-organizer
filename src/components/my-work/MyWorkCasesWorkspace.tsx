@@ -1150,14 +1150,11 @@ export function MyWorkCasesWorkspace() {
                                                 >
                                                   <GripVertical className="h-4 w-4" />
                                                 </span>
-                                                <span className="inline-flex" title={channel?.label || "Kanal unbekannt"}>
-                                                  <span className="rounded-sm bg-muted p-1 text-muted-foreground">
-                                                    <ChannelIcon className="h-3 w-3" />
+                                                <span className="inline-flex items-center gap-1.5" title={channel?.label || "Kanal unbekannt"}>
+                                                  <span className="flex h-7 w-7 items-center justify-center rounded-md bg-muted text-muted-foreground">
+                                                    <ChannelIcon className="h-4 w-4" />
                                                   </span>
-                                                </span>
-                                                <span className="truncate text-sm font-medium text-foreground inline-flex items-center gap-1">
-                                                  {getItemSubject(item)}
-                                                  {item.visible_to_all && <Globe className="h-3.5 w-3.5 text-emerald-600 shrink-0" />}
+                                                  {item.visible_to_all && <Globe className="h-3.5 w-3.5 text-blue-500 shrink-0" />}
                                                   {/* 3c: Link indicator */}
                                                   {linkedFile && (
                                                     <TooltipProvider delayDuration={200}>
@@ -1173,6 +1170,9 @@ export function MyWorkCasesWorkspace() {
                                                     </TooltipProvider>
                                                   )}
                                                 </span>
+                                                <span className="truncate text-sm font-medium text-foreground inline-flex items-center gap-1">
+                                                  {getItemSubject(item)}
+                                                </span>
                                                 <span className="truncate text-sm font-medium text-foreground" title={getItemDescription(item) || "–"}>{getItemDescription(item) || "–"}</span>
                                                 <span>{formatDateSafe(item.source_received_at, "dd.MM.yy", "–", { locale: de, warnKey: `${item.id}:source_received_at:list`, warnItemId: item.id, warnField: "source_received_at" })}</span>
                                                 <span>{formatDateSafe(item.due_at, "dd.MM.yy", "–", { locale: de, warnKey: `${item.id}:due_at:list`, warnItemId: item.id, warnField: "due_at" })}</span>
@@ -1186,21 +1186,21 @@ export function MyWorkCasesWorkspace() {
                                                   <Circle className={cn("h-3.5 w-3.5 fill-current", priorityMeta(item.priority).color)} />
                                                 </span>
                                                 <div className="flex min-w-0 items-center gap-2" onClick={(event) => event.stopPropagation()}>
-                                                  <div className="flex items-center -space-x-2">
-                                                    {assignees.slice(0, 3).map((member) => (
-                                                      <Avatar key={member.id} className="h-6 w-6 border bg-background">
-                                                        <AvatarImage src={member.avatarUrl || undefined} />
-                                                        <AvatarFallback className="text-[10px]">{getInitials(member.name)}</AvatarFallback>
-                                                      </Avatar>
-                                                    ))}
-                                                  </div>
-                                                  <DropdownMenu>
-                                                    <DropdownMenuTrigger asChild>
-                                                      <Button type="button" size="icon" variant="outline" className="h-7 w-7">
-                                                        <Plus className="h-3.5 w-3.5" />
-                                                      </Button>
-                                                    </DropdownMenuTrigger>
-                                                    <DropdownMenuContent align="end" className="w-56">
+                                                    <div className="flex items-center -space-x-2">
+                                                      {assignees.slice(0, 3).map((member) => (
+                                                        <Avatar key={member.id} className="h-6 w-6 border bg-background">
+                                                          <AvatarImage src={member.avatarUrl || undefined} />
+                                                          <AvatarFallback className="text-[10px]">{getInitials(member.name)}</AvatarFallback>
+                                                        </Avatar>
+                                                      ))}
+                                                    </div>
+                                                    <DropdownMenu>
+                                                      <DropdownMenuTrigger asChild>
+                                                        <Button type="button" size="icon" variant="outline" className="-ml-1 h-6 w-6 rounded-full border bg-background p-0">
+                                                          <Plus className="h-3.5 w-3.5" />
+                                                        </Button>
+                                                      </DropdownMenuTrigger>
+                                                      <DropdownMenuContent align="end" className="w-56">
                                                       {teamUsers.map((member) => (
                                                         <DropdownMenuCheckboxItem
                                                           key={member.id}
@@ -1219,10 +1219,11 @@ export function MyWorkCasesWorkspace() {
                                                 <div className="flex items-start justify-between gap-3">
                                                   <div className="flex-1 min-w-0">
                                                     <div className="flex items-center gap-2 mb-1">
-                                                      <span className="rounded-sm bg-muted p-1 text-muted-foreground">
+                                                      <span className="flex h-7 w-7 items-center justify-center rounded-md bg-muted text-muted-foreground">
                                                         <ChannelIcon className="h-3 w-3" />
                                                       </span>
                                                       <p className="truncate text-sm font-medium flex-1">{getItemSubject(item)}</p>
+                                                      {item.visible_to_all && <Globe className="h-3.5 w-3.5 text-blue-500 shrink-0" />}
                                                       {linkedFile && (
                                                         <TooltipProvider delayDuration={200}>
                                                           <Tooltip>
@@ -1289,7 +1290,7 @@ export function MyWorkCasesWorkspace() {
                                                     </div>
                                                     <DropdownMenu>
                                                       <DropdownMenuTrigger asChild>
-                                                        <Button type="button" size="icon" variant="outline" className="h-6 w-6">
+                                                        <Button type="button" size="icon" variant="outline" className="-ml-1 h-6 w-6 rounded-full border bg-background p-0">
                                                           <Plus className="h-3 w-3" />
                                                         </Button>
                                                       </DropdownMenuTrigger>
