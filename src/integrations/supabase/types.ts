@@ -10900,6 +10900,16 @@ export type Database = {
         }
         Returns: string
       }
+      create_appointment_poll_with_details: {
+        Args: {
+          p_deadline?: string | null
+          p_description?: string | null
+          p_participants?: Json
+          p_time_slots?: Json
+          p_title: string
+        }
+        Returns: string
+      }
       reconcile_employee_meeting_requests: {
         Args: {
           p_employee_id?: string | null
