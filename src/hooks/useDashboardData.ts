@@ -1,5 +1,4 @@
 import { useEffect, useState, useMemo } from 'react';
-import { format } from 'date-fns';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { useTenant } from '@/hooks/useTenant';
@@ -37,7 +36,7 @@ export interface DashboardData {
 export const useDashboardData = (): DashboardData => {
   const { user } = useAuth();
   const { currentTenant, loading: tenantLoading } = useTenant();
-  const { appointments: feedbackAppointments, settings: feedbackSettings } = useAppointmentFeedback();
+  const { appointments: feedbackAppointments } = useAppointmentFeedback();
 
   const [userName, setUserName] = useState('');
   const [userRole, setUserRole] = useState('');
@@ -50,11 +49,8 @@ export const useDashboardData = (): DashboardData => {
   const [isLoading, setIsLoading] = useState(true);
 
   const feedbackReminderVisible = useMemo(() => {
-    if (!feedbackSettings?.reminder_start_time) return false;
-    const currentTime = format(new Date(), 'HH:mm:ss');
-    if (currentTime < feedbackSettings.reminder_start_time) return false;
     return (feedbackAppointments?.filter(a => a.feedback?.feedback_status === 'pending').length ?? 0) > 0;
-  }, [feedbackSettings, feedbackAppointments]);
+  }, [feedbackAppointments]);
 
   const pendingFeedbackCount = useMemo(() => {
     return feedbackAppointments?.filter(a => a.feedback?.feedback_status === 'pending').length ?? 0;
