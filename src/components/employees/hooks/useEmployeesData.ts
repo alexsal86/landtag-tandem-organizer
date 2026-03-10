@@ -225,8 +225,6 @@ export function useEmployeesData() {
 
         if (!settingsRes.data) {
           toast({ title: "Keine Mitarbeitereinstellungen", description: "Falls der Administrator soeben Daten eingetragen hat, laden Sie die Seite neu (F5).", variant: "destructive" });
-        } else {
-          toast({ title: "Daten geladen", description: "Mitarbeitereinstellungen erfolgreich geladen." });
         }
 
         setSelfSettings((settingsRes.data as EmployeeSettingsRow) || null);
