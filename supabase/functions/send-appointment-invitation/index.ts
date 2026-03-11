@@ -1,6 +1,7 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { Resend } from "https://esm.sh/resend@4.0.0";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { resolveAppBaseUrl } from "../_shared/url.ts";
 import { encode } from "https://deno.land/std@0.190.0/encoding/base64.ts";
 
 console.log('🚀 send-appointment-invitation function starting...');
@@ -199,8 +200,7 @@ const handler = async (req: Request): Promise<Response> => {
         const formattedEndTime = endDate.toLocaleTimeString('de-DE', timeOptions);
 
         // Get current domain dynamically
-        const origin = req.headers.get('origin') || req.headers.get('referer');
-        const domain = origin ? new URL(origin).origin : 'https://wawofclbehbkebjivdte.supabase.co';
+        const domain = resolveAppBaseUrl(req);
         
         // Generate response URL with guest token
         const responseUrl = `${domain}/guest-response/${guest.invitation_token}`;
