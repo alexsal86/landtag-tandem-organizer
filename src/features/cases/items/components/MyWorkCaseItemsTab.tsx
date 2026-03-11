@@ -111,7 +111,7 @@ export function MyWorkCaseItemsTab() {
 
   const categoryOptions = useMemo(() => {
     const configured = (configuredCaseItemCategories ?? [])
-      .map((category) => category.label?.trim())
+      .map((category) => category.label?.trim() || category.name?.trim())
       .filter((label): label is string => Boolean(label));
 
     return configured.length > 0 ? configured : [...DEFAULT_CASE_ITEM_CATEGORIES];
