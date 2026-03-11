@@ -1,5 +1,9 @@
 project_id = "wawofclbehbkebjivdte"
 
+# NOTE: verify_jwt policy
+# - Default: verify_jwt = true
+# - verify_jwt = false only for documented classes in docs/security-function-matrix.md
+
 [functions.fetch-karlsruhe-districts]
 verify_jwt = false
 
@@ -126,7 +130,7 @@ verify_jwt = false
 schedule = "0 17 * * *"
 
 [functions.log-audit-event]
-verify_jwt = false
+verify_jwt = true
 
 [functions.execute-annual-tasks]
 verify_jwt = false
