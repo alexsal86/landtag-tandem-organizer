@@ -3,7 +3,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { useTenant } from "@/hooks/useTenant";
 import { toast } from "sonner";
-import { format, addDays, isToday, parseISO } from "date-fns";
+import { format, addDays } from "date-fns";
 
 /**
  * Hook that checks for vacation checklist reminders:
