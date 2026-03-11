@@ -296,13 +296,13 @@
 .rbc-current-time-indicator::before {
   content: '';
   position: absolute;
-  left: -5px;
+  left: -6px;
   top: 50%;
   transform: translateY(-50%);
-  width: 10px;
-  height: 10px;
+  width: 12px;
+  height: 12px;
   border-radius: 50%;
-  background-color: hsl(var(--destructive));
+  background-color: inherit;
 }
 
 /* ── Scrollbar: Google Calendar style (no arrows, slim) ── */
