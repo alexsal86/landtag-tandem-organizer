@@ -99,6 +99,7 @@ const ProperReactBigCalendar: React.FC<ProperReactBigCalendarProps> = ({
   onEventResize
 }) => {
   const calendarContainerRef = useRef<HTMLDivElement>(null);
+  const initialScrollTimeRef = useRef(new Date());
 
 
   // No locale setup needed - date-fns localizer handles it
@@ -246,6 +247,33 @@ const ProperReactBigCalendar: React.FC<ProperReactBigCalendarProps> = ({
     }
   }, [onEventResize]);
 
+  useEffect(() => {
+    if (view !== Views.DAY && view !== Views.WEEK) {
+      return;
+    }
+
+    const timeoutId = window.setTimeout(() => {
+      const calendarContainer = calendarContainerRef.current;
+      if (!calendarContainer) {
+        return;
+      }
+
+      const currentTimeIndicator = calendarContainer.querySelector('.rbc-current-time-indicator') as HTMLElement | null;
+      const timeContent = calendarContainer.querySelector('.rbc-time-content') as HTMLElement | null;
+
+      if (!currentTimeIndicator || !timeContent) {
+        return;
+      }
+
+      const targetTop = Math.max(currentTimeIndicator.offsetTop - (timeContent.clientHeight * 0.35), 0);
+      timeContent.scrollTo({ top: targetTop, behavior: 'smooth' });
+    }, 150);
+
+    return () => {
+      window.clearTimeout(timeoutId);
+    };
+  }, [date, view]);
+
   return (
     <div ref={calendarContainerRef} className="h-full w-full bg-background min-h-[calc(100vh-220px)]">
       <DnDCalendar
@@ -290,6 +318,8 @@ const ProperReactBigCalendar: React.FC<ProperReactBigCalendarProps> = ({
         resizable
         popup
         showMultiDayTimes
+        scrollToTime={initialScrollTimeRef.current}
+        enableAutoScroll
         step={30}
         timeslots={2}
         views={[Views.MONTH, Views.WEEK, Views.DAY, Views.AGENDA]}
