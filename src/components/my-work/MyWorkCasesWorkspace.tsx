@@ -1024,7 +1024,7 @@ export function MyWorkCasesWorkspace() {
                             </div>
                           ) : (
                             <div className="space-y-1.5">
-                              <div className="hidden xl:grid grid-cols-[28px_40px_minmax(140px,1fr)_minmax(200px,2fr)_80px_minmax(90px,0.8fr)_minmax(100px,0.8fr)_50px_72px_100px] gap-2 border-b px-2 pb-1 text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
+                              <div className="hidden xl:grid grid-cols-[28px_40px_minmax(180px,1.4fr)_minmax(320px,3fr)_80px_minmax(90px,0.8fr)_minmax(100px,0.8fr)_50px_72px_100px] gap-2 border-b px-2 pb-1 text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
                                 <span />
                                 <span className="group inline-flex items-center justify-center gap-0.5">
                                   <button type="button" className={sortButtonClass("channel", "asc")} onClick={() => toggleSort("channel", "asc")} aria-label="Kanal aufsteigend sortieren"><ArrowUp className="h-3 w-3" /></button>
@@ -1128,7 +1128,7 @@ export function MyWorkCasesWorkspace() {
                                               )}
                                               onClick={() => handleSelectCaseItem(item)}
                                             >
-                                              <div className="hidden xl:grid h-12 grid-cols-[28px_40px_minmax(140px,1fr)_minmax(200px,2fr)_80px_minmax(90px,0.8fr)_minmax(100px,0.8fr)_50px_72px_100px] items-center gap-2 text-xs text-muted-foreground">
+                                              <div className="hidden xl:grid h-12 grid-cols-[28px_40px_minmax(180px,1.4fr)_minmax(320px,3fr)_80px_minmax(90px,0.8fr)_minmax(100px,0.8fr)_50px_72px_100px] items-center gap-2 text-xs text-muted-foreground">
                                                 {/* Drag handle */}
                                                 <span
                                                   {...dragProvided.dragHandleProps}
@@ -1156,24 +1156,28 @@ export function MyWorkCasesWorkspace() {
                                                 <span className="inline-flex items-center justify-center" title={priorityMeta(item.priority).label}>
                                                   <Circle className={cn("h-3.5 w-3.5 fill-current", priorityMeta(item.priority).color)} />
                                                 </span>
-                                                <span className="inline-flex items-center justify-center gap-1.5">
-                                                  {item.visible_to_all && <Globe className="h-3.5 w-3.5 text-blue-500 shrink-0" />}
-                                                  {linkedFile && (
-                                                    <TooltipProvider delayDuration={200}>
-                                                      <Tooltip>
-                                                        <TooltipTrigger asChild>
-                                                          <Link2 className="h-3.5 w-3.5 text-blue-500 shrink-0" />
-                                                        </TooltipTrigger>
-                                                        <TooltipContent side="top" className="text-xs">
-                                                          <p className="font-medium">Ist Bestandteil der Akte „{linkedFile.title}“</p>
-                                                          {linkedFile.reference_number && <p className="text-muted-foreground">{linkedFile.reference_number}</p>}
-                                                        </TooltipContent>
-                                                      </Tooltip>
-                                                    </TooltipProvider>
-                                                  )}
+                                                <span className="inline-grid grid-cols-2 place-items-center gap-1">
+                                                  <span className="inline-flex h-4 w-4 items-center justify-center">
+                                                    {item.visible_to_all && <Globe className="h-3.5 w-3.5 text-blue-500" />}
+                                                  </span>
+                                                  <span className="inline-flex h-4 w-4 items-center justify-center">
+                                                    {linkedFile && (
+                                                      <TooltipProvider delayDuration={200}>
+                                                        <Tooltip>
+                                                          <TooltipTrigger asChild>
+                                                            <Link2 className="h-3.5 w-3.5 text-blue-500" />
+                                                          </TooltipTrigger>
+                                                          <TooltipContent side="top" className="text-xs">
+                                                            <p className="font-medium">Ist Bestandteil der Akte „{linkedFile.title}“</p>
+                                                            {linkedFile.reference_number && <p className="text-muted-foreground">{linkedFile.reference_number}</p>}
+                                                          </TooltipContent>
+                                                        </Tooltip>
+                                                      </TooltipProvider>
+                                                    )}
+                                                  </span>
                                                 </span>
                                                 <div className="flex min-w-0 items-center gap-2" onClick={(event) => event.stopPropagation()}>
-                                                    <div className="relative inline-flex items-end justify-center pb-1">
+                                                    <div className="inline-flex flex-col items-end gap-1">
                                                       <div className="flex items-center -space-x-2">
                                                         {assignees.slice(0, 3).map((member) => (
                                                           <Avatar key={member.id} className="h-6 w-6 border bg-background">
@@ -1184,7 +1188,7 @@ export function MyWorkCasesWorkspace() {
                                                       </div>
                                                       <DropdownMenu>
                                                         <DropdownMenuTrigger asChild>
-                                                          <Button type="button" size="icon" variant="outline" className="absolute right-0 top-full h-6 w-6 -translate-y-1/2 rounded-full border bg-background p-0 shadow-sm">
+                                                          <Button type="button" size="icon" variant="outline" className="h-6 w-6 rounded-full border bg-background p-0 shadow-sm">
                                                             <Plus className="h-3 w-3" />
                                                           </Button>
                                                         </DropdownMenuTrigger>
@@ -1269,7 +1273,7 @@ export function MyWorkCasesWorkspace() {
                                                     )}
                                                   </div>
                                                   <div className="flex items-center gap-2" onClick={(event) => event.stopPropagation()}>
-                                                    <div className="relative inline-flex items-end justify-center pb-1">
+                                                    <div className="inline-flex flex-col items-end gap-1">
                                                       <div className="flex items-center -space-x-2">
                                                         {assignees.slice(0, 2).map((member) => (
                                                           <Avatar key={member.id} className="h-6 w-6 border bg-background">
@@ -1280,7 +1284,7 @@ export function MyWorkCasesWorkspace() {
                                                       </div>
                                                       <DropdownMenu>
                                                         <DropdownMenuTrigger asChild>
-                                                          <Button type="button" size="icon" variant="outline" className="absolute right-0 top-full h-6 w-6 -translate-y-1/2 rounded-full border bg-background p-0 shadow-sm">
+                                                          <Button type="button" size="icon" variant="outline" className="h-6 w-6 rounded-full border bg-background p-0 shadow-sm">
                                                             <Plus className="h-3 w-3" />
                                                           </Button>
                                                         </DropdownMenuTrigger>
