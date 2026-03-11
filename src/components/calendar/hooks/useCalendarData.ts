@@ -1,5 +1,5 @@
-import { useMemo } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useEffect, useMemo } from "react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { debugConsole } from '@/utils/debugConsole';
 import { supabase } from "@/integrations/supabase/client";
 import { useTenant } from "@/hooks/useTenant";
@@ -303,6 +303,7 @@ async function fetchCalendarData(currentDate: Date, view: string, tenantId: stri
 
 export function useCalendarData(currentDate: Date, view: string) {
   const { currentTenant } = useTenant();
+  const queryClient = useQueryClient();
 
   // Stable query key based on date range, not exact date object
   const queryKey = useMemo(() => {
@@ -314,10 +315,30 @@ export function useCalendarData(currentDate: Date, view: string) {
     queryKey,
     queryFn: () => fetchCalendarData(currentDate, view, currentTenant?.id),
     enabled: view !== "polls" && !!currentTenant,
+    placeholderData: (previousData) => previousData,
     staleTime: 5 * 60 * 1000, // 5 minutes
     gcTime: 10 * 60 * 1000,
     refetchOnWindowFocus: false,
   });
+
+  useEffect(() => {
+    if (view === "polls" || !currentTenant?.id) return;
+
+    const prefetchOffset = view === "month" ? 30 : view === "week" ? 7 : 1;
+    const prefetchDates = [
+      new Date(currentDate.getTime() + prefetchOffset * 24 * 60 * 60 * 1000),
+      new Date(currentDate.getTime() - prefetchOffset * 24 * 60 * 60 * 1000),
+    ];
+
+    for (const date of prefetchDates) {
+      const [start, end] = getDateRange(date, view);
+      queryClient.prefetchQuery({
+        queryKey: ["calendar-data", start.toISOString(), end.toISOString(), currentTenant.id],
+        queryFn: () => fetchCalendarData(date, view, currentTenant.id),
+        staleTime: 5 * 60 * 1000,
+      });
+    }
+  }, [currentDate, currentTenant?.id, queryClient, view]);
 
   const refreshAppointments = () => { refetch(); };
 
