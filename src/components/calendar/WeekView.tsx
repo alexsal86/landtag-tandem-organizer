@@ -352,12 +352,12 @@ export function WeekView({ weekStart, events, onAppointmentClick, onPreparationC
       {/* Scrollable time grid */}
       <div className="flex-1 flex bg-background overflow-hidden">
         {/* Hours column - sticky */}
-        <div className="w-16 border-r bg-muted/20 sticky left-0 z-10">
+        <div className="w-9 shrink-0 border-r sticky left-0 z-10">
           {hours.map((hour) => (
             <div
               key={hour}
               id={hour === 9 ? 'week-hour-9' : undefined}
-              className="h-16 border-b text-xs text-muted-foreground p-2 text-right"
+              className="h-16 border-b text-[10px] text-muted-foreground px-1 py-1 text-right"
             >
               {hour.toString().padStart(2, '0')}:00
             </div>
