@@ -5733,6 +5733,7 @@ export type Database = {
       leave_requests: {
         Row: {
           created_at: string
+          deputy_user_id: string | null
           end_date: string
           end_time: string | null
           id: string
@@ -5748,6 +5749,7 @@ export type Database = {
         }
         Insert: {
           created_at?: string
+          deputy_user_id?: string | null
           end_date: string
           end_time?: string | null
           id?: string
@@ -5763,6 +5765,7 @@ export type Database = {
         }
         Update: {
           created_at?: string
+          deputy_user_id?: string | null
           end_date?: string
           end_time?: string | null
           id?: string
@@ -10723,6 +10726,102 @@ export type Database = {
           },
         ]
       }
+      vacation_checklist_responses: {
+        Row: {
+          checklist_item_id: string
+          completed: boolean
+          completed_at: string | null
+          created_at: string
+          id: string
+          leave_request_id: string
+          user_id: string
+        }
+        Insert: {
+          checklist_item_id: string
+          completed?: boolean
+          completed_at?: string | null
+          created_at?: string
+          id?: string
+          leave_request_id: string
+          user_id: string
+        }
+        Update: {
+          checklist_item_id?: string
+          completed?: boolean
+          completed_at?: string | null
+          created_at?: string
+          id?: string
+          leave_request_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "vacation_checklist_responses_checklist_item_id_fkey"
+            columns: ["checklist_item_id"]
+            isOneToOne: false
+            referencedRelation: "vacation_checklist_templates"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "vacation_checklist_responses_leave_request_id_fkey"
+            columns: ["leave_request_id"]
+            isOneToOne: false
+            referencedRelation: "active_deputyships"
+            referencedColumns: ["leave_request_id"]
+          },
+          {
+            foreignKeyName: "vacation_checklist_responses_leave_request_id_fkey"
+            columns: ["leave_request_id"]
+            isOneToOne: false
+            referencedRelation: "leave_requests"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      vacation_checklist_templates: {
+        Row: {
+          created_at: string
+          description: string | null
+          id: string
+          is_active: boolean
+          label: string
+          reminder_after: boolean
+          sort_order: number
+          tenant_id: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          is_active?: boolean
+          label: string
+          reminder_after?: boolean
+          sort_order?: number
+          tenant_id: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          is_active?: boolean
+          label?: string
+          reminder_after?: boolean
+          sort_order?: number
+          tenant_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "vacation_checklist_templates_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       vacation_history: {
         Row: {
           annual_entitlement: number
@@ -10836,6 +10935,33 @@ export type Database = {
       }
     }
     Views: {
+      active_deputyships: {
+        Row: {
+          absent_user_id: string | null
+          deputy_user_id: string | null
+          end_date: string | null
+          leave_request_id: string | null
+          leave_type: Database["public"]["Enums"]["leave_type"] | null
+          start_date: string | null
+        }
+        Insert: {
+          absent_user_id?: string | null
+          deputy_user_id?: string | null
+          end_date?: string | null
+          leave_request_id?: string | null
+          leave_type?: Database["public"]["Enums"]["leave_type"] | null
+          start_date?: string | null
+        }
+        Update: {
+          absent_user_id?: string | null
+          deputy_user_id?: string | null
+          end_date?: string | null
+          leave_request_id?: string | null
+          leave_type?: Database["public"]["Enums"]["leave_type"] | null
+          start_date?: string | null
+        }
+        Relationships: []
+      }
       matrix_widget_feedback_admin_stats: {
         Row: {
           helpful_count: number | null
@@ -11073,6 +11199,10 @@ export type Database = {
       is_admin: { Args: { _user_id: string }; Returns: boolean }
       is_admin_for_audit_logs: { Args: { _user_id: string }; Returns: boolean }
       is_admin_of: { Args: { employee: string }; Returns: boolean }
+      is_deputy_for: {
+        Args: { _absent_user_id: string; _deputy_id: string }
+        Returns: boolean
+      }
       is_meeting_participant: {
         Args: { p_meeting_id: string }
         Returns: boolean
