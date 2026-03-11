@@ -1199,7 +1199,7 @@ export function MyWorkCasesWorkspace() {
                                                       </div>
                                                       <DropdownMenu>
                                                         <DropdownMenuTrigger asChild>
-                                                          <Button type="button" size="icon" variant="outline" className="absolute left-1/2 top-full h-5 w-5 -translate-x-1/2 -translate-y-1/2 rounded-full border bg-background p-0 shadow-sm">
+                                                          <Button type="button" size="icon" variant="outline" className="absolute right-0 top-full h-6 w-6 -translate-y-1/2 rounded-full border bg-background p-0 shadow-sm">
                                                             <Plus className="h-3 w-3" />
                                                           </Button>
                                                         </DropdownMenuTrigger>
@@ -1295,7 +1295,7 @@ export function MyWorkCasesWorkspace() {
                                                       </div>
                                                       <DropdownMenu>
                                                         <DropdownMenuTrigger asChild>
-                                                          <Button type="button" size="icon" variant="outline" className="absolute left-1/2 top-full h-5 w-5 -translate-x-1/2 -translate-y-1/2 rounded-full border bg-background p-0 shadow-sm">
+                                                          <Button type="button" size="icon" variant="outline" className="absolute right-0 top-full h-6 w-6 -translate-y-1/2 rounded-full border bg-background p-0 shadow-sm">
                                                             <Plus className="h-3 w-3" />
                                                           </Button>
                                                         </DropdownMenuTrigger>
