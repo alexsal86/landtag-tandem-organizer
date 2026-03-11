@@ -263,6 +263,7 @@ export default function Administration() {
           return <UserColorManager />;
         case "collaboration": return <TenantCollaboration />;
         case "matrix": return <MatrixSettings />;
+        case "vacation-checklist": return <VacationChecklistAdmin />;
         default: return <StatusAdminSettings />;
       }
     }
