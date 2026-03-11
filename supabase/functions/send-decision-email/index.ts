@@ -1,7 +1,7 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { Resend } from "https://esm.sh/resend@4.0.0";
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
-import { resolveAppBaseUrl } from "../_shared/url.ts";
+import { requireAppBaseUrl } from "../_shared/url.ts";
+import { createServiceRoleClient } from "../_shared/supabase.ts";
 import { requireTenantAccess } from "../_shared/tenant-access.ts";
 
 const resend = new Resend(Deno.env.get("RESEND_API_KEY"));
@@ -27,10 +27,7 @@ const handler = async (req: Request): Promise<Response> => {
   }
 
   try {
-    const supabase = createClient(
-      Deno.env.get("SUPABASE_URL") ?? "",
-      Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? ""
-    );
+    const supabase = createServiceRoleClient();
 
     const tenantAccess = await requireTenantAccess({
       req,
@@ -200,7 +197,7 @@ const handler = async (req: Request): Promise<Response> => {
         const participantToken = participant.token;
 
         // Get current domain dynamically
-        const domain = resolveAppBaseUrl(req);
+        const domain = requireAppBaseUrl(req);
         
         // Generate response URLs
         const baseUrl = `${domain}/decision-response/${participant.id}?token=${participantToken}`;

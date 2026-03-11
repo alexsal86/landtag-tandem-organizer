@@ -37,3 +37,10 @@ export function resolveAppBaseUrl(req: Request): string {
   return "";
 }
 
+export function requireAppBaseUrl(req: Request): string {
+  const baseUrl = resolveAppBaseUrl(req);
+  if (!baseUrl) {
+    throw new Error("Unable to resolve app base URL. Set PUBLIC_APP_URL or SUPABASE_URL.");
+  }
+  return baseUrl;
+}

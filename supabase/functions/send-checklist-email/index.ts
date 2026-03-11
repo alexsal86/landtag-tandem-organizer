@@ -1,5 +1,5 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2.39.0";
+import { createServiceRoleClient } from "../_shared/supabase.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -11,11 +11,7 @@ interface EmailRequest {
   checklistItemId: string;
 }
 
-const getSupabaseClient = () => {
-  const supabaseUrl = Deno.env.get("SUPABASE_URL") ?? "";
-  const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
-  return createClient(supabaseUrl, supabaseServiceKey);
-};
+const getSupabaseClient = () => createServiceRoleClient();
 
 const handler = async (req: Request): Promise<Response> => {
   if (req.method === "OPTIONS") {
