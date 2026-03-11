@@ -10766,13 +10766,6 @@ export type Database = {
             foreignKeyName: "vacation_checklist_responses_leave_request_id_fkey"
             columns: ["leave_request_id"]
             isOneToOne: false
-            referencedRelation: "active_deputyships"
-            referencedColumns: ["leave_request_id"]
-          },
-          {
-            foreignKeyName: "vacation_checklist_responses_leave_request_id_fkey"
-            columns: ["leave_request_id"]
-            isOneToOne: false
             referencedRelation: "leave_requests"
             referencedColumns: ["id"]
           },
@@ -10935,33 +10928,6 @@ export type Database = {
       }
     }
     Views: {
-      active_deputyships: {
-        Row: {
-          absent_user_id: string | null
-          deputy_user_id: string | null
-          end_date: string | null
-          leave_request_id: string | null
-          leave_type: Database["public"]["Enums"]["leave_type"] | null
-          start_date: string | null
-        }
-        Insert: {
-          absent_user_id?: string | null
-          deputy_user_id?: string | null
-          end_date?: string | null
-          leave_request_id?: string | null
-          leave_type?: Database["public"]["Enums"]["leave_type"] | null
-          start_date?: string | null
-        }
-        Update: {
-          absent_user_id?: string | null
-          deputy_user_id?: string | null
-          end_date?: string | null
-          leave_request_id?: string | null
-          leave_type?: Database["public"]["Enums"]["leave_type"] | null
-          start_date?: string | null
-        }
-        Relationships: []
-      }
       matrix_widget_feedback_admin_stats: {
         Row: {
           helpful_count: number | null
@@ -11112,6 +11078,16 @@ export type Database = {
       generate_yearly_stats_for_year: {
         Args: { p_tenant_id: string; p_year: number }
         Returns: Json
+      }
+      get_active_deputyships_for_user: {
+        Args: { _user_id: string }
+        Returns: {
+          absent_user_id: string
+          end_date: string
+          leave_request_id: string
+          leave_type: string
+          start_date: string
+        }[]
       }
       get_authored_messages: {
         Args: { author_id_param: string }
