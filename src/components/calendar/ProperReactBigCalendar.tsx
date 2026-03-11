@@ -38,9 +38,11 @@ const DnDCalendar = withDragAndDrop(Calendar);
 
 const WeekHeader = ({ date }: { date: Date }) => {
   const isToday = isSameDay(date, new Date());
+  const weekdayLabel = format(date, 'EEE', { locale: de }).replace(/\.$/, '').toUpperCase();
+
   return (
     <div className="rbc-custom-week-header">
-      <span className="rbc-custom-weekday">{format(date, 'EEE', { locale: de }).toUpperCase()}</span>
+      <span className="rbc-custom-weekday">{weekdayLabel}</span>
       <span className={isToday ? 'rbc-custom-day rbc-custom-day--today' : 'rbc-custom-day'}>
         {format(date, 'd', { locale: de })}
       </span>
