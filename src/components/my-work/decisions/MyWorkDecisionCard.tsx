@@ -163,7 +163,7 @@ const MyWorkDecisionCardInner = ({
       <Card
         ref={hRef as any}
         className={cn(
-          'group mb-3 last:mb-0 border-l-4 hover:bg-muted/40 transition-colors cursor-pointer',
+          'group border-l-4 hover:bg-muted/40 transition-colors cursor-pointer',
           getBorderColor(summary, decision.response_options, decision.participants),
           highlighted && 'notification-highlight',
         )}
