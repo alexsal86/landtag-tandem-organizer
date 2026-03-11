@@ -163,6 +163,12 @@
   min-height: 0;
 }
 
+/* Keep all-day events aligned with the shifted Monday column */
+.rbc-time-view .rbc-allday-cell .rbc-row-content {
+  margin-left: -8px;
+  padding-left: 8px;
+}
+
 /* Week/Day header cells */
 .rbc-time-view .rbc-header {
   background: hsl(var(--background));
