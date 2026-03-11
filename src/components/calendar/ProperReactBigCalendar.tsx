@@ -191,7 +191,7 @@ const ProperReactBigCalendar: React.FC<ProperReactBigCalendarProps> = ({
     const hasOverlap = overlappingEventIds.has(String(event.id));
     
     style.backgroundColor = bgColor;
-    style.border = hasOverlap ? '2px solid white' : 'none';
+    style.border = hasOverlap ? '1px solid white' : 'none';
     style.color = 'white';
 
     if (originalEvent?.type) {
