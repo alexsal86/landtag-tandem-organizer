@@ -28,7 +28,7 @@ export function CalendarHeader({ onShowPolls, selectedDate, onSelectDate }: Cale
         </Button>
       </div>
 
-      <div className="mt-6 rounded-lg border bg-background/70 p-2">
+      <div className="mt-6 rounded-lg border bg-background/70 p-1.5">
         <Calendar
           mode="single"
           month={selectedDate}
@@ -40,13 +40,19 @@ export function CalendarHeader({ onShowPolls, selectedDate, onSelectDate }: Cale
           onMonthChange={onSelectDate}
           showWeekNumber
           classNames={{
-            month_caption: "flex w-full flex-row items-center justify-between gap-2 px-1",
-            caption_label: "text-base font-semibold text-left capitalize",
-            nav: "flex w-auto items-center gap-1",
-            button_previous: "h-7 w-7 border-0 bg-transparent p-0 shadow-none hover:bg-accent/60",
-            button_next: "h-7 w-7 border-0 bg-transparent p-0 shadow-none hover:bg-accent/60",
-            week_number: "h-9 w-9 rounded-md bg-muted text-sm font-normal text-foreground",
-            week_number_header: "h-9 w-9 rounded-md bg-muted text-sm font-normal text-muted-foreground",
+            month_caption: "flex w-full flex-row items-center justify-between gap-1 px-1 mb-1",
+            caption_label: "text-sm font-semibold text-left capitalize",
+            nav: "flex w-auto items-center gap-0.5",
+            button_previous: "h-6 w-6 border-0 bg-transparent p-0 shadow-none hover:bg-accent/60",
+            button_next: "h-6 w-6 border-0 bg-transparent p-0 shadow-none hover:bg-accent/60",
+            month_grid: "w-full border-collapse space-y-0",
+            weekdays: "flex",
+            weekday: "text-muted-foreground w-7 font-normal text-[0.7rem]",
+            week: "flex w-full mt-0",
+            day: "h-7 w-7 text-center text-xs p-0 relative focus-within:relative focus-within:z-20",
+            day_button: "h-7 w-7 p-0 font-normal text-xs aria-selected:opacity-100",
+            week_number: "h-7 w-7 bg-muted text-[0.65rem] font-normal text-muted-foreground flex items-center justify-center",
+            week_number_header: "h-7 w-7 bg-muted text-[0.65rem] font-normal text-muted-foreground",
           }}
           className="w-full p-0"
         />
