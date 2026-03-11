@@ -152,6 +152,9 @@ npx vitest run
 
 # Tests im Watch-Mode
 npx vitest
+
+# Security-Doku-Drift prüfen
+npm run check:security-hygiene
 ```
 
 - Framework: **Vitest** + **@testing-library/react**

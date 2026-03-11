@@ -29,7 +29,10 @@
     "typecheck:pages": "tsc -p tsconfig.pages-strict.json --noEmit",
     "typecheck:strict-all": "npm run typecheck:knowledge && npm run typecheck:auth && npm run typecheck:quicknotes && npm run typecheck:notifications && npm run typecheck:dashboard && npm run typecheck:utils && npm run typecheck:hooks-batch1 && npm run typecheck:hooks-batch2 && npm run typecheck:contexts && npm run typecheck:services-features && npm run typecheck:components-batch1 && npm run typecheck:components-batch2 && npm run typecheck:components-batch3 && npm run typecheck:components-batch4 && npm run typecheck:components-toplevel && npm run typecheck:pages",
     "typecheck:utils": "tsc -p tsconfig.strict-utils.json --noEmit",
-    "report:bundle-size": "node scripts/report-bundle-size.mjs"
+    "report:bundle-size": "node scripts/report-bundle-size.mjs",
+    "check:security-doc-drift": "node scripts/check-security-doc-drift.mjs",
+    "check:dangerouslysetinnerhtml-inventory": "node scripts/check-dangerouslysetinnerhtml-inventory.mjs",
+    "check:security-hygiene": "npm run check:security-doc-drift && npm run check:dangerouslysetinnerhtml-inventory"
   },
   "dependencies": {
     "@eslint/js": "^10.0.1",
