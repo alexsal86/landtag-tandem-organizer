@@ -7,7 +7,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { ResponsiveDialog } from "@/components/ui/responsive-dialog";
-import { DollarSign, Plus, ExternalLink, TrendingUp } from "lucide-react";
+import { Receipt, Plus, ExternalLink, TrendingUp, Wallet, AlertTriangle } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { useTenant } from "@/hooks/useTenant";
@@ -47,7 +47,6 @@ export function MyWorkExpenseWidget({ userRole }: Props) {
   const [topCategories, setTopCategories] = useState<{ name: string; color: string | null; total: number }[]>([]);
   const [recentExpenses, setRecentExpenses] = useState<RecentExpense[]>([]);
   const [categories, setCategories] = useState<ExpenseCategory[]>([]);
-  const [pendingCount, setPendingCount] = useState(0);
 
   // Quick entry dialog
   const [dialogOpen, setDialogOpen] = useState(false);
@@ -180,7 +179,7 @@ export function MyWorkExpenseWidget({ userRole }: Props) {
     <div className="space-y-3">
       <div className="flex items-center justify-between">
         <h3 className="text-lg font-semibold flex items-center gap-2">
-          <DollarSign className="h-5 w-5" />
+          <Receipt className="h-5 w-5" />
           Kosten-Überblick
         </h3>
         <div className="flex gap-1">
@@ -202,20 +201,46 @@ export function MyWorkExpenseWidget({ userRole }: Props) {
       </div>
 
       {/* Monthly budget progress */}
-      <div className="p-3 rounded-lg border bg-card space-y-2">
-        <div className="flex justify-between text-sm">
-          <span className="text-muted-foreground">{monthName}</span>
-          <span className="font-medium">
-            {monthTotal.toLocaleString("de-DE", { style: "currency", currency: "EUR" })}
-            {budgetAmount > 0 && (
-              <span className="text-muted-foreground">
-                {" "}/ {budgetAmount.toLocaleString("de-DE", { style: "currency", currency: "EUR" })}
-              </span>
-            )}
-          </span>
+      <div className="p-3 rounded-lg border bg-card space-y-3">
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+          <div className="rounded-md bg-muted/40 p-2">
+            <p className="text-xs text-muted-foreground">Monat</p>
+            <p className="text-sm font-medium">{monthName}</p>
+          </div>
+          <div className="rounded-md bg-muted/40 p-2">
+            <p className="text-xs text-muted-foreground flex items-center gap-1">
+              <Wallet className="h-3 w-3" />
+              Ausgaben
+            </p>
+            <p className="text-sm font-semibold">
+              {monthTotal.toLocaleString("de-DE", { style: "currency", currency: "EUR" })}
+            </p>
+          </div>
+          <div className="rounded-md bg-muted/40 p-2">
+            <p className="text-xs text-muted-foreground flex items-center gap-1">
+              {budgetAmount > 0 ? <TrendingUp className="h-3 w-3" /> : <AlertTriangle className="h-3 w-3" />}
+              Status
+            </p>
+            <p className="text-sm font-medium">
+              {budgetAmount > 0
+                ? `${Math.round(budgetPercent)}% vom Budget`
+                : "Kein Budget hinterlegt"}
+            </p>
+          </div>
         </div>
+
         {budgetAmount > 0 && (
-          <Progress value={budgetPercent} className="h-2" />
+          <>
+            <div className="flex justify-between text-xs text-muted-foreground">
+              <span>
+                Budget: {budgetAmount.toLocaleString("de-DE", { style: "currency", currency: "EUR" })}
+              </span>
+              <span>
+                Rest: {(budgetAmount - monthTotal).toLocaleString("de-DE", { style: "currency", currency: "EUR" })}
+              </span>
+            </div>
+            <Progress value={budgetPercent} className="h-2" />
+          </>
         )}
 
         {/* Top categories */}

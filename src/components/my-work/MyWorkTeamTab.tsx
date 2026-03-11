@@ -292,15 +292,17 @@ export function MyWorkTeamTab() {
   }
 
   return (
-    <div className="space-y-6 p-4">
-        {/* Team Announcements Manager - only for admins */}
+      <div className="space-y-6 p-4">
+        {/* Team Announcements + Expense overview */}
         {isAdmin && (
-          <TeamAnnouncementsManager />
-        )}
-
-        {/* Expense Widget */}
-        {isAdmin && (
-          <MyWorkExpenseWidget userRole={userRole} />
+          <div className="grid grid-cols-1 gap-6 lg:grid-cols-2 lg:items-start">
+            <div className="min-w-0">
+              <TeamAnnouncementsManager />
+            </div>
+            <div className="min-w-0">
+              <MyWorkExpenseWidget userRole={userRole} />
+            </div>
+          </div>
         )}
 
         {/* Team Members Section */}
