@@ -120,7 +120,7 @@ export function useMyWorkTasksData(userId?: string) {
         supabase
           .from("tasks")
           .select(TASK_LIST_SELECT)
-          .in("parent_task_id", allTaskIds)
+          .not("parent_task_id", "is", null)
           .neq("status", "completed")
           .order("due_date", { ascending: true, nullsFirst: false }),
         supabase
@@ -143,6 +143,7 @@ export function useMyWorkTasksData(userId?: string) {
 
       const queue = [...allTaskIds];
       const visited = new Set<string>();
+      const visibleTaskIds = new Set<string>(allTaskIds);
       while (queue.length > 0) {
         const parentId = queue.shift();
         if (!parentId || visited.has(parentId)) continue;
@@ -152,6 +153,7 @@ export function useMyWorkTasksData(userId?: string) {
         if (children.length > 0) {
           grouped[parentId] = children;
           children.forEach((childTask) => {
+            visibleTaskIds.add(childTask.id);
             if (!visited.has(childTask.id)) queue.push(childTask.id);
           });
         }
@@ -168,6 +170,7 @@ export function useMyWorkTasksData(userId?: string) {
       const commentCounts: Record<string, number> = {};
       commentsData.forEach((comment) => {
         if (!comment.task_id) return;
+        if (!visibleTaskIds.has(comment.task_id)) return;
         commentCounts[comment.task_id] = (commentCounts[comment.task_id] || 0) + 1;
       });
       setTaskCommentCounts(commentCounts);
