@@ -22,6 +22,7 @@ interface CaseItemCreateDialogProps {
   createCaseItem: ReturnType<typeof useCaseItems>["createCaseItem"];
   assignees: Array<{ id: string; name: string }>;
   defaultAssigneeId: string | null;
+  categoryOptions: readonly string[];
 }
 
 interface ContactSearchResult {
@@ -40,8 +41,6 @@ const sourceChannelOptions = [
   { value: "other", label: "Sonstiges", icon: Briefcase },
 ] as const;
 
-const categoryOptions = ["Allgemein", "Bürgeranliegen", "Anfrage", "Beschwerde", "Termin", "Sonstiges"] as const;
-
 const priorityOptions = [
   { value: "low", label: "Niedrig" },
   { value: "medium", label: "Mittel" },
@@ -49,7 +48,7 @@ const priorityOptions = [
   { value: "urgent", label: "Dringend" },
 ] as const;
 
-export function CaseItemCreateDialog({ open, onOpenChange, onCreated, createCaseItem, assignees, defaultAssigneeId }: CaseItemCreateDialogProps) {
+export function CaseItemCreateDialog({ open, onOpenChange, onCreated, createCaseItem, assignees, defaultAssigneeId, categoryOptions }: CaseItemCreateDialogProps) {
   const { user } = useAuth();
   const { currentTenant } = useTenant();
   const [subject, setSubject] = useState("");

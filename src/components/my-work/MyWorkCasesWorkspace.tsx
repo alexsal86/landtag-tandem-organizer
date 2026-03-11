@@ -35,6 +35,7 @@ import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import { useCaseWorkspaceData, type CaseFile, type CaseItem, type TeamUser } from "@/components/my-work/hooks/useCaseWorkspaceData";
 import { useCaseItemEdit, type EditableCaseItem, type TimelineEvent, type TimelineInteractionType } from "@/components/my-work/hooks/useCaseItemEdit";
+import { DEFAULT_CASE_ITEM_CATEGORIES, useCaseItemCategories } from "@/hooks/useCaseItemCategories";
 
 
 
@@ -55,8 +56,6 @@ type TimelineEntry = {
 
 type CaseItemSortKey = "channel" | "subject" | "description" | "status" | "received" | "due" | "category" | "priority" | "assignee";
 type SortDirection = "asc" | "desc";
-
-const categoryOptions = ["Allgemein", "Bürgeranliegen", "Anfrage", "Beschwerde", "Termin", "Sonstiges"] as const;
 
 const sourceChannelMeta: Record<string, { icon: typeof Phone; label: string }> = {
   phone: { icon: Phone, label: "Telefon" },
@@ -218,6 +217,7 @@ const priorityOptions = [
 export function MyWorkCasesWorkspace() {
   const { user } = useAuth();
   const { currentTenant } = useTenant();
+  const { data: configuredCaseItemCategories } = useCaseItemCategories();
   const tenantId = currentTenant?.id;
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
@@ -242,6 +242,14 @@ export function MyWorkCasesWorkspace() {
   } = useCaseWorkspaceData({ tenantId, userId: user?.id });
   const [itemFilterQuery, setItemFilterQuery] = useState("");
   const [fileFilterQuery, setFileFilterQuery] = useState("");
+
+  const categoryOptions = useMemo(() => {
+    const configured = (configuredCaseItemCategories ?? [])
+      .map((category) => category.label?.trim())
+      .filter((label): label is string => Boolean(label));
+
+    return configured.length > 0 ? configured : [...DEFAULT_CASE_ITEM_CATEGORIES];
+  }, [configuredCaseItemCategories]);
 
   const [isCaseItemDialogOpen, setIsCaseItemDialogOpen] = useState(false);
   const [isCaseFileDialogOpen, setIsCaseFileDialogOpen] = useState(false);
@@ -1630,6 +1638,7 @@ export function MyWorkCasesWorkspace() {
             createCaseItem={createCaseItem}
             assignees={teamUsers}
             defaultAssigneeId={defaultAssigneeId}
+            categoryOptions={categoryOptions}
           />
 
           <CaseFileCreateDialog
