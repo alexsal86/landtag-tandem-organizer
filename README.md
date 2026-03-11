@@ -87,6 +87,8 @@ supabase/
 
 docs/                          # Fachliche Dokumentation
 ├── rollenrechte-matrix.md     # Rollen- und Rechtemodell
+├── security-function-matrix.md # Auth-/Sicherheitsmodell je Edge Function
+├── dangerouslysetinnerhtml-inventory.md # XSS-relevante Rendering-Inventur
 ├── automation-no-code-umsetzung.md
 └── ...
 ```
@@ -150,6 +152,9 @@ npx vitest run
 
 # Tests im Watch-Mode
 npx vitest
+
+# Security-Doku-Drift prüfen
+npm run check:security-hygiene
 ```
 
 - Framework: **Vitest** + **@testing-library/react**
