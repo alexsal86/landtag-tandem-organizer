@@ -148,6 +148,21 @@
   flex-shrink: 0;
 }
 
+/* Keep weekday header row and all-day row in normal flow (no overlap) */
+.rbc-time-header-content {
+  display: flex;
+  flex-direction: column;
+}
+
+.rbc-time-header .rbc-row.rbc-time-header-cell {
+  min-height: 4.5rem;
+}
+
+.rbc-time-view .rbc-allday-cell {
+  position: relative;
+  min-height: 0;
+}
+
 /* Week/Day header cells */
 .rbc-time-view .rbc-header {
   background: hsl(var(--background));
