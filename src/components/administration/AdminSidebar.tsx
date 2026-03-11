@@ -46,6 +46,7 @@ import {
   Globe,
   PanelTop,
   Network,
+  ClipboardCheck,
 } from "lucide-react";
 
 export interface AdminMenuItem {
@@ -95,6 +96,7 @@ export const adminMenuItems: AdminMenuItem[] = [
       { id: "usercolors", label: "Benutzerfarben", icon: Palette, superAdminOnly: true },
       { id: "collaboration", label: "Kollaboration", icon: Users },
       { id: "matrix", label: "Matrix-Chat", icon: MessageSquare },
+      { id: "vacation-checklist", label: "Urlaubs-Checkliste", icon: ClipboardCheck },
     ],
   },
   {

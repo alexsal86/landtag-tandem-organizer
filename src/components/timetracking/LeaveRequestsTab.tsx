@@ -7,9 +7,12 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Textarea } from "@/components/ui/textarea";
 import { VacationHistoryDialog } from "@/components/VacationHistoryDialog";
+import { DeputySelect } from "./DeputySelect";
+import { VacationChecklistForm, useVacationChecklistItems } from "./VacationChecklistForm";
+import type { ChecklistItem } from "./VacationChecklistForm";
 import { format, parseISO, eachDayOfInterval } from "date-fns";
 import { AlertTriangle, Clock, History, Stethoscope, Timer, Undo2 } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import type { LeaveRow, EmployeeSettingsRow } from "./types";
 import { fmt, getMedicalReasonLabel } from "./types";
 
@@ -41,11 +44,14 @@ interface LeaveRequestsTabProps {
   vacationReason: string; setVacationReason: (v: string) => void;
   handleRequestVacation: () => void;
   handleCancelVacationRequest: (id: string) => void;
+  vacationDeputy: string; setVacationDeputy: (v: string) => void;
+  vacationChecklistItems: ChecklistItem[]; setVacationChecklistItems: (items: ChecklistItem[]) => void;
   // Sick form
   sickStartDate: string; setSickStartDate: (v: string) => void;
   sickEndDate: string; setSickEndDate: (v: string) => void;
   sickNotes: string; setSickNotes: (v: string) => void;
   handleReportSick: () => void;
+  sickDeputy: string; setSickDeputy: (v: string) => void;
   // Medical form
   medicalDate: string; setMedicalDate: (v: string) => void;
   medicalStartTime: string; setMedicalStartTime: (v: string) => void;
@@ -65,6 +71,16 @@ interface LeaveRequestsTabProps {
 export function LeaveRequestsTab(props: LeaveRequestsTabProps) {
   const [vacationHistoryOpen, setVacationHistoryOpen] = useState(false);
   const year = props.selectedMonth.getFullYear();
+
+  // Load checklist items from DB
+  const { items: checklistTemplates, loading: checklistLoading } = useVacationChecklistItems();
+
+  // Sync checklist items when templates load
+  useEffect(() => {
+    if (checklistTemplates.length > 0 && props.vacationChecklistItems.length === 0) {
+      props.setVacationChecklistItems(checklistTemplates);
+    }
+  }, [checklistTemplates]);
 
   return (
     <div className="space-y-6">
@@ -102,7 +118,14 @@ export function LeaveRequestsTab(props: LeaveRequestsTabProps) {
               <div><Label>Von</Label><Input type="date" value={props.vacationStartDate} onChange={e => props.setVacationStartDate(e.target.value)} /></div>
               <div><Label>Bis</Label><Input type="date" value={props.vacationEndDate} onChange={e => props.setVacationEndDate(e.target.value)} /></div>
             </div>
+            <DeputySelect value={props.vacationDeputy} onChange={props.setVacationDeputy} required />
             <div><Label>Grund</Label><Textarea value={props.vacationReason} onChange={e => props.setVacationReason(e.target.value)} placeholder="Optional" /></div>
+            {!checklistLoading && (
+              <VacationChecklistForm
+                items={props.vacationChecklistItems}
+                onItemsChange={props.setVacationChecklistItems}
+              />
+            )}
             <Button onClick={props.handleRequestVacation}>Urlaub beantragen</Button>
           </CardContent>
         </Card>
@@ -206,6 +229,7 @@ export function LeaveRequestsTab(props: LeaveRequestsTabProps) {
               <div><Label>Von</Label><Input type="date" value={props.sickStartDate} onChange={e => props.setSickStartDate(e.target.value)} /></div>
               <div><Label>Bis</Label><Input type="date" value={props.sickEndDate} onChange={e => props.setSickEndDate(e.target.value)} /></div>
             </div>
+            <DeputySelect value={props.sickDeputy} onChange={props.setSickDeputy} required />
             <div><Label>Notizen</Label><Textarea value={props.sickNotes} onChange={e => props.setSickNotes(e.target.value)} placeholder="Optional" /></div>
             <Button onClick={props.handleReportSick}>Krankmeldung einreichen</Button>
           </CardContent>
@@ -321,13 +345,12 @@ export function LeaveRequestsTab(props: LeaveRequestsTabProps) {
                   {props.yearlyBalance >= 0 ? "+" : ""}{fmt(props.yearlyBalance)}
                 </span>
               </div>
-              <p className="text-xs text-muted-foreground mt-1">Jahressaldo inkl. aller Monate bis heute</p>
             </div>
             <div className="grid grid-cols-2 gap-4">
               <div><Label>Von</Label><Input type="date" value={props.overtimeStartDate} onChange={e => props.setOvertimeStartDate(e.target.value)} /></div>
               <div><Label>Bis</Label><Input type="date" value={props.overtimeEndDate} onChange={e => props.setOvertimeEndDate(e.target.value)} /></div>
             </div>
-            <div><Label>Anmerkung</Label><Textarea value={props.overtimeReason} onChange={e => props.setOvertimeReason(e.target.value)} placeholder="Optional" /></div>
+            <div><Label>Grund</Label><Textarea value={props.overtimeReason} onChange={e => props.setOvertimeReason(e.target.value)} placeholder="Optional" /></div>
             <Button onClick={props.handleRequestOvertimeReduction} className="w-full">Überstundenabbau beantragen</Button>
           </CardContent>
         </Card>
@@ -340,7 +363,7 @@ export function LeaveRequestsTab(props: LeaveRequestsTabProps) {
               <p className="text-sm text-muted-foreground">Keine Überstundenabbau-Anträge vorhanden</p>
             ) : (
               <Table>
-                <TableHeader><TableRow><TableHead>Von</TableHead><TableHead>Bis</TableHead><TableHead>Tage</TableHead><TableHead>Anmerkung</TableHead><TableHead>Status</TableHead><TableHead>Aktion</TableHead></TableRow></TableHeader>
+                <TableHeader><TableRow><TableHead>Von</TableHead><TableHead>Bis</TableHead><TableHead>Tage</TableHead><TableHead>Grund</TableHead><TableHead>Status</TableHead><TableHead>Aktion</TableHead></TableRow></TableHeader>
                 <TableBody>
                   {props.overtimeLeaves.map(o => {
                     const d = eachDayOfInterval({ start: parseISO(o.start_date), end: parseISO(o.end_date) }).filter(d => d.getDay() !== 0 && d.getDay() !== 6).length;
@@ -371,7 +394,10 @@ export function LeaveRequestsTab(props: LeaveRequestsTabProps) {
         </Card>
       </div>
 
-      <VacationHistoryDialog open={vacationHistoryOpen} onOpenChange={setVacationHistoryOpen} />
+      <VacationHistoryDialog
+        open={vacationHistoryOpen}
+        onOpenChange={setVacationHistoryOpen}
+      />
     </div>
   );
 }

@@ -299,10 +299,13 @@ export function TimeTrackingView() {
             vacationReason={ops.vacationReason} setVacationReason={ops.setVacationReason}
             handleRequestVacation={ops.handleRequestVacation}
             handleCancelVacationRequest={ops.handleCancelVacationRequest}
+            vacationDeputy={ops.vacationDeputy} setVacationDeputy={ops.setVacationDeputy}
+            vacationChecklistItems={ops.vacationChecklistItems} setVacationChecklistItems={ops.setVacationChecklistItems}
             sickStartDate={ops.sickStartDate} setSickStartDate={ops.setSickStartDate}
             sickEndDate={ops.sickEndDate} setSickEndDate={ops.setSickEndDate}
             sickNotes={ops.sickNotes} setSickNotes={ops.setSickNotes}
             handleReportSick={ops.handleReportSick}
+            sickDeputy={ops.sickDeputy} setSickDeputy={ops.setSickDeputy}
             medicalDate={ops.medicalDate} setMedicalDate={ops.setMedicalDate}
             medicalStartTime={ops.medicalStartTime} setMedicalStartTime={ops.setMedicalStartTime}
             medicalEndTime={ops.medicalEndTime} setMedicalEndTime={ops.setMedicalEndTime}

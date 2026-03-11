@@ -17,6 +17,7 @@ import { de } from "date-fns/locale";
 import { Clock, Plus, ExternalLink, TrendingUp, Calendar, Play, Pause, Square, X } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { useTimeEntryReminder } from "@/hooks/useTimeEntryReminder";
+import { useVacationReminders } from "@/hooks/useVacationReminders";
 
 interface TimeEntryRow {
   id: string;
@@ -55,6 +56,7 @@ export function MyWorkTimeTrackingTab() {
 
   // Check for missing time entries and remind user
   useTimeEntryReminder(user?.id ?? null);
+  useVacationReminders();
 
   // Form state
   const [entryDate, setEntryDate] = useState(format(new Date(), "yyyy-MM-dd"));

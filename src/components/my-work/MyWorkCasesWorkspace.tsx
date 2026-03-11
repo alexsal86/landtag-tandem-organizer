@@ -1064,6 +1064,7 @@ export function MyWorkCasesWorkspace() {
                           Archiv
                         </Button>
                       </div>
+                    </div>
                   </div>
                   <p className="text-xs text-muted-foreground mt-1">Vorgänge per Drag & Drop auf eine Fallakte ziehen zum Verknüpfen</p>
                 </CardHeader>

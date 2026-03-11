@@ -26,6 +26,7 @@ import { LoginCustomization } from "@/components/administration/LoginCustomizati
 import { UserColorManager } from "@/components/administration/UserColorManager";
 import { DecisionArchiveSettings } from "@/components/administration/DecisionArchiveSettings";
 import { MatrixSettings } from "@/components/MatrixSettings";
+import { VacationChecklistAdmin } from "@/components/administration/VacationChecklistAdmin";
 import { NewsEmailTemplateManager } from "@/components/administration/NewsEmailTemplateManager";
 import { AuditLogViewer } from "@/components/administration/AuditLogViewer";
 import { TopicSettings } from "@/components/administration/TopicSettings";
@@ -262,6 +263,7 @@ export default function Administration() {
           return <UserColorManager />;
         case "collaboration": return <TenantCollaboration />;
         case "matrix": return <MatrixSettings />;
+        case "vacation-checklist": return <VacationChecklistAdmin />;
         default: return <StatusAdminSettings />;
       }
     }
