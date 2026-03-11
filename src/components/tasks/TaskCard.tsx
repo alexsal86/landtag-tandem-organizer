@@ -114,7 +114,6 @@ export function TaskCard({
   const hasDueDate = Boolean(task.due_date);
   const sourceLetterId = extractLetterSourceId(task.description);
   const cleanDescription = stripLetterSourceMarker(task.description);
-  const isChildTask = depth > 0;
   const currentAssigneeName = assigneeName ?? resolveAssigneeName?.(task.assigned_to);
   const assigneeIds = (task.assigned_to || "")
     .replace(/[{}]/g, "")
@@ -188,16 +187,13 @@ export function TaskCard({
   return (
     <div
       ref={getHighlightRef ? getHighlightRef(task.id) : highlightRef}
-      className={cn(
-        "relative",
-        isChildTask
-          ? "border-b border-border last:border-b-0 bg-muted/40"
-          : "border border-border rounded-lg bg-card",
-        isHighlighted?.(task.id) && "notification-highlight",
-        className,
-      )}
+      className={cn("relative", className)}
     >
       <div
+        className={cn(
+          "border border-border rounded-lg bg-card",
+          isHighlighted?.(task.id) && "notification-highlight",
+        )}
         onMouseEnter={() => setIsHovered(true)}
         onMouseLeave={() => setIsHovered(false)}
       >
@@ -337,7 +333,7 @@ export function TaskCard({
       </div>
 
       {hasSubtasks && (
-        <div className="border-t border-border ml-6 border-l">
+        <div className="ml-6 mt-2 space-y-2 border-l border-border pl-3">
           {childTasks.map((childTask, index) => (
             <TaskCard
               key={childTask.id}
