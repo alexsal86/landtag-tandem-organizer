@@ -13,6 +13,11 @@ interface EmailRequest {
 
 const getSupabaseClient = () => createServiceRoleClient();
 
+const getErrorMessage = (error: unknown): string => {
+  if (error instanceof Error) return error.message;
+  return String(error);
+};
+
 const handler = async (req: Request): Promise<Response> => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
@@ -117,7 +122,7 @@ const handler = async (req: Request): Promise<Response> => {
       JSON.stringify({ success: true, messageId: emailData.id }),
       { status: 200, headers: { "Content-Type": "application/json", ...corsHeaders } }
     );
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Error sending checklist email:", error);
 
     // Try to log the error if we have the IDs
@@ -132,7 +137,7 @@ const handler = async (req: Request): Promise<Response> => {
         action_id: actionId,
         checklist_item_id: checklistItemId,
         execution_status: "failed",
-        error_message: error.message,
+        error_message: getErrorMessage(error),
       });
     } catch (logError) {
       console.error("Failed to log error:", logError);
