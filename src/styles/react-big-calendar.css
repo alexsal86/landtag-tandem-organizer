@@ -288,7 +288,7 @@
 /* ── Current time indicator with dot (Google style) ── */
 .rbc-current-time-indicator {
   background-color: hsl(var(--destructive));
-  height: 2px;
+  height: 2px !important;
   z-index: 10;
   position: relative;
 }
