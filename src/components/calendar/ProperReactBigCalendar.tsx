@@ -274,6 +274,41 @@ const ProperReactBigCalendar: React.FC<ProperReactBigCalendarProps> = ({
     };
   }, [date, view]);
 
+  useEffect(() => {
+    if (view !== Views.DAY && view !== Views.WEEK) {
+      return;
+    }
+
+    const calendarContainer = calendarContainerRef.current;
+    if (!calendarContainer) {
+      return;
+    }
+
+    const timeContent = calendarContainer.querySelector('.rbc-time-content') as HTMLElement | null;
+    const timeGutter = timeContent?.querySelector('.rbc-time-gutter') as HTMLElement | null;
+
+    if (!timeContent || !timeGutter) {
+      return;
+    }
+
+    const existingSpacer = timeContent.querySelector('.rbc-time-gutter-spacer') as HTMLElement | null;
+    if (existingSpacer) {
+      return;
+    }
+
+    const spacer = document.createElement('div');
+    spacer.className = 'rbc-timeslot-group rbc-time-gutter-spacer';
+    spacer.setAttribute('aria-hidden', 'true');
+
+    const firstDayColumn = timeContent.querySelector('.rbc-day-slot.rbc-time-column');
+    if (firstDayColumn) {
+      timeContent.insertBefore(spacer, firstDayColumn);
+      return;
+    }
+
+    timeContent.appendChild(spacer);
+  }, [date, view]);
+
   return (
     <div ref={calendarContainerRef} className="h-full w-full bg-background min-h-[calc(100vh-220px)]">
       <DnDCalendar
