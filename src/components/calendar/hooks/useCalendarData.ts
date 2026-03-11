@@ -81,34 +81,39 @@ function expandRecurringEvent(event: any, startDate: Date, endDate: Date): any[]
   } catch { return [event]; }
 }
 
-async function expandBirthdayEvents(event: any, startDate: Date, endDate: Date): Promise<any[]> {
+function expandBirthdayEvents(
+  event: any,
+  startDate: Date,
+  endDate: Date,
+  birthdayByContactId: Map<string, string>,
+): any[] {
   if (event.category !== "birthday" || !event.contact_id) return [event];
-  try {
-    const { data: contact } = await supabase.from("contacts").select("birthday").eq("id", event.contact_id).single();
-    if (!contact?.birthday) return [event];
 
-    const originalDate = new Date(event.start_time);
-    const realBirthYear = new Date(contact.birthday).getFullYear();
-    const maxYear = realBirthYear + 99;
-    const startYear = startDate.getFullYear();
-    const endYear = Math.min(endDate.getFullYear(), maxYear);
+  const birthday = birthdayByContactId.get(event.contact_id);
+  if (!birthday) return [event];
 
-    const instances: any[] = [];
-    for (let year = startYear; year <= endYear; year++) {
-      if (year === originalDate.getFullYear()) continue;
-      const bd = new Date(originalDate); bd.setFullYear(year);
-      const bdStart = new Date(bd); bdStart.setHours(0, 0, 0, 0);
-      const bdEnd = new Date(bd); bdEnd.setHours(23, 59, 59, 999);
-      const age = year - realBirthYear;
-      instances.push({
-        ...event, id: `${event.id}-birthday-${year}`,
-        title: `${event.title} (${age}. Geburtstag)`,
-        start_time: bdStart.toISOString(), end_time: bdEnd.toISOString(),
-        is_all_day: true, _isBirthdayInstance: true, _originalId: event.id,
-      });
-    }
-    return [event, ...instances];
-  } catch { return [event]; }
+  const originalDate = new Date(event.start_time);
+  const realBirthYear = new Date(birthday).getFullYear();
+  const maxYear = realBirthYear + 99;
+  const startYear = startDate.getFullYear();
+  const endYear = Math.min(endDate.getFullYear(), maxYear);
+
+  const instances: any[] = [];
+  for (let year = startYear; year <= endYear; year++) {
+    if (year === originalDate.getFullYear()) continue;
+    const bd = new Date(originalDate); bd.setFullYear(year);
+    const bdStart = new Date(bd); bdStart.setHours(0, 0, 0, 0);
+    const bdEnd = new Date(bd); bdEnd.setHours(23, 59, 59, 999);
+    const age = year - realBirthYear;
+    instances.push({
+      ...event, id: `${event.id}-birthday-${year}`,
+      title: `${event.title} (${age}. Geburtstag)`,
+      start_time: bdStart.toISOString(), end_time: bdEnd.toISOString(),
+      is_all_day: true, _isBirthdayInstance: true, _originalId: event.id,
+    });
+  }
+
+  return [event, ...instances];
 }
 
 async function fetchCalendarData(currentDate: Date, view: string, tenantId: string | undefined): Promise<CalendarEvent[]> {
@@ -156,11 +161,30 @@ async function fetchCalendarData(currentDate: Date, view: string, tenantId: stri
 
   const formattedEvents: CalendarEvent[] = [];
 
+  const birthdayContactIds = Array.from(
+    new Set(
+      appointmentsData
+        .filter((appointment) => appointment.category === "birthday" && appointment.contact_id)
+        .map((appointment) => appointment.contact_id as string),
+    ),
+  );
+
+  const { data: birthdayContacts } = birthdayContactIds.length > 0
+    ? await supabase.from("contacts").select("id, birthday").in("id", birthdayContactIds)
+    : { data: [] as Array<{ id: string; birthday: string | null }> };
+
+  const birthdayByContactId = new Map<string, string>();
+  for (const contact of birthdayContacts || []) {
+    if (contact.birthday) {
+      birthdayByContactId.set(contact.id, contact.birthday);
+    }
+  }
+
   // Expand recurring & birthday events
   const expandedAppointments: any[] = [];
   for (const appointment of appointmentsData) {
     if (appointment.category === "birthday") {
-      expandedAppointments.push(...await expandBirthdayEvents(appointment, startDate, endDate));
+      expandedAppointments.push(...expandBirthdayEvents(appointment, startDate, endDate, birthdayByContactId));
     } else {
       expandedAppointments.push(...expandRecurringEvent(appointment, startDate, endDate));
     }
