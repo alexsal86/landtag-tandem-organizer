@@ -219,8 +219,8 @@ export function WeekView({ weekStart, events, onAppointmentClick, onPreparationC
   return (
     <div className="h-full flex flex-col bg-background">
       {/* Header with days - sticky */}
-      <div className="grid grid-cols-[64px,1fr] border-b sticky top-0 bg-background z-20">
-        <div className="border-r bg-muted/20"></div>
+      <div className="grid grid-cols-[36px,1fr] border-b sticky top-0 bg-background z-20">
+        <div className="border-r"></div>
         <div className="grid grid-cols-7">
           {days.map((day, index) => (
             <div
