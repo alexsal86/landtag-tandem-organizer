@@ -226,7 +226,8 @@
 }
 
 .rbc-time-content > .rbc-time-gutter-spacer-column .rbc-time-gutter-spacer {
-  border-bottom: 1px solid hsl(var(--border) / 0.3);
+  border-bottom: 1px solid #ddd;
+  border-left: none;
 }
 
 /* 8px overhang: day-column gridlines extend into spacer area (Google style) */
