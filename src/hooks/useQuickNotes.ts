@@ -822,6 +822,7 @@ export function useQuickNotes(refreshTrigger?: number) {
             id: caseItemId,
             tenant_id: currentTenant.id,
             user_id: user.id,
+            owner_user_id: user.id,
             subject: itemSubject,
             summary: note.content,
             status: 'neu',
