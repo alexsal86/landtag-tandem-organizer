@@ -31,7 +31,7 @@ function Calendar({
         month: cn("space-y-4", defaultClassNames.month),
         month_caption: cn(
           defaultClassNames.month_caption,
-          "flex flex-col items-center gap-2 text-sm font-medium"
+          "flex w-full items-center justify-between gap-2 text-sm font-medium"
         ),
         caption_label: cn(
           defaultClassNames.caption_label,
@@ -44,7 +44,7 @@ function Calendar({
         ),
         nav: cn(
           defaultClassNames.nav,
-          "!relative !inset-auto flex w-full items-center justify-center gap-2 pointer-events-auto"
+          "!relative !inset-auto ml-auto flex w-auto items-center justify-end gap-1 pointer-events-auto"
         ),
         button_previous: cn(
           defaultClassNames.button_previous,
@@ -95,6 +95,7 @@ function Calendar({
           return <ChevronDown className="h-4 w-4" />;
         },
       }}
+      navLayout={props.navLayout ?? "after"}
       weekStartsOn={1}
       {...props}
     />
