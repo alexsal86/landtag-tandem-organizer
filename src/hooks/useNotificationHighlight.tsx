@@ -47,12 +47,16 @@ export const useNotificationHighlight = (clearDelayMs = 5000) => {
     }
   }, [activeHighlightId]);
 
-  const isHighlighted = useCallback((id: string) => {
-    return activeHighlightId === id;
+  const isHighlighted = useCallback((id: string | number) => {
+    if (activeHighlightId == null) {
+      return false;
+    }
+
+    return activeHighlightId === String(id);
   }, [activeHighlightId]);
 
   // Ref callback for the highlighted element
-  const highlightRef = useCallback((id: string) => {
+  const highlightRef = useCallback((id: string | number) => {
     return (element: HTMLElement | null) => {
       if (element && isHighlighted(id)) {
         scrollToHighlight(element);
