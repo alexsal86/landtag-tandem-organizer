@@ -1,25 +1,43 @@
 
+## Code-Qualität — Status
 
-# Plan: Kalender-Sidebar an Google Calendar angleichen
+### Erledigt
 
-## Änderungen
+- **strictNullChecks: true** — aktiviert, alle Build-Fehler behoben
+- **noImplicitAny: true** — aktiviert, alle Build-Fehler behoben
+- **DOMPurify** als zentraler HTML-Sanitizer — alle `dangerouslySetInnerHTML` nutzen jetzt `sanitizeRichHtml()`
+- **Tenant-Access Guard** für Edge Functions — existiert in `supabase/functions/_shared/tenant-access.ts`
+- **ESLint `no-unused-vars: warn`** — aktiviert mit `argsIgnorePattern: '^_'`, erste Bereinigungsrunde in Pages/Hooks abgeschlossen
+- **Standalone `React`-Imports entfernt** — ~60 Dateien bereinigt
+- **State-Mutation fix** — `existingContacts.push()` → immutables Update in `useContactImport.ts`
+- **Non-null Assertion Guards** — `user!.id` / `currentTenant!.id` durch Early-Return-Guards ersetzt (~11 Dateien)
+- **Leere catch-Blöcke** — kritische Stellen in MatrixContext & DaySlipStore mit `debugConsole.warn` versehen
+- **JSON-Protocol Speaker-Normalisierung** — `speaker: string | { name }` korrekt normalisiert
 
-### 1. `src/components/calendar/CalendarHeader.tsx` — classNames anpassen
+### Noch offen
 
-- **month_caption**: Navigation-Pfeile und Monat/Jahr in eine Zeile bringen (bereits `flex-row justify-between`, aber die `nav` muss inline bleiben)
-- **Kompaktere Zellen**: Von `h-9 w-9` auf `h-7 w-7` für Tage, Wochennummern und Buttons
-- **week_number**: Durchgehend dunkler hinterlegt mit `bg-muted` und abgerundeten Ecken nur oben/unten für Spalten-Effekt
-- **week_number_header**: Gleiche Breite, ebenfalls `bg-muted` für durchgehende Spalte
+1. ~~**`strict: true` aktivieren**~~ ✅ — war bereits aktiv in `tsconfig.app.json` inkl. `strictNullChecks` und `noImplicitAny`
+2. **Tote Imports weiter bereinigen** — ~65 standalone `React`-Imports in Components prüfen, weitere lucide-Icons und ungenutzte Variablen entfernen (ESLint-Regel zeigt Warnungen)
+3. **`no-explicit-any` schrittweise einführen** — nach Abschluss der `no-unused-vars`-Bereinigung
+4. ~~**Edge Functions `verify_jwt`-Audit**~~ ✅ — alle 18 Functions mit `verify_jwt = false` klassifiziert und abgesichert: Cron-Functions mit `requireServiceRole`, WebSocket mit `requireAuth`, Token-Endpoints mit eigener Validierung, `send-push-notification` + `fetch-karlsruhe-districts` mit Service-Role-Guard
+5. **CORS einschränken** — `Access-Control-Allow-Origin: *` durch Allowlist ersetzen für sensible Operationen
 
-### 2. `src/components/ui/calendar.tsx` — Default-Styles kompakter
+---
 
-Die überschriebenen classNames aus CalendarHeader greifen bereits, aber einige Defaults (day, day_button, weekday, week spacing) müssen für den kompakteren Look angepasst werden. Die CalendarHeader-classNames überschreiben diese per Spread, daher passe ich dort die relevanten Klassen an:
+## No-Code Automations-Hub — Status
 
-- `day` / `day_button`: `h-7 w-7` statt `h-9 w-9`
-- `weekday`: `w-7` statt `w-9`
-- `week`: `mt-0` statt `mt-2` für engere Zeilen
-- `month_grid`: `space-y-0` statt `space-y-1`
-- Navigation-Buttons kleiner: `h-6 w-6`
+### Erledigt
 
-Alle Änderungen nur über die classNames-Prop in CalendarHeader, nicht am globalen Calendar-Component (damit andere Nutzungen unberührt bleiben).
-
+- 4-Step Wizard (Grundlagen → Trigger → Bedingungen → Aktionen)
+- 10 Templates, Template-Galerie mit Suche/Filter
+- Kill-Switch, Dry-Run, Run-Now, Run-Historie mit Step-Logs
+- Error-Dashboard mit Retry, Regel-Versionierung, Import/Export
+- Rate Limiting, Idempotency, Audit-Trail
+- 5 Action-Typen, 5 Condition-Operators, 4 Trigger-Typen (inkl. Webhook)
+- Rollenbasierte Zugriffskontrolle
+- **Regel duplizieren** — Copy-Button pro Regel-Karte
+- **Nächste geplante Ausführung** — Badge für schedule-Regeln
+- **Regel-Statistiken** — Erfolgsrate (%) + Ø Laufzeit als Tooltip-Badge
+- **Notification-Kontext** — `rule_name`, `trigger_reason`, `run_id` in Notification-Payload
+- **Webhook-Trigger** — neue Edge Function `automation-webhook`, Secret-Authentifizierung, URL-Anzeige im Wizard
+- **Verschachtelte Condition-Gruppen** — rekursives AND/OR-Nesting bis 3 Ebenen im Wizard, backward-kompatible DB-Serialisierung
