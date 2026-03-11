@@ -127,6 +127,11 @@ export function CalendarView() {
         {/* Sidebar */}
         <div className="w-[320px] shrink-0 min-h-0">
           <CalendarHeader
+            selectedDate={currentDate}
+            onSelectDate={(date) => {
+              setCurrentDate(date);
+              if (view === "polls") setView("week");
+            }}
             onShowPolls={() => setView("polls")}
           />
         </div>
