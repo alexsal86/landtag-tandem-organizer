@@ -508,7 +508,7 @@ export function MyWorkDecisionsTab() {
                     {emptyMessages[activeTab] || "Keine Entscheidungen."}
                   </div>
                 ) : (
-                  <div className="space-y-2">
+                  <div className="space-y-3">
                     {filteredDecisions.map(decision => (
                       <DecisionContextMenu
                         key={decision.id}
