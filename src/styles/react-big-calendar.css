@@ -215,7 +215,7 @@
 }
 
 /* 8px spacer between gutter and first day column */
-.rbc-time-content > .rbc-time-gutter-spacer {
+.rbc-time-content > .rbc-time-gutter-spacer-column {
   width: 8px;
   min-width: 8px;
   max-width: 8px;
@@ -225,8 +225,12 @@
   background: transparent;
 }
 
+.rbc-time-content > .rbc-time-gutter-spacer-column .rbc-time-gutter-spacer {
+  border-bottom: 1px solid hsl(var(--border) / 0.3);
+}
+
 /* 8px overhang: day-column gridlines extend into spacer area (Google style) */
-.rbc-time-content > .rbc-time-gutter-spacer + .rbc-day-slot.rbc-time-column {
+.rbc-time-content > .rbc-time-gutter-spacer-column + .rbc-day-slot.rbc-time-column {
   margin-left: -8px;
   padding-left: 8px;
 }
@@ -239,7 +243,10 @@
 .rbc-time-gutter {
   background: transparent;
   border-right: none;
-  min-width: 136px;
+  min-width: 68px;
+  width: 68px;
+  max-width: 68px;
+  flex: 0 0 68px;
 }
 
 .rbc-time-gutter .rbc-timeslot-group .rbc-time-slot {

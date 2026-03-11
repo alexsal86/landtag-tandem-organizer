@@ -291,22 +291,37 @@ const ProperReactBigCalendar: React.FC<ProperReactBigCalendarProps> = ({
       return;
     }
 
-    const existingSpacer = timeContent.querySelector('.rbc-time-gutter-spacer') as HTMLElement | null;
-    if (existingSpacer) {
-      return;
-    }
-
-    const spacer = document.createElement('div');
-    spacer.className = 'rbc-timeslot-group rbc-time-gutter-spacer';
-    spacer.setAttribute('aria-hidden', 'true');
-
     const firstDayColumn = timeContent.querySelector('.rbc-day-slot.rbc-time-column');
-    if (firstDayColumn) {
-      timeContent.insertBefore(spacer, firstDayColumn);
+    if (!firstDayColumn) {
       return;
     }
 
-    timeContent.appendChild(spacer);
+    const existingSingleSpacer = timeContent.querySelector(':scope > .rbc-time-gutter-spacer') as HTMLElement | null;
+    if (existingSingleSpacer) {
+      existingSingleSpacer.remove();
+    }
+
+    let spacerColumn = timeContent.querySelector(':scope > .rbc-time-gutter-spacer-column') as HTMLElement | null;
+    if (!spacerColumn) {
+      spacerColumn = document.createElement('div');
+      spacerColumn.className = 'rbc-time-gutter-spacer-column';
+      spacerColumn.setAttribute('aria-hidden', 'true');
+      timeContent.insertBefore(spacerColumn, firstDayColumn);
+    }
+
+    const slotGroups = firstDayColumn.querySelectorAll(':scope > .rbc-timeslot-group');
+    const spacerCount = slotGroups.length;
+    const existingSpacerGroups = spacerColumn.querySelectorAll(':scope > .rbc-time-gutter-spacer');
+
+    if (existingSpacerGroups.length !== spacerCount) {
+      spacerColumn.replaceChildren();
+
+      for (let index = 0; index < spacerCount; index += 1) {
+        const spacer = document.createElement('div');
+        spacer.className = 'rbc-timeslot-group rbc-time-gutter-spacer';
+        spacerColumn.appendChild(spacer);
+      }
+    }
   }, [date, view]);
 
   return (
