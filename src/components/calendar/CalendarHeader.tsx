@@ -42,9 +42,9 @@ export function CalendarHeader({ onShowPolls, selectedDate, onSelectDate }: Cale
           classNames={{
             month_caption: "flex w-full flex-row items-center justify-between gap-1 px-1 mb-1",
             caption_label: "text-sm font-semibold text-left capitalize",
-            nav: "flex w-auto items-center gap-0.5",
-            button_previous: "h-6 w-6 border-0 bg-transparent p-0 shadow-none hover:bg-accent/60",
-            button_next: "h-6 w-6 border-0 bg-transparent p-0 shadow-none hover:bg-accent/60",
+            nav: "!relative !inset-auto ml-auto flex w-auto items-center justify-end gap-0.5",
+            button_previous: "!static h-6 w-6 border-0 bg-transparent p-0 shadow-none hover:bg-accent/60",
+            button_next: "!static h-6 w-6 border-0 bg-transparent p-0 shadow-none hover:bg-accent/60",
             month_grid: "w-full border-collapse space-y-0",
             weekdays: "flex",
             weekday: "text-muted-foreground w-7 font-normal text-[0.7rem]",
