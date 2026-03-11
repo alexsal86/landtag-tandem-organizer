@@ -6,6 +6,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useToast } from "@/components/ui/use-toast";
+import { useTenant } from "@/hooks/useTenant";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Trash2, Edit, Plus, Save, X, GripVertical } from "lucide-react";
 import { icons, LucideIcon } from "lucide-react";
@@ -25,7 +26,7 @@ type ConfigurableType = {
 
 interface ConfigurableTypeSettingsProps {
   title: string;
-  tableName: 'task_categories' | 'todo_categories' | 'case_file_types' | 'document_categories' | 'appointment_categories' | 'appointment_statuses' | 'appointment_locations' | 'task_statuses' | 'case_file_processing_statuses';
+  tableName: 'task_categories' | 'todo_categories' | 'case_file_types' | 'document_categories' | 'appointment_categories' | 'appointment_statuses' | 'appointment_locations' | 'task_statuses' | 'case_file_processing_statuses' | 'case_item_categories';
   entityName: string;
   deleteWarning?: string;
   hasIcon?: boolean;
@@ -33,6 +34,21 @@ interface ConfigurableTypeSettingsProps {
   defaultIcon?: string;
   defaultColor?: string;
 }
+
+
+const TENANT_SCOPED_TABLES = [
+  'task_categories',
+  'case_file_types',
+  'document_categories',
+  'appointment_categories',
+  'appointment_statuses',
+  'appointment_locations',
+  'case_file_processing_statuses',
+  'case_item_categories',
+] as const;
+
+const isTenantScopedTable = (tableName: ConfigurableTypeSettingsProps['tableName']) =>
+  TENANT_SCOPED_TABLES.includes(tableName as (typeof TENANT_SCOPED_TABLES)[number]);
 
 export function ConfigurableTypeSettings({
   title,
@@ -45,6 +61,7 @@ export function ConfigurableTypeSettings({
   defaultColor = '#3b82f6'
 }: ConfigurableTypeSettingsProps) {
   const { toast } = useToast();
+  const { currentTenant } = useTenant();
   const [items, setItems] = useState<ConfigurableType[]>([]);
   const [loading, setLoading] = useState(true);
   const [editingItem, setEditingItem] = useState<{ id: string; label: string; color: string; icon?: string } | null>(null);
@@ -52,15 +69,24 @@ export function ConfigurableTypeSettings({
 
   useEffect(() => {
     loadItems();
-  }, [tableName]);
+  }, [currentTenant?.id, tableName]);
 
   const loadItems = async () => {
     try {
       setLoading(true);
-      const { data, error } = await supabase
+      let query = supabase
         .from(tableName)
         .select('*')
         .order('order_index');
+
+      if (isTenantScopedTable(tableName)) {
+        if (!currentTenant?.id) {
+          throw new Error('Kein aktiver Mandant ausgewählt.');
+        }
+        query = query.eq('tenant_id', currentTenant.id);
+      }
+
+      const { data, error } = await query;
 
       if (error) throw error;
       setItems(data || []);
@@ -113,6 +139,13 @@ export function ConfigurableTypeSettings({
         label: newItem.label,
         order_index: Math.max(...items.map(i => i.order_index ?? 0), -1) + 1
       };
+
+      if (isTenantScopedTable(tableName)) {
+        if (!currentTenant?.id) {
+          throw new Error('Kein aktiver Mandant ausgewählt.');
+        }
+        insertData.tenant_id = currentTenant.id;
+      }
 
       if (hasColor) {
         insertData.color = newItem.color || defaultColor;

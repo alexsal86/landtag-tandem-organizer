@@ -27,6 +27,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { cn } from "@/lib/utils";
 import { useCaseItems } from "@/features/cases/items/hooks";
 import { debugConsole } from "@/utils/debugConsole";
+import { DEFAULT_CASE_ITEM_CATEGORIES, useCaseItemCategories } from "@/hooks/useCaseItemCategories";
 
 type SortBy = "updated_desc" | "due_asc" | "priority_desc";
 
@@ -79,6 +80,7 @@ const normalize = (value: string | null | undefined) => value?.trim().toLowerCas
 export function MyWorkCaseItemsTab() {
   const { user } = useAuth();
   const { currentTenant } = useTenant();
+  const { data: configuredCaseItemCategories } = useCaseItemCategories();
   const { toast } = useToast();
   const navigate = useNavigate();
 
@@ -106,6 +108,14 @@ export function MyWorkCaseItemsTab() {
   const [meetingSelectorItemId, setMeetingSelectorItemId] = useState<string | null>(null);
 
   const { createCaseItem } = useCaseItems();
+
+  const categoryOptions = useMemo(() => {
+    const configured = (configuredCaseItemCategories ?? [])
+      .map((category) => category.label?.trim())
+      .filter((label): label is string => Boolean(label));
+
+    return configured.length > 0 ? configured : [...DEFAULT_CASE_ITEM_CATEGORIES];
+  }, [configuredCaseItemCategories]);
 
   const loadCaseItems = useCallback(async () => {
     if (!user || !currentTenant?.id) return;
@@ -349,6 +359,7 @@ export function MyWorkCaseItemsTab() {
         createCaseItem={createCaseItem}
         assignees={[]}
         defaultAssigneeId={null}
+        categoryOptions={categoryOptions}
       />
       <CaseItemsArchiveSheet
         open={archiveOpen}
