@@ -22,7 +22,6 @@ import {
   FileText,
   Paperclip,
   CheckSquare,
-  HelpCircle,
   Clock,
   MapPin,
   Loader2,
@@ -110,17 +109,6 @@ export const AppointmentFeedbackWidget = ({
       setLoadingUsers(false);
     }
   }, [currentTenant?.id, tenantUsers.length]);
-
-  // Badge-Logik für Reminder
-  const shouldShowReminder = useMemo(() => {
-    if (!settings?.reminder_start_time) return false;
-    const now = new Date();
-    const currentTime = format(now, 'HH:mm:ss');
-    if (currentTime < settings.reminder_start_time) return false;
-    return appointments?.some(a =>
-      a.feedback?.feedback_status === 'pending' && !a.feedback?.reminder_dismissed
-    ) ?? false;
-  }, [settings, appointments]);
 
   const pendingFeedbackCount = useMemo(() => {
     return appointments?.filter(a => a.feedback?.feedback_status === 'pending').length || 0;
@@ -378,11 +366,6 @@ export const AppointmentFeedbackWidget = ({
 
   return (
     <Card className="h-full flex flex-col relative">
-      {shouldShowReminder && (
-        <div className="absolute -top-2 -right-2 z-10 w-6 h-6 bg-destructive rounded-full flex items-center justify-center animate-pulse shadow-lg">
-          <HelpCircle className="w-4 h-4 text-destructive-foreground" />
-        </div>
-      )}
       <CardHeader>
         <CardTitle className="flex items-center gap-2">
           <CheckCircle2 className="w-5 h-5" />
