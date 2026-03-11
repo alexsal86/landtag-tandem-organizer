@@ -6,6 +6,7 @@ import { toast } from "sonner";
 import { format, parseISO, eachDayOfInterval } from "date-fns";
 import type { TimeEntryRow, LeaveRow } from "../types";
 import { MAX_PAUSE_MINUTES } from "../types";
+import type { ChecklistItem } from "../VacationChecklistForm";
 
 interface UseTimeTrackingOperationsParams {
   userId: string | null;
@@ -37,11 +38,14 @@ export function useTimeTrackingOperations({
   const [vacationStartDate, setVacationStartDate] = useState("");
   const [vacationEndDate, setVacationEndDate] = useState("");
   const [vacationReason, setVacationReason] = useState("");
+  const [vacationDeputy, setVacationDeputy] = useState("");
+  const [vacationChecklistItems, setVacationChecklistItems] = useState<ChecklistItem[]>([]);
 
   // Sick form
   const [sickStartDate, setSickStartDate] = useState("");
   const [sickEndDate, setSickEndDate] = useState("");
   const [sickNotes, setSickNotes] = useState("");
+  const [sickDeputy, setSickDeputy] = useState("");
 
   // Medical form
   const [medicalDate, setMedicalDate] = useState("");
@@ -130,17 +134,66 @@ export function useTimeTrackingOperations({
     } catch (error: unknown) { debugConsole.error("Delete error:", error); toast.error("Fehler beim Löschen: " + (error instanceof Error ? error.message : String(error))); }
   };
 
+  // Save checklist responses after leave request is created
+  const saveChecklistResponses = async (leaveRequestId: string, items: ChecklistItem[]) => {
+    if (!userId || items.length === 0) return;
+    const rows = items.map(item => ({
+      leave_request_id: leaveRequestId,
+      checklist_item_id: item.id,
+      completed: item.completed,
+      completed_at: item.completed ? new Date().toISOString() : null,
+      user_id: userId,
+    }));
+    await supabase.from("vacation_checklist_responses").insert(rows);
+  };
+
   // Leave request handlers
   const handleRequestVacation = async () => {
-    if (!userId || !vacationStartDate || !vacationEndDate) { toast.error("Bitte beide Felder"); return; }
+    if (!userId || !vacationStartDate || !vacationEndDate) { toast.error("Bitte beide Felder ausfüllen"); return; }
+    if (!vacationDeputy) { toast.error("Bitte eine Stellvertretung auswählen"); return; }
     if (vacationEndDate < vacationStartDate) { toast.error("Das Enddatum darf nicht vor dem Startdatum liegen"); return; }
-    try { await supabase.from("leave_requests").insert([{ user_id: userId, type: "vacation", start_date: vacationStartDate, end_date: vacationEndDate, reason: vacationReason || null, status: "pending" }]); toast.success("Urlaubsantrag eingereicht"); setVacationStartDate(""); setVacationEndDate(""); setVacationReason(""); loadData(); } catch (error: unknown) { toast.error(error instanceof Error ? error.message : "Fehler"); }
+    try {
+      const { data, error } = await supabase.from("leave_requests").insert([{
+        user_id: userId,
+        type: "vacation" as const,
+        start_date: vacationStartDate,
+        end_date: vacationEndDate,
+        reason: vacationReason || null,
+        status: "pending" as const,
+        deputy_user_id: vacationDeputy,
+      }]).select("id").single();
+      if (error) throw error;
+
+      // Save checklist responses
+      if (data?.id && vacationChecklistItems.length > 0) {
+        await saveChecklistResponses(data.id, vacationChecklistItems);
+      }
+
+      toast.success("Urlaubsantrag eingereicht");
+      setVacationStartDate(""); setVacationEndDate(""); setVacationReason("");
+      setVacationDeputy(""); setVacationChecklistItems([]);
+      loadData();
+    } catch (error: unknown) { toast.error(error instanceof Error ? error.message : "Fehler"); }
   };
 
   const handleReportSick = async () => {
-    if (!userId || !sickStartDate || !sickEndDate) { toast.error("Bitte beide Felder"); return; }
+    if (!userId || !sickStartDate || !sickEndDate) { toast.error("Bitte beide Felder ausfüllen"); return; }
+    if (!sickDeputy) { toast.error("Bitte eine Stellvertretung auswählen"); return; }
     if (sickEndDate < sickStartDate) { toast.error("Das Enddatum darf nicht vor dem Startdatum liegen"); return; }
-    try { await supabase.from("leave_requests").insert([{ user_id: userId, type: "sick", start_date: sickStartDate, end_date: sickEndDate, reason: sickNotes || null, status: "pending" }]); toast.success("Krankmeldung eingereicht"); setSickStartDate(""); setSickEndDate(""); setSickNotes(""); loadData(); } catch (error: unknown) { toast.error(error instanceof Error ? error.message : "Fehler"); }
+    try {
+      await supabase.from("leave_requests").insert([{
+        user_id: userId,
+        type: "sick" as const,
+        start_date: sickStartDate,
+        end_date: sickEndDate,
+        reason: sickNotes || null,
+        status: "pending" as const,
+        deputy_user_id: sickDeputy,
+      }]);
+      toast.success("Krankmeldung eingereicht");
+      setSickStartDate(""); setSickEndDate(""); setSickNotes(""); setSickDeputy("");
+      loadData();
+    } catch (error: unknown) { toast.error(error instanceof Error ? error.message : "Fehler"); }
   };
 
   const handleReportMedical = async () => {
@@ -212,9 +265,12 @@ export function useTimeTrackingOperations({
     // Vacation form
     vacationStartDate, setVacationStartDate, vacationEndDate, setVacationEndDate,
     vacationReason, setVacationReason, handleRequestVacation, handleCancelVacationRequest,
+    vacationDeputy, setVacationDeputy,
+    vacationChecklistItems, setVacationChecklistItems,
     // Sick form
     sickStartDate, setSickStartDate, sickEndDate, setSickEndDate,
     sickNotes, setSickNotes, handleReportSick,
+    sickDeputy, setSickDeputy,
     // Medical form
     medicalDate, setMedicalDate, medicalStartTime, setMedicalStartTime,
     medicalEndTime, setMedicalEndTime, medicalReason, setMedicalReason,

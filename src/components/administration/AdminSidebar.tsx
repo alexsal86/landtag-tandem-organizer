@@ -46,6 +46,7 @@ import {
   Globe,
   PanelTop,
   Network,
+  ClipboardCheck,
 } from "lucide-react";
 
 export interface AdminMenuItem {
