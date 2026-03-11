@@ -828,6 +828,9 @@ export function useQuickNotes(refreshTrigger?: number) {
             status: 'neu',
             priority: mapPriority(note.priority_level),
             source_channel: 'other',
+            intake_payload: {
+              category: 'Allgemein',
+            },
           } as any,
         ], { returning: 'minimal' } as any);
 
