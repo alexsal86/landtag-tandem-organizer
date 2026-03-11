@@ -56,6 +56,7 @@ export function MyWorkTimeTrackingTab() {
 
   // Check for missing time entries and remind user
   useTimeEntryReminder(user?.id ?? null);
+  useVacationReminders();
 
   // Form state
   const [entryDate, setEntryDate] = useState(format(new Date(), "yyyy-MM-dd"));
