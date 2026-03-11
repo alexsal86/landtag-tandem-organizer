@@ -39,6 +39,15 @@ export function CalendarHeader({ onShowPolls, selectedDate, onSelectDate }: Cale
           }}
           onMonthChange={onSelectDate}
           showWeekNumber
+          classNames={{
+            month_caption: "flex flex-row items-center justify-between gap-2",
+            caption_label: "text-base font-semibold text-left capitalize",
+            nav: "flex items-center justify-end gap-1",
+            button_previous: "h-7 w-7 border-0 bg-transparent p-0 shadow-none hover:bg-accent/60",
+            button_next: "h-7 w-7 border-0 bg-transparent p-0 shadow-none hover:bg-accent/60",
+            week_number: "h-9 w-9 rounded-md bg-muted text-sm font-normal text-foreground",
+            week_number_header: "h-9 w-9 rounded-md bg-muted text-sm font-normal text-muted-foreground",
+          }}
           className="w-full p-0"
         />
       </div>
