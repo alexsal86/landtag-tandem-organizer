@@ -1178,7 +1178,7 @@ export function MyWorkCasesWorkspace() {
                                                 </span>
                                                 <div className="flex min-w-0 items-center" onClick={(event) => event.stopPropagation()}>
                                                     <div className="inline-flex items-end gap-1">
-                                                      <div className="flex items-center -space-x-2">
+                                                      <div className="relative z-10 flex items-center -space-x-2">
                                                         {assignees.slice(0, 3).map((member) => (
                                                           <Avatar key={member.id} className="h-6 w-6 border bg-background">
                                                             <AvatarImage src={member.avatarUrl || undefined} />
@@ -1188,7 +1188,7 @@ export function MyWorkCasesWorkspace() {
                                                       </div>
                                                       <DropdownMenu>
                                                         <DropdownMenuTrigger asChild>
-                                                          <Button type="button" size="icon" variant="outline" className="mt-1 h-6 w-6 rounded-full border bg-background p-0 shadow-sm">
+                                                          <Button type="button" size="icon" variant="outline" className="relative left-[-11px] z-0 mt-1 h-6 w-6 rounded-full border bg-background p-0 shadow-sm">
                                                             <Plus className="h-3 w-3" />
                                                           </Button>
                                                         </DropdownMenuTrigger>
@@ -1274,7 +1274,7 @@ export function MyWorkCasesWorkspace() {
                                                   </div>
                                                   <div className="flex items-center" onClick={(event) => event.stopPropagation()}>
                                                     <div className="inline-flex items-end gap-1">
-                                                      <div className="flex items-center -space-x-2">
+                                                      <div className="relative z-10 flex items-center -space-x-2">
                                                         {assignees.slice(0, 2).map((member) => (
                                                           <Avatar key={member.id} className="h-6 w-6 border bg-background">
                                                             <AvatarImage src={member.avatarUrl || undefined} />
@@ -1284,7 +1284,7 @@ export function MyWorkCasesWorkspace() {
                                                       </div>
                                                       <DropdownMenu>
                                                         <DropdownMenuTrigger asChild>
-                                                          <Button type="button" size="icon" variant="outline" className="mt-1 h-6 w-6 rounded-full border bg-background p-0 shadow-sm">
+                                                          <Button type="button" size="icon" variant="outline" className="relative left-[-11px] z-0 mt-1 h-6 w-6 rounded-full border bg-background p-0 shadow-sm">
                                                             <Plus className="h-3 w-3" />
                                                           </Button>
                                                         </DropdownMenuTrigger>
