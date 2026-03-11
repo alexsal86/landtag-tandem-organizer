@@ -1,6 +1,4 @@
 import { useState } from "react";
-import { supabase } from "@/integrations/supabase/client";
-import { toast } from "sonner";
 import { useCaseFileDetails } from "@/features/cases/files/hooks";
 import { useCaseFiles } from "@/features/cases/files/hooks";
 import { useCaseFileTopics } from "@/hooks/useTopics";
@@ -94,18 +92,6 @@ export function CaseFileDetail({ caseFileId, onBack }: CaseFileDetailProps) {
     );
   }
 
-  const handleArchive = async () => {
-    const nextStatus = caseFile.status === "archived" ? "active" : "archived";
-    const { error } = await supabase.from("case_files").update({ status: nextStatus }).eq("id", caseFile.id);
-    if (error) {
-      toast.error("Fallakte konnte nicht archiviert werden.");
-      return;
-    }
-    toast.success(nextStatus === "archived" ? "Fallakte archiviert." : "Fallakte wiederhergestellt.");
-    await details.refresh();
-    if (nextStatus === "archived") onBack();
-  };
-
   const handleDelete = async () => {
     const success = await deleteCaseFile(caseFile.id);
     if (success) onBack();
@@ -119,7 +105,6 @@ export function CaseFileDetail({ caseFileId, onBack }: CaseFileDetailProps) {
         caseFile={caseFile}
         onBack={onBack}
         onDelete={() => setDeleteDialogOpen(true)}
-        onArchive={handleArchive}
       />
 
       {/* Three-Column Layout */}

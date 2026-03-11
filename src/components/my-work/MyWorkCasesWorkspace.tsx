@@ -3,7 +3,7 @@ import { useNavigate, useSearchParams } from "react-router-dom";
 import { useNotificationHighlight } from "@/hooks/useNotificationHighlight";
 import { format, type Locale } from "date-fns";
 import { de } from "date-fns/locale";
-import { ArrowDown, ArrowUp, Archive, ArchiveRestore, Briefcase, CalendarDays, CheckCircle2, ChevronRight, Circle, Clock, FileText, FolderOpen, Gavel, Globe, GripVertical, Inbox, Link2, Mail, MessageSquare, Phone, Plus, Search, Timer, Trash2, UserRound, Users, Vote } from "lucide-react";
+import { ArrowDown, ArrowUp, Briefcase, CalendarDays, CheckCircle2, ChevronRight, Circle, Clock, FileText, FolderOpen, Gavel, Globe, GripVertical, Inbox, Link2, Mail, MessageSquare, Phone, Plus, Search, Timer, Trash2, UserRound, Users, Vote } from "lucide-react";
 import { DragDropContext, Droppable, Draggable, type DropResult } from "@hello-pangea/dnd";
 import { sanitizeRichHtml } from "@/utils/htmlSanitizer";
 import { RichTextDisplay } from "@/components/ui/RichTextDisplay";
@@ -23,7 +23,7 @@ import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/component
 import { CaseItemCreateDialog } from "@/components/my-work/CaseItemCreateDialog";
 import { CaseItemMeetingSelector } from "@/components/my-work/CaseItemMeetingSelector";
 import { StandaloneDecisionCreator } from "@/components/task-decisions/StandaloneDecisionCreator";
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { CaseItemDetailPanel } from "@/components/my-work/CaseItemDetailPanel";
 import { useCaseItems } from "@/features/cases/items/hooks";
@@ -320,8 +320,6 @@ export function MyWorkCasesWorkspace() {
 
   // Delete confirmation state
   const [deleteConfirmItemId, setDeleteConfirmItemId] = useState<string | null>(null);
-  const [isItemArchiveOpen, setIsItemArchiveOpen] = useState(false);
-  const [isFileArchiveOpen, setIsFileArchiveOpen] = useState(false);
 
   const handleDeleteCaseItem = useCallback(async () => {
     if (!deleteConfirmItemId) return;
@@ -336,40 +334,6 @@ export function MyWorkCasesWorkspace() {
     await deleteCaseItem(id);
     toast.success("Vorgang gelöscht");
   }, [deleteConfirmItemId, detailItemId, setEditableCaseItem, setCaseItems, deleteCaseItem]);
-
-
-  const handleArchiveCaseItem = useCallback(async (item: CaseItem) => {
-    const nextStatus = item.status === "archiviert" ? "neu" : "archiviert";
-    const ok = await applyItemOptimisticUpdate(
-      item.id,
-      (row) => ({ ...row, status: nextStatus }),
-      () => supabase.from("case_items").update({ status: nextStatus } as any).eq("id", item.id),
-      "Vorgang konnte nicht archiviert werden.",
-    );
-    if (!ok) return;
-    if (nextStatus === "archiviert" && detailItemId === item.id) {
-      setDetailItemId(null);
-      setEditableCaseItem(null);
-    }
-    toast.success(nextStatus === "archiviert" ? "Vorgang archiviert." : "Vorgang wiederhergestellt.");
-  }, [applyItemOptimisticUpdate, detailItemId, setEditableCaseItem]);
-
-  const handleArchiveCaseFile = useCallback(async (caseFile: CaseFile) => {
-    const nextStatus = caseFile.status === "archived" ? "active" : "archived";
-    try {
-      const { error } = await supabase.from("case_files").update({ status: nextStatus }).eq("id", caseFile.id);
-      if (error) throw error;
-      if (nextStatus === "archived") {
-        setCaseItems((current) => current.map((item) => item.case_file_id === caseFile.id ? { ...item, case_file_id: null } : item));
-        if (detailFileId === caseFile.id) setDetailFileId(null);
-      }
-      toast.success(nextStatus === "archived" ? "Fallakte archiviert." : "Fallakte wiederhergestellt.");
-      await refreshAll();
-    } catch (error) {
-      debugConsole.error("Fallakte konnte nicht archiviert werden", error);
-      toast.error("Fallakte konnte nicht archiviert werden.");
-    }
-  }, [detailFileId, refreshAll, setCaseItems]);
 
   const getItemSubject = useCallback((item: CaseItem) => item.subject || item.summary || item.resolution_summary || "Ohne Titel", []);
   const getItemDescription = useCallback((item: CaseItem) => richTextToPlain(item.summary || item.resolution_summary || ""), []);
@@ -454,13 +418,10 @@ export function MyWorkCasesWorkspace() {
     return typeof value === "string" ? value : "";
   }, []);
 
-  const activeCaseItems = useMemo(() => caseItems.filter((item) => item.status !== "archiviert"), [caseItems]);
-  const archivedCaseItems = useMemo(() => caseItems.filter((item) => item.status === "archiviert"), [caseItems]);
-
   const filteredCaseItems = useMemo(() => {
     const query = itemFilterQuery.trim().toLowerCase();
-    if (!query) return activeCaseItems;
-    return activeCaseItems.filter((item) => {
+    if (!query) return caseItems;
+    return caseItems.filter((item) => {
       const linkedFile = item.case_file_id ? caseFilesById[item.case_file_id] : null;
       const category = getCategory(item);
       return [item.subject, item.summary, item.resolution_summary, item.source_channel, item.status, item.priority, category]
@@ -468,7 +429,7 @@ export function MyWorkCasesWorkspace() {
         .filter(Boolean)
         .some((v) => v!.toLowerCase().includes(query));
     });
-  }, [activeCaseItems, caseFilesById, getCategory, itemFilterQuery]);
+  }, [caseFilesById, caseItems, getCategory, itemFilterQuery]);
 
   const sortedCaseItems = useMemo(() => {
     const priorityRank: Record<string, number> = { low: 1, medium: 2, high: 3, urgent: 4 };
@@ -559,18 +520,15 @@ export function MyWorkCasesWorkspace() {
     [isSortActive],
   );
 
-  const activeCaseFiles = useMemo(() => allCaseFiles.filter((cf) => cf.status !== "archived"), [allCaseFiles]);
-  const archivedCaseFiles = useMemo(() => allCaseFiles.filter((cf) => cf.status === "archived"), [allCaseFiles]);
-
   const filteredCaseFiles = useMemo(() => {
     const query = fileFilterQuery.trim().toLowerCase();
-    if (!query) return activeCaseFiles;
-    return activeCaseFiles.filter((cf) =>
+    if (!query) return allCaseFiles;
+    return allCaseFiles.filter((cf) =>
       [cf.title, cf.reference_number, cf.status, cf.current_status_note, cf.case_type]
         .filter(Boolean)
         .some((v) => v!.toLowerCase().includes(query)),
     );
-  }, [activeCaseFiles, fileFilterQuery]);
+  }, [allCaseFiles, fileFilterQuery]);
 
   const { recentCaseFiles, groupedCaseFiles } = useMemo(() => {
     const sorted = [...filteredCaseFiles].sort((a, b) =>
@@ -1049,8 +1007,7 @@ export function MyWorkCasesWorkspace() {
                         <Plus className="mr-1 h-4 w-4" />
                         Neu
                       </Button>
-                      <div className="flex items-center gap-2">
-                        <div className="relative w-full sm:w-64">
+                      <div className="relative w-full sm:w-64">
                         <Search className="pointer-events-none absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
                         <Input
                           value={itemFilterQuery}
@@ -1058,11 +1015,8 @@ export function MyWorkCasesWorkspace() {
                           placeholder="Vorgänge filtern…"
                           className="h-9 pl-8"
                         />
-                        </div>
-                        <Button variant="outline" size="icon" className="h-9 w-9 shrink-0" onClick={() => setIsItemArchiveOpen(true)} title="Vorgangsarchiv öffnen">
-                          <Archive className="h-4 w-4" />
-                        </Button>
                       </div>
+                    </div>
                   </div>
                   <p className="text-xs text-muted-foreground mt-1">Vorgänge per Drag & Drop auf eine Fallakte ziehen zum Verknüpfen</p>
                 </CardHeader>
@@ -1442,10 +1396,6 @@ export function MyWorkCasesWorkspace() {
                                               Zum Jour Fixe hinzufügen
                                             </ContextMenuItem>
                                             <ContextMenuSeparator />
-                                            <ContextMenuItem onClick={() => runAsync(() => handleArchiveCaseItem(item))}>
-                                              {item.status === "archiviert" ? <ArchiveRestore className="mr-2 h-3 w-3" /> : <Archive className="mr-2 h-3 w-3" />}
-                                              {item.status === "archiviert" ? "Wiederherstellen" : "Archivieren"}
-                                            </ContextMenuItem>
                                             <ContextMenuItem
                                               className="text-destructive focus:text-destructive"
                                               onClick={() => setDeleteConfirmItemId(item.id)}
@@ -1496,8 +1446,6 @@ export function MyWorkCasesWorkspace() {
                                                 onContactSelected={(contact) => updateEdit({
                                                   selectedContactId: contact?.id || null,
                                                 })}
-                                                onArchive={() => runAsync(() => handleArchiveCaseItem(item))}
-                                                archiveLabel={item.status === "archiviert" ? "Wiederherstellen" : "Archivieren"}
                                                 onDelete={() => setDeleteConfirmItemId(item.id)}
                                               />
                                             )}
@@ -1538,9 +1486,6 @@ export function MyWorkCasesWorkspace() {
                         <Plus className="mr-1 h-4 w-4" />
                         Neu
                       </Button>
-                      <Button variant="outline" size="icon" className="h-8 w-8" onClick={() => setIsFileArchiveOpen(true)} title="Fallaktenarchiv öffnen">
-                        <Archive className="h-4 w-4" />
-                      </Button>
                       <div className="relative">
                         <Search className="pointer-events-none absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
                         <Input
@@ -1572,47 +1517,37 @@ export function MyWorkCasesWorkspace() {
                                 <Droppable key={cf.id} droppableId={`casefile-${cf.id}`}>
                                   {(dropProvided, dropSnapshot) => (
                                     <div ref={dropProvided.innerRef} {...dropProvided.droppableProps}>
-                                      <ContextMenu>
-                                        <ContextMenuTrigger asChild>
-                                          <button
-                                            type="button"
-                                            className={cn(
-                                              "w-full border-b px-2 py-2 text-left transition-colors hover:bg-muted/40 rounded-md",
-                                              dropSnapshot.isDraggingOver && "ring-2 ring-blue-500 bg-blue-50 dark:bg-blue-950/20",
-                                            )}
-                                            onClick={() => handleSelectCaseFile(cf)}
-                                          >
-                                            <div className="flex items-center gap-2">
-                                              <p className="text-sm font-medium line-clamp-1 flex-1">{cf.title}</p>
-                                            </div>
-                                            <div className="mt-1.5 flex items-center justify-between text-xs text-muted-foreground">
-                                              <div className="flex items-center gap-2">
-                                                {cf.reference_number && <span>{cf.reference_number}</span>}
-                                              </div>
-                                              {linkedCount > 0 && (
-                                                <span>
-                                                  <FileText className="inline h-3 w-3 mr-0.5" />
-                                                  {linkedCount} {linkedCount === 1 ? "Vorgang" : "Vorgänge"}
-                                                </span>
-                                              )}
-                                            </div>
-                                            {dropSnapshot.isDraggingOver && (
-                                              <p className="mt-1 text-xs text-blue-600 font-medium">Vorgang hier ablegen zum Verknüpfen</p>
-                                            )}
-                                            {cf.current_status_note && !dropSnapshot.isDraggingOver && (
-                                              <div className="mt-1 [&_p]:line-clamp-1">
-                                                <RichTextDisplay content={cf.current_status_note} className="text-xs" />
-                                              </div>
-                                            )}
-                                          </button>
-                                        </ContextMenuTrigger>
-                                        <ContextMenuContent className="w-48">
-                                          <ContextMenuItem onClick={() => runAsync(() => handleArchiveCaseFile(cf))}>
-                                            <Archive className="mr-2 h-3 w-3" />
-                                            Archivieren
-                                          </ContextMenuItem>
-                                        </ContextMenuContent>
-                                      </ContextMenu>
+                                      <button
+                                        type="button"
+                                        className={cn(
+                                          "w-full border-b px-2 py-2 text-left transition-colors hover:bg-muted/40 rounded-md",
+                                          dropSnapshot.isDraggingOver && "ring-2 ring-blue-500 bg-blue-50 dark:bg-blue-950/20",
+                                        )}
+                                        onClick={() => handleSelectCaseFile(cf)}
+                                      >
+                                        <div className="flex items-center gap-2">
+                                          <p className="text-sm font-medium line-clamp-1 flex-1">{cf.title}</p>
+                                        </div>
+                                        <div className="mt-1.5 flex items-center justify-between text-xs text-muted-foreground">
+                                          <div className="flex items-center gap-2">
+                                            {cf.reference_number && <span>{cf.reference_number}</span>}
+                                          </div>
+                                          {linkedCount > 0 && (
+                                            <span>
+                                              <FileText className="inline h-3 w-3 mr-0.5" />
+                                              {linkedCount} {linkedCount === 1 ? "Vorgang" : "Vorgänge"}
+                                            </span>
+                                          )}
+                                        </div>
+                                        {dropSnapshot.isDraggingOver && (
+                                          <p className="mt-1 text-xs text-blue-600 font-medium">Vorgang hier ablegen zum Verknüpfen</p>
+                                        )}
+                                        {cf.current_status_note && !dropSnapshot.isDraggingOver && (
+                                          <div className="mt-1 [&_p]:line-clamp-1">
+                                            <RichTextDisplay content={cf.current_status_note} className="text-xs" />
+                                          </div>
+                                        )}
+                                      </button>
                                       {dropProvided.placeholder}
                                     </div>
                                   )}
@@ -1673,24 +1608,6 @@ export function MyWorkCasesWorkspace() {
                                               </div>
                                             )}
                                           </button>
-                                                                                    </button>
-                                        </ContextMenuTrigger>
-                                        <ContextMenuContent className="w-48">
-                                          <ContextMenuItem onClick={() => runAsync(() => handleArchiveCaseFile(cf))}>
-                                            <Archive className="mr-2 h-3 w-3" />
-                                            Archivieren
-                                          </ContextMenuItem>
-                                        </ContextMenuContent>
-                                      </ContextMenu>
-                                                                                    </button>
-                                        </ContextMenuTrigger>
-                                        <ContextMenuContent className="w-48">
-                                          <ContextMenuItem onClick={() => runAsync(() => handleArchiveCaseFile(cf))}>
-                                            <Archive className="mr-2 h-3 w-3" />
-                                            Archivieren
-                                          </ContextMenuItem>
-                                        </ContextMenuContent>
-                                      </ContextMenu>
                                           {dropProvided.placeholder}
                                         </div>
                                       )}
@@ -1778,56 +1695,6 @@ export function MyWorkCasesWorkspace() {
           />
         </>
       )}
-
-      <Dialog open={isItemArchiveOpen} onOpenChange={setIsItemArchiveOpen}>
-        <DialogContent className="max-w-2xl">
-          <DialogHeader>
-            <DialogTitle>Archivierte Vorgänge</DialogTitle>
-            <DialogDescription>Vorgänge verwalten und bei Bedarf wiederherstellen.</DialogDescription>
-          </DialogHeader>
-          <div className="max-h-[60vh] overflow-y-auto space-y-2">
-            {archivedCaseItems.length === 0 ? (
-              <p className="text-sm text-muted-foreground">Keine archivierten Vorgänge vorhanden.</p>
-            ) : archivedCaseItems.map((item) => (
-              <div key={item.id} className="border rounded-md p-3 flex items-center justify-between gap-2">
-                <div>
-                  <p className="text-sm font-medium">{getItemSubject(item)}</p>
-                  <p className="text-xs text-muted-foreground">{formatDateSafe(item.updated_at, "dd.MM.yyyy HH:mm", "–", { locale: de })}</p>
-                </div>
-                <Button size="sm" variant="outline" onClick={() => runAsync(() => handleArchiveCaseItem(item))}>
-                  <ArchiveRestore className="mr-2 h-3.5 w-3.5" />
-                  Wiederherstellen
-                </Button>
-              </div>
-            ))}
-          </div>
-        </DialogContent>
-      </Dialog>
-
-      <Dialog open={isFileArchiveOpen} onOpenChange={setIsFileArchiveOpen}>
-        <DialogContent className="max-w-2xl">
-          <DialogHeader>
-            <DialogTitle>Archivierte Fallakten</DialogTitle>
-            <DialogDescription>Fallakten verwalten und bei Bedarf wiederherstellen.</DialogDescription>
-          </DialogHeader>
-          <div className="max-h-[60vh] overflow-y-auto space-y-2">
-            {archivedCaseFiles.length === 0 ? (
-              <p className="text-sm text-muted-foreground">Keine archivierten Fallakten vorhanden.</p>
-            ) : archivedCaseFiles.map((cf) => (
-              <div key={cf.id} className="border rounded-md p-3 flex items-center justify-between gap-2">
-                <div>
-                  <p className="text-sm font-medium">{cf.title}</p>
-                  <p className="text-xs text-muted-foreground">{cf.reference_number || "Kein Aktenzeichen"}</p>
-                </div>
-                <Button size="sm" variant="outline" onClick={() => runAsync(() => handleArchiveCaseFile(cf))}>
-                  <ArchiveRestore className="mr-2 h-3.5 w-3.5" />
-                  Wiederherstellen
-                </Button>
-              </div>
-            ))}
-          </div>
-        </DialogContent>
-      </Dialog>
 
       <AlertDialog open={!!deleteConfirmItemId} onOpenChange={(open) => { if (!open) setDeleteConfirmItemId(null); }}>
         <AlertDialogContent>

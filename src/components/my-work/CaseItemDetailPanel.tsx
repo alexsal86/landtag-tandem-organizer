@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { format } from "date-fns";
 import { de } from "date-fns/locale";
-import { AlertCircle, Archive, Check, CheckCircle2, ChevronDown, Clock, ExternalLink, Gavel, Globe, Loader2, Mail, MessageSquare, Phone, Search, Trash2, Users, Vote } from "lucide-react";
+import { AlertCircle, Check, CheckCircle2, ChevronDown, Clock, ExternalLink, Gavel, Globe, Loader2, Mail, MessageSquare, Phone, Search, Trash2, Users, Vote } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useTenant } from "@/hooks/useTenant";
 import { Button } from "@/components/ui/button";
@@ -92,8 +92,6 @@ export function CaseItemDetailPanel({
   onContactEmailChange,
   onContactPhoneChange,
   onContactSelected,
-  onArchive,
-  archiveLabel,
   onDelete,
 }: {
   itemId: string;
@@ -124,8 +122,6 @@ export function CaseItemDetailPanel({
   onContactEmailChange: (value: string) => void;
   onContactPhoneChange: (value: string) => void;
   onContactSelected: (contact: { id: string; name: string; email: string | null; phone: string | null } | null) => void;
-  onArchive?: () => void;
-  archiveLabel?: string;
   onDelete?: () => void;
 }) {
   const [showMetaFields, setShowMetaFields] = useState(false);
@@ -754,20 +750,12 @@ export function CaseItemDetailPanel({
 
       <div className="mt-4 pt-4 border-t border-dashed flex items-center justify-between">
         <Button disabled={!editableCaseItem.category} onClick={onSave}>Speichern</Button>
-        <div className="flex items-center gap-2">
-          {onArchive && (
-            <Button variant="ghost" size="sm" className="hover:bg-muted" onClick={onArchive}>
-              <Archive className="mr-2 h-3.5 w-3.5" />
-              {archiveLabel || "Archivieren"}
-            </Button>
-          )}
-          {onDelete && (
-            <Button variant="ghost" size="sm" className="text-destructive hover:text-destructive hover:bg-destructive/10" onClick={onDelete}>
-              <Trash2 className="mr-2 h-3.5 w-3.5" />
-              Vorgang löschen
-            </Button>
-          )}
-        </div>
+        {onDelete && (
+          <Button variant="ghost" size="sm" className="text-destructive hover:text-destructive hover:bg-destructive/10" onClick={onDelete}>
+            <Trash2 className="mr-2 h-3.5 w-3.5" />
+            Vorgang löschen
+          </Button>
+        )}
       </div>
     </div>
   );
