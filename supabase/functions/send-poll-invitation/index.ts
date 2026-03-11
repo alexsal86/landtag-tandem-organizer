@@ -1,6 +1,7 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { Resend } from "https://esm.sh/resend@4.0.0";
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { requireAppBaseUrl } from "../_shared/url.ts";
+import { createServiceRoleClient } from "../_shared/supabase.ts";
 
 const resend = new Resend(Deno.env.get("RESEND_API_KEY"));
 
@@ -25,10 +26,7 @@ const handler = async (req: Request): Promise<Response> => {
   }
 
   try {
-    const supabase = createClient(
-      Deno.env.get("SUPABASE_URL") ?? "",
-      Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? ""
-    );
+    const supabase = createServiceRoleClient();
 
     const { 
       pollId, 
@@ -85,8 +83,7 @@ const handler = async (req: Request): Promise<Response> => {
         const participantToken = participant.token || 'guest';
 
         // Get current domain dynamically
-        const origin = req.headers.get('origin') || req.headers.get('referer');
-        const domain = origin ? new URL(origin).origin : 'https://wawofclbehbkebjivdte.supabase.co';
+        const domain = requireAppBaseUrl(req);
         const pollUrl = `${domain}/poll-guest/${pollId}?token=${participantToken}`;
         
         console.log("About to send email to:", email, "with URL:", pollUrl);

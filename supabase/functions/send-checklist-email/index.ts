@@ -1,5 +1,5 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2.39.0";
+import { createServiceRoleClient } from "../_shared/supabase.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -11,15 +11,22 @@ interface EmailRequest {
   checklistItemId: string;
 }
 
+const getSupabaseClient = () => createServiceRoleClient();
+
+const getErrorMessage = (error: unknown): string => {
+  if (error instanceof Error) return error.message;
+  return String(error);
+};
+
 const handler = async (req: Request): Promise<Response> => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
   }
 
+  let requestBody: EmailRequest | null = null;
+
   try {
-    const supabaseUrl = "https://wawofclbehbkebjivdte.supabase.co";
-    const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
-    const supabase = createClient(supabaseUrl, supabaseServiceKey);
+    const supabase = getSupabaseClient();
 
     // Get JWT token from request
     const authHeader = req.headers.get("Authorization");
@@ -35,7 +42,8 @@ const handler = async (req: Request): Promise<Response> => {
       throw new Error("Unauthorized");
     }
 
-    const { actionId, checklistItemId }: EmailRequest = await req.json();
+    requestBody = await req.json();
+    const { actionId, checklistItemId } = requestBody;
 
     console.log("Processing email for action:", actionId, "item:", checklistItemId);
 
@@ -114,22 +122,22 @@ const handler = async (req: Request): Promise<Response> => {
       JSON.stringify({ success: true, messageId: emailData.id }),
       { status: 200, headers: { "Content-Type": "application/json", ...corsHeaders } }
     );
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Error sending checklist email:", error);
 
     // Try to log the error if we have the IDs
     try {
-      const body = await req.json();
-      const { actionId, checklistItemId } = body;
-      const supabaseUrl = "https://wawofclbehbkebjivdte.supabase.co";
-      const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
-      const supabase = createClient(supabaseUrl, supabaseServiceKey);
+      const { actionId, checklistItemId } = requestBody ?? {};
+      if (!actionId || !checklistItemId) {
+        throw new Error("Cannot log failed checklist email: missing action identifiers in request body");
+      }
+      const supabase = getSupabaseClient();
 
       await supabase.from("event_planning_action_logs").insert({
         action_id: actionId,
         checklist_item_id: checklistItemId,
         execution_status: "failed",
-        error_message: error.message,
+        error_message: getErrorMessage(error),
       });
     } catch (logError) {
       console.error("Failed to log error:", logError);
