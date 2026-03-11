@@ -305,6 +305,7 @@ export function TimeTrackingView() {
             sickEndDate={ops.sickEndDate} setSickEndDate={ops.setSickEndDate}
             sickNotes={ops.sickNotes} setSickNotes={ops.setSickNotes}
             handleReportSick={ops.handleReportSick}
+            sickDeputy={ops.sickDeputy} setSickDeputy={ops.setSickDeputy}
             medicalDate={ops.medicalDate} setMedicalDate={ops.setMedicalDate}
             medicalStartTime={ops.medicalStartTime} setMedicalStartTime={ops.setMedicalStartTime}
             medicalEndTime={ops.medicalEndTime} setMedicalEndTime={ops.setMedicalEndTime}

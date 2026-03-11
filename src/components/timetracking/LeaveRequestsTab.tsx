@@ -397,8 +397,6 @@ export function LeaveRequestsTab(props: LeaveRequestsTabProps) {
       <VacationHistoryDialog
         open={vacationHistoryOpen}
         onOpenChange={setVacationHistoryOpen}
-        vacationLeaves={props.vacationLeaves}
-        employeeSettings={props.employeeSettings}
       />
     </div>
   );
