@@ -31,6 +31,7 @@ export function CalendarHeader({ onShowPolls, selectedDate, onSelectDate }: Cale
       <div className="mt-6 rounded-lg border bg-background/70 p-1.5">
         <Calendar
           mode="single"
+          navLayout="around"
           month={selectedDate}
           selected={selectedDate}
           onSelect={(date) => {
