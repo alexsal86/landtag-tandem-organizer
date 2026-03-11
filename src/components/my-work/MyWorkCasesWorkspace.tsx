@@ -215,19 +215,6 @@ const priorityOptions = [
   { value: "urgent", label: "Dringend", color: "text-red-600" },
 ];
 
-const caseFileStatusBadge = (status: string) => {
-  switch (status) {
-    case "open":
-      return <Badge variant="outline" className="border-emerald-500/40 text-emerald-600 text-[10px] px-1.5 py-0">Offen</Badge>;
-    case "in_progress":
-      return <Badge variant="outline" className="border-blue-500/40 text-blue-600 text-[10px] px-1.5 py-0">In Bearbeitung</Badge>;
-    case "closed":
-      return <Badge variant="outline" className="border-muted-foreground/40 text-muted-foreground text-[10px] px-1.5 py-0">Geschlossen</Badge>;
-    default:
-      return <Badge variant="outline" className="text-[10px] px-1.5 py-0">{status}</Badge>;
-  }
-};
-
 export function MyWorkCasesWorkspace() {
   const { user } = useAuth();
   const { currentTenant } = useTenant();
@@ -1532,7 +1519,6 @@ export function MyWorkCasesWorkspace() {
                                         <div className="mt-1.5 flex items-center justify-between text-xs text-muted-foreground">
                                           <div className="flex items-center gap-2">
                                             {cf.reference_number && <span>{cf.reference_number}</span>}
-                                            {caseFileStatusBadge(cf.status)}
                                           </div>
                                           {linkedCount > 0 && (
                                             <span>
@@ -1593,7 +1579,6 @@ export function MyWorkCasesWorkspace() {
                                             <div className="mt-1.5 flex items-center justify-between text-xs text-muted-foreground">
                                               <div className="flex items-center gap-2">
                                                 {cf.reference_number && <span>{cf.reference_number}</span>}
-                                                {caseFileStatusBadge(cf.status)}
                                               </div>
                                               {linkedCount > 0 && (
                                                 <span>
