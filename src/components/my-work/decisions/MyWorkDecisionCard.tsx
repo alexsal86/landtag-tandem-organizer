@@ -63,6 +63,60 @@ const getInitials = (name: string | null) => {
   return name.split(' ').map((n) => n[0]).join('').toUpperCase().slice(0, 2);
 };
 
+const getPromptColorClasses = (color: string) => {
+  switch (color) {
+    case 'red':
+      return {
+        container: 'border-red-300 bg-red-50',
+        icon: 'text-red-600',
+        submitButton: 'bg-red-600 hover:bg-red-700 text-white',
+      };
+    case 'orange':
+      return {
+        container: 'border-orange-300 bg-orange-50',
+        icon: 'text-orange-600',
+        submitButton: 'bg-orange-600 hover:bg-orange-700 text-white',
+      };
+    case 'yellow':
+      return {
+        container: 'border-yellow-300 bg-yellow-50',
+        icon: 'text-yellow-700',
+        submitButton: 'bg-yellow-500 hover:bg-yellow-600 text-black',
+      };
+    case 'blue':
+      return {
+        container: 'border-blue-300 bg-blue-50',
+        icon: 'text-blue-600',
+        submitButton: 'bg-blue-600 hover:bg-blue-700 text-white',
+      };
+    case 'purple':
+      return {
+        container: 'border-purple-300 bg-purple-50',
+        icon: 'text-purple-600',
+        submitButton: 'bg-purple-600 hover:bg-purple-700 text-white',
+      };
+    case 'lime':
+      return {
+        container: 'border-lime-300 bg-lime-50',
+        icon: 'text-lime-700',
+        submitButton: 'bg-lime-600 hover:bg-lime-700 text-white',
+      };
+    case 'gray':
+      return {
+        container: 'border-gray-300 bg-gray-50',
+        icon: 'text-gray-600',
+        submitButton: 'bg-gray-600 hover:bg-gray-700 text-white',
+      };
+    case 'green':
+    default:
+      return {
+        container: 'border-green-300 bg-green-50',
+        icon: 'text-green-600',
+        submitButton: 'bg-green-600 hover:bg-green-700 text-white',
+      };
+  }
+};
+
 const MyWorkDecisionCardInner = ({
   decision,
   isHighlighted: highlighted,
@@ -89,6 +143,7 @@ const MyWorkDecisionCardInner = ({
   const [commentDraft, setCommentDraft] = useState('');
   const [commentEditorKey, setCommentEditorKey] = useState(0);
   const [isSubmittingComment, setIsSubmittingComment] = useState(false);
+  const [commentPromptColor, setCommentPromptColor] = useState('green');
   const responseRefreshTimeoutRef = useRef<number | null>(null);
   const { toast } = useToast();
 
@@ -161,6 +216,9 @@ const MyWorkDecisionCardInner = ({
     };
   }, [summary.pending, summary.total, summaryItems]);
 
+
+  const promptColorClasses = getPromptColorClasses(commentPromptColor);
+
   const avatarParticipants = (decision.participants || []).map((p) => ({
     user_id: p.user_id,
     display_name: p.profile?.display_name || null,
@@ -182,8 +240,13 @@ const MyWorkDecisionCardInner = ({
     .replace(/\s+/g, " ")
     .trim();
 
-  const handleResponseSubmitted = () => {
+  const handleResponseSubmitted = (meta?: { responseType: string; color?: string }) => {
     clearResponseRefreshTimeout();
+    const optionColor = meta?.color
+      || decision.response_options?.find((option) => option.key === meta?.responseType)?.color
+      || 'green';
+
+    setCommentPromptColor(optionColor);
     setCommentDraft('');
     setCommentEditorKey((prev) => prev + 1);
     setShowCommentEditor(false);
@@ -193,7 +256,7 @@ const MyWorkDecisionCardInner = ({
       setShowCommentPrompt(false);
       setShowCommentEditor(false);
       onResponseSubmitted();
-    }, 6000);
+    }, 10000);
   };
 
   const handleOpenJustificationEditor = () => {
@@ -395,11 +458,11 @@ const MyWorkDecisionCardInner = ({
               )}
 
               {showCommentPrompt && (
-                <div className="animate-in fade-in slide-in-from-top-1 mt-3 rounded-lg border border-primary/30 bg-primary/5 p-3 space-y-2">
+                <div className={cn('animate-in fade-in slide-in-from-top-1 mt-3 rounded-lg border p-3 space-y-2', promptColorClasses.container)}>
                   {!showCommentEditor ? (
                     <div className="space-y-2 text-sm">
                       <div className="flex items-center gap-1.5 font-semibold text-foreground">
-                        <MessageSquare className="h-4 w-4 text-primary" />
+                        <MessageSquare className={cn("h-4 w-4", promptColorClasses.icon)} />
                         Entscheidung erfasst.
                       </div>
                       <div className="text-xs text-muted-foreground">
@@ -418,13 +481,14 @@ const MyWorkDecisionCardInner = ({
                         >
                           sofort erledigen
                         </button>
-                        . Ohne Aktion wird in 6 Sekunden automatisch aktualisiert.
+                        .<br />
+                        Ohne Aktion wird in 10 Sekunden automatisch aktualisiert.
                       </div>
                     </div>
                   ) : (
                     <>
                       <div className="flex items-center gap-1.5 text-sm font-semibold text-foreground">
-                        <MessageSquare className="h-4 w-4 text-primary" />
+                        <MessageSquare className={cn("h-4 w-4", promptColorClasses.icon)} />
                         Begründung ergänzen
                       </div>
                       <p className="text-xs text-muted-foreground">
@@ -443,6 +507,7 @@ const MyWorkDecisionCardInner = ({
                           size="sm"
                           onClick={handleSubmitJustification}
                           disabled={isSubmittingComment || !sanitizedCommentDraft}
+                          className={promptColorClasses.submitButton}
                         >
                           <Send className="h-3.5 w-3.5 mr-1" />
                           {isSubmittingComment ? 'Speichere...' : 'Begründung absenden'}
