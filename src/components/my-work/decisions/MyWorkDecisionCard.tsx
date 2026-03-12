@@ -1,4 +1,4 @@
-import { useMemo, useState, memo } from "react";
+import { useMemo, useState, memo, useEffect, useRef } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -8,6 +8,7 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { TaskDecisionResponse } from "@/components/task-decisions/TaskDecisionResponse";
 import { DecisionCardActivity } from "@/components/task-decisions/DecisionCardActivity";
 import { RichTextDisplay } from "@/components/ui/RichTextDisplay";
+import SimpleRichTextEditor from "@/components/ui/SimpleRichTextEditor";
 import { TopicDisplay } from "@/components/topics/TopicSelector";
 import { EmailPreviewDialog } from "@/components/task-decisions/EmailPreviewDialog";
 import { DecisionAttachmentPreviewDialog } from "@/components/task-decisions/DecisionAttachmentPreviewDialog";
@@ -22,6 +23,7 @@ import {
   Paperclip,
   Globe,
   MessageSquare,
+  Send,
   Mail,
   Star,
   ChevronDown,
@@ -30,6 +32,8 @@ import {
 import { cn } from "@/lib/utils";
 import { MyWorkDecision, getResponseSummary, getBorderColor, getCustomResponseSummary } from "./types";
 import { getColorClasses } from "@/lib/decisionTemplates";
+import { supabase } from "@/integrations/supabase/client";
+import { useToast } from "@/hooks/use-toast";
 
 interface MyWorkDecisionCardProps {
   decision: MyWorkDecision;
@@ -80,6 +84,13 @@ const MyWorkDecisionCardInner = ({
   const [previewEmail, setPreviewEmail] = useState<{ file_path: string; file_name: string } | null>(null);
   const [previewAttachment, setPreviewAttachment] = useState<{ file_path: string; file_name: string } | null>(null);
   const [detailsExpanded, setDetailsExpanded] = useState(false);
+  const [showCommentPrompt, setShowCommentPrompt] = useState(false);
+  const [showCommentEditor, setShowCommentEditor] = useState(false);
+  const [commentDraft, setCommentDraft] = useState('');
+  const [commentEditorKey, setCommentEditorKey] = useState(0);
+  const [isSubmittingComment, setIsSubmittingComment] = useState(false);
+  const responseRefreshTimeoutRef = useRef<number | null>(null);
+  const { toast } = useToast();
 
   const summary = getResponseSummary(decision.participants);
   const isArchiving = archivingDecisionId === decision.id;
@@ -157,6 +168,92 @@ const MyWorkDecisionCardInner = ({
     avatar_url: p.profile?.avatar_url || null,
     response_type: p.responses[0]?.response_type || null,
   }));
+
+  const clearResponseRefreshTimeout = () => {
+    if (responseRefreshTimeoutRef.current !== null) {
+      window.clearTimeout(responseRefreshTimeoutRef.current);
+      responseRefreshTimeoutRef.current = null;
+    }
+  };
+
+  const sanitizedCommentDraft = commentDraft
+    .replace(/<[^>]*>/g, " ")
+    .replace(/&nbsp;/gi, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+
+  const handleResponseSubmitted = () => {
+    clearResponseRefreshTimeout();
+    setCommentDraft('');
+    setCommentEditorKey((prev) => prev + 1);
+    setShowCommentEditor(false);
+    setShowCommentPrompt(true);
+
+    responseRefreshTimeoutRef.current = window.setTimeout(() => {
+      setShowCommentPrompt(false);
+      setShowCommentEditor(false);
+      onResponseSubmitted();
+    }, 6000);
+  };
+
+  const handleOpenJustificationEditor = () => {
+    clearResponseRefreshTimeout();
+    setShowCommentEditor(true);
+  };
+
+  const handleCompleteImmediately = () => {
+    clearResponseRefreshTimeout();
+    setShowCommentPrompt(false);
+    setShowCommentEditor(false);
+    setCommentDraft('');
+    setCommentEditorKey((prev) => prev + 1);
+    onResponseSubmitted();
+  };
+
+  const handleSubmitJustification = async () => {
+    const plainComment = sanitizedCommentDraft;
+    if (!plainComment || isSubmittingComment) return;
+
+    setIsSubmittingComment(true);
+    try {
+      const { error } = await supabase
+        .from('task_decision_comments')
+        .insert([{
+          decision_id: decision.id,
+          user_id: currentUserId,
+          parent_id: null,
+          content: commentDraft.trim(),
+        }]);
+
+      if (error) throw error;
+
+      toast({
+        title: "Begründung gespeichert",
+        description: "Deine Begründung wurde als Diskussionsbeitrag hinzugefügt.",
+      });
+
+      clearResponseRefreshTimeout();
+      setShowCommentPrompt(false);
+      setShowCommentEditor(false);
+      setCommentDraft('');
+      setCommentEditorKey((prev) => prev + 1);
+      onResponseSubmitted();
+    } catch (error) {
+      toast({
+        title: "Fehler",
+        description: "Die Begründung konnte nicht gespeichert werden.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsSubmittingComment(false);
+    }
+  };
+
+  useEffect(() => {
+    return () => {
+      clearResponseRefreshTimeout();
+    };
+  }, []);
 
   return (
     <>
@@ -289,12 +386,71 @@ const MyWorkDecisionCardInner = ({
                 <TaskDecisionResponse
                   decisionId={decision.id}
                   participantId={decision.participant_id || ''}
-                  onResponseSubmitted={onResponseSubmitted}
+                  onResponseSubmitted={handleResponseSubmitted}
                   hasResponded={decision.hasResponded}
                   creatorId={decision.created_by}
                   layout="decision-panel"
                   disabled={!decision.isParticipant || !decision.participant_id}
                 />
+              )}
+
+              {showCommentPrompt && (
+                <div className="animate-in fade-in slide-in-from-top-1 mt-3 rounded-lg border border-primary/30 bg-primary/5 p-3 space-y-2">
+                  {!showCommentEditor ? (
+                    <div className="space-y-2 text-sm">
+                      <div className="flex items-center gap-1.5 font-semibold text-foreground">
+                        <MessageSquare className="h-4 w-4 text-primary" />
+                        Entscheidung erfasst.
+                      </div>
+                      <div className="text-xs text-muted-foreground">
+                        <button
+                          type="button"
+                          onClick={handleOpenJustificationEditor}
+                          className="underline underline-offset-2 hover:text-foreground transition-colors"
+                        >
+                          Begründung hinzufügen
+                        </button>{' '}
+                        oder{' '}
+                        <button
+                          type="button"
+                          onClick={handleCompleteImmediately}
+                          className="underline underline-offset-2 hover:text-foreground transition-colors"
+                        >
+                          sofort erledigen
+                        </button>
+                        . Ohne Aktion wird in 6 Sekunden automatisch aktualisiert.
+                      </div>
+                    </div>
+                  ) : (
+                    <>
+                      <div className="flex items-center gap-1.5 text-sm font-semibold text-foreground">
+                        <MessageSquare className="h-4 w-4 text-primary" />
+                        Begründung ergänzen
+                      </div>
+                      <p className="text-xs text-muted-foreground">
+                        Bitte begründe deine Entscheidung kurz. Der Refresh erfolgt nach dem Absenden.
+                      </p>
+                      <SimpleRichTextEditor
+                        key={commentEditorKey}
+                        initialContent=""
+                        onChange={setCommentDraft}
+                        placeholder="Kurze Begründung eingeben..."
+                        minHeight="90px"
+                      />
+                      <div className="flex justify-end">
+                        <Button
+                          type="button"
+                          size="sm"
+                          onClick={handleSubmitJustification}
+                          disabled={isSubmittingComment || !sanitizedCommentDraft}
+                        >
+                          <Send className="h-3.5 w-3.5 mr-1" />
+                          {isSubmittingComment ? 'Speichere...' : 'Begründung absenden'}
+                        </Button>
+                      </div>
+                    </>
+                  )}
+                </div>
               )}
 
               <div className="border-t border-border/70 pt-3 text-xs text-muted-foreground space-y-2">
