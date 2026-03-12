@@ -8,6 +8,7 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { TaskDecisionResponse } from "@/components/task-decisions/TaskDecisionResponse";
 import { DecisionCardActivity } from "@/components/task-decisions/DecisionCardActivity";
 import { RichTextDisplay } from "@/components/ui/RichTextDisplay";
+import SimpleRichTextEditor from "@/components/ui/SimpleRichTextEditor";
 import { TopicDisplay } from "@/components/topics/TopicSelector";
 import { EmailPreviewDialog } from "@/components/task-decisions/EmailPreviewDialog";
 import { DecisionAttachmentPreviewDialog } from "@/components/task-decisions/DecisionAttachmentPreviewDialog";
@@ -22,6 +23,7 @@ import {
   Paperclip,
   Globe,
   MessageSquare,
+  Send,
   Mail,
   Star,
   ChevronDown,
@@ -30,6 +32,8 @@ import {
 import { cn } from "@/lib/utils";
 import { MyWorkDecision, getResponseSummary, getBorderColor, getCustomResponseSummary } from "./types";
 import { getColorClasses } from "@/lib/decisionTemplates";
+import { supabase } from "@/integrations/supabase/client";
+import { useToast } from "@/hooks/use-toast";
 
 interface MyWorkDecisionCardProps {
   decision: MyWorkDecision;
@@ -81,6 +85,10 @@ const MyWorkDecisionCardInner = ({
   const [previewAttachment, setPreviewAttachment] = useState<{ file_path: string; file_name: string } | null>(null);
   const [detailsExpanded, setDetailsExpanded] = useState(false);
   const [showCommentPrompt, setShowCommentPrompt] = useState(false);
+  const [commentDraft, setCommentDraft] = useState('');
+  const [commentEditorKey, setCommentEditorKey] = useState(0);
+  const [isSubmittingComment, setIsSubmittingComment] = useState(false);
+  const { toast } = useToast();
 
   const summary = getResponseSummary(decision.participants);
   const isArchiving = archivingDecisionId === decision.id;
@@ -159,12 +167,53 @@ const MyWorkDecisionCardInner = ({
     response_type: p.responses[0]?.response_type || null,
   }));
 
+  const sanitizedCommentDraft = commentDraft
+    .replace(/<[^>]*>/g, " ")
+    .replace(/&nbsp;/gi, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+
   const handleResponseSubmitted = () => {
+    setCommentDraft('');
+    setCommentEditorKey((prev) => prev + 1);
     setShowCommentPrompt(true);
-    setTimeout(() => {
+  };
+
+  const handleSubmitJustification = async () => {
+    const plainComment = sanitizedCommentDraft;
+    if (!plainComment || isSubmittingComment) return;
+
+    setIsSubmittingComment(true);
+    try {
+      const { error } = await supabase
+        .from('task_decision_comments')
+        .insert([{
+          decision_id: decision.id,
+          user_id: currentUserId,
+          parent_id: null,
+          content: commentDraft.trim(),
+        }]);
+
+      if (error) throw error;
+
+      toast({
+        title: "Begründung gespeichert",
+        description: "Deine Begründung wurde als Diskussionsbeitrag hinzugefügt.",
+      });
+
       setShowCommentPrompt(false);
+      setCommentDraft('');
+      setCommentEditorKey((prev) => prev + 1);
       onResponseSubmitted();
-    }, 5000);
+    } catch (error) {
+      toast({
+        title: "Fehler",
+        description: "Die Begründung konnte nicht gespeichert werden.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsSubmittingComment(false);
+    }
   };
 
   return (
@@ -307,18 +356,32 @@ const MyWorkDecisionCardInner = ({
               )}
 
               {showCommentPrompt && (
-                <div className="animate-in fade-in slide-in-from-top-1 mt-2">
-                  <button
-                    onClick={() => {
-                      setShowCommentPrompt(false);
-                      onResponseSubmitted();
-                      onOpenComments(decision.id, decision.title);
-                    }}
-                    className="text-xs text-muted-foreground hover:text-foreground flex items-center gap-1 transition-colors"
-                  >
-                    <MessageSquare className="h-3 w-3" />
-                    Begründung hinzufügen?
-                  </button>
+                <div className="animate-in fade-in slide-in-from-top-1 mt-3 rounded-lg border border-primary/30 bg-primary/5 p-3 space-y-2">
+                  <div className="flex items-center gap-1.5 text-sm font-semibold text-foreground">
+                    <MessageSquare className="h-4 w-4 text-primary" />
+                    Begründung ergänzen
+                  </div>
+                  <p className="text-xs text-muted-foreground">
+                    Bitte begründe deine Entscheidung kurz. Der Refresh erfolgt nach dem Absenden.
+                  </p>
+                  <SimpleRichTextEditor
+                    key={commentEditorKey}
+                    initialContent=""
+                    onChange={setCommentDraft}
+                    placeholder="Kurze Begründung eingeben..."
+                    minHeight="90px"
+                  />
+                  <div className="flex justify-end">
+                    <Button
+                      type="button"
+                      size="sm"
+                      onClick={handleSubmitJustification}
+                      disabled={isSubmittingComment || !sanitizedCommentDraft}
+                    >
+                      <Send className="h-3.5 w-3.5 mr-1" />
+                      {isSubmittingComment ? 'Speichere...' : 'Begründung absenden'}
+                    </Button>
+                  </div>
                 </div>
               )}
 
