@@ -114,6 +114,17 @@
   color: hsl(var(--accent-foreground));
 }
 
+/* Week/day header hover should only highlight the day circle (not the whole button) */
+.rbc-time-header .rbc-button-link:hover {
+  background-color: transparent;
+  color: inherit;
+}
+
+.rbc-time-header .rbc-button-link:hover .rbc-custom-day:not(.rbc-custom-day--today) {
+  background: hsl(var(--primary));
+  color: hsl(var(--primary-foreground));
+}
+
 /* More events indicator */
 .rbc-show-more {
   color: hsl(var(--primary));
