@@ -1,3 +1,4 @@
+import { Fragment } from "react";
 import { cn } from "@/lib/utils";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
@@ -15,9 +16,10 @@ interface AvatarStackProps {
   participants: Participant[];
   maxVisible?: number;
   size?: 'sm' | 'md';
+  showTooltips?: boolean;
 }
 
-export function AvatarStack({ participants, maxVisible = 4, size = 'sm' }: AvatarStackProps) {
+export function AvatarStack({ participants, maxVisible = 4, size = 'sm', showTooltips = true }: AvatarStackProps) {
   const visibleParticipants = participants.slice(0, maxVisible);
   const remainingCount = participants.length - maxVisible;
 
@@ -58,13 +60,11 @@ export function AvatarStack({ participants, maxVisible = 4, size = 'sm' }: Avata
     ? 'h-6 w-6 text-[10px]' 
     : 'h-8 w-8 text-xs';
 
-  return (
-    <TooltipProvider>
-      <div className="flex items-center -space-x-1">
-        {visibleParticipants.map((participant, index) => (
-          <Tooltip key={participant.user_id}>
-            <TooltipTrigger asChild>
-              <div 
+  const stackContent = (
+    <div className="flex items-center -space-x-1">
+        {visibleParticipants.map((participant, index) => {
+          const avatarItem = (
+            <div 
                 className={cn(
                   "relative rounded-full ring-2 ring-background",
                   getResponseBorderColor(participant.response_type)
@@ -89,23 +89,31 @@ export function AvatarStack({ participants, maxVisible = 4, size = 'sm' }: Avata
                   {getResponseIcon(participant.response_type)}
                 </div>
               </div>
-            </TooltipTrigger>
-            <TooltipContent side="top" className="text-xs">
-              <div className="flex items-center gap-1.5">
-                <span>{participant.display_name || 'Unbekannt'}</span>
-                {participant.response_type === 'yes' && <span className="text-green-600">✓ Ja</span>}
-                {participant.response_type === 'no' && <span className="text-red-600">✕ Nein</span>}
-                {participant.response_type === 'question' && <span className="text-orange-600">? Rückfrage</span>}
-                {!participant.response_type && <span className="text-muted-foreground">Ausstehend</span>}
-              </div>
-            </TooltipContent>
-          </Tooltip>
-        ))}
+          );
+
+          if (!showTooltips) {
+            return <Fragment key={participant.user_id}>{avatarItem}</Fragment>;
+          }
+
+          return (
+            <Tooltip key={participant.user_id}>
+              <TooltipTrigger asChild>{avatarItem}</TooltipTrigger>
+              <TooltipContent side="top" className="text-xs z-[120] max-w-xs">
+                <div className="flex items-center gap-1.5">
+                  <span>{participant.display_name || 'Unbekannt'}</span>
+                  {participant.response_type === 'yes' && <span className="text-green-600">✓ Ja</span>}
+                  {participant.response_type === 'no' && <span className="text-red-600">✕ Nein</span>}
+                  {participant.response_type === 'question' && <span className="text-orange-600">? Rückfrage</span>}
+                  {!participant.response_type && <span className="text-muted-foreground">Ausstehend</span>}
+                </div>
+              </TooltipContent>
+            </Tooltip>
+          );
+        })}
         
-        {remainingCount > 0 && (
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <div 
+        {remainingCount > 0 && (() => {
+          const remainingItem = (
+            <div 
                 className="relative rounded-full ring-2 ring-background bg-muted"
                 style={{ zIndex: 0 }}
               >
@@ -115,13 +123,28 @@ export function AvatarStack({ participants, maxVisible = 4, size = 'sm' }: Avata
                   </AvatarFallback>
                 </Avatar>
               </div>
-            </TooltipTrigger>
-            <TooltipContent side="top" className="text-xs">
-              {participants.slice(maxVisible).map(p => p.display_name || 'Unbekannt').join(', ')}
-            </TooltipContent>
-          </Tooltip>
-        )}
-      </div>
-    </TooltipProvider>
+          );
+
+          if (!showTooltips) {
+            return remainingItem;
+          }
+
+          return (
+            <Tooltip>
+              <TooltipTrigger asChild>{remainingItem}</TooltipTrigger>
+              <TooltipContent side="top" className="text-xs z-[120] max-w-xs">
+                {participants.slice(maxVisible).map(p => p.display_name || 'Unbekannt').join(', ')}
+              </TooltipContent>
+            </Tooltip>
+          );
+        })()}
+    </div>
   );
+
+  if (!showTooltips) {
+    return stackContent;
+  }
+
+  return <TooltipProvider>{stackContent}</TooltipProvider>;
+
 }
