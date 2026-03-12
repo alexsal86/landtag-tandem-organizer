@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useSearchParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
@@ -77,9 +77,12 @@ export function useEmailComposer() {
 
   // Press release
   const [pressReleaseId, setPressReleaseId] = useState<string | null>(null);
+  const [pendingPressComposeId, setPendingPressComposeId] = useState<string | null>(null);
+  const initializedPressComposeRef = useRef<string | null>(null);
 
   // Data
   const [distributionLists, setDistributionLists] = useState<DistributionList[]>([]);
+  const [distributionListsLoaded, setDistributionListsLoaded] = useState(false);
   const [contacts, setContacts] = useState<Contact[]>([]);
   const [documents, setDocuments] = useState<EmailDocument[]>([]);
 
@@ -95,6 +98,7 @@ export function useEmailComposer() {
   const [manualEmailInput, setManualEmailInput] = useState("");
   const [editorKey, setEditorKey] = useState(0);
   const [openFieldSource, setOpenFieldSource] = useState<{ field: "to" | "cc" | "bcc"; source: "manual" | "lists" | "contacts" } | null>(null);
+  const [senderInfosLoaded, setSenderInfosLoaded] = useState(false);
 
   // ── Data fetching ──────────────────────────────────────────
   useEffect(() => {
@@ -112,12 +116,35 @@ export function useEmailComposer() {
     const prId = searchParams.get("pressReleaseId");
     if (action === "compose-press" && prId && currentTenant) {
       setPressReleaseId(prId);
-      loadPressReleaseForEmail(prId);
-      searchParams.delete("action");
-      searchParams.delete("pressReleaseId");
-      setSearchParams(searchParams, { replace: true });
+      setPendingPressComposeId(prId);
     }
   }, [searchParams, currentTenant]);
+
+  useEffect(() => {
+    if (!pendingPressComposeId) return;
+    if (!distributionListsLoaded || !senderInfosLoaded) return;
+    if (!selectedSender) return;
+    if (initializedPressComposeRef.current === pendingPressComposeId) return;
+
+    initializedPressComposeRef.current = pendingPressComposeId;
+    loadPressReleaseForEmail(pendingPressComposeId)
+      .finally(() => {
+        setPendingPressComposeId(null);
+        const nextParams = new URLSearchParams(searchParams);
+        nextParams.delete("action");
+        nextParams.delete("pressReleaseId");
+        setSearchParams(nextParams, { replace: true });
+      });
+  }, [
+    pendingPressComposeId,
+    distributionListsLoaded,
+    senderInfosLoaded,
+    distributionLists,
+    senderInfos,
+    selectedSender,
+    searchParams,
+    setSearchParams,
+  ]);
 
   const loadPressReleaseForEmail = async (prId: string) => {
     try {
@@ -164,7 +191,12 @@ export function useEmailComposer() {
 
       if (defaultDistListId) {
         const list = distributionLists.find((l) => l.id === defaultDistListId);
-        if (list) addDistributionListRecipient(list, "bcc");
+        if (list) {
+          setRecipients((prev) => {
+            if (prev.some((r) => r.sourceId === list.id && r.source === "distribution_list" && r.type === "bcc")) return prev;
+            return [...prev, { id: `list-${list.id}-bcc`, type: "bcc", label: `${list.name} (${list.memberCount} Mitglieder)`, source: "distribution_list", sourceId: list.id }];
+          });
+        }
       }
 
       const defaultSenderInfo = senderInfos.find((s) => s.id === selectedSender);
@@ -184,6 +216,7 @@ export function useEmailComposer() {
 
   const fetchSenderInfos = async () => {
     try {
+      setSenderInfosLoaded(false);
       const { data, error } = await supabase
         .from("sender_information")
         .select("id, name, landtag_email, is_default")
@@ -196,6 +229,8 @@ export function useEmailComposer() {
       else if (data && data.length > 0) setSelectedSender(data[0].id);
     } catch (error) {
       debugConsole.error("Error fetching sender infos:", error);
+    } finally {
+      setSenderInfosLoaded(true);
     }
   };
 
@@ -216,6 +251,7 @@ export function useEmailComposer() {
 
   const fetchDistributionLists = async () => {
     try {
+      setDistributionListsLoaded(false);
       const { data: lists, error } = await supabase.from("distribution_lists").select("id, name, topic").eq("user_id", user!.id).order("name");
       if (error) throw error;
       const listsWithCounts = await Promise.all(
@@ -227,6 +263,8 @@ export function useEmailComposer() {
       setDistributionLists(listsWithCounts as DistributionList[]);
     } catch (error: unknown) {
       debugConsole.error("Error fetching distribution lists:", error);
+    } finally {
+      setDistributionListsLoaded(true);
     }
   };
 
