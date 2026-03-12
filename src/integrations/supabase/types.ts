@@ -11108,6 +11108,10 @@ export type Database = {
         Args: { p_tenant_id: string; p_user_id: string }
         Returns: Json
       }
+      get_employee_admin_overview: {
+        Args: { p_tenant_id: string }
+        Returns: Json
+      }
       get_globally_shared_user_ids: {
         Args: { _user_id: string }
         Returns: string[]

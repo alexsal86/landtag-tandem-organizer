@@ -1,4 +1,5 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { useTenant } from "@/hooks/useTenant";
@@ -9,12 +10,21 @@ import {
   Employee, EmployeeSettingsRow, Profile, LeaveAgg, LeaveType, PendingLeaveRequest,
   calculateWorkingDays, initLeaveAgg,
 } from "../types";
-import { fetchPendingMeetingRequestsCount } from "./meetingRequests";
+
+type AdminOverviewResponse = {
+  employees: Array<Employee & { leave_agg?: LeaveAgg; sick_days_count?: number }>;
+  pending_leaves: PendingLeaveRequest[];
+  pending_requests_count: number;
+};
+
+const ADMIN_OVERVIEW_STALE_TIME_MS = 60 * 1000;
+const ADMIN_OVERVIEW_GC_TIME_MS = 10 * 60 * 1000;
 
 export function useEmployeesData() {
   const { user } = useAuth();
   const { currentTenant } = useTenant();
   const { toast } = useToast();
+  const queryClient = useQueryClient();
 
   const [isAdmin, setIsAdmin] = useState(false);
   const [roleResolved, setRoleResolved] = useState(false);
@@ -31,15 +41,29 @@ export function useEmployeesData() {
   const [selfProfile, setSelfProfile] = useState<Profile | null>(null);
   const [selfLastMeetingId, setSelfLastMeetingId] = useState<string | null>(null);
 
+  const adminOverviewKey = useMemo(() => ["employee-admin-overview", currentTenant?.id], [currentTenant?.id]);
+
   const reloadPendingRequestsCount = useCallback(async () => {
-    if (!currentTenant) return;
+    if (!currentTenant || !isAdmin) return;
     try {
-      const count = await fetchPendingMeetingRequestsCount(currentTenant.id);
-      setPendingRequestsCount(count);
+      const { data } = await queryClient.fetchQuery({
+        queryKey: adminOverviewKey,
+        staleTime: 0,
+        gcTime: ADMIN_OVERVIEW_GC_TIME_MS,
+        queryFn: async () => {
+          const { data: rpcData, error } = await supabase.rpc("get_employee_admin_overview", {
+            p_tenant_id: currentTenant.id,
+          });
+
+          if (error) throw error;
+          return (rpcData ?? { employees: [], pending_leaves: [], pending_requests_count: 0 }) as unknown as AdminOverviewResponse;
+        },
+      });
+      setPendingRequestsCount(data.pending_requests_count || 0);
     } catch (error) {
       debugConsole.error("Error loading pending request count:", error);
     }
-  }, [currentTenant]);
+  }, [adminOverviewKey, currentTenant, isAdmin, queryClient]);
 
   // Admin check
   useEffect(() => {
@@ -65,152 +89,135 @@ export function useEmployeesData() {
     run();
   }, [user]);
 
-  // Load admin data
+  const adminOverviewQuery = useQuery({
+    queryKey: adminOverviewKey,
+    enabled: roleResolved && isAdmin && !!currentTenant,
+    staleTime: ADMIN_OVERVIEW_STALE_TIME_MS,
+    gcTime: ADMIN_OVERVIEW_GC_TIME_MS,
+    queryFn: async () => {
+      if (!currentTenant) return { employees: [], pending_leaves: [], pending_requests_count: 0 } as AdminOverviewResponse;
+
+      const { data, error } = await supabase.rpc("get_employee_admin_overview", {
+        p_tenant_id: currentTenant.id,
+      });
+
+      if (error) throw error;
+      return (data ?? { employees: [], pending_leaves: [], pending_requests_count: 0 }) as unknown as AdminOverviewResponse;
+    },
+  });
+
+  // Load admin data from consolidated endpoint
   useEffect(() => {
     if (!roleResolved || !isAdmin) return;
 
-    const load = async () => {
-      if (!user || !currentTenant) return;
-      setLoading(true);
+    if (adminOverviewQuery.error) {
+      debugConsole.error(adminOverviewQuery.error);
+      toast({ title: "Fehler beim Laden", description: "Daten konnten nicht geladen werden.", variant: "destructive" });
+      setLoading(false);
+      return;
+    }
+
+    if (!adminOverviewQuery.data) {
+      setLoading(adminOverviewQuery.isFetching);
+      return;
+    }
+
+    const overview = adminOverviewQuery.data;
+    const normalizedEmployees = (overview.employees || []).map((employee) => {
+      let next_meeting_due: string | null = null;
+      if (employee.last_meeting_date && employee.meeting_interval_months) {
+        const lastMeeting = new Date(employee.last_meeting_date);
+        const nextDue = new Date(lastMeeting);
+        nextDue.setMonth(nextDue.getMonth() + employee.meeting_interval_months);
+        next_meeting_due = nextDue.toISOString();
+      }
+
+      return {
+        user_id: employee.user_id,
+        hours_per_week: employee.hours_per_week ?? 40,
+        timezone: employee.timezone ?? "Europe/Berlin",
+        workdays: employee.workdays ?? [true, true, true, true, true, false, false],
+        display_name: employee.display_name ?? null,
+        avatar_url: employee.avatar_url ?? null,
+        admin_id: employee.admin_id ?? null,
+        annual_vacation_days: employee.annual_vacation_days ?? 30,
+        employment_start_date: employee.employment_start_date ?? null,
+        hours_per_month: employee.hours_per_month ?? 160,
+        days_per_month: employee.days_per_month ?? 20,
+        days_per_week: employee.days_per_week ?? 5,
+        last_meeting_date: employee.last_meeting_date ?? null,
+        meeting_interval_months: employee.meeting_interval_months ?? 3,
+        next_meeting_reminder_days: employee.next_meeting_reminder_days ?? 14,
+        next_meeting_due,
+        open_meeting_requests: employee.open_meeting_requests ?? 0,
+        last_meeting_id: employee.last_meeting_id ?? null,
+        carry_over_days: employee.carry_over_days ?? 0,
+        carry_over_expires_at: employee.carry_over_expires_at ?? null,
+      } as Employee;
+    });
+
+    const nextLeaves: Record<string, LeaveAgg> = {};
+    const nextSickDays: Record<string, number> = {};
+    (overview.employees || []).forEach((employee) => {
+      nextLeaves[employee.user_id] = employee.leave_agg || initLeaveAgg();
+      nextSickDays[employee.user_id] = employee.sick_days_count || 0;
+    });
+
+    setEmployees(normalizedEmployees);
+    setLeaves(nextLeaves);
+    setSickDays(nextSickDays);
+    setPendingLeaves(overview.pending_leaves || []);
+    setPendingRequestsCount(overview.pending_requests_count || 0);
+    setLoading(adminOverviewQuery.isFetching);
+  }, [adminOverviewQuery.data, adminOverviewQuery.error, adminOverviewQuery.isFetching, isAdmin, roleResolved, toast]);
+
+  // Lazy: secondary meeting IDs are refreshed in the background without blocking initial table render.
+  useEffect(() => {
+    if (!roleResolved || !isAdmin || !currentTenant || employees.length === 0) return;
+
+    const run = async () => {
       try {
-        const { data: tenantMemberships } = await supabase
-          .from('user_tenant_memberships')
-          .select('user_id')
-          .eq('tenant_id', currentTenant.id)
-          .eq('is_active', true);
+        const employeeIds = employees.map((employee) => employee.user_id);
+        const { data, error } = await supabase
+          .from("employee_meetings")
+          .select("id, employee_id, meeting_date")
+          .in("employee_id", employeeIds)
+          .eq("tenant_id", currentTenant.id)
+          .order("meeting_date", { ascending: false });
 
-        if (!tenantMemberships?.length) {
-          setEmployees([]); setLeaves({}); setPendingLeaves([]); setLoading(false);
-          return;
-        }
+        if (error) throw error;
 
-        const tenantUserIds = tenantMemberships.map(m => m.user_id);
-
-        const { data: roles, error: rErr } = await supabase
-          .from("user_roles")
-          .select("user_id, role")
-          .in("user_id", tenantUserIds);
-        if (rErr) throw rErr;
-
-        const managedIds = (roles || [])
-          .filter((r: any) => ["mitarbeiter", "praktikant", "bueroleitung"].includes(r.role))
-          .map((r: any) => r.user_id);
-
-        if (managedIds.length === 0) {
-          setEmployees([]); setLeaves({}); setPendingLeaves([]); setLoading(false);
-          return;
-        }
-
-        const [profilesRes, settingsRes, yearlyLeavesRes, pendingRes, sickRes, meetingRequestsRes, lastMeetingsRes] = await Promise.all([
-          supabase.from("profiles").select("user_id, display_name, avatar_url").in("user_id", managedIds),
-          supabase.from("employee_settings")
-            .select("user_id, hours_per_week, timezone, workdays, admin_id, annual_vacation_days, employment_start_date, hours_per_month, days_per_month, days_per_week, last_meeting_date, meeting_interval_months, next_meeting_reminder_days, carry_over_days, carry_over_expires_at")
-            .in("user_id", managedIds),
-          supabase.from("leave_requests")
-            .select("user_id, type, status, start_date, end_date")
-            .in("user_id", managedIds)
-            .gte("start_date", startOfYear(new Date()).toISOString())
-            .lte("start_date", endOfYear(new Date()).toISOString()),
-          supabase.from("leave_requests").select("id, user_id, type, status, start_date, end_date")
-            .in("status", ["pending", "cancel_requested"] as any).in("user_id", managedIds),
-          supabase.from("sick_days").select("user_id").in("user_id", managedIds),
-          supabase.from("employee_meeting_requests").select("employee_id, scheduled_meeting_id").eq("status", "pending").is("scheduled_meeting_id", null).in("employee_id", managedIds),
-          supabase.rpc("get_latest_employee_meetings", { p_employee_ids: managedIds }),
-        ]);
-
-        if (sickRes.error) throw sickRes.error;
-        if (profilesRes.error) throw profilesRes.error;
-        if (settingsRes.error) throw settingsRes.error;
-        if (yearlyLeavesRes.error) throw yearlyLeavesRes.error;
-        if (pendingRes.error) throw pendingRes.error;
-        if (meetingRequestsRes.error) throw meetingRequestsRes.error;
-        if (lastMeetingsRes.error) throw lastMeetingsRes.error;
-
-        const profileMap = new Map<string, Profile>();
-        (profilesRes.data as Profile[] | null)?.forEach((p) => profileMap.set(p.user_id, p));
-
-        const settingsMap = new Map<string, EmployeeSettingsRow>();
-        (settingsRes.data as any[] | null)?.forEach((s) => settingsMap.set(s.user_id, s as EmployeeSettingsRow));
-
-        const lastMeetingMap = new Map<string, string>();
-        (lastMeetingsRes.data || []).forEach((meeting) => {
-          lastMeetingMap.set(meeting.employee_id, meeting.meeting_id);
-        });
-
-        const meetingRequestCounts: Record<string, number> = {};
-        (meetingRequestsRes.data || []).forEach((req: any) => {
-          meetingRequestCounts[req.employee_id] = (meetingRequestCounts[req.employee_id] || 0) + 1;
-        });
-        await reloadPendingRequestsCount();
-
-        const joined: Employee[] = managedIds.map((uid) => {
-          const s = settingsMap.get(uid);
-          const p = profileMap.get(uid);
-          let next_meeting_due: string | null = null;
-          if (s?.last_meeting_date && s?.meeting_interval_months) {
-            const lastMeeting = new Date(s.last_meeting_date);
-            const nextDue = new Date(lastMeeting);
-            nextDue.setMonth(nextDue.getMonth() + s.meeting_interval_months);
-            next_meeting_due = nextDue.toISOString();
+        const latestMeetingByEmployee = new Map<string, string>();
+        (data || []).forEach((meeting) => {
+          if (!latestMeetingByEmployee.has(meeting.employee_id)) {
+            latestMeetingByEmployee.set(meeting.employee_id, meeting.id);
           }
-          return {
-            user_id: uid,
-            hours_per_week: s?.hours_per_week ?? 40,
-            timezone: s?.timezone ?? "Europe/Berlin",
-            workdays: s?.workdays ?? [true, true, true, true, true, false, false],
-            display_name: p?.display_name ?? null,
-            avatar_url: p?.avatar_url ?? null,
-            admin_id: (s as any)?.admin_id ?? null,
-            annual_vacation_days: s?.annual_vacation_days ?? 30,
-            employment_start_date: s?.employment_start_date ?? null,
-            hours_per_month: s?.hours_per_month ?? 160,
-            days_per_month: s?.days_per_month ?? 20,
-            days_per_week: s?.days_per_week ?? 5,
-            last_meeting_date: s?.last_meeting_date ?? null,
-            meeting_interval_months: s?.meeting_interval_months ?? 3,
-            next_meeting_reminder_days: s?.next_meeting_reminder_days ?? 14,
-            next_meeting_due,
-            open_meeting_requests: meetingRequestCounts[uid] || 0,
-            last_meeting_id: lastMeetingMap.get(uid) || null,
-            carry_over_days: s?.carry_over_days ?? 0,
-          } as Employee;
         });
-        setEmployees(joined);
 
-        // Aggregate leaves
-        const agg: Record<string, LeaveAgg> = {};
-
-        (yearlyLeavesRes.data || []).forEach((lr: any) => {
-          if (!agg[lr.user_id]) agg[lr.user_id] = initLeaveAgg();
-          const leaveType = lr.type as LeaveType;
-          const workingDays = lr.end_date ? calculateWorkingDays(lr.start_date, lr.end_date) : 1;
-          if (lr.status === "approved") agg[lr.user_id].approved[leaveType] += workingDays;
-          if (lr.status === "pending") agg[lr.user_id].pending[leaveType] += workingDays;
-          agg[lr.user_id].counts[leaveType] += workingDays;
-          const curr = agg[lr.user_id].lastDates[leaveType];
-          if (!curr || new Date(lr.start_date) > new Date(curr)) agg[lr.user_id].lastDates[leaveType] = lr.start_date;
+        setEmployees((prev) => {
+          let changed = false;
+          const next = prev.map((employee) => {
+            const lazyLastMeetingId = latestMeetingByEmployee.get(employee.user_id) || null;
+            const resolvedLastMeetingId = employee.last_meeting_id || lazyLastMeetingId;
+            if (resolvedLastMeetingId !== employee.last_meeting_id) {
+              changed = true;
+              return { ...employee, last_meeting_id: resolvedLastMeetingId };
+            }
+            return employee;
+          });
+          return changed ? next : prev;
         });
-        setLeaves(agg);
-
-        const sickCount: Record<string, number> = {};
-        (sickRes.data || []).forEach((sick: any) => { sickCount[sick.user_id] = (sickCount[sick.user_id] || 0) + 1; });
-        setSickDays(sickCount);
-
-        const pendingWithNames: PendingLeaveRequest[] = (pendingRes.data || []).map((req: any) => ({
-          id: req.id, user_id: req.user_id,
-          user_name: profileMap.get(req.user_id)?.display_name || "Unbekannt",
-          type: req.type, start_date: req.start_date, end_date: req.end_date, status: req.status,
-        }));
-        setPendingLeaves(pendingWithNames);
-      } catch (e: any) {
-        debugConsole.error(e);
-        toast({ title: "Fehler beim Laden", description: e?.message ?? "Daten konnten nicht geladen werden.", variant: "destructive" });
-      } finally {
-        setLoading(false);
+      } catch (error) {
+        debugConsole.warn("Lazy meeting refresh failed", error);
       }
     };
-    load();
-  }, [user, currentTenant, toast, reloadPendingRequestsCount]);
+
+    const timeoutId = window.setTimeout(() => {
+      run();
+    }, 0);
+
+    return () => window.clearTimeout(timeoutId);
+  }, [currentTenant, employees, isAdmin, roleResolved]);
 
   // Load self data for non-admin users
   useEffect(() => {
@@ -222,6 +229,7 @@ export function useEmployeesData() {
       if (!hasSettings) {
         const { data: profileData } = await supabase.from("profiles").select("user_id, display_name, avatar_url").eq("user_id", user.id).single();
         setSelfProfile(profileData as Profile || null);
+        setLoading(false);
         return;
       }
       loadEmployeeData();
@@ -253,11 +261,7 @@ export function useEmployeesData() {
         setSelfLastMeetingId(lastMeetingRes.data?.meeting_id || null);
 
         const agg = initLeaveAgg();
-        const { data: fullLeaveData } = await supabase
-          .from("leave_requests").select("type, status, start_date, end_date").eq("user_id", user.id)
-          .gte("start_date", startOfYear(new Date()).toISOString()).lte("start_date", endOfYear(new Date()).toISOString());
-
-        (fullLeaveData || []).forEach((lr: any) => {
+        (leavesRes.data || []).forEach((lr: any) => {
           const leaveType = lr.type as LeaveType;
           const workingDays = lr.end_date ? calculateWorkingDays(lr.start_date, lr.end_date) : 1;
           if (lr.status === "approved") agg.approved[leaveType] += workingDays;
@@ -279,8 +283,20 @@ export function useEmployeesData() {
   }, [user, isAdmin, roleResolved, toast]);
 
   return {
-    isAdmin, loading, employees, setEmployees, leaves, pendingLeaves, setPendingLeaves,
-    sickDays, pendingRequestsCount, setPendingRequestsCount, reloadPendingRequestsCount,
-    selfSettings, selfLeaveAgg, selfProfile, selfLastMeetingId,
+    isAdmin,
+    loading: roleResolved && isAdmin ? (loading || adminOverviewQuery.isFetching) : loading,
+    employees,
+    setEmployees,
+    leaves,
+    pendingLeaves,
+    setPendingLeaves,
+    sickDays,
+    pendingRequestsCount,
+    setPendingRequestsCount,
+    reloadPendingRequestsCount,
+    selfSettings,
+    selfLeaveAgg,
+    selfProfile,
+    selfLastMeetingId,
   };
 }
