@@ -225,8 +225,8 @@ export function MyWorkTeamTab() {
         if (timeEntriesRes.error) debugConsole.error("Error loading team time entries:", timeEntriesRes.error);
 
         // Avoid one network round-trip per employee (slow for larger teams).
-        const { data: lastEntriesData, error: lastEntriesError } = await supabase
-          .rpc("get_latest_time_entry_dates", { p_user_ids: employeeIds });
+        const { data: lastEntriesData, error: lastEntriesError } = await (supabase
+          .rpc as any)("get_latest_time_entry_dates", { p_user_ids: employeeIds });
 
         if (lastEntriesError) {
           debugConsole.error("Error loading latest employee time entries:", lastEntriesError);
@@ -255,7 +255,7 @@ export function MyWorkTeamTab() {
 
         // Find last global entry per employee (for warning calculation)
         const lastGlobalEntry: Record<string, string> = {};
-        (lastEntriesData || []).forEach((entry) => {
+        (lastEntriesData || []).forEach((entry: any) => {
           lastGlobalEntry[entry.user_id] = entry.last_work_date;
         });
 

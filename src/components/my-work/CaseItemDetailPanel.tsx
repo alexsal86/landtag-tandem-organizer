@@ -18,7 +18,7 @@ import SimpleRichTextEditor from "@/components/ui/SimpleRichTextEditor";
 import { debugConsole } from "@/utils/debugConsole";
 import { TaskDecisionDetails } from "@/components/task-decisions/TaskDecisionDetails";
 import { DecisionFileUpload } from "@/components/task-decisions/DecisionFileUpload";
-import type { CaseItemInteractionDocument, EditableCaseItem, TimelineInteractionType } from "@/components/my-work/hooks/useCaseItemEdit";
+import type { CaseItemInteractionDocument, EditableCaseItem, TimelineInteractionType, TimelineDocumentAttachment } from "@/components/my-work/hooks/useCaseItemEdit";
 
 type TimelineEntry = {
   id: string;
