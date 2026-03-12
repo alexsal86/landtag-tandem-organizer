@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { format } from "date-fns";
 import { de } from "date-fns/locale";
-import { AlertCircle, Archive, Check, CheckCircle2, ChevronDown, Clock, Download, ExternalLink, FileText, Gavel, Globe, Loader2, Mail, MessageSquare, Phone, Search, Trash2, Users, Vote } from "lucide-react";
+import { AlertCircle, Archive, Check, CheckCircle2, ChevronDown, Clock, Download, ExternalLink, FileEdit, FileText, Gavel, Globe, Loader2, Mail, MessageSquare, Phone, Search, Trash2, Users, Vote } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useTenant } from "@/hooks/useTenant";
 import { Button } from "@/components/ui/button";
@@ -17,7 +17,8 @@ import { cn } from "@/lib/utils";
 import SimpleRichTextEditor from "@/components/ui/SimpleRichTextEditor";
 import { debugConsole } from "@/utils/debugConsole";
 import { TaskDecisionDetails } from "@/components/task-decisions/TaskDecisionDetails";
-import type { EditableCaseItem, TimelineDocumentAttachment, TimelineInteractionType } from "@/components/my-work/hooks/useCaseItemEdit";
+import { DecisionFileUpload } from "@/components/task-decisions/DecisionFileUpload";
+import type { CaseItemInteractionDocument, EditableCaseItem, TimelineInteractionType } from "@/components/my-work/hooks/useCaseItemEdit";
 
 type TimelineEntry = {
   id: string;
@@ -82,6 +83,10 @@ export function CaseItemDetailPanel({
   onDecisionRequest,
   onDecisionReceived,
   onAddInteraction,
+  onDownloadDocument,
+  onRenameDocument,
+  onDeleteDocument,
+  onUpdateDocumentMeta,
   onCreateCaseFile,
   onNavigateToCaseFile,
   contactDisplay,
@@ -114,6 +119,10 @@ export function CaseItemDetailPanel({
   onDecisionRequest: () => void;
   onDecisionReceived: () => void;
   onAddInteraction: (files?: File[]) => void;
+  onDownloadDocument: (document: CaseItemInteractionDocument) => Promise<void> | void;
+  onRenameDocument: (documentId: string, title: string) => Promise<void> | void;
+  onDeleteDocument: (documentId: string) => Promise<void> | void;
+  onUpdateDocumentMeta: (documentId: string, patch: { shortText?: string | null; documentDate?: string | null }) => Promise<void> | void;
   onCreateCaseFile: (itemId: string) => void;
   onNavigateToCaseFile: (caseFileId: string) => void;
   contactDisplay: string;
@@ -132,6 +141,8 @@ export function CaseItemDetailPanel({
   const [showMetaFields, setShowMetaFields] = useState(false);
   const [showInteractionComposer, setShowInteractionComposer] = useState(false);
   const [interactionFiles, setInteractionFiles] = useState<File[]>([]);
+  const [editingDocumentId, setEditingDocumentId] = useState<string | null>(null);
+  const [editingDocumentTitle, setEditingDocumentTitle] = useState("");
   const [contactSearchResults, setContactSearchResults] = useState<Array<{ id: string; name: string; email: string | null; phone: string | null; organization: string | null }>>([]);
   const [searchingContacts, setSearchingContacts] = useState(false);
   const [showSearchResults, setShowSearchResults] = useState(false);
@@ -266,38 +277,23 @@ export function CaseItemDetailPanel({
   };
 
 
-  const documentTimelineGroups = useMemo(() => {
-    const groups = new Map<string, Array<{ eventId: string; timestamp: string; document: TimelineDocumentAttachment }>>();
+  const sortedInteractionDocuments = useMemo(
+    () => [...editableCaseItem.interactionDocuments].sort((a, b) => a.title.localeCompare(b.title, "de", { sensitivity: "base" })),
+    [editableCaseItem.interactionDocuments],
+  );
 
-    for (const entry of timelineEntries) {
-      if (!entry.documents?.length) continue;
-      const day = formatTimelineDateOnly(entry.timestamp);
-      const existing = groups.get(day) || [];
-      entry.documents.forEach((document) => {
-        existing.push({ eventId: entry.id, timestamp: entry.timestamp, document });
-      });
-      groups.set(day, existing);
-    }
-
-    return Array.from(groups.entries()).map(([day, items]) => ({
-      day,
-      items: items.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()),
-    }));
-  }, [timelineEntries]);
-
-  const handleDocumentDownload = async (document: TimelineDocumentAttachment) => {
-    const { data, error } = await supabase.storage.from("documents").download(document.filePath);
-    if (error || !data) return;
-
-    const url = URL.createObjectURL(data);
-    const link = window.document.createElement("a");
-    link.href = url;
-    link.download = document.fileName || document.title || "dokument";
-    window.document.body.appendChild(link);
-    link.click();
-    window.document.body.removeChild(link);
-    URL.revokeObjectURL(url);
+  const beginRenameDocument = (document: CaseItemInteractionDocument) => {
+    setEditingDocumentId(document.id);
+    setEditingDocumentTitle(document.title);
   };
+
+  const saveRenameDocument = async () => {
+    if (!editingDocumentId) return;
+    await onRenameDocument(editingDocumentId, editingDocumentTitle.trim());
+    setEditingDocumentId(null);
+    setEditingDocumentTitle("");
+  };
+
   const getDecisionIcon = (decision: LinkedDecision) => {
     const participants = decision.task_decision_participants || [];
     const userParticipant = currentUserId ? participants.find((p) => p.user_id === currentUserId) ?? null : null;
@@ -553,32 +549,62 @@ export function CaseItemDetailPanel({
           <Collapsible defaultOpen={false} className="rounded-md border bg-background">
             <CollapsibleTrigger asChild>
               <Button type="button" variant="ghost" className="flex w-full items-center justify-between rounded-md px-3 py-2 text-left">
-                <span className="text-sm font-semibold">Dokumente aus Interaktionen ({documentTimelineGroups.reduce((sum, group) => sum + group.items.length, 0)})</span>
+                <span className="text-sm font-semibold">Dokumente ({sortedInteractionDocuments.length})</span>
                 <ChevronDown className="h-4 w-4" />
               </Button>
             </CollapsibleTrigger>
-            <CollapsibleContent className="space-y-3 px-3 pb-3">
-              {documentTimelineGroups.length === 0 ? (
-                <p className="text-xs text-muted-foreground">Noch keine Dokumente in Interaktionen vorhanden.</p>
+            <CollapsibleContent className="space-y-2 px-3 pb-3">
+              {sortedInteractionDocuments.length === 0 ? (
+                <p className="text-xs text-muted-foreground">Noch keine Dokumente vorhanden.</p>
               ) : (
-                documentTimelineGroups.map((group) => (
-                  <div key={group.day} className="space-y-1">
-                    <p className="text-xs font-semibold text-muted-foreground">{group.day}</p>
-                    <div className="space-y-1">
-                      {group.items.map((item) => (
-                        <button
-                          key={`${item.eventId}-${item.document.id}`}
-                          type="button"
-                          className="flex w-full items-center justify-between rounded-md border px-2 py-1 text-left text-xs hover:bg-accent"
-                          onClick={() => handleDocumentDownload(item.document)}
-                        >
-                          <span className="truncate">{item.document.title || item.document.fileName}</span>
-                          <Download className="h-3.5 w-3.5 text-muted-foreground" />
-                        </button>
-                      ))}
+                sortedInteractionDocuments.map((document) => {
+                  const isEditing = editingDocumentId === document.id;
+                  return (
+                    <div key={document.id} className="rounded-md border p-2 space-y-2">
+                      <div className="flex items-center gap-2">
+                        {isEditing ? (
+                          <>
+                            <Input value={editingDocumentTitle} onChange={(event) => setEditingDocumentTitle(event.target.value)} className="h-8" />
+                            <Button type="button" size="sm" onClick={saveRenameDocument}>Speichern</Button>
+                          </>
+                        ) : (
+                          <TooltipProvider>
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <button type="button" className="truncate text-sm font-medium text-left" onClick={() => onDownloadDocument(document)}>
+                                  {document.title}
+                                </button>
+                              </TooltipTrigger>
+                              <TooltipContent className="max-w-sm text-xs">
+                                <p>Hochgeladen von: {document.uploadedByName || 'Unbekannt'}</p>
+                                <p>Upload: {formatTimelineDateOnly(document.uploadedAt)} {formatTimelineTimeOnly(document.uploadedAt)} Uhr</p>
+                                {document.documentDate && <p>Dokumentdatum: {formatTimelineDateOnly(document.documentDate)}</p>}
+                                {document.shortText && <p>Kurztext: {document.shortText.replace(/<[^>]+>/g, ' ')}</p>}
+                              </TooltipContent>
+                            </Tooltip>
+                          </TooltipProvider>
+                        )}
+                        <div className="ml-auto flex items-center gap-1">
+                          <Button type="button" size="icon" variant="ghost" className="h-7 w-7" onClick={() => onDownloadDocument(document)}><Download className="h-3.5 w-3.5" /></Button>
+                          {!isEditing && <Button type="button" size="icon" variant="ghost" className="h-7 w-7" onClick={() => beginRenameDocument(document)}><FileEdit className="h-3.5 w-3.5" /></Button>}
+                          <Button type="button" size="icon" variant="ghost" className="h-7 w-7 text-destructive" onClick={() => onDeleteDocument(document.id)}><Trash2 className="h-3.5 w-3.5" /></Button>
+                        </div>
+                      </div>
+                      <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+                        <Input
+                          type="date"
+                          value={document.documentDate ? format(new Date(document.documentDate), 'yyyy-MM-dd') : ''}
+                          onChange={(event) => onUpdateDocumentMeta(document.id, { documentDate: event.target.value ? new Date(`${event.target.value}T12:00:00`).toISOString() : null })}
+                        />
+                        <Input
+                          value={document.shortText || ''}
+                          placeholder="Kurztext"
+                          onChange={(event) => onUpdateDocumentMeta(document.id, { shortText: event.target.value })}
+                        />
+                      </div>
                     </div>
-                  </div>
-                ))
+                  );
+                })
               )}
             </CollapsibleContent>
           </Collapsible>
@@ -779,10 +805,10 @@ export function CaseItemDetailPanel({
                   />
                 )}
                 {editableCaseItem.interactionType === "dokument" && (
-                  <Input
-                    type="file"
-                    multiple
-                    onChange={(event) => setInteractionFiles(Array.from(event.target.files || []))}
+                  <DecisionFileUpload
+                    mode="creation"
+                    canUpload
+                    onFilesSelected={(files) => setInteractionFiles(files)}
                   />
                 )}
                 <Input type="datetime-local" value={editableCaseItem.interactionDateTime} onChange={(event) => onUpdate({ interactionDateTime: event.target.value })} />

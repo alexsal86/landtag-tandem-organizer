@@ -2,11 +2,16 @@ import { useCallback, useState } from "react";
 
 export type TimelineInteractionType = "anruf" | "mail" | "treffen" | "gespraech" | "dokument" | "notiz";
 
-export type TimelineDocumentAttachment = {
+export type CaseItemInteractionDocument = {
   id: string;
   title: string;
   fileName: string;
   filePath: string;
+  uploadedBy: string | null;
+  uploadedByName: string | null;
+  uploadedAt: string;
+  documentDate: string | null;
+  shortText: string | null;
 };
 
 export type TimelineEvent = {
@@ -33,6 +38,7 @@ export type EditableCaseItem = {
   assigneeIds: string[];
   visibleToAll: boolean;
   timelineEvents: TimelineEvent[];
+  interactionDocuments: CaseItemInteractionDocument[];
   interactionType: TimelineInteractionType | "";
   interactionContact: string;
   interactionDateTime: string;
