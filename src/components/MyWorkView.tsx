@@ -259,33 +259,27 @@ export function MyWorkView() {
     }
   }, [user]);
 
-  useEffect(() => {
-    if (user) {
-      loadUserRoleAndCounts();
-    }
-  }, [user]);
-
-  // Note: Realtime subscriptions are handled by individual data hooks
-  // (useMyWorkTasksData, useMyWorkDecisionsData, etc.)
-  // No duplicate channel needed here - just set status to connected.
-  useEffect(() => {
-    setRealtimeStatus("connected");
-  }, []);
-
-  const loadUserRoleAndCounts = async () => {
+  const loadUserRoleAndCounts = useCallback(async () => {
     if (!user) return;
 
-    // Use tenant membership as primary role source (robust against user_roles RLS issues)
+    if (!currentTenant?.id) {
+      setIsAdmin(false);
+      setIsEmployee(false);
+      setIsAbgeordneter(false);
+      setIsBueroleitung(false);
+      shouldIncludeTeamCountRef.current = false;
+      await loadCounts(false);
+      return;
+    }
+
     const [membershipData, feedbackFeedVisibilitySetting] = await Promise.all([
-      currentTenant?.id
-        ? supabase
-            .from("user_tenant_memberships")
-            .select("role")
-            .eq("tenant_id", currentTenant.id)
-            .eq("user_id", user.id)
-            .eq("is_active", true)
-            .maybeSingle()
-        : Promise.resolve({ data: null, error: null }),
+      supabase
+        .from("user_tenant_memberships")
+        .select("role")
+        .eq("tenant_id", currentTenant.id)
+        .eq("user_id", user.id)
+        .eq("is_active", true)
+        .maybeSingle(),
       supabase
         .from("app_settings")
         .select("setting_value")
@@ -293,19 +287,41 @@ export function MyWorkView() {
         .maybeSingle(),
     ]);
 
-    const role = (membershipData.data?.role || null) as UserRole;
-    const roleFlags = getRoleFlags(role);
-    const admin = roleFlags.isAdmin;
+    if (membershipData.error) {
+      debugConsole.error("Error loading tenant membership role:", membershipData.error);
+    }
 
-    setIsAdmin(admin);
+    let resolvedRole = (membershipData.data?.role || null) as UserRole;
+
+    if (!resolvedRole) {
+      const { data: fallbackRoleData, error: fallbackRoleError } = await supabase
+        .from("user_roles")
+        .select("role")
+        .eq("user_id", user.id)
+        .maybeSingle();
+
+      if (fallbackRoleError) {
+        debugConsole.error("Error loading fallback user role:", fallbackRoleError);
+      }
+
+      resolvedRole = (fallbackRoleData?.role || null) as UserRole;
+    }
+
+    const roleFlags = getRoleFlags(resolvedRole);
+
+    setIsAdmin(roleFlags.isAdmin);
     setIsEmployee(roleFlags.isEmployee);
     setIsAbgeordneter(roleFlags.isAbgeordneter);
     setIsBueroleitung(roleFlags.isBueroleitung);
     setFeedbackFeedCoreRolesOnly(Boolean(feedbackFeedVisibilitySetting.data?.setting_value));
 
-    shouldIncludeTeamCountRef.current = admin && (roleFlags.isAbgeordneter || roleFlags.isBueroleitung);
-    loadCounts(shouldIncludeTeamCountRef.current);
-  };
+    shouldIncludeTeamCountRef.current = roleFlags.isAbgeordneter || roleFlags.isBueroleitung;
+    await loadCounts(shouldIncludeTeamCountRef.current);
+  }, [user, currentTenant?.id, loadCounts]);
+
+  useEffect(() => {
+    void loadUserRoleAndCounts();
+  }, [loadUserRoleAndCounts]);
 
   const handleNoteSaved = () => {
     setRefreshTrigger(prev => prev + 1);
