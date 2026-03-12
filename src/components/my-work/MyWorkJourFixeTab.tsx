@@ -3,7 +3,6 @@ import { debugConsole } from '@/utils/debugConsole';
 import { useSearchParams, useNavigate } from "react-router-dom";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { ScrollArea } from "@/components/ui/scroll-area";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { ChevronDown, ChevronRight, Calendar, ExternalLink, Clock, List, StickyNote, Users, ListTodo, Globe, Cake, Scale, Briefcase } from "lucide-react";
@@ -324,12 +323,11 @@ export function MyWorkJourFixeTab() {
                         </ul>
                       )}
                       {item.system_type === 'case_items' && caseItems.length > 0 && (
-                        <ul className="ml-6 mt-1 space-y-0.5">
+                        <ul className="ml-8 mt-1 space-y-0.5">
                           {caseItems.map((ci) => (
                             <li key={ci.id} className="flex items-center gap-1.5 text-muted-foreground">
                               <Briefcase className="h-2.5 w-2.5 text-teal-500" />
                               <span>{ci.subject || 'Ohne Betreff'}</span>
-                              <Badge variant="outline" className="text-[10px] px-1 py-0 h-4">{ci.status}</Badge>
                               {getOwnerLabel(ci.owner_user_id ?? undefined) && (
                                 <span className="text-muted-foreground/80">({getOwnerLabel(ci.owner_user_id ?? undefined)})</span>
                               )}
@@ -344,7 +342,7 @@ export function MyWorkJourFixeTab() {
                             return (
                               <li key={subItem.id} className="text-muted-foreground">
                                 <div className="flex items-start gap-1.5">
-                                  <span className="min-w-[1rem]">{String.fromCharCode(97 + subIndex)})</span>
+                                  <span className="min-w-[2rem]">{index + 1}.{subIndex + 1}</span>
                                   {subSystemIcon}
                                   <span className={subItem.system_type ? "font-medium text-foreground" : ""}>
                                     {subItem.title}
@@ -404,12 +402,11 @@ export function MyWorkJourFixeTab() {
                                   </ul>
                                 )}
                                 {subItem.system_type === 'case_items' && caseItems.length > 0 && (
-                                  <ul className="ml-8 mt-0.5 space-y-0.5">
+                                  <ul className="ml-10 mt-0.5 space-y-0.5">
                                     {caseItems.map((ci) => (
                                       <li key={ci.id} className="flex items-center gap-1.5 text-muted-foreground">
                                         <Briefcase className="h-2.5 w-2.5 text-teal-500" />
                                         <span>{ci.subject || 'Ohne Betreff'}</span>
-                                        <Badge variant="outline" className="text-[10px] px-1 py-0 h-4">{ci.status}</Badge>
                                         {getOwnerLabel(ci.owner_user_id ?? undefined) && (
                                           <span className="text-muted-foreground/80">({getOwnerLabel(ci.owner_user_id ?? undefined)})</span>
                                         )}
@@ -446,7 +443,6 @@ export function MyWorkJourFixeTab() {
   const totalMeetings = upcomingMeetings.length + pastMeetings.length;
 
   return (
-    <ScrollArea className="h-[calc(100vh-20rem)]">
       <div className="space-y-4 p-4">
         {totalMeetings === 0 ? (
           <div className="text-center py-8 text-muted-foreground">
@@ -495,6 +491,5 @@ export function MyWorkJourFixeTab() {
           </>
         )}
       </div>
-    </ScrollArea>
   );
 }
