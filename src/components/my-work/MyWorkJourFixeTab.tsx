@@ -326,13 +326,13 @@ export function MyWorkJourFixeTab() {
                         </span>
                       </div>
                       {systemEntries.length > 0 && (
-                        <ul className="ml-6 mt-1 space-y-0.5">
+                        <ul className="ml-6 mt-1 space-y-1">
                           {systemEntries.map((entry, systemEntryIndex) => (
-                            <li key={entry.id} className="text-muted-foreground">
+                            <li key={entry.id} className="text-muted-foreground rounded bg-muted/40 px-2 py-1">
                               <div className="flex items-center gap-1.5">
-                                <span className="min-w-[1.9rem]">{index + 1}.{systemEntryIndex + 1}</span>
+                                <span className="min-w-[2rem] text-[11px] font-medium text-foreground/70">{String.fromCharCode(97 + systemEntryIndex)})</span>
                                 {entry.icon}
-                                <span>{entry.label}</span>
+                                <span className="text-foreground">{entry.label}</span>
                                 {entry.ownerLabel && (
                                   <span className="text-muted-foreground/80">({entry.ownerLabel})</span>
                                 )}
@@ -356,12 +356,12 @@ export function MyWorkJourFixeTab() {
                                   </span>
                                 </div>
                                 {subSystemEntries.length > 0 && (
-                                  <ul className="ml-8 mt-0.5 space-y-0.5">
+                                  <ul className="ml-8 mt-1 space-y-1">
                                     {subSystemEntries.map((entry, subSystemEntryIndex) => (
-                                      <li key={entry.id} className="flex items-center gap-1.5 text-muted-foreground">
-                                        <span className="min-w-[2.2rem]">{index + 1}.{subIndex + 1}.{subSystemEntryIndex + 1}</span>
+                                      <li key={entry.id} className="flex items-center gap-1.5 text-muted-foreground rounded bg-muted/40 px-2 py-1">
+                                        <span className="min-w-[2rem] text-[11px] font-medium text-foreground/70">{String.fromCharCode(97 + subSystemEntryIndex)})</span>
                                         {entry.icon}
-                                        <span>{entry.label}</span>
+                                        <span className="text-foreground">{entry.label}</span>
                                         {entry.ownerLabel && (
                                           <span className="text-muted-foreground/80">({entry.ownerLabel})</span>
                                         )}
