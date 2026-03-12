@@ -7,7 +7,7 @@ import { useCaseFileTopics } from "@/hooks/useTopics";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { ArrowLeft, MessageSquare, CheckSquare, Calendar, FileText } from "lucide-react";
+import { ArrowLeft, MessageSquare, FileText, Phone, Mail, Users, Vote } from "lucide-react";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -32,6 +32,7 @@ import { CaseFileAppointmentsTab } from "./tabs/CaseFileAppointmentsTab";
 import { CaseFileLettersTab } from "./tabs/CaseFileLettersTab";
 import { CaseFileNotesTab } from "./tabs/CaseFileNotesTab";
 import { CaseFileTimelineTab } from "./tabs/CaseFileTimelineTab";
+import { StandaloneDecisionCreator } from "@/components/task-decisions/StandaloneDecisionCreator";
 
 interface CaseFileDetailProps {
   caseFileId: string;
@@ -54,6 +55,7 @@ export function CaseFileDetail({ caseFileId, onBack }: CaseFileDetailProps) {
   const [showAddLetter, setShowAddLetter] = useState(false);
   const [showAddNote, setShowAddNote] = useState(false);
   const [showAddTimeline, setShowAddTimeline] = useState(false);
+  const [showAddDecision, setShowAddDecision] = useState(false);
 
   const {
     caseFile,
@@ -120,6 +122,7 @@ export function CaseFileDetail({ caseFileId, onBack }: CaseFileDetailProps) {
         onBack={onBack}
         onDelete={() => setDeleteDialogOpen(true)}
         onArchive={handleArchive}
+        onEdit={() => setEditDialogOpen(true)}
       />
 
       {/* Three-Column Layout */}
@@ -129,6 +132,7 @@ export function CaseFileDetail({ caseFileId, onBack }: CaseFileDetailProps) {
           <CaseFileLeftSidebar
             caseFile={caseFile}
             contacts={contacts}
+            documents={documents}
             assignedTopics={assignedTopics}
             onTopicsChange={setAssignedTopics}
             onAddContact={() => setShowAddContact(true)}
@@ -142,21 +146,29 @@ export function CaseFileDetail({ caseFileId, onBack }: CaseFileDetailProps) {
           <div className="rounded-md border bg-background p-3 space-y-2">
             <p className="font-bold">Interaktion erfassen</p>
             <div className="flex flex-wrap gap-2">
-              <Button size="sm" variant="outline" onClick={() => setShowAddNote(true)}>
-                <MessageSquare className="mr-1.5 h-3.5 w-3.5" />
-                Notiz
+              <Button size="sm" variant="outline" onClick={() => setShowAddTimeline(true)}>
+                <Phone className="mr-1.5 h-3.5 w-3.5" />
+                Anruf
               </Button>
-              <Button size="sm" variant="outline" onClick={() => setShowAddTask(true)}>
-                <CheckSquare className="mr-1.5 h-3.5 w-3.5" />
-                Aufgabe
+              <Button size="sm" variant="outline" onClick={() => setShowAddTimeline(true)}>
+                <Mail className="mr-1.5 h-3.5 w-3.5" />
+                Mail
               </Button>
               <Button size="sm" variant="outline" onClick={() => setShowAddAppointment(true)}>
-                <Calendar className="mr-1.5 h-3.5 w-3.5" />
-                Termin
+                <Users className="mr-1.5 h-3.5 w-3.5" />
+                Treffen
               </Button>
               <Button size="sm" variant="outline" onClick={() => setShowAddDocument(true)}>
                 <FileText className="mr-1.5 h-3.5 w-3.5" />
                 Dokument
+              </Button>
+              <Button size="sm" variant="outline" onClick={() => setShowAddNote(true)}>
+                <MessageSquare className="mr-1.5 h-3.5 w-3.5" />
+                Notiz
+              </Button>
+              <Button size="sm" variant="outline" onClick={() => setShowAddDecision(true)}>
+                <Vote className="mr-1.5 h-3.5 w-3.5" />
+                Entscheidung
               </Button>
             </div>
           </div>
@@ -295,6 +307,17 @@ export function CaseFileDetail({ caseFileId, onBack }: CaseFileDetailProps) {
             onDelete={details.deleteNote}
           />
         </DialogWrapper>
+      )}
+
+      {showAddDecision && (
+        <StandaloneDecisionCreator
+          isOpen={showAddDecision}
+          onOpenChange={setShowAddDecision}
+          onDecisionCreated={() => {
+            setShowAddDecision(false);
+            details.refresh();
+          }}
+        />
       )}
 
       {/* Add Timeline Entry Dialog */}

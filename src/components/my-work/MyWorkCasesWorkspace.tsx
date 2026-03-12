@@ -322,6 +322,7 @@ export function MyWorkCasesWorkspace() {
   const [deleteConfirmItemId, setDeleteConfirmItemId] = useState<string | null>(null);
   const [isItemArchiveOpen, setIsItemArchiveOpen] = useState(false);
   const [isFileArchiveOpen, setIsFileArchiveOpen] = useState(false);
+  const [deleteConfirmCaseFileId, setDeleteConfirmCaseFileId] = useState<string | null>(null);
 
   const handleDeleteCaseItem = useCallback(async () => {
     if (!deleteConfirmItemId) return;
@@ -368,6 +369,21 @@ export function MyWorkCasesWorkspace() {
     } catch (error) {
       debugConsole.error("Fallakte konnte nicht archiviert werden", error);
       toast.error("Fallakte konnte nicht archiviert werden.");
+    }
+  }, [detailFileId, refreshAll, setCaseItems]);
+
+
+  const handleDeleteCaseFile = useCallback(async (caseFile: CaseFile) => {
+    try {
+      const { error } = await supabase.from("case_files").delete().eq("id", caseFile.id);
+      if (error) throw error;
+      setCaseItems((current) => current.map((item) => item.case_file_id === caseFile.id ? { ...item, case_file_id: null } : item));
+      if (detailFileId === caseFile.id) setDetailFileId(null);
+      toast.success("Fallakte gelöscht.");
+      await refreshAll();
+    } catch (error) {
+      debugConsole.error("Fallakte konnte nicht gelöscht werden", error);
+      toast.error("Fallakte konnte nicht gelöscht werden.");
     }
   }, [detailFileId, refreshAll, setCaseItems]);
 
@@ -1612,7 +1628,14 @@ export function MyWorkCasesWorkspace() {
                                         <ContextMenuContent className="w-48">
                                           <ContextMenuItem onClick={() => runAsync(() => handleArchiveCaseFile(cf))}>
                                             <Archive className="mr-2 h-3 w-3" />
-                                            Archivieren
+                                            {cf.status === "archived" ? "Wiederherstellen" : "Archivieren"}
+                                          </ContextMenuItem>
+                                          <ContextMenuItem
+                                            className="text-destructive"
+                                            onClick={() => setDeleteConfirmCaseFileId(cf.id)}
+                                          >
+                                            <Trash2 className="mr-2 h-3 w-3" />
+                                            Löschen
                                           </ContextMenuItem>
                                         </ContextMenuContent>
                                       </ContextMenu>
@@ -1682,7 +1705,14 @@ export function MyWorkCasesWorkspace() {
                                             <ContextMenuContent className="w-48">
                                               <ContextMenuItem onClick={() => runAsync(() => handleArchiveCaseFile(cf))}>
                                                 <Archive className="mr-2 h-3 w-3" />
-                                                Archivieren
+                                                {cf.status === "archived" ? "Wiederherstellen" : "Archivieren"}
+                                              </ContextMenuItem>
+                                              <ContextMenuItem
+                                                className="text-destructive"
+                                                onClick={() => setDeleteConfirmCaseFileId(cf.id)}
+                                              >
+                                                <Trash2 className="mr-2 h-3 w-3" />
+                                                Löschen
                                               </ContextMenuItem>
                                             </ContextMenuContent>
                                           </ContextMenu>
@@ -1823,6 +1853,31 @@ export function MyWorkCasesWorkspace() {
           </div>
         </DialogContent>
       </Dialog>
+
+
+      <AlertDialog open={deleteConfirmCaseFileId !== null} onOpenChange={(open) => { if (!open) setDeleteConfirmCaseFileId(null); }}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Fallakte löschen?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Diese Aktion kann nicht rückgängig gemacht werden. Die Fallakte und ihre Verknüpfungen werden dauerhaft gelöscht.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Abbrechen</AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              onClick={() => {
+                const caseFile = allCaseFiles.find((entry) => entry.id === deleteConfirmCaseFileId);
+                if (caseFile) runAsync(() => handleDeleteCaseFile(caseFile));
+                setDeleteConfirmCaseFileId(null);
+              }}
+            >
+              Löschen
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       <AlertDialog open={!!deleteConfirmItemId} onOpenChange={(open) => { if (!open) setDeleteConfirmItemId(null); }}>
         <AlertDialogContent>
