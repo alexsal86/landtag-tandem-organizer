@@ -127,7 +127,6 @@ export function useEmailComposer() {
   useEffect(() => {
     if (!pendingPressComposeId) return;
     if (!distributionListsLoaded || !senderInfosLoaded) return;
-    if (!selectedSender) return;
     if (initializedPressComposeRef.current === pendingPressComposeId) return;
 
     initializedPressComposeRef.current = pendingPressComposeId;
