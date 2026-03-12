@@ -80,6 +80,7 @@ const MyWorkDecisionCardInner = ({
   const [previewEmail, setPreviewEmail] = useState<{ file_path: string; file_name: string } | null>(null);
   const [previewAttachment, setPreviewAttachment] = useState<{ file_path: string; file_name: string } | null>(null);
   const [detailsExpanded, setDetailsExpanded] = useState(false);
+  const [showCommentPrompt, setShowCommentPrompt] = useState(false);
 
   const summary = getResponseSummary(decision.participants);
   const isArchiving = archivingDecisionId === decision.id;
@@ -157,6 +158,14 @@ const MyWorkDecisionCardInner = ({
     avatar_url: p.profile?.avatar_url || null,
     response_type: p.responses[0]?.response_type || null,
   }));
+
+  const handleResponseSubmitted = () => {
+    setShowCommentPrompt(true);
+    setTimeout(() => {
+      setShowCommentPrompt(false);
+      onResponseSubmitted();
+    }, 5000);
+  };
 
   return (
     <>
@@ -289,12 +298,28 @@ const MyWorkDecisionCardInner = ({
                 <TaskDecisionResponse
                   decisionId={decision.id}
                   participantId={decision.participant_id || ''}
-                  onResponseSubmitted={onResponseSubmitted}
+                  onResponseSubmitted={handleResponseSubmitted}
                   hasResponded={decision.hasResponded}
                   creatorId={decision.created_by}
                   layout="decision-panel"
                   disabled={!decision.isParticipant || !decision.participant_id}
                 />
+              )}
+
+              {showCommentPrompt && (
+                <div className="animate-in fade-in slide-in-from-top-1 mt-2">
+                  <button
+                    onClick={() => {
+                      setShowCommentPrompt(false);
+                      onResponseSubmitted();
+                      onOpenComments(decision.id, decision.title);
+                    }}
+                    className="text-xs text-muted-foreground hover:text-foreground flex items-center gap-1 transition-colors"
+                  >
+                    <MessageSquare className="h-3 w-3" />
+                    Begründung hinzufügen?
+                  </button>
+                </div>
               )}
 
               <div className="border-t border-border/70 pt-3 text-xs text-muted-foreground space-y-2">
