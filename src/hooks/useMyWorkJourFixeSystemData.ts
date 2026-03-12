@@ -1,7 +1,7 @@
 import { useCallback, useRef, useState } from "react";
 import { addDays, parseISO } from "date-fns";
 import { supabase } from "@/integrations/supabase/client";
-import { debugConsole } from '@/utils/debugConsole';
+import { debugConsole } from "@/utils/debugConsole";
 
 export interface AgendaItem {
   id: string;
@@ -51,8 +51,9 @@ export function useMyWorkJourFixeSystemData(userId?: string, tenantId?: string) 
   const [meetingDecisions, setMeetingDecisions] = useState<Record<string, SystemItemData[]>>({});
   const [meetingBirthdays, setMeetingBirthdays] = useState<Record<string, BirthdayItemData[]>>({});
   const [meetingCaseItems, setMeetingCaseItems] = useState<Record<string, CaseItemData[]>>({});
-  const [userProfiles, setUserProfiles] = useState<Record<string, UserProfileData>>({});
-  const isMountedRef = useRef(true);
+   const [userProfiles, setUserProfiles] = useState<Record<string, UserProfileData>>({});
+   const userProfilesRef = useRef<Record<string, UserProfileData>>({});
+   const isMountedRef = useRef(true);
   const requestVersionsRef = useRef<Record<string, number>>({});
 
   const setMounted = useCallback((mounted: boolean) => {
@@ -137,7 +138,7 @@ export function useMyWorkJourFixeSystemData(userId?: string, tenantId?: string) 
 
       if (decisionsResult.error) {
         debugConsole.error("Error loading decisions for meeting:", { meetingId, error: decisionsResult.error });
-        setMeetingDecisions((prev) => ({ ...prev, [meetingId]: [] }));
+        // Don't reset to [] on error – keep existing data
       } else {
         const decisions = decisionsResult.data || [];
         const relevantDecisions = decisions
@@ -157,7 +158,6 @@ export function useMyWorkJourFixeSystemData(userId?: string, tenantId?: string) 
 
       if (contactsResult.error) {
         debugConsole.error("Error loading birthdays for meeting:", { meetingId, error: contactsResult.error });
-        setMeetingBirthdays((prev) => ({ ...prev, [meetingId]: [] }));
       } else {
         const contacts = contactsResult.data || [];
         if (contacts.length === 0) {
@@ -198,7 +198,7 @@ export function useMyWorkJourFixeSystemData(userId?: string, tenantId?: string) 
 
       if (caseItemsResult.error) {
         debugConsole.error("Error loading case items for meeting:", { meetingId, error: caseItemsResult.error });
-        setMeetingCaseItems((prev) => ({ ...prev, [meetingId]: [] }));
+        // Don't reset to [] on error – keep existing data
       } else {
         const items = (caseItemsResult.data || []) as CaseItemData[];
         items.forEach((ci) => ci.owner_user_id && encounteredUserIds.add(ci.owner_user_id));
@@ -208,7 +208,8 @@ export function useMyWorkJourFixeSystemData(userId?: string, tenantId?: string) 
       if (encounteredUserIds.size === 0) return;
 
       try {
-        const missingUserIds = Array.from(encounteredUserIds).filter((id) => !userProfiles[id]);
+        const currentProfiles = userProfilesRef.current;
+        const missingUserIds = Array.from(encounteredUserIds).filter((id) => !currentProfiles[id]);
         if (missingUserIds.length === 0) return;
 
         const { data: profiles } = await supabase.from("profiles").select("user_id, display_name").in("user_id", missingUserIds);
@@ -220,6 +221,7 @@ export function useMyWorkJourFixeSystemData(userId?: string, tenantId?: string) 
           profiles.forEach((profile) => {
             next[profile.user_id] = profile;
           });
+          userProfilesRef.current = next;
           return next;
         });
       } catch (error) {
@@ -228,7 +230,7 @@ export function useMyWorkJourFixeSystemData(userId?: string, tenantId?: string) 
         }
       }
     },
-    [tenantId, userId, userProfiles],
+    [tenantId, userId],
   );
 
   return {

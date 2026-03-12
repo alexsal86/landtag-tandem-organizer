@@ -84,6 +84,8 @@ export function useMeetingsData() {
   }, [searchParams, setSearchParams]);
 
   // URL id parameter for deep-linking
+  // Only sets selectedMeeting + loads agenda; linked sidebar data is loaded
+  // by the selectedMeeting.id change effect below.
   useEffect(() => {
     const urlMeetingId = searchParams.get('id');
     if (!urlMeetingId || meetings.length === 0) return;
@@ -93,12 +95,6 @@ export function useMeetingsData() {
       const normalized = { ...meeting, meeting_date: meeting.meeting_date instanceof Date ? meeting.meeting_date : new Date(meeting.meeting_date) };
       setSelectedMeeting(normalized);
       loadAgendaItems(urlMeetingId);
-      loadLinkedQuickNotes(urlMeetingId);
-      loadMeetingLinkedTasks(urlMeetingId);
-      loadMeetingLinkedCaseItems(urlMeetingId);
-      loadMeetingRelevantDecisions();
-      if (normalized.meeting_date) loadMeetingUpcomingAppointments(urlMeetingId, normalized.meeting_date);
-      loadStarredAppointments(urlMeetingId);
       searchParams.delete('id');
       setSearchParams(searchParams, { replace: true });
       deepLinkIdRef.current = null;
@@ -108,7 +104,6 @@ export function useMeetingsData() {
     if (meetingFromUrl) {
       selectMeeting(meetingFromUrl);
     } else {
-      // Meeting not in loaded list (e.g. past meeting) — fetch directly
       supabase
         .from('meetings')
         .select('*')
@@ -118,18 +113,7 @@ export function useMeetingsData() {
           if (data) selectMeeting(data);
         });
     }
-  }, [
-    searchParams,
-    meetings,
-    selectedMeeting,
-    setSearchParams,
-    loadLinkedQuickNotes,
-    loadMeetingLinkedTasks,
-    loadMeetingLinkedCaseItems,
-    loadMeetingRelevantDecisions,
-    loadMeetingUpcomingAppointments,
-    loadStarredAppointments,
-  ]);
+  }, [searchParams, meetings, selectedMeeting, setSearchParams]);
 
   // Load data on mount
   useEffect(() => {
@@ -143,6 +127,8 @@ export function useMeetingsData() {
   }, [user, currentTenant?.id]);
 
   // Auto-select next upcoming meeting (skip if URL deep-link is present)
+  // Only sets selectedMeeting + loads agenda; linked sidebar data is loaded
+  // by the selectedMeeting.id change effect below.
   useEffect(() => {
     if (meetings.length > 0 && !selectedMeeting && !activeMeeting && !searchMeetingId && !deepLinkIdRef.current) {
       const now = new Date();
@@ -155,40 +141,26 @@ export function useMeetingsData() {
         setSelectedMeeting(nextMeeting);
         if (nextMeeting.id) {
           loadAgendaItems(nextMeeting.id);
-          loadLinkedQuickNotes(nextMeeting.id);
-          loadMeetingLinkedTasks(nextMeeting.id);
-          loadMeetingLinkedCaseItems(nextMeeting.id);
-          loadMeetingRelevantDecisions();
-          loadMeetingUpcomingAppointments(nextMeeting.id, nextMeeting.meeting_date);
-          loadStarredAppointments(nextMeeting.id);
         }
       }
     }
-  }, [
-    meetings,
-    selectedMeeting,
-    activeMeeting,
-    searchMeetingId,
-    loadLinkedQuickNotes,
-    loadMeetingLinkedTasks,
-    loadMeetingLinkedCaseItems,
-    loadMeetingRelevantDecisions,
-    loadMeetingUpcomingAppointments,
-    loadStarredAppointments,
-  ]);
+  }, [meetings, selectedMeeting, activeMeeting, searchMeetingId]);
 
-  // Load linked data when selectedMeeting changes
+  // Load linked data when selectedMeeting.id changes (single load point)
+  const prevSelectedMeetingIdRef = useRef<string | null>(null);
   useEffect(() => {
-    if (selectedMeeting?.id && !activeMeeting) {
-      loadLinkedQuickNotes(selectedMeeting.id);
-      loadMeetingLinkedTasks(selectedMeeting.id);
-      loadMeetingLinkedCaseItems(selectedMeeting.id);
-      loadMeetingRelevantDecisions();
-      if (selectedMeeting.meeting_date) loadMeetingUpcomingAppointments(selectedMeeting.id, selectedMeeting.meeting_date);
-      loadStarredAppointments(selectedMeeting.id);
-    }
+    const meetingId = selectedMeeting?.id ?? null;
+    if (!meetingId || activeMeeting || meetingId === prevSelectedMeetingIdRef.current) return;
+    prevSelectedMeetingIdRef.current = meetingId;
+    loadLinkedQuickNotes(meetingId);
+    loadMeetingLinkedTasks(meetingId);
+    loadMeetingLinkedCaseItems(meetingId);
+    loadMeetingRelevantDecisions();
+    if (selectedMeeting?.meeting_date) loadMeetingUpcomingAppointments(meetingId, selectedMeeting.meeting_date);
+    loadStarredAppointments(meetingId);
   }, [
-    selectedMeeting,
+    selectedMeeting?.id,
+    selectedMeeting?.meeting_date,
     activeMeeting,
     loadLinkedQuickNotes,
     loadMeetingLinkedTasks,
