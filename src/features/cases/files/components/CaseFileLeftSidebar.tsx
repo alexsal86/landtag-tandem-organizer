@@ -1,5 +1,5 @@
 import { CaseFile } from "@/features/cases/files/hooks";
-import { CaseFileContact, CONTACT_ROLES } from "@/features/cases/files/hooks";
+import { CaseFileContact, CaseFileDocument, CONTACT_ROLES } from "@/features/cases/files/hooks";
 import { useCaseFileTypes } from "@/features/cases/files/hooks";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -18,10 +18,10 @@ import {
   Tag,
   Clock,
   CalendarDays,
-  Eye,
   EyeOff,
   Globe,
   UserCheck,
+  FileText,
 } from "lucide-react";
 import { format } from "date-fns";
 import { de } from "date-fns/locale";
@@ -29,6 +29,7 @@ import { de } from "date-fns/locale";
 interface CaseFileLeftSidebarProps {
   caseFile: CaseFile;
   contacts: CaseFileContact[];
+  documents: CaseFileDocument[];
   assignedTopics: string[];
   onTopicsChange: (topicIds: string[]) => void;
   onAddContact: () => void;
@@ -38,6 +39,7 @@ interface CaseFileLeftSidebarProps {
 export function CaseFileLeftSidebar({
   caseFile,
   contacts,
+  documents,
   assignedTopics,
   onTopicsChange,
   onAddContact,
@@ -179,6 +181,39 @@ export function CaseFileLeftSidebar({
         </CardHeader>
         <CardContent className="p-4 pt-0">
           {renderContactList(orgContacts)}
+        </CardContent>
+      </Card>
+
+      {/* Dokumentenübersicht */}
+      <Card>
+        <CardHeader className="p-4 pb-2">
+          <CardTitle className="text-sm font-semibold flex items-center gap-2">
+            <FileText className="h-4 w-4" />
+            Dokumente
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="p-4 pt-0">
+          {documents.length === 0 ? (
+            <p className="text-xs text-muted-foreground py-1">Keine verknüpft</p>
+          ) : (
+            <div className="space-y-2">
+              {documents.map((doc) => (
+                <div key={doc.id} className="rounded-md border p-2">
+                  <p className="text-sm font-medium line-clamp-1">
+                    {doc.document?.title || doc.document?.file_name || "Dokument"}
+                  </p>
+                  {doc.document?.file_name && (
+                    <p className="text-xs text-muted-foreground line-clamp-1 mt-0.5">
+                      {doc.document.file_name}
+                    </p>
+                  )}
+                  {doc.relevance && (
+                    <p className="text-xs text-muted-foreground mt-1">Relevanz: {doc.relevance}</p>
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
         </CardContent>
       </Card>
 
