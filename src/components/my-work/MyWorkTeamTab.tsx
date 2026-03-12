@@ -109,10 +109,22 @@ export function MyWorkTeamTab() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    if (user) {
-      checkAdminAndLoad();
+    const userId = user?.id;
+    const tenantId = currentTenant?.id;
+    if (!userId || !tenantId) {
+      setLoading(false);
+      return;
     }
-  }, [user, currentTenant]);
+
+    let cancelled = false;
+    setLoading(true);
+
+    (async () => {
+      await checkAdminAndLoadTeam(userId, tenantId, cancelled, setIsAdmin, setUserRole, setTeamMembers, setLoading);
+    })();
+
+    return () => { cancelled = true; };
+  }, [user?.id, currentTenant?.id]);
 
   const checkAdminAndLoad = async () => {
     if (!user) return;
