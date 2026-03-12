@@ -1,7 +1,7 @@
 import { useCallback, useRef, useState } from "react";
 import { addDays, parseISO } from "date-fns";
 import { supabase } from "@/integrations/supabase/client";
-import { debugConsole } from '@/utils/debugConsole';
+import { debugConsole } from "@/utils/debugConsole";
 
 export interface AgendaItem {
   id: string;
@@ -51,22 +51,24 @@ export function useMyWorkJourFixeSystemData(userId?: string, tenantId?: string) 
   const [meetingDecisions, setMeetingDecisions] = useState<Record<string, SystemItemData[]>>({});
   const [meetingBirthdays, setMeetingBirthdays] = useState<Record<string, BirthdayItemData[]>>({});
   const [meetingCaseItems, setMeetingCaseItems] = useState<Record<string, CaseItemData[]>>({});
-  const [userProfiles, setUserProfiles] = useState<Record<string, UserProfileData>>({});
-  const isMountedRef = useRef(true);
-  const requestVersionRef = useRef(0);
+   const [userProfiles, setUserProfiles] = useState<Record<string, UserProfileData>>({});
+   const userProfilesRef = useRef<Record<string, UserProfileData>>({});
+   const isMountedRef = useRef(true);
+  const requestVersionsRef = useRef<Record<string, number>>({});
 
   const setMounted = useCallback((mounted: boolean) => {
     isMountedRef.current = mounted;
     if (!mounted) {
-      requestVersionRef.current += 1;
+      requestVersionsRef.current = {};
     }
   }, []);
 
   const loadMeetingSystemData = useCallback(
     async ({ meetingId, items, meetingDate }: LoadSystemDataParams) => {
-      const requestVersion = requestVersionRef.current + 1;
-      requestVersionRef.current = requestVersion;
-      const isCurrentRequest = () => isMountedRef.current && requestVersionRef.current === requestVersion;
+      const requestVersion = (requestVersionsRef.current[meetingId] || 0) + 1;
+      requestVersionsRef.current[meetingId] = requestVersion;
+      const isCurrentRequest =
+        () => isMountedRef.current && requestVersionsRef.current[meetingId] === requestVersion;
 
       const hasNotes = items.some((i) => i.system_type === "quick_notes");
       const hasTasks = items.some((i) => i.system_type === "tasks");
@@ -207,7 +209,8 @@ export function useMyWorkJourFixeSystemData(userId?: string, tenantId?: string) 
       if (encounteredUserIds.size === 0) return;
 
       try {
-        const missingUserIds = Array.from(encounteredUserIds).filter((id) => !userProfiles[id]);
+        const currentProfiles = userProfilesRef.current;
+        const missingUserIds = Array.from(encounteredUserIds).filter((id) => !currentProfiles[id]);
         if (missingUserIds.length === 0) return;
 
         const { data: profiles } = await supabase.from("profiles").select("user_id, display_name").in("user_id", missingUserIds);
@@ -219,6 +222,7 @@ export function useMyWorkJourFixeSystemData(userId?: string, tenantId?: string) 
           profiles.forEach((profile) => {
             next[profile.user_id] = profile;
           });
+          userProfilesRef.current = next;
           return next;
         });
       } catch (error) {
@@ -227,7 +231,7 @@ export function useMyWorkJourFixeSystemData(userId?: string, tenantId?: string) 
         }
       }
     },
-    [tenantId, userId, userProfiles],
+    [tenantId, userId],
   );
 
   return {
