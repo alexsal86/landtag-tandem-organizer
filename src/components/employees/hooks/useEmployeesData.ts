@@ -101,12 +101,16 @@ export function useEmployeesData() {
           return;
         }
 
-        const [profilesRes, settingsRes, leaveRes, pendingRes, sickRes, meetingRequestsRes, lastMeetingsRes] = await Promise.all([
+        const [profilesRes, settingsRes, yearlyLeavesRes, pendingRes, sickRes, meetingRequestsRes, lastMeetingsRes] = await Promise.all([
           supabase.from("profiles").select("user_id, display_name, avatar_url").in("user_id", managedIds),
           supabase.from("employee_settings")
             .select("user_id, hours_per_week, timezone, workdays, admin_id, annual_vacation_days, employment_start_date, hours_per_month, days_per_month, days_per_week, last_meeting_date, meeting_interval_months, next_meeting_reminder_days, carry_over_days, carry_over_expires_at")
             .in("user_id", managedIds),
-          supabase.from("leave_requests").select("user_id, type, status, start_date").in("user_id", managedIds),
+          supabase.from("leave_requests")
+            .select("user_id, type, status, start_date, end_date")
+            .in("user_id", managedIds)
+            .gte("start_date", startOfYear(new Date()).toISOString())
+            .lte("start_date", endOfYear(new Date()).toISOString()),
           supabase.from("leave_requests").select("id, user_id, type, status, start_date, end_date")
             .in("status", ["pending", "cancel_requested"] as any).in("user_id", managedIds),
           supabase.from("sick_days").select("user_id").in("user_id", managedIds),
@@ -117,7 +121,7 @@ export function useEmployeesData() {
         if (sickRes.error) throw sickRes.error;
         if (profilesRes.error) throw profilesRes.error;
         if (settingsRes.error) throw settingsRes.error;
-        if (leaveRes.error) throw leaveRes.error;
+        if (yearlyLeavesRes.error) throw yearlyLeavesRes.error;
         if (pendingRes.error) throw pendingRes.error;
         if (meetingRequestsRes.error) throw meetingRequestsRes.error;
         if (lastMeetingsRes.error) throw lastMeetingsRes.error;
@@ -175,14 +179,8 @@ export function useEmployeesData() {
 
         // Aggregate leaves
         const agg: Record<string, LeaveAgg> = {};
-        const { data: fullLeaveData } = await supabase
-          .from("leave_requests")
-          .select("user_id, type, status, start_date, end_date")
-          .in("user_id", managedIds)
-          .gte("start_date", startOfYear(new Date()).toISOString())
-          .lte("start_date", endOfYear(new Date()).toISOString());
 
-        (fullLeaveData || []).forEach((lr: any) => {
+        (yearlyLeavesRes.data || []).forEach((lr: any) => {
           if (!agg[lr.user_id]) agg[lr.user_id] = initLeaveAgg();
           const leaveType = lr.type as LeaveType;
           const workingDays = lr.end_date ? calculateWorkingDays(lr.start_date, lr.end_date) : 1;
