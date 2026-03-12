@@ -113,6 +113,9 @@ export function MyWorkTeamTab() {
     const tenantId = currentTenant?.id;
     if (!userId || !tenantId) {
       setLoading(false);
+      setIsAdmin(false);
+      setUserRole("");
+      setTeamMembers([]);
       return;
     }
 
@@ -121,8 +124,50 @@ export function MyWorkTeamTab() {
 
     const run = async () => {
       try {
-        // Get all active memberships for this tenant (including current user's role)
-        const { data: memberships } = await supabase
+        // Determine role from tenant membership first (source of truth), fallback to global role.
+        const { data: myMembership, error: myMembershipError } = await supabase
+          .from("user_tenant_memberships")
+          .select("role")
+          .eq("tenant_id", tenantId)
+          .eq("user_id", userId)
+          .eq("is_active", true)
+          .maybeSingle();
+
+        if (cancelled) return;
+
+        let myRole = myMembership?.role ?? "";
+
+        if (myMembershipError) {
+          debugConsole.error("Error loading own tenant membership:", myMembershipError);
+        }
+
+        if (!myRole) {
+          const { data: fallbackRole, error: fallbackRoleError } = await supabase
+            .from("user_roles")
+            .select("role")
+            .eq("user_id", userId)
+            .maybeSingle();
+
+          if (fallbackRoleError) {
+            debugConsole.error("Error loading fallback user role:", fallbackRoleError);
+          }
+
+          myRole = fallbackRole?.role ?? "";
+        }
+
+        const canViewTeam = myRole === "abgeordneter" || myRole === "bueroleitung";
+        setIsAdmin(canViewTeam);
+        setUserRole(myRole);
+
+        if (!canViewTeam) {
+          setTeamMembers([]);
+          return;
+        }
+
+        // Try tenant membership based team list first.
+        let employeeIds: string[] = [];
+
+        const { data: memberships, error: membershipsError } = await supabase
           .from("user_tenant_memberships")
           .select("user_id, role")
           .eq("tenant_id", tenantId)
@@ -130,34 +175,32 @@ export function MyWorkTeamTab() {
 
         if (cancelled) return;
 
-        if (!memberships?.length) {
-          setIsAdmin(false);
-          setUserRole("");
-          setTeamMembers([]);
-          setLoading(false);
-          return;
+        if (membershipsError) {
+          debugConsole.error("Error loading tenant memberships for team:", membershipsError);
+        } else {
+          employeeIds = (memberships || [])
+            .filter((m) => ["mitarbeiter", "praktikant", "bueroleitung"].includes(m.role))
+            .map((m) => m.user_id);
         }
 
-        // Determine current user's role from membership
-        const myMembership = memberships.find(m => m.user_id === userId);
-        const myRole = myMembership?.role || "";
-        const canViewTeam = myRole === "abgeordneter" || myRole === "bueroleitung";
-        setIsAdmin(canViewTeam);
-        setUserRole(myRole);
+        // Fallback path for stricter RLS setups where full membership list isn't visible.
+        if (employeeIds.length === 0) {
+          const { data: managedEmployees, error: managedEmployeesError } = await supabase
+            .from("employee_settings")
+            .select("user_id")
+            .eq("admin_id", userId);
 
-        if (!canViewTeam) {
-          setLoading(false);
-          return;
+          if (managedEmployeesError) {
+            debugConsole.error("Error loading fallback managed employees:", managedEmployeesError);
+          } else {
+            employeeIds = (managedEmployees || []).map((row) => row.user_id);
+          }
         }
 
-        // Filter employee IDs from memberships directly
-        const employeeIds = memberships
-          .filter(m => ["mitarbeiter", "praktikant", "bueroleitung"].includes(m.role))
-          .map(m => m.user_id);
+        employeeIds = Array.from(new Set(employeeIds));
 
         if (employeeIds.length === 0) {
           setTeamMembers([]);
-          setLoading(false);
           return;
         }
 
@@ -165,7 +208,6 @@ export function MyWorkTeamTab() {
         const weekStart = startOfWeek(new Date(), { weekStartsOn: 1 });
         const today = new Date();
 
-        // Get profiles, settings, requests, time entries (this week), and last global entries
         const [profilesRes, settingsRes, requestsRes, timeEntriesRes, lastEntriesRes] = await Promise.all([
           supabase.from("profiles").select("user_id, display_name, avatar_url").in("user_id", employeeIds),
           supabase.from("employee_settings").select("user_id, hours_per_week, last_meeting_date, meeting_interval_months").in("user_id", employeeIds),
@@ -179,9 +221,15 @@ export function MyWorkTeamTab() {
 
         if (cancelled) return;
 
-        const profileMap = new Map(profilesRes.data?.map(p => [p.user_id, p]) || []);
-        const settingsMap = new Map(settingsRes.data?.map(s => [s.user_id, s]) || []);
-        
+        if (profilesRes.error) debugConsole.error("Error loading team profiles:", profilesRes.error);
+        if (settingsRes.error) debugConsole.error("Error loading team settings:", settingsRes.error);
+        if (requestsRes.error) debugConsole.error("Error loading team meeting requests:", requestsRes.error);
+        if (timeEntriesRes.error) debugConsole.error("Error loading team time entries:", timeEntriesRes.error);
+        if (lastEntriesRes.error) debugConsole.error("Error loading team last entries:", lastEntriesRes.error);
+
+        const profileMap = new Map((profilesRes.data || []).map((p) => [p.user_id, p]));
+        const settingsMap = new Map((settingsRes.data || []).map((s) => [s.user_id, s]));
+
         // Count open requests per employee
         const requestCounts: Record<string, number> = {};
         (requestsRes.data || []).forEach((req: any) => {
@@ -214,7 +262,7 @@ export function MyWorkTeamTab() {
           const profile = profileMap.get(uid);
           const settings = settingsMap.get(uid);
           const hoursPerWeek = settings?.hours_per_week || 40;
-          
+
           let next_meeting_due: string | null = null;
           if (settings?.last_meeting_date && settings?.meeting_interval_months) {
             const lastMeeting = new Date(settings.last_meeting_date);
@@ -252,7 +300,7 @@ export function MyWorkTeamTab() {
           return 0;
         });
 
-        if (!cancelled) setTeamMembers(members);
+        setTeamMembers(members);
       } catch (error) {
         debugConsole.error("Error loading team:", error);
       } finally {
