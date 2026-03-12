@@ -41,11 +41,11 @@ export function CalendarHeader({ onShowPolls, selectedDate, onSelectDate }: Cale
           onMonthChange={onSelectDate}
           showWeekNumber
           classNames={{
-            month_caption: "relative flex w-full items-center px-1 mb-1",
-            caption_label: "w-full pr-14 text-sm font-semibold text-left capitalize whitespace-nowrap",
-            nav: "!absolute right-1 top-1/2 !m-0 flex -translate-y-1/2 items-center justify-end gap-0.5",
-            button_previous: "!static h-6 w-6 border-0 bg-transparent p-0 shadow-none hover:bg-accent/60",
-            button_next: "!static h-6 w-6 border-0 bg-transparent p-0 shadow-none hover:bg-accent/60",
+            month_caption: "flex w-full items-center justify-between px-1 mb-1",
+            caption_label: "text-sm font-semibold text-left capitalize whitespace-nowrap",
+            nav: "flex items-center gap-0.5",
+            button_previous: "h-6 w-6 border-0 bg-transparent p-0 shadow-none hover:bg-accent/60",
+            button_next: "h-6 w-6 border-0 bg-transparent p-0 shadow-none hover:bg-accent/60",
             month_grid: "w-full border-collapse space-y-0",
             weekdays: "flex",
             weekday: "text-muted-foreground w-7 font-normal text-[0.7rem]",
