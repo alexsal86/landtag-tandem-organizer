@@ -209,7 +209,8 @@ export function useMyWorkJourFixeSystemData(userId?: string, tenantId?: string) 
       if (encounteredUserIds.size === 0) return;
 
       try {
-        const missingUserIds = Array.from(encounteredUserIds).filter((id) => !userProfiles[id]);
+        const currentProfiles = userProfilesRef.current;
+        const missingUserIds = Array.from(encounteredUserIds).filter((id) => !currentProfiles[id]);
         if (missingUserIds.length === 0) return;
 
         const { data: profiles } = await supabase.from("profiles").select("user_id, display_name").in("user_id", missingUserIds);
@@ -221,6 +222,7 @@ export function useMyWorkJourFixeSystemData(userId?: string, tenantId?: string) 
           profiles.forEach((profile) => {
             next[profile.user_id] = profile;
           });
+          userProfilesRef.current = next;
           return next;
         });
       } catch (error) {
