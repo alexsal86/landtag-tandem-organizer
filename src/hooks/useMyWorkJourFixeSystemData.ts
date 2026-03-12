@@ -138,7 +138,7 @@ export function useMyWorkJourFixeSystemData(userId?: string, tenantId?: string) 
 
       if (decisionsResult.error) {
         debugConsole.error("Error loading decisions for meeting:", { meetingId, error: decisionsResult.error });
-        setMeetingDecisions((prev) => ({ ...prev, [meetingId]: [] }));
+        // Don't reset to [] on error – keep existing data
       } else {
         const decisions = decisionsResult.data || [];
         const relevantDecisions = decisions
@@ -158,7 +158,6 @@ export function useMyWorkJourFixeSystemData(userId?: string, tenantId?: string) 
 
       if (contactsResult.error) {
         debugConsole.error("Error loading birthdays for meeting:", { meetingId, error: contactsResult.error });
-        setMeetingBirthdays((prev) => ({ ...prev, [meetingId]: [] }));
       } else {
         const contacts = contactsResult.data || [];
         if (contacts.length === 0) {
@@ -199,7 +198,7 @@ export function useMyWorkJourFixeSystemData(userId?: string, tenantId?: string) 
 
       if (caseItemsResult.error) {
         debugConsole.error("Error loading case items for meeting:", { meetingId, error: caseItemsResult.error });
-        setMeetingCaseItems((prev) => ({ ...prev, [meetingId]: [] }));
+        // Don't reset to [] on error – keep existing data
       } else {
         const items = (caseItemsResult.data || []) as CaseItemData[];
         items.forEach((ci) => ci.owner_user_id && encounteredUserIds.add(ci.owner_user_id));

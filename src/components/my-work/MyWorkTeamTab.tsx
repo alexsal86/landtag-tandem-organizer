@@ -121,52 +121,39 @@ export function MyWorkTeamTab() {
 
     const run = async () => {
       try {
-        // Check if user has role 'abgeordneter' or 'bueroleitung'
-        const { data: roleData } = await supabase
-          .from("user_roles")
-          .select("role")
-          .eq("user_id", userId)
-          .single();
-
-        if (cancelled) return;
-
-        const canViewTeam = roleData?.role === "abgeordneter" || roleData?.role === "bueroleitung";
-        setIsAdmin(canViewTeam);
-        setUserRole(roleData?.role || "");
-
-        if (!canViewTeam) {
-          setLoading(false);
-          return;
-        }
-
-        // Get tenant users with employee roles
+        // Get all active memberships for this tenant (including current user's role)
         const { data: memberships } = await supabase
           .from("user_tenant_memberships")
-          .select("user_id")
+          .select("user_id, role")
           .eq("tenant_id", tenantId)
           .eq("is_active", true);
 
         if (cancelled) return;
 
         if (!memberships?.length) {
+          setIsAdmin(false);
+          setUserRole("");
           setTeamMembers([]);
           setLoading(false);
           return;
         }
 
-        const userIds = memberships.map(m => m.user_id);
+        // Determine current user's role from membership
+        const myMembership = memberships.find(m => m.user_id === userId);
+        const myRole = myMembership?.role || "";
+        const canViewTeam = myRole === "abgeordneter" || myRole === "bueroleitung";
+        setIsAdmin(canViewTeam);
+        setUserRole(myRole);
 
-        // Get roles
-        const { data: roles } = await supabase
-          .from("user_roles")
-          .select("user_id, role")
-          .in("user_id", userIds);
+        if (!canViewTeam) {
+          setLoading(false);
+          return;
+        }
 
-        if (cancelled) return;
-
-        const employeeIds = (roles || [])
-          .filter(r => ["mitarbeiter", "praktikant", "bueroleitung"].includes(r.role))
-          .map(r => r.user_id);
+        // Filter employee IDs from memberships directly
+        const employeeIds = memberships
+          .filter(m => ["mitarbeiter", "praktikant", "bueroleitung"].includes(m.role))
+          .map(m => m.user_id);
 
         if (employeeIds.length === 0) {
           setTeamMembers([]);

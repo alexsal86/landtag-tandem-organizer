@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { debugConsole } from '@/utils/debugConsole';
 import { useSearchParams, useNavigate } from "react-router-dom";
 import { Badge } from "@/components/ui/badge";
@@ -30,6 +30,10 @@ export function MyWorkJourFixeTab() {
   const [expandedMeetingId, setExpandedMeetingId] = useState<string | null>(null);
   const [agendaItems, setAgendaItems] = useState<Record<string, AgendaItem[]>>({});
   const [loadingAgenda, setLoadingAgenda] = useState<string | null>(null);
+
+  // Stable refs to guard against duplicate/stale loads
+  const agendaItemsRef = useRef<Record<string, AgendaItem[]>>({});
+  const inFlightRef = useRef<Set<string>>(new Set());
 
   // State for system item data (notes and tasks per meeting)
   const {
@@ -63,10 +67,11 @@ export function MyWorkJourFixeTab() {
     }
   }, [searchParams, setSearchParams, navigate]);
 
-  const loadAgendaForMeeting = async (meetingId: string, meetingDate?: string) => {
-    // Already loaded
-    if (agendaItems[meetingId]) return;
-    
+  const loadAgendaForMeeting = useCallback(async (meetingId: string, meetingDate?: string) => {
+    // Already loaded or currently loading – skip
+    if (agendaItemsRef.current[meetingId] || inFlightRef.current.has(meetingId)) return;
+
+    inFlightRef.current.add(meetingId);
     if (isMountedRef.current) setLoadingAgenda(meetingId);
     try {
       const { data, error } = await supabase
@@ -78,6 +83,7 @@ export function MyWorkJourFixeTab() {
       if (error) throw error;
       
       const items = data || [];
+      agendaItemsRef.current[meetingId] = items;
       if (isMountedRef.current) setAgendaItems(prev => ({ ...prev, [meetingId]: items }));
       
       // Load system item data if needed
@@ -85,9 +91,10 @@ export function MyWorkJourFixeTab() {
     } catch (error) {
       debugConsole.error('Error loading agenda:', error);
     } finally {
+      inFlightRef.current.delete(meetingId);
       if (isMountedRef.current) setLoadingAgenda(null);
     }
-  };
+  }, [loadMeetingSystemData]);
 
   const getOwnerLabel = (userId?: string) => {
     if (!userId) return null;
