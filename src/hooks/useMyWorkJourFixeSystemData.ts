@@ -138,7 +138,7 @@ export function useMyWorkJourFixeSystemData(userId?: string, tenantId?: string) 
 
       if (decisionsResult.error) {
         debugConsole.error("Error loading decisions for meeting:", { meetingId, error: decisionsResult.error });
-        setMeetingDecisions((prev) => ({ ...prev, [meetingId]: [] }));
+        // Don't reset to [] on error – keep existing data
       } else {
         const decisions = decisionsResult.data || [];
         const relevantDecisions = decisions
