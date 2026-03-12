@@ -208,6 +208,8 @@ export function MyWorkTeamTab() {
         const weekStart = startOfWeek(new Date(), { weekStartsOn: 1 });
         const today = new Date();
 
+        const historyWindowStart = subDays(today, 120);
+
         const [profilesRes, settingsRes, requestsRes, timeEntriesRes, lastEntriesRes] = await Promise.all([
           supabase.from("profiles").select("user_id, display_name, avatar_url").in("user_id", employeeIds),
           supabase.from("employee_settings").select("user_id, hours_per_week, last_meeting_date, meeting_interval_months").in("user_id", employeeIds),
@@ -216,6 +218,7 @@ export function MyWorkTeamTab() {
             .gte("work_date", format(weekStart, "yyyy-MM-dd"))
             .lte("work_date", format(today, "yyyy-MM-dd")),
           supabase.from("time_entries").select("user_id, work_date").in("user_id", employeeIds)
+            .gte("work_date", format(historyWindowStart, "yyyy-MM-dd"))
             .order("work_date", { ascending: false }),
         ]);
 
