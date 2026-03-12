@@ -308,7 +308,7 @@ export function CommentThread({
 
       {/* Nested replies */}
       {comment.replies && comment.replies.length > 0 && (
-        <div ref={repliesRef} className="mt-2">
+        <div ref={repliesRef}>
           {comment.replies.map((reply, index) => (
             <CommentThread
               key={reply.id}
