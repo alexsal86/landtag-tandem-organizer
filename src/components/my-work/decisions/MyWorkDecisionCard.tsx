@@ -533,26 +533,28 @@ const MyWorkDecisionCardInner = ({
                 </div>
               )}
 
-              <div className="border-t border-border/70 pt-3 text-xs text-muted-foreground space-y-2">
-                {winningResponse && (
-                  <div className={cn('text-lg font-extrabold', winningResponse.textClass)}>
-                    Ergebnis: {winningResponse.label}
-                  </div>
-                )}
-                {showInlineSummaryCounts && (
-                  <div className="flex flex-wrap items-center gap-1 text-sm font-semibold">
-                    {summaryItems.map((item, idx) => (
-                      <span key={item.key} className="inline-flex items-center gap-1">
-                        {idx > 0 && <span className="text-muted-foreground">•</span>}
-                        <span className={item.textClass}>{item.count}</span>
-                        <span className={item.textClass}>{item.label}</span>
-                      </span>
-                    ))}
-                  </div>
-                )}
-              </div>
+              {(winningResponse || showInlineSummaryCounts) && (
+                <div className="border-t border-border/70 pt-3 text-xs text-muted-foreground space-y-2">
+                  {winningResponse && (
+                    <div className={cn('text-lg font-extrabold', winningResponse.textClass)}>
+                      Ergebnis: {winningResponse.label}
+                    </div>
+                  )}
+                  {showInlineSummaryCounts && (
+                    <div className="flex flex-wrap items-center gap-1 text-sm font-semibold">
+                      {summaryItems.map((item, idx) => (
+                        <span key={item.key} className="inline-flex items-center gap-1">
+                          {idx > 0 && <span className="text-muted-foreground">•</span>}
+                          <span className={item.textClass}>{item.count}</span>
+                          <span className={item.textClass}>{item.label}</span>
+                        </span>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )}
 
-              <div className="border-t border-border/70 pt-3 text-xs text-muted-foreground space-y-2">
+              <div className={cn("text-xs text-muted-foreground space-y-2", (winningResponse || showInlineSummaryCounts) ? "border-t border-border/70 pt-3" : "pt-0")}>
                 <div className="flex items-center justify-between gap-3">
                   <div className="flex flex-wrap items-center gap-1.5 min-w-0">
                     <span>{new Date(decision.created_at).toLocaleDateString('de-DE')}</span>
@@ -634,10 +636,10 @@ const MyWorkDecisionCardInner = ({
                     <Tooltip>
                       <TooltipTrigger asChild>
                         <div className="shrink-0">
-                          <AvatarStack participants={avatarParticipants} maxVisible={4} size="sm" />
+                          <AvatarStack participants={avatarParticipants} maxVisible={4} size="sm" showTooltips={false} />
                         </div>
                       </TooltipTrigger>
-                      <TooltipContent side="top" align="end">
+                      <TooltipContent side="top" align="end" className="z-[140] max-w-xs">
                         <div className="flex flex-wrap items-center gap-1 text-xs font-semibold">
                           {summaryItems.map((item, idx) => (
                             <span key={item.key} className="inline-flex items-center gap-1">
