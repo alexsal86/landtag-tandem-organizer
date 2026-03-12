@@ -9,7 +9,7 @@ import { Users, ExternalLink, Clock, Calendar, AlertTriangle } from "lucide-reac
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { useTenant } from "@/hooks/useTenant";
-import { format, differenceInDays, startOfWeek, isWeekend, subDays } from "date-fns";
+import { format, differenceInDays, startOfWeek, isWeekend } from "date-fns";
 import { de } from "date-fns/locale";
 import { useNavigate } from "react-router-dom";
 import { cn } from "@/lib/utils";
@@ -208,18 +208,13 @@ export function MyWorkTeamTab() {
         const weekStart = startOfWeek(new Date(), { weekStartsOn: 1 });
         const today = new Date();
 
-        const historyWindowStart = subDays(today, 120);
-
-        const [profilesRes, settingsRes, requestsRes, timeEntriesRes, lastEntriesRes] = await Promise.all([
+        const [profilesRes, settingsRes, requestsRes, timeEntriesRes] = await Promise.all([
           supabase.from("profiles").select("user_id, display_name, avatar_url").in("user_id", employeeIds),
           supabase.from("employee_settings").select("user_id, hours_per_week, last_meeting_date, meeting_interval_months").in("user_id", employeeIds),
           supabase.from("employee_meeting_requests").select("employee_id").eq("status", "pending").in("employee_id", employeeIds),
           supabase.from("time_entries").select("user_id, minutes, work_date").in("user_id", employeeIds)
             .gte("work_date", format(weekStart, "yyyy-MM-dd"))
             .lte("work_date", format(today, "yyyy-MM-dd")),
-          supabase.from("time_entries").select("user_id, work_date").in("user_id", employeeIds)
-            .gte("work_date", format(historyWindowStart, "yyyy-MM-dd"))
-            .order("work_date", { ascending: false }),
         ]);
 
         if (cancelled) return;
@@ -228,7 +223,29 @@ export function MyWorkTeamTab() {
         if (settingsRes.error) debugConsole.error("Error loading team settings:", settingsRes.error);
         if (requestsRes.error) debugConsole.error("Error loading team meeting requests:", requestsRes.error);
         if (timeEntriesRes.error) debugConsole.error("Error loading team time entries:", timeEntriesRes.error);
-        if (lastEntriesRes.error) debugConsole.error("Error loading team last entries:", lastEntriesRes.error);
+
+        const lastEntriesResults = await Promise.all(
+          employeeIds.map(async (employeeId) => {
+            const { data, error } = await supabase
+              .from("time_entries")
+              .select("work_date")
+              .eq("user_id", employeeId)
+              .order("work_date", { ascending: false })
+              .limit(1)
+              .maybeSingle();
+
+            if (error) {
+              debugConsole.error(`Error loading last entry for employee ${employeeId}:`, error);
+            }
+
+            return {
+              user_id: employeeId,
+              work_date: data?.work_date || null,
+            };
+          })
+        );
+
+        if (cancelled) return;
 
         const profileMap = new Map((profilesRes.data || []).map((p) => [p.user_id, p]));
         const settingsMap = new Map((settingsRes.data || []).map((s) => [s.user_id, s]));
@@ -251,8 +268,8 @@ export function MyWorkTeamTab() {
 
         // Find last global entry per employee (for warning calculation)
         const lastGlobalEntry: Record<string, string> = {};
-        (lastEntriesRes.data || []).forEach((entry: any) => {
-          if (!lastGlobalEntry[entry.user_id]) {
+        lastEntriesResults.forEach((entry) => {
+          if (entry.work_date) {
             lastGlobalEntry[entry.user_id] = entry.work_date;
           }
         });
