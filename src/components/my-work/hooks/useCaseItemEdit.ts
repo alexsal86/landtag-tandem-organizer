@@ -1,12 +1,20 @@
 import { useCallback, useState } from "react";
 
-export type TimelineInteractionType = "anruf" | "mail" | "treffen" | "gespraech" | "notiz";
+export type TimelineInteractionType = "anruf" | "mail" | "treffen" | "gespraech" | "dokument" | "notiz";
+
+export type TimelineDocumentAttachment = {
+  id: string;
+  title: string;
+  fileName: string;
+  filePath: string;
+};
 
 export type TimelineEvent = {
   id: string;
   type: "status" | "interaktion" | "entscheidung";
   title: string;
   note?: string;
+  documents?: TimelineDocumentAttachment[];
   timestamp: string;
   statusValue?: string;
   interactionType?: TimelineInteractionType;

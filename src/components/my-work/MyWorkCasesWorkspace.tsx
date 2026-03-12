@@ -34,7 +34,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import { useCaseWorkspaceData, type CaseFile, type CaseItem, type TeamUser } from "@/components/my-work/hooks/useCaseWorkspaceData";
-import { useCaseItemEdit, type EditableCaseItem, type TimelineEvent, type TimelineInteractionType } from "@/components/my-work/hooks/useCaseItemEdit";
+import { useCaseItemEdit, type EditableCaseItem, type TimelineDocumentAttachment, type TimelineEvent, type TimelineInteractionType } from "@/components/my-work/hooks/useCaseItemEdit";
 import { DEFAULT_CASE_ITEM_CATEGORIES, useCaseItemCategories } from "@/hooks/useCaseItemCategories";
 
 
@@ -48,6 +48,7 @@ type TimelineEntry = {
   title: string;
   note?: string;
   safeNoteHtml?: string;
+  documents?: TimelineDocumentAttachment[];
   accentClass: string;
   icon?: typeof Phone;
   canDelete?: boolean;
@@ -77,8 +78,8 @@ const interactionTypeOptions: Array<{ value: TimelineInteractionType; label: str
   { value: "anruf", label: "Anruf", icon: Phone },
   { value: "mail", label: "Mail", icon: Mail },
   { value: "treffen", label: "Treffen", icon: Users },
-  { value: "gespraech", label: "Gespräch", icon: MessageSquare },
-  { value: "notiz", label: "Notiz", icon: FileText },
+  { value: "dokument", label: "Dokument", icon: FileText },
+  { value: "notiz", label: "Notiz", icon: MessageSquare },
 ];
 
 const toEditorHtml = (value: string | null | undefined) => {
@@ -130,11 +131,28 @@ const parseTimelineEvents = (payload: CaseItemIntakePayload | null): TimelineEve
     if (typeof item.id !== "string" || typeof item.type !== "string" || typeof item.title !== "string" || typeof item.timestamp !== "string") continue;
     const type = item.type as string;
     if (type !== "status" && type !== "interaktion" && type !== "entscheidung") continue;
+    const documents = Array.isArray(item.documents)
+      ? item.documents
+          .map((doc) => {
+            if (!doc || typeof doc !== "object") return null;
+            const value = doc as Record<string, unknown>;
+            if (typeof value.id !== "string" || typeof value.filePath !== "string") return null;
+            return {
+              id: value.id,
+              title: typeof value.title === "string" ? value.title : "Dokument",
+              fileName: typeof value.fileName === "string" ? value.fileName : "",
+              filePath: value.filePath,
+            };
+          })
+          .filter((doc): doc is { id: string; title: string; fileName: string; filePath: string } => Boolean(doc))
+      : undefined;
+
     results.push({
       id: item.id,
       type: type as TimelineEvent["type"],
       title: item.title,
       note: typeof item.note === "string" ? item.note : undefined,
+      documents,
       timestamp: item.timestamp,
       statusValue: typeof item.statusValue === "string" ? item.statusValue : undefined,
       interactionType: typeof item.interactionType === "string" ? item.interactionType as TimelineInteractionType : undefined,
@@ -828,7 +846,7 @@ export function MyWorkCasesWorkspace() {
     return parsed.toISOString();
   }, []);
 
-  const handleAddInteraction = useCallback(() => {
+  const handleAddInteraction = useCallback(async (files: File[] = []) => {
     if (!editableCaseItem) return;
     if (!editableCaseItem.interactionType) {
       toast.error("Bitte zuerst eine Interaktion auswählen.");
@@ -839,7 +857,59 @@ export function MyWorkCasesWorkspace() {
     const fallbackTypeLabel = typeMeta?.label || "Interaktion";
 
     let title = fallbackTypeLabel;
-    if (editableCaseItem.interactionType === "anruf") {
+    let uploadedDocuments: TimelineDocumentAttachment[] | undefined;
+
+    if (editableCaseItem.interactionType === "dokument") {
+      if (!currentTenant?.id || !user?.id) {
+        toast.error("Dokument-Upload ist aktuell nicht verfügbar.");
+        return;
+      }
+      if (files.length === 0) {
+        toast.error("Bitte mindestens ein Dokument auswählen.");
+        return;
+      }
+
+      const uploaded: TimelineDocumentAttachment[] = [];
+      for (const file of files) {
+        const fileExt = file.name.split(".").pop();
+        const storagePath = `${user.id}/${Date.now()}-${Math.random().toString(36).slice(2)}${fileExt ? `.${fileExt}` : ""}`;
+
+        const { error: uploadError } = await supabase.storage.from("documents").upload(storagePath, file);
+        if (uploadError) {
+          toast.error(`Upload fehlgeschlagen: ${file.name}`);
+          return;
+        }
+
+        const { data: documentRow, error: insertError } = await supabase
+          .from("documents")
+          .insert({
+            user_id: user.id,
+            tenant_id: currentTenant.id,
+            title: file.name,
+            file_name: file.name,
+            file_path: storagePath,
+            file_size: file.size,
+            file_type: file.type || null,
+          })
+          .select("id, title, file_name, file_path")
+          .single();
+
+        if (insertError || !documentRow) {
+          toast.error(`Dokument konnte nicht gespeichert werden: ${file.name}`);
+          return;
+        }
+
+        uploaded.push({
+          id: documentRow.id,
+          title: documentRow.title,
+          fileName: documentRow.file_name,
+          filePath: documentRow.file_path,
+        });
+      }
+
+      uploadedDocuments = uploaded;
+      title = uploaded.length > 1 ? `${uploaded.length} Dokumente hochgeladen` : `Dokument: ${uploaded[0].title || uploaded[0].fileName}`;
+    } else if (editableCaseItem.interactionType === "anruf") {
       title = `Telefonat mit ${contact || "unbekannt"}`;
     } else if (editableCaseItem.interactionType === "mail") {
       title = `E-Mail mit ${contact || "unbekannt"}`;
@@ -852,10 +922,11 @@ export function MyWorkCasesWorkspace() {
       title,
       note: normalizeRichTextValue(editableCaseItem.interactionNote) || undefined,
       interactionType: editableCaseItem.interactionType,
+      documents: uploadedDocuments,
       timestamp: formatInteractionTimestamp(editableCaseItem.interactionDateTime),
     });
     updateEdit({ interactionContact: "", interactionDateTime: "", interactionNote: "" });
-  }, [appendTimelineEvent, editableCaseItem, formatInteractionTimestamp, updateEdit]);
+  }, [appendTimelineEvent, currentTenant?.id, editableCaseItem, formatInteractionTimestamp, updateEdit, user?.id]);
 
   const handleRequestDecision = useCallback(() => {
     if (!editableCaseItem || !detailItemId) return;
@@ -935,6 +1006,7 @@ export function MyWorkCasesWorkspace() {
       title: event.title,
       note: event.note,
       safeNoteHtml: sanitizeTimelineNote(event.note),
+      documents: event.documents,
       accentClass: "bg-primary",
       icon: event.type === "entscheidung" ? Gavel : interactionTypeOptions.find((option) => option.value === event.interactionType)?.icon,
       canDelete: true,
