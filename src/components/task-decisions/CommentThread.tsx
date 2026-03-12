@@ -271,7 +271,7 @@ export function CommentThread({
               variant="ghost"
               size="sm"
               onClick={() => setIsReplying(!isReplying)}
-              className="text-[10px] h-6 px-2 mt-1 text-muted-foreground hover:text-foreground"
+              className="text-[10px] h-6 px-2 mt-0 text-muted-foreground hover:text-foreground"
             >
               <Reply className="h-3 w-3 mr-1" />
               Antworten
