@@ -1,5 +1,4 @@
 import { useState, useMemo } from "react";
-import { debugConsole } from "@/utils/debugConsole";
 import {
   CaseFileTimelineEntry,
   CaseFileNote,
@@ -29,13 +28,11 @@ import {
   MessageSquare,
   Search,
   Plus,
-  Trash2,
-  ExternalLink,
+  Trash2
 } from "lucide-react";
 import { format } from "date-fns";
 import { de } from "date-fns/locale";
 import { cn } from "@/lib/utils";
-import { supabase } from "@/integrations/supabase/client";
 
 interface UnifiedTimelineItem {
   id: string;
@@ -73,7 +70,6 @@ const CATEGORY_CONFIG = {
 const FILTER_TABS = [
   { value: "all", label: "Alle" },
   { value: "note", label: "Notizen" },
-  { value: "document", label: "Dokumente" },
   { value: "appointment", label: "Termine" },
   { value: "task", label: "Aufgaben" },
   { value: "letter", label: "Briefe" },
@@ -92,30 +88,6 @@ export function CaseFileUnifiedTimeline({
 }: CaseFileUnifiedTimelineProps) {
   const [filter, setFilter] = useState("all");
   const [searchQuery, setSearchQuery] = useState("");
-
-  const handleOpenDocument = async (documentId: string, fileName: string) => {
-    try {
-      // Try to get file_path from documents table
-      const { data } = await supabase
-        .from('documents')
-        .select('file_path')
-        .eq('id', documentId)
-        .single();
-
-      if (data?.file_path) {
-        const { data: urlData } = await supabase.storage
-          .from('documents')
-          .createSignedUrl(data.file_path, 3600);
-
-        if (urlData?.signedUrl) {
-          window.open(urlData.signedUrl, '_blank');
-          return;
-        }
-      }
-    } catch (error) {
-      debugConsole.error('Error opening document:', error);
-    }
-  };
 
   const unifiedItems = useMemo<UnifiedTimelineItem[]>(() => {
     const items: UnifiedTimelineItem[] = [
@@ -137,14 +109,6 @@ export function CaseFileUnifiedTimeline({
         event_date: n.created_at,
         title: "Notiz hinzugefügt",
         description: n.content,
-      })),
-      ...documents.map((d) => ({
-        id: `document-${d.id}`,
-        category: "document" as const,
-        event_date: d.created_at,
-        title: `Dokument: ${d.document?.title || d.document?.file_name || "Dokument"}`,
-        description: d.document?.file_name || null,
-        meta: { documentId: d.document?.id, fileName: d.document?.file_name },
       })),
       ...tasks.map((t) => ({
         id: `task-${t.id}`,
@@ -259,96 +223,80 @@ export function CaseFileUnifiedTimeline({
           </p>
         ) : (
           <TooltipProvider>
-            <div className="space-y-6">
-              {Object.entries(groupedItems).map(([month, items]) => (
-                <div key={month}>
-                  <h3 className="text-sm font-bold text-foreground mb-3 uppercase tracking-wider">
-                    {month}
-                  </h3>
-                  <div className="relative border-l-2 border-muted pl-5 space-y-3">
-                    {items.map((item) => {
-                      const config = CATEGORY_CONFIG[item.category];
-                      const Icon = config.icon;
-                      const isManualTimeline =
-                        item.category === "timeline" && item.source_type === "manual";
-                      const dateStr = format(new Date(item.event_date), "dd. MMMM yyyy", { locale: de });
-                      const timeStr = format(new Date(item.event_date), "HH:mm", { locale: de });
-                      const isDocument = item.category === "document" && item.meta?.documentId;
+            <div className="relative pl-16">
+              <div className="absolute left-5 top-6 bottom-6 w-[2px] bg-muted" />
+              <div className="space-y-10">
+                {Object.entries(groupedItems).map(([month, items]) => (
+                  <div key={month}>
+                    <h3 className="ml-3 text-sm font-bold text-foreground mb-5 uppercase tracking-wider">
+                      {month}
+                    </h3>
+                    <div className="space-y-6">
+                      {items.map((item) => {
+                        const config = CATEGORY_CONFIG[item.category];
+                        const Icon = config.icon;
+                        const isManualTimeline =
+                          item.category === "timeline" && item.source_type === "manual";
+                        const dateStr = format(new Date(item.event_date), "dd. MMMM yyyy", { locale: de });
+                        const timeStr = format(new Date(item.event_date), "HH:mm", { locale: de });
 
-                      return (
-                        <div key={item.id} className="relative">
-                          {/* Timeline dot with tooltip */}
-                          <Tooltip>
-                            <TooltipTrigger asChild>
-                              <div
-                                className={cn(
-                                  "absolute -left-[25px] w-3 h-3 rounded-full border-2 border-background cursor-default",
-                                  config.color
-                                )}
-                              />
-                            </TooltipTrigger>
-                            <TooltipContent side="left">
-                              <p className="text-xs">
-                                {item.created_by_name
-                                  ? `Hinzugefügt von ${item.created_by_name}`
-                                  : "Hinzugefügt"}{" "}
-                                am {dateStr} um {timeStr}
-                              </p>
-                            </TooltipContent>
-                          </Tooltip>
+                        return (
+                          <div key={item.id} className="relative">
+                            {/* Timeline dot with tooltip */}
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <div
+                                  className={cn(
+                                    "absolute -left-[58px] h-7 w-7 rounded-full border-2 border-background shadow-[0_0_0_3px_hsl(var(--background))] cursor-default flex items-center justify-center text-white",
+                                    config.color
+                                  )}
+                                >
+                                  <Icon className="h-3.5 w-3.5" />
+                                </div>
+                              </TooltipTrigger>
+                              <TooltipContent side="left">
+                                <p className="text-xs">
+                                  {item.created_by_name
+                                    ? `Hinzugefügt von ${item.created_by_name}`
+                                    : "Hinzugefügt"}{" "}
+                                  am {dateStr} um {timeStr}
+                                </p>
+                              </TooltipContent>
+                            </Tooltip>
 
-                          <div className="flex items-start justify-between gap-2">
-                            <div className="min-w-0 flex-1">
-                              {/* Row 1: Icon + Title */}
-                              <div className="flex items-center gap-2">
-                                <Icon className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
-                                {isDocument ? (
-                                  <button
-                                    onClick={() => handleOpenDocument(item.meta?.documentId, item.meta?.fileName)}
-                                    className="text-sm font-medium text-primary hover:underline text-left flex items-center gap-1"
-                                  >
-                                    {item.title}
-                                    <ExternalLink className="h-3 w-3" />
-                                  </button>
-                                ) : (
-                                  <p className="text-sm font-medium">{item.title}</p>
+                            <div className="flex items-start justify-between gap-2">
+                              <div className="min-w-0 flex-1">
+                                <Tooltip>
+                                  <TooltipTrigger asChild>
+                                    <p className="text-[10px] text-muted-foreground cursor-default">{dateStr}</p>
+                                  </TooltipTrigger>
+                                  <TooltipContent>
+                                    <p className="text-xs">{timeStr} Uhr</p>
+                                  </TooltipContent>
+                                </Tooltip>
+                                <p className="text-sm font-medium mt-0.5">{item.title}</p>
+                                {item.description && (
+                                  <p className="text-xs text-muted-foreground line-clamp-2 mt-1">{item.description}</p>
                                 )}
                               </div>
-                              {/* Row 2: Description (indented) */}
-                              {item.description && item.category !== "document" && (
-                                <p className="text-xs text-muted-foreground line-clamp-2 ml-[22px]">
-                                  {item.description}
-                                </p>
+                              {isManualTimeline && (
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  className="h-7 w-7 shrink-0 text-destructive hover:text-destructive"
+                                  onClick={() => onDeleteTimelineEntry(item.meta?.originalId)}
+                                >
+                                  <Trash2 className="h-3.5 w-3.5" />
+                                </Button>
                               )}
-                              {/* Row 3: Date (indented), time in tooltip */}
-                              <Tooltip>
-                                <TooltipTrigger asChild>
-                                  <p className="text-[10px] text-muted-foreground ml-[22px] cursor-default">
-                                    {dateStr}
-                                  </p>
-                                </TooltipTrigger>
-                                <TooltipContent>
-                                  <p className="text-xs">{timeStr} Uhr</p>
-                                </TooltipContent>
-                              </Tooltip>
                             </div>
-                            {isManualTimeline && (
-                              <Button
-                                variant="ghost"
-                                size="icon"
-                                className="h-7 w-7 shrink-0 text-destructive hover:text-destructive"
-                                onClick={() => onDeleteTimelineEntry(item.meta?.originalId)}
-                              >
-                                <Trash2 className="h-3.5 w-3.5" />
-                              </Button>
-                            )}
                           </div>
-                        </div>
-                      );
-                    })}
+                        );
+                      })}
+                    </div>
                   </div>
-                </div>
-              ))}
+                ))}
+              </div>
             </div>
           </TooltipProvider>
         )}

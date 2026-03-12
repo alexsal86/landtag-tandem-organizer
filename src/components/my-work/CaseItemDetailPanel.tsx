@@ -25,6 +25,7 @@ type TimelineEntry = {
   timestamp: string;
   title: string;
   safeNoteHtml?: string;
+  documents?: TimelineDocumentAttachment[];
   accentClass: string;
   icon?: typeof Phone;
   canDelete?: boolean;

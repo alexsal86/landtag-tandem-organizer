@@ -19,6 +19,7 @@ export type TimelineEvent = {
   type: "status" | "interaktion" | "entscheidung";
   title: string;
   note?: string;
+  documents?: TimelineDocumentAttachment[];
   timestamp: string;
   statusValue?: string;
   interactionType?: TimelineInteractionType;
