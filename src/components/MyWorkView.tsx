@@ -323,6 +323,13 @@ export function MyWorkView() {
     void loadUserRoleAndCounts();
   }, [loadUserRoleAndCounts]);
 
+  // Note: Realtime subscriptions are handled by individual data hooks
+  // (useMyWorkTasksData, useMyWorkDecisionsData, etc.)
+  // No duplicate channel needed here - just set status to connected.
+  useEffect(() => {
+    setRealtimeStatus("connected");
+  }, []);
+
   const handleNoteSaved = () => {
     setRefreshTrigger(prev => prev + 1);
   };
