@@ -277,11 +277,26 @@ export const DecisionEditDialog = ({ decisionId, isOpen, onClose, onUpdated }: D
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="sm:max-w-[500px] max-h-[90vh] overflow-hidden flex flex-col">
+      <DialogContent className="sm:max-w-[500px] max-h-[90vh] overflow-hidden">
         <DialogHeader>
           <DialogTitle>Entscheidung bearbeiten</DialogTitle>
         </DialogHeader>
-        <div className="space-y-4 overflow-y-auto pr-1 flex-1">
+        <div className="flex justify-end space-x-2 pb-2">
+          <Button 
+            variant="outline" 
+            onClick={onClose}
+            disabled={isLoading}
+          >
+            Abbrechen
+          </Button>
+          <Button 
+            onClick={handleUpdate}
+            disabled={isLoading}
+          >
+            {isLoading ? "Speichert..." : "Speichern"}
+          </Button>
+        </div>
+        <div className="space-y-4">
           <div>
             <label className="text-sm font-medium">Titel</label>
             <Input
@@ -297,7 +312,7 @@ export const DecisionEditDialog = ({ decisionId, isOpen, onClose, onUpdated }: D
               onChange={setDescription}
               placeholder="Zusätzliche Details zur Entscheidung"
               minHeight="100px"
-              maxHeight="40vh"
+              maxHeight="240px"
               scrollable
             />
           </div>
@@ -346,22 +361,6 @@ export const DecisionEditDialog = ({ decisionId, isOpen, onClose, onUpdated }: D
               compact
               placeholder="Themen hinzufügen..."
             />
-          </div>
-          
-          <div className="flex justify-end space-x-2 pt-4">
-            <Button 
-              variant="outline" 
-              onClick={onClose}
-              disabled={isLoading}
-            >
-              Abbrechen
-            </Button>
-            <Button 
-              onClick={handleUpdate}
-              disabled={isLoading}
-            >
-              {isLoading ? "Speichert..." : "Speichern"}
-            </Button>
           </div>
         </div>
       </DialogContent>
