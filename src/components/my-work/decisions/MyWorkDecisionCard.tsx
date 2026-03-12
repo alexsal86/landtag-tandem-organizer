@@ -226,6 +226,12 @@ const MyWorkDecisionCardInner = ({
     response_type: p.responses[0]?.response_type || null,
   }));
 
+
+  const pendingParticipants = (decision.participants || []).filter((participant) => !participant.responses?.[0]);
+  const pendingParticipantNames = pendingParticipants
+    .map((participant) => participant.profile?.display_name || 'Unbekannt')
+    .join(', ');
+
   const clearResponseRefreshTimeout = () => {
     if (responseRefreshTimeoutRef.current !== null) {
       window.clearTimeout(responseRefreshTimeoutRef.current);
@@ -533,28 +539,28 @@ const MyWorkDecisionCardInner = ({
                 </div>
               )}
 
-              {(winningResponse || showInlineSummaryCounts) && (
-                <div className="border-t border-border/70 pt-3 text-xs text-muted-foreground space-y-2">
-                  {winningResponse && (
-                    <div className={cn('text-lg font-extrabold', winningResponse.textClass)}>
-                      Ergebnis: {winningResponse.label}
-                    </div>
-                  )}
-                  {showInlineSummaryCounts && (
-                    <div className="flex flex-wrap items-center gap-1 text-sm font-semibold">
-                      {summaryItems.map((item, idx) => (
-                        <span key={item.key} className="inline-flex items-center gap-1">
-                          {idx > 0 && <span className="text-muted-foreground">•</span>}
-                          <span className={item.textClass}>{item.count}</span>
-                          <span className={item.textClass}>{item.label}</span>
-                        </span>
-                      ))}
-                    </div>
-                  )}
-                </div>
-              )}
+              <div className="border-t border-border/70 pt-3 text-xs text-muted-foreground space-y-2">
+                {(winningResponse || showInlineSummaryCounts) && (
+                  <>
+                    {winningResponse && (
+                      <div className={cn('text-lg font-extrabold', winningResponse.textClass)}>
+                        Ergebnis: {winningResponse.label}
+                      </div>
+                    )}
+                    {showInlineSummaryCounts && (
+                      <div className="flex flex-wrap items-center gap-1 text-sm font-semibold">
+                        {summaryItems.map((item, idx) => (
+                          <span key={item.key} className="inline-flex items-center gap-1">
+                            {idx > 0 && <span className="text-muted-foreground">•</span>}
+                            <span className={item.textClass}>{item.count}</span>
+                            <span className={item.textClass}>{item.label}</span>
+                          </span>
+                        ))}
+                      </div>
+                    )}
+                  </>
+                )}
 
-              <div className={cn("text-xs text-muted-foreground space-y-2", (winningResponse || showInlineSummaryCounts) ? "border-t border-border/70 pt-3" : "pt-0")}>
                 <div className="flex items-center justify-between gap-3">
                   <div className="flex flex-wrap items-center gap-1.5 min-w-0">
                     <span>{new Date(decision.created_at).toLocaleDateString('de-DE')}</span>
@@ -640,14 +646,21 @@ const MyWorkDecisionCardInner = ({
                         </div>
                       </TooltipTrigger>
                       <TooltipContent side="top" align="end" className="z-[140] max-w-xs">
-                        <div className="flex flex-wrap items-center gap-1 text-xs font-semibold">
-                          {summaryItems.map((item, idx) => (
-                            <span key={item.key} className="inline-flex items-center gap-1">
-                              {idx > 0 && <span className="text-muted-foreground">•</span>}
-                              <span className={item.textClass}>{item.count}</span>
-                              <span className={item.textClass}>{item.label}</span>
-                            </span>
-                          ))}
+                        <div className="space-y-1.5">
+                          <div className="flex flex-wrap items-center gap-1 text-xs font-semibold">
+                            {summaryItems.map((item, idx) => (
+                              <span key={item.key} className="inline-flex items-center gap-1">
+                                {idx > 0 && <span className="text-muted-foreground">•</span>}
+                                <span className={item.textClass}>{item.count}</span>
+                                <span className={item.textClass}>{item.label}</span>
+                              </span>
+                            ))}
+                          </div>
+                          {pendingParticipants.length > 0 && (
+                            <div className="text-xs text-muted-foreground">
+                              Ausstehend: {pendingParticipantNames}
+                            </div>
+                          )}
                         </div>
                       </TooltipContent>
                     </Tooltip>
