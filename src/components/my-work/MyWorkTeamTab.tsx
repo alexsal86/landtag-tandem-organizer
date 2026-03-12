@@ -226,10 +226,7 @@ export function MyWorkTeamTab() {
 
         // Avoid one network round-trip per employee (slow for larger teams).
         const { data: lastEntriesData, error: lastEntriesError } = await supabase
-          .from("time_entries")
-          .select("user_id, work_date")
-          .in("user_id", employeeIds)
-          .order("work_date", { ascending: false });
+          .rpc("get_latest_time_entry_dates", { p_user_ids: employeeIds });
 
         if (lastEntriesError) {
           debugConsole.error("Error loading latest employee time entries:", lastEntriesError);
@@ -258,10 +255,8 @@ export function MyWorkTeamTab() {
 
         // Find last global entry per employee (for warning calculation)
         const lastGlobalEntry: Record<string, string> = {};
-        (lastEntriesData || []).forEach((entry: any) => {
-          if (!lastGlobalEntry[entry.user_id]) {
-            lastGlobalEntry[entry.user_id] = entry.work_date;
-          }
+        (lastEntriesData || []).forEach((entry) => {
+          lastGlobalEntry[entry.user_id] = entry.last_work_date;
         });
 
         // Calculate target minutes based on days passed in week

@@ -11112,6 +11112,21 @@ export type Database = {
         Args: { _user_id: string }
         Returns: string[]
       }
+      get_latest_employee_meetings: {
+        Args: { p_employee_ids: string[] }
+        Returns: {
+          employee_id: string
+          meeting_date: string
+          meeting_id: string
+        }[]
+      }
+      get_latest_time_entry_dates: {
+        Args: { p_user_ids: string[] }
+        Returns: {
+          last_work_date: string
+          user_id: string
+        }[]
+      }
       get_my_work_counts: {
         Args: { p_include_team?: boolean; p_user_id: string }
         Returns: Json
