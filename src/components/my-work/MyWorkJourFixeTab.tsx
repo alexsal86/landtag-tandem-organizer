@@ -262,8 +262,8 @@ export function MyWorkJourFixeTab() {
                   
                   return (
                     <li key={item.id} className="text-xs">
-                      <div className="flex items-start gap-2">
-                        <span className="text-muted-foreground font-medium min-w-[1rem]">{index + 1}.</span>
+                      <div className="flex items-start gap-0">
+                        <span className="text-muted-foreground font-medium min-w-[1.5rem]">{index + 1}.</span>
                         {systemIcon}
                         <span className={cn("text-foreground", item.system_type && "font-medium")}>
                           {item.title}
@@ -341,8 +341,8 @@ export function MyWorkJourFixeTab() {
                             const subSystemIcon = getSystemItemIcon(subItem.system_type);
                             return (
                               <li key={subItem.id} className="text-muted-foreground">
-                                <div className="flex items-start gap-1.5">
-                                  <span className="min-w-[2rem]">{index + 1}.{subIndex + 1}</span>
+                                <div className="flex items-start gap-0">
+                                  <span className="min-w-[1.5rem]">{index + 1}.{subIndex + 1}</span>
                                   {subSystemIcon}
                                   <span className={subItem.system_type ? "font-medium text-foreground" : ""}>
                                     {subItem.title}
