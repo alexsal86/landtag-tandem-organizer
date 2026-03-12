@@ -1,7 +1,7 @@
 import { useCallback, useRef, useState } from "react";
 import { addDays, parseISO } from "date-fns";
 import { supabase } from "@/integrations/supabase/client";
-import { debugConsole } from '@/utils/debugConsole';
+import { debugConsole } from "@/utils/debugConsole";
 
 export interface AgendaItem {
   id: string;
