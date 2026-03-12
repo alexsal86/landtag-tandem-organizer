@@ -84,6 +84,8 @@ export function useMeetingsData() {
   }, [searchParams, setSearchParams]);
 
   // URL id parameter for deep-linking
+  // Only sets selectedMeeting + loads agenda; linked sidebar data is loaded
+  // by the selectedMeeting.id change effect below.
   useEffect(() => {
     const urlMeetingId = searchParams.get('id');
     if (!urlMeetingId || meetings.length === 0) return;
@@ -93,12 +95,6 @@ export function useMeetingsData() {
       const normalized = { ...meeting, meeting_date: meeting.meeting_date instanceof Date ? meeting.meeting_date : new Date(meeting.meeting_date) };
       setSelectedMeeting(normalized);
       loadAgendaItems(urlMeetingId);
-      loadLinkedQuickNotes(urlMeetingId);
-      loadMeetingLinkedTasks(urlMeetingId);
-      loadMeetingLinkedCaseItems(urlMeetingId);
-      loadMeetingRelevantDecisions();
-      if (normalized.meeting_date) loadMeetingUpcomingAppointments(urlMeetingId, normalized.meeting_date);
-      loadStarredAppointments(urlMeetingId);
       searchParams.delete('id');
       setSearchParams(searchParams, { replace: true });
       deepLinkIdRef.current = null;
@@ -108,7 +104,6 @@ export function useMeetingsData() {
     if (meetingFromUrl) {
       selectMeeting(meetingFromUrl);
     } else {
-      // Meeting not in loaded list (e.g. past meeting) — fetch directly
       supabase
         .from('meetings')
         .select('*')
@@ -118,18 +113,7 @@ export function useMeetingsData() {
           if (data) selectMeeting(data);
         });
     }
-  }, [
-    searchParams,
-    meetings,
-    selectedMeeting,
-    setSearchParams,
-    loadLinkedQuickNotes,
-    loadMeetingLinkedTasks,
-    loadMeetingLinkedCaseItems,
-    loadMeetingRelevantDecisions,
-    loadMeetingUpcomingAppointments,
-    loadStarredAppointments,
-  ]);
+  }, [searchParams, meetings, selectedMeeting, setSearchParams]);
 
   // Load data on mount
   useEffect(() => {
