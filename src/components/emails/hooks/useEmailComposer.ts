@@ -202,7 +202,23 @@ export function useEmailComposer() {
           .replace(/\{\{inhalt\}\}/g, pressContent);
 
       setSubject(replacePressVars(templateSubject));
-      setBodyHtml(replacePressVars(templateBody).replace(/\n/g, "<br>"));
+
+      // Convert template body to proper HTML paragraphs for the Lexical editor
+      const replacedBody = replacePressVars(templateBody);
+      const htmlBody = replacedBody
+        .split(/\n{2,}/)
+        .map((block) => {
+          const trimmed = block.trim();
+          if (!trimmed) return "";
+          // If the block already contains block-level HTML, use it as-is
+          if (/^<(p|div|h[1-6]|ul|ol|blockquote|table)/i.test(trimmed)) return trimmed;
+          // Otherwise wrap in <p>, converting single \n to <br>
+          return `<p>${trimmed.replace(/\n/g, "<br>")}</p>`;
+        })
+        .filter(Boolean)
+        .join("");
+
+      setBodyHtml(htmlBody);
       setEditorKey((k) => k + 1);
 
       if (defaultDistListId) {
