@@ -233,7 +233,7 @@ export function ActiveMeetingPanel({
   const renderCaseItems = (parentItem: AgendaItem) => {
     const ciResults = (() => { try { return JSON.parse(parentItem.result_text || '{}'); } catch { return {}; } })();
     return linkedCaseItems.length > 0 ? linkedCaseItems.map((ci, idx) => (
-      <div key={ci.id} className="pl-4 border-l-2 border-muted space-y-2">
+      <div key={ci.id} className="pl-8 border-l-2 border-muted space-y-2">
         <div className="flex items-center gap-2">
           <span className="text-xs font-medium text-muted-foreground">{String.fromCharCode(97 + idx)})</span>
           <Briefcase className="h-3.5 w-3.5 text-teal-500" />

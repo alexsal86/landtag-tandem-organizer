@@ -76,8 +76,8 @@ export function MeetingsView() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-subtle p-4">
-      <ResizablePanelGroup direction="horizontal" className="min-h-[calc(100vh-2rem)] rounded-lg" autoSaveId="meetings-panels">
+    <div className="bg-gradient-subtle p-4">
+      <ResizablePanelGroup direction="horizontal" className="rounded-lg" autoSaveId="meetings-panels">
         <ResizablePanel defaultSize={28} minSize={22} maxSize={38}>
           <MeetingSidebar
             meetings={data.meetings}

@@ -20,7 +20,7 @@ import {
 import { 
   X, Keyboard, ChevronDown, ChevronUp, CheckCircle, 
   ArrowUp, ArrowDown, CornerDownRight, StickyNote,
-  Maximize2, Users, Archive, CalendarDays, ListTodo, Star, MessageSquarePlus
+  Maximize2, Users, Archive, CalendarDays, ListTodo, Star, MessageSquarePlus, Briefcase
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { format } from 'date-fns';
@@ -64,7 +64,7 @@ interface NavigableItem {
   globalIndex: number;
   isSystemSubItem?: boolean;
   sourceId?: string;
-  sourceType?: 'quick_note' | 'appointment' | 'task';
+  sourceType?: 'quick_note' | 'appointment' | 'task' | 'case_item';
   sourceData?: unknown;
 }
 
@@ -229,7 +229,7 @@ export function FocusModeView({
     }
     if (systemItem.system_type === 'case_items' && linkedCaseItems.length > 0) {
       linkedCaseItems.forEach((ci: any, i: number) => {
-        const persistedCompleted = getPersistentSystemSubItemCompletion('task', ci, parentForChildren);
+        const persistedCompleted = getPersistentSystemSubItemCompletion('case_item', ci, parentForChildren);
         result.push({
           item: {
             id: `caseitem-${ci.id}`,
@@ -243,7 +243,7 @@ export function FocusModeView({
           globalIndex: -1,
           isSystemSubItem: true,
           sourceId: ci.id,
-          sourceType: 'task',
+          sourceType: 'case_item',
           sourceData: ci
         });
       });
@@ -345,7 +345,7 @@ export function FocusModeView({
 
       const source = navigable.sourceData as Record<string, unknown> | undefined;
       const sourceId = source?.id as string | undefined;
-      if (sourceId && navigable.parentItem?.id && (navigable.sourceType === 'appointment' || navigable.sourceType === 'task')) {
+      if (sourceId && navigable.parentItem?.id && (navigable.sourceType === 'appointment' || navigable.sourceType === 'task' || navigable.sourceType === 'case_item')) {
         const results = parseSystemSubItemResults(navigable.parentItem.result_text);
         const previousEntry = results[sourceId];
         const nextResult = typeof previousEntry === 'string' ? previousEntry : previousEntry?.result || '';
@@ -633,11 +633,12 @@ export function FocusModeView({
   };
 
   // Get border color for system sub-items
-  const getSystemSubItemBorderColor = (sourceType?: 'quick_note' | 'appointment' | 'task') => {
+  const getSystemSubItemBorderColor = (sourceType?: 'quick_note' | 'appointment' | 'task' | 'case_item') => {
     switch (sourceType) {
       case 'quick_note': return 'border-l-amber-500';
       case 'appointment': return 'border-l-blue-500';
       case 'task': return 'border-l-green-500';
+      case 'case_item': return 'border-l-teal-500';
       default: return 'border-l-primary/30';
     }
   };
@@ -646,6 +647,12 @@ export function FocusModeView({
   const renderNavigableItem = (navigable: NavigableItem, navIndex: number) => {
     const { item, isSubItem, parentItem, isSystemSubItem, sourceType, sourceData } = navigable;
     const isFocused = navIndex === flatFocusIndex;
+    const subItemNumber = (() => {
+      if (!isSubItem || !parentItem?.id) return null;
+      const siblingSubItems = allNavigableItems.filter((n) => n.isSubItem && n.parentItem?.id === parentItem.id);
+      const number = siblingSubItems.findIndex((n) => n.item.id === item.id) + 1;
+      return number > 0 ? `${number}.` : null;
+    })();
     
     // Render system sub-items (individual notes, appointments, tasks) as autonomous items
     if (isSystemSubItem && sourceData) {
@@ -656,7 +663,7 @@ export function FocusModeView({
           const results = parseSystemSubItemResults(parentItem.result_text);
           return getSystemResultText(results[src.id as string]);
         }
-        if (sourceType === 'task' && parentItem) {
+        if ((sourceType === 'task' || sourceType === 'case_item') && parentItem) {
           const results = parseSystemSubItemResults(parentItem.result_text);
           return getSystemResultText(results[src.id as string]);
         }
@@ -666,7 +673,7 @@ export function FocusModeView({
       const updateSubItemResult = (value: string) => {
         if (sourceType === 'quick_note' && onUpdateNoteResult) {
           onUpdateNoteResult(src.id as string, value);
-        } else if ((sourceType === 'task' || sourceType === 'appointment') && parentItem?.id) {
+        } else if ((sourceType === 'task' || sourceType === 'appointment' || sourceType === 'case_item') && parentItem?.id) {
           const results = parseSystemSubItemResults(parentItem.result_text);
           const sourceId = src.id as string;
           const previousEntry = results[sourceId];
@@ -718,7 +725,8 @@ export function FocusModeView({
                 {sourceType === 'quick_note' && <StickyNote className="h-3.5 w-3.5 text-amber-500" />}
                 {sourceType === 'appointment' && <CalendarDays className="h-3.5 w-3.5 text-blue-500" />}
                 {sourceType === 'task' && <ListTodo className="h-3.5 w-3.5 text-green-500" />}
-                <span className={cn("text-sm font-medium", isItemCompleted && "line-through text-muted-foreground")}>{item.title}</span>
+                {sourceType === 'case_item' && <Briefcase className="h-3.5 w-3.5 text-teal-500" />}
+                <span className={cn("text-sm font-medium", isItemCompleted && "line-through text-muted-foreground")}>{subItemNumber ? `${subItemNumber} ` : ''}{item.title}</span>
                 {isItemCompleted && (
                   <Badge variant="secondary" className="bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200 text-xs">
                     <CheckCircle className="h-3 w-3 mr-1" />
@@ -731,15 +739,15 @@ export function FocusModeView({
                   <RichTextDisplay content={src.content as string} className="text-sm text-muted-foreground line-clamp-2" />
                 </div>
               )}
-              {sourceType === 'task' && (
+              {(sourceType === 'task' || sourceType === 'case_item') && (
                 <div className="mt-1">
                   {(src.description as string) && (
                     <RichTextDisplay content={src.description as string} className="text-sm text-muted-foreground" />
                   )}
                   <div className="flex items-center gap-2 mt-1">
-                    {(src.due_date as string) && (
+                    {((src.due_date as string) || (src.due_at as string)) && (
                       <span className="text-xs text-muted-foreground">
-                        Frist: {format(new Date(src.due_date as string), "dd.MM.yyyy", { locale: de })}
+                        Frist: {format(new Date((src.due_date as string) || (src.due_at as string)), "dd.MM.yyyy", { locale: de })}
                       </span>
                     )}
                     {(src.priority as string) && (
@@ -750,8 +758,9 @@ export function FocusModeView({
                   </div>
                 </div>
               )}
-              {(sourceType === 'quick_note' || sourceType === 'task') && (src.user_id as string) && (() => {
-                const profile = profiles.find(p => p.user_id === (src.user_id as string));
+              {(sourceType === 'quick_note' || sourceType === 'task' || sourceType === 'case_item') && ((src.user_id as string) || (src.owner_user_id as string)) && (() => {
+                const assignedUserId = (src.user_id as string) || (src.owner_user_id as string);
+                const profile = profiles.find(p => p.user_id === assignedUserId);
                 return profile ? (
                   <div className="flex items-center gap-1.5 mt-1">
                     <Avatar className="h-5 w-5">
@@ -763,7 +772,7 @@ export function FocusModeView({
                     <span className="text-xs text-muted-foreground">{profile.display_name}</span>
                   </div>
                 ) : (
-                  <span className="text-xs text-muted-foreground">von {getDisplayName(src.user_id as string)}</span>
+                  <span className="text-xs text-muted-foreground">von {getDisplayName(((src.user_id as string) || (src.owner_user_id as string)))}</span>
                 );
               })()}
               {sourceType === 'appointment' && (
@@ -774,7 +783,7 @@ export function FocusModeView({
               )}
 
               {/* Result input - show when focused or when result exists */}
-              {(isFocused || getSubItemResult()) && (sourceType === 'quick_note' || sourceType === 'task' || sourceType === 'appointment') && (
+              {(isFocused || getSubItemResult()) && (sourceType === 'quick_note' || sourceType === 'task' || sourceType === 'appointment' || sourceType === 'case_item') && (
                 <div className="mt-4 pt-3 border-t">
                   <label className="text-sm font-medium block mb-2">Ergebnis / Notizen</label>
                   <Textarea
@@ -808,6 +817,7 @@ export function FocusModeView({
           isSubItem && item.system_type === 'upcoming_appointments' && "ml-8 border-l-4 border-l-blue-500",
           isSubItem && item.system_type === 'quick_notes' && "ml-8 border-l-4 border-l-amber-500",
           isSubItem && item.system_type === 'tasks' && "ml-8 border-l-4 border-l-green-500",
+          isSubItem && item.system_type === 'case_items' && "ml-8 border-l-4 border-l-teal-500",
           isFocused && "ring-2 ring-primary bg-primary/5 scale-[1.01] shadow-lg",
           item.is_completed && "bg-muted/50",
           !isFocused && !item.is_completed && "bg-card hover:bg-muted/30"
@@ -839,11 +849,15 @@ export function FocusModeView({
               {item.system_type === 'tasks' && (
                 <ListTodo className="h-4 w-4 text-green-500" />
               )}
+              {item.system_type === 'case_items' && (
+                <Briefcase className="h-4 w-4 text-teal-500" />
+              )}
               <span className={cn(
                 isSubItem ? "text-base" : "text-lg font-semibold",
                 item.is_completed && "line-through text-muted-foreground"
               )}>
                 {!isSubItem && `${allNavigableItems.filter((n, i) => !n.isSubItem && i <= navIndex).length}. `}
+                {isSubItem && subItemNumber ? `${subItemNumber} ` : ''}
                 {item.title}
               </span>
               {item.is_completed && (
