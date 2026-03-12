@@ -119,12 +119,25 @@ export function MyWorkTeamTab() {
     let cancelled = false;
     setLoading(true);
 
-    (async () => {
-      await checkAdminAndLoadTeam(userId, tenantId, cancelled, setIsAdmin, setUserRole, setTeamMembers, setLoading);
-    })();
+    const run = async () => {
+      try {
+        // Check if user has role 'abgeordneter' or 'bueroleitung'
+        const { data: roleData } = await supabase
+          .from("user_roles")
+          .select("role")
+          .eq("user_id", userId)
+          .single();
 
-    return () => { cancelled = true; };
-  }, [user?.id, currentTenant?.id]);
+        if (cancelled) return;
+
+        const canViewTeam = roleData?.role === "abgeordneter" || roleData?.role === "bueroleitung";
+        setIsAdmin(canViewTeam);
+        setUserRole(roleData?.role || "");
+
+        if (!canViewTeam) {
+          setLoading(false);
+          return;
+        }
 
   const checkAdminAndLoad = async () => {
     if (!user) return;
