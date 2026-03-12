@@ -161,11 +161,8 @@ const MyWorkDecisionCardInner = ({
       .replace(/\s+/g, ' ')
       .trim();
   }, [decision.description]);
-  const previewCharacterLimit = 620;
+  const previewCharacterLimit = 1240;
   const hasLongDescription = plainDescription.length > previewCharacterLimit;
-  const previewText = hasLongDescription
-    ? `${plainDescription.slice(0, previewCharacterLimit).replace(/\s+\S*$/, '')}…`
-    : plainDescription;
 
   const customSummary = useMemo(() => {
     if (!decision.response_options || decision.response_options.length === 0) {
@@ -439,11 +436,14 @@ const MyWorkDecisionCardInner = ({
 
               {decision.description && (
                 <div onClick={(e) => e.stopPropagation()}>
-                  <div className={cn(!detailsExpanded && hasLongDescription && 'max-h-52 overflow-hidden')}>
+                  <div className={cn('relative', !detailsExpanded && hasLongDescription && 'max-h-[26rem] overflow-hidden')}>
                     <RichTextDisplay
-                      content={detailsExpanded ? decision.description : previewText}
+                      content={decision.description}
                       className="leading-relaxed [&_p:last-child]:mb-0"
                     />
+                    {!detailsExpanded && hasLongDescription && (
+                      <div className="pointer-events-none absolute inset-x-0 bottom-0 h-16 bg-gradient-to-t from-background via-background/95 to-transparent" />
+                    )}
                   </div>
                   {hasLongDescription && (
                     <Button
