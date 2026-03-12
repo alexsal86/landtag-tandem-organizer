@@ -13,10 +13,15 @@ import SimpleRichTextEditor from "@/components/ui/SimpleRichTextEditor";
 import { RichTextDisplay } from "@/components/ui/RichTextDisplay";
 import { ResponseOption, getColorClasses, getDefaultOptions } from "@/lib/decisionTemplates";
 
+interface ResponseSubmitMeta {
+  responseType: string;
+  color?: string;
+}
+
 interface TaskDecisionResponseProps {
   decisionId: string;
   participantId: string;
-  onResponseSubmitted: () => void;
+  onResponseSubmitted: (meta?: ResponseSubmitMeta) => void;
   hasResponded?: boolean;
   creatorId?: string;
   layout?: "default" | "decision-panel";
@@ -85,12 +90,14 @@ export const TaskDecisionResponse = ({
   const [responseOptions, setResponseOptions] = useState<ResponseOption[]>(getDefaultOptions());
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
   const [panelOptionKey, setPanelOptionKey] = useState<string | null>(null);
+  const [selectedResponseKey, setSelectedResponseKey] = useState<string | null>(null);
   const longPressTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const longPressTriggeredRef = useRef(false);
   const LONG_PRESS_MS = 500;
   const { toast } = useToast();
 
   useEffect(() => {
+    setSelectedResponseKey(null);
     loadCurrentUser();
     loadDecisionOptions();
     if (hasResponded) {
@@ -149,6 +156,7 @@ export const TaskDecisionResponse = ({
           ...data,
           response_type: data.response_type
         });
+        setSelectedResponseKey(data.response_type);
       }
     } catch (error) {
       debugConsole.error('Error loading current response:', error);
@@ -281,10 +289,20 @@ export const TaskDecisionResponse = ({
         description: "Ihre Antwort wurde gespeichert.",
       });
 
+      const selectedOption = getOptionByKey(responseType);
+      setSelectedResponseKey(responseType);
+      setCurrentResponse((prev) => prev ? {
+        ...prev,
+        response_type: responseType,
+        comment: comment || null,
+      } : prev);
       setQuestionComment("");
       setIsQuestionDialogOpen(false);
       setShowEdit(false);
-      onResponseSubmitted();
+      onResponseSubmitted({
+        responseType,
+        color: selectedOption?.color,
+      });
     } catch (error: unknown) {
       debugConsole.error('Error submitting response:', error);
       toast({
@@ -433,7 +451,12 @@ export const TaskDecisionResponse = ({
   const renderOptionButton = (option: ResponseOption) => {
     const colorClasses = getColorClasses(option.color);
     const solidColorClasses = getSolidColorClasses(option.color);
-    
+    const isSelected = selectedResponseKey === option.key;
+
+    const baseButtonClasses = isSelected
+      ? `${solidColorClasses} border`
+      : `${colorClasses.textClass} ${colorClasses.borderClass} hover:${colorClasses.bgClass}`;
+
     const button = option.requires_comment ? (
       <Dialog key={option.key} open={isQuestionDialogOpen} onOpenChange={setIsQuestionDialogOpen}>
         <DialogTrigger asChild>
@@ -441,7 +464,7 @@ export const TaskDecisionResponse = ({
             variant="outline"
             size="sm"
             disabled={isLoading}
-            className={`${colorClasses.textClass} ${colorClasses.borderClass} hover:${colorClasses.bgClass}`}
+            className={baseButtonClasses}
           >
             {getIcon(option.icon)}
             <span className="ml-1">{option.label}</span>
@@ -512,7 +535,7 @@ export const TaskDecisionResponse = ({
           handleResponse(option.key, questionComment.trim() || undefined);
         }}
         disabled={isLoading}
-        className={`${colorClasses.textClass} ${colorClasses.borderClass} hover:${colorClasses.bgClass}`}
+        className={baseButtonClasses}
       >
         {getIcon(option.icon)}
         <span className="ml-1">{option.label}</span>
