@@ -29,9 +29,38 @@ export function CalendarHeader({ onShowPolls, selectedDate, onSelectDate }: Cale
       </div>
 
       <div className="mt-6 rounded-lg border bg-background/70 p-1.5">
+        <div className="flex items-center justify-between px-1 mb-1">
+          <span className="text-sm font-semibold capitalize">
+            {selectedDate.toLocaleString("de-DE", { month: "long", year: "numeric" })}
+          </span>
+          <div className="flex items-center gap-0.5">
+            <button
+              type="button"
+              className="h-6 w-6 flex items-center justify-center rounded hover:bg-accent/60"
+              onClick={() => {
+                const d = new Date(selectedDate);
+                d.setMonth(d.getMonth() - 1);
+                onSelectDate(d);
+              }}
+            >
+              ‹
+            </button>
+            <button
+              type="button"
+              className="h-6 w-6 flex items-center justify-center rounded hover:bg-accent/60"
+              onClick={() => {
+                const d = new Date(selectedDate);
+                d.setMonth(d.getMonth() + 1);
+                onSelectDate(d);
+              }}
+            >
+              ›
+            </button>
+          </div>
+        </div>
+
         <Calendar
           mode="single"
-          navLayout="after"
           month={selectedDate}
           selected={selectedDate}
           onSelect={(date) => {
@@ -41,11 +70,8 @@ export function CalendarHeader({ onShowPolls, selectedDate, onSelectDate }: Cale
           onMonthChange={onSelectDate}
           showWeekNumber
           classNames={{
-            month_caption: "relative flex w-full items-center px-1 mb-1",
-            caption_label: "w-full pr-14 text-sm font-semibold text-left capitalize whitespace-nowrap",
-            nav: "!absolute right-1 top-1/2 !m-0 flex -translate-y-1/2 items-center justify-end gap-0.5",
-            button_previous: "!static h-6 w-6 border-0 bg-transparent p-0 shadow-none hover:bg-accent/60",
-            button_next: "!static h-6 w-6 border-0 bg-transparent p-0 shadow-none hover:bg-accent/60",
+            month_caption: "hidden",
+            nav: "hidden",
             month_grid: "w-full border-collapse space-y-0",
             weekdays: "flex",
             weekday: "text-muted-foreground w-7 font-normal text-[0.7rem]",
