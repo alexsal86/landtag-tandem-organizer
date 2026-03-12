@@ -178,7 +178,20 @@ export function useEmailComposer() {
         ? format(new Date(pr.published_at), "dd.MM.yyyy", { locale: de })
         : format(new Date(), "dd.MM.yyyy", { locale: de });
 
-      const pressContent = pr.content_html?.trim() ? pr.content_html : (pr.content || "").replace(/\n/g, "<br>");
+      const hasMeaningfulHtmlContent = (html: string | null | undefined) => {
+        if (!html) return false;
+        const plainText = html
+          .replace(/<style[\s\S]*?>[\s\S]*?<\/style>/gi, "")
+          .replace(/<script[\s\S]*?>[\s\S]*?<\/script>/gi, "")
+          .replace(/<[^>]+>/g, "")
+          .replace(/&nbsp;/gi, " ")
+          .trim();
+        return plainText.length > 0;
+      };
+
+      const pressContent = hasMeaningfulHtmlContent(pr.content_html)
+        ? pr.content_html!
+        : (pr.content || "").replace(/\n/g, "<br>");
 
       const replacePressVars = (text: string) =>
         text
