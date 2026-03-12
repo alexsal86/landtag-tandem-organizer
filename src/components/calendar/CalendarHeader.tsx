@@ -42,7 +42,7 @@ export function CalendarHeader({ onShowPolls, selectedDate, onSelectDate }: Cale
           showWeekNumber
           classNames={{
             month_caption: "flex w-full items-center justify-between px-1 mb-1",
-            caption_label: "text-sm font-semibold text-left capitalize whitespace-nowrap",
+            caption_label: "text-sm font-semibold capitalize whitespace-nowrap",
             nav: "flex items-center gap-0.5",
             button_previous: "h-6 w-6 border-0 bg-transparent p-0 shadow-none hover:bg-accent/60",
             button_next: "h-6 w-6 border-0 bg-transparent p-0 shadow-none hover:bg-accent/60",
