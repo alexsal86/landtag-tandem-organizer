@@ -155,12 +155,19 @@ export function EmailHistory() {
   const handleDeleteEmail = async () => {
     if (!deleteTarget) return;
     try {
-      const { error } = await supabase
+      const { data, error } = await supabase
         .from("email_logs")
         .delete()
-        .eq("id", deleteTarget);
+        .eq("id", deleteTarget)
+        .eq("tenant_id", currentTenant!.id)
+        .eq("user_id", user!.id)
+        .select("id");
 
       if (error) throw error;
+      if (!data || data.length === 0) {
+        throw new Error("Der Eintrag konnte nicht gelöscht werden. Bitte Seite neu laden und erneut versuchen.");
+      }
+
       toast({ title: "Gelöscht", description: "E-Mail-Eintrag wurde gelöscht." });
       setEmailLogs(prev => prev.filter(l => l.id !== deleteTarget));
       setDeleteTarget(null);
