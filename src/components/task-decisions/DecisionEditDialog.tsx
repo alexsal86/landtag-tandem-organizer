@@ -277,11 +277,11 @@ export const DecisionEditDialog = ({ decisionId, isOpen, onClose, onUpdated }: D
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="sm:max-w-[500px]">
+      <DialogContent className="sm:max-w-[500px] max-h-[90vh] overflow-hidden flex flex-col">
         <DialogHeader>
           <DialogTitle>Entscheidung bearbeiten</DialogTitle>
         </DialogHeader>
-        <div className="space-y-4">
+        <div className="space-y-4 overflow-y-auto pr-1 flex-1">
           <div>
             <label className="text-sm font-medium">Titel</label>
             <Input
@@ -297,6 +297,8 @@ export const DecisionEditDialog = ({ decisionId, isOpen, onClose, onUpdated }: D
               onChange={setDescription}
               placeholder="Zusätzliche Details zur Entscheidung"
               minHeight="100px"
+              maxHeight="40vh"
+              scrollable
             />
           </div>
 
