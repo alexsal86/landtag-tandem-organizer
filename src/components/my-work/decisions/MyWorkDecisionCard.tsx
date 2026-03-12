@@ -193,7 +193,7 @@ const MyWorkDecisionCardInner = ({
       setShowCommentPrompt(false);
       setShowCommentEditor(false);
       onResponseSubmitted();
-    }, 6000);
+    }, 10000);
   };
 
   const handleOpenJustificationEditor = () => {
@@ -418,7 +418,8 @@ const MyWorkDecisionCardInner = ({
                         >
                           sofort erledigen
                         </button>
-                        . Ohne Aktion wird in 6 Sekunden automatisch aktualisiert.
+                        .<br />
+                        Ohne Aktion wird in 10 Sekunden automatisch aktualisiert.
                       </div>
                     </div>
                   ) : (

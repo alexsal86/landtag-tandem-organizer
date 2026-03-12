@@ -46,6 +46,28 @@ const getIcon = (iconName?: string) => {
   }
 };
 
+const getSolidColorClasses = (color: string) => {
+  switch (color) {
+    case "red":
+      return "bg-red-600 hover:bg-red-700 border-red-700 text-white";
+    case "orange":
+      return "bg-orange-600 hover:bg-orange-700 border-orange-700 text-white";
+    case "yellow":
+      return "bg-yellow-500 hover:bg-yellow-600 border-yellow-600 text-black";
+    case "blue":
+      return "bg-blue-600 hover:bg-blue-700 border-blue-700 text-white";
+    case "purple":
+      return "bg-purple-600 hover:bg-purple-700 border-purple-700 text-white";
+    case "lime":
+      return "bg-lime-600 hover:bg-lime-700 border-lime-700 text-white";
+    case "gray":
+      return "bg-gray-600 hover:bg-gray-700 border-gray-700 text-white";
+    case "green":
+    default:
+      return "bg-green-600 hover:bg-green-700 border-green-700 text-white";
+  }
+};
+
 export const TaskDecisionResponse = ({ 
   decisionId, 
   participantId, 
@@ -298,12 +320,12 @@ export const TaskDecisionResponse = ({
   // Show current response if already responded
   if (hasResponded && currentResponse && !showEdit) {
     const option = getOptionByKey(currentResponse.response_type);
-    const colorClasses = option ? getColorClasses(option.color) : getColorClasses("gray");
+    const solidColorClasses = getSolidColorClasses(option?.color || "gray");
 
     return (
       <div className="space-y-2">
         <div className="flex items-center space-x-2">
-          <Badge variant="outline" className={`${colorClasses.textClass} ${colorClasses.borderClass}`}>
+          <Badge variant="outline" className={`${solidColorClasses} border`}>
             {option?.icon && getIcon(option.icon)}
             <span className="ml-1">{option?.label || currentResponse.response_type}</span>
           </Badge>
@@ -410,6 +432,7 @@ export const TaskDecisionResponse = ({
 
   const renderOptionButton = (option: ResponseOption) => {
     const colorClasses = getColorClasses(option.color);
+    const solidColorClasses = getSolidColorClasses(option.color);
     
     const button = option.requires_comment ? (
       <Dialog key={option.key} open={isQuestionDialogOpen} onOpenChange={setIsQuestionDialogOpen}>
@@ -425,7 +448,7 @@ export const TaskDecisionResponse = ({
             {option.description && renderDescriptionInfo(option.description)}
           </Button>
         </DialogTrigger>
-        <DialogContent className="w-[95vw] min-w-[320px] sm:w-[40vw] max-w-[900px] max-h-[90vh] overflow-hidden flex flex-col">
+        <DialogContent className={`w-[95vw] min-w-[320px] sm:w-[40vw] max-w-[900px] max-h-[90vh] overflow-hidden flex flex-col ${colorClasses.bgClass} ${colorClasses.borderClass}`}>
           <DialogHeader>
             <DialogTitle>{option.label}</DialogTitle>
           </DialogHeader>
@@ -453,7 +476,7 @@ export const TaskDecisionResponse = ({
             </div>
           </div>
 
-          <div className="flex justify-end space-x-2 border-t pt-4 mt-4 bg-background">
+          <div className="flex justify-end space-x-2 border-t pt-4 mt-4 bg-transparent">
             <Button
               variant="outline"
               onClick={() => setIsQuestionDialogOpen(false)}
@@ -464,6 +487,7 @@ export const TaskDecisionResponse = ({
             <Button
               onClick={() => handleQuestionSubmit(option)}
               disabled={isLoading}
+              className={solidColorClasses}
             >
               {isLoading ? "Sende..." : "Senden"}
             </Button>
