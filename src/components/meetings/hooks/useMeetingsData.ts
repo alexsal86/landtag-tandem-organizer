@@ -177,18 +177,21 @@ export function useMeetingsData() {
     loadStarredAppointments,
   ]);
 
-  // Load linked data when selectedMeeting changes
+  // Load linked data when selectedMeeting.id changes (single load point)
+  const prevSelectedMeetingIdRef = useRef<string | null>(null);
   useEffect(() => {
-    if (selectedMeeting?.id && !activeMeeting) {
-      loadLinkedQuickNotes(selectedMeeting.id);
-      loadMeetingLinkedTasks(selectedMeeting.id);
-      loadMeetingLinkedCaseItems(selectedMeeting.id);
-      loadMeetingRelevantDecisions();
-      if (selectedMeeting.meeting_date) loadMeetingUpcomingAppointments(selectedMeeting.id, selectedMeeting.meeting_date);
-      loadStarredAppointments(selectedMeeting.id);
-    }
+    const meetingId = selectedMeeting?.id ?? null;
+    if (!meetingId || activeMeeting || meetingId === prevSelectedMeetingIdRef.current) return;
+    prevSelectedMeetingIdRef.current = meetingId;
+    loadLinkedQuickNotes(meetingId);
+    loadMeetingLinkedTasks(meetingId);
+    loadMeetingLinkedCaseItems(meetingId);
+    loadMeetingRelevantDecisions();
+    if (selectedMeeting?.meeting_date) loadMeetingUpcomingAppointments(meetingId, selectedMeeting.meeting_date);
+    loadStarredAppointments(meetingId);
   }, [
-    selectedMeeting,
+    selectedMeeting?.id,
+    selectedMeeting?.meeting_date,
     activeMeeting,
     loadLinkedQuickNotes,
     loadMeetingLinkedTasks,
