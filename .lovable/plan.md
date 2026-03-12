@@ -1,43 +1,52 @@
 
-## Code-Qualität — Status
+Ziel: Die beiden Bugs diesmal an den tatsächlichen Ursachen beheben (nicht nur Symptome).
 
-### Erledigt
+1) Diagnose (aus Code + Logs)
+- Das Jour-Fixe-Flackern kommt sehr wahrscheinlich aus `MeetingsView` (nicht nur aus `MyWorkJourFixeTab`):
+  - In `useMeetingsData.ts` hängen mehrere `useEffect`s von Loader-Funktionen aus `useMeetingSidebarData.ts` ab.
+  - Diese Loader sind aktuell nicht stabil memoisiert; dadurch werden Effekte bei jedem Render neu ausgelöst.
+  - Ergebnis: wiederholte parallele Supabase-Requests, Token-Lock-Warnungen (`gotrue lock`), und „zeigt Daten → leert Daten → lädt neu“.
+- Team-Tab:
+  - `MyWorkTeamTab.tsx` behandelt Membership-Fehler/Teilantworten nicht robust (silent fail ⇒ leere Liste).
+  - Rollenlogik ist zwischen `MyWorkView` (global `user_roles`) und Team-Tab (tenant membership) inkonsistent.
 
-- **strictNullChecks: true** — aktiviert, alle Build-Fehler behoben
-- **noImplicitAny: true** — aktiviert, alle Build-Fehler behoben
-- **DOMPurify** als zentraler HTML-Sanitizer — alle `dangerouslySetInnerHTML` nutzen jetzt `sanitizeRichHtml()`
-- **Tenant-Access Guard** für Edge Functions — existiert in `supabase/functions/_shared/tenant-access.ts`
-- **ESLint `no-unused-vars: warn`** — aktiviert mit `argsIgnorePattern: '^_'`, erste Bereinigungsrunde in Pages/Hooks abgeschlossen
-- **Standalone `React`-Imports entfernt** — ~60 Dateien bereinigt
-- **State-Mutation fix** — `existingContacts.push()` → immutables Update in `useContactImport.ts`
-- **Non-null Assertion Guards** — `user!.id` / `currentTenant!.id` durch Early-Return-Guards ersetzt (~11 Dateien)
-- **Leere catch-Blöcke** — kritische Stellen in MatrixContext & DaySlipStore mit `debugConsole.warn` versehen
-- **JSON-Protocol Speaker-Normalisierung** — `speaker: string | { name }` korrekt normalisiert
+2) Umsetzungsplan
 
-### Noch offen
+A. Jour-Fixe-Flackern stabil beheben
+- Datei: `src/components/meetings/hooks/useMeetingSidebarData.ts`
+  - Alle Loader (`loadLinkedQuickNotes`, `loadMeetingLinkedTasks`, `loadMeetingLinkedCaseItems`, `loadMeetingRelevantDecisions`, `loadMeetingUpcomingAppointments`, `loadStarredAppointments`) mit `useCallback` stabilisieren.
+  - Pro Loader Request-Guard einbauen (requestId/in-flight), damit veraltete Antworten nicht mehr State überschreiben.
+  - Bei transienten Fehlern keine destruktiven Resets auf `[]` für Entscheidungen/Linked-Daten; bestehende Daten beibehalten.
+- Datei: `src/components/meetings/hooks/useMeetingsData.ts`
+  - Meeting-Datenladen zentralisieren in eine stabile `hydrateSelectedMeetingData(meetingId, meetingDate)`-Funktion.
+  - Doppelte Trigger aus Deep-Link-/Auto-Select-/Selected-Meeting-Pfaden entfernen (einheitlicher Ladepfad, keine Mehrfachstarts).
+  - Nur laden, wenn `selectedMeeting.id` sich wirklich ändert.
 
-1. ~~**`strict: true` aktivieren**~~ ✅ — war bereits aktiv in `tsconfig.app.json` inkl. `strictNullChecks` und `noImplicitAny`
-2. **Tote Imports weiter bereinigen** — ~65 standalone `React`-Imports in Components prüfen, weitere lucide-Icons und ungenutzte Variablen entfernen (ESLint-Regel zeigt Warnungen)
-3. **`no-explicit-any` schrittweise einführen** — nach Abschluss der `no-unused-vars`-Bereinigung
-4. ~~**Edge Functions `verify_jwt`-Audit**~~ ✅ — alle 18 Functions mit `verify_jwt = false` klassifiziert und abgesichert: Cron-Functions mit `requireServiceRole`, WebSocket mit `requireAuth`, Token-Endpoints mit eigener Validierung, `send-push-notification` + `fetch-karlsruhe-districts` mit Service-Role-Guard
-5. **CORS einschränken** — `Access-Control-Allow-Origin: *` durch Allowlist ersetzen für sensible Operationen
+B. Team-Tab robust machen
+- Datei: `src/components/my-work/MyWorkTeamTab.tsx`
+  - Membership-Query mit explizitem Error-Handling (nicht mehr stillschweigend als „keine Mitarbeiter“ interpretieren).
+  - Rollenentscheidung vereinheitlichen: tenant-membership zuerst, optionaler Fallback auf `user_roles` nur wenn Membership für aktuellen User fehlt.
+  - Fallback für Mitarbeiter-IDs ergänzen:
+    - Wenn aus Membership keine Mitarbeiter ableitbar sind, aber Admin-Rechte vorliegen: ergänzend über `employee_settings.admin_id = currentUser` laden.
+  - Bei Teilfehlern trotzdem vorhandene Profile/Mitglieder rendern (degradierter Modus statt leerer Liste).
 
----
+C. Konsistenz in Tab-Sichtbarkeit
+- Datei: `src/components/MyWorkView.tsx`
+  - Team-Tab-Sichtbarkeit und Team-Count-Entscheidung an die gleiche tenant-basierte Rollenlogik anlehnen, damit kein „Tab sichtbar, aber intern gesperrt/leer“ mehr entsteht.
 
-## No-Code Automations-Hub — Status
+3) Technische Details
+- Hauptursache Flackern: instabile Funktionsreferenzen + effect-dependency loops + konkurrierende async updates.
+- Schutzmaßnahmen:
+  - `useCallback` für Loader
+  - in-flight/request-version Guards
+  - „keep previous data on transient error“
+  - zentraler Ladepfad pro ausgewähltem Meeting
 
-### Erledigt
-
-- 4-Step Wizard (Grundlagen → Trigger → Bedingungen → Aktionen)
-- 10 Templates, Template-Galerie mit Suche/Filter
-- Kill-Switch, Dry-Run, Run-Now, Run-Historie mit Step-Logs
-- Error-Dashboard mit Retry, Regel-Versionierung, Import/Export
-- Rate Limiting, Idempotency, Audit-Trail
-- 5 Action-Typen, 5 Condition-Operators, 4 Trigger-Typen (inkl. Webhook)
-- Rollenbasierte Zugriffskontrolle
-- **Regel duplizieren** — Copy-Button pro Regel-Karte
-- **Nächste geplante Ausführung** — Badge für schedule-Regeln
-- **Regel-Statistiken** — Erfolgsrate (%) + Ø Laufzeit als Tooltip-Badge
-- **Notification-Kontext** — `rule_name`, `trigger_reason`, `run_id` in Notification-Payload
-- **Webhook-Trigger** — neue Edge Function `automation-webhook`, Secret-Authentifizierung, URL-Anzeige im Wizard
-- **Verschachtelte Condition-Gruppen** — rekursives AND/OR-Nesting bis 3 Ebenen im Wizard, backward-kompatible DB-Serialisierung
+4) Abnahme-Check nach Umsetzung
+- Jour Fixe (`/meetings`):
+  - Entscheidungsliste bleibt stabil sichtbar (kein zyklisches Leeren/Neuladen).
+  - Konsole: deutliche Reduktion/kein Spam von `@supabase/gotrue-js lock`-Warnungen.
+- Team (`/mywork?tab=team`):
+  - Mitarbeiterliste wird wieder angezeigt.
+  - Bei Teilfehlern erscheinen mindestens verfügbare Mitglieder statt kompletter Leerzustand.
+  - Rollenabhängige Sichtbarkeit ist konsistent zwischen Tab-Navigation und Tab-Inhalt.
