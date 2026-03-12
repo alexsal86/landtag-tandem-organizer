@@ -111,7 +111,7 @@ export function useEmployeesData() {
             .in("status", ["pending", "cancel_requested"] as any).in("user_id", managedIds),
           supabase.from("sick_days").select("user_id").in("user_id", managedIds),
           supabase.from("employee_meeting_requests").select("employee_id, scheduled_meeting_id").eq("status", "pending").is("scheduled_meeting_id", null).in("employee_id", managedIds),
-          supabase.from("employee_meetings").select("id, employee_id, meeting_date").in("employee_id", managedIds).order("meeting_date", { ascending: false }),
+          supabase.rpc("get_latest_employee_meetings", { p_employee_ids: managedIds }),
         ]);
 
         if (sickRes.error) throw sickRes.error;
@@ -129,8 +129,8 @@ export function useEmployeesData() {
         (settingsRes.data as any[] | null)?.forEach((s) => settingsMap.set(s.user_id, s as EmployeeSettingsRow));
 
         const lastMeetingMap = new Map<string, string>();
-        (lastMeetingsRes.data || []).forEach((m: any) => {
-          if (!lastMeetingMap.has(m.employee_id)) lastMeetingMap.set(m.employee_id, m.id);
+        (lastMeetingsRes.data || []).forEach((meeting) => {
+          lastMeetingMap.set(meeting.employee_id, meeting.meeting_id);
         });
 
         const meetingRequestCounts: Record<string, number> = {};
@@ -239,7 +239,7 @@ export function useEmployeesData() {
           supabase.from("profiles").select("user_id, display_name, avatar_url").eq("user_id", user.id).single(),
           supabase.from("leave_requests").select("id, type, status, start_date, end_date").eq("user_id", user.id)
             .gte("start_date", startOfYear(new Date()).toISOString()).lte("start_date", endOfYear(new Date()).toISOString()),
-          supabase.from("employee_meetings").select("id").eq("employee_id", user.id).order("meeting_date", { ascending: false }).limit(1).maybeSingle(),
+          supabase.rpc("get_latest_employee_meetings", { p_employee_ids: [user.id] }).maybeSingle(),
         ]);
 
         if (settingsRes.error) { debugConsole.error(settingsRes.error); toast({ title: "Fehler", description: "Fehler beim Laden der Mitarbeitereinstellungen", variant: "destructive" }); return; }
@@ -252,7 +252,7 @@ export function useEmployeesData() {
 
         setSelfSettings((settingsRes.data as EmployeeSettingsRow) || null);
         setSelfProfile((profileRes.data as Profile) || null);
-        setSelfLastMeetingId(lastMeetingRes.data?.id || null);
+        setSelfLastMeetingId(lastMeetingRes.data?.meeting_id || null);
 
         const agg = initLeaveAgg();
         const { data: fullLeaveData } = await supabase
