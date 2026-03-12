@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { addWeeks, format } from "date-fns";
-import { Briefcase, Mail, MessageSquare, Phone, UserRound } from "lucide-react";
+import { Briefcase, Check, ChevronLeft, ChevronRight, Mail, MessageSquare, Phone, UserRound } from "lucide-react";
 import { debugConsole } from '@/utils/debugConsole';
 
 import { Button } from "@/components/ui/button";
@@ -48,9 +48,52 @@ const priorityOptions = [
   { value: "urgent", label: "Dringend" },
 ] as const;
 
+const STEPS = [
+  { label: "Kanal & Kontakt" },
+  { label: "Inhalt" },
+  { label: "Einordnung" },
+  { label: "Übersicht" },
+] as const;
+
+function WizardStepper({ currentStep }: { currentStep: number }) {
+  return (
+    <div className="flex items-center justify-between px-2 pb-4">
+      {STEPS.map((step, i) => {
+        const stepNum = i + 1;
+        const isDone = stepNum < currentStep;
+        const isActive = stepNum === currentStep;
+        return (
+          <div key={i} className="flex items-center flex-1 last:flex-none">
+            <div className="flex flex-col items-center gap-1">
+              <div
+                className={`flex h-8 w-8 items-center justify-center rounded-full text-xs font-semibold transition-colors ${
+                  isActive
+                    ? "bg-primary text-primary-foreground"
+                    : isDone
+                    ? "bg-primary/20 text-primary"
+                    : "bg-muted text-muted-foreground"
+                }`}
+              >
+                {isDone ? <Check className="h-4 w-4" /> : stepNum}
+              </div>
+              <span className={`text-[10px] whitespace-nowrap ${isActive ? "font-semibold text-foreground" : "text-muted-foreground"}`}>
+                {step.label}
+              </span>
+            </div>
+            {i < STEPS.length - 1 && (
+              <div className={`h-px flex-1 mx-2 mt-[-12px] ${isDone ? "bg-primary/40" : "bg-border"}`} />
+            )}
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
 export function CaseItemCreateDialog({ open, onOpenChange, onCreated, createCaseItem, assignees, defaultAssigneeId, categoryOptions }: CaseItemCreateDialogProps) {
   const { user } = useAuth();
   const { currentTenant } = useTenant();
+  const [step, setStep] = useState(1);
   const [subject, setSubject] = useState("");
   const [description, setDescription] = useState("");
   const [contactName, setContactName] = useState("");
@@ -80,6 +123,7 @@ export function CaseItemCreateDialog({ open, onOpenChange, onCreated, createCase
 
   useEffect(() => {
     if (open) {
+      setStep(1);
       setSubject("");
       setDescription("");
       setContactName("");
@@ -91,6 +135,7 @@ export function CaseItemCreateDialog({ open, onOpenChange, onCreated, createCase
       setSelectedAssigneeIds(defaultAssigneeId ? [defaultAssigneeId] : []);
       setVisibleToAll(false);
       setDefaultDates();
+      setSubmitError(null);
     }
   }, [defaultAssigneeId, open]);
 
@@ -139,6 +184,19 @@ export function CaseItemCreateDialog({ open, onOpenChange, onCreated, createCase
     return [contactEmail.trim(), contactPhone.trim()].filter(Boolean).join(" · ") || null;
   };
 
+  const canAdvance = (s: number): boolean => {
+    if (s === 2) return subject.trim().length > 0;
+    if (s === 3) return category.length > 0;
+    return true;
+  };
+
+  const handleNext = () => {
+    if (step < 4 && canAdvance(step)) setStep(step + 1);
+  };
+  const handleBack = () => {
+    if (step > 1) setStep(step - 1);
+  };
+
   const handleSubmit = async () => {
     if (!subject.trim() || !sourceReceivedDate || !category || !hasContext) return;
 
@@ -178,70 +236,54 @@ export function CaseItemCreateDialog({ open, onOpenChange, onCreated, createCase
     }
 
     onCreated(newItem.id);
-    setSubject("");
-    setDescription("");
-    setContactName("");
-    setContactEmail("");
-    setContactPhone("");
-    setSelectedContactId(null);
-    setSearchResults([]);
-    setShowSearchResults(false);
-    setSourceChannel("email");
-    setPriority("medium");
-    setSelectedAssigneeIds(defaultAssigneeId ? [defaultAssigneeId] : []);
-    setCategory("");
-    setVisibleToAll(false);
-    setDefaultDates();
     onOpenChange(false);
   };
 
+  const channelLabel = sourceChannelOptions.find(o => o.value === sourceChannel)?.label ?? sourceChannel;
+  const priorityLabel = priorityOptions.find(o => o.value === priority)?.label ?? priority;
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="w-[min(96vw,1200px)] max-w-[min(96vw,1200px)] max-h-[90vh] overflow-y-auto">
+      <DialogContent className="w-[min(96vw,640px)] max-w-[min(96vw,640px)] max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>Neuer Vorgang</DialogTitle>
         </DialogHeader>
 
-        <div className="space-y-4 py-2">
-          {!hasContext && (
-            <p className="text-sm text-destructive">
-              Kein aktiver Mandanten-/Sitzungskontext vorhanden. Bitte neu anmelden oder Mandant auswählen.
-            </p>
-          )}
+        <WizardStepper currentStep={step} />
 
-          {submitError && <p className="text-sm text-destructive">{submitError}</p>}
+        {!hasContext && (
+          <p className="text-sm text-destructive">
+            Kein aktiver Mandanten-/Sitzungskontext vorhanden. Bitte neu anmelden oder Mandant auswählen.
+          </p>
+        )}
 
-          <div className="flex items-center justify-between rounded-md border p-3">
-            <div className="space-y-0.5">
-              <Label htmlFor="case-item-visible-to-all" className="font-bold">Öffentlich</Label>
-              <p className="text-xs text-muted-foreground">Alle Mitglieder des Mandanten dürfen den Vorgang lesen.</p>
+        {submitError && <p className="text-sm text-destructive">{submitError}</p>}
+
+        {/* Step 1: Kanal & Kontakt */}
+        {step === 1 && (
+          <div className="space-y-4 py-2">
+            <div className="space-y-2">
+              <Label className="font-bold">Kanal</Label>
+              <RadioGroup value={sourceChannel} onValueChange={(value) => setSourceChannel(value as CaseItemFormData["source_channel"])} className="flex flex-wrap gap-2">
+                {sourceChannelOptions.map((option) => {
+                  const Icon = option.icon;
+                  const selected = sourceChannel === option.value;
+                  const id = `source-channel-${option.value}`;
+                  return (
+                    <label
+                      key={option.value}
+                      htmlFor={id}
+                      className={`flex cursor-pointer items-center gap-2 rounded-md border p-2 text-sm ${selected ? "border-primary bg-primary/5" : "border-border"}`}
+                    >
+                      <RadioGroupItem id={id} value={option.value} aria-label={`Kanal ${option.label}`} />
+                      <Icon className="h-3.5 w-3.5" />
+                      <span>{option.label}</span>
+                    </label>
+                  );
+                })}
+              </RadioGroup>
             </div>
-            <Switch id="case-item-visible-to-all" checked={visibleToAll} onCheckedChange={setVisibleToAll} />
-          </div>
 
-          <div className="space-y-2">
-            <Label className="font-bold">Kanal</Label>
-            <RadioGroup value={sourceChannel} onValueChange={(value) => setSourceChannel(value as CaseItemFormData["source_channel"])} className="flex flex-nowrap gap-2 overflow-x-auto pb-1">
-              {sourceChannelOptions.map((option) => {
-                const Icon = option.icon;
-                const selected = sourceChannel === option.value;
-                const id = `source-channel-${option.value}`;
-                return (
-                  <label
-                    key={option.value}
-                    htmlFor={id}
-                    className={`flex min-w-44 cursor-pointer items-center gap-2 rounded-md border p-2 text-sm ${selected ? "border-primary bg-primary/5" : "border-border"}`}
-                  >
-                    <RadioGroupItem id={id} value={option.value} aria-label={`Kanal ${option.label}`} />
-                    <Icon className="h-3.5 w-3.5" />
-                    <span>{option.label}</span>
-                  </label>
-                );
-              })}
-            </RadioGroup>
-          </div>
-
-          <div className="grid gap-4 md:grid-cols-2">
             <div className="space-y-2">
               <Label htmlFor="case-item-contact-name" className="font-bold">Von / Gesprächspartner</Label>
 
@@ -325,129 +367,219 @@ export function CaseItemCreateDialog({ open, onOpenChange, onCreated, createCase
               </div>
             </div>
 
+            <div className="flex items-center justify-between rounded-md border p-3">
+              <div className="space-y-0.5">
+                <Label htmlFor="case-item-visible-to-all" className="font-bold">Öffentlich</Label>
+                <p className="text-xs text-muted-foreground">Alle Mitglieder des Mandanten dürfen den Vorgang lesen.</p>
+              </div>
+              <Switch id="case-item-visible-to-all" checked={visibleToAll} onCheckedChange={setVisibleToAll} />
+            </div>
+          </div>
+        )}
+
+        {/* Step 2: Inhalt */}
+        {step === 2 && (
+          <div className="space-y-4 py-2">
             <div className="space-y-2">
-              <Label htmlFor="case-item-subject" className="font-bold">Betreff</Label>
+              <Label htmlFor="case-item-subject" className="font-bold">Betreff *</Label>
               <Input
                 id="case-item-subject"
                 placeholder="Kurzer Betreff"
                 value={subject}
                 onChange={(event) => setSubject(event.target.value)}
+                autoFocus
               />
-            </div>
-          </div>
-
-          <div className="space-y-2">
-            <Label htmlFor="case-item-description" className="font-bold">Beschreibung</Label>
-            <Textarea
-              id="case-item-description"
-              placeholder="Beschreibung"
-              value={description}
-              onChange={(event) => setDescription(event.target.value)}
-              rows={4}
-            />
-          </div>
-
-          <div className="space-y-2">
-            <Label className="font-bold">Kategorie *</Label>
-            <RadioGroup value={category} onValueChange={setCategory} className="flex flex-wrap gap-2">
-              {categoryOptions.map((option) => {
-                const selected = category === option;
-                const id = `category-${option}`;
-                return (
-                  <label
-                    key={option}
-                    htmlFor={id}
-                    className={`flex cursor-pointer items-center gap-2 rounded-md border px-3 py-2 text-sm ${selected ? "border-primary bg-primary/5" : "border-border"}`}
-                  >
-                    <RadioGroupItem id={id} value={option} aria-label={`Kategorie ${option}`} />
-                    <span>{option}</span>
-                  </label>
-                );
-              })}
-            </RadioGroup>
-          </div>
-
-          <div className="space-y-2">
-            <Label className="font-bold">Bearbeiter (mehrfach)</Label>
-            <div className="flex flex-wrap gap-2">
-              {assignees.map((assignee) => {
-                const selected = selectedAssigneeIds.includes(assignee.id);
-                return (
-                  <Button
-                    key={assignee.id}
-                    type="button"
-                    size="sm"
-                    variant={selected ? "default" : "outline"}
-                    onClick={() => {
-                      setSelectedAssigneeIds((prev) => selected ? prev.filter((id) => id !== assignee.id) : [...prev, assignee.id]);
-                    }}
-                  >
-                    {assignee.name}
-                  </Button>
-                );
-              })}
-            </div>
-          </div>
-
-          <div className="space-y-2">
-            <Label className="font-bold">Priorität</Label>
-            <RadioGroup value={priority} onValueChange={(value) => setPriority(value as NonNullable<CaseItemFormData["priority"]>)} className="flex flex-wrap gap-2">
-              {priorityOptions.map((option) => {
-                const selected = priority === option.value;
-                const id = `priority-${option.value}`;
-                return (
-                  <label
-                    key={option.value}
-                    htmlFor={id}
-                    className={`flex cursor-pointer items-center gap-2 rounded-md border px-3 py-2 text-sm ${selected ? "border-primary bg-primary/5" : "border-border"}`}
-                  >
-                    <RadioGroupItem id={id} value={option.value} aria-label={`Priorität ${option.label}`} />
-                    <span>{option.label}</span>
-                  </label>
-                );
-              })}
-            </RadioGroup>
-          </div>
-
-          <div className="grid gap-4 sm:grid-cols-2">
-            <div className="space-y-2">
-              <Label htmlFor="case-item-received" className="font-bold">Eingangsdatum</Label>
-              <Input
-                id="case-item-received"
-                type="date"
-                value={sourceReceivedDate}
-                onChange={(event) => {
-                  const value = event.target.value;
-                  setSourceReceivedDate(value);
-                  if (value) {
-                    setDueDate(format(addWeeks(new Date(`${value}T12:00:00`), 4), "yyyy-MM-dd"));
-                  } else {
-                    setDueDate("");
-                  }
-                }}
-                required
-              />
+              {!subject.trim() && (
+                <p className="text-xs text-muted-foreground">Pflichtfeld – bitte Betreff eingeben.</p>
+              )}
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="case-item-due" className="font-bold">Frist</Label>
-              <Input
-                id="case-item-due"
-                type="date"
-                value={dueDate}
-                onChange={(event) => setDueDate(event.target.value)}
+              <Label htmlFor="case-item-description" className="font-bold">Beschreibung</Label>
+              <Textarea
+                id="case-item-description"
+                placeholder="Beschreibung"
+                value={description}
+                onChange={(event) => setDescription(event.target.value)}
+                rows={5}
               />
             </div>
           </div>
-        </div>
+        )}
 
-        <DialogFooter>
-          <Button variant="outline" onClick={() => onOpenChange(false)} disabled={submitting}>
-            Abbrechen
-          </Button>
-          <Button onClick={handleSubmit} disabled={submitting || !subject.trim() || !sourceReceivedDate || !category || !hasContext}>
-            Vorgang erstellen
-          </Button>
+        {/* Step 3: Einordnung & Zuweisung */}
+        {step === 3 && (
+          <div className="space-y-4 py-2">
+            <div className="space-y-2">
+              <Label className="font-bold">Kategorie *</Label>
+              <RadioGroup value={category} onValueChange={setCategory} className="flex flex-wrap gap-2">
+                {categoryOptions.map((option) => {
+                  const selected = category === option;
+                  const id = `category-${option}`;
+                  return (
+                    <label
+                      key={option}
+                      htmlFor={id}
+                      className={`flex cursor-pointer items-center gap-2 rounded-md border px-3 py-2 text-sm ${selected ? "border-primary bg-primary/5" : "border-border"}`}
+                    >
+                      <RadioGroupItem id={id} value={option} aria-label={`Kategorie ${option}`} />
+                      <span>{option}</span>
+                    </label>
+                  );
+                })}
+              </RadioGroup>
+              {!category && (
+                <p className="text-xs text-muted-foreground">Pflichtfeld – bitte Kategorie wählen.</p>
+              )}
+            </div>
+
+            <div className="space-y-2">
+              <Label className="font-bold">Priorität</Label>
+              <RadioGroup value={priority} onValueChange={(value) => setPriority(value as NonNullable<CaseItemFormData["priority"]>)} className="flex flex-wrap gap-2">
+                {priorityOptions.map((option) => {
+                  const selected = priority === option.value;
+                  const id = `priority-${option.value}`;
+                  return (
+                    <label
+                      key={option.value}
+                      htmlFor={id}
+                      className={`flex cursor-pointer items-center gap-2 rounded-md border px-3 py-2 text-sm ${selected ? "border-primary bg-primary/5" : "border-border"}`}
+                    >
+                      <RadioGroupItem id={id} value={option.value} aria-label={`Priorität ${option.label}`} />
+                      <span>{option.label}</span>
+                    </label>
+                  );
+                })}
+              </RadioGroup>
+            </div>
+
+            <div className="space-y-2">
+              <Label className="font-bold">Bearbeiter (mehrfach)</Label>
+              <div className="flex flex-wrap gap-2">
+                {assignees.map((assignee) => {
+                  const selected = selectedAssigneeIds.includes(assignee.id);
+                  return (
+                    <Button
+                      key={assignee.id}
+                      type="button"
+                      size="sm"
+                      variant={selected ? "default" : "outline"}
+                      onClick={() => {
+                        setSelectedAssigneeIds((prev) => selected ? prev.filter((id) => id !== assignee.id) : [...prev, assignee.id]);
+                      }}
+                    >
+                      {assignee.name}
+                    </Button>
+                  );
+                })}
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Step 4: Termine & Übersicht */}
+        {step === 4 && (
+          <div className="space-y-4 py-2">
+            <div className="grid gap-4 sm:grid-cols-2">
+              <div className="space-y-2">
+                <Label htmlFor="case-item-received" className="font-bold">Eingangsdatum</Label>
+                <Input
+                  id="case-item-received"
+                  type="date"
+                  value={sourceReceivedDate}
+                  onChange={(event) => {
+                    const value = event.target.value;
+                    setSourceReceivedDate(value);
+                    if (value) {
+                      setDueDate(format(addWeeks(new Date(`${value}T12:00:00`), 4), "yyyy-MM-dd"));
+                    } else {
+                      setDueDate("");
+                    }
+                  }}
+                  required
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="case-item-due" className="font-bold">Frist</Label>
+                <Input
+                  id="case-item-due"
+                  type="date"
+                  value={dueDate}
+                  onChange={(event) => setDueDate(event.target.value)}
+                />
+              </div>
+            </div>
+
+            {/* Summary card */}
+            <div className="rounded-lg border bg-muted/30 p-4 space-y-2">
+              <h4 className="text-sm font-semibold text-foreground">Zusammenfassung</h4>
+              <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-sm">
+                <span className="text-muted-foreground">Kanal</span>
+                <span>{channelLabel}</span>
+                {contactName.trim() && (
+                  <>
+                    <span className="text-muted-foreground">Kontakt</span>
+                    <span>{contactName}{selectedContactId ? " ✓" : ""}</span>
+                  </>
+                )}
+                <span className="text-muted-foreground">Betreff</span>
+                <span className="font-medium">{subject}</span>
+                {description.trim() && (
+                  <>
+                    <span className="text-muted-foreground">Beschreibung</span>
+                    <span className="truncate">{description.length > 60 ? `${description.slice(0, 60)}…` : description}</span>
+                  </>
+                )}
+                <span className="text-muted-foreground">Kategorie</span>
+                <span>{category}</span>
+                <span className="text-muted-foreground">Priorität</span>
+                <span>{priorityLabel}</span>
+                {selectedAssigneeIds.length > 0 && (
+                  <>
+                    <span className="text-muted-foreground">Bearbeiter</span>
+                    <span>{assignees.filter(a => selectedAssigneeIds.includes(a.id)).map(a => a.name).join(", ")}</span>
+                  </>
+                )}
+                <span className="text-muted-foreground">Sichtbarkeit</span>
+                <span>{visibleToAll ? "Öffentlich" : "Privat"}</span>
+                <span className="text-muted-foreground">Eingang</span>
+                <span>{sourceReceivedDate}</span>
+                {dueDate && (
+                  <>
+                    <span className="text-muted-foreground">Frist</span>
+                    <span>{dueDate}</span>
+                  </>
+                )}
+              </div>
+            </div>
+          </div>
+        )}
+
+        <DialogFooter className="flex justify-between sm:justify-between gap-2">
+          <div>
+            {step > 1 && (
+              <Button type="button" variant="outline" onClick={handleBack} disabled={submitting}>
+                <ChevronLeft className="h-4 w-4 mr-1" />
+                Zurück
+              </Button>
+            )}
+          </div>
+          <div className="flex gap-2">
+            <Button variant="ghost" onClick={() => onOpenChange(false)} disabled={submitting}>
+              Abbrechen
+            </Button>
+            {step < 4 ? (
+              <Button onClick={handleNext} disabled={!canAdvance(step)}>
+                Weiter
+                <ChevronRight className="h-4 w-4 ml-1" />
+              </Button>
+            ) : (
+              <Button onClick={handleSubmit} disabled={submitting || !subject.trim() || !sourceReceivedDate || !category || !hasContext}>
+                {submitting ? "Erstelle…" : "Vorgang erstellen"}
+              </Button>
+            )}
+          </div>
         </DialogFooter>
       </DialogContent>
     </Dialog>
