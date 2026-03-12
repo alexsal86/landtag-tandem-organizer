@@ -149,7 +149,7 @@ export function CalendarView() {
         )}
 
         {/* Main calendar area */}
-        <div className="flex-1 min-w-0 min-h-0 flex flex-col transition-all duration-300 overflow-hidden pl-6 pt-4 pb-1 pr-0">
+        <div className="flex-1 min-w-0 min-h-0 flex flex-col transition-all duration-300 overflow-hidden pl-5 pt-4 pb-1 pr-0">
           {/* Google-style toolbar */}
           <div className="flex items-center justify-between pr-4 pb-3">
             <div className="flex items-center gap-3">
