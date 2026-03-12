@@ -128,6 +128,61 @@ export function MyWorkJourFixeTab() {
     return "text-foreground";
   };
 
+  const getSystemEntries = (
+    systemType: string | null | undefined,
+    notes: typeof meetingQuickNotes[string],
+    tasks: typeof meetingTasks[string],
+    decisions: typeof meetingDecisions[string],
+    birthdays: typeof meetingBirthdays[string],
+    caseItems: typeof meetingCaseItems[string],
+  ): Array<{ id: string; icon: React.ReactNode; label: string; ownerLabel?: string | null }> => {
+    if (systemType === 'quick_notes') {
+      return notes.map((note, index) => ({
+        id: note.id,
+        icon: <StickyNote className="h-2.5 w-2.5 text-amber-500" />,
+        label: note.title || `Notiz ${index + 1}`,
+        ownerLabel: getOwnerLabel(note.user_id),
+      }));
+    }
+
+    if (systemType === 'tasks') {
+      return tasks.map((task) => ({
+        id: task.id,
+        icon: <ListTodo className="h-2.5 w-2.5 text-green-500" />,
+        label: task.title || 'Ohne Titel',
+        ownerLabel: getOwnerLabel(task.user_id),
+      }));
+    }
+
+    if (systemType === 'decisions') {
+      return decisions.map((decision) => ({
+        id: decision.id,
+        icon: <Scale className="h-2.5 w-2.5 text-violet-500" />,
+        label: decision.title || 'Ohne Titel',
+        ownerLabel: getOwnerLabel(decision.user_id),
+      }));
+    }
+
+    if (systemType === 'birthdays') {
+      return birthdays.map((birthday) => ({
+        id: birthday.id,
+        icon: <Cake className="h-2.5 w-2.5 text-pink-500" />,
+        label: `${birthday.name} (geb. ${format(birthday.birthDate, "dd.MM.yyyy", { locale: de })}, ${birthday.age} Jahre)`,
+      }));
+    }
+
+    if (systemType === 'case_items') {
+      return caseItems.map((ci) => ({
+        id: ci.id,
+        icon: <Briefcase className="h-2.5 w-2.5 text-teal-500" />,
+        label: ci.subject || 'Ohne Betreff',
+        ownerLabel: getOwnerLabel(ci.owner_user_id ?? undefined),
+      }));
+    }
+
+    return [];
+  };
+
   const MeetingItem = ({ meeting }: { meeting: Meeting }) => {
     const meetingDate = new Date(meeting.meeting_date);
     const isExpanded = expandedMeetingId === meeting.id;
@@ -259,6 +314,7 @@ export function MyWorkJourFixeTab() {
                 {mainItems.map((item, index) => {
                   const subItems = meetingAgenda.filter(sub => sub.parent_id === item.id).sort((a, b) => a.order_index - b.order_index);
                   const systemIcon = getSystemItemIcon(item.system_type);
+                  const systemEntries = getSystemEntries(item.system_type, notes, tasks, decisions, birthdays, caseItems);
                   
                   return (
                     <li key={item.id} className="text-xs">
@@ -269,68 +325,18 @@ export function MyWorkJourFixeTab() {
                           {item.title}
                         </span>
                       </div>
-                      {/* Show individual notes under quick_notes system item */}
-                      {item.system_type === 'quick_notes' && notes.length > 0 && (
+                      {systemEntries.length > 0 && (
                         <ul className="ml-6 mt-1 space-y-0.5">
-                          {notes.map((note, nIdx) => (
-                            <li key={note.id} className="flex items-center gap-1.5 text-muted-foreground">
-                              <StickyNote className="h-2.5 w-2.5 text-amber-500" />
-                              <span>{note.title || `Notiz ${nIdx + 1}`}</span>
-                              {getOwnerLabel(note.user_id) && (
-                                <span className="text-muted-foreground/80">({getOwnerLabel(note.user_id)})</span>
-                              )}
-                            </li>
-                          ))}
-                        </ul>
-                      )}
-                      {/* Show individual tasks under tasks system item */}
-                      {item.system_type === 'tasks' && tasks.length > 0 && (
-                        <ul className="ml-6 mt-1 space-y-0.5">
-                          {tasks.map((task) => (
-                            <li key={task.id} className="flex items-center gap-1.5 text-muted-foreground">
-                              <ListTodo className="h-2.5 w-2.5 text-green-500" />
-                              <span>{task.title}</span>
-                              {getOwnerLabel(task.user_id) && (
-                                <span className="text-muted-foreground/80">({getOwnerLabel(task.user_id)})</span>
-                              )}
-                            </li>
-                          ))}
-                        </ul>
-                      )}
-                      {item.system_type === 'decisions' && decisions.length > 0 && (
-                        <ul className="ml-6 mt-1 space-y-0.5">
-                          {decisions.map((decision) => (
-                            <li key={decision.id} className="flex items-center gap-1.5 text-muted-foreground">
-                              <Scale className="h-2.5 w-2.5 text-violet-500" />
-                              <span>{decision.title}</span>
-                              {getOwnerLabel(decision.user_id) && (
-                                <span className="text-muted-foreground/80">({getOwnerLabel(decision.user_id)})</span>
-                              )}
-                            </li>
-                          ))}
-                        </ul>
-                      )}
-                      {item.system_type === 'birthdays' && birthdays.length > 0 && (
-                        <ul className="ml-6 mt-1 space-y-0.5">
-                          {birthdays.map((birthday) => (
-                            <li key={birthday.id} className="flex items-center gap-1.5 text-muted-foreground">
-                              <Cake className="h-2.5 w-2.5 text-pink-500" />
-                              <span>
-                                {birthday.name} (geb. {format(birthday.birthDate, "dd.MM.yyyy", { locale: de })}, {birthday.age} Jahre)
-                              </span>
-                            </li>
-                          ))}
-                        </ul>
-                      )}
-                      {item.system_type === 'case_items' && caseItems.length > 0 && (
-                        <ul className="ml-8 mt-1 space-y-0.5">
-                          {caseItems.map((ci) => (
-                            <li key={ci.id} className="flex items-center gap-1.5 text-muted-foreground">
-                              <Briefcase className="h-2.5 w-2.5 text-teal-500" />
-                              <span>{ci.subject || 'Ohne Betreff'}</span>
-                              {getOwnerLabel(ci.owner_user_id ?? undefined) && (
-                                <span className="text-muted-foreground/80">({getOwnerLabel(ci.owner_user_id ?? undefined)})</span>
-                              )}
+                          {systemEntries.map((entry, systemEntryIndex) => (
+                            <li key={entry.id} className="text-muted-foreground">
+                              <div className="flex items-center gap-1.5">
+                                <span className="min-w-[1.9rem]">{index + 1}.{systemEntryIndex + 1}</span>
+                                {entry.icon}
+                                <span>{entry.label}</span>
+                                {entry.ownerLabel && (
+                                  <span className="text-muted-foreground/80">({entry.ownerLabel})</span>
+                                )}
+                              </div>
                             </li>
                           ))}
                         </ul>
@@ -339,6 +345,7 @@ export function MyWorkJourFixeTab() {
                         <ul className="ml-6 mt-1 space-y-0.5">
                           {subItems.map((subItem, subIndex) => {
                             const subSystemIcon = getSystemItemIcon(subItem.system_type);
+                            const subSystemEntries = getSystemEntries(subItem.system_type, notes, tasks, decisions, birthdays, caseItems);
                             return (
                               <li key={subItem.id} className="text-muted-foreground">
                                 <div className="flex items-start gap-0">
@@ -348,67 +355,15 @@ export function MyWorkJourFixeTab() {
                                     {subItem.title}
                                   </span>
                                 </div>
-                                {/* Show individual notes under sub-item quick_notes */}
-                                {subItem.system_type === 'quick_notes' && notes.length > 0 && (
+                                {subSystemEntries.length > 0 && (
                                   <ul className="ml-8 mt-0.5 space-y-0.5">
-                                    {notes.map((note, nIdx) => (
-                                      <li key={note.id} className="flex items-center gap-1.5 text-muted-foreground">
-                                        <StickyNote className="h-2.5 w-2.5 text-amber-500" />
-                                        <span>{note.title || `Notiz ${nIdx + 1}`}</span>
-                                        {getOwnerLabel(note.user_id) && (
-                                          <span className="text-muted-foreground/80">({getOwnerLabel(note.user_id)})</span>
-                                        )}
-                                      </li>
-                                    ))}
-                                  </ul>
-                                )}
-                                {/* Show individual tasks under sub-item tasks */}
-                                {subItem.system_type === 'tasks' && tasks.length > 0 && (
-                                  <ul className="ml-8 mt-0.5 space-y-0.5">
-                                    {tasks.map((task) => (
-                                      <li key={task.id} className="flex items-center gap-1.5 text-muted-foreground">
-                                        <ListTodo className="h-2.5 w-2.5 text-green-500" />
-                                        <span>{task.title}</span>
-                                        {getOwnerLabel(task.user_id) && (
-                                          <span className="text-muted-foreground/80">({getOwnerLabel(task.user_id)})</span>
-                                        )}
-                                      </li>
-                                    ))}
-                                  </ul>
-                                )}
-                                {subItem.system_type === 'decisions' && decisions.length > 0 && (
-                                  <ul className="ml-8 mt-0.5 space-y-0.5">
-                                    {decisions.map((decision) => (
-                                      <li key={decision.id} className="flex items-center gap-1.5 text-muted-foreground">
-                                        <Scale className="h-2.5 w-2.5 text-violet-500" />
-                                        <span>{decision.title}</span>
-                                        {getOwnerLabel(decision.user_id) && (
-                                          <span className="text-muted-foreground/80">({getOwnerLabel(decision.user_id)})</span>
-                                        )}
-                                      </li>
-                                    ))}
-                                  </ul>
-                                )}
-                                {subItem.system_type === 'birthdays' && birthdays.length > 0 && (
-                                  <ul className="ml-8 mt-0.5 space-y-0.5">
-                                    {birthdays.map((birthday) => (
-                                      <li key={birthday.id} className="flex items-center gap-1.5 text-muted-foreground">
-                                        <Cake className="h-2.5 w-2.5 text-pink-500" />
-                                        <span>
-                                          {birthday.name} (geb. {format(birthday.birthDate, "dd.MM.yyyy", { locale: de })}, {birthday.age} Jahre)
-                                        </span>
-                                      </li>
-                                    ))}
-                                  </ul>
-                                )}
-                                {subItem.system_type === 'case_items' && caseItems.length > 0 && (
-                                  <ul className="ml-10 mt-0.5 space-y-0.5">
-                                    {caseItems.map((ci) => (
-                                      <li key={ci.id} className="flex items-center gap-1.5 text-muted-foreground">
-                                        <Briefcase className="h-2.5 w-2.5 text-teal-500" />
-                                        <span>{ci.subject || 'Ohne Betreff'}</span>
-                                        {getOwnerLabel(ci.owner_user_id ?? undefined) && (
-                                          <span className="text-muted-foreground/80">({getOwnerLabel(ci.owner_user_id ?? undefined)})</span>
+                                    {subSystemEntries.map((entry, subSystemEntryIndex) => (
+                                      <li key={entry.id} className="flex items-center gap-1.5 text-muted-foreground">
+                                        <span className="min-w-[2.2rem]">{index + 1}.{subIndex + 1}.{subSystemEntryIndex + 1}</span>
+                                        {entry.icon}
+                                        <span>{entry.label}</span>
+                                        {entry.ownerLabel && (
+                                          <span className="text-muted-foreground/80">({entry.ownerLabel})</span>
                                         )}
                                       </li>
                                     ))}
