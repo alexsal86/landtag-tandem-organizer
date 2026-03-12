@@ -346,6 +346,7 @@ export const TaskDecisionResponse = ({
           <Badge variant="outline" className={`${solidColorClasses} border`}>
             {option?.icon && getIcon(option.icon)}
             <span className="ml-1">{option?.label || currentResponse.response_type}</span>
+            {renderRecommendedHint(option)}
           </Badge>
           {!isCreator && (
             <Button
@@ -429,6 +430,29 @@ export const TaskDecisionResponse = ({
     </TooltipProvider>
   );
 
+  function renderRecommendedHint(option?: ResponseOption) {
+    if (!option?.recommended) return null;
+
+    const badge = (
+      <span className="ml-1 rounded bg-amber-100 px-1 py-0.5 text-[10px] font-medium text-amber-700">
+        Empfohlen
+      </span>
+    );
+
+    if (!option.recommendation_reason) return badge;
+
+    return (
+      <TooltipProvider delayDuration={150}>
+        <Tooltip>
+          <TooltipTrigger asChild>{badge}</TooltipTrigger>
+          <TooltipContent>
+            <p className="text-xs">{option.recommendation_reason}</p>
+          </TooltipContent>
+        </Tooltip>
+      </TooltipProvider>
+    );
+  }
+
   const startLongPressForReason = (optionKey: string) => {
     if (!showReasonToggle) return;
     if (longPressTimerRef.current) clearTimeout(longPressTimerRef.current);
@@ -455,7 +479,7 @@ export const TaskDecisionResponse = ({
 
     const baseButtonClasses = isSelected
       ? `${solidColorClasses} border`
-      : `${colorClasses.textClass} ${colorClasses.borderClass} hover:${colorClasses.bgClass}`;
+      : `${colorClasses.textClass} ${colorClasses.borderClass} hover:${colorClasses.bgClass} ${option.recommended ? "ring-1 ring-amber-400/70" : ""}`;
 
     const button = option.requires_comment ? (
       <Dialog key={option.key} open={isQuestionDialogOpen} onOpenChange={setIsQuestionDialogOpen}>
@@ -468,6 +492,7 @@ export const TaskDecisionResponse = ({
           >
             {getIcon(option.icon)}
             <span className="ml-1">{option.label}</span>
+            {renderRecommendedHint(option)}
             {option.description && renderDescriptionInfo(option.description)}
           </Button>
         </DialogTrigger>
@@ -539,6 +564,7 @@ export const TaskDecisionResponse = ({
       >
         {getIcon(option.icon)}
         <span className="ml-1">{option.label}</span>
+        {renderRecommendedHint(option)}
         {option.description && renderDescriptionInfo(option.description)}
       </Button>
     );

@@ -79,6 +79,27 @@ export const StandaloneDecisionCreator = ({
     onCreatedWithId,
   });
 
+  const recommendedOption = currentOptions.find((option) => option.recommended);
+
+  const setRecommendedOption = (optionKey: string) => {
+    if (optionKey === "none") {
+      setCustomOptions((prev) => prev.map((option) => ({ ...option, recommended: false, recommendation_reason: "" })));
+      return;
+    }
+
+    setCustomOptions((prev) => prev.map((option) => ({
+      ...option,
+      recommended: option.key === optionKey,
+      recommendation_reason: option.key === optionKey ? option.recommendation_reason : "",
+    })));
+  };
+
+  const setRecommendationReason = (reason: string) => {
+    setCustomOptions((prev) => prev.map((option) =>
+      option.recommended ? { ...option, recommendation_reason: reason } : option,
+    ));
+  };
+
   const TriggerButton = variant === 'icon' ? (
     <Button 
       variant="ghost" 
@@ -189,6 +210,35 @@ export const StandaloneDecisionCreator = ({
                   <p className="text-xs text-muted-foreground">Wählen Sie einen Antworttyp</p>
                 )}
               </div>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className="text-sm font-medium">Empfohlene Antwort (optional)</label>
+              <Select value={recommendedOption?.key || "none"} onValueChange={setRecommendedOption}>
+                <SelectTrigger className="mt-1">
+                  <SelectValue placeholder="Keine Empfehlung" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="none">Keine Empfehlung</SelectItem>
+                  {currentOptions.map((option) => (
+                    <SelectItem key={option.key} value={option.key}>
+                      {option.label || option.key}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div>
+              <label className="text-sm font-medium">Begründung der Empfehlung (Tooltip)</label>
+              <Input
+                value={recommendedOption?.recommendation_reason || ""}
+                onChange={(e) => setRecommendationReason(e.target.value)}
+                placeholder="z. B. wegen Frist oder fachlicher Priorität"
+                disabled={!recommendedOption}
+                className="mt-1"
+              />
             </div>
           </div>
 

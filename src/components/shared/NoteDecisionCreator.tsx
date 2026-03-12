@@ -185,6 +185,7 @@ export function NoteDecisionCreator({
   };
 
   const currentOptions = useMemo(() => customOptions, [customOptions]);
+  const recommendedOption = currentOptions.find((option) => option.recommended);
 
   const handleTemplateChange = (templateId: string) => {
     setSelectedTemplateId(templateId);
@@ -194,6 +195,25 @@ export function NoteDecisionCreator({
         setCustomOptions(template.options.map(option => ({ ...option })));
       }
     }
+  };
+
+  const setRecommendedOption = (optionKey: string) => {
+    if (optionKey === "none") {
+      setCustomOptions((prev) => prev.map((option) => ({ ...option, recommended: false, recommendation_reason: "" })));
+      return;
+    }
+
+    setCustomOptions((prev) => prev.map((option) => ({
+      ...option,
+      recommended: option.key === optionKey,
+      recommendation_reason: option.key === optionKey ? option.recommendation_reason : "",
+    })));
+  };
+
+  const setRecommendationReason = (reason: string) => {
+    setCustomOptions((prev) => prev.map((option) =>
+      option.recommended ? { ...option, recommendation_reason: reason } : option,
+    ));
   };
 
   const userOptions = useMemo(() => {
@@ -434,6 +454,34 @@ export function NoteDecisionCreator({
             )}
             
             <ResponseOptionsPreview options={currentOptions} />
+
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-1">
+                <Label>Empfohlene Antwort (optional)</Label>
+                <Select value={recommendedOption?.key || "none"} onValueChange={setRecommendedOption}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Keine Empfehlung" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="none">Keine Empfehlung</SelectItem>
+                    {currentOptions.map((option) => (
+                      <SelectItem key={option.key} value={option.key}>
+                        {option.label || option.key}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-1">
+                <Label>Begründung der Empfehlung (Tooltip)</Label>
+                <Input
+                  value={recommendedOption?.recommendation_reason || ""}
+                  onChange={(e) => setRecommendationReason(e.target.value)}
+                  placeholder="z. B. wegen Frist oder fachlicher Priorität"
+                  disabled={!recommendedOption}
+                />
+              </div>
+            </div>
           </div>
 
           <div className="space-y-2">
