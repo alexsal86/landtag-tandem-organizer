@@ -12,6 +12,19 @@ interface CalendarHeaderProps {
 export function CalendarHeader({ onShowPolls, selectedDate, onSelectDate }: CalendarHeaderProps) {
   const navigate = useNavigate();
 
+  const changeMonthPreservingDay = (direction: 1 | -1) => {
+    const year = selectedDate.getFullYear();
+    const month = selectedDate.getMonth();
+    const day = selectedDate.getDate();
+
+    const targetMonthDate = new Date(year, month + direction, 1);
+    const targetYear = targetMonthDate.getFullYear();
+    const targetMonth = targetMonthDate.getMonth();
+    const daysInTargetMonth = new Date(targetYear, targetMonth + 1, 0).getDate();
+
+    onSelectDate(new Date(targetYear, targetMonth, Math.min(day, daysInTargetMonth)));
+  };
+
   return (
     <div className="h-full border-r bg-muted/30 p-4 overflow-y-auto">
       <div className="mb-6 border-b pb-4">
@@ -37,22 +50,14 @@ export function CalendarHeader({ onShowPolls, selectedDate, onSelectDate }: Cale
             <button
               type="button"
               className="h-6 w-6 flex items-center justify-center rounded hover:bg-accent/60"
-              onClick={() => {
-                const d = new Date(selectedDate);
-                d.setMonth(d.getMonth() - 1);
-                onSelectDate(d);
-              }}
+              onClick={() => changeMonthPreservingDay(-1)}
             >
               ‹
             </button>
             <button
               type="button"
               className="h-6 w-6 flex items-center justify-center rounded hover:bg-accent/60"
-              onClick={() => {
-                const d = new Date(selectedDate);
-                d.setMonth(d.getMonth() + 1);
-                onSelectDate(d);
-              }}
+              onClick={() => changeMonthPreservingDay(1)}
             >
               ›
             </button>
