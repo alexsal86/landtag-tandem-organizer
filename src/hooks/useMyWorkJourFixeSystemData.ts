@@ -51,8 +51,9 @@ export function useMyWorkJourFixeSystemData(userId?: string, tenantId?: string) 
   const [meetingDecisions, setMeetingDecisions] = useState<Record<string, SystemItemData[]>>({});
   const [meetingBirthdays, setMeetingBirthdays] = useState<Record<string, BirthdayItemData[]>>({});
   const [meetingCaseItems, setMeetingCaseItems] = useState<Record<string, CaseItemData[]>>({});
-  const [userProfiles, setUserProfiles] = useState<Record<string, UserProfileData>>({});
-  const isMountedRef = useRef(true);
+   const [userProfiles, setUserProfiles] = useState<Record<string, UserProfileData>>({});
+   const userProfilesRef = useRef<Record<string, UserProfileData>>({});
+   const isMountedRef = useRef(true);
   const requestVersionsRef = useRef<Record<string, number>>({});
 
   const setMounted = useCallback((mounted: boolean) => {
