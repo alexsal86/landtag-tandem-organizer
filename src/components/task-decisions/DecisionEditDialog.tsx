@@ -281,7 +281,7 @@ export const DecisionEditDialog = ({ decisionId, isOpen, onClose, onUpdated }: D
         <DialogHeader>
           <DialogTitle>Entscheidung bearbeiten</DialogTitle>
         </DialogHeader>
-        <div className="space-y-4">
+        <div className="space-y-4 overflow-y-auto pr-1 flex-1">
           <div>
             <label className="text-sm font-medium">Titel</label>
             <Input

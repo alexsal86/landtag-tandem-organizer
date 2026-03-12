@@ -53,20 +53,21 @@ export function useMyWorkJourFixeSystemData(userId?: string, tenantId?: string) 
   const [meetingCaseItems, setMeetingCaseItems] = useState<Record<string, CaseItemData[]>>({});
   const [userProfiles, setUserProfiles] = useState<Record<string, UserProfileData>>({});
   const isMountedRef = useRef(true);
-  const requestVersionRef = useRef(0);
+  const requestVersionsRef = useRef<Record<string, number>>({});
 
   const setMounted = useCallback((mounted: boolean) => {
     isMountedRef.current = mounted;
     if (!mounted) {
-      requestVersionRef.current += 1;
+      requestVersionsRef.current = {};
     }
   }, []);
 
   const loadMeetingSystemData = useCallback(
     async ({ meetingId, items, meetingDate }: LoadSystemDataParams) => {
-      const requestVersion = requestVersionRef.current + 1;
-      requestVersionRef.current = requestVersion;
-      const isCurrentRequest = () => isMountedRef.current && requestVersionRef.current === requestVersion;
+      const requestVersion = (requestVersionsRef.current[meetingId] || 0) + 1;
+      requestVersionsRef.current[meetingId] = requestVersion;
+      const isCurrentRequest =
+        () => isMountedRef.current && requestVersionsRef.current[meetingId] === requestVersion;
 
       const hasNotes = items.some((i) => i.system_type === "quick_notes");
       const hasTasks = items.some((i) => i.system_type === "tasks");
