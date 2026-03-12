@@ -1,4 +1,3 @@
-import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -81,6 +80,25 @@ export const ResponseOptionsEditor = ({ options, onChange }: ResponseOptionsEdit
                   Kommentar
                 </label>
               </div>
+
+              <div className="flex items-center gap-1">
+                <Checkbox
+                  id={`recommended-${index}`}
+                  checked={option.recommended || false}
+                  onCheckedChange={(checked) => {
+                    const shouldRecommend = checked === true;
+                    const resetRecommendations = options.map((entry, entryIndex) =>
+                      entryIndex === index
+                        ? { ...entry, recommended: shouldRecommend }
+                        : { ...entry, recommended: false, recommendation_reason: "" },
+                    );
+                    onChange(resetRecommendations);
+                  }}
+                />
+                <label htmlFor={`recommended-${index}`} className="text-xs text-muted-foreground whitespace-nowrap">
+                  Empfohlen
+                </label>
+              </div>
               
               <Button
                 type="button"
@@ -100,6 +118,14 @@ export const ResponseOptionsEditor = ({ options, onChange }: ResponseOptionsEdit
               placeholder="Beschreibung (Tooltip beim Hovern)"
               className="h-7 text-xs ml-6 w-[calc(100%-1.5rem)]"
             />
+            {option.recommended && (
+              <Input
+                value={option.recommendation_reason || ""}
+                onChange={(e) => updateOption(index, { recommendation_reason: e.target.value })}
+                placeholder="Begründung für Empfehlung (Tooltip)"
+                className="h-7 text-xs ml-6 w-[calc(100%-1.5rem)]"
+              />
+            )}
           </div>
         ))}
       </div>

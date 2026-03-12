@@ -5,6 +5,8 @@ export interface ResponseOption {
   icon?: string;
   requires_comment?: boolean;
   description?: string;
+  recommended?: boolean;
+  recommendation_reason?: string;
 }
 
 export interface DecisionTemplate {
