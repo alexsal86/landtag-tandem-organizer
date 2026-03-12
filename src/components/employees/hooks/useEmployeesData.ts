@@ -245,7 +245,7 @@ export function useEmployeesData() {
           supabase.from("profiles").select("user_id, display_name, avatar_url").eq("user_id", user.id).single(),
           supabase.from("leave_requests").select("id, type, status, start_date, end_date").eq("user_id", user.id)
             .gte("start_date", startOfYear(new Date()).toISOString()).lte("start_date", endOfYear(new Date()).toISOString()),
-          supabase.from("employee_meetings").select("id").eq("employee_id", user.id).order("meeting_date", { ascending: false }).limit(1).maybeSingle(),
+          supabase.rpc("get_latest_employee_meetings", { p_employee_ids: [user.id] }).maybeSingle(),
         ]);
 
         if (settingsRes.error) { debugConsole.error(settingsRes.error); toast({ title: "Fehler", description: "Fehler beim Laden der Mitarbeitereinstellungen", variant: "destructive" }); return; }
@@ -258,7 +258,7 @@ export function useEmployeesData() {
 
         setSelfSettings((settingsRes.data as EmployeeSettingsRow) || null);
         setSelfProfile((profileRes.data as Profile) || null);
-        setSelfLastMeetingId(lastMeetingRes.data?.id || null);
+        setSelfLastMeetingId(lastMeetingRes.data?.meeting_id || null);
 
         const agg = initLeaveAgg();
         (leavesRes.data || []).forEach((lr: any) => {

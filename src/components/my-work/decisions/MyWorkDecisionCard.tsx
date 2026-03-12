@@ -461,7 +461,7 @@ const MyWorkDecisionCardInner = ({
             </div>
 
             <aside
-              className="rounded-lg border border-border/70 bg-background/95 p-3.5 space-y-3 self-start lg:sticky lg:top-3"
+              className="rounded-lg border border-border/70 bg-background/95 p-3.5 space-y-3 self-start lg:sticky lg:top-16"
               onClick={(e) => e.stopPropagation()}
             >
               <p className="text-sm font-semibold text-foreground">Deine Entscheidung</p>
