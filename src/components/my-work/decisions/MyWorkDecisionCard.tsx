@@ -475,6 +475,7 @@ const MyWorkDecisionCardInner = ({
                   creatorId={decision.created_by}
                   layout="decision-panel"
                   disabled={!decision.isParticipant || !decision.participant_id}
+                  showCreatorResponse={false}
                 />
               )}
 
