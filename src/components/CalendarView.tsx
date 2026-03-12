@@ -125,7 +125,7 @@ export function CalendarView() {
     <div className="h-full overflow-hidden bg-gradient-subtle">
       <div className="flex h-full min-h-0 transition-all duration-300">
         {/* Sidebar */}
-        <div className="w-[320px] shrink-0 min-h-0">
+        <div className="w-[260px] shrink-0 min-h-0">
           <CalendarHeader
             selectedDate={currentDate}
             onSelectDate={(date) => {
