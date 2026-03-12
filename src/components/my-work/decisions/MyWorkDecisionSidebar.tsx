@@ -225,27 +225,69 @@ export function MyWorkDecisionSidebar({
                       </Badge>
                     </div>
                     {pendingDirectReplies.map((reply) => (
-                      <button
+                      <div
                         key={`reply-${reply.id}`}
-                        onClick={() => onCommentClick(reply.decisionId)}
-                        className="w-full text-left p-2 rounded-md border-l-2 border-l-blue-500 bg-blue-50 dark:bg-blue-950/20 hover:bg-blue-100 dark:hover:bg-blue-950/40 transition-colors"
+                        className="p-2 rounded-md border-l-2 border-l-blue-500 bg-blue-50 dark:bg-blue-950/20"
                       >
-                        <p className="text-xs font-semibold line-clamp-2">{reply.decisionTitle}</p>
-                        <div className="flex items-center gap-1 mt-0.5">
-                          <Avatar className="h-4 w-4">
-                            {reply.participantAvatarUrl && <AvatarImage src={reply.participantAvatarUrl} />}
-                            <AvatarFallback className="text-[8px]" style={{ backgroundColor: reply.participantBadgeColor || undefined }}>
-                              {getInitials(reply.participantName)}
-                            </AvatarFallback>
-                          </Avatar>
-                          <span className="text-xs text-muted-foreground">{reply.participantName || 'Unbekannt'}</span>
-                        </div>
-                        {reply.comment && (
-                          <div className="text-xs text-muted-foreground mt-1 line-clamp-2">
-                            <RichTextDisplay content={reply.comment} className="text-xs" />
+                        <button
+                          onClick={() => onCommentClick(reply.decisionId)}
+                          className="w-full text-left hover:bg-blue-100 dark:hover:bg-blue-950/40 transition-colors rounded -m-0.5 p-0.5"
+                        >
+                          <p className="text-xs font-semibold line-clamp-2">{reply.decisionTitle}</p>
+                          <div className="flex items-center gap-1 mt-0.5">
+                            <Avatar className="h-4 w-4">
+                              {reply.participantAvatarUrl && <AvatarImage src={reply.participantAvatarUrl} />}
+                              <AvatarFallback className="text-[8px]" style={{ backgroundColor: reply.participantBadgeColor || undefined }}>
+                                {getInitials(reply.participantName)}
+                              </AvatarFallback>
+                            </Avatar>
+                            <span className="text-xs text-muted-foreground">{reply.participantName || 'Unbekannt'}</span>
                           </div>
+                          {reply.comment && (
+                            <div className="text-xs text-muted-foreground mt-1 line-clamp-2">
+                              <RichTextDisplay content={reply.comment} className="text-xs" />
+                            </div>
+                          )}
+                        </button>
+
+                        {respondingTo === reply.id ? (
+                          <div className="mt-1.5 pt-1.5 border-t border-blue-200 dark:border-blue-800 space-y-1.5">
+                            <SimpleRichTextEditor
+                              initialContent=""
+                              onChange={setResponseText}
+                              placeholder="Antwort..."
+                              minHeight="50px"
+                            />
+                            <div className="flex gap-1.5">
+                              <Button
+                                size="sm"
+                                onClick={() => handleSendResponse(reply.id)}
+                                disabled={isLoading || !responseText.trim()}
+                                className="text-[10px] h-6"
+                              >
+                                <Send className="h-2.5 w-2.5 mr-1" />Senden
+                              </Button>
+                              <Button
+                                size="sm"
+                                variant="ghost"
+                                onClick={() => { setRespondingTo(null); setResponseText(""); }}
+                                className="text-[10px] h-6"
+                              >
+                                Abbrechen
+                              </Button>
+                            </div>
+                          </div>
+                        ) : (
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            className="mt-1.5 text-[10px] w-full h-6"
+                            onClick={() => setRespondingTo(reply.id)}
+                          >
+                            Antwort
+                          </Button>
                         )}
-                      </button>
+                      </div>
                     ))}
                   </div>
                 )}
@@ -261,37 +303,84 @@ export function MyWorkDecisionSidebar({
                       </Badge>
                     </div>
                     {newComments.map((c) => (
-                      <button
+                      <div
                         key={c.id}
-                        onClick={() => onCommentClick(c.decisionId)}
                         className={cn(
-                          "w-full text-left p-2 rounded-md border-l-2 transition-colors",
-                          c.responseType === 'yes' && "border-l-green-500 bg-green-50 dark:bg-green-950/20 hover:bg-green-100",
-                          c.responseType === 'no' && "border-l-red-500 bg-red-50 dark:bg-red-950/20 hover:bg-red-100",
-                          c.responseType === 'question' && "border-l-orange-500 bg-orange-50 dark:bg-orange-950/20 hover:bg-orange-100",
+                          "p-2 rounded-md border-l-2",
+                          c.responseType === 'yes' && "border-l-green-500 bg-green-50 dark:bg-green-950/20",
+                          c.responseType === 'no' && "border-l-red-500 bg-red-50 dark:bg-red-950/20",
+                          c.responseType === 'question' && "border-l-orange-500 bg-orange-50 dark:bg-orange-950/20",
                         )}
                       >
-                        <p className="text-xs font-semibold line-clamp-2">{c.decisionTitle}</p>
-                        <div className="flex items-center gap-1 mt-0.5">
-                          <Avatar className="h-4 w-4">
-                            {c.participantAvatarUrl && <AvatarImage src={c.participantAvatarUrl} />}
-                            <AvatarFallback className="text-[8px]" style={{ backgroundColor: c.participantBadgeColor || undefined }}>
-                              {getInitials(c.participantName)}
-                            </AvatarFallback>
-                          </Avatar>
-                          <span className="text-xs text-muted-foreground">{c.participantName}</span>
-                          <span className="text-xs text-muted-foreground">
-                            {c.responseType === 'yes' && '→ Ja'}
-                            {c.responseType === 'no' && '→ Nein'}
-                            {c.responseType === 'question' && '→ Rückfrage'}
-                          </span>
-                        </div>
-                        {c.comment && (
-                          <div className="text-xs text-muted-foreground mt-1 line-clamp-2">
-                            <RichTextDisplay content={c.comment} className="text-xs" />
+                        <button
+                          onClick={() => onCommentClick(c.decisionId)}
+                          className={cn(
+                            "w-full text-left transition-colors rounded -m-0.5 p-0.5",
+                            c.responseType === 'yes' && "hover:bg-green-100",
+                            c.responseType === 'no' && "hover:bg-red-100",
+                            c.responseType === 'question' && "hover:bg-orange-100",
+                          )}
+                        >
+                          <p className="text-xs font-semibold line-clamp-2">{c.decisionTitle}</p>
+                          <div className="flex items-center gap-1 mt-0.5">
+                            <Avatar className="h-4 w-4">
+                              {c.participantAvatarUrl && <AvatarImage src={c.participantAvatarUrl} />}
+                              <AvatarFallback className="text-[8px]" style={{ backgroundColor: c.participantBadgeColor || undefined }}>
+                                {getInitials(c.participantName)}
+                              </AvatarFallback>
+                            </Avatar>
+                            <span className="text-xs text-muted-foreground">{c.participantName}</span>
+                            <span className="text-xs text-muted-foreground">
+                              {c.responseType === 'yes' && '→ Ja'}
+                              {c.responseType === 'no' && '→ Nein'}
+                              {c.responseType === 'question' && '→ Rückfrage'}
+                            </span>
                           </div>
+                          {c.comment && (
+                            <div className="text-xs text-muted-foreground mt-1 line-clamp-2">
+                              <RichTextDisplay content={c.comment} className="text-xs" />
+                            </div>
+                          )}
+                        </button>
+
+                        {respondingTo === c.id ? (
+                          <div className="mt-1.5 pt-1.5 border-t border-border/70 space-y-1.5">
+                            <SimpleRichTextEditor
+                              initialContent=""
+                              onChange={setResponseText}
+                              placeholder="Antwort..."
+                              minHeight="50px"
+                            />
+                            <div className="flex gap-1.5">
+                              <Button
+                                size="sm"
+                                onClick={() => handleSendResponse(c.id)}
+                                disabled={isLoading || !responseText.trim()}
+                                className="text-[10px] h-6"
+                              >
+                                <Send className="h-2.5 w-2.5 mr-1" />Senden
+                              </Button>
+                              <Button
+                                size="sm"
+                                variant="ghost"
+                                onClick={() => { setRespondingTo(null); setResponseText(""); }}
+                                className="text-[10px] h-6"
+                              >
+                                Abbrechen
+                              </Button>
+                            </div>
+                          </div>
+                        ) : (
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            className="mt-1.5 text-[10px] w-full h-6"
+                            onClick={() => setRespondingTo(c.id)}
+                          >
+                            Antwort
+                          </Button>
                         )}
-                      </button>
+                      </div>
                     ))}
                   </div>
                 )}
