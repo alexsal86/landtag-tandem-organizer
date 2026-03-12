@@ -139,154 +139,143 @@ export function MyWorkTeamTab() {
           return;
         }
 
-  const checkAdminAndLoad = async () => {
-    if (!user) return;
+        // Get tenant users with employee roles
+        const { data: memberships } = await supabase
+          .from("user_tenant_memberships")
+          .select("user_id")
+          .eq("tenant_id", tenantId)
+          .eq("is_active", true);
 
-    try {
-      // Check if user has role 'abgeordneter' (only this role sees team overview)
-      const { data: roleData } = await supabase
-        .from("user_roles")
-        .select("role")
-        .eq("user_id", user.id)
-        .single();
-      
-      // 'abgeordneter' and 'bueroleitung' can see the team overview
-      const canViewTeam = roleData?.role === "abgeordneter" || roleData?.role === "bueroleitung";
-      setIsAdmin(canViewTeam);
-      setUserRole(roleData?.role || "");
+        if (cancelled) return;
 
-      if (!canViewTeam || !currentTenant) {
-        setLoading(false);
-        return;
-      }
-
-      // Get tenant users with employee roles
-      const { data: memberships } = await supabase
-        .from("user_tenant_memberships")
-        .select("user_id")
-        .eq("tenant_id", currentTenant.id)
-        .eq("is_active", true);
-
-      if (!memberships?.length) {
-        setTeamMembers([]);
-        setLoading(false);
-        return;
-      }
-
-      const userIds = memberships.map(m => m.user_id);
-
-      // Get roles
-      const { data: roles } = await supabase
-        .from("user_roles")
-        .select("user_id, role")
-        .in("user_id", userIds);
-
-      const employeeIds = (roles || [])
-        .filter(r => ["mitarbeiter", "praktikant", "bueroleitung"].includes(r.role))
-        .map(r => r.user_id);
-
-      if (employeeIds.length === 0) {
-        setTeamMembers([]);
-        setLoading(false);
-        return;
-      }
-
-      // Calculate current week range (Monday to today)
-      const weekStart = startOfWeek(new Date(), { weekStartsOn: 1 });
-      const today = new Date();
-
-      // Get profiles, settings, requests, time entries (this week), and last global entries
-      const [profilesRes, settingsRes, requestsRes, timeEntriesRes, lastEntriesRes] = await Promise.all([
-        supabase.from("profiles").select("user_id, display_name, avatar_url").in("user_id", employeeIds),
-        supabase.from("employee_settings").select("user_id, hours_per_week, last_meeting_date, meeting_interval_months").in("user_id", employeeIds),
-        supabase.from("employee_meeting_requests").select("employee_id").eq("status", "pending").in("employee_id", employeeIds),
-        supabase.from("time_entries").select("user_id, minutes, work_date").in("user_id", employeeIds)
-          .gte("work_date", format(weekStart, "yyyy-MM-dd"))
-          .lte("work_date", format(today, "yyyy-MM-dd")),
-        supabase.from("time_entries").select("user_id, work_date").in("user_id", employeeIds)
-          .order("work_date", { ascending: false }),
-      ]);
-
-      const profileMap = new Map(profilesRes.data?.map(p => [p.user_id, p]) || []);
-      const settingsMap = new Map(settingsRes.data?.map(s => [s.user_id, s]) || []);
-      
-      // Count open requests per employee
-      const requestCounts: Record<string, number> = {};
-      (requestsRes.data || []).forEach((req: any) => {
-        requestCounts[req.employee_id] = (requestCounts[req.employee_id] || 0) + 1;
-      });
-
-      // Sum weekly minutes and find last entry per employee (this week)
-      const weeklyMinutes: Record<string, number> = {};
-      const lastTimeEntry: Record<string, string> = {};
-      (timeEntriesRes.data || []).forEach((entry: any) => {
-        weeklyMinutes[entry.user_id] = (weeklyMinutes[entry.user_id] || 0) + entry.minutes;
-        if (!lastTimeEntry[entry.user_id] || entry.work_date > lastTimeEntry[entry.user_id]) {
-          lastTimeEntry[entry.user_id] = entry.work_date;
+        if (!memberships?.length) {
+          setTeamMembers([]);
+          setLoading(false);
+          return;
         }
-      });
 
-      // Find last global entry per employee (for warning calculation)
-      const lastGlobalEntry: Record<string, string> = {};
-      (lastEntriesRes.data || []).forEach((entry: any) => {
-        if (!lastGlobalEntry[entry.user_id]) {
-          lastGlobalEntry[entry.user_id] = entry.work_date;
+        const userIds = memberships.map(m => m.user_id);
+
+        // Get roles
+        const { data: roles } = await supabase
+          .from("user_roles")
+          .select("user_id, role")
+          .in("user_id", userIds);
+
+        if (cancelled) return;
+
+        const employeeIds = (roles || [])
+          .filter(r => ["mitarbeiter", "praktikant", "bueroleitung"].includes(r.role))
+          .map(r => r.user_id);
+
+        if (employeeIds.length === 0) {
+          setTeamMembers([]);
+          setLoading(false);
+          return;
         }
-      });
 
-      // Calculate target minutes based on days passed in week
-      const dayOfWeek = today.getDay() === 0 ? 7 : today.getDay(); // 1=Mon, 7=Sun
-      const workDaysPassed = Math.min(dayOfWeek, 5); // Max 5 work days
+        // Calculate current week range (Monday to today)
+        const weekStart = startOfWeek(new Date(), { weekStartsOn: 1 });
+        const today = new Date();
 
-      const members: TeamMember[] = employeeIds.map(uid => {
-        const profile = profileMap.get(uid);
-        const settings = settingsMap.get(uid);
-        const hoursPerWeek = settings?.hours_per_week || 40;
+        // Get profiles, settings, requests, time entries (this week), and last global entries
+        const [profilesRes, settingsRes, requestsRes, timeEntriesRes, lastEntriesRes] = await Promise.all([
+          supabase.from("profiles").select("user_id, display_name, avatar_url").in("user_id", employeeIds),
+          supabase.from("employee_settings").select("user_id, hours_per_week, last_meeting_date, meeting_interval_months").in("user_id", employeeIds),
+          supabase.from("employee_meeting_requests").select("employee_id").eq("status", "pending").in("employee_id", employeeIds),
+          supabase.from("time_entries").select("user_id, minutes, work_date").in("user_id", employeeIds)
+            .gte("work_date", format(weekStart, "yyyy-MM-dd"))
+            .lte("work_date", format(today, "yyyy-MM-dd")),
+          supabase.from("time_entries").select("user_id, work_date").in("user_id", employeeIds)
+            .order("work_date", { ascending: false }),
+        ]);
+
+        if (cancelled) return;
+
+        const profileMap = new Map(profilesRes.data?.map(p => [p.user_id, p]) || []);
+        const settingsMap = new Map(settingsRes.data?.map(s => [s.user_id, s]) || []);
         
-        let next_meeting_due: string | null = null;
-        if (settings?.last_meeting_date && settings?.meeting_interval_months) {
-          const lastMeeting = new Date(settings.last_meeting_date);
-          const nextDue = new Date(lastMeeting);
-          nextDue.setMonth(nextDue.getMonth() + settings.meeting_interval_months);
-          next_meeting_due = nextDue.toISOString();
-        }
+        // Count open requests per employee
+        const requestCounts: Record<string, number> = {};
+        (requestsRes.data || []).forEach((req: any) => {
+          requestCounts[req.employee_id] = (requestCounts[req.employee_id] || 0) + 1;
+        });
 
-        // Calculate proportional target for days passed
-        const dailyMinutes = (hoursPerWeek * 60) / 5;
-        const targetMinutesSoFar = dailyMinutes * workDaysPassed;
+        // Sum weekly minutes and find last entry per employee (this week)
+        const weeklyMinutes: Record<string, number> = {};
+        const lastTimeEntry: Record<string, string> = {};
+        (timeEntriesRes.data || []).forEach((entry: any) => {
+          weeklyMinutes[entry.user_id] = (weeklyMinutes[entry.user_id] || 0) + entry.minutes;
+          if (!lastTimeEntry[entry.user_id] || entry.work_date > lastTimeEntry[entry.user_id]) {
+            lastTimeEntry[entry.user_id] = entry.work_date;
+          }
+        });
 
-        return {
-          user_id: uid,
-          display_name: profile?.display_name || null,
-          avatar_url: profile?.avatar_url || null,
-          hours_per_week: hoursPerWeek,
-          last_meeting_date: settings?.last_meeting_date || null,
-          next_meeting_due,
-          open_meeting_requests: requestCounts[uid] || 0,
-          weekly_worked_minutes: weeklyMinutes[uid] || 0,
-          weekly_target_minutes: targetMinutesSoFar,
-          last_time_entry_date: lastTimeEntry[uid] || null,
-          days_without_entry: calculateBusinessDaysSince(lastGlobalEntry[uid] || null),
-        };
-      });
+        // Find last global entry per employee (for warning calculation)
+        const lastGlobalEntry: Record<string, string> = {};
+        (lastEntriesRes.data || []).forEach((entry: any) => {
+          if (!lastGlobalEntry[entry.user_id]) {
+            lastGlobalEntry[entry.user_id] = entry.work_date;
+          }
+        });
 
-      // Sort by next meeting due (urgent first)
-      members.sort((a, b) => {
-        if (a.open_meeting_requests > 0 && b.open_meeting_requests === 0) return -1;
-        if (a.open_meeting_requests === 0 && b.open_meeting_requests > 0) return 1;
-        if (a.next_meeting_due && b.next_meeting_due) {
-          return new Date(a.next_meeting_due).getTime() - new Date(b.next_meeting_due).getTime();
-        }
-        return 0;
-      });
+        // Calculate target minutes based on days passed in week
+        const dayOfWeek = today.getDay() === 0 ? 7 : today.getDay(); // 1=Mon, 7=Sun
+        const workDaysPassed = Math.min(dayOfWeek, 5); // Max 5 work days
 
-      setTeamMembers(members);
-    } catch (error) {
-      debugConsole.error("Error loading team:", error);
-    } finally {
-      setLoading(false);
-    }
-  };
+        const members: TeamMember[] = employeeIds.map(uid => {
+          const profile = profileMap.get(uid);
+          const settings = settingsMap.get(uid);
+          const hoursPerWeek = settings?.hours_per_week || 40;
+          
+          let next_meeting_due: string | null = null;
+          if (settings?.last_meeting_date && settings?.meeting_interval_months) {
+            const lastMeeting = new Date(settings.last_meeting_date);
+            const nextDue = new Date(lastMeeting);
+            nextDue.setMonth(nextDue.getMonth() + settings.meeting_interval_months);
+            next_meeting_due = nextDue.toISOString();
+          }
+
+          // Calculate proportional target for days passed
+          const dailyMinutes = (hoursPerWeek * 60) / 5;
+          const targetMinutesSoFar = dailyMinutes * workDaysPassed;
+
+          return {
+            user_id: uid,
+            display_name: profile?.display_name || null,
+            avatar_url: profile?.avatar_url || null,
+            hours_per_week: hoursPerWeek,
+            last_meeting_date: settings?.last_meeting_date || null,
+            next_meeting_due,
+            open_meeting_requests: requestCounts[uid] || 0,
+            weekly_worked_minutes: weeklyMinutes[uid] || 0,
+            weekly_target_minutes: targetMinutesSoFar,
+            last_time_entry_date: lastTimeEntry[uid] || null,
+            days_without_entry: calculateBusinessDaysSince(lastGlobalEntry[uid] || null),
+          };
+        });
+
+        // Sort by next meeting due (urgent first)
+        members.sort((a, b) => {
+          if (a.open_meeting_requests > 0 && b.open_meeting_requests === 0) return -1;
+          if (a.open_meeting_requests === 0 && b.open_meeting_requests > 0) return 1;
+          if (a.next_meeting_due && b.next_meeting_due) {
+            return new Date(a.next_meeting_due).getTime() - new Date(b.next_meeting_due).getTime();
+          }
+          return 0;
+        });
+
+        if (!cancelled) setTeamMembers(members);
+      } catch (error) {
+        debugConsole.error("Error loading team:", error);
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    };
+
+    void run();
+    return () => { cancelled = true; };
+  }, [user?.id, currentTenant?.id]);
 
   const getMeetingStatus = (nextDue: string | null) => {
     if (!nextDue) return null;
