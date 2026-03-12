@@ -255,7 +255,7 @@ export function MyWorkTeamTab() {
 
         // Find last global entry per employee (for warning calculation)
         const lastGlobalEntry: Record<string, string> = {};
-        (lastEntriesData || []).forEach((entry) => {
+        (lastEntriesData || []).forEach((entry: any) => {
           lastGlobalEntry[entry.user_id] = entry.last_work_date;
         });
 
