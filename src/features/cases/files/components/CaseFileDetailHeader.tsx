@@ -5,13 +5,14 @@ import { useCaseFileProcessingStatuses } from "@/hooks/useCaseFileProcessingStat
 import { icons, LucideIcon } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Archive, ArchiveRestore, Trash2, ArrowLeft } from "lucide-react";
+import { Archive, ArchiveRestore, Trash2, ArrowLeft, Pencil } from "lucide-react";
 
 interface CaseFileDetailHeaderProps {
   caseFile: CaseFile;
   onBack: () => void;
   onDelete: () => void;
   onArchive: () => void;
+  onEdit: () => void;
 }
 
 export function CaseFileDetailHeader({
@@ -19,6 +20,7 @@ export function CaseFileDetailHeader({
   onBack,
   onDelete,
   onArchive,
+  onEdit,
 }: CaseFileDetailHeaderProps) {
   const statusConfig = CASE_STATUSES.find((s) => s.value === caseFile.status);
   const { statuses: processingStatuses } = useCaseFileProcessingStatuses();
@@ -68,6 +70,10 @@ export function CaseFileDetailHeader({
           <Button variant="outline" size="sm" onClick={onArchive}>
             {caseFile.status === "archived" ? <ArchiveRestore className="mr-1.5 h-4 w-4" /> : <Archive className="mr-1.5 h-4 w-4" />}
             {caseFile.status === "archived" ? "Wiederherstellen" : "Archivieren"}
+          </Button>
+          <Button variant="outline" size="sm" onClick={onEdit}>
+            <Pencil className="mr-1.5 h-4 w-4" />
+            Bearbeiten
           </Button>
           <Button variant="destructive" size="sm" onClick={onDelete}>
             <Trash2 className="mr-1.5 h-4 w-4" />
