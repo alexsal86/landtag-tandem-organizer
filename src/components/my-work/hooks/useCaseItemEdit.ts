@@ -14,6 +14,13 @@ export type CaseItemInteractionDocument = {
   shortText: string | null;
 };
 
+export type TimelineDocumentAttachment = {
+  id: string;
+  title: string;
+  fileName: string;
+  filePath: string;
+};
+
 export type TimelineEvent = {
   id: string;
   type: "status" | "interaktion" | "entscheidung";

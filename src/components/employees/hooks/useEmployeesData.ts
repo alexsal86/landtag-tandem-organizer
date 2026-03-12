@@ -46,7 +46,7 @@ export function useEmployeesData() {
   const reloadPendingRequestsCount = useCallback(async () => {
     if (!currentTenant || !isAdmin) return;
     try {
-      const { data } = await queryClient.fetchQuery({
+      const data = await queryClient.fetchQuery({
         queryKey: adminOverviewKey,
         staleTime: 0,
         gcTime: ADMIN_OVERVIEW_GC_TIME_MS,
