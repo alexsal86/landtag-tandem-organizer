@@ -231,7 +231,7 @@ export function useMyWorkJourFixeSystemData(userId?: string, tenantId?: string) 
         }
       }
     },
-    [tenantId, userId, userProfiles],
+    [tenantId, userId],
   );
 
   return {
