@@ -1,4 +1,4 @@
-import { useState, useRef } from "react";
+import { useState, useRef, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { debugConsole } from "@/utils/debugConsole";
 import { startOfDay, endOfDay, addDays } from "date-fns";
@@ -30,6 +30,17 @@ export function useMeetingSidebarData(deps: UseMeetingSidebarDataDeps) {
   const [loadingCounter, setLoadingCounter] = useState(0);
   const updateTimeouts = useRef<Record<string, NodeJS.Timeout>>({});
 
+  // Stable refs for deps used inside useCallbacks
+  const userIdRef = useRef(userId);
+  userIdRef.current = userId;
+  const tenantIdRef = useRef(tenantId);
+  tenantIdRef.current = tenantId;
+  const toastRef = useRef(toast);
+  toastRef.current = toast;
+
+  // Request version guards to discard stale responses
+  const requestVersions = useRef<Record<string, number>>({});
+
   const withLoading = async <T,>(loader: () => Promise<T>): Promise<T> => {
     setLoadingCounter((prev) => prev + 1);
     try {
@@ -39,160 +50,193 @@ export function useMeetingSidebarData(deps: UseMeetingSidebarDataDeps) {
     }
   };
 
-  const loadLinkedQuickNotes = async (meetingId: string) => {
+  const loadLinkedQuickNotes = useCallback(async (meetingId: string) => {
+    const key = `notes-${meetingId}`;
+    const version = (requestVersions.current[key] || 0) + 1;
+    requestVersions.current[key] = version;
+
     await withLoading(async () => {
       try {
-      const { data, error } = await supabase
-        .from("quick_notes")
-        .select("*")
-        .eq("meeting_id", meetingId)
-        .order("created_at", { ascending: false });
-      if (error) {
-        debugConsole.error("Error loading linked quick notes:", error);
-        return;
-      }
+        const { data, error } = await supabase
+          .from("quick_notes")
+          .select("*")
+          .eq("meeting_id", meetingId)
+          .order("created_at", { ascending: false });
+        if (error) {
+          debugConsole.error("Error loading linked quick notes:", error);
+          return;
+        }
+        if (requestVersions.current[key] !== version) return;
         setLinkedQuickNotes(data || []);
       } catch (error) {
         debugConsole.error("Error loading linked quick notes:", error);
       }
     });
-  };
+  }, []);
 
-  const loadMeetingLinkedTasks = async (meetingId: string) => {
+  const loadMeetingLinkedTasks = useCallback(async (meetingId: string) => {
+    const key = `tasks-${meetingId}`;
+    const version = (requestVersions.current[key] || 0) + 1;
+    requestVersions.current[key] = version;
+
     await withLoading(async () => {
       try {
-      const { data, error } = await supabase
-        .from("tasks")
-        .select("id, title, description, due_date, priority, status, user_id")
-        .eq("meeting_id", meetingId)
-        .order("created_at", { ascending: false });
-      if (error) throw error;
+        const { data, error } = await supabase
+          .from("tasks")
+          .select("id, title, description, due_date, priority, status, user_id")
+          .eq("meeting_id", meetingId)
+          .order("created_at", { ascending: false });
+        if (error) throw error;
+        if (requestVersions.current[key] !== version) return;
         setMeetingLinkedTasks(data || []);
       } catch (error) {
         debugConsole.error("Error loading meeting linked tasks:", error);
-        setMeetingLinkedTasks([]);
+        // Keep existing data on error
       }
     });
-  };
+  }, []);
 
-  const loadMeetingLinkedCaseItems = async (meetingId: string) => {
-    if (!tenantId) return;
+  const loadMeetingLinkedCaseItems = useCallback(async (meetingId: string) => {
+    const tid = tenantIdRef.current;
+    if (!tid) return;
+    const key = `cases-${meetingId}`;
+    const version = (requestVersions.current[key] || 0) + 1;
+    requestVersions.current[key] = version;
+
     await withLoading(async () => {
       try {
-      const { data, error } = await supabase
-        .from("case_items")
-        .select("id, subject, status, priority, due_at, owner_user_id, pending_for_jour_fixe")
-        .eq("tenant_id", tenantId)
-        .neq("status", "erledigt")
-        .or(`meeting_id.eq.${meetingId},pending_for_jour_fixe.eq.true`);
-      if (error) throw error;
+        const { data, error } = await supabase
+          .from("case_items")
+          .select("id, subject, status, priority, due_at, owner_user_id, pending_for_jour_fixe")
+          .eq("tenant_id", tid)
+          .neq("status", "erledigt")
+          .or(`meeting_id.eq.${meetingId},pending_for_jour_fixe.eq.true`);
+        if (error) throw error;
+        if (requestVersions.current[key] !== version) return;
         setMeetingLinkedCaseItems(data || []);
       } catch (error) {
         debugConsole.error("Error loading meeting linked case items:", error);
-        setMeetingLinkedCaseItems([]);
       }
     });
-  };
+  }, []);
 
-  const loadMeetingRelevantDecisions = async () => {
-    if (!tenantId || !userId) return;
+  const loadMeetingRelevantDecisions = useCallback(async () => {
+    const tid = tenantIdRef.current;
+    const uid = userIdRef.current;
+    if (!tid || !uid) return;
+    const key = "decisions";
+    const version = (requestVersions.current[key] || 0) + 1;
+    requestVersions.current[key] = version;
+
     await withLoading(async () => {
       try {
-      const nowDate = new Date();
-      const now = nowDate.toISOString();
-      const in7Days = addDays(nowDate, 7).toISOString();
-      const { data, error } = await supabase
-        .from("task_decisions")
-        .select("id, title, description, response_deadline, priority, created_by, status")
-        .eq("tenant_id", tenantId)
-        .eq("status", "active")
-        .or(
-          `priority.gte.1,response_deadline.lt.${now},and(response_deadline.gte.${now},response_deadline.lte.${in7Days})`
-        )
-        .order("priority", { ascending: false, nullsFirst: false })
-        .order("response_deadline", { ascending: true, nullsFirst: false });
-      if (error) throw error;
+        const nowDate = new Date();
+        const now = nowDate.toISOString();
+        const in7Days = addDays(nowDate, 7).toISOString();
+        const { data, error } = await supabase
+          .from("task_decisions")
+          .select("id, title, description, response_deadline, priority, created_by, status")
+          .eq("tenant_id", tid)
+          .eq("status", "active")
+          .or(
+            `priority.gte.1,response_deadline.lt.${now},and(response_deadline.gte.${now},response_deadline.lte.${in7Days})`
+          )
+          .order("priority", { ascending: false, nullsFirst: false })
+          .order("response_deadline", { ascending: true, nullsFirst: false });
+        if (error) throw error;
 
-      const decisionIds = (data || []).map((d) => d.id);
-      let participantRows: Array<{ decision_id: string; user_id: string }> = [];
-      if (decisionIds.length > 0) {
-        const { data: participants, error: participantError } = await supabase
-          .from("task_decision_participants")
-          .select("decision_id, user_id")
-          .in("decision_id", decisionIds);
-        if (participantError) throw participantError;
-        participantRows = participants || [];
-      }
+        if (requestVersions.current[key] !== version) return;
 
-      const relevant = (data || []).filter(
-        (decision) =>
-          decision.created_by === userId ||
-          participantRows.some((p) => p.decision_id === decision.id && p.user_id === userId)
-      );
+        const decisionIds = (data || []).map((d) => d.id);
+        let participantRows: Array<{ decision_id: string; user_id: string }> = [];
+        if (decisionIds.length > 0) {
+          const { data: participants, error: participantError } = await supabase
+            .from("task_decision_participants")
+            .select("decision_id, user_id")
+            .in("decision_id", decisionIds);
+          if (participantError) throw participantError;
+          participantRows = participants || [];
+        }
+
+        if (requestVersions.current[key] !== version) return;
+
+        const relevant = (data || []).filter(
+          (decision) =>
+            decision.created_by === uid ||
+            participantRows.some((p) => p.decision_id === decision.id && p.user_id === uid)
+        );
         setMeetingRelevantDecisions(relevant);
       } catch (error) {
         debugConsole.error("Error loading meeting relevant decisions:", error);
-        setMeetingRelevantDecisions([]);
+        // Keep existing data on error – no destructive reset
       }
     });
-  };
+  }, []);
 
-  const loadMeetingUpcomingAppointments = async (meetingId: string, meetingDate: string | Date) => {
-    if (!tenantId) return;
+  const loadMeetingUpcomingAppointments = useCallback(async (meetingId: string, meetingDate: string | Date) => {
+    const tid = tenantIdRef.current;
+    if (!tid) return;
+    const key = `appts-${meetingId}`;
+    const version = (requestVersions.current[key] || 0) + 1;
+    requestVersions.current[key] = version;
+
     await withLoading(async () => {
       try {
-      const baseDate = typeof meetingDate === "string" ? new Date(meetingDate) : meetingDate;
-      const start = startOfDay(baseDate);
-      const end = endOfDay(addDays(baseDate, 14));
+        const baseDate = typeof meetingDate === "string" ? new Date(meetingDate) : meetingDate;
+        const start = startOfDay(baseDate);
+        const end = endOfDay(addDays(baseDate, 14));
 
-      const { data: internalData } = await supabase
-        .from("appointments")
-        .select("id, title, start_time, end_time, location, category, status")
-        .eq("tenant_id", tenantId)
-        .gte("start_time", start.toISOString())
-        .lte("start_time", end.toISOString())
-        .order("start_time", { ascending: true });
+        const { data: internalData } = await supabase
+          .from("appointments")
+          .select("id, title, start_time, end_time, location, category, status")
+          .eq("tenant_id", tid)
+          .gte("start_time", start.toISOString())
+          .lte("start_time", end.toISOString())
+          .order("start_time", { ascending: true });
 
-      const { data: externalData } = await supabase
-        .from("external_events")
-        .select(
-          "id, title, start_time, end_time, location, external_calendars!inner(name, color, tenant_id)"
-        )
-        .eq("external_calendars.tenant_id", tenantId)
-        .gte("start_time", start.toISOString())
-        .lte("start_time", end.toISOString());
+        const { data: externalData } = await supabase
+          .from("external_events")
+          .select(
+            "id, title, start_time, end_time, location, external_calendars!inner(name, color, tenant_id)"
+          )
+          .eq("external_calendars.tenant_id", tid)
+          .gte("start_time", start.toISOString())
+          .lte("start_time", end.toISOString());
 
-      const all: MeetingUpcomingAppointment[] = [
-        ...(internalData || []).map((a) => ({ ...a, isExternal: false as const })),
-        ...(externalData || []).map(
-          (e: any) => ({
-            id: e.id,
-            title: e.title,
-            start_time: e.start_time,
-            end_time: e.end_time,
-            location: e.location,
-            isExternal: true as const,
-            calendarName: e.external_calendars?.name,
-            calendarColor: e.external_calendars?.color,
-          })
-        ),
-      ].sort((a, b) => new Date(a.start_time).getTime() - new Date(b.start_time).getTime());
+        if (requestVersions.current[key] !== version) return;
+
+        const all: MeetingUpcomingAppointment[] = [
+          ...(internalData || []).map((a) => ({ ...a, isExternal: false as const })),
+          ...(externalData || []).map(
+            (e: any) => ({
+              id: e.id,
+              title: e.title,
+              start_time: e.start_time,
+              end_time: e.end_time,
+              location: e.location,
+              isExternal: true as const,
+              calendarName: e.external_calendars?.name,
+              calendarColor: e.external_calendars?.color,
+            })
+          ),
+        ].sort((a, b) => new Date(a.start_time).getTime() - new Date(b.start_time).getTime());
         setMeetingUpcomingAppointments(all);
       } catch (error) {
         debugConsole.error("Error loading upcoming appointments:", error);
-        setMeetingUpcomingAppointments([]);
+        // Keep existing data on error
       }
     });
-  };
+  }, []);
 
-  const loadStarredAppointments = async (meetingId: string) => {
-    if (!userId) return;
+  const loadStarredAppointments = useCallback(async (meetingId: string) => {
+    const uid = userIdRef.current;
+    if (!uid) return;
     try {
       const { data, error } = await supabase
         .from("starred_appointments")
         .select("id, appointment_id, external_event_id")
         .eq("meeting_id", meetingId)
-        .eq("user_id", userId);
+        .eq("user_id", uid);
       if (error) throw error;
       const ids = new Set<string>();
       data?.forEach((item) => {
@@ -203,10 +247,12 @@ export function useMeetingSidebarData(deps: UseMeetingSidebarDataDeps) {
     } catch (error) {
       debugConsole.error("Error loading starred appointments:", error);
     }
-  };
+  }, []);
 
-  const toggleStarAppointment = async (appt: MeetingUpcomingAppointment, activeMeetingId: string | null) => {
-    if (!activeMeetingId || !userId || !tenantId) return;
+  const toggleStarAppointment = useCallback(async (appt: MeetingUpcomingAppointment, activeMeetingId: string | null) => {
+    const uid = userIdRef.current;
+    const tid = tenantIdRef.current;
+    if (!activeMeetingId || !uid || !tid) return;
     const isCurrentlyStarred = starredAppointmentIds.has(appt.id);
     setStarredAppointmentIds((prev) => {
       const newSet = new Set(prev);
@@ -220,7 +266,7 @@ export function useMeetingSidebarData(deps: UseMeetingSidebarDataDeps) {
           .from("starred_appointments")
           .delete()
           .eq("meeting_id", activeMeetingId)
-          .eq("user_id", userId)
+          .eq("user_id", uid)
           .or(`appointment_id.eq.${appt.id},external_event_id.eq.${appt.id}`);
       } else {
         const insertData: {
@@ -229,7 +275,7 @@ export function useMeetingSidebarData(deps: UseMeetingSidebarDataDeps) {
           tenant_id: string;
           appointment_id?: string;
           external_event_id?: string;
-        } = { meeting_id: activeMeetingId, user_id: userId, tenant_id: tenantId };
+        } = { meeting_id: activeMeetingId, user_id: uid, tenant_id: tid };
         if (appt.isExternal) insertData.external_event_id = appt.id;
         else insertData.appointment_id = appt.id;
         await supabase.from("starred_appointments").insert(insertData);
@@ -243,9 +289,9 @@ export function useMeetingSidebarData(deps: UseMeetingSidebarDataDeps) {
         return newSet;
       });
     }
-  };
+  }, [starredAppointmentIds]);
 
-  const updateQuickNoteResult = async (noteId: string, result: string) => {
+  const updateQuickNoteResult = useCallback(async (noteId: string, result: string) => {
     setLinkedQuickNotes((prev) =>
       prev.map((note) => (note.id === noteId ? { ...note, meeting_result: result } : note))
     );
@@ -260,14 +306,14 @@ export function useMeetingSidebarData(deps: UseMeetingSidebarDataDeps) {
         if (error) throw error;
       } catch (error) {
         debugConsole.error("Error updating quick note result:", error);
-        toast({
+        toastRef.current({
           title: "Fehler",
           description: "Das Ergebnis konnte nicht gespeichert werden.",
           variant: "destructive",
         });
       }
     }, 500);
-  };
+  }, []);
 
   return {
     // State
@@ -281,7 +327,7 @@ export function useMeetingSidebarData(deps: UseMeetingSidebarDataDeps) {
     expandedApptNotes,
     setExpandedApptNotes,
     isMeetingLinkedDataLoading: loadingCounter > 0,
-    // Functions
+    // Functions (all stable via useCallback)
     loadLinkedQuickNotes,
     loadMeetingLinkedTasks,
     loadMeetingLinkedCaseItems,

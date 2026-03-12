@@ -127,6 +127,8 @@ export function useMeetingsData() {
   }, [user, currentTenant?.id]);
 
   // Auto-select next upcoming meeting (skip if URL deep-link is present)
+  // Only sets selectedMeeting + loads agenda; linked sidebar data is loaded
+  // by the selectedMeeting.id change effect below.
   useEffect(() => {
     if (meetings.length > 0 && !selectedMeeting && !activeMeeting && !searchMeetingId && !deepLinkIdRef.current) {
       const now = new Date();
@@ -139,27 +141,10 @@ export function useMeetingsData() {
         setSelectedMeeting(nextMeeting);
         if (nextMeeting.id) {
           loadAgendaItems(nextMeeting.id);
-          loadLinkedQuickNotes(nextMeeting.id);
-          loadMeetingLinkedTasks(nextMeeting.id);
-          loadMeetingLinkedCaseItems(nextMeeting.id);
-          loadMeetingRelevantDecisions();
-          loadMeetingUpcomingAppointments(nextMeeting.id, nextMeeting.meeting_date);
-          loadStarredAppointments(nextMeeting.id);
         }
       }
     }
-  }, [
-    meetings,
-    selectedMeeting,
-    activeMeeting,
-    searchMeetingId,
-    loadLinkedQuickNotes,
-    loadMeetingLinkedTasks,
-    loadMeetingLinkedCaseItems,
-    loadMeetingRelevantDecisions,
-    loadMeetingUpcomingAppointments,
-    loadStarredAppointments,
-  ]);
+  }, [meetings, selectedMeeting, activeMeeting, searchMeetingId]);
 
   // Load linked data when selectedMeeting.id changes (single load point)
   const prevSelectedMeetingIdRef = useRef<string | null>(null);
