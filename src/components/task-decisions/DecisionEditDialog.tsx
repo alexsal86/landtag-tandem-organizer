@@ -277,7 +277,7 @@ export const DecisionEditDialog = ({ decisionId, isOpen, onClose, onUpdated }: D
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="sm:max-w-[500px] max-h-[90vh] overflow-hidden flex flex-col">
+      <DialogContent className="sm:max-w-[500px] max-h-[90vh] overflow-hidden">
         <DialogHeader>
           <DialogTitle>Entscheidung bearbeiten</DialogTitle>
         </DialogHeader>
@@ -297,7 +297,7 @@ export const DecisionEditDialog = ({ decisionId, isOpen, onClose, onUpdated }: D
               onChange={setDescription}
               placeholder="Zusätzliche Details zur Entscheidung"
               minHeight="100px"
-              maxHeight="40vh"
+              maxHeight="240px"
               scrollable
             />
           </div>
