@@ -34,7 +34,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import { useCaseWorkspaceData, type CaseFile, type CaseItem, type TeamUser } from "@/components/my-work/hooks/useCaseWorkspaceData";
-import { useCaseItemEdit, type EditableCaseItem, type TimelineEvent, type TimelineInteractionType } from "@/components/my-work/hooks/useCaseItemEdit";
+import { useCaseItemEdit, type CaseItemInteractionDocument, type EditableCaseItem, type TimelineEvent, type TimelineInteractionType } from "@/components/my-work/hooks/useCaseItemEdit";
 import { DEFAULT_CASE_ITEM_CATEGORIES, useCaseItemCategories } from "@/hooks/useCaseItemCategories";
 
 
@@ -77,8 +77,8 @@ const interactionTypeOptions: Array<{ value: TimelineInteractionType; label: str
   { value: "anruf", label: "Anruf", icon: Phone },
   { value: "mail", label: "Mail", icon: Mail },
   { value: "treffen", label: "Treffen", icon: Users },
-  { value: "gespraech", label: "Gespräch", icon: MessageSquare },
-  { value: "notiz", label: "Notiz", icon: FileText },
+  { value: "dokument", label: "Dokument", icon: FileText },
+  { value: "notiz", label: "Notiz", icon: MessageSquare },
 ];
 
 const toEditorHtml = (value: string | null | undefined) => {
@@ -144,6 +144,33 @@ const parseTimelineEvents = (payload: CaseItemIntakePayload | null): TimelineEve
 };
 
 
+
+
+const parseInteractionDocuments = (payload: CaseItemIntakePayload | null): CaseItemInteractionDocument[] => {
+  const rawPayload = payload as Record<string, unknown> | null;
+  const raw = rawPayload?.interaction_documents;
+  if (!Array.isArray(raw)) return [];
+
+  return raw
+    .map((item) => {
+      if (!item || typeof item !== "object") return null;
+      const value = item as Record<string, unknown>;
+      if (typeof value.id !== "string" || typeof value.filePath !== "string") return null;
+      return {
+        id: value.id,
+        title: typeof value.title === "string" ? value.title : "Dokument",
+        fileName: typeof value.fileName === "string" ? value.fileName : "",
+        filePath: value.filePath,
+        uploadedBy: typeof value.uploadedBy === "string" ? value.uploadedBy : null,
+        uploadedByName: typeof value.uploadedByName === "string" ? value.uploadedByName : null,
+        uploadedAt: typeof value.uploadedAt === "string" ? value.uploadedAt : new Date().toISOString(),
+        documentDate: typeof value.documentDate === "string" ? value.documentDate : null,
+        shortText: typeof value.shortText === "string" ? value.shortText : null,
+      } satisfies CaseItemInteractionDocument;
+    })
+    .filter((doc): doc is CaseItemInteractionDocument => Boolean(doc))
+    .sort((a, b) => a.title.localeCompare(b.title, "de", { sensitivity: "base" }));
+};
 
 const getContactName = (payload: CaseItemIntakePayload | null): string => {
   const value = payload?.contact_name;
@@ -719,6 +746,7 @@ export function MyWorkCasesWorkspace() {
       assigneeIds: getAssigneeIds(item),
       visibleToAll: item.visible_to_all === true,
       timelineEvents: parseTimelineEvents(item.intake_payload),
+      interactionDocuments: parseInteractionDocuments(item.intake_payload),
       interactionType: "",
       interactionContact: getContactDetail(item.intake_payload) || getContactName(item.intake_payload),
       interactionDateTime: "",
@@ -828,7 +856,7 @@ export function MyWorkCasesWorkspace() {
     return parsed.toISOString();
   }, []);
 
-  const handleAddInteraction = useCallback(() => {
+  const handleAddInteraction = useCallback(async (files: File[] = []) => {
     if (!editableCaseItem) return;
     if (!editableCaseItem.interactionType) {
       toast.error("Bitte zuerst eine Interaktion auswählen.");
@@ -839,7 +867,65 @@ export function MyWorkCasesWorkspace() {
     const fallbackTypeLabel = typeMeta?.label || "Interaktion";
 
     let title = fallbackTypeLabel;
-    if (editableCaseItem.interactionType === "anruf") {
+
+    if (editableCaseItem.interactionType === "dokument") {
+      if (!currentTenant?.id || !user?.id) {
+        toast.error("Dokument-Upload ist aktuell nicht verfügbar.");
+        return;
+      }
+      if (files.length === 0) {
+        toast.error("Bitte mindestens ein Dokument auswählen.");
+        return;
+      }
+
+      const uploaded: CaseItemInteractionDocument[] = [];
+      for (const file of files) {
+        const fileExt = file.name.split(".").pop();
+        const storagePath = `${user.id}/${Date.now()}-${Math.random().toString(36).slice(2)}${fileExt ? `.${fileExt}` : ""}`;
+
+        const { error: uploadError } = await supabase.storage.from("documents").upload(storagePath, file);
+        if (uploadError) {
+          toast.error(`Upload fehlgeschlagen: ${file.name}`);
+          return;
+        }
+
+        const { data: documentRow, error: insertError } = await supabase
+          .from("documents")
+          .insert({
+            user_id: user.id,
+            tenant_id: currentTenant.id,
+            title: file.name,
+            file_name: file.name,
+            file_path: storagePath,
+            file_size: file.size,
+            file_type: file.type || null,
+          })
+          .select("id, title, file_name, file_path")
+          .single();
+
+        if (insertError || !documentRow) {
+          toast.error(`Dokument konnte nicht gespeichert werden: ${file.name}`);
+          return;
+        }
+
+        uploaded.push({
+          id: documentRow.id,
+          title: documentRow.title,
+          fileName: documentRow.file_name,
+          filePath: documentRow.file_path,
+          uploadedBy: user.id,
+          uploadedByName: teamUsers.find((member) => member.id === user.id)?.name || null,
+          uploadedAt: new Date().toISOString(),
+          documentDate: editableCaseItem.interactionDateTime ? formatInteractionTimestamp(editableCaseItem.interactionDateTime) : null,
+          shortText: normalizeRichTextValue(editableCaseItem.interactionNote),
+        });
+      }
+
+      updateEdit({
+        interactionDocuments: [...editableCaseItem.interactionDocuments, ...uploaded].sort((a, b) => a.title.localeCompare(b.title, "de", { sensitivity: "base" })),
+      });
+      toast.success(uploaded.length > 1 ? `${uploaded.length} Dokumente hinzugefügt.` : "Dokument hinzugefügt.");
+    } else if (editableCaseItem.interactionType === "anruf") {
       title = `Telefonat mit ${contact || "unbekannt"}`;
     } else if (editableCaseItem.interactionType === "mail") {
       title = `E-Mail mit ${contact || "unbekannt"}`;
@@ -847,15 +933,17 @@ export function MyWorkCasesWorkspace() {
       title = `${fallbackTypeLabel} mit ${contact}`;
     }
 
-    appendTimelineEvent({
-      type: "interaktion",
-      title,
-      note: normalizeRichTextValue(editableCaseItem.interactionNote) || undefined,
-      interactionType: editableCaseItem.interactionType,
-      timestamp: formatInteractionTimestamp(editableCaseItem.interactionDateTime),
-    });
+    if (editableCaseItem.interactionType !== "dokument") {
+      appendTimelineEvent({
+        type: "interaktion",
+        title,
+        note: normalizeRichTextValue(editableCaseItem.interactionNote) || undefined,
+        interactionType: editableCaseItem.interactionType,
+        timestamp: formatInteractionTimestamp(editableCaseItem.interactionDateTime),
+      });
+    }
     updateEdit({ interactionContact: "", interactionDateTime: "", interactionNote: "" });
-  }, [appendTimelineEvent, editableCaseItem, formatInteractionTimestamp, updateEdit]);
+  }, [appendTimelineEvent, currentTenant?.id, editableCaseItem, formatInteractionTimestamp, teamUsers, updateEdit, user?.id]);
 
   const handleRequestDecision = useCallback(() => {
     if (!editableCaseItem || !detailItemId) return;
@@ -969,6 +1057,69 @@ export function MyWorkCasesWorkspace() {
     return entries.sort((a, b) => toTimeSafe(a.timestamp) - toTimeSafe(b.timestamp));
   }, [deleteTimelineEvent, detailItemId, editableCaseItem, linkedDecisions, user?.id]);
 
+
+  const handleDownloadInteractionDocument = useCallback(async (document: CaseItemInteractionDocument) => {
+    const { data, error } = await supabase.storage.from("documents").download(document.filePath);
+    if (error || !data) {
+      toast.error("Dokument konnte nicht heruntergeladen werden.");
+      return;
+    }
+
+    const url = URL.createObjectURL(data);
+    const link = window.document.createElement("a");
+    link.href = url;
+    link.download = document.fileName || document.title || "dokument";
+    window.document.body.appendChild(link);
+    link.click();
+    window.document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+  }, []);
+
+  const handleRenameInteractionDocument = useCallback(async (documentId: string, title: string) => {
+    if (!title.trim()) {
+      toast.error("Bitte einen Dokumentnamen eingeben.");
+      return;
+    }
+
+    const target = editableCaseItem?.interactionDocuments.find((doc) => doc.id === documentId);
+    if (!target) return;
+
+    const { error } = await supabase.from("documents").update({ title: title.trim() }).eq("id", documentId);
+    if (error) {
+      toast.error("Dokumentname konnte nicht aktualisiert werden.");
+      return;
+    }
+
+    updateEdit({
+      interactionDocuments: editableCaseItem!.interactionDocuments
+        .map((doc) => (doc.id === documentId ? { ...doc, title: title.trim() } : doc))
+        .sort((a, b) => a.title.localeCompare(b.title, "de", { sensitivity: "base" })),
+    });
+    toast.success("Dokumentname aktualisiert.");
+  }, [editableCaseItem, updateEdit]);
+
+  const handleDeleteInteractionDocument = useCallback(async (documentId: string) => {
+    const target = editableCaseItem?.interactionDocuments.find((doc) => doc.id === documentId);
+    if (!target) return;
+
+    await supabase.storage.from("documents").remove([target.filePath]);
+    const { error } = await supabase.from("documents").delete().eq("id", documentId);
+    if (error) {
+      toast.error("Dokument konnte nicht gelöscht werden.");
+      return;
+    }
+
+    updateEdit({ interactionDocuments: editableCaseItem!.interactionDocuments.filter((doc) => doc.id !== documentId) });
+    toast.success("Dokument gelöscht.");
+  }, [editableCaseItem, updateEdit]);
+
+  const handleUpdateInteractionDocumentMeta = useCallback((documentId: string, patch: { shortText?: string | null; documentDate?: string | null }) => {
+    if (!editableCaseItem) return;
+    updateEdit({
+      interactionDocuments: editableCaseItem.interactionDocuments.map((doc) => (doc.id === documentId ? { ...doc, ...patch } : doc)),
+    });
+  }, [editableCaseItem, updateEdit]);
+
   const handleCaseItemSave = async () => {
     if (!detailItemId || !editableCaseItem) return;
     if (editableCaseItem.status === "erledigt" && (!editableCaseItem.completionNote.trim() || !editableCaseItem.completedAt)) {
@@ -983,6 +1134,7 @@ export function MyWorkCasesWorkspace() {
       category: editableCaseItem.category,
       assignee_ids: editableCaseItem.assigneeIds,
       timeline_events: editableCaseItem.timelineEvents,
+      interaction_documents: editableCaseItem.interactionDocuments,
       contact_name: parsedName,
       contact_detail: parsedDetail,
       contact_email: editableCaseItem.contactEmail.trim() || null,
@@ -1485,6 +1637,10 @@ export function MyWorkCasesWorkspace() {
                                                 onDecisionRequest={handleRequestDecision}
                                                 onDecisionReceived={handleDecisionReceived}
                                                 onAddInteraction={handleAddInteraction}
+                                                onDownloadDocument={handleDownloadInteractionDocument}
+                                                onRenameDocument={handleRenameInteractionDocument}
+                                                onDeleteDocument={handleDeleteInteractionDocument}
+                                                onUpdateDocumentMeta={handleUpdateInteractionDocumentMeta}
                                                 onCreateCaseFile={handleCreateCaseFile}
                                                 onNavigateToCaseFile={(caseFileId) => navigate(`/casefiles?caseFileId=${caseFileId}`)}
                                                 contactDisplay={contactDisplay}
