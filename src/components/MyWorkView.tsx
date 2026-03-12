@@ -275,9 +275,17 @@ export function MyWorkView() {
   const loadUserRoleAndCounts = async () => {
     if (!user) return;
 
-    const [adminCheck, roleData, feedbackFeedVisibilitySetting] = await Promise.all([
-      supabase.rpc("is_admin", { _user_id: user.id }),
-      supabase.from("user_roles").select("role").eq("user_id", user.id).single(),
+    // Use tenant membership as primary role source (robust against user_roles RLS issues)
+    const [membershipData, feedbackFeedVisibilitySetting] = await Promise.all([
+      currentTenant?.id
+        ? supabase
+            .from("user_tenant_memberships")
+            .select("role")
+            .eq("tenant_id", currentTenant.id)
+            .eq("user_id", user.id)
+            .eq("is_active", true)
+            .maybeSingle()
+        : Promise.resolve({ data: null, error: null }),
       supabase
         .from("app_settings")
         .select("setting_value")
@@ -285,9 +293,9 @@ export function MyWorkView() {
         .maybeSingle(),
     ]);
 
-    const admin = !!adminCheck.data;
-    const role = (roleData.data?.role || null) as UserRole;
+    const role = (membershipData.data?.role || null) as UserRole;
     const roleFlags = getRoleFlags(role);
+    const admin = roleFlags.isAdmin;
 
     setIsAdmin(admin);
     setIsEmployee(roleFlags.isEmployee);
