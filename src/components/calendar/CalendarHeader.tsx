@@ -31,7 +31,7 @@ export function CalendarHeader({ onShowPolls, selectedDate, onSelectDate }: Cale
       <div className="mt-6 rounded-lg border bg-background/70 p-1.5">
         <Calendar
           mode="single"
-          navLayout="around"
+          navLayout="after"
           month={selectedDate}
           selected={selectedDate}
           onSelect={(date) => {
@@ -41,9 +41,9 @@ export function CalendarHeader({ onShowPolls, selectedDate, onSelectDate }: Cale
           onMonthChange={onSelectDate}
           showWeekNumber
           classNames={{
-            month_caption: "flex w-full flex-row items-center justify-between gap-1 px-1 mb-1",
-            caption_label: "text-sm font-semibold text-left capitalize",
-            nav: "!relative !inset-auto ml-auto flex w-auto items-center justify-end gap-0.5",
+            month_caption: "flex w-full flex-nowrap items-center justify-between gap-2 px-1 mb-1",
+            caption_label: "min-w-0 text-sm font-semibold text-left capitalize whitespace-nowrap",
+            nav: "!relative !inset-auto !m-0 flex w-auto shrink-0 items-center justify-end gap-0.5 self-center",
             button_previous: "!static h-6 w-6 border-0 bg-transparent p-0 shadow-none hover:bg-accent/60",
             button_next: "!static h-6 w-6 border-0 bg-transparent p-0 shadow-none hover:bg-accent/60",
             month_grid: "w-full border-collapse space-y-0",
