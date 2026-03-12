@@ -184,8 +184,9 @@ export function SystemAgendaItem({
         <CardContent className="px-3 pb-2 pt-0">
           {linkedQuickNotes.length > 0 ? (
             <div className="space-y-2">
-              {linkedQuickNotes.map((note) => (
+              {linkedQuickNotes.map((note, index) => (
                 <div key={note.id} className="p-3 bg-muted/50 rounded-md">
+                  <p className="text-xs font-medium text-muted-foreground mb-1">{index + 1}.</p>
                   {note.title && (
                     <h4 className="font-semibold text-sm mb-1">{note.title}</h4>
                   )}
@@ -218,8 +219,9 @@ export function SystemAgendaItem({
         <CardContent className="px-3 pb-2 pt-0">
           {linkedTasks.length > 0 ? (
             <div className="space-y-2">
-              {linkedTasks.map((task) => (
+              {linkedTasks.map((task, index) => (
                 <div key={task.id} className="p-3 bg-muted/50 rounded-md">
+                  <p className="text-xs font-medium text-muted-foreground mb-1">{index + 1}.</p>
                   <h4 className="font-semibold text-sm mb-1">{task.title}</h4>
                   {task.description && (
                     <RichTextDisplay content={task.description} className="text-sm text-muted-foreground" />
@@ -256,8 +258,9 @@ export function SystemAgendaItem({
           </p>
           {linkedDecisions.length > 0 ? (
             <div className="space-y-2">
-              {linkedDecisions.map((decision) => (
+              {linkedDecisions.map((decision, index) => (
                 <div key={decision.id} className="p-3 bg-muted/50 rounded-md">
+                  <p className="text-xs font-medium text-muted-foreground mb-1">{index + 1}.</p>
                   <h4 className="font-semibold text-sm mb-1">{decision.title}</h4>
                   {decision.description && (
                     <RichTextDisplay content={decision.description} className="text-sm text-muted-foreground" />
@@ -290,15 +293,6 @@ export function SystemAgendaItem({
       mittel: 'text-yellow-600',
       niedrig: 'text-green-600',
     };
-    const statusLabels: Record<string, string> = {
-      offen: 'Offen',
-      in_bearbeitung: 'In Bearbeitung',
-      wartend: 'Wartend',
-      entscheidung_abwartend: 'Entscheidung abw.',
-      geloest: 'Gelöst',
-      geschlossen: 'Geschlossen',
-    };
-
     return (
       <Card className={cn("border-l-4", getBorderColor(), className)}>
         {renderHeader(
@@ -307,13 +301,11 @@ export function SystemAgendaItem({
         <CardContent className="px-3 pb-2 pt-0">
           {linkedCaseItems.length > 0 ? (
             <div className="space-y-2">
-              {linkedCaseItems.map((ci) => (
+              {linkedCaseItems.map((ci, index) => (
                 <div key={ci.id} className="p-3 bg-muted/50 rounded-md">
+                  <p className="text-xs font-medium text-muted-foreground mb-1">{index + 1}.</p>
                   <h4 className="font-semibold text-sm mb-1">{ci.subject || '(Kein Betreff)'}</h4>
                   <div className="flex flex-wrap gap-2 text-xs text-muted-foreground mt-1">
-                    <Badge variant="outline" className="text-xs">
-                      {statusLabels[ci.status] || ci.status}
-                    </Badge>
                     <span className={cn("font-medium", ci.priority ? priorityColors[ci.priority] : '')}>
                       {ci.priority}
                     </span>
