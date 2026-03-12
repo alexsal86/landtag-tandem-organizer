@@ -7,6 +7,10 @@ import { useToast } from "@/hooks/use-toast";
 import { format } from "date-fns";
 import { de } from "date-fns/locale";
 import { debugConsole } from '@/utils/debugConsole';
+import {
+  PRESS_EMAIL_TEMPLATE_BODY_DEFAULT,
+  PRESS_EMAIL_TEMPLATE_SUBJECT_DEFAULT,
+} from "@/lib/pressEmailTemplateDefaults";
 
 // ── Types ────────────────────────────────────────────────────
 export interface Contact {
@@ -134,8 +138,8 @@ export function useEmailComposer() {
         .eq("tenant_id", currentTenant!.id)
         .in("setting_key", ["press_email_template_subject", "press_email_template_body", "press_default_distribution_list_id"]);
 
-      let templateSubject = "Pressemitteilung: {{titel}}";
-      let templateBody = "Sehr geehrte Damen und Herren,\n\nanbei erhalten Sie unsere aktuelle Pressemitteilung:\n\n{{titel}}\n\n{{excerpt}}\n\n{{inhalt}}\n\nDen vollständigen Beitrag finden Sie unter:\n{{link}}";
+      let templateSubject = PRESS_EMAIL_TEMPLATE_SUBJECT_DEFAULT;
+      let templateBody = PRESS_EMAIL_TEMPLATE_BODY_DEFAULT;
       let defaultDistListId: string | null = null;
 
       (settings || []).forEach((s) => {

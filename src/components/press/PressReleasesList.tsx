@@ -12,6 +12,11 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Separator } from "@/components/ui/separator";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from "@/components/ui/dialog";
 import { PressReleaseStatusBadge } from "./PressReleaseStatusBadge";
+import {
+  hasPressEmailTemplateCoreVariable,
+  PRESS_EMAIL_TEMPLATE_BODY_DEFAULT,
+  PRESS_EMAIL_TEMPLATE_SUBJECT_DEFAULT,
+} from "@/lib/pressEmailTemplateDefaults";
 import { Plus, Search, FileText, Calendar, User, Settings, Globe, Mail } from "lucide-react";
 import { format } from "date-fns";
 import { de } from "date-fns/locale";
@@ -90,18 +95,27 @@ export function PressReleasesList({ onCreateNew, onSelect }: PressReleasesListPr
       if (s.setting_key === 'press_email_template_body') loadedBody = s.setting_value || '';
       if (s.setting_key === 'press_default_distribution_list_id') setDefaultDistListId(s.setting_value || '');
     });
-    setEmailTemplateSubject(loadedSubject || 'Pressemitteilung: {{titel}}');
-    setEmailTemplateBody(loadedBody || 'Sehr geehrte Damen und Herren,\n\nanbei erhalten Sie unsere aktuelle Pressemitteilung:\n\n{{titel}}\n\n{{excerpt}}\n\nDen vollständigen Beitrag finden Sie unter:\n{{link}}');
+    setEmailTemplateSubject(loadedSubject || PRESS_EMAIL_TEMPLATE_SUBJECT_DEFAULT);
+    setEmailTemplateBody(loadedBody || PRESS_EMAIL_TEMPLATE_BODY_DEFAULT);
   };
 
   const saveSettings = async () => {
     if (!currentTenant) return;
+
+    const trimmedTemplateBody = emailTemplateBody.trim();
+    if (trimmedTemplateBody && !hasPressEmailTemplateCoreVariable(trimmedTemplateBody)) {
+      toast({
+        title: "Hinweis zum Template",
+        description: "Im Nachrichtentext fehlen die Kernvariablen {{titel}} oder {{inhalt}}. Dadurch kann der Pressetext unvollständig sein.",
+      });
+    }
+
     setSavingSettings(true);
     try {
       const settings = [
         { key: 'press_default_tags', value: defaultTags.trim() },
         { key: 'press_email_template_subject', value: emailTemplateSubject.trim() },
-        { key: 'press_email_template_body', value: emailTemplateBody.trim() },
+        { key: 'press_email_template_body', value: trimmedTemplateBody },
         { key: 'press_default_distribution_list_id', value: defaultDistListId === 'none' ? '' : defaultDistListId.trim() },
       ];
 
@@ -267,7 +281,7 @@ export function PressReleasesList({ onCreateNew, onSelect }: PressReleasesListPr
                       className="w-full min-h-[120px] rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                       value={emailTemplateBody}
                       onChange={(e) => setEmailTemplateBody(e.target.value)}
-                      placeholder={"Sehr geehrte Damen und Herren,\n\nanbei erhalten Sie unsere aktuelle Pressemitteilung:\n\n{{titel}}\n\n{{excerpt}}\n\nDen vollständigen Beitrag finden Sie unter:\n{{link}}"}
+                      placeholder={PRESS_EMAIL_TEMPLATE_BODY_DEFAULT}
                     />
                   </div>
                 </div>
