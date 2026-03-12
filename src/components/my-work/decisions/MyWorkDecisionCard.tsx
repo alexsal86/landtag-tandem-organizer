@@ -200,6 +200,8 @@ const MyWorkDecisionCardInner = ({
         { key: 'question', label: 'Rückfrage', count: summary.questionCount, textClass: 'text-orange-600' },
       ];
 
+  const showInlineSummaryCounts = !decision.isParticipant || decision.hasResponded;
+
   const winningResponse = useMemo(() => {
     if (summary.pending !== 0 || summary.total === 0) return null;
 
@@ -226,6 +228,12 @@ const MyWorkDecisionCardInner = ({
     avatar_url: p.profile?.avatar_url || null,
     response_type: p.responses[0]?.response_type || null,
   }));
+
+
+  const pendingParticipants = (decision.participants || []).filter((participant) => !participant.responses?.[0]);
+  const pendingParticipantNames = pendingParticipants
+    .map((participant) => participant.profile?.display_name || 'Unbekannt')
+    .join(', ');
 
   const clearResponseRefreshTimeout = () => {
     if (responseRefreshTimeoutRef.current !== null) {
@@ -532,100 +540,131 @@ const MyWorkDecisionCardInner = ({
               )}
 
               <div className="border-t border-border/70 pt-3 text-xs text-muted-foreground space-y-2">
-                {winningResponse && (
-                  <div className={cn('text-lg font-extrabold', winningResponse.textClass)}>
-                    Ergebnis: {winningResponse.label}
-                  </div>
+                {(winningResponse || showInlineSummaryCounts) && (
+                  <>
+                    {winningResponse && (
+                      <div className={cn('text-lg font-extrabold', winningResponse.textClass)}>
+                        Ergebnis: {winningResponse.label}
+                      </div>
+                    )}
+                    {showInlineSummaryCounts && (
+                      <div className="flex flex-wrap items-center gap-1 text-sm font-semibold">
+                        {summaryItems.map((item, idx) => (
+                          <span key={item.key} className="inline-flex items-center gap-1">
+                            {idx > 0 && <span className="text-muted-foreground">•</span>}
+                            <span className={item.textClass}>{item.count}</span>
+                            <span className={item.textClass}>{item.label}</span>
+                          </span>
+                        ))}
+                      </div>
+                    )}
+                  </>
                 )}
-                <div className="flex items-start justify-between gap-4">
-                  <div className="flex flex-wrap items-center gap-1 text-sm font-semibold">
-                    {summaryItems.map((item, idx) => (
-                      <span key={item.key} className="inline-flex items-center gap-1">
-                        {idx > 0 && <span className="text-muted-foreground">•</span>}
-                        <span className={item.textClass}>{item.count}</span>
-                        <span className={item.textClass}>{item.label}</span>
-                      </span>
-                    ))}
+
+                <div className="flex items-center justify-between gap-3">
+                  <div className="flex flex-wrap items-center gap-1.5 min-w-0">
+                    <span>{new Date(decision.created_at).toLocaleDateString('de-DE')}</span>
+                    {decision.creator && (
+                      <>
+                        <span>•</span>
+                        <span>{decision.creator.display_name || 'Unbekannt'}</span>
+                      </>
+                    )}
+                    <span>•</span>
+                    <button
+                      onClick={() => onOpenComments(decision.id, decision.title)}
+                      className="inline-flex items-center gap-1 hover:text-foreground transition-colors"
+                    >
+                      <MessageSquare className="h-3.5 w-3.5" />
+                      {commentCount > 0 ? `${commentCount} Kommentar${commentCount !== 1 ? 'e' : ''}` : 'Kommentar schreiben'}
+                    </button>
+
+                    {(decision.fileAttachments?.length ?? 0) > 0 && (
+                      <>
+                        <span>•</span>
+                      <Popover>
+                        <PopoverTrigger asChild>
+                          <button className="flex items-center gap-1 hover:text-foreground transition-colors">
+                            <Paperclip className="h-3.5 w-3.5" />
+                            {decision.fileAttachments?.length}
+                          </button>
+                        </PopoverTrigger>
+                        <PopoverContent className="w-72 p-2" onClick={(e) => e.stopPropagation()}>
+                          <p className="text-xs font-medium mb-1.5">Angehängte Dateien</p>
+                          <div className="space-y-1">
+                            {(decision.fileAttachments || []).map((att) => (
+                              <button
+                                key={att.id}
+                                onClick={() => setPreviewAttachment({ file_path: att.file_path, file_name: att.file_name })}
+                                className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground hover:bg-muted/50 rounded px-1 py-1 transition-colors w-full text-left cursor-pointer"
+                              >
+                                <Paperclip className="h-3 w-3 flex-shrink-0" />
+                                <span className="truncate">{att.file_name}</span>
+                              </button>
+                            ))}
+                          </div>
+                        </PopoverContent>
+                      </Popover>
+                      </>
+                    )}
+
+                    {(decision.emailAttachmentCount ?? 0) > 0 && (
+                      <>
+                        <span>•</span>
+                      <Popover>
+                        <PopoverTrigger asChild>
+                          <button className="flex items-center gap-1 hover:text-foreground transition-colors">
+                            <Mail className="h-3.5 w-3.5" />
+                            {decision.emailAttachmentCount}
+                          </button>
+                        </PopoverTrigger>
+                        <PopoverContent className="w-64 p-2" onClick={(e) => e.stopPropagation()}>
+                          <p className="text-xs font-medium mb-1.5">Angehängte E-Mails</p>
+                          <div className="space-y-1">
+                            {(decision.emailAttachments || []).map((att) => (
+                              <button
+                                key={att.id}
+                                onClick={() => setPreviewEmail({ file_path: att.file_path, file_name: att.file_name })}
+                                className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground hover:bg-muted/50 rounded px-1 py-0.5 transition-colors w-full text-left cursor-pointer"
+                              >
+                                <Mail className="h-3 w-3 flex-shrink-0" />
+                                <span className="truncate">{att.file_name}</span>
+                              </button>
+                            ))}
+                          </div>
+                        </PopoverContent>
+                      </Popover>
+                      </>
+                    )}
                   </div>
-                  <AvatarStack participants={avatarParticipants} maxVisible={4} size="sm" />
-                </div>
-              </div>
 
-              <div className="border-t border-border/70 pt-3 text-xs text-muted-foreground space-y-2">
-                <div className="flex flex-wrap items-center gap-1.5">
-                  <span>{new Date(decision.created_at).toLocaleDateString('de-DE')}</span>
-                  {decision.creator && (
-                    <>
-                      <span>•</span>
-                      <span>{decision.creator.display_name || 'Unbekannt'}</span>
-                    </>
-                  )}
-                  <span>•</span>
-                  <button
-                    onClick={() => onOpenComments(decision.id, decision.title)}
-                    className="inline-flex items-center gap-1 hover:text-foreground transition-colors"
-                  >
-                    <MessageSquare className="h-3.5 w-3.5" />
-                    {commentCount > 0 ? `${commentCount} Kommentar${commentCount !== 1 ? 'e' : ''}` : 'Kommentar schreiben'}
-                  </button>
-
-                  {(decision.fileAttachments?.length ?? 0) > 0 && (
-                    <>
-                      <span>•</span>
-                    <Popover>
-                      <PopoverTrigger asChild>
-                        <button className="flex items-center gap-1 hover:text-foreground transition-colors">
-                          <Paperclip className="h-3.5 w-3.5" />
-                          {decision.fileAttachments?.length}
-                        </button>
-                      </PopoverTrigger>
-                      <PopoverContent className="w-72 p-2" onClick={(e) => e.stopPropagation()}>
-                        <p className="text-xs font-medium mb-1.5">Angehängte Dateien</p>
-                        <div className="space-y-1">
-                          {(decision.fileAttachments || []).map((att) => (
-                            <button
-                              key={att.id}
-                              onClick={() => setPreviewAttachment({ file_path: att.file_path, file_name: att.file_name })}
-                              className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground hover:bg-muted/50 rounded px-1 py-1 transition-colors w-full text-left cursor-pointer"
-                            >
-                              <Paperclip className="h-3 w-3 flex-shrink-0" />
-                              <span className="truncate">{att.file_name}</span>
-                            </button>
-                          ))}
+                  <TooltipProvider>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <div className="shrink-0">
+                          <AvatarStack participants={avatarParticipants} maxVisible={4} size="sm" showTooltips={false} />
                         </div>
-                      </PopoverContent>
-                    </Popover>
-                    </>
-                  )}
-
-                  {(decision.emailAttachmentCount ?? 0) > 0 && (
-                    <>
-                      <span>•</span>
-                    <Popover>
-                      <PopoverTrigger asChild>
-                        <button className="flex items-center gap-1 hover:text-foreground transition-colors">
-                          <Mail className="h-3.5 w-3.5" />
-                          {decision.emailAttachmentCount}
-                        </button>
-                      </PopoverTrigger>
-                      <PopoverContent className="w-64 p-2" onClick={(e) => e.stopPropagation()}>
-                        <p className="text-xs font-medium mb-1.5">Angehängte E-Mails</p>
-                        <div className="space-y-1">
-                          {(decision.emailAttachments || []).map((att) => (
-                            <button
-                              key={att.id}
-                              onClick={() => setPreviewEmail({ file_path: att.file_path, file_name: att.file_name })}
-                              className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground hover:bg-muted/50 rounded px-1 py-0.5 transition-colors w-full text-left cursor-pointer"
-                            >
-                              <Mail className="h-3 w-3 flex-shrink-0" />
-                              <span className="truncate">{att.file_name}</span>
-                            </button>
-                          ))}
+                      </TooltipTrigger>
+                      <TooltipContent side="top" align="end" className="z-[140] max-w-xs">
+                        <div className="space-y-1.5">
+                          <div className="flex flex-wrap items-center gap-1 text-xs font-semibold">
+                            {summaryItems.map((item, idx) => (
+                              <span key={item.key} className="inline-flex items-center gap-1">
+                                {idx > 0 && <span className="text-muted-foreground">•</span>}
+                                <span className={item.textClass}>{item.count}</span>
+                                <span className={item.textClass}>{item.label}</span>
+                              </span>
+                            ))}
+                          </div>
+                          {pendingParticipants.length > 0 && (
+                            <div className="text-xs text-muted-foreground">
+                              Ausstehend: {pendingParticipantNames}
+                            </div>
+                          )}
                         </div>
-                      </PopoverContent>
-                    </Popover>
-                    </>
-                  )}
+                      </TooltipContent>
+                    </Tooltip>
+                  </TooltipProvider>
                 </div>
 
                 {decision.topicIds && decision.topicIds.length > 0 && (
