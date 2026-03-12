@@ -275,24 +275,37 @@ const MyWorkDecisionCardInner = ({
 
   const handleSubmitJustification = async () => {
     const plainComment = sanitizedCommentDraft;
-    if (!plainComment || isSubmittingComment) return;
+    if (!plainComment || isSubmittingComment || !decision.participant_id) return;
 
     setIsSubmittingComment(true);
     try {
+      const { data: existingResponse, error: responseLookupError } = await supabase
+        .from('task_decision_responses')
+        .select('id')
+        .eq('decision_id', decision.id)
+        .eq('participant_id', decision.participant_id)
+        .is('parent_response_id', null)
+        .maybeSingle();
+
+      if (responseLookupError) throw responseLookupError;
+
+      if (!existingResponse) {
+        throw new Error('Keine Rückmeldung gefunden, die ergänzt werden kann.');
+      }
+
       const { error } = await supabase
-        .from('task_decision_comments')
-        .insert([{
-          decision_id: decision.id,
-          user_id: currentUserId,
-          parent_id: null,
-          content: commentDraft.trim(),
-        }]);
+        .from('task_decision_responses')
+        .update({
+          comment: commentDraft.trim(),
+          updated_at: new Date().toISOString(),
+        })
+        .eq('id', existingResponse.id);
 
       if (error) throw error;
 
       toast({
         title: "Begründung gespeichert",
-        description: "Deine Begründung wurde als Diskussionsbeitrag hinzugefügt.",
+        description: "Deine Begründung wurde als Rückmeldung zur Entscheidung gespeichert.",
       });
 
       clearResponseRefreshTimeout();
@@ -304,7 +317,7 @@ const MyWorkDecisionCardInner = ({
     } catch (error) {
       toast({
         title: "Fehler",
-        description: "Die Begründung konnte nicht gespeichert werden.",
+        description: "Die Begründung konnte nicht zur Rückmeldung gespeichert werden.",
         variant: "destructive",
       });
     } finally {
