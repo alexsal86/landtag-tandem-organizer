@@ -26,6 +26,7 @@ interface TaskDecisionResponseProps {
   creatorId?: string;
   layout?: "default" | "decision-panel";
   disabled?: boolean;
+  showCreatorResponse?: boolean;
 }
 
 interface ResponseData {
@@ -80,6 +81,7 @@ export const TaskDecisionResponse = ({
   hasResponded = false,
   creatorId,
   disabled = false,
+  showCreatorResponse = true,
 }: TaskDecisionResponseProps) => {
   const [isQuestionDialogOpen, setIsQuestionDialogOpen] = useState(false);
   const [questionComment, setQuestionComment] = useState("");
@@ -382,7 +384,7 @@ export const TaskDecisionResponse = ({
           </div>
         )}
         
-        {currentResponse.creator_response && (
+        {showCreatorResponse && currentResponse.creator_response && (
           <div className="bg-muted p-2 rounded text-xs">
             <strong>Antwort:</strong>
             <RichTextDisplay content={currentResponse.creator_response} className="mt-1" />

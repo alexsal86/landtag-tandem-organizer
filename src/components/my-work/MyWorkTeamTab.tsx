@@ -224,26 +224,16 @@ export function MyWorkTeamTab() {
         if (requestsRes.error) debugConsole.error("Error loading team meeting requests:", requestsRes.error);
         if (timeEntriesRes.error) debugConsole.error("Error loading team time entries:", timeEntriesRes.error);
 
-        const lastEntriesResults = await Promise.all(
-          employeeIds.map(async (employeeId) => {
-            const { data, error } = await supabase
-              .from("time_entries")
-              .select("work_date")
-              .eq("user_id", employeeId)
-              .order("work_date", { ascending: false })
-              .limit(1)
-              .maybeSingle();
+        // Avoid one network round-trip per employee (slow for larger teams).
+        const { data: lastEntriesData, error: lastEntriesError } = await supabase
+          .from("time_entries")
+          .select("user_id, work_date")
+          .in("user_id", employeeIds)
+          .order("work_date", { ascending: false });
 
-            if (error) {
-              debugConsole.error(`Error loading last entry for employee ${employeeId}:`, error);
-            }
-
-            return {
-              user_id: employeeId,
-              work_date: data?.work_date || null,
-            };
-          })
-        );
+        if (lastEntriesError) {
+          debugConsole.error("Error loading latest employee time entries:", lastEntriesError);
+        }
 
         if (cancelled) return;
 
@@ -268,8 +258,8 @@ export function MyWorkTeamTab() {
 
         // Find last global entry per employee (for warning calculation)
         const lastGlobalEntry: Record<string, string> = {};
-        lastEntriesResults.forEach((entry) => {
-          if (entry.work_date) {
+        (lastEntriesData || []).forEach((entry: any) => {
+          if (!lastGlobalEntry[entry.user_id]) {
             lastGlobalEntry[entry.user_id] = entry.work_date;
           }
         });
