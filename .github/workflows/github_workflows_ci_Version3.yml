@@ -88,6 +88,11 @@ jobs:
       - name: Strict Type Check Knowledge-Bereich
         run: npm run typecheck:knowledge
 
+      - name: Strict Type Check Migration-Batches (Stufe 1: strictNullChecks)
+        run: |
+          npm run typecheck:hooks-batch1
+          npm run typecheck:pages-batch1
+          npm run typecheck:services-batch1
       - name: Build (falls vorhanden)
         run: |
           if npm run | grep -q "build"; then
