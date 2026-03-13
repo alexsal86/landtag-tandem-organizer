@@ -19,6 +19,22 @@ describe('getErrorMessage', () => {
     expect(getErrorMessage(null)).toBe('Ein unbekannter Fehler ist aufgetreten.');
     expect(getErrorMessage(undefined)).toBe('Ein unbekannter Fehler ist aufgetreten.');
   });
+
+  it('handles unknown objects with non-string message values', () => {
+    expect(getErrorMessage({ message: { nested: 'failure' } })).toBe('[object Object]');
+    expect(getErrorMessage({ message: ['array-failure'] })).toBe('array-failure');
+    expect(getErrorMessage({ message: 500 })).toBe('500');
+  });
+
+  it('handles mixed error-like payloads from api clients', () => {
+    const mixedError = {
+      error: { code: 'PGRST116', message: 'Row not found' },
+      message: 'Request failed with 404',
+      status: 404,
+    };
+
+    expect(getErrorMessage(mixedError)).toBe('Request failed with 404');
+  });
 });
 
 describe('handleAppError', () => {
@@ -58,6 +74,40 @@ describe('handleAppError', () => {
   it('does not rethrow by default', () => {
     vi.spyOn(globalThis.console, 'error').mockImplementation(() => {});
     expect(() => handleAppError(new Error('safe'))).not.toThrow();
+    vi.restoreAllMocks();
+  });
+
+  it('logs fallback message for unknown thrown values', () => {
+    const spy = vi.spyOn(globalThis.console, 'error').mockImplementation(() => {});
+
+    handleAppError(Symbol('boom'), { context: 'symbolCase' });
+
+    expect(spy).toHaveBeenCalledWith(
+      '[symbolCase]',
+      'Ein unbekannter Fehler ist aufgetreten.',
+      expect.any(Symbol),
+    );
+    vi.restoreAllMocks();
+  });
+
+  it('uses custom toast description over extracted mixed error message', () => {
+    vi.spyOn(globalThis.console, 'error').mockImplementation(() => {});
+    const toastFn = vi.fn();
+    const mixedError = { message: 'backend down', status: 503, details: { retry: true } };
+
+    handleAppError(mixedError, {
+      toast: {
+        fn: toastFn,
+        title: 'Synchronisierung fehlgeschlagen',
+        description: 'Bitte später erneut versuchen',
+      },
+    });
+
+    expect(toastFn).toHaveBeenCalledWith({
+      title: 'Synchronisierung fehlgeschlagen',
+      description: 'Bitte später erneut versuchen',
+      variant: 'destructive',
+    });
     vi.restoreAllMocks();
   });
 });
