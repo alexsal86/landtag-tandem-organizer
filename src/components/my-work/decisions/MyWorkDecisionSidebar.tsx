@@ -93,17 +93,41 @@ export function MyWorkDecisionSidebar({
     setVisibleActivityCount(ACTIVITY_BATCH_SIZE);
   }, [activityDatasetKey]);
 
-  const handleSendResponse = async (responseId: string) => {
+  const handleSendResponse = async (responseId: string, mode: 'creator_response' | 'participant_followup') => {
     if (!responseText.trim()) return;
     setIsLoading(true);
     
     try {
-      const { error } = await supabase
-        .from('task_decision_responses')
-        .update({ creator_response: responseText.trim() })
-        .eq('id', responseId);
+      if (mode === 'creator_response') {
+        const { error } = await supabase
+          .from('task_decision_responses')
+          .update({ creator_response: responseText.trim() })
+          .eq('id', responseId);
 
-      if (error) throw error;
+        if (error) throw error;
+      } else {
+        const { data: parentResponse, error: parentError } = await supabase
+          .from('task_decision_responses')
+          .select('decision_id, participant_id')
+          .eq('id', responseId)
+          .maybeSingle();
+
+        if (parentError || !parentResponse) {
+          throw parentError || new Error('Ausgangsnachricht nicht gefunden.');
+        }
+
+        const { error } = await supabase
+          .from('task_decision_responses')
+          .insert([{
+            decision_id: parentResponse.decision_id,
+            participant_id: parentResponse.participant_id,
+            response_type: 'question',
+            comment: responseText.trim(),
+            parent_response_id: responseId,
+          }]);
+
+        if (error) throw error;
+      }
       
       toast.success("Antwort gesendet");
       setResponseText("");
@@ -185,7 +209,7 @@ export function MyWorkDecisionSidebar({
                             <div className="flex gap-1.5">
                               <Button 
                                 size="sm" 
-                                onClick={() => handleSendResponse(q.id)}
+                                onClick={() => handleSendResponse(q.id, 'creator_response')}
                                 disabled={isLoading || !responseText.trim()}
                                 className="text-[10px] h-6"
                               >
@@ -261,7 +285,7 @@ export function MyWorkDecisionSidebar({
                             <div className="flex gap-1.5">
                               <Button
                                 size="sm"
-                                onClick={() => handleSendResponse(reply.id)}
+                                onClick={() => handleSendResponse(reply.id, 'participant_followup')}
                                 disabled={isLoading || !responseText.trim()}
                                 className="text-[10px] h-6"
                               >
@@ -354,7 +378,7 @@ export function MyWorkDecisionSidebar({
                             <div className="flex gap-1.5">
                               <Button
                                 size="sm"
-                                onClick={() => handleSendResponse(c.id)}
+                                onClick={() => handleSendResponse(c.id, 'creator_response')}
                                 disabled={isLoading || !responseText.trim()}
                                 className="text-[10px] h-6"
                               >
