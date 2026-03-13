@@ -182,6 +182,7 @@ export function ContactsView() {
               creatingDistribution={s.creatingDistribution} editingDistributionListId={s.editingDistributionListId}
               setCreatingDistribution={s.setCreatingDistribution} setEditingDistributionListId={s.setEditingDistributionListId}
               fetchDistributionLists={s.fetchDistributionLists} deleteDistributionList={s.deleteDistributionList}
+              fetchDistributionListMembers={s.fetchDistributionListMembers}
               onContactClick={(id) => s.setSelectedContactId(id)} />
           )}
 
