@@ -195,10 +195,13 @@ export function AgendaEditorPanel({
   return (
     <>
       <div className="flex justify-between items-center">
-        <h2 className="text-xl font-semibold">
-          Agenda: {selectedMeeting.title} am {format(new Date(selectedMeeting.meeting_date), "EEEE, d. MMMM", { locale: de })}
-          {selectedMeeting.meeting_time && ` um ${selectedMeeting.meeting_time.substring(0, 5)} Uhr`}
-        </h2>
+        <div>
+          <h2 className="text-xl font-medium">{selectedMeeting.title}</h2>
+          <p className="text-[13px]" style={{ color: 'var(--color-text-secondary)' }}>
+            {format(new Date(selectedMeeting.meeting_date), "EEEE, d. MMMM", { locale: de })}
+            {selectedMeeting.meeting_time && ` · ${selectedMeeting.meeting_time.substring(0, 5)} Uhr`}
+          </p>
+        </div>
         {hasEditPermission && (
           <div className="flex gap-2">
             <Button variant="outline" onClick={onAddAgendaItem}>
@@ -250,7 +253,19 @@ export function AgendaEditorPanel({
                       {/* System item rendering */}
                       {item.system_type ? (
                         <div ref={provided.innerRef} {...provided.draggableProps} {...provided.dragHandleProps}
-                          className={cn("transition-shadow", snapshot.isDragging && "shadow-lg", (item.parentLocalKey || item.parent_id) && "ml-8 border-l-4 border-l-primary/30")}
+                          className={cn(
+                            "transition-shadow",
+                            snapshot.isDragging && "shadow-lg",
+                            (item.parentLocalKey || item.parent_id) && "border-l-4 border-l-primary/30 rounded-none",
+                          )}
+                          style={
+                            (item.parentLocalKey || item.parent_id)
+                              ? {
+                                background: 'var(--color-background-secondary)',
+                                borderTop: '0.5px solid var(--color-border-tertiary)',
+                              }
+                              : undefined
+                          }
                         >
                           <SystemAgendaItem
                             systemType={item.system_type as SystemAgendaType}
@@ -274,18 +289,26 @@ export function AgendaEditorPanel({
                         /* Regular agenda item */
                         <Card ref={provided.innerRef} {...provided.draggableProps}
                           className={cn(
-                            "transition-shadow",
+                            "transition-shadow border",
                             snapshot.isDragging && "shadow-lg",
-                            (item.parentLocalKey || item.parent_id) && "ml-8 border-l-4 border-l-primary/30",
+                            (item.parentLocalKey || item.parent_id) && "border-l-4 border-l-primary/30 rounded-none",
                             item.is_optional && "border-dashed",
                             item.is_optional && item.is_visible === false && "opacity-50"
                           )}
+                          style={
+                            (item.parentLocalKey || item.parent_id)
+                              ? {
+                                background: 'var(--color-background-secondary)',
+                                borderTop: '0.5px solid var(--color-border-tertiary)',
+                              }
+                              : undefined
+                          }
                         >
                           <CardContent className="p-4">
                             <div className="space-y-3">
                               <div className="flex items-center gap-2 group">
                                 {hasEditPermission && (
-                                  <div {...provided.dragHandleProps} className="cursor-grab active:cursor-grabbing">
+                                  <div {...provided.dragHandleProps} className="cursor-grab active:cursor-grabbing opacity-20 group-hover:opacity-100 transition-opacity">
                                     <GripVertical className="h-4 w-4 text-muted-foreground" />
                                   </div>
                                 )}
