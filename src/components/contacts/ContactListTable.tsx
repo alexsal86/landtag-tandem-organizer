@@ -1,14 +1,18 @@
 import React, { useState } from "react";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Button } from "@/components/ui/button";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import { HoverCard, HoverCardContent, HoverCardTrigger } from "@/components/ui/hover-card";
+import { Badge } from "@/components/ui/badge";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Switch } from "@/components/ui/switch";
-import { Mail, Phone, MapPin, Building, User, Star, ChevronUp, ChevronDown } from "lucide-react";
+import { Mail, Phone, CalendarDays, User, Star, ChevronUp, ChevronDown, Clock, Tag } from "lucide-react";
 import { Contact } from "@/hooks/useInfiniteContacts";
 import { getGenderLabel } from "./hooks/useContactsViewState";
 import { getInitials } from "./utils/contactFormatters";
 import { useToast } from "@/hooks/use-toast";
+import { format } from "date-fns";
+import { de } from "date-fns/locale";
 
 interface ContactListTableProps {
   contacts: Contact[];
@@ -17,9 +21,9 @@ interface ContactListTableProps {
   onSort: (column: string) => void;
   onContactClick: (id: string) => void;
   onToggleFavorite: (id: string, val: boolean) => void;
-  documentCounts: Record<string, { total: number }>;
-  expandedDocuments: Set<string>;
-  toggleDocumentsExpanded: (id: string) => void;
+  isSelectionMode: boolean;
+  selectedContactIds: Set<string>;
+  onToggleSelection: (id: string) => void;
 }
 
 function SortableTableHead({ children, sortKey, sortColumn, sortDirection, onSort, className = "" }: {
@@ -46,6 +50,7 @@ function splitName(name: string): { firstName: string; lastName: string } {
 
 export function ContactListTable({
   contacts, sortColumn, sortDirection, onSort, onContactClick, onToggleFavorite,
+  isSelectionMode, selectedContactIds, onToggleSelection,
 }: ContactListTableProps) {
   const { toast } = useToast();
   const [splitNameMode, setSplitNameMode] = useState(() => {
@@ -59,28 +64,31 @@ export function ContactListTable({
   };
 
   return (
-    <div className="overflow-x-auto">
+    <div className="overflow-visible [&>div]:overflow-visible">
       <Table>
         <TableHeader>
           <TableRow>
-            <TableHead className="w-10 px-2"></TableHead>
-            <SortableTableHead sortKey="gender" sortColumn={sortColumn} sortDirection={sortDirection} onSort={onSort} className="w-16">Anrede</SortableTableHead>
+            {isSelectionMode && (
+              <TableHead className="w-10 px-2 sticky top-0 z-20 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/80"></TableHead>
+            )}
+            <TableHead className="w-10 px-2 sticky top-0 z-20 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/80"></TableHead>
+            <SortableTableHead sortKey="gender" sortColumn={sortColumn} sortDirection={sortDirection} onSort={onSort} className="w-16 sticky top-0 z-20 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/80">Anrede</SortableTableHead>
             {splitNameMode ? (
               <>
-                <SortableTableHead sortKey="name" sortColumn={sortColumn} sortDirection={sortDirection} onSort={onSort}>
+                <SortableTableHead sortKey="name" sortColumn={sortColumn} sortDirection={sortDirection} onSort={onSort} className="sticky top-0 z-20 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/80">
                   <span>Vorname</span>
                 </SortableTableHead>
-                <SortableTableHead sortKey="name" sortColumn={sortColumn} sortDirection={sortDirection} onSort={onSort}>
+                <SortableTableHead sortKey="name" sortColumn={sortColumn} sortDirection={sortDirection} onSort={onSort} className="sticky top-0 z-20 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/80">
                   <span>Nachname</span>
                 </SortableTableHead>
               </>
             ) : (
-              <SortableTableHead sortKey="name" sortColumn={sortColumn} sortDirection={sortDirection} onSort={onSort}>Name</SortableTableHead>
+              <SortableTableHead sortKey="name" sortColumn={sortColumn} sortDirection={sortDirection} onSort={onSort} className="sticky top-0 z-20 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/80">Name</SortableTableHead>
             )}
-            <SortableTableHead sortKey="organization" sortColumn={sortColumn} sortDirection={sortDirection} onSort={onSort}>Organisation</SortableTableHead>
-            <SortableTableHead sortKey="email" sortColumn={sortColumn} sortDirection={sortDirection} onSort={onSort}>Kontakt</SortableTableHead>
-            <SortableTableHead sortKey="address" sortColumn={sortColumn} sortDirection={sortDirection} onSort={onSort}>Adresse</SortableTableHead>
-            <TableHead className="w-20">
+            <SortableTableHead sortKey="organization" sortColumn={sortColumn} sortDirection={sortDirection} onSort={onSort} className="sticky top-0 z-20 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/80">Organisation</SortableTableHead>
+            <SortableTableHead sortKey="email" sortColumn={sortColumn} sortDirection={sortDirection} onSort={onSort} className="sticky top-0 z-20 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/80">Kontakt</SortableTableHead>
+            <SortableTableHead sortKey="address" sortColumn={sortColumn} sortDirection={sortDirection} onSort={onSort} className="sticky top-0 z-20 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/80">Adresse</SortableTableHead>
+            <TableHead className="w-20 sticky top-0 z-20 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/80">
               <TooltipProvider>
                 <Tooltip>
                   <TooltipTrigger asChild>
@@ -100,6 +108,15 @@ export function ContactListTable({
             const { firstName, lastName } = splitName(contact.name);
             return (
               <TableRow key={contact.id} className="cursor-pointer hover:bg-muted/50 h-11" onClick={() => onContactClick(contact.id)}>
+                {isSelectionMode && (
+                  <TableCell className="px-2 py-1" onClick={(e) => e.stopPropagation()}>
+                    <Checkbox
+                      checked={selectedContactIds.has(contact.id)}
+                      onCheckedChange={() => onToggleSelection(contact.id)}
+                      aria-label={`${contact.name} auswählen`}
+                    />
+                  </TableCell>
+                )}
                 {/* Avatar + Star */}
                 <TableCell className="px-2 py-1">
                   <div className="relative inline-block">
@@ -127,10 +144,46 @@ export function ContactListTable({
                 {splitNameMode ? (
                   <>
                     <TableCell className="py-1"><span className="text-sm truncate block max-w-[140px]">{firstName}</span></TableCell>
-                    <TableCell className="py-1"><span className="text-sm font-medium truncate block max-w-[140px]">{lastName}</span></TableCell>
+                    <TableCell className="py-1">
+                      <HoverCard openDelay={200} closeDelay={100}>
+                        <HoverCardTrigger asChild>
+                          <span className="text-sm font-medium truncate block max-w-[140px] underline-offset-2 hover:underline">{lastName}</span>
+                        </HoverCardTrigger>
+                        <HoverCardContent align="start" className="w-80 space-y-3">
+                          <div>
+                            <p className="font-semibold leading-tight">{contact.name}</p>
+                            <p className="text-sm text-muted-foreground">{contact.role || contact.organization || "Keine Rolle hinterlegt"}</p>
+                          </div>
+                          <div className="space-y-1.5 text-sm">
+                            {contact.birthday && <div className="flex items-center gap-2"><CalendarDays className="h-3.5 w-3.5 text-muted-foreground" />{format(new Date(contact.birthday), "dd.MM.yyyy", { locale: de })}</div>}
+                            {contact.last_contact && <div className="flex items-center gap-2"><Clock className="h-3.5 w-3.5 text-muted-foreground" />Letzter Kontakt: {format(new Date(contact.last_contact), "dd.MM.yyyy", { locale: de })}</div>}
+                            {(contact.additional_info || contact.notes) && <p className="text-muted-foreground line-clamp-2">{contact.additional_info || contact.notes}</p>}
+                          </div>
+                          {!!contact.tags?.length && <div className="flex flex-wrap gap-1">{contact.tags.slice(0, 4).map(tag => <Badge key={tag} variant="secondary" className="text-xs"><Tag className="h-3 w-3 mr-1" />{tag}</Badge>)}</div>}
+                        </HoverCardContent>
+                      </HoverCard>
+                    </TableCell>
                   </>
                 ) : (
-                  <TableCell className="py-1"><span className="text-sm font-medium truncate block max-w-[200px]">{contact.name}</span></TableCell>
+                  <TableCell className="py-1">
+                    <HoverCard openDelay={200} closeDelay={100}>
+                      <HoverCardTrigger asChild>
+                        <span className="text-sm font-medium truncate block max-w-[200px] underline-offset-2 hover:underline">{contact.name}</span>
+                      </HoverCardTrigger>
+                      <HoverCardContent align="start" className="w-80 space-y-3">
+                        <div>
+                          <p className="font-semibold leading-tight">{contact.name}</p>
+                          <p className="text-sm text-muted-foreground">{contact.role || contact.organization || "Keine Rolle hinterlegt"}</p>
+                        </div>
+                        <div className="space-y-1.5 text-sm">
+                          {contact.birthday && <div className="flex items-center gap-2"><CalendarDays className="h-3.5 w-3.5 text-muted-foreground" />{format(new Date(contact.birthday), "dd.MM.yyyy", { locale: de })}</div>}
+                          {contact.last_contact && <div className="flex items-center gap-2"><Clock className="h-3.5 w-3.5 text-muted-foreground" />Letzter Kontakt: {format(new Date(contact.last_contact), "dd.MM.yyyy", { locale: de })}</div>}
+                          {(contact.additional_info || contact.notes) && <p className="text-muted-foreground line-clamp-2">{contact.additional_info || contact.notes}</p>}
+                        </div>
+                        {!!contact.tags?.length && <div className="flex flex-wrap gap-1">{contact.tags.slice(0, 4).map(tag => <Badge key={tag} variant="secondary" className="text-xs"><Tag className="h-3 w-3 mr-1" />{tag}</Badge>)}</div>}
+                      </HoverCardContent>
+                    </HoverCard>
+                  </TableCell>
                 )}
 
                 {/* Organisation */}
