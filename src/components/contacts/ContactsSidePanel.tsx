@@ -1,5 +1,6 @@
 import { Link } from "react-router-dom";
 import { Search, Plus, Building, User, Users, Archive, Network, Tag, Copy } from "lucide-react";
+import type { ContactsTab } from "./hooks/useContactsViewPreferences";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
