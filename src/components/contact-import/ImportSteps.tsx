@@ -43,6 +43,7 @@ export const ImportSteps: React.FC<ImportStepsProps> = ({
             <Label htmlFor="file-upload">Wählen Sie eine Datei aus</Label>
             <Input id="file-upload" type="file" accept=".csv,.xlsx,.xls,.ods,.vcf" onChange={handleFileUpload} className="mt-2" />
             <p className="text-sm text-muted-foreground mt-2">Unterstützte Formate: CSV, Excel (XLSX, XLS), OpenDocument (ODS), vCard (VCF)</p>
+            <p className="text-sm text-muted-foreground mt-1">Tipp: Mit der Spalte <span className="font-medium">Verteiler</span> (mehrere Werte mit <span className="font-medium">;</span> getrennt) werden Kontakte automatisch Verteilerlisten zugeordnet.</p>
           </div>
         </CardContent>
       </Card>
