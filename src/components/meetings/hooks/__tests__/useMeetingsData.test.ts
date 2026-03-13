@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { renderHook, waitFor } from "@testing-library/react";
+import { renderHook, waitFor, act } from "@testing-library/react";
 
 const { mockSupabase, mockToast, mockUser, mockTenant, enqueue, responses } = vi.hoisted(() => {
   type QueryResponse = { data: any; error: any };
@@ -173,5 +173,74 @@ describe("useMeetingsData", () => {
       expect(result.current.tasks).toEqual([]);
       expect(result.current.agendaItems).toEqual([]);
     });
+  });
+
+  it("updates meeting status and shows success feedback", async () => {
+    enqueue("meetings", {
+      data: [{ id: "meeting-1", user_id: "user-1", title: "Jour Fixe", status: "planned", meeting_date: "2100-01-11" }],
+      error: null,
+    });
+    enqueue("meeting_participants", { data: [], error: null });
+    enqueue("user_tenant_memberships", { data: [], error: null });
+    enqueue("tasks", { data: [], error: null });
+    enqueue("meeting_templates", { data: [], error: null });
+
+    enqueue("meetings", { data: null, error: null });
+
+    const { result } = renderHook(() => useMeetingsData());
+
+    await waitFor(() => {
+      expect(result.current.meetings).toHaveLength(1);
+    });
+
+    await act(async () => {
+      await result.current.updateMeeting("meeting-1", { status: "in_progress" });
+    });
+
+    expect(mockToast).toHaveBeenCalledWith(
+      expect.objectContaining({ title: "Meeting aktualisiert", description: "Das Meeting wurde erfolgreich aktualisiert." }),
+    );
+  });
+
+  it("restores meetings and shows destructive toast on update failure, then allows retry", async () => {
+    enqueue("meetings", {
+      data: [{ id: "meeting-2", user_id: "user-1", title: "Ausschuss", status: "planned", meeting_date: "2100-02-01" }],
+      error: null,
+    });
+    enqueue("meeting_participants", { data: [], error: null });
+    enqueue("user_tenant_memberships", { data: [], error: null });
+    enqueue("tasks", { data: [], error: null });
+    enqueue("meeting_templates", { data: [], error: null });
+
+    enqueue("meetings", { data: null, error: { message: "update failed" } });
+    enqueue("meetings", {
+      data: [{ id: "meeting-2", user_id: "user-1", title: "Ausschuss", status: "planned", meeting_date: "2100-02-01" }],
+      error: null,
+    });
+    enqueue("meeting_participants", { data: [], error: null });
+
+    enqueue("meetings", { data: null, error: null });
+
+    const { result } = renderHook(() => useMeetingsData());
+
+    await waitFor(() => {
+      expect(result.current.meetings.map((m) => m.id)).toEqual(["meeting-2"]);
+    });
+
+    await act(async () => {
+      await result.current.updateMeeting("meeting-2", { title: "Ausschuss (neu)" });
+    });
+
+    expect(mockToast).toHaveBeenCalledWith(
+      expect.objectContaining({ title: "Fehler", variant: "destructive" }),
+    );
+
+    await act(async () => {
+      await result.current.updateMeeting("meeting-2", { title: "Ausschuss (retry)" });
+    });
+
+    expect(mockToast).toHaveBeenCalledWith(
+      expect.objectContaining({ title: "Meeting aktualisiert" }),
+    );
   });
 });

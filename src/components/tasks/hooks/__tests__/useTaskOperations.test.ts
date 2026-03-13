@@ -146,4 +146,76 @@ describe("useTaskOperations", () => {
     expect(loadTaskSnoozes).toHaveBeenCalled();
     expect(mockToast).toHaveBeenCalledWith(expect.objectContaining({ title: "Wiedervorlage gesetzt" }));
   });
+
+  it("toggleTaskStatus moves a task to archived state and removes it from active list", async () => {
+    const task = {
+      id: "task-1",
+      title: "Anfrage beantworten",
+      status: "todo",
+      description: "Bürgeranfrage",
+      priority: "medium",
+      category: "inbox",
+      dueDate: "2025-02-01",
+      assignedTo: "user-1",
+    } as unknown as Task;
+    const props = createMockProps([task]);
+
+    mockSupabase.from.mockImplementation((table: string) => {
+      if (table === "tasks") {
+        return {
+          update: vi.fn(() => ({ eq: vi.fn(() => Promise.resolve({ error: null })) })),
+          delete: vi.fn(() => ({ eq: vi.fn(() => Promise.resolve({ error: null })) })),
+        } as any;
+      }
+      if (table === "archived_tasks") {
+        return {
+          insert: vi.fn(() => Promise.resolve({ error: null })),
+        } as any;
+      }
+      return {
+        update: vi.fn(() => ({ eq: vi.fn(() => ({ eq: vi.fn(() => Promise.resolve({ error: null })) })) })),
+      } as any;
+    });
+
+    const { result } = renderHook(() => useTaskOperations(props));
+
+    await act(async () => {
+      await result.current.toggleTaskStatus("task-1");
+    });
+
+    expect(mockSupabase.from).toHaveBeenCalledWith("archived_tasks");
+    expect(result.current.showCelebration).toBe(true);
+    expect(mockToast).toHaveBeenCalledWith(expect.objectContaining({ title: "Status aktualisiert" }));
+  });
+
+  it("shows destructive feedback on failed addComment and succeeds on retry", async () => {
+    const loadTaskComments = vi.fn();
+    const props = createMockProps([]);
+    props.loadTaskComments = loadTaskComments;
+
+    let attempt = 0;
+    mockSupabase.from.mockImplementation((table: string) => {
+      if (table !== "task_comments") return {} as any;
+      attempt += 1;
+      return {
+        insert: vi.fn(() => Promise.resolve({ data: null, error: attempt === 1 ? { message: "insert failed" } : null })),
+      } as any;
+    });
+
+    const { result } = renderHook(() => useTaskOperations(props));
+
+    await act(async () => {
+      const firstTry = await result.current.addComment("task-1", "Bitte priorisieren");
+      expect(firstTry).toBe(false);
+    });
+
+    expect(mockToast).toHaveBeenCalledWith(expect.objectContaining({ variant: "destructive" }));
+
+    await act(async () => {
+      const secondTry = await result.current.addComment("task-1", "Bitte priorisieren");
+      expect(secondTry).toBe(true);
+    });
+
+    expect(loadTaskComments).toHaveBeenCalledTimes(1);
+  });
 });
