@@ -64,7 +64,7 @@ export function ContactListTable({
   };
 
   return (
-    <div className="overflow-x-auto [&>div]:overflow-visible">
+    <div className="overflow-visible [&>div]:overflow-visible">
       <Table>
         <TableHeader>
           <TableRow>
