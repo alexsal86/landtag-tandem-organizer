@@ -1,7 +1,6 @@
 import { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -11,9 +10,10 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { Plus, Users, Edit, Trash2 } from "lucide-react";
+import { Plus, Users, Edit, Trash2, ChevronDown, ChevronUp } from "lucide-react";
 import { DistributionListForm } from "@/components/DistributionListForm";
 import { DistributionList } from "./hooks/useContactsViewState";
+import type { DistributionListMember } from "./hooks/useContactsDistributionLists";
 
 interface DistributionListsTabProps {
   distributionLists: DistributionList[];
@@ -24,14 +24,26 @@ interface DistributionListsTabProps {
   setEditingDistributionListId: (v: string | null) => void;
   fetchDistributionLists: () => void;
   deleteDistributionList: (id: string) => void;
+  fetchDistributionListMembers: (distributionListId: string) => Promise<DistributionListMember[]>;
   onContactClick: (id: string) => void;
 }
 
 export function DistributionListsTab({
-  distributionLists, distributionListsLoading, creatingDistribution, editingDistributionListId,
-  setCreatingDistribution, setEditingDistributionListId, fetchDistributionLists, deleteDistributionList, onContactClick,
+  distributionLists,
+  distributionListsLoading,
+  creatingDistribution,
+  editingDistributionListId,
+  setCreatingDistribution,
+  setEditingDistributionListId,
+  fetchDistributionLists,
+  deleteDistributionList,
+  fetchDistributionListMembers,
+  onContactClick,
 }: DistributionListsTabProps) {
   const [deleteListId, setDeleteListId] = useState<string | null>(null);
+  const [expandedLists, setExpandedLists] = useState<Set<string>>(new Set());
+  const [membersByList, setMembersByList] = useState<Record<string, DistributionListMember[]>>({});
+  const [loadingMembers, setLoadingMembers] = useState<Set<string>>(new Set());
 
   const deleteTargetList = distributionLists.find((list) => list.id === deleteListId) ?? null;
 
@@ -41,12 +53,48 @@ export function DistributionListsTab({
     setDeleteListId(null);
   };
 
+  const toggleMembers = async (listId: string) => {
+    if (expandedLists.has(listId)) {
+      setExpandedLists((prev) => {
+        const next = new Set(prev);
+        next.delete(listId);
+        return next;
+      });
+      return;
+    }
+
+    setExpandedLists((prev) => new Set(prev).add(listId));
+
+    if (membersByList[listId]) {
+      return;
+    }
+
+    setLoadingMembers((prev) => new Set(prev).add(listId));
+    try {
+      const members = await fetchDistributionListMembers(listId);
+      setMembersByList((prev) => ({ ...prev, [listId]: members }));
+    } finally {
+      setLoadingMembers((prev) => {
+        const next = new Set(prev);
+        next.delete(listId);
+        return next;
+      });
+    }
+  };
+
   if (creatingDistribution || editingDistributionListId) {
     return (
       <DistributionListForm
         distributionListId={editingDistributionListId || undefined}
-        onSuccess={() => { setCreatingDistribution(false); setEditingDistributionListId(null); fetchDistributionLists(); }}
-        onBack={() => { setCreatingDistribution(false); setEditingDistributionListId(null); }}
+        onSuccess={() => {
+          setCreatingDistribution(false);
+          setEditingDistributionListId(null);
+          fetchDistributionLists();
+        }}
+        onBack={() => {
+          setCreatingDistribution(false);
+          setEditingDistributionListId(null);
+        }}
       />
     );
   }
@@ -82,38 +130,42 @@ export function DistributionListsTab({
               </div>
             </div>
           </CardHeader>
-          <CardContent className="pt-0">
-            {list.description && <p className="text-sm text-muted-foreground mb-4">{list.description}</p>}
-            {list.members.length > 0 && (
+          <CardContent className="pt-0 space-y-4">
+            {list.description && <p className="text-sm text-muted-foreground">{list.description}</p>}
+
+            <div>
+              <Button variant="outline" size="sm" className="gap-2" onClick={() => void toggleMembers(list.id)}>
+                Mitglieder anzeigen
+                {expandedLists.has(list.id) ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+              </Button>
+            </div>
+
+            {expandedLists.has(list.id) && (
               <div>
-                <p className="text-sm font-medium mb-2">Mitglieder ({list.members.length}):</p>
+                <p className="text-sm font-medium mb-2">Mitglieder ({list.member_count}):</p>
                 <div className="border rounded-md overflow-hidden">
-                  <Table>
-                    <TableHeader>
-                      <TableRow>
-                        <TableHead className="h-8 text-xs">Name</TableHead>
-                        <TableHead className="h-8 text-xs">E-Mail</TableHead>
-                        <TableHead className="h-8 text-xs hidden sm:table-cell">Organisation</TableHead>
-                        <TableHead className="h-8 text-xs hidden md:table-cell">Kategorie</TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {list.members.map((member) => (
-                        <TableRow key={member.id} className="cursor-pointer hover:bg-muted/50" onClick={() => onContactClick(member.id)}>
-                          <TableCell className="py-1.5 text-sm font-medium">{member.name}</TableCell>
-                          <TableCell className="py-1.5 text-sm text-muted-foreground">{member.email || '–'}</TableCell>
-                          <TableCell className="py-1.5 text-sm text-muted-foreground hidden sm:table-cell">{member.organization || '–'}</TableCell>
-                          <TableCell className="py-1.5 hidden md:table-cell">
-                            {member.category && (
-                              <Badge variant="outline" className="text-xs">
-                                {member.category === "citizen" ? "Bürger" : member.category === "colleague" ? "Kollege" : member.category === "business" ? "Wirtschaft" : member.category === "media" ? "Medien" : member.category === "lobbyist" ? "Lobbyist" : member.category}
-                              </Badge>
-                            )}
-                          </TableCell>
+                  {loadingMembers.has(list.id) ? (
+                    <div className="py-6 text-center text-sm text-muted-foreground">Mitglieder werden geladen...</div>
+                  ) : (
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead className="h-8 text-xs">Name</TableHead>
+                          <TableHead className="h-8 text-xs">E-Mail</TableHead>
+                          <TableHead className="h-8 text-xs hidden sm:table-cell">Organisation</TableHead>
                         </TableRow>
-                      ))}
-                    </TableBody>
-                  </Table>
+                      </TableHeader>
+                      <TableBody>
+                        {(membersByList[list.id] || []).map((member) => (
+                          <TableRow key={member.id} className="cursor-pointer hover:bg-muted/50" onClick={() => onContactClick(member.id)}>
+                            <TableCell className="py-1.5 text-sm font-medium">{member.name}</TableCell>
+                            <TableCell className="py-1.5 text-sm text-muted-foreground">{member.email || "–"}</TableCell>
+                            <TableCell className="py-1.5 text-sm text-muted-foreground hidden sm:table-cell">{member.organization || "–"}</TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  )}
                 </div>
               </div>
             )}

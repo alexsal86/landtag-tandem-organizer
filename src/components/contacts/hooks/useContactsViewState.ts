@@ -77,6 +77,7 @@ export interface UseContactsViewStateResult {
   documentCounts: ReturnType<typeof useContactDocumentCounts>["counts"];
   categories: Array<{ value: string; label: string; count: number }>;
   fetchDistributionLists: ReturnType<typeof useContactsDistributionLists>["fetchDistributionLists"];
+  fetchDistributionListMembers: ReturnType<typeof useContactsDistributionLists>["fetchDistributionListMembers"];
   deleteDistributionList: ReturnType<typeof useContactsDistributionLists>["deleteDistributionList"];
   handleDeleteContact: (contactId: string, contactName: string) => Promise<void>;
   handleSort: (column: string) => void;
@@ -230,6 +231,7 @@ export function useContactsViewState(): UseContactsViewStateResult {
     documentCounts,
     categories,
     fetchDistributionLists: distributionListsState.fetchDistributionLists,
+    fetchDistributionListMembers: distributionListsState.fetchDistributionListMembers,
     deleteDistributionList: distributionListsState.deleteDistributionList,
     handleDeleteContact,
     handleSort: filtersAndSorting.handleSort,
