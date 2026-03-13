@@ -22,7 +22,8 @@ type FunctionContract = {
     | 'log-audit-event'
     | 'global-logout'
     | 'send-push-notification'
-    | 'run-automation-rule';
+    | 'run-automation-rule'
+    | 'force-resync-calendar';
   triggerFunction?: boolean;
   cases: ContractCase[];
 };
@@ -243,6 +244,47 @@ const functionContracts: FunctionContract[] = [
     ],
   },
   {
+    functionName: 'force-resync-calendar',
+    triggerFunction: true,
+    cases: [
+      {
+        id: 'missing-jwt',
+        description: 'requires Authorization bearer token',
+        request: { method: 'POST', auth: 'missing_jwt', payload: { calendar_id: 'cal-1' } },
+        expected: { status: 401, body: { error: 'Missing authorization header' } },
+      },
+      {
+        id: 'invalid-payload-schema',
+        description: 'rejects requests without required calendar_id',
+        request: { method: 'POST', auth: 'valid_jwt', payload: { clear_existing: true } },
+        expected: { status: 400, body: { error: 'calendar_id is required' } },
+      },
+      {
+        id: 'role-tenant-violation',
+        description: 'rejects users without admin/abgeordneter role in the calendar tenant',
+        request: { method: 'POST', auth: 'valid_jwt', payload: { calendar_id: 'foreign-tenant-calendar' } },
+        expected: { status: 403, body: { error: 'Insufficient permissions' } },
+      },
+      {
+        id: 'happy-path',
+        description: 'resets sync fields and triggers external calendar sync',
+        request: { method: 'POST', auth: 'valid_jwt', payload: { calendar_id: 'cal-1', clear_existing: true } },
+        expected: { status: 200, body: { success: true, message: 'Force re-sync completed successfully' } },
+      },
+      {
+        id: 'idempotency-repeat',
+        description: 'repeating the same calendar re-sync request remains non-fatal and keeps success envelope shape',
+        request: {
+          method: 'POST',
+          auth: 'valid_jwt',
+          payload: { calendar_id: 'cal-1', clear_existing: false },
+          notes: 'Function has no explicit idempotency key; contract asserts repeat-safe response envelope.',
+        },
+        expected: { status: 200, body: { success: true, message: 'Force re-sync completed successfully' } },
+      },
+    ],
+  },
+  {
     functionName: 'run-automation-rule',
     triggerFunction: true,
     cases: [
@@ -290,7 +332,7 @@ const functionContracts: FunctionContract[] = [
 
 describe('edge function API contract catalog', () => {
   it('defines minimal required contract scenarios for each prioritized function', () => {
-    expect(functionContracts).toHaveLength(5);
+    expect(functionContracts).toHaveLength(6);
 
     for (const fn of functionContracts) {
       const ids = fn.cases.map((c) => c.id);

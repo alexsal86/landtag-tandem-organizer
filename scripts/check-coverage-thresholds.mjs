@@ -33,6 +33,48 @@ const thresholds = {
       min: { warn: 70, block: 80 },
     },
   ],
+  criticalFlows: [
+    {
+      name: 'Auth/Tenant switch flow',
+      pattern: '/src/hooks/useAuth.tsx',
+      min: {
+        functions: { warn: 70, block: 80 },
+        branches: { warn: 55, block: 65 },
+      },
+    },
+    {
+      name: 'Tenant membership flow',
+      pattern: '/src/hooks/useTenant.tsx',
+      min: {
+        functions: { warn: 70, block: 80 },
+        branches: { warn: 55, block: 65 },
+      },
+    },
+    {
+      name: 'Calendar sync trigger flow',
+      pattern: '/src/components/ExternalCalendarSettings.tsx',
+      min: {
+        functions: { warn: 60, block: 70 },
+        branches: { warn: 45, block: 55 },
+      },
+    },
+    {
+      name: 'Letter status workflow',
+      pattern: '/src/hooks/useLetterArchiving.tsx',
+      min: {
+        functions: { warn: 70, block: 80 },
+        branches: { warn: 55, block: 65 },
+      },
+    },
+    {
+      name: 'Notifications flow',
+      pattern: '/src/hooks/useNotifications.tsx',
+      min: {
+        functions: { warn: 55, block: 65 },
+        branches: { warn: 40, block: 50 },
+      },
+    },
+  ],
 };
 
 if (!fs.existsSync(summaryPath)) {
@@ -78,6 +120,28 @@ for (const criticalModule of thresholds.criticalModules) {
     issues.push(
       `${level}: ${criticalModule.name} line coverage ${actual}% < ${min}% (${criticalModule.pattern})`,
     );
+  }
+}
+
+for (const criticalFlow of thresholds.criticalFlows) {
+  const flowEntry = Object.entries(summary).find(([file]) => file.endsWith(criticalFlow.pattern));
+
+  if (!flowEntry) {
+    issues.push(`${level}: critical flow missing in coverage report: ${criticalFlow.name} (${criticalFlow.pattern})`);
+    continue;
+  }
+
+  const [, metrics] = flowEntry;
+
+  for (const metric of ['functions', 'branches']) {
+    const actual = metrics[metric]?.pct ?? 0;
+    const min = current(criticalFlow.min[metric]);
+
+    if (actual < min) {
+      issues.push(
+        `${level}: ${criticalFlow.name} ${metric} coverage ${actual}% < ${min}% (${criticalFlow.pattern})`,
+      );
+    }
   }
 }
 
