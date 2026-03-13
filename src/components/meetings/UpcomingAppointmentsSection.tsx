@@ -46,6 +46,8 @@ interface UpcomingAppointmentsSectionProps {
   defaultCollapsed?: boolean;
   allowStarring?: boolean;
   profiles?: ProfileInfo[];
+  showCountBadge?: boolean;
+  onAppointmentsCountChange?: (count: number) => void;
 }
 
 export const UpcomingAppointmentsSection: React.FC<UpcomingAppointmentsSectionProps> = ({
@@ -55,6 +57,8 @@ export const UpcomingAppointmentsSection: React.FC<UpcomingAppointmentsSectionPr
   defaultCollapsed = false,
   allowStarring = false,
   profiles = [],
+  showCountBadge = true,
+  onAppointmentsCountChange,
 }) => {
   const { currentTenant } = useTenant();
   const { user } = useAuth();
@@ -141,6 +145,7 @@ export const UpcomingAppointmentsSection: React.FC<UpcomingAppointmentsSectionPr
         .sort((a, b) => new Date(a.start_time).getTime() - new Date(b.start_time).getTime());
 
       setAppointments(allAppointments);
+      onAppointmentsCountChange?.(allAppointments.length);
     } catch (error) {
       debugConsole.error('Error loading appointments:', error);
     } finally {
@@ -408,9 +413,11 @@ export const UpcomingAppointmentsSection: React.FC<UpcomingAppointmentsSectionPr
               {starredCount}
             </Badge>
           )}
-          <Badge variant="outline" className="text-xs">
-            {appointments.length}
-          </Badge>
+          {showCountBadge && (
+            <Badge variant="outline" className="text-xs">
+              {appointments.length}
+            </Badge>
+          )}
         </div>
       </CollapsibleTrigger>
 
