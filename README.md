@@ -89,6 +89,7 @@ docs/                          # Fachliche Dokumentation
 ├── rollenrechte-matrix.md     # Rollen- und Rechtemodell
 ├── security-function-matrix.md # Auth-/Sicherheitsmodell je Edge Function
 ├── dangerouslysetinnerhtml-inventory.md # XSS-relevante Rendering-Inventur
+├── architecture-guidelines.md # Ownership/Testpflicht/Security-Checklist
 ├── automation-no-code-umsetzung.md
 └── ...
 ```
