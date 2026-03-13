@@ -134,6 +134,64 @@ export function AgendaEditorPanel({
     fileInput.click();
   };
 
+  const parentByItemKey = new Map<string, AgendaItem>();
+  agendaItems.forEach((agendaItem) => {
+    if (agendaItem.id) parentByItemKey.set(agendaItem.id, agendaItem);
+    if (agendaItem.localKey) parentByItemKey.set(agendaItem.localKey, agendaItem);
+  });
+
+  const mainItems = agendaItems
+    .filter((agendaItem) => !(agendaItem.parentLocalKey || agendaItem.parent_id))
+    .sort((a, b) => a.order_index - b.order_index);
+
+  const mainNumberByKey = new Map<string, number>();
+  const subNumberByKey = new Map<string, number>();
+
+  mainItems.forEach((mainItem, mainIndex) => {
+    const number = mainIndex + 1;
+    if (mainItem.id) mainNumberByKey.set(mainItem.id, number);
+    if (mainItem.localKey) mainNumberByKey.set(mainItem.localKey, number);
+
+    const subItems = agendaItems
+      .filter((agendaItem) => {
+        if (!mainItem.id && !mainItem.localKey) return false;
+        return (
+          (mainItem.id && agendaItem.parent_id === mainItem.id) ||
+          (mainItem.localKey && agendaItem.parentLocalKey === mainItem.localKey)
+        );
+      })
+      .sort((a, b) => a.order_index - b.order_index);
+
+    subItems.forEach((subItem, subIndex) => {
+      const subNumber = subIndex + 1;
+      if (subItem.id) subNumberByKey.set(subItem.id, subNumber);
+      if (subItem.localKey) subNumberByKey.set(subItem.localKey, subNumber);
+    });
+  });
+
+  const getAgendaNumber = (agendaItem: AgendaItem) => {
+    const key = agendaItem.id || agendaItem.localKey;
+    if (!key) return undefined;
+
+    const directMain = mainNumberByKey.get(key);
+    if (directMain) return `${directMain}.`;
+
+    const parentKey = agendaItem.parent_id || agendaItem.parentLocalKey;
+    if (!parentKey) return undefined;
+
+    const parentMain = mainNumberByKey.get(parentKey);
+    const subNumber = subNumberByKey.get(key);
+    if (parentMain && subNumber) return `${parentMain}.${subNumber}`;
+
+    const parentItem = parentByItemKey.get(parentKey);
+    if (!parentItem) return undefined;
+    const fallbackParentKey = parentItem.id || parentItem.localKey;
+    if (!fallbackParentKey) return undefined;
+    const fallbackMain = mainNumberByKey.get(fallbackParentKey);
+    if (!fallbackMain || !subNumber) return undefined;
+    return `${fallbackMain}.${subNumber}`;
+  };
+
   return (
     <>
       <div className="flex justify-between items-center">
@@ -192,7 +250,7 @@ export function AgendaEditorPanel({
                       {/* System item rendering */}
                       {item.system_type ? (
                         <div ref={provided.innerRef} {...provided.draggableProps} {...provided.dragHandleProps}
-                          className={cn("transition-shadow", snapshot.isDragging && "shadow-lg")}
+                          className={cn("transition-shadow", snapshot.isDragging && "shadow-lg", (item.parentLocalKey || item.parent_id) && "ml-8 border-l-4 border-l-primary/30")}
                         >
                           <SystemAgendaItem
                             systemType={item.system_type as SystemAgendaType}
@@ -208,6 +266,8 @@ export function AgendaEditorPanel({
                             onDelete={hasEditPermission ? () => onDeleteAgendaItem(item, index) : undefined}
                             isEmbedded={!!(item.parentLocalKey || item.parent_id)}
                             defaultCollapsed={true}
+                            agendaNumber={getAgendaNumber(item)}
+                            compact={true}
                           />
                         </div>
                       ) : (
@@ -232,6 +292,9 @@ export function AgendaEditorPanel({
                                 {!(item.parentLocalKey || item.parent_id) && (
                                   <Checkbox checked={item.is_completed} onCheckedChange={(checked) => onUpdateAgendaItem(index, 'is_completed', !!checked)} />
                                 )}
+                                <span className="text-muted-foreground font-medium min-w-[2.25rem] text-right">
+                                  {getAgendaNumber(item)}
+                                </span>
                                 <Input value={item.title} onChange={(e) => onUpdateAgendaItem(index, 'title', e.target.value)}
                                   placeholder={item.parentLocalKey || item.parent_id ? "Unterpunkt-Titel" : "Agenda-Punkt Titel"}
                                   className={cn("font-semibold", !(item.parentLocalKey || item.parent_id) && "text-lg")}
