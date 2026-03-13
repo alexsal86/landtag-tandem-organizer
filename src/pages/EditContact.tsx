@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { ArrowLeft, Save, Upload } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -21,6 +21,7 @@ import { useTenant } from "@/hooks/useTenant";
 import { ThemeProvider } from "next-themes";
 import { Navigation } from "@/components/Navigation";
 import { SidebarProvider } from "@/components/ui/sidebar";
+import { ImageCropper } from "@/components/ui/ImageCropper";
 
 interface Contact {
   id: string;
@@ -49,6 +50,9 @@ export default function EditContact() {
   const { currentTenant } = useTenant();
   const [loading, setLoading] = useState(false);
   const [uploading, setUploading] = useState(false);
+  const avatarInputRef = useRef<HTMLInputElement>(null);
+  const [imageToEdit, setImageToEdit] = useState<string | null>(null);
+  const [cropperOpen, setCropperOpen] = useState(false);
   const [organizations, setOrganizations] = useState<
     Array<{ id: string; name: string }>
   >([]);
@@ -125,23 +129,56 @@ export default function EditContact() {
     });
   };
 
-  const handleAvatarUpload = async (
-    event: React.ChangeEvent<HTMLInputElement>,
-  ) => {
+  const handleAvatarUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    if (!file.type.startsWith("image/")) {
+      toast({
+        title: "Fehler",
+        description: "Bitte wählen Sie eine Bilddatei aus.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (file.size > 5 * 1024 * 1024) {
+      toast({
+        title: "Fehler",
+        description: "Die Datei ist zu groß. Maximale Größe: 5MB.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onload = () => {
+      setImageToEdit(reader.result as string);
+      setCropperOpen(true);
+    };
+    reader.readAsDataURL(file);
+
+    if (avatarInputRef.current) {
+      avatarInputRef.current.value = "";
+    }
+  };
+
+  const handleCropComplete = async (croppedBlob: Blob) => {
     try {
       setUploading(true);
-      const file = event.target.files?.[0];
-      if (!file || !user) return;
+      if (!user) return;
+      setCropperOpen(false);
+      setImageToEdit(null);
 
-      const fileExt = file.name.split(".").pop();
-      const fileName = `avatar-${Date.now()}.${fileExt}`;
-      const filePath = `${user.id}/${fileName}`;
+      const contactPathSegment = contact.id || "draft";
+      const filePath = `system/contacts/${contactPathSegment}/avatar_${Date.now()}.webp`;
 
       const { error: uploadError } = await supabase.storage
         .from("avatars")
-        .upload(filePath, file, {
+        .upload(filePath, croppedBlob, {
           cacheControl: "3600",
           upsert: true,
+          contentType: "image/webp",
         });
       if (uploadError) throw uploadError;
 
@@ -149,7 +186,7 @@ export default function EditContact() {
         data: { publicUrl },
       } = supabase.storage.from("avatars").getPublicUrl(filePath);
 
-      setContact({ ...contact, avatar_url: publicUrl });
+      setContact({ ...contact, avatar_url: `${publicUrl}?t=${Date.now()}` });
       toast({ title: "Erfolg", description: "Profilbild wurde hochgeladen." });
     } catch {
       toast({
@@ -160,6 +197,11 @@ export default function EditContact() {
     } finally {
       setUploading(false);
     }
+  };
+
+  const handleCropCancel = () => {
+    setCropperOpen(false);
+    setImageToEdit(null);
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -291,6 +333,7 @@ export default function EditContact() {
                           </Button>
                         </Label>
                         <Input
+                          ref={avatarInputRef}
                           id="avatar"
                           type="file"
                           accept="image/*"
@@ -513,6 +556,15 @@ export default function EditContact() {
           </main>
         </div>
       </SidebarProvider>
+
+      {imageToEdit && (
+        <ImageCropper
+          imageSrc={imageToEdit}
+          open={cropperOpen}
+          onCropComplete={handleCropComplete}
+          onCancel={handleCropCancel}
+        />
+      )}
     </ThemeProvider>
   );
 }

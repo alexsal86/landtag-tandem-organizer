@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { debugConsole } from '@/utils/debugConsole';
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -14,6 +14,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { useTenant } from "@/hooks/useTenant";
 import { isValidEmail, findPotentialDuplicates, DuplicateMatch, type Contact as UtilContact } from "@/lib/utils";
 import { DuplicateWarning } from "@/components/DuplicateWarning";
+import { ImageCropper } from "@/components/ui/ImageCropper";
 
 import { TagInput } from "@/components/ui/tag-input";
 
@@ -75,6 +76,9 @@ export function ContactEditForm({ contact, onSuccess, onCancel }: ContactEditFor
   const [allTags, setAllTags] = useState<string[]>([]);
   const [inheritedTags, setInheritedTags] = useState<string[]>([]);
   const [uploading, setUploading] = useState(false);
+  const avatarInputRef = useRef<HTMLInputElement>(null);
+  const [imageToEdit, setImageToEdit] = useState<string | null>(null);
+  const [cropperOpen, setCropperOpen] = useState(false);
   const { toast } = useToast();
   const { user } = useAuth();
   const { currentTenant } = useTenant();
@@ -402,42 +406,66 @@ export function ContactEditForm({ contact, onSuccess, onCancel }: ContactEditFor
     }
   };
 
-  const handleAvatarUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+  const handleAvatarUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    if (!file.type.startsWith('image/')) {
+      toast({
+        title: "Ungültiger Dateityp",
+        description: "Bitte wählen Sie eine Bilddatei aus.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (file.size > 5 * 1024 * 1024) {
+      toast({
+        title: "Fehler",
+        description: "Die Datei ist zu groß. Maximale Größe: 5MB.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onload = () => {
+      setImageToEdit(reader.result as string);
+      setCropperOpen(true);
+    };
+    reader.readAsDataURL(file);
+
+    if (avatarInputRef.current) {
+      avatarInputRef.current.value = '';
+    }
+  };
+
+  const handleCropComplete = async (croppedBlob: Blob) => {
+    if (!user) {
+      toast({
+        title: "Fehler",
+        description: "Benutzer nicht authentifiziert.",
+        variant: "destructive",
+      });
+      return;
+    }
+
     try {
       setUploading(true);
-      const file = event.target.files?.[0];
-      if (!file) return;
+      setCropperOpen(false);
+      setImageToEdit(null);
 
-      if (!file.type.startsWith('image/')) {
-        toast({
-          title: "Ungültiger Dateityp",
-          description: "Bitte wählen Sie eine Bilddatei aus.",
-          variant: "destructive",
-        });
-        return;
-      }
-
-      if (!user) {
-        toast({
-          title: "Fehler",
-          description: "Benutzer nicht authentifiziert.",
-          variant: "destructive",
-        });
-        return;
-      }
-
-      const fileExt = file.name.split('.').pop();
-      const fileName = `avatar-${Date.now()}.${fileExt}`;
-      const filePath = `${user.id}/${fileName}`;
+      const contactPathSegment = formData.id || 'draft';
+      const filePath = `system/contacts/${contactPathSegment}/avatar_${Date.now()}.webp`;
 
       debugConsole.log('Uploading avatar to:', filePath);
 
-      // Upload to Supabase Storage
       const { error: uploadError } = await supabase.storage
         .from('avatars')
-        .upload(filePath, file, {
+        .upload(filePath, croppedBlob, {
           cacheControl: '3600',
-          upsert: true
+          upsert: true,
+          contentType: 'image/webp'
         });
 
       if (uploadError) {
@@ -445,14 +473,14 @@ export function ContactEditForm({ contact, onSuccess, onCancel }: ContactEditFor
         throw uploadError;
       }
 
-      // Get public URL
       const { data: { publicUrl } } = supabase.storage
         .from('avatars')
         .getPublicUrl(filePath);
 
-      debugConsole.log('Avatar uploaded successfully:', publicUrl);
-      setFormData(prev => ({ ...prev, avatar_url: publicUrl }));
-      
+      const avatarUrl = `${publicUrl}?t=${Date.now()}`;
+      debugConsole.log('Avatar uploaded successfully:', avatarUrl);
+      setFormData(prev => ({ ...prev, avatar_url: avatarUrl }));
+
       toast({
         title: "Erfolg",
         description: "Profilbild wurde hochgeladen.",
@@ -467,6 +495,11 @@ export function ContactEditForm({ contact, onSuccess, onCancel }: ContactEditFor
     } finally {
       setUploading(false);
     }
+  };
+
+  const handleCropCancel = () => {
+    setCropperOpen(false);
+    setImageToEdit(null);
   };
 
   const getInitials = (name: string) => {
@@ -510,6 +543,7 @@ export function ContactEditForm({ contact, onSuccess, onCancel }: ContactEditFor
                 </Button>
               </Label>
               <Input
+                ref={avatarInputRef}
                 id="avatar"
                 type="file"
                 accept="image/*"
@@ -950,6 +984,14 @@ export function ContactEditForm({ contact, onSuccess, onCancel }: ContactEditFor
           Abbrechen
         </Button>
       </div>
+      {imageToEdit && (
+        <ImageCropper
+          imageSrc={imageToEdit}
+          open={cropperOpen}
+          onCropComplete={handleCropComplete}
+          onCancel={handleCropCancel}
+        />
+      )}
     </form>
   );
 }
