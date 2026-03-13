@@ -318,8 +318,8 @@ export function MyWorkJourFixeTab() {
                   
                   return (
                     <li key={item.id} className="text-xs">
-                      <div className="flex items-start gap-0.5">
-                        <span className="text-muted-foreground font-medium min-w-[1.5rem]">{index + 1}.</span>
+                      <div className="flex items-start gap-1">
+                        <span className="text-muted-foreground font-medium min-w-[0.5rem]">{index + 1}.</span>
                         {systemIcon}
                         <span className={cn("text-foreground", item.system_type && "font-medium")}>
                           {item.title}
@@ -330,7 +330,7 @@ export function MyWorkJourFixeTab() {
                           {systemEntries.map((entry, systemEntryIndex) => (
                             <li key={entry.id} className="text-muted-foreground rounded bg-muted/40 px-2 py-1">
                               <div className="flex items-center gap-1">
-                                <span className="min-w-[1.5rem] text-[11px] font-medium text-foreground/70">{String.fromCharCode(97 + systemEntryIndex)})</span>
+                                <span className="min-w-[0.5rem] text-[11px] font-medium text-foreground/70">{String.fromCharCode(97 + systemEntryIndex)})</span>
                                 {entry.icon}
                                 <span className="text-foreground">{entry.label}</span>
                                 {entry.ownerLabel && (
@@ -348,8 +348,8 @@ export function MyWorkJourFixeTab() {
                             const subSystemEntries = getSystemEntries(subItem.system_type, notes, tasks, decisions, birthdays, caseItems);
                             return (
                               <li key={subItem.id} className="text-muted-foreground">
-                                <div className="flex items-start gap-0.5">
-                                  <span className="min-w-[1.5rem]">{index + 1}.{subIndex + 1}</span>
+                                <div className="flex items-start gap-1">
+                                  <span className="min-w-[0.5rem]">{index + 1}.{subIndex + 1}</span>
                                   {subSystemIcon}
                                   <span className={subItem.system_type ? "font-medium text-foreground" : ""}>
                                     {subItem.title}
@@ -359,7 +359,7 @@ export function MyWorkJourFixeTab() {
                                   <ul className="ml-8 mt-1 space-y-1">
                                     {subSystemEntries.map((entry, subSystemEntryIndex) => (
                                       <li key={entry.id} className="flex items-center gap-1 text-muted-foreground rounded bg-muted/40 px-2 py-1">
-                                        <span className="min-w-[1.5rem] text-[11px] font-medium text-foreground/70">{String.fromCharCode(97 + subSystemEntryIndex)})</span>
+                                        <span className="min-w-[0.5rem] text-[11px] font-medium text-foreground/70">{String.fromCharCode(97 + subSystemEntryIndex)})</span>
                                         {entry.icon}
                                         <span className="text-foreground">{entry.label}</span>
                                         {entry.ownerLabel && (
