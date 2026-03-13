@@ -38,7 +38,15 @@
     "coverage:thresholds:warn": "node scripts/check-coverage-thresholds.mjs --mode=warn",
     "coverage:thresholds:block": "node scripts/check-coverage-thresholds.mjs --mode=block",
     "test:e2e-smoke": "npm run test:role-smoke && npm run test:e2e:flows-smoke",
-    "test:e2e:flows-smoke": "node scripts/e2e-smoke-flows.mjs"
+    "test:e2e:flows-smoke": "node scripts/e2e-smoke-flows.mjs",
+    "typecheck:pages-batch1": "tsc -p tsconfig.pages-strict.json --noEmit",
+    "typecheck:pages-batch2": "tsc -p tsconfig.pages-batch2-strict.json --noEmit",
+    "typecheck:pages-batch3": "tsc -p tsconfig.pages-batch3-strict.json --noEmit",
+    "typecheck:services-batch1": "tsc -p tsconfig.services-features-strict.json --noEmit",
+    "typecheck:services-batch2": "tsc -p tsconfig.services-features-batch2-strict.json --noEmit",
+    "typecheck:services-batch3": "tsc -p tsconfig.services-features-batch3-strict.json --noEmit",
+    "typecheck:hooks-batch3": "tsc -p tsconfig.hooks-batch3-strict.json --noEmit",
+    "report:strict-progress": "node scripts/report-strict-progress.mjs"
   },
   "dependencies": {
     "@eslint/js": "^10.0.1",

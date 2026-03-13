@@ -1,0 +1,15 @@
+{
+  "extends": "./tsconfig.app.json",
+  "compilerOptions": {
+    "strict": false,
+    "strictNullChecks": true,
+    "noImplicitAny": true,
+    "noUnusedLocals": false,
+    "noUnusedParameters": false
+  },
+  "include": [
+    "src/services/headerRenderer.ts",
+    "src/features/matrix-widget/api.ts",
+    "src/features/matrix-widget/types.ts"
+  ]
+}

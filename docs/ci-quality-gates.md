@@ -13,6 +13,10 @@ Workflow: `.github/workflows/github_workflows_ci_Version3.yml`
    - `npm run check:security-hygiene`
    - `npm run check:diagram-drift`
    - Typecheck / Lint / Build
+   - Strict-Migrations-Batch Stage 1:
+     - `npm run typecheck:hooks-batch1`
+     - `npm run typecheck:pages-batch1`
+     - `npm run typecheck:services-batch1`
 3. **`fast-unit-integration`**
    - `npm run test:unit-integration:ci` (schneller Vitest-Run)
 4. **`coverage-thresholds`**
@@ -52,3 +56,8 @@ Mindestwerte pro kritischem Modul (Lines):
 - **Blockierstufe (main/master):** **80%**
 
 Diese Grenzwerte sind bewusst konservativ gestartet und können schrittweise erhöht werden.
+
+
+## TypeScript Strict Migration
+
+Details zur Batch-Strategie, Migrationsregel und Fortschrittsmetrik: `docs/typescript-strict-migration.md`.

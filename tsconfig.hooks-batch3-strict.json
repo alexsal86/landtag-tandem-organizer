@@ -1,0 +1,15 @@
+{
+  "extends": "./tsconfig.app.json",
+  "compilerOptions": {
+    "strict": false,
+    "strictNullChecks": true,
+    "noImplicitAny": true,
+    "noUnusedLocals": true,
+    "noUnusedParameters": true
+  },
+  "include": [
+    "src/hooks/useMyWorkJourFixeSystemData.ts",
+    "src/hooks/useQuickNotes.ts",
+    "src/hooks/useNotificationHighlight.tsx"
+  ]
+}
