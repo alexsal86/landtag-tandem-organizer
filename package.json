@@ -32,13 +32,14 @@
     "report:bundle-size": "node scripts/report-bundle-size.mjs",
     "check:security-doc-drift": "node scripts/check-security-doc-drift.mjs",
     "check:dangerouslysetinnerhtml-inventory": "node scripts/check-dangerouslysetinnerhtml-inventory.mjs",
-    "check:security-hygiene": "npm run check:security-doc-drift && npm run check:dangerouslysetinnerhtml-inventory",
+    "check:security-hygiene": "npm run check:security-doc-drift && npm run check:dangerouslysetinnerhtml-inventory && npm run check:edge-function-security",
     "test:unit-integration:ci": "vitest run --reporter=dot --passWithNoTests",
     "test:coverage:ci": "vitest run --coverage.enabled=true --coverage.provider=v8 --coverage.reporter=json-summary --coverage.reporter=text --coverage.reportsDirectory=coverage --passWithNoTests",
     "coverage:thresholds:warn": "node scripts/check-coverage-thresholds.mjs --mode=warn",
     "coverage:thresholds:block": "node scripts/check-coverage-thresholds.mjs --mode=block",
     "test:e2e-smoke": "npm run test:role-smoke && npm run test:e2e:flows-smoke",
-    "test:e2e:flows-smoke": "node scripts/e2e-smoke-flows.mjs"
+    "test:e2e:flows-smoke": "node scripts/e2e-smoke-flows.mjs",
+    "check:edge-function-security": "node scripts/check-edge-function-security.mjs"
   },
   "dependencies": {
     "@eslint/js": "^10.0.1",

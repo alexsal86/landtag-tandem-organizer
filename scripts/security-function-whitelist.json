@@ -1,0 +1,484 @@
+{
+  "entries": [
+    {
+      "functionName": "analyze-parliament-protocol",
+      "rule": "drift-missing-config",
+      "reviewer": "@security-reviewer",
+      "reason": "Legacy implementation; remediation tracked separately."
+    },
+    {
+      "functionName": "analyze-parliament-protocol",
+      "rule": "drift-missing-matrix",
+      "reviewer": "@security-reviewer",
+      "reason": "Legacy implementation; remediation tracked separately."
+    },
+    {
+      "functionName": "detect-appointment-district",
+      "rule": "drift-missing-config",
+      "reviewer": "@security-reviewer",
+      "reason": "Legacy implementation; remediation tracked separately."
+    },
+    {
+      "functionName": "detect-appointment-district",
+      "rule": "drift-missing-matrix",
+      "reviewer": "@security-reviewer",
+      "reason": "Legacy implementation; remediation tracked separately."
+    },
+    {
+      "functionName": "ics-validation",
+      "rule": "drift-missing-config",
+      "reviewer": "@security-reviewer",
+      "reason": "Legacy implementation; remediation tracked separately."
+    },
+    {
+      "functionName": "ics-validation",
+      "rule": "drift-missing-matrix",
+      "reviewer": "@security-reviewer",
+      "reason": "Legacy implementation; remediation tracked separately."
+    },
+    {
+      "functionName": "import-administrative-boundaries",
+      "rule": "drift-missing-config",
+      "reviewer": "@security-reviewer",
+      "reason": "Legacy implementation; remediation tracked separately."
+    },
+    {
+      "functionName": "import-administrative-boundaries",
+      "rule": "drift-missing-matrix",
+      "reviewer": "@security-reviewer",
+      "reason": "Legacy implementation; remediation tracked separately."
+    },
+    {
+      "functionName": "import-karlsruhe-districts",
+      "rule": "drift-missing-config",
+      "reviewer": "@security-reviewer",
+      "reason": "Legacy implementation; remediation tracked separately."
+    },
+    {
+      "functionName": "import-karlsruhe-districts",
+      "rule": "drift-missing-matrix",
+      "reviewer": "@security-reviewer",
+      "reason": "Legacy implementation; remediation tracked separately."
+    },
+    {
+      "functionName": "import-party-associations",
+      "rule": "drift-missing-config",
+      "reviewer": "@security-reviewer",
+      "reason": "Legacy implementation; remediation tracked separately."
+    },
+    {
+      "functionName": "import-party-associations",
+      "rule": "drift-missing-matrix",
+      "reviewer": "@security-reviewer",
+      "reason": "Legacy implementation; remediation tracked separately."
+    },
+    {
+      "functionName": "push-notification-worker",
+      "rule": "drift-missing-config",
+      "reviewer": "@security-reviewer",
+      "reason": "Legacy implementation; remediation tracked separately."
+    },
+    {
+      "functionName": "push-notification-worker",
+      "rule": "drift-missing-matrix",
+      "reviewer": "@security-reviewer",
+      "reason": "Legacy implementation; remediation tracked separately."
+    },
+    {
+      "functionName": "search-unsplash",
+      "rule": "drift-missing-config",
+      "reviewer": "@security-reviewer",
+      "reason": "Legacy implementation; remediation tracked separately."
+    },
+    {
+      "functionName": "search-unsplash",
+      "rule": "drift-missing-matrix",
+      "reviewer": "@security-reviewer",
+      "reason": "Legacy implementation; remediation tracked separately."
+    },
+    {
+      "functionName": "send-checklist-email",
+      "rule": "drift-missing-config",
+      "reviewer": "@security-reviewer",
+      "reason": "Legacy implementation; remediation tracked separately."
+    },
+    {
+      "functionName": "send-checklist-email",
+      "rule": "drift-missing-matrix",
+      "reviewer": "@security-reviewer",
+      "reason": "Legacy implementation; remediation tracked separately."
+    },
+    {
+      "functionName": "send-news-email",
+      "rule": "drift-missing-config",
+      "reviewer": "@security-reviewer",
+      "reason": "Legacy implementation; remediation tracked separately."
+    },
+    {
+      "functionName": "send-news-email",
+      "rule": "drift-missing-matrix",
+      "reviewer": "@security-reviewer",
+      "reason": "Legacy implementation; remediation tracked separately."
+    },
+    {
+      "functionName": "send-news-matrix",
+      "rule": "drift-missing-config",
+      "reviewer": "@security-reviewer",
+      "reason": "Legacy implementation; remediation tracked separately."
+    },
+    {
+      "functionName": "send-news-matrix",
+      "rule": "drift-missing-matrix",
+      "reviewer": "@security-reviewer",
+      "reason": "Legacy implementation; remediation tracked separately."
+    },
+    {
+      "functionName": "suggest-case-escalations",
+      "rule": "drift-missing-config",
+      "reviewer": "@security-reviewer",
+      "reason": "Legacy implementation; remediation tracked separately."
+    },
+    {
+      "functionName": "suggest-case-escalations",
+      "rule": "drift-missing-matrix",
+      "reviewer": "@security-reviewer",
+      "reason": "Legacy implementation; remediation tracked separately."
+    },
+    {
+      "functionName": "yjs-collaboration",
+      "rule": "drift-missing-function",
+      "reviewer": "@security-reviewer",
+      "reason": "Legacy implementation; remediation tracked separately."
+    },
+    {
+      "functionName": "analyze-parliament-protocol",
+      "rule": "wildcard-cors",
+      "reviewer": "@security-reviewer",
+      "reason": "Legacy implementation; remediation tracked separately."
+    },
+    {
+      "functionName": "analyze-parliament-protocol",
+      "rule": "unsafe-error-response",
+      "reviewer": "@security-reviewer",
+      "reason": "Legacy implementation; remediation tracked separately."
+    },
+    {
+      "functionName": "archive-letter",
+      "rule": "wildcard-cors",
+      "reviewer": "@security-reviewer",
+      "reason": "Legacy implementation; remediation tracked separately."
+    },
+    {
+      "functionName": "auto-sync-calendars",
+      "rule": "wildcard-cors",
+      "reviewer": "@security-reviewer",
+      "reason": "Legacy implementation; remediation tracked separately."
+    },
+    {
+      "functionName": "automation-webhook",
+      "rule": "wildcard-cors",
+      "reviewer": "@security-reviewer",
+      "reason": "Legacy implementation; remediation tracked separately."
+    },
+    {
+      "functionName": "batch-geocode-contacts",
+      "rule": "wildcard-cors",
+      "reviewer": "@security-reviewer",
+      "reason": "Legacy implementation; remediation tracked separately."
+    },
+    {
+      "functionName": "create-admin-user",
+      "rule": "wildcard-cors",
+      "reviewer": "@security-reviewer",
+      "reason": "Legacy implementation; remediation tracked separately."
+    },
+    {
+      "functionName": "create-admin-user",
+      "rule": "unsafe-error-response",
+      "reviewer": "@security-reviewer",
+      "reason": "Legacy implementation; remediation tracked separately."
+    },
+    {
+      "functionName": "create-demo-users",
+      "rule": "wildcard-cors",
+      "reviewer": "@security-reviewer",
+      "reason": "Legacy implementation; remediation tracked separately."
+    },
+    {
+      "functionName": "detect-appointment-district",
+      "rule": "wildcard-cors",
+      "reviewer": "@security-reviewer",
+      "reason": "Legacy implementation; remediation tracked separately."
+    },
+    {
+      "functionName": "detect-appointment-district",
+      "rule": "unsafe-error-response",
+      "reviewer": "@security-reviewer",
+      "reason": "Legacy implementation; remediation tracked separately."
+    },
+    {
+      "functionName": "fetch-rss-feeds",
+      "rule": "wildcard-cors",
+      "reviewer": "@security-reviewer",
+      "reason": "Legacy implementation; remediation tracked separately."
+    },
+    {
+      "functionName": "fetch-rss-feeds",
+      "rule": "unsafe-error-response",
+      "reviewer": "@security-reviewer",
+      "reason": "Legacy implementation; remediation tracked separately."
+    },
+    {
+      "functionName": "force-resync-calendar",
+      "rule": "wildcard-cors",
+      "reviewer": "@security-reviewer",
+      "reason": "Legacy implementation; remediation tracked separately."
+    },
+    {
+      "functionName": "force-resync-calendar",
+      "rule": "unsafe-error-response",
+      "reviewer": "@security-reviewer",
+      "reason": "Legacy implementation; remediation tracked separately."
+    },
+    {
+      "functionName": "force-resync-calendar",
+      "rule": "missing-role-check",
+      "reviewer": "@security-reviewer",
+      "reason": "Legacy implementation; remediation tracked separately."
+    },
+    {
+      "functionName": "generate-calendar-invite",
+      "rule": "wildcard-cors",
+      "reviewer": "@security-reviewer",
+      "reason": "Legacy implementation; remediation tracked separately."
+    },
+    {
+      "functionName": "geocode-contact-address",
+      "rule": "wildcard-cors",
+      "reviewer": "@security-reviewer",
+      "reason": "Legacy implementation; remediation tracked separately."
+    },
+    {
+      "functionName": "global-logout",
+      "rule": "wildcard-cors",
+      "reviewer": "@security-reviewer",
+      "reason": "Legacy implementation; remediation tracked separately."
+    },
+    {
+      "functionName": "ics-validation",
+      "rule": "wildcard-cors",
+      "reviewer": "@security-reviewer",
+      "reason": "Legacy implementation; remediation tracked separately."
+    },
+    {
+      "functionName": "import-administrative-boundaries",
+      "rule": "wildcard-cors",
+      "reviewer": "@security-reviewer",
+      "reason": "Legacy implementation; remediation tracked separately."
+    },
+    {
+      "functionName": "import-election-districts",
+      "rule": "wildcard-cors",
+      "reviewer": "@security-reviewer",
+      "reason": "Legacy implementation; remediation tracked separately."
+    },
+    {
+      "functionName": "import-karlsruhe-districts",
+      "rule": "wildcard-cors",
+      "reviewer": "@security-reviewer",
+      "reason": "Legacy implementation; remediation tracked separately."
+    },
+    {
+      "functionName": "import-party-associations",
+      "rule": "wildcard-cors",
+      "reviewer": "@security-reviewer",
+      "reason": "Legacy implementation; remediation tracked separately."
+    },
+    {
+      "functionName": "import-party-associations",
+      "rule": "unsafe-error-response",
+      "reviewer": "@security-reviewer",
+      "reason": "Legacy implementation; remediation tracked separately."
+    },
+    {
+      "functionName": "import-representatives",
+      "rule": "wildcard-cors",
+      "reviewer": "@security-reviewer",
+      "reason": "Legacy implementation; remediation tracked separately."
+    },
+    {
+      "functionName": "knowledge-collaboration",
+      "rule": "missing-webhook-secret",
+      "reviewer": "@security-reviewer",
+      "reason": "Legacy implementation; remediation tracked separately."
+    },
+    {
+      "functionName": "manage-tenant-user",
+      "rule": "wildcard-cors",
+      "reviewer": "@security-reviewer",
+      "reason": "Legacy implementation; remediation tracked separately."
+    },
+    {
+      "functionName": "matrix-bot-handler",
+      "rule": "wildcard-cors",
+      "reviewer": "@security-reviewer",
+      "reason": "Legacy implementation; remediation tracked separately."
+    },
+    {
+      "functionName": "matrix-bot-handler",
+      "rule": "unsafe-error-response",
+      "reviewer": "@security-reviewer",
+      "reason": "Legacy implementation; remediation tracked separately."
+    },
+    {
+      "functionName": "matrix-decision-handler",
+      "rule": "missing-webhook-secret",
+      "reviewer": "@security-reviewer",
+      "reason": "Legacy implementation; remediation tracked separately."
+    },
+    {
+      "functionName": "process-decision-response",
+      "rule": "wildcard-cors",
+      "reviewer": "@security-reviewer",
+      "reason": "Legacy implementation; remediation tracked separately."
+    },
+    {
+      "functionName": "process-decision-response",
+      "rule": "missing-webhook-secret",
+      "reviewer": "@security-reviewer",
+      "reason": "Legacy implementation; remediation tracked separately."
+    },
+    {
+      "functionName": "publish-to-ghost",
+      "rule": "wildcard-cors",
+      "reviewer": "@security-reviewer",
+      "reason": "Legacy implementation; remediation tracked separately."
+    },
+    {
+      "functionName": "push-notification-worker",
+      "rule": "wildcard-cors",
+      "reviewer": "@security-reviewer",
+      "reason": "Legacy implementation; remediation tracked separately."
+    },
+    {
+      "functionName": "push-notification-worker",
+      "rule": "unsafe-error-response",
+      "reviewer": "@security-reviewer",
+      "reason": "Legacy implementation; remediation tracked separately."
+    },
+    {
+      "functionName": "resend-poll-invitation",
+      "rule": "wildcard-cors",
+      "reviewer": "@security-reviewer",
+      "reason": "Legacy implementation; remediation tracked separately."
+    },
+    {
+      "functionName": "reset-user-mfa",
+      "rule": "wildcard-cors",
+      "reviewer": "@security-reviewer",
+      "reason": "Legacy implementation; remediation tracked separately."
+    },
+    {
+      "functionName": "reset-user-mfa",
+      "rule": "missing-role-check",
+      "reviewer": "@security-reviewer",
+      "reason": "Legacy implementation; remediation tracked separately."
+    },
+    {
+      "functionName": "run-automation-rule",
+      "rule": "wildcard-cors",
+      "reviewer": "@security-reviewer",
+      "reason": "Legacy implementation; remediation tracked separately."
+    },
+    {
+      "functionName": "search-unsplash",
+      "rule": "wildcard-cors",
+      "reviewer": "@security-reviewer",
+      "reason": "Legacy implementation; remediation tracked separately."
+    },
+    {
+      "functionName": "send-appointment-invitation",
+      "rule": "wildcard-cors",
+      "reviewer": "@security-reviewer",
+      "reason": "Legacy implementation; remediation tracked separately."
+    },
+    {
+      "functionName": "send-appointment-invitation",
+      "rule": "unsafe-error-response",
+      "reviewer": "@security-reviewer",
+      "reason": "Legacy implementation; remediation tracked separately."
+    },
+    {
+      "functionName": "send-checklist-email",
+      "rule": "wildcard-cors",
+      "reviewer": "@security-reviewer",
+      "reason": "Legacy implementation; remediation tracked separately."
+    },
+    {
+      "functionName": "send-decision-email",
+      "rule": "wildcard-cors",
+      "reviewer": "@security-reviewer",
+      "reason": "Legacy implementation; remediation tracked separately."
+    },
+    {
+      "functionName": "send-decision-email",
+      "rule": "unsafe-error-response",
+      "reviewer": "@security-reviewer",
+      "reason": "Legacy implementation; remediation tracked separately."
+    },
+    {
+      "functionName": "send-document-email",
+      "rule": "wildcard-cors",
+      "reviewer": "@security-reviewer",
+      "reason": "Legacy implementation; remediation tracked separately."
+    },
+    {
+      "functionName": "send-event-invitation",
+      "rule": "wildcard-cors",
+      "reviewer": "@security-reviewer",
+      "reason": "Legacy implementation; remediation tracked separately."
+    },
+    {
+      "functionName": "send-news-email",
+      "rule": "wildcard-cors",
+      "reviewer": "@security-reviewer",
+      "reason": "Legacy implementation; remediation tracked separately."
+    },
+    {
+      "functionName": "send-news-matrix",
+      "rule": "wildcard-cors",
+      "reviewer": "@security-reviewer",
+      "reason": "Legacy implementation; remediation tracked separately."
+    },
+    {
+      "functionName": "send-poll-invitation",
+      "rule": "wildcard-cors",
+      "reviewer": "@security-reviewer",
+      "reason": "Legacy implementation; remediation tracked separately."
+    },
+    {
+      "functionName": "send-poll-notifications",
+      "rule": "wildcard-cors",
+      "reviewer": "@security-reviewer",
+      "reason": "Legacy implementation; remediation tracked separately."
+    },
+    {
+      "functionName": "send-push-notification",
+      "rule": "unsafe-error-response",
+      "reviewer": "@security-reviewer",
+      "reason": "Legacy implementation; remediation tracked separately."
+    },
+    {
+      "functionName": "suggest-case-escalations",
+      "rule": "wildcard-cors",
+      "reviewer": "@security-reviewer",
+      "reason": "Legacy implementation; remediation tracked separately."
+    },
+    {
+      "functionName": "sync-external-calendar",
+      "rule": "wildcard-cors",
+      "reviewer": "@security-reviewer",
+      "reason": "Legacy implementation; remediation tracked separately."
+    }
+  ]
+}

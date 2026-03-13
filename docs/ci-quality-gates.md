@@ -11,6 +11,7 @@ Workflow: `.github/workflows/github_workflows_ci_Version3.yml`
    - Pytests
 2. **`node-quality-gates`**
    - `npm run check:security-hygiene`
+   - `npm run check:edge-function-security` (verpflichtend, inkl. Drift-Check + Whitelist-Ausnahmen)
    - `npm run check:diagram-drift`
    - Typecheck / Lint / Build
 3. **`fast-unit-integration`**
