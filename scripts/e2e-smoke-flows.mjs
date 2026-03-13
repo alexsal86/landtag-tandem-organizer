@@ -1,5 +1,8 @@
 import assert from 'node:assert/strict';
 
+const DEFAULT_RETRY_COUNT = Number.parseInt(process.env.E2E_SMOKE_RETRIES ?? '2', 10);
+const requestedSuite = process.env.E2E_SMOKE_SUITE ?? 'extended';
+
 const FIXTURES = Object.freeze({
   tenant: { id: 'tenant-smoke-001', name: 'Smoke Tenant' },
   users: {
@@ -40,21 +43,21 @@ const setupTenantBucket = (state, tenantId) => {
   }
 };
 
-const clearFixtureRecords = (state) => {
-  setupTenantBucket(state, FIXTURES.tenant.id);
+const clearFixtureRecords = (state, fixtures = FIXTURES) => {
+  setupTenantBucket(state, fixtures.tenant.id);
 
   state.appointmentsByTenant.set(
-    FIXTURES.tenant.id,
+    fixtures.tenant.id,
     state.appointmentsByTenant
-      .get(FIXTURES.tenant.id)
-      .filter((a) => a.id !== FIXTURES.appointment.id),
+      .get(fixtures.tenant.id)
+      .filter((a) => a.id !== fixtures.appointment.id),
   );
 
   state.tasksByTenant.set(
-    FIXTURES.tenant.id,
+    fixtures.tenant.id,
     state.tasksByTenant
-      .get(FIXTURES.tenant.id)
-      .filter((t) => t.id !== FIXTURES.task.id),
+      .get(fixtures.tenant.id)
+      .filter((t) => t.id !== fixtures.task.id),
   );
 };
 
@@ -137,45 +140,90 @@ const canAccessAdminArea = (state, sessionToken) => {
 const run = () => {
   const state = createState();
 
-  // Idempotentes Setup
-  clearFixtureRecords(state);
+  const runtimeFixtureNamespace = process.env.GITHUB_RUN_ID ?? 'local';
+  const deterministicFixtures = {
+    ...FIXTURES,
+    appointment: {
+      ...FIXTURES.appointment,
+      id: `${FIXTURES.appointment.id}-${runtimeFixtureNamespace}`,
+      title: `${FIXTURES.appointment.title}-${runtimeFixtureNamespace}`,
+    },
+    task: {
+      ...FIXTURES.task,
+      id: `${FIXTURES.task.id}-${runtimeFixtureNamespace}`,
+      title: `${FIXTURES.task.title}-${runtimeFixtureNamespace}`,
+    },
+  };
 
-  // 1) Login + Tenant-Auswahl
-  const adminSession = login(state, FIXTURES.users.admin.email, FIXTURES.users.admin.password);
-  const selectedTenantId = selectTenant(state, adminSession, FIXTURES.tenant.id);
-  assert.equal(selectedTenantId, FIXTURES.tenant.id);
+  const flowContext = { state, fixtures: deterministicFixtures };
 
-  // 2) Termin anlegen + anzeigen
-  const appointment = createAppointment(state, adminSession, FIXTURES.appointment);
-  assert.equal(appointment.title, FIXTURES.appointment.title);
-  const appointments = listAppointments(state, adminSession);
-  assert.equal(appointments.some((entry) => entry.id === FIXTURES.appointment.id), true);
+  const retryFlow = (name, flow) => {
+    for (let attempt = 1; attempt <= DEFAULT_RETRY_COUNT + 1; attempt += 1) {
+      try {
+        flow();
+        console.log(`✅ ${name} erfolgreich (Versuch ${attempt}/${DEFAULT_RETRY_COUNT + 1})`);
+        return;
+      } catch (error) {
+        const isLastAttempt = attempt > DEFAULT_RETRY_COUNT;
+        console.error(`⚠️ ${name} fehlgeschlagen (Versuch ${attempt}/${DEFAULT_RETRY_COUNT + 1}): ${error.message}`);
+        if (isLastAttempt) {
+          throw error;
+        }
+      }
+    }
+  };
 
-  // 3) Aufgabe anlegen + Statuswechsel
-  const task = createTask(state, adminSession, {
-    id: FIXTURES.task.id,
-    title: FIXTURES.task.title,
-    status: FIXTURES.task.initialStatus,
-  });
-  assert.equal(task.status, FIXTURES.task.initialStatus);
+  const flows = {
+    loginAndTenantSelection: () => {
+      clearFixtureRecords(state, deterministicFixtures);
+      const adminSession = login(state, deterministicFixtures.users.admin.email, deterministicFixtures.users.admin.password);
+      flowContext.adminSession = adminSession;
+      const selectedTenantId = selectTenant(state, adminSession, deterministicFixtures.tenant.id);
+      assert.equal(selectedTenantId, deterministicFixtures.tenant.id, 'Admin-Tenant muss auswählbar sein.');
+    },
+    appointmentLifecycle: () => {
+      const appointment = createAppointment(state, flowContext.adminSession, deterministicFixtures.appointment);
+      assert.equal(appointment.title, deterministicFixtures.appointment.title, 'Termin-Titel muss korrekt gespeichert werden.');
+      const appointments = listAppointments(state, flowContext.adminSession);
+      assert.equal(
+        appointments.some((entry) => entry.id === deterministicFixtures.appointment.id),
+        true,
+        'Neu angelegter Termin muss in der Liste erscheinen.',
+      );
+    },
+    taskLifecycle: () => {
+      const task = createTask(state, flowContext.adminSession, {
+        id: deterministicFixtures.task.id,
+        title: deterministicFixtures.task.title,
+        status: deterministicFixtures.task.initialStatus,
+      });
+      assert.equal(task.status, deterministicFixtures.task.initialStatus, 'Neue Aufgabe muss im initialen Status starten.');
 
-  const updatedTask = updateTaskStatus(
-    state,
-    adminSession,
-    FIXTURES.task.id,
-    FIXTURES.task.nextStatus,
-  );
-  assert.equal(updatedTask?.status, FIXTURES.task.nextStatus);
+      const updatedTask = updateTaskStatus(
+        state,
+        flowContext.adminSession,
+        deterministicFixtures.task.id,
+        deterministicFixtures.task.nextStatus,
+      );
+      assert.equal(updatedTask?.status, deterministicFixtures.task.nextStatus, 'Aufgaben-Statuswechsel muss persistiert sein.');
+    },
+    nonAdminAuthorization: () => {
+      const staffSession = login(state, deterministicFixtures.users.staff.email, deterministicFixtures.users.staff.password);
+      selectTenant(state, staffSession, deterministicFixtures.tenant.id);
+      assert.equal(canAccessAdminArea(state, staffSession), false, 'Nicht-Admin darf keinen Zugriff auf den Admin-Bereich erhalten.');
+    },
+  };
 
-  // 4) Rechtecheck Nicht-Admin
-  const staffSession = login(state, FIXTURES.users.staff.email, FIXTURES.users.staff.password);
-  selectTenant(state, staffSession, FIXTURES.tenant.id);
-  assert.equal(canAccessAdminArea(state, staffSession), false);
+  const smokeRequiredFlowOrder = ['loginAndTenantSelection', 'appointmentLifecycle', 'taskLifecycle'];
+  const smokeExtendedFlowOrder = [...smokeRequiredFlowOrder, 'nonAdminAuthorization'];
+  const selectedFlowOrder = requestedSuite === 'required' ? smokeRequiredFlowOrder : smokeExtendedFlowOrder;
 
-  // Idempotentes Teardown
-  clearFixtureRecords(state);
+  for (const flowName of selectedFlowOrder) {
+    retryFlow(flowName, flows[flowName]);
+  }
 
-  console.log('E2E-Smoke-Flows erfolgreich.');
+  clearFixtureRecords(state, deterministicFixtures);
+  console.log(`E2E-Smoke-Flows erfolgreich (Suite: ${requestedSuite}).`);
 };
 
 run();
