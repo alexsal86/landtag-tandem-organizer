@@ -126,3 +126,9 @@ Diese Grenzwerte sind bewusst konservativ gestartet und können schrittweise erh
 ## TypeScript Strict Migration
 
 Details zur Batch-Strategie, Migrationsregel und Fortschrittsmetrik: `docs/typescript-strict-migration.md`.
+
+## Python-Test-Gate (Parser)
+
+- `pytest -q` ist ein verpflichtender Gate-Check im Job `parser-and-tests`.
+- Im Repository muss mindestens ein echter Pytest vorhanden sein (kein Dummy), damit der Gate-Status aussagekräftig bleibt.
+- Referenz: `tests/test_parser_core.py` prüft Kernfunktionen der Parser-Normalisierung und Metadaten-Extraktion.
