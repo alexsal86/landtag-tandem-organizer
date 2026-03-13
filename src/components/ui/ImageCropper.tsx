@@ -22,7 +22,7 @@ export function ImageCropper({ imageSrc, onCropComplete, onCancel, open }: Image
   const [dragStart, setDragStart] = useState({ x: 0, y: 0 });
   const [isProcessing, setIsProcessing] = useState(false);
 
-  const CROP_SIZE = 256; // Output size
+  const CROP_SIZE = 220; // Output size (smaller for reduced storage)
   const DISPLAY_SIZE = 280; // Display size in the dialog
 
   // Load image when source changes
@@ -186,7 +186,7 @@ export function ImageCropper({ imageSrc, onCropComplete, onCancel, open }: Image
           setIsProcessing(false);
         },
         "image/webp",
-        0.9
+        0.82
       );
     } catch (error) {
       debugConsole.error("Error cropping image:", error);

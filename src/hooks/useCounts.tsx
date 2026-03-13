@@ -71,7 +71,7 @@ export function useCounts(): CountsData {
       // Get distribution lists count (including those with null tenant_id)
       const { count: distributionListsCount, error: distributionError } = await supabase
         .from('distribution_lists')
-        .select('id', { count: 'planned', head: true })
+        .select('id', { count: 'exact', head: true })
         .or(`tenant_id.eq.${currentTenant.id},tenant_id.is.null`);
 
       if (distributionError) {

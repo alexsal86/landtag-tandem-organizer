@@ -182,7 +182,7 @@ function evaluatePair(
   let nameSimilarity = 0;
   if (options.allowLevenshtein) {
     nameSimilarity = stringSimilarity(contact1.name, contact2.name);
-    if (nameSimilarity > 0.8) {
+    if (nameSimilarity >= 0.9) {
       matchScore += nameSimilarity * 50;
       matchReasons.push(
         `Ähnlicher Name (${Math.round(nameSimilarity * 100)}% Übereinstimmung)`,
@@ -207,7 +207,7 @@ function evaluatePair(
         ? 1
         : 0;
 
-    if (orgSimilarity > 0.85 && nameSimilarity > 0.6) {
+    if (orgSimilarity > 0.85 && nameSimilarity >= 0.9) {
       matchScore += 30;
       matchReasons.push(`Gleiche Organisation (${contact1.organization})`);
     }
@@ -317,7 +317,7 @@ export function findPotentialDuplicates(
 
     // Name similarity
     const nameSimilarity = stringSimilarity(newContact.name, existing.name);
-    if (nameSimilarity > 0.8) {
+    if (nameSimilarity >= 0.9) {
       matchScore += nameSimilarity * 0.5;
       matchReasons.push(
         `Ähnlicher Name (${Math.round(nameSimilarity * 100)}%)`,
@@ -329,7 +329,7 @@ export function findPotentialDuplicates(
       newContact.organization_id &&
       existing.organization_id &&
       newContact.organization_id === existing.organization_id &&
-      nameSimilarity > 0.6
+      nameSimilarity >= 0.9
     ) {
       matchScore += 0.4;
       matchReasons.push("Gleiche Organisation (ID)");
@@ -341,7 +341,7 @@ export function findPotentialDuplicates(
         newContact.organization,
         existing.organization,
       );
-      if (orgSimilarity > 0.85 && nameSimilarity > 0.6) {
+      if (orgSimilarity > 0.85 && nameSimilarity >= 0.9) {
         matchScore += 0.3;
         matchReasons.push(`Gleiche Organisation`);
       }

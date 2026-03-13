@@ -144,6 +144,64 @@ export function useContactImport() {
     setStep("preview");
   };
 
+  const parseDistributionListNames = (rawValue: string | undefined) => {
+    if (!rawValue) return [];
+    return rawValue
+      .split(/[;,|]/)
+      .map((name) => name.trim())
+      .filter(Boolean);
+  };
+
+  const assignContactToDistributionLists = async (contactId: string, listNames: string[], rowIndex: number) => {
+    if (!user || !currentTenant || listNames.length === 0) return;
+
+    for (const listName of listNames) {
+      try {
+        const { data: existingList, error: listFetchError } = await supabase
+          .from("distribution_lists")
+          .select("id")
+          .eq("tenant_id", currentTenant.id)
+          .eq("name", listName)
+          .maybeSingle();
+
+        if (listFetchError) throw listFetchError;
+
+        let distributionListId = existingList?.id;
+
+        if (!distributionListId) {
+          const { data: newList, error: createListError } = await supabase
+            .from("distribution_lists")
+            .insert([{ user_id: user.id, tenant_id: currentTenant.id, name: listName }])
+            .select("id")
+            .single();
+
+          if (createListError) throw createListError;
+          distributionListId = newList.id;
+        }
+
+        const { data: existingMembership, error: membershipFetchError } = await supabase
+          .from("distribution_list_members")
+          .select("id")
+          .eq("distribution_list_id", distributionListId)
+          .eq("contact_id", contactId)
+          .maybeSingle();
+
+        if (membershipFetchError) throw membershipFetchError;
+
+        if (!existingMembership) {
+          const { error: membershipInsertError } = await supabase
+            .from("distribution_list_members")
+            .insert([{ distribution_list_id: distributionListId, contact_id: contactId }]);
+
+          if (membershipInsertError) throw membershipInsertError;
+        }
+      } catch (error) {
+        const message = error instanceof Error ? error.message : "Unbekannter Fehler bei Verteilerzuordnung";
+        setErrors((prev) => [...prev, `Zeile ${rowIndex + 1}: Verteiler "${listName}" konnte nicht zugeordnet werden (${message})`]);
+      }
+    }
+  };
+
   const importContact = async (rowIndex: number) => {
     if (!user || !currentTenant) return;
     const row = data[rowIndex];
@@ -151,6 +209,8 @@ export function useContactImport() {
     try {
       const contactData: any = { user_id: user.id, tenant_id: currentTenant.id };
       validMappings.forEach((m) => { const v = row[m.sourceField]; if (v && v.trim()) contactData[m.targetField] = v.trim(); });
+      const distributionListNames = parseDistributionListNames(contactData.distribution_list_names);
+      delete contactData.distribution_list_names;
       if ((contactData.first_name || contactData.last_name) && !contactData.name) contactData.name = `${contactData.first_name || ""} ${contactData.last_name || ""}`.trim();
       if (contactData.organization?.trim()) {
         const orgName = contactData.organization.trim();
@@ -165,10 +225,17 @@ export function useContactImport() {
       if (!contactData.contact_type) contactData.contact_type = "person";
       if (!contactData.category) contactData.category = "citizen";
       if (!contactData.priority) contactData.priority = "medium";
-      const { error } = await supabase.from("contacts").insert([contactData]);
-      if (error) { setErrors((prev) => [...prev, `Zeile ${rowIndex + 1}: ${error.message}`]); }
-      else { setImportedCount((prev) => prev + 1); setExistingContacts((prev) => [...prev, { id: "temp-" + rowIndex, name: contactData.name, email: contactData.email, phone: contactData.phone, organization: contactData.organization }]); }
-    } catch { setErrors((prev) => [...prev, `Zeile ${rowIndex + 1}: Unbekannter Fehler`]); }
+      const { data: insertedContact, error } = await supabase.from("contacts").insert([contactData]).select("id").single();
+      if (error || !insertedContact) {
+        setErrors((prev) => [...prev, `Zeile ${rowIndex + 1}: ${error?.message || "Kontakt konnte nicht gespeichert werden"}`]);
+      } else {
+        await assignContactToDistributionLists(insertedContact.id, distributionListNames, rowIndex);
+        setImportedCount((prev) => prev + 1);
+        setExistingContacts((prev) => [...prev, { id: insertedContact.id, name: contactData.name, email: contactData.email, phone: contactData.phone, organization: contactData.organization }]);
+      }
+    } catch {
+      setErrors((prev) => [...prev, `Zeile ${rowIndex + 1}: Unbekannter Fehler`]);
+    }
   };
 
   const continueImport = () => {
@@ -251,7 +318,7 @@ export function useContactImport() {
   const reset = () => { setFile(null); setData([]); setFieldMappings([]); setStep("upload"); setProgress(0); setImportedCount(0); setSkippedCount(0); setErrors([]); setDuplicateWarnings([]); setCurrentDuplicate(null); setDuplicateStrategy("ask"); setImportQueue([]); };
 
   const downloadTemplate = () => {
-    const template = { Nachname: "Mustermann", Vorname: "Max", Titel: "Dr.", Firma: "Beispiel GmbH", Abteilung: "Vertrieb", Position: "Geschäftsführer", "Geschäftlich: Straße": "Musterstraße", "Geschäftlich: Hausnummer": "123", "Geschäftlich: Postleitzahl": "12345", "Geschäftlich: Ort": "Musterstadt", "Geschäftlich: Land": "Deutschland", "Telefon geschäftlich": "+49 123 456789", "E-Mail 1": "max.mustermann@beispiel.de" };
+    const template = { Nachname: "Mustermann", Vorname: "Max", Titel: "Dr.", Firma: "Beispiel GmbH", Abteilung: "Vertrieb", Position: "Geschäftsführer", "Geschäftlich: Straße": "Musterstraße", "Geschäftlich: Hausnummer": "123", "Geschäftlich: Postleitzahl": "12345", "Geschäftlich: Ort": "Musterstadt", "Geschäftlich: Land": "Deutschland", "Telefon geschäftlich": "+49 123 456789", "E-Mail 1": "max.mustermann@beispiel.de", Verteiler: "Presse; Umwelt" };
     const csv = Papa.unparse([template]);
     const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
     const link = document.createElement("a");

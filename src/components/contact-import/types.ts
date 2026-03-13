@@ -40,6 +40,11 @@ export const FIELD_MAPPINGS: Record<string, string> = {
   Mobile: "mobile_phone",
   Address: "address",
   City: "location",
+  Verteiler: "distribution_list_names",
+  Verteilerliste: "distribution_list_names",
+  Verteilerlisten: "distribution_list_names",
+  "Distribution List": "distribution_list_names",
+  "Distribution Lists": "distribution_list_names",
 };
 
 export const TARGET_FIELDS = [
@@ -48,4 +53,5 @@ export const TARGET_FIELDS = [
   "private_street", "private_house_number", "private_postal_code", "private_city", "private_country",
   "business_phone", "business_phone_2", "private_phone", "private_phone_2", "mobile_phone",
   "email", "email_2", "email_3", "phone", "address", "location", "notes",
+  "distribution_list_names",
 ];

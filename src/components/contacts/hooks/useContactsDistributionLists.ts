@@ -1,8 +1,7 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import type { Dispatch, SetStateAction } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { debugConsole } from "@/utils/debugConsole";
-import type { Contact } from "@/hooks/useInfiniteContacts";
 import type { User } from "@supabase/supabase-js";
 
 export interface DistributionList {
@@ -12,7 +11,13 @@ export interface DistributionList {
   topic?: string | null;
   created_at: string;
   member_count: number;
-  members: Contact[];
+}
+
+export interface DistributionListMember {
+  id: string;
+  name: string;
+  email?: string | null;
+  organization?: string | null;
 }
 
 type ToastFn = (props: { title?: string; description?: string; variant?: "default" | "destructive" }) => void;
@@ -26,6 +31,7 @@ export interface UseContactsDistributionListsResult {
   setCreatingDistribution: Dispatch<SetStateAction<boolean>>;
   fetchDistributionLists: () => Promise<void>;
   deleteDistributionList: (id: string) => Promise<void>;
+  fetchDistributionListMembers: (distributionListId: string) => Promise<DistributionListMember[]>;
 }
 
 export function useContactsDistributionLists(
@@ -38,30 +44,42 @@ export function useContactsDistributionLists(
   const [editingDistributionListId, setEditingDistributionListId] = useState<string | null>(null);
   const [creatingDistribution, setCreatingDistribution] = useState(false);
 
-  const fetchDistributionLists = async () => {
+  const fetchDistributionLists = useCallback(async () => {
     try {
       setDistributionListsLoading(true);
 
       const { data, error } = await supabase
         .from("distribution_lists")
-        .select(`*, distribution_list_members(contacts(id, name, email, organization, avatar_url, category))`)
+        .select("id, name, description, topic, created_at")
         .order("name");
 
       if (error) {
         throw error;
       }
 
-      setDistributionLists(
-        data?.map((list) => ({
-          id: list.id,
-          name: list.name,
-          description: list.description,
-          topic: list.topic,
-          created_at: list.created_at,
-          member_count: list.distribution_list_members?.length || 0,
-          members: list.distribution_list_members?.map((member: any) => member.contacts) || [],
-        })) || [],
+      const listsWithCounts = await Promise.all(
+        (data || []).map(async (list) => {
+          const { count, error: countError } = await supabase
+            .from("distribution_list_members")
+            .select("id", { count: "exact", head: true })
+            .eq("distribution_list_id", list.id);
+
+          if (countError) {
+            throw countError;
+          }
+
+          return {
+            id: list.id,
+            name: list.name,
+            description: list.description,
+            topic: list.topic,
+            created_at: list.created_at,
+            member_count: count || 0,
+          };
+        }),
       );
+
+      setDistributionLists(listsWithCounts);
     } catch (error) {
       debugConsole.error("Error fetching distribution lists:", error);
       toast({
@@ -72,7 +90,23 @@ export function useContactsDistributionLists(
     } finally {
       setDistributionListsLoading(false);
     }
-  };
+  }, [toast]);
+
+
+  const fetchDistributionListMembers = useCallback(async (distributionListId: string): Promise<DistributionListMember[]> => {
+    const { data, error } = await supabase
+      .from("distribution_list_members")
+      .select("contacts(id, name, email, organization)")
+      .eq("distribution_list_id", distributionListId);
+
+    if (error) {
+      throw error;
+    }
+
+    return (data || [])
+      .map((member: { contacts: DistributionListMember | null }) => member.contacts)
+      .filter((contact): contact is DistributionListMember => Boolean(contact));
+  }, []);
 
   const deleteDistributionList = async (id: string) => {
     try {
@@ -100,7 +134,7 @@ export function useContactsDistributionLists(
     }
 
     void fetchDistributionLists();
-  }, [user, currentTenantId]);
+  }, [user, currentTenantId, fetchDistributionLists]);
 
   return {
     distributionLists,
@@ -111,5 +145,6 @@ export function useContactsDistributionLists(
     setCreatingDistribution,
     fetchDistributionLists,
     deleteDistributionList,
+    fetchDistributionListMembers,
   };
 }
