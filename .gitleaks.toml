@@ -1,0 +1,17 @@
+title = "landtag-tandem-organizer gitleaks config"
+
+[extend]
+useDefault = true
+
+[allowlist]
+description = "Projektweite False-Positive-Allowlist"
+paths = [
+  '''docs/''',
+  '''.*\.md$''',
+  '''.*\.test\.(ts|tsx|js|jsx)$'''
+]
+regexes = [
+  '''(?i)example[_-]?secret''',
+  '''(?i)dummy[_-]?token''',
+  '''(?i)test[_-]?apikey'''
+]

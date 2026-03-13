@@ -1,0 +1,13 @@
+# Versionierte Ignore-/Baseline-Liste für bekannte Semgrep-False-Positives.
+# Neue Einträge nur mit Begründung im PR hinzufügen.
+
+# Build-Artefakte
+node_modules/
+dist/
+coverage/
+
+# Dokumentation / nicht ausführbarer Inhalt
+docs/
+
+# Beispielhafte Testdaten mit absichtlich unsicheren Snippets
+test/fixtures/
