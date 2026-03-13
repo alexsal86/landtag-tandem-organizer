@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { renderHook, waitFor } from "@testing-library/react";
+import { renderHook, waitFor, act } from "@testing-library/react";
 
 const { mockSupabase, mockToast, mockUser, mockTenant } = vi.hoisted(() => {
   const chainable = () => {
@@ -122,6 +122,107 @@ describe("useDocumentsData", () => {
       expect(mockToast).toHaveBeenCalledWith(
         expect.objectContaining({ variant: "destructive" })
       );
+    });
+  });
+
+  it("appends next page documents on loadMoreDocuments", async () => {
+    const page1 = Array.from({ length: 50 }, (_, index) => ({
+      id: `doc-${index + 1}`,
+      title: `Dokument ${index + 1}`,
+      tenant_id: "tenant-1",
+      created_at: "2024-01-01",
+      archived_attachments: null,
+    }));
+    const page2 = [
+      { id: "doc-51", title: "Dokument 51", tenant_id: "tenant-1", created_at: "2024-01-01", archived_attachments: [] },
+    ];
+
+    let docFetchCount = 0;
+    mockSupabase.from.mockImplementation((table: string) => {
+      const chain: any = {};
+      const methods = ['select', 'eq', 'neq', 'order', 'in', 'not', 'is', 'gt', 'limit', 'single', 'maybeSingle', 'range'];
+      methods.forEach(m => { chain[m] = vi.fn(() => chain); });
+
+      if (table === "documents") {
+        chain.select = vi.fn((_sel?: string, opts?: any) => {
+          if (opts?.count === 'exact') return Promise.resolve({ count: 51 });
+          return chain;
+        });
+        chain.range = vi.fn(() => {
+          docFetchCount += 1;
+          return Promise.resolve({ data: docFetchCount === 1 ? page1 : page2, error: null });
+        });
+      }
+
+      if (table === "document_folders") {
+        chain.then = (fn: any) => Promise.resolve({ data: [], error: null }).then(fn);
+      }
+
+      return chain;
+    });
+
+    const { result } = renderHook(() => useDocumentsData("documents"));
+
+    await waitFor(() => {
+      expect(result.current.documents).toHaveLength(50);
+      expect(result.current.hasMore).toBe(true);
+    });
+
+    await act(async () => {
+      result.current.loadMoreDocuments();
+    });
+
+    await waitFor(() => {
+      expect(result.current.documents).toHaveLength(51);
+      expect(result.current.currentPage).toBe(1);
+      expect(result.current.hasMore).toBe(false);
+      expect(result.current.documents[0].archived_attachments).toEqual([]);
+    });
+  });
+
+  it("shows error toast on first documents fetch and succeeds on manual retry", async () => {
+    let attempt = 0;
+
+    mockSupabase.from.mockImplementation((table: string) => {
+      const chain: any = {};
+      const methods = ['select', 'eq', 'neq', 'order', 'in', 'not', 'is', 'gt', 'limit', 'single', 'maybeSingle', 'range'];
+      methods.forEach(m => { chain[m] = vi.fn(() => chain); });
+
+      if (table === "documents") {
+        chain.select = vi.fn((_sel?: string, opts?: any) => {
+          if (opts?.count === 'exact') return Promise.resolve({ count: 1 });
+          return chain;
+        });
+        chain.range = vi.fn(() => {
+          attempt += 1;
+          if (attempt === 1) return Promise.resolve({ data: null, error: { message: "temporary db error" } });
+          return Promise.resolve({
+            data: [{ id: "doc-ok", title: "Recovered", tenant_id: "tenant-1", created_at: "2024-01-01", archived_attachments: [] }],
+            error: null,
+          });
+        });
+      }
+
+      if (table === "document_folders") {
+        chain.then = (fn: any) => Promise.resolve({ data: [], error: null }).then(fn);
+      }
+
+      return chain;
+    });
+
+    const { result } = renderHook(() => useDocumentsData("documents"));
+
+    await waitFor(() => {
+      expect(mockToast).toHaveBeenCalledWith(expect.objectContaining({ variant: "destructive" }));
+    });
+
+    await act(async () => {
+      await result.current.fetchDocuments();
+    });
+
+    await waitFor(() => {
+      expect(result.current.documents.map((doc) => doc.id)).toEqual(["doc-ok"]);
+      expect(result.current.loading).toBe(false);
     });
   });
 });
