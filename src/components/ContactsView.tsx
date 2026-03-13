@@ -141,7 +141,8 @@ export function ContactsView() {
                   ) : (
                     <ContactListTable contacts={s.contacts} sortColumn={s.sortColumn} sortDirection={s.sortDirection} onSort={s.handleSort}
                       onContactClick={(id) => s.setSelectedContactId(id)} onToggleFavorite={s.toggleFavorite}
-                      documentCounts={s.documentCounts} expandedDocuments={s.expandedDocuments} toggleDocumentsExpanded={s.toggleDocumentsExpanded} />
+                      isSelectionMode={s.isSelectionMode} selectedContactIds={s.selectedContactIds}
+                      onToggleSelection={s.toggleContactSelection} />
                   )}
                   {s.loadingMore && <div className="py-8"><ContactSkeleton count={6} viewMode={s.viewMode} /></div>}
                   <InfiniteScrollTrigger onLoadMore={s.loadMore} loading={s.loadingMore} hasMore={s.hasMore} />
