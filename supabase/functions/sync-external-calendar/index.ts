@@ -1,5 +1,6 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2"
+import { getSyncExternalErrorResponse } from './sync-external-calendar.utils.ts'
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -428,6 +429,9 @@ serve(async (req) => {
     }
 
     const icsContent = await icsResponse.text();
+    if (!icsContent.includes('BEGIN:VCALENDAR')) {
+      throw new Error('Invalid ICS content: missing VCALENDAR header');
+    }
     console.log(`📄 ICS content length: ${icsContent.length} characters`);
     
     // Extract ETag and Last-Modified headers for next sync
@@ -511,9 +515,10 @@ serve(async (req) => {
       console.error('Failed to update error status:', updateError);
     }
 
+    const errorResponse = getSyncExternalErrorResponse(error);
     return new Response(
-      JSON.stringify({ error: 'Internal server error' }),
-      { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      JSON.stringify({ error: errorResponse.message }),
+      { status: errorResponse.status, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
   }
 })
