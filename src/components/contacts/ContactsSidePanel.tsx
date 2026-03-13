@@ -9,7 +9,7 @@ import { ContactDetailPanel } from "@/components/ContactDetailPanel";
 
 interface ContactsSidePanelProps {
   activeTab: string;
-  setActiveTab: (tab: string) => void;
+  setActiveTab: (tab: ContactsTab) => void;
   searchTerm: string;
   setSearchTerm: (val: string) => void;
   selectedTagFilter: string;
