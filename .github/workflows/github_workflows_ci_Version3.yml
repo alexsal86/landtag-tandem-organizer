@@ -3,7 +3,14 @@ name: CI
 on:
   pull_request:
   push:
-    branches: [ main, master ]
+    branches: [main, master]
+  workflow_dispatch:
+    inputs:
+      run_e2e_smoke:
+        description: 'Optionalen E2E-Smoke-Job ausführen'
+        required: false
+        default: false
+        type: boolean
 
 permissions:
   contents: read
@@ -44,7 +51,7 @@ jobs:
       - name: Run Pytests
         run: pytest -q
 
-  node-build:
+  node-quality-gates:
     runs-on: ubuntu-latest
     needs: parser-and-tests
     steps:
@@ -58,7 +65,13 @@ jobs:
           cache: 'npm'
 
       - name: Install deps
-        run: npm install
+        run: npm ci
+
+      - name: Mandatory security hygiene checks
+        run: npm run check:security-hygiene
+
+      - name: Mandatory diagram drift check
+        run: npm run check:diagram-drift
 
       - name: Type Check (falls TS)
         run: |
@@ -68,12 +81,12 @@ jobs:
             echo "Kein tsconfig.json – überspringe Type Check."
           fi
 
-
       - name: Lint Knowledge-Bereich (blockierend)
         run: npm run lint:knowledge
 
       - name: Strict Type Check Knowledge-Bereich
         run: npm run typecheck:knowledge
+
       - name: Build (falls vorhanden)
         run: |
           if npm run | grep -q "build"; then
@@ -96,3 +109,71 @@ jobs:
         with:
           name: bundle-size-report
           path: dist/bundle-size-report.md
+
+  fast-unit-integration:
+    runs-on: ubuntu-latest
+    needs: node-quality-gates
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Use Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install deps
+        run: npm ci
+
+      - name: Run fast unit/integration tests
+        run: npm run test:unit-integration:ci
+
+  coverage-thresholds:
+    runs-on: ubuntu-latest
+    needs: fast-unit-integration
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Use Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install deps
+        run: npm ci
+
+      - name: Generate coverage report
+        run: npm run test:coverage:ci
+
+      - name: Coverage thresholds (warn mode for PRs)
+        if: github.event_name == 'pull_request'
+        run: npm run coverage:thresholds:warn
+
+      - name: Coverage thresholds (blocking for main/master)
+        if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master'
+        run: npm run coverage:thresholds:block
+
+  e2e-smoke:
+    runs-on: ubuntu-latest
+    needs: coverage-thresholds
+    if: |
+      github.event_name == 'workflow_dispatch' && inputs.run_e2e_smoke == true
+    continue-on-error: true
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Use Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install deps
+        run: npm ci
+
+      - name: Run optional E2E smoke checks
+        run: npm run test:e2e-smoke
