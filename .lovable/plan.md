@@ -1,43 +1,99 @@
 
-## Code-Qualität — Status
 
-### Erledigt
+# Kontakte-Seite: Seitenpanel und UI-Verbesserungen
 
-- **strictNullChecks: true** — aktiviert, alle Build-Fehler behoben
-- **noImplicitAny: true** — aktiviert, alle Build-Fehler behoben
-- **DOMPurify** als zentraler HTML-Sanitizer — alle `dangerouslySetInnerHTML` nutzen jetzt `sanitizeRichHtml()`
-- **Tenant-Access Guard** für Edge Functions — existiert in `supabase/functions/_shared/tenant-access.ts`
-- **ESLint `no-unused-vars: warn`** — aktiviert mit `argsIgnorePattern: '^_'`, erste Bereinigungsrunde in Pages/Hooks abgeschlossen
-- **Standalone `React`-Imports entfernt** — ~60 Dateien bereinigt
-- **State-Mutation fix** — `existingContacts.push()` → immutables Update in `useContactImport.ts`
-- **Non-null Assertion Guards** — `user!.id` / `currentTenant!.id` durch Early-Return-Guards ersetzt (~11 Dateien)
-- **Leere catch-Blöcke** — kritische Stellen in MatrixContext & DaySlipStore mit `debugConsole.warn` versehen
-- **JSON-Protocol Speaker-Normalisierung** — `speaker: string | { name }` korrekt normalisiert
+## Übersicht
 
-### Noch offen
+Die Kontakte-Seite wird grundlegend umstrukturiert: Ein festes Seitenpanel (links, zwischen Navigation und Kontaktliste) übernimmt Header-Elemente und dient als Container für die Kontakt-Detailansicht. Die Listenansicht wird optimiert.
 
-1. ~~**`strict: true` aktivieren**~~ ✅ — war bereits aktiv in `tsconfig.app.json` inkl. `strictNullChecks` und `noImplicitAny`
-2. **Tote Imports weiter bereinigen** — ~65 standalone `React`-Imports in Components prüfen, weitere lucide-Icons und ungenutzte Variablen entfernen (ESLint-Regel zeigt Warnungen)
-3. **`no-explicit-any` schrittweise einführen** — nach Abschluss der `no-unused-vars`-Bereinigung
-4. ~~**Edge Functions `verify_jwt`-Audit**~~ ✅ — alle 18 Functions mit `verify_jwt = false` klassifiziert und abgesichert: Cron-Functions mit `requireServiceRole`, WebSocket mit `requireAuth`, Token-Endpoints mit eigener Validierung, `send-push-notification` + `fetch-karlsruhe-districts` mit Service-Role-Guard
-5. **CORS einschränken** — `Access-Control-Allow-Origin: *` durch Allowlist ersetzen für sensible Operationen
+## Änderungen
 
----
+### 1. Neues Seitenpanel einführen
 
-## No-Code Automations-Hub — Status
+Neue Komponente `ContactsSidePanel.tsx` — ein festes, scrollbares Panel links neben der Kontaktliste.
 
-### Erledigt
+**Standardinhalt (wenn kein Kontakt ausgewählt):**
+- Titel "Kontakte & Organisationen" + Beschreibung
+- "Neuer Kontakt"-Button (+ "Neuer Verteiler" im Verteiler-Tab)
+- Tab-Buttons (Kontakte, Stakeholder, Netzwerk, Verteiler, Archiv)
+- Suchfeld
+- Tag-Filter-Anzeige
+- **"Duplikate prüfen"-Button** (bisher nicht im UI eingebunden!)
 
-- 4-Step Wizard (Grundlagen → Trigger → Bedingungen → Aktionen)
-- 10 Templates, Template-Galerie mit Suche/Filter
-- Kill-Switch, Dry-Run, Run-Now, Run-Historie mit Step-Logs
-- Error-Dashboard mit Retry, Regel-Versionierung, Import/Export
-- Rate Limiting, Idempotency, Audit-Trail
-- 5 Action-Typen, 5 Condition-Operators, 4 Trigger-Typen (inkl. Webhook)
-- Rollenbasierte Zugriffskontrolle
-- **Regel duplizieren** — Copy-Button pro Regel-Karte
-- **Nächste geplante Ausführung** — Badge für schedule-Regeln
-- **Regel-Statistiken** — Erfolgsrate (%) + Ø Laufzeit als Tooltip-Badge
-- **Notification-Kontext** — `rule_name`, `trigger_reason`, `run_id` in Notification-Payload
-- **Webhook-Trigger** — neue Edge Function `automation-webhook`, Secret-Authentifizierung, URL-Anzeige im Wizard
-- **Verschachtelte Condition-Gruppen** — rekursives AND/OR-Nesting bis 3 Ebenen im Wizard, backward-kompatible DB-Serialisierung
+**Detailansicht (wenn Kontakt ausgewählt):**
+- Das bestehende `ContactDetailPanel` wird im Seitenpanel gerendert statt als eigene Spalte
+
+### 2. Header-Bereinigung in ContactsView
+
+Im Hauptbereich (rechts) verbleiben nur:
+- Grid/Tabelle-Toggle
+- Filter-Button
+- Auswählen-Button
+- Filter-Leiste (Typ, Kategorie) wenn aktiv
+
+Titel, Tabs, Suche, "Neuer Kontakt" wandern ins Seitenpanel.
+
+### 3. Verlorene Funktionen (Punkt 4)
+
+`DuplicateContactsSheet` existiert, wird korrekt gerendert, aber **kein Button ruft `setIsDuplicateSheetOpen(true)` auf**. Lösung: Button "Duplikate prüfen" ins Seitenpanel aufnehmen.
+
+### 4. Listenansicht: Spalten optimieren (Punkt 5)
+
+- **Entfernen**: Spalten "Letzter Kontakt" und "Dokumente"
+- **Name aufteilen**: Name-Spalte in "Vorname" und "Nachname" splitten (basierend auf erstem Leerzeichen)
+- **Toggle**: Ein kleiner Schalter im Tabellenkopf (oder per User-Präferenz), um zwischen "Name (zusammen)" und "Vorname / Nachname (getrennt)" zu wechseln. Zustand wird im localStorage persistiert.
+
+### 5. Anrede ohne Badge (Punkt 6)
+
+In `ContactListTable.tsx` Zeile 80: `<Badge variant="outline">` durch einfachen `<span className="text-xs text-muted-foreground">` ersetzen.
+
+### 6. Stern transparent (Punkt 7)
+
+In `ContactListTable.tsx` Zeile 75: `bg-background` und `shadow-sm` aus den Stern-Button-Klassen entfernen. Gleiches in `ContactGridCard.tsx`.
+
+### 7. Einheitliche Zeilenhöhe (Punkt 8)
+
+- Tabellenzeilen bekommen eine feste Höhe (z.B. `h-12`)
+- Inhalte werden mit `truncate`/`line-clamp-1` auf eine Zeile begrenzt
+- Tags in der Name-Spalte werden inline statt als zweite Zeile dargestellt (oder bei Platzmangel ausgeblendet)
+- Adresse, E-Mail, Telefon jeweils einzeilig mit Overflow-Ellipsis
+
+### 8. Layout-Struktur
+
+```text
+┌──────────┬─────────────────────┬──────────────────────────┐
+│          │   Side Panel        │   Kontaktliste           │
+│  Nav     │   (~300px)          │   (flex-1)               │
+│          │                     │                          │
+│          │  Titel              │  [Grid|List] [Filter]    │
+│          │  Tabs               │  [Auswählen]             │
+│          │  Suche              │                          │
+│          │  + Neuer Kontakt    │  ┌────────────────────┐  │
+│          │  Duplikate prüfen   │  │ Kontaktliste/Grid  │  │
+│          │                     │  │                    │  │
+│          │  ─── oder ───       │  │                    │  │
+│          │                     │  └────────────────────┘  │
+│          │  ContactDetailPanel │                          │
+│          │  (bei Auswahl)      │                          │
+└──────────┴─────────────────────┴──────────────────────────┘
+```
+
+### 9. Verbesserungsvorschläge (Punkt 9)
+
+Zusätzliche Verbesserungen, die ich bei der Analyse identifiziert habe:
+
+- **Keyboard-Navigation**: Pfeiltasten zum Navigieren durch die Kontaktliste, Enter öffnet Detail
+- **Kontakt-Schnellvorschau**: Hover-Card über Kontaktnamen in der Liste mit den wichtigsten Infos
+- **Spalten-Konfiguration**: Nutzer können wählen, welche Spalten in der Listenansicht sichtbar sind
+- **Sticky-Header für die Tabelle**: Tabellenkopf bleibt beim Scrollen sichtbar
+- **Batch-Export**: Ausgewählte Kontakte als CSV/vCard exportieren (die Auswahl-Funktion existiert bereits)
+
+## Betroffene Dateien
+
+| Datei | Änderung |
+|---|---|
+| `src/components/ContactsView.tsx` | Layout umbauen, Header-Elemente entfernen, Seitenpanel einbinden |
+| `src/components/contacts/ContactsSidePanel.tsx` | **Neu** — Seitenpanel mit Nav-Elementen und Detailansicht |
+| `src/components/contacts/ContactListTable.tsx` | Spalten anpassen, Badge entfernen, Stern-Styling, Zeilenhöhe |
+| `src/components/contacts/ContactGridCard.tsx` | Stern-Styling anpassen |
+
