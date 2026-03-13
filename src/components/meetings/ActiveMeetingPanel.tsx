@@ -68,20 +68,6 @@ export function ActiveMeetingPanel({
 }: ActiveMeetingPanelProps) {
   const { toast } = useToast();
 
-  const letterBadgeClassesByType = {
-    appointments: 'bg-blue-100 text-blue-700 border-blue-200 dark:bg-blue-950/40 dark:text-blue-300 dark:border-blue-800',
-    notes: 'bg-amber-100 text-amber-700 border-amber-200 dark:bg-amber-950/40 dark:text-amber-300 dark:border-amber-800',
-    tasks: 'bg-green-100 text-green-700 border-green-200 dark:bg-green-950/40 dark:text-green-300 dark:border-green-800',
-    decisions: 'bg-violet-100 text-violet-700 border-violet-200 dark:bg-violet-950/40 dark:text-violet-300 dark:border-violet-800',
-    caseItems: 'bg-teal-100 text-teal-700 border-teal-200 dark:bg-teal-950/40 dark:text-teal-300 dark:border-teal-800',
-  } as const;
-
-  const renderLetterBadge = (idx: number, type: keyof typeof letterBadgeClassesByType) => (
-    <span className={cn('inline-flex h-[18px] w-[18px] shrink-0 items-center justify-center rounded-full border text-[10px] font-semibold', letterBadgeClassesByType[type])}>
-      {String.fromCharCode(97 + idx)}
-    </span>
-  );
-
   const getProfile = (userId: string) => profiles.find(p => p.user_id === userId);
 
   const downloadFile = async (filePath: string) => {
@@ -134,12 +120,12 @@ export function ActiveMeetingPanel({
     const apptResults = (() => { try { return JSON.parse(parentItem.result_text || '{}'); } catch { return {}; } })();
     return upcomingAppointments.length > 0 ? (
       upcomingAppointments.map((appt, apptIdx) => (
-        <div key={appt.id} className={cn("pl-4 border-l-4 border-blue-500 rounded-none space-y-2", starredAppointmentIds.has(appt.id) && "bg-amber-50/50 dark:bg-amber-950/20")}>
+        <div key={appt.id} className={cn("pl-4 border-l-2 border-muted space-y-2", starredAppointmentIds.has(appt.id) && "bg-amber-50/50 dark:bg-amber-950/20")}>
           <div className="flex items-center gap-2">
             <Button variant="ghost" size="sm" className="h-6 w-6 p-0 shrink-0" onClick={(e) => { e.stopPropagation(); onToggleStar(appt); }}>
               <Star className={cn("h-3.5 w-3.5", starredAppointmentIds.has(appt.id) ? "fill-amber-400 text-amber-400" : "text-muted-foreground")} />
             </Button>
-            {renderLetterBadge(apptIdx, 'appointments')}
+            <span className="text-xs font-medium text-muted-foreground">{String.fromCharCode(97 + apptIdx)})</span>
             <CalendarDays className="h-3.5 w-3.5 text-blue-500" />
             <span className="text-sm font-medium">{appt.title}</span>
           </div>
@@ -167,9 +153,9 @@ export function ActiveMeetingPanel({
 
   const renderQuickNotes = (parentItem: AgendaItem) => (
     linkedQuickNotes.length > 0 ? linkedQuickNotes.map((note, noteIdx) => (
-      <div key={note.id} className="pl-4 border-l-4 border-amber-500 rounded-none space-y-2">
+      <div key={note.id} className="pl-4 border-l-2 border-muted space-y-2">
         <div className="flex items-center gap-2">
-          {renderLetterBadge(noteIdx, 'notes')}
+          <span className="text-xs font-medium text-muted-foreground">{String.fromCharCode(97 + noteIdx)})</span>
           <StickyNote className="h-3.5 w-3.5 text-amber-500" />
           <span className="text-sm font-medium">{note.title || `Notiz ${noteIdx + 1}`}</span>
         </div>
@@ -194,9 +180,9 @@ export function ActiveMeetingPanel({
   const renderLinkedTasks = (parentItem: AgendaItem) => {
     const taskResults = (() => { try { return JSON.parse(parentItem.result_text || '{}'); } catch { return {}; } })();
     return linkedTasks.length > 0 ? linkedTasks.map((task, taskIdx) => (
-      <div key={task.id} className="pl-4 border-l-4 border-green-500 rounded-none space-y-2">
+      <div key={task.id} className="pl-4 border-l-2 border-muted space-y-2">
         <div className="flex items-center gap-2">
-          {renderLetterBadge(taskIdx, 'tasks')}
+          <span className="text-xs font-medium text-muted-foreground">{String.fromCharCode(97 + taskIdx)})</span>
           <ListTodo className="h-3.5 w-3.5 text-green-500" />
           <span className="text-sm font-medium">{task.title}</span>
         </div>
@@ -225,9 +211,9 @@ export function ActiveMeetingPanel({
   const renderDecisions = (parentItem: AgendaItem) => {
     const decisionResults = (() => { try { return JSON.parse(parentItem.result_text || '{}'); } catch { return {}; } })();
     return relevantDecisions.length > 0 ? relevantDecisions.map((decision, idx) => (
-      <div key={decision.id} className="pl-4 border-l-4 border-violet-500 rounded-none space-y-2">
+      <div key={decision.id} className="pl-4 border-l-2 border-muted space-y-2">
         <div className="flex items-center gap-2">
-          {renderLetterBadge(idx, 'decisions')}
+          <span className="text-xs font-medium text-muted-foreground">{String.fromCharCode(97 + idx)})</span>
           <Scale className="h-3.5 w-3.5 text-violet-500" />
           <span className="text-sm font-medium">{decision.title}</span>
         </div>
@@ -247,9 +233,9 @@ export function ActiveMeetingPanel({
   const renderCaseItems = (parentItem: AgendaItem) => {
     const ciResults = (() => { try { return JSON.parse(parentItem.result_text || '{}'); } catch { return {}; } })();
     return linkedCaseItems.length > 0 ? linkedCaseItems.map((ci, idx) => (
-      <div key={ci.id} className="pl-4 border-l-4 border-teal-500 rounded-none space-y-2">
+      <div key={ci.id} className="pl-4 border-l-2 border-muted space-y-2">
         <div className="flex items-center gap-2">
-          {renderLetterBadge(idx, 'caseItems')}
+          <span className="text-xs font-medium text-muted-foreground">{String.fromCharCode(97 + idx)})</span>
           <Briefcase className="h-3.5 w-3.5 text-teal-500" />
           <span className="text-sm font-medium">{ci.subject || '(Kein Betreff)'}</span>
         </div>
@@ -339,7 +325,7 @@ export function ActiveMeetingPanel({
   const renderSubItem = (subItem: AgendaItem, index: number, subIndex: number) => {
     if (subItem.system_type) {
       return (
-        <div className="pl-4 border-l-4 border-primary/40 rounded-none">
+        <div className="pl-4 border-l-2 border-muted">
           {renderSystemContent(subItem, `${index + 1}.${subIndex + 1}`)}
         </div>
       );
@@ -347,7 +333,7 @@ export function ActiveMeetingPanel({
 
     // Regular sub-item
     return (
-      <div className="pl-4 border-l-4 border-primary/40 rounded-none">
+      <div className="pl-4 border-l-2 border-muted">
         <div className="flex items-center gap-2">
           <span className="text-xs font-medium text-muted-foreground">{index + 1}.{subIndex + 1}</span>
           <Input
@@ -434,8 +420,7 @@ export function ActiveMeetingPanel({
         <CardContent>
           <div className="space-y-4">
             {processedItems.map(({ item, subItems: sortedSubItems, hiddenOptionalSubItems }, index) => (
-              <Card key={item.id} className="border">
-                <CardContent className="p-4">
+              <div key={item.id} className="border rounded-lg p-4">
                 <div className="flex items-center gap-4 mb-3">
                   <div className="flex items-center justify-center w-8 h-8 bg-primary text-primary-foreground rounded-full text-sm font-medium">
                     {index + 1}
@@ -488,13 +473,7 @@ export function ActiveMeetingPanel({
 
                 {/* Sub-items */}
                 {(sortedSubItems.length > 0 || hiddenOptionalSubItems.length > 0) && (
-                  <div
-                    className="mb-3 mt-3 rounded-md p-3"
-                    style={{
-                      background: 'var(--color-background-secondary)',
-                      borderTop: '0.5px solid var(--color-border-tertiary)',
-                    }}
-                  >
+                  <div className="ml-12 mb-3">
                     <div className="flex items-center justify-between mb-2">
                       <label className="text-sm font-medium">Unterpunkte</label>
                       {hiddenOptionalSubItems.length > 0 && (
@@ -540,8 +519,7 @@ export function ActiveMeetingPanel({
                     </div>
                   </div>
                 )}
-                </CardContent>
-              </Card>
+              </div>
             ))}
 
             {meetingItems.filter(item => !item.parent_id && !item.parentLocalKey).length === 0 && !isLoading && (

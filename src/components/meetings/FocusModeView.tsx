@@ -3,6 +3,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Textarea } from '@/components/ui/textarea';
+import { Progress } from '@/components/ui/progress';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -325,8 +326,6 @@ export function FocusModeView({
   const completedCount = mainItems.filter(item => item.is_completed).length;
   const totalCount = mainItems.length;
   const progressPercent = totalCount > 0 ? (completedCount / totalCount) * 100 : 0;
-  const progressPercentLabel = `${Math.round(progressPercent)}%`;
-  const kbdClassName = 'px-[6px] py-[2px] rounded text-[11px]';
 
   // Handle dialog close with protection against subsequent Enter key
   const handleAssignDialogClose = (open: boolean) => {
@@ -979,22 +978,11 @@ export function FocusModeView({
       {/* Progress */}
       <div className="border-b bg-muted/30 py-3">
         <div className="max-w-4xl mx-auto px-4">
-          <div className="space-y-2">
-            <div className="flex items-center gap-2">
-              {mainItems.map((agendaItem) => (
-                <div
-                  key={agendaItem.id || agendaItem.order_index}
-                  className="h-[5px] flex-1 rounded-[3px]"
-                  style={{ background: agendaItem.is_completed ? '#16A34A' : 'var(--color-border-tertiary)' }}
-                />
-              ))}
-            </div>
-            <div className="flex items-center justify-between text-sm font-medium">
-              <span>
+          <div className="flex items-center gap-4">
+            <Progress value={progressPercent} className="flex-1 h-2" />
+            <span className="text-sm font-medium whitespace-nowrap">
               {completedCount} von {totalCount} Punkten besprochen
-              </span>
-              <span>{progressPercentLabel}</span>
-            </div>
+            </span>
           </div>
         </div>
       </div>
@@ -1008,26 +996,26 @@ export function FocusModeView({
 
       {/* Navigation hint footer */}
       <footer className="border-t bg-card py-3">
-        <div className="max-w-4xl mx-auto px-4 flex items-center justify-center gap-5 text-sm text-muted-foreground">
-          <div className="flex items-center gap-[6px]">
-            <kbd className={kbdClassName} style={{ background: 'var(--color-background-secondary)', border: '0.5px solid var(--color-border-secondary)', fontFamily: 'var(--font-mono)' }}>↑</kbd>
-            <kbd className={kbdClassName} style={{ background: 'var(--color-background-secondary)', border: '0.5px solid var(--color-border-secondary)', fontFamily: 'var(--font-mono)' }}>↓</kbd>
+        <div className="max-w-4xl mx-auto px-4 flex items-center justify-center gap-6 text-sm text-muted-foreground">
+          <div className="flex items-center gap-2">
+            <kbd className="px-2 py-1 bg-muted rounded text-xs font-mono">↑</kbd>
+            <kbd className="px-2 py-1 bg-muted rounded text-xs font-mono">↓</kbd>
             <span>Navigation</span>
           </div>
-          <div className="flex items-center gap-[6px]">
-            <kbd className={kbdClassName} style={{ background: 'var(--color-background-secondary)', border: '0.5px solid var(--color-border-secondary)', fontFamily: 'var(--font-mono)' }}>Enter</kbd>
+          <div className="flex items-center gap-2">
+            <kbd className="px-2 py-1 bg-muted rounded text-xs font-mono">Enter</kbd>
             <span>Abhaken</span>
           </div>
-          <div className="flex items-center gap-[6px]">
-            <kbd className={kbdClassName} style={{ background: 'var(--color-background-secondary)', border: '0.5px solid var(--color-border-secondary)', fontFamily: 'var(--font-mono)' }}>Space</kbd>
+          <div className="flex items-center gap-2">
+            <kbd className="px-2 py-1 bg-muted rounded text-xs font-mono">Space</kbd>
             <span>Ergebnis</span>
           </div>
-          <div className="flex items-center gap-[6px]">
-            <kbd className={kbdClassName} style={{ background: 'var(--color-background-secondary)', border: '0.5px solid var(--color-border-secondary)', fontFamily: 'var(--font-mono)' }}>?</kbd>
+          <div className="flex items-center gap-2">
+            <kbd className="px-2 py-1 bg-muted rounded text-xs font-mono">?</kbd>
             <span>Alle Kürzel</span>
           </div>
-          <div className="flex items-center gap-[6px]">
-            <kbd className={kbdClassName} style={{ background: 'var(--color-background-secondary)', border: '0.5px solid var(--color-border-secondary)', fontFamily: 'var(--font-mono)' }}>Esc</kbd>
+          <div className="flex items-center gap-2">
+            <kbd className="px-2 py-1 bg-muted rounded text-xs font-mono">Esc</kbd>
             <span>Beenden</span>
           </div>
         </div>

@@ -70,27 +70,6 @@ export function SystemAgendaItem({
 }: SystemAgendaItemProps) {
   const [upcomingAppointmentsCount, setUpcomingAppointmentsCount] = useState(0);
 
-  const hasContent = (() => {
-    switch (systemType) {
-      case 'upcoming_appointments':
-        return upcomingAppointmentsCount > 0;
-      case 'quick_notes':
-        return linkedQuickNotes.length > 0;
-      case 'tasks':
-        return linkedTasks.length > 0;
-      case 'decisions':
-        return linkedDecisions.length > 0;
-      case 'case_items':
-        return linkedCaseItems.length > 0;
-      case 'birthdays':
-        return true;
-      default:
-        return false;
-    }
-  })();
-
-  const [isOpen] = useState(!defaultCollapsed && hasContent);
-
   const getBorderColor = () => {
     switch (systemType) {
       case 'upcoming_appointments': return 'border-l-blue-500';
@@ -100,6 +79,18 @@ export function SystemAgendaItem({
       case 'decisions': return 'border-l-violet-500';
       case 'case_items': return 'border-l-teal-500';
       default: return 'border-l-muted';
+    }
+  };
+
+  const getBadgeColors = () => {
+    switch (systemType) {
+      case 'upcoming_appointments': return 'bg-blue-50 text-blue-700 border-blue-200 dark:bg-blue-950 dark:text-blue-300 dark:border-blue-800';
+      case 'quick_notes': return 'bg-amber-50 text-amber-700 border-amber-200 dark:bg-amber-950 dark:text-amber-300 dark:border-amber-800';
+      case 'tasks': return 'bg-green-50 text-green-700 border-green-200 dark:bg-green-950 dark:text-green-300 dark:border-green-800';
+      case 'birthdays': return 'bg-pink-50 text-pink-700 border-pink-200 dark:bg-pink-950 dark:text-pink-300 dark:border-pink-800';
+      case 'decisions': return 'bg-violet-50 text-violet-700 border-violet-200 dark:bg-violet-950 dark:text-violet-300 dark:border-violet-800';
+      case 'case_items': return 'bg-teal-50 text-teal-700 border-teal-200 dark:bg-teal-950 dark:text-teal-300 dark:border-teal-800';
+      default: return '';
     }
   };
 
@@ -127,6 +118,18 @@ export function SystemAgendaItem({
     }
   };
 
+  const getBadgeIcon = () => {
+    switch (systemType) {
+      case 'upcoming_appointments': return <CalendarDays className="h-3 w-3 mr-1" />;
+      case 'quick_notes': return <StickyNote className="h-3 w-3 mr-1" />;
+      case 'tasks': return <ListTodo className="h-3 w-3 mr-1" />;
+      case 'birthdays': return <Cake className="h-3 w-3 mr-1" />;
+      case 'decisions': return <Scale className="h-3 w-3 mr-1" />;
+      case 'case_items': return <Briefcase className="h-3 w-3 mr-1" />;
+      default: return null;
+    }
+  };
+
   const getCountBadge = () => {
     switch (systemType) {
       case 'upcoming_appointments': return upcomingAppointmentsCount > 0 ? upcomingAppointmentsCount : undefined;
@@ -138,24 +141,10 @@ export function SystemAgendaItem({
     }
   };
 
-  const getLetterBadgeColors = () => {
-    switch (systemType) {
-      case 'upcoming_appointments': return 'bg-blue-100 text-blue-700 border-blue-200 dark:bg-blue-950/40 dark:text-blue-300 dark:border-blue-800';
-      case 'quick_notes': return 'bg-amber-100 text-amber-700 border-amber-200 dark:bg-amber-950/40 dark:text-amber-300 dark:border-amber-800';
-      case 'tasks': return 'bg-green-100 text-green-700 border-green-200 dark:bg-green-950/40 dark:text-green-300 dark:border-green-800';
-      case 'decisions': return 'bg-violet-100 text-violet-700 border-violet-200 dark:bg-violet-950/40 dark:text-violet-300 dark:border-violet-800';
-      case 'case_items': return 'bg-teal-100 text-teal-700 border-teal-200 dark:bg-teal-950/40 dark:text-teal-300 dark:border-teal-800';
-      case 'birthdays': return 'bg-pink-100 text-pink-700 border-pink-200 dark:bg-pink-950/40 dark:text-pink-300 dark:border-pink-800';
-      default: return 'bg-muted text-muted-foreground border-border';
-    }
-  };
-
   const renderCompactItem = (label: string, icon: ReactNode, idx: number, ownerLabel?: string | null) => (
     <li key={`${label}-${idx}`} className="rounded bg-muted/40 px-2 py-1 text-xs">
       <div className="flex items-center gap-2">
-        <span className={cn('inline-flex h-[18px] w-[18px] shrink-0 items-center justify-center rounded-full border text-[10px] font-semibold', getLetterBadgeColors())}>
-          {String.fromCharCode(97 + idx)}
-        </span>
+        <span className="min-w-[2rem] text-[11px] font-medium text-foreground/70">{String.fromCharCode(97 + idx)})</span>
         {icon}
         <span className="text-foreground">{label}</span>
         {ownerLabel && <span className="text-muted-foreground/80">({ownerLabel})</span>}
@@ -170,11 +159,15 @@ export function SystemAgendaItem({
         <div className="flex items-center justify-between">
           <CardTitle className="text-base flex items-center gap-2">
             {agendaNumber && <span className="text-muted-foreground font-medium min-w-[2rem] text-right">{agendaNumber}</span>}
-            <span title={`Systempunkt: ${getTitle()}`}>{getIcon()}</span>
+            {getIcon()}
             {getTitle()}
             {count !== undefined && <Badge variant="secondary">{count}</Badge>}
           </CardTitle>
           <div className="flex items-center gap-1">
+            <Badge variant="outline" className={cn('text-xs', getBadgeColors())}>
+              {getBadgeIcon()}
+              System
+            </Badge>
             {onDelete && (
               <Button size="icon" variant="ghost" className="h-7 w-7 text-destructive hover:text-destructive" onClick={onDelete} aria-label="Punkt löschen">
                 <Trash className="h-3.5 w-3.5" />
@@ -197,7 +190,7 @@ export function SystemAgendaItem({
             allowStarring={allowStarring}
             profiles={profiles}
             className="border-0 shadow-none bg-transparent p-0"
-            defaultCollapsed={!isOpen}
+            defaultCollapsed={defaultCollapsed}
             showCountBadge={false}
             onAppointmentsCountChange={setUpcomingAppointmentsCount}
           />
