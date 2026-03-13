@@ -123,7 +123,7 @@ export function ContactsSidePanel({
                   } else if (tab.key === "stakeholder-network") {
                     navigate("/contacts/netzwerk");
                   } else {
-                    setActiveTab(tab.key);
+                    setActiveTab(tab.key as ContactsTab);
                     navigate("/contacts");
                   }
                 }}
