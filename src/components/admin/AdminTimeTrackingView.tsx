@@ -88,6 +88,8 @@ interface PublicHoliday {
 export function AdminTimeTrackingView() {
   const { user } = useAuth();
   const { currentTenant } = useTenant();
+  const [roleLoading, setRoleLoading] = useState(true);
+  const [isAdmin, setIsAdmin] = useState(false);
   const [loading, setLoading] = useState(true);
   const [employees, setEmployees] = useState<Employee[]>([]);
   const [selectedUserId, setSelectedUserId] = useState<string>("");
@@ -134,17 +136,52 @@ export function AdminTimeTrackingView() {
       .join("");
   };
 
+  useEffect(() => {
+    const resolveRole = async () => {
+      if (!user) {
+        setIsAdmin(false);
+        setRoleLoading(false);
+        return;
+      }
+
+      setRoleLoading(true);
+
+      const { data: roleData, error } = await supabase
+        .from("user_roles")
+        .select("role")
+        .eq("user_id", user.id)
+        .single();
+
+      if (error) {
+        debugConsole.error("Error resolving admin role", error);
+        setIsAdmin(false);
+      } else {
+        setIsAdmin(roleData?.role === "abgeordneter");
+      }
+
+      setRoleLoading(false);
+    };
+
+    resolveRole();
+  }, [user]);
+
   // Load employees on mount
   useEffect(() => {
+    if (!isAdmin || roleLoading) {
+      setEmployees([]);
+      setLoading(false);
+      return;
+    }
+
     loadEmployees();
-  }, [currentTenant]);
+  }, [currentTenant, isAdmin, roleLoading]);
 
   // Load data when employee or month changes
   useEffect(() => {
-    if (selectedUserId) {
+    if (selectedUserId && isAdmin) {
       loadMonthData();
     }
-  }, [selectedUserId, currentMonth]);
+  }, [selectedUserId, currentMonth, isAdmin]);
 
   const loadEmployees = async () => {
     if (!currentTenant) return;
@@ -799,12 +836,22 @@ export function AdminTimeTrackingView() {
     }
   };
 
-  if (loading) {
+  if (roleLoading || loading) {
     return (
       <div className="space-y-4 p-4">
         <div className="h-32 bg-muted animate-pulse rounded-lg" />
         <div className="h-64 bg-muted animate-pulse rounded-lg" />
       </div>
+    );
+  }
+
+  if (!isAdmin) {
+    return (
+      <Alert>
+        <AlertDescription>
+          Dieser Bereich ist nur für Administratoren verfügbar.
+        </AlertDescription>
+      </Alert>
     );
   }
 
