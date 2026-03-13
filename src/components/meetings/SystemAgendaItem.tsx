@@ -1,3 +1,4 @@
+import { useState, type ReactNode } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -28,8 +29,9 @@ interface SystemAgendaItemProps {
   className?: string;
   isEmbedded?: boolean;
   defaultCollapsed?: boolean;
-  /** Profiles passed through to child components like BirthdayAgendaItem */
   allProfiles?: Profile[];
+  agendaNumber?: string;
+  compact?: boolean;
 }
 
 function ProfileBadge({ userId, profiles }: { userId?: string; profiles?: Profile[] }) {
@@ -40,9 +42,7 @@ function ProfileBadge({ userId, profiles }: { userId?: string; profiles?: Profil
     <div className="flex items-center gap-1.5 mt-1">
       <Avatar className="h-5 w-5">
         <AvatarImage src={profile.avatar_url || undefined} />
-        <AvatarFallback className="text-[10px]">
-          {(profile.display_name || '?').charAt(0).toUpperCase()}
-        </AvatarFallback>
+        <AvatarFallback className="text-[10px]">{(profile.display_name || '?').charAt(0).toUpperCase()}</AvatarFallback>
       </Avatar>
       <span className="text-xs text-muted-foreground">{profile.display_name}</span>
     </div>
@@ -60,14 +60,16 @@ export function SystemAgendaItem({
   linkedCaseItems = [],
   profiles,
   resultText,
-  onUpdateNoteResult,
   onUpdateResult,
   onDelete,
   className,
   isEmbedded = false,
   defaultCollapsed = false,
+  agendaNumber,
+  compact = false,
 }: SystemAgendaItemProps) {
-  // Color scheme based on system type
+  const [upcomingAppointmentsCount, setUpcomingAppointmentsCount] = useState(0);
+
   const getBorderColor = () => {
     switch (systemType) {
       case 'upcoming_appointments': return 'border-l-blue-500';
@@ -128,47 +130,69 @@ export function SystemAgendaItem({
     }
   };
 
-  const renderHeader = (extraBadge?: React.ReactNode) => (
-    <CardHeader className="py-2 px-3 pb-1">
-      <div className="flex items-center justify-between">
-        <CardTitle className="text-base flex items-center gap-2">
-          {getIcon()}
-          {getTitle()}
-          {extraBadge}
-        </CardTitle>
-        <div className="flex items-center gap-1">
-          <Badge variant="outline" className={cn("text-xs", getBadgeColors())}>
-            {getBadgeIcon()}
-            System
-          </Badge>
-          {onDelete && (
-            <Button 
-              size="icon" 
-              variant="ghost" 
-              className="h-7 w-7 text-destructive hover:text-destructive"
-              onClick={onDelete} 
-              aria-label="Punkt löschen"
-            >
-              <Trash className="h-3.5 w-3.5" />
-            </Button>
-          )}
-        </div>
+  const getCountBadge = () => {
+    switch (systemType) {
+      case 'upcoming_appointments': return upcomingAppointmentsCount > 0 ? upcomingAppointmentsCount : undefined;
+      case 'quick_notes': return linkedQuickNotes.length > 0 ? linkedQuickNotes.length : undefined;
+      case 'tasks': return linkedTasks.length > 0 ? linkedTasks.length : undefined;
+      case 'decisions': return linkedDecisions.length > 0 ? linkedDecisions.length : undefined;
+      case 'case_items': return linkedCaseItems.length > 0 ? linkedCaseItems.length : undefined;
+      default: return undefined;
+    }
+  };
+
+  const renderCompactItem = (label: string, icon: ReactNode, idx: number, ownerLabel?: string | null) => (
+    <li key={`${label}-${idx}`} className="rounded bg-muted/40 px-2 py-1 text-xs">
+      <div className="flex items-center gap-2">
+        <span className="min-w-[2rem] text-[11px] font-medium text-foreground/70">{String.fromCharCode(97 + idx)})</span>
+        {icon}
+        <span className="text-foreground">{label}</span>
+        {ownerLabel && <span className="text-muted-foreground/80">({ownerLabel})</span>}
       </div>
-    </CardHeader>
+    </li>
   );
+
+  const renderHeader = () => {
+    const count = getCountBadge();
+    return (
+      <CardHeader className="py-2 px-3 pb-1">
+        <div className="flex items-center justify-between">
+          <CardTitle className="text-base flex items-center gap-2">
+            {agendaNumber && <span className="text-muted-foreground font-medium min-w-[2rem] text-right">{agendaNumber}</span>}
+            {getIcon()}
+            {getTitle()}
+            {count !== undefined && <Badge variant="secondary">{count}</Badge>}
+          </CardTitle>
+          <div className="flex items-center gap-1">
+            <Badge variant="outline" className={cn('text-xs', getBadgeColors())}>
+              {getBadgeIcon()}
+              System
+            </Badge>
+            {onDelete && (
+              <Button size="icon" variant="ghost" className="h-7 w-7 text-destructive hover:text-destructive" onClick={onDelete} aria-label="Punkt löschen">
+                <Trash className="h-3.5 w-3.5" />
+              </Button>
+            )}
+          </div>
+        </div>
+      </CardHeader>
+    );
+  };
 
   if (systemType === 'upcoming_appointments') {
     return (
-      <Card className={cn("border-l-4", getBorderColor(), className)}>
+      <Card className={cn('border-l-4', getBorderColor(), className)}>
         {renderHeader()}
         <CardContent className="px-3 pb-2 pt-0">
-          <UpcomingAppointmentsSection 
-            meetingDate={meetingDate!} 
+          <UpcomingAppointmentsSection
+            meetingDate={meetingDate!}
             meetingId={meetingId}
             allowStarring={allowStarring}
             profiles={profiles}
             className="border-0 shadow-none bg-transparent p-0"
             defaultCollapsed={defaultCollapsed}
+            showCountBadge={false}
+            onAppointmentsCountChange={setUpcomingAppointmentsCount}
           />
         </CardContent>
       </Card>
@@ -177,33 +201,27 @@ export function SystemAgendaItem({
 
   if (systemType === 'quick_notes') {
     return (
-      <Card className={cn("border-l-4", getBorderColor(), className)}>
-        {renderHeader(
-          linkedQuickNotes.length > 0 ? <Badge variant="secondary">{linkedQuickNotes.length}</Badge> : undefined
-        )}
+      <Card className={cn('border-l-4', getBorderColor(), className)}>
+        {renderHeader()}
         <CardContent className="px-3 pb-2 pt-0">
           {linkedQuickNotes.length > 0 ? (
-            <div className="space-y-2">
-              {linkedQuickNotes.map((note) => (
-                <div key={note.id} className="p-3 bg-muted/50 rounded-md">
-                  {note.title && (
-                    <h4 className="font-semibold text-sm mb-1">{note.title}</h4>
-                  )}
-                  <RichTextDisplay content={note.content} className="text-sm" />
-                  <ProfileBadge userId={note.user_id} profiles={profiles} />
-                  {note.meeting_result && (
-                    <p className="text-xs text-muted-foreground mt-1">
-                      Ergebnis: {note.meeting_result}
-                    </p>
-                  )}
-                </div>
-              ))}
-            </div>
-          ) : (
-            <p className="text-sm text-muted-foreground">
-              Keine Notizen für dieses Meeting vorhanden.
-            </p>
-          )}
+            compact ? (
+              <ul className="space-y-1">
+                {linkedQuickNotes.map((note, index) => renderCompactItem(note.title || `Notiz ${index + 1}`, <StickyNote className="h-2.5 w-2.5 text-amber-500" />, index, note.user_id ? `von ${profiles?.find(p => p.user_id === note.user_id)?.display_name || 'unbekannt'}` : null))}
+              </ul>
+            ) : (
+              <div className="space-y-2">
+                {linkedQuickNotes.map((note) => (
+                  <div key={note.id} className="p-3 bg-muted/50 rounded-md">
+                    {note.title && <h4 className="font-semibold text-sm mb-1">{note.title}</h4>}
+                    <RichTextDisplay content={note.content} className="text-sm" />
+                    <ProfileBadge userId={note.user_id} profiles={profiles} />
+                    {note.meeting_result && <p className="text-xs text-muted-foreground mt-1">Ergebnis: {note.meeting_result}</p>}
+                  </div>
+                ))}
+              </div>
+            )
+          ) : <p className="text-sm text-muted-foreground">Keine Notizen für dieses Meeting vorhanden.</p>}
         </CardContent>
       </Card>
     );
@@ -211,125 +229,88 @@ export function SystemAgendaItem({
 
   if (systemType === 'tasks') {
     return (
-      <Card className={cn("border-l-4", getBorderColor(), className)}>
-        {renderHeader(
-          linkedTasks.length > 0 ? <Badge variant="secondary">{linkedTasks.length}</Badge> : undefined
-        )}
+      <Card className={cn('border-l-4', getBorderColor(), className)}>
+        {renderHeader()}
         <CardContent className="px-3 pb-2 pt-0">
           {linkedTasks.length > 0 ? (
-            <div className="space-y-2">
-              {linkedTasks.map((task) => (
-                <div key={task.id} className="p-3 bg-muted/50 rounded-md">
-                  <h4 className="font-semibold text-sm mb-1">{task.title}</h4>
-                  {task.description && (
-                    <RichTextDisplay content={task.description} className="text-sm text-muted-foreground" />
-                  )}
-                  <ProfileBadge userId={task.user_id} profiles={profiles} />
-                  {task.due_date && (
-                    <p className="text-xs text-muted-foreground mt-1">
-                      Frist: {format(new Date(task.due_date), "dd.MM.yyyy", { locale: de })}
-                    </p>
-                  )}
-                </div>
-              ))}
-            </div>
-          ) : (
-            <p className="text-sm text-muted-foreground">
-              Keine Aufgaben für dieses Meeting vorhanden.
-            </p>
-          )}
+            compact ? (
+              <ul className="space-y-1">
+                {linkedTasks.map((task, index) => renderCompactItem(task.title || 'Ohne Titel', <ListTodo className="h-2.5 w-2.5 text-green-500" />, index, task.user_id ? `von ${profiles?.find(p => p.user_id === task.user_id)?.display_name || 'unbekannt'}` : null))}
+              </ul>
+            ) : (
+              <div className="space-y-2">
+                {linkedTasks.map((task) => (
+                  <div key={task.id} className="p-3 bg-muted/50 rounded-md">
+                    <h4 className="font-semibold text-sm mb-1">{task.title}</h4>
+                    {task.description && <RichTextDisplay content={task.description} className="text-sm text-muted-foreground" />}
+                    <ProfileBadge userId={task.user_id} profiles={profiles} />
+                    {task.due_date && <p className="text-xs text-muted-foreground mt-1">Frist: {format(new Date(task.due_date), 'dd.MM.yyyy', { locale: de })}</p>}
+                  </div>
+                ))}
+              </div>
+            )
+          ) : <p className="text-sm text-muted-foreground">Keine Aufgaben für dieses Meeting vorhanden.</p>}
         </CardContent>
       </Card>
     );
   }
 
-
   if (systemType === 'decisions') {
     return (
-      <Card className={cn("border-l-4", getBorderColor(), className)}>
-        {renderHeader(
-          linkedDecisions.length > 0 ? <Badge variant="secondary">{linkedDecisions.length}</Badge> : undefined
-        )}
+      <Card className={cn('border-l-4', getBorderColor(), className)}>
+        {renderHeader()}
         <CardContent className="px-3 pb-2 pt-0">
-          <p className="text-xs text-muted-foreground mb-3">
-            Es werden automatisch aktive Entscheidungen geladen, die priorisiert sind, deren Frist bereits abgelaufen ist oder deren Frist in den nächsten 7 Tagen endet.
-          </p>
-          {linkedDecisions.length > 0 ? (
-            <div className="space-y-2">
-              {linkedDecisions.map((decision) => (
-                <div key={decision.id} className="p-3 bg-muted/50 rounded-md">
-                  <h4 className="font-semibold text-sm mb-1">{decision.title}</h4>
-                  {decision.description && (
-                    <RichTextDisplay content={decision.description} className="text-sm text-muted-foreground" />
-                  )}
-                  <div className="flex flex-wrap gap-2 text-xs text-muted-foreground mt-1">
-                    {decision.response_deadline && (
-                      <span>Frist: {format(new Date(decision.response_deadline), "dd.MM.yyyy", { locale: de })}</span>
-                    )}
-                    {decision.priority !== null && decision.priority !== undefined && (
-                      <span>Priorität: {decision.priority}</span>
-                    )}
-                  </div>
-                </div>
-              ))}
-            </div>
-          ) : (
-            <p className="text-sm text-muted-foreground">
-              Keine relevanten Entscheidungen für dieses Meeting vorhanden.
+          {!compact && (
+            <p className="text-xs text-muted-foreground mb-3">
+              Es werden automatisch aktive Entscheidungen geladen, die priorisiert sind, deren Frist bereits abgelaufen ist oder deren Frist in den nächsten 7 Tagen endet.
             </p>
           )}
+          {linkedDecisions.length > 0 ? (
+            compact ? (
+              <ul className="space-y-1">
+                {linkedDecisions.map((decision, index) => renderCompactItem(decision.title || 'Ohne Titel', <Scale className="h-2.5 w-2.5 text-violet-500" />, index, decision.user_id ? `von ${profiles?.find(p => p.user_id === decision.user_id)?.display_name || 'unbekannt'}` : null))}
+              </ul>
+            ) : (
+              <div className="space-y-2">
+                {linkedDecisions.map((decision) => (
+                  <div key={decision.id} className="p-3 bg-muted/50 rounded-md">
+                    <h4 className="font-semibold text-sm mb-1">{decision.title}</h4>
+                    {decision.description && <RichTextDisplay content={decision.description} className="text-sm text-muted-foreground" />}
+                    <div className="flex flex-wrap gap-2 text-xs text-muted-foreground mt-1">
+                      {decision.response_deadline && <span>Frist: {format(new Date(decision.response_deadline), 'dd.MM.yyyy', { locale: de })}</span>}
+                      {decision.priority !== null && decision.priority !== undefined && <span>Priorität: {decision.priority}</span>}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )
+          ) : <p className="text-sm text-muted-foreground">Keine relevanten Entscheidungen für dieses Meeting vorhanden.</p>}
         </CardContent>
       </Card>
     );
   }
 
   if (systemType === 'case_items') {
-    const priorityColors: Record<string, string> = {
-      dringend: 'text-red-600',
-      hoch: 'text-orange-500',
-      mittel: 'text-yellow-600',
-      niedrig: 'text-green-600',
-    };
-    const statusLabels: Record<string, string> = {
-      offen: 'Offen',
-      in_bearbeitung: 'In Bearbeitung',
-      wartend: 'Wartend',
-      entscheidung_abwartend: 'Entscheidung abw.',
-      geloest: 'Gelöst',
-      geschlossen: 'Geschlossen',
-    };
-
     return (
-      <Card className={cn("border-l-4", getBorderColor(), className)}>
-        {renderHeader(
-          linkedCaseItems.length > 0 ? <Badge variant="secondary">{linkedCaseItems.length}</Badge> : undefined
-        )}
+      <Card className={cn('border-l-4', getBorderColor(), className)}>
+        {renderHeader()}
         <CardContent className="px-3 pb-2 pt-0">
           {linkedCaseItems.length > 0 ? (
-            <div className="space-y-2">
-              {linkedCaseItems.map((ci) => (
-                <div key={ci.id} className="p-3 bg-muted/50 rounded-md">
-                  <h4 className="font-semibold text-sm mb-1">{ci.subject || '(Kein Betreff)'}</h4>
-                  <div className="flex flex-wrap gap-2 text-xs text-muted-foreground mt-1">
-                    <Badge variant="outline" className="text-xs">
-                      {statusLabels[ci.status] || ci.status}
-                    </Badge>
-                    <span className={cn("font-medium", ci.priority ? priorityColors[ci.priority] : '')}>
-                      {ci.priority}
-                    </span>
-                    {ci.due_at && (
-                      <span>Frist: {format(new Date(ci.due_at), "dd.MM.yyyy", { locale: de })}</span>
-                    )}
+            compact ? (
+              <ul className="space-y-1">
+                {linkedCaseItems.map((ci, index) => renderCompactItem(ci.subject || 'Ohne Betreff', <Briefcase className="h-2.5 w-2.5 text-teal-500" />, index, ci.owner_user_id ? `von ${profiles?.find(p => p.user_id === ci.owner_user_id)?.display_name || 'unbekannt'}` : null))}
+              </ul>
+            ) : (
+              <div className="space-y-2">
+                {linkedCaseItems.map((ci) => (
+                  <div key={ci.id} className="p-3 bg-muted/50 rounded-md">
+                    <h4 className="font-semibold text-sm mb-1">{ci.subject || '(Kein Betreff)'}</h4>
+                    <ProfileBadge userId={ci.owner_user_id || undefined} profiles={profiles} />
                   </div>
-                  <ProfileBadge userId={ci.owner_user_id || undefined} profiles={profiles} />
-                </div>
-              ))}
-            </div>
-          ) : (
-            <p className="text-sm text-muted-foreground">
-              Keine Vorgänge für dieses Meeting vorhanden.
-            </p>
-          )}
+                ))}
+              </div>
+            )
+          ) : <p className="text-sm text-muted-foreground">Keine Vorgänge für dieses Meeting vorhanden.</p>}
         </CardContent>
       </Card>
     );
