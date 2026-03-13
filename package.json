@@ -40,6 +40,10 @@
     "test:e2e-smoke": "npm run test:role-smoke && npm run test:e2e:flows-smoke",
     "test:e2e:flows-smoke": "node scripts/e2e-smoke-flows.mjs",
     "check:edge-function-security": "node scripts/check-edge-function-security.mjs"
+    "test:e2e-smoke": "npm run test:role-smoke && npm run test:e2e:smoke-extended",
+    "test:e2e:flows-smoke": "node scripts/e2e-smoke-flows.mjs",
+    "test:e2e:smoke-required": "E2E_SMOKE_SUITE=required node scripts/e2e-smoke-flows.mjs",
+    "test:e2e:smoke-extended": "E2E_SMOKE_SUITE=extended node scripts/e2e-smoke-flows.mjs"
   },
   "dependencies": {
     "@eslint/js": "^10.0.1",

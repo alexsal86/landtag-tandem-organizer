@@ -1,0 +1,15 @@
+{
+  "extends": "./tsconfig.app.json",
+  "compilerOptions": {
+    "strict": false,
+    "strictNullChecks": true,
+    "noImplicitAny": true,
+    "noUnusedLocals": false,
+    "noUnusedParameters": false
+  },
+  "include": [
+    "src/pages/Administration.tsx",
+    "src/pages/Index.tsx",
+    "src/pages/NotificationsPage.tsx"
+  ]
+}

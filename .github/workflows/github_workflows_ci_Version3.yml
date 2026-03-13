@@ -14,6 +14,7 @@ on:
 
 permissions:
   contents: read
+  issues: write
 
 jobs:
   parser-and-tests:
@@ -90,6 +91,11 @@ jobs:
       - name: Strict Type Check Knowledge-Bereich
         run: npm run typecheck:knowledge
 
+      - name: Strict Type Check Migration-Batches (Stufe 1: strictNullChecks)
+        run: |
+          npm run typecheck:hooks-batch1
+          npm run typecheck:pages-batch1
+          npm run typecheck:services-batch1
       - name: Build (falls vorhanden)
         run: |
           if npm run | grep -q "build"; then
@@ -159,9 +165,103 @@ jobs:
         if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master'
         run: npm run coverage:thresholds:block
 
-  e2e-smoke-nonblocking:
+  smoke-required:
     runs-on: ubuntu-latest
     needs: coverage-thresholds
+    outputs:
+      downgraded: ${{ steps.failure-policy.outputs.downgraded }}
+      failure_count: ${{ steps.failure-policy.outputs.failure_count }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Use Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install deps
+        run: npm ci
+
+      - name: Run critical smoke suite (required)
+        id: smoke-required-run
+        continue-on-error: true
+        run: npm run test:e2e:smoke-required
+
+      - name: Evaluate smoke failure policy
+        id: failure-policy
+        if: steps.smoke-required-run.outcome == 'failure'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const workflow = context.workflow;
+            const owner = context.repo.owner;
+            const repo = context.repo.repo;
+            const branch = context.ref.replace('refs/heads/', '');
+
+            const runs = await github.paginate(
+              github.rest.actions.listWorkflowRuns,
+              {
+                owner,
+                repo,
+                workflow_id: workflow,
+                branch,
+                status: 'completed',
+                per_page: 50,
+              },
+              (response) => response.data.workflow_runs,
+            );
+
+            const relevant = runs
+              .filter((run) => run.name === workflow)
+              .filter((run) => run.id !== context.runId)
+              .slice(0, 1);
+
+            const previousFailed = relevant.length > 0 && relevant[0].conclusion === 'failure';
+            const failureCount = previousFailed ? 2 : 1;
+            const downgraded = previousFailed;
+
+            core.setOutput('failure_count', String(failureCount));
+            core.setOutput('downgraded', downgraded ? 'true' : 'false');
+
+            if (downgraded) {
+              const title = `[E2E] Smoke required auto-downgraded after 2 consecutive failures (${branch})`;
+              const body = [
+                'Die erforderliche Smoke-Suite wurde automatisch auf Übergangsmodus zurückgestuft,',
+                'weil zwei aufeinanderfolgende CI-Läufe fehlgeschlagen sind.',
+                '',
+                `- Branch: ${branch}`,
+                `- Aktueller Lauf: ${context.serverUrl}/${owner}/${repo}/actions/runs/${context.runId}`,
+                `- Vorheriger fehlgeschlagener Lauf: ${relevant[0]?.html_url ?? 'n/a'}`,
+                '',
+                'Ticketpflicht: Bitte Ursachenanalyse und Stabilisierung dokumentieren, bevor die Required-Policy wieder verschärft wird.'
+              ].join('\n');
+
+              await github.rest.issues.create({
+                owner,
+                repo,
+                title,
+                body,
+                labels: ['ci', 'e2e', 'smoke-required'],
+              });
+            }
+
+      - name: Enforce required smoke gate
+        if: steps.smoke-required-run.outcome == 'failure' && steps.failure-policy.outputs.downgraded != 'true'
+        run: |
+          echo "smoke-required fehlgeschlagen (Fehlerfolge: ${{ steps.failure-policy.outputs.failure_count || '1' }})."
+          exit 1
+
+      - name: Document auto downgrade
+        if: steps.smoke-required-run.outcome == 'failure' && steps.failure-policy.outputs.downgraded == 'true'
+        run: |
+          echo "⚠️ smoke-required wurde nach 2 aufeinanderfolgenden Fehlschlägen automatisch zurückgestuft." | tee -a "$GITHUB_STEP_SUMMARY"
+          echo "Ticket wurde automatisch erstellt (Ticketpflicht erfüllt)." | tee -a "$GITHUB_STEP_SUMMARY"
+
+  smoke-extended:
+    runs-on: ubuntu-latest
+    needs: smoke-required
     if: |
       github.event_name != 'workflow_dispatch' || inputs.run_e2e_smoke == true
     continue-on-error: true
@@ -178,8 +278,30 @@ jobs:
       - name: Install deps
         run: npm ci
 
-      - name: Run E2E smoke checks (non-blocking)
+      - name: Run extended smoke suite (non-blocking)
+        run: npm run test:e2e:smoke-extended
+
+  e2e-smoke-nonblocking:
+    runs-on: ubuntu-latest
+    needs: smoke-extended
+    if: |
+      github.event_name != 'workflow_dispatch' || inputs.run_e2e_smoke == true
+    continue-on-error: true
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Use Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install deps
+        run: npm ci
+
+      - name: Run legacy E2E smoke checks (non-blocking transition mode)
         run: npm run test:e2e-smoke
 
       - name: Hinweis für spätere Umstellung auf required
-        run: echo "E2E-Smokes laufen aktuell non-blocking (continue-on-error). Für required: continue-on-error entfernen."
+        run: echo "E2E-Smokes laufen aktuell im Übergangsmodus (legacy non-blocking Job bleibt aktiv)."
