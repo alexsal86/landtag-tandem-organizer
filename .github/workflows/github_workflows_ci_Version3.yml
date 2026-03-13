@@ -71,6 +71,9 @@ jobs:
       - name: Mandatory security hygiene checks
         run: npm run check:security-hygiene
 
+      - name: Mandatory Supabase edge-function security checks
+        run: npm run check:edge-function-security
+
       - name: Mandatory diagram drift check
         run: npm run check:diagram-drift
 
