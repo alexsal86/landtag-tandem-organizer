@@ -55,6 +55,47 @@ export function MergeContactsDialog({
   const [merging, setMerging] = useState(false);
   const { toast } = useToast();
 
+  const moveDistributionListMemberships = async (
+    secondaryContactId: string,
+    primaryContactId: string,
+  ) => {
+    const { data: secondaryMemberships, error: secondaryFetchError } = await supabase
+      .from('distribution_list_members')
+      .select('distribution_list_id')
+      .eq('contact_id', secondaryContactId);
+
+    if (secondaryFetchError) throw secondaryFetchError;
+
+    if (!secondaryMemberships || secondaryMemberships.length === 0) {
+      return;
+    }
+
+    const distributionListIds = secondaryMemberships
+      .map((membership) => membership.distribution_list_id)
+      .filter((id): id is string => Boolean(id));
+
+    if (distributionListIds.length === 0) return;
+
+    const { error: upsertError } = await supabase
+      .from('distribution_list_members')
+      .upsert(
+        distributionListIds.map((distribution_list_id) => ({
+          distribution_list_id,
+          contact_id: primaryContactId,
+        })),
+        { onConflict: 'distribution_list_id,contact_id', ignoreDuplicates: true },
+      );
+
+    if (upsertError) throw upsertError;
+
+    const { error: cleanupError } = await supabase
+      .from('distribution_list_members')
+      .delete()
+      .eq('contact_id', secondaryContactId);
+
+    if (cleanupError) throw cleanupError;
+  };
+
   const handleFieldSelection = (field: string, contactId: string) => {
     setSelectedValues(prev => ({
       ...prev,
@@ -131,13 +172,8 @@ export function MergeContactsDialog({
 
       if (contactActivitiesUpdateError) throw contactActivitiesUpdateError;
 
-      // Update distribution_list_members
-      const { error: distributionListMembersUpdateError } = await supabase
-        .from('distribution_list_members')
-        .update({ contact_id: primaryContact })
-        .eq('contact_id', secondaryContactId);
-
-      if (distributionListMembersUpdateError) throw distributionListMembersUpdateError;
+      // Update distribution_list_members (deduplicate to avoid unique constraint collisions)
+      await moveDistributionListMemberships(secondaryContactId, primaryContact);
 
       // Log merge activity
       const { data: userData } = await supabase.auth.getUser();
