@@ -17,6 +17,13 @@ const trackSession = async (userId: string) => {
   try {
     // Upsert session based on user_id + device
     const deviceInfo = navigator.userAgent;
+
+    // Ensure only one session is marked as current for this user
+    await supabase
+      .from('user_sessions')
+      .update({ is_current: false })
+      .eq('user_id', userId)
+      .eq('is_current', true);
     
     // Check if a session with this device already exists
     const { data: existing } = await supabase
@@ -24,6 +31,7 @@ const trackSession = async (userId: string) => {
       .select('id')
       .eq('user_id', userId)
       .eq('device_info', deviceInfo)
+      .order('last_active_at', { ascending: false })
       .limit(1);
 
     if (existing && existing.length > 0) {
