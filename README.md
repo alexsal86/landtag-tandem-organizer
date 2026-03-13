@@ -147,19 +147,26 @@ Vollständige Liste: `supabase/functions/`
 ## Testing
 
 ```bash
-# Tests ausführen
-npx vitest run
+# Schnelle Unit-/Integrationstests (CI + lokal)
+npm run test:unit-integration:ci
 
-# Tests im Watch-Mode
-npx vitest
+# Coverage-Report erzeugen + Schwellenwerte prüfen
+npm run test:coverage:ci
+npm run coverage:thresholds:warn
+npm run coverage:thresholds:block
 
-# Security-Doku-Drift prüfen
+# Security-Hygiene-Checks
 npm run check:security-hygiene
+
+# Optionaler E2E-Smoke-Check
+npm run test:e2e-smoke
 ```
 
 - Framework: **Vitest** + **@testing-library/react**
 - Tests liegen neben den Quelldateien oder in `__tests__/`-Unterordnern
 - Supabase-Client wird per `vi.mock('@/integrations/supabase/client')` gemockt
+- Coverage-Schwellenwerte sind stufenweise: in Pull Requests zunächst **warnend**, auf `main`/`master` **blockierend**.
+- Kritische Module (z. B. Sanitizer und Error-Handling) haben höhere Mindest-Coverage als globale Basiswerte.
 
 ---
 
