@@ -690,7 +690,7 @@ export function FocusModeView({
       const updateSubItemResult = (value: string) => {
         if (sourceType === 'quick_note' && onUpdateNoteResult) {
           onUpdateNoteResult(src.id as string, value);
-        } else if ((sourceType === 'task' || sourceType === 'appointment') && parentItem?.id) {
+        } else if ((sourceType === 'task' || sourceType === 'appointment' || sourceType === 'decision') && parentItem?.id) {
           const results = parseSystemSubItemResults(parentItem.result_text);
           const sourceId = src.id as string;
           const previousEntry = results[sourceId];
