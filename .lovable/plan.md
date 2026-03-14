@@ -1,43 +1,61 @@
 
-## Code-Qualität — Status
 
-### Erledigt
+# Jour Fixe / Agenda: UI-Verbesserungen und Fehlerbehebungen
 
-- **strictNullChecks: true** — aktiviert, alle Build-Fehler behoben
-- **noImplicitAny: true** — aktiviert, alle Build-Fehler behoben
-- **DOMPurify** als zentraler HTML-Sanitizer — alle `dangerouslySetInnerHTML` nutzen jetzt `sanitizeRichHtml()`
-- **Tenant-Access Guard** für Edge Functions — existiert in `supabase/functions/_shared/tenant-access.ts`
-- **ESLint `no-unused-vars: warn`** — aktiviert mit `argsIgnorePattern: '^_'`, erste Bereinigungsrunde in Pages/Hooks abgeschlossen
-- **Standalone `React`-Imports entfernt** — ~60 Dateien bereinigt
-- **State-Mutation fix** — `existingContacts.push()` → immutables Update in `useContactImport.ts`
-- **Non-null Assertion Guards** — `user!.id` / `currentTenant!.id` durch Early-Return-Guards ersetzt (~11 Dateien)
-- **Leere catch-Blöcke** — kritische Stellen in MatrixContext & DaySlipStore mit `debugConsole.warn` versehen
-- **JSON-Protocol Speaker-Normalisierung** — `speaker: string | { name }` korrekt normalisiert
+## Übersicht
 
-### Noch offen
+6 Punkte werden adressiert: Build-Fehler beheben, Checkbox-Position klären, Card-UI redesignen, Einrückung konsistent machen, "System"-Badge entfernen, Count-Badge verschieben, und Entscheidungen im Fokus-Modus ergänzen.
 
-1. ~~**`strict: true` aktivieren**~~ ✅ — war bereits aktiv in `tsconfig.app.json` inkl. `strictNullChecks` und `noImplicitAny`
-2. **Tote Imports weiter bereinigen** — ~65 standalone `React`-Imports in Components prüfen, weitere lucide-Icons und ungenutzte Variablen entfernen (ESLint-Regel zeigt Warnungen)
-3. **`no-explicit-any` schrittweise einführen** — nach Abschluss der `no-unused-vars`-Bereinigung
-4. ~~**Edge Functions `verify_jwt`-Audit**~~ ✅ — alle 18 Functions mit `verify_jwt = false` klassifiziert und abgesichert: Cron-Functions mit `requireServiceRole`, WebSocket mit `requireAuth`, Token-Endpoints mit eigener Validierung, `send-push-notification` + `fetch-karlsruhe-districts` mit Service-Role-Guard
-5. **CORS einschränken** — `Access-Control-Allow-Origin: *` durch Allowlist ersetzen für sensible Operationen
+## Änderungen
 
----
+### 0. Build-Fehler beheben (Priorität)
 
-## No-Code Automations-Hub — Status
+In `SystemAgendaItem.tsx` Zeile 271 wird `decision.user_id` referenziert, aber `RelevantDecision` hat kein `user_id`-Feld (nur `created_by`). Fix: `user_id` durch `created_by` ersetzen.
 
-### Erledigt
+### 1. Checkbox im Agenda-Editor (Punkt 1)
 
-- 4-Step Wizard (Grundlagen → Trigger → Bedingungen → Aktionen)
-- 10 Templates, Template-Galerie mit Suche/Filter
-- Kill-Switch, Dry-Run, Run-Now, Run-Historie mit Step-Logs
-- Error-Dashboard mit Retry, Regel-Versionierung, Import/Export
-- Rate Limiting, Idempotency, Audit-Trail
-- 5 Action-Typen, 5 Condition-Operators, 4 Trigger-Typen (inkl. Webhook)
-- Rollenbasierte Zugriffskontrolle
-- **Regel duplizieren** — Copy-Button pro Regel-Karte
-- **Nächste geplante Ausführung** — Badge für schedule-Regeln
-- **Regel-Statistiken** — Erfolgsrate (%) + Ø Laufzeit als Tooltip-Badge
-- **Notification-Kontext** — `rule_name`, `trigger_reason`, `run_id` in Notification-Payload
-- **Webhook-Trigger** — neue Edge Function `automation-webhook`, Secret-Authentifizierung, URL-Anzeige im Wizard
-- **Verschachtelte Condition-Gruppen** — rekursives AND/OR-Nesting bis 3 Ebenen im Wizard, backward-kompatible DB-Serialisierung
+Die Checkbox nach dem Drag-Handle in `AgendaEditorPanel.tsx` (Zeile 293) markiert einen Agenda-Punkt als "erledigt" (`is_completed`). Sie wird nur für Hauptpunkte angezeigt (nicht für Unterpunkte). **Vorschlag**: Checkbox ans Ende der Zeile verschieben (nach den Aktions-Buttons), da sie während der Agenda-Planung weniger relevant ist und erst im aktiven Meeting gebraucht wird.
+
+### 2. Card-Ansicht redesignen (Punkt 2)
+
+Aktuell werden Agenda-Punkte als vollständige `<Card>`-Komponenten mit Padding, Border und Schatten gerendert. **Neues UI**: Umstellen auf eine kompakte, listenbasierte Darstellung:
+- Statt Card: einfache `div` mit `border-b` als Trenner und leichtem Hover-Effekt
+- Hauptpunkte: Nummer + Titel in einer Zeile, Aktionen rechts
+- Unterpunkte: eingerückt mit `pl-8`, ebenfalls einzeilig
+- System-Items behalten ihre farbige linke Kante, aber ohne Card-Wrapper
+- Ergebnis: weniger visuelles Rauschen, bessere Übersicht
+
+### 3. Einrückung konsistent machen (Punkt 3)
+
+Aktuell: Unterpunkte haben `ml-8 border-l-4 border-l-primary/30`, aber die Nummerierung (`getAgendaNumber`) ist nicht immer konsistent dargestellt. Fix:
+- Hauptpunkte: `pl-0`, Nummer als `1.`, `2.` etc.
+- Unterpunkte: `pl-8` + linke Kante, Nummer als `1.1`, `1.2` etc.
+- System-Unterpunkte: gleiche Einrückung wie reguläre Unterpunkte
+- System-Sub-Items (einzelne Notizen/Aufgaben innerhalb eines System-Blocks): `pl-12` mit `a)`, `b)` etc.
+
+### 4. "System"-Badge entfernen (Punkt 4)
+
+In `SystemAgendaItem.tsx` `renderHeader()` (Zeile 167-170): Den Badge `<Badge variant="outline">System</Badge>` samt Icon entfernen. Die farbige linke Kante und das Icon im Titel reichen zur Unterscheidung.
+
+### 5. Count-Badge ans Ende verschieben (Punkt 5)
+
+In `SystemAgendaItem.tsx` `renderHeader()` (Zeile 164): Das Count-Badge steht nach dem Titel-Icon. Es soll ans Ende der Header-Zeile verschoben werden (vor dem Delete-Button, im rechten Bereich).
+
+### 6. Entscheidungen im Fokus-Modus (Punkt 6)
+
+`FocusModeView` akzeptiert kein `relevantDecisions`-Prop und `injectSystemChildren` hat keinen `decisions`-Branch. Änderungen:
+- **`FocusModeViewProps`**: `relevantDecisions?: RelevantDecision[]` ergänzen (Import aus `./types`)
+- **`MeetingsView.tsx`**: `relevantDecisions={data.meetingRelevantDecisions}` als Prop übergeben
+- **`injectSystemChildren`**: Neuen Block für `systemItem.system_type === 'decisions'` analog zu tasks/case_items
+- **`NavigableItem.sourceType`**: Um `'decision'` erweitern
+- **Rendering**: Entscheidungs-Items im Fokus-Modus mit violet Icon und Titel/Frist anzeigen
+
+## Betroffene Dateien
+
+| Datei | Änderung |
+|---|---|
+| `src/components/meetings/SystemAgendaItem.tsx` | Build-Fix (`user_id` → `created_by`), System-Badge entfernen, Count-Badge verschieben |
+| `src/components/meetings/AgendaEditorPanel.tsx` | Checkbox verschieben, Card → kompakte Liste, Einrückung vereinheitlichen |
+| `src/components/meetings/FocusModeView.tsx` | `relevantDecisions` Prop + `decisions`-Branch in `injectSystemChildren` |
+| `src/components/MeetingsView.tsx` | `relevantDecisions` Prop an FocusModeView übergeben |
+
