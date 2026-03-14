@@ -656,11 +656,12 @@ export function FocusModeView({
   };
 
   // Get border color for system sub-items
-  const getSystemSubItemBorderColor = (sourceType?: 'quick_note' | 'appointment' | 'task') => {
+  const getSystemSubItemBorderColor = (sourceType?: 'quick_note' | 'appointment' | 'task' | 'decision') => {
     switch (sourceType) {
       case 'quick_note': return 'border-l-amber-500';
       case 'appointment': return 'border-l-blue-500';
       case 'task': return 'border-l-green-500';
+      case 'decision': return 'border-l-violet-500';
       default: return 'border-l-primary/30';
     }
   };

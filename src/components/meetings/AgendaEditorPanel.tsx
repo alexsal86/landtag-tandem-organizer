@@ -485,8 +485,8 @@ export function AgendaEditorPanel({
                                 </>
                               )}
                             </div>
-                          </CardContent>
-                        </Card>
+                          </div>
+                        </div>
                       )}
                     </>
                   )}

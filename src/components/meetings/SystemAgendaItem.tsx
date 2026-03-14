@@ -264,7 +264,7 @@ export function SystemAgendaItem({
           {linkedDecisions.length > 0 ? (
             compact ? (
               <ul className="space-y-1">
-                {linkedDecisions.map((decision, index) => renderCompactItem(decision.title || 'Ohne Titel', <Scale className="h-2.5 w-2.5 text-violet-500" />, index, decision.user_id ? `von ${profiles?.find(p => p.user_id === decision.user_id)?.display_name || 'unbekannt'}` : null))}
+                {linkedDecisions.map((decision, index) => renderCompactItem(decision.title || 'Ohne Titel', <Scale className="h-2.5 w-2.5 text-violet-500" />, index, decision.created_by ? `von ${profiles?.find(p => p.user_id === decision.created_by)?.display_name || 'unbekannt'}` : null))}
               </ul>
             ) : (
               <div className="space-y-2">
