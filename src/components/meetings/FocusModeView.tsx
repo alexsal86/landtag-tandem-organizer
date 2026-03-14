@@ -806,7 +806,7 @@ export function FocusModeView({
               )}
 
               {/* Result input - show when focused or when result exists */}
-              {(isFocused || getSubItemResult()) && (sourceType === 'quick_note' || sourceType === 'task' || sourceType === 'appointment') && (
+              {(isFocused || getSubItemResult()) && (sourceType === 'quick_note' || sourceType === 'task' || sourceType === 'appointment' || sourceType === 'decision') && (
                 <div className="mt-4 pt-3 border-t">
                   <label className="text-sm font-medium block mb-2">Ergebnis / Notizen</label>
                   <Textarea
