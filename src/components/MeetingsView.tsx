@@ -71,6 +71,7 @@ export function MeetingsView() {
         onUpdateResult={agendaOps.updateAgendaItemResult}
         onUpdateNoteResult={data.updateQuickNoteResult}
         onArchive={() => archiveMeeting(data.activeMeeting!)}
+        relevantDecisions={data.meetingRelevantDecisions}
       />
     );
   }

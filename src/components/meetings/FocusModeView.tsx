@@ -931,6 +931,14 @@ export function FocusModeView({
               </div>
             )}
 
+            {/* System content: Decisions - show count info */}
+            {item.system_type === 'decisions' && relevantDecisions.length > 0 && (
+              <div className="mt-3 text-sm text-muted-foreground flex items-center gap-2">
+                <Scale className="h-4 w-4 text-violet-500" />
+                {relevantDecisions.length} {relevantDecisions.length === 1 ? 'Entscheidung' : 'Entscheidungen'} — einzeln navigierbar
+              </div>
+            )}
+
             {/* Assigned users */}
             {item.assigned_to && item.assigned_to.length > 0 && (
               <div className="mt-3 flex items-center gap-2">
