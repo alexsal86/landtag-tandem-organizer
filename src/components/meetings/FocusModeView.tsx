@@ -64,7 +64,7 @@ interface NavigableItem {
   globalIndex: number;
   isSystemSubItem?: boolean;
   sourceId?: string;
-  sourceType?: 'quick_note' | 'appointment' | 'task';
+  sourceType?: 'quick_note' | 'appointment' | 'task' | 'decision';
   sourceData?: unknown;
 }
 
