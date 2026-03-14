@@ -161,13 +161,9 @@ export function SystemAgendaItem({
             {agendaNumber && <span className="text-muted-foreground font-medium min-w-[2rem] text-right">{agendaNumber}</span>}
             {getIcon()}
             {getTitle()}
-            {count !== undefined && <Badge variant="secondary">{count}</Badge>}
           </CardTitle>
           <div className="flex items-center gap-1">
-            <Badge variant="outline" className={cn('text-xs', getBadgeColors())}>
-              {getBadgeIcon()}
-              System
-            </Badge>
+            {count !== undefined && <Badge variant="secondary" className="text-xs">{count}</Badge>}
             {onDelete && (
               <Button size="icon" variant="ghost" className="h-7 w-7 text-destructive hover:text-destructive" onClick={onDelete} aria-label="Punkt löschen">
                 <Trash className="h-3.5 w-3.5" />
