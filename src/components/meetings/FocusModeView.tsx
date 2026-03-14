@@ -840,6 +840,7 @@ export function FocusModeView({
           isSubItem && item.system_type === 'upcoming_appointments' && "ml-8 border-l-4 border-l-blue-500",
           isSubItem && item.system_type === 'quick_notes' && "ml-8 border-l-4 border-l-amber-500",
           isSubItem && item.system_type === 'tasks' && "ml-8 border-l-4 border-l-green-500",
+          isSubItem && item.system_type === 'decisions' && "ml-8 border-l-4 border-l-violet-500",
           isFocused && "ring-2 ring-primary bg-primary/5 scale-[1.01] shadow-lg",
           item.is_completed && "bg-muted/50",
           !isFocused && !item.is_completed && "bg-card hover:bg-muted/30"
