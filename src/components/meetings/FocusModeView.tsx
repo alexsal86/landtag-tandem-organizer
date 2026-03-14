@@ -27,7 +27,7 @@ import { format } from 'date-fns';
 import { de } from 'date-fns/locale';
 import { RichTextDisplay } from '@/components/ui/RichTextDisplay';
 
-import type { LinkedQuickNote, LinkedTask, LinkedCaseItem, MeetingUpcomingAppointment } from './types';
+import type { LinkedQuickNote, LinkedTask, LinkedCaseItem, RelevantDecision, MeetingUpcomingAppointment } from './types';
 
 interface AgendaItem {
   id?: string;
