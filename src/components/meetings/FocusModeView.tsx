@@ -742,6 +742,7 @@ export function FocusModeView({
                 {sourceType === 'quick_note' && <StickyNote className="h-3.5 w-3.5 text-amber-500" />}
                 {sourceType === 'appointment' && <CalendarDays className="h-3.5 w-3.5 text-blue-500" />}
                 {sourceType === 'task' && <ListTodo className="h-3.5 w-3.5 text-green-500" />}
+                {sourceType === 'decision' && <Scale className="h-3.5 w-3.5 text-violet-500" />}
                 <span className={cn("text-sm font-medium", isItemCompleted && "line-through text-muted-foreground")}>{item.title}</span>
                 {isItemCompleted && (
                   <Badge variant="secondary" className="bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200 text-xs">
