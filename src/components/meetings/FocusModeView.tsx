@@ -789,7 +789,7 @@ export function FocusModeView({
                     <span className="text-xs text-muted-foreground">{profile.display_name}</span>
                   </div>
                 ) : (
-                  <span className="text-xs text-muted-foreground">von {getDisplayName(src.user_id as string)}</span>
+                  <span className="text-xs text-muted-foreground">von {getDisplayName(userId)}</span>
                 );
               })()}
               {sourceType === 'appointment' && (
