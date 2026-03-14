@@ -792,6 +792,12 @@ export function FocusModeView({
                   <span className="text-xs text-muted-foreground">von {getDisplayName(userId)}</span>
                 );
               })()}
+              {sourceType === 'decision' && (
+                <div className="mt-1 flex items-center gap-2 text-xs text-muted-foreground">
+                  {(src.response_deadline as string) && <span>Frist: {format(new Date(src.response_deadline as string), "dd.MM.yyyy", { locale: de })}</span>}
+                  {(src.status as string) && <Badge variant="outline" className="text-xs">{src.status as string}</Badge>}
+                </div>
+              )}
               {sourceType === 'appointment' && (
                 <p className="text-xs text-muted-foreground mt-1">
                   {(src.start_time as string) && format(new Date(src.start_time as string), "dd.MM.yyyy HH:mm", { locale: de })}
