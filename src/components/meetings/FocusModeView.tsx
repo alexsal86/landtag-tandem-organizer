@@ -775,8 +775,9 @@ export function FocusModeView({
                   </div>
                 </div>
               )}
-              {(sourceType === 'quick_note' || sourceType === 'task') && (src.user_id as string) && (() => {
-                const profile = profiles.find(p => p.user_id === (src.user_id as string));
+              {(sourceType === 'quick_note' || sourceType === 'task' || sourceType === 'decision') && (src.user_id as string || src.created_by as string) && (() => {
+                const userId = (src.user_id as string) || (src.created_by as string);
+                const profile = profiles.find(p => p.user_id === userId);
                 return profile ? (
                   <div className="flex items-center gap-1.5 mt-1">
                     <Avatar className="h-5 w-5">
