@@ -250,6 +250,27 @@ export function FocusModeView({
         });
       });
     }
+    if (systemItem.system_type === 'decisions' && relevantDecisions.length > 0) {
+      relevantDecisions.forEach((decision, i) => {
+        const persistedCompleted = getPersistentSystemSubItemCompletion('decision', decision, parentForChildren);
+        result.push({
+          item: {
+            id: `decision-${decision.id}`,
+            title: decision.title || `Entscheidung ${i + 1}`,
+            is_completed: persistedCompleted,
+            order_index: systemItem.order_index + i + 1,
+            system_type: 'decision_item',
+          } as AgendaItem,
+          isSubItem: true,
+          parentItem: parentForChildren,
+          globalIndex: -1,
+          isSystemSubItem: true,
+          sourceId: decision.id,
+          sourceType: 'decision',
+          sourceData: decision
+        });
+      });
+    }
   };
     
     // Get main items (no parent)
