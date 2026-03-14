@@ -393,6 +393,10 @@ export function AgendaEditorPanel({
                                     <Trash className="h-4 w-4" />
                                   </Button>
                                 )}
+                                {/* Checkbox at end for main items */}
+                                {!(item.parentLocalKey || item.parent_id) && (
+                                  <Checkbox checked={item.is_completed} onCheckedChange={(checked) => onUpdateAgendaItem(index, 'is_completed', !!checked)} className="ml-1" />
+                                )}
                               </div>
 
                               {/* Sub-item details */}
