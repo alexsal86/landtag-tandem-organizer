@@ -284,6 +284,11 @@ export function AgendaEditorPanel({
                           <div className="py-2 px-3">
                             <div className="space-y-3">
                               <div className="flex items-center gap-2 group">
+                                {hasEditPermission && (
+                                  <div {...provided.dragHandleProps} className="cursor-grab active:cursor-grabbing">
+                                    <GripVertical className="h-4 w-4 text-muted-foreground" />
+                                  </div>
+                                )}
                                 <span className="text-muted-foreground font-medium min-w-[2.25rem] text-right">
                                   {getAgendaNumber(item)}
                                 </span>
