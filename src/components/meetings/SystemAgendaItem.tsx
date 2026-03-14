@@ -161,13 +161,9 @@ export function SystemAgendaItem({
             {agendaNumber && <span className="text-muted-foreground font-medium min-w-[2rem] text-right">{agendaNumber}</span>}
             {getIcon()}
             {getTitle()}
-            {count !== undefined && <Badge variant="secondary">{count}</Badge>}
           </CardTitle>
           <div className="flex items-center gap-1">
-            <Badge variant="outline" className={cn('text-xs', getBadgeColors())}>
-              {getBadgeIcon()}
-              System
-            </Badge>
+            {count !== undefined && <Badge variant="secondary" className="text-xs">{count}</Badge>}
             {onDelete && (
               <Button size="icon" variant="ghost" className="h-7 w-7 text-destructive hover:text-destructive" onClick={onDelete} aria-label="Punkt löschen">
                 <Trash className="h-3.5 w-3.5" />
@@ -268,7 +264,7 @@ export function SystemAgendaItem({
           {linkedDecisions.length > 0 ? (
             compact ? (
               <ul className="space-y-1">
-                {linkedDecisions.map((decision, index) => renderCompactItem(decision.title || 'Ohne Titel', <Scale className="h-2.5 w-2.5 text-violet-500" />, index, decision.user_id ? `von ${profiles?.find(p => p.user_id === decision.user_id)?.display_name || 'unbekannt'}` : null))}
+                {linkedDecisions.map((decision, index) => renderCompactItem(decision.title || 'Ohne Titel', <Scale className="h-2.5 w-2.5 text-violet-500" />, index, decision.created_by ? `von ${profiles?.find(p => p.user_id === decision.created_by)?.display_name || 'unbekannt'}` : null))}
               </ul>
             ) : (
               <div className="space-y-2">

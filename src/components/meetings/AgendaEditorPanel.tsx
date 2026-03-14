@@ -272,25 +272,22 @@ export function AgendaEditorPanel({
                         </div>
                       ) : (
                         /* Regular agenda item */
-                        <Card ref={provided.innerRef} {...provided.draggableProps}
+                        <div ref={provided.innerRef} {...provided.draggableProps}
                           className={cn(
-                            "transition-shadow",
-                            snapshot.isDragging && "shadow-lg",
-                            (item.parentLocalKey || item.parent_id) && "ml-8 border-l-4 border-l-primary/30",
+                            "transition-colors border-b border-border/60 hover:bg-muted/30",
+                            snapshot.isDragging && "shadow-lg bg-card rounded-lg border",
+                            (item.parentLocalKey || item.parent_id) && "pl-8 border-l-4 border-l-primary/30",
                             item.is_optional && "border-dashed",
                             item.is_optional && item.is_visible === false && "opacity-50"
                           )}
                         >
-                          <CardContent className="p-4">
+                          <div className="py-2 px-3">
                             <div className="space-y-3">
                               <div className="flex items-center gap-2 group">
                                 {hasEditPermission && (
                                   <div {...provided.dragHandleProps} className="cursor-grab active:cursor-grabbing">
                                     <GripVertical className="h-4 w-4 text-muted-foreground" />
                                   </div>
-                                )}
-                                {!(item.parentLocalKey || item.parent_id) && (
-                                  <Checkbox checked={item.is_completed} onCheckedChange={(checked) => onUpdateAgendaItem(index, 'is_completed', !!checked)} />
                                 )}
                                 <span className="text-muted-foreground font-medium min-w-[2.25rem] text-right">
                                   {getAgendaNumber(item)}
@@ -396,6 +393,10 @@ export function AgendaEditorPanel({
                                     <Trash className="h-4 w-4" />
                                   </Button>
                                 )}
+                                {/* Checkbox at end for main items */}
+                                {!(item.parentLocalKey || item.parent_id) && (
+                                  <Checkbox checked={item.is_completed} onCheckedChange={(checked) => onUpdateAgendaItem(index, 'is_completed', !!checked)} className="ml-1" />
+                                )}
                               </div>
 
                               {/* Sub-item details */}
@@ -484,8 +485,8 @@ export function AgendaEditorPanel({
                                 </>
                               )}
                             </div>
-                          </CardContent>
-                        </Card>
+                          </div>
+                        </div>
                       )}
                     </>
                   )}
