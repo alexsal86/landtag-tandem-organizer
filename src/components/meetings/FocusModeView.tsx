@@ -20,7 +20,7 @@ import {
 import { 
   X, Keyboard, ChevronDown, ChevronUp, CheckCircle, 
   ArrowUp, ArrowDown, CornerDownRight, StickyNote,
-  Maximize2, Users, Archive, CalendarDays, ListTodo, Star, MessageSquarePlus
+  Maximize2, Users, Archive, CalendarDays, ListTodo, Star, MessageSquarePlus, Scale
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { format } from 'date-fns';
