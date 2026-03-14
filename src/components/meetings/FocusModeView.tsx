@@ -680,7 +680,7 @@ export function FocusModeView({
           const results = parseSystemSubItemResults(parentItem.result_text);
           return getSystemResultText(results[src.id as string]);
         }
-        if (sourceType === 'task' && parentItem) {
+        if ((sourceType === 'task' || sourceType === 'decision') && parentItem) {
           const results = parseSystemSubItemResults(parentItem.result_text);
           return getSystemResultText(results[src.id as string]);
         }
