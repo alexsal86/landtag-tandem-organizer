@@ -871,6 +871,9 @@ export function FocusModeView({
               {item.system_type === 'tasks' && (
                 <ListTodo className="h-4 w-4 text-green-500" />
               )}
+              {item.system_type === 'decisions' && (
+                <Scale className="h-4 w-4 text-violet-500" />
+              )}
               <span className={cn(
                 isSubItem ? "text-base" : "text-lg font-semibold",
                 item.is_completed && "line-through text-muted-foreground"
