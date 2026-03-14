@@ -324,7 +324,7 @@ export function FocusModeView({
     });
     
     return result;
-  }, [agendaItems, getPersistentSystemSubItemCompletion, linkedQuickNotes, upcomingAppointments, linkedTasks, linkedCaseItems]);
+  }, [agendaItems, getPersistentSystemSubItemCompletion, linkedQuickNotes, upcomingAppointments, linkedTasks, linkedCaseItems, relevantDecisions]);
 
   useEffect(() => {
     setOptimisticSystemSubItemCompletion(prev => {
