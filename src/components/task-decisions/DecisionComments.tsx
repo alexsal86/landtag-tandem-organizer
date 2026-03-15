@@ -459,9 +459,18 @@ export function DecisionComments({
     } catch (error) {
       debugConsole.error('Error toggling comment reaction:', error);
       setComments((prev) => updateCommentReactions(prev, commentId, emoji, currentlyReacted));
+
+      const isInvalidReactionError =
+        typeof error === "object" &&
+        error !== null &&
+        "code" in error &&
+        error.code === "23514";
+
       toast({
         title: "Fehler",
-        description: "Reaktion konnte nicht gespeichert werden. Die Ansicht wurde zurückgesetzt.",
+        description: isInvalidReactionError
+          ? "Ungültige Reaktion"
+          : "Reaktion konnte nicht gespeichert werden. Die Ansicht wurde zurückgesetzt.",
         variant: "destructive",
       });
     } finally {
