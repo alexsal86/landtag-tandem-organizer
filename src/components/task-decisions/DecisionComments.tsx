@@ -419,8 +419,18 @@ export function DecisionComments({
           });
 
         if (error) throw error;
-        await notifyReactionRecipients(commentId, emoji);
-        await trackReactionMetric(emoji, 'insert');
+
+        try {
+          await notifyReactionRecipients(commentId, emoji);
+        } catch (notificationError) {
+          debugConsole.error('Error sending reaction notifications:', notificationError);
+        }
+
+        try {
+          await trackReactionMetric(emoji, 'insert');
+        } catch (analyticsError) {
+          debugConsole.error('Error tracking reaction metric (insert):', analyticsError);
+        }
       } else {
         const { error } = await supabase
           .from('task_decision_comment_reactions')
@@ -430,7 +440,12 @@ export function DecisionComments({
           .eq('emoji', emoji);
 
         if (error) throw error;
-        await trackReactionMetric(emoji, 'delete');
+
+        try {
+          await trackReactionMetric(emoji, 'delete');
+        } catch (analyticsError) {
+          debugConsole.error('Error tracking reaction metric (delete):', analyticsError);
+        }
       }
     } catch (error) {
       debugConsole.error('Error toggling comment reaction:', error);

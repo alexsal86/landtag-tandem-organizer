@@ -22,6 +22,7 @@ export const buildDeepLinkPath = (notification: Notification): string => {
     case 'task_decision_complete':
     case 'task_decision_comment_received':
     case 'task_decision_creator_response':
+    case 'task_decision_comment_reaction_received':
     case 'decision_request':
     case 'decision_response':
     case 'decision_completed':

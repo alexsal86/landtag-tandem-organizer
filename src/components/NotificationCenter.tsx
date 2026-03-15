@@ -65,6 +65,7 @@ const getNotificationIcon = (type: string) => {
     case 'task_decision_complete':
     case 'task_decision_comment_received':
     case 'task_decision_creator_response':
+    case 'task_decision_comment_reaction_received':
       return MessageSquare;
     case 'document_created':
     case 'document_mention':
