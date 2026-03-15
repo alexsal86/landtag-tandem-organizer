@@ -62,6 +62,7 @@ export function SystemAgendaItem({
   resultText,
   onUpdateResult,
   onDelete,
+  onItemClick,
   className,
   isEmbedded = false,
   defaultCollapsed = false,
