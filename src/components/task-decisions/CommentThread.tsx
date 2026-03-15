@@ -346,7 +346,7 @@ export function CommentThread({
                           type="button"
                           variant="outline"
                           size="sm"
-                          onClick={() => onToggleReaction(comment.id, reaction.emoji, reaction.currentUserReacted)}
+                          onClick={() => onToggleReaction?.(comment.id, reaction.emoji, reaction.currentUserReacted)}
                           className={cn(
                             "h-7 px-2 text-[11px] gap-1 rounded-full min-w-10",
                             reaction.currentUserReacted && "border-primary bg-primary/10 text-primary",
