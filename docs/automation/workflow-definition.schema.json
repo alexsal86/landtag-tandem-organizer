@@ -1,0 +1,158 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://landtag-tandem-organizer.local/schemas/workflow-definition.schema.json",
+  "title": "WorkflowDefinition DSL",
+  "type": "object",
+  "required": [
+    "id",
+    "key",
+    "name",
+    "tenantId",
+    "module",
+    "status",
+    "version",
+    "trigger",
+    "condition",
+    "actions",
+    "createdAt",
+    "createdBy"
+  ],
+  "properties": {
+    "id": { "type": "string", "minLength": 1 },
+    "key": { "type": "string", "minLength": 1 },
+    "name": { "type": "string", "minLength": 1 },
+    "description": { "type": "string", "default": "" },
+    "tenantId": { "type": "string", "minLength": 1 },
+    "module": { "type": "string", "minLength": 1 },
+    "status": { "enum": ["draft", "published", "archived"] },
+    "version": { "type": "integer", "minimum": 1 },
+    "trigger": {
+      "oneOf": [
+        {
+          "type": "object",
+          "required": ["type", "eventName", "source"],
+          "properties": {
+            "type": { "const": "event" },
+            "eventName": { "type": "string", "minLength": 1 },
+            "source": { "type": "string", "minLength": 1 },
+            "filters": { "type": "object", "additionalProperties": true }
+          },
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "required": ["type", "cron", "timezone"],
+          "properties": {
+            "type": { "const": "time" },
+            "cron": { "type": "string", "minLength": 1 },
+            "timezone": { "type": "string", "minLength": 1 },
+            "startAt": { "type": "string", "format": "date-time" },
+            "endAt": { "type": "string", "format": "date-time" }
+          },
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "required": ["type", "allowedRoles"],
+          "properties": {
+            "type": { "const": "manual" },
+            "allowedRoles": {
+              "type": "array",
+              "items": { "type": "string", "minLength": 1 },
+              "minItems": 1
+            }
+          },
+          "additionalProperties": false
+        }
+      ]
+    },
+    "condition": {
+      "$ref": "#/$defs/condition"
+    },
+    "actions": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": ["id", "type", "name", "config"],
+        "properties": {
+          "id": { "type": "string", "minLength": 1 },
+          "type": { "enum": ["side_effect", "notification", "data_change", "api_call"] },
+          "name": { "type": "string", "minLength": 1 },
+          "config": { "type": "object", "additionalProperties": true },
+          "dependsOnActionIds": { "type": "array", "items": { "type": "string", "minLength": 1 }, "default": [] },
+          "onSuccessActionIds": { "type": "array", "items": { "type": "string", "minLength": 1 }, "default": [] },
+          "onFailureActionIds": { "type": "array", "items": { "type": "string", "minLength": 1 }, "default": [] }
+        },
+        "additionalProperties": false
+      }
+    },
+    "approvalSteps": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["id", "role", "slaMinutes"],
+        "properties": {
+          "id": { "type": "string", "minLength": 1 },
+          "role": { "type": "string", "minLength": 1 },
+          "slaMinutes": { "type": "integer", "minimum": 1 },
+          "escalationRole": { "type": "string", "minLength": 1 },
+          "escalationAfterMinutes": { "type": "integer", "minimum": 1 },
+          "delegateRole": { "type": "string", "minLength": 1 },
+          "dependsOnApprovalStepIds": { "type": "array", "items": { "type": "string", "minLength": 1 }, "default": [] }
+        },
+        "additionalProperties": false
+      },
+      "default": []
+    },
+    "metadata": { "type": "object", "additionalProperties": true, "default": {} },
+    "createdAt": { "type": "string", "format": "date-time" },
+    "createdBy": { "type": "string", "minLength": 1 },
+    "publishedAt": { "type": ["string", "null"], "format": "date-time" },
+    "archivedAt": { "type": ["string", "null"], "format": "date-time" }
+  },
+  "allOf": [
+    {
+      "if": { "properties": { "status": { "const": "published" } } },
+      "then": { "required": ["publishedAt"] }
+    },
+    {
+      "if": { "properties": { "status": { "const": "archived" } } },
+      "then": { "required": ["archivedAt"] }
+    }
+  ],
+  "$defs": {
+    "condition": {
+      "oneOf": [
+        {
+          "type": "object",
+          "required": ["id", "kind", "field", "operator"],
+          "properties": {
+            "id": { "type": "string", "minLength": 1 },
+            "kind": { "const": "rule" },
+            "field": { "type": "string", "minLength": 1 },
+            "operator": { "enum": ["eq", "neq", "contains", "gt", "gte", "lt", "lte", "exists", "in"] },
+            "value": true
+          },
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "required": ["id", "kind", "combinator", "conditions"],
+          "properties": {
+            "id": { "type": "string", "minLength": 1 },
+            "kind": { "const": "group" },
+            "combinator": { "enum": ["AND", "OR"] },
+            "conditions": {
+              "type": "array",
+              "minItems": 1,
+              "items": { "$ref": "#/$defs/condition" }
+            }
+          },
+          "additionalProperties": false
+        }
+      ]
+    }
+  },
+  "additionalProperties": false
+}
