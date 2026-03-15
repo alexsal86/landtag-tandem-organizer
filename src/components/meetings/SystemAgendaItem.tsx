@@ -142,8 +142,11 @@ export function SystemAgendaItem({
     }
   };
 
-  const renderCompactItem = (label: string, icon: ReactNode, idx: number, ownerLabel?: string | null) => (
-    <li key={`${label}-${idx}`} className="rounded bg-muted/40 px-2 py-1 text-xs">
+  const renderCompactItem = (label: string, icon: ReactNode, idx: number, ownerLabel?: string | null, itemType?: string, itemId?: string) => (
+    <li key={`${label}-${idx}`}
+      className={cn("rounded px-2 py-1.5 text-xs", onItemClick && itemId ? "cursor-pointer hover:bg-muted/60 transition-colors" : "bg-muted/40")}
+      onClick={() => onItemClick && itemType && itemId && onItemClick(itemType, itemId)}
+    >
       <div className="flex items-center gap-2">
         <span className="min-w-[2rem] text-[11px] font-medium text-foreground/70">{String.fromCharCode(97 + idx)})</span>
         {icon}
