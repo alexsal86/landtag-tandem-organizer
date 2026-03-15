@@ -38,7 +38,8 @@ const getNotificationIcon = (type: string) => {
     case 'employee_meeting_requested': case 'employee_meeting_request_declined':
     case 'employee_meeting_action_item_overdue': case 'employee_meeting_scheduled': return Users;
     case 'task_decision_request': case 'task_decision_completed': case 'task_decision_complete':
-    case 'task_decision_comment_received': case 'task_decision_creator_response': return MessageSquare;
+    case 'task_decision_comment_received': case 'task_decision_creator_response':
+    case 'task_decision_comment_reaction_received': return MessageSquare;
     case 'document_created': case 'document_mention': case 'news_shared_internal': case 'letter_review_requested':
     case 'letter_review_completed': case 'letter_sent': return FileText;
     case 'knowledge_document_created': return BookOpen;
