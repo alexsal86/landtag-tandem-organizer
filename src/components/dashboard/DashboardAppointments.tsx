@@ -26,6 +26,7 @@ interface Props {
 
 interface AppointmentRequestItem {
   decisionId: string;
+  decisionDescription: string | null;
   appointmentId: string | null;
   appointmentTitle: string;
   appointmentStart: string | null;
@@ -36,7 +37,11 @@ interface AppointmentRequestItem {
   myHasResponded: boolean;
 }
 
-const APPOINTMENT_REQUEST_MARKER = 'appointment_request_appointment_id:';
+const APPOINTMENT_REQUEST_APPOINTMENT_MARKER = 'appointment_request_appointment_id:';
+const APPOINTMENT_REQUEST_TITLE_MARKER = 'appointment_request_title:';
+const APPOINTMENT_REQUEST_START_MARKER = 'appointment_request_start:';
+const APPOINTMENT_REQUEST_LOCATION_MARKER = 'appointment_request_location:';
+const APPOINTMENT_REQUEST_REQUESTER_MARKER = 'appointment_request_requester:';
 
 /** Check if an appointment is currently happening */
 const isCurrentlyActive = (apt: { start_time: string; end_time?: string; is_all_day: boolean }) => {
@@ -47,16 +52,36 @@ const isCurrentlyActive = (apt: { start_time: string; end_time?: string; is_all_
   return start <= now && now < end;
 };
 
-const getAppointmentIdFromDescription = (description: string | null): string | null => {
+const extractMarkerValue = (description: string | null, marker: string): string | null => {
   if (!description) return null;
-  const match = description.match(/appointment_request_appointment_id:([a-f0-9-]{36})/i);
-  return match?.[1] ?? null;
+  const escaped = marker.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  const match = description.match(new RegExp(`${escaped}(.+)`, 'i'));
+  return match?.[1]?.trim() ?? null;
+};
+
+const getAppointmentIdFromDescription = (description: string | null): string | null => {
+  const raw = extractMarkerValue(description, APPOINTMENT_REQUEST_APPOINTMENT_MARKER);
+  return raw && /^[a-f0-9-]{36}$/i.test(raw) ? raw : null;
 };
 
 const getRequesterFromDescription = (description: string | null): string | null => {
-  if (!description) return null;
-  const match = description.match(/Angefragt von:\s*(.+)/i);
-  return match?.[1]?.trim() ?? null;
+  return extractMarkerValue(description, APPOINTMENT_REQUEST_REQUESTER_MARKER)
+    ?? extractMarkerValue(description, 'Angefragt von:');
+};
+
+const getRequestedStartFromDescription = (description: string | null): string | null => {
+  const value = extractMarkerValue(description, APPOINTMENT_REQUEST_START_MARKER);
+  if (!value) return null;
+  const parsed = new Date(value);
+  return Number.isNaN(parsed.getTime()) ? null : parsed.toISOString();
+};
+
+const getRequestedTitleFromDescription = (description: string | null): string | null => {
+  return extractMarkerValue(description, APPOINTMENT_REQUEST_TITLE_MARKER);
+};
+
+const getRequestedLocationFromDescription = (description: string | null): string | null => {
+  return extractMarkerValue(description, APPOINTMENT_REQUEST_LOCATION_MARKER);
 };
 
 const responseBadge = (responseType: AppointmentRequestItem['responseType']) => {
@@ -85,6 +110,55 @@ export const DashboardAppointments = ({ data }: Props) => {
   const [isSubmittingRequest, setIsSubmittingRequest] = useState(false);
   const [requestsLoading, setRequestsLoading] = useState(false);
   const [requests, setRequests] = useState<AppointmentRequestItem[]>([]);
+
+  const createApprovedAppointment = useCallback(async (request: AppointmentRequestItem): Promise<string | null> => {
+    if (!user?.id || !currentTenant?.id) return null;
+    if (request.appointmentId) return request.appointmentId;
+    if (request.responseType !== 'yes') return null;
+
+    const startIso = request.appointmentStart;
+    if (!startIso) return null;
+
+    const startDate = new Date(startIso);
+    if (Number.isNaN(startDate.getTime())) return null;
+    const endDate = new Date(startDate.getTime() + 60 * 60 * 1000);
+
+    const { data: createdAppointment, error: createError } = await supabase
+      .from('appointments')
+      .insert([{
+        title: request.appointmentTitle,
+        location: request.appointmentLocation,
+        start_time: startDate.toISOString(),
+        end_time: endDate.toISOString(),
+        user_id: user.id,
+        tenant_id: currentTenant.id,
+        is_all_day: false,
+      }])
+      .select('id')
+      .single();
+
+    if (createError || !createdAppointment?.id) {
+      debugConsole.error('Error creating approved appointment:', createError);
+      return null;
+    }
+
+    const nextDescription = [
+      request.decisionDescription || '',
+      `${APPOINTMENT_REQUEST_APPOINTMENT_MARKER}${createdAppointment.id}`,
+    ].filter(Boolean).join('\n');
+
+    const { error: updateError } = await supabase
+      .from('task_decisions')
+      .update({ description: nextDescription })
+      .eq('id', request.decisionId);
+
+    if (updateError) {
+      debugConsole.error('Error linking approved appointment to decision:', updateError);
+      return null;
+    }
+
+    return createdAppointment.id;
+  }, [currentTenant?.id, user?.id]);
 
   const loadAppointmentRequests = useCallback(async () => {
     if (!user?.id || !currentTenant?.id) return;
@@ -149,12 +223,18 @@ export const DashboardAppointments = ({ data }: Props) => {
         const linkedAppointment = appointmentId ? appointmentsById.get(appointmentId) : null;
         const myParticipant = participants.find((participant: any) => participant.user_id === user.id) || null;
 
+        const requestedStart = getRequestedStartFromDescription(decision.description);
+        const requestedTitle = getRequestedTitleFromDescription(decision.description)
+          || decision.title.replace(/^Terminanfrage:\s*/i, '');
+        const requestedLocation = getRequestedLocationFromDescription(decision.description);
+
         return {
           decisionId: decision.id,
+          decisionDescription: decision.description,
           appointmentId,
-          appointmentTitle: linkedAppointment?.title || decision.title.replace(/^Terminanfrage:\s*/i, ''),
-          appointmentStart: linkedAppointment?.start_time || decision.response_deadline || null,
-          appointmentLocation: linkedAppointment?.location || null,
+          appointmentTitle: linkedAppointment?.title || requestedTitle,
+          appointmentStart: linkedAppointment?.start_time || requestedStart || decision.response_deadline || null,
+          appointmentLocation: linkedAppointment?.location || requestedLocation || null,
           requester: getRequesterFromDescription(decision.description),
           responseType: latestResponse,
           myParticipantId: myParticipant?.id || null,
@@ -162,13 +242,27 @@ export const DashboardAppointments = ({ data }: Props) => {
         };
       });
 
+      const approvalsWithoutAppointment = mapped.filter((request) => request.responseType === 'yes' && !request.appointmentId);
+      if (approvalsWithoutAppointment.length > 0) {
+        let created = 0;
+        for (const request of approvalsWithoutAppointment) {
+          const createdId = await createApprovedAppointment(request);
+          if (createdId) created += 1;
+        }
+
+        if (created > 0) {
+          await loadAppointmentRequests();
+          return;
+        }
+      }
+
       setRequests(mapped);
     } catch (error) {
       debugConsole.error('Error loading dashboard appointment requests:', error);
     } finally {
       setRequestsLoading(false);
     }
-  }, [currentTenant?.id, user?.id]);
+  }, [createApprovedAppointment, currentTenant?.id, user?.id]);
 
   useEffect(() => {
     loadAppointmentRequests();
@@ -229,27 +323,8 @@ export const DashboardAppointments = ({ data }: Props) => {
 
     setIsSubmittingRequest(true);
     try {
-      const start = requestTime ? `${requestDate}T${requestTime}:00` : `${requestDate}T09:00:00`;
-      const startDate = new Date(start);
-      const endDate = new Date(startDate.getTime() + 60 * 60 * 1000);
-
-      const { data: appointment, error: appointmentError } = await supabase
-        .from('appointments')
-        .insert([{
-          title: requestTitle.trim(),
-          location: requestLocation.trim() || null,
-          start_time: startDate.toISOString(),
-          end_time: endDate.toISOString(),
-          status: 'tentative',
-          category: 'terminanfrage',
-          user_id: user.id,
-          tenant_id: currentTenant.id,
-          is_all_day: false,
-        }])
-        .select('id, title, start_time')
-        .single();
-
-      if (appointmentError) throw appointmentError;
+      const requestedStart = requestTime ? `${requestDate}T${requestTime}:00` : `${requestDate}T09:00:00`;
+      const requestedStartIso = new Date(requestedStart).toISOString();
 
       const { data: deputyMemberships, error: deputyError } = await supabase
         .from('user_tenant_memberships')
@@ -262,24 +337,24 @@ export const DashboardAppointments = ({ data }: Props) => {
 
       const deputyIds = Array.from(new Set((deputyMemberships || []).map((item) => item.user_id)));
       if (deputyIds.length === 0) {
-        toast({ title: 'Termin gespeichert', description: 'Keine aktive Rolle "abgeordneter" gefunden.' });
-        await loadAppointmentRequests();
+        toast({ title: 'Keine Abgeordneten gefunden', description: 'Es wurde keine aktive Rolle "abgeordneter" gefunden.', variant: 'destructive' });
         return;
       }
 
       const { data: decision, error: decisionError } = await supabase
         .from('task_decisions')
         .insert([{
-          title: `Terminanfrage: ${appointment.title}`,
+          title: `Terminanfrage: ${requestTitle.trim()}`,
           description: [
-            `Bitte reagieren: Zusage, Absage oder Rückfrage.`,
-            requestRequester.trim() ? `Angefragt von: ${requestRequester.trim()}` : null,
-            requestLocation.trim() ? `Ort: ${requestLocation.trim()}` : null,
-            `${APPOINTMENT_REQUEST_MARKER}${appointment.id}`,
+            'Bitte reagieren: Zusage, Absage oder Rückfrage.',
+            `${APPOINTMENT_REQUEST_TITLE_MARKER}${requestTitle.trim()}`,
+            `${APPOINTMENT_REQUEST_START_MARKER}${requestedStartIso}`,
+            requestRequester.trim() ? `${APPOINTMENT_REQUEST_REQUESTER_MARKER}${requestRequester.trim()}` : null,
+            requestLocation.trim() ? `${APPOINTMENT_REQUEST_LOCATION_MARKER}${requestLocation.trim()}` : null,
           ].filter(Boolean).join('\n'),
           created_by: user.id,
           tenant_id: currentTenant.id,
-          response_deadline: appointment.start_time,
+          response_deadline: requestedStartIso,
           status: 'open',
           visible_to_all: false,
           response_options: [
@@ -302,16 +377,17 @@ export const DashboardAppointments = ({ data }: Props) => {
 
       if (participantError) throw participantError;
 
-      toast({ title: 'Terminanfrage erstellt', description: 'Termin + Reaktionsanfrage wurden angelegt.' });
+      toast({ title: 'Terminanfrage erstellt', description: 'Termin wird erst nach Zustimmung angelegt.' });
       setRequestTitle('');
       setRequestDate('');
       setRequestTime('');
       setRequestLocation('');
       setRequestRequester('');
       await loadAppointmentRequests();
-    } catch (error) {
+    } catch (error: any) {
       debugConsole.error('Error creating dashboard appointment request:', error);
-      toast({ title: 'Terminanfrage konnte nicht erstellt werden', variant: 'destructive' });
+      const errorMessage = typeof error?.message === 'string' ? error.message : 'Unbekannter Fehler';
+      toast({ title: 'Terminanfrage konnte nicht erstellt werden', description: errorMessage, variant: 'destructive' });
     } finally {
       setIsSubmittingRequest(false);
     }
@@ -341,21 +417,18 @@ export const DashboardAppointments = ({ data }: Props) => {
 
   if (isLoading) return <div className="animate-pulse h-32 bg-muted rounded-lg" />;
 
-  // Resolve the icon component for the special day hint
   const HintIcon = specialDayHint?.icon
     ? icons[specialDayHint.icon as keyof typeof icons]
     : null;
 
   return (
     <div className="space-y-4">
-      {/* Kontextuelle Nachricht */}
       {contextMessage && (
         <div className="text-sm text-muted-foreground">
           <p>{contextMessage.text}</p>
         </div>
       )}
 
-      {/* Special Day */}
       {specialDayHint && (
         <div className="bg-amber-50 dark:bg-amber-950/30 border-l-2 border-amber-400 px-3 py-1.5 rounded text-sm text-foreground flex items-start gap-2">
           {HintIcon && <HintIcon className="h-4 w-4 mt-0.5 shrink-0 text-amber-600 dark:text-amber-400" />}
@@ -363,10 +436,8 @@ export const DashboardAppointments = ({ data }: Props) => {
         </div>
       )}
 
-      {/* Separator zwischen Kontext und Terminliste */}
       {(contextMessage || specialDayHint) && <Separator className="my-2" />}
 
-      {/* Termine */}
       <div>
         {appointments.length === 0 ? (
           <p className="text-sm text-muted-foreground">
@@ -374,7 +445,7 @@ export const DashboardAppointments = ({ data }: Props) => {
           </p>
         ) : (
           <div className="space-y-1.5">
-            {appointments.map(apt => {
+            {appointments.map((apt) => {
               const aptDate = format(new Date(apt.start_time), 'yyyy-MM-dd');
               const active = !isShowingTomorrow && isCurrentlyActive(apt);
               return (
@@ -411,7 +482,7 @@ export const DashboardAppointments = ({ data }: Props) => {
       <div className="space-y-3 rounded-md border p-3">
         <div>
           <h4 className="text-sm font-semibold">Terminanfrage (schnell)</h4>
-          <p className="text-xs text-muted-foreground">Direkt im Dashboard erfassen und Reaktion des Abgeordneten abfragen.</p>
+          <p className="text-xs text-muted-foreground">Direkt im Dashboard erfassen und Reaktion des Abgeordneten abfragen. Der Termin wird erst nach Zustimmung angelegt.</p>
         </div>
         <div className="grid grid-cols-1 gap-2 md:grid-cols-2">
           <div className="md:col-span-2">
@@ -459,7 +530,10 @@ export const DashboardAppointments = ({ data }: Props) => {
                   {request.requester ? ` · von ${request.requester}` : ''}
                 </p>
               </div>
-              {responseBadge(request.responseType)}
+              <div className="flex items-center gap-2">
+                {request.appointmentId && <Badge variant="outline">Termin angelegt</Badge>}
+                {responseBadge(request.responseType)}
+              </div>
             </div>
 
             {request.myParticipantId && !request.myHasResponded && (
@@ -477,7 +551,6 @@ export const DashboardAppointments = ({ data }: Props) => {
         ))}
       </div>
 
-      {/* Feedback Reminder */}
       {feedbackReminderVisible && (
         <>
           <Separator className="my-2" />
