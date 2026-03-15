@@ -283,13 +283,13 @@ export function AgendaEditorPanel({
                         >
                           <div className="py-2 px-3">
                             <div className="space-y-3">
-                              <div className="flex items-center gap-2 group">
+                              <div className="flex items-center gap-1 group">
                                 {hasEditPermission && (
-                                  <div {...provided.dragHandleProps} className="cursor-grab active:cursor-grabbing">
+                                  <div {...provided.dragHandleProps} className="cursor-grab active:cursor-grabbing opacity-0 group-hover:opacity-100 transition-opacity">
                                     <GripVertical className="h-4 w-4 text-muted-foreground" />
                                   </div>
                                 )}
-                                <span className="text-muted-foreground font-medium min-w-[2.25rem] text-right">
+                                <span className="text-muted-foreground font-medium min-w-[1.75rem] text-right">
                                   {getAgendaNumber(item)}
                                 </span>
                                 <Input value={item.title} onChange={(e) => onUpdateAgendaItem(index, 'title', e.target.value)}
