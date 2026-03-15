@@ -385,7 +385,7 @@ export function CommentThread({
                 triggerClassName="h-6 w-6 text-[10px]"
                 onEmojiSelect={(emoji) => {
                   const currentUserReacted = reactionMap.get(emoji)?.currentUserReacted ?? false;
-                  onToggleReaction(comment.id, emoji, currentUserReacted);
+                  onToggleReaction?.(comment.id, emoji, currentUserReacted);
                 }}
               />
               </div>
