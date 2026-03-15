@@ -44,7 +44,7 @@ interface CommentThreadProps {
   onReply: (parentId: string, content: string) => Promise<void>;
   onEdit: (commentId: string, content: string) => Promise<void>;
   onDelete: (commentId: string, hasReplies: boolean) => Promise<void>;
-  onToggleReaction: (commentId: string, emoji: string, currentlyReacted: boolean) => Promise<void>;
+  onToggleReaction?: (commentId: string, emoji: string, currentlyReacted: boolean) => Promise<void>;
   currentUserId?: string;
   isLastReply?: boolean;
   highlightedCommentId?: string | null;
