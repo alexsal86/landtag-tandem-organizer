@@ -83,18 +83,6 @@ export function SystemAgendaItem({
     }
   };
 
-  const getBadgeColors = () => {
-    switch (systemType) {
-      case 'upcoming_appointments': return 'bg-blue-50 text-blue-700 border-blue-200 dark:bg-blue-950 dark:text-blue-300 dark:border-blue-800';
-      case 'quick_notes': return 'bg-amber-50 text-amber-700 border-amber-200 dark:bg-amber-950 dark:text-amber-300 dark:border-amber-800';
-      case 'tasks': return 'bg-green-50 text-green-700 border-green-200 dark:bg-green-950 dark:text-green-300 dark:border-green-800';
-      case 'birthdays': return 'bg-pink-50 text-pink-700 border-pink-200 dark:bg-pink-950 dark:text-pink-300 dark:border-pink-800';
-      case 'decisions': return 'bg-violet-50 text-violet-700 border-violet-200 dark:bg-violet-950 dark:text-violet-300 dark:border-violet-800';
-      case 'case_items': return 'bg-teal-50 text-teal-700 border-teal-200 dark:bg-teal-950 dark:text-teal-300 dark:border-teal-800';
-      default: return '';
-    }
-  };
-
   const getIcon = () => {
     switch (systemType) {
       case 'upcoming_appointments': return <CalendarDays className="h-4 w-4 text-blue-500" />;
@@ -116,18 +104,6 @@ export function SystemAgendaItem({
       case 'decisions': return 'Entscheidungen';
       case 'case_items': return 'Vorgänge';
       default: return '';
-    }
-  };
-
-  const getBadgeIcon = () => {
-    switch (systemType) {
-      case 'upcoming_appointments': return <CalendarDays className="h-3 w-3 mr-1" />;
-      case 'quick_notes': return <StickyNote className="h-3 w-3 mr-1" />;
-      case 'tasks': return <ListTodo className="h-3 w-3 mr-1" />;
-      case 'birthdays': return <Cake className="h-3 w-3 mr-1" />;
-      case 'decisions': return <Scale className="h-3 w-3 mr-1" />;
-      case 'case_items': return <Briefcase className="h-3 w-3 mr-1" />;
-      default: return null;
     }
   };
 
@@ -159,13 +135,13 @@ export function SystemAgendaItem({
   const renderHeader = () => {
     const count = getCountBadge();
     return (
-      <CardHeader className="py-2 px-3 pb-1">
+      <div className="py-2 px-3 pb-1">
         <div className="flex items-center justify-between">
-          <CardTitle className="text-base flex items-center gap-2">
-            {agendaNumber && <span className="text-muted-foreground font-medium min-w-[2rem] text-right">{agendaNumber}</span>}
+          <h3 className="text-base font-semibold flex items-center gap-2">
+            {agendaNumber && <span className="text-muted-foreground font-medium min-w-[1.75rem] text-right">{agendaNumber}</span>}
             {getIcon()}
             {getTitle()}
-          </CardTitle>
+          </h3>
           <div className="flex items-center gap-1">
             {count !== undefined && <Badge variant="secondary" className="text-xs">{count}</Badge>}
             {onDelete && (
@@ -175,15 +151,15 @@ export function SystemAgendaItem({
             )}
           </div>
         </div>
-      </CardHeader>
+      </div>
     );
   };
 
   if (systemType === 'upcoming_appointments') {
     return (
-      <Card className={cn('border-l-4', getBorderColor(), className)}>
+      <div className={cn('border-l-4 border-b border-border/60 hover:bg-muted/30 transition-colors', getBorderColor(), className)}>
         {renderHeader()}
-        <CardContent className="px-3 pb-2 pt-0">
+        <div className="px-3 pb-2">
           <UpcomingAppointmentsSection
             meetingDate={meetingDate!}
             meetingId={meetingId}
@@ -194,25 +170,25 @@ export function SystemAgendaItem({
             showCountBadge={false}
             onAppointmentsCountChange={setUpcomingAppointmentsCount}
           />
-        </CardContent>
-      </Card>
+        </div>
+      </div>
     );
   }
 
   if (systemType === 'quick_notes') {
     return (
-      <Card className={cn('border-l-4', getBorderColor(), className)}>
+      <div className={cn('border-l-4 border-b border-border/60 hover:bg-muted/30 transition-colors', getBorderColor(), className)}>
         {renderHeader()}
-        <CardContent className="px-3 pb-2 pt-0">
+        <div className="px-3 pb-2">
           {linkedQuickNotes.length > 0 ? (
             compact ? (
               <ul className="space-y-1">
-                {linkedQuickNotes.map((note, index) => renderCompactItem(note.title || `Notiz ${index + 1}`, <StickyNote className="h-2.5 w-2.5 text-amber-500" />, index, note.user_id ? `von ${profiles?.find(p => p.user_id === note.user_id)?.display_name || 'unbekannt'}` : null))}
+                {linkedQuickNotes.map((note, index) => renderCompactItem(note.title || `Notiz ${index + 1}`, <StickyNote className="h-2.5 w-2.5 text-amber-500" />, index, note.user_id ? `von ${profiles?.find(p => p.user_id === note.user_id)?.display_name || 'unbekannt'}` : null, 'quick_note', note.id))}
               </ul>
             ) : (
               <div className="space-y-2">
                 {linkedQuickNotes.map((note) => (
-                  <div key={note.id} className="p-3 bg-muted/50 rounded-md">
+                  <div key={note.id} className={cn("p-3 bg-muted/50 rounded-md", onItemClick && "cursor-pointer hover:bg-muted/70 transition-colors")} onClick={() => onItemClick?.('quick_note', note.id)}>
                     {note.title && <h4 className="font-semibold text-sm mb-1">{note.title}</h4>}
                     <RichTextDisplay content={note.content} className="text-sm" />
                     <ProfileBadge userId={note.user_id} profiles={profiles} />
@@ -222,25 +198,25 @@ export function SystemAgendaItem({
               </div>
             )
           ) : <p className="text-sm text-muted-foreground">Keine Notizen für dieses Meeting vorhanden.</p>}
-        </CardContent>
-      </Card>
+        </div>
+      </div>
     );
   }
 
   if (systemType === 'tasks') {
     return (
-      <Card className={cn('border-l-4', getBorderColor(), className)}>
+      <div className={cn('border-l-4 border-b border-border/60 hover:bg-muted/30 transition-colors', getBorderColor(), className)}>
         {renderHeader()}
-        <CardContent className="px-3 pb-2 pt-0">
+        <div className="px-3 pb-2">
           {linkedTasks.length > 0 ? (
             compact ? (
               <ul className="space-y-1">
-                {linkedTasks.map((task, index) => renderCompactItem(task.title || 'Ohne Titel', <ListTodo className="h-2.5 w-2.5 text-green-500" />, index, task.user_id ? `von ${profiles?.find(p => p.user_id === task.user_id)?.display_name || 'unbekannt'}` : null))}
+                {linkedTasks.map((task, index) => renderCompactItem(task.title || 'Ohne Titel', <ListTodo className="h-2.5 w-2.5 text-green-500" />, index, task.user_id ? `von ${profiles?.find(p => p.user_id === task.user_id)?.display_name || 'unbekannt'}` : null, 'task', task.id))}
               </ul>
             ) : (
               <div className="space-y-2">
                 {linkedTasks.map((task) => (
-                  <div key={task.id} className="p-3 bg-muted/50 rounded-md">
+                  <div key={task.id} className={cn("p-3 bg-muted/50 rounded-md", onItemClick && "cursor-pointer hover:bg-muted/70 transition-colors")} onClick={() => onItemClick?.('task', task.id)}>
                     <h4 className="font-semibold text-sm mb-1">{task.title}</h4>
                     {task.description && <RichTextDisplay content={task.description} className="text-sm text-muted-foreground" />}
                     <ProfileBadge userId={task.user_id} profiles={profiles} />
@@ -250,16 +226,16 @@ export function SystemAgendaItem({
               </div>
             )
           ) : <p className="text-sm text-muted-foreground">Keine Aufgaben für dieses Meeting vorhanden.</p>}
-        </CardContent>
-      </Card>
+        </div>
+      </div>
     );
   }
 
   if (systemType === 'decisions') {
     return (
-      <Card className={cn('border-l-4', getBorderColor(), className)}>
+      <div className={cn('border-l-4 border-b border-border/60 hover:bg-muted/30 transition-colors', getBorderColor(), className)}>
         {renderHeader()}
-        <CardContent className="px-3 pb-2 pt-0">
+        <div className="px-3 pb-2">
           {!compact && (
             <p className="text-xs text-muted-foreground mb-3">
               Es werden automatisch aktive Entscheidungen geladen, die priorisiert sind, deren Frist bereits abgelaufen ist oder deren Frist in den nächsten 7 Tagen endet.
@@ -268,12 +244,12 @@ export function SystemAgendaItem({
           {linkedDecisions.length > 0 ? (
             compact ? (
               <ul className="space-y-1">
-                {linkedDecisions.map((decision, index) => renderCompactItem(decision.title || 'Ohne Titel', <Scale className="h-2.5 w-2.5 text-violet-500" />, index, decision.created_by ? `von ${profiles?.find(p => p.user_id === decision.created_by)?.display_name || 'unbekannt'}` : null))}
+                {linkedDecisions.map((decision, index) => renderCompactItem(decision.title || 'Ohne Titel', <Scale className="h-2.5 w-2.5 text-violet-500" />, index, decision.created_by ? `von ${profiles?.find(p => p.user_id === decision.created_by)?.display_name || 'unbekannt'}` : null, 'decision', decision.id))}
               </ul>
             ) : (
               <div className="space-y-2">
                 {linkedDecisions.map((decision) => (
-                  <div key={decision.id} className="p-3 bg-muted/50 rounded-md">
+                  <div key={decision.id} className={cn("p-3 bg-muted/50 rounded-md", onItemClick && "cursor-pointer hover:bg-muted/70 transition-colors")} onClick={() => onItemClick?.('decision', decision.id)}>
                     <h4 className="font-semibold text-sm mb-1">{decision.title}</h4>
                     {decision.description && <RichTextDisplay content={decision.description} className="text-sm text-muted-foreground" />}
                     <div className="flex flex-wrap gap-2 text-xs text-muted-foreground mt-1">
@@ -285,25 +261,25 @@ export function SystemAgendaItem({
               </div>
             )
           ) : <p className="text-sm text-muted-foreground">Keine relevanten Entscheidungen für dieses Meeting vorhanden.</p>}
-        </CardContent>
-      </Card>
+        </div>
+      </div>
     );
   }
 
   if (systemType === 'case_items') {
     return (
-      <Card className={cn('border-l-4', getBorderColor(), className)}>
+      <div className={cn('border-l-4 border-b border-border/60 hover:bg-muted/30 transition-colors', getBorderColor(), className)}>
         {renderHeader()}
-        <CardContent className="px-3 pb-2 pt-0">
+        <div className="px-3 pb-2">
           {linkedCaseItems.length > 0 ? (
             compact ? (
               <ul className="space-y-1">
-                {linkedCaseItems.map((ci, index) => renderCompactItem(ci.subject || 'Ohne Betreff', <Briefcase className="h-2.5 w-2.5 text-teal-500" />, index, ci.owner_user_id ? `von ${profiles?.find(p => p.user_id === ci.owner_user_id)?.display_name || 'unbekannt'}` : null))}
+                {linkedCaseItems.map((ci, index) => renderCompactItem(ci.subject || 'Ohne Betreff', <Briefcase className="h-2.5 w-2.5 text-teal-500" />, index, ci.owner_user_id ? `von ${profiles?.find(p => p.user_id === ci.owner_user_id)?.display_name || 'unbekannt'}` : null, 'case_item', ci.id))}
               </ul>
             ) : (
               <div className="space-y-2">
                 {linkedCaseItems.map((ci) => (
-                  <div key={ci.id} className="p-3 bg-muted/50 rounded-md">
+                  <div key={ci.id} className={cn("p-3 bg-muted/50 rounded-md", onItemClick && "cursor-pointer hover:bg-muted/70 transition-colors")} onClick={() => onItemClick?.('case_item', ci.id)}>
                     <h4 className="font-semibold text-sm mb-1">{ci.subject || '(Kein Betreff)'}</h4>
                     <ProfileBadge userId={ci.owner_user_id || undefined} profiles={profiles} />
                   </div>
@@ -311,8 +287,8 @@ export function SystemAgendaItem({
               </div>
             )
           ) : <p className="text-sm text-muted-foreground">Keine Vorgänge für dieses Meeting vorhanden.</p>}
-        </CardContent>
-      </Card>
+        </div>
+      </div>
     );
   }
 
