@@ -10,6 +10,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
 import { debugConsole } from "@/utils/debugConsole";
 import { buildReactionMap, sortReactionEntries, type ReactionRow } from "./commentReactions";
+import { shouldHandleReactionEvent } from "./reactionEventVisibility";
 
 const DELETED_COMMENT_TEXT = "Dieser Kommentar wurde gelöscht.";
 const REACTION_TOGGLE_DEBOUNCE_MS = 250;
@@ -41,6 +42,7 @@ export function DecisionComments({
   const reactionDebounceRef = useRef<Map<string, number>>(new Map());
   const pendingReactionOpsRef = useRef<Set<string>>(new Set());
   const lastReactionNotificationRef = useRef<Map<string, number>>(new Map());
+  const visibleCommentIdsRef = useRef<Set<string>>(new Set());
 
   const loadComments = useCallback(async () => {
     if (!decisionId) return;
@@ -63,6 +65,7 @@ export function DecisionComments({
       if (error) throw error;
 
       const commentIds = (data || []).map((comment) => comment.id);
+      visibleCommentIdsRef.current = new Set(commentIds);
 
       // Produktentscheidung: Client-seitige Gruppierung für Reaktionen über alle sichtbaren Kommentare
       // (ein Query für alle commentIds, danach Aggregation in Map-Struktur).
@@ -130,6 +133,12 @@ export function DecisionComments({
       loadComments();
     }
   }, [isOpen, decisionId, loadComments]);
+
+  useEffect(() => {
+    if (!isOpen) {
+      visibleCommentIdsRef.current.clear();
+    }
+  }, [isOpen]);
 
   const handleSubmitComment = async (parentId: string | null = null, content?: string) => {
     const commentContent = content || newComment;
@@ -309,7 +318,7 @@ export function DecisionComments({
         const newRow = payload.new as { comment_id?: string } | null;
         const oldRow = payload.old as { comment_id?: string } | null;
         const commentId = newRow?.comment_id ?? oldRow?.comment_id;
-        if (!commentId) return;
+        if (!shouldHandleReactionEvent(commentId, visibleCommentIdsRef.current)) return;
 
         try {
           await refreshSingleCommentReactions(commentId);
