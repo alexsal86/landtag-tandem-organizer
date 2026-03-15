@@ -1,5 +1,6 @@
 import type { SystemAgendaType } from "@/components/meetings/types";
 import { debugConsole } from '@/utils/debugConsole';
+import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -7,7 +8,8 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { CalendarDays, Plus, Save, Clock, Users, GripVertical, Trash, ListTodo, Upload, FileText, Download, StickyNote, Eye, EyeOff, Star, Cake, Scale, Briefcase, X } from "lucide-react";
+import { ContextMenu, ContextMenuContent, ContextMenuItem, ContextMenuSeparator, ContextMenuTrigger } from "@/components/ui/context-menu";
+import { CalendarDays, Plus, Save, Clock, Users, GripVertical, Trash, ListTodo, Upload, FileText, Download, StickyNote, Eye, EyeOff, Star, Cake, Scale, Briefcase, X, ChevronDown, ChevronRight } from "lucide-react";
 import { RichTextDisplay } from "@/components/ui/RichTextDisplay";
 import { DragDropContext, Droppable, Draggable, DropResult } from "@hello-pangea/dnd";
 import { SystemAgendaItem } from "@/components/meetings/SystemAgendaItem";
@@ -60,6 +62,29 @@ export function AgendaEditorPanel({
   onSetAgendaItems, meetingLinkedTasks, meetingLinkedCaseItems, meetingRelevantDecisions,
 }: AgendaEditorPanelProps) {
   const { toast } = useToast();
+  const [editingField, setEditingField] = useState<Record<string, 'description' | 'notes' | null>>({});
+  const [collapsedMainItems, setCollapsedMainItems] = useState<Record<string, boolean>>({});
+
+  const getItemKey = (item: AgendaItem, index: number) => item.id || item.localKey || `agenda-${index}`;
+
+  const isMainItemCollapsed = (item: AgendaItem) => {
+    const key = item.id || item.localKey;
+    if (!key) return false;
+    return !!collapsedMainItems[key];
+  };
+
+  const hasContentIndicator = (item: AgendaItem) => {
+    const hasNotes = !!item.notes?.trim();
+    const hasDescription = !!item.description?.trim();
+    const hasDocuments = !!(item.id && agendaDocuments[item.id]?.length);
+    return hasNotes || hasDescription || hasDocuments;
+  };
+
+  const isHiddenByCollapsedParent = (item: AgendaItem) => {
+    const parentKey = item.parent_id || item.parentLocalKey;
+    if (!parentKey) return false;
+    return !!collapsedMainItems[parentKey];
+  };
 
   const showDocumentActionError = (action: 'download' | 'upload' | 'delete', error: unknown) => {
     debugConsole.error(`${action[0].toUpperCase()}${action.slice(1)} error:`, error);
@@ -169,6 +194,29 @@ export function AgendaEditorPanel({
     });
   });
 
+  const handleTitleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>, item: AgendaItem, index: number) => {
+    if (!hasEditPermission) return;
+
+    if (e.key === 'Tab' && !(item.parent_id || item.parentLocalKey)) {
+      e.preventDefault();
+      onAddSubItem(item, '');
+      return;
+    }
+
+    if (e.key === 'Enter') {
+      const value = e.currentTarget.value.trim();
+      if (!value) return;
+
+      if (item.parent_id || item.parentLocalKey) return;
+
+      const isLastMainItem = !agendaItems.slice(index + 1).some((nextItem) => !(nextItem.parent_id || nextItem.parentLocalKey));
+      if (isLastMainItem) {
+        e.preventDefault();
+        onAddAgendaItem();
+      }
+    }
+  };
+
   const getAgendaNumber = (agendaItem: AgendaItem) => {
     const key = agendaItem.id || agendaItem.localKey;
     if (!key) return undefined;
@@ -250,7 +298,7 @@ export function AgendaEditorPanel({
                       {/* System item rendering */}
                       {item.system_type ? (
                         <div ref={provided.innerRef} {...provided.draggableProps} {...provided.dragHandleProps}
-                          className={cn("transition-shadow", snapshot.isDragging && "shadow-lg", (item.parentLocalKey || item.parent_id) && "pl-8 border-l-4 border-l-primary/30")}
+                          className={cn("transition-shadow", snapshot.isDragging && "shadow-lg", (item.parentLocalKey || item.parent_id) && "pl-8 border-l-4 border-l-primary/30", isHiddenByCollapsedParent(item) && "hidden")}
                         >
                           <SystemAgendaItem
                             systemType={item.system_type as SystemAgendaType}
@@ -272,13 +320,16 @@ export function AgendaEditorPanel({
                         </div>
                       ) : (
                         /* Regular agenda item */
+                        <ContextMenu>
+                          <ContextMenuTrigger asChild>
                         <div ref={provided.innerRef} {...provided.draggableProps}
                           className={cn(
                             "transition-colors border-b border-border/60 hover:bg-muted/30",
                             snapshot.isDragging && "shadow-lg bg-card rounded-lg border",
                             (item.parentLocalKey || item.parent_id) && "pl-8 border-l-4 border-l-primary/30",
                             item.is_optional && "border-dashed",
-                            item.is_optional && item.is_visible === false && "opacity-50"
+                            item.is_optional && item.is_visible === false && "opacity-50",
+                            isHiddenByCollapsedParent(item) && "hidden"
                           )}
                         >
                           <div className="py-2 px-3">
@@ -289,10 +340,25 @@ export function AgendaEditorPanel({
                                     <GripVertical className="h-4 w-4 text-muted-foreground" />
                                   </div>
                                 )}
+                                {!(item.parentLocalKey || item.parent_id) && (
+                                  <Button
+                                    size="icon"
+                                    variant="ghost"
+                                    className="h-6 w-6 shrink-0"
+                                    onClick={() => {
+                                      const key = item.id || item.localKey;
+                                      if (!key) return;
+                                      setCollapsedMainItems((prev) => ({ ...prev, [key]: !prev[key] }));
+                                    }}
+                                  >
+                                    {isMainItemCollapsed(item) ? <ChevronRight className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+                                  </Button>
+                                )}
                                 <span className="text-muted-foreground font-medium min-w-[1.75rem] text-right">
                                   {getAgendaNumber(item)}
                                 </span>
                                 <Input value={item.title} onChange={(e) => onUpdateAgendaItem(index, 'title', e.target.value)}
+                                  onKeyDown={(e) => handleTitleKeyDown(e, item, index)}
                                   placeholder={item.parentLocalKey || item.parent_id ? "Unterpunkt-Titel" : "Agenda-Punkt Titel"}
                                   className={cn("font-semibold", !(item.parentLocalKey || item.parent_id) && "text-lg")}
                                   readOnly={!hasEditPermission}
@@ -316,96 +382,56 @@ export function AgendaEditorPanel({
                                     <span className="text-xs text-muted-foreground">↩</span>
                                   </label>
                                 )}
-                                {/* Sub-items button */}
-                                {!(item.parentLocalKey || item.parent_id) && hasEditPermission && (
-                                  <Popover>
-                                    <PopoverTrigger asChild>
-                                      <Button size="icon" variant="ghost" className="shrink-0 opacity-0 group-hover:opacity-100 focus:opacity-100 transition-opacity">
-                                        <Plus className="h-4 w-4" />
-                                      </Button>
-                                    </PopoverTrigger>
-                                    <PopoverContent className="w-64">
-                                      <div className="space-y-2">
-                                        <p className="text-sm font-medium mb-2">Unterpunkt hinzufügen</p>
-                                        {SUBPOINT_OPTIONS[item.title]?.map((sub) => (
-                                          <Button key={sub} variant="outline" className="w-full justify-start text-xs h-auto py-2 whitespace-normal text-left" onClick={() => onAddSubItem(item, sub)}>
-                                            {sub}
-                                          </Button>
-                                        ))}
-                                        <Button variant="secondary" className="w-full" onClick={() => onAddSubItem(item, '')}>
-                                          <Plus className="h-4 w-4 mr-2" /> Freien Unterpunkt hinzufügen
-                                        </Button>
-                                        {/* System items as sub-items */}
-                                        <div className="border-t pt-2 mt-2">
-                                          <p className="text-xs text-muted-foreground mb-1">System-Punkt als Unterpunkt:</p>
-                                          {([
-                                            { type: 'upcoming_appointments' as const, label: 'Kommende Termine', Icon: CalendarDays, color: 'blue' },
-                                            { type: 'quick_notes' as const, label: 'Meine Notizen', Icon: StickyNote, color: 'amber' },
-                                            { type: 'tasks' as const, label: 'Aufgaben', Icon: ListTodo, color: 'green' },
-                                            { type: 'birthdays' as const, label: 'Geburtstage', Icon: Cake, color: 'pink' },
-                                            { type: 'decisions' as const, label: 'Entscheidungen', Icon: Scale, color: 'slate' },
-                                            { type: 'case_items' as const, label: 'Vorgänge', Icon: Briefcase, color: 'teal' },
-                                          ]).map(({ type, label, Icon, color }) => (
-                                            <Button key={type} variant="outline"
-                                              className={`w-full justify-start border-${color}-200 text-${color}-700 dark:border-${color}-800 dark:text-${color}-400`}
-                                              onClick={() => onAddSystemAgendaItem(type, item)}
-                                              disabled={agendaItems.some(i => i.system_type === type)}
-                                            >
-                                              <Icon className="h-4 w-4 mr-2" /> {label}
+                                {hasContentIndicator(item) && (
+                                  <span className="h-2 w-2 rounded-full bg-sky-500/80 shrink-0" title="Enthält Beschreibung, Notizen oder Dokumente" />
+                                )}
+                              </div>
+
+                              {!(item.parentLocalKey || item.parent_id) && hasEditPermission && (
+                                <Popover open={showTaskSelector?.itemIndex === index} onOpenChange={(open) => onSetShowTaskSelector(open ? { itemIndex: index } : null)}>
+                                  <PopoverTrigger asChild>
+                                    <span className="hidden" />
+                                  </PopoverTrigger>
+                                  <PopoverContent className="w-[min(92vw,32rem)]">
+                                    <div className="space-y-2">
+                                      <div className="text-sm font-medium mb-3">Aufgabe als Unterpunkt hinzufügen</div>
+                                      {tasks.length > 0 ? (
+                                        <div className="space-y-2 max-h-60 overflow-y-auto">
+                                          {tasks.map((task) => (
+                                            <Button key={task.id} variant="outline" className="w-full justify-start text-left h-auto p-3 whitespace-normal"
+                                              onClick={() => onAddTaskToAgenda(task, item, index)}>
+                                              <div><div className="font-medium whitespace-normal break-words">{task.title}</div></div>
                                             </Button>
                                           ))}
                                         </div>
-                                      </div>
-                                    </PopoverContent>
-                                  </Popover>
-                                )}
-                                {/* Task button */}
-                                {!(item.parentLocalKey || item.parent_id) && hasEditPermission && (
-                                  <Popover open={showTaskSelector?.itemIndex === index} onOpenChange={(open) => onSetShowTaskSelector(open ? { itemIndex: index } : null)}>
-                                    <PopoverTrigger asChild>
-                                      <Button size="icon" variant="ghost" className="shrink-0 opacity-0 group-hover:opacity-100 focus:opacity-100 transition-opacity" aria-label="Aufgabe hinzufügen">
-                                        <ListTodo className="h-4 w-4" />
-                                      </Button>
-                                    </PopoverTrigger>
-                                    <PopoverContent className="w-[min(92vw,32rem)]">
-                                      <div className="space-y-2">
-                                        <div className="text-sm font-medium mb-3">Aufgabe als Unterpunkt hinzufügen</div>
-                                        {tasks.length > 0 ? (
-                                          <div className="space-y-2 max-h-60 overflow-y-auto">
-                                            {tasks.map((task) => (
-                                              <Button key={task.id} variant="outline" className="w-full justify-start text-left h-auto p-3 whitespace-normal"
-                                                onClick={() => onAddTaskToAgenda(task, item, index)}>
-                                                <div><div className="font-medium whitespace-normal break-words">{task.title}</div></div>
-                                              </Button>
-                                            ))}
-                                          </div>
-                                        ) : (
-                                          <div className="text-sm text-muted-foreground text-center py-4">Keine offenen Aufgaben verfügbar</div>
-                                        )}
-                                      </div>
-                                    </PopoverContent>
-                                  </Popover>
-                                )}
-                                {/* Delete button */}
-                                {hasEditPermission && (
-                                  <Button size="icon" variant="ghost" className="shrink-0 text-destructive hover:text-destructive opacity-0 group-hover:opacity-100 focus:opacity-100 transition-opacity"
-                                    onClick={() => onDeleteAgendaItem(item, index)} aria-label="Punkt löschen">
-                                    <Trash className="h-4 w-4" />
-                                  </Button>
-                                )}
-                                {/* Checkbox at end for main items */}
-                                {!(item.parentLocalKey || item.parent_id) && (
-                                  <Checkbox checked={item.is_completed} onCheckedChange={(checked) => onUpdateAgendaItem(index, 'is_completed', !!checked)} className="ml-1" />
-                                )}
-                              </div>
+                                      ) : (
+                                        <div className="text-sm text-muted-foreground text-center py-4">Keine offenen Aufgaben verfügbar</div>
+                                      )}
+                                    </div>
+                                  </PopoverContent>
+                                </Popover>
+                              )}
 
                               {/* Sub-item details */}
                               {(item.parentLocalKey || item.parent_id) && (
                                 <>
-                                  {item.description && /<[a-z][\s\S]*>/i.test(item.description) ? (
-                                    <RichTextDisplay content={item.description} className="text-sm text-muted-foreground" />
+                                  {editingField[getItemKey(item, index)] === 'description' ? (
+                                    <Textarea
+                                      autoFocus
+                                      value={item.description || ''}
+                                      onBlur={() => setEditingField((prev) => ({ ...prev, [getItemKey(item, index)]: null }))}
+                                      onChange={(e) => onUpdateAgendaItem(index, 'description', e.target.value)}
+                                      placeholder="Beschreibung"
+                                      className="min-h-[60px]"
+                                    />
                                   ) : (
-                                    <Textarea value={item.description || ''} onChange={(e) => onUpdateAgendaItem(index, 'description', e.target.value)} placeholder="Beschreibung" className="min-h-[60px]" />
+                                    <button
+                                      type="button"
+                                      className="text-left text-sm text-muted-foreground rounded border border-dashed border-transparent hover:border-border px-2 py-1"
+                                      onClick={() => hasEditPermission && setEditingField((prev) => ({ ...prev, [getItemKey(item, index)]: 'description' }))}
+                                    >
+                                      {item.description?.trim() ? item.description : 'Beschreibung hinzufügen'}
+                                    </button>
                                   )}
                                   <MultiUserAssignSelect assignedTo={item.assigned_to ?? null} profiles={profiles}
                                     onChange={(userIds) => onUpdateAgendaItem(index, 'assigned_to', userIds.length > 0 ? userIds : null)} size="sm" />
@@ -440,7 +466,24 @@ export function AgendaEditorPanel({
                                   <div className="grid grid-cols-2 gap-4">
                                     <div>
                                       <label className="text-sm font-medium">Notizen</label>
-                                      <Textarea value={item.notes || ''} onChange={(e) => onUpdateAgendaItem(index, 'notes', e.target.value)} placeholder="Notizen und Hinweise" className="min-h-[80px]" />
+                                      {editingField[getItemKey(item, index)] === 'notes' ? (
+                                        <Textarea
+                                          autoFocus
+                                          value={item.notes || ''}
+                                          onBlur={() => setEditingField((prev) => ({ ...prev, [getItemKey(item, index)]: null }))}
+                                          onChange={(e) => onUpdateAgendaItem(index, 'notes', e.target.value)}
+                                          placeholder="Notizen und Hinweise"
+                                          className="min-h-[80px]"
+                                        />
+                                      ) : (
+                                        <button
+                                          type="button"
+                                          className="w-full text-left text-sm text-muted-foreground rounded border border-dashed border-transparent hover:border-border px-2 py-1 min-h-10"
+                                          onClick={() => hasEditPermission && setEditingField((prev) => ({ ...prev, [getItemKey(item, index)]: 'notes' }))}
+                                        >
+                                          {item.notes?.trim() ? item.notes : 'Notizen hinzufügen'}
+                                        </button>
+                                      )}
                                     </div>
 
                                     <div>
@@ -489,6 +532,30 @@ export function AgendaEditorPanel({
                             </div>
                           </div>
                         </div>
+                          </ContextMenuTrigger>
+                          {hasEditPermission && (
+                            <ContextMenuContent className="w-56">
+                              {!(item.parentLocalKey || item.parent_id) && (
+                                <>
+                                  <ContextMenuItem onClick={() => onAddSubItem(item, "")}>
+                                    <Plus className="h-4 w-4 mr-2" /> Unterpunkt hinzufügen
+                                  </ContextMenuItem>
+                                  <ContextMenuItem onClick={() => onSetShowTaskSelector({ itemIndex: index })}>
+                                    <ListTodo className="h-4 w-4 mr-2" /> Aufgabe als Unterpunkt
+                                  </ContextMenuItem>
+                                  <ContextMenuSeparator />
+                                  <ContextMenuItem onClick={() => onUpdateAgendaItem(index, "is_completed", !item.is_completed)}>
+                                    <Checkbox checked={item.is_completed} className="mr-2" /> Status umschalten
+                                  </ContextMenuItem>
+                                </>
+                              )}
+                              <ContextMenuSeparator />
+                              <ContextMenuItem onClick={() => onDeleteAgendaItem(item, index)} className="text-destructive focus:text-destructive">
+                                <Trash className="h-4 w-4 mr-2" /> Punkt löschen
+                              </ContextMenuItem>
+                            </ContextMenuContent>
+                          )}
+                        </ContextMenu>
                       )}
                     </>
                   )}
