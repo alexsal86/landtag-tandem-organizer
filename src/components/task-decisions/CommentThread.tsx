@@ -7,6 +7,7 @@ import { Reply, Send, CornerDownRight, Pencil, Trash2 } from "lucide-react";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { EmojiPicker } from "@/components/EmojiPicker";
 import { cn } from "@/lib/utils";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { formatDistanceToNow } from "date-fns";
 import { de } from "date-fns/locale";
 import { DEFAULT_REACTION_ORDER, splitVisibleReactions } from "./commentReactions";
@@ -33,6 +34,7 @@ export interface CommentReactionData {
   emoji: string;
   count: number;
   currentUserReacted: boolean;
+  reactedUsers?: Array<{ userId: string; displayName: string }>;
 }
 
 interface CommentThreadProps {
@@ -51,6 +53,11 @@ interface CommentThreadProps {
 const getInitials = (name: string | null) => {
   if (!name) return '?';
   return name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2);
+};
+
+const buildReactionUsersLabel = (reaction: CommentReactionData) => {
+  if (!reaction.reactedUsers?.length) return "Noch keine Namen verfügbar";
+  return reaction.reactedUsers.map((entry) => entry.displayName).join(", ");
 };
 
 export function CommentThread({
@@ -297,29 +304,37 @@ export function CommentThread({
           {/* Produktentscheidung: Bei gelöschten Kommentaren keine Reaktionsbar anzeigen,
               Antworten bleiben jedoch im Thread sichtbar. */}
           {!isDeleted && (
-            <div className="mt-2 flex flex-wrap items-center gap-1">
+            <TooltipProvider>
+              <div className="mt-2 flex flex-wrap items-center gap-1 sm:gap-1.5 max-w-full">
               {visibleReactions.map((reaction) => (
-                <Button
-                  key={reaction.emoji}
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  onClick={() => onToggleReaction(comment.id, reaction.emoji, reaction.currentUserReacted)}
-                  className={cn(
-                    "h-6 px-2 text-[10px] gap-1 rounded-full",
-                    reaction.currentUserReacted && "border-primary bg-primary/10 text-primary",
-                  )}
-                  disabled={isSubmitting}
-                >
-                  <span>{reaction.emoji}</span>
-                  <span>{reaction.count}</span>
-                </Button>
+                <Tooltip key={reaction.emoji}>
+                  <TooltipTrigger asChild>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={() => onToggleReaction(comment.id, reaction.emoji, reaction.currentUserReacted)}
+                      className={cn(
+                        "h-7 px-2 text-[11px] gap-1 rounded-full min-w-10",
+                        reaction.currentUserReacted && "border-primary bg-primary/10 text-primary",
+                      )}
+                      disabled={isSubmitting}
+                      aria-label={`Reaktion ${reaction.emoji} mit ${reaction.count} Stimmen umschalten`}
+                    >
+                      <span aria-hidden="true">{reaction.emoji}</span>
+                      <span>{reaction.count}</span>
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent>
+                    <p className="max-w-56 text-xs">Wer hat reagiert: {buildReactionUsersLabel(reaction)}</p>
+                  </TooltipContent>
+                </Tooltip>
               ))}
 
               {overflowReactions.length > 0 && (
                 <Popover>
                   <PopoverTrigger asChild>
-                    <Button type="button" variant="outline" size="sm" className="h-6 px-2 text-[10px] rounded-full" disabled={isSubmitting}>
+                    <Button type="button" variant="outline" size="sm" className="h-7 px-2 text-[11px] rounded-full" disabled={isSubmitting}>
                       +{overflowReactions.length}
                     </Button>
                   </PopoverTrigger>
@@ -333,12 +348,13 @@ export function CommentThread({
                           size="sm"
                           onClick={() => onToggleReaction(comment.id, reaction.emoji, reaction.currentUserReacted)}
                           className={cn(
-                            "h-6 px-2 text-[10px] gap-1 rounded-full",
+                            "h-7 px-2 text-[11px] gap-1 rounded-full min-w-10",
                             reaction.currentUserReacted && "border-primary bg-primary/10 text-primary",
                           )}
                           disabled={isSubmitting}
+                          aria-label={`Reaktion ${reaction.emoji} mit ${reaction.count} Stimmen umschalten`}
                         >
-                          <span>{reaction.emoji}</span>
+                          <span aria-hidden="true">{reaction.emoji}</span>
                           <span>{reaction.count}</span>
                         </Button>
                       ))}
@@ -354,10 +370,11 @@ export function CommentThread({
                   variant="ghost"
                   size="sm"
                   onClick={() => onToggleReaction(comment.id, emoji, false)}
-                  className="h-6 px-2 text-[10px] rounded-full"
+                  className="h-7 px-2 text-[11px] rounded-full"
                   disabled={isSubmitting}
+                  aria-label={`Schnellreaktion ${emoji} hinzufügen`}
                 >
-                  {emoji}
+                  <span aria-hidden="true">{emoji}</span>
                 </Button>
               ))}
 
@@ -371,7 +388,8 @@ export function CommentThread({
                   onToggleReaction(comment.id, emoji, currentUserReacted);
                 }}
               />
-            </div>
+              </div>
+            </TooltipProvider>
           )}
         </div>
       </div>

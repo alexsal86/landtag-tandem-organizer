@@ -15,11 +15,11 @@ describe("commentReactions", () => {
 
     expect(result.get("c1")).toEqual(
       expect.arrayContaining([
-        { emoji: "👍", count: 2, currentUserReacted: true },
-        { emoji: "🎉", count: 1, currentUserReacted: true },
+        expect.objectContaining({ emoji: "👍", count: 2, currentUserReacted: true }),
+        expect.objectContaining({ emoji: "🎉", count: 1, currentUserReacted: true }),
       ]),
     );
-    expect(result.get("c2")).toEqual([{ emoji: "❤️", count: 1, currentUserReacted: false }]);
+    expect(result.get("c2")).toEqual([expect.objectContaining({ emoji: "❤️", count: 1, currentUserReacted: false })]);
   });
 
   it("sorts by count first, then fixed reaction order", () => {
