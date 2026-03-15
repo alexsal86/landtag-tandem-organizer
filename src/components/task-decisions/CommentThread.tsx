@@ -4,9 +4,12 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { RichTextDisplay } from "@/components/ui/RichTextDisplay";
 import SimpleRichTextEditor from "@/components/ui/SimpleRichTextEditor";
 import { Reply, Send, CornerDownRight, Pencil, Trash2 } from "lucide-react";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { EmojiPicker } from "@/components/EmojiPicker";
 import { cn } from "@/lib/utils";
 import { formatDistanceToNow } from "date-fns";
 import { de } from "date-fns/locale";
+import { DEFAULT_REACTION_ORDER, splitVisibleReactions } from "./commentReactions";
 
 const DELETED_COMMENT_TEXT = "Dieser Kommentar wurde gelöscht.";
 
@@ -49,8 +52,6 @@ const getInitials = (name: string | null) => {
   if (!name) return '?';
   return name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2);
 };
-
-const REACTION_EMOJIS = ["👍", "❤️", "🎉", "👀"];
 
 export function CommentThread({
   comment,
@@ -164,6 +165,9 @@ export function CommentThread({
   }, [isHighlighted]);
   const showEditedLabel = Boolean(comment.updated_at && new Date(comment.updated_at) > new Date(comment.created_at));
   const reactionMap = new Map(comment.reactions?.map((reaction) => [reaction.emoji, reaction]) || []);
+  const activeReactions = (comment.reactions || []).filter((reaction) => reaction.count > 0);
+  const { visible: visibleReactions, overflow: overflowReactions } = splitVisibleReactions(activeReactions);
+  const quickReactions = DEFAULT_REACTION_ORDER.filter((emoji) => !reactionMap.has(emoji));
 
   // Avatar size is 24px (h-6), center is at 12px
   const AVATAR_SIZE = 24;
@@ -290,31 +294,83 @@ export function CommentThread({
             </Button>
           )}
 
+          {/* Produktentscheidung: Bei gelöschten Kommentaren keine Reaktionsbar anzeigen,
+              Antworten bleiben jedoch im Thread sichtbar. */}
           {!isDeleted && (
-            <div className="mt-2 flex flex-wrap gap-1">
-              {REACTION_EMOJIS.map((emoji) => {
-                const reaction = reactionMap.get(emoji);
-                const currentUserReacted = reaction?.currentUserReacted ?? false;
-                const count = reaction?.count ?? 0;
+            <div className="mt-2 flex flex-wrap items-center gap-1">
+              {visibleReactions.map((reaction) => (
+                <Button
+                  key={reaction.emoji}
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => onToggleReaction(comment.id, reaction.emoji, reaction.currentUserReacted)}
+                  className={cn(
+                    "h-6 px-2 text-[10px] gap-1 rounded-full",
+                    reaction.currentUserReacted && "border-primary bg-primary/10 text-primary",
+                  )}
+                  disabled={isSubmitting}
+                >
+                  <span>{reaction.emoji}</span>
+                  <span>{reaction.count}</span>
+                </Button>
+              ))}
 
-                return (
-                  <Button
-                    key={emoji}
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    onClick={() => onToggleReaction(comment.id, emoji, currentUserReacted)}
-                    className={cn(
-                      "h-6 px-2 text-[10px] gap-1 rounded-full",
-                      currentUserReacted && "border-primary bg-primary/10 text-primary"
-                    )}
-                    disabled={isSubmitting}
-                  >
-                    <span>{emoji}</span>
-                    <span>{count}</span>
-                  </Button>
-                );
-              })}
+              {overflowReactions.length > 0 && (
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <Button type="button" variant="outline" size="sm" className="h-6 px-2 text-[10px] rounded-full" disabled={isSubmitting}>
+                      +{overflowReactions.length}
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-auto p-2">
+                    <div className="flex flex-wrap gap-1 max-w-56">
+                      {overflowReactions.map((reaction) => (
+                        <Button
+                          key={reaction.emoji}
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          onClick={() => onToggleReaction(comment.id, reaction.emoji, reaction.currentUserReacted)}
+                          className={cn(
+                            "h-6 px-2 text-[10px] gap-1 rounded-full",
+                            reaction.currentUserReacted && "border-primary bg-primary/10 text-primary",
+                          )}
+                          disabled={isSubmitting}
+                        >
+                          <span>{reaction.emoji}</span>
+                          <span>{reaction.count}</span>
+                        </Button>
+                      ))}
+                    </div>
+                  </PopoverContent>
+                </Popover>
+              )}
+
+              {quickReactions.map((emoji) => (
+                <Button
+                  key={emoji}
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => onToggleReaction(comment.id, emoji, false)}
+                  className="h-6 px-2 text-[10px] rounded-full"
+                  disabled={isSubmitting}
+                >
+                  {emoji}
+                </Button>
+              ))}
+
+              <EmojiPicker
+                value=""
+                compact
+                triggerLabel="+"
+                triggerClassName="h-6 w-6 text-[10px]"
+                onEmojiSelect={(emoji) => {
+                  const currentUserReacted = reactionMap.get(emoji)?.currentUserReacted ?? false;
+                  onToggleReaction(comment.id, emoji, currentUserReacted);
+                }}
+              />
             </div>
           )}
         </div>
