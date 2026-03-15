@@ -23,6 +23,13 @@ export interface CommentData {
     avatar_url: string | null;
   };
   replies?: CommentData[];
+  reactions?: CommentReactionData[];
+}
+
+export interface CommentReactionData {
+  emoji: string;
+  count: number;
+  currentUserReacted: boolean;
 }
 
 interface CommentThreadProps {
@@ -32,6 +39,7 @@ interface CommentThreadProps {
   onReply: (parentId: string, content: string) => Promise<void>;
   onEdit: (commentId: string, content: string) => Promise<void>;
   onDelete: (commentId: string, hasReplies: boolean) => Promise<void>;
+  onToggleReaction: (commentId: string, emoji: string, currentlyReacted: boolean) => Promise<void>;
   currentUserId?: string;
   isLastReply?: boolean;
   highlightedCommentId?: string | null;
@@ -42,6 +50,8 @@ const getInitials = (name: string | null) => {
   return name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2);
 };
 
+const REACTION_EMOJIS = ["👍", "❤️", "🎉", "👀"];
+
 export function CommentThread({
   comment,
   depth = 0,
@@ -49,6 +59,7 @@ export function CommentThread({
   onReply,
   onEdit,
   onDelete,
+  onToggleReaction,
   currentUserId,
   isLastReply = false,
   highlightedCommentId = null,
@@ -152,6 +163,7 @@ export function CommentThread({
     }
   }, [isHighlighted]);
   const showEditedLabel = Boolean(comment.updated_at && new Date(comment.updated_at) > new Date(comment.created_at));
+  const reactionMap = new Map(comment.reactions?.map((reaction) => [reaction.emoji, reaction]) || []);
 
   // Avatar size is 24px (h-6), center is at 12px
   const AVATAR_SIZE = 24;
@@ -277,6 +289,34 @@ export function CommentThread({
               Antworten
             </Button>
           )}
+
+          {!isDeleted && (
+            <div className="mt-2 flex flex-wrap gap-1">
+              {REACTION_EMOJIS.map((emoji) => {
+                const reaction = reactionMap.get(emoji);
+                const currentUserReacted = reaction?.currentUserReacted ?? false;
+                const count = reaction?.count ?? 0;
+
+                return (
+                  <Button
+                    key={emoji}
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={() => onToggleReaction(comment.id, emoji, currentUserReacted)}
+                    className={cn(
+                      "h-6 px-2 text-[10px] gap-1 rounded-full",
+                      currentUserReacted && "border-primary bg-primary/10 text-primary"
+                    )}
+                    disabled={isSubmitting}
+                  >
+                    <span>{emoji}</span>
+                    <span>{count}</span>
+                  </Button>
+                );
+              })}
+            </div>
+          )}
         </div>
       </div>
 
@@ -318,6 +358,7 @@ export function CommentThread({
               onReply={onReply}
               onEdit={onEdit}
               onDelete={onDelete}
+              onToggleReaction={onToggleReaction}
               currentUserId={currentUserId}
               isLastReply={index === comment.replies!.length - 1}
               highlightedCommentId={highlightedCommentId}
