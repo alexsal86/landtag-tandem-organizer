@@ -25,6 +25,7 @@ interface SystemAgendaItemProps {
   onUpdateNoteResult?: (noteId: string, result: string) => void;
   onUpdateResult?: (result: string) => void;
   onDelete?: () => void;
+  onItemClick?: (type: string, id: string) => void;
   className?: string;
   isEmbedded?: boolean;
   defaultCollapsed?: boolean;
