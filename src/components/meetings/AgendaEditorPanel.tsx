@@ -250,7 +250,7 @@ export function AgendaEditorPanel({
                       {/* System item rendering */}
                       {item.system_type ? (
                         <div ref={provided.innerRef} {...provided.draggableProps} {...provided.dragHandleProps}
-                          className={cn("transition-shadow", snapshot.isDragging && "shadow-lg", (item.parentLocalKey || item.parent_id) && "ml-8 border-l-4 border-l-primary/30")}
+                          className={cn("transition-shadow", snapshot.isDragging && "shadow-lg", (item.parentLocalKey || item.parent_id) && "pl-8 border-l-4 border-l-primary/30")}
                         >
                           <SystemAgendaItem
                             systemType={item.system_type as SystemAgendaType}
@@ -283,13 +283,13 @@ export function AgendaEditorPanel({
                         >
                           <div className="py-2 px-3">
                             <div className="space-y-3">
-                              <div className="flex items-center gap-2 group">
+                              <div className="flex items-center gap-1 group">
                                 {hasEditPermission && (
-                                  <div {...provided.dragHandleProps} className="cursor-grab active:cursor-grabbing">
+                                  <div {...provided.dragHandleProps} className="cursor-grab active:cursor-grabbing opacity-0 group-hover:opacity-100 transition-opacity">
                                     <GripVertical className="h-4 w-4 text-muted-foreground" />
                                   </div>
                                 )}
-                                <span className="text-muted-foreground font-medium min-w-[2.25rem] text-right">
+                                <span className="text-muted-foreground font-medium min-w-[1.75rem] text-right">
                                   {getAgendaNumber(item)}
                                 </span>
                                 <Input value={item.title} onChange={(e) => onUpdateAgendaItem(index, 'title', e.target.value)}
@@ -437,49 +437,51 @@ export function AgendaEditorPanel({
                                     </div>
                                   )}
 
-                                  <div>
-                                    <label className="text-sm font-medium">Notizen</label>
-                                    <Textarea value={item.notes || ''} onChange={(e) => onUpdateAgendaItem(index, 'notes', e.target.value)} placeholder="Notizen und Hinweise" className="min-h-[80px]" />
-                                  </div>
+                                  <div className="grid grid-cols-2 gap-4">
+                                    <div>
+                                      <label className="text-sm font-medium">Notizen</label>
+                                      <Textarea value={item.notes || ''} onChange={(e) => onUpdateAgendaItem(index, 'notes', e.target.value)} placeholder="Notizen und Hinweise" className="min-h-[80px]" />
+                                    </div>
 
-                                  <div>
-                                    {/* Agenda documents */}
-                                    {agendaDocuments[item.id!] && agendaDocuments[item.id!].length > 0 && (
-                                      <div className="mb-4 bg-muted/30 p-3 rounded-lg border">
-                                        <h4 className="text-sm font-medium mb-2">Angehängte Dokumente:</h4>
-                                        <div className="space-y-2">
-                                          {agendaDocuments[item.id!].map((doc, docIndex) => (
-                                            <div key={docIndex} className="flex items-center justify-between p-2 bg-background rounded border">
-                                              <div className="flex items-center gap-2">
-                                                <FileText className="h-4 w-4 text-blue-600" />
-                                                <span className="text-sm">{doc.file_name}</span>
+                                    <div>
+                                      {/* Agenda documents */}
+                                      {agendaDocuments[item.id!] && agendaDocuments[item.id!].length > 0 && (
+                                        <div className="mb-2 bg-muted/30 p-2 rounded-lg border">
+                                          <h4 className="text-sm font-medium mb-1">Angehängte Dokumente:</h4>
+                                          <div className="space-y-1">
+                                            {agendaDocuments[item.id!].map((doc, docIndex) => (
+                                              <div key={docIndex} className="flex items-center justify-between p-1.5 bg-background rounded border">
+                                                <div className="flex items-center gap-2">
+                                                  <FileText className="h-3.5 w-3.5 text-blue-600" />
+                                                  <span className="text-xs truncate">{doc.file_name}</span>
+                                                </div>
+                                                <div className="flex gap-1">
+                                                  <Button variant="ghost" size="sm" className="h-6 w-6 p-0"
+                                                    onClick={async () => {
+                                                      try {
+                                                        const { data, error } = await supabase.storage.from('documents').download(doc.file_path);
+                                                        if (error) throw error;
+                                                        const url = URL.createObjectURL(data); const a = document.createElement('a'); a.href = url; a.download = doc.file_name; a.click(); URL.revokeObjectURL(url);
+                                                      } catch (error) { showDocumentActionError('download', error); }
+                                                    }}>
+                                                    <Download className="h-3 w-3" />
+                                                  </Button>
+                                                  <Button variant="ghost" size="sm" className="h-6 w-6 p-0" onClick={() => onDeleteAgendaDocument(doc.id, item.id!, doc.file_path)}>
+                                                    <X className="h-3 w-3" />
+                                                  </Button>
+                                                </div>
                                               </div>
-                                              <div className="flex gap-1">
-                                                <Button variant="ghost" size="sm"
-                                                  onClick={async () => {
-                                                    try {
-                                                      const { data, error } = await supabase.storage.from('documents').download(doc.file_path);
-                                                      if (error) throw error;
-                                                      const url = URL.createObjectURL(data); const a = document.createElement('a'); a.href = url; a.download = doc.file_name; a.click(); URL.revokeObjectURL(url);
-                                                    } catch (error) { showDocumentActionError('download', error); }
-                                                  }}>
-                                                  <Download className="h-4 w-4" />
-                                                </Button>
-                                                <Button variant="ghost" size="sm" onClick={() => onDeleteAgendaDocument(doc.id, item.id!, doc.file_path)}>
-                                                  <X className="h-4 w-4" />
-                                                </Button>
-                                              </div>
-                                            </div>
-                                          ))}
+                                            ))}
+                                          </div>
                                         </div>
+                                      )}
+                                      <label className="text-sm font-medium">Dokument hinzufügen</label>
+                                      <div className="flex items-center gap-2 mt-1">
+                                        <Button variant="outline" size="sm" className="flex-1"
+                                          onClick={() => handleAgendaDocumentUpload(item, index)}>
+                                          <Upload className="h-4 w-4 mr-2" /> Dokument hinzufügen
+                                        </Button>
                                       </div>
-                                    )}
-                                    <label className="text-sm font-medium">Dokument hinzufügen</label>
-                                    <div className="flex items-center gap-2">
-                                      <Button variant="outline" size="sm" className="flex-1"
-                                        onClick={() => handleAgendaDocumentUpload(item, index)}>
-                                        <Upload className="h-4 w-4 mr-2" /> Dokument hinzufügen
-                                      </Button>
                                     </div>
                                   </div>
                                 </>
