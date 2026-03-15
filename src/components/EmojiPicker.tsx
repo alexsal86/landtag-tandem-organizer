@@ -6,10 +6,14 @@ import {
   PopoverTrigger,
 } from '@/components/ui/popover';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { cn } from '@/lib/utils';
 
 interface EmojiPickerProps {
   value: string;
   onEmojiSelect: (emoji: string) => void;
+  triggerLabel?: string;
+  triggerClassName?: string;
+  compact?: boolean;
 }
 
 const emojiCategories = {
@@ -20,7 +24,13 @@ const emojiCategories = {
   nature: ['🌟', '⭐', '🌙', '☀️', '🌈', '🔥', '⚡', '🌊', '🌸']
 };
 
-export const EmojiPicker: React.FC<EmojiPickerProps> = ({ value, onEmojiSelect }) => {
+export const EmojiPicker: React.FC<EmojiPickerProps> = ({
+  value,
+  onEmojiSelect,
+  triggerLabel,
+  triggerClassName,
+  compact = false,
+}) => {
   const [open, setOpen] = useState(false);
 
   const handleEmojiClick = (emoji: string) => {
@@ -34,12 +44,18 @@ export const EmojiPicker: React.FC<EmojiPickerProps> = ({ value, onEmojiSelect }
         <Button
           variant="outline"
           size="sm"
-          className="w-full justify-start h-10"
+          className={cn(
+            compact ? "h-6 w-6 rounded-full p-0" : "w-full justify-start h-10",
+            triggerClassName,
+          )}
+          aria-label={triggerLabel || "Emoji wählen"}
         >
-          {value ? (
+          {compact ? (
+            <span>{triggerLabel || '+'}</span>
+          ) : value ? (
             <span className="text-lg mr-2">{value}</span>
           ) : (
-            <span className="text-muted-foreground text-sm">Emoji wählen</span>
+            <span className="text-muted-foreground text-sm">{triggerLabel || 'Emoji wählen'}</span>
           )}
         </Button>
       </PopoverTrigger>

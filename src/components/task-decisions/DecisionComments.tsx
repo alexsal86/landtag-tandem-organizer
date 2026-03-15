@@ -3,12 +3,13 @@ import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sh
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import SimpleRichTextEditor from "@/components/ui/SimpleRichTextEditor";
-import { CommentThread, CommentData, CommentReactionData } from "./CommentThread";
+import { CommentThread, CommentData } from "./CommentThread";
 import { Send, MessageSquare } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
 import { debugConsole } from "@/utils/debugConsole";
+import { buildReactionMap } from "./commentReactions";
 
 const DELETED_COMMENT_TEXT = "Dieser Kommentar wurde gelöscht.";
 
@@ -20,41 +21,6 @@ interface DecisionCommentsProps {
   onCommentAdded?: () => void;
 }
 
-const buildReactionMap = (
-  rows: { comment_id: string; emoji: string; user_id: string }[],
-  currentUserId?: string,
-): Map<string, CommentReactionData[]> => {
-  const grouped = new Map<string, Map<string, { count: number; reactedUserIds: Set<string> }>>();
-
-  rows.forEach((reaction) => {
-    if (!grouped.has(reaction.comment_id)) {
-      grouped.set(reaction.comment_id, new Map());
-    }
-
-    const byEmoji = grouped.get(reaction.comment_id)!;
-    if (!byEmoji.has(reaction.emoji)) {
-      byEmoji.set(reaction.emoji, { count: 0, reactedUserIds: new Set() });
-    }
-
-    const entry = byEmoji.get(reaction.emoji)!;
-    entry.count += 1;
-    entry.reactedUserIds.add(reaction.user_id);
-  });
-
-  const mapped = new Map<string, CommentReactionData[]>();
-  grouped.forEach((emojiMap, commentId) => {
-    mapped.set(
-      commentId,
-      [...emojiMap.entries()].map(([emoji, stats]) => ({
-        emoji,
-        count: stats.count,
-        currentUserReacted: Boolean(currentUserId && stats.reactedUserIds.has(currentUserId)),
-      }))
-    );
-  });
-
-  return mapped;
-};
 
 export function DecisionComments({
   decisionId,
@@ -93,6 +59,8 @@ export function DecisionComments({
 
       const commentIds = (data || []).map((comment) => comment.id);
 
+      // Produktentscheidung: Client-seitige Gruppierung für Reaktionen über alle sichtbaren Kommentare
+      // (ein Query für alle commentIds, danach Aggregation in Map-Struktur).
       const { data: reactionRows, error: reactionError } = commentIds.length
         ? await supabase
             .from('task_decision_comment_reactions')
