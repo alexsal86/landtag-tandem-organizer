@@ -250,7 +250,7 @@ export function AgendaEditorPanel({
                       {/* System item rendering */}
                       {item.system_type ? (
                         <div ref={provided.innerRef} {...provided.draggableProps} {...provided.dragHandleProps}
-                          className={cn("transition-shadow", snapshot.isDragging && "shadow-lg", (item.parentLocalKey || item.parent_id) && "ml-8 border-l-4 border-l-primary/30")}
+                          className={cn("transition-shadow", snapshot.isDragging && "shadow-lg", (item.parentLocalKey || item.parent_id) && "pl-8 border-l-4 border-l-primary/30")}
                         >
                           <SystemAgendaItem
                             systemType={item.system_type as SystemAgendaType}
