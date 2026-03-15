@@ -185,6 +185,30 @@ export function useMyWorkJourFixeMeetings(userId?: string) {
     void loadParticipantsForMeetings(allMeetingIds);
   }, [upcomingMeetings, pastMeetings, loadParticipantsForMeetings]);
 
+  useEffect(() => {
+    if (!userId) return;
+
+    let timeout: ReturnType<typeof setTimeout> | null = null;
+    const scheduleRefresh = () => {
+      if (timeout) clearTimeout(timeout);
+      timeout = setTimeout(() => {
+        timeout = null;
+        void loadMeetings();
+      }, 250);
+    };
+
+    const channel = supabase
+      .channel(`my-work-jour-fixe-${userId}`)
+      .on("postgres_changes", { event: "*", schema: "public", table: "meetings" }, scheduleRefresh)
+      .on("postgres_changes", { event: "*", schema: "public", table: "meeting_participants" }, scheduleRefresh)
+      .subscribe();
+
+    return () => {
+      if (timeout) clearTimeout(timeout);
+      supabase.removeChannel(channel);
+    };
+  }, [userId, loadMeetings]);
+
   return {
     upcomingMeetings,
     pastMeetings,

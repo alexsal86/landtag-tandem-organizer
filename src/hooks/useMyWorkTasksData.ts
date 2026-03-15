@@ -221,7 +221,9 @@ export function useMyWorkTasksData(userId?: string) {
 
     const channel = supabase
       .channel(`my-work-tasks-${userId}`)
-      .on("postgres_changes", { event: "*", schema: "public", table: "tasks", filter: `user_id=eq.${userId}` }, scheduleRefresh)
+      // Realtime must include tasks owned by others but assigned to me as well.
+      // A user_id-only filter misses assignment changes and external updates.
+      .on("postgres_changes", { event: "*", schema: "public", table: "tasks" }, scheduleRefresh)
       .on("postgres_changes", { event: "*", schema: "public", table: "task_snoozes", filter: `user_id=eq.${userId}` }, scheduleRefresh)
       .on("postgres_changes", { event: "*", schema: "public", table: "task_comments" }, scheduleRefresh)
       .subscribe();

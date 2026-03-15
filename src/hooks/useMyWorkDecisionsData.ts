@@ -338,9 +338,11 @@ export function useMyWorkDecisionsData(userId?: string) {
 
     const channel = supabase
       .channel(`my-work-decisions-${userId}`)
-      .on("postgres_changes", { event: "*", schema: "public", table: "task_decisions", filter: `user_id=eq.${userId}` }, scheduleRefresh)
+      // task_decisions has no user_id column; using a bad filter drops realtime events.
+      .on("postgres_changes", { event: "*", schema: "public", table: "task_decisions" }, scheduleRefresh)
       .on("postgres_changes", { event: "*", schema: "public", table: "task_decision_participants", filter: `user_id=eq.${userId}` }, scheduleRefresh)
-      .on("postgres_changes", { event: "*", schema: "public", table: "task_decision_responses", filter: `user_id=eq.${userId}` }, scheduleRefresh)
+      // task_decision_responses also has no user_id column (participant_id/decision_id based).
+      .on("postgres_changes", { event: "*", schema: "public", table: "task_decision_responses" }, scheduleRefresh)
       .subscribe();
 
     return () => {
