@@ -369,7 +369,7 @@ export function CommentThread({
                   type="button"
                   variant="ghost"
                   size="sm"
-                  onClick={() => onToggleReaction(comment.id, emoji, false)}
+                  onClick={() => onToggleReaction?.(comment.id, emoji, false)}
                   className="h-7 px-2 text-[11px] rounded-full"
                   disabled={isSubmitting}
                   aria-label={`Schnellreaktion ${emoji} hinzufügen`}
