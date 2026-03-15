@@ -137,6 +137,104 @@ Den bestehenden Bereich „Automatisierung“ erweitern um:
 - **Audit-Trail** für Erstellung/Änderung/Aktivierung von Regeln
 - **Rollenmodell**: nur Admins erstellen/ändern Regeln; Fachnutzer dürfen ggf. nur aktivieren/deaktivieren
 
+## Governance-Modell für produktive Workflows
+
+### 1) Rollen und Rechte entlang des Lebenszyklus
+
+| Rolle | Erstellen | Testen | Veröffentlichen | Freigeben | Betrieb/Incident |
+|---|---|---|---|---|---|
+| **Workflow-Author (Fachbereich)** | Erlaubt (Draft) | Erlaubt (Sandbox/Dry-Run) | Nicht erlaubt | Nicht erlaubt | Lesend (Status, Runs) |
+| **Automation-Engineer (Plattform-Team)** | Erlaubt | Erlaubt (Staging + technische Tests) | Erlaubt (nur non-kritisch direkt) | Nicht erlaubt bei eigenen Änderungen | On-Call, Runbook-Ausführung |
+| **Approver (2. Person, fachlich oder Security)** | Nicht erforderlich | Kann Testberichte prüfen | Für kritische Workflows zwingend beteiligt | Erlaubt (formale Freigabe) | Eskalationsentscheidung |
+| **Tenant-Admin** | Optional via Template | UAT-Freigabe im Tenant | Erlaubt nur innerhalb Tenant-Policies | Erlaubt für non-kritische Workflows | Incident-koordination im Tenant |
+| **SRE/Incident Manager** | Nein | Chaos-/Resilienztests | Nein | Notfall-Override nach 4-Augen-Regel | Vollzugriff auf Kill-Switch, Rollback, Eskalation |
+
+**Rechteprinzipien:**
+
+- Strikte Trennung von **Author** und **Approver** bei produktionsrelevanten Änderungen.
+- Jeder Workflow hat `owner_role`, `risk_class` und `criticality` als Pflichtfelder.
+- Änderungen und Freigaben werden im Audit-Log mit User, Zeitpunkt, Diff-Hash und Kommentar gespeichert.
+
+### 2) Vier-Augen-Prinzip für kritische produktive Veröffentlichungen
+
+Für `risk_class = high` oder `criticality = business_critical` gilt:
+
+1. **Author** erstellt/ändert Version `vN` und führt Pflicht-Testlauf aus.
+2. System erzwingt Status `pending_approval`.
+3. **Approver** (andere Person, andere Rolle) prüft Diff, Testbelege, Rollback-Plan.
+4. Erst nach Freigabe wird `vN` aktivierbar (`publishable = true`).
+5. Veröffentlichung schreibt Audit-Event `workflow_published_with_4eyes`.
+
+Technische Leitplanken:
+
+- Kein Self-Approval (`author_id != approver_id` als harte Regel).
+- Approval-Token zeitlich begrenzen (z. B. 24h).
+- Bei Änderungen nach Approval: Approval verfällt automatisch, erneute Prüfung nötig.
+
+### 3) Change-Management als Standardprozess
+
+Jede Workflow-Änderung wird wie ein kontrollierter Change behandelt:
+
+1. **Versioniertes Artefakt** (`workflow_versions`)
+   - unveränderliche Versionen mit `version_number`, `created_by`, `created_at`, `change_comment`, `rollback_to`.
+2. **Diff zwischen Versionen**
+   - semantischer Diff für Trigger, Conditions, Actions, Guardrails.
+   - UI zeigt Impact-Hinweis (z. B. „neue externe Aktion“, „geändertes Rate Limit“).
+3. **Pflichtkommentar bei Änderungen**
+   - ohne `change_comment` keine Speicherung.
+   - Mindestinhalte: Grund, erwarteter Effekt, Risiko, Testnachweis.
+4. **Rückrollstrategie pro Veröffentlichung**
+   - jede Aktivierung verlangt `rollback_to_version` oder „disable + fallback process“.
+   - One-Click-Rollback auf letzte stabile Version.
+   - Rollback erzeugt Audit-Event und optional Incident-Ticket.
+
+### 4) Guardrails für sichere Ausführung
+
+Guardrails gelten auf Tenant-, Workflow- und Action-Ebene:
+
+- **Rate Limits**
+  - pro Workflow (z. B. max. 100 Runs/15 Min)
+  - pro externer Aktion (z. B. max. 20 E-Mails/Min)
+  - harte Stopps + Alert bei Überschreitung
+- **Aktions-Whitelist**
+  - nur freigegebene Actions im Builder auswählbar
+  - `invoke_edge_function` nur mit signierter Allowlist (`function_name`, `allowed_params`)
+- **Risiko-Klassifizierung pro Workflow**
+  - `low`: interne Notifications, keine externen Nebenwirkungen
+  - `medium`: Datensatz-Updates innerhalb Tenant
+  - `high`: externe Kommunikation, Massenänderungen, Eskalationsaktionen
+  - Risikoklasse steuert Pflichttests, Vier-Augen-Prozess, Limits und Monitoring-Tiefe
+
+Empfohlene technische Felder im Modell:
+
+- `risk_class` (`low|medium|high`)
+- `max_runs_per_window`, `window_seconds`
+- `allowed_actions[]`
+- `requires_4eyes` (abgeleitet aus Risiko, aber überschreibbar nach Policy)
+
+### 5) Betriebs-KPIs und Alerting
+
+Für einen belastbaren Betrieb werden folgende KPIs pro Tenant und global gemessen:
+
+1. **Fehlerrate**
+   - Anteil fehlgeschlagener Runs pro Zeitraum / Workflow
+   - Alert: >5 % in 15 Minuten (Warnung), >10 % (kritisch)
+2. **Approval-Laufzeit**
+   - Zeit von `pending_approval` bis `approved/rejected`
+   - Alert: kritische Changes länger als SLA (z. B. 8h)
+3. **Eskalationsquote**
+   - Anteil Runs, die Incident oder manuelle Eskalation auslösen
+   - Alert bei plötzlichem Anstieg gegenüber 7-Tage-Baseline
+4. **Durchsatz**
+   - Runs/Minute und abgeschlossene Actions/Minute
+   - Alert bei Drop unter Mindestniveau oder unerwarteten Peaks
+
+Alerting-Setup (MVP):
+
+- Metrikexport aus `automation_rule_runs` + `automation_rule_run_steps` in Dashboard.
+- Schwellwert-basierte Alerts an On-Call-Kanal (z. B. Matrix/Email).
+- Täglicher Betriebsreport mit Top-Fehlern, langsamsten Freigaben, auffälligen Tenants.
+
 ---
 
 ## Rollout-Plan (4 Phasen)
