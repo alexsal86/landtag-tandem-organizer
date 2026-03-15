@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -9,9 +9,11 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
 import { debugConsole } from "@/utils/debugConsole";
-import { buildReactionMap } from "./commentReactions";
+import { buildReactionMap, sortReactionEntries, type ReactionRow } from "./commentReactions";
 
 const DELETED_COMMENT_TEXT = "Dieser Kommentar wurde gelöscht.";
+const REACTION_TOGGLE_DEBOUNCE_MS = 250;
+const REACTION_NOTIFICATION_WINDOW_MS = 60_000;
 
 interface DecisionCommentsProps {
   decisionId: string;
@@ -36,6 +38,9 @@ export function DecisionComments({
   const [newCommentEditorKey, setNewCommentEditorKey] = useState(0);
   const [isLoading, setIsLoading] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const reactionDebounceRef = useRef<Map<string, number>>(new Map());
+  const pendingReactionOpsRef = useRef<Set<string>>(new Set());
+  const lastReactionNotificationRef = useRef<Map<string, number>>(new Map());
 
   const loadComments = useCallback(async () => {
     if (!decisionId) return;
@@ -64,7 +69,7 @@ export function DecisionComments({
       const { data: reactionRows, error: reactionError } = commentIds.length
         ? await supabase
             .from('task_decision_comment_reactions')
-            .select('comment_id, emoji, user_id')
+            .select('comment_id, emoji, user_id, profile:profiles(display_name)')
             .in('comment_id', commentIds)
         : { data: [], error: null };
 
@@ -86,7 +91,7 @@ export function DecisionComments({
         ...c,
         profile: profileMap.get(c.user_id) ?? undefined,
         replies: [],
-        reactions: reactionsByCommentId.get(c.id) ?? [],
+        reactions: sortReactionEntries(reactionsByCommentId.get(c.id) ?? []),
       }));
 
       // Organize into tree structure
@@ -260,10 +265,147 @@ export function DecisionComments({
     });
   };
 
+
+  const applyReactionEventToComments = useCallback((commentId: string, rows: ReactionRow[]) => {
+    const reactionsByCommentId = buildReactionMap(rows, user?.id);
+
+    const updateBranch = (branch: CommentData[]): CommentData[] =>
+      branch.map((comment) => {
+        const updatedReplies = comment.replies ? updateBranch(comment.replies) : comment.replies;
+        if (comment.id !== commentId) {
+          return updatedReplies === comment.replies ? comment : { ...comment, replies: updatedReplies };
+        }
+
+        return {
+          ...comment,
+          reactions: sortReactionEntries(reactionsByCommentId.get(comment.id) ?? []),
+          replies: updatedReplies,
+        };
+      });
+
+    setComments((prev) => updateBranch(prev));
+  }, [user?.id]);
+
+  const refreshSingleCommentReactions = useCallback(async (commentId: string) => {
+    const { data, error } = await supabase
+      .from('task_decision_comment_reactions')
+      .select('comment_id, emoji, user_id, profile:profiles(display_name)')
+      .eq('comment_id', commentId);
+
+    if (error) throw error;
+    applyReactionEventToComments(commentId, (data ?? []) as ReactionRow[]);
+  }, [applyReactionEventToComments]);
+
+  useEffect(() => {
+    if (!isOpen || !decisionId) return;
+
+    const channel = supabase
+      .channel(`decision-comment-reactions-${decisionId}`)
+      .on('postgres_changes', {
+        event: '*',
+        schema: 'public',
+        table: 'task_decision_comment_reactions',
+      }, async (payload) => {
+        const newRow = payload.new as { comment_id?: string } | null;
+        const oldRow = payload.old as { comment_id?: string } | null;
+        const commentId = newRow?.comment_id ?? oldRow?.comment_id;
+        if (!commentId) return;
+
+        try {
+          await refreshSingleCommentReactions(commentId);
+        } catch (error) {
+          debugConsole.error('Error refreshing incremental reactions:', error);
+          loadComments();
+        }
+      })
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [decisionId, isOpen, loadComments, refreshSingleCommentReactions]);
+
+  const notifyReactionRecipients = useCallback(async (commentId: string, emoji: string) => {
+    if (!user) return;
+
+    const dedupeKey = `${commentId}:${emoji}:${user.id}`;
+    const now = Date.now();
+    const lastSent = lastReactionNotificationRef.current.get(dedupeKey) ?? 0;
+    if (now - lastSent < REACTION_NOTIFICATION_WINDOW_MS) return;
+
+    const { data: comment } = await supabase
+      .from('task_decision_comments')
+      .select('id, user_id, decision_id')
+      .eq('id', commentId)
+      .single();
+
+    if (!comment) return;
+
+    const { data: decision } = await supabase
+      .from('task_decisions')
+      .select('created_by, title')
+      .eq('id', comment.decision_id)
+      .single();
+
+    const { data: participants } = await supabase
+      .from('task_decision_participants')
+      .select('user_id')
+      .eq('decision_id', comment.decision_id);
+
+    const { data: profile } = await supabase
+      .from('profiles')
+      .select('display_name')
+      .eq('user_id', user.id)
+      .single();
+
+    const recipientIds = new Set<string>();
+    if (comment.user_id !== user.id) recipientIds.add(comment.user_id);
+    if (decision?.created_by && decision.created_by !== user.id) recipientIds.add(decision.created_by);
+    participants?.forEach((participant) => {
+      if (participant.user_id !== user.id) recipientIds.add(participant.user_id);
+    });
+
+    for (const recipientId of recipientIds) {
+      await supabase.rpc('create_notification', {
+        user_id_param: recipientId,
+        type_name: 'task_decision_comment_reaction_received',
+        title_param: 'Neue Reaktion',
+        message_param: `${profile?.display_name || 'Jemand'} hat mit ${emoji} reagiert.`,
+        data_param: JSON.stringify({ decision_id: comment.decision_id, decision_title: decision?.title ?? '' }),
+        priority_param: 'low',
+      });
+    }
+
+    lastReactionNotificationRef.current.set(dedupeKey, now);
+  }, [user]);
+
+  const trackReactionMetric = useCallback(async (emoji: string, eventType: 'insert' | 'delete') => {
+    if (!user) return;
+    const analyticsAllowed = window.localStorage.getItem('allowReactionAnalytics') === 'true';
+    if (!analyticsAllowed) return;
+
+    await supabase.functions.invoke('log-audit-event', {
+      body: {
+        action: `comment_reaction_${eventType}`,
+        resource_type: 'task_decision_comment_reaction',
+        metadata: { emoji },
+      },
+    });
+  }, [user]);
+
   const handleToggleReaction = async (commentId: string, emoji: string, currentlyReacted: boolean) => {
     if (!user) return;
 
+    const actionKey = `${commentId}:${emoji}:${user.id}`;
+    if (pendingReactionOpsRef.current.has(actionKey)) return;
+
+    const now = Date.now();
+    const lastToggle = reactionDebounceRef.current.get(actionKey) ?? 0;
+    if (now - lastToggle < REACTION_TOGGLE_DEBOUNCE_MS) return;
+    reactionDebounceRef.current.set(actionKey, now);
+
     const nextReacted = !currentlyReacted;
+    pendingReactionOpsRef.current.add(actionKey);
     setComments((prev) => updateCommentReactions(prev, commentId, emoji, nextReacted));
 
     try {
@@ -277,6 +419,8 @@ export function DecisionComments({
           });
 
         if (error) throw error;
+        await notifyReactionRecipients(commentId, emoji);
+        await trackReactionMetric(emoji, 'insert');
       } else {
         const { error } = await supabase
           .from('task_decision_comment_reactions')
@@ -286,15 +430,18 @@ export function DecisionComments({
           .eq('emoji', emoji);
 
         if (error) throw error;
+        await trackReactionMetric(emoji, 'delete');
       }
     } catch (error) {
       debugConsole.error('Error toggling comment reaction:', error);
       setComments((prev) => updateCommentReactions(prev, commentId, emoji, currentlyReacted));
       toast({
         title: "Fehler",
-        description: "Reaktion konnte nicht gespeichert werden.",
+        description: "Reaktion konnte nicht gespeichert werden. Die Ansicht wurde zurückgesetzt.",
         variant: "destructive",
       });
+    } finally {
+      pendingReactionOpsRef.current.delete(actionKey);
     }
   };
 

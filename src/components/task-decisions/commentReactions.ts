@@ -7,11 +7,14 @@ export interface ReactionRow {
   comment_id: string;
   emoji: string;
   user_id: string;
+  profile?: {
+    display_name: string | null;
+  } | null;
 }
 
 interface AggregatedReaction {
   count: number;
-  reactedUserIds: Set<string>;
+  reactedUsers: Map<string, string>;
 }
 
 export const buildReactionMap = (
@@ -27,12 +30,12 @@ export const buildReactionMap = (
 
     const byEmoji = grouped.get(reaction.comment_id)!;
     if (!byEmoji.has(reaction.emoji)) {
-      byEmoji.set(reaction.emoji, { count: 0, reactedUserIds: new Set() });
+      byEmoji.set(reaction.emoji, { count: 0, reactedUsers: new Map() });
     }
 
     const entry = byEmoji.get(reaction.emoji)!;
     entry.count += 1;
-    entry.reactedUserIds.add(reaction.user_id);
+    entry.reactedUsers.set(reaction.user_id, reaction.profile?.display_name || "Unbekannt");
   });
 
   const mapped = new Map<string, CommentReactionData[]>();
@@ -42,7 +45,8 @@ export const buildReactionMap = (
       [...emojiMap.entries()].map(([emoji, stats]) => ({
         emoji,
         count: stats.count,
-        currentUserReacted: Boolean(currentUserId && stats.reactedUserIds.has(currentUserId)),
+        currentUserReacted: Boolean(currentUserId && stats.reactedUsers.has(currentUserId)),
+        reactedUsers: [...stats.reactedUsers.entries()].map(([userId, displayName]) => ({ userId, displayName })),
       })),
     );
   });
