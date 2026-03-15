@@ -22,6 +22,7 @@ const ACTION_LABELS: Record<string, string> = {
   update_record_status: "Status ändern",
   send_push_notification: "Push senden",
   send_email_template: "E-Mail senden",
+  create_approval_request: "Approval anfordern",
 };
 
 const TRIGGER_LABELS: Record<string, string> = {

@@ -316,6 +316,9 @@ export function AutomationRulesManager() {
       emailTemplateId: (a.payload?.template_id as string) || "",
       emailRecipient: (a.payload?.recipient_email as string) || "",
       emailRecipientName: (a.payload?.recipient_name as string) || "",
+      approvalPolicy: (a.payload?.approval_policy as string) || "single",
+      approvalDueInHours: (a.payload?.approval_due_in_hours as string) || "24",
+      approvalMinimumApprovers: (a.payload?.approval_minimum_approvers as string) || "1",
     }));
     if (actions.length === 0) actions.push({ ...DEFAULT_ACTION });
 
@@ -332,6 +335,7 @@ export function AutomationRulesManager() {
       conditionGroup,
       actions,
       enabled: rule.enabled,
+      samplePayload: "",
     });
     setWizardOpen(true);
   };
@@ -400,6 +404,9 @@ export function AutomationRulesManager() {
           template_id: a.emailTemplateId,
           recipient_email: a.emailRecipient,
           recipient_name: a.emailRecipientName,
+          approval_policy: a.approvalPolicy,
+          approval_due_in_hours: a.approvalDueInHours,
+          approval_minimum_approvers: a.approvalMinimumApprovers,
         },
       })),
       enabled: form.enabled,

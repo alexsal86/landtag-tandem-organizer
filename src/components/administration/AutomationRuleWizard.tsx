@@ -11,7 +11,7 @@ import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { cn } from "@/lib/utils";
-import { ArrowLeft, ArrowRight, Check, Clock, Filter, FolderPlus, Loader2, Play, Plus, Save, Trash2, Zap } from "lucide-react";
+import { ArrowLeft, ArrowRight, Check, Clock, Filter, FolderPlus, Loader2, Play, Plus, Save, ShieldCheck, Trash2, TriangleAlert, WandSparkles, Zap } from "lucide-react";
 
 const MODULE_OPTIONS = [
   { value: "tasks", label: "Aufgaben" },
@@ -33,6 +33,7 @@ const CONDITION_OPERATORS = [
 const ACTION_TYPES = [
   { value: "create_notification", label: "Benachrichtigung erzeugen" },
   { value: "create_task", label: "Aufgabe erzeugen" },
+  { value: "create_approval_request", label: "Freigabe/Approval anfordern" },
   { value: "update_record_status", label: "Status aktualisieren" },
   { value: "send_push_notification", label: "Push senden" },
   { value: "send_email_template", label: "E-Mail-Template senden" },
@@ -89,11 +90,45 @@ const FIELD_OPTIONS_BY_MODULE: Record<string, Array<{ value: string; label: stri
   ],
 };
 
+type FieldType = "string" | "number" | "date" | "boolean" | "enum";
+type FieldSpec = { type: FieldType; options?: string[] };
+const FIELD_SPEC_BY_MODULE: Record<string, Record<string, FieldSpec>> = {
+  tasks: {
+    status: { type: "enum", options: ["open", "in_progress", "done", "overdue"] },
+    priority: { type: "enum", options: ["low", "medium", "high", "urgent"] },
+    due_date: { type: "date" },
+  },
+  meetings: {
+    status: { type: "enum", options: ["planned", "done", "cancelled"] },
+    meeting_date: { type: "date" },
+    preparation_status: { type: "enum", options: ["none", "draft", "ready"] },
+  },
+  decisions: {
+    status: { type: "enum", options: ["draft", "accepted", "rejected"] },
+    deadline: { type: "date" },
+  },
+  knowledge: {
+    status: { type: "enum", options: ["draft", "published", "review"] },
+    updated_at: { type: "date" },
+  },
+  casefiles: {
+    status: { type: "enum", options: ["open", "in_review", "closed"] },
+    priority: { type: "enum", options: ["low", "medium", "high", "critical"] },
+    processing_status: { type: "enum", options: ["new", "processing", "blocked", "completed"] },
+  },
+  contacts: {
+    status: { type: "enum", options: ["active", "inactive", "archived"] },
+    category: { type: "string" },
+    updated_at: { type: "date" },
+  },
+};
+
 // Used by templates before full DEFAULT_ACTION is defined
 const DEFAULT_ACTION_INIT = {
   targetUserId: "", title: "", message: "", taskPriority: "medium", taskCategory: "personal",
   taskDueDate: "", taskAssignees: "", table: "tasks", recordId: "", status: "",
   emailTemplateId: "", emailRecipient: "", emailRecipientName: "",
+  approvalPolicy: "single", approvalDueInHours: "24", approvalMinimumApprovers: "1",
 };
 
 export const RULE_TEMPLATES = [
@@ -208,6 +243,39 @@ export const RULE_TEMPLATES = [
     conditions: [{ field: "priority", operator: "equals", value: "high" }],
     actions: [{ ...DEFAULT_ACTION_INIT, type: "create_notification", title: "Neue wichtige Fallakte", message: "Eine neue Fallakte mit hoher Priorität wurde angelegt.", table: "case_files" }],
   },
+  {
+    id: "four-eyes-approval",
+    name: "4-Augen-Freigabe",
+    description: "Bei kritischen Änderungen wird eine Freigabe von mindestens zwei Personen angefordert.",
+    module: "casefiles",
+    triggerType: "record_changed",
+    triggerField: "priority",
+    triggerValue: "critical",
+    conditions: [{ field: "status", operator: "not_equals", value: "closed" }],
+    actions: [{ ...DEFAULT_ACTION_INIT, type: "create_approval_request", title: "Kritische Änderung freigeben", message: "Bitte 4-Augen-Freigabe durchführen.", approvalPolicy: "four_eyes", approvalMinimumApprovers: "2", approvalDueInHours: "24", table: "case_files" }],
+  },
+  {
+    id: "deadline-based-escalation",
+    name: "Fristbasierte Eskalation",
+    description: "Wenn der Termin naht und der Status nicht erledigt ist, wird automatisch eskaliert.",
+    module: "tasks",
+    triggerType: "schedule",
+    triggerField: "due_date",
+    triggerValue: "24_hours_before",
+    conditions: [{ field: "status", operator: "not_equals", value: "done" }],
+    actions: [{ ...DEFAULT_ACTION_INIT, type: "create_notification", title: "Frist-Eskalation", message: "Eine Aufgabe nähert sich der Deadline und ist noch nicht erledigt.", table: "tasks" }],
+  },
+  {
+    id: "auto-assignment",
+    name: "Auto-Zuweisung",
+    description: "Neue Datensätze werden automatisch der zuständigen Person zugewiesen.",
+    module: "tasks",
+    triggerType: "record_changed",
+    triggerField: "status",
+    triggerValue: "open",
+    conditions: [{ field: "priority", operator: "equals", value: "high" }],
+    actions: [{ ...DEFAULT_ACTION_INIT, type: "create_task", title: "Auto-Zuweisung prüfen", message: "Datensatz wurde automatisch zugewiesen.", taskPriority: "high", table: "tasks" }],
+  },
 ] as const;
 
 export type ConditionItem = {
@@ -237,6 +305,9 @@ export type ActionItem = {
   emailTemplateId: string;
   emailRecipient: string;
   emailRecipientName: string;
+  approvalPolicy: string;
+  approvalDueInHours: string;
+  approvalMinimumApprovers: string;
 };
 
 export const DEFAULT_ACTION: ActionItem = {
@@ -254,6 +325,9 @@ export const DEFAULT_ACTION: ActionItem = {
   emailTemplateId: "",
   emailRecipient: "",
   emailRecipientName: "",
+  approvalPolicy: "single",
+  approvalDueInHours: "24",
+  approvalMinimumApprovers: "1",
 };
 
 export const DEFAULT_CONDITION: ConditionItem = {
@@ -276,6 +350,7 @@ export type WizardForm = {
   conditionGroup: ConditionGroup;
   actions: ActionItem[];
   enabled: boolean;
+  samplePayload: string;
 };
 
 /** Recursively validate that all conditions in a group have non-empty values */
@@ -290,6 +365,117 @@ export function validateConditionGroup(group: ConditionGroup): boolean {
 /** Count total conditions in a group tree */
 export function countConditions(group: ConditionGroup): number {
   return group.conditions.length + group.groups.reduce((sum, g) => sum + countConditions(g), 0);
+}
+
+function isIsoDate(value: string): boolean {
+  if (!value.trim()) return false;
+  const parsed = Date.parse(value);
+  return !Number.isNaN(parsed);
+}
+
+function toComparableNumber(fieldType: FieldType, value: string): number | null {
+  if (fieldType === "number") {
+    const n = Number(value);
+    return Number.isFinite(n) ? n : null;
+  }
+  if (fieldType === "date") {
+    const ts = Date.parse(value);
+    return Number.isNaN(ts) ? null : ts;
+  }
+  return null;
+}
+
+function evaluateCondition(condition: ConditionItem, fieldType: FieldType, sampleValue: unknown): boolean {
+  const sample = sampleValue == null ? "" : String(sampleValue);
+  switch (condition.operator) {
+    case "equals":
+      return sample === condition.value;
+    case "not_equals":
+      return sample !== condition.value;
+    case "contains":
+      return sample.toLowerCase().includes(condition.value.toLowerCase());
+    case "gt": {
+      const left = toComparableNumber(fieldType, sample);
+      const right = toComparableNumber(fieldType, condition.value);
+      return left != null && right != null ? left > right : false;
+    }
+    case "lt": {
+      const left = toComparableNumber(fieldType, sample);
+      const right = toComparableNumber(fieldType, condition.value);
+      return left != null && right != null ? left < right : false;
+    }
+    default:
+      return false;
+  }
+}
+
+function evaluateConditionGroup(group: ConditionGroup, module: string, sampleData: Record<string, unknown>): boolean {
+  const specs = FIELD_SPEC_BY_MODULE[module] ?? {};
+  const selfMatches = group.conditions.map((c) => {
+    const fieldType = specs[c.field]?.type ?? "string";
+    return evaluateCondition(c, fieldType, sampleData[c.field]);
+  });
+  const subMatches = group.groups.map((g) => evaluateConditionGroup(g, module, sampleData));
+  const matches = [...selfMatches, ...subMatches];
+  if (matches.length === 0) return false;
+  return group.logic === "all" ? matches.every(Boolean) : matches.some(Boolean);
+}
+
+function collectSemanticIssues(
+  form: WizardForm,
+  parsedSample: Record<string, unknown> | null,
+): Array<{ level: "error" | "warning"; message: string }> {
+  const issues: Array<{ level: "error" | "warning"; message: string }> = [];
+  const fieldSpecs = FIELD_SPEC_BY_MODULE[form.module] ?? {};
+
+  if (form.triggerType === "record_changed" && !form.triggerValue.trim()) {
+    issues.push({ level: "error", message: "Trigger-Wert ist bei Datenänderung verpflichtend." });
+  }
+
+  const validateGroup = (group: ConditionGroup) => {
+    group.conditions.forEach((condition) => {
+      const spec = fieldSpecs[condition.field];
+      if (!spec) {
+        issues.push({ level: "warning", message: `Unbekanntes Feld in Bedingungen: ${condition.field}.` });
+        return;
+      }
+      if (spec.type === "date" && !isIsoDate(condition.value)) {
+        issues.push({ level: "error", message: `Feld ${condition.field} erwartet ein Datum.` });
+      }
+      if (spec.type === "number" && !Number.isFinite(Number(condition.value))) {
+        issues.push({ level: "error", message: `Feld ${condition.field} erwartet eine Zahl.` });
+      }
+      if (spec.type === "enum" && spec.options && !spec.options.includes(condition.value)) {
+        issues.push({ level: "warning", message: `Wert \"${condition.value}\" liegt außerhalb der bekannten Werte für ${condition.field}.` });
+      }
+      if ((condition.operator === "gt" || condition.operator === "lt") && !["number", "date"].includes(spec.type)) {
+        issues.push({ level: "error", message: `${condition.operator.toUpperCase()} ist nur für Zahl- oder Datumsfelder zulässig (${condition.field}).` });
+      }
+    });
+    group.groups.forEach(validateGroup);
+  };
+  validateGroup(form.conditionGroup);
+
+  form.actions.forEach((action, idx) => {
+    if (action.type === "create_approval_request" && Number(action.approvalMinimumApprovers) < 2 && action.approvalPolicy === "four_eyes") {
+      issues.push({ level: "error", message: `Aktion ${idx + 1}: 4-Augen-Freigabe benötigt mindestens 2 Approver.` });
+    }
+    if (action.type === "create_approval_request" && !action.targetUserId.trim()) {
+      issues.push({ level: "error", message: `Aktion ${idx + 1}: Approval benötigt eine Zielperson.` });
+    }
+    if (action.type === "send_email_template" && !action.emailRecipient.includes("@")) {
+      issues.push({ level: "error", message: `Aktion ${idx + 1}: Empfänger-E-Mail ist ungültig.` });
+    }
+  });
+
+  if (parsedSample) {
+    const matches = evaluateConditionGroup(form.conditionGroup, form.module, parsedSample);
+    if (!matches) {
+      issues.push({ level: "warning", message: "Aktuelle Testdaten matchen die Bedingungen nicht." });
+    }
+  }
+
+  return issues;
 }
 
 export const DEFAULT_CONDITION_GROUP: ConditionGroup = {
@@ -310,13 +496,14 @@ export const DEFAULT_FORM: WizardForm = {
   conditionGroup: { ...DEFAULT_CONDITION_GROUP },
   actions: [{ ...DEFAULT_ACTION }],
   enabled: true,
+  samplePayload: "",
 };
 
 const STEPS = [
-  { label: "Grundlagen", icon: Zap },
-  { label: "Trigger", icon: Clock },
+  { label: "Trigger wählen", icon: Clock },
   { label: "Bedingungen", icon: Filter },
-  { label: "Aktionen", icon: Play },
+  { label: "Aktionen/Approvals", icon: ShieldCheck },
+  { label: "Simulation", icon: Play },
 ] as const;
 
 interface AutomationRuleWizardProps {
@@ -418,6 +605,7 @@ function ActionCard({
   const isStatus = action.type === "update_record_status";
   const isTask = action.type === "create_task";
   const isEmail = action.type === "send_email_template";
+  const isApproval = action.type === "create_approval_request";
 
   const { currentTenant } = useTenant();
   const [emailTemplates, setEmailTemplates] = useState<Array<{ id: string; name: string; subject: string }>>([]);
@@ -582,6 +770,39 @@ function ActionCard({
             <div className="space-y-1">
               <Label className="text-xs">Empfänger-Name</Label>
               <Input className="h-8 text-xs" value={action.emailRecipientName} onChange={(e) => onChange(index, { emailRecipientName: e.target.value })} placeholder="Optional" />
+            </div>
+          </div>
+        </div>
+      )}
+
+      {isApproval && (
+        <div className="space-y-3">
+          <div className="space-y-1">
+            <Label className="text-xs">Approver *</Label>
+            <TenantUserSelect
+              value={action.targetUserId}
+              onValueChange={(v) => onChange(index, { targetUserId: v })}
+              placeholder="Freigebende Person auswählen…"
+            />
+          </div>
+          <div className="grid gap-3 sm:grid-cols-3">
+            <div className="space-y-1">
+              <Label className="text-xs">Policy</Label>
+              <Select value={action.approvalPolicy} onValueChange={(v) => onChange(index, { approvalPolicy: v })}>
+                <SelectTrigger className="h-8 text-xs"><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="single">Single Approval</SelectItem>
+                  <SelectItem value="four_eyes">4-Augen</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-1">
+              <Label className="text-xs">Mindest-Approver</Label>
+              <Input className="h-8 text-xs" value={action.approvalMinimumApprovers} onChange={(e) => onChange(index, { approvalMinimumApprovers: e.target.value })} />
+            </div>
+            <div className="space-y-1">
+              <Label className="text-xs">Fällig in Stunden</Label>
+              <Input className="h-8 text-xs" value={action.approvalDueInHours} onChange={(e) => onChange(index, { approvalDueInHours: e.target.value })} />
             </div>
           </div>
         </div>
@@ -776,29 +997,6 @@ export function AutomationRuleWizard({
     setForm((prev) => ({ ...prev, conditionGroup: updated }));
   };
 
-  // Legacy flat helpers kept for backward compat
-  const updateCondition = (index: number, patch: Partial<ConditionItem>) => {
-    setForm((prev) => {
-      const next = [...prev.conditions];
-      next[index] = { ...next[index], ...patch };
-      return { ...prev, conditions: next };
-    });
-  };
-
-  const addCondition = () => {
-    setForm((prev) => ({
-      ...prev,
-      conditions: [...prev.conditions, { ...DEFAULT_CONDITION, field: fieldOptions[0]?.value || "status" }],
-    }));
-  };
-
-  const removeCondition = (index: number) => {
-    setForm((prev) => ({
-      ...prev,
-      conditions: prev.conditions.filter((_, i) => i !== index),
-    }));
-  };
-
   const updateAction = (index: number, patch: Partial<ActionItem>) => {
     setForm((prev) => {
       const next = [...prev.actions];
@@ -821,26 +1019,69 @@ export function AutomationRuleWizard({
     }));
   };
 
+  const parsedSamplePayload = useMemo(() => {
+    if (!form.samplePayload.trim()) return null;
+    try {
+      const parsed = JSON.parse(form.samplePayload);
+      return parsed && typeof parsed === "object" ? (parsed as Record<string, unknown>) : null;
+    } catch {
+      return null;
+    }
+  }, [form.samplePayload]);
+
+  const samplePayloadParseError = useMemo(() => {
+    if (!form.samplePayload.trim()) return null;
+    try {
+      JSON.parse(form.samplePayload);
+      return null;
+    } catch {
+      return "Testdaten sind kein gültiges JSON.";
+    }
+  }, [form.samplePayload]);
+
+  const semanticIssues = useMemo(
+    () => collectSemanticIssues(form, parsedSamplePayload),
+    [form, parsedSamplePayload],
+  );
+
+  const matchingConditionCount = useMemo(() => {
+    if (!parsedSamplePayload) return null;
+    const specs = FIELD_SPEC_BY_MODULE[form.module] ?? {};
+    const flat: ConditionItem[] = [];
+    const walk = (group: ConditionGroup) => {
+      flat.push(...group.conditions);
+      group.groups.forEach(walk);
+    };
+    walk(form.conditionGroup);
+    return flat.filter((condition) => {
+      const fieldType = specs[condition.field]?.type ?? "string";
+      return evaluateCondition(condition, fieldType, parsedSamplePayload[condition.field]);
+    }).length;
+  }, [form.conditionGroup, form.module, parsedSamplePayload]);
+
   const stepValid = useMemo(() => {
     switch (currentStep) {
       case 0:
-        return form.name.trim().length >= 3;
+        return !!form.module && !!form.triggerType && !!form.triggerField && (form.triggerType !== "record_changed" || form.triggerValue.trim().length > 0);
       case 1:
-        return form.triggerType === "schedule" || form.triggerType === "manual" || form.triggerType === "webhook" || form.triggerValue.trim().length > 0;
-      case 2:
         return validateConditionGroup(form.conditionGroup);
-      case 3: {
+      case 2:
         return form.actions.length > 0 && form.actions.every((a) => {
           const isNotif = a.type === "create_notification" || a.type === "send_push_notification";
           const isStat = a.type === "update_record_status";
           const isTask = a.type === "create_task";
           const isEmail = a.type === "send_email_template";
+          const isApproval = a.type === "create_approval_request";
           if (isNotif) return a.targetUserId.trim().length > 0;
           if (isStat) return a.recordId.trim().length > 0 && a.status.trim().length > 0;
           if (isTask) return a.title.trim().length > 0;
           if (isEmail) return a.emailTemplateId.trim().length > 0 && a.emailRecipient.trim().length > 0;
+          if (isApproval) return a.targetUserId.trim().length > 0 && Number(a.approvalMinimumApprovers) >= 1;
           return true;
         });
+      case 3: {
+        const hasErrors = semanticIssues.some((issue) => issue.level === "error");
+        return !samplePayloadParseError && !hasErrors;
       }
       default:
         return true;
@@ -864,6 +1105,7 @@ export function AutomationRuleWizard({
       conditionGroup: { logic: "all", conditions, groups: [] },
       actions: template.actions.map((a) => ({ ...a })),
       enabled: true,
+      samplePayload: "",
     }));
   };
 
@@ -879,9 +1121,8 @@ export function AutomationRuleWizard({
 
   const summaryLine = useMemo(() => {
     const mod = MODULE_OPTIONS.find((m) => m.value === form.module)?.label || form.module;
-    const trigger = TRIGGER_TYPES.find((t) => t.value === form.triggerType)?.label || form.triggerType;
-    return { mod, trigger };
-  }, [form.module, form.triggerType]);
+    return { mod };
+  }, [form.module]);
 
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
@@ -921,7 +1162,7 @@ export function AutomationRuleWizard({
 
         <Separator />
 
-        {/* Step 1: Grundlagen */}
+        {/* Step 1: Trigger wählen */}
         {currentStep === 0 && (
           <div className="space-y-4 py-2">
             <div className="space-y-2">
@@ -959,7 +1200,7 @@ export function AutomationRuleWizard({
               />
             </div>
             <div className="space-y-2">
-              <Label>Modul</Label>
+              <Label>Fachdomäne/Modul</Label>
               <Select
                 value={form.module}
                 onValueChange={(v) =>
@@ -993,12 +1234,6 @@ export function AutomationRuleWizard({
                 onCheckedChange={(checked) => setForm((prev) => ({ ...prev, enabled: checked }))}
               />
             </div>
-          </div>
-        )}
-
-        {/* Step 2: Trigger */}
-        {currentStep === 1 && (
-          <div className="space-y-4 py-2">
             <div className="space-y-2">
               <Label>Trigger-Typ</Label>
               <Select
@@ -1079,8 +1314,8 @@ export function AutomationRuleWizard({
           </div>
         )}
 
-        {/* Step 3: Nested Condition Groups */}
-        {currentStep === 2 && (
+        {/* Step 2: Bedingungen */}
+        {currentStep === 1 && (
           <div className="space-y-3 py-2">
             <div>
               <p className="text-sm font-medium">Bedingungen</p>
@@ -1098,8 +1333,8 @@ export function AutomationRuleWizard({
           </div>
         )}
 
-        {/* Step 4: Aktionen (multi) + Zusammenfassung */}
-        {currentStep === 3 && (
+        {/* Step 3: Aktionen / Approvals */}
+        {currentStep === 2 && (
           <div className="space-y-4 py-2">
             {/* Summary card */}
             <div className="rounded-md border bg-muted/30 p-3 space-y-1">
@@ -1135,6 +1370,51 @@ export function AutomationRuleWizard({
                 canRemove={form.actions.length > 1}
               />
             ))}
+          </div>
+        )}
+
+        {/* Step 4: Simulation */}
+        {currentStep === 3 && (
+          <div className="space-y-4 py-2">
+            <div className="space-y-1">
+              <p className="text-sm font-medium">Simulation / Dry-Run</p>
+              <p className="text-xs text-muted-foreground">Füge einen Beispieldatensatz als JSON ein, um Bedingungs-Matches und Aktionen in der Vorschau zu prüfen.</p>
+            </div>
+
+            <div className="space-y-2">
+              <Label>Beispieldatensatz (JSON)</Label>
+              <textarea
+                className="w-full min-h-36 rounded-md border bg-background px-3 py-2 text-xs font-mono"
+                value={form.samplePayload}
+                onChange={(e) => setForm((prev) => ({ ...prev, samplePayload: e.target.value }))}
+                placeholder='{"status":"open","priority":"high"}'
+              />
+              {samplePayloadParseError && <p className="text-xs text-destructive">{samplePayloadParseError}</p>}
+            </div>
+
+            <div className="rounded-md border p-3 space-y-2">
+              <p className="text-xs font-medium text-muted-foreground">Echtzeit-Validierung</p>
+              {semanticIssues.length === 0 ? (
+                <p className="text-xs text-emerald-600">Keine statischen/semantischen Probleme erkannt.</p>
+              ) : (
+                <div className="space-y-1">
+                  {semanticIssues.map((issue, idx) => (
+                    <div key={`${issue.message}-${idx}`} className={cn("text-xs flex items-center gap-1.5", issue.level === "error" ? "text-destructive" : "text-amber-600")}>
+                      {issue.level === "error" ? <TriangleAlert className="h-3.5 w-3.5" /> : <WandSparkles className="h-3.5 w-3.5" />}
+                      <span>{issue.message}</span>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            <div className="rounded-md border p-3 space-y-1">
+              <p className="text-xs font-medium text-muted-foreground">Vorschau</p>
+              <p className="text-sm">
+                Bedingungen gematcht: <span className="font-medium">{matchingConditionCount ?? 0}/{countConditions(form.conditionGroup)}</span>
+              </p>
+              <p className="text-sm">Aktionen, die laufen würden: <span className="font-medium">{form.actions.length}</span></p>
+            </div>
           </div>
         )}
 
