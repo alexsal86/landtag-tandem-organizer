@@ -13,9 +13,35 @@ type Condition = {
   value: string;
 };
 
+type ConditionGroup = {
+  all?: Array<Condition | ConditionGroup>;
+  any?: Array<Condition | ConditionGroup>;
+};
+
 type Action = {
-  type: "create_notification" | "update_record_status" | "create_task" | "send_push_notification" | "send_email_template";
+  type: "create_notification" | "update_record_status" | "create_task" | "send_push_notification" | "send_email_template" | "create_approval_request";
   payload?: Record<string, unknown>;
+};
+
+const LOG_FORMAT = "automation_run_log.v1";
+const SENSITIVE_KEY_PATTERN = /(password|token|secret|authorization|cookie|api[_-]?key|email|phone|recipient|name)/i;
+
+const maskSensitiveData = (value: unknown): unknown => {
+  if (Array.isArray(value)) {
+    return value.map((entry) => maskSensitiveData(entry));
+  }
+  if (!value || typeof value !== "object") {
+    return value;
+  }
+
+  return Object.entries(value as Record<string, unknown>).reduce<Record<string, unknown>>((acc, [key, entry]) => {
+    if (SENSITIVE_KEY_PATTERN.test(key)) {
+      acc[key] = "***";
+      return acc;
+    }
+    acc[key] = maskSensitiveData(entry);
+    return acc;
+  }, {});
 };
 
 const evaluateCondition = (source: Record<string, unknown>, condition: Condition) => {
@@ -38,16 +64,69 @@ const evaluateCondition = (source: Record<string, unknown>, condition: Condition
   }
 };
 
-// Feature 6: Evaluate conditions with AND/OR support
-const evaluateConditions = (
+const isConditionRule = (item: Condition | ConditionGroup): item is Condition => {
+  return typeof (item as Condition).field === "string";
+};
+
+const evaluateConditionTree = (
   source: Record<string, unknown>,
-  conditionsBlock: { all?: Condition[]; any?: Condition[] }
-): boolean => {
-  if (conditionsBlock.any && conditionsBlock.any.length > 0) {
-    return conditionsBlock.any.some((c) => evaluateCondition(source, c));
+  condition: Condition | ConditionGroup,
+  path = "root"
+): { matched: boolean; evaluations: Array<Record<string, unknown>> } => {
+  if (isConditionRule(condition)) {
+    const matched = evaluateCondition(source, condition);
+    return {
+      matched,
+      evaluations: [{
+        type: "rule",
+        path,
+        field: condition.field,
+        operator: condition.operator,
+        expected: condition.value,
+        actual: source[condition.field] ?? null,
+        matched,
+      }],
+    };
   }
-  const conditions = conditionsBlock.all ?? [];
-  return conditions.every((c) => evaluateCondition(source, c));
+
+  const mode: "all" | "any" = condition.any?.length ? "any" : "all";
+  const children = (condition[mode] ?? []) as Array<Condition | ConditionGroup>;
+  if (children.length === 0) {
+    return {
+      matched: true,
+      evaluations: [{ type: "group", path, combinator: mode.toUpperCase(), matched: true, child_count: 0 }],
+    };
+  }
+
+  const childResults = children.map((child, index) => evaluateConditionTree(source, child, `${path}.${mode}[${index}]`));
+  const matched = mode === "any"
+    ? childResults.some((result) => result.matched)
+    : childResults.every((result) => result.matched);
+
+  return {
+    matched,
+    evaluations: [
+      {
+        type: "group",
+        path,
+        combinator: mode.toUpperCase(),
+        matched,
+        child_count: children.length,
+      },
+      ...childResults.flatMap((result) => result.evaluations),
+    ],
+  };
+};
+
+const explainDecision = (matched: boolean, evaluations: Array<Record<string, unknown>>): string => {
+  const failedRule = evaluations.find((entry) => entry.type === "rule" && entry.matched === false);
+  if (matched) {
+    return "Ausgelöst, weil alle notwendigen Bedingungen erfüllt wurden.";
+  }
+  if (failedRule) {
+    return `Nicht ausgelöst, Bedingung ${String(failedRule.path)} war nicht erfüllt.`;
+  }
+  return "Nicht ausgelöst, weil keine Bedingung im Regelblock erfüllt wurde.";
 };
 
 // Feature 7: Rate limiting check
@@ -261,36 +340,114 @@ serve(async (req) => {
 
     activeRunId = run.id;
 
-    // Feature 6: Support both { all: [...] } and { any: [...] } conditions
-    const conditionsBlock = (rule.conditions ?? { all: [] }) as { all?: Condition[]; any?: Condition[] };
+    const conditionsBlock = (rule.conditions ?? { all: [] }) as ConditionGroup;
     const actions = (rule.actions ?? []) as Action[];
+    const workflowVersion = String((rule as { workflow_version?: string }).workflow_version ?? "v1");
+    const entityId = String(sourcePayload.entity_id ?? sourcePayload.record_id ?? sourcePayload.contact_id ?? "unknown");
+    const ownerId = String((sourcePayload.owner_id as string | undefined) ?? (sourcePayload.target_user_id as string | undefined) ?? "unassigned");
 
-    const matches = evaluateConditions(sourcePayload, conditionsBlock);
+    const triggerEvent = {
+      type: "trigger",
+      event: sourcePayload.trigger_event ?? "manual",
+      source: "manual",
+      owner_id: ownerId,
+      payload: maskSensitiveData(sourcePayload),
+      at: new Date().toISOString(),
+    };
+
+    await supabaseAdmin.from("automation_rule_run_steps").insert({
+      run_id: run.id,
+      tenant_id: rule.tenant_id,
+      step_order: 0,
+      step_type: "trigger_event",
+      status: "success",
+      input_payload: maskSensitiveData(sourcePayload),
+      result_payload: {
+        run_log_format: LOG_FORMAT,
+        run_id: run.id,
+        workflow_version: workflowVersion,
+        entity_id: entityId,
+      },
+    });
+
+    const conditionEvaluation = evaluateConditionTree(sourcePayload, conditionsBlock);
+    const matches = conditionEvaluation.matched;
+    const decisionExplanation = explainDecision(matches, conditionEvaluation.evaluations);
+
+    await supabaseAdmin.from("automation_rule_run_steps").insert({
+      run_id: run.id,
+      tenant_id: rule.tenant_id,
+      step_order: 1,
+      step_type: "condition_check",
+      status: matches ? "success" : "skipped",
+      input_payload: { conditions: maskSensitiveData(conditionsBlock) },
+      result_payload: {
+        run_log_format: LOG_FORMAT,
+        run_id: run.id,
+        workflow_version: workflowVersion,
+        entity_id: entityId,
+        matched: matches,
+        explanation: decisionExplanation,
+        evaluations: maskSensitiveData(conditionEvaluation.evaluations),
+      },
+    });
 
     if (!matches) {
       await supabaseAdmin.from("automation_rule_runs").update({
         status: "success",
-        result_payload: { skipped: true, reason: "conditions_not_met" },
+        result_payload: {
+          format: LOG_FORMAT,
+          run_id: run.id,
+          workflow_version: workflowVersion,
+          entity_id: entityId,
+          module: sourcePayload.module ?? "unknown",
+          owner_id: ownerId,
+          timeline: [
+            triggerEvent,
+            {
+              type: "condition",
+              matched: false,
+              explanation: decisionExplanation,
+              evaluations: maskSensitiveData(conditionEvaluation.evaluations),
+              at: new Date().toISOString(),
+            },
+          ],
+          explainability: {
+            why_triggered: null,
+            why_not_triggered: decisionExplanation,
+          },
+          retention: {
+            policy: "default_180_days",
+            delete_after_days: 180,
+          },
+          privacy: {
+            masking: "sensitive_keys_masked",
+            masked_fields_pattern: SENSITIVE_KEY_PATTERN.source,
+          },
+          skipped: true,
+          reason: "conditions_not_met",
+        },
         finished_at: new Date().toISOString(),
       }).eq("id", run.id);
 
-      await supabaseAdmin.from("automation_rule_run_steps").insert({
-        run_id: run.id,
-        tenant_id: rule.tenant_id,
-        step_order: 0,
-        step_type: "condition_check",
-        status: "skipped",
-        input_payload: { conditions: conditionsBlock },
-        result_payload: { matches: false },
-      });
-
-      return new Response(JSON.stringify({ runId: run.id, status: "success", skipped: true }), {
+      return new Response(JSON.stringify({ runId: run.id, status: "success", skipped: true, explanation: decisionExplanation }), {
         status: 200,
         headers: { ...CORS_HEADERS, "Content-Type": "application/json" },
       });
     }
 
-    let stepOrder = 1;
+    const timeline: Array<Record<string, unknown>> = [
+      triggerEvent,
+      {
+        type: "condition",
+        matched: true,
+        explanation: decisionExplanation,
+        evaluations: maskSensitiveData(conditionEvaluation.evaluations),
+        at: new Date().toISOString(),
+      },
+    ];
+
+    let stepOrder = 2;
     for (const action of actions) {
       if (dryRun) {
         await supabaseAdmin.from("automation_rule_run_steps").insert({
@@ -513,6 +670,46 @@ serve(async (req) => {
         }
       }
 
+      if (action.type === "create_approval_request") {
+        const payload = action.payload ?? {};
+        const approverUserId = String(payload.target_user_id ?? "").trim();
+        const approvalPolicy = String(payload.approval_policy ?? "single");
+        const minimumApprovers = Number(payload.approval_minimum_approvers ?? 1);
+        const dueInHours = Number(payload.approval_due_in_hours ?? 24);
+        const approvalDecision = approverUserId ? "pending" : "skipped";
+
+        timeline.push({
+          type: "approval",
+          policy: approvalPolicy,
+          approver_user_id: approverUserId || null,
+          minimum_approvers: minimumApprovers,
+          due_in_hours: dueInHours,
+          decision: approvalDecision,
+          at: new Date().toISOString(),
+        });
+
+        if (!approverUserId) {
+          await supabaseAdmin.from("automation_rule_run_steps").insert({
+            run_id: run.id,
+            tenant_id: rule.tenant_id,
+            step_order: stepOrder,
+            step_type: action.type,
+            status: "skipped",
+            input_payload: maskSensitiveData(action),
+            result_payload: {
+              run_log_format: LOG_FORMAT,
+              run_id: run.id,
+              workflow_version: workflowVersion,
+              entity_id: entityId,
+              decision: approvalDecision,
+              reason: "missing_target_user_id",
+            },
+          });
+          stepOrder += 1;
+          continue;
+        }
+      }
+
       if (action.type === "send_email_template") {
         const payload = action.payload ?? {};
         const templateId = String(payload.template_id ?? "").trim();
@@ -599,13 +796,28 @@ serve(async (req) => {
         }
       }
 
+      timeline.push({
+        type: action.type === "create_approval_request" ? "approval" : "action",
+        action_type: action.type,
+        result: "success",
+        at: new Date().toISOString(),
+      });
+
       await supabaseAdmin.from("automation_rule_run_steps").insert({
         run_id: run.id,
         tenant_id: rule.tenant_id,
         step_order: stepOrder,
         step_type: action.type,
         status: "success",
-        input_payload: action,
+        input_payload: maskSensitiveData(action),
+        result_payload: {
+          run_log_format: LOG_FORMAT,
+          run_id: run.id,
+          workflow_version: workflowVersion,
+          entity_id: entityId,
+          action_type: action.type,
+          dry_run: dryRun,
+        },
       });
       stepOrder += 1;
     }
@@ -613,13 +825,32 @@ serve(async (req) => {
     await supabaseAdmin.from("automation_rule_runs").update({
       status: dryRun ? "dry_run" : "success",
       result_payload: {
+        format: LOG_FORMAT,
+        run_id: run.id,
+        workflow_version: workflowVersion,
+        entity_id: entityId,
+        module: sourcePayload.module ?? "unknown",
+        owner_id: ownerId,
+        timeline,
+        explainability: {
+          why_triggered: decisionExplanation,
+          why_not_triggered: null,
+        },
+        retention: {
+          policy: "default_180_days",
+          delete_after_days: 180,
+        },
+        privacy: {
+          masking: "sensitive_keys_masked",
+          masked_fields_pattern: SENSITIVE_KEY_PATTERN.source,
+        },
         conditions_matched: true,
         action_count: actions.length,
       },
       finished_at: new Date().toISOString(),
     }).eq("id", run.id);
 
-    return new Response(JSON.stringify({ runId: run.id, status: dryRun ? "dry_run" : "success" }), {
+    return new Response(JSON.stringify({ runId: run.id, status: dryRun ? "dry_run" : "success", explanation: decisionExplanation }), {
       status: 200,
       headers: { ...CORS_HEADERS, "Content-Type": "application/json" },
     });

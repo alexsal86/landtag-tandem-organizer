@@ -92,6 +92,8 @@ type RunRow = {
   started_at: string;
   finished_at: string | null;
   error_message: string | null;
+  input_payload?: Record<string, unknown> | null;
+  result_payload?: Record<string, unknown> | null;
 };
 
 type RunStepRow = {
@@ -120,6 +122,10 @@ export function AutomationRulesManager() {
   const [form, setForm] = useState<WizardForm>(DEFAULT_FORM);
   const [wizardOpen, setWizardOpen] = useState(false);
   const [runStatusFilter, setRunStatusFilter] = useState<string>("all");
+  const [runModuleFilter, setRunModuleFilter] = useState<string>("all");
+  const [runOwnerFilter, setRunOwnerFilter] = useState<string>("all");
+  const [runRuleFilter, setRunRuleFilter] = useState<string>("all");
+  const [runTimeFilter, setRunTimeFilter] = useState<string>("all");
   const [automationsPaused, setAutomationsPaused] = useState(false);
   const [togglingPause, setTogglingPause] = useState(false);
   const [versionsRuleId, setVersionsRuleId] = useState<string | null>(null);
@@ -133,10 +139,41 @@ export function AutomationRulesManager() {
   const canToggle = isAdmin || userRole === "mitarbeiter";
 
   const filteredRuns = useMemo(() => {
-    if (runStatusFilter === "all") return runs;
-    if (runStatusFilter === "dry_run") return runs.filter((run) => run.dry_run);
-    return runs.filter((run) => run.status === runStatusFilter && !run.dry_run);
-  }, [runs, runStatusFilter]);
+    return runs.filter((run) => {
+      const statusMatch = runStatusFilter === "all"
+        ? true
+        : runStatusFilter === "dry_run"
+          ? !!run.dry_run
+          : run.status === runStatusFilter && !run.dry_run;
+
+      const moduleValue = String((run.result_payload?.module ?? run.input_payload?.module ?? "unknown"));
+      const ownerValue = String((run.result_payload?.owner_id ?? run.input_payload?.owner_id ?? "unassigned"));
+      const ruleMatch = runRuleFilter === "all" ? true : run.rule_id === runRuleFilter;
+      const moduleMatch = runModuleFilter === "all" ? true : moduleValue === runModuleFilter;
+      const ownerMatch = runOwnerFilter === "all" ? true : ownerValue === runOwnerFilter;
+
+      const now = Date.now();
+      const started = new Date(run.started_at).getTime();
+      const timeMatch = runTimeFilter === "all"
+        ? true
+        : runTimeFilter === "24h"
+          ? now - started <= 24 * 60 * 60 * 1000
+          : runTimeFilter === "7d"
+            ? now - started <= 7 * 24 * 60 * 60 * 1000
+            : now - started <= 30 * 24 * 60 * 60 * 1000;
+
+      return statusMatch && moduleMatch && ownerMatch && ruleMatch && timeMatch;
+    });
+  }, [runs, runStatusFilter, runModuleFilter, runOwnerFilter, runRuleFilter, runTimeFilter]);
+
+  const runModules = useMemo(
+    () => Array.from(new Set(runs.map((run) => String(run.result_payload?.module ?? run.input_payload?.module ?? "unknown")))),
+    [runs],
+  );
+  const runOwners = useMemo(
+    () => Array.from(new Set(runs.map((run) => String(run.result_payload?.owner_id ?? run.input_payload?.owner_id ?? "unassigned")))),
+    [runs],
+  );
 
   // --- Feature: Rule statistics (success rate, avg duration) ---
   const ruleStats = useMemo(() => {
@@ -235,7 +272,7 @@ export function AutomationRulesManager() {
         .order("updated_at", { ascending: false }),
       supabase
         .from("automation_rule_runs")
-        .select("id, rule_id, status, dry_run, trigger_source, started_at, finished_at, error_message")
+        .select("id, rule_id, status, dry_run, trigger_source, started_at, finished_at, error_message, input_payload, result_payload")
         .eq("tenant_id", currentTenant.id)
         .order("started_at", { ascending: false })
         .limit(30),
@@ -778,20 +815,50 @@ export function AutomationRulesManager() {
       {/* Run history */}
       <Card>
         <CardHeader>
-          <div className="flex items-center justify-between gap-3">
+          <div className="space-y-3">
             <CardTitle>Run-Historie (inkl. Dry-Run)</CardTitle>
-            <Select value={runStatusFilter} onValueChange={setRunStatusFilter}>
-              <SelectTrigger className="w-[180px]">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">Alle</SelectItem>
-                <SelectItem value="success">Success</SelectItem>
-                <SelectItem value="failed">Failed</SelectItem>
-                <SelectItem value="running">Running</SelectItem>
-                <SelectItem value="dry_run">Dry-Run</SelectItem>
-              </SelectContent>
-            </Select>
+            <div className="flex flex-wrap items-center gap-2">
+              <Select value={runStatusFilter} onValueChange={setRunStatusFilter}>
+                <SelectTrigger className="w-[160px]"><SelectValue placeholder="Status" /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Status: Alle</SelectItem>
+                  <SelectItem value="success">Success</SelectItem>
+                  <SelectItem value="failed">Failed</SelectItem>
+                  <SelectItem value="running">Running</SelectItem>
+                  <SelectItem value="dry_run">Dry-Run</SelectItem>
+                </SelectContent>
+              </Select>
+              <Select value={runModuleFilter} onValueChange={setRunModuleFilter}>
+                <SelectTrigger className="w-[160px]"><SelectValue placeholder="Modul" /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Modul: Alle</SelectItem>
+                  {runModules.map((module) => (<SelectItem key={module} value={module}>{module}</SelectItem>))}
+                </SelectContent>
+              </Select>
+              <Select value={runOwnerFilter} onValueChange={setRunOwnerFilter}>
+                <SelectTrigger className="w-[180px]"><SelectValue placeholder="Owner" /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Owner: Alle</SelectItem>
+                  {runOwners.map((owner) => (<SelectItem key={owner} value={owner}>{owner}</SelectItem>))}
+                </SelectContent>
+              </Select>
+              <Select value={runRuleFilter} onValueChange={setRunRuleFilter}>
+                <SelectTrigger className="w-[180px]"><SelectValue placeholder="Regel" /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Regel: Alle</SelectItem>
+                  {rules.map((rule) => (<SelectItem key={rule.id} value={rule.id}>{rule.name}</SelectItem>))}
+                </SelectContent>
+              </Select>
+              <Select value={runTimeFilter} onValueChange={setRunTimeFilter}>
+                <SelectTrigger className="w-[140px]"><SelectValue placeholder="Zeit" /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Zeit: Alle</SelectItem>
+                  <SelectItem value="24h">Letzte 24h</SelectItem>
+                  <SelectItem value="7d">Letzte 7 Tage</SelectItem>
+                  <SelectItem value="30d">Letzte 30 Tage</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
           </div>
         </CardHeader>
         <CardContent className="space-y-2">
@@ -823,6 +890,13 @@ export function AutomationRulesManager() {
                     {run.error_message ? (
                       <p className="text-xs text-destructive">Fehler: {run.error_message}</p>
                     ) : null}
+                    {!!run.result_payload?.explainability && (
+                      <div className="text-xs space-y-1 rounded border bg-background p-2">
+                        <p><span className="font-medium">Warum ausgelöst?</span> {String(run.result_payload.explainability?.why_triggered ?? "—")}</p>
+                        <p><span className="font-medium">Warum nicht?</span> {String(run.result_payload.explainability?.why_not_triggered ?? "—")}</p>
+                        <p className="text-muted-foreground">run_id: {String(run.result_payload?.run_id ?? run.id)} · workflow_version: {String(run.result_payload?.workflow_version ?? "v1")} · entity_id: {String(run.result_payload?.entity_id ?? "unknown")}</p>
+                      </div>
+                    )}
                     {(runStepsByRunId[run.id] || []).length === 0 ? (
                       <p className="text-xs text-muted-foreground">Keine Step-Logs vorhanden.</p>
                     ) : (
