@@ -44,6 +44,38 @@ export function DecisionComments({
   const lastReactionNotificationRef = useRef<Map<string, number>>(new Map());
   const visibleCommentIdsRef = useRef<Set<string>>(new Set());
 
+  const loadReactionRowsWithProfiles = useCallback(async (commentIds: string[]) => {
+    if (commentIds.length === 0) return [] as ReactionRow[];
+
+    const { data: reactionRows, error: reactionError } = await supabase
+      .from('task_decision_comment_reactions')
+      .select('comment_id, emoji, user_id')
+      .in('comment_id', commentIds);
+
+    if (reactionError) throw reactionError;
+
+    const reactionUserIds = [...new Set((reactionRows || []).map((row) => row.user_id))];
+    const { data: reactionProfiles, error: reactionProfilesError } = reactionUserIds.length
+      ? await supabase
+          .from('profiles')
+          .select('user_id, display_name')
+          .in('user_id', reactionUserIds)
+      : { data: [], error: null };
+
+    if (reactionProfilesError) throw reactionProfilesError;
+
+    const reactionProfileMap = new Map(
+      (reactionProfiles || []).map((profile) => [profile.user_id, profile]),
+    );
+
+    return (reactionRows || []).map((row) => ({
+      ...row,
+      profile: reactionProfileMap.get(row.user_id)
+        ? { display_name: reactionProfileMap.get(row.user_id)?.display_name ?? null }
+        : null,
+    })) as ReactionRow[];
+  }, []);
+
   const loadComments = useCallback(async () => {
     if (!decisionId) return;
     
@@ -69,14 +101,7 @@ export function DecisionComments({
 
       // Produktentscheidung: Client-seitige Gruppierung für Reaktionen über alle sichtbaren Kommentare
       // (ein Query für alle commentIds, danach Aggregation in Map-Struktur).
-      const { data: reactionRows, error: reactionError } = commentIds.length
-        ? await supabase
-            .from('task_decision_comment_reactions')
-            .select('comment_id, emoji, user_id, profile:profiles(display_name)')
-            .in('comment_id', commentIds)
-        : { data: [], error: null };
-
-      if (reactionError) throw reactionError;
+      const reactionRows = await loadReactionRowsWithProfiles(commentIds);
 
       // Load profiles for all users
       const userIds = [...new Set(data?.map(c => c.user_id) || [])];
@@ -126,7 +151,7 @@ export function DecisionComments({
     } finally {
       setIsLoading(false);
     }
-  }, [decisionId, toast, user?.id]);
+  }, [decisionId, loadReactionRowsWithProfiles, toast, user?.id]);
 
   useEffect(() => {
     if (isOpen && decisionId) {
@@ -296,14 +321,9 @@ export function DecisionComments({
   }, [user?.id]);
 
   const refreshSingleCommentReactions = useCallback(async (commentId: string) => {
-    const { data, error } = await supabase
-      .from('task_decision_comment_reactions')
-      .select('comment_id, emoji, user_id, profile:profiles(display_name)')
-      .eq('comment_id', commentId);
-
-    if (error) throw error;
-    applyReactionEventToComments(commentId, (data ?? []) as ReactionRow[]);
-  }, [applyReactionEventToComments]);
+    const reactionRows = await loadReactionRowsWithProfiles([commentId]);
+    applyReactionEventToComments(commentId, reactionRows);
+  }, [applyReactionEventToComments, loadReactionRowsWithProfiles]);
 
   useEffect(() => {
     if (!isOpen || !decisionId) return;
