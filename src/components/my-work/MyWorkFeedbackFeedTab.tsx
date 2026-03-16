@@ -77,6 +77,7 @@ export function MyWorkFeedbackFeedTab() {
     };
   }, [user?.id, refetch]);
 
+  const getFeedbackTarget = (entry: TeamFeedbackEntry) => {
     if (entry.feedback_context.target.type === 'task') {
       return `/tasks?highlight=${entry.feedback_context.target.id}&feedback_id=${entry.id}&source=mywork-feedbackfeed`;
     }
