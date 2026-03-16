@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useMemo, useState } from 'react';
 import { format } from 'date-fns';
 import { de } from 'date-fns/locale';
 import { useNavigate } from 'react-router-dom';
@@ -12,33 +12,17 @@ import { sanitizeRichHtml } from '@/utils/htmlSanitizer';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
 import { useAuth } from '@/hooks/useAuth';
 import { useTenant } from '@/hooks/useTenant';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
-import { TaskDecisionResponse } from '@/components/task-decisions/TaskDecisionResponse';
 import { debugConsole } from '@/utils/debugConsole';
 
 interface Props {
   data: DashboardData;
 }
 
-interface AppointmentRequestItem {
-  decisionId: string;
-  decisionDescription: string | null;
-  appointmentId: string | null;
-  appointmentTitle: string;
-  appointmentStart: string | null;
-  appointmentLocation: string | null;
-  requester: string | null;
-  responseType: 'yes' | 'no' | 'question' | null;
-  myParticipantId: string | null;
-  myHasResponded: boolean;
-}
 
-const APPOINTMENT_REQUEST_APPOINTMENT_MARKER = 'appointment_request_appointment_id:';
-const APPOINTMENT_REQUEST_DECISION_MARKER = 'appointment_request_decision_id:';
 const APPOINTMENT_REQUEST_TITLE_MARKER = 'appointment_request_title:';
 const APPOINTMENT_REQUEST_START_MARKER = 'appointment_request_start:';
 const APPOINTMENT_REQUEST_LOCATION_MARKER = 'appointment_request_location:';
@@ -54,44 +38,6 @@ const isCurrentlyActive = (apt: { start_time: string; end_time?: string; is_all_
   return start <= now && now < end;
 };
 
-const extractMarkerValue = (description: string | null, marker: string): string | null => {
-  if (!description) return null;
-  const escaped = marker.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-  const match = description.match(new RegExp(`${escaped}(.+)`, 'i'));
-  return match?.[1]?.trim() ?? null;
-};
-
-const getAppointmentIdFromDescription = (description: string | null): string | null => {
-  const raw = extractMarkerValue(description, APPOINTMENT_REQUEST_APPOINTMENT_MARKER);
-  return raw && /^[a-f0-9-]{36}$/i.test(raw) ? raw : null;
-};
-
-const getRequesterFromDescription = (description: string | null): string | null => {
-  return extractMarkerValue(description, APPOINTMENT_REQUEST_REQUESTER_MARKER)
-    ?? extractMarkerValue(description, 'Angefragt von:');
-};
-
-const getRequestedStartFromDescription = (description: string | null): string | null => {
-  const value = extractMarkerValue(description, APPOINTMENT_REQUEST_START_MARKER);
-  if (!value) return null;
-  const parsed = new Date(value);
-  return Number.isNaN(parsed.getTime()) ? null : parsed.toISOString();
-};
-
-const getRequestedTitleFromDescription = (description: string | null): string | null => {
-  return extractMarkerValue(description, APPOINTMENT_REQUEST_TITLE_MARKER);
-};
-
-const getRequestedLocationFromDescription = (description: string | null): string | null => {
-  return extractMarkerValue(description, APPOINTMENT_REQUEST_LOCATION_MARKER);
-};
-
-const responseBadge = (responseType: AppointmentRequestItem['responseType']) => {
-  if (responseType === 'yes') return <Badge className="bg-green-600">Zusage</Badge>;
-  if (responseType === 'no') return <Badge variant="destructive">Absage</Badge>;
-  if (responseType === 'question') return <Badge className="bg-orange-500">Rückfrage</Badge>;
-  return <Badge variant="secondary">Wartet auf Reaktion</Badge>;
-};
 
 export const DashboardAppointments = ({ data }: Props) => {
   const navigate = useNavigate();
@@ -110,243 +56,6 @@ export const DashboardAppointments = ({ data }: Props) => {
   const [requestLocation, setRequestLocation] = useState('');
   const [requestRequester, setRequestRequester] = useState('');
   const [isSubmittingRequest, setIsSubmittingRequest] = useState(false);
-  const [requestsLoading, setRequestsLoading] = useState(false);
-  const [requests, setRequests] = useState<AppointmentRequestItem[]>([]);
-
-  const createApprovedAppointment = useCallback(async (request: AppointmentRequestItem): Promise<string | null> => {
-    if (!user?.id || !currentTenant?.id) return null;
-    if (request.appointmentId) return request.appointmentId;
-    if (request.responseType !== 'yes') return null;
-
-    const startIso = request.appointmentStart;
-    if (!startIso) return null;
-
-    const startDate = new Date(startIso);
-    if (Number.isNaN(startDate.getTime())) return null;
-    const endDate = new Date(startDate.getTime() + 60 * 60 * 1000);
-
-    const decisionMarker = `${APPOINTMENT_REQUEST_DECISION_MARKER}${request.decisionId}`;
-
-    // Idempotency guard: if we already created an appointment for this decision,
-    // reuse it and link it back to the decision description instead of creating a duplicate.
-    const { data: existingLinkedAppointment, error: existingLinkedError } = await supabase
-      .from('appointments')
-      .select('id')
-      .eq('tenant_id', currentTenant.id)
-      .eq('user_id', user.id)
-      .ilike('description', `%${decisionMarker}%`)
-      .order('created_at', { ascending: true })
-      .limit(1)
-      .maybeSingle();
-
-    if (existingLinkedError) {
-      debugConsole.error('Error checking linked appointment for request decision:', existingLinkedError);
-      return null;
-    }
-
-    const ensureDecisionLink = async (appointmentId: string) => {
-      const hasAppointmentMarker = Boolean(getAppointmentIdFromDescription(request.decisionDescription));
-      if (hasAppointmentMarker) return;
-
-      const nextDescription = [
-        request.decisionDescription || '',
-        `${APPOINTMENT_REQUEST_APPOINTMENT_MARKER}${appointmentId}`,
-      ].filter(Boolean).join('\n');
-
-      const { error: linkError } = await supabase
-        .from('task_decisions')
-        .update({ description: nextDescription })
-        .eq('id', request.decisionId);
-
-      if (linkError) {
-        debugConsole.error('Error linking appointment to decision:', linkError);
-      }
-    };
-
-    if (existingLinkedAppointment?.id) {
-      await ensureDecisionLink(existingLinkedAppointment.id);
-      return existingLinkedAppointment.id;
-    }
-
-    const { data: createdAppointment, error: createError } = await supabase
-      .from('appointments')
-      .insert([{
-        title: request.appointmentTitle,
-        description: `Automatisch aus Terminanfrage erstellt.\n${decisionMarker}`,
-        location: request.appointmentLocation,
-        start_time: startDate.toISOString(),
-        end_time: endDate.toISOString(),
-        user_id: user.id,
-        tenant_id: currentTenant.id,
-        is_all_day: false,
-      }])
-      .select('id')
-      .single();
-
-    if (createError || !createdAppointment?.id) {
-      debugConsole.error('Error creating approved appointment:', createError);
-      return null;
-    }
-
-    await ensureDecisionLink(createdAppointment.id);
-
-    return createdAppointment.id;
-  }, [currentTenant?.id, user?.id]);
-
-  const loadAppointmentRequests = useCallback(async () => {
-    if (!user?.id || !currentTenant?.id) return;
-
-    setRequestsLoading(true);
-    try {
-      const { data: decisions, error } = await supabase
-        .from('task_decisions')
-        .select(`
-          id,
-          title,
-          description,
-          response_deadline,
-          task_decision_participants (
-            id,
-            user_id,
-            task_decision_responses (
-              response_type,
-              created_at
-            )
-          )
-        `)
-        .eq('tenant_id', currentTenant.id)
-        .ilike('title', 'Terminanfrage:%')
-        .is('archived_at', null)
-        .order('created_at', { ascending: false })
-        .limit(20);
-
-      if (error) throw error;
-
-      const appointmentIds = Array.from(new Set((decisions || [])
-        .map((decision: any) => getAppointmentIdFromDescription(decision.description))
-        .filter((id): id is string => Boolean(id))));
-
-      let appointmentsById = new Map<string, { title: string; start_time: string; location: string | null }>();
-      if (appointmentIds.length > 0) {
-        const { data: linkedAppointments, error: linkedError } = await supabase
-          .from('appointments')
-          .select('id, title, start_time, location')
-          .eq('tenant_id', currentTenant.id)
-          .in('id', appointmentIds);
-
-        if (linkedError) throw linkedError;
-
-        appointmentsById = new Map((linkedAppointments || []).map((apt) => [
-          apt.id,
-          { title: apt.title, start_time: apt.start_time, location: apt.location },
-        ]));
-      }
-
-      const mapped: AppointmentRequestItem[] = (decisions || []).map((decision: any) => {
-        const participants = decision.task_decision_participants || [];
-        const allResponses = participants
-          .flatMap((participant: any) => participant.task_decision_responses || [])
-          .sort((a: any, b: any) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
-        const latestResponseRaw = allResponses[0]?.response_type || null;
-        const latestResponse = latestResponseRaw === 'yes' || latestResponseRaw === 'no' || latestResponseRaw === 'question'
-          ? latestResponseRaw
-          : null;
-
-        const appointmentId = getAppointmentIdFromDescription(decision.description);
-        const linkedAppointment = appointmentId ? appointmentsById.get(appointmentId) : null;
-        const myParticipant = participants.find((participant: any) => participant.user_id === user.id) || null;
-
-        const requestedStart = getRequestedStartFromDescription(decision.description);
-        const requestedTitle = getRequestedTitleFromDescription(decision.description)
-          || decision.title.replace(/^Terminanfrage:\s*/i, '');
-        const requestedLocation = getRequestedLocationFromDescription(decision.description);
-
-        return {
-          decisionId: decision.id,
-          decisionDescription: decision.description,
-          appointmentId,
-          appointmentTitle: linkedAppointment?.title || requestedTitle,
-          appointmentStart: linkedAppointment?.start_time || requestedStart || decision.response_deadline || null,
-          appointmentLocation: linkedAppointment?.location || requestedLocation || null,
-          requester: getRequesterFromDescription(decision.description),
-          responseType: latestResponse,
-          myParticipantId: myParticipant?.id || null,
-          myHasResponded: Boolean((myParticipant?.task_decision_responses || []).length),
-        };
-      });
-
-      const approvalsWithoutAppointment = mapped.filter((request) => request.responseType === 'yes' && !request.appointmentId);
-      if (approvalsWithoutAppointment.length > 0) {
-        let created = 0;
-        for (const request of approvalsWithoutAppointment) {
-          const createdId = await createApprovedAppointment(request);
-          if (createdId) created += 1;
-        }
-
-        if (created > 0) {
-          await loadAppointmentRequests();
-          return;
-        }
-      }
-
-      setRequests(mapped);
-    } catch (error) {
-      debugConsole.error('Error loading dashboard appointment requests:', error);
-    } finally {
-      setRequestsLoading(false);
-    }
-  }, [createApprovedAppointment, currentTenant?.id, user?.id]);
-
-  useEffect(() => {
-    loadAppointmentRequests();
-  }, [loadAppointmentRequests]);
-
-  const createFollowUpTask = useCallback(async (request: AppointmentRequestItem, responseType?: string) => {
-    if (!responseType || !user?.id || !currentTenant?.id) return;
-
-    const sourceId = `${request.decisionId}:${responseType}`;
-    const { data: existingTask } = await supabase
-      .from('tasks')
-      .select('id')
-      .eq('tenant_id', currentTenant.id)
-      .eq('source_type', 'appointment_request_dashboard_followup')
-      .eq('source_id', sourceId)
-      .maybeSingle();
-
-    if (existingTask?.id) return;
-
-    const baseDescription = `Automatisch aus Terminanfrage erzeugt (${request.appointmentTitle}).`;
-
-    const mapping: Record<string, { title: string; priority: string }> = {
-      yes: { title: `Termin vorbereiten: ${request.appointmentTitle}`, priority: 'high' },
-      no: { title: `Absage/Alternativtermin senden: ${request.appointmentTitle}`, priority: 'medium' },
-      question: { title: `Rückfrage klären: ${request.appointmentTitle}`, priority: 'urgent' },
-    };
-
-    const selected = mapping[responseType];
-    if (!selected) return;
-
-    const { error } = await supabase.from('tasks').insert([{
-      title: selected.title,
-      description: baseDescription,
-      user_id: user.id,
-      tenant_id: currentTenant.id,
-      assigned_to: user.id,
-      category: 'follow-up',
-      status: 'todo',
-      priority: selected.priority,
-      source_type: 'appointment_request_dashboard_followup',
-      source_id: sourceId,
-    }]);
-
-    if (error) {
-      debugConsole.error('Error creating dashboard follow-up task:', error);
-      return;
-    }
-
-    toast({ title: 'Folgeaufgabe erstellt', description: selected.title });
-  }, [currentTenant?.id, toast, user?.id]);
-
   const handleCreateRequest = async () => {
     if (!user?.id || !currentTenant?.id) return;
     if (!requestTitle.trim() || !requestDate) {
@@ -425,7 +134,6 @@ export const DashboardAppointments = ({ data }: Props) => {
       setRequestTime('');
       setRequestLocation('');
       setRequestRequester('');
-      await loadAppointmentRequests();
     } catch (error: any) {
       debugConsole.error('Error creating dashboard appointment request:', error);
       const errorMessage = typeof error?.message === 'string' ? error.message : 'Unbekannter Fehler';
@@ -553,44 +261,6 @@ export const DashboardAppointments = ({ data }: Props) => {
             {isSubmittingRequest ? 'Erstelle…' : 'Terminanfrage anlegen'}
           </Button>
         </div>
-      </div>
-
-      <div className="space-y-2">
-        <h4 className="text-sm font-semibold">Offene/letzte Terminanfragen</h4>
-        {requestsLoading && <p className="text-xs text-muted-foreground">Lade Terminanfragen…</p>}
-        {!requestsLoading && requests.length === 0 && (
-          <p className="text-xs text-muted-foreground">Keine Terminanfragen vorhanden.</p>
-        )}
-        {requests.map((request) => (
-          <div key={request.decisionId} className="rounded border p-2 space-y-2">
-            <div className="flex items-center justify-between gap-2">
-              <div className="min-w-0">
-                <p className="text-sm font-medium truncate">{request.appointmentTitle}</p>
-                <p className="text-xs text-muted-foreground">
-                  {request.appointmentStart ? format(new Date(request.appointmentStart), 'dd.MM.yyyy HH:mm', { locale: de }) : 'ohne Terminzeit'}
-                  {request.appointmentLocation ? ` · ${request.appointmentLocation}` : ''}
-                  {request.requester ? ` · von ${request.requester}` : ''}
-                </p>
-              </div>
-              <div className="flex items-center gap-2">
-                {request.appointmentId && <Badge variant="outline">Termin angelegt</Badge>}
-                {responseBadge(request.responseType)}
-              </div>
-            </div>
-
-            {request.myParticipantId && !request.myHasResponded && (
-              <TaskDecisionResponse
-                decisionId={request.decisionId}
-                participantId={request.myParticipantId}
-                hasResponded={request.myHasResponded}
-                onResponseSubmitted={async (meta) => {
-                  await createFollowUpTask(request, meta?.responseType);
-                  await loadAppointmentRequests();
-                }}
-              />
-            )}
-          </div>
-        ))}
       </div>
 
       {feedbackReminderVisible && (

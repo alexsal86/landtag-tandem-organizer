@@ -32,6 +32,7 @@ import {
   ChevronUp,
   Info,
   CalendarDays,
+  ChevronRight,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { MyWorkDecision, getResponseSummary, getBorderColor, getCustomResponseSummary } from "./types";
@@ -43,6 +44,7 @@ import { useTenant } from "@/hooks/useTenant";
 const APPOINTMENT_REQUEST_TITLE_MARKER = 'appointment_request_title:';
 const APPOINTMENT_REQUEST_START_MARKER = 'appointment_request_start:';
 const APPOINTMENT_REQUEST_REQUESTER_MARKER = 'appointment_request_requester:';
+const APPOINTMENT_REQUEST_APPOINTMENT_MARKER = 'appointment_request_appointment_id:';
 
 interface DayTimelineItem {
   id: string;
@@ -179,6 +181,7 @@ const MyWorkDecisionCardInner = ({
   const isAppointmentRequest = decision.title.toLowerCase().startsWith('terminanfrage:');
   const requestedTitle = extractMarkerValue(decision.description, APPOINTMENT_REQUEST_TITLE_MARKER) || decision.title.replace(/^Terminanfrage:\s*/i, '');
   const requestedStartIso = extractMarkerValue(decision.description, APPOINTMENT_REQUEST_START_MARKER);
+  const appointmentId = extractMarkerValue(decision.description, APPOINTMENT_REQUEST_APPOINTMENT_MARKER);
   const requestedBy = extractMarkerValue(decision.description, APPOINTMENT_REQUEST_REQUESTER_MARKER) || 'Ein Mitarbeiter';
   const requestedStart = requestedStartIso ? new Date(requestedStartIso) : null;
   const isRequestedStartValid = Boolean(requestedStart && !Number.isNaN(requestedStart.getTime()));
@@ -258,10 +261,15 @@ const MyWorkDecisionCardInner = ({
         { key: 'pending', label: 'Ausstehend', count: customSummary.pending, textClass: 'text-muted-foreground' },
       ]
     : [
-        { key: 'yes', label: 'Ja', count: summary.yesCount, textClass: 'text-green-600' },
-        { key: 'no', label: 'Nein', count: summary.noCount, textClass: 'text-red-600' },
+        { key: 'yes', label: isAppointmentRequest ? 'Zusage' : 'Ja', count: summary.yesCount, textClass: 'text-green-600' },
+        { key: 'no', label: isAppointmentRequest ? 'Absage' : 'Nein', count: summary.noCount, textClass: 'text-red-600' },
         { key: 'question', label: 'Rückfrage', count: summary.questionCount, textClass: 'text-orange-600' },
       ];
+
+  const appointmentLink = useMemo(() => {
+    if (!appointmentId || !isRequestedStartValid || !requestedStart) return null;
+    return `/calendar?date=${format(requestedStart, 'yyyy-MM-dd')}&event=${appointmentId}`;
+  }, [appointmentId, isRequestedStartValid, requestedStart]);
 
   const showInlineSummaryCounts = !decision.isParticipant || decision.hasResponded;
 
@@ -745,6 +753,17 @@ const MyWorkDecisionCardInner = ({
                       </div>
                     )}
                   </>
+                )}
+
+                {isAppointmentRequest && appointmentLink && (
+                  <a
+                    href={appointmentLink}
+                    className="inline-flex w-fit items-center gap-1.5 text-sm font-semibold text-primary hover:underline"
+                    onClick={(event) => event.stopPropagation()}
+                  >
+                    Termin angelegt
+                    <ChevronRight className="h-3.5 w-3.5" />
+                  </a>
                 )}
 
                 <div className="flex items-center justify-between gap-3">
