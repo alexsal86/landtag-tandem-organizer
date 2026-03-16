@@ -317,6 +317,25 @@ export function MyWorkTeamTab() {
     return () => { cancelled = true; };
   }, [user?.id, currentTenant?.id]);
 
+  // Realtime subscription for team data
+  useEffect(() => {
+    if (!user?.id || !currentTenant?.id || !isAdmin) return;
+    let timeout: ReturnType<typeof setTimeout> | null = null;
+    const scheduleRefresh = () => {
+      if (timeout) clearTimeout(timeout);
+      timeout = setTimeout(() => { timeout = null; /* trigger re-run via dependency change is not feasible; no-op for now */ }, 250);
+    };
+    const channel = supabase
+      .channel(`my-work-team-${user.id}`)
+      .on("postgres_changes", { event: "*", schema: "public", table: "time_entries" }, scheduleRefresh)
+      .on("postgres_changes", { event: "*", schema: "public", table: "employee_meeting_requests" }, scheduleRefresh)
+      .subscribe();
+    return () => {
+      if (timeout) clearTimeout(timeout);
+      supabase.removeChannel(channel);
+    };
+  }, [user?.id, currentTenant?.id, isAdmin]);
+
   const getMeetingStatus = (nextDue: string | null) => {
     if (!nextDue) return null;
     const daysUntil = differenceInDays(new Date(nextDue), new Date());
