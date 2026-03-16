@@ -1,6 +1,7 @@
 import { useState, type ReactNode } from 'react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
 import { CalendarDays, StickyNote, ListTodo, Trash, Cake, Scale, Briefcase } from 'lucide-react';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { UpcomingAppointmentsSection } from './UpcomingAppointmentsSection';
@@ -32,6 +33,9 @@ interface SystemAgendaItemProps {
   allProfiles?: Profile[];
   agendaNumber?: string;
   compact?: boolean;
+  title?: string;
+  canEditTitle?: boolean;
+  onTitleChange?: (value: string) => void;
 }
 
 function ProfileBadge({ userId, profiles }: { userId?: string; profiles?: Profile[] }) {
@@ -68,20 +72,11 @@ export function SystemAgendaItem({
   defaultCollapsed = false,
   agendaNumber,
   compact = false,
+  title,
+  canEditTitle = false,
+  onTitleChange,
 }: SystemAgendaItemProps) {
   const [upcomingAppointmentsCount, setUpcomingAppointmentsCount] = useState(0);
-
-  const getBorderColor = () => {
-    switch (systemType) {
-      case 'upcoming_appointments': return 'border-l-blue-500';
-      case 'quick_notes': return 'border-l-amber-500';
-      case 'tasks': return 'border-l-green-500';
-      case 'birthdays': return 'border-l-pink-500';
-      case 'decisions': return 'border-l-violet-500';
-      case 'case_items': return 'border-l-teal-500';
-      default: return 'border-l-muted';
-    }
-  };
 
   const getIcon = () => {
     switch (systemType) {
@@ -119,7 +114,11 @@ export function SystemAgendaItem({
   };
 
   const renderCompactItem = (label: string, icon: ReactNode, idx: number, ownerLabel?: string | null, itemType?: string, itemId?: string) => (
-    <li key={`${label}-${idx}`}
+    <li
+      key={itemId || `${itemType || 'system'}-${idx}`}
+      id={itemId ? `system-entry-${itemType}-${itemId}` : undefined}
+      data-system-entry-id={itemId || undefined}
+      data-system-entry-type={itemType || undefined}
       className={cn("rounded px-2 py-1.5 text-xs", onItemClick && itemId ? "cursor-pointer hover:bg-muted/60 transition-colors" : "bg-muted/40")}
       onClick={() => onItemClick && itemType && itemId && onItemClick(itemType, itemId)}
     >
@@ -136,12 +135,20 @@ export function SystemAgendaItem({
     const count = getCountBadge();
     return (
       <div className="py-2 px-3 pb-1">
-        <div className="flex items-center justify-between">
-          <h3 className="text-base font-semibold flex items-center gap-2">
+        <div className="flex items-center justify-between gap-2">
+          <div className="flex items-center gap-2 min-w-0 flex-1">
             {agendaNumber && <span className="text-muted-foreground font-medium min-w-[1.75rem] text-right">{agendaNumber}</span>}
             {getIcon()}
-            {getTitle()}
-          </h3>
+            {canEditTitle ? (
+              <Input
+                value={title ?? getTitle()}
+                onChange={(e) => onTitleChange?.(e.target.value)}
+                className="h-8"
+              />
+            ) : (
+              <h3 className="text-base font-semibold truncate">{title || getTitle()}</h3>
+            )}
+          </div>
           <div className="flex items-center gap-1">
             {count !== undefined && <Badge variant="secondary" className="text-xs">{count}</Badge>}
             {onDelete && (
@@ -157,7 +164,7 @@ export function SystemAgendaItem({
 
   if (systemType === 'upcoming_appointments') {
     return (
-      <div className={cn('border-l-4 border-b border-border/60 hover:bg-muted/30 transition-colors', getBorderColor(), className)}>
+      <div className={cn('border-b border-border/60 hover:bg-muted/30 transition-colors', className)}>
         {renderHeader()}
         <div className="px-3 pb-2">
           <UpcomingAppointmentsSection
@@ -177,7 +184,7 @@ export function SystemAgendaItem({
 
   if (systemType === 'quick_notes') {
     return (
-      <div className={cn('border-l-4 border-b border-border/60 hover:bg-muted/30 transition-colors', getBorderColor(), className)}>
+      <div className={cn('border-b border-border/60 hover:bg-muted/30 transition-colors', className)}>
         {renderHeader()}
         <div className="px-3 pb-2">
           {linkedQuickNotes.length > 0 ? (
@@ -205,7 +212,7 @@ export function SystemAgendaItem({
 
   if (systemType === 'tasks') {
     return (
-      <div className={cn('border-l-4 border-b border-border/60 hover:bg-muted/30 transition-colors', getBorderColor(), className)}>
+      <div className={cn('border-b border-border/60 hover:bg-muted/30 transition-colors', className)}>
         {renderHeader()}
         <div className="px-3 pb-2">
           {linkedTasks.length > 0 ? (
@@ -233,7 +240,7 @@ export function SystemAgendaItem({
 
   if (systemType === 'decisions') {
     return (
-      <div className={cn('border-l-4 border-b border-border/60 hover:bg-muted/30 transition-colors', getBorderColor(), className)}>
+      <div className={cn('border-b border-border/60 hover:bg-muted/30 transition-colors', className)}>
         {renderHeader()}
         <div className="px-3 pb-2">
           {!compact && (
@@ -268,7 +275,7 @@ export function SystemAgendaItem({
 
   if (systemType === 'case_items') {
     return (
-      <div className={cn('border-l-4 border-b border-border/60 hover:bg-muted/30 transition-colors', getBorderColor(), className)}>
+      <div className={cn('border-b border-border/60 hover:bg-muted/30 transition-colors', className)}>
         {renderHeader()}
         <div className="px-3 pb-2">
           {linkedCaseItems.length > 0 ? (
