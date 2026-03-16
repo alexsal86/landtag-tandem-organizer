@@ -366,7 +366,7 @@ export const DashboardAppointments = ({ data }: Props) => {
           tenant_id: currentTenant.id,
           response_deadline: requestedStartIso,
           status: 'open',
-          visible_to_all: false,
+          visible_to_all: true,
           response_options: [
             { key: 'yes', label: 'Zusage', color: 'green', icon: 'check', order: 1 },
             { key: 'no', label: 'Absage', color: 'red', icon: 'x', order: 2 },

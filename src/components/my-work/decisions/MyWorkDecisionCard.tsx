@@ -42,6 +42,7 @@ import { useTenant } from "@/hooks/useTenant";
 
 const APPOINTMENT_REQUEST_TITLE_MARKER = 'appointment_request_title:';
 const APPOINTMENT_REQUEST_START_MARKER = 'appointment_request_start:';
+const APPOINTMENT_REQUEST_REQUESTER_MARKER = 'appointment_request_requester:';
 
 interface DayTimelineItem {
   id: string;
@@ -178,24 +179,54 @@ const MyWorkDecisionCardInner = ({
   const isAppointmentRequest = decision.title.toLowerCase().startsWith('terminanfrage:');
   const requestedTitle = extractMarkerValue(decision.description, APPOINTMENT_REQUEST_TITLE_MARKER) || decision.title.replace(/^Terminanfrage:\s*/i, '');
   const requestedStartIso = extractMarkerValue(decision.description, APPOINTMENT_REQUEST_START_MARKER);
+  const requestedBy = extractMarkerValue(decision.description, APPOINTMENT_REQUEST_REQUESTER_MARKER) || 'Ein Mitarbeiter';
   const requestedStart = requestedStartIso ? new Date(requestedStartIso) : null;
   const isRequestedStartValid = Boolean(requestedStart && !Number.isNaN(requestedStart.getTime()));
   const shouldShowTimeline = isAppointmentRequest && isRequestedStartValid && (isSchedulePinnedOpen || isScheduleHoverOpen);
+
+  const appointmentRequestNarrative = useMemo(() => {
+    if (!isAppointmentRequest || !isRequestedStartValid || !requestedStart) {
+      return null;
+    }
+
+    return `${requestedBy} fragt an, ob du den Termin „${requestedTitle}“ am ${format(requestedStart, 'dd.MM.yyyy', { locale: de })} um ${format(requestedStart, 'HH:mm', { locale: de })} Uhr zusagen möchtest.`;
+  }, [isAppointmentRequest, isRequestedStartValid, requestedBy, requestedStart, requestedTitle]);
 
   const summary = getResponseSummary(decision.participants);
   const isArchiving = archivingDecisionId === decision.id;
   const isDeleting = deletingDecisionId === decision.id;
   const isBusy = isArchiving || isDeleting;
 
-  const plainDescription = useMemo(() => {
+  const displayDescription = useMemo(() => {
     if (!decision.description) return '';
+    if (!isAppointmentRequest) return decision.description;
 
     return decision.description
+      .split('\n')
+      .filter((line) => {
+        const trimmed = line.trim().toLowerCase();
+        return !(
+          trimmed.startsWith(APPOINTMENT_REQUEST_TITLE_MARKER)
+          || trimmed.startsWith(APPOINTMENT_REQUEST_START_MARKER)
+          || trimmed.startsWith(APPOINTMENT_REQUEST_REQUESTER_MARKER)
+          || trimmed.startsWith('appointment_request_location:')
+          || trimmed.startsWith('appointment_request_target_deputy:')
+          || trimmed.startsWith('appointment_request_appointment_id:')
+        );
+      })
+      .join('\n')
+      .trim();
+  }, [decision.description, isAppointmentRequest]);
+
+  const plainDescription = useMemo(() => {
+    if (!displayDescription) return '';
+
+    return displayDescription
       .replace(/<[^>]*>/g, ' ')
       .replace(/&nbsp;/gi, ' ')
       .replace(/\s+/g, ' ')
       .trim();
-  }, [decision.description]);
+  }, [displayDescription]);
   const previewCharacterLimit = 1240;
   const hasLongDescription = plainDescription.length > previewCharacterLimit;
 
@@ -377,17 +408,15 @@ const MyWorkDecisionCardInner = ({
 
       setIsTimelineLoading(true);
       try {
-        const dayStart = new Date(requestedStart);
-        dayStart.setHours(0, 0, 0, 0);
-        const dayEnd = new Date(requestedStart);
-        dayEnd.setHours(23, 59, 59, 999);
+        const contextStart = new Date(requestedStart.getTime() - 3 * 60 * 60 * 1000);
+        const contextEnd = new Date(requestedStart.getTime() + 3 * 60 * 60 * 1000);
 
         const { data, error } = await supabase
           .from('appointments')
           .select('id, title, start_time, end_time')
           .eq('tenant_id', currentTenant.id)
-          .gte('start_time', dayStart.toISOString())
-          .lte('start_time', dayEnd.toISOString())
+          .gte('start_time', contextStart.toISOString())
+          .lte('start_time', contextEnd.toISOString())
           .order('start_time', { ascending: true });
 
         if (error) throw error;
@@ -557,7 +586,7 @@ const MyWorkDecisionCardInner = ({
                 <div className="mb-3 rounded-md border border-blue-200 bg-blue-50/60 p-2">
                   <div className="mb-1.5 flex items-center gap-1.5 text-xs font-semibold text-blue-900">
                     <CalendarDays className="h-3.5 w-3.5" />
-                    Tageskontext {requestedStart ? format(requestedStart, 'EEEE, dd.MM.yyyy', { locale: de }) : ''}
+                    Tageskontext ±3 Stunden ({requestedStart ? format(requestedStart, 'dd.MM.yyyy HH:mm', { locale: de }) : ''} Uhr)
                   </div>
                   {isTimelineLoading ? (
                     <p className="text-xs text-muted-foreground">Lade Termine…</p>
@@ -589,9 +618,12 @@ const MyWorkDecisionCardInner = ({
 
               {decision.description && (
                 <div onClick={(e) => e.stopPropagation()}>
+                  {appointmentRequestNarrative && (
+                    <p className="mb-3 text-sm leading-relaxed text-muted-foreground">{appointmentRequestNarrative}</p>
+                  )}
                   <div className={cn('relative', !detailsExpanded && hasLongDescription && 'max-h-[26rem] overflow-hidden')}>
                     <RichTextDisplay
-                      content={decision.description}
+                      content={displayDescription}
                       className="leading-relaxed [&_p:last-child]:mb-0"
                     />
                     {!detailsExpanded && hasLongDescription && (
