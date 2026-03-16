@@ -332,13 +332,39 @@ export const DashboardAppointments = ({ data }: Props) => {
         .select('user_id')
         .eq('tenant_id', currentTenant.id)
         .eq('is_active', true)
-        .eq('role', 'abgeordneter');
+        .ilike('role', 'abgeordneter');
 
       if (deputyError) throw deputyError;
 
-      const deputyIds = Array.from(new Set((deputyMemberships || []).map((item) => item.user_id)));
+      let deputyIds = Array.from(new Set((deputyMemberships || []).map((item) => item.user_id)));
+
+      // Fallback: in einigen Tenants liegt die App-Rolle nur in user_roles statt in user_tenant_memberships.role
       if (deputyIds.length === 0) {
-        toast({ title: 'Keine Abgeordneten gefunden', description: 'Es wurde keine aktive Rolle "abgeordneter" gefunden.', variant: 'destructive' });
+        const { data: activeMemberships, error: membershipError } = await supabase
+          .from('user_tenant_memberships')
+          .select('user_id')
+          .eq('tenant_id', currentTenant.id)
+          .eq('is_active', true);
+
+        if (membershipError) throw membershipError;
+
+        const activeUserIds = Array.from(new Set((activeMemberships || []).map((item) => item.user_id)));
+
+        if (activeUserIds.length > 0) {
+          const { data: deputyRoles, error: deputyRolesError } = await supabase
+            .from('user_roles')
+            .select('user_id')
+            .ilike('role', 'abgeordneter')
+            .in('user_id', activeUserIds);
+
+          if (deputyRolesError) throw deputyRolesError;
+
+          deputyIds = Array.from(new Set((deputyRoles || []).map((item) => item.user_id)));
+        }
+      }
+
+      if (deputyIds.length === 0) {
+        toast({ title: 'Keine Abgeordneten gefunden', description: 'Es wurde keine aktive Rolle "abgeordneter" gefunden (weder in Mitgliedschaften noch in Rollen).', variant: 'destructive' });
         return;
       }
 
