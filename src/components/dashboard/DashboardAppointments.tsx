@@ -42,6 +42,7 @@ const APPOINTMENT_REQUEST_TITLE_MARKER = 'appointment_request_title:';
 const APPOINTMENT_REQUEST_START_MARKER = 'appointment_request_start:';
 const APPOINTMENT_REQUEST_LOCATION_MARKER = 'appointment_request_location:';
 const APPOINTMENT_REQUEST_REQUESTER_MARKER = 'appointment_request_requester:';
+const APPOINTMENT_REQUEST_TARGET_DEPUTY_MARKER = 'appointment_request_target_deputy:';
 
 /** Check if an appointment is currently happening */
 const isCurrentlyActive = (apt: { start_time: string; end_time?: string; is_all_day: boolean }) => {
@@ -341,6 +342,8 @@ export const DashboardAppointments = ({ data }: Props) => {
         return;
       }
 
+      const targetDeputyId = deputyIds.sort()[0];
+
       const { data: decision, error: decisionError } = await supabase
         .from('task_decisions')
         .insert([{
@@ -349,6 +352,7 @@ export const DashboardAppointments = ({ data }: Props) => {
             'Bitte reagieren: Zusage, Absage oder Rückfrage.',
             `${APPOINTMENT_REQUEST_TITLE_MARKER}${requestTitle.trim()}`,
             `${APPOINTMENT_REQUEST_START_MARKER}${requestedStartIso}`,
+            `${APPOINTMENT_REQUEST_TARGET_DEPUTY_MARKER}${targetDeputyId}`,
             requestRequester.trim() ? `${APPOINTMENT_REQUEST_REQUESTER_MARKER}${requestRequester.trim()}` : null,
             requestLocation.trim() ? `${APPOINTMENT_REQUEST_LOCATION_MARKER}${requestLocation.trim()}` : null,
           ].filter(Boolean).join('\n'),
@@ -370,14 +374,14 @@ export const DashboardAppointments = ({ data }: Props) => {
 
       const { error: participantError } = await supabase
         .from('task_decision_participants')
-        .insert(deputyIds.map((deputyId) => ({
+        .insert([{
           decision_id: decision.id,
-          user_id: deputyId,
-        })));
+          user_id: targetDeputyId,
+        }]);
 
       if (participantError) throw participantError;
 
-      toast({ title: 'Terminanfrage erstellt', description: 'Termin wird erst nach Zustimmung angelegt.' });
+      toast({ title: 'Terminanfrage erstellt', description: 'Anfrage wurde an den Abgeordneten gesendet. Termin wird erst nach Zustimmung angelegt.' });
       setRequestTitle('');
       setRequestDate('');
       setRequestTime('');
