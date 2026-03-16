@@ -22,8 +22,21 @@ interface Props {
   data: DashboardData;
 }
 
+interface AppointmentRequestItem {
+  decisionId: string;
+  decisionDescription: string | null;
+  appointmentId: string | null;
+  appointmentTitle: string;
+  appointmentStart: string | null;
+  appointmentLocation: string | null;
+  requester: string | null;
+  responseType: 'yes' | 'no' | 'question' | null;
+  myParticipantId: string | null;
+  myHasResponded: boolean;
+}
 
 const APPOINTMENT_REQUEST_APPOINTMENT_MARKER = 'appointment_request_appointment_id:';
+
 const APPOINTMENT_REQUEST_DECISION_MARKER = 'appointment_request_decision_id:';
 const APPOINTMENT_REQUEST_TITLE_MARKER = 'appointment_request_title:';
 const APPOINTMENT_REQUEST_START_MARKER = 'appointment_request_start:';
