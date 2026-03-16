@@ -44,7 +44,7 @@ interface CommentThreadProps {
   onReply: (parentId: string, content: string) => Promise<void>;
   onEdit: (commentId: string, content: string) => Promise<void>;
   onDelete: (commentId: string, hasReplies: boolean) => Promise<void>;
-  onToggleReaction: (commentId: string, emoji: string, currentlyReacted: boolean) => Promise<void>;
+  onToggleReaction?: (commentId: string, emoji: string, currentlyReacted: boolean) => Promise<void>;
   currentUserId?: string;
   isLastReply?: boolean;
   highlightedCommentId?: string | null;
@@ -313,7 +313,7 @@ export function CommentThread({
                       type="button"
                       variant="outline"
                       size="sm"
-                      onClick={() => onToggleReaction(comment.id, reaction.emoji, reaction.currentUserReacted)}
+                      onClick={() => onToggleReaction?.(comment.id, reaction.emoji, reaction.currentUserReacted)}
                       className={cn(
                         "h-7 px-2 text-[11px] gap-1 rounded-full min-w-10",
                         reaction.currentUserReacted && "border-primary bg-primary/10 text-primary",
@@ -346,7 +346,7 @@ export function CommentThread({
                           type="button"
                           variant="outline"
                           size="sm"
-                          onClick={() => onToggleReaction(comment.id, reaction.emoji, reaction.currentUserReacted)}
+                          onClick={() => onToggleReaction?.(comment.id, reaction.emoji, reaction.currentUserReacted)}
                           className={cn(
                             "h-7 px-2 text-[11px] gap-1 rounded-full min-w-10",
                             reaction.currentUserReacted && "border-primary bg-primary/10 text-primary",
@@ -369,7 +369,7 @@ export function CommentThread({
                   type="button"
                   variant="ghost"
                   size="sm"
-                  onClick={() => onToggleReaction(comment.id, emoji, false)}
+                  onClick={() => onToggleReaction?.(comment.id, emoji, false)}
                   className="h-7 px-2 text-[11px] rounded-full"
                   disabled={isSubmitting}
                   aria-label={`Schnellreaktion ${emoji} hinzufügen`}
@@ -385,7 +385,7 @@ export function CommentThread({
                 triggerClassName="h-6 w-6 text-[10px]"
                 onEmojiSelect={(emoji) => {
                   const currentUserReacted = reactionMap.get(emoji)?.currentUserReacted ?? false;
-                  onToggleReaction(comment.id, emoji, currentUserReacted);
+                  onToggleReaction?.(comment.id, emoji, currentUserReacted);
                 }}
               />
               </div>

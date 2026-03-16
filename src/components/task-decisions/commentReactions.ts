@@ -64,8 +64,8 @@ export const sortReactionEntries = (
       return b.count - a.count;
     }
 
-    const aOrder = order.get(a.emoji) ?? Number.MAX_SAFE_INTEGER;
-    const bOrder = order.get(b.emoji) ?? Number.MAX_SAFE_INTEGER;
+    const aOrder = order.get(a.emoji as typeof DEFAULT_REACTION_ORDER[number]) ?? Number.MAX_SAFE_INTEGER;
+    const bOrder = order.get(b.emoji as typeof DEFAULT_REACTION_ORDER[number]) ?? Number.MAX_SAFE_INTEGER;
     if (aOrder !== bOrder) {
       return aOrder - bOrder;
     }
