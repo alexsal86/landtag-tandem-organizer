@@ -46,6 +46,7 @@ const APPOINTMENT_REQUEST_TITLE_MARKER = 'appointment_request_title:';
 const APPOINTMENT_REQUEST_START_MARKER = 'appointment_request_start:';
 const APPOINTMENT_REQUEST_REQUESTER_MARKER = 'appointment_request_requester:';
 const APPOINTMENT_REQUEST_APPOINTMENT_MARKER = 'appointment_request_appointment_id:';
+const APPOINTMENT_REQUEST_TARGET_DEPUTY_MARKER = 'appointment_request_target_deputy:';
 
 interface DayTimelineItem {
   id: string;
@@ -69,6 +70,35 @@ const extractMarkerValue = (description: string | null, marker: string): string 
   const escaped = marker.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
   const match = description.match(new RegExp(`${escaped}(.+)`, 'i'));
   return match?.[1]?.trim() ?? null;
+};
+
+
+const deriveDeputyReference = (value: string | null) => {
+  const fallbackName = 'Name des Abgeordneten';
+  const cleaned = (value || fallbackName)
+    .replace(/\bMdL\b/gi, '')
+    .replace(/\s+/g, ' ')
+    .trim();
+
+  const isFemale = /\bfrau\b/i.test(cleaned);
+  const nominative = isFemale ? 'Frau' : 'Herr';
+  const accusative = isFemale ? 'Frau' : 'Herrn';
+  const dative = isFemale ? 'Frau' : 'Herrn';
+
+  const nameWithoutSalutation = cleaned
+    .replace(/^\s*(Herrn?|Frau)\s+/i, '')
+    .trim();
+
+  const fullName = nameWithoutSalutation || fallbackName;
+  const lastName = fullName.split(' ').filter(Boolean).at(-1) || fallbackName;
+
+  return {
+    nominative,
+    accusative,
+    dative,
+    fullName,
+    lastName,
+  };
 };
 
 interface MyWorkDecisionCardProps {
@@ -193,6 +223,7 @@ const MyWorkDecisionCardInner = ({
   const requestedStartIso = extractMarkerValue(decision.description, APPOINTMENT_REQUEST_START_MARKER);
   const appointmentId = extractMarkerValue(decision.description, APPOINTMENT_REQUEST_APPOINTMENT_MARKER);
   const requestedBy = extractMarkerValue(decision.description, APPOINTMENT_REQUEST_REQUESTER_MARKER) || 'Ein Mitarbeiter';
+  const targetDeputy = extractMarkerValue(decision.description, APPOINTMENT_REQUEST_TARGET_DEPUTY_MARKER);
   const requestedStart = requestedStartIso ? new Date(requestedStartIso) : null;
   const isRequestedStartValid = Boolean(requestedStart && !Number.isNaN(requestedStart.getTime()));
   const shouldShowTimeline = isAppointmentRequest && isRequestedStartValid && (isSchedulePinnedOpen || isScheduleHoverOpen);
@@ -308,7 +339,7 @@ const MyWorkDecisionCardInner = ({
           || trimmed.startsWith(APPOINTMENT_REQUEST_START_MARKER)
           || trimmed.startsWith(APPOINTMENT_REQUEST_REQUESTER_MARKER)
           || trimmed.startsWith('appointment_request_location:')
-          || trimmed.startsWith('appointment_request_target_deputy:')
+          || trimmed.startsWith(APPOINTMENT_REQUEST_TARGET_DEPUTY_MARKER)
           || trimmed.startsWith('appointment_request_appointment_id:')
         );
       })
@@ -394,21 +425,22 @@ const MyWorkDecisionCardInner = ({
       subject: requestedTitle,
       dateLabel,
       timeLabel,
-      requester: requestedBy,
+      deputy: deriveDeputyReference(targetDeputy),
     };
-  }, [isAppointmentRequest, isRequestedStartValid, requestedBy, requestedStart, requestedTitle]);
+  }, [isAppointmentRequest, isRequestedStartValid, requestedStart, requestedTitle, targetDeputy]);
 
   const approvalMailText = useMemo(() => {
     if (!appointmentMailBase) return null;
 
     return [
-      `Betreff: Zusage zum Termin „${appointmentMailBase.subject}“`,
+      `Zusage zum Termin „${appointmentMailBase.subject}“ von ${appointmentMailBase.deputy.dative} ${appointmentMailBase.deputy.fullName} MdL`,
       '',
-      `Hallo ${appointmentMailBase.requester},`,
+      'Sehr geehrte Damen und Herren,',
       '',
-      `vielen Dank für die Anfrage. Der Termin am ${appointmentMailBase.dateLabel} um ${appointmentMailBase.timeLabel} Uhr ist zugesagt und wurde eingeplant.`,
+      `haben Sie recht herzlichen Dank für ihre Anfrage an ${appointmentMailBase.deputy.accusative} ${appointmentMailBase.deputy.lastName}.`,
+      `Sehr gerne nimmt ${appointmentMailBase.deputy.nominative} ${appointmentMailBase.deputy.lastName} den Termin am ${appointmentMailBase.dateLabel} um ${appointmentMailBase.timeLabel} Uhr an.`,
       '',
-      'Freundliche Grüße',
+      'Mit freundlichen Grüßen',
     ].join('\n');
   }, [appointmentMailBase]);
 
@@ -416,15 +448,16 @@ const MyWorkDecisionCardInner = ({
     if (!appointmentMailBase) return null;
 
     return [
-      `Betreff: Rückmeldung zum Termin „${appointmentMailBase.subject}“`,
+      `Rückmeldung zum Termin „${appointmentMailBase.subject}“ von ${appointmentMailBase.deputy.dative} ${appointmentMailBase.deputy.fullName} MdL`,
       '',
-      `Hallo ${appointmentMailBase.requester},`,
+      'Sehr geehrte Damen und Herren',
       '',
-      `vielen Dank für die Anfrage. Leider kann der Termin am ${appointmentMailBase.dateLabel} um ${appointmentMailBase.timeLabel} Uhr nicht zugesagt werden.`,
+      `haben Sie recht herzlichen Dank für ihre Anfrage an ${appointmentMailBase.deputy.accusative} ${appointmentMailBase.deputy.lastName}.`,
+      `Leider kann ${appointmentMailBase.deputy.nominative} ${appointmentMailBase.deputy.lastName} MdL den Termin am ${appointmentMailBase.dateLabel} um ${appointmentMailBase.timeLabel} Uhr nicht persönlich wahrnehmen.`,
       '',
-      'Bitte schlagen Sie gerne einen Alternativtermin vor.',
+      'Wir bitten dies daher zu entschuldigen und freuen uns auf weitere Einladungen ihrerseits.',
       '',
-      'Freundliche Grüße',
+      'Mit freundlichen Grüßen',
     ].join('\n');
   }, [appointmentMailBase]);
 
@@ -955,10 +988,10 @@ const MyWorkDecisionCardInner = ({
 
                 {isAppointmentRequest && (
                   <div className="space-y-2">
-                    {appointmentLink && (
+                    {appointmentLink && winningResponse?.key === 'yes' && (
                       <a
                         href={appointmentLink}
-                        className="inline-flex w-fit items-center gap-1.5 text-xs font-medium text-muted-foreground hover:text-foreground hover:underline"
+                        className="inline-flex w-fit items-center gap-1.5 text-sm font-semibold text-foreground hover:underline"
                         onClick={(event) => event.stopPropagation()}
                       >
                         Zum Termin
@@ -966,7 +999,7 @@ const MyWorkDecisionCardInner = ({
                       </a>
                     )}
 
-                    <div className="flex flex-wrap gap-2">
+                    {winningResponse?.key === 'yes' && (
                       <Button
                         type="button"
                         variant="outline"
@@ -983,6 +1016,9 @@ const MyWorkDecisionCardInner = ({
                         <Copy className="h-3.5 w-3.5 mr-1" />
                         Zusage-Mail kopieren
                       </Button>
+                    )}
+
+                    {winningResponse?.key === 'no' && (
                       <Button
                         type="button"
                         variant="outline"
@@ -999,7 +1035,7 @@ const MyWorkDecisionCardInner = ({
                         <Copy className="h-3.5 w-3.5 mr-1" />
                         Absage-Mail kopieren
                       </Button>
-                    </div>
+                    )}
                   </div>
                 )}
 
