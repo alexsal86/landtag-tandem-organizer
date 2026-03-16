@@ -286,6 +286,79 @@ export const TaskDecisionResponse = ({
           .eq('navigation_context', 'decisions');
       }
 
+      // Auto-create appointment when approving a Terminanfrage
+      if (responseType === 'yes') {
+        try {
+          const { data: decisionData } = await supabase
+            .from('task_decisions')
+            .select('title, description, created_by')
+            .eq('id', decisionId)
+            .single();
+
+          if (decisionData?.title?.startsWith('Terminanfrage:')) {
+            const desc = decisionData.description || '';
+            const extractMarker = (marker: string): string | null => {
+              const line = desc.split('\n').find((l: string) => l.startsWith(marker));
+              return line ? line.slice(marker.length).trim() || null : null;
+            };
+
+            const appointmentTitle = extractMarker('appointment_request_title:')
+              || decisionData.title.replace(/^Terminanfrage:\s*/i, '');
+            const appointmentStart = extractMarker('appointment_request_start:');
+            const appointmentLocation = extractMarker('appointment_request_location:');
+            const existingAppointmentId = extractMarker('appointment_request_appointment_id:');
+
+            if (!existingAppointmentId && appointmentStart) {
+              const currentUser = (await supabase.auth.getUser()).data.user;
+              if (currentUser) {
+                const { data: tenantData } = await supabase
+                  .from('user_tenant_memberships')
+                  .select('tenant_id')
+                  .eq('user_id', currentUser.id)
+                  .eq('is_active', true)
+                  .limit(1)
+                  .single();
+
+                if (tenantData) {
+                  const startDate = new Date(appointmentStart);
+                  const endDate = new Date(startDate.getTime() + 60 * 60 * 1000);
+
+                  const { data: createdApt } = await supabase
+                    .from('appointments')
+                    .insert([{
+                      title: appointmentTitle,
+                      description: `Automatisch aus Terminanfrage erstellt.\nappointment_request_decision_id:${decisionId}`,
+                      location: appointmentLocation,
+                      start_time: startDate.toISOString(),
+                      end_time: endDate.toISOString(),
+                      user_id: currentUser.id,
+                      tenant_id: tenantData.tenant_id,
+                      is_all_day: false,
+                    }])
+                    .select('id')
+                    .single();
+
+                  if (createdApt?.id) {
+                    // Link appointment back to decision
+                    const nextDescription = [
+                      desc,
+                      `appointment_request_appointment_id:${createdApt.id}`,
+                    ].join('\n');
+
+                    await supabase
+                      .from('task_decisions')
+                      .update({ description: nextDescription })
+                      .eq('id', decisionId);
+                  }
+                }
+              }
+            }
+          }
+        } catch (appointmentError) {
+          debugConsole.error('Error auto-creating appointment from Terminanfrage:', appointmentError);
+        }
+      }
+
       toast({
         title: "Erfolgreich",
         description: "Ihre Antwort wurde gespeichert.",
