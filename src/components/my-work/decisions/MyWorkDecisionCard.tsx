@@ -33,6 +33,7 @@ import {
   Info,
   CalendarDays,
   ChevronRight,
+  Copy,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { MyWorkDecision, getResponseSummary, getBorderColor, getCustomResponseSummary } from "./types";
@@ -45,6 +46,7 @@ const APPOINTMENT_REQUEST_TITLE_MARKER = 'appointment_request_title:';
 const APPOINTMENT_REQUEST_START_MARKER = 'appointment_request_start:';
 const APPOINTMENT_REQUEST_REQUESTER_MARKER = 'appointment_request_requester:';
 const APPOINTMENT_REQUEST_APPOINTMENT_MARKER = 'appointment_request_appointment_id:';
+const APPOINTMENT_REQUEST_TARGET_DEPUTY_MARKER = 'appointment_request_target_deputy:';
 
 interface DayTimelineItem {
   id: string;
@@ -59,6 +61,35 @@ const extractMarkerValue = (description: string | null, marker: string): string 
   const escaped = marker.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
   const match = description.match(new RegExp(`${escaped}(.+)`, 'i'));
   return match?.[1]?.trim() ?? null;
+};
+
+
+const deriveDeputyReference = (value: string | null) => {
+  const fallbackName = 'Name des Abgeordneten';
+  const cleaned = (value || fallbackName)
+    .replace(/\bMdL\b/gi, '')
+    .replace(/\s+/g, ' ')
+    .trim();
+
+  const isFemale = /\bfrau\b/i.test(cleaned);
+  const nominative = isFemale ? 'Frau' : 'Herr';
+  const accusative = isFemale ? 'Frau' : 'Herrn';
+  const dative = isFemale ? 'Frau' : 'Herrn';
+
+  const nameWithoutSalutation = cleaned
+    .replace(/^\s*(Herrn?|Frau)\s+/i, '')
+    .trim();
+
+  const fullName = nameWithoutSalutation || fallbackName;
+  const lastName = fullName.split(' ').filter(Boolean).at(-1) || fallbackName;
+
+  return {
+    nominative,
+    accusative,
+    dative,
+    fullName,
+    lastName,
+  };
 };
 
 interface MyWorkDecisionCardProps {
@@ -183,6 +214,7 @@ const MyWorkDecisionCardInner = ({
   const requestedStartIso = extractMarkerValue(decision.description, APPOINTMENT_REQUEST_START_MARKER);
   const appointmentId = extractMarkerValue(decision.description, APPOINTMENT_REQUEST_APPOINTMENT_MARKER);
   const requestedBy = extractMarkerValue(decision.description, APPOINTMENT_REQUEST_REQUESTER_MARKER) || 'Ein Mitarbeiter';
+  const targetDeputy = extractMarkerValue(decision.description, APPOINTMENT_REQUEST_TARGET_DEPUTY_MARKER);
   const requestedStart = requestedStartIso ? new Date(requestedStartIso) : null;
   const isRequestedStartValid = Boolean(requestedStart && !Number.isNaN(requestedStart.getTime()));
   const shouldShowTimeline = isAppointmentRequest && isRequestedStartValid && (isSchedulePinnedOpen || isScheduleHoverOpen);
@@ -236,7 +268,7 @@ const MyWorkDecisionCardInner = ({
           || trimmed.startsWith(APPOINTMENT_REQUEST_START_MARKER)
           || trimmed.startsWith(APPOINTMENT_REQUEST_REQUESTER_MARKER)
           || trimmed.startsWith('appointment_request_location:')
-          || trimmed.startsWith('appointment_request_target_deputy:')
+          || trimmed.startsWith(APPOINTMENT_REQUEST_TARGET_DEPUTY_MARKER)
           || trimmed.startsWith('appointment_request_appointment_id:')
         );
       })
@@ -307,10 +339,73 @@ const MyWorkDecisionCardInner = ({
     if (!winner || winner.key === 'question') return null;
 
     return {
+      key: winner.key,
       label: winner.label,
       textClass: winner.textClass,
     };
   }, [summary.pending, summary.total, summaryItems]);
+
+  const appointmentMailBase = useMemo(() => {
+    if (!isAppointmentRequest || !isRequestedStartValid || !requestedStart) return null;
+
+    const dateLabel = format(requestedStart, 'dd.MM.yyyy', { locale: de });
+    const timeLabel = format(requestedStart, 'HH:mm', { locale: de });
+
+    return {
+      subject: requestedTitle,
+      dateLabel,
+      timeLabel,
+      deputy: deriveDeputyReference(targetDeputy),
+    };
+  }, [isAppointmentRequest, isRequestedStartValid, requestedStart, requestedTitle, targetDeputy]);
+
+  const approvalMailText = useMemo(() => {
+    if (!appointmentMailBase) return null;
+
+    return [
+      `Zusage zum Termin „${appointmentMailBase.subject}“ von ${appointmentMailBase.deputy.dative} ${appointmentMailBase.deputy.fullName} MdL`,
+      '',
+      'Sehr geehrte Damen und Herren,',
+      '',
+      `haben Sie recht herzlichen Dank für ihre Anfrage an ${appointmentMailBase.deputy.accusative} ${appointmentMailBase.deputy.lastName}.`,
+      `Sehr gerne nimmt ${appointmentMailBase.deputy.nominative} ${appointmentMailBase.deputy.lastName} den Termin am ${appointmentMailBase.dateLabel} um ${appointmentMailBase.timeLabel} Uhr an.`,
+      '',
+      'Mit freundlichen Grüßen',
+    ].join('\n');
+  }, [appointmentMailBase]);
+
+  const rejectionMailText = useMemo(() => {
+    if (!appointmentMailBase) return null;
+
+    return [
+      `Rückmeldung zum Termin „${appointmentMailBase.subject}“ von ${appointmentMailBase.deputy.dative} ${appointmentMailBase.deputy.fullName} MdL`,
+      '',
+      'Sehr geehrte Damen und Herren',
+      '',
+      `haben Sie recht herzlichen Dank für ihre Anfrage an ${appointmentMailBase.deputy.accusative} ${appointmentMailBase.deputy.lastName}.`,
+      `Leider kann ${appointmentMailBase.deputy.nominative} ${appointmentMailBase.deputy.lastName} MdL den Termin am ${appointmentMailBase.dateLabel} um ${appointmentMailBase.timeLabel} Uhr nicht persönlich wahrnehmen.`,
+      '',
+      'Wir bitten dies daher zu entschuldigen und freuen uns auf weitere Einladungen ihrerseits.',
+      '',
+      'Mit freundlichen Grüßen',
+    ].join('\n');
+  }, [appointmentMailBase]);
+
+  const copyMailTemplate = async (text: string, type: 'Zusage' | 'Absage') => {
+    try {
+      await navigator.clipboard.writeText(text);
+      toast({
+        title: `${type}-Mail kopiert`,
+        description: `Der Text für die ${type.toLowerCase()} wurde in die Zwischenablage kopiert.`,
+      });
+    } catch {
+      toast({
+        title: 'Kopieren fehlgeschlagen',
+        description: 'Der Mailtext konnte nicht kopiert werden.',
+        variant: 'destructive',
+      });
+    }
+  };
 
 
   const promptColorClasses = getPromptColorClasses(commentPromptColor);
@@ -786,8 +881,58 @@ const MyWorkDecisionCardInner = ({
                 {(winningResponse || showInlineSummaryCounts) && (
                   <>
                     {winningResponse && (
-                      <div className={cn('text-lg font-extrabold', winningResponse.textClass)}>
-                        Ergebnis: {winningResponse.label}
+                      <div className="flex flex-wrap items-center gap-2">
+                        <div className={cn('text-lg font-extrabold', winningResponse.textClass)}>
+                          Ergebnis: {winningResponse.label}
+                        </div>
+
+                        {isAppointmentRequest && winningResponse.key === 'yes' && appointmentLink && (
+                          <>
+                            <a
+                              href={appointmentLink}
+                              className="inline-flex items-center gap-1.5 text-sm font-semibold text-foreground hover:underline"
+                              onClick={(event) => event.stopPropagation()}
+                            >
+                              Zum Termin
+                              <ChevronRight className="h-3.5 w-3.5" />
+                            </a>
+                            <Button
+                              type="button"
+                              variant="outline"
+                              size="sm"
+                              className="h-7 px-2 text-xs"
+                              onClick={(event) => {
+                                event.stopPropagation();
+                                if (approvalMailText) {
+                                  void copyMailTemplate(approvalMailText, 'Zusage');
+                                }
+                              }}
+                              disabled={!approvalMailText}
+                            >
+                              <Copy className="h-3.5 w-3.5 mr-1" />
+                              Zusage-Mail kopieren
+                            </Button>
+                          </>
+                        )}
+
+                        {isAppointmentRequest && winningResponse.key === 'no' && (
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            className="h-7 px-2 text-xs"
+                            onClick={(event) => {
+                              event.stopPropagation();
+                              if (rejectionMailText) {
+                                void copyMailTemplate(rejectionMailText, 'Absage');
+                              }
+                            }}
+                            disabled={!rejectionMailText}
+                          >
+                            <Copy className="h-3.5 w-3.5 mr-1" />
+                            Absage-Mail kopieren
+                          </Button>
+                        )}
                       </div>
                     )}
                     {showInlineSummaryCounts && (
@@ -802,17 +947,6 @@ const MyWorkDecisionCardInner = ({
                       </div>
                     )}
                   </>
-                )}
-
-                {isAppointmentRequest && appointmentLink && (
-                  <a
-                    href={appointmentLink}
-                    className="inline-flex w-fit items-center gap-1.5 text-sm font-semibold text-primary hover:underline"
-                    onClick={(event) => event.stopPropagation()}
-                  >
-                    Termin angelegt
-                    <ChevronRight className="h-3.5 w-3.5" />
-                  </a>
                 )}
 
                 <div className="flex items-center justify-between gap-3">
