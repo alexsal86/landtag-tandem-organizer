@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { format } from 'date-fns';
 import { de } from 'date-fns/locale';
 import { useNavigate } from 'react-router-dom';
@@ -22,7 +22,22 @@ interface Props {
   data: DashboardData;
 }
 
+interface AppointmentRequestItem {
+  decisionId: string;
+  decisionDescription: string | null;
+  appointmentId: string | null;
+  appointmentTitle: string;
+  appointmentStart: string | null;
+  appointmentLocation: string | null;
+  requester: string | null;
+  responseType: 'yes' | 'no' | 'question' | null;
+  myParticipantId: string | null;
+  myHasResponded: boolean;
+}
 
+const APPOINTMENT_REQUEST_APPOINTMENT_MARKER = 'appointment_request_appointment_id:';
+
+const APPOINTMENT_REQUEST_DECISION_MARKER = 'appointment_request_decision_id:';
 const APPOINTMENT_REQUEST_TITLE_MARKER = 'appointment_request_title:';
 const APPOINTMENT_REQUEST_START_MARKER = 'appointment_request_start:';
 const APPOINTMENT_REQUEST_LOCATION_MARKER = 'appointment_request_location:';
@@ -37,6 +52,27 @@ const isCurrentlyActive = (apt: { start_time: string; end_time?: string; is_all_
   const end = apt.end_time ? new Date(apt.end_time) : new Date(start.getTime() + 3600000);
   return start <= now && now < end;
 };
+
+const extractMarkerValue = (description: string | null | undefined, marker: string): string | null => {
+  if (!description) return null;
+  const line = description.split('\n').find(l => l.startsWith(marker));
+  return line ? line.slice(marker.length).trim() || null : null;
+};
+
+const getAppointmentIdFromDescription = (description: string | null | undefined): string | null =>
+  extractMarkerValue(description, APPOINTMENT_REQUEST_APPOINTMENT_MARKER);
+
+const getRequestedStartFromDescription = (description: string | null | undefined): string | null =>
+  extractMarkerValue(description, APPOINTMENT_REQUEST_START_MARKER);
+
+const getRequestedTitleFromDescription = (description: string | null | undefined): string | null =>
+  extractMarkerValue(description, APPOINTMENT_REQUEST_TITLE_MARKER);
+
+const getRequestedLocationFromDescription = (description: string | null | undefined): string | null =>
+  extractMarkerValue(description, APPOINTMENT_REQUEST_LOCATION_MARKER);
+
+const getRequesterFromDescription = (description: string | null | undefined): string | null =>
+  extractMarkerValue(description, APPOINTMENT_REQUEST_REQUESTER_MARKER);
 
 
 export const DashboardAppointments = ({ data }: Props) => {
