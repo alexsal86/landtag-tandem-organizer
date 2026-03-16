@@ -33,6 +33,7 @@ import {
   Info,
   CalendarDays,
   ChevronRight,
+  Copy,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { MyWorkDecision, getResponseSummary, getBorderColor, getCustomResponseSummary } from "./types";
@@ -307,10 +308,70 @@ const MyWorkDecisionCardInner = ({
     if (!winner || winner.key === 'question') return null;
 
     return {
+      key: winner.key,
       label: winner.label,
-      textClass: winner.textClass,
     };
   }, [summary.pending, summary.total, summaryItems]);
+
+  const appointmentMailBase = useMemo(() => {
+    if (!isAppointmentRequest || !isRequestedStartValid || !requestedStart) return null;
+
+    const dateLabel = format(requestedStart, 'dd.MM.yyyy', { locale: de });
+    const timeLabel = format(requestedStart, 'HH:mm', { locale: de });
+
+    return {
+      subject: requestedTitle,
+      dateLabel,
+      timeLabel,
+      requester: requestedBy,
+    };
+  }, [isAppointmentRequest, isRequestedStartValid, requestedBy, requestedStart, requestedTitle]);
+
+  const approvalMailText = useMemo(() => {
+    if (!appointmentMailBase) return null;
+
+    return [
+      `Betreff: Zusage zum Termin „${appointmentMailBase.subject}“`,
+      '',
+      `Hallo ${appointmentMailBase.requester},`,
+      '',
+      `vielen Dank für die Anfrage. Der Termin am ${appointmentMailBase.dateLabel} um ${appointmentMailBase.timeLabel} Uhr ist zugesagt und wurde eingeplant.`,
+      '',
+      'Freundliche Grüße',
+    ].join('\n');
+  }, [appointmentMailBase]);
+
+  const rejectionMailText = useMemo(() => {
+    if (!appointmentMailBase) return null;
+
+    return [
+      `Betreff: Rückmeldung zum Termin „${appointmentMailBase.subject}“`,
+      '',
+      `Hallo ${appointmentMailBase.requester},`,
+      '',
+      `vielen Dank für die Anfrage. Leider kann der Termin am ${appointmentMailBase.dateLabel} um ${appointmentMailBase.timeLabel} Uhr nicht zugesagt werden.`,
+      '',
+      'Bitte schlagen Sie gerne einen Alternativtermin vor.',
+      '',
+      'Freundliche Grüße',
+    ].join('\n');
+  }, [appointmentMailBase]);
+
+  const copyMailTemplate = async (text: string, type: 'Zusage' | 'Absage') => {
+    try {
+      await navigator.clipboard.writeText(text);
+      toast({
+        title: `${type}-Mail kopiert`,
+        description: `Der Text für die ${type.toLowerCase()} wurde in die Zwischenablage kopiert.`,
+      });
+    } catch {
+      toast({
+        title: 'Kopieren fehlgeschlagen',
+        description: 'Der Mailtext konnte nicht kopiert werden.',
+        variant: 'destructive',
+      });
+    }
+  };
 
 
   const promptColorClasses = getPromptColorClasses(commentPromptColor);
@@ -786,8 +847,9 @@ const MyWorkDecisionCardInner = ({
                 {(winningResponse || showInlineSummaryCounts) && (
                   <>
                     {winningResponse && (
-                      <div className={cn('text-lg font-extrabold', winningResponse.textClass)}>
+                      <div className="text-lg font-extrabold text-foreground">
                         Ergebnis: {winningResponse.label}
+                        {isAppointmentRequest && winningResponse.key === 'yes' && appointmentLink ? ' – Termin angelegt' : ''}
                       </div>
                     )}
                     {showInlineSummaryCounts && (
@@ -804,15 +866,54 @@ const MyWorkDecisionCardInner = ({
                   </>
                 )}
 
-                {isAppointmentRequest && appointmentLink && (
-                  <a
-                    href={appointmentLink}
-                    className="inline-flex w-fit items-center gap-1.5 text-sm font-semibold text-primary hover:underline"
-                    onClick={(event) => event.stopPropagation()}
-                  >
-                    Termin angelegt
-                    <ChevronRight className="h-3.5 w-3.5" />
-                  </a>
+                {isAppointmentRequest && (
+                  <div className="space-y-2">
+                    {appointmentLink && (
+                      <a
+                        href={appointmentLink}
+                        className="inline-flex w-fit items-center gap-1.5 text-xs font-medium text-muted-foreground hover:text-foreground hover:underline"
+                        onClick={(event) => event.stopPropagation()}
+                      >
+                        Zum Termin
+                        <ChevronRight className="h-3.5 w-3.5" />
+                      </a>
+                    )}
+
+                    <div className="flex flex-wrap gap-2">
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        className="h-7 px-2 text-xs"
+                        onClick={(event) => {
+                          event.stopPropagation();
+                          if (approvalMailText) {
+                            void copyMailTemplate(approvalMailText, 'Zusage');
+                          }
+                        }}
+                        disabled={!approvalMailText}
+                      >
+                        <Copy className="h-3.5 w-3.5 mr-1" />
+                        Zusage-Mail kopieren
+                      </Button>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        className="h-7 px-2 text-xs"
+                        onClick={(event) => {
+                          event.stopPropagation();
+                          if (rejectionMailText) {
+                            void copyMailTemplate(rejectionMailText, 'Absage');
+                          }
+                        }}
+                        disabled={!rejectionMailText}
+                      >
+                        <Copy className="h-3.5 w-3.5 mr-1" />
+                        Absage-Mail kopieren
+                      </Button>
+                    </div>
+                  </div>
                 )}
 
                 <div className="flex items-center justify-between gap-3">
