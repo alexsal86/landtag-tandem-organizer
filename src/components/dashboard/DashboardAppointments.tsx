@@ -38,6 +38,7 @@ interface AppointmentRequestItem {
 }
 
 const APPOINTMENT_REQUEST_APPOINTMENT_MARKER = 'appointment_request_appointment_id:';
+const APPOINTMENT_REQUEST_DECISION_MARKER = 'appointment_request_decision_id:';
 const APPOINTMENT_REQUEST_TITLE_MARKER = 'appointment_request_title:';
 const APPOINTMENT_REQUEST_START_MARKER = 'appointment_request_start:';
 const APPOINTMENT_REQUEST_LOCATION_MARKER = 'appointment_request_location:';
@@ -124,10 +125,55 @@ export const DashboardAppointments = ({ data }: Props) => {
     if (Number.isNaN(startDate.getTime())) return null;
     const endDate = new Date(startDate.getTime() + 60 * 60 * 1000);
 
+    const decisionMarker = `${APPOINTMENT_REQUEST_DECISION_MARKER}${request.decisionId}`;
+
+    // Idempotency guard: if we already created an appointment for this decision,
+    // reuse it and link it back to the decision description instead of creating a duplicate.
+    const { data: existingLinkedAppointment, error: existingLinkedError } = await supabase
+      .from('appointments')
+      .select('id')
+      .eq('tenant_id', currentTenant.id)
+      .eq('user_id', user.id)
+      .ilike('description', `%${decisionMarker}%`)
+      .order('created_at', { ascending: true })
+      .limit(1)
+      .maybeSingle();
+
+    if (existingLinkedError) {
+      debugConsole.error('Error checking linked appointment for request decision:', existingLinkedError);
+      // Fallback: do not block appointment creation when the idempotency lookup fails.
+      // Otherwise a transient lookup/RLS error would prevent creating any appointment after approval.
+    }
+
+    const ensureDecisionLink = async (appointmentId: string) => {
+      const hasAppointmentMarker = Boolean(getAppointmentIdFromDescription(request.decisionDescription));
+      if (hasAppointmentMarker) return;
+
+      const nextDescription = [
+        request.decisionDescription || '',
+        `${APPOINTMENT_REQUEST_APPOINTMENT_MARKER}${appointmentId}`,
+      ].filter(Boolean).join('\n');
+
+      const { error: linkError } = await supabase
+        .from('task_decisions')
+        .update({ description: nextDescription })
+        .eq('id', request.decisionId);
+
+      if (linkError) {
+        debugConsole.error('Error linking appointment to decision:', linkError);
+      }
+    };
+
+    if (existingLinkedAppointment?.id) {
+      await ensureDecisionLink(existingLinkedAppointment.id);
+      return existingLinkedAppointment.id;
+    }
+
     const { data: createdAppointment, error: createError } = await supabase
       .from('appointments')
       .insert([{
         title: request.appointmentTitle,
+        description: `Automatisch aus Terminanfrage erstellt.\n${decisionMarker}`,
         location: request.appointmentLocation,
         start_time: startDate.toISOString(),
         end_time: endDate.toISOString(),
@@ -143,20 +189,7 @@ export const DashboardAppointments = ({ data }: Props) => {
       return null;
     }
 
-    const nextDescription = [
-      request.decisionDescription || '',
-      `${APPOINTMENT_REQUEST_APPOINTMENT_MARKER}${createdAppointment.id}`,
-    ].filter(Boolean).join('\n');
-
-    const { error: updateError } = await supabase
-      .from('task_decisions')
-      .update({ description: nextDescription })
-      .eq('id', request.decisionId);
-
-    if (updateError) {
-      debugConsole.error('Error linking approved appointment to decision:', updateError);
-      return null;
-    }
+    await ensureDecisionLink(createdAppointment.id);
 
     return createdAppointment.id;
   }, [currentTenant?.id, user?.id]);
