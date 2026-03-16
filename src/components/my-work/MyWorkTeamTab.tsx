@@ -316,7 +316,7 @@ export function MyWorkTeamTab() {
 
     void run();
     return () => { cancelled = true; };
-  }, [user?.id, currentTenant?.id]);
+  }, [user?.id, currentTenant?.id, reloadTrigger]);
 
   // Realtime subscription for team data
   useEffect(() => {
