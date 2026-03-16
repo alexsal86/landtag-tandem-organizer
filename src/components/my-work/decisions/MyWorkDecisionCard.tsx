@@ -534,67 +534,8 @@ const MyWorkDecisionCardInner = ({
     }
   };
 
-  const appointmentMailBase = useMemo(() => {
-    if (!isAppointmentRequest || !isRequestedStartValid || !requestedStart) return null;
 
-    const dateLabel = format(requestedStart, 'dd.MM.yyyy', { locale: de });
-    const timeLabel = format(requestedStart, 'HH:mm', { locale: de });
 
-    return {
-      subject: requestedTitle,
-      dateLabel,
-      timeLabel,
-      deputy: deriveDeputyReference(targetDeputy),
-    };
-  }, [isAppointmentRequest, isRequestedStartValid, requestedStart, requestedTitle, targetDeputy]);
-
-  const approvalMailText = useMemo(() => {
-    if (!appointmentMailBase) return null;
-
-    return [
-      `Zusage zum Termin „${appointmentMailBase.subject}“ von ${appointmentMailBase.deputy.dative} ${appointmentMailBase.deputy.fullName} MdL`,
-      '',
-      'Sehr geehrte Damen und Herren,',
-      '',
-      `haben Sie recht herzlichen Dank für ihre Anfrage an ${appointmentMailBase.deputy.accusative} ${appointmentMailBase.deputy.lastName}.`,
-      `Sehr gerne nimmt ${appointmentMailBase.deputy.nominative} ${appointmentMailBase.deputy.lastName} den Termin am ${appointmentMailBase.dateLabel} um ${appointmentMailBase.timeLabel} Uhr an.`,
-      '',
-      'Mit freundlichen Grüßen',
-    ].join('\n');
-  }, [appointmentMailBase]);
-
-  const rejectionMailText = useMemo(() => {
-    if (!appointmentMailBase) return null;
-
-    return [
-      `Rückmeldung zum Termin „${appointmentMailBase.subject}“ von ${appointmentMailBase.deputy.dative} ${appointmentMailBase.deputy.fullName} MdL`,
-      '',
-      'Sehr geehrte Damen und Herren',
-      '',
-      `haben Sie recht herzlichen Dank für ihre Anfrage an ${appointmentMailBase.deputy.accusative} ${appointmentMailBase.deputy.lastName}.`,
-      `Leider kann ${appointmentMailBase.deputy.nominative} ${appointmentMailBase.deputy.lastName} MdL den Termin am ${appointmentMailBase.dateLabel} um ${appointmentMailBase.timeLabel} Uhr nicht persönlich wahrnehmen.`,
-      '',
-      'Wir bitten dies daher zu entschuldigen und freuen uns auf weitere Einladungen ihrerseits.',
-      '',
-      'Mit freundlichen Grüßen',
-    ].join('\n');
-  }, [appointmentMailBase]);
-
-  const copyMailTemplate = async (text: string, type: 'Zusage' | 'Absage') => {
-    try {
-      await navigator.clipboard.writeText(text);
-      toast({
-        title: `${type}-Mail kopiert`,
-        description: `Der Text für die ${type.toLowerCase()} wurde in die Zwischenablage kopiert.`,
-      });
-    } catch {
-      toast({
-        title: 'Kopieren fehlgeschlagen',
-        description: 'Der Mailtext konnte nicht kopiert werden.',
-        variant: 'destructive',
-      });
-    }
-  };
 
 
   const promptColorClasses = getPromptColorClasses(commentPromptColor);
