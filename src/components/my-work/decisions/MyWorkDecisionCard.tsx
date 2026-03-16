@@ -1138,38 +1138,40 @@ const MyWorkDecisionCardInner = ({
                         )}
 
                         {isAppointmentRequest && winningResponse.key === 'no' && (
-                          <Button
-                            type="button"
-                            variant="outline"
-                            size="sm"
-                            className="h-7 px-2 text-xs"
-                            onClick={(event) => {
-                              event.stopPropagation();
-                              if (rejectionMailText) {
-                                void copyMailTemplate(rejectionMailText, 'Absage');
-                              }
-                            }}
-                            disabled={!rejectionMailText}
-                          >
-                            <Copy className="h-3.5 w-3.5 mr-1" />
-                            Absage-Mail
-                          </Button>
-                          <Button
-                            type="button"
-                            variant="outline"
-                            size="sm"
-                            className="h-7 px-2 text-xs"
-                            onClick={(event) => {
-                              event.stopPropagation();
-                              if (rejectionMailto) {
-                                openMailLink(rejectionMailto);
-                              }
-                            }}
-                            disabled={!rejectionMailto}
-                          >
-                            <Mail className="h-3.5 w-3.5 mr-1" />
-                            Mail öffnen
-                          </Button>
+                          <>
+                            <Button
+                              type="button"
+                              variant="outline"
+                              size="sm"
+                              className="h-7 px-2 text-xs"
+                              onClick={(event) => {
+                                event.stopPropagation();
+                                if (rejectionMailText) {
+                                  void copyMailTemplate(rejectionMailText, 'Absage');
+                                }
+                              }}
+                              disabled={!rejectionMailText}
+                            >
+                              <Copy className="h-3.5 w-3.5 mr-1" />
+                              Absage-Mail
+                            </Button>
+                            <Button
+                              type="button"
+                              variant="outline"
+                              size="sm"
+                              className="h-7 px-2 text-xs"
+                              onClick={(event) => {
+                                event.stopPropagation();
+                                if (rejectionMailto) {
+                                  openMailLink(rejectionMailto);
+                                }
+                              }}
+                              disabled={!rejectionMailto}
+                            >
+                              <Mail className="h-3.5 w-3.5 mr-1" />
+                              Mail öffnen
+                            </Button>
+                          </>
                         )}
                       </div>
                     )}
