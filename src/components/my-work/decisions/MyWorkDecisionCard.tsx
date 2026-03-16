@@ -90,7 +90,8 @@ const deriveDeputyReference = (value: string | null) => {
     .trim();
 
   const fullName = nameWithoutSalutation || fallbackName;
-  const lastName = fullName.split(' ').filter(Boolean).at(-1) || fallbackName;
+  const parts = fullName.split(' ').filter(Boolean);
+  const lastName = parts[parts.length - 1] || fallbackName;
 
   return {
     nominative,
