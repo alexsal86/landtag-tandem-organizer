@@ -107,6 +107,7 @@ export function MyWorkTeamTab() {
   const [userRole, setUserRole] = useState("");
   const [teamMembers, setTeamMembers] = useState<TeamMember[]>([]);
   const [loading, setLoading] = useState(true);
+  const [reloadTrigger, setReloadTrigger] = useState(0);
 
   useEffect(() => {
     const userId = user?.id;
