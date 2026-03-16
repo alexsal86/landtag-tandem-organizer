@@ -224,6 +224,7 @@ const MyWorkDecisionCardInner = ({
   const appointmentId = extractMarkerValue(decision.description, APPOINTMENT_REQUEST_APPOINTMENT_MARKER);
   const requestedBy = extractMarkerValue(decision.description, APPOINTMENT_REQUEST_REQUESTER_MARKER) || 'Ein Mitarbeiter';
   const targetDeputy = extractMarkerValue(decision.description, APPOINTMENT_REQUEST_TARGET_DEPUTY_MARKER);
+  const [resolvedDeputyName, setResolvedDeputyName] = useState<string | null>(null);
   const requestedStart = requestedStartIso ? new Date(requestedStartIso) : null;
   const isRequestedStartValid = Boolean(requestedStart && !Number.isNaN(requestedStart.getTime()));
   const shouldShowTimeline = isAppointmentRequest && isRequestedStartValid && (isSchedulePinnedOpen || isScheduleHoverOpen);
@@ -409,11 +410,129 @@ const MyWorkDecisionCardInner = ({
     const winner = sorted[0];
     if (!winner || winner.key === 'question') return null;
 
+    const normalizedTextClass = isAppointmentRequest
+      ? winner.key === 'yes'
+        ? 'text-green-600'
+        : winner.key === 'no'
+          ? 'text-red-600'
+          : winner.textClass
+      : winner.textClass;
+
     return {
       key: winner.key,
       label: winner.label,
+      textClass: normalizedTextClass,
     };
-  }, [summary.pending, summary.total, summaryItems]);
+  }, [isAppointmentRequest, summary.pending, summary.total, summaryItems]);
+
+  useEffect(() => {
+    let isMounted = true;
+
+    const resolveDeputyName = async () => {
+      if (!targetDeputy) {
+        if (isMounted) setResolvedDeputyName(null);
+        return;
+      }
+
+      const looksLikeUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(targetDeputy);
+      if (!looksLikeUuid) {
+        if (isMounted) setResolvedDeputyName(targetDeputy);
+        return;
+      }
+
+      const { data, error } = await supabase
+        .from('profiles')
+        .select('display_name')
+        .eq('id', targetDeputy)
+        .maybeSingle();
+
+      if (isMounted) {
+        setResolvedDeputyName(error ? targetDeputy : (data?.display_name || targetDeputy));
+      }
+    };
+
+    void resolveDeputyName();
+
+    return () => {
+      isMounted = false;
+    };
+  }, [targetDeputy]);
+
+  const appointmentMailBase = useMemo(() => {
+    if (!isAppointmentRequest || !isRequestedStartValid || !requestedStart) return null;
+
+    const dateLabel = format(requestedStart, 'dd.MM.yyyy', { locale: de });
+    const timeLabel = format(requestedStart, 'HH:mm', { locale: de });
+
+    return {
+      subject: requestedTitle,
+      dateLabel,
+      timeLabel,
+      deputy: deriveDeputyReference(resolvedDeputyName || targetDeputy),
+    };
+  }, [isAppointmentRequest, isRequestedStartValid, requestedStart, requestedTitle, resolvedDeputyName, targetDeputy]);
+
+  const approvalMailText = useMemo(() => {
+    if (!appointmentMailBase) return null;
+
+    return [
+      `Zusage zum Termin „${appointmentMailBase.subject}“ von ${appointmentMailBase.deputy.dative} ${appointmentMailBase.deputy.fullName} MdL`,
+      '',
+      'Sehr geehrte Damen und Herren,',
+      '',
+      `haben Sie recht herzlichen Dank für ihre Anfrage an ${appointmentMailBase.deputy.accusative} ${appointmentMailBase.deputy.lastName}.`,
+      `Sehr gerne nimmt ${appointmentMailBase.deputy.nominative} ${appointmentMailBase.deputy.lastName} den Termin am ${appointmentMailBase.dateLabel} um ${appointmentMailBase.timeLabel} Uhr an.`,
+      '',
+      'Mit freundlichen Grüßen',
+    ].join('\n');
+  }, [appointmentMailBase]);
+
+  const rejectionMailText = useMemo(() => {
+    if (!appointmentMailBase) return null;
+
+    return [
+      `Rückmeldung zum Termin „${appointmentMailBase.subject}“ von ${appointmentMailBase.deputy.dative} ${appointmentMailBase.deputy.fullName} MdL`,
+      '',
+      'Sehr geehrte Damen und Herren',
+      '',
+      `haben Sie recht herzlichen Dank für ihre Anfrage an ${appointmentMailBase.deputy.accusative} ${appointmentMailBase.deputy.lastName}.`,
+      `Leider kann ${appointmentMailBase.deputy.nominative} ${appointmentMailBase.deputy.lastName} MdL den Termin am ${appointmentMailBase.dateLabel} um ${appointmentMailBase.timeLabel} Uhr nicht persönlich wahrnehmen.`,
+      '',
+      'Wir bitten dies daher zu entschuldigen und freuen uns auf weitere Einladungen ihrerseits.',
+      '',
+      'Mit freundlichen Grüßen',
+    ].join('\n');
+  }, [appointmentMailBase]);
+
+  const approvalMailto = useMemo(() => {
+    if (!approvalMailText || !appointmentMailBase) return null;
+    return `mailto:?subject=${encodeURIComponent(`Zusage zum Termin „${appointmentMailBase.subject}“`)}&body=${encodeURIComponent(approvalMailText)}`;
+  }, [approvalMailText, appointmentMailBase]);
+
+  const rejectionMailto = useMemo(() => {
+    if (!rejectionMailText || !appointmentMailBase) return null;
+    return `mailto:?subject=${encodeURIComponent(`Rückmeldung zum Termin „${appointmentMailBase.subject}“`)}&body=${encodeURIComponent(rejectionMailText)}`;
+  }, [rejectionMailText, appointmentMailBase]);
+
+  const openMailLink = (mailtoUrl: string) => {
+    window.location.href = mailtoUrl;
+  };
+
+  const copyMailTemplate = async (text: string, type: 'Zusage' | 'Absage') => {
+    try {
+      await navigator.clipboard.writeText(text);
+      toast({
+        title: `${type}-Mail kopiert`,
+        description: `Der Text für die ${type.toLowerCase()} wurde in die Zwischenablage kopiert.`,
+      });
+    } catch {
+      toast({
+        title: 'Kopieren fehlgeschlagen',
+        description: 'Der Mailtext konnte nicht kopiert werden.',
+        variant: 'destructive',
+      });
+    }
+  };
 
   const appointmentMailBase = useMemo(() => {
     if (!isAppointmentRequest || !isRequestedStartValid || !requestedStart) return null;
@@ -974,6 +1093,7 @@ const MyWorkDecisionCardInner = ({
 
                         {isAppointmentRequest && winningResponse.key === 'yes' && appointmentLink && (
                           <>
+                            <span className="text-foreground text-base">–</span>
                             <a
                               href={appointmentLink}
                               className="inline-flex items-center gap-1.5 text-sm font-semibold text-foreground hover:underline"
@@ -996,7 +1116,23 @@ const MyWorkDecisionCardInner = ({
                               disabled={!approvalMailText}
                             >
                               <Copy className="h-3.5 w-3.5 mr-1" />
-                              Zusage-Mail kopieren
+                              Zusage-Mail
+                            </Button>
+                            <Button
+                              type="button"
+                              variant="outline"
+                              size="sm"
+                              className="h-7 px-2 text-xs"
+                              onClick={(event) => {
+                                event.stopPropagation();
+                                if (approvalMailto) {
+                                  openMailLink(approvalMailto);
+                                }
+                              }}
+                              disabled={!approvalMailto}
+                            >
+                              <Mail className="h-3.5 w-3.5 mr-1" />
+                              Mail öffnen
                             </Button>
                           </>
                         )}
@@ -1016,7 +1152,23 @@ const MyWorkDecisionCardInner = ({
                             disabled={!rejectionMailText}
                           >
                             <Copy className="h-3.5 w-3.5 mr-1" />
-                            Absage-Mail kopieren
+                            Absage-Mail
+                          </Button>
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            className="h-7 px-2 text-xs"
+                            onClick={(event) => {
+                              event.stopPropagation();
+                              if (rejectionMailto) {
+                                openMailLink(rejectionMailto);
+                              }
+                            }}
+                            disabled={!rejectionMailto}
+                          >
+                            <Mail className="h-3.5 w-3.5 mr-1" />
+                            Mail öffnen
                           </Button>
                         )}
                       </div>
