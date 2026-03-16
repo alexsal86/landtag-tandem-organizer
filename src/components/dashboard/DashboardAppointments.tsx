@@ -13,11 +13,15 @@ import { sanitizeRichHtml } from '@/utils/htmlSanitizer';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
-import { useAuth } from '@/hooks/useAuth';
-import { useTenant } from '@/hooks/useTenant';
-import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
-import { debugConsole } from '@/utils/debugConsole';
+import { useAppointmentRequest } from '@/hooks/useAppointmentRequest';
+import {
+  APPOINTMENT_REQUEST_APPOINTMENT_MARKER,
+  APPOINTMENT_REQUEST_LOCATION_MARKER,
+  APPOINTMENT_REQUEST_REQUESTER_MARKER,
+  APPOINTMENT_REQUEST_START_MARKER,
+  APPOINTMENT_REQUEST_TITLE_MARKER,
+} from '@/features/appointments/requestMarkers';
 
 interface Props {
   data: DashboardData;
@@ -35,15 +39,6 @@ interface AppointmentRequestItem {
   myParticipantId: string | null;
   myHasResponded: boolean;
 }
-
-const APPOINTMENT_REQUEST_APPOINTMENT_MARKER = 'appointment_request_appointment_id:';
-
-const APPOINTMENT_REQUEST_DECISION_MARKER = 'appointment_request_decision_id:';
-const APPOINTMENT_REQUEST_TITLE_MARKER = 'appointment_request_title:';
-const APPOINTMENT_REQUEST_START_MARKER = 'appointment_request_start:';
-const APPOINTMENT_REQUEST_LOCATION_MARKER = 'appointment_request_location:';
-const APPOINTMENT_REQUEST_REQUESTER_MARKER = 'appointment_request_requester:';
-const APPOINTMENT_REQUEST_TARGET_DEPUTY_MARKER = 'appointment_request_target_deputy:';
 
 /** Check if an appointment is currently happening */
 const isCurrentlyActive = (apt: { start_time: string; end_time?: string; is_all_day: boolean }) => {
@@ -78,8 +73,6 @@ const getRequesterFromDescription = (description: string | null | undefined): st
 
 export const DashboardAppointments = ({ data }: Props) => {
   const navigate = useNavigate();
-  const { user } = useAuth();
-  const { currentTenant } = useTenant();
   const { toast } = useToast();
   const {
     userRole, appointments, isShowingTomorrow,
@@ -87,100 +80,35 @@ export const DashboardAppointments = ({ data }: Props) => {
     specialDays, feedbackReminderVisible, pendingFeedbackCount, isLoading,
   } = data;
 
-  const [requestTitle, setRequestTitle] = useState('');
-  const [requestDate, setRequestDate] = useState('');
-  const [requestTime, setRequestTime] = useState('');
-  const [requestLocation, setRequestLocation] = useState('');
-  const [requestRequester, setRequestRequester] = useState('');
-  const [isSubmittingRequest, setIsSubmittingRequest] = useState(false);
   const [isQuickRequestOpen, setIsQuickRequestOpen] = useState(false);
+  const {
+    requestTitle,
+    setRequestTitle,
+    requestDate,
+    setRequestDate,
+    requestTime,
+    setRequestTime,
+    requestLocation,
+    setRequestLocation,
+    requestRequester,
+    setRequestRequester,
+    isSubmittingRequest,
+    resetForm,
+    createRequest,
+  } = useAppointmentRequest({
+    onSuccess: (message, description) => {
+      toast({ title: message, description });
+    },
+    onError: (message, description) => {
+      toast({ title: message, description, variant: 'destructive' });
+    },
+  });
 
-  const handleCreateRequest = async () => {
-    if (!user?.id || !currentTenant?.id) return;
-    if (!requestTitle.trim() || !requestDate) {
-      toast({ title: 'Bitte Titel und Datum angeben', variant: 'destructive' });
-      return;
+  useEffect(() => {
+    if (isQuickRequestOpen) {
+      resetForm();
     }
-
-    setIsSubmittingRequest(true);
-    try {
-      const requestedStart = requestTime ? `${requestDate}T${requestTime}:00` : `${requestDate}T09:00:00`;
-      const requestedStartIso = new Date(requestedStart).toISOString();
-
-      // Betreuenden Abgeordneten aus employee_settings ermitteln
-      const { data: empSettings, error: settingsError } = await supabase
-        .from('employee_settings')
-        .select('admin_id')
-        .eq('user_id', user.id)
-        .maybeSingle();
-
-      if (settingsError) throw settingsError;
-
-      const adminId = empSettings?.admin_id;
-
-      if (!adminId) {
-        toast({ title: 'Kein Abgeordneter zugeordnet', description: 'Bitte lassen Sie sich in den Mitarbeiter-Einstellungen einem Abgeordneten zuordnen.', variant: 'destructive' });
-        return;
-      }
-
-      if (adminId === user.id) {
-        toast({ title: 'Nicht möglich', description: 'Als Abgeordneter können Sie keine Terminanfrage an sich selbst senden.', variant: 'destructive' });
-        return;
-      }
-
-      const targetDeputyId = adminId;
-
-      const { data: decision, error: decisionError } = await supabase
-        .from('task_decisions')
-        .insert([{
-          title: `Terminanfrage: ${requestTitle.trim()}`,
-          description: [
-            'Bitte reagieren: Zusage, Absage oder Rückfrage.',
-            `${APPOINTMENT_REQUEST_TITLE_MARKER}${requestTitle.trim()}`,
-            `${APPOINTMENT_REQUEST_START_MARKER}${requestedStartIso}`,
-            `${APPOINTMENT_REQUEST_TARGET_DEPUTY_MARKER}${targetDeputyId}`,
-            requestRequester.trim() ? `${APPOINTMENT_REQUEST_REQUESTER_MARKER}${requestRequester.trim()}` : null,
-            requestLocation.trim() ? `${APPOINTMENT_REQUEST_LOCATION_MARKER}${requestLocation.trim()}` : null,
-          ].filter(Boolean).join('\n'),
-          created_by: user.id,
-          tenant_id: currentTenant.id,
-          response_deadline: requestedStartIso,
-          status: 'open',
-          visible_to_all: true,
-          response_options: [
-            { key: 'yes', label: 'Zusage', color: 'green', icon: 'check', order: 1 },
-            { key: 'no', label: 'Absage', color: 'red', icon: 'x', order: 2 },
-            { key: 'question', label: 'Rückfrage', color: 'orange', icon: 'message-circle', order: 3 },
-          ],
-        }])
-        .select('id')
-        .single();
-
-      if (decisionError) throw decisionError;
-
-      const { error: participantError } = await supabase
-        .from('task_decision_participants')
-        .insert([{
-          decision_id: decision.id,
-          user_id: targetDeputyId,
-        }]);
-
-      if (participantError) throw participantError;
-
-      toast({ title: 'Terminanfrage erstellt', description: 'Anfrage wurde an den Abgeordneten gesendet. Termin wird erst nach Zustimmung angelegt.' });
-      setRequestTitle('');
-      setRequestDate('');
-      setRequestTime('');
-      setRequestLocation('');
-      setRequestRequester('');
-    } catch (error: any) {
-      debugConsole.error('Error creating dashboard appointment request:', error);
-      const errorMessage = typeof error?.message === 'string' ? error.message : 'Unbekannter Fehler';
-      toast({ title: 'Terminanfrage konnte nicht erstellt werden', description: errorMessage, variant: 'destructive' });
-    } finally {
-      setIsSubmittingRequest(false);
-    }
-  };
+  }, [isQuickRequestOpen, resetForm]);
 
   const timeSlot = getCurrentTimeSlot();
   const hasPlenum = appointments.some(a => a.title.toLowerCase().includes('plenum'));
@@ -310,7 +238,7 @@ export const DashboardAppointments = ({ data }: Props) => {
               </div>
             </div>
             <div className="flex justify-end">
-              <Button type="button" onClick={handleCreateRequest} disabled={isSubmittingRequest}>
+              <Button type="button" onClick={createRequest} disabled={isSubmittingRequest}>
                 {isSubmittingRequest ? 'Erstelle…' : 'Terminanfrage anlegen'}
               </Button>
             </div>
