@@ -86,6 +86,12 @@ export function AgendaEditorPanel({
     return !!collapsedMainItems[parentKey];
   };
 
+  const hasSubItems = (item: AgendaItem) => {
+    const key = item.id || item.localKey;
+    if (!key || item.parent_id || item.parentLocalKey) return false;
+    return agendaItems.some((candidate) => (candidate.parent_id || candidate.parentLocalKey) === key);
+  };
+
   const showDocumentActionError = (action: 'download' | 'upload' | 'delete', error: unknown) => {
     debugConsole.error(`${action[0].toUpperCase()}${action.slice(1)} error:`, error);
 
@@ -298,7 +304,7 @@ export function AgendaEditorPanel({
                       {/* System item rendering */}
                       {item.system_type ? (
                         <div ref={provided.innerRef} {...provided.draggableProps} {...provided.dragHandleProps}
-                          className={cn("transition-shadow", snapshot.isDragging && "shadow-lg", (item.parentLocalKey || item.parent_id) && "pl-8 border-l-4 border-l-primary/30", isHiddenByCollapsedParent(item) && "hidden")}
+                          className={cn("transition-shadow", snapshot.isDragging && "shadow-lg", (item.parentLocalKey || item.parent_id) && "pl-8", isHiddenByCollapsedParent(item) && "hidden")}
                         >
                           <SystemAgendaItem
                             systemType={item.system_type as SystemAgendaType}
@@ -316,6 +322,9 @@ export function AgendaEditorPanel({
                             defaultCollapsed={true}
                             agendaNumber={getAgendaNumber(item)}
                             compact={true}
+                            title={item.title}
+                            canEditTitle={hasEditPermission}
+                            onTitleChange={(value) => onUpdateAgendaItem(index, 'title', value)}
                           />
                         </div>
                       ) : (
@@ -326,7 +335,7 @@ export function AgendaEditorPanel({
                           className={cn(
                             "transition-colors border-b border-border/60 hover:bg-muted/30",
                             snapshot.isDragging && "shadow-lg bg-card rounded-lg border",
-                            (item.parentLocalKey || item.parent_id) && "pl-8 border-l-4 border-l-primary/30",
+                            (item.parentLocalKey || item.parent_id) && "pl-8",
                             item.is_optional && "border-dashed",
                             item.is_optional && item.is_visible === false && "opacity-50",
                             isHiddenByCollapsedParent(item) && "hidden"
@@ -339,20 +348,6 @@ export function AgendaEditorPanel({
                                   <div {...provided.dragHandleProps} className="cursor-grab active:cursor-grabbing opacity-0 group-hover:opacity-100 transition-opacity">
                                     <GripVertical className="h-4 w-4 text-muted-foreground" />
                                   </div>
-                                )}
-                                {!(item.parentLocalKey || item.parent_id) && (
-                                  <Button
-                                    size="icon"
-                                    variant="ghost"
-                                    className="h-6 w-6 shrink-0"
-                                    onClick={() => {
-                                      const key = item.id || item.localKey;
-                                      if (!key) return;
-                                      setCollapsedMainItems((prev) => ({ ...prev, [key]: !prev[key] }));
-                                    }}
-                                  >
-                                    {isMainItemCollapsed(item) ? <ChevronRight className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
-                                  </Button>
                                 )}
                                 <span className="text-muted-foreground font-medium min-w-[1.75rem] text-right">
                                   {getAgendaNumber(item)}
@@ -384,6 +379,20 @@ export function AgendaEditorPanel({
                                 )}
                                 {hasContentIndicator(item) && (
                                   <span className="h-2 w-2 rounded-full bg-sky-500/80 shrink-0" title="Enthält Beschreibung, Notizen oder Dokumente" />
+                                )}
+                                {hasSubItems(item) && (
+                                  <Button
+                                    size="icon"
+                                    variant="ghost"
+                                    className="h-6 w-6 shrink-0 ml-auto"
+                                    onClick={() => {
+                                      const key = item.id || item.localKey;
+                                      if (!key) return;
+                                      setCollapsedMainItems((prev) => ({ ...prev, [key]: !prev[key] }));
+                                    }}
+                                  >
+                                    {isMainItemCollapsed(item) ? <ChevronRight className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+                                  </Button>
                                 )}
                               </div>
 
