@@ -1,4 +1,4 @@
-import { useMemo, useState, memo, useEffect, useRef } from "react";
+import { Fragment, useMemo, useState, memo, useEffect, useRef } from "react";
 import { format } from "date-fns";
 import { de } from "date-fns/locale";
 import { Card, CardContent } from "@/components/ui/card";
@@ -32,6 +32,7 @@ import {
   ChevronUp,
   Info,
   CalendarDays,
+  ChevronRight,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { MyWorkDecision, getResponseSummary, getBorderColor, getCustomResponseSummary } from "./types";
@@ -43,6 +44,7 @@ import { useTenant } from "@/hooks/useTenant";
 const APPOINTMENT_REQUEST_TITLE_MARKER = 'appointment_request_title:';
 const APPOINTMENT_REQUEST_START_MARKER = 'appointment_request_start:';
 const APPOINTMENT_REQUEST_REQUESTER_MARKER = 'appointment_request_requester:';
+const APPOINTMENT_REQUEST_APPOINTMENT_MARKER = 'appointment_request_appointment_id:';
 
 interface DayTimelineItem {
   id: string;
@@ -179,10 +181,34 @@ const MyWorkDecisionCardInner = ({
   const isAppointmentRequest = decision.title.toLowerCase().startsWith('terminanfrage:');
   const requestedTitle = extractMarkerValue(decision.description, APPOINTMENT_REQUEST_TITLE_MARKER) || decision.title.replace(/^Terminanfrage:\s*/i, '');
   const requestedStartIso = extractMarkerValue(decision.description, APPOINTMENT_REQUEST_START_MARKER);
+  const appointmentId = extractMarkerValue(decision.description, APPOINTMENT_REQUEST_APPOINTMENT_MARKER);
   const requestedBy = extractMarkerValue(decision.description, APPOINTMENT_REQUEST_REQUESTER_MARKER) || 'Ein Mitarbeiter';
   const requestedStart = requestedStartIso ? new Date(requestedStartIso) : null;
   const isRequestedStartValid = Boolean(requestedStart && !Number.isNaN(requestedStart.getTime()));
   const shouldShowTimeline = isAppointmentRequest && isRequestedStartValid && (isSchedulePinnedOpen || isScheduleHoverOpen);
+
+  const timelineHourSlots = useMemo(() => {
+    if (!requestedStart) return [];
+
+    const windowStart = new Date(requestedStart.getTime() - 3 * 60 * 60 * 1000);
+    windowStart.setMinutes(0, 0, 0);
+
+    return Array.from({ length: 7 }, (_, index) => {
+      const slot = new Date(windowStart);
+      slot.setHours(windowStart.getHours() + index);
+      return slot;
+    });
+  }, [requestedStart]);
+
+  const dayTimelineByHour = useMemo(() => {
+    const grouped = new Map<string, DayTimelineItem[]>();
+    dayTimelineItems.forEach((item) => {
+      const hourKey = format(new Date(item.start), 'yyyy-MM-dd-HH', { locale: de });
+      const existing = grouped.get(hourKey) ?? [];
+      grouped.set(hourKey, [...existing, item]);
+    });
+    return grouped;
+  }, [dayTimelineItems]);
 
   const appointmentRequestNarrative = useMemo(() => {
     if (!isAppointmentRequest || !isRequestedStartValid || !requestedStart) {
@@ -258,10 +284,15 @@ const MyWorkDecisionCardInner = ({
         { key: 'pending', label: 'Ausstehend', count: customSummary.pending, textClass: 'text-muted-foreground' },
       ]
     : [
-        { key: 'yes', label: 'Ja', count: summary.yesCount, textClass: 'text-green-600' },
-        { key: 'no', label: 'Nein', count: summary.noCount, textClass: 'text-red-600' },
+        { key: 'yes', label: isAppointmentRequest ? 'Zusage' : 'Ja', count: summary.yesCount, textClass: 'text-green-600' },
+        { key: 'no', label: isAppointmentRequest ? 'Absage' : 'Nein', count: summary.noCount, textClass: 'text-red-600' },
         { key: 'question', label: 'Rückfrage', count: summary.questionCount, textClass: 'text-orange-600' },
       ];
+
+  const appointmentLink = useMemo(() => {
+    if (!appointmentId || !isRequestedStartValid || !requestedStart) return null;
+    return `/calendar?date=${format(requestedStart, 'yyyy-MM-dd')}&event=${appointmentId}`;
+  }, [appointmentId, isRequestedStartValid, requestedStart]);
 
   const showInlineSummaryCounts = !decision.isParticipant || decision.hasResponded;
 
@@ -582,64 +613,90 @@ const MyWorkDecisionCardInner = ({
                 )}
               </div>
 
-              {shouldShowTimeline && (
-                <div className="mb-3 rounded-md border border-blue-200 bg-blue-50/60 p-2">
-                  <div className="mb-1.5 flex items-center gap-1.5 text-xs font-semibold text-blue-900">
-                    <CalendarDays className="h-3.5 w-3.5" />
-                    Tageskontext ±3 Stunden ({requestedStart ? format(requestedStart, 'dd.MM.yyyy HH:mm', { locale: de }) : ''} Uhr)
-                  </div>
-                  {isTimelineLoading ? (
-                    <p className="text-xs text-muted-foreground">Lade Termine…</p>
-                  ) : dayTimelineItems.length === 0 ? (
-                    <p className="text-xs text-muted-foreground">Keine Termine für diesen Tag.</p>
-                  ) : (
-                    <div className="space-y-1">
-                      {dayTimelineItems.map((item) => (
-                        <div
-                          key={item.id}
-                          className={cn(
-                            'flex items-center gap-2 rounded px-1.5 py-1 text-xs',
-                            item.simulated ? 'bg-blue-100 border border-blue-300' : 'bg-background/80 border border-transparent'
-                          )}
-                        >
-                          <span className="w-11 shrink-0 font-mono text-muted-foreground">
-                            {format(new Date(item.start), 'HH:mm', { locale: de })}
-                          </span>
-                          <span className="truncate text-foreground">{item.title}</span>
-                          {item.simulated && (
-                            <Badge variant="secondary" className="ml-auto text-[10px]">simuliert</Badge>
-                          )}
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                </div>
-              )}
-
               {decision.description && (
-                <div onClick={(e) => e.stopPropagation()}>
-                  {appointmentRequestNarrative && (
-                    <p className="mb-3 text-sm leading-relaxed text-muted-foreground">{appointmentRequestNarrative}</p>
-                  )}
-                  <div className={cn('relative', !detailsExpanded && hasLongDescription && 'max-h-[26rem] overflow-hidden')}>
-                    <RichTextDisplay
-                      content={displayDescription}
-                      className="leading-relaxed [&_p:last-child]:mb-0"
-                    />
-                    {!detailsExpanded && hasLongDescription && (
-                      <div className="pointer-events-none absolute inset-x-0 bottom-0 h-16 bg-gradient-to-t from-background via-background/95 to-transparent" />
+                <div className={cn('grid gap-4', shouldShowTimeline && 'lg:grid-cols-2')} onClick={(e) => e.stopPropagation()}>
+                  <div className="min-w-0">
+                    {appointmentRequestNarrative && (
+                      <p className="mb-3 text-sm leading-relaxed text-muted-foreground">{appointmentRequestNarrative}</p>
+                    )}
+                    <div className={cn('relative', !detailsExpanded && hasLongDescription && 'max-h-[26rem] overflow-hidden')}>
+                      <RichTextDisplay
+                        content={displayDescription}
+                        className="leading-relaxed [&_p:last-child]:mb-0"
+                      />
+                      {!detailsExpanded && hasLongDescription && (
+                        <div className="pointer-events-none absolute inset-x-0 bottom-0 h-16 bg-gradient-to-t from-background via-background/95 to-transparent" />
+                      )}
+                    </div>
+                    {hasLongDescription && (
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="mt-2 h-7 px-0 text-xs"
+                        onClick={() => setDetailsExpanded((prev) => !prev)}
+                      >
+                        {detailsExpanded ? 'Weniger Details' : 'Details anzeigen'}
+                        {detailsExpanded ? <ChevronUp className="h-3.5 w-3.5 ml-1" /> : <ChevronDown className="h-3.5 w-3.5 ml-1" />}
+                      </Button>
                     )}
                   </div>
-                  {hasLongDescription && (
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      className="mt-2 h-7 px-0 text-xs"
-                      onClick={() => setDetailsExpanded((prev) => !prev)}
-                    >
-                      {detailsExpanded ? 'Weniger Details' : 'Details anzeigen'}
-                      {detailsExpanded ? <ChevronUp className="h-3.5 w-3.5 ml-1" /> : <ChevronDown className="h-3.5 w-3.5 ml-1" />}
-                    </Button>
+
+                  {shouldShowTimeline && (
+                    <div className="rounded-md border border-border bg-background/95 p-2">
+                      <div className="mb-2 flex items-center gap-1.5 text-xs font-semibold text-foreground">
+                        <CalendarDays className="h-3.5 w-3.5" />
+                        Tageskontext ±3 Stunden ({requestedStart ? format(requestedStart, 'dd.MM.yyyy HH:mm', { locale: de }) : ''} Uhr)
+                      </div>
+
+                      {isTimelineLoading ? (
+                        <p className="text-xs text-muted-foreground">Lade Termine…</p>
+                      ) : dayTimelineItems.length === 0 ? (
+                        <p className="text-xs text-muted-foreground">Keine Termine für diesen Tag.</p>
+                      ) : (
+                        <div className="grid grid-cols-[56px_1fr] border border-border rounded-md overflow-hidden">
+                          {timelineHourSlots.map((slot, slotIndex) => {
+                            const slotKey = format(slot, 'yyyy-MM-dd-HH', { locale: de });
+                            const slotItems = dayTimelineByHour.get(slotKey) ?? [];
+                            return (
+                              <Fragment key={slotKey}>
+                                <div
+                                  className={cn(
+                                    'min-h-[44px] px-2 py-2 text-[11px] font-mono text-muted-foreground bg-muted/30 border-b border-border',
+                                    slotIndex === timelineHourSlots.length - 1 && 'border-b-0'
+                                  )}
+                                >
+                                  {format(slot, 'HH:00', { locale: de })}
+                                </div>
+                                <div
+                                  className={cn(
+                                    'min-h-[44px] px-2 py-1.5 border-b border-l border-border space-y-1.5',
+                                    slotIndex === timelineHourSlots.length - 1 && 'border-b-0'
+                                  )}
+                                >
+                                  {slotItems.map((item) => (
+                                    <div
+                                      key={item.id}
+                                      className={cn(
+                                        'flex items-center gap-2 rounded px-1.5 py-1 text-xs',
+                                        item.simulated ? 'bg-blue-100 border border-blue-300' : 'bg-background border border-transparent'
+                                      )}
+                                    >
+                                      <span className="w-10 shrink-0 font-mono text-muted-foreground">
+                                        {format(new Date(item.start), 'HH:mm', { locale: de })}
+                                      </span>
+                                      <span className="truncate text-foreground">{item.title}</span>
+                                      {item.simulated && (
+                                        <Badge variant="secondary" className="ml-auto text-[10px]">simuliert</Badge>
+                                      )}
+                                    </div>
+                                  ))}
+                                </div>
+                              </Fragment>
+                            );
+                          })}
+                        </div>
+                      )}
+                    </div>
                   )}
                 </div>
               )}
@@ -745,6 +802,17 @@ const MyWorkDecisionCardInner = ({
                       </div>
                     )}
                   </>
+                )}
+
+                {isAppointmentRequest && appointmentLink && (
+                  <a
+                    href={appointmentLink}
+                    className="inline-flex w-fit items-center gap-1.5 text-sm font-semibold text-primary hover:underline"
+                    onClick={(event) => event.stopPropagation()}
+                  >
+                    Termin angelegt
+                    <ChevronRight className="h-3.5 w-3.5" />
+                  </a>
                 )}
 
                 <div className="flex items-center justify-between gap-3">

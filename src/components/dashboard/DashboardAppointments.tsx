@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useMemo, useState } from 'react';
 import { format } from 'date-fns';
 import { de } from 'date-fns/locale';
 import { useNavigate } from 'react-router-dom';
@@ -12,30 +12,16 @@ import { sanitizeRichHtml } from '@/utils/htmlSanitizer';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
 import { useAuth } from '@/hooks/useAuth';
 import { useTenant } from '@/hooks/useTenant';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
-import { TaskDecisionResponse } from '@/components/task-decisions/TaskDecisionResponse';
 import { debugConsole } from '@/utils/debugConsole';
 
 interface Props {
   data: DashboardData;
 }
 
-interface AppointmentRequestItem {
-  decisionId: string;
-  decisionDescription: string | null;
-  appointmentId: string | null;
-  appointmentTitle: string;
-  appointmentStart: string | null;
-  appointmentLocation: string | null;
-  requester: string | null;
-  responseType: 'yes' | 'no' | 'question' | null;
-  myParticipantId: string | null;
-  myHasResponded: boolean;
-}
 
 const APPOINTMENT_REQUEST_APPOINTMENT_MARKER = 'appointment_request_appointment_id:';
 const APPOINTMENT_REQUEST_DECISION_MARKER = 'appointment_request_decision_id:';
@@ -54,44 +40,6 @@ const isCurrentlyActive = (apt: { start_time: string; end_time?: string; is_all_
   return start <= now && now < end;
 };
 
-const extractMarkerValue = (description: string | null, marker: string): string | null => {
-  if (!description) return null;
-  const escaped = marker.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-  const match = description.match(new RegExp(`${escaped}(.+)`, 'i'));
-  return match?.[1]?.trim() ?? null;
-};
-
-const getAppointmentIdFromDescription = (description: string | null): string | null => {
-  const raw = extractMarkerValue(description, APPOINTMENT_REQUEST_APPOINTMENT_MARKER);
-  return raw && /^[a-f0-9-]{36}$/i.test(raw) ? raw : null;
-};
-
-const getRequesterFromDescription = (description: string | null): string | null => {
-  return extractMarkerValue(description, APPOINTMENT_REQUEST_REQUESTER_MARKER)
-    ?? extractMarkerValue(description, 'Angefragt von:');
-};
-
-const getRequestedStartFromDescription = (description: string | null): string | null => {
-  const value = extractMarkerValue(description, APPOINTMENT_REQUEST_START_MARKER);
-  if (!value) return null;
-  const parsed = new Date(value);
-  return Number.isNaN(parsed.getTime()) ? null : parsed.toISOString();
-};
-
-const getRequestedTitleFromDescription = (description: string | null): string | null => {
-  return extractMarkerValue(description, APPOINTMENT_REQUEST_TITLE_MARKER);
-};
-
-const getRequestedLocationFromDescription = (description: string | null): string | null => {
-  return extractMarkerValue(description, APPOINTMENT_REQUEST_LOCATION_MARKER);
-};
-
-const responseBadge = (responseType: AppointmentRequestItem['responseType']) => {
-  if (responseType === 'yes') return <Badge className="bg-green-600">Zusage</Badge>;
-  if (responseType === 'no') return <Badge variant="destructive">Absage</Badge>;
-  if (responseType === 'question') return <Badge className="bg-orange-500">Rückfrage</Badge>;
-  return <Badge variant="secondary">Wartet auf Reaktion</Badge>;
-};
 
 export const DashboardAppointments = ({ data }: Props) => {
   const navigate = useNavigate();
@@ -426,7 +374,6 @@ export const DashboardAppointments = ({ data }: Props) => {
       setRequestTime('');
       setRequestLocation('');
       setRequestRequester('');
-      await loadAppointmentRequests();
     } catch (error: any) {
       debugConsole.error('Error creating dashboard appointment request:', error);
       const errorMessage = typeof error?.message === 'string' ? error.message : 'Unbekannter Fehler';
@@ -554,44 +501,6 @@ export const DashboardAppointments = ({ data }: Props) => {
             {isSubmittingRequest ? 'Erstelle…' : 'Terminanfrage anlegen'}
           </Button>
         </div>
-      </div>
-
-      <div className="space-y-2">
-        <h4 className="text-sm font-semibold">Offene/letzte Terminanfragen</h4>
-        {requestsLoading && <p className="text-xs text-muted-foreground">Lade Terminanfragen…</p>}
-        {!requestsLoading && requests.length === 0 && (
-          <p className="text-xs text-muted-foreground">Keine Terminanfragen vorhanden.</p>
-        )}
-        {requests.map((request) => (
-          <div key={request.decisionId} className="rounded border p-2 space-y-2">
-            <div className="flex items-center justify-between gap-2">
-              <div className="min-w-0">
-                <p className="text-sm font-medium truncate">{request.appointmentTitle}</p>
-                <p className="text-xs text-muted-foreground">
-                  {request.appointmentStart ? format(new Date(request.appointmentStart), 'dd.MM.yyyy HH:mm', { locale: de }) : 'ohne Terminzeit'}
-                  {request.appointmentLocation ? ` · ${request.appointmentLocation}` : ''}
-                  {request.requester ? ` · von ${request.requester}` : ''}
-                </p>
-              </div>
-              <div className="flex items-center gap-2">
-                {request.appointmentId && <Badge variant="outline">Termin angelegt</Badge>}
-                {responseBadge(request.responseType)}
-              </div>
-            </div>
-
-            {request.myParticipantId && !request.myHasResponded && (
-              <TaskDecisionResponse
-                decisionId={request.decisionId}
-                participantId={request.myParticipantId}
-                hasResponded={request.myHasResponded}
-                onResponseSubmitted={async (meta) => {
-                  await createFollowUpTask(request, meta?.responseType);
-                  await loadAppointmentRequests();
-                }}
-              />
-            )}
-          </div>
-        ))}
       </div>
 
       {feedbackReminderVisible && (
