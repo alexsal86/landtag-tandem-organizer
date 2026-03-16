@@ -327,44 +327,42 @@ export const DashboardAppointments = ({ data }: Props) => {
       const requestedStart = requestTime ? `${requestDate}T${requestTime}:00` : `${requestDate}T09:00:00`;
       const requestedStartIso = new Date(requestedStart).toISOString();
 
-      const { data: deputyMemberships, error: deputyError } = await supabase
+      // Gleiches Muster wie in NoteDecisionCreator:
+      // 1) aktive Tenant-Mitglieder laden
+      // 2) App-Rolle "abgeordneter" über user_roles auf diese User-IDs filtern
+      const { data: activeMemberships, error: membershipError } = await supabase
         .from('user_tenant_memberships')
-        .select('user_id')
+        .select('user_id, role')
         .eq('tenant_id', currentTenant.id)
-        .eq('is_active', true)
-        .eq('role', 'abgeordneter');
+        .eq('is_active', true);
 
-      if (deputyError) throw deputyError;
+      if (membershipError) throw membershipError;
 
-      let deputyIds = Array.from(new Set((deputyMemberships || []).map((item) => item.user_id)));
+      const activeUserIds = Array.from(new Set((activeMemberships || []).map((item) => item.user_id)));
 
-      // Fallback: in einigen Tenants liegt die App-Rolle nur in user_roles statt in user_tenant_memberships.role
-      if (deputyIds.length === 0) {
-        const { data: activeMemberships, error: membershipError } = await supabase
-          .from('user_tenant_memberships')
+      let deputyIds: string[] = [];
+      if (activeUserIds.length > 0) {
+        const { data: deputyRoles, error: deputyRolesError } = await supabase
+          .from('user_roles')
           .select('user_id')
-          .eq('tenant_id', currentTenant.id)
-          .eq('is_active', true);
+          .eq('role', 'abgeordneter')
+          .in('user_id', activeUserIds);
 
-        if (membershipError) throw membershipError;
+        if (deputyRolesError) throw deputyRolesError;
 
-        const activeUserIds = Array.from(new Set((activeMemberships || []).map((item) => item.user_id)));
+        deputyIds = Array.from(new Set((deputyRoles || []).map((item) => item.user_id)));
+      }
 
-        if (activeUserIds.length > 0) {
-          const { data: deputyRoles, error: deputyRolesError } = await supabase
-            .from('user_roles')
-            .select('user_id')
-            .eq('role', 'abgeordneter')
-            .in('user_id', activeUserIds);
-
-          if (deputyRolesError) throw deputyRolesError;
-
-          deputyIds = Array.from(new Set((deputyRoles || []).map((item) => item.user_id)));
-        }
+      // Legacy-Fallback: falls user_roles noch nicht sauber gepflegt ist,
+      // über Membership-Rolle (case-insensitive) versuchen.
+      if (deputyIds.length === 0) {
+        deputyIds = Array.from(new Set((activeMemberships || [])
+          .filter((item) => (item.role || '').toLowerCase().includes('abgeord'))
+          .map((item) => item.user_id)));
       }
 
       if (deputyIds.length === 0) {
-        toast({ title: 'Keine Abgeordneten gefunden', description: 'Es wurde keine aktive Rolle "abgeordneter" gefunden (weder in Mitgliedschaften noch in Rollen).', variant: 'destructive' });
+        toast({ title: 'Keine Abgeordneten gefunden', description: 'Es wurde keine aktive Rolle "abgeordneter" unter den aktiven Tenant-Mitgliedern gefunden.', variant: 'destructive' });
         return;
       }
 
