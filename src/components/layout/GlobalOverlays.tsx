@@ -10,16 +10,27 @@ const GlobalQuickNoteDialog = lazyWithRetry(() =>
 const GlobalDaySlipPanel = lazyWithRetry(() =>
   import("@/components/GlobalDaySlipPanel").then(m => ({ default: m.GlobalDaySlipPanel }))
 );
+const GlobalAppointmentRequestDialog = lazyWithRetry(() =>
+  import("@/components/GlobalAppointmentRequestDialog").then(m => ({ default: m.GlobalAppointmentRequestDialog }))
+);
 
 export const GlobalOverlays = () => {
   const [quickNoteOpen, setQuickNoteOpen] = useState(false);
+  const [appointmentRequestOpen, setAppointmentRequestOpen] = useState(false);
 
   // Global keyboard shortcut: Cmd/Ctrl + . (period)
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      if ((e.metaKey || e.ctrlKey) && e.key === '.') {
+      if ((e.metaKey || e.ctrlKey) && !e.shiftKey && e.code === 'Period') {
         e.preventDefault();
         setQuickNoteOpen(true);
+        return;
+      }
+
+      // Global keyboard shortcut: Cmd/Ctrl + Shift + . (period)
+      if ((e.metaKey || e.ctrlKey) && e.shiftKey && e.code === 'Period') {
+        e.preventDefault();
+        setAppointmentRequestOpen(true);
       }
     };
     window.addEventListener('keydown', handleKeyDown);
@@ -31,6 +42,10 @@ export const GlobalOverlays = () => {
       <GlobalSearchCommand />
       <GlobalQuickNoteDialog open={quickNoteOpen} onOpenChange={setQuickNoteOpen} />
       <GlobalDaySlipPanel />
+      <GlobalAppointmentRequestDialog
+        open={appointmentRequestOpen}
+        onOpenChange={setAppointmentRequestOpen}
+      />
     </>
   );
 };

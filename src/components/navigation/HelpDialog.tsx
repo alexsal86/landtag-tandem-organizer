@@ -42,6 +42,10 @@ export function HelpDialog({ open, onOpenChange }: HelpDialogProps) {
                 <span>Neue Notiz</span>
                 <kbd className="px-2 py-1 bg-muted rounded text-xs font-mono">Ctrl + .</kbd>
               </div>
+              <div className="flex justify-between items-center">
+                <span>Neue Terminanfrage</span>
+                <kbd className="px-2 py-1 bg-muted rounded text-xs font-mono">Ctrl + Shift + .</kbd>
+              </div>
             </div>
           </div>
           <Separator />
