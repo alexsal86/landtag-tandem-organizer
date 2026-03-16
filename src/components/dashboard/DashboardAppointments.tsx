@@ -338,28 +338,12 @@ export const DashboardAppointments = ({ data }: Props) => {
 
       if (membershipError) throw membershipError;
 
-      const activeUserIds = Array.from(new Set((activeMemberships || []).map((item) => item.user_id)));
-
-      let deputyIds: string[] = [];
-      if (activeUserIds.length > 0) {
-        const { data: deputyRoles, error: deputyRolesError } = await supabase
-          .from('user_roles')
-          .select('user_id')
-          .eq('role', 'abgeordneter')
-          .in('user_id', activeUserIds);
-
-        if (deputyRolesError) throw deputyRolesError;
-
-        deputyIds = Array.from(new Set((deputyRoles || []).map((item) => item.user_id)));
-      }
-
-      // Legacy-Fallback: falls user_roles noch nicht sauber gepflegt ist,
-      // über Membership-Rolle (case-insensitive) versuchen.
-      if (deputyIds.length === 0) {
-        deputyIds = Array.from(new Set((activeMemberships || [])
-          .filter((item) => (item.role || '').toLowerCase().includes('abgeord'))
-          .map((item) => item.user_id)));
-      }
+      // Abgeordnete über die Membership-Rolle ermitteln (autoritative Quelle: user_tenant_memberships)
+      const deputyIds = Array.from(new Set(
+        (activeMemberships || [])
+          .filter((item) => item.role === 'abgeordneter')
+          .map((item) => item.user_id)
+      ));
 
       // Exclude current user from deputy list – the request should go TO a deputy, not from a deputy to themselves
       const otherDeputyIds = deputyIds.filter((id) => id !== user.id);
