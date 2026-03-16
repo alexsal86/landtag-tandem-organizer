@@ -56,6 +56,7 @@ export const DashboardAppointments = ({ data }: Props) => {
   const [requestLocation, setRequestLocation] = useState('');
   const [requestRequester, setRequestRequester] = useState('');
   const [isSubmittingRequest, setIsSubmittingRequest] = useState(false);
+
   const handleCreateRequest = async () => {
     if (!user?.id || !currentTenant?.id) return;
     if (!requestTitle.trim() || !requestDate) {
