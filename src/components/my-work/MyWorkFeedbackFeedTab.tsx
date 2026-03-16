@@ -59,7 +59,24 @@ export function MyWorkFeedbackFeedTab() {
     onlyWithTasks,
   });
 
-  const getFeedbackTarget = (entry: TeamFeedbackEntry) => {
+  // Realtime subscription
+  useEffect(() => {
+    if (!user?.id) return;
+    let timeout: ReturnType<typeof setTimeout> | null = null;
+    const scheduleRefresh = () => {
+      if (timeout) clearTimeout(timeout);
+      timeout = setTimeout(() => { timeout = null; void refetch(); }, 250);
+    };
+    const channel = supabase
+      .channel(`my-work-feedback-${user.id}`)
+      .on("postgres_changes", { event: "*", schema: "public", table: "appointment_feedback" }, scheduleRefresh)
+      .subscribe();
+    return () => {
+      if (timeout) clearTimeout(timeout);
+      supabase.removeChannel(channel);
+    };
+  }, [user?.id, refetch]);
+
     if (entry.feedback_context.target.type === 'task') {
       return `/tasks?highlight=${entry.feedback_context.target.id}&feedback_id=${entry.id}&source=mywork-feedbackfeed`;
     }
