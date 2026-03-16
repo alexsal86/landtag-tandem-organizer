@@ -892,8 +892,8 @@ export function AutomationRulesManager() {
                     ) : null}
                     {!!run.result_payload?.explainability && (
                       <div className="text-xs space-y-1 rounded border bg-background p-2">
-                        <p><span className="font-medium">Warum ausgelöst?</span> {String(run.result_payload.explainability?.why_triggered ?? "—")}</p>
-                        <p><span className="font-medium">Warum nicht?</span> {String(run.result_payload.explainability?.why_not_triggered ?? "—")}</p>
+                        <p><span className="font-medium">Warum ausgelöst?</span> {String((run.result_payload as Record<string, any>).explainability?.why_triggered ?? "—")}</p>
+                        <p><span className="font-medium">Warum nicht?</span> {String((run.result_payload as Record<string, any>).explainability?.why_not_triggered ?? "—")}</p>
                         <p className="text-muted-foreground">run_id: {String(run.result_payload?.run_id ?? run.id)} · workflow_version: {String(run.result_payload?.workflow_version ?? "v1")} · entity_id: {String(run.result_payload?.entity_id ?? "unknown")}</p>
                       </div>
                     )}
