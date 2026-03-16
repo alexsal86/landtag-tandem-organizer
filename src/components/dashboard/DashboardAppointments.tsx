@@ -53,6 +53,27 @@ const isCurrentlyActive = (apt: { start_time: string; end_time?: string; is_all_
   return start <= now && now < end;
 };
 
+const extractMarkerValue = (description: string | null | undefined, marker: string): string | null => {
+  if (!description) return null;
+  const line = description.split('\n').find(l => l.startsWith(marker));
+  return line ? line.slice(marker.length).trim() || null : null;
+};
+
+const getAppointmentIdFromDescription = (description: string | null | undefined): string | null =>
+  extractMarkerValue(description, APPOINTMENT_REQUEST_APPOINTMENT_MARKER);
+
+const getRequestedStartFromDescription = (description: string | null | undefined): string | null =>
+  extractMarkerValue(description, APPOINTMENT_REQUEST_START_MARKER);
+
+const getRequestedTitleFromDescription = (description: string | null | undefined): string | null =>
+  extractMarkerValue(description, APPOINTMENT_REQUEST_TITLE_MARKER);
+
+const getRequestedLocationFromDescription = (description: string | null | undefined): string | null =>
+  extractMarkerValue(description, APPOINTMENT_REQUEST_LOCATION_MARKER);
+
+const getRequesterFromDescription = (description: string | null | undefined): string | null =>
+  extractMarkerValue(description, APPOINTMENT_REQUEST_REQUESTER_MARKER);
+
 
 export const DashboardAppointments = ({ data }: Props) => {
   const navigate = useNavigate();
