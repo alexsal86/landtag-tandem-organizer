@@ -314,7 +314,6 @@ export const DashboardAppointments = ({ data }: Props) => {
                 {isSubmittingRequest ? 'Erstelle…' : 'Terminanfrage anlegen'}
               </Button>
             </div>
-          </div>
           </CollapsibleContent>
         </div>
       </Collapsible>
