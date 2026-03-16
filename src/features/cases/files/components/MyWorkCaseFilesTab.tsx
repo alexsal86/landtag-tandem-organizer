@@ -52,6 +52,24 @@ export function MyWorkCaseFilesTab() {
     }
   }, [user, currentTenant?.id]);
 
+  // Realtime subscription
+  useEffect(() => {
+    if (!user?.id || !currentTenant?.id) return;
+    let timeout: ReturnType<typeof setTimeout> | null = null;
+    const scheduleRefresh = () => {
+      if (timeout) clearTimeout(timeout);
+      timeout = setTimeout(() => { timeout = null; void loadCaseFiles(); }, 250);
+    };
+    const channel = supabase
+      .channel(`my-work-casefiles-${user.id}`)
+      .on("postgres_changes", { event: "*", schema: "public", table: "case_files" }, scheduleRefresh)
+      .subscribe();
+    return () => {
+      if (timeout) clearTimeout(timeout);
+      supabase.removeChannel(channel);
+    };
+  }, [user?.id, currentTenant?.id]);
+
   const loadCaseFiles = async () => {
     if (!user || !currentTenant?.id) return;
 

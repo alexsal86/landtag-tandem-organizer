@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { debugConsole } from '@/utils/debugConsole';
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -107,6 +107,7 @@ export function MyWorkTeamTab() {
   const [userRole, setUserRole] = useState("");
   const [teamMembers, setTeamMembers] = useState<TeamMember[]>([]);
   const [loading, setLoading] = useState(true);
+  const [reloadTrigger, setReloadTrigger] = useState(0);
 
   useEffect(() => {
     const userId = user?.id;
@@ -315,7 +316,26 @@ export function MyWorkTeamTab() {
 
     void run();
     return () => { cancelled = true; };
-  }, [user?.id, currentTenant?.id]);
+  }, [user?.id, currentTenant?.id, reloadTrigger]);
+
+  // Realtime subscription for team data
+  useEffect(() => {
+    if (!user?.id || !currentTenant?.id || !isAdmin) return;
+    let timeout: ReturnType<typeof setTimeout> | null = null;
+    const scheduleRefresh = () => {
+      if (timeout) clearTimeout(timeout);
+      timeout = setTimeout(() => { timeout = null; setReloadTrigger(c => c + 1); }, 250);
+    };
+    const channel = supabase
+      .channel(`my-work-team-${user.id}`)
+      .on("postgres_changes", { event: "*", schema: "public", table: "time_entries" }, scheduleRefresh)
+      .on("postgres_changes", { event: "*", schema: "public", table: "employee_meeting_requests" }, scheduleRefresh)
+      .subscribe();
+    return () => {
+      if (timeout) clearTimeout(timeout);
+      supabase.removeChannel(channel);
+    };
+  }, [user?.id, currentTenant?.id, isAdmin]);
 
   const getMeetingStatus = (nextDue: string | null) => {
     if (!nextDue) return null;

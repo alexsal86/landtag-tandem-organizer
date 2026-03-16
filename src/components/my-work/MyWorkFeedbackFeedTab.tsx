@@ -11,6 +11,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { Button } from '@/components/ui/button';
+import { supabase } from '@/integrations/supabase/client';
+import { useAuth } from '@/hooks/useAuth';
 import type { TeamFeedbackEntry } from '@/hooks/useTeamFeedbackFeed';
 
 const PERIOD_PRESETS = {
@@ -21,6 +23,7 @@ const PERIOD_PRESETS = {
 
 export function MyWorkFeedbackFeedTab() {
   const navigate = useNavigate();
+  const { user } = useAuth();
   const [searchParams, setSearchParams] = useSearchParams();
   const [scope, setScope] = useState<'team' | 'mine' | 'team-plus-relevant'>(() => (searchParams.get('scope') as any) || 'team');
   const [periodPreset, setPeriodPreset] = useState<keyof typeof PERIOD_PRESETS>(() => (searchParams.get('period') as keyof typeof PERIOD_PRESETS) || '7d');
@@ -55,6 +58,24 @@ export function MyWorkFeedbackFeedTab() {
     onlyWithAttachments,
     onlyWithTasks,
   });
+
+  // Realtime subscription
+  useEffect(() => {
+    if (!user?.id) return;
+    let timeout: ReturnType<typeof setTimeout> | null = null;
+    const scheduleRefresh = () => {
+      if (timeout) clearTimeout(timeout);
+      timeout = setTimeout(() => { timeout = null; void refetch(); }, 250);
+    };
+    const channel = supabase
+      .channel(`my-work-feedback-${user.id}`)
+      .on("postgres_changes", { event: "*", schema: "public", table: "appointment_feedback" }, scheduleRefresh)
+      .subscribe();
+    return () => {
+      if (timeout) clearTimeout(timeout);
+      supabase.removeChannel(channel);
+    };
+  }, [user?.id, refetch]);
 
   const getFeedbackTarget = (entry: TeamFeedbackEntry) => {
     if (entry.feedback_context.target.type === 'task') {

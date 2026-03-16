@@ -338,10 +338,11 @@ export function useMyWorkDecisionsData(userId?: string) {
 
     const channel = supabase
       .channel(`my-work-decisions-${userId}`)
-      // task_decisions has no user_id column; using a bad filter drops realtime events.
       .on("postgres_changes", { event: "*", schema: "public", table: "task_decisions" }, scheduleRefresh)
-      .on("postgres_changes", { event: "*", schema: "public", table: "task_decision_participants", filter: `user_id=eq.${userId}` }, scheduleRefresh)
-      // task_decision_responses also has no user_id column (participant_id/decision_id based).
+      // Listen without filter – filtered subscriptions on task_decision_participants
+      // can silently drop events when RLS prevents the anon/authenticated role from
+      // seeing the newly-inserted row at the moment the event fires.
+      .on("postgres_changes", { event: "*", schema: "public", table: "task_decision_participants" }, scheduleRefresh)
       .on("postgres_changes", { event: "*", schema: "public", table: "task_decision_responses" }, scheduleRefresh)
       .subscribe();
 

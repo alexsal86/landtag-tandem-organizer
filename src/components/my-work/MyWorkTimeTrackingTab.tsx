@@ -160,6 +160,24 @@ export function MyWorkTimeTrackingTab() {
     }
   }, [user]);
 
+  // Realtime subscription
+  useEffect(() => {
+    if (!user?.id) return;
+    let timeout: ReturnType<typeof setTimeout> | null = null;
+    const scheduleRefresh = () => {
+      if (timeout) clearTimeout(timeout);
+      timeout = setTimeout(() => { timeout = null; void checkRoleAndLoad(); }, 250);
+    };
+    const channel = supabase
+      .channel(`my-work-time-${user.id}`)
+      .on("postgres_changes", { event: "*", schema: "public", table: "time_entries", filter: `user_id=eq.${user.id}` }, scheduleRefresh)
+      .subscribe();
+    return () => {
+      if (timeout) clearTimeout(timeout);
+      supabase.removeChannel(channel);
+    };
+  }, [user?.id]);
+
   const checkRoleAndLoad = async () => {
     if (!user) return;
 

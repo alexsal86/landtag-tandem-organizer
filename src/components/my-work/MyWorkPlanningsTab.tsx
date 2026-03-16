@@ -64,6 +64,25 @@ export function MyWorkPlanningsTab() {
     }
   }, [user]);
 
+  // Realtime subscription
+  useEffect(() => {
+    if (!user?.id) return;
+    let timeout: ReturnType<typeof setTimeout> | null = null;
+    const scheduleRefresh = () => {
+      if (timeout) clearTimeout(timeout);
+      timeout = setTimeout(() => { timeout = null; void loadPlannings(); }, 250);
+    };
+    const channel = supabase
+      .channel(`my-work-plannings-${user.id}`)
+      .on("postgres_changes", { event: "*", schema: "public", table: "event_plannings" }, scheduleRefresh)
+      .on("postgres_changes", { event: "*", schema: "public", table: "event_planning_checklist_items" }, scheduleRefresh)
+      .subscribe();
+    return () => {
+      if (timeout) clearTimeout(timeout);
+      supabase.removeChannel(channel);
+    };
+  }, [user?.id]);
+
   const loadPlannings = async () => {
     if (!user) return;
     
