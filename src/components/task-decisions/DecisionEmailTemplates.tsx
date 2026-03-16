@@ -90,21 +90,46 @@ export const DecisionEmailTemplates = () => {
 
     try {
       setSaving(true);
-      const { error } = await supabase
+      const basePayload = {
+        subject: template.subject,
+        greeting: template.greeting,
+        introduction: template.introduction,
+        instruction: template.instruction,
+        question_prompt: template.question_prompt,
+        closing: template.closing,
+        signature: template.signature,
+      };
+
+      const payloadWithDetailsBlock = {
+        ...basePayload,
+        details_block_template: template.details_block_template,
+      };
+
+      const { error: saveWithDetailsError } = await supabase
         .from('decision_email_templates')
-        .update({
-          subject: template.subject,
-          details_block_template: template.details_block_template,
-          greeting: template.greeting,
-          introduction: template.introduction,
-          instruction: template.instruction,
-          question_prompt: template.question_prompt,
-          closing: template.closing,
-          signature: template.signature,
-        })
+        .update(payloadWithDetailsBlock)
         .eq('id', template.id);
 
-      if (error) throw error;
+      if (saveWithDetailsError) {
+        const isMissingDetailsColumn =
+          saveWithDetailsError.code === '42703' ||
+          saveWithDetailsError.code === 'PGRST204' ||
+          saveWithDetailsError.message?.includes('details_block_template');
+
+        if (!isMissingDetailsColumn) throw saveWithDetailsError;
+
+        debugConsole.warn(
+          'decision_email_templates.details_block_template not available in current DB schema, saving without it.',
+          saveWithDetailsError,
+        );
+
+        const { error: fallbackError } = await supabase
+          .from('decision_email_templates')
+          .update(basePayload)
+          .eq('id', template.id);
+
+        if (fallbackError) throw fallbackError;
+      }
 
       toast({
         title: "Gespeichert",
