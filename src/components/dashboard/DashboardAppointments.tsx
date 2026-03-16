@@ -361,12 +361,21 @@ export const DashboardAppointments = ({ data }: Props) => {
           .map((item) => item.user_id)));
       }
 
-      if (deputyIds.length === 0) {
+      // Exclude current user from deputy list – the request should go TO a deputy, not from a deputy to themselves
+      const otherDeputyIds = deputyIds.filter((id) => id !== user.id);
+
+      if (otherDeputyIds.length === 0 && deputyIds.length > 0) {
+        // Current user IS the only Abgeordneter – they shouldn't create requests to themselves
+        toast({ title: 'Nicht möglich', description: 'Als Abgeordneter können Sie keine Terminanfrage an sich selbst senden.', variant: 'destructive' });
+        return;
+      }
+
+      if (otherDeputyIds.length === 0) {
         toast({ title: 'Keine Abgeordneten gefunden', description: 'Es wurde keine aktive Rolle "abgeordneter" unter den aktiven Tenant-Mitgliedern gefunden.', variant: 'destructive' });
         return;
       }
 
-      const targetDeputyId = deputyIds.sort()[0];
+      const targetDeputyId = otherDeputyIds.sort()[0];
 
       const { data: decision, error: decisionError } = await supabase
         .from('task_decisions')
