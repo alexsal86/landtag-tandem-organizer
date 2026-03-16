@@ -327,39 +327,28 @@ export const DashboardAppointments = ({ data }: Props) => {
       const requestedStart = requestTime ? `${requestDate}T${requestTime}:00` : `${requestDate}T09:00:00`;
       const requestedStartIso = new Date(requestedStart).toISOString();
 
-      // Gleiches Muster wie in NoteDecisionCreator:
-      // 1) aktive Tenant-Mitglieder laden
-      // 2) App-Rolle "abgeordneter" über user_roles auf diese User-IDs filtern
-      const { data: activeMemberships, error: membershipError } = await supabase
-        .from('user_tenant_memberships')
-        .select('user_id, role')
-        .eq('tenant_id', currentTenant.id)
-        .eq('is_active', true);
+      // Betreuenden Abgeordneten aus employee_settings ermitteln
+      const { data: empSettings, error: settingsError } = await supabase
+        .from('employee_settings')
+        .select('admin_id')
+        .eq('user_id', user.id)
+        .maybeSingle();
 
-      if (membershipError) throw membershipError;
+      if (settingsError) throw settingsError;
 
-      // Abgeordnete über die Membership-Rolle ermitteln (autoritative Quelle: user_tenant_memberships)
-      const deputyIds = Array.from(new Set(
-        (activeMemberships || [])
-          .filter((item) => item.role === 'abgeordneter')
-          .map((item) => item.user_id)
-      ));
+      const adminId = empSettings?.admin_id;
 
-      // Exclude current user from deputy list – the request should go TO a deputy, not from a deputy to themselves
-      const otherDeputyIds = deputyIds.filter((id) => id !== user.id);
+      if (!adminId) {
+        toast({ title: 'Kein Abgeordneter zugeordnet', description: 'Bitte lassen Sie sich in den Mitarbeiter-Einstellungen einem Abgeordneten zuordnen.', variant: 'destructive' });
+        return;
+      }
 
-      if (otherDeputyIds.length === 0 && deputyIds.length > 0) {
-        // Current user IS the only Abgeordneter – they shouldn't create requests to themselves
+      if (adminId === user.id) {
         toast({ title: 'Nicht möglich', description: 'Als Abgeordneter können Sie keine Terminanfrage an sich selbst senden.', variant: 'destructive' });
         return;
       }
 
-      if (otherDeputyIds.length === 0) {
-        toast({ title: 'Keine Abgeordneten gefunden', description: 'Es wurde keine aktive Rolle "abgeordneter" unter den aktiven Tenant-Mitgliedern gefunden.', variant: 'destructive' });
-        return;
-      }
-
-      const targetDeputyId = otherDeputyIds.sort()[0];
+      const targetDeputyId = adminId;
 
       const { data: decision, error: decisionError } = await supabase
         .from('task_decisions')
