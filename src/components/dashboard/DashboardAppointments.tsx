@@ -4,6 +4,7 @@ import { de } from 'date-fns/locale';
 import { useNavigate } from 'react-router-dom';
 import { icons } from 'lucide-react';
 import { Separator } from '@/components/ui/separator';
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { getCurrentTimeSlot, getCurrentDayOfWeek } from '@/utils/dashboard/timeUtils';
 import { selectMessage } from '@/utils/dashboard/messageGenerator';
 import { getSpecialDayHint } from '@/utils/dashboard/specialDays';
@@ -92,6 +93,7 @@ export const DashboardAppointments = ({ data }: Props) => {
   const [requestLocation, setRequestLocation] = useState('');
   const [requestRequester, setRequestRequester] = useState('');
   const [isSubmittingRequest, setIsSubmittingRequest] = useState(false);
+  const [isQuickRequestOpen, setIsQuickRequestOpen] = useState(false);
 
   const handleCreateRequest = async () => {
     if (!user?.id || !currentTenant?.id) return;
@@ -266,39 +268,56 @@ export const DashboardAppointments = ({ data }: Props) => {
 
       <Separator className="my-2" />
 
-      <div className="space-y-3 rounded-md border p-3">
-        <div>
-          <h4 className="text-sm font-semibold">Terminanfrage (schnell)</h4>
-          <p className="text-xs text-muted-foreground">Direkt im Dashboard erfassen und Reaktion des Abgeordneten abfragen. Der Termin wird erst nach Zustimmung angelegt.</p>
+      <Collapsible open={isQuickRequestOpen} onOpenChange={setIsQuickRequestOpen}>
+        <div className="space-y-2">
+          <CollapsibleTrigger asChild>
+            <button
+              type="button"
+              className="w-full flex items-start justify-between gap-3 text-left rounded-md px-2 py-1 hover:bg-muted/40 transition-colors"
+            >
+              <div>
+                <h4 className="text-sm font-semibold">Terminanfrage (schnell)</h4>
+                <p className="text-xs text-muted-foreground">Direkt im Dashboard erfassen und Reaktion des Abgeordneten abfragen. Der Termin wird erst nach Zustimmung angelegt.</p>
+              </div>
+              <span className="text-xs text-muted-foreground shrink-0 flex items-center gap-1">
+                {isQuickRequestOpen ? 'Einklappen' : 'Ausklappen'}
+                <icons.ChevronDown className={`h-4 w-4 transition-transform ${isQuickRequestOpen ? 'rotate-180' : ''}`} />
+              </span>
+            </button>
+          </CollapsibleTrigger>
+
+          <CollapsibleContent className="space-y-3 pt-1">
+            <div className="grid grid-cols-1 gap-2 md:grid-cols-2">
+              <div className="md:col-span-2">
+                <Label htmlFor="dashboard-request-title" className="text-xs">Titel</Label>
+                <Input id="dashboard-request-title" value={requestTitle} onChange={(event) => setRequestTitle(event.target.value)} placeholder="z. B. Gespräch mit Verband" />
+              </div>
+              <div>
+                <Label htmlFor="dashboard-request-date" className="text-xs">Datum</Label>
+                <Input id="dashboard-request-date" type="date" value={requestDate} onChange={(event) => setRequestDate(event.target.value)} />
+              </div>
+              <div>
+                <Label htmlFor="dashboard-request-time" className="text-xs">Uhrzeit</Label>
+                <Input id="dashboard-request-time" type="time" value={requestTime} onChange={(event) => setRequestTime(event.target.value)} />
+              </div>
+              <div>
+                <Label htmlFor="dashboard-request-location" className="text-xs">Ort / Format</Label>
+                <Input id="dashboard-request-location" value={requestLocation} onChange={(event) => setRequestLocation(event.target.value)} placeholder="Landtag / Digital" />
+              </div>
+              <div>
+                <Label htmlFor="dashboard-request-requester" className="text-xs">Anfragende Stelle</Label>
+                <Input id="dashboard-request-requester" value={requestRequester} onChange={(event) => setRequestRequester(event.target.value)} placeholder="Name / Organisation" />
+              </div>
+            </div>
+            <div className="flex justify-end">
+              <Button type="button" onClick={handleCreateRequest} disabled={isSubmittingRequest}>
+                {isSubmittingRequest ? 'Erstelle…' : 'Terminanfrage anlegen'}
+              </Button>
+            </div>
+          </div>
+          </CollapsibleContent>
         </div>
-        <div className="grid grid-cols-1 gap-2 md:grid-cols-2">
-          <div className="md:col-span-2">
-            <Label htmlFor="dashboard-request-title" className="text-xs">Titel</Label>
-            <Input id="dashboard-request-title" value={requestTitle} onChange={(event) => setRequestTitle(event.target.value)} placeholder="z. B. Gespräch mit Verband" />
-          </div>
-          <div>
-            <Label htmlFor="dashboard-request-date" className="text-xs">Datum</Label>
-            <Input id="dashboard-request-date" type="date" value={requestDate} onChange={(event) => setRequestDate(event.target.value)} />
-          </div>
-          <div>
-            <Label htmlFor="dashboard-request-time" className="text-xs">Uhrzeit</Label>
-            <Input id="dashboard-request-time" type="time" value={requestTime} onChange={(event) => setRequestTime(event.target.value)} />
-          </div>
-          <div>
-            <Label htmlFor="dashboard-request-location" className="text-xs">Ort / Format</Label>
-            <Input id="dashboard-request-location" value={requestLocation} onChange={(event) => setRequestLocation(event.target.value)} placeholder="Landtag / Digital" />
-          </div>
-          <div>
-            <Label htmlFor="dashboard-request-requester" className="text-xs">Anfragende Stelle</Label>
-            <Input id="dashboard-request-requester" value={requestRequester} onChange={(event) => setRequestRequester(event.target.value)} placeholder="Name / Organisation" />
-          </div>
-        </div>
-        <div className="flex justify-end">
-          <Button type="button" onClick={handleCreateRequest} disabled={isSubmittingRequest}>
-            {isSubmittingRequest ? 'Erstelle…' : 'Terminanfrage anlegen'}
-          </Button>
-        </div>
-      </div>
+      </Collapsible>
 
       {feedbackReminderVisible && (
         <>
