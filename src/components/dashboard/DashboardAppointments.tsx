@@ -140,22 +140,14 @@ export const DashboardAppointments = ({ data }: Props) => {
 
   return (
     <div className="space-y-4">
-      {contextMessage && (
-        <div className="text-sm text-muted-foreground">
-          <p>{contextMessage.text}</p>
-        </div>
-      )}
-
-      {specialDayHint && (
-        <div className="bg-amber-50 dark:bg-amber-950/30 border-l-2 border-amber-400 px-3 py-1.5 rounded text-sm text-foreground flex items-start gap-2">
-          {HintIcon && <HintIcon className="h-4 w-4 mt-0.5 shrink-0 text-amber-600 dark:text-amber-400" />}
-          <span dangerouslySetInnerHTML={{ __html: sanitizeRichHtml(specialDayHint.text.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>').replace(/\n/g, '<br/>')) }} />
-        </div>
-      )}
-
-      {(contextMessage || specialDayHint) && <Separator className="my-2" />}
-
       <div>
+        {isShowingTomorrow && (
+          <div className="mb-3 rounded-md border border-blue-200/70 bg-blue-50 px-3 py-2 text-sm text-blue-900 dark:border-blue-900 dark:bg-blue-950/40 dark:text-blue-100">
+            <p className="font-medium">Heute stehen keine Termine mehr an.</p>
+            <p className="text-xs text-blue-800/90 dark:text-blue-200/90">Darunter siehst du zur Orientierung bereits die Termine für morgen.</p>
+          </div>
+        )}
+
         {appointments.length === 0 ? (
           <p className="text-sm text-muted-foreground">
             {isShowingTomorrow ? 'Keine Termine morgen.' : 'Keine Termine heute.'}
@@ -193,6 +185,21 @@ export const DashboardAppointments = ({ data }: Props) => {
           </div>
         )}
       </div>
+
+      {(contextMessage || specialDayHint) && <Separator className="my-2" />}
+
+      {contextMessage && (
+        <div className="text-sm text-muted-foreground">
+          <p>{contextMessage.text}</p>
+        </div>
+      )}
+
+      {specialDayHint && (
+        <div className="bg-amber-50 dark:bg-amber-950/30 border-l-2 border-amber-400 px-3 py-1.5 rounded text-sm text-foreground flex items-start gap-2">
+          {HintIcon && <HintIcon className="h-4 w-4 mt-0.5 shrink-0 text-amber-600 dark:text-amber-400" />}
+          <span dangerouslySetInnerHTML={{ __html: sanitizeRichHtml(specialDayHint.text.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>').replace(/\n/g, '<br/>')) }} />
+        </div>
+      )}
 
       <Separator className="my-2" />
 
