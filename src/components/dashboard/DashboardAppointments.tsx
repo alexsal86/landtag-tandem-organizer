@@ -332,7 +332,7 @@ export const DashboardAppointments = ({ data }: Props) => {
         .select('user_id')
         .eq('tenant_id', currentTenant.id)
         .eq('is_active', true)
-        .ilike('role', 'abgeordneter');
+        .eq('role', 'abgeordneter');
 
       if (deputyError) throw deputyError;
 
@@ -354,7 +354,7 @@ export const DashboardAppointments = ({ data }: Props) => {
           const { data: deputyRoles, error: deputyRolesError } = await supabase
             .from('user_roles')
             .select('user_id')
-            .ilike('role', 'abgeordneter')
+            .eq('role', 'abgeordneter')
             .in('user_id', activeUserIds);
 
           if (deputyRolesError) throw deputyRolesError;
