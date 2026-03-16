@@ -23,6 +23,7 @@ const PERIOD_PRESETS = {
 
 export function MyWorkFeedbackFeedTab() {
   const navigate = useNavigate();
+  const { user } = useAuth();
   const [searchParams, setSearchParams] = useSearchParams();
   const [scope, setScope] = useState<'team' | 'mine' | 'team-plus-relevant'>(() => (searchParams.get('scope') as any) || 'team');
   const [periodPreset, setPeriodPreset] = useState<keyof typeof PERIOD_PRESETS>(() => (searchParams.get('period') as keyof typeof PERIOD_PRESETS) || '7d');
