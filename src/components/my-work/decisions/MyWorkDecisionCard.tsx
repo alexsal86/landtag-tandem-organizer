@@ -1,4 +1,4 @@
-import { Fragment, useMemo, useState, memo, useEffect, useRef } from "react";
+import { useMemo, useState, memo, useEffect, useRef } from "react";
 import { format } from "date-fns";
 import { de } from "date-fns/locale";
 import { Card, CardContent } from "@/components/ui/card";
@@ -53,6 +53,15 @@ interface DayTimelineItem {
   start: string;
   end: string;
   simulated?: boolean;
+}
+
+interface TimelineLayoutItem {
+  item: DayTimelineItem;
+  startMinutes: number;
+  endMinutes: number;
+  durationMinutes: number;
+  column: number;
+  totalColumns: number;
 }
 
 const extractMarkerValue = (description: string | null, marker: string): string | null => {
@@ -187,29 +196,91 @@ const MyWorkDecisionCardInner = ({
   const requestedStart = requestedStartIso ? new Date(requestedStartIso) : null;
   const isRequestedStartValid = Boolean(requestedStart && !Number.isNaN(requestedStart.getTime()));
   const shouldShowTimeline = isAppointmentRequest && isRequestedStartValid && (isSchedulePinnedOpen || isScheduleHoverOpen);
+  const timelineWindowMinutes = 6 * 60;
+  const timelineHeight = 264;
+  const pixelsPerMinute = timelineHeight / timelineWindowMinutes;
 
-  const timelineHourSlots = useMemo(() => {
+  const timelineBounds = useMemo(() => {
     if (!requestedStart) return [];
 
     const windowStart = new Date(requestedStart.getTime() - 3 * 60 * 60 * 1000);
     windowStart.setMinutes(0, 0, 0);
+    const windowEnd = new Date(windowStart.getTime() + timelineWindowMinutes * 60 * 1000);
+
+    return [windowStart, windowEnd] as const;
+  }, [requestedStart]);
+
+  const timelineHourSlots = useMemo(() => {
+    if (!timelineBounds.length) return [];
+
+    const [windowStart] = timelineBounds;
 
     return Array.from({ length: 7 }, (_, index) => {
       const slot = new Date(windowStart);
       slot.setHours(windowStart.getHours() + index);
       return slot;
     });
-  }, [requestedStart]);
+  }, [timelineBounds]);
 
-  const dayTimelineByHour = useMemo(() => {
-    const grouped = new Map<string, DayTimelineItem[]>();
-    dayTimelineItems.forEach((item) => {
-      const hourKey = format(new Date(item.start), 'yyyy-MM-dd-HH', { locale: de });
-      const existing = grouped.get(hourKey) ?? [];
-      grouped.set(hourKey, [...existing, item]);
+  const timelineLayoutItems = useMemo(() => {
+    if (!timelineBounds.length) return [];
+
+    const [windowStart, windowEnd] = timelineBounds;
+    const windowStartMs = windowStart.getTime();
+    const windowEndMs = windowEnd.getTime();
+
+    const normalized = dayTimelineItems
+      .map((item) => {
+        const itemStart = new Date(item.start);
+        const itemEnd = new Date(item.end || item.start);
+
+        const safeEnd = itemEnd.getTime() > itemStart.getTime()
+          ? itemEnd
+          : new Date(itemStart.getTime() + 60 * 60 * 1000);
+
+        const clippedStart = Math.max(itemStart.getTime(), windowStartMs);
+        const clippedEnd = Math.min(safeEnd.getTime(), windowEndMs);
+
+        if (clippedEnd <= clippedStart) return null;
+
+        const startMinutes = Math.max(0, Math.floor((clippedStart - windowStartMs) / 60000));
+        const endMinutes = Math.min(timelineWindowMinutes, Math.ceil((clippedEnd - windowStartMs) / 60000));
+        const durationMinutes = Math.max(15, endMinutes - startMinutes);
+
+        return { item, startMinutes, endMinutes, durationMinutes };
+      })
+      .filter((entry): entry is Omit<TimelineLayoutItem, 'column' | 'totalColumns'> => Boolean(entry))
+      .sort((a, b) => a.startMinutes - b.startMinutes);
+
+    const layout: TimelineLayoutItem[] = [];
+    const active: Array<{ endMinutes: number; column: number }> = [];
+
+    normalized.forEach((entry) => {
+      for (let idx = active.length - 1; idx >= 0; idx -= 1) {
+        if (active[idx].endMinutes <= entry.startMinutes) {
+          active.splice(idx, 1);
+        }
+      }
+
+      let column = 0;
+      while (active.some((a) => a.column === column)) {
+        column += 1;
+      }
+
+      active.push({ endMinutes: entry.endMinutes, column });
+      const totalColumns = Math.max(...active.map((a) => a.column)) + 1;
+
+      layout.push({ ...entry, column, totalColumns });
     });
-    return grouped;
-  }, [dayTimelineItems]);
+
+    return layout.map((entry) => {
+      const overlapping = layout.filter(
+        (other) => other.startMinutes < entry.endMinutes && entry.startMinutes < other.endMinutes,
+      );
+      const totalColumns = Math.max(...overlapping.map((overlap) => overlap.column)) + 1;
+      return { ...entry, totalColumns };
+    });
+  }, [dayTimelineItems, timelineBounds]);
 
   const appointmentRequestNarrative = useMemo(() => {
     if (!isAppointmentRequest || !isRequestedStartValid || !requestedStart) {
@@ -502,13 +573,15 @@ const MyWorkDecisionCardInner = ({
       try {
         const contextStart = new Date(requestedStart.getTime() - 3 * 60 * 60 * 1000);
         const contextEnd = new Date(requestedStart.getTime() + 3 * 60 * 60 * 1000);
+        const contextStartIso = contextStart.toISOString();
+        const contextEndIso = contextEnd.toISOString();
 
         const { data, error } = await supabase
           .from('appointments')
           .select('id, title, start_time, end_time')
           .eq('tenant_id', currentTenant.id)
-          .gte('start_time', contextStart.toISOString())
-          .lte('start_time', contextEnd.toISOString())
+          .lt('start_time', contextEndIso)
+          .gt('end_time', contextStartIso)
           .order('start_time', { ascending: true });
 
         if (error) throw error;
@@ -714,47 +787,61 @@ const MyWorkDecisionCardInner = ({
                       ) : dayTimelineItems.length === 0 ? (
                         <p className="text-xs text-muted-foreground">Keine Termine für diesen Tag.</p>
                       ) : (
-                        <div className="grid grid-cols-[56px_1fr] border border-border rounded-md overflow-hidden">
-                          {timelineHourSlots.map((slot, slotIndex) => {
-                            const slotKey = format(slot, 'yyyy-MM-dd-HH', { locale: de });
-                            const slotItems = dayTimelineByHour.get(slotKey) ?? [];
-                            return (
-                              <Fragment key={slotKey}>
+                        <div className="grid grid-cols-[56px_1fr] border border-border rounded-md overflow-hidden bg-muted/15">
+                          <div className="relative border-r border-border bg-muted/30" style={{ height: `${timelineHeight}px` }}>
+                            {timelineHourSlots.map((slot, slotIndex) => (
+                              <div
+                                key={format(slot, 'yyyy-MM-dd-HH', { locale: de })}
+                                className={cn('absolute left-0 right-0 -translate-y-1/2 px-2 text-[11px] font-mono text-muted-foreground', slotIndex === timelineHourSlots.length - 1 && 'translate-y-[-95%]')}
+                                style={{ top: `${slotIndex * 44}px` }}
+                              >
+                                {format(slot, 'HH:00', { locale: de })}
+                              </div>
+                            ))}
+                          </div>
+
+                          <div className="relative" style={{ height: `${timelineHeight}px` }}>
+                            {timelineHourSlots.map((slot, slotIndex) => (
+                              <div
+                                key={`line-${format(slot, 'yyyy-MM-dd-HH', { locale: de })}`}
+                                className="absolute left-0 right-0 border-t border-border/70"
+                                style={{ top: `${slotIndex * 44}px` }}
+                              />
+                            ))}
+
+                            {timelineLayoutItems.map((entry) => {
+                              const width = `calc(${100 / entry.totalColumns}% - 4px)`;
+                              const left = `calc(${(entry.column * 100) / entry.totalColumns}% + 2px)`;
+
+                              return (
                                 <div
+                                  key={entry.item.id}
                                   className={cn(
-                                    'min-h-[44px] px-2 py-2 text-[11px] font-mono text-muted-foreground bg-muted/30 border-b border-border',
-                                    slotIndex === timelineHourSlots.length - 1 && 'border-b-0'
+                                    'absolute rounded-md border px-2 py-1 text-[11px] shadow-sm overflow-hidden',
+                                    entry.item.simulated
+                                      ? 'bg-blue-100 border-blue-300 text-blue-900'
+                                      : 'bg-background border-border text-foreground'
                                   )}
+                                  style={{
+                                    top: `${entry.startMinutes * pixelsPerMinute}px`,
+                                    height: `${Math.max(18, entry.durationMinutes * pixelsPerMinute)}px`,
+                                    left,
+                                    width,
+                                  }}
                                 >
-                                  {format(slot, 'HH:00', { locale: de })}
+                                  <div className="flex items-center justify-between gap-2">
+                                    <span className="truncate font-medium">{entry.item.title}</span>
+                                    {entry.item.simulated && <Badge variant="secondary" className="text-[10px]">sim.</Badge>}
+                                  </div>
+                                  <div className="mt-0.5 text-[10px] text-muted-foreground">
+                                    {format(new Date(entry.item.start), 'HH:mm', { locale: de })}–{format(new Date(entry.item.end), 'HH:mm', { locale: de })}
+                                    {' · '}
+                                    {Math.round((new Date(entry.item.end).getTime() - new Date(entry.item.start).getTime()) / 60000)} Min
+                                  </div>
                                 </div>
-                                <div
-                                  className={cn(
-                                    'min-h-[44px] px-2 py-1.5 border-b border-l border-border space-y-1.5',
-                                    slotIndex === timelineHourSlots.length - 1 && 'border-b-0'
-                                  )}
-                                >
-                                  {slotItems.map((item) => (
-                                    <div
-                                      key={item.id}
-                                      className={cn(
-                                        'flex items-center gap-2 rounded px-1.5 py-1 text-xs',
-                                        item.simulated ? 'bg-blue-100 border border-blue-300' : 'bg-background border border-transparent'
-                                      )}
-                                    >
-                                      <span className="w-10 shrink-0 font-mono text-muted-foreground">
-                                        {format(new Date(item.start), 'HH:mm', { locale: de })}
-                                      </span>
-                                      <span className="truncate text-foreground">{item.title}</span>
-                                      {item.simulated && (
-                                        <Badge variant="secondary" className="ml-auto text-[10px]">simuliert</Badge>
-                                      )}
-                                    </div>
-                                  ))}
-                                </div>
-                              </Fragment>
-                            );
-                          })}
+                              );
+                            })}
+                          </div>
                         </div>
                       )}
                     </div>
