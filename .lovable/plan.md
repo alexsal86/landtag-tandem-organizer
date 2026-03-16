@@ -1,43 +1,48 @@
 
-## Code-Qualität — Status
 
-### Erledigt
+# Fix: Terminanfrage — Abgeordneten über `employee_settings.admin_id` ermitteln
 
-- **strictNullChecks: true** — aktiviert, alle Build-Fehler behoben
-- **noImplicitAny: true** — aktiviert, alle Build-Fehler behoben
-- **DOMPurify** als zentraler HTML-Sanitizer — alle `dangerouslySetInnerHTML` nutzen jetzt `sanitizeRichHtml()`
-- **Tenant-Access Guard** für Edge Functions — existiert in `supabase/functions/_shared/tenant-access.ts`
-- **ESLint `no-unused-vars: warn`** — aktiviert mit `argsIgnorePattern: '^_'`, erste Bereinigungsrunde in Pages/Hooks abgeschlossen
-- **Standalone `React`-Imports entfernt** — ~60 Dateien bereinigt
-- **State-Mutation fix** — `existingContacts.push()` → immutables Update in `useContactImport.ts`
-- **Non-null Assertion Guards** — `user!.id` / `currentTenant!.id` durch Early-Return-Guards ersetzt (~11 Dateien)
-- **Leere catch-Blöcke** — kritische Stellen in MatrixContext & DaySlipStore mit `debugConsole.warn` versehen
-- **JSON-Protocol Speaker-Normalisierung** — `speaker: string | { name }` korrekt normalisiert
+## Problem
+Die aktuelle Logik fragt `user_tenant_memberships` nach Nutzern mit der Rolle "abgeordneter" ab. Aufgrund von RLS-Policies kann ein Mitarbeiter aber nur seine eigene Membership-Zeile sehen — nicht die anderer Nutzer. Daher liefert die Abfrage keine Ergebnisse und die Fehlermeldung "Keine Abgeordneten gefunden" erscheint.
 
-### Noch offen
+## Lösung
+Statt über `user_tenant_memberships` nach der Rolle zu filtern, den betreuenden Abgeordneten direkt aus `employee_settings.admin_id` des aktuellen Nutzers lesen. Diese Tabelle erlaubt per RLS den Zugriff auf den eigenen Datensatz (`user_id = auth.uid()`).
 
-1. ~~**`strict: true` aktivieren**~~ ✅ — war bereits aktiv in `tsconfig.app.json` inkl. `strictNullChecks` und `noImplicitAny`
-2. **Tote Imports weiter bereinigen** — ~65 standalone `React`-Imports in Components prüfen, weitere lucide-Icons und ungenutzte Variablen entfernen (ESLint-Regel zeigt Warnungen)
-3. **`no-explicit-any` schrittweise einführen** — nach Abschluss der `no-unused-vars`-Bereinigung
-4. ~~**Edge Functions `verify_jwt`-Audit**~~ ✅ — alle 18 Functions mit `verify_jwt = false` klassifiziert und abgesichert: Cron-Functions mit `requireServiceRole`, WebSocket mit `requireAuth`, Token-Endpoints mit eigener Validierung, `send-push-notification` + `fetch-karlsruhe-districts` mit Service-Role-Guard
-5. **CORS einschränken** — `Access-Control-Allow-Origin: *` durch Allowlist ersetzen für sensible Operationen
+## Änderungen
 
----
+**Datei: `src/components/dashboard/DashboardAppointments.tsx`** — Funktion `handleCreateRequest`:
 
-## No-Code Automations-Hub — Status
+Ersetze den Block (Zeilen ~330–360), der `user_tenant_memberships` nach Rolle "abgeordneter" filtert, durch:
 
-### Erledigt
+1. Abfrage: `employee_settings` → `admin_id` für `user_id = user.id`
+2. Wenn `admin_id` vorhanden und nicht der eigene User → als `targetDeputyId` verwenden
+3. Wenn kein `admin_id` hinterlegt → Fehlermeldung: "Kein betreuender Abgeordneter hinterlegt"
+4. Wenn `admin_id === user.id` → Fehlermeldung: "Als Abgeordneter können Sie keine Anfrage an sich selbst senden"
 
-- 4-Step Wizard (Grundlagen → Trigger → Bedingungen → Aktionen)
-- 10 Templates, Template-Galerie mit Suche/Filter
-- Kill-Switch, Dry-Run, Run-Now, Run-Historie mit Step-Logs
-- Error-Dashboard mit Retry, Regel-Versionierung, Import/Export
-- Rate Limiting, Idempotency, Audit-Trail
-- 5 Action-Typen, 5 Condition-Operators, 4 Trigger-Typen (inkl. Webhook)
-- Rollenbasierte Zugriffskontrolle
-- **Regel duplizieren** — Copy-Button pro Regel-Karte
-- **Nächste geplante Ausführung** — Badge für schedule-Regeln
-- **Regel-Statistiken** — Erfolgsrate (%) + Ø Laufzeit als Tooltip-Badge
-- **Notification-Kontext** — `rule_name`, `trigger_reason`, `run_id` in Notification-Payload
-- **Webhook-Trigger** — neue Edge Function `automation-webhook`, Secret-Authentifizierung, URL-Anzeige im Wizard
-- **Verschachtelte Condition-Gruppen** — rekursives AND/OR-Nesting bis 3 Ebenen im Wizard, backward-kompatible DB-Serialisierung
+```typescript
+// Betreuenden Abgeordneten aus employee_settings ermitteln
+const { data: settings, error: settingsError } = await supabase
+  .from('employee_settings')
+  .select('admin_id')
+  .eq('user_id', user.id)
+  .maybeSingle();
+
+if (settingsError) throw settingsError;
+
+const adminId = settings?.admin_id;
+
+if (!adminId) {
+  toast({ title: 'Kein Abgeordneter zugeordnet', description: '...', variant: 'destructive' });
+  return;
+}
+
+if (adminId === user.id) {
+  toast({ title: 'Nicht möglich', description: '...', variant: 'destructive' });
+  return;
+}
+
+const targetDeputyId = adminId;
+```
+
+Keine Datenbankänderungen nötig — die RLS-Policy erlaubt bereits den Zugriff auf den eigenen `employee_settings`-Eintrag.
+
