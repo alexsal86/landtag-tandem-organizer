@@ -1,4 +1,6 @@
 import { useMemo, useState, memo, useEffect, useRef } from "react";
+import { format } from "date-fns";
+import { de } from "date-fns/locale";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -28,12 +30,33 @@ import {
   Star,
   ChevronDown,
   ChevronUp,
+  Info,
+  CalendarDays,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { MyWorkDecision, getResponseSummary, getBorderColor, getCustomResponseSummary } from "./types";
 import { getColorClasses } from "@/lib/decisionTemplates";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
+import { useTenant } from "@/hooks/useTenant";
+
+const APPOINTMENT_REQUEST_TITLE_MARKER = 'appointment_request_title:';
+const APPOINTMENT_REQUEST_START_MARKER = 'appointment_request_start:';
+
+interface DayTimelineItem {
+  id: string;
+  title: string;
+  start: string;
+  end: string;
+  simulated?: boolean;
+}
+
+const extractMarkerValue = (description: string | null, marker: string): string | null => {
+  if (!description) return null;
+  const escaped = marker.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  const match = description.match(new RegExp(`${escaped}(.+)`, 'i'));
+  return match?.[1]?.trim() ?? null;
+};
 
 interface MyWorkDecisionCardProps {
   decision: MyWorkDecision;
@@ -140,12 +163,24 @@ const MyWorkDecisionCardInner = ({
   const [detailsExpanded, setDetailsExpanded] = useState(false);
   const [showCommentPrompt, setShowCommentPrompt] = useState(false);
   const [showCommentEditor, setShowCommentEditor] = useState(false);
+  const [isSchedulePinnedOpen, setIsSchedulePinnedOpen] = useState(false);
+  const [isScheduleHoverOpen, setIsScheduleHoverOpen] = useState(false);
+  const [dayTimelineItems, setDayTimelineItems] = useState<DayTimelineItem[]>([]);
+  const [isTimelineLoading, setIsTimelineLoading] = useState(false);
   const [commentDraft, setCommentDraft] = useState('');
   const [commentEditorKey, setCommentEditorKey] = useState(0);
   const [isSubmittingComment, setIsSubmittingComment] = useState(false);
   const [commentPromptColor, setCommentPromptColor] = useState('green');
   const responseRefreshTimeoutRef = useRef<number | null>(null);
   const { toast } = useToast();
+  const { currentTenant } = useTenant();
+
+  const isAppointmentRequest = decision.title.toLowerCase().startsWith('terminanfrage:');
+  const requestedTitle = extractMarkerValue(decision.description, APPOINTMENT_REQUEST_TITLE_MARKER) || decision.title.replace(/^Terminanfrage:\s*/i, '');
+  const requestedStartIso = extractMarkerValue(decision.description, APPOINTMENT_REQUEST_START_MARKER);
+  const requestedStart = requestedStartIso ? new Date(requestedStartIso) : null;
+  const isRequestedStartValid = Boolean(requestedStart && !Number.isNaN(requestedStart.getTime()));
+  const shouldShowTimeline = isAppointmentRequest && isRequestedStartValid && (isSchedulePinnedOpen || isScheduleHoverOpen);
 
   const summary = getResponseSummary(decision.participants);
   const isArchiving = archivingDecisionId === decision.id;
@@ -336,6 +371,62 @@ const MyWorkDecisionCardInner = ({
     };
   }, []);
 
+  useEffect(() => {
+    const loadDayTimeline = async () => {
+      if (!shouldShowTimeline || !currentTenant?.id || !requestedStart) return;
+
+      setIsTimelineLoading(true);
+      try {
+        const dayStart = new Date(requestedStart);
+        dayStart.setHours(0, 0, 0, 0);
+        const dayEnd = new Date(requestedStart);
+        dayEnd.setHours(23, 59, 59, 999);
+
+        const { data, error } = await supabase
+          .from('appointments')
+          .select('id, title, start_time, end_time')
+          .eq('tenant_id', currentTenant.id)
+          .gte('start_time', dayStart.toISOString())
+          .lte('start_time', dayEnd.toISOString())
+          .order('start_time', { ascending: true });
+
+        if (error) throw error;
+
+        const existingItems: DayTimelineItem[] = (data || []).map((item) => ({
+          id: item.id,
+          title: item.title,
+          start: item.start_time,
+          end: item.end_time,
+        }));
+
+        const simulatedStart = requestedStart.toISOString();
+        const simulatedEnd = new Date(requestedStart.getTime() + 60 * 60 * 1000).toISOString();
+        const hasSameSlot = existingItems.some(
+          (item) => item.start === simulatedStart && item.title.trim().toLowerCase() === requestedTitle.trim().toLowerCase(),
+        );
+
+        const combined = hasSameSlot
+          ? existingItems
+          : [...existingItems, {
+              id: `simulated-${decision.id}`,
+              title: `${requestedTitle} (angefragt)`,
+              start: simulatedStart,
+              end: simulatedEnd,
+              simulated: true,
+            }];
+
+        combined.sort((a, b) => new Date(a.start).getTime() - new Date(b.start).getTime());
+        setDayTimelineItems(combined);
+      } catch (error) {
+        setDayTimelineItems([]);
+      } finally {
+        setIsTimelineLoading(false);
+      }
+    };
+
+    loadDayTimeline();
+  }, [shouldShowTimeline, currentTenant?.id, requestedStartIso, requestedTitle, decision.id]);
+
   return (
     <>
       <Card
@@ -432,7 +523,69 @@ const MyWorkDecisionCardInner = ({
 
           <div className="mt-3 grid gap-8 lg:grid-cols-[minmax(0,1fr)_380px] xl:grid-cols-[minmax(0,1fr)_420px]">
             <div className="min-w-0">
-              <h3 className="font-bold text-lg leading-snug mb-2">{decision.title}</h3>
+              <div className="mb-2 flex items-start justify-between gap-2">
+                <h3 className="font-bold text-lg leading-snug">{decision.title}</h3>
+                {isAppointmentRequest && isRequestedStartValid && (
+                  <TooltipProvider>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="icon"
+                          className="h-7 w-7 shrink-0"
+                          onClick={(event) => {
+                            event.stopPropagation();
+                            setIsSchedulePinnedOpen((prev) => !prev);
+                          }}
+                          onMouseEnter={() => setIsScheduleHoverOpen(true)}
+                          onMouseLeave={() => setIsScheduleHoverOpen(false)}
+                          aria-label="Termin-Tagesvorschau anzeigen"
+                        >
+                          <Info className="h-4 w-4" />
+                        </Button>
+                      </TooltipTrigger>
+                      <TooltipContent>
+                        <p>Tagessimulation für den angefragten Termin anzeigen</p>
+                      </TooltipContent>
+                    </Tooltip>
+                  </TooltipProvider>
+                )}
+              </div>
+
+              {shouldShowTimeline && (
+                <div className="mb-3 rounded-md border border-blue-200 bg-blue-50/60 p-2">
+                  <div className="mb-1.5 flex items-center gap-1.5 text-xs font-semibold text-blue-900">
+                    <CalendarDays className="h-3.5 w-3.5" />
+                    Tageskontext {requestedStart ? format(requestedStart, 'EEEE, dd.MM.yyyy', { locale: de }) : ''}
+                  </div>
+                  {isTimelineLoading ? (
+                    <p className="text-xs text-muted-foreground">Lade Termine…</p>
+                  ) : dayTimelineItems.length === 0 ? (
+                    <p className="text-xs text-muted-foreground">Keine Termine für diesen Tag.</p>
+                  ) : (
+                    <div className="space-y-1">
+                      {dayTimelineItems.map((item) => (
+                        <div
+                          key={item.id}
+                          className={cn(
+                            'flex items-center gap-2 rounded px-1.5 py-1 text-xs',
+                            item.simulated ? 'bg-blue-100 border border-blue-300' : 'bg-background/80 border border-transparent'
+                          )}
+                        >
+                          <span className="w-11 shrink-0 font-mono text-muted-foreground">
+                            {format(new Date(item.start), 'HH:mm', { locale: de })}
+                          </span>
+                          <span className="truncate text-foreground">{item.title}</span>
+                          {item.simulated && (
+                            <Badge variant="secondary" className="ml-auto text-[10px]">simuliert</Badge>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )}
 
               {decision.description && (
                 <div onClick={(e) => e.stopPropagation()}>
