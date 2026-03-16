@@ -324,7 +324,7 @@ export function MyWorkTeamTab() {
     let timeout: ReturnType<typeof setTimeout> | null = null;
     const scheduleRefresh = () => {
       if (timeout) clearTimeout(timeout);
-      timeout = setTimeout(() => { timeout = null; /* trigger re-run via dependency change is not feasible; no-op for now */ }, 250);
+      timeout = setTimeout(() => { timeout = null; setReloadTrigger(c => c + 1); }, 250);
     };
     const channel = supabase
       .channel(`my-work-team-${user.id}`)
