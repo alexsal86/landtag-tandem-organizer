@@ -105,7 +105,7 @@ export const KarlsruheDistrictsMap = ({
 
       const { data: allData } = await supabase
         .from('contacts')
-        .select('id, name, organization, email, phone, tags, business_description, website, coordinates, business_street, business_city, business_postal_code')
+        .select('id, name, organization, email, phone, tags, website, coordinates, business_street, business_city, business_postal_code')
         .eq('contact_type', 'organization')
         .not('coordinates', 'is', null);
 
