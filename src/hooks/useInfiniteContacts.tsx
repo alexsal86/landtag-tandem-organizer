@@ -57,7 +57,7 @@ export const useInfiniteContacts = ({
 
     // Search filter
     if (searchTerm) {
-      query = query.or(`name.ilike.%${searchTerm}%,organization.ilike.%${searchTerm}%,role.ilike.%${searchTerm}%,industry.ilike.%${searchTerm}%,main_contact_person.ilike.%${searchTerm}%,legal_form.ilike.%${searchTerm}%`);
+      query = query.or(`name.ilike.%${searchTerm}%,organization.ilike.%${searchTerm}%,role.ilike.%${searchTerm}%,email.ilike.%${searchTerm}%`);
     }
 
     // Category filter

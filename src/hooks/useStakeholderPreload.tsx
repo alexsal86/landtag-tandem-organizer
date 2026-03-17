@@ -42,9 +42,6 @@ export const useStakeholderPreload = (searchTerm?: string) => {
 
     const searchFilters = [
       `name.ilike.${wildcardTerm}`,
-      `industry.ilike.${wildcardTerm}`,
-      `business_description.ilike.${wildcardTerm}`,
-      `main_contact_person.ilike.${wildcardTerm}`,
       `email.ilike.${wildcardTerm}`,
     ];
 
