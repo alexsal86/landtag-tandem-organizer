@@ -180,9 +180,11 @@ export function ThemenspeicherPanel({ onContentCreated }: Props) {
     const prefilledCoreMessage = selectedTopic.topic;
     const prefilledDraft = `${selectedTemplate.draftIntro}\n\nTags: ${(selectedTopic.tags ?? []).join(", ")}`;
 
-    const { data: createdItem, error: itemError } = await supabase
+    const newItemId = crypto.randomUUID();
+    const { error: itemError } = await supabase
       .from("social_content_items")
       .insert({
+        id: newItemId,
         tenant_id: currentTenant.id,
         created_by: user.id,
         topic_backlog_id: selectedTopic.id,
@@ -193,12 +195,11 @@ export function ThemenspeicherPanel({ onContentCreated }: Props) {
         draft_text: prefilledDraft,
         notes: `Aus Themenspeicher übernommen (${selectedTopic.topic})`,
         scheduled_for: scheduledFor,
-      })
-      .select("id")
-      .single();
+      });
 
-    if (itemError || !createdItem) {
-      const msg = itemError?.message || "Unbekannter Fehler";
+    if (itemError) {
+      console.error("createFromTopic insert failed:", itemError);
+      const msg = itemError.message || "Unbekannter Fehler";
       const isRls = msg.includes("row-level security") || msg.includes("42501");
       toast({ title: "Fehler", description: isRls ? "Keine Berechtigung – bitte Rolle prüfen." : `Beitrag konnte nicht erstellt werden: ${msg}`, variant: "destructive" });
       setIsSubmitting(false);
@@ -209,7 +210,7 @@ export function ThemenspeicherPanel({ onContentCreated }: Props) {
       const { error: channelError } = await supabase.from("social_content_item_channels").insert({
         tenant_id: currentTenant.id,
         created_by: user.id,
-        content_item_id: createdItem.id,
+        content_item_id: newItemId,
         channel_id: selectedChannelId,
         is_primary: true,
       });
