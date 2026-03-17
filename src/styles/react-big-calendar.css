@@ -125,6 +125,54 @@
   color: hsl(var(--primary-foreground));
 }
 
+
+.social-planner-calendar .rbc-month-view {
+  margin-left: 2.5rem;
+}
+
+.social-planner-calendar .rbc-month-header,
+.social-planner-calendar .rbc-month-row {
+  position: relative;
+}
+
+.social-planner-calendar .rbc-month-header::before {
+  content: "KW";
+  position: absolute;
+  left: -2.35rem;
+  top: 50%;
+  transform: translateY(-50%);
+  font-size: 0.65rem;
+  font-weight: 700;
+  color: hsl(var(--muted-foreground));
+}
+
+.social-planner-calendar .rbc-month-row,
+.social-planner-calendar .rbc-row-content {
+  overflow: visible;
+}
+
+.social-planner-calendar .rbc-date-cell {
+  position: relative;
+}
+
+.social-planner-month-date-header {
+  display: inline-flex;
+  align-items: center;
+}
+
+.social-planner-day-label {
+  font-weight: 500;
+}
+
+.social-planner-week-gutter {
+  position: absolute;
+  left: -2.35rem;
+  top: 0.45rem;
+  font-size: 0.65rem;
+  font-weight: 600;
+  color: hsl(var(--muted-foreground));
+}
+
 /* More events indicator */
 .rbc-show-more {
   color: hsl(var(--primary));
