@@ -1,43 +1,28 @@
 
-## Code-Qualität — Status
 
-### Erledigt
+# Plan: Erstellungs-Fehler in Themenspeicher & Social Planner beheben
 
-- **strictNullChecks: true** — aktiviert, alle Build-Fehler behoben
-- **noImplicitAny: true** — aktiviert, alle Build-Fehler behoben
-- **DOMPurify** als zentraler HTML-Sanitizer — alle `dangerouslySetInnerHTML` nutzen jetzt `sanitizeRichHtml()`
-- **Tenant-Access Guard** für Edge Functions — existiert in `supabase/functions/_shared/tenant-access.ts`
-- **ESLint `no-unused-vars: warn`** — aktiviert mit `argsIgnorePattern: '^_'`, erste Bereinigungsrunde in Pages/Hooks abgeschlossen
-- **Standalone `React`-Imports entfernt** — ~60 Dateien bereinigt
-- **State-Mutation fix** — `existingContacts.push()` → immutables Update in `useContactImport.ts`
-- **Non-null Assertion Guards** — `user!.id` / `currentTenant!.id` durch Early-Return-Guards ersetzt (~11 Dateien)
-- **Leere catch-Blöcke** — kritische Stellen in MatrixContext & DaySlipStore mit `debugConsole.warn` versehen
-- **JSON-Protocol Speaker-Normalisierung** — `speaker: string | { name }` korrekt normalisiert
+## Diagnose
 
-### Noch offen
+**Hauptproblem:** Die `createFromTopic`-Funktion in `ThemenspeicherPanel.tsx` (Zeile 183-198) umgeht den Hook `useSocialPlannerItems.createItem` und macht einen direkten Supabase-INSERT mit `.select("id").single()`. Obwohl die RLS-Policies korrekt konfiguriert sind (INSERT via `has_active_tenant_role`, SELECT via `user_has_tenant_access`), kann `.single()` fehlschlagen wenn die Antwort nicht exakt eine Zeile enthält.
 
-1. ~~**`strict: true` aktivieren**~~ ✅ — war bereits aktiv in `tsconfig.app.json` inkl. `strictNullChecks` und `noImplicitAny`
-2. **Tote Imports weiter bereinigen** — ~65 standalone `React`-Imports in Components prüfen, weitere lucide-Icons und ungenutzte Variablen entfernen (ESLint-Regel zeigt Warnungen)
-3. **`no-explicit-any` schrittweise einführen** — nach Abschluss der `no-unused-vars`-Bereinigung
-4. ~~**Edge Functions `verify_jwt`-Audit**~~ ✅ — alle 18 Functions mit `verify_jwt = false` klassifiziert und abgesichert: Cron-Functions mit `requireServiceRole`, WebSocket mit `requireAuth`, Token-Endpoints mit eigener Validierung, `send-push-notification` + `fetch-karlsruhe-districts` mit Service-Role-Guard
-5. **CORS einschränken** — `Access-Control-Allow-Origin: *` durch Allowlist ersetzen für sensible Operationen
+Die Hooks (`useTopicBacklog.createTopic` und `useSocialPlannerItems.createItem`) wurden bereits auf client-seitige UUIDs umgestellt — aber `ThemenspeicherPanel.createFromTopic` wurde **nicht** aktualisiert und nutzt noch das alte Pattern.
 
----
+Zusätzlich: Fehler werden über `debugConsole.error` geloggt, das standardmäßig **deaktiviert** ist. Fehler sind für den User unsichtbar.
 
-## No-Code Automations-Hub — Status
+## Fixes
 
-### Erledigt
+### 1. `ThemenspeicherPanel.tsx` — `createFromTopic` reparieren
+- Client-seitige UUID generieren (`crypto.randomUUID()`)
+- `.select("id").single()` entfernen, nur `.insert()` verwenden
+- `createdItem.id` durch die lokale UUID ersetzen (für die Channel-Verknüpfung in Zeile 209)
 
-- 4-Step Wizard (Grundlagen → Trigger → Bedingungen → Aktionen)
-- 10 Templates, Template-Galerie mit Suche/Filter
-- Kill-Switch, Dry-Run, Run-Now, Run-Historie mit Step-Logs
-- Error-Dashboard mit Retry, Regel-Versionierung, Import/Export
-- Rate Limiting, Idempotency, Audit-Trail
-- 5 Action-Typen, 5 Condition-Operators, 4 Trigger-Typen (inkl. Webhook)
-- Rollenbasierte Zugriffskontrolle
-- **Regel duplizieren** — Copy-Button pro Regel-Karte
-- **Nächste geplante Ausführung** — Badge für schedule-Regeln
-- **Regel-Statistiken** — Erfolgsrate (%) + Ø Laufzeit als Tooltip-Badge
-- **Notification-Kontext** — `rule_name`, `trigger_reason`, `run_id` in Notification-Payload
-- **Webhook-Trigger** — neue Edge Function `automation-webhook`, Secret-Authentifizierung, URL-Anzeige im Wizard
-- **Verschachtelte Condition-Gruppen** — rekursives AND/OR-Nesting bis 3 Ebenen im Wizard, backward-kompatible DB-Serialisierung
+### 2. Fehler sichtbar machen
+- In beiden Hooks und im Panel: bei Mutations-Fehlern zusätzlich `console.error` (nicht nur `debugConsole.error`) verwenden, damit Fehler im Browser sichtbar sind
+- In catch-Blöcken den tatsächlichen Fehlertext im Toast anzeigen
+
+### Betroffene Dateien
+- `src/components/my-work/ThemenspeicherPanel.tsx` — createFromTopic auf client-side UUID umstellen
+- `src/hooks/useTopicBacklog.ts` — `console.error` bei Fehler ergänzen
+- `src/hooks/useSocialPlannerItems.ts` — `console.error` bei Fehler ergänzen
+
