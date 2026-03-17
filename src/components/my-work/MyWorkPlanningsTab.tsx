@@ -47,7 +47,7 @@ export function MyWorkPlanningsTab() {
   const [loading, setLoading] = useState(true);
   const [expandedPlanningIds, setExpandedPlanningIds] = useState<Set<string>>(new Set());
   const [newChecklistTitles, setNewChecklistTitles] = useState<Record<string, string>>({});
-  const [contentRefreshToken, setContentRefreshToken] = useState(0);
+  
 
   // Handle action parameter from URL
   useEffect(() => {
