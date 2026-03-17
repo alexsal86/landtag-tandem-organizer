@@ -11,7 +11,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { CheckSquare, Vote, Briefcase, CalendarPlus, Users, StickyNote, Calendar, Clock, Plus, Home, CheckCircle2, MessageSquare } from "lucide-react";
+import { CheckSquare, Vote, Briefcase, CalendarPlus, Users, StickyNote, Calendar, Clock, Plus, Home, CheckCircle2, MessageSquare, Lightbulb } from "lucide-react";
 import { PageHelpButton } from "@/components/shared/PageHelpButton";
 import { debugConsole } from "@/utils/debugConsole";
 import { MYWORK_HELP_CONTENT } from "@/config/helpContent";
