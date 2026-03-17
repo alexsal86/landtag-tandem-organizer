@@ -354,9 +354,9 @@ export function ActiveMeetingPanel({
             </Button>
           )}
         </div>
-        {subItem.description && <RichTextDisplay content={subItem.description} className="text-sm text-muted-foreground ml-8 mt-1" />}
+        {subItem.description && <RichTextDisplay content={subItem.description} className="text-sm text-muted-foreground ml-8" />}
         {subItem.carried_over_from && (
-          <p className="text-xs text-muted-foreground ml-8 mt-1 italic">Übertragen von: {subItem.original_meeting_title} ({subItem.original_meeting_date})</p>
+          <p className="text-xs text-muted-foreground ml-8 italic">Übertragen von: {subItem.original_meeting_title} ({subItem.original_meeting_date})</p>
         )}
         {subItem.file_path && (
           <div className="ml-8 mt-2 flex items-center gap-2 p-2 bg-muted/30 rounded text-xs">
