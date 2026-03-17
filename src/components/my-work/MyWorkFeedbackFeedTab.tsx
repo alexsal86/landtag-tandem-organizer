@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { format, subDays } from 'date-fns';
 import { de } from 'date-fns/locale';
-import { CheckCircle2, Paperclip, CheckSquare, MessageSquare, Loader2, Filter, AlertTriangle, RefreshCw } from 'lucide-react';
+import { CheckCircle2, Paperclip, CheckSquare, MessageSquare, Loader2, Filter, AlertTriangle, RefreshCw, Lightbulb } from 'lucide-react';
 import { useTeamFeedbackFeed } from '@/hooks/useTeamFeedbackFeed';
 import { RichTextDisplay } from '@/components/ui/RichTextDisplay';
 import { Badge } from '@/components/ui/badge';
@@ -13,6 +13,7 @@ import { Switch } from '@/components/ui/switch';
 import { Button } from '@/components/ui/button';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
+import { TransferToThemenspeicherDialog } from '@/components/shared/TransferToThemenspeicherDialog';
 import type { TeamFeedbackEntry } from '@/hooks/useTeamFeedbackFeed';
 
 const PERIOD_PRESETS = {
