@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, type RefObject } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -27,11 +27,21 @@ import type { useEventPlanningData } from "./useEventPlanningData";
 
 type EventPlanningDataReturn = ReturnType<typeof useEventPlanningData>;
 type TimelineAssignment = { checklistItemId: string; title: string; dueDate: string };
+type ChecklistItemRefMap = Record<string, RefObject<HTMLDivElement | null>>;
 
 export function EventPlanningDetailView(data: EventPlanningDataReturn) {
   const [copiedSpeakerContact, setCopiedSpeakerContact] = useState<string | null>(null);
   const [timelineAssignments, setTimelineAssignments] = useState<TimelineAssignment[]>([]);
+  const checklistItemRefs = useRef<ChecklistItemRefMap>({});
   const copyFeedbackTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const registerChecklistItemRef = (itemId: string, element: HTMLDivElement | null) => {
+    if (!checklistItemRefs.current[itemId]) {
+      checklistItemRefs.current[itemId] = { current: null };
+    }
+
+    checklistItemRefs.current[itemId].current = element;
+  };
 
   const {
     user, selectedPlanning, setSelectedPlanning,
@@ -649,6 +659,7 @@ export function EventPlanningDetailView(data: EventPlanningDataReturn) {
                 updateSubItemTitle={updateSubItemTitle}
                 removeSubItem={removeSubItem}
                 onAssignToTimeline={handleDropChecklistItemOnTimeline}
+                registerChecklistItemRef={registerChecklistItemRef}
               />
 
               <PlanningTimelineSection
@@ -657,6 +668,7 @@ export function EventPlanningDetailView(data: EventPlanningDataReturn) {
                 checklistItems={checklistItems}
                 assignments={timelineAssignments}
                 onRemoveAssignment={handleRemoveTimelineAssignment}
+                checklistItemRefs={checklistItemRefs.current}
               />
             </div>
           </DragDropContext>
