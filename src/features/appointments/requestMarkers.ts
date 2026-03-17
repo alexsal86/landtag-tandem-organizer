@@ -5,3 +5,5 @@ export const APPOINTMENT_REQUEST_START_MARKER = "appointment_request_start:";
 export const APPOINTMENT_REQUEST_LOCATION_MARKER = "appointment_request_location:";
 export const APPOINTMENT_REQUEST_REQUESTER_MARKER = "appointment_request_requester:";
 export const APPOINTMENT_REQUEST_TARGET_DEPUTY_MARKER = "appointment_request_target_deputy:";
+
+export const APPOINTMENT_REQUEST_DEFAULT_DURATION_MINUTES = 90;

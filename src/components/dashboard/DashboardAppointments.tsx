@@ -24,6 +24,7 @@ import {
   APPOINTMENT_REQUEST_REQUESTER_MARKER,
   APPOINTMENT_REQUEST_START_MARKER,
   APPOINTMENT_REQUEST_TITLE_MARKER,
+  APPOINTMENT_REQUEST_DEFAULT_DURATION_MINUTES,
 } from '@/features/appointments/requestMarkers';
 
 interface Props {
@@ -250,7 +251,7 @@ export const DashboardAppointments = ({ data }: Props) => {
         }));
 
         const simulatedStart = requestedStart.toISOString();
-        const simulatedEnd = new Date(requestedStart.getTime() + 60 * 60 * 1000).toISOString();
+        const simulatedEnd = new Date(requestedStart.getTime() + APPOINTMENT_REQUEST_DEFAULT_DURATION_MINUTES * 60 * 1000).toISOString();
         const simulatedTitle = requestTitle.trim() || 'Angefragter Termin';
 
         setTimelineItems([
