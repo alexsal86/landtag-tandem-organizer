@@ -1,43 +1,70 @@
 
-## Code-Qualität — Status
 
-### Erledigt
+# Plan: Social Planner Kalenderansicht & Erstellen-Debugging
 
-- **strictNullChecks: true** — aktiviert, alle Build-Fehler behoben
-- **noImplicitAny: true** — aktiviert, alle Build-Fehler behoben
-- **DOMPurify** als zentraler HTML-Sanitizer — alle `dangerouslySetInnerHTML` nutzen jetzt `sanitizeRichHtml()`
-- **Tenant-Access Guard** für Edge Functions — existiert in `supabase/functions/_shared/tenant-access.ts`
-- **ESLint `no-unused-vars: warn`** — aktiviert mit `argsIgnorePattern: '^_'`, erste Bereinigungsrunde in Pages/Hooks abgeschlossen
-- **Standalone `React`-Imports entfernt** — ~60 Dateien bereinigt
-- **State-Mutation fix** — `existingContacts.push()` → immutables Update in `useContactImport.ts`
-- **Non-null Assertion Guards** — `user!.id` / `currentTenant!.id` durch Early-Return-Guards ersetzt (~11 Dateien)
-- **Leere catch-Blöcke** — kritische Stellen in MatrixContext & DaySlipStore mit `debugConsole.warn` versehen
-- **JSON-Protocol Speaker-Normalisierung** — `speaker: string | { name }` korrekt normalisiert
+## Übersicht
 
-### Noch offen
-
-1. ~~**`strict: true` aktivieren**~~ ✅ — war bereits aktiv in `tsconfig.app.json` inkl. `strictNullChecks` und `noImplicitAny`
-2. **Tote Imports weiter bereinigen** — ~65 standalone `React`-Imports in Components prüfen, weitere lucide-Icons und ungenutzte Variablen entfernen (ESLint-Regel zeigt Warnungen)
-3. **`no-explicit-any` schrittweise einführen** — nach Abschluss der `no-unused-vars`-Bereinigung
-4. ~~**Edge Functions `verify_jwt`-Audit**~~ ✅ — alle 18 Functions mit `verify_jwt = false` klassifiziert und abgesichert: Cron-Functions mit `requireServiceRole`, WebSocket mit `requireAuth`, Token-Endpoints mit eigener Validierung, `send-push-notification` + `fetch-karlsruhe-districts` mit Service-Role-Guard
-5. **CORS einschränken** — `Access-Control-Allow-Origin: *` durch Allowlist ersetzen für sensible Operationen
+Zwei Aufgaben: (1) Kanban durch Kalenderansicht ersetzen/ergänzen, (2) Erstellen-Funktion debuggen und reparieren.
 
 ---
 
-## No-Code Automations-Hub — Status
+## 1. Social Planner Kalenderansicht
 
-### Erledigt
+**Ansatz:** Das Kanban-Board durch eine Kalenderansicht (Wochen-/Monatsansicht) ersetzen, mit Toggle um zwischen Ansichten zu wechseln. `react-big-calendar` ist bereits im Projekt vorhanden.
 
-- 4-Step Wizard (Grundlagen → Trigger → Bedingungen → Aktionen)
-- 10 Templates, Template-Galerie mit Suche/Filter
-- Kill-Switch, Dry-Run, Run-Now, Run-Historie mit Step-Logs
-- Error-Dashboard mit Retry, Regel-Versionierung, Import/Export
-- Rate Limiting, Idempotency, Audit-Trail
-- 5 Action-Typen, 5 Condition-Operators, 4 Trigger-Typen (inkl. Webhook)
-- Rollenbasierte Zugriffskontrolle
-- **Regel duplizieren** — Copy-Button pro Regel-Karte
-- **Nächste geplante Ausführung** — Badge für schedule-Regeln
-- **Regel-Statistiken** — Erfolgsrate (%) + Ø Laufzeit als Tooltip-Badge
-- **Notification-Kontext** — `rule_name`, `trigger_reason`, `run_id` in Notification-Payload
-- **Webhook-Trigger** — neue Edge Function `automation-webhook`, Secret-Authentifizierung, URL-Anzeige im Wizard
-- **Verschachtelte Condition-Gruppen** — rekursives AND/OR-Nesting bis 3 Ebenen im Wizard, backward-kompatible DB-Serialisierung
+**Neue Komponente: `SocialPlannerCalendar.tsx`**
+- Nutzt `react-big-calendar` mit `dateFnsLocalizer` (de), analog zu `ProperReactBigCalendar.tsx`
+- Zeigt `SocialPlannerItem`-Einträge als Kalenderevents an, basierend auf `scheduled_for`
+- Items ohne `scheduled_for` erscheinen in einer Sidebar-Liste "Ungeplante Beiträge"
+- Wochen- und Monatsansicht per Toggle
+- Event-Klick öffnet Detail-/Bearbeitungsdialog
+- Drag & Drop zum Umplanen (ändert `scheduled_for`)
+- Farbkodierung nach `workflow_status` (Idee=grau, In Arbeit=blau, Freigegeben=grün, etc.)
+
+**Änderungen an `MyWorkSocialPlannerBoard.tsx`:**
+- View-Toggle hinzufügen: "Kanban" | "Kalender" (default: Kalender)
+- Bei Kalender-Ansicht: `SocialPlannerCalendar` rendern statt DragDropContext
+- Filter bleiben in beiden Ansichten verfügbar
+
+**Änderungen an `SocialMediaPlannerPanel.tsx`:**
+- Übergibt den View-State an das Board
+
+---
+
+## 2. Erstellen-Funktion reparieren
+
+**Diagnose:** Die RLS-Policies erfordern `has_active_tenant_role(uid, tenant_id, ['mitarbeiter', 'bueroleitung', 'abgeordneter'])` für INSERT. Der Code sieht korrekt aus, aber:
+
+1. **Problem A:** `createTopic` in `useTopicBacklog` verwendet `.select().single()` nach INSERT. Wenn RLS den SELECT blockiert, scheitert die gesamte Operation stillschweigend. Der Fehler wird zwar gecatcht, aber die Toast-Fehlermeldung könnte untergehen.
+
+2. **Problem B:** Der `ThemenspeicherPanel.createTopic()` macht nach dem INSERT noch einen separaten `.update()` für `short_description` — das scheitert wenn die Rolle fehlt.
+
+**Fixes:**
+- Besseres Error-Handling: Bei INSERT-Fehlern explizit RLS-Hinweis in Toast anzeigen ("Keine Berechtigung" wenn 42501 oder "new row violates row-level security")
+- `createTopic` in `useTopicBacklog`: `short_description` direkt im INSERT mitgeben statt separatem UPDATE
+- `createItem` in `useSocialPlannerItems`: Nach INSERT nicht `.select("id").single()` verwenden, sondern client-seitige UUID generieren (`crypto.randomUUID()`) und im INSERT mitgeben — so entfällt die Abhängigkeit vom SELECT-Rückgabewert
+- Console-Logging für alle Mutations-Fehler hinzufügen, damit Probleme sichtbar werden
+
+**Änderungen an `useTopicBacklog.ts`:**
+- `createTopic` Payload um `short_description` erweitern
+- Direkt im INSERT mitgeben
+
+**Änderungen an `ThemenspeicherPanel.tsx`:**
+- `short_description` direkt an `createBacklogTopic()` übergeben statt separatem UPDATE
+- Bessere Fehlermeldungen
+
+**Änderungen an `useSocialPlannerItems.ts`:**
+- `createItem`: Client-seitige UUID für `id` generieren
+- Fehler-Details in Toast anzeigen
+
+---
+
+## Technische Schritte
+
+1. `useTopicBacklog.ts` — `createTopic` um `short_description` im INSERT erweitern
+2. `ThemenspeicherPanel.tsx` — `short_description` direkt übergeben, separates UPDATE entfernen
+3. `useSocialPlannerItems.ts` — Client-seitige ID, besseres Error-Handling
+4. `SocialPlannerCalendar.tsx` erstellen — Wochen-/Monatsansicht mit react-big-calendar
+5. `MyWorkSocialPlannerBoard.tsx` — View-Toggle (Kanban/Kalender) einbauen
+6. Alle Mutations-Fehler mit sprechenden Toast-Meldungen versehen
+
