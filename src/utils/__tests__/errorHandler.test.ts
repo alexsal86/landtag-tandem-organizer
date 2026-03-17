@@ -1,9 +1,9 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { getErrorMessage, handleAppError } from '../errorHandler';
+import { debugConsole } from '../debugConsole';
 
-// Enable debug console for all tests so debugConsole.error actually calls console.error
-beforeEach(() => {
-  try { localStorage.setItem('matrix_debug_console', 'true'); } catch { /* noop */ }
+vi.spyOn(debugConsole, 'error').mockImplementation((...args: unknown[]) => {
+  globalThis.console.error(...args);
 });
 
 describe('getErrorMessage', () => {
