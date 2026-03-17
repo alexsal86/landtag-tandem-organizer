@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import { debugConsole } from '@/utils/debugConsole';
+import { APPOINTMENT_REQUEST_DEFAULT_DURATION_MINUTES } from '@/features/appointments/requestMarkers';
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
@@ -321,7 +322,7 @@ export const TaskDecisionResponse = ({
 
                 if (tenantData) {
                   const startDate = new Date(appointmentStart);
-                  const endDate = new Date(startDate.getTime() + 60 * 60 * 1000);
+                  const endDate = new Date(startDate.getTime() + APPOINTMENT_REQUEST_DEFAULT_DURATION_MINUTES * 60 * 1000);
 
                   const { data: createdApt } = await supabase
                     .from('appointments')

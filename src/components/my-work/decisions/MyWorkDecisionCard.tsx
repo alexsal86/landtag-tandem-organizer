@@ -41,6 +41,7 @@ import { getColorClasses } from "@/lib/decisionTemplates";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { useTenant } from "@/hooks/useTenant";
+import { APPOINTMENT_REQUEST_DEFAULT_DURATION_MINUTES } from '@/features/appointments/requestMarkers';
 
 const APPOINTMENT_REQUEST_TITLE_MARKER = 'appointment_request_title:';
 const APPOINTMENT_REQUEST_START_MARKER = 'appointment_request_start:';
@@ -688,7 +689,7 @@ const MyWorkDecisionCardInner = ({
         }));
 
         const simulatedStart = requestedStart.toISOString();
-        const simulatedEnd = new Date(requestedStart.getTime() + 60 * 60 * 1000).toISOString();
+        const simulatedEnd = new Date(requestedStart.getTime() + APPOINTMENT_REQUEST_DEFAULT_DURATION_MINUTES * 60 * 1000).toISOString();
         const hasSameSlot = existingItems.some(
           (item) => item.start === simulatedStart && item.title.trim().toLowerCase() === requestedTitle.trim().toLowerCase(),
         );
