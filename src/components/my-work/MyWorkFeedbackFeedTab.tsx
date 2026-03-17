@@ -30,6 +30,7 @@ export function MyWorkFeedbackFeedTab() {
   const [periodPreset, setPeriodPreset] = useState<keyof typeof PERIOD_PRESETS>(() => (searchParams.get('period') as keyof typeof PERIOD_PRESETS) || '7d');
   const [onlyWithAttachments, setOnlyWithAttachments] = useState(searchParams.get('withAttachments') === '1');
   const [onlyWithTasks, setOnlyWithTasks] = useState(searchParams.get('withTasks') === '1');
+  const [themenspeicherEntry, setThemenspeicherEntry] = useState<TeamFeedbackEntry | null>(null);
 
   useEffect(() => {
     const next = new URLSearchParams(searchParams);
