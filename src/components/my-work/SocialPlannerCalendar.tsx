@@ -1,6 +1,6 @@
 import { useCallback, useMemo, useState } from "react";
 import { Calendar, dateFnsLocalizer, Views, type View } from "react-big-calendar";
-import { format, parse, startOfWeek, getDay } from "date-fns";
+import { format, parse, startOfWeek, getDay, getISOWeek, isSameDay } from "date-fns";
 import { de } from "date-fns/locale";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -51,9 +51,30 @@ interface Props {
   onUpdateSchedule: (id: string, date: string) => void;
 }
 
+interface DateHeaderProps {
+  date: Date;
+  label: string;
+}
+
+function MonthDateHeader({ date, label }: DateHeaderProps) {
+  const weekStart = startOfWeek(date, { locale: de });
+  const showWeekNumber = isSameDay(date, weekStart);
+
+  return (
+    <div className="social-planner-month-date-header">
+      {showWeekNumber && (
+        <span className="social-planner-week-number" aria-label={`Kalenderwoche ${getISOWeek(date)}`}>
+          KW {getISOWeek(date)}
+        </span>
+      )}
+      <span>{label}</span>
+    </div>
+  );
+}
+
 export function SocialPlannerCalendar({ items, onUpdateSchedule }: Props) {
   const [currentDate, setCurrentDate] = useState(new Date());
-  const [view, setView] = useState<View>(Views.WEEK);
+  const [view, setView] = useState<View>(Views.MONTH);
 
   const { events, unscheduled } = useMemo(() => {
     const scheduled: CalendarEvent[] = [];
@@ -127,6 +148,11 @@ export function SocialPlannerCalendar({ items, onUpdateSchedule }: Props) {
             dayRangeHeaderFormat: ({ start, end }: { start: Date; end: Date }) =>
               `${format(start, "dd. MMM", { locale: de })} – ${format(end, "dd. MMM yyyy", { locale: de })}`,
             timeGutterFormat: (date: Date) => format(date, "HH:mm"),
+          }}
+          components={{
+            month: {
+              dateHeader: MonthDateHeader,
+            },
           }}
           popup
           selectable={false}
