@@ -29,6 +29,8 @@ const MyWorkCasesWorkspace = lazyWithRetry(() => import("./my-work/MyWorkCasesWo
 const MyWorkPlanningsTab = lazyWithRetry(() => import("./my-work/MyWorkPlanningsTab").then(m => ({ default: m.MyWorkPlanningsTab })));
 const MyWorkTeamTab = lazyWithRetry(() => import("./my-work/MyWorkTeamTab").then(m => ({ default: m.MyWorkTeamTab })));
 const MyWorkJourFixeTab = lazyWithRetry(() => import("./my-work/MyWorkJourFixeTab").then(m => ({ default: m.MyWorkJourFixeTab })));
+const MyWorkRedaktionTab = lazyWithRetry(() => import("./my-work/MyWorkRedaktionTab").then(m => ({ default: m.MyWorkRedaktionTab })));
+const MyWorkTerminePlanungTab = lazyWithRetry(() => import("./my-work/MyWorkTerminePlanungTab").then(m => ({ default: m.MyWorkTerminePlanungTab })));
 const MyWorkTimeTrackingTab = lazyWithRetry(() => import("./my-work/MyWorkTimeTrackingTab").then(m => ({ default: m.MyWorkTimeTrackingTab })));
 const MyWorkAppointmentFeedbackTab = lazyWithRetry(() => import("./my-work/MyWorkAppointmentFeedbackTab").then(m => ({ default: m.MyWorkAppointmentFeedbackTab })));
 const MyWorkFeedbackFeedTab = lazyWithRetry(() => import("./my-work/MyWorkFeedbackFeedTab").then(m => ({ default: m.MyWorkFeedbackFeedTab })));
