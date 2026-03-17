@@ -342,7 +342,7 @@ export function MyWorkJourFixeTab() {
                         </ul>
                       )}
                       {subItems.length > 0 && (
-                        <ul className="ml-6 mt-1 space-y-0.5">
+                        <ul className="ml-[0.8rem] mt-1 space-y-0.5">
                           {subItems.map((subItem, subIndex) => {
                             const subSystemIcon = getSystemItemIcon(subItem.system_type);
                             const subSystemEntries = getSystemEntries(subItem.system_type, notes, tasks, decisions, birthdays, caseItems);
@@ -356,7 +356,7 @@ export function MyWorkJourFixeTab() {
                                   </span>
                                 </div>
                                 {subSystemEntries.length > 0 && (
-                                  <ul className="ml-8 mt-1 space-y-1">
+                                  <ul className="ml-[0.8rem] space-y-1">
                                     {subSystemEntries.map((entry, subSystemEntryIndex) => (
                                       <li key={entry.id} className="flex items-center gap-1 text-muted-foreground rounded bg-muted/40 px-2 py-1">
                                         <span className="min-w-[0.5rem] text-[11px] font-medium text-foreground/70">{String.fromCharCode(97 + subSystemEntryIndex)})</span>
