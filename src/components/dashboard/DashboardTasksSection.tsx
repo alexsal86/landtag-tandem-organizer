@@ -25,6 +25,8 @@ export const DashboardTasksSection = () => {
   const { user } = useAuth();
   const { currentTenant } = useTenant();
   const navigate = useNavigate();
+  const userId = user?.id;
+  const tenantId = currentTenant?.id;
   const [items, setItems] = useState<DeadlineItem[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
@@ -43,18 +45,17 @@ export const DashboardTasksSection = () => {
   };
 
   useEffect(() => {
-    if (!user?.id) return;
+    if (!userId) return;
     const load = async () => {
       setIsLoading(true);
-      const tenantId = currentTenant?.id;
 
       const [tasksRes, notesRes, casesRes, decisionsRes] = await Promise.all([
         supabase.from('tasks').select('id, title, due_date')
-          .or(`assigned_to.eq.${user.id},assigned_to.ilike.%${user.id}%,user_id.eq.${user.id}`)
+          .or(`assigned_to.eq.${userId},assigned_to.ilike.%${userId}%,user_id.eq.${userId}`)
           .neq('status', 'completed')
           .not('due_date', 'is', null),
         supabase.from('quick_notes').select('id, title, content, follow_up_date')
-          .eq('user_id', user.id)
+          .eq('user_id', userId)
           .is('deleted_at', null)
           .or('is_archived.is.null,is_archived.eq.false')
           .not('follow_up_date', 'is', null),
@@ -90,7 +91,7 @@ export const DashboardTasksSection = () => {
       setIsLoading(false);
     };
     load();
-  }, [user, currentTenant]);
+  }, [userId, tenantId]);
 
   const grouped = useMemo(() => {
     const overdue: DeadlineItem[] = [];
