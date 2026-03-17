@@ -106,7 +106,7 @@ export function MyWorkDecisionsTab() {
     }
   }, [searchParams, setSearchParams]);
 
-  const { scheduleRefresh: scheduleDecisionsRefresh } = useDecisionRefreshScheduler(loadDecisions);
+  const { scheduleRefresh: scheduleDecisionsRefresh } = useDecisionRefreshScheduler(() => loadDecisions({ silent: true }));
 
   // Tab counts
   const tabCounts = useMemo(() => {

@@ -33,6 +33,10 @@ const computeAttachmentInfo = (attachments: DecisionAttachment[]) => {
   };
 };
 
+interface LoadDecisionsOptions {
+  silent?: boolean;
+}
+
 export function useMyWorkDecisionsData(userId?: string) {
   const [decisions, setDecisions] = useState<MyWorkDecision[]>([]);
   const [loading, setLoading] = useState(true);
@@ -47,15 +51,19 @@ export function useMyWorkDecisionsData(userId?: string) {
     };
   }, []);
 
-  const loadDecisions = useCallback(async () => {
+  const loadDecisions = useCallback(async (options?: LoadDecisionsOptions) => {
     if (!userId) return;
+
+    const silent = options?.silent ?? false;
 
     const requestId = latestLoadRequestRef.current + 1;
     latestLoadRequestRef.current = requestId;
 
     const isCurrentRequest = () => mountedRef.current && latestLoadRequestRef.current === requestId;
 
-    setLoading(true);
+    if (!silent) {
+      setLoading(true);
+    }
 
     try {
       const [participantResult, creatorResult, publicResult] = await Promise.all([
@@ -332,7 +340,7 @@ export function useMyWorkDecisionsData(userId?: string) {
       if (timeout) clearTimeout(timeout);
       timeout = setTimeout(() => {
         timeout = null;
-        void loadDecisions();
+        void loadDecisions({ silent: true });
       }, 250);
     };
 
