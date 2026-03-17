@@ -1,9 +1,7 @@
 import { useCallback, useMemo, useState } from "react";
 import { DragDropContext, Draggable, Droppable, type DropResult } from "@hello-pangea/dnd";
 import { ArrowLeft, ArrowRight, Calendar, GripVertical, Kanban, Plus, Tag } from "lucide-react";
-import { format } from "date-fns";
 import { de } from "date-fns/locale";
-import { SocialPlannerCalendar } from "./SocialPlannerCalendar";
 import { de } from "date-fns/locale";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
