@@ -14,6 +14,7 @@ import { useQuickNotes } from "@/hooks/useQuickNotes";
 import { useNotificationHighlight } from "@/hooks/useNotificationHighlight";
 import { NoteCard } from "@/components/shared/NoteCard";
 import { NoteDialogs } from "@/components/shared/NoteDialogs";
+import { TransferToThemenspeicherDialog } from "@/components/shared/TransferToThemenspeicherDialog";
 
 // Type for archived info from database (JSON)
 type ArchivedInfo = { id: string; title: string; archived_at: string } | null;
