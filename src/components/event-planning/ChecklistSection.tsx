@@ -3,7 +3,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Plus, Trash2, GripVertical, MessageCircle, Paperclip, ListTodo, Mail, Download, Edit2, X } from "lucide-react";
+import { Plus, Trash2, GripVertical, MessageCircle, Paperclip, ListTodo, Mail, Download, Edit2, X, Milestone } from "lucide-react";
 import { DragDropContext, Droppable, Draggable, DropResult } from "@hello-pangea/dnd";
 import { cn } from "@/lib/utils";
 import { format } from "date-fns";
@@ -52,6 +52,7 @@ interface ChecklistSectionProps {
   toggleSubItem: (itemId: string, subItemIndex: number, isCompleted: boolean) => void;
   updateSubItemTitle: (itemId: string, subItemIndex: number, title: string) => void;
   removeSubItem: (itemId: string, subItemIndex: number) => void;
+  onTimelineDragStart?: (item: { id: string; title: string }) => void;
 }
 
 export function ChecklistSection(props: ChecklistSectionProps) {
@@ -70,10 +71,11 @@ export function ChecklistSection(props: ChecklistSectionProps) {
     loadItemSubtasks, loadAllItemCounts,
     setEmailDialogOpen, setSelectedEmailItemId,
     toggleSubItem, updateSubItemTitle, removeSubItem,
+    onTimelineDragStart,
   } = props;
 
   return (
-    <Card className="lg:col-span-2 bg-card shadow-card border-border">
+    <Card className="bg-card shadow-card border-border">
       <CardHeader>
         <CardTitle>Checkliste</CardTitle>
       </CardHeader>
@@ -106,6 +108,21 @@ export function ChecklistSection(props: ChecklistSectionProps) {
                                 
                                 {/* Action buttons */}
                                 <div className="flex items-center space-x-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                                  <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    className="h-6 w-6 p-0"
+                                    title="Auf Zeitstrahl ziehen"
+                                    draggable
+                                    onDragStart={(event) => {
+                                      const payload = JSON.stringify({ id: item.id, title: item.title });
+                                      event.dataTransfer.setData("application/x-planning-checklist-item", payload);
+                                      event.dataTransfer.effectAllowed = "copyMove";
+                                      onTimelineDragStart?.({ id: item.id, title: item.title });
+                                    }}
+                                  >
+                                    <Milestone className="h-3 w-3" />
+                                  </Button>
                                   <Button variant="ghost" size="sm" className="h-6 w-6 p-0 relative" onClick={() => setShowItemSubtasks(prev => ({ ...prev, [item.id]: !prev[item.id] }))}>
                                     <ListTodo className="h-3 w-3" />
                                     {(itemSubtasks[item.id]?.length || 0) > 0 && <span className="absolute -top-1 -right-1 bg-primary text-primary-foreground rounded-full text-[10px] w-4 h-4 flex items-center justify-center">{itemSubtasks[item.id]?.length}</span>}
