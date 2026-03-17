@@ -49,6 +49,7 @@ export function MyWorkPlanningsTab() {
   const [loading, setLoading] = useState(true);
   const [expandedPlanningIds, setExpandedPlanningIds] = useState<Set<string>>(new Set());
   const [newChecklistTitles, setNewChecklistTitles] = useState<Record<string, string>>({});
+  const [contentRefreshToken, setContentRefreshToken] = useState(0);
 
   // Handle action parameter from URL
   useEffect(() => {
@@ -328,11 +329,11 @@ export function MyWorkPlanningsTab() {
     <div className="p-4">
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
         <div className="min-w-0">
-          <ThemenspeicherPanel />
+          <ThemenspeicherPanel onContentCreated={() => setContentRefreshToken((prev) => prev + 1)} />
         </div>
 
         <div className="min-w-0 space-y-4">
-          <SocialMediaPlannerPanel />
+          <SocialMediaPlannerPanel refreshToken={contentRefreshToken} />
 
           <section className="space-y-2">
             <h3 className="text-sm font-semibold text-foreground">Planungs-Karten</h3>
