@@ -11,7 +11,6 @@ export interface StakeholderContact {
   tags: string[] | null;
   category: string | null;
   avatar_url: string | null;
-  business_description: string | null;
   website: string | null;
   coordinates: { lat: number; lng: number } | null;
   business_street: string | null;
