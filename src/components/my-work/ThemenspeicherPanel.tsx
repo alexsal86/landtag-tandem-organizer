@@ -189,7 +189,7 @@ export function ThemenspeicherPanel({ onContentCreated }: Props) {
       .insert({
         id: newItemId,
         tenant_id: currentTenant.id,
-        created_by: profileId,
+        created_by: profileId!,
         topic_backlog_id: selectedTopic.id,
         hook: prefilledHook,
         core_message: prefilledCoreMessage,
@@ -200,7 +200,7 @@ export function ThemenspeicherPanel({ onContentCreated }: Props) {
         scheduled_for: scheduledFor,
         workflow_status: "idea",
         approval_state: "draft",
-      });
+      } as any);
 
     if (itemError) {
       console.error("createFromTopic insert failed:", itemError);
