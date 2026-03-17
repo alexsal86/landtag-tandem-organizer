@@ -9017,6 +9017,205 @@ export type Database = {
         }
         Relationships: []
       }
+      social_content_channels: {
+        Row: {
+          created_at: string
+          id: string
+          is_active: boolean
+          name: string
+          slug: string
+          sort_order: number
+          tenant_id: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          name: string
+          slug: string
+          sort_order?: number
+          tenant_id: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          name?: string
+          slug?: string
+          sort_order?: number
+          tenant_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "social_content_channels_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      social_content_item_channels: {
+        Row: {
+          channel_id: string
+          content_item_id: string
+          created_at: string
+          created_by: string
+          is_primary: boolean
+          tenant_id: string
+        }
+        Insert: {
+          channel_id: string
+          content_item_id: string
+          created_at?: string
+          created_by: string
+          is_primary?: boolean
+          tenant_id: string
+        }
+        Update: {
+          channel_id?: string
+          content_item_id?: string
+          created_at?: string
+          created_by?: string
+          is_primary?: boolean
+          tenant_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "social_content_item_channels_channel_id_fkey"
+            columns: ["channel_id"]
+            isOneToOne: false
+            referencedRelation: "social_content_channels"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "social_content_item_channels_content_item_id_fkey"
+            columns: ["content_item_id"]
+            isOneToOne: false
+            referencedRelation: "social_content_items"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "social_content_item_channels_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "social_content_item_channels_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      social_content_items: {
+        Row: {
+          approval_state: string
+          approved_at: string | null
+          approved_by: string | null
+          core_message: string | null
+          created_at: string
+          created_by: string
+          cta: string | null
+          draft_text: string | null
+          format: string | null
+          hook: string | null
+          id: string
+          notes: string | null
+          published_at: string | null
+          responsible_user_id: string | null
+          scheduled_for: string | null
+          tenant_id: string
+          topic_backlog_id: string
+          updated_at: string
+          workflow_status: string
+        }
+        Insert: {
+          approval_state?: string
+          approved_at?: string | null
+          approved_by?: string | null
+          core_message?: string | null
+          created_at?: string
+          created_by: string
+          cta?: string | null
+          draft_text?: string | null
+          format?: string | null
+          hook?: string | null
+          id?: string
+          notes?: string | null
+          published_at?: string | null
+          responsible_user_id?: string | null
+          scheduled_for?: string | null
+          tenant_id: string
+          topic_backlog_id: string
+          updated_at?: string
+          workflow_status?: string
+        }
+        Update: {
+          approval_state?: string
+          approved_at?: string | null
+          approved_by?: string | null
+          core_message?: string | null
+          created_at?: string
+          created_by?: string
+          cta?: string | null
+          draft_text?: string | null
+          format?: string | null
+          hook?: string | null
+          id?: string
+          notes?: string | null
+          published_at?: string | null
+          responsible_user_id?: string | null
+          scheduled_for?: string | null
+          tenant_id?: string
+          topic_backlog_id?: string
+          updated_at?: string
+          workflow_status?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "social_content_items_approved_by_fkey"
+            columns: ["approved_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "social_content_items_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "social_content_items_responsible_user_id_fkey"
+            columns: ["responsible_user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "social_content_items_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "social_content_items_topic_backlog_id_fkey"
+            columns: ["topic_backlog_id"]
+            isOneToOne: false
+            referencedRelation: "topic_backlog"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       starred_appointments: {
         Row: {
           appointment_id: string | null
@@ -10376,6 +10575,76 @@ export type Database = {
           },
           {
             foreignKeyName: "todos_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      topic_backlog: {
+        Row: {
+          cluster: string | null
+          created_at: string
+          created_by: string
+          id: string
+          notes: string | null
+          owner_id: string | null
+          priority: number
+          short_description: string | null
+          status: string
+          tags: string[]
+          tenant_id: string
+          topic: string
+          updated_at: string
+        }
+        Insert: {
+          cluster?: string | null
+          created_at?: string
+          created_by: string
+          id?: string
+          notes?: string | null
+          owner_id?: string | null
+          priority?: number
+          short_description?: string | null
+          status?: string
+          tags?: string[]
+          tenant_id: string
+          topic: string
+          updated_at?: string
+        }
+        Update: {
+          cluster?: string | null
+          created_at?: string
+          created_by?: string
+          id?: string
+          notes?: string | null
+          owner_id?: string | null
+          priority?: number
+          short_description?: string | null
+          status?: string
+          tags?: string[]
+          tenant_id?: string
+          topic?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "topic_backlog_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "topic_backlog_owner_id_fkey"
+            columns: ["owner_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "topic_backlog_tenant_id_fkey"
             columns: ["tenant_id"]
             isOneToOne: false
             referencedRelation: "tenants"
