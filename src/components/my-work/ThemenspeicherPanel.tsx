@@ -188,7 +188,7 @@ export function ThemenspeicherPanel({ onContentCreated }: Props) {
       .insert({
         id: newItemId,
         tenant_id: currentTenant.id,
-        created_by: user.id,
+        created_by: profileId,
         topic_backlog_id: selectedTopic.id,
         hook: prefilledHook,
         core_message: prefilledCoreMessage,
@@ -197,13 +197,14 @@ export function ThemenspeicherPanel({ onContentCreated }: Props) {
         draft_text: prefilledDraft,
         notes: `Aus Themenspeicher übernommen (${selectedTopic.topic})`,
         scheduled_for: scheduledFor,
+        workflow_status: "idea",
+        approval_state: "draft",
       });
 
     if (itemError) {
       console.error("createFromTopic insert failed:", itemError);
-      const msg = itemError.message || "Unbekannter Fehler";
-      const isRls = msg.includes("row-level security") || msg.includes("42501");
-      toast({ title: "Fehler", description: isRls ? "Keine Berechtigung – bitte Rolle prüfen." : `Beitrag konnte nicht erstellt werden: ${msg}`, variant: "destructive" });
+      const msg = getErrorMessage(itemError);
+      toast({ title: "Fehler", description: `Beitrag konnte nicht erstellt werden: ${msg}`, variant: "destructive" });
       setIsSubmitting(false);
       return;
     }
@@ -211,7 +212,7 @@ export function ThemenspeicherPanel({ onContentCreated }: Props) {
     if (selectedChannelId !== "none") {
       const { error: channelError } = await supabase.from("social_content_item_channels").insert({
         tenant_id: currentTenant.id,
-        created_by: user.id,
+        created_by: profileId,
         content_item_id: newItemId,
         channel_id: selectedChannelId,
         is_primary: true,
