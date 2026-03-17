@@ -123,8 +123,8 @@ export default function EditContact() {
       category: (data.category as Contact["category"]) || "citizen",
       priority: (data.priority as Contact["priority"]) || "medium",
       notes: data.notes || "",
-      industry: data.industry || "",
-      main_contact_person: data.main_contact_person || "",
+      industry: "",
+      main_contact_person: "",
       avatar_url: data.avatar_url || "",
     });
   };

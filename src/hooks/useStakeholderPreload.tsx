@@ -10,15 +10,12 @@ interface Contact {
   name: string;
   contact_type: "person" | "organization" | "archive";
   organization?: string | null;
-  industry?: string | null;
-  business_description?: string | null;
-  main_contact_person?: string | null;
   email?: string | null;
   tags?: string[] | null;
 }
 
 const PAGE_SIZE = 500;
-const STAKEHOLDER_SELECT = "id, contact_type, name, organization, industry, business_description, main_contact_person, email, tags";
+const STAKEHOLDER_SELECT = "id, contact_type, name, organization, email, tags";
 
 type MinimalStakeholder = Contact;
 
@@ -27,9 +24,6 @@ const mapStakeholder = (contact: MinimalStakeholder): Contact => ({
   contact_type: contact.contact_type,
   name: contact.name,
   organization: contact.organization ?? null,
-  industry: contact.industry ?? null,
-  business_description: contact.business_description ?? null,
-  main_contact_person: contact.main_contact_person ?? null,
   email: contact.email ?? null,
   tags: contact.tags ?? [],
 });
@@ -48,9 +42,6 @@ export const useStakeholderPreload = (searchTerm?: string) => {
 
     const searchFilters = [
       `name.ilike.${wildcardTerm}`,
-      `industry.ilike.${wildcardTerm}`,
-      `business_description.ilike.${wildcardTerm}`,
-      `main_contact_person.ilike.${wildcardTerm}`,
       `email.ilike.${wildcardTerm}`,
     ];
 

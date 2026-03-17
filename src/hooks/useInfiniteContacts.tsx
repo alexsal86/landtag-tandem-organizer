@@ -43,7 +43,7 @@ export const useInfiniteContacts = ({
   const buildQuery = useCallback((offset: number, limit: number) => {
     let query = supabase
       .from('contacts')
-      .select('id, contact_type, name, role, organization, organization_id, email, phone, location, address, birthday, website, linkedin, twitter, facebook, instagram, xing, category, priority, last_contact, avatar_url, notes, additional_info, is_favorite, gender, legal_form, industry, main_contact_person, business_description, tags, business_street, business_house_number, business_postal_code, business_city, business_country', { count: 'planned' })
+      .select('id, contact_type, name, role, organization, organization_id, email, phone, location, address, birthday, website, linkedin, twitter, facebook, instagram, xing, category, priority, last_contact, avatar_url, notes, additional_info, is_favorite, gender, tags, business_street, business_house_number, business_postal_code, business_city, business_country', { count: 'planned' })
       .eq('tenant_id', currentTenant?.id || '');
 
     // Filter by tab
@@ -57,7 +57,7 @@ export const useInfiniteContacts = ({
 
     // Search filter
     if (searchTerm) {
-      query = query.or(`name.ilike.%${searchTerm}%,organization.ilike.%${searchTerm}%,role.ilike.%${searchTerm}%,industry.ilike.%${searchTerm}%,main_contact_person.ilike.%${searchTerm}%,legal_form.ilike.%${searchTerm}%`);
+      query = query.or(`name.ilike.%${searchTerm}%,organization.ilike.%${searchTerm}%,role.ilike.%${searchTerm}%,email.ilike.%${searchTerm}%`);
     }
 
     // Category filter
@@ -177,10 +177,6 @@ export const useInfiniteContacts = ({
         avatar_url: contact.avatar_url,
         notes: contact.notes,
         additional_info: contact.additional_info,
-        legal_form: contact.legal_form,
-        industry: contact.industry,
-        main_contact_person: contact.main_contact_person,
-        business_description: contact.business_description,
         is_favorite: contact.is_favorite,
         gender: (contact as { gender?: string }).gender,
         tags: contact.tags || [],
@@ -224,10 +220,6 @@ export const useInfiniteContacts = ({
                 avatar_url: contact.avatar_url,
                 notes: contact.notes,
                 additional_info: contact.additional_info,
-                legal_form: contact.legal_form,
-                industry: contact.industry,
-                main_contact_person: contact.main_contact_person,
-                business_description: contact.business_description,
                 is_favorite: contact.is_favorite,
                 gender: (contact as { gender?: string }).gender,
                 tags: contact.tags || [],
