@@ -21,12 +21,15 @@ import { ChecklistSection } from "./ChecklistSection";
 import { ChecklistItemEmailDialog } from "./ChecklistItemEmailDialog";
 import { PlanningDefaultCollaboratorsDialog } from "./PlanningDefaultCollaboratorsDialog";
 import { EventRSVPManager } from "../events/EventRSVPManager";
+import { PlanningTimelineSection } from "./PlanningTimelineSection";
 import type { useEventPlanningData } from "./useEventPlanningData";
 
 type EventPlanningDataReturn = ReturnType<typeof useEventPlanningData>;
+type TimelineAssignment = { checklistItemId: string; title: string; dueDate: string };
 
 export function EventPlanningDetailView(data: EventPlanningDataReturn) {
   const [copiedSpeakerContact, setCopiedSpeakerContact] = useState<string | null>(null);
+  const [timelineAssignments, setTimelineAssignments] = useState<TimelineAssignment[]>([]);
   const copyFeedbackTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const {
@@ -123,6 +126,55 @@ export function EventPlanningDetailView(data: EventPlanningDataReturn) {
       }
     };
   }, []);
+
+  useEffect(() => {
+    if (!selectedPlanning) return;
+    const key = `eventPlanningTimelineAssignments:${selectedPlanning.id}`;
+    const saved = localStorage.getItem(key);
+    if (!saved) {
+      setTimelineAssignments([]);
+      return;
+    }
+
+    try {
+      const parsed = JSON.parse(saved) as TimelineAssignment[];
+      setTimelineAssignments(parsed);
+    } catch {
+      setTimelineAssignments([]);
+    }
+  }, [selectedPlanning]);
+
+  useEffect(() => {
+    if (!selectedPlanning) return;
+    const key = `eventPlanningTimelineAssignments:${selectedPlanning.id}`;
+    localStorage.setItem(key, JSON.stringify(timelineAssignments));
+  }, [selectedPlanning, timelineAssignments]);
+
+  const handleDropChecklistItemOnTimeline = (item: { id: string; title: string }) => {
+    const existing = timelineAssignments.find((assignment) => assignment.checklistItemId === item.id);
+    const defaultDate = existing?.dueDate ? existing.dueDate.slice(0, 10) : format(new Date(), "yyyy-MM-dd");
+    const dueDateInput = window.prompt(`Frist für "${item.title}" (YYYY-MM-DD):`, defaultDate);
+
+    if (!dueDateInput) {
+      return;
+    }
+
+    const parsedDate = new Date(dueDateInput);
+    if (Number.isNaN(parsedDate.getTime())) {
+      window.alert("Ungültiges Datum. Bitte Format YYYY-MM-DD nutzen.");
+      return;
+    }
+
+    const dueDate = format(parsedDate, "yyyy-MM-dd");
+    setTimelineAssignments((prev) => {
+      const withoutCurrent = prev.filter((assignment) => assignment.checklistItemId !== item.id);
+      return [...withoutCurrent, { checklistItemId: item.id, title: item.title, dueDate }];
+    });
+  };
+
+  const handleRemoveTimelineAssignment = (checklistItemId: string) => {
+    setTimelineAssignments((prev) => prev.filter((assignment) => assignment.checklistItemId !== checklistItemId));
+  };
 
   return (
     <div className="min-h-screen bg-gradient-subtle p-6">
@@ -535,48 +587,58 @@ export function EventPlanningDetailView(data: EventPlanningDataReturn) {
             <EventRSVPManager eventPlanningId={selectedPlanning.id} eventTitle={selectedPlanning.title} />
           </div>
 
-          {/* Checkliste */}
-          <ChecklistSection
-            checklistItems={checklistItems}
-            newChecklistItem={newChecklistItem}
-            setNewChecklistItem={setNewChecklistItem}
-            onDragEnd={onDragEnd}
-            toggleChecklistItem={toggleChecklistItem}
-            updateChecklistItemTitle={updateChecklistItemTitle}
-            addChecklistItem={addChecklistItem}
-            deleteChecklistItem={deleteChecklistItem}
-            itemSubtasks={itemSubtasks}
-            itemComments={itemComments}
-            itemDocuments={itemDocuments}
-            showItemSubtasks={showItemSubtasks}
-            setShowItemSubtasks={setShowItemSubtasks}
-            showItemComments={showItemComments}
-            setShowItemComments={setShowItemComments}
-            showItemDocuments={showItemDocuments}
-            setShowItemDocuments={setShowItemDocuments}
-            allProfiles={allProfiles}
-            user={user}
-            uploading={uploading}
-            itemEmailActions={itemEmailActions}
-            editingComment={editingComment}
-            setEditingComment={setEditingComment}
-            addItemSubtask={addItemSubtask}
-            addItemCommentForItem={addItemCommentForItem}
-            handleItemFileUpload={handleItemFileUpload}
-            deleteItemDocument={deleteItemDocument}
-            downloadItemDocument={downloadItemDocument}
-            deleteItemComment={deleteItemComment}
-            updateItemComment={updateItemComment}
-            setCompletingSubtask={setCompletingSubtask}
-            setCompletionResult={setCompletionResult}
-            loadItemSubtasks={loadItemSubtasks}
-            loadAllItemCounts={loadAllItemCounts}
-            setEmailDialogOpen={setEmailDialogOpen}
-            setSelectedEmailItemId={setSelectedEmailItemId}
-            toggleSubItem={toggleSubItem}
-            updateSubItemTitle={updateSubItemTitle}
-            removeSubItem={removeSubItem}
-          />
+          <div className="lg:col-span-2 grid gap-6 lg:grid-cols-2">
+            {/* Checkliste */}
+            <ChecklistSection
+              checklistItems={checklistItems}
+              newChecklistItem={newChecklistItem}
+              setNewChecklistItem={setNewChecklistItem}
+              onDragEnd={onDragEnd}
+              toggleChecklistItem={toggleChecklistItem}
+              updateChecklistItemTitle={updateChecklistItemTitle}
+              addChecklistItem={addChecklistItem}
+              deleteChecklistItem={deleteChecklistItem}
+              itemSubtasks={itemSubtasks}
+              itemComments={itemComments}
+              itemDocuments={itemDocuments}
+              showItemSubtasks={showItemSubtasks}
+              setShowItemSubtasks={setShowItemSubtasks}
+              showItemComments={showItemComments}
+              setShowItemComments={setShowItemComments}
+              showItemDocuments={showItemDocuments}
+              setShowItemDocuments={setShowItemDocuments}
+              allProfiles={allProfiles}
+              user={user}
+              uploading={uploading}
+              itemEmailActions={itemEmailActions}
+              editingComment={editingComment}
+              setEditingComment={setEditingComment}
+              addItemSubtask={addItemSubtask}
+              addItemCommentForItem={addItemCommentForItem}
+              handleItemFileUpload={handleItemFileUpload}
+              deleteItemDocument={deleteItemDocument}
+              downloadItemDocument={downloadItemDocument}
+              deleteItemComment={deleteItemComment}
+              updateItemComment={updateItemComment}
+              setCompletingSubtask={setCompletingSubtask}
+              setCompletionResult={setCompletionResult}
+              loadItemSubtasks={loadItemSubtasks}
+              loadAllItemCounts={loadAllItemCounts}
+              setEmailDialogOpen={setEmailDialogOpen}
+              setSelectedEmailItemId={setSelectedEmailItemId}
+              toggleSubItem={toggleSubItem}
+              updateSubItemTitle={updateSubItemTitle}
+              removeSubItem={removeSubItem}
+            />
+
+            <PlanningTimelineSection
+              planningDates={planningDates}
+              checklistItems={checklistItems}
+              assignments={timelineAssignments}
+              onDropChecklistItem={handleDropChecklistItemOnTimeline}
+              onRemoveAssignment={handleRemoveTimelineAssignment}
+            />
+          </div>
         </div>
       </div>
 
