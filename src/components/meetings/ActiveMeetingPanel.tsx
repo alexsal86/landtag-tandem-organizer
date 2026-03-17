@@ -120,7 +120,7 @@ export function ActiveMeetingPanel({
     const apptResults = (() => { try { return JSON.parse(parentItem.result_text || '{}'); } catch { return {}; } })();
     return upcomingAppointments.length > 0 ? (
       upcomingAppointments.map((appt, apptIdx) => (
-        <div key={appt.id} className={cn("pl-4 border-l-2 border-muted space-y-2", starredAppointmentIds.has(appt.id) && "bg-amber-50/50 dark:bg-amber-950/20")}>
+        <div key={appt.id} className={cn("ml-[0.8rem] pl-4 border-l-2 border-muted space-y-2", starredAppointmentIds.has(appt.id) && "bg-amber-50/50 dark:bg-amber-950/20")}>
           <div className="flex items-center gap-2">
             <Button variant="ghost" size="sm" className="h-6 w-6 p-0 shrink-0" onClick={(e) => { e.stopPropagation(); onToggleStar(appt); }}>
               <Star className={cn("h-3.5 w-3.5", starredAppointmentIds.has(appt.id) ? "fill-amber-400 text-amber-400" : "text-muted-foreground")} />
@@ -153,7 +153,7 @@ export function ActiveMeetingPanel({
 
   const renderQuickNotes = (parentItem: AgendaItem) => (
     linkedQuickNotes.length > 0 ? linkedQuickNotes.map((note, noteIdx) => (
-      <div key={note.id} className="pl-4 border-l-2 border-muted space-y-2">
+      <div key={note.id} className="ml-[0.8rem] pl-4 border-l-2 border-muted space-y-2">
         <div className="flex items-center gap-2">
           <span className="text-xs font-medium text-muted-foreground">{String.fromCharCode(97 + noteIdx)})</span>
           <StickyNote className="h-3.5 w-3.5 text-amber-500" />
@@ -180,7 +180,7 @@ export function ActiveMeetingPanel({
   const renderLinkedTasks = (parentItem: AgendaItem) => {
     const taskResults = (() => { try { return JSON.parse(parentItem.result_text || '{}'); } catch { return {}; } })();
     return linkedTasks.length > 0 ? linkedTasks.map((task, taskIdx) => (
-      <div key={task.id} className="pl-4 border-l-2 border-muted space-y-2">
+      <div key={task.id} className="ml-[0.8rem] pl-4 border-l-2 border-muted space-y-2">
         <div className="flex items-center gap-2">
           <span className="text-xs font-medium text-muted-foreground">{String.fromCharCode(97 + taskIdx)})</span>
           <ListTodo className="h-3.5 w-3.5 text-green-500" />
@@ -211,7 +211,7 @@ export function ActiveMeetingPanel({
   const renderDecisions = (parentItem: AgendaItem) => {
     const decisionResults = (() => { try { return JSON.parse(parentItem.result_text || '{}'); } catch { return {}; } })();
     return relevantDecisions.length > 0 ? relevantDecisions.map((decision, idx) => (
-      <div key={decision.id} className="pl-4 border-l-2 border-muted space-y-2">
+      <div key={decision.id} className="ml-[0.8rem] pl-4 border-l-2 border-muted space-y-2">
         <div className="flex items-center gap-2">
           <span className="text-xs font-medium text-muted-foreground">{String.fromCharCode(97 + idx)})</span>
           <Scale className="h-3.5 w-3.5 text-violet-500" />
@@ -233,7 +233,7 @@ export function ActiveMeetingPanel({
   const renderCaseItems = (parentItem: AgendaItem) => {
     const ciResults = (() => { try { return JSON.parse(parentItem.result_text || '{}'); } catch { return {}; } })();
     return linkedCaseItems.length > 0 ? linkedCaseItems.map((ci, idx) => (
-      <div key={ci.id} className="pl-4 border-l-2 border-muted space-y-2">
+      <div key={ci.id} className="ml-[0.8rem] pl-4 border-l-2 border-muted space-y-2">
         <div className="flex items-center gap-2">
           <span className="text-xs font-medium text-muted-foreground">{String.fromCharCode(97 + idx)})</span>
           <Briefcase className="h-3.5 w-3.5 text-teal-500" />
@@ -325,7 +325,7 @@ export function ActiveMeetingPanel({
   const renderSubItem = (subItem: AgendaItem, index: number, subIndex: number) => {
     if (subItem.system_type) {
       return (
-        <div className="pl-4 border-l-2 border-muted">
+        <div className="ml-[0.8rem] pl-4 border-l-2 border-muted">
           {renderSystemContent(subItem, `${index + 1}.${subIndex + 1}`)}
         </div>
       );
@@ -333,7 +333,7 @@ export function ActiveMeetingPanel({
 
     // Regular sub-item
     return (
-      <div className="pl-4 border-l-2 border-muted">
+      <div className="ml-[0.8rem] pl-4 border-l-2 border-muted">
         <div className="flex items-center gap-2">
           <span className="text-xs font-medium text-muted-foreground">{index + 1}.{subIndex + 1}</span>
           <Input
