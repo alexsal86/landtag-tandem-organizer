@@ -1,6 +1,11 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { getErrorMessage, handleAppError } from '../errorHandler';
 
+// Enable debug console for all tests so debugConsole.error actually calls console.error
+beforeEach(() => {
+  try { localStorage.setItem('matrix_debug_console', 'true'); } catch { /* noop */ }
+});
+
 describe('getErrorMessage', () => {
   it('extracts message from Error instance', () => {
     expect(getErrorMessage(new Error('boom'))).toBe('boom');
@@ -43,10 +48,6 @@ describe('getErrorMessage', () => {
 });
 
 describe('handleAppError', () => {
-  beforeEach(() => {
-    localStorage.setItem('matrix_debug_console', 'true');
-  });
-
   it('logs error with context label', () => {
     const spy = vi.spyOn(globalThis.console, 'error').mockImplementation(() => {});
     const err = new Error('test');
