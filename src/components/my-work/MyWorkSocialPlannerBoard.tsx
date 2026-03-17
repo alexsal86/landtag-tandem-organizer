@@ -225,7 +225,7 @@ export function MyWorkSocialPlannerBoard() {
                 className="rounded-none h-8"
                 onClick={() => setViewMode("calendar")}
               >
-                <Calendar className="mr-1 h-3.5 w-3.5" />
+                <CalendarDays className="mr-1 h-3.5 w-3.5" />
                 Kalender
               </Button>
               <Button
