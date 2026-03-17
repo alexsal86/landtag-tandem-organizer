@@ -540,9 +540,9 @@ export function MyWorkView() {
       
       {activeTab === "tasks" && <ErrorBoundary fallback={tabError("Aufgaben")}><Suspense fallback={tabFallback}><MyWorkTasksTab /></Suspense></ErrorBoundary>}
       {activeTab === "decisions" && <ErrorBoundary fallback={tabError("Entscheidungen")}><Suspense fallback={tabFallback}><MyWorkDecisionsTab /></Suspense></ErrorBoundary>}
-      {activeTab === "jourFixe" && <ErrorBoundary fallback={tabError("Jour Fixe")}><Suspense fallback={tabFallback}><MyWorkJourFixeTab /></Suspense></ErrorBoundary>}
+      {activeTab === "jourFixe" && <ErrorBoundary fallback={tabError("Termine & Planung")}><Suspense fallback={tabFallback}><MyWorkTerminePlanungTab /></Suspense></ErrorBoundary>}
       {activeTab === "cases" && <ErrorBoundary fallback={tabError("Vorgänge")}><Suspense fallback={tabFallback}><MyWorkCasesWorkspace /></Suspense></ErrorBoundary>}
-      {activeTab === "plannings" && <ErrorBoundary fallback={tabError("Planungen")}><Suspense fallback={tabFallback}><MyWorkPlanningsTab /></Suspense></ErrorBoundary>}
+      {activeTab === "redaktion" && <ErrorBoundary fallback={tabError("Redaktion")}><Suspense fallback={tabFallback}><MyWorkRedaktionTab /></Suspense></ErrorBoundary>}
       {activeTab === "time" && <ErrorBoundary fallback={tabError("Meine Zeit")}><Suspense fallback={tabFallback}><MyWorkTimeTrackingTab /></Suspense></ErrorBoundary>}
       {activeTab === "team" && <ErrorBoundary fallback={tabError("Team")}><Suspense fallback={tabFallback}><MyWorkTeamTab /></Suspense></ErrorBoundary>}
       {activeTab === "feedbackfeed" && (
