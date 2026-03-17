@@ -1,5 +1,10 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { getErrorMessage, handleAppError } from '../errorHandler';
+import { debugConsole } from '../debugConsole';
+
+vi.spyOn(debugConsole, 'error').mockImplementation((...args: unknown[]) => {
+  globalThis.console.error(...args);
+});
 
 describe('getErrorMessage', () => {
   it('extracts message from Error instance', () => {
@@ -26,6 +31,11 @@ describe('getErrorMessage', () => {
     expect(getErrorMessage({ message: 500 })).toBe('500');
   });
 
+  it('extracts message from Supabase PostgrestError-like objects', () => {
+    expect(getErrorMessage({ message: 'insert violates FK', details: 'Key not present', hint: null, code: '23503' })).toBe('insert violates FK');
+    expect(getErrorMessage({ message: '', details: 'fallback details' })).toBe('fallback details');
+  });
+
   it('handles mixed error-like payloads from api clients', () => {
     const mixedError = {
       error: { code: 'PGRST116', message: 'Row not found' },
@@ -38,10 +48,6 @@ describe('getErrorMessage', () => {
 });
 
 describe('handleAppError', () => {
-  beforeEach(() => {
-    localStorage.setItem('matrix_debug_console', 'true');
-  });
-
   it('logs error with context label', () => {
     const spy = vi.spyOn(globalThis.console, 'error').mockImplementation(() => {});
     const err = new Error('test');

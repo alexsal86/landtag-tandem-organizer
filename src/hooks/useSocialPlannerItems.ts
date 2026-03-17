@@ -2,7 +2,8 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { useTenant } from "@/hooks/useTenant";
-import { debugConsole } from "@/utils/debugConsole";
+import { useCurrentProfileId } from "@/hooks/useCurrentProfileId";
+import { getErrorMessage } from "@/utils/errorHandler";
 
 export type PlannerWorkflowStatus = "ideas" | "in_progress" | "in_review" | "approved" | "scheduled" | "published";
 
@@ -26,30 +27,44 @@ export interface PlannerChannel {
   slug: string;
 }
 
-const STATUS_MAP: Record<string, PlannerWorkflowStatus> = {
+// DB workflow_status values: idea, draft, approval, scheduled, published
+// UI workflow_status values: ideas, in_progress, in_review, approved, scheduled, published
+const STATUS_FROM_DB: Record<string, PlannerWorkflowStatus> = {
   idea: "ideas",
-  ideas: "ideas",
   draft: "in_progress",
-  in_progress: "in_progress",
-  in_review: "in_review",
-  review: "in_review",
-  approved: "approved",
+  approval: "in_review", // default; refined by approval_state below
   scheduled: "scheduled",
   published: "published",
 };
 
 const STATUS_TO_DB: Record<PlannerWorkflowStatus, string> = {
   ideas: "idea",
-  in_progress: "in_progress",
-  in_review: "in_review",
-  approved: "approved",
+  in_progress: "draft",
+  in_review: "approval",
+  approved: "approval",
   scheduled: "scheduled",
   published: "published",
 };
 
+// DB approval_state values: draft, pending_approval, approved, rejected
+const APPROVAL_TO_DB: Record<PlannerWorkflowStatus, string | undefined> = {
+  ideas: undefined,
+  in_progress: undefined,
+  in_review: "pending_approval",
+  approved: "approved",
+  scheduled: undefined,
+  published: undefined,
+};
+
+function deriveUiStatus(dbWorkflowStatus: string, dbApprovalState: string): PlannerWorkflowStatus {
+  if (dbWorkflowStatus === "approval" && dbApprovalState === "approved") return "approved";
+  return STATUS_FROM_DB[dbWorkflowStatus] || "ideas";
+}
+
 export function useSocialPlannerItems() {
   const { user } = useAuth();
   const { currentTenant } = useTenant();
+  const profileId = useCurrentProfileId();
   const [items, setItems] = useState<SocialPlannerItem[]>([]);
   const [channels, setChannels] = useState<PlannerChannel[]>([]);
   const [loading, setLoading] = useState(false);
@@ -108,8 +123,8 @@ export function useSocialPlannerItems() {
             topic_backlog_id: row.topic_backlog_id,
             topic: topicData?.topic || "Ohne Thema",
             tags: topicData?.tags || [],
-            workflow_status: STATUS_MAP[row.workflow_status] || "ideas",
-            approval_state: row.approval_state || "open",
+            workflow_status: deriveUiStatus(row.workflow_status, row.approval_state),
+            approval_state: row.approval_state || "draft",
             format: row.format,
             responsible_user_id: row.responsible_user_id,
             scheduled_for: row.scheduled_for,
@@ -119,7 +134,7 @@ export function useSocialPlannerItems() {
         }),
       );
     } catch (error) {
-      debugConsole.error("Error loading social planner items:", error);
+      console.error("Error loading social planner items:", getErrorMessage(error), error);
     } finally {
       setLoading(false);
     }
@@ -140,18 +155,19 @@ export function useSocialPlannerItems() {
       notes?: string | null;
       cta?: string | null;
     }) => {
-      if (!user?.id || !currentTenant?.id) return null;
+      if (!user?.id || !currentTenant?.id || !profileId) return null;
 
+      const uiStatus = payload.workflow_status || "ideas";
       const id = crypto.randomUUID();
       const { error } = await supabase
         .from("social_content_items")
         .insert({
           id,
           tenant_id: currentTenant.id,
-          created_by: user.id,
+          created_by: profileId,
           topic_backlog_id: payload.topic_backlog_id,
-          workflow_status: STATUS_TO_DB[payload.workflow_status || "ideas"],
-          approval_state: payload.approval_state || "open",
+          workflow_status: STATUS_TO_DB[uiStatus],
+          approval_state: APPROVAL_TO_DB[uiStatus] || payload.approval_state || "draft",
           format: payload.format || null,
           responsible_user_id: payload.responsible_user_id || null,
           scheduled_for: payload.scheduled_for || null,
@@ -163,8 +179,8 @@ export function useSocialPlannerItems() {
         });
 
       if (error) {
-        console.error("createItem failed:", error);
-        throw error;
+        console.error("createItem failed:", getErrorMessage(error), error);
+        throw new Error(getErrorMessage(error));
       }
 
       if (payload.channel_ids?.length) {
@@ -172,19 +188,22 @@ export function useSocialPlannerItems() {
           payload.channel_ids.map((channelId, index) => ({
             content_item_id: id,
             channel_id: channelId,
-            created_by: user.id,
+            created_by: profileId,
             tenant_id: currentTenant.id,
             is_primary: index === 0,
           })),
         );
 
-        if (channelInsertError) throw channelInsertError;
+        if (channelInsertError) {
+          console.error("Channel link failed:", getErrorMessage(channelInsertError), channelInsertError);
+          throw new Error(getErrorMessage(channelInsertError));
+        }
       }
 
       await loadItems();
       return { id };
     },
-    [currentTenant?.id, loadItems, user?.id],
+    [currentTenant?.id, loadItems, user?.id, profileId],
   );
 
   const updateItem = useCallback(async (id: string, patch: Partial<Pick<SocialPlannerItem, "workflow_status" | "approval_state" | "responsible_user_id" | "format" | "scheduled_for">>) => {
@@ -192,7 +211,11 @@ export function useSocialPlannerItems() {
 
     const dbPatch: Record<string, string | null> = {};
 
-    if (patch.workflow_status) dbPatch.workflow_status = STATUS_TO_DB[patch.workflow_status];
+    if (patch.workflow_status) {
+      dbPatch.workflow_status = STATUS_TO_DB[patch.workflow_status];
+      const approvalForStatus = APPROVAL_TO_DB[patch.workflow_status];
+      if (approvalForStatus) dbPatch.approval_state = approvalForStatus;
+    }
     if (typeof patch.approval_state !== "undefined") dbPatch.approval_state = patch.approval_state;
     if (typeof patch.responsible_user_id !== "undefined") dbPatch.responsible_user_id = patch.responsible_user_id;
     if (typeof patch.format !== "undefined") dbPatch.format = patch.format;
@@ -203,12 +226,12 @@ export function useSocialPlannerItems() {
       .update(dbPatch)
       .eq("id", id)
       .eq("tenant_id", currentTenant.id);
-    if (error) throw error;
+    if (error) throw new Error(getErrorMessage(error));
   }, [currentTenant?.id]);
 
   const updateItemChannels = useCallback(
     async (id: string, channelIds: string[]) => {
-      if (!user?.id || !currentTenant?.id) return;
+      if (!user?.id || !currentTenant?.id || !profileId) return;
 
       const { error: deleteError } = await supabase
         .from("social_content_item_channels")
@@ -216,7 +239,7 @@ export function useSocialPlannerItems() {
         .eq("content_item_id", id)
         .eq("tenant_id", currentTenant.id);
 
-      if (deleteError) throw deleteError;
+      if (deleteError) throw new Error(getErrorMessage(deleteError));
 
       if (channelIds.length === 0) {
         await loadItems();
@@ -227,16 +250,16 @@ export function useSocialPlannerItems() {
         channelIds.map((channelId, index) => ({
           content_item_id: id,
           channel_id: channelId,
-          created_by: user.id,
+          created_by: profileId,
           tenant_id: currentTenant.id,
           is_primary: index === 0,
         })),
       );
 
-      if (error) throw error;
+      if (error) throw new Error(getErrorMessage(error));
       await loadItems();
     },
-    [currentTenant?.id, loadItems, user?.id],
+    [currentTenant?.id, loadItems, user?.id, profileId],
   );
 
   const deleteItem = useCallback(async (id: string) => {
@@ -247,7 +270,7 @@ export function useSocialPlannerItems() {
       .delete()
       .eq("id", id)
       .eq("tenant_id", currentTenant.id);
-    if (error) throw error;
+    if (error) throw new Error(getErrorMessage(error));
     await loadItems();
   }, [currentTenant?.id, loadItems]);
 

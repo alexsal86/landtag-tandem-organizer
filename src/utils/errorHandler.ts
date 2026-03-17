@@ -19,8 +19,12 @@ export interface HandleErrorOptions {
 export function getErrorMessage(error: unknown): string {
   if (error instanceof Error) return error.message;
   if (typeof error === 'string') return error;
-  if (error && typeof error === 'object' && 'message' in error) {
-    return String((error as { message: unknown }).message);
+  if (error && typeof error === 'object') {
+    // Handle Supabase PostgrestError objects: { message, details, hint, code }
+    const obj = error as Record<string, unknown>;
+    if (typeof obj.message === 'string' && obj.message) return obj.message;
+    if (typeof obj.details === 'string' && obj.details) return obj.details;
+    if ('message' in obj) return String(obj.message);
   }
   return 'Ein unbekannter Fehler ist aufgetreten.';
 }

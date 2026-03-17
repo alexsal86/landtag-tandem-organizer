@@ -33,8 +33,8 @@ const SORT_OPTIONS = [
 ] as const;
 
 const APPROVAL_LABELS: Record<string, string> = {
-  open: "Offen",
-  requested: "Angefragt",
+  draft: "Entwurf",
+  pending_approval: "Angefragt",
   approved: "Freigegeben",
   rejected: "Abgelehnt",
 };

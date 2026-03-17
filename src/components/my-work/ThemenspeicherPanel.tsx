@@ -5,7 +5,9 @@ import { Lightbulb, Link2, PlusCircle, TriangleAlert } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { useTenant } from "@/hooks/useTenant";
+import { useCurrentProfileId } from "@/hooks/useCurrentProfileId";
 import { useToast } from "@/hooks/use-toast";
+import { getErrorMessage } from "@/utils/errorHandler";
 import { useTopicBacklog } from "@/hooks/useTopicBacklog";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -56,6 +58,7 @@ export function ThemenspeicherPanel({ onContentCreated }: Props) {
   const { user } = useAuth();
   const { currentTenant } = useTenant();
   const { toast } = useToast();
+  const profileId = useCurrentProfileId();
   const { createTopic: createBacklogTopic } = useTopicBacklog();
 
   const [loading, setLoading] = useState(true);
@@ -148,7 +151,7 @@ export function ThemenspeicherPanel({ onContentCreated }: Props) {
   };
 
   const createFromTopic = async () => {
-    if (!user?.id || !currentTenant?.id || !selectedTopic) return;
+    if (!user?.id || !currentTenant?.id || !selectedTopic || !profileId) return;
 
     setIsSubmitting(true);
     setDuplicateWarning(null);
@@ -186,7 +189,7 @@ export function ThemenspeicherPanel({ onContentCreated }: Props) {
       .insert({
         id: newItemId,
         tenant_id: currentTenant.id,
-        created_by: user.id,
+        created_by: profileId!,
         topic_backlog_id: selectedTopic.id,
         hook: prefilledHook,
         core_message: prefilledCoreMessage,
@@ -195,13 +198,14 @@ export function ThemenspeicherPanel({ onContentCreated }: Props) {
         draft_text: prefilledDraft,
         notes: `Aus Themenspeicher übernommen (${selectedTopic.topic})`,
         scheduled_for: scheduledFor,
-      });
+        workflow_status: "idea",
+        approval_state: "draft",
+      } as any);
 
     if (itemError) {
       console.error("createFromTopic insert failed:", itemError);
-      const msg = itemError.message || "Unbekannter Fehler";
-      const isRls = msg.includes("row-level security") || msg.includes("42501");
-      toast({ title: "Fehler", description: isRls ? "Keine Berechtigung – bitte Rolle prüfen." : `Beitrag konnte nicht erstellt werden: ${msg}`, variant: "destructive" });
+      const msg = getErrorMessage(itemError);
+      toast({ title: "Fehler", description: `Beitrag konnte nicht erstellt werden: ${msg}`, variant: "destructive" });
       setIsSubmitting(false);
       return;
     }
@@ -209,11 +213,11 @@ export function ThemenspeicherPanel({ onContentCreated }: Props) {
     if (selectedChannelId !== "none") {
       const { error: channelError } = await supabase.from("social_content_item_channels").insert({
         tenant_id: currentTenant.id,
-        created_by: user.id,
+        created_by: profileId!,
         content_item_id: newItemId,
         channel_id: selectedChannelId,
         is_primary: true,
-      });
+      } as any);
 
       if (channelError) {
         toast({ title: "Hinweis", description: "Beitrag erstellt, aber Kanal-Verknüpfung fehlgeschlagen.", variant: "destructive" });
