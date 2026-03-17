@@ -12,6 +12,7 @@ import { debugConsole } from "@/utils/debugConsole";
 import { cn } from "@/lib/utils";
 import SimpleRichTextEditor from "@/components/ui/SimpleRichTextEditor";
 import { MentionSharePromptDialog } from "@/components/shared/MentionSharePromptDialog";
+import { notifyQuickNoteShared } from "@/utils/shareNotifications";
 import { extractMentionedUserIds } from "@/utils/noteMentions";
 
 const COLORS = [
@@ -134,6 +135,31 @@ export function MyWorkQuickCapture({ onNoteSaved }: MyWorkQuickCaptureProps) {
       toast({ title: "Freigabe für erwähnte Personen fehlgeschlagen", variant: "destructive" });
       return;
     }
+
+    const { data: senderProfile } = await supabase
+      .from("profiles")
+      .select("display_name")
+      .eq("user_id", user.id)
+      .maybeSingle();
+
+    const { data: noteData } = await supabase
+      .from("quick_notes")
+      .select("title")
+      .eq("id", newNoteId)
+      .maybeSingle();
+
+    await Promise.all(
+      userIds
+        .filter((recipientUserId) => recipientUserId !== user.id)
+        .map((recipientUserId) =>
+          notifyQuickNoteShared({
+            recipientUserId,
+            senderName: senderProfile?.display_name,
+            itemTitle: noteData?.title,
+            itemId: newNoteId,
+          })
+        )
+    );
 
     toast({ title: "Notiz für erwähnte Personen freigegeben" });
   };

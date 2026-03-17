@@ -30,6 +30,7 @@ import { Input } from "@/components/ui/input";
 import { addDays, isAfter, isBefore, startOfDay } from "date-fns";
 import { cn } from "@/lib/utils";
 import { debugConsole } from "@/utils/debugConsole";
+import { notifyTaskShared } from "@/utils/shareNotifications";
 
 interface Profile {
   user_id: string;
@@ -397,10 +398,14 @@ export function MyWorkTasksTab() {
   };
 
   const handleUpdateAssignee = async (userIds: string[]) => {
-    if (!assignTaskId) return;
+    if (!assignTaskId || !user) return;
     const normalizedAssignees = userIds.map((id) => id.trim()).filter(Boolean);
     const assignedToValue = normalizedAssignees.length > 0 ? normalizedAssignees.join(',') : null;
-    
+
+    const existingTask = [...assignedTasks, ...createdTasks, ...Object.values(subtasks).flat()].find((t) => t.id === assignTaskId);
+    const previousAssignees = normalizeAssignedTo(existingTask?.assigned_to ?? null);
+    const newlyAssignedUserIds = normalizedAssignees.filter((id) => id !== user.id && !previousAssignees.includes(id));
+
     try {
       const { error } = await supabase
         .from("tasks")
@@ -409,6 +414,23 @@ export function MyWorkTasksTab() {
         .select();
 
       if (error) throw error;
+
+      const { data: senderProfile } = await supabase
+        .from("profiles")
+        .select("display_name")
+        .eq("user_id", user.id)
+        .maybeSingle();
+
+      await Promise.all(
+        newlyAssignedUserIds.map((recipientUserId) =>
+          notifyTaskShared({
+            recipientUserId,
+            senderName: senderProfile?.display_name,
+            itemTitle: existingTask?.title,
+            itemId: assignTaskId,
+          })
+        )
+      );
       
       setAssignedTasks(prev => prev.map(t => 
         t.id === assignTaskId ? { ...t, assigned_to: assignedToValue } : t
