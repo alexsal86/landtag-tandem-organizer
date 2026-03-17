@@ -250,9 +250,10 @@ export function ThemenspeicherPanel({ onContentCreated }: Props) {
       setIsCreateTopicDialogOpen(false);
       void loadData();
       onContentCreated?.();
-    } catch (error) {
-      const message = error instanceof Error ? error.message : "Thema konnte nicht erstellt werden.";
-      toast({ title: "Fehler", description: message, variant: "destructive" });
+    } catch (error: unknown) {
+      const msg = error instanceof Error ? error.message : String(error);
+      const isRls = msg.includes("row-level security") || msg.includes("42501");
+      toast({ title: "Fehler", description: isRls ? "Keine Berechtigung – bitte Rolle prüfen." : msg, variant: "destructive" });
     } finally {
       setIsSubmitting(false);
     }
