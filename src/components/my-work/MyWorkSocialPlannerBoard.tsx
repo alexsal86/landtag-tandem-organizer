@@ -199,6 +199,14 @@ export function MyWorkSocialPlannerBoard() {
     setSortBy("scheduled");
   };
 
+  const handleCalendarScheduleUpdate = useCallback(async (itemId: string, isoDate: string) => {
+    try {
+      await updateItem(itemId, { scheduled_for: isoDate } as Parameters<typeof updateItem>[1]);
+    } catch {
+      toast({ title: "Zeitpunkt konnte nicht geändert werden", variant: "destructive" });
+    }
+  }, [updateItem, toast]);
+
   const hasActiveFilters = channelFilter !== "all" || ownerFilter !== "all" || statusFilter !== "all" || tagSearch.trim().length > 0 || sortBy !== "scheduled";
 
   return (
@@ -206,10 +214,30 @@ export function MyWorkSocialPlannerBoard() {
       <CardHeader className="space-y-3">
         <div className="flex flex-wrap items-center justify-between gap-2">
           <div>
-            <CardTitle className="text-base">Social Planner Board</CardTitle>
-            <p className="text-xs text-muted-foreground">Workflow ohne Kalenderansicht – von Idee bis Veröffentlichung.</p>
+            <CardTitle className="text-base">Social Planner</CardTitle>
+            <p className="text-xs text-muted-foreground">Redaktionsplanung – von Idee bis Veröffentlichung.</p>
           </div>
           <div className="flex items-center gap-2">
+            <div className="flex rounded-md border overflow-hidden">
+              <Button
+                size="sm"
+                variant={viewMode === "calendar" ? "default" : "ghost"}
+                className="rounded-none h-8"
+                onClick={() => setViewMode("calendar")}
+              >
+                <Calendar className="mr-1 h-3.5 w-3.5" />
+                Kalender
+              </Button>
+              <Button
+                size="sm"
+                variant={viewMode === "kanban" ? "default" : "ghost"}
+                className="rounded-none h-8"
+                onClick={() => setViewMode("kanban")}
+              >
+                <Kanban className="mr-1 h-3.5 w-3.5" />
+                Kanban
+              </Button>
+            </div>
             <Button size="sm" variant="outline" onClick={() => setIsCreateDialogOpen(true)}>
               <Plus className="mr-1 h-4 w-4" />
               Neuen Inhalt entwerfen
