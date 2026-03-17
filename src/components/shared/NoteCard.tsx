@@ -71,6 +71,7 @@ export function NoteCard({
   onCreateDecision, onRemoveDecision, onCreateCaseItem, onRemoveCaseItem,
   onOpenMeetingSelector, onRemoveFromMeeting,
   onOpenEdit, onOpenVersionHistory, onSplitNote, onShare,
+  onTransferToThemenspeicher,
 }: NoteCardProps) {
   const fullText = note.content.replace(/<[^>]*>/g, '');
   const needsTruncation = fullText.length > 150;
