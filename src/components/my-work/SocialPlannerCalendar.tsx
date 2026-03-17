@@ -3,7 +3,6 @@ import { Calendar, dateFnsLocalizer, Views, type View } from "react-big-calendar
 import { format, parse, startOfWeek, getDay, getISOWeek, isSameDay } from "date-fns";
 import { de } from "date-fns/locale";
 import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
 import { CalendarDays, Tag } from "lucide-react";
 import type { SocialPlannerItem, PlannerWorkflowStatus } from "@/hooks/useSocialPlannerItems";
 import "react-big-calendar/lib/css/react-big-calendar.css";
@@ -60,14 +59,16 @@ function MonthDateHeader({ date, label }: DateHeaderProps) {
   const weekStart = startOfWeek(date, { locale: de });
   const showWeekNumber = isSameDay(date, weekStart);
 
+  const isoWeek = getISOWeek(date);
+
   return (
     <div className="social-planner-month-date-header">
       {showWeekNumber && (
-        <span className="social-planner-week-number" aria-label={`Kalenderwoche ${getISOWeek(date)}`}>
-          KW {getISOWeek(date)}
+        <span className="social-planner-week-gutter" aria-label={`Kalenderwoche ${isoWeek}`}>
+          KW {isoWeek}
         </span>
       )}
-      <span>{label}</span>
+      <span className="social-planner-day-label">{label}</span>
     </div>
   );
 }
