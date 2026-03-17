@@ -8,6 +8,8 @@ import { de } from "date-fns/locale";
 import { Droppable } from "@hello-pangea/dnd";
 import type { ChecklistItem, EventPlanningDate } from "./types";
 
+const DAY_IN_MS = 1000 * 60 * 60 * 24;
+
 type TimelineAssignment = {
   checklistItemId: string;
   title: string;
@@ -50,7 +52,7 @@ export function PlanningTimelineSection({
   const [isDropActive, setIsDropActive] = useState(false);
   const [connectorLines, setConnectorLines] = useState<ConnectorLine[]>([]);
   const sectionRef = useRef<HTMLDivElement | null>(null);
-  const timelineEntryRefs = useRef<Record<string, HTMLDivElement | null>>({});
+  const timelinePointRefs = useRef<Record<string, HTMLSpanElement | null>>({});
 
   const entries = useMemo<TimelineEntry[]>(() => {
     const planningStartEntry: TimelineEntry[] = planningCreatedAt
@@ -77,6 +79,7 @@ export function PlanningTimelineSection({
       .map((assignment) => {
         const checklistItem = checklistItems.find((item) => item.id === assignment.checklistItemId);
         if (!checklistItem) return null;
+
         return {
           id: `item-${assignment.checklistItemId}`,
           date: new Date(assignment.dueDate),
@@ -99,6 +102,15 @@ export function PlanningTimelineSection({
     return Math.max(0, Math.min(100, raw));
   }, [entries]);
 
+  const entrySpacings = useMemo(() => {
+    return entries.map((entry, index) => {
+      if (index === 0) return 0;
+      const previousEntry = entries[index - 1];
+      const diffInDays = Math.max(0, (entry.date.getTime() - previousEntry.date.getTime()) / DAY_IN_MS);
+      return Math.min(120, Math.max(12, Math.round(diffInDays * 8)));
+    });
+  }, [entries]);
+
   useEffect(() => {
     const updateConnectors = () => {
       const sectionRect = sectionRef.current?.getBoundingClientRect();
@@ -110,21 +122,21 @@ export function PlanningTimelineSection({
       const nextLines = assignments
         .map((assignment) => {
           const checklistElement = checklistItemRefs[assignment.checklistItemId]?.current;
-          const timelineElement = timelineEntryRefs.current[`item-${assignment.checklistItemId}`];
+          const timelinePoint = timelinePointRefs.current[`item-${assignment.checklistItemId}`];
 
-          if (!checklistElement || !timelineElement) {
+          if (!checklistElement || !timelinePoint) {
             return null;
           }
 
           const checklistRect = checklistElement.getBoundingClientRect();
-          const timelineRect = timelineElement.getBoundingClientRect();
+          const pointRect = timelinePoint.getBoundingClientRect();
 
           return {
             assignmentId: assignment.checklistItemId,
             startX: checklistRect.right - sectionRect.left,
             startY: checklistRect.top + checklistRect.height / 2 - sectionRect.top,
-            endX: timelineRect.left - sectionRect.left,
-            endY: timelineRect.top + timelineRect.height / 2 - sectionRect.top,
+            endX: pointRect.left + pointRect.width / 2 - sectionRect.left,
+            endY: pointRect.top + pointRect.height / 2 - sectionRect.top,
           };
         })
         .filter((line): line is ConnectorLine => line !== null);
@@ -140,7 +152,7 @@ export function PlanningTimelineSection({
       window.removeEventListener("resize", updateConnectors);
       window.removeEventListener("scroll", updateConnectors, true);
     };
-  }, [assignments, checklistItemRefs, entries]);
+  }, [assignments, checklistItemRefs, entries, entrySpacings]);
 
   return (
     <div ref={sectionRef} className="relative">
@@ -184,48 +196,54 @@ export function PlanningTimelineSection({
             </div>
           )}
 
-          <div className="relative space-y-3 pl-6">
+          <div className="relative pl-6">
             {entries.length === 0 ? (
               <p className="text-xs text-muted-foreground">Noch keine Termine im Zeitstrahl.</p>
             ) : (
-              entries.map((entry, index) => {
-                const isLast = index === entries.length - 1;
-                const assignment = assignments.find((a) => a.checklistItemId === entry.id.replace("item-", ""));
+              <>
+                <span className="absolute -left-[13px] top-2 bottom-2 w-0.5 bg-border" />
+                {entries.map((entry, index) => {
+                  const assignment = assignments.find((a) => a.checklistItemId === entry.id.replace("item-", ""));
 
-                return (
-                  <div key={entry.id} className="relative" ref={(element) => {
-                    timelineEntryRefs.current[entry.id] = element;
-                  }}>
-                    {!isLast && <span className="absolute -left-[13px] top-4 bottom-[-16px] w-0.5 bg-border" />}
-                    <span className={`absolute -left-[18px] top-1.5 h-3 w-3 rounded-full ${entry.type === "known" ? "bg-blue-500" : "bg-amber-500"}`} />
-                    <div className="rounded border border-border bg-background p-2">
-                      <div className="mb-1 flex items-center justify-between gap-2">
-                        <p className="text-xs text-muted-foreground">
-                          {format(entry.date, "dd.MM.yyyy", { locale: de })}
-                        </p>
-                        <Badge variant="outline" className="text-[10px]">
-                          {entry.type === "known" ? <CalendarClock className="mr-1 h-3 w-3" /> : <Flag className="mr-1 h-3 w-3" />}
-                          {entry.type === "known" ? "Termin" : "Checkliste"}
-                        </Badge>
-                      </div>
-                      <div className="flex items-center justify-between gap-2">
-                        <p className="text-sm font-medium leading-tight">{entry.title}</p>
-                        {entry.type === "checklist" && assignment && (
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            className="h-6 w-6 p-0 text-muted-foreground hover:text-destructive"
-                            onClick={() => onRemoveAssignment(assignment.checklistItemId)}
-                            title="Vom Zeitstrahl entfernen"
-                          >
-                            <Trash2 className="h-3 w-3" />
-                          </Button>
-                        )}
+                  return (
+                    <div
+                      key={entry.id}
+                      className="relative"
+                      style={index > 0 ? { marginTop: `${entrySpacings[index]}px` } : undefined}
+                    >
+                      <span
+                        className={`absolute -left-[18px] top-1.5 h-3 w-3 rounded-full ${entry.type === "known" ? "bg-blue-500" : "bg-amber-500"}`}
+                        ref={(element) => {
+                          timelinePointRefs.current[entry.id] = element;
+                        }}
+                      />
+                      <div className="rounded border border-border bg-background p-2">
+                        <div className="mb-1 flex items-center justify-between gap-2">
+                          <p className="text-xs text-muted-foreground">{format(entry.date, "dd.MM.yyyy", { locale: de })}</p>
+                          <Badge variant="outline" className="text-[10px]">
+                            {entry.type === "known" ? <CalendarClock className="mr-1 h-3 w-3" /> : <Flag className="mr-1 h-3 w-3" />}
+                            {entry.type === "known" ? "Termin" : "Checkliste"}
+                          </Badge>
+                        </div>
+                        <div className="flex items-center justify-between gap-2">
+                          <p className="text-sm font-medium leading-tight">{entry.title}</p>
+                          {entry.type === "checklist" && assignment && (
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="h-6 w-6 p-0 text-muted-foreground hover:text-destructive"
+                              onClick={() => onRemoveAssignment(assignment.checklistItemId)}
+                              title="Vom Zeitstrahl entfernen"
+                            >
+                              <Trash2 className="h-3 w-3" />
+                            </Button>
+                          )}
+                        </div>
                       </div>
                     </div>
-                  </div>
-                );
-              })
+                  );
+                })}
+              </>
             )}
           </div>
         </CardContent>
