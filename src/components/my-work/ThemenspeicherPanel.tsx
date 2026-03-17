@@ -9,6 +9,7 @@ import { useCurrentProfileId } from "@/hooks/useCurrentProfileId";
 import { useToast } from "@/hooks/use-toast";
 import { getErrorMessage } from "@/utils/errorHandler";
 import { useTopicBacklog } from "@/hooks/useTopicBacklog";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
