@@ -52,6 +52,7 @@ interface ChecklistSectionProps {
   updateSubItemTitle: (itemId: string, subItemIndex: number, title: string) => void;
   removeSubItem: (itemId: string, subItemIndex: number) => void;
   onAssignToTimeline: (item: { id: string; title: string }) => void;
+  registerChecklistItemRef?: (itemId: string, element: HTMLDivElement | null) => void;
 }
 
 export function ChecklistSection(props: ChecklistSectionProps) {
@@ -71,6 +72,7 @@ export function ChecklistSection(props: ChecklistSectionProps) {
     setEmailDialogOpen, setSelectedEmailItemId,
     toggleSubItem, updateSubItemTitle, removeSubItem,
     onAssignToTimeline,
+    registerChecklistItemRef,
   } = props;
 
   return (
@@ -99,7 +101,10 @@ export function ChecklistSection(props: ChecklistSectionProps) {
                             </div>
                           ) : (
                             <div className="space-y-2">
-                              <div className="flex items-center space-x-2 p-3 border border-border rounded-md bg-background hover:bg-muted/50 transition-colors">
+                              <div
+                                className="flex items-center space-x-2 p-3 border border-border rounded-md bg-background hover:bg-muted/50 transition-colors"
+                                ref={(element) => registerChecklistItemRef?.(item.id, element)}
+                              >
                                 <div {...provided.dragHandleProps} className="text-muted-foreground cursor-grab"><GripVertical className="h-4 w-4" /></div>
                                 <Checkbox checked={item.is_completed} onCheckedChange={() => toggleChecklistItem(item.id, item.is_completed)} />
                                 <Input value={item.title} onChange={(e) => updateChecklistItemTitle(item.id, e.target.value)} className={cn("flex-1 border-none bg-transparent focus:bg-background text-sm", item.is_completed && "line-through text-muted-foreground")} />
