@@ -144,6 +144,7 @@ export function QuickNotesList({
     onShare: (n: QuickNote) => { hook.setNoteForShare(n); hook.setShareDialogOpen(true); },
     onCreateCaseItem: hook.createCaseItemFromNote,
     onRemoveCaseItem: hook.setConfirmRemoveCaseItem,
+    onTransferToThemenspeicher: (n: QuickNote) => setThemenspeicherNote(n),
   });
 
   return (
