@@ -10,15 +10,12 @@ interface Contact {
   name: string;
   contact_type: "person" | "organization" | "archive";
   organization?: string | null;
-  industry?: string | null;
-  business_description?: string | null;
-  main_contact_person?: string | null;
   email?: string | null;
   tags?: string[] | null;
 }
 
 const PAGE_SIZE = 500;
-const STAKEHOLDER_SELECT = "id, contact_type, name, organization, industry, business_description, main_contact_person, email, tags";
+const STAKEHOLDER_SELECT = "id, contact_type, name, organization, email, tags";
 
 type MinimalStakeholder = Contact;
 
