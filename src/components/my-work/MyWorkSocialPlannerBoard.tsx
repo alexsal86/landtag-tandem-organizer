@@ -45,6 +45,7 @@ export function MyWorkSocialPlannerBoard() {
   const { topics, loading: topicBacklogLoading, createTopic } = useTopicBacklog();
   const { items, channels, loading, updateItem, createItem } = useSocialPlannerItems();
 
+  const [viewMode, setViewMode] = useState<"calendar" | "kanban">("calendar");
   const [channelFilter, setChannelFilter] = useState<string>("all");
   const [ownerFilter, setOwnerFilter] = useState<string>("all");
   const [statusFilter, setStatusFilter] = useState<string>("all");
