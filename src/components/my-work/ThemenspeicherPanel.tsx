@@ -151,7 +151,7 @@ export function ThemenspeicherPanel({ onContentCreated }: Props) {
   };
 
   const createFromTopic = async () => {
-    if (!user?.id || !currentTenant?.id || !selectedTopic) return;
+    if (!user?.id || !currentTenant?.id || !selectedTopic || !profileId) return;
 
     setIsSubmitting(true);
     setDuplicateWarning(null);
