@@ -314,6 +314,12 @@ export function QuickNotesList({
         setDeleteLinkedMeeting={hook.setDeleteLinkedMeeting}
         handleDeleteNoteWithLinks={hook.handleDeleteNoteWithLinks}
       />
+
+      <TransferToThemenspeicherDialog
+        open={!!themenspeicherNote}
+        onOpenChange={(open) => { if (!open) setThemenspeicherNote(null); }}
+        prefillTitle={themenspeicherNote?.title || themenspeicherNote?.content.replace(/<[^>]*>/g, '').slice(0, 100) || ""}
+      />
     </>
   );
 }
