@@ -14,6 +14,7 @@ import { MultiSelect } from "@/components/ui/multi-select-simple";
 import { TopicSelector } from "@/components/topics/TopicSelector";
 import { useCreateTaskWithTopics } from "@/hooks/useTaskTopics";
 import { debugConsole } from "@/utils/debugConsole";
+import { notifyTaskShared } from "@/utils/shareNotifications";
 
 export default function CreateTask() {
   const navigate = useNavigate();
@@ -170,6 +171,24 @@ export default function CreateTask() {
         }
 
         debugConsole.log('✅ Task created successfully:', insertedTask);
+
+        const { data: senderProfile } = await supabase
+          .from("profiles")
+          .select("display_name")
+          .eq("user_id", user.id)
+          .maybeSingle();
+
+        const assigneeIds = formData.assignedTo.filter((assigneeId) => assigneeId !== user.id);
+        await Promise.all(
+          assigneeIds.map((assigneeId) =>
+            notifyTaskShared({
+              recipientUserId: assigneeId,
+              senderName: senderProfile?.display_name,
+              itemTitle: insertedTask.title,
+              itemId: insertedTask.id,
+            })
+          )
+        );
         
         // Save topics if any selected
         if (formData.topicIds.length > 0) {

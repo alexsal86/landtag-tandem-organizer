@@ -3,6 +3,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { toast } from "sonner";
 import { debugConsole } from '@/utils/debugConsole';
+import { notifyQuickNoteShared } from "@/utils/shareNotifications";
 
 export interface NoteShare {
   id: string;
@@ -89,6 +90,26 @@ export const useNoteSharing = (noteId?: string) => {
       }
 
       toast.success("Notiz erfolgreich freigegeben");
+
+      const { data: senderProfile } = await supabase
+        .from("profiles")
+        .select("display_name")
+        .eq("user_id", user.id)
+        .maybeSingle();
+
+      const { data: noteData } = await supabase
+        .from("quick_notes")
+        .select("title")
+        .eq("id", targetNoteId)
+        .maybeSingle();
+
+      await notifyQuickNoteShared({
+        recipientUserId: sharedWithUserId,
+        senderName: senderProfile?.display_name,
+        itemTitle: noteData?.title,
+        itemId: targetNoteId,
+      });
+
       loadShares();
       return true;
     } catch (error) {
