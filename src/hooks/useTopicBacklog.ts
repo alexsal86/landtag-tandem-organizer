@@ -2,7 +2,8 @@ import { useCallback, useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { useTenant } from "@/hooks/useTenant";
-import { debugConsole } from "@/utils/debugConsole";
+import { useCurrentProfileId } from "@/hooks/useCurrentProfileId";
+import { getErrorMessage } from "@/utils/errorHandler";
 
 export interface TopicBacklogEntry {
   id: string;
@@ -16,6 +17,7 @@ export interface TopicBacklogEntry {
 export function useTopicBacklog() {
   const { user } = useAuth();
   const { currentTenant } = useTenant();
+  const profileId = useCurrentProfileId();
   const [topics, setTopics] = useState<TopicBacklogEntry[]>([]);
   const [loading, setLoading] = useState(false);
 
@@ -48,7 +50,7 @@ export function useTopicBacklog() {
         })),
       );
     } catch (error) {
-      debugConsole.error("Error loading topic backlog:", error);
+      console.error("Error loading topic backlog:", getErrorMessage(error), error);
     } finally {
       setLoading(false);
     }
@@ -56,7 +58,7 @@ export function useTopicBacklog() {
 
   const createTopic = useCallback(
     async (payload: { topic: string; tags?: string[]; priority?: number; status?: string; owner_id?: string | null; short_description?: string | null }) => {
-      if (!user?.id || !currentTenant?.id) return null;
+      if (!user?.id || !currentTenant?.id || !profileId) return null;
 
       const id = crypto.randomUUID();
       const { error } = await supabase
@@ -64,7 +66,7 @@ export function useTopicBacklog() {
         .insert({
           id,
           tenant_id: currentTenant.id,
-          created_by: user.id,
+          created_by: profileId,
           topic: payload.topic,
           tags: payload.tags || [],
           priority: payload.priority ?? 1,
@@ -74,13 +76,13 @@ export function useTopicBacklog() {
         });
 
       if (error) {
-        console.error("createTopic failed:", error);
-        throw error;
+        console.error("createTopic failed:", getErrorMessage(error), error);
+        throw new Error(getErrorMessage(error));
       }
       await loadTopics();
       return { id, topic: payload.topic, tags: payload.tags || [], status: payload.status || "idea", priority: payload.priority ?? 1, owner_id: payload.owner_id ?? null };
     },
-    [currentTenant?.id, loadTopics, user?.id],
+    [currentTenant?.id, loadTopics, user?.id, profileId],
   );
 
   const updateTopic = useCallback(async (id: string, patch: Partial<TopicBacklogEntry>) => {
@@ -92,7 +94,7 @@ export function useTopicBacklog() {
       .eq("id", id)
       .eq("tenant_id", currentTenant.id);
 
-    if (error) throw error;
+    if (error) throw new Error(getErrorMessage(error));
     await loadTopics();
   }, [currentTenant?.id, loadTopics]);
 
@@ -105,7 +107,7 @@ export function useTopicBacklog() {
       .eq("id", id)
       .eq("tenant_id", currentTenant.id);
 
-    if (error) throw error;
+    if (error) throw new Error(getErrorMessage(error));
     await loadTopics();
   }, [currentTenant?.id, loadTopics]);
 
