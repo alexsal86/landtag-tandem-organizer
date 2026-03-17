@@ -291,103 +291,99 @@ export function MyWorkSocialPlannerBoard() {
       </CardHeader>
 
       <CardContent>
-        <DragDropContext onDragEnd={onDragEnd}>
-          <div className="grid grid-cols-1 gap-3 lg:grid-cols-2 2xl:grid-cols-3">
-            {STATUS_COLUMNS.map((column) => (
-              <Droppable key={column.id} droppableId={column.id}>
-                {(dropProvided) => (
-                  <section ref={dropProvided.innerRef} {...dropProvided.droppableProps} className="rounded-lg border bg-muted/30 p-2">
-                    <div className="mb-2 flex items-center justify-between">
-                      <h4 className="text-sm font-semibold">{column.title}</h4>
-                      <Badge variant="secondary">{byStatus[column.id].length}</Badge>
-                    </div>
+        {viewMode === "calendar" ? (
+          <SocialPlannerCalendar items={filteredItems} onUpdateSchedule={handleCalendarScheduleUpdate} />
+        ) : (
+          <DragDropContext onDragEnd={onDragEnd}>
+            <div className="grid grid-cols-1 gap-3 lg:grid-cols-2 2xl:grid-cols-3">
+              {STATUS_COLUMNS.map((column) => (
+                <Droppable key={column.id} droppableId={column.id}>
+                  {(dropProvided) => (
+                    <section ref={dropProvided.innerRef} {...dropProvided.droppableProps} className="rounded-lg border bg-muted/30 p-2">
+                      <div className="mb-2 flex items-center justify-between">
+                        <h4 className="text-sm font-semibold">{column.title}</h4>
+                        <Badge variant="secondary">{byStatus[column.id].length}</Badge>
+                      </div>
 
-                    <div className="min-h-16 space-y-2">
-                      {byStatus[column.id].map((item, index) => {
-                        const ownerName = users.find((user) => user.id === item.responsible_user_id)?.display_name || "Nicht zugewiesen";
+                      <div className="min-h-16 space-y-2">
+                        {byStatus[column.id].map((item, index) => {
+                          const ownerName = users.find((user) => user.id === item.responsible_user_id)?.display_name || "Nicht zugewiesen";
 
-                        return (
-                          <Draggable key={item.id} draggableId={item.id} index={index}>
-                            {(dragProvided) => (
-                              <article
-                                ref={dragProvided.innerRef}
-                                {...dragProvided.draggableProps}
-                                className="rounded-md border bg-card p-2 text-xs"
-                              >
-                                <div className="mb-1 flex items-start gap-2">
-                                  <div {...dragProvided.dragHandleProps} className="mt-0.5 text-muted-foreground">
-                                    <GripVertical className="h-3.5 w-3.5" />
+                          return (
+                            <Draggable key={item.id} draggableId={item.id} index={index}>
+                              {(dragProvided) => (
+                                <article
+                                  ref={dragProvided.innerRef}
+                                  {...dragProvided.draggableProps}
+                                  className="rounded-md border bg-card p-2 text-xs"
+                                >
+                                  <div className="mb-1 flex items-start gap-2">
+                                    <div {...dragProvided.dragHandleProps} className="mt-0.5 text-muted-foreground">
+                                      <GripVertical className="h-3.5 w-3.5" />
+                                    </div>
+                                    <div className="min-w-0 flex-1">
+                                      <p className="font-medium text-sm leading-tight">{item.topic}</p>
+                                      <p className="text-muted-foreground">Kanal: {item.channel_names.join(", ") || "-"}</p>
+                                      <p className="text-muted-foreground">Format: {item.format || "-"}</p>
+                                      <p className="text-muted-foreground">Verantwortlich: {ownerName}</p>
+                                      <p className="text-muted-foreground">
+                                        Veröffentlichungsfenster: {item.scheduled_for ? format(new Date(item.scheduled_for), "dd.MM.yyyy HH:mm", { locale: de }) : "offen"}
+                                      </p>
+                                      <p className="text-muted-foreground">
+                                        Freigabestatus: {APPROVAL_LABELS[item.approval_state] || item.approval_state}
+                                      </p>
+                                    </div>
                                   </div>
-                                  <div className="min-w-0 flex-1">
-                                    <p className="font-medium text-sm leading-tight">{item.topic}</p>
-                                    <p className="text-muted-foreground">Kanal: {item.channel_names.join(", ") || "-"}</p>
-                                    <p className="text-muted-foreground">Format: {item.format || "-"}</p>
-                                    <p className="text-muted-foreground">Verantwortlich: {ownerName}</p>
-                                    <p className="text-muted-foreground">
-                                      Veröffentlichungsfenster: {item.scheduled_for ? format(new Date(item.scheduled_for), "dd.MM.yyyy HH:mm", { locale: de }) : "offen"}
-                                    </p>
-                                    <p className="text-muted-foreground">
-                                      Freigabestatus: {APPROVAL_LABELS[item.approval_state] || item.approval_state}
-                                    </p>
-                                  </div>
-                                </div>
 
-                                {item.tags.length > 0 && (
-                                  <div className="mb-2 flex flex-wrap gap-1">
-                                    {item.tags.slice(0, 3).map((tag) => (
-                                      <Badge variant="outline" key={`${item.id}-${tag}`} className="text-[10px]">
-                                        <Tag className="mr-1 h-2.5 w-2.5" />{tag}
-                                      </Badge>
-                                    ))}
-                                  </div>
-                                )}
+                                  {item.tags.length > 0 && (
+                                    <div className="mb-2 flex flex-wrap gap-1">
+                                      {item.tags.slice(0, 3).map((tag) => (
+                                        <Badge variant="outline" key={`${item.id}-${tag}`} className="text-[10px]">
+                                          <Tag className="mr-1 h-2.5 w-2.5" />{tag}
+                                        </Badge>
+                                      ))}
+                                    </div>
+                                  )}
 
-                                <div className="flex justify-between gap-1">
-                                  <div className="flex gap-1">
-                                    {STATUS_COLUMNS.filter((status) => status.id !== item.workflow_status).map((status) => (
-                                      <Button
-                                        key={`${item.id}-${status.id}`}
-                                        variant="outline"
-                                        size="sm"
-                                        className="h-6 px-1.5 text-[10px]"
-                                        onClick={() => void handleMove(item.id, status.id)}
-                                      >
-                                        {status.title}
-                                      </Button>
-                                    ))}
+                                  <div className="flex justify-between gap-1">
+                                    <div className="flex gap-1 flex-wrap">
+                                      {(() => {
+                                        const idx = STATUS_COLUMNS.findIndex((s) => s.id === item.workflow_status);
+                                        const prev = STATUS_COLUMNS[idx - 1];
+                                        const next = STATUS_COLUMNS[idx + 1];
+                                        return (
+                                          <>
+                                            {prev && (
+                                              <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => void handleMove(item.id, prev.id)}>
+                                                <ArrowLeft className="h-3 w-3" />
+                                              </Button>
+                                            )}
+                                            {next && (
+                                              <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => void handleMove(item.id, next.id)}>
+                                                <ArrowRight className="h-3 w-3" />
+                                              </Button>
+                                            )}
+                                          </>
+                                        );
+                                      })()}
+                                    </div>
                                   </div>
-                                  <div className="flex gap-1">
-                                    <Button variant="ghost" size="icon" className="h-6 w-6" disabled={column.id === "ideas"} onClick={() => {
-                                      const currentIndex = STATUS_COLUMNS.findIndex((status) => status.id === item.workflow_status);
-                                      const prev = STATUS_COLUMNS[currentIndex - 1];
-                                      if (prev) void handleMove(item.id, prev.id);
-                                    }}>
-                                      <ArrowLeft className="h-3 w-3" />
-                                    </Button>
-                                    <Button variant="ghost" size="icon" className="h-6 w-6" disabled={column.id === "published"} onClick={() => {
-                                      const currentIndex = STATUS_COLUMNS.findIndex((status) => status.id === item.workflow_status);
-                                      const next = STATUS_COLUMNS[currentIndex + 1];
-                                      if (next) void handleMove(item.id, next.id);
-                                    }}>
-                                      <ArrowRight className="h-3 w-3" />
-                                    </Button>
-                                  </div>
-                                </div>
-                              </article>
-                            )}
-                          </Draggable>
-                        );
-                      })}
+                                </article>
+                              )}
+                            </Draggable>
+                          );
+                        })}
 
-                      {dropProvided.placeholder}
-                      {byStatus[column.id].length === 0 && <p className="py-2 text-center text-xs text-muted-foreground">Keine Beiträge</p>}
-                    </div>
-                  </section>
-                )}
-              </Droppable>
-            ))}
-          </div>
-        </DragDropContext>
+                        {dropProvided.placeholder}
+                        {byStatus[column.id].length === 0 && <p className="py-2 text-center text-xs text-muted-foreground">Keine Beiträge</p>}
+                      </div>
+                    </section>
+                  )}
+                </Droppable>
+              ))}
+            </div>
+          </DragDropContext>
+        )}
 
         {loading && <p className="mt-3 text-xs text-muted-foreground">Lade Social-Planer…</p>}
       </CardContent>
