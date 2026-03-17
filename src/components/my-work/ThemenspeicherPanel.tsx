@@ -235,24 +235,13 @@ export function ThemenspeicherPanel({ onContentCreated }: Props) {
       .filter(Boolean);
 
     try {
-      const createdTopic = await createBacklogTopic({
+      await createBacklogTopic({
         topic: newTopicTitle.trim(),
         tags: parsedTags,
         status: "idea",
         priority: 1,
+        short_description: newTopicDescription.trim() || null,
       });
-
-      if (newTopicDescription.trim() && createdTopic?.id && currentTenant?.id) {
-        const { error: descriptionError } = await supabase
-          .from("topic_backlog")
-          .update({ short_description: newTopicDescription.trim() })
-          .eq("id", createdTopic.id)
-          .eq("tenant_id", currentTenant.id);
-
-        if (descriptionError) {
-          throw descriptionError;
-        }
-      }
 
       toast({ title: "Erstellt", description: "Neues Thema wurde im Themenspeicher angelegt." });
       setNewTopicTitle("");

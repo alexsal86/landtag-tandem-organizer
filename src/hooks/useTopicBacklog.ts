@@ -55,12 +55,14 @@ export function useTopicBacklog() {
   }, [currentTenant?.id, user?.id]);
 
   const createTopic = useCallback(
-    async (payload: { topic: string; tags?: string[]; priority?: number; status?: string; owner_id?: string | null }) => {
+    async (payload: { topic: string; tags?: string[]; priority?: number; status?: string; owner_id?: string | null; short_description?: string | null }) => {
       if (!user?.id || !currentTenant?.id) return null;
 
-      const { data, error } = await supabase
+      const id = crypto.randomUUID();
+      const { error } = await supabase
         .from("topic_backlog")
         .insert({
+          id,
           tenant_id: currentTenant.id,
           created_by: user.id,
           topic: payload.topic,
@@ -68,13 +70,15 @@ export function useTopicBacklog() {
           priority: payload.priority ?? 1,
           status: payload.status || "idea",
           owner_id: payload.owner_id ?? null,
-        })
-        .select("id, topic, tags, status, priority, owner_id")
-        .single();
+          short_description: payload.short_description ?? null,
+        });
 
-      if (error) throw error;
+      if (error) {
+        debugConsole.error("createTopic failed:", error);
+        throw error;
+      }
       await loadTopics();
-      return data;
+      return { id, topic: payload.topic, tags: payload.tags || [], status: payload.status || "idea", priority: payload.priority ?? 1, owner_id: payload.owner_id ?? null };
     },
     [currentTenant?.id, loadTopics, user?.id],
   );

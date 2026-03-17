@@ -182,7 +182,7 @@ export function useSocialPlannerItems() {
       }
 
       await loadItems();
-      return data;
+      return { id };
     },
     [currentTenant?.id, loadItems, user?.id],
   );
