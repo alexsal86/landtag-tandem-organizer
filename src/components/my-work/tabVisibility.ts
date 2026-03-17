@@ -9,6 +9,7 @@ export type TabValue =
   | "caseitems"
   | "casefiles"
   | "plannings"
+  | "redaktion"
   | "team"
   | "time"
   | "feedbackfeed";

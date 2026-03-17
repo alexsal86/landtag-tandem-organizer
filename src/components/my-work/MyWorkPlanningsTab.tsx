@@ -14,8 +14,6 @@ import { useToast } from "@/hooks/use-toast";
 import { format } from "date-fns";
 import { de } from "date-fns/locale";
 import { cn } from "@/lib/utils";
-import { ThemenspeicherPanel } from "./ThemenspeicherPanel";
-import { SocialMediaPlannerPanel } from "./SocialMediaPlannerPanel";
 
 interface Planning {
   id: string;
