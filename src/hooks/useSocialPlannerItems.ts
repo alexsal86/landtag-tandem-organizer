@@ -163,7 +163,7 @@ export function useSocialPlannerItems() {
         });
 
       if (error) {
-        debugConsole.error("createItem failed:", error);
+        console.error("createItem failed:", error);
         throw error;
       }
 

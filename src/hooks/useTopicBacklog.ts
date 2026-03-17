@@ -74,7 +74,7 @@ export function useTopicBacklog() {
         });
 
       if (error) {
-        debugConsole.error("createTopic failed:", error);
+        console.error("createTopic failed:", error);
         throw error;
       }
       await loadTopics();
