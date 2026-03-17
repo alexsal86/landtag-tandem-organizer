@@ -88,8 +88,7 @@ export function ThemenspeicherPanel({ onContentCreated }: Props) {
       .from("topic_backlog")
       .select("id, topic, short_description, tags, status")
       .eq("tenant_id", currentTenant.id)
-      .order("created_at", { ascending: false })
-      .limit(12);
+      .order("created_at", { ascending: false });
 
     if (topicError) {
       toast({ title: "Fehler", description: "Themenspeicher konnte nicht geladen werden.", variant: "destructive" });

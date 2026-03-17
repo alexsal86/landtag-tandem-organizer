@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { format, subDays } from 'date-fns';
 import { de } from 'date-fns/locale';
-import { CheckCircle2, Paperclip, CheckSquare, MessageSquare, Loader2, Filter, AlertTriangle, RefreshCw } from 'lucide-react';
+import { CheckCircle2, Paperclip, CheckSquare, MessageSquare, Loader2, Filter, AlertTriangle, RefreshCw, Lightbulb } from 'lucide-react';
 import { useTeamFeedbackFeed } from '@/hooks/useTeamFeedbackFeed';
 import { RichTextDisplay } from '@/components/ui/RichTextDisplay';
 import { Badge } from '@/components/ui/badge';
@@ -13,6 +13,7 @@ import { Switch } from '@/components/ui/switch';
 import { Button } from '@/components/ui/button';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
+import { TransferToThemenspeicherDialog } from '@/components/shared/TransferToThemenspeicherDialog';
 import type { TeamFeedbackEntry } from '@/hooks/useTeamFeedbackFeed';
 
 const PERIOD_PRESETS = {
@@ -29,6 +30,7 @@ export function MyWorkFeedbackFeedTab() {
   const [periodPreset, setPeriodPreset] = useState<keyof typeof PERIOD_PRESETS>(() => (searchParams.get('period') as keyof typeof PERIOD_PRESETS) || '7d');
   const [onlyWithAttachments, setOnlyWithAttachments] = useState(searchParams.get('withAttachments') === '1');
   const [onlyWithTasks, setOnlyWithTasks] = useState(searchParams.get('withTasks') === '1');
+  const [themenspeicherEntry, setThemenspeicherEntry] = useState<TeamFeedbackEntry | null>(null);
 
   useEffect(() => {
     const next = new URLSearchParams(searchParams);
@@ -241,12 +243,33 @@ export function MyWorkFeedbackFeedTab() {
               </div>
             )}
 
+            <div className="flex items-center gap-2 ml-6 mb-2">
+              <Button
+                variant="ghost"
+                size="sm"
+                className="h-7 text-xs gap-1"
+                onClick={(event) => {
+                  event.stopPropagation();
+                  setThemenspeicherEntry(entry);
+                }}
+              >
+                <Lightbulb className="h-3 w-3" />
+                In Themenspeicher
+              </Button>
+            </div>
+
             <div className="ml-6 pl-3 border-l border-border">
               <RichTextDisplay content={entry.notes} />
             </div>
           </CardContent>
         </Card>
       ))}
+
+      <TransferToThemenspeicherDialog
+        open={!!themenspeicherEntry}
+        onOpenChange={(open) => { if (!open) setThemenspeicherEntry(null); }}
+        prefillTitle={themenspeicherEntry?.appointment_title || ''}
+      />
     </div>
   );
 }

@@ -11,7 +11,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { CheckSquare, Vote, Briefcase, CalendarPlus, Users, StickyNote, Calendar, Clock, Plus, Home, CheckCircle2, MessageSquare } from "lucide-react";
+import { CheckSquare, Vote, Briefcase, CalendarPlus, Users, StickyNote, Calendar, Clock, Plus, Home, CheckCircle2, MessageSquare, Lightbulb } from "lucide-react";
 import { PageHelpButton } from "@/components/shared/PageHelpButton";
 import { debugConsole } from "@/utils/debugConsole";
 import { MYWORK_HELP_CONTENT } from "@/config/helpContent";
@@ -29,6 +29,8 @@ const MyWorkCasesWorkspace = lazyWithRetry(() => import("./my-work/MyWorkCasesWo
 const MyWorkPlanningsTab = lazyWithRetry(() => import("./my-work/MyWorkPlanningsTab").then(m => ({ default: m.MyWorkPlanningsTab })));
 const MyWorkTeamTab = lazyWithRetry(() => import("./my-work/MyWorkTeamTab").then(m => ({ default: m.MyWorkTeamTab })));
 const MyWorkJourFixeTab = lazyWithRetry(() => import("./my-work/MyWorkJourFixeTab").then(m => ({ default: m.MyWorkJourFixeTab })));
+const MyWorkRedaktionTab = lazyWithRetry(() => import("./my-work/MyWorkRedaktionTab").then(m => ({ default: m.MyWorkRedaktionTab })));
+const MyWorkTerminePlanungTab = lazyWithRetry(() => import("./my-work/MyWorkTerminePlanungTab").then(m => ({ default: m.MyWorkTerminePlanungTab })));
 const MyWorkTimeTrackingTab = lazyWithRetry(() => import("./my-work/MyWorkTimeTrackingTab").then(m => ({ default: m.MyWorkTimeTrackingTab })));
 const MyWorkAppointmentFeedbackTab = lazyWithRetry(() => import("./my-work/MyWorkAppointmentFeedbackTab").then(m => ({ default: m.MyWorkAppointmentFeedbackTab })));
 const MyWorkFeedbackFeedTab = lazyWithRetry(() => import("./my-work/MyWorkFeedbackFeedTab").then(m => ({ default: m.MyWorkFeedbackFeedTab })));
@@ -51,7 +53,7 @@ interface TabCounts {
   feedbackFeed: number;
 }
 
-type TabValue = "dashboard" | "capture" | "tasks" | "decisions" | "jourFixe" | "cases" | "plannings" | "team" | "time" | "feedbackfeed";
+type TabValue = "dashboard" | "capture" | "tasks" | "decisions" | "jourFixe" | "cases" | "plannings" | "redaktion" | "team" | "time" | "feedbackfeed";
 
 interface TabConfig {
   value: TabValue;
@@ -73,8 +75,8 @@ const BASE_TABS: TabConfig[] = [
   { value: "cases", label: "Vorgänge", icon: Briefcase, countKey: "cases" },
   { value: "tasks", label: "Aufgaben", icon: CheckSquare, countKey: "tasks" },
   { value: "decisions", label: "Entscheidungen", icon: Vote, countKey: "decisions" },
-  { value: "jourFixe", label: "Jour Fixe", icon: Calendar, countKey: "jourFixe" },
-  { value: "plannings", label: "Planungen", icon: CalendarPlus, countKey: "plannings" },
+  { value: "jourFixe", label: "Termine & Planung", icon: Calendar, countKey: "jourFixe" },
+  { value: "redaktion", label: "Redaktion", icon: Lightbulb },
   { value: "time", label: "Meine Zeit", icon: Clock, employeeOnly: true },
   { value: "feedbackfeed", label: "Rückmeldungen", icon: MessageSquare, countKey: "feedbackFeed" },
   { value: "team", label: "Team", icon: Users, countKey: "team", badgeVariant: "destructive", abgeordneterOrBueroOnly: true },
@@ -84,6 +86,7 @@ const LEGACY_TAB_MAP: Record<string, TabValue> = {
   caseitems: "cases",
   casefiles: "cases",
   appointmentfeedback: "feedbackfeed",
+  plannings: "jourFixe",
 };
 
 const ALLOWED_TABS = new Set<TabValue>(BASE_TABS.map((tab) => tab.value));
@@ -177,6 +180,7 @@ export function MyWorkView() {
       jourFixe: ['mywork_jourFixe'],
       cases: ['mywork_caseitems', 'mywork_casefiles'],
       plannings: ['mywork_plannings'],
+      redaktion: [],
       time: [],
       team: ['mywork_team'],
       feedbackfeed: ['mywork_feedbackfeed'],
@@ -202,7 +206,7 @@ export function MyWorkView() {
         "create-meeting": "jourFixe",
         "create-caseitem": "cases",
         "create-casefile": "cases",
-        "create-eventplanning": "plannings",
+        "create-eventplanning": "jourFixe",
       };
       
       const targetTab = actionToTab[action];
@@ -537,9 +541,9 @@ export function MyWorkView() {
       
       {activeTab === "tasks" && <ErrorBoundary fallback={tabError("Aufgaben")}><Suspense fallback={tabFallback}><MyWorkTasksTab /></Suspense></ErrorBoundary>}
       {activeTab === "decisions" && <ErrorBoundary fallback={tabError("Entscheidungen")}><Suspense fallback={tabFallback}><MyWorkDecisionsTab /></Suspense></ErrorBoundary>}
-      {activeTab === "jourFixe" && <ErrorBoundary fallback={tabError("Jour Fixe")}><Suspense fallback={tabFallback}><MyWorkJourFixeTab /></Suspense></ErrorBoundary>}
+      {activeTab === "jourFixe" && <ErrorBoundary fallback={tabError("Termine & Planung")}><Suspense fallback={tabFallback}><MyWorkTerminePlanungTab /></Suspense></ErrorBoundary>}
       {activeTab === "cases" && <ErrorBoundary fallback={tabError("Vorgänge")}><Suspense fallback={tabFallback}><MyWorkCasesWorkspace /></Suspense></ErrorBoundary>}
-      {activeTab === "plannings" && <ErrorBoundary fallback={tabError("Planungen")}><Suspense fallback={tabFallback}><MyWorkPlanningsTab /></Suspense></ErrorBoundary>}
+      {activeTab === "redaktion" && <ErrorBoundary fallback={tabError("Redaktion")}><Suspense fallback={tabFallback}><MyWorkRedaktionTab /></Suspense></ErrorBoundary>}
       {activeTab === "time" && <ErrorBoundary fallback={tabError("Meine Zeit")}><Suspense fallback={tabFallback}><MyWorkTimeTrackingTab /></Suspense></ErrorBoundary>}
       {activeTab === "team" && <ErrorBoundary fallback={tabError("Team")}><Suspense fallback={tabFallback}><MyWorkTeamTab /></Suspense></ErrorBoundary>}
       {activeTab === "feedbackfeed" && (

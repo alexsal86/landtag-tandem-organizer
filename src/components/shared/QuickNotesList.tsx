@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -14,6 +14,7 @@ import { useQuickNotes } from "@/hooks/useQuickNotes";
 import { useNotificationHighlight } from "@/hooks/useNotificationHighlight";
 import { NoteCard } from "@/components/shared/NoteCard";
 import { NoteDialogs } from "@/components/shared/NoteDialogs";
+import { TransferToThemenspeicherDialog } from "@/components/shared/TransferToThemenspeicherDialog";
 
 // Type for archived info from database (JSON)
 type ArchivedInfo = { id: string; title: string; archived_at: string } | null;
@@ -81,6 +82,7 @@ export function QuickNotesList({
 }: QuickNotesListProps) {
   const hook = useQuickNotes(refreshTrigger);
   const { isHighlighted, highlightRef } = useNotificationHighlight();
+  const [themenspeicherNote, setThemenspeicherNote] = useState<QuickNote | null>(null);
 
   useEffect(() => {
     onSearchApiReady?.({
@@ -142,6 +144,7 @@ export function QuickNotesList({
     onShare: (n: QuickNote) => { hook.setNoteForShare(n); hook.setShareDialogOpen(true); },
     onCreateCaseItem: hook.createCaseItemFromNote,
     onRemoveCaseItem: hook.setConfirmRemoveCaseItem,
+    onTransferToThemenspeicher: (n: QuickNote) => setThemenspeicherNote(n),
   });
 
   return (
@@ -310,6 +313,12 @@ export function QuickNotesList({
         deleteLinkedMeeting={hook.deleteLinkedMeeting}
         setDeleteLinkedMeeting={hook.setDeleteLinkedMeeting}
         handleDeleteNoteWithLinks={hook.handleDeleteNoteWithLinks}
+      />
+
+      <TransferToThemenspeicherDialog
+        open={!!themenspeicherNote}
+        onOpenChange={(open) => { if (!open) setThemenspeicherNote(null); }}
+        prefillTitle={themenspeicherNote?.title || themenspeicherNote?.content.replace(/<[^>]*>/g, '').slice(0, 100) || ""}
       />
     </>
   );

@@ -13,7 +13,7 @@ import {
   Pin, Trash2, MoreHorizontal, CheckSquare, Vote,
   Calendar as CalendarIcon, Archive, ChevronDown, ChevronUp, Clock,
   Star, Share2, Users, Hourglass, Pencil, GripVertical, ListTree,
-  History, ArrowRight, Palette, X, FileText
+  History, ArrowRight, Palette, X, FileText, Lightbulb
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { format, isPast, isToday } from "date-fns";
@@ -58,6 +58,7 @@ interface NoteCardProps {
   onOpenVersionHistory: (note: QuickNote) => void;
   onSplitNote: (note: QuickNote) => void;
   onShare: (note: QuickNote) => void;
+  onTransferToThemenspeicher?: (note: QuickNote) => void;
 }
 
 export function NoteCard({
@@ -70,6 +71,7 @@ export function NoteCard({
   onCreateDecision, onRemoveDecision, onCreateCaseItem, onRemoveCaseItem,
   onOpenMeetingSelector, onRemoveFromMeeting,
   onOpenEdit, onOpenVersionHistory, onSplitNote, onShare,
+  onTransferToThemenspeicher,
 }: NoteCardProps) {
   const fullText = note.content.replace(/<[^>]*>/g, '');
   const needsTruncation = fullText.length > 150;
@@ -289,6 +291,11 @@ export function NoteCard({
                 ) : (
                   <DropdownMenuItem onClick={() => onOpenMeetingSelector(note)}>
                     <CalendarIcon className="h-3 w-3 mr-2" />Auf Jour Fixe setzen
+                  </DropdownMenuItem>
+                )}
+                {onTransferToThemenspeicher && (
+                  <DropdownMenuItem onClick={() => onTransferToThemenspeicher(note)}>
+                    <Lightbulb className="h-3 w-3 mr-2" />In Themenspeicher
                   </DropdownMenuItem>
                 )}
                 <DropdownMenuSeparator />

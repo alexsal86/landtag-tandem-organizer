@@ -2725,23 +2725,14 @@ export type Database = {
       }
       contacts: {
         Row: {
-          accessibility_features: string[] | null
           added_at: string | null
           added_reason: string | null
           additional_info: string | null
           address: string | null
-          annual_revenue: string | null
           avatar_url: string | null
-          awards_recognitions: string[] | null
-          bank_account_number: string | null
-          bank_name: string | null
-          bank_routing_number: string | null
-          bic_swift: string | null
-          billing_address: string | null
           birthday: string | null
           business_city: string | null
           business_country: string | null
-          business_description: string | null
           business_house_number: string | null
           business_phone: string | null
           business_phone_2: string | null
@@ -2749,46 +2740,28 @@ export type Database = {
           business_street: string | null
           category: string | null
           certifications: string[] | null
-          commercial_register_number: string | null
           company: string | null
-          company_size: string | null
-          compliance_notes: string | null
           contact_type: string | null
-          contract_end_date: string | null
-          contract_start_date: string | null
-          contract_type: string | null
           coordinates: Json | null
           created_at: string
-          credit_limit: number | null
-          customer_number: string | null
           data_protection_notes: string | null
           department: string | null
-          diversity_certifications: string[] | null
           email: string | null
           email_2: string | null
           email_3: string | null
-          employees_count: number | null
-          established_year: number | null
           facebook: string | null
           first_name: string | null
-          founding_date: string | null
           gdpr_consent_date: string | null
           gender: string | null
           geocoded_at: string | null
           geocoding_source: string | null
-          iban: string | null
           id: string
-          industry: string | null
           instagram: string | null
           is_favorite: boolean | null
-          key_contacts: string[] | null
-          languages_supported: string[] | null
           last_contact: string | null
           last_name: string | null
-          legal_form: string | null
           linkedin: string | null
           location: string | null
-          main_contact_person: string | null
           marketing_consent: boolean | null
           meeting_preferences: string | null
           mobile_phone: string | null
@@ -2797,12 +2770,8 @@ export type Database = {
           notes: string | null
           organization: string | null
           organization_id: string | null
-          parent_company: string | null
-          partnership_level: string | null
-          payment_terms: string | null
           phone: string | null
           position: string | null
-          preferred_communication_method: string | null
           priority: string | null
           private_city: string | null
           private_country: string | null
@@ -2811,46 +2780,25 @@ export type Database = {
           private_phone_2: string | null
           private_postal_code: string | null
           private_street: string | null
-          rating: string | null
           role: string | null
-          service_areas: string[] | null
-          shipping_address: string | null
-          social_media_accounts: Json | null
-          specializations: string[] | null
-          subsidiaries: string[] | null
-          supplier_number: string | null
-          sustainability_practices: string | null
           tags: string[] | null
-          tax_number: string | null
           tenant_id: string
-          time_zone: string | null
           title: string | null
-          trade_associations: string[] | null
           twitter: string | null
           updated_at: string
           user_id: string
-          vat_number: string | null
           website: string | null
           xing: string | null
         }
         Insert: {
-          accessibility_features?: string[] | null
           added_at?: string | null
           added_reason?: string | null
           additional_info?: string | null
           address?: string | null
-          annual_revenue?: string | null
           avatar_url?: string | null
-          awards_recognitions?: string[] | null
-          bank_account_number?: string | null
-          bank_name?: string | null
-          bank_routing_number?: string | null
-          bic_swift?: string | null
-          billing_address?: string | null
           birthday?: string | null
           business_city?: string | null
           business_country?: string | null
-          business_description?: string | null
           business_house_number?: string | null
           business_phone?: string | null
           business_phone_2?: string | null
@@ -2858,46 +2806,28 @@ export type Database = {
           business_street?: string | null
           category?: string | null
           certifications?: string[] | null
-          commercial_register_number?: string | null
           company?: string | null
-          company_size?: string | null
-          compliance_notes?: string | null
           contact_type?: string | null
-          contract_end_date?: string | null
-          contract_start_date?: string | null
-          contract_type?: string | null
           coordinates?: Json | null
           created_at?: string
-          credit_limit?: number | null
-          customer_number?: string | null
           data_protection_notes?: string | null
           department?: string | null
-          diversity_certifications?: string[] | null
           email?: string | null
           email_2?: string | null
           email_3?: string | null
-          employees_count?: number | null
-          established_year?: number | null
           facebook?: string | null
           first_name?: string | null
-          founding_date?: string | null
           gdpr_consent_date?: string | null
           gender?: string | null
           geocoded_at?: string | null
           geocoding_source?: string | null
-          iban?: string | null
           id?: string
-          industry?: string | null
           instagram?: string | null
           is_favorite?: boolean | null
-          key_contacts?: string[] | null
-          languages_supported?: string[] | null
           last_contact?: string | null
           last_name?: string | null
-          legal_form?: string | null
           linkedin?: string | null
           location?: string | null
-          main_contact_person?: string | null
           marketing_consent?: boolean | null
           meeting_preferences?: string | null
           mobile_phone?: string | null
@@ -2906,12 +2836,8 @@ export type Database = {
           notes?: string | null
           organization?: string | null
           organization_id?: string | null
-          parent_company?: string | null
-          partnership_level?: string | null
-          payment_terms?: string | null
           phone?: string | null
           position?: string | null
-          preferred_communication_method?: string | null
           priority?: string | null
           private_city?: string | null
           private_country?: string | null
@@ -2920,46 +2846,25 @@ export type Database = {
           private_phone_2?: string | null
           private_postal_code?: string | null
           private_street?: string | null
-          rating?: string | null
           role?: string | null
-          service_areas?: string[] | null
-          shipping_address?: string | null
-          social_media_accounts?: Json | null
-          specializations?: string[] | null
-          subsidiaries?: string[] | null
-          supplier_number?: string | null
-          sustainability_practices?: string | null
           tags?: string[] | null
-          tax_number?: string | null
           tenant_id: string
-          time_zone?: string | null
           title?: string | null
-          trade_associations?: string[] | null
           twitter?: string | null
           updated_at?: string
           user_id: string
-          vat_number?: string | null
           website?: string | null
           xing?: string | null
         }
         Update: {
-          accessibility_features?: string[] | null
           added_at?: string | null
           added_reason?: string | null
           additional_info?: string | null
           address?: string | null
-          annual_revenue?: string | null
           avatar_url?: string | null
-          awards_recognitions?: string[] | null
-          bank_account_number?: string | null
-          bank_name?: string | null
-          bank_routing_number?: string | null
-          bic_swift?: string | null
-          billing_address?: string | null
           birthday?: string | null
           business_city?: string | null
           business_country?: string | null
-          business_description?: string | null
           business_house_number?: string | null
           business_phone?: string | null
           business_phone_2?: string | null
@@ -2967,46 +2872,28 @@ export type Database = {
           business_street?: string | null
           category?: string | null
           certifications?: string[] | null
-          commercial_register_number?: string | null
           company?: string | null
-          company_size?: string | null
-          compliance_notes?: string | null
           contact_type?: string | null
-          contract_end_date?: string | null
-          contract_start_date?: string | null
-          contract_type?: string | null
           coordinates?: Json | null
           created_at?: string
-          credit_limit?: number | null
-          customer_number?: string | null
           data_protection_notes?: string | null
           department?: string | null
-          diversity_certifications?: string[] | null
           email?: string | null
           email_2?: string | null
           email_3?: string | null
-          employees_count?: number | null
-          established_year?: number | null
           facebook?: string | null
           first_name?: string | null
-          founding_date?: string | null
           gdpr_consent_date?: string | null
           gender?: string | null
           geocoded_at?: string | null
           geocoding_source?: string | null
-          iban?: string | null
           id?: string
-          industry?: string | null
           instagram?: string | null
           is_favorite?: boolean | null
-          key_contacts?: string[] | null
-          languages_supported?: string[] | null
           last_contact?: string | null
           last_name?: string | null
-          legal_form?: string | null
           linkedin?: string | null
           location?: string | null
-          main_contact_person?: string | null
           marketing_consent?: boolean | null
           meeting_preferences?: string | null
           mobile_phone?: string | null
@@ -3015,12 +2902,8 @@ export type Database = {
           notes?: string | null
           organization?: string | null
           organization_id?: string | null
-          parent_company?: string | null
-          partnership_level?: string | null
-          payment_terms?: string | null
           phone?: string | null
           position?: string | null
-          preferred_communication_method?: string | null
           priority?: string | null
           private_city?: string | null
           private_country?: string | null
@@ -3029,25 +2912,13 @@ export type Database = {
           private_phone_2?: string | null
           private_postal_code?: string | null
           private_street?: string | null
-          rating?: string | null
           role?: string | null
-          service_areas?: string[] | null
-          shipping_address?: string | null
-          social_media_accounts?: Json | null
-          specializations?: string[] | null
-          subsidiaries?: string[] | null
-          supplier_number?: string | null
-          sustainability_practices?: string | null
           tags?: string[] | null
-          tax_number?: string | null
           tenant_id?: string
-          time_zone?: string | null
           title?: string | null
-          trade_associations?: string[] | null
           twitter?: string | null
           updated_at?: string
           user_id?: string
-          vat_number?: string | null
           website?: string | null
           xing?: string | null
         }
