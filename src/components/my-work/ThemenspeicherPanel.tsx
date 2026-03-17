@@ -57,6 +57,7 @@ export function ThemenspeicherPanel({ onContentCreated }: Props) {
   const { user } = useAuth();
   const { currentTenant } = useTenant();
   const { toast } = useToast();
+  const profileId = useCurrentProfileId();
   const { createTopic: createBacklogTopic } = useTopicBacklog();
 
   const [loading, setLoading] = useState(true);
