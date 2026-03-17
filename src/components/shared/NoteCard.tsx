@@ -58,6 +58,7 @@ interface NoteCardProps {
   onOpenVersionHistory: (note: QuickNote) => void;
   onSplitNote: (note: QuickNote) => void;
   onShare: (note: QuickNote) => void;
+  onTransferToThemenspeicher?: (note: QuickNote) => void;
 }
 
 export function NoteCard({
