@@ -24,9 +24,6 @@ const mapStakeholder = (contact: MinimalStakeholder): Contact => ({
   contact_type: contact.contact_type,
   name: contact.name,
   organization: contact.organization ?? null,
-  industry: contact.industry ?? null,
-  business_description: contact.business_description ?? null,
-  main_contact_person: contact.main_contact_person ?? null,
   email: contact.email ?? null,
   tags: contact.tags ?? [],
 });
