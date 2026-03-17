@@ -26,6 +26,11 @@ describe('getErrorMessage', () => {
     expect(getErrorMessage({ message: 500 })).toBe('500');
   });
 
+  it('extracts message from Supabase PostgrestError-like objects', () => {
+    expect(getErrorMessage({ message: 'insert violates FK', details: 'Key not present', hint: null, code: '23503' })).toBe('insert violates FK');
+    expect(getErrorMessage({ message: '', details: 'fallback details' })).toBe('fallback details');
+  });
+
   it('handles mixed error-like payloads from api clients', () => {
     const mixedError = {
       error: { code: 'PGRST116', message: 'Row not found' },
