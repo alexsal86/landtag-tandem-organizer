@@ -57,6 +57,8 @@ export function useSocialPlannerItems() {
   const loadItems = useCallback(async () => {
     if (!user?.id || !currentTenant?.id) {
       setItems([]);
+      setChannels([]);
+      setLoading(false);
       return;
     }
 
@@ -172,6 +174,8 @@ export function useSocialPlannerItems() {
   );
 
   const updateItem = useCallback(async (id: string, patch: Partial<Pick<SocialPlannerItem, "workflow_status" | "approval_state" | "responsible_user_id" | "format" | "scheduled_for">>) => {
+    if (!currentTenant?.id) return;
+
     const dbPatch: Record<string, string | null> = {};
 
     if (patch.workflow_status) dbPatch.workflow_status = STATUS_TO_DB[patch.workflow_status];
@@ -180,15 +184,25 @@ export function useSocialPlannerItems() {
     if (typeof patch.format !== "undefined") dbPatch.format = patch.format;
     if (typeof patch.scheduled_for !== "undefined") dbPatch.scheduled_for = patch.scheduled_for;
 
-    const { error } = await supabase.from("social_content_items").update(dbPatch).eq("id", id);
+    const { error } = await supabase
+      .from("social_content_items")
+      .update(dbPatch)
+      .eq("id", id)
+      .eq("tenant_id", currentTenant.id);
     if (error) throw error;
-  }, []);
+  }, [currentTenant?.id]);
 
   const updateItemChannels = useCallback(
     async (id: string, channelIds: string[]) => {
       if (!user?.id || !currentTenant?.id) return;
 
-      await supabase.from("social_content_item_channels").delete().eq("content_item_id", id);
+      const { error: deleteError } = await supabase
+        .from("social_content_item_channels")
+        .delete()
+        .eq("content_item_id", id)
+        .eq("tenant_id", currentTenant.id);
+
+      if (deleteError) throw deleteError;
 
       if (channelIds.length === 0) return;
 
@@ -208,9 +222,15 @@ export function useSocialPlannerItems() {
   );
 
   const deleteItem = useCallback(async (id: string) => {
-    const { error } = await supabase.from("social_content_items").delete().eq("id", id);
+    if (!currentTenant?.id) return;
+
+    const { error } = await supabase
+      .from("social_content_items")
+      .delete()
+      .eq("id", id)
+      .eq("tenant_id", currentTenant.id);
     if (error) throw error;
-  }, []);
+  }, [currentTenant?.id]);
 
   useEffect(() => {
     void loadItems();

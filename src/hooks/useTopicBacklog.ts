@@ -22,6 +22,7 @@ export function useTopicBacklog() {
   const loadTopics = useCallback(async () => {
     if (!user?.id || !currentTenant?.id) {
       setTopics([]);
+      setLoading(false);
       return;
     }
 
@@ -78,22 +79,28 @@ export function useTopicBacklog() {
   );
 
   const updateTopic = useCallback(async (id: string, patch: Partial<TopicBacklogEntry>) => {
+    if (!currentTenant?.id) return;
+
     const { error } = await supabase
       .from("topic_backlog")
       .update(patch)
-      .eq("id", id);
+      .eq("id", id)
+      .eq("tenant_id", currentTenant.id);
 
     if (error) throw error;
-  }, []);
+  }, [currentTenant?.id]);
 
   const deleteTopic = useCallback(async (id: string) => {
+    if (!currentTenant?.id) return;
+
     const { error } = await supabase
       .from("topic_backlog")
       .delete()
-      .eq("id", id);
+      .eq("id", id)
+      .eq("tenant_id", currentTenant.id);
 
     if (error) throw error;
-  }, []);
+  }, [currentTenant?.id]);
 
   useEffect(() => {
     void loadTopics();

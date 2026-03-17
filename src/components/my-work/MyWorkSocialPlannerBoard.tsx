@@ -31,7 +31,7 @@ const SORT_OPTIONS = [
 export function MyWorkSocialPlannerBoard() {
   const { toast } = useToast();
   const { users } = useTenantUsers();
-  const { topics } = useTopicBacklog();
+  const { topics, loading: topicBacklogLoading } = useTopicBacklog();
   const { items, channels, loading, updateItem, createItem } = useSocialPlannerItems();
 
   const [channelFilter, setChannelFilter] = useState<string>("all");
@@ -118,7 +118,7 @@ export function MyWorkSocialPlannerBoard() {
       <CardHeader className="space-y-3">
         <div className="flex items-center justify-between gap-2">
           <CardTitle className="text-base">Social Planner Board</CardTitle>
-          <Button size="sm" onClick={createFromBacklog}>
+          <Button size="sm" onClick={createFromBacklog} disabled={topicBacklogLoading}>
             <Plus className="mr-1 h-4 w-4" />
             Aus Themenspeicher anlegen
           </Button>
