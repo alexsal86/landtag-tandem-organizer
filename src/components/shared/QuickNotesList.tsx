@@ -82,6 +82,7 @@ export function QuickNotesList({
 }: QuickNotesListProps) {
   const hook = useQuickNotes(refreshTrigger);
   const { isHighlighted, highlightRef } = useNotificationHighlight();
+  const [themenspeicherNote, setThemenspeicherNote] = useState<QuickNote | null>(null);
 
   useEffect(() => {
     onSearchApiReady?.({
