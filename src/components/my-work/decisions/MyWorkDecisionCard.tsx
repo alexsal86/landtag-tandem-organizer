@@ -102,6 +102,18 @@ const deriveDeputyReference = (value: string | null) => {
   };
 };
 
+const buildMailtoFromTemplate = (template: string | null) => {
+  if (!template) return null;
+
+  const [subjectLine = '', ...bodyLines] = template.split('\n');
+  const subject = subjectLine.trim();
+  const body = bodyLines.join('\n').replace(/^\n+/, '');
+
+  if (!subject) return null;
+
+  return `mailto:?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+};
+
 interface MyWorkDecisionCardProps {
   decision: MyWorkDecision;
   isHighlighted?: boolean;
@@ -441,6 +453,12 @@ const MyWorkDecisionCardInner = ({
         return;
       }
 
+      const participantName = decision.participants?.find((participant) => participant.user_id === targetDeputy)?.profile?.display_name;
+      if (participantName) {
+        if (isMounted) setResolvedDeputyName(participantName);
+        return;
+      }
+
       const { data, error } = await supabase
         .from('profiles')
         .select('display_name')
@@ -457,7 +475,7 @@ const MyWorkDecisionCardInner = ({
     return () => {
       isMounted = false;
     };
-  }, [targetDeputy]);
+  }, [decision.participants, targetDeputy]);
 
   const appointmentMailBase = useMemo(() => {
     if (!isAppointmentRequest || !isRequestedStartValid || !requestedStart) return null;
@@ -506,14 +524,12 @@ const MyWorkDecisionCardInner = ({
   }, [appointmentMailBase]);
 
   const approvalMailto = useMemo(() => {
-    if (!approvalMailText || !appointmentMailBase) return null;
-    return `mailto:?subject=${encodeURIComponent(`Zusage zum Termin „${appointmentMailBase.subject}“`)}&body=${encodeURIComponent(approvalMailText)}`;
-  }, [approvalMailText, appointmentMailBase]);
+    return buildMailtoFromTemplate(approvalMailText);
+  }, [approvalMailText]);
 
   const rejectionMailto = useMemo(() => {
-    if (!rejectionMailText || !appointmentMailBase) return null;
-    return `mailto:?subject=${encodeURIComponent(`Rückmeldung zum Termin „${appointmentMailBase.subject}“`)}&body=${encodeURIComponent(rejectionMailText)}`;
-  }, [rejectionMailText, appointmentMailBase]);
+    return buildMailtoFromTemplate(rejectionMailText);
+  }, [rejectionMailText]);
 
   const openMailLink = (mailtoUrl: string) => {
     window.location.href = mailtoUrl;
