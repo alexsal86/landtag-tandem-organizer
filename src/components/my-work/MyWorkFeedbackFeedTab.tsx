@@ -243,12 +243,33 @@ export function MyWorkFeedbackFeedTab() {
               </div>
             )}
 
+            <div className="flex items-center gap-2 ml-6 mb-2">
+              <Button
+                variant="ghost"
+                size="sm"
+                className="h-7 text-xs gap-1"
+                onClick={(event) => {
+                  event.stopPropagation();
+                  setThemenspeicherEntry(entry);
+                }}
+              >
+                <Lightbulb className="h-3 w-3" />
+                In Themenspeicher
+              </Button>
+            </div>
+
             <div className="ml-6 pl-3 border-l border-border">
               <RichTextDisplay content={entry.notes} />
             </div>
           </CardContent>
         </Card>
       ))}
+
+      <TransferToThemenspeicherDialog
+        open={!!themenspeicherEntry}
+        onOpenChange={(open) => { if (!open) setThemenspeicherEntry(null); }}
+        prefillTitle={themenspeicherEntry?.appointment_title || ''}
+      />
     </div>
   );
 }
