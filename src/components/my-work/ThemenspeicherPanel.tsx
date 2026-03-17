@@ -198,7 +198,9 @@ export function ThemenspeicherPanel({ onContentCreated }: Props) {
       .single();
 
     if (itemError || !createdItem) {
-      toast({ title: "Fehler", description: "Beitrag konnte nicht erstellt werden.", variant: "destructive" });
+      const msg = itemError?.message || "Unbekannter Fehler";
+      const isRls = msg.includes("row-level security") || msg.includes("42501");
+      toast({ title: "Fehler", description: isRls ? "Keine Berechtigung – bitte Rolle prüfen." : `Beitrag konnte nicht erstellt werden: ${msg}`, variant: "destructive" });
       setIsSubmitting(false);
       return;
     }
