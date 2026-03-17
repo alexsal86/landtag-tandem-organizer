@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { CalendarClock, Flag, Trash2 } from "lucide-react";
 import { format } from "date-fns";
 import { de } from "date-fns/locale";
+import { Droppable } from "@hello-pangea/dnd";
 import type { ChecklistItem, EventPlanningDate } from "./types";
 
 type TimelineAssignment = {
@@ -14,10 +15,10 @@ type TimelineAssignment = {
 };
 
 interface PlanningTimelineSectionProps {
+  planningCreatedAt?: string | null;
   planningDates: EventPlanningDate[];
   checklistItems: ChecklistItem[];
   assignments: TimelineAssignment[];
-  onDropChecklistItem: (item: { id: string; title: string }) => void;
   onRemoveAssignment: (checklistItemId: string) => void;
 }
 
@@ -30,15 +31,25 @@ type TimelineEntry = {
 };
 
 export function PlanningTimelineSection({
+  planningCreatedAt,
   planningDates,
   checklistItems,
   assignments,
-  onDropChecklistItem,
   onRemoveAssignment,
 }: PlanningTimelineSectionProps) {
   const [isDropActive, setIsDropActive] = useState(false);
 
   const entries = useMemo<TimelineEntry[]>(() => {
+    const planningStartEntry: TimelineEntry[] = planningCreatedAt
+      ? [{
+          id: "planning-start",
+          date: new Date(planningCreatedAt),
+          title: "Planungsbeginn",
+          type: "known",
+          isConfirmed: true,
+        }]
+      : [];
+
     const knownEntries: TimelineEntry[] = planningDates
       .filter((d) => !!d.date_time)
       .map((d) => ({
@@ -62,8 +73,8 @@ export function PlanningTimelineSection({
       })
       .filter((entry): entry is TimelineEntry => entry !== null);
 
-    return [...knownEntries, ...assignmentEntries].sort((a, b) => a.date.getTime() - b.date.getTime());
-  }, [assignments, checklistItems, planningDates]);
+    return [...planningStartEntry, ...knownEntries, ...assignmentEntries].sort((a, b) => a.date.getTime() - b.date.getTime());
+  }, [assignments, checklistItems, planningCreatedAt, planningDates]);
 
   const timelineProgress = useMemo(() => {
     if (entries.length < 2) return null;
@@ -81,27 +92,21 @@ export function PlanningTimelineSection({
         <CardTitle>Zeitstrahl</CardTitle>
       </CardHeader>
       <CardContent>
-        <div
-          className={`mb-4 rounded-md border-2 border-dashed p-3 text-sm transition-colors ${isDropActive ? "border-primary bg-primary/5" : "border-border"}`}
-          onDragOver={(event) => {
-            event.preventDefault();
-            setIsDropActive(true);
-          }}
-          onDragLeave={() => setIsDropActive(false)}
-          onDrop={(event) => {
-            event.preventDefault();
-            setIsDropActive(false);
-            const payload = event.dataTransfer.getData("application/x-planning-checklist-item");
-            if (!payload) return;
-            try {
-              onDropChecklistItem(JSON.parse(payload));
-            } catch {
-              // ignore malformed drag payload
-            }
-          }}
-        >
-          Checklisten-Punkt hier fallen lassen, um ihn mit einer Frist im Zeitstrahl zu planen.
-        </div>
+        <Droppable droppableId="planning-timeline">
+          {(provided, snapshot) => (
+            <div
+              ref={provided.innerRef}
+              {...provided.droppableProps}
+              className={`mb-4 rounded-md border-2 border-dashed p-3 text-sm transition-colors ${snapshot.isDraggingOver || isDropActive ? "border-primary bg-primary/5" : "border-border"}`}
+              onDragEnter={() => setIsDropActive(true)}
+              onDragLeave={() => setIsDropActive(false)}
+              onDrop={() => setIsDropActive(false)}
+            >
+              Checklisten-Punkt hier fallen lassen, um ihn mit einer Frist im Zeitstrahl zu planen.
+              {provided.placeholder}
+            </div>
+          )}
+        </Droppable>
 
         {timelineProgress !== null && (
           <div className="mb-4 space-y-1">

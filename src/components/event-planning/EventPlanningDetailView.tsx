@@ -12,6 +12,7 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Calendar } from "@/components/ui/calendar";
+import { DragDropContext, type DropResult } from "@hello-pangea/dnd";
 import { Plus, Calendar as CalendarIcon, Trash2, Check, X, Upload, Clock, Edit2, FileText, Download, Archive, Eye, CheckCircle, Info, Mail, Phone, Copy } from "lucide-react";
 import { TimePickerCombobox } from "@/components/ui/time-picker-combobox";
 import { format } from "date-fns";
@@ -174,6 +175,24 @@ export function EventPlanningDetailView(data: EventPlanningDataReturn) {
 
   const handleRemoveTimelineAssignment = (checklistItemId: string) => {
     setTimelineAssignments((prev) => prev.filter((assignment) => assignment.checklistItemId !== checklistItemId));
+  };
+
+  const handlePlanningDragEnd = (result: DropResult) => {
+    if (!result.destination) {
+      return;
+    }
+
+    if (result.destination.droppableId === "planning-timeline") {
+      const draggedItem = checklistItems.find((item) => item.id === result.draggableId);
+      if (draggedItem) {
+        handleDropChecklistItemOnTimeline({ id: draggedItem.id, title: draggedItem.title });
+      }
+      return;
+    }
+
+    if (result.destination.droppableId === "checklist") {
+      onDragEnd(result);
+    }
   };
 
   return (
@@ -587,58 +606,60 @@ export function EventPlanningDetailView(data: EventPlanningDataReturn) {
             <EventRSVPManager eventPlanningId={selectedPlanning.id} eventTitle={selectedPlanning.title} />
           </div>
 
-          <div className="lg:col-span-2 grid gap-6 lg:grid-cols-2">
-            {/* Checkliste */}
-            <ChecklistSection
-              checklistItems={checklistItems}
-              newChecklistItem={newChecklistItem}
-              setNewChecklistItem={setNewChecklistItem}
-              onDragEnd={onDragEnd}
-              toggleChecklistItem={toggleChecklistItem}
-              updateChecklistItemTitle={updateChecklistItemTitle}
-              addChecklistItem={addChecklistItem}
-              deleteChecklistItem={deleteChecklistItem}
-              itemSubtasks={itemSubtasks}
-              itemComments={itemComments}
-              itemDocuments={itemDocuments}
-              showItemSubtasks={showItemSubtasks}
-              setShowItemSubtasks={setShowItemSubtasks}
-              showItemComments={showItemComments}
-              setShowItemComments={setShowItemComments}
-              showItemDocuments={showItemDocuments}
-              setShowItemDocuments={setShowItemDocuments}
-              allProfiles={allProfiles}
-              user={user}
-              uploading={uploading}
-              itemEmailActions={itemEmailActions}
-              editingComment={editingComment}
-              setEditingComment={setEditingComment}
-              addItemSubtask={addItemSubtask}
-              addItemCommentForItem={addItemCommentForItem}
-              handleItemFileUpload={handleItemFileUpload}
-              deleteItemDocument={deleteItemDocument}
-              downloadItemDocument={downloadItemDocument}
-              deleteItemComment={deleteItemComment}
-              updateItemComment={updateItemComment}
-              setCompletingSubtask={setCompletingSubtask}
-              setCompletionResult={setCompletionResult}
-              loadItemSubtasks={loadItemSubtasks}
-              loadAllItemCounts={loadAllItemCounts}
-              setEmailDialogOpen={setEmailDialogOpen}
-              setSelectedEmailItemId={setSelectedEmailItemId}
-              toggleSubItem={toggleSubItem}
-              updateSubItemTitle={updateSubItemTitle}
-              removeSubItem={removeSubItem}
-            />
+          <DragDropContext onDragEnd={handlePlanningDragEnd}>
+            <div className="lg:col-span-2 grid gap-6 lg:grid-cols-2">
+              {/* Checkliste */}
+              <ChecklistSection
+                checklistItems={checklistItems}
+                newChecklistItem={newChecklistItem}
+                setNewChecklistItem={setNewChecklistItem}
+                toggleChecklistItem={toggleChecklistItem}
+                updateChecklistItemTitle={updateChecklistItemTitle}
+                addChecklistItem={addChecklistItem}
+                deleteChecklistItem={deleteChecklistItem}
+                itemSubtasks={itemSubtasks}
+                itemComments={itemComments}
+                itemDocuments={itemDocuments}
+                showItemSubtasks={showItemSubtasks}
+                setShowItemSubtasks={setShowItemSubtasks}
+                showItemComments={showItemComments}
+                setShowItemComments={setShowItemComments}
+                showItemDocuments={showItemDocuments}
+                setShowItemDocuments={setShowItemDocuments}
+                allProfiles={allProfiles}
+                user={user}
+                uploading={uploading}
+                itemEmailActions={itemEmailActions}
+                editingComment={editingComment}
+                setEditingComment={setEditingComment}
+                addItemSubtask={addItemSubtask}
+                addItemCommentForItem={addItemCommentForItem}
+                handleItemFileUpload={handleItemFileUpload}
+                deleteItemDocument={deleteItemDocument}
+                downloadItemDocument={downloadItemDocument}
+                deleteItemComment={deleteItemComment}
+                updateItemComment={updateItemComment}
+                setCompletingSubtask={setCompletingSubtask}
+                setCompletionResult={setCompletionResult}
+                loadItemSubtasks={loadItemSubtasks}
+                loadAllItemCounts={loadAllItemCounts}
+                setEmailDialogOpen={setEmailDialogOpen}
+                setSelectedEmailItemId={setSelectedEmailItemId}
+                toggleSubItem={toggleSubItem}
+                updateSubItemTitle={updateSubItemTitle}
+                removeSubItem={removeSubItem}
+                onAssignToTimeline={handleDropChecklistItemOnTimeline}
+              />
 
-            <PlanningTimelineSection
-              planningDates={planningDates}
-              checklistItems={checklistItems}
-              assignments={timelineAssignments}
-              onDropChecklistItem={handleDropChecklistItemOnTimeline}
-              onRemoveAssignment={handleRemoveTimelineAssignment}
-            />
-          </div>
+              <PlanningTimelineSection
+                planningCreatedAt={selectedPlanning.created_at}
+                planningDates={planningDates}
+                checklistItems={checklistItems}
+                assignments={timelineAssignments}
+                onRemoveAssignment={handleRemoveTimelineAssignment}
+              />
+            </div>
+          </DragDropContext>
         </div>
       </div>
 

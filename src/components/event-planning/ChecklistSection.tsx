@@ -4,7 +4,7 @@ import { Input } from "@/components/ui/input";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Plus, Trash2, GripVertical, MessageCircle, Paperclip, ListTodo, Mail, Download, Edit2, X, Milestone } from "lucide-react";
-import { DragDropContext, Droppable, Draggable, DropResult } from "@hello-pangea/dnd";
+import { Droppable, Draggable } from "@hello-pangea/dnd";
 import { cn } from "@/lib/utils";
 import { format } from "date-fns";
 import { de } from "date-fns/locale";
@@ -15,7 +15,6 @@ interface ChecklistSectionProps {
   checklistItems: ChecklistItem[];
   newChecklistItem: string;
   setNewChecklistItem: (value: string) => void;
-  onDragEnd: (result: DropResult) => void;
   toggleChecklistItem: (itemId: string, isCompleted: boolean) => void;
   updateChecklistItemTitle: (itemId: string, title: string) => void;
   addChecklistItem: () => void;
@@ -52,13 +51,13 @@ interface ChecklistSectionProps {
   toggleSubItem: (itemId: string, subItemIndex: number, isCompleted: boolean) => void;
   updateSubItemTitle: (itemId: string, subItemIndex: number, title: string) => void;
   removeSubItem: (itemId: string, subItemIndex: number) => void;
-  onTimelineDragStart?: (item: { id: string; title: string }) => void;
+  onAssignToTimeline: (item: { id: string; title: string }) => void;
 }
 
 export function ChecklistSection(props: ChecklistSectionProps) {
   const {
     checklistItems, newChecklistItem, setNewChecklistItem,
-    onDragEnd, toggleChecklistItem, updateChecklistItemTitle, addChecklistItem, deleteChecklistItem,
+    toggleChecklistItem, updateChecklistItemTitle, addChecklistItem, deleteChecklistItem,
     itemSubtasks, itemComments, itemDocuments,
     showItemSubtasks, setShowItemSubtasks, showItemComments, setShowItemComments,
     showItemDocuments, setShowItemDocuments,
@@ -71,7 +70,7 @@ export function ChecklistSection(props: ChecklistSectionProps) {
     loadItemSubtasks, loadAllItemCounts,
     setEmailDialogOpen, setSelectedEmailItemId,
     toggleSubItem, updateSubItemTitle, removeSubItem,
-    onTimelineDragStart,
+    onAssignToTimeline,
   } = props;
 
   return (
@@ -81,10 +80,9 @@ export function ChecklistSection(props: ChecklistSectionProps) {
       </CardHeader>
       <CardContent>
         <div className="space-y-2">
-          <DragDropContext onDragEnd={onDragEnd}>
-            <Droppable droppableId="checklist">
-              {(provided) => (
-                <div {...provided.droppableProps} ref={provided.innerRef} className="space-y-2">
+          <Droppable droppableId="checklist">
+            {(provided) => (
+              <div {...provided.droppableProps} ref={provided.innerRef} className="space-y-2">
                   {checklistItems.map((item: any, index: number) => (
                     <Draggable key={item.id} draggableId={item.id} index={index}>
                       {(provided, snapshot) => (
@@ -112,14 +110,8 @@ export function ChecklistSection(props: ChecklistSectionProps) {
                                     variant="ghost"
                                     size="sm"
                                     className="h-6 w-6 p-0"
-                                    title="Auf Zeitstrahl ziehen"
-                                    draggable
-                                    onDragStart={(event) => {
-                                      const payload = JSON.stringify({ id: item.id, title: item.title });
-                                      event.dataTransfer.setData("application/x-planning-checklist-item", payload);
-                                      event.dataTransfer.effectAllowed = "copyMove";
-                                      onTimelineDragStart?.({ id: item.id, title: item.title });
-                                    }}
+                                    title="Mit Frist auf Zeitstrahl setzen"
+                                    onClick={() => onAssignToTimeline({ id: item.id, title: item.title })}
                                   >
                                     <Milestone className="h-3 w-3" />
                                   </Button>
@@ -272,7 +264,6 @@ export function ChecklistSection(props: ChecklistSectionProps) {
                 </div>
               )}
             </Droppable>
-          </DragDropContext>
           
           <div className="flex items-center space-x-2 mt-4">
             <Input value={newChecklistItem} onChange={(e) => setNewChecklistItem(e.target.value)} placeholder="Neuen Punkt hinzufügen (--- für Trenner)..." onKeyPress={(e) => e.key === "Enter" && addChecklistItem()} />
