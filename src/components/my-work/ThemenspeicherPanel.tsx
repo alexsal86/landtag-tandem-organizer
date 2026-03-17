@@ -213,11 +213,11 @@ export function ThemenspeicherPanel({ onContentCreated }: Props) {
     if (selectedChannelId !== "none") {
       const { error: channelError } = await supabase.from("social_content_item_channels").insert({
         tenant_id: currentTenant.id,
-        created_by: profileId,
+        created_by: profileId!,
         content_item_id: newItemId,
         channel_id: selectedChannelId,
         is_primary: true,
-      });
+      } as any);
 
       if (channelError) {
         toast({ title: "Hinweis", description: "Beitrag erstellt, aber Kanal-Verknüpfung fehlgeschlagen.", variant: "destructive" });
