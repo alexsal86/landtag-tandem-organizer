@@ -168,9 +168,10 @@ export function useSocialPlannerItems() {
         if (channelInsertError) throw channelInsertError;
       }
 
+      await loadItems();
       return data;
     },
-    [currentTenant?.id, user?.id],
+    [currentTenant?.id, loadItems, user?.id],
   );
 
   const updateItem = useCallback(async (id: string, patch: Partial<Pick<SocialPlannerItem, "workflow_status" | "approval_state" | "responsible_user_id" | "format" | "scheduled_for">>) => {
@@ -204,7 +205,10 @@ export function useSocialPlannerItems() {
 
       if (deleteError) throw deleteError;
 
-      if (channelIds.length === 0) return;
+      if (channelIds.length === 0) {
+        await loadItems();
+        return;
+      }
 
       const { error } = await supabase.from("social_content_item_channels").insert(
         channelIds.map((channelId, index) => ({
@@ -217,8 +221,9 @@ export function useSocialPlannerItems() {
       );
 
       if (error) throw error;
+      await loadItems();
     },
-    [currentTenant?.id, user?.id],
+    [currentTenant?.id, loadItems, user?.id],
   );
 
   const deleteItem = useCallback(async (id: string) => {
@@ -230,7 +235,8 @@ export function useSocialPlannerItems() {
       .eq("id", id)
       .eq("tenant_id", currentTenant.id);
     if (error) throw error;
-  }, [currentTenant?.id]);
+    await loadItems();
+  }, [currentTenant?.id, loadItems]);
 
   useEffect(() => {
     void loadItems();

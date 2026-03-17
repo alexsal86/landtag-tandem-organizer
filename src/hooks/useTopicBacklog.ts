@@ -73,9 +73,10 @@ export function useTopicBacklog() {
         .single();
 
       if (error) throw error;
+      await loadTopics();
       return data;
     },
-    [currentTenant?.id, user?.id],
+    [currentTenant?.id, loadTopics, user?.id],
   );
 
   const updateTopic = useCallback(async (id: string, patch: Partial<TopicBacklogEntry>) => {
@@ -88,7 +89,8 @@ export function useTopicBacklog() {
       .eq("tenant_id", currentTenant.id);
 
     if (error) throw error;
-  }, [currentTenant?.id]);
+    await loadTopics();
+  }, [currentTenant?.id, loadTopics]);
 
   const deleteTopic = useCallback(async (id: string) => {
     if (!currentTenant?.id) return;
@@ -100,7 +102,8 @@ export function useTopicBacklog() {
       .eq("tenant_id", currentTenant.id);
 
     if (error) throw error;
-  }, [currentTenant?.id]);
+    await loadTopics();
+  }, [currentTenant?.id, loadTopics]);
 
   useEffect(() => {
     void loadTopics();

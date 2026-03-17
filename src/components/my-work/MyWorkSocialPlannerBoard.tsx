@@ -28,6 +28,13 @@ const SORT_OPTIONS = [
   { value: "status", label: "Status" },
 ] as const;
 
+const APPROVAL_LABELS: Record<string, string> = {
+  open: "Offen",
+  requested: "Angefragt",
+  approved: "Freigegeben",
+  rejected: "Abgelehnt",
+};
+
 export function MyWorkSocialPlannerBoard() {
   const { toast } = useToast();
   const { users } = useTenantUsers();
@@ -113,15 +120,35 @@ export function MyWorkSocialPlannerBoard() {
     }
   };
 
+  const clearFilters = () => {
+    setChannelFilter("all");
+    setOwnerFilter("all");
+    setStatusFilter("all");
+    setTagSearch("");
+    setSortBy("scheduled");
+  };
+
+  const hasActiveFilters = channelFilter !== "all" || ownerFilter !== "all" || statusFilter !== "all" || tagSearch.trim().length > 0 || sortBy !== "scheduled";
+
   return (
     <Card>
       <CardHeader className="space-y-3">
-        <div className="flex items-center justify-between gap-2">
-          <CardTitle className="text-base">Social Planner Board</CardTitle>
-          <Button size="sm" onClick={createFromBacklog} disabled={topicBacklogLoading}>
-            <Plus className="mr-1 h-4 w-4" />
-            Aus Themenspeicher anlegen
-          </Button>
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <div>
+            <CardTitle className="text-base">Social Planner Board</CardTitle>
+            <p className="text-xs text-muted-foreground">Workflow ohne Kalenderansicht – von Idee bis Veröffentlichung.</p>
+          </div>
+          <div className="flex items-center gap-2">
+            {hasActiveFilters && (
+              <Button variant="ghost" size="sm" onClick={clearFilters}>
+                Filter zurücksetzen
+              </Button>
+            )}
+            <Button size="sm" onClick={createFromBacklog} disabled={topicBacklogLoading}>
+              <Plus className="mr-1 h-4 w-4" />
+              Aus Themenspeicher anlegen
+            </Button>
+          </div>
         </div>
 
         <div className="grid grid-cols-1 gap-2 md:grid-cols-2 xl:grid-cols-5">
@@ -172,7 +199,7 @@ export function MyWorkSocialPlannerBoard() {
                       <Badge variant="secondary">{byStatus[column.id].length}</Badge>
                     </div>
 
-                    <div className="space-y-2 min-h-16">
+                    <div className="min-h-16 space-y-2">
                       {byStatus[column.id].map((item, index) => {
                         const ownerName = users.find((user) => user.id === item.responsible_user_id)?.display_name || "Nicht zugewiesen";
 
@@ -196,7 +223,9 @@ export function MyWorkSocialPlannerBoard() {
                                     <p className="text-muted-foreground">
                                       Veröffentlichungsfenster: {item.scheduled_for ? format(new Date(item.scheduled_for), "dd.MM.yyyy HH:mm", { locale: de }) : "offen"}
                                     </p>
-                                    <p className="text-muted-foreground">Freigabestatus: {item.approval_state}</p>
+                                    <p className="text-muted-foreground">
+                                      Freigabestatus: {APPROVAL_LABELS[item.approval_state] || item.approval_state}
+                                    </p>
                                   </div>
                                 </div>
 
@@ -210,21 +239,36 @@ export function MyWorkSocialPlannerBoard() {
                                   </div>
                                 )}
 
-                                <div className="flex justify-end gap-1">
-                                  <Button variant="ghost" size="icon" className="h-6 w-6" disabled={column.id === "ideas"} onClick={() => {
-                                    const currentIndex = STATUS_COLUMNS.findIndex((status) => status.id === item.workflow_status);
-                                    const prev = STATUS_COLUMNS[currentIndex - 1];
-                                    if (prev) void handleMove(item.id, prev.id);
-                                  }}>
-                                    <ArrowLeft className="h-3 w-3" />
-                                  </Button>
-                                  <Button variant="ghost" size="icon" className="h-6 w-6" disabled={column.id === "published"} onClick={() => {
-                                    const currentIndex = STATUS_COLUMNS.findIndex((status) => status.id === item.workflow_status);
-                                    const next = STATUS_COLUMNS[currentIndex + 1];
-                                    if (next) void handleMove(item.id, next.id);
-                                  }}>
-                                    <ArrowRight className="h-3 w-3" />
-                                  </Button>
+                                <div className="flex justify-between gap-1">
+                                  <div className="flex gap-1">
+                                    {STATUS_COLUMNS.filter((status) => status.id !== item.workflow_status).map((status) => (
+                                      <Button
+                                        key={`${item.id}-${status.id}`}
+                                        variant="outline"
+                                        size="sm"
+                                        className="h-6 px-1.5 text-[10px]"
+                                        onClick={() => void handleMove(item.id, status.id)}
+                                      >
+                                        {status.title}
+                                      </Button>
+                                    ))}
+                                  </div>
+                                  <div className="flex gap-1">
+                                    <Button variant="ghost" size="icon" className="h-6 w-6" disabled={column.id === "ideas"} onClick={() => {
+                                      const currentIndex = STATUS_COLUMNS.findIndex((status) => status.id === item.workflow_status);
+                                      const prev = STATUS_COLUMNS[currentIndex - 1];
+                                      if (prev) void handleMove(item.id, prev.id);
+                                    }}>
+                                      <ArrowLeft className="h-3 w-3" />
+                                    </Button>
+                                    <Button variant="ghost" size="icon" className="h-6 w-6" disabled={column.id === "published"} onClick={() => {
+                                      const currentIndex = STATUS_COLUMNS.findIndex((status) => status.id === item.workflow_status);
+                                      const next = STATUS_COLUMNS[currentIndex + 1];
+                                      if (next) void handleMove(item.id, next.id);
+                                    }}>
+                                      <ArrowRight className="h-3 w-3" />
+                                    </Button>
+                                  </div>
                                 </div>
                               </article>
                             )}
