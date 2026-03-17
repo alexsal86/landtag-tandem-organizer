@@ -293,6 +293,11 @@ export function NoteCard({
                     <CalendarIcon className="h-3 w-3 mr-2" />Auf Jour Fixe setzen
                   </DropdownMenuItem>
                 )}
+                {onTransferToThemenspeicher && (
+                  <DropdownMenuItem onClick={() => onTransferToThemenspeicher(note)}>
+                    <Lightbulb className="h-3 w-3 mr-2" />In Themenspeicher
+                  </DropdownMenuItem>
+                )}
                 <DropdownMenuSeparator />
                 <DropdownMenuSub>
                   <DropdownMenuSubTrigger><Star className="h-3 w-3 mr-2" />Priorität</DropdownMenuSubTrigger>
