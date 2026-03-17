@@ -6,6 +6,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { useTenant } from "@/hooks/useTenant";
 import { useToast } from "@/hooks/use-toast";
+import { useTopicBacklog } from "@/hooks/useTopicBacklog";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -55,6 +56,7 @@ export function ThemenspeicherPanel({ onContentCreated }: Props) {
   const { user } = useAuth();
   const { currentTenant } = useTenant();
   const { toast } = useToast();
+  const { createTopic: createBacklogTopic } = useTopicBacklog();
 
   const [loading, setLoading] = useState(true);
   const [topics, setTopics] = useState<TopicBacklogItem[]>([]);
@@ -225,7 +227,7 @@ export function ThemenspeicherPanel({ onContentCreated }: Props) {
   };
 
   const createTopic = async () => {
-    if (!user?.id || !currentTenant?.id || !newTopicTitle.trim()) return;
+    if (!newTopicTitle.trim()) return;
 
     setIsSubmitting(true);
     const parsedTags = newTopicTags
@@ -233,29 +235,39 @@ export function ThemenspeicherPanel({ onContentCreated }: Props) {
       .map((entry) => entry.trim())
       .filter(Boolean);
 
-    const { error } = await supabase.from("topic_backlog").insert({
-      tenant_id: currentTenant.id,
-      created_by: user.id,
-      topic: newTopicTitle.trim(),
-      short_description: newTopicDescription.trim() || null,
-      tags: parsedTags,
-      status: "idea",
-      priority: 1,
-    });
+    try {
+      const createdTopic = await createBacklogTopic({
+        topic: newTopicTitle.trim(),
+        tags: parsedTags,
+        status: "idea",
+        priority: 1,
+      });
 
-    if (error) {
-      toast({ title: "Fehler", description: "Thema konnte nicht erstellt werden.", variant: "destructive" });
+      if (newTopicDescription.trim() && createdTopic?.id && currentTenant?.id) {
+        const { error: descriptionError } = await supabase
+          .from("topic_backlog")
+          .update({ short_description: newTopicDescription.trim() })
+          .eq("id", createdTopic.id)
+          .eq("tenant_id", currentTenant.id);
+
+        if (descriptionError) {
+          throw descriptionError;
+        }
+      }
+
+      toast({ title: "Erstellt", description: "Neues Thema wurde im Themenspeicher angelegt." });
+      setNewTopicTitle("");
+      setNewTopicDescription("");
+      setNewTopicTags("");
+      setIsCreateTopicDialogOpen(false);
+      void loadData();
+      onContentCreated?.();
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Thema konnte nicht erstellt werden.";
+      toast({ title: "Fehler", description: message, variant: "destructive" });
+    } finally {
       setIsSubmitting(false);
-      return;
     }
-
-    toast({ title: "Erstellt", description: "Neues Thema wurde im Themenspeicher angelegt." });
-    setNewTopicTitle("");
-    setNewTopicDescription("");
-    setNewTopicTags("");
-    setIsCreateTopicDialogOpen(false);
-    setIsSubmitting(false);
-    void loadData();
   };
 
   return (

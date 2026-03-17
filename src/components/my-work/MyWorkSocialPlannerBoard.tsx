@@ -41,7 +41,7 @@ const APPROVAL_LABELS: Record<string, string> = {
 export function MyWorkSocialPlannerBoard() {
   const { toast } = useToast();
   const { users } = useTenantUsers();
-  const { topics, loading: topicBacklogLoading } = useTopicBacklog();
+  const { topics, loading: topicBacklogLoading, createTopic } = useTopicBacklog();
   const { items, channels, loading, updateItem, createItem } = useSocialPlannerItems();
 
   const [channelFilter, setChannelFilter] = useState<string>("all");
@@ -51,6 +51,7 @@ export function MyWorkSocialPlannerBoard() {
   const [sortBy, setSortBy] = useState<(typeof SORT_OPTIONS)[number]["value"]>("scheduled");
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
   const [createTopicId, setCreateTopicId] = useState<string>("none");
+  const [createTopicTitle, setCreateTopicTitle] = useState("");
   const [createChannelId, setCreateChannelId] = useState<string>("none");
   const [createFormat, setCreateFormat] = useState("");
   const [createHook, setCreateHook] = useState("");
@@ -135,6 +136,7 @@ export function MyWorkSocialPlannerBoard() {
   const resetCreateDialog = () => {
     setCreateTopicId("none");
     setCreateChannelId("none");
+    setCreateTopicTitle("");
     setCreateFormat("");
     setCreateHook("");
     setCreateCoreMessage("");
@@ -143,15 +145,31 @@ export function MyWorkSocialPlannerBoard() {
   };
 
   const createDraft = async () => {
-    if (createTopicId === "none") {
-      toast({ title: "Bitte Thema auswählen", variant: "destructive" });
+    const trimmedTopicTitle = createTopicTitle.trim();
+    if (createTopicId === "none" && !trimmedTopicTitle) {
+      toast({ title: "Bitte Thema auswählen oder neu eingeben", variant: "destructive" });
       return;
     }
 
     try {
       setIsCreatingDraft(true);
+
+      let topicBacklogId = createTopicId;
+      if (topicBacklogId === "none") {
+        const createdTopic = await createTopic({
+          topic: trimmedTopicTitle,
+          status: "idea",
+        });
+
+        if (!createdTopic?.id) {
+          throw new Error("topic-create-failed");
+        }
+
+        topicBacklogId = createdTopic.id;
+      }
+
       await createItem({
-        topic_backlog_id: createTopicId,
+        topic_backlog_id: topicBacklogId,
         workflow_status: "ideas",
         format: createFormat.trim() || null,
         hook: createHook.trim() || null,
@@ -190,7 +208,7 @@ export function MyWorkSocialPlannerBoard() {
             <p className="text-xs text-muted-foreground">Workflow ohne Kalenderansicht – von Idee bis Veröffentlichung.</p>
           </div>
           <div className="flex items-center gap-2">
-            <Button size="sm" variant="outline" onClick={() => setIsCreateDialogOpen(true)} disabled={topics.length === 0}>
+            <Button size="sm" variant="outline" onClick={() => setIsCreateDialogOpen(true)}>
               <Plus className="mr-1 h-4 w-4" />
               Neuen Inhalt entwerfen
             </Button>
@@ -371,6 +389,16 @@ export function MyWorkSocialPlannerBoard() {
             </div>
 
             <div>
+              <Label htmlFor="create-topic-title">Oder neues Thema (optional)</Label>
+              <Input
+                id="create-topic-title"
+                value={createTopicTitle}
+                onChange={(event) => setCreateTopicTitle(event.target.value)}
+                placeholder="z. B. Verkehrssicherheit in Karlsruhe"
+              />
+            </div>
+
+            <div>
               <Label>Kanal (optional)</Label>
               <Select value={createChannelId} onValueChange={setCreateChannelId}>
                 <SelectTrigger><SelectValue placeholder="Kanal wählen" /></SelectTrigger>
@@ -411,7 +439,7 @@ export function MyWorkSocialPlannerBoard() {
 
           <DialogFooter>
             <Button variant="outline" onClick={() => setIsCreateDialogOpen(false)}>Abbrechen</Button>
-            <Button onClick={() => void createDraft()} disabled={isCreatingDraft || createTopicId === "none"}>Entwurf erstellen</Button>
+            <Button onClick={() => void createDraft()} disabled={isCreatingDraft || (createTopicId === "none" && createTopicTitle.trim().length === 0)}>Entwurf erstellen</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
