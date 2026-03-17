@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Search, Plus, Database, User, ChevronLeft, ChevronRight, Lock, Unlock, Save, Trash2 } from 'lucide-react';
+import { Search, Plus, Database, User, ChevronLeft, ChevronRight, Lock, Unlock, Save, Trash2, Upload } from 'lucide-react';
 import EnhancedLexicalEditor from './EnhancedLexicalEditor';
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { useNotificationHighlight } from '@/hooks/useNotificationHighlight';
@@ -11,6 +11,7 @@ import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { useTopics } from '@/hooks/useTopics';
 import { useKnowledgeDocumentTopics } from '@/hooks/useKnowledgeDocumentTopics';
 import { TopicSelector, TopicDisplay } from '@/components/topics/TopicSelector';
@@ -18,9 +19,14 @@ import { useKnowledgeData } from './knowledge/hooks/useKnowledgeData';
 import { useKnowledgeVersionHistory } from './knowledge/hooks/useKnowledgeVersionHistory';
 import { KnowledgeVersionHistory } from './knowledge/KnowledgeVersionHistory';
 import { useAuth } from '@/hooks/useAuth';
+import { useToast } from '@/hooks/use-toast';
+import { supabase } from '@/integrations/supabase/client';
+import { DecisionFileUpload } from '@/components/task-decisions/DecisionFileUpload';
+import type { EmailMetadata } from '@/utils/emlParser';
 
 const KnowledgeBaseView = () => {
   const { user } = useAuth();
+  const { toast } = useToast();
   const navigate = useNavigate();
   const { subId, documentId: legacyDocumentId } = useParams<{ subId?: string; documentId?: string }>();
   const documentId = subId ?? legacyDocumentId;
@@ -33,6 +39,10 @@ const KnowledgeBaseView = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedTopicFilter, setSelectedTopicFilter] = useState<string | null>(null);
   const [newDocument, setNewDocument] = useState({ title: '', content: '', is_published: false, selectedTopics: [] as string[] });
+  const [showUploadDialog, setShowUploadDialog] = useState(false);
+  const [selectedUploadFiles, setSelectedUploadFiles] = useState<File[]>([]);
+  const [selectedUploadMetadataByIdentity, setSelectedUploadMetadataByIdentity] = useState<Record<string, EmailMetadata | null>>({});
+  const [isUploadingFiles, setIsUploadingFiles] = useState(false);
 
   const { assignedTopics: selectedDocTopics, setTopics: setSelectedDocTopics } = useKnowledgeDocumentTopics(data.selectedDocument?.id);
 
@@ -87,6 +97,70 @@ const KnowledgeBaseView = () => {
   };
 
   const canEdit = data.selectedDocument && !data.selectedDocument.is_locked;
+
+  const resetUploadState = () => {
+    setSelectedUploadFiles([]);
+    setSelectedUploadMetadataByIdentity({});
+  };
+
+  const handleKnowledgeUpload = async () => {
+    if (!user || !data.selectedDocument || !data.tenantId) return;
+    if (selectedUploadFiles.length === 0) {
+      toast({ title: 'Keine Dateien ausgewählt', description: 'Bitte wählen Sie mindestens eine Datei aus.', variant: 'destructive' });
+      return;
+    }
+
+    setIsUploadingFiles(true);
+
+    const uploadedPaths: string[] = [];
+    try {
+      for (const [index, file] of selectedUploadFiles.entries()) {
+        const fileExt = file.name.includes('.') ? file.name.split('.').pop() : 'bin';
+        const storagePath = `${user.id}/knowledge-${data.selectedDocument.id}-${Date.now()}-${index}.${fileExt}`;
+
+        const { error: uploadError } = await supabase.storage.from('documents').upload(storagePath, file);
+        if (uploadError) throw uploadError;
+        uploadedPaths.push(storagePath);
+
+        const identity = `${file.name}::${file.size}::${file.lastModified}`;
+        const emailTag = selectedUploadMetadataByIdentity[identity] ? 'email' : 'file';
+
+        const { error: dbError } = await supabase.from('documents').insert({
+          user_id: user.id,
+          tenant_id: data.tenantId,
+          title: file.name,
+          description: `Upload aus Wissen: ${data.selectedDocument.title}`,
+          file_name: file.name,
+          file_path: storagePath,
+          file_size: file.size,
+          file_type: file.type,
+          category: 'knowledge',
+          status: 'draft',
+          tags: [`knowledge:${data.selectedDocument.id}`, emailTag],
+        });
+
+        if (dbError) throw dbError;
+      }
+
+      toast({
+        title: 'Upload erfolgreich',
+        description: `${selectedUploadFiles.length} Datei(en) wurden aus Wissen hochgeladen.`,
+      });
+      resetUploadState();
+      setShowUploadDialog(false);
+    } catch (error) {
+      if (uploadedPaths.length > 0) {
+        await supabase.storage.from('documents').remove(uploadedPaths);
+      }
+      toast({
+        title: 'Upload fehlgeschlagen',
+        description: 'Die Dateien konnten nicht vollständig hochgeladen werden.',
+        variant: 'destructive',
+      });
+    } finally {
+      setIsUploadingFiles(false);
+    }
+  };
 
   if (data.loading) return <div className="flex items-center justify-center min-h-[400px]"><div className="text-center"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-2" /><div className="text-muted-foreground">Dokumente werden geladen...</div></div></div>;
 
@@ -174,6 +248,7 @@ const KnowledgeBaseView = () => {
               <div className="flex items-center gap-2">
                 <div className="hidden md:block"><TopicSelector selectedTopicIds={selectedDocTopics} onTopicsChange={(ids) => { setSelectedDocTopics(ids); data.setHasUnsavedChanges(true); }} placeholder="Themen..." compact /></div>
                 <KnowledgeVersionHistory documentId={data.selectedDocument.id} currentContent={data.editorContent} currentTitle={data.selectedDocument.title} tenantId={data.selectedDocument.tenant_id || ''} />
+                {canEdit && <Button variant="outline" size="sm" onClick={() => setShowUploadDialog(true)}><Upload className="h-4 w-4 mr-1" />Upload</Button>}
                 {data.selectedDocument.created_by === user?.id && <Button variant="outline" size="sm" onClick={data.handleToggleLock} title={data.selectedDocument.is_locked ? "Entsperren" : "Sperren"}>{data.selectedDocument.is_locked ? <Unlock className="h-4 w-4" /> : <Lock className="h-4 w-4" />}</Button>}
                 {canEdit && <Button variant="default" size="sm" onClick={async () => { await createVersion({ id: data.selectedDocument!.id, title: data.selectedDocument!.title, content: data.selectedDocument!.content, tenant_id: data.selectedDocument!.tenant_id }); data.handleSaveDocument(selectedDocTopics, setSelectedDocTopics); }} disabled={!data.hasUnsavedChanges}><Save className="h-4 w-4 mr-1" />Speichern</Button>}
                 <Button variant="outline" size="sm" onClick={() => { if (data.hasUnsavedChanges && !confirm('Sie haben ungespeicherte Änderungen. Trotzdem schließen?')) return; navigate('/knowledge', { replace: true }); }}>Schließen</Button>
@@ -183,6 +258,33 @@ const KnowledgeBaseView = () => {
           <div className="flex-1 overflow-hidden">
             <EnhancedLexicalEditor key={data.selectedDocument.id} content={data.selectedDocument.content || ''} onChange={(c) => { data.setEditorContent(c); if (c !== data.selectedDocument!.content) data.setHasUnsavedChanges(true); }} placeholder={canEdit ? "Beginnen Sie mit der Bearbeitung..." : "Dieses Dokument ist schreibgeschützt."} documentId={data.selectedDocument.id} enableCollaboration={false} showToolbar={!!canEdit} editable={!!canEdit} />
           </div>
+
+          <Dialog open={showUploadDialog} onOpenChange={(open) => { setShowUploadDialog(open); if (!open) resetUploadState(); }}>
+            <DialogContent className="sm:max-w-2xl">
+              <DialogHeader>
+                <DialogTitle>Dateien zu Wissen hochladen</DialogTitle>
+                <DialogDescription>
+                  Gleiche Upload-Funktion wie bei Entscheidungen: Drag & Drop, Klick oder Strg+V – inklusive Outlook-Mails (.eml/.msg).
+                </DialogDescription>
+              </DialogHeader>
+
+              <DecisionFileUpload
+                mode="creation"
+                canUpload={!isUploadingFiles}
+                onFilesPrepared={({ files, metadataByIdentity }) => {
+                  setSelectedUploadFiles(files);
+                  setSelectedUploadMetadataByIdentity(metadataByIdentity);
+                }}
+              />
+
+              <DialogFooter>
+                <Button variant="outline" onClick={() => setShowUploadDialog(false)} disabled={isUploadingFiles}>Abbrechen</Button>
+                <Button onClick={handleKnowledgeUpload} disabled={isUploadingFiles || selectedUploadFiles.length === 0}>
+                  {isUploadingFiles ? 'Wird hochgeladen...' : `Hochladen (${selectedUploadFiles.length})`}
+                </Button>
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
         </div>
       )}
     </div>
