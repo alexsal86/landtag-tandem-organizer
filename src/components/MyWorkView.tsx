@@ -180,6 +180,7 @@ export function MyWorkView() {
       jourFixe: ['mywork_jourFixe'],
       cases: ['mywork_caseitems', 'mywork_casefiles'],
       plannings: ['mywork_plannings'],
+      redaktion: [],
       time: [],
       team: ['mywork_team'],
       feedbackfeed: ['mywork_feedbackfeed'],
