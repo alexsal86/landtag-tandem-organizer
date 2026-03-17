@@ -53,7 +53,7 @@ interface TabCounts {
   feedbackFeed: number;
 }
 
-type TabValue = "dashboard" | "capture" | "tasks" | "decisions" | "jourFixe" | "cases" | "plannings" | "team" | "time" | "feedbackfeed";
+type TabValue = "dashboard" | "capture" | "tasks" | "decisions" | "jourFixe" | "cases" | "plannings" | "redaktion" | "team" | "time" | "feedbackfeed";
 
 interface TabConfig {
   value: TabValue;
