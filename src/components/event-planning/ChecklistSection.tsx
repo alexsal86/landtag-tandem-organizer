@@ -3,8 +3,8 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Plus, Trash2, GripVertical, MessageCircle, Paperclip, ListTodo, Mail, Download, Edit2, X } from "lucide-react";
-import { DragDropContext, Droppable, Draggable, DropResult } from "@hello-pangea/dnd";
+import { Plus, Trash2, GripVertical, MessageCircle, Paperclip, ListTodo, Mail, Download, Edit2, X, Milestone } from "lucide-react";
+import { Droppable, Draggable } from "@hello-pangea/dnd";
 import { cn } from "@/lib/utils";
 import { format } from "date-fns";
 import { de } from "date-fns/locale";
@@ -15,7 +15,6 @@ interface ChecklistSectionProps {
   checklistItems: ChecklistItem[];
   newChecklistItem: string;
   setNewChecklistItem: (value: string) => void;
-  onDragEnd: (result: DropResult) => void;
   toggleChecklistItem: (itemId: string, isCompleted: boolean) => void;
   updateChecklistItemTitle: (itemId: string, title: string) => void;
   addChecklistItem: () => void;
@@ -52,12 +51,13 @@ interface ChecklistSectionProps {
   toggleSubItem: (itemId: string, subItemIndex: number, isCompleted: boolean) => void;
   updateSubItemTitle: (itemId: string, subItemIndex: number, title: string) => void;
   removeSubItem: (itemId: string, subItemIndex: number) => void;
+  onAssignToTimeline: (item: { id: string; title: string }) => void;
 }
 
 export function ChecklistSection(props: ChecklistSectionProps) {
   const {
     checklistItems, newChecklistItem, setNewChecklistItem,
-    onDragEnd, toggleChecklistItem, updateChecklistItemTitle, addChecklistItem, deleteChecklistItem,
+    toggleChecklistItem, updateChecklistItemTitle, addChecklistItem, deleteChecklistItem,
     itemSubtasks, itemComments, itemDocuments,
     showItemSubtasks, setShowItemSubtasks, showItemComments, setShowItemComments,
     showItemDocuments, setShowItemDocuments,
@@ -70,19 +70,19 @@ export function ChecklistSection(props: ChecklistSectionProps) {
     loadItemSubtasks, loadAllItemCounts,
     setEmailDialogOpen, setSelectedEmailItemId,
     toggleSubItem, updateSubItemTitle, removeSubItem,
+    onAssignToTimeline,
   } = props;
 
   return (
-    <Card className="lg:col-span-2 bg-card shadow-card border-border">
+    <Card className="bg-card shadow-card border-border">
       <CardHeader>
         <CardTitle>Checkliste</CardTitle>
       </CardHeader>
       <CardContent>
         <div className="space-y-2">
-          <DragDropContext onDragEnd={onDragEnd}>
-            <Droppable droppableId="checklist">
-              {(provided) => (
-                <div {...provided.droppableProps} ref={provided.innerRef} className="space-y-2">
+          <Droppable droppableId="checklist">
+            {(provided) => (
+              <div {...provided.droppableProps} ref={provided.innerRef} className="space-y-2">
                   {checklistItems.map((item: any, index: number) => (
                     <Draggable key={item.id} draggableId={item.id} index={index}>
                       {(provided, snapshot) => (
@@ -106,6 +106,15 @@ export function ChecklistSection(props: ChecklistSectionProps) {
                                 
                                 {/* Action buttons */}
                                 <div className="flex items-center space-x-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                                  <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    className="h-6 w-6 p-0"
+                                    title="Mit Frist auf Zeitstrahl setzen"
+                                    onClick={() => onAssignToTimeline({ id: item.id, title: item.title })}
+                                  >
+                                    <Milestone className="h-3 w-3" />
+                                  </Button>
                                   <Button variant="ghost" size="sm" className="h-6 w-6 p-0 relative" onClick={() => setShowItemSubtasks(prev => ({ ...prev, [item.id]: !prev[item.id] }))}>
                                     <ListTodo className="h-3 w-3" />
                                     {(itemSubtasks[item.id]?.length || 0) > 0 && <span className="absolute -top-1 -right-1 bg-primary text-primary-foreground rounded-full text-[10px] w-4 h-4 flex items-center justify-center">{itemSubtasks[item.id]?.length}</span>}
@@ -255,7 +264,6 @@ export function ChecklistSection(props: ChecklistSectionProps) {
                 </div>
               )}
             </Droppable>
-          </DragDropContext>
           
           <div className="flex items-center space-x-2 mt-4">
             <Input value={newChecklistItem} onChange={(e) => setNewChecklistItem(e.target.value)} placeholder="Neuen Punkt hinzufügen (--- für Trenner)..." onKeyPress={(e) => e.key === "Enter" && addChecklistItem()} />
