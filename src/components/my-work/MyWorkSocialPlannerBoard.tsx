@@ -6,8 +6,11 @@ import { de } from "date-fns/locale";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Textarea } from "@/components/ui/textarea";
 import { useTenantUsers } from "@/hooks/useTenantUsers";
 import { useTopicBacklog } from "@/hooks/useTopicBacklog";
 import { PlannerWorkflowStatus, useSocialPlannerItems } from "@/hooks/useSocialPlannerItems";
@@ -46,6 +49,15 @@ export function MyWorkSocialPlannerBoard() {
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [tagSearch, setTagSearch] = useState("");
   const [sortBy, setSortBy] = useState<(typeof SORT_OPTIONS)[number]["value"]>("scheduled");
+  const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
+  const [createTopicId, setCreateTopicId] = useState<string>("none");
+  const [createChannelId, setCreateChannelId] = useState<string>("none");
+  const [createFormat, setCreateFormat] = useState("");
+  const [createHook, setCreateHook] = useState("");
+  const [createCoreMessage, setCreateCoreMessage] = useState("");
+  const [createDraftText, setCreateDraftText] = useState("");
+  const [createScheduledDate, setCreateScheduledDate] = useState("");
+  const [isCreatingDraft, setIsCreatingDraft] = useState(false);
 
   const filteredItems = useMemo(() => {
     const search = tagSearch.trim().toLowerCase();
@@ -120,6 +132,45 @@ export function MyWorkSocialPlannerBoard() {
     }
   };
 
+  const resetCreateDialog = () => {
+    setCreateTopicId("none");
+    setCreateChannelId("none");
+    setCreateFormat("");
+    setCreateHook("");
+    setCreateCoreMessage("");
+    setCreateDraftText("");
+    setCreateScheduledDate("");
+  };
+
+  const createDraft = async () => {
+    if (createTopicId === "none") {
+      toast({ title: "Bitte Thema auswählen", variant: "destructive" });
+      return;
+    }
+
+    try {
+      setIsCreatingDraft(true);
+      await createItem({
+        topic_backlog_id: createTopicId,
+        workflow_status: "ideas",
+        format: createFormat.trim() || null,
+        hook: createHook.trim() || null,
+        core_message: createCoreMessage.trim() || null,
+        draft_text: createDraftText.trim() || null,
+        scheduled_for: createScheduledDate ? new Date(`${createScheduledDate}T09:00:00`).toISOString() : null,
+        channel_ids: createChannelId !== "none" ? [createChannelId] : [],
+      });
+
+      toast({ title: "Entwurf erstellt", description: "Der Beitrag wurde als Idee im Social Planner angelegt." });
+      setIsCreateDialogOpen(false);
+      resetCreateDialog();
+    } catch {
+      toast({ title: "Entwurf konnte nicht erstellt werden", variant: "destructive" });
+    } finally {
+      setIsCreatingDraft(false);
+    }
+  };
+
   const clearFilters = () => {
     setChannelFilter("all");
     setOwnerFilter("all");
@@ -139,6 +190,10 @@ export function MyWorkSocialPlannerBoard() {
             <p className="text-xs text-muted-foreground">Workflow ohne Kalenderansicht – von Idee bis Veröffentlichung.</p>
           </div>
           <div className="flex items-center gap-2">
+            <Button size="sm" variant="outline" onClick={() => setIsCreateDialogOpen(true)} disabled={topics.length === 0}>
+              <Plus className="mr-1 h-4 w-4" />
+              Neuen Inhalt entwerfen
+            </Button>
             {hasActiveFilters && (
               <Button variant="ghost" size="sm" onClick={clearFilters}>
                 Filter zurücksetzen
@@ -288,6 +343,78 @@ export function MyWorkSocialPlannerBoard() {
 
         {loading && <p className="mt-3 text-xs text-muted-foreground">Lade Social-Planer…</p>}
       </CardContent>
+
+      <Dialog open={isCreateDialogOpen} onOpenChange={(open) => {
+        setIsCreateDialogOpen(open);
+        if (!open) resetCreateDialog();
+      }}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Neuen Social-Media-Inhalt entwerfen</DialogTitle>
+            <DialogDescription>
+              Lege direkt aus dem Planner einen neuen Entwurf an.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-3">
+            <div>
+              <Label>Thema</Label>
+              <Select value={createTopicId} onValueChange={setCreateTopicId}>
+                <SelectTrigger><SelectValue placeholder="Thema wählen" /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="none">Bitte wählen</SelectItem>
+                  {topics.map((topic) => (
+                    <SelectItem key={topic.id} value={topic.id}>{topic.topic}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div>
+              <Label>Kanal (optional)</Label>
+              <Select value={createChannelId} onValueChange={setCreateChannelId}>
+                <SelectTrigger><SelectValue placeholder="Kanal wählen" /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="none">Kein Kanal</SelectItem>
+                  {channels.map((channel) => (
+                    <SelectItem key={channel.id} value={channel.id}>{channel.name}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div>
+              <Label htmlFor="create-format">Format (optional)</Label>
+              <Input id="create-format" value={createFormat} onChange={(event) => setCreateFormat(event.target.value)} placeholder="z. B. Carousel" />
+            </div>
+
+            <div>
+              <Label htmlFor="create-hook">Hook (optional)</Label>
+              <Input id="create-hook" value={createHook} onChange={(event) => setCreateHook(event.target.value)} placeholder="Aufhänger für den Post" />
+            </div>
+
+            <div>
+              <Label htmlFor="create-core-message">Kernaussage (optional)</Label>
+              <Input id="create-core-message" value={createCoreMessage} onChange={(event) => setCreateCoreMessage(event.target.value)} placeholder="Was soll hängen bleiben?" />
+            </div>
+
+            <div>
+              <Label htmlFor="create-draft-text">Entwurfstext (optional)</Label>
+              <Textarea id="create-draft-text" value={createDraftText} onChange={(event) => setCreateDraftText(event.target.value)} placeholder="Textentwurf..." rows={4} />
+            </div>
+
+            <div>
+              <Label htmlFor="create-scheduled-date">Veröffentlichungsdatum (optional)</Label>
+              <Input id="create-scheduled-date" type="date" value={createScheduledDate} onChange={(event) => setCreateScheduledDate(event.target.value)} />
+            </div>
+          </div>
+
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setIsCreateDialogOpen(false)}>Abbrechen</Button>
+            <Button onClick={() => void createDraft()} disabled={isCreatingDraft || createTopicId === "none"}>Entwurf erstellen</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </Card>
   );
 }

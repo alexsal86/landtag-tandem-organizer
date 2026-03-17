@@ -62,6 +62,10 @@ export function ThemenspeicherPanel({ onContentCreated }: Props) {
   const [channels, setChannels] = useState<Channel[]>([]);
 
   const [selectedTopic, setSelectedTopic] = useState<TopicBacklogItem | null>(null);
+  const [isCreateTopicDialogOpen, setIsCreateTopicDialogOpen] = useState(false);
+  const [newTopicTitle, setNewTopicTitle] = useState("");
+  const [newTopicDescription, setNewTopicDescription] = useState("");
+  const [newTopicTags, setNewTopicTags] = useState("");
   const [selectedChannelId, setSelectedChannelId] = useState<string>("none");
   const [selectedTemplateKey, setSelectedTemplateKey] = useState<string>(TEMPLATES[0].key);
   const [scheduledDate, setScheduledDate] = useState<string>(format(new Date(), "yyyy-MM-dd"));
@@ -220,11 +224,49 @@ export function ThemenspeicherPanel({ onContentCreated }: Props) {
     void loadData();
   };
 
+  const createTopic = async () => {
+    if (!user?.id || !currentTenant?.id || !newTopicTitle.trim()) return;
+
+    setIsSubmitting(true);
+    const parsedTags = newTopicTags
+      .split(",")
+      .map((entry) => entry.trim())
+      .filter(Boolean);
+
+    const { error } = await supabase.from("topic_backlog").insert({
+      tenant_id: currentTenant.id,
+      created_by: user.id,
+      topic: newTopicTitle.trim(),
+      short_description: newTopicDescription.trim() || null,
+      tags: parsedTags,
+      status: "idea",
+      priority: 1,
+    });
+
+    if (error) {
+      toast({ title: "Fehler", description: "Thema konnte nicht erstellt werden.", variant: "destructive" });
+      setIsSubmitting(false);
+      return;
+    }
+
+    toast({ title: "Erstellt", description: "Neues Thema wurde im Themenspeicher angelegt." });
+    setNewTopicTitle("");
+    setNewTopicDescription("");
+    setNewTopicTags("");
+    setIsCreateTopicDialogOpen(false);
+    setIsSubmitting(false);
+    void loadData();
+  };
+
   return (
     <section className="rounded-lg border bg-card p-4 space-y-3">
       <div className="flex items-center gap-2">
         <Lightbulb className="h-4 w-4 text-muted-foreground" />
         <h3 className="text-sm font-semibold text-foreground">Themenspeicher</h3>
+        <Button size="sm" variant="outline" className="ml-auto" onClick={() => setIsCreateTopicDialogOpen(true)}>
+          <PlusCircle className="h-3.5 w-3.5 mr-1" />
+          Neues Thema
+        </Button>
       </div>
 
       {loading ? (
@@ -341,6 +383,56 @@ export function ThemenspeicherPanel({ onContentCreated }: Props) {
             <Button variant="outline" onClick={() => setSelectedTopic(null)}>Abbrechen</Button>
             <Button onClick={() => void createFromTopic()} disabled={isSubmitting || (!!duplicateWarning && !overrideDuplicate)}>
               Übernehmen
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={isCreateTopicDialogOpen} onOpenChange={setIsCreateTopicDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Neues Thema im Themenspeicher</DialogTitle>
+            <DialogDescription>
+              Erstelle ein neues Thema, das anschließend in der Redaktionsplanung genutzt werden kann.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-3">
+            <div>
+              <Label htmlFor="new-topic-title">Titel</Label>
+              <Input
+                id="new-topic-title"
+                value={newTopicTitle}
+                onChange={(event) => setNewTopicTitle(event.target.value)}
+                placeholder="z. B. Kita-Ausbau im Wahlkreis"
+              />
+            </div>
+
+            <div>
+              <Label htmlFor="new-topic-description">Kurzbeschreibung (optional)</Label>
+              <Input
+                id="new-topic-description"
+                value={newTopicDescription}
+                onChange={(event) => setNewTopicDescription(event.target.value)}
+                placeholder="Worum geht es in 1-2 Sätzen?"
+              />
+            </div>
+
+            <div>
+              <Label htmlFor="new-topic-tags">Tags (optional, comma-separiert)</Label>
+              <Input
+                id="new-topic-tags"
+                value={newTopicTags}
+                onChange={(event) => setNewTopicTags(event.target.value)}
+                placeholder="bildung, kommune, jugend"
+              />
+            </div>
+          </div>
+
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setIsCreateTopicDialogOpen(false)}>Abbrechen</Button>
+            <Button onClick={() => void createTopic()} disabled={isSubmitting || !newTopicTitle.trim()}>
+              Thema erstellen
             </Button>
           </DialogFooter>
         </DialogContent>

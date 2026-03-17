@@ -134,6 +134,11 @@ export function useSocialPlannerItems() {
       responsible_user_id?: string | null;
       scheduled_for?: string | null;
       channel_ids?: string[];
+      hook?: string | null;
+      core_message?: string | null;
+      draft_text?: string | null;
+      notes?: string | null;
+      cta?: string | null;
     }) => {
       if (!user?.id || !currentTenant?.id) return null;
 
@@ -148,6 +153,11 @@ export function useSocialPlannerItems() {
           format: payload.format || null,
           responsible_user_id: payload.responsible_user_id || null,
           scheduled_for: payload.scheduled_for || null,
+          hook: payload.hook || null,
+          core_message: payload.core_message || null,
+          draft_text: payload.draft_text || null,
+          notes: payload.notes || null,
+          cta: payload.cta || null,
         })
         .select("id")
         .single();
