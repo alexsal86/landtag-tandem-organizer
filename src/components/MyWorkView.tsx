@@ -206,7 +206,7 @@ export function MyWorkView() {
         "create-meeting": "jourFixe",
         "create-caseitem": "cases",
         "create-casefile": "cases",
-        "create-eventplanning": "plannings",
+        "create-eventplanning": "jourFixe",
       };
       
       const targetTab = actionToTab[action];
