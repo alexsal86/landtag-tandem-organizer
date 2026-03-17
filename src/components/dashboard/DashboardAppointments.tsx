@@ -15,6 +15,9 @@ import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
 import { useAppointmentRequest } from '@/hooks/useAppointmentRequest';
+import { useTenant } from '@/hooks/useTenant';
+import { supabase } from '@/integrations/supabase/client';
+import { cn } from '@/lib/utils';
 import {
   APPOINTMENT_REQUEST_APPOINTMENT_MARKER,
   APPOINTMENT_REQUEST_LOCATION_MARKER,
@@ -38,6 +41,23 @@ interface AppointmentRequestItem {
   responseType: 'yes' | 'no' | 'question' | null;
   myParticipantId: string | null;
   myHasResponded: boolean;
+}
+
+interface DayTimelineItem {
+  id: string;
+  title: string;
+  start: string;
+  end: string;
+  simulated?: boolean;
+}
+
+interface TimelineLayoutItem {
+  item: DayTimelineItem;
+  startMinutes: number;
+  endMinutes: number;
+  durationMinutes: number;
+  column: number;
+  totalColumns: number;
 }
 
 /** Check if an appointment is currently happening */
@@ -74,6 +94,7 @@ const getRequesterFromDescription = (description: string | null | undefined): st
 export const DashboardAppointments = ({ data }: Props) => {
   const navigate = useNavigate();
   const { toast } = useToast();
+  const { currentTenant } = useTenant();
   const {
     userRole, appointments, isShowingTomorrow,
     openTasksCount, completedTasksToday,
@@ -81,6 +102,8 @@ export const DashboardAppointments = ({ data }: Props) => {
   } = data;
 
   const [isQuickRequestOpen, setIsQuickRequestOpen] = useState(false);
+  const [timelineItems, setTimelineItems] = useState<DayTimelineItem[]>([]);
+  const [isTimelineLoading, setIsTimelineLoading] = useState(false);
   const {
     requestTitle,
     setRequestTitle,
@@ -107,8 +130,148 @@ export const DashboardAppointments = ({ data }: Props) => {
   useEffect(() => {
     if (isQuickRequestOpen) {
       resetForm();
+      setTimelineItems([]);
     }
   }, [isQuickRequestOpen, resetForm]);
+
+  const requestedStart = useMemo(() => {
+    if (!requestDate || !requestTime) return null;
+    const parsed = new Date(`${requestDate}T${requestTime}:00`);
+    return Number.isNaN(parsed.getTime()) ? null : parsed;
+  }, [requestDate, requestTime]);
+
+  const shouldShowTimeline = Boolean(isQuickRequestOpen && requestedStart && currentTenant?.id);
+  const timelineWindowMinutes = 6 * 60;
+  const timelineHeight = 220;
+  const pixelsPerMinute = timelineHeight / timelineWindowMinutes;
+
+  const timelineBounds = useMemo(() => {
+    if (!requestedStart) return [];
+
+    const windowStart = new Date(requestedStart.getTime() - 3 * 60 * 60 * 1000);
+    windowStart.setMinutes(0, 0, 0);
+    const windowEnd = new Date(windowStart.getTime() + timelineWindowMinutes * 60 * 1000);
+
+    return [windowStart, windowEnd] as const;
+  }, [requestedStart]);
+
+  const timelineHourSlots = useMemo(() => {
+    if (!timelineBounds.length) return [];
+    const [windowStart] = timelineBounds;
+
+    return Array.from({ length: 7 }, (_, index) => {
+      const slot = new Date(windowStart);
+      slot.setHours(windowStart.getHours() + index);
+      return slot;
+    });
+  }, [timelineBounds]);
+
+  const timelineLayoutItems = useMemo(() => {
+    if (!timelineBounds.length) return [];
+
+    const [windowStart, windowEnd] = timelineBounds;
+    const windowStartMs = windowStart.getTime();
+    const windowEndMs = windowEnd.getTime();
+
+    const normalized = timelineItems
+      .map((item) => {
+        const itemStart = new Date(item.start);
+        const itemEnd = new Date(item.end || item.start);
+        const safeEnd = itemEnd.getTime() > itemStart.getTime()
+          ? itemEnd
+          : new Date(itemStart.getTime() + 60 * 60 * 1000);
+
+        const clippedStart = Math.max(itemStart.getTime(), windowStartMs);
+        const clippedEnd = Math.min(safeEnd.getTime(), windowEndMs);
+        if (clippedEnd <= clippedStart) return null;
+
+        const startMinutes = Math.max(0, Math.floor((clippedStart - windowStartMs) / 60000));
+        const endMinutes = Math.min(timelineWindowMinutes, Math.ceil((clippedEnd - windowStartMs) / 60000));
+        const durationMinutes = Math.max(15, endMinutes - startMinutes);
+
+        return { item, startMinutes, endMinutes, durationMinutes };
+      })
+      .filter((entry): entry is Omit<TimelineLayoutItem, 'column' | 'totalColumns'> => Boolean(entry))
+      .sort((a, b) => a.startMinutes - b.startMinutes);
+
+    const layout: TimelineLayoutItem[] = [];
+    const active: Array<{ endMinutes: number; column: number }> = [];
+
+    normalized.forEach((entry) => {
+      for (let idx = active.length - 1; idx >= 0; idx -= 1) {
+        if (active[idx].endMinutes <= entry.startMinutes) {
+          active.splice(idx, 1);
+        }
+      }
+
+      let column = 0;
+      while (active.some((a) => a.column === column)) {
+        column += 1;
+      }
+
+      active.push({ endMinutes: entry.endMinutes, column });
+      const totalColumns = Math.max(...active.map((a) => a.column)) + 1;
+      layout.push({ ...entry, column, totalColumns });
+    });
+
+    return layout.map((entry) => {
+      const overlapping = layout.filter(
+        (other) => other.startMinutes < entry.endMinutes && entry.startMinutes < other.endMinutes,
+      );
+      const totalColumns = Math.max(...overlapping.map((overlap) => overlap.column)) + 1;
+      return { ...entry, totalColumns };
+    });
+  }, [timelineBounds, timelineItems]);
+
+  useEffect(() => {
+    const loadTimeline = async () => {
+      if (!shouldShowTimeline || !requestedStart || !currentTenant?.id) return;
+
+      setIsTimelineLoading(true);
+      try {
+        const contextStart = new Date(requestedStart.getTime() - 3 * 60 * 60 * 1000);
+        const contextEnd = new Date(requestedStart.getTime() + 3 * 60 * 60 * 1000);
+
+        const { data: timelineData, error } = await supabase
+          .from('appointments')
+          .select('id, title, start_time, end_time')
+          .eq('tenant_id', currentTenant.id)
+          .lt('start_time', contextEnd.toISOString())
+          .gt('end_time', contextStart.toISOString())
+          .order('start_time', { ascending: true });
+
+        if (error) throw error;
+
+        const existingItems: DayTimelineItem[] = (timelineData || []).map((item) => ({
+          id: item.id,
+          title: item.title,
+          start: item.start_time,
+          end: item.end_time,
+        }));
+
+        const simulatedStart = requestedStart.toISOString();
+        const simulatedEnd = new Date(requestedStart.getTime() + 60 * 60 * 1000).toISOString();
+        const simulatedTitle = requestTitle.trim() || 'Angefragter Termin';
+
+        setTimelineItems([
+          ...existingItems,
+          {
+            id: 'simulated-request-slot',
+            title: `${simulatedTitle} (angefragt)`,
+            start: simulatedStart,
+            end: simulatedEnd,
+            simulated: true,
+          },
+        ]);
+      } catch {
+        setTimelineItems([]);
+      } finally {
+        setIsTimelineLoading(false);
+      }
+    };
+
+    void loadTimeline();
+  }, [currentTenant?.id, requestTitle, requestedStart, shouldShowTimeline]);
 
   const timeSlot = getCurrentTimeSlot();
   const hasPlenum = appointments.some(a => a.title.toLowerCase().includes('plenum'));
@@ -244,6 +407,71 @@ export const DashboardAppointments = ({ data }: Props) => {
                 <Input id="dashboard-request-requester" value={requestRequester} onChange={(event) => setRequestRequester(event.target.value)} placeholder="Name / Organisation" />
               </div>
             </div>
+
+            {requestedStart && (
+              <div className="rounded-md border border-border bg-background/95 p-2">
+                <div className="mb-2 flex items-center gap-1.5 text-xs font-semibold text-foreground">
+                  <icons.CalendarDays className="h-3.5 w-3.5" />
+                  Tageskontext ±3 Stunden ({format(requestedStart, 'dd.MM.yyyy HH:mm', { locale: de })} Uhr)
+                </div>
+
+                {isTimelineLoading ? (
+                  <p className="text-xs text-muted-foreground">Lade Termine…</p>
+                ) : timelineItems.length === 0 ? (
+                  <p className="text-xs text-muted-foreground">Keine Termine für diesen Zeitraum gefunden.</p>
+                ) : (
+                  <div className="grid grid-cols-[52px_1fr] border border-border rounded-md overflow-hidden bg-muted/15">
+                    <div className="relative border-r border-border bg-muted/30" style={{ height: `${timelineHeight}px` }}>
+                      {timelineHourSlots.map((slot, slotIndex) => (
+                        <div
+                          key={format(slot, 'yyyy-MM-dd-HH', { locale: de })}
+                          className={cn('absolute left-0 right-0 -translate-y-1/2 px-1.5 text-[10px] font-mono text-muted-foreground', slotIndex === timelineHourSlots.length - 1 && 'translate-y-[-95%]')}
+                          style={{ top: `${slotIndex * (timelineHeight / 6)}px` }}
+                        >
+                          {format(slot, 'HH:00', { locale: de })}
+                        </div>
+                      ))}
+                    </div>
+
+                    <div className="relative" style={{ height: `${timelineHeight}px` }}>
+                      {timelineHourSlots.map((slot, slotIndex) => (
+                        <div
+                          key={`line-${format(slot, 'yyyy-MM-dd-HH', { locale: de })}`}
+                          className="absolute left-0 right-0 border-t border-border/70"
+                          style={{ top: `${slotIndex * (timelineHeight / 6)}px` }}
+                        />
+                      ))}
+
+                      {timelineLayoutItems.map((entry) => {
+                        const width = `calc(${100 / entry.totalColumns}% - 4px)`;
+                        const left = `calc(${(entry.column * 100) / entry.totalColumns}% + 2px)`;
+
+                        return (
+                          <div
+                            key={entry.item.id}
+                            className={cn(
+                              'absolute rounded-md border px-2 py-1 text-[10px] shadow-sm overflow-hidden',
+                              entry.item.simulated
+                                ? 'bg-blue-100 border-blue-300 text-blue-900'
+                                : 'bg-background border-border text-foreground',
+                            )}
+                            style={{
+                              top: `${entry.startMinutes * pixelsPerMinute}px`,
+                              height: `${Math.max(16, entry.durationMinutes * pixelsPerMinute)}px`,
+                              left,
+                              width,
+                            }}
+                          >
+                            <div className="truncate font-medium">{entry.item.title}</div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+
             <div className="flex justify-end">
               <Button type="button" onClick={createRequest} disabled={isSubmittingRequest}>
                 {isSubmittingRequest ? 'Erstelle…' : 'Terminanfrage anlegen'}
