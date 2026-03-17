@@ -142,9 +142,11 @@ export function useSocialPlannerItems() {
     }) => {
       if (!user?.id || !currentTenant?.id) return null;
 
-      const { data, error } = await supabase
+      const id = crypto.randomUUID();
+      const { error } = await supabase
         .from("social_content_items")
         .insert({
+          id,
           tenant_id: currentTenant.id,
           created_by: user.id,
           topic_backlog_id: payload.topic_backlog_id,
@@ -158,16 +160,17 @@ export function useSocialPlannerItems() {
           draft_text: payload.draft_text || null,
           notes: payload.notes || null,
           cta: payload.cta || null,
-        })
-        .select("id")
-        .single();
+        });
 
-      if (error) throw error;
+      if (error) {
+        debugConsole.error("createItem failed:", error);
+        throw error;
+      }
 
       if (payload.channel_ids?.length) {
         const { error: channelInsertError } = await supabase.from("social_content_item_channels").insert(
           payload.channel_ids.map((channelId, index) => ({
-            content_item_id: data.id,
+            content_item_id: id,
             channel_id: channelId,
             created_by: user.id,
             tenant_id: currentTenant.id,
@@ -179,7 +182,7 @@ export function useSocialPlannerItems() {
       }
 
       await loadItems();
-      return data;
+      return { id };
     },
     [currentTenant?.id, loadItems, user?.id],
   );

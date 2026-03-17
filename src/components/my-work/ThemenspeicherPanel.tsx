@@ -198,7 +198,9 @@ export function ThemenspeicherPanel({ onContentCreated }: Props) {
       .single();
 
     if (itemError || !createdItem) {
-      toast({ title: "Fehler", description: "Beitrag konnte nicht erstellt werden.", variant: "destructive" });
+      const msg = itemError?.message || "Unbekannter Fehler";
+      const isRls = msg.includes("row-level security") || msg.includes("42501");
+      toast({ title: "Fehler", description: isRls ? "Keine Berechtigung – bitte Rolle prüfen." : `Beitrag konnte nicht erstellt werden: ${msg}`, variant: "destructive" });
       setIsSubmitting(false);
       return;
     }
@@ -235,24 +237,13 @@ export function ThemenspeicherPanel({ onContentCreated }: Props) {
       .filter(Boolean);
 
     try {
-      const createdTopic = await createBacklogTopic({
+      await createBacklogTopic({
         topic: newTopicTitle.trim(),
         tags: parsedTags,
         status: "idea",
         priority: 1,
+        short_description: newTopicDescription.trim() || null,
       });
-
-      if (newTopicDescription.trim() && createdTopic?.id && currentTenant?.id) {
-        const { error: descriptionError } = await supabase
-          .from("topic_backlog")
-          .update({ short_description: newTopicDescription.trim() })
-          .eq("id", createdTopic.id)
-          .eq("tenant_id", currentTenant.id);
-
-        if (descriptionError) {
-          throw descriptionError;
-        }
-      }
 
       toast({ title: "Erstellt", description: "Neues Thema wurde im Themenspeicher angelegt." });
       setNewTopicTitle("");
@@ -261,9 +252,10 @@ export function ThemenspeicherPanel({ onContentCreated }: Props) {
       setIsCreateTopicDialogOpen(false);
       void loadData();
       onContentCreated?.();
-    } catch (error) {
-      const message = error instanceof Error ? error.message : "Thema konnte nicht erstellt werden.";
-      toast({ title: "Fehler", description: message, variant: "destructive" });
+    } catch (error: unknown) {
+      const msg = error instanceof Error ? error.message : String(error);
+      const isRls = msg.includes("row-level security") || msg.includes("42501");
+      toast({ title: "Fehler", description: isRls ? "Keine Berechtigung – bitte Rolle prüfen." : msg, variant: "destructive" });
     } finally {
       setIsSubmitting(false);
     }
