@@ -1,0 +1,2 @@
+ALTER TABLE public.event_planning_item_actions DROP CONSTRAINT event_planning_item_actions_action_type_check;
+ALTER TABLE public.event_planning_item_actions ADD CONSTRAINT event_planning_item_actions_action_type_check CHECK (action_type = ANY (ARRAY['email'::text, 'text_editor'::text, 'form'::text, 'export'::text, 'social_planner'::text, 'rsvp'::text]));
