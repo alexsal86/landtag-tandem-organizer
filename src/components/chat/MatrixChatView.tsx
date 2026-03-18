@@ -14,6 +14,7 @@ import { RoomFilter, RoomFilterType } from './RoomFilter';
 import { CreateRoomDialog } from './CreateRoomDialog';
 import { ReplyPreview } from './ReplyPreview';
 import { cn } from '@/lib/utils';
+import type { MatrixReplyPreview } from '@/types/matrix';
 
 export function MatrixChatView() {
   const { toast } = useToast();
@@ -44,7 +45,7 @@ export function MatrixChatView() {
   const [showSettings, setShowSettings] = useState(false);
   const [showSearch, setShowSearch] = useState(false);
   const [roomFilter, setRoomFilter] = useState<RoomFilterType>('all');
-  const [replyTo, setReplyTo] = useState<{ eventId: string; sender: string; content: string } | null>(null);
+  const [replyTo, setReplyTo] = useState<MatrixReplyPreview | null>(null);
   const [isRoomListCollapsed, setIsRoomListCollapsed] = useState(false);
   const [highlightedEventId, setHighlightedEventId] = useState<string | null>(null);
   const [scrollToEventId, setScrollToEventId] = useState<string | null>(null);
@@ -122,7 +123,7 @@ export function MatrixChatView() {
     return () => window.clearInterval(intervalId);
   }, [selectedRoomId, selectedRoom?.isEncrypted, isConnected, refreshMessages]);
 
-  const handleSendMessage = useCallback(async (message: string) => {
+  const handleSendMessage = useCallback(async (message: string): Promise<void> => {
     if (!selectedRoomId) return;
 
     try {
@@ -137,34 +138,34 @@ export function MatrixChatView() {
     }
   }, [selectedRoomId, sendMessage, replyTo, toast]);
 
-  const handleTyping = useCallback((isTyping: boolean) => {
+  const handleTyping = useCallback((isTyping: boolean): void => {
     if (selectedRoomId) {
       sendTypingNotification(selectedRoomId, isTyping);
     }
   }, [selectedRoomId, sendTypingNotification]);
 
-  const handleReply = useCallback((eventId: string, sender: string, content: string) => {
+  const handleReply = useCallback((eventId: string, sender: string, content: string): void => {
     setReplyTo({ eventId, sender, content });
   }, []);
 
-  const handleAddReaction = useCallback(async (eventId: string, emoji: string) => {
+  const handleAddReaction = useCallback(async (eventId: string, emoji: string): Promise<void> => {
     if (selectedRoomId) {
       await addReaction(selectedRoomId, eventId, emoji);
     }
   }, [selectedRoomId, addReaction]);
 
-  const handleRemoveReaction = useCallback(async (eventId: string, emoji: string) => {
+  const handleRemoveReaction = useCallback(async (eventId: string, emoji: string): Promise<void> => {
     if (selectedRoomId) {
       await removeReaction(selectedRoomId, eventId, emoji);
     }
   }, [selectedRoomId, removeReaction]);
 
-  const handleLoadOlderMessages = useCallback(() => {
+  const handleLoadOlderMessages = useCallback((): void => {
     if (!selectedRoomId) return;
     void loadOlderMessages(selectedRoomId, 50);
   }, [loadOlderMessages, selectedRoomId]);
 
-  const handleSelectMessage = useCallback((eventId: string) => {
+  const handleSelectMessage = useCallback((eventId: string): void => {
     setScrollToEventId(eventId);
     setHighlightedEventId(eventId);
     setShowSearch(false);

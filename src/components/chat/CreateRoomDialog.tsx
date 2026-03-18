@@ -15,18 +15,11 @@ import {
   DialogTrigger,
 } from '@/components/ui/dialog';
 import { useToast } from '@/hooks/use-toast';
+import type { MatrixCreateRoomOptions } from '@/types/matrix';
 
 interface CreateRoomDialogProps {
-  onCreateRoom: (options: CreateRoomOptions) => Promise<string>;
+  onCreateRoom: (options: MatrixCreateRoomOptions) => Promise<string>;
   trigger?: React.ReactNode;
-}
-
-export interface CreateRoomOptions {
-  name: string;
-  topic?: string;
-  isPrivate: boolean;
-  enableEncryption: boolean;
-  inviteUserIds?: string[];
 }
 
 export function CreateRoomDialog({ onCreateRoom, trigger }: CreateRoomDialogProps) {
@@ -39,7 +32,7 @@ export function CreateRoomDialog({ onCreateRoom, trigger }: CreateRoomDialogProp
   const [enableEncryption, setEnableEncryption] = useState(true);
   const [inviteUsers, setInviteUsers] = useState('');
 
-  const handleCreate = async () => {
+  const handleCreate = async (): Promise<void> => {
     if (!name.trim()) {
       toast({
         title: 'Name erforderlich',

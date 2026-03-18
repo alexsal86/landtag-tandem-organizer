@@ -7,29 +7,11 @@ import { Reply, Lock } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { MediaMessage } from './MediaMessage';
 import { MessageReactions } from './MessageReactions';
-import { MessageStatus, MessageStatusType } from './MessageStatus';
-
-interface Message {
-  eventId: string;
-  roomId: string;
-  sender: string;
-  senderDisplayName: string;
-  content: string;
-  timestamp: number;
-  type: string;
-  status?: MessageStatusType;
-  replyTo?: { eventId: string; sender: string; content: string };
-  reactions?: Map<string, { count: number; userReacted: boolean }>;
-  mediaContent?: {
-    msgtype: string;
-    body: string;
-    url?: string;
-    info?: any;
-  };
-}
+import { MessageStatus } from './MessageStatus';
+import type { MatrixMessage } from '@/types/matrix';
 
 interface ChatMessagesProps {
-  messages: Message[];
+  messages: MatrixMessage[];
   currentUserId?: string;
   homeserverUrl: string;
   isLoading?: boolean;
@@ -43,13 +25,13 @@ interface ChatMessagesProps {
   highlightedEventId?: string | null;
 }
 
-const getInitials = (name: string) => {
+const getInitials = (name: string): string => {
   const parts = name.split(/[@:]/);
   const displayPart = parts[0] || parts[1] || name;
   return displayPart.slice(0, 2).toUpperCase();
 };
 
-const getAvatarColor = (sender: string) => {
+const getAvatarColor = (sender: string): string => {
   let hash = 0;
   for (let i = 0; i < sender.length; i++) {
     hash = sender.charCodeAt(i) + ((hash << 5) - hash);
@@ -58,7 +40,7 @@ const getAvatarColor = (sender: string) => {
   return `hsl(${hue}, 60%, 45%)`;
 };
 
-const getReactionsArray = (reactions?: Map<string, { count: number; userReacted: boolean }>) => {
+const getReactionsArray = (reactions?: MatrixMessage["reactions"]): Array<{ key: string; count: number; userReacted: boolean }> => {
   if (!reactions) return [];
   return Array.from(reactions.entries()).map(([key, value]) => ({
     key,
@@ -98,7 +80,7 @@ export function ChatMessages({
     messageRefs.current.delete(eventId);
   }, []);
 
-  const handleLoadOlderMessages = useCallback(() => {
+  const handleLoadOlderMessages = useCallback((): void => {
     if (!onLoadOlderMessages || isLoadingOlderMessages || !hasMoreHistory) return;
 
     const container = scrollContainerRef.current;
@@ -183,7 +165,7 @@ export function ChatMessages({
     pendingHistoryLoadScrollRef.current = null;
   }, [isLoadingOlderMessages]);
 
-  const formatMessageTime = (timestamp: number) => {
+  const formatMessageTime = (timestamp: number): string => {
     const date = new Date(timestamp);
     const now = new Date();
     const isToday = date.toDateString() === now.toDateString();
@@ -194,8 +176,8 @@ export function ChatMessages({
     return format(date, 'dd.MM. HH:mm', { locale: de });
   };
 
-  const groupedMessages = useMemo<{ date: string; messages: Message[] }[]>(() => {
-    const grouped: { date: string; messages: Message[] }[] = [];
+  const groupedMessages = useMemo<{ date: string; messages: MatrixMessage[] }[]>(() => {
+    const grouped: { date: string; messages: MatrixMessage[] }[] = [];
     let currentDate = '';
 
     messages.forEach(message => {
@@ -211,7 +193,7 @@ export function ChatMessages({
     return grouped;
   }, [messages]);
 
-  const formatDateHeader = (dateString: string) => {
+  const formatDateHeader = (dateString: string): string => {
     const date = new Date(dateString);
     const now = new Date();
     const yesterday = new Date(now);

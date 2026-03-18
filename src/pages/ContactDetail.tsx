@@ -11,21 +11,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { ActivityTimeline, type Activity } from "@/components/contacts/ActivityTimeline";
 import { debugConsole } from "@/utils/debugConsole";
-
-interface Contact {
-  id: string;
-  name: string;
-  role?: string | null;
-  organization?: string | null;
-  email?: string | null;
-  phone?: string | null;
-  location?: string | null;
-  category?: "citizen" | "colleague" | "lobbyist" | "media" | "business" | null;
-  priority?: "low" | "medium" | "high" | null;
-  last_contact?: string | null;
-  avatar_url?: string | null;
-  notes?: string | null;
-}
+import type { Contact, ContactCategory, ContactPriority } from "@/types/contact";
 
 export default function ContactDetail() {
   const { id } = useParams();
@@ -64,8 +50,8 @@ export default function ContactDetail() {
           email: data.email,
           phone: data.phone,
           location: data.location,
-          category: data.category as Contact["category"],
-          priority: data.priority as Contact["priority"],
+          category: data.category,
+          priority: data.priority,
           last_contact: data.last_contact,
           avatar_url: data.avatar_url,
           notes: data.notes,
@@ -106,7 +92,7 @@ export default function ContactDetail() {
       
       const formattedActivities: Activity[] = (data || []).map(activity => ({
         ...activity,
-        metadata: activity.metadata as Record<string, any> | undefined
+        metadata: (activity.metadata as Record<string, unknown> | null) ?? undefined
       }));
       
       setActivities(formattedActivities);
@@ -156,7 +142,7 @@ export default function ContactDetail() {
     );
   }
 
-  const getCategoryColor = (category: Contact["category"]) => {
+  const getCategoryColor = (category: ContactCategory | null | undefined): string => {
     switch (category) {
       case "citizen":
         return "bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-300";
@@ -173,7 +159,7 @@ export default function ContactDetail() {
     }
   };
 
-  const getPriorityColor = (priority: Contact["priority"]) => {
+  const getPriorityColor = (priority: ContactPriority | null | undefined): string | undefined => {
     switch (priority) {
       case "high":
         return "border-l-4 border-l-destructive";
@@ -184,7 +170,7 @@ export default function ContactDetail() {
     }
   };
 
-  const getPriorityLabel = (priority: Contact["priority"]) => {
+  const getPriorityLabel = (priority: ContactPriority | null | undefined): string | undefined => {
     switch (priority) {
       case "high": return "Hoch";
       case "medium": return "Mittel";
@@ -192,7 +178,7 @@ export default function ContactDetail() {
     }
   };
 
-  const getCategoryLabel = (category: Contact["category"]) => {
+  const getCategoryLabel = (category: ContactCategory | null | undefined): string | undefined => {
     switch (category) {
       case "citizen": return "Bürger";
       case "colleague": return "Kollege";
@@ -202,11 +188,11 @@ export default function ContactDetail() {
     }
   };
 
-  const getInitials = (name: string) => {
+  const getInitials = (name: string): string => {
     return name.split(" ").map(n => n[0]).join("").toUpperCase();
   };
 
-  const handleDelete = async () => {
+  const handleDelete = async (): Promise<void> => {
     try {
       const { error } = await supabase
         .from('contacts')
@@ -231,7 +217,7 @@ export default function ContactDetail() {
     }
   };
 
-  const handleEdit = () => {
+  const handleEdit = (): void => {
     navigate(`/contacts/${id}/edit`);
   };
 

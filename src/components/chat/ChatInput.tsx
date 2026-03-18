@@ -34,7 +34,7 @@ export function ChatInput({ onSendMessage, onTyping, disabled, placeholder }: Ch
     };
   }, []);
 
-  const handleChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
+  const handleChange = (e: React.ChangeEvent<HTMLTextAreaElement>): void => {
     setMessage(e.target.value);
     
     // Send typing notification
@@ -53,7 +53,7 @@ export function ChatInput({ onSendMessage, onTyping, disabled, placeholder }: Ch
     }
   };
 
-  const handleSend = async () => {
+  const handleSend = async (): Promise<void> => {
     const trimmedMessage = message.trim();
     if (!trimmedMessage || isSending || disabled || sendLockRef.current) return;
 
@@ -78,7 +78,7 @@ export function ChatInput({ onSendMessage, onTyping, disabled, placeholder }: Ch
     }
   };
 
-  const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>): void => {
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault();
       handleSend();

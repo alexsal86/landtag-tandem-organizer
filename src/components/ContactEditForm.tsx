@@ -17,46 +17,10 @@ import { DuplicateWarning } from "@/components/DuplicateWarning";
 import { ImageCropper } from "@/components/ui/ImageCropper";
 
 import { TagInput } from "@/components/ui/tag-input";
-
-interface Contact {
-  id: string;
-  contact_type: "person" | "organization";
-  name: string;
-  role?: string;
-  organization?: string;
-  organization_id?: string;
-  email?: string;
-  phone?: string;
-  location?: string;
-  address?: string;
-  birthday?: string;
-  website?: string;
-  linkedin?: string;
-  twitter?: string;
-  facebook?: string;
-  instagram?: string;
-  xing?: string;
-  category?: "citizen" | "colleague" | "lobbyist" | "media" | "business";
-  priority?: "low" | "medium" | "high";
-  last_contact?: string;
-  avatar_url?: string;
-  notes?: string;
-  additional_info?: string;
-  legal_form?: string;
-  industry?: string;
-  main_contact_person?: string;
-  business_description?: string;
-  tags?: string[];
-  business_street?: string;
-  business_house_number?: string;
-  business_postal_code?: string;
-  business_city?: string;
-  business_country?: string;
-  gender?: string;
-}
+import type { ContactDuplicateCandidate, EditableContact } from "@/types/contact";
 
 interface ContactEditFormProps {
-  contact: Contact;
+  contact: EditableContact;
   onSuccess: () => void;
   onCancel: () => void;
 }
@@ -64,12 +28,12 @@ interface ContactEditFormProps {
 export function ContactEditForm({ contact, onSuccess, onCancel }: ContactEditFormProps) {
   const [formData, setFormData] = useState({
     ...contact,
-    tags: (contact as any).tags || [],
+    tags: contact.tags ?? [],
   });
-  const [organizations, setOrganizations] = useState<any[]>([]);
+  const [organizations, setOrganizations] = useState<Array<{ id: string; name: string }>>([]);
   const [useCustomOrganization, setUseCustomOrganization] = useState(false);
   const [loading, setLoading] = useState(false);
-  const [existingContacts, setExistingContacts] = useState<UtilContact[]>([]);
+  const [existingContacts, setExistingContacts] = useState<ContactDuplicateCandidate[]>([]);
   const [duplicateMatches, setDuplicateMatches] = useState<DuplicateMatch[]>([]);
   const [showDuplicateWarning, setShowDuplicateWarning] = useState(false);
   const [emailValidationError, setEmailValidationError] = useState<string>('');
@@ -101,7 +65,7 @@ export function ContactEditForm({ contact, onSuccess, onCancel }: ContactEditFor
     }
   }, [contact.organization, organizations]);
 
-  const fetchOrganizations = async () => {
+  const fetchOrganizations = async (): Promise<void> => {
     try {
       const { data, error } = await supabase
         .from('contacts')
@@ -116,7 +80,7 @@ export function ContactEditForm({ contact, onSuccess, onCancel }: ContactEditFor
     }
   };
 
-  const fetchExistingContacts = async () => {
+  const fetchExistingContacts = async (): Promise<void> => {
     try {
       const { data, error } = await supabase
         .from('contacts')
@@ -137,7 +101,7 @@ export function ContactEditForm({ contact, onSuccess, onCancel }: ContactEditFor
     }
   };
 
-  const fetchAllTags = async () => {
+  const fetchAllTags = async (): Promise<void> => {
     try {
       const { data, error } = await supabase
         .from('contacts')
@@ -158,7 +122,7 @@ export function ContactEditForm({ contact, onSuccess, onCancel }: ContactEditFor
     }
   };
 
-  const fetchInheritedTags = async () => {
+  const fetchInheritedTags = async (): Promise<void> => {
     if (!formData.organization_id) {
       setInheritedTags([]);
       return;
@@ -180,7 +144,7 @@ export function ContactEditForm({ contact, onSuccess, onCancel }: ContactEditFor
     }
   };
 
-  const validateEmail = (email: string) => {
+  const validateEmail = (email: string): boolean => {
     if (!email) {
       setEmailValidationError('');
       return true;
@@ -195,13 +159,13 @@ export function ContactEditForm({ contact, onSuccess, onCancel }: ContactEditFor
     return true;
   };
 
-  const checkForDuplicates = (contactData: Omit<UtilContact, 'id'>) => {
+  const checkForDuplicates = (contactData: Omit<ContactDuplicateCandidate, 'id'>) => {
     const matches = findPotentialDuplicates(contactData, existingContacts);
     setDuplicateMatches(matches);
     return matches;
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>): Promise<void> => {
     e.preventDefault();
     
     debugConsole.log('Form submitted with data:', formData);
@@ -231,7 +195,7 @@ export function ContactEditForm({ contact, onSuccess, onCancel }: ContactEditFor
     await performUpdate();
   };
 
-  const performUpdate = async () => {
+  const performUpdate = async (): Promise<void> => {
     // Early validation
     if (!user) {
       debugConsole.error('No user available');
