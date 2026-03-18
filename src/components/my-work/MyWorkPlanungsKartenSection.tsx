@@ -265,7 +265,7 @@ export function MyWorkPlanungsKartenSection() {
                     </Button>
                   </TooltipTrigger><TooltipContent>Archivieren</TooltipContent></Tooltip></TooltipProvider>
                 )}
-                <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => navigate(`/eventplanning?planningId=${planning.id}`)}>
+                <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => navigate(`/eventplanning/${planning.id}`)}>
                   <ExternalLink className="h-3 w-3" />
                 </Button>
               </div>

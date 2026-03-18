@@ -605,7 +605,7 @@ export function EventPlanningDetailView(data: EventPlanningDataReturn) {
           </div>
 
           {/* RSVP Manager - NEU */}
-          <div className="lg:col-span-2">
+          <div id="rsvp-manager" className="lg:col-span-2 scroll-mt-24">
             <EventRSVPManager eventPlanningId={selectedPlanning.id} eventTitle={selectedPlanning.title} />
           </div>
 
