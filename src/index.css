@@ -1,4 +1,6 @@
 @import "tailwindcss";
+@config "../tailwind.config.ts";
+@plugin "tailwindcss-animate";
 
 /* Import React Big Calendar styles */
 @import './styles/react-big-calendar.css';
