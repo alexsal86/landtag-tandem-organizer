@@ -1,7 +1,7 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { format } from "date-fns";
 import { de } from "date-fns/locale";
-import { CalendarClock, Lightbulb, Link2, PlusCircle, RadioTower, TriangleAlert, UserRound, Wrench } from "lucide-react";
+import { CalendarClock, Lightbulb, Link2, Pencil, PlusCircle, RadioTower, Trash2, TriangleAlert, UserRound, Wrench } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { useTenant } from "@/hooks/useTenant";
@@ -11,6 +11,7 @@ import { getErrorMessage } from "@/utils/errorHandler";
 import { TopicBacklogEntry, TopicEditorialStatus, useTopicBacklog } from "@/hooks/useTopicBacklog";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -58,19 +59,35 @@ export function ThemenspeicherPanel({ onContentCreated }: Props) {
   const { currentTenant } = useTenant();
   const { toast } = useToast();
   const profileId = useCurrentProfileId();
-  const { createTopic: createBacklogTopic, topics, loading, channels, loadTopics } = useTopicBacklog();
+  const { createTopic: createBacklogTopic, topics, loading, channels, loadTopics, updateTopic, deleteTopic } = useTopicBacklog();
 
   const [selectedTopic, setSelectedTopic] = useState<TopicBacklogEntry | null>(null);
   const [isCreateTopicDialogOpen, setIsCreateTopicDialogOpen] = useState(false);
+  const [editingTopic, setEditingTopic] = useState<TopicBacklogEntry | null>(null);
+  const [deleteTopicCandidate, setDeleteTopicCandidate] = useState<TopicBacklogEntry | null>(null);
   const [newTopicTitle, setNewTopicTitle] = useState("");
   const [newTopicDescription, setNewTopicDescription] = useState("");
   const [newTopicTags, setNewTopicTags] = useState("");
+  const [newTopicStatus, setNewTopicStatus] = useState<TopicEditorialStatus>("idea");
+  const [newTopicPriority, setNewTopicPriority] = useState("1");
   const [selectedChannelId, setSelectedChannelId] = useState<string>("none");
   const [selectedTemplateKey, setSelectedTemplateKey] = useState<string>(TEMPLATES[0].key);
   const [scheduledDate, setScheduledDate] = useState<string>(format(new Date(), "yyyy-MM-dd"));
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [duplicateWarning, setDuplicateWarning] = useState<string | null>(null);
   const [overrideDuplicate, setOverrideDuplicate] = useState(false);
+
+
+  useEffect(() => {
+    if (!editingTopic) return;
+
+    setNewTopicTitle(editingTopic.topic);
+    setNewTopicDescription(editingTopic.short_description || "");
+    setNewTopicTags((editingTopic.tags || []).join(", "));
+    setNewTopicStatus(editingTopic.status);
+    setNewTopicPriority(String(editingTopic.priority || 1));
+    setIsCreateTopicDialogOpen(true);
+  }, [editingTopic]);
 
   const selectedTemplate = useMemo(
     () => TEMPLATES.find((template) => template.key === selectedTemplateKey) ?? TEMPLATES[0],
@@ -173,7 +190,16 @@ export function ThemenspeicherPanel({ onContentCreated }: Props) {
     void loadTopics();
   };
 
-  const createTopic = async () => {
+  const resetTopicForm = () => {
+    setNewTopicTitle("");
+    setNewTopicDescription("");
+    setNewTopicTags("");
+    setNewTopicStatus("idea");
+    setNewTopicPriority("1");
+    setEditingTopic(null);
+  };
+
+  const saveTopic = async () => {
     if (!newTopicTitle.trim()) return;
 
     setIsSubmitting(true);
@@ -181,20 +207,32 @@ export function ThemenspeicherPanel({ onContentCreated }: Props) {
       .split(",")
       .map((entry) => entry.trim())
       .filter(Boolean);
+    const parsedPriority = Number.parseInt(newTopicPriority, 10);
 
     try {
-      await createBacklogTopic({
-        topic: newTopicTitle.trim(),
-        tags: parsedTags,
-        status: "idea",
-        priority: 1,
-        short_description: newTopicDescription.trim() || null,
-      });
+      if (editingTopic) {
+        await updateTopic(editingTopic.id, {
+          topic: newTopicTitle.trim(),
+          tags: parsedTags,
+          status: newTopicStatus,
+          priority: Number.isNaN(parsedPriority) ? editingTopic.priority : parsedPriority,
+          short_description: newTopicDescription.trim() || null,
+        });
 
-      toast({ title: "Erstellt", description: "Neues Thema wurde im Themenspeicher angelegt." });
-      setNewTopicTitle("");
-      setNewTopicDescription("");
-      setNewTopicTags("");
+        toast({ title: "Aktualisiert", description: "Thema wurde im Themenspeicher aktualisiert." });
+      } else {
+        await createBacklogTopic({
+          topic: newTopicTitle.trim(),
+          tags: parsedTags,
+          status: newTopicStatus,
+          priority: Number.isNaN(parsedPriority) ? 1 : parsedPriority,
+          short_description: newTopicDescription.trim() || null,
+        });
+
+        toast({ title: "Erstellt", description: "Neues Thema wurde im Themenspeicher angelegt." });
+      }
+
+      resetTopicForm();
       setIsCreateTopicDialogOpen(false);
       void loadTopics();
       onContentCreated?.();
@@ -207,12 +245,33 @@ export function ThemenspeicherPanel({ onContentCreated }: Props) {
     }
   };
 
+  const handleDeleteTopic = async () => {
+    if (!deleteTopicCandidate) return;
+
+    setIsSubmitting(true);
+    try {
+      await deleteTopic(deleteTopicCandidate.id);
+      toast({ title: "Gelöscht", description: "Thema wurde aus dem Themenspeicher entfernt." });
+      if (selectedTopic?.id === deleteTopicCandidate.id) {
+        setSelectedTopic(null);
+        resetDialogState();
+      }
+      setDeleteTopicCandidate(null);
+      onContentCreated?.();
+    } catch (error: unknown) {
+      const msg = error instanceof Error ? error.message : String(error);
+      toast({ title: "Fehler", description: msg, variant: "destructive" });
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
   return (
     <section className="rounded-lg border bg-card p-4 space-y-3">
       <div className="flex items-center gap-2">
         <Lightbulb className="h-4 w-4 text-muted-foreground" />
         <h3 className="text-sm font-semibold text-foreground">Themenspeicher</h3>
-        <Button size="sm" variant="outline" className="ml-auto" onClick={() => setIsCreateTopicDialogOpen(true)}>
+        <Button size="sm" variant="outline" className="ml-auto" onClick={() => { resetTopicForm(); setIsCreateTopicDialogOpen(true); }}>
           <PlusCircle className="h-3.5 w-3.5 mr-1" />
           Neues Thema
         </Button>
@@ -236,10 +295,19 @@ export function ThemenspeicherPanel({ onContentCreated }: Props) {
                     </div>
                     {topic.short_description && <p className="text-xs text-muted-foreground">{topic.short_description}</p>}
                   </div>
-                  <Button size="sm" variant="outline" onClick={() => setSelectedTopic(topic)}>
-                    <PlusCircle className="h-3.5 w-3.5 mr-1" />
-                    In Redaktionsplanung übernehmen
-                  </Button>
+                  <div className="flex flex-wrap items-center gap-2">
+                    <Button size="sm" variant="outline" onClick={() => { setEditingTopic(topic); }}>
+                      <Pencil className="h-3.5 w-3.5 mr-1" />
+                      Bearbeiten
+                    </Button>
+                    <Button size="sm" variant="outline" onClick={() => setSelectedTopic(topic)}>
+                      <PlusCircle className="h-3.5 w-3.5 mr-1" />
+                      In Redaktionsplanung übernehmen
+                    </Button>
+                    <Button size="icon" variant="ghost" className="h-8 w-8 text-destructive hover:text-destructive" onClick={() => setDeleteTopicCandidate(topic)}>
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
+                  </div>
                 </div>
 
                 <div className="flex flex-wrap gap-1">
@@ -369,12 +437,12 @@ export function ThemenspeicherPanel({ onContentCreated }: Props) {
         </DialogContent>
       </Dialog>
 
-      <Dialog open={isCreateTopicDialogOpen} onOpenChange={setIsCreateTopicDialogOpen}>
+      <Dialog open={isCreateTopicDialogOpen} onOpenChange={(open) => { setIsCreateTopicDialogOpen(open); if (!open) resetTopicForm(); }}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Neues Thema im Themenspeicher</DialogTitle>
+            <DialogTitle>{editingTopic ? "Thema bearbeiten" : "Neues Thema im Themenspeicher"}</DialogTitle>
             <DialogDescription>
-              Erstelle ein neues Thema, das anschließend in der Redaktionsplanung genutzt werden kann.
+              {editingTopic ? "Pflege Titel, Beschreibung, Priorität und Status direkt im Themenspeicher." : "Erstelle ein neues Thema, das anschließend in der Redaktionsplanung genutzt werden kann."}
             </DialogDescription>
           </DialogHeader>
 
@@ -408,16 +476,59 @@ export function ThemenspeicherPanel({ onContentCreated }: Props) {
                 placeholder="bildung, kommune, jugend"
               />
             </div>
+
+            <div className="grid gap-3 sm:grid-cols-2">
+              <div>
+                <Label>Status</Label>
+                <Select value={newTopicStatus} onValueChange={(value) => setNewTopicStatus(value as TopicEditorialStatus)}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    {Object.entries(STATUS_META).map(([value, meta]) => (
+                      <SelectItem key={value} value={value}>{meta.label}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div>
+                <Label htmlFor="new-topic-priority">Priorität</Label>
+                <Input
+                  id="new-topic-priority"
+                  type="number"
+                  min="0"
+                  value={newTopicPriority}
+                  onChange={(event) => setNewTopicPriority(event.target.value)}
+                  placeholder="1"
+                />
+              </div>
+            </div>
           </div>
 
           <DialogFooter>
             <Button variant="outline" onClick={() => setIsCreateTopicDialogOpen(false)}>Abbrechen</Button>
-            <Button onClick={() => void createTopic()} disabled={isSubmitting || !newTopicTitle.trim()}>
-              Thema erstellen
+            <Button onClick={() => void saveTopic()} disabled={isSubmitting || !newTopicTitle.trim()}>
+              {editingTopic ? "Änderungen speichern" : "Thema erstellen"}
             </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      <AlertDialog open={!!deleteTopicCandidate} onOpenChange={(open) => { if (!open) setDeleteTopicCandidate(null); }}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Thema löschen?</AlertDialogTitle>
+            <AlertDialogDescription>
+              &quot;{deleteTopicCandidate?.topic}&quot; wird aus dem Themenspeicher entfernt. Bereits verknüpfte Beiträge können danach ihr Bezugsthema verlieren.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Abbrechen</AlertDialogCancel>
+            <AlertDialogAction onClick={() => void handleDeleteTopic()} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+              Löschen
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </section>
   );
 }

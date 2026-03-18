@@ -1,6 +1,6 @@
 import { type ReactNode, useCallback, useEffect, useMemo, useState } from "react";
 import { DragDropContext, Draggable, Droppable, type DropResult } from "@hello-pangea/dnd";
-import { ArrowLeft, ArrowRight, CalendarDays, CheckSquare, ClipboardList, GripVertical, Kanban, Pencil, Plus, Tag, type LucideIcon } from "lucide-react";
+import { ArrowLeft, ArrowRight, CalendarDays, CheckSquare, ClipboardList, GripVertical, Kanban, Pencil, Plus, Tag, Trash2, type LucideIcon } from "lucide-react";
 import { format } from "date-fns";
 import { useSearchParams } from "react-router-dom";
 import { de } from "date-fns/locale";
@@ -9,6 +9,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -497,7 +498,7 @@ export function MyWorkSocialPlannerBoard({ specialDays = [] }: MyWorkSocialPlann
   const [searchParams] = useSearchParams();
   const { users } = useTenantUsers();
   const { topics, loading: topicBacklogLoading, createTopic } = useTopicBacklog();
-  const { items, channels, loading, updateItem, createItem } = useSocialPlannerItems();
+  const { items, channels, loading, updateItem, createItem, deleteItem } = useSocialPlannerItems();
 
   const [viewMode, setViewMode] = useState<"calendar" | "kanban">("calendar");
   const [channelFilter, setChannelFilter] = useState<string>("all");
@@ -507,6 +508,7 @@ export function MyWorkSocialPlannerBoard({ specialDays = [] }: MyWorkSocialPlann
   const [sortBy, setSortBy] = useState<(typeof SORT_OPTIONS)[number]["value"]>("scheduled");
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
   const [editingItemId, setEditingItemId] = useState<string | null>(null);
+  const [deleteItemId, setDeleteItemId] = useState<string | null>(null);
   const [createTemplate, setCreateTemplate] = useState<string>("none");
   const [createTopicId, setCreateTopicId] = useState<string>("none");
   const [createTopicTitle, setCreateTopicTitle] = useState("");
@@ -532,6 +534,10 @@ export function MyWorkSocialPlannerBoard({ specialDays = [] }: MyWorkSocialPlann
   const editingItem = useMemo(
     () => items.find((item) => item.id === editingItemId) || null,
     [editingItemId, items],
+  );
+  const deleteCandidate = useMemo(
+    () => items.find((item) => item.id === deleteItemId) || null,
+    [deleteItemId, items],
   );
 
   const channelOptions = useMemo(
@@ -710,6 +716,20 @@ export function MyWorkSocialPlannerBoard({ specialDays = [] }: MyWorkSocialPlann
       setIsCreatingDraft(false);
     }
   };
+
+
+  const handleDeleteItem = useCallback(async () => {
+    if (!deleteItemId) return;
+
+    try {
+      await deleteItem(deleteItemId);
+      if (editingItemId === deleteItemId) setEditingItemId(null);
+      setDeleteItemId(null);
+      toast({ title: "Beitrag gelöscht", description: "Der Social-Media-Entwurf wurde aus dem Planner entfernt." });
+    } catch {
+      toast({ title: "Beitrag konnte nicht gelöscht werden", variant: "destructive" });
+    }
+  }, [deleteItem, deleteItemId, editingItemId, toast]);
 
   const clearFilters = () => {
     setChannelFilter("all");
@@ -900,10 +920,15 @@ export function MyWorkSocialPlannerBoard({ specialDays = [] }: MyWorkSocialPlann
                                   )}
 
                                   <div className="flex justify-between gap-2">
-                                    <Button variant="outline" size="sm" className="h-7" onClick={() => setEditingItemId(item.id)}>
-                                      <Pencil className="mr-1 h-3 w-3" />
-                                      Bearbeiten
-                                    </Button>
+                                    <div className="flex gap-2">
+                                      <Button variant="outline" size="sm" className="h-7" onClick={() => setEditingItemId(item.id)}>
+                                        <Pencil className="mr-1 h-3 w-3" />
+                                        Bearbeiten
+                                      </Button>
+                                      <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive hover:text-destructive" onClick={() => setDeleteItemId(item.id)}>
+                                        <Trash2 className="h-3.5 w-3.5" />
+                                      </Button>
+                                    </div>
                                     <div className="flex gap-1 flex-wrap">
                                       {(() => {
                                         const idx = STATUS_COLUMNS.findIndex((s) => s.id === item.workflow_status);
@@ -956,6 +981,23 @@ export function MyWorkSocialPlannerBoard({ specialDays = [] }: MyWorkSocialPlann
         }}
         onSave={handleSaveItem}
       />
+
+      <AlertDialog open={!!deleteCandidate} onOpenChange={(open) => { if (!open) setDeleteItemId(null); }}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Beitrag löschen?</AlertDialogTitle>
+            <AlertDialogDescription>
+              "{deleteCandidate?.topic}" wird aus dem Social Planner entfernt. Diese Aktion kann nicht rückgängig gemacht werden.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Abbrechen</AlertDialogCancel>
+            <AlertDialogAction onClick={() => void handleDeleteItem()} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+              Löschen
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       <Dialog open={isCreateDialogOpen} onOpenChange={(open) => {
         setIsCreateDialogOpen(open);
