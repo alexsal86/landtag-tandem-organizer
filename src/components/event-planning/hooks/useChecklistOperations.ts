@@ -1,9 +1,15 @@
 import { useState, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { debugConsole } from "@/utils/debugConsole";
-import { handleAppError } from "@/utils/errorHandler";
 import type { DropResult } from "@hello-pangea/dnd";
 import type { ChecklistItem } from "../types";
+
+const SYSTEM_POINT_OPTIONS = {
+  none: { title: "", type: "item" },
+  social_media: { title: "Social Media", type: "system_social_media" },
+} as const;
+
+type SystemPointKey = keyof typeof SYSTEM_POINT_OPTIONS;
 
 interface UseChecklistOperationsParams {
   user: { id: string } | null;
@@ -11,6 +17,9 @@ interface UseChecklistOperationsParams {
   collaborators: Array<{ event_planning_id: string; user_id: string; can_edit: boolean }>;
   selectedPlanningUserId: string | undefined;
   itemEmailActions: Record<string, any>;
+  currentTenantId?: string;
+  currentProfileId?: string | null;
+  selectedPlanningTitle?: string;
   toast: (opts: { title: string; description?: string; variant?: "default" | "destructive" }) => void;
   onRefreshDetails: (planningId: string) => Promise<void>;
 }
@@ -21,11 +30,15 @@ export function useChecklistOperations({
   collaborators,
   selectedPlanningUserId,
   itemEmailActions,
+  currentTenantId,
+  currentProfileId,
+  selectedPlanningTitle,
   toast,
   onRefreshDetails,
 }: UseChecklistOperationsParams) {
   const [checklistItems, setChecklistItems] = useState<ChecklistItem[]>([]);
   const [newChecklistItem, setNewChecklistItem] = useState("");
+  const [newChecklistItemType, setNewChecklistItemType] = useState<SystemPointKey>("none");
 
   const toggleChecklistItem = async (itemId: string, isCompleted: boolean) => {
     const canEdit =
@@ -93,17 +106,97 @@ export function useChecklistOperations({
   };
 
   const addChecklistItem = async () => {
-    if (!selectedPlanningId || !newChecklistItem.trim()) return;
-    const maxOrder = Math.max(...checklistItems.map(item => item.order_index), -1);
-    const itemType = newChecklistItem.startsWith('---') ? 'separator' : 'item';
-    const title = itemType === 'separator' ? newChecklistItem.replace(/^---\s*/, '') : newChecklistItem;
+    if (!selectedPlanningId) return;
 
-    const { data, error } = await supabase.from("event_planning_checklist_items").insert([{ event_planning_id: selectedPlanningId, title, order_index: maxOrder + 1, type: itemType }]).select().single();
-    if (error) { toast({ title: "Fehler", description: "Checklisten-Punkt konnte nicht hinzugefügt werden.", variant: "destructive" }); return; }
+    const selectedSystemPoint = SYSTEM_POINT_OPTIONS[newChecklistItemType];
+    const rawTitle = newChecklistItem.trim();
+    const isSeparator = newChecklistItemType === "none" && rawTitle.startsWith("---");
+    const itemType = selectedSystemPoint.type === "item"
+      ? (isSeparator ? "separator" : "item")
+      : selectedSystemPoint.type;
+    const title = itemType === "separator"
+      ? rawTitle.replace(/^---\s*/, "")
+      : (selectedSystemPoint.title || rawTitle);
+
+    if (!title) return;
+
+    const maxOrder = Math.max(...checklistItems.map(item => item.order_index), -1);
+
+    const { data, error } = await supabase
+      .from("event_planning_checklist_items")
+      .insert([{ event_planning_id: selectedPlanningId, title, order_index: maxOrder + 1, type: itemType }])
+      .select()
+      .single();
+    if (error) {
+      toast({ title: "Fehler", description: "Checklisten-Punkt konnte nicht hinzugefügt werden.", variant: "destructive" });
+      return;
+    }
+
+    if (itemType === "system_social_media") {
+      if (!currentTenantId || !currentProfileId) {
+        await supabase.from("event_planning_checklist_items").delete().eq("id", data.id);
+        toast({ title: "Fehler", description: "Systempunkt konnte ohne Tenant-/Profilkontext nicht angelegt werden.", variant: "destructive" });
+        return;
+      }
+
+      try {
+        const topicId = crypto.randomUUID();
+        const plannerItemId = crypto.randomUUID();
+        const topicTitle = `${title}: ${selectedPlanningTitle || "Veranstaltung"}`;
+
+        const { error: topicError } = await supabase.from("topic_backlog").insert({
+          id: topicId,
+          tenant_id: currentTenantId,
+          created_by: currentProfileId,
+          topic: topicTitle,
+          tags: ["eventplanung", "social-media"],
+          priority: 1,
+          status: "idea",
+          short_description: selectedPlanningTitle ? `Automatisch aus Veranstaltungsplanung "${selectedPlanningTitle}" angelegt.` : "Automatisch aus der Veranstaltungsplanung angelegt.",
+        } as any);
+        if (topicError) throw topicError;
+
+        const { error: plannerError } = await supabase.from("social_content_items").insert({
+          id: plannerItemId,
+          tenant_id: currentTenantId,
+          created_by: currentProfileId,
+          topic_backlog_id: topicId,
+          workflow_status: "idea",
+          approval_state: "draft",
+          format: "Social Media",
+          notes: selectedPlanningTitle ? `Automatisch aus Veranstaltungsplanung "${selectedPlanningTitle}" angelegt.` : "Automatisch aus der Veranstaltungsplanung angelegt.",
+        } as any);
+        if (plannerError) throw plannerError;
+
+        const plannerUrl = `/my-work?tab=redaktion&highlight=${plannerItemId}`;
+        const { error: actionError } = await supabase.from("event_planning_item_actions").insert({
+          checklist_item_id: data.id,
+          action_type: "social_planner",
+          is_enabled: true,
+          action_config: {
+            system_point: "social_media",
+            planner_item_id: plannerItemId,
+            topic_backlog_id: topicId,
+            planner_url: plannerUrl,
+            label: "Im Social Planner öffnen",
+          },
+        });
+        if (actionError) throw actionError;
+
+        toast({ title: "Systempunkt angelegt", description: "Social-Media-Punkt wurde erstellt und mit dem Social Planner verknüpft." });
+      } catch (systemPointError) {
+        debugConsole.error("Error creating social media system point:", systemPointError);
+        await supabase.from("event_planning_checklist_items").delete().eq("id", data.id);
+        toast({ title: "Fehler", description: "Systempunkt konnte nicht vollständig angelegt werden.", variant: "destructive" });
+        return;
+      }
+    }
 
     const transformedData: ChecklistItem = { ...data, sub_items: Array.isArray(data.sub_items) ? data.sub_items as any : (data.sub_items ? JSON.parse(data.sub_items as string) : []) };
     setChecklistItems([...checklistItems, transformedData]);
     setNewChecklistItem("");
+    setNewChecklistItemType("none");
+    await onRefreshDetails(selectedPlanningId);
   };
 
   const deleteChecklistItem = async (itemId: string) => {
@@ -178,6 +271,8 @@ export function useChecklistOperations({
     setChecklistItems,
     newChecklistItem,
     setNewChecklistItem,
+    newChecklistItemType,
+    setNewChecklistItemType,
     toggleChecklistItem,
     updateChecklistItemTitle,
     addChecklistItem,

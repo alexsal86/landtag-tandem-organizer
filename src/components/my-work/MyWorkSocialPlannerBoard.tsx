@@ -1,7 +1,8 @@
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { DragDropContext, Draggable, Droppable, type DropResult } from "@hello-pangea/dnd";
 import { ArrowLeft, ArrowRight, CalendarDays, GripVertical, Kanban, Plus, Tag } from "lucide-react";
 import { format } from "date-fns";
+import { useSearchParams } from "react-router-dom";
 import { de } from "date-fns/locale";
 import { SocialPlannerCalendar } from "./SocialPlannerCalendar";
 import { Badge } from "@/components/ui/badge";
@@ -41,6 +42,7 @@ const APPROVAL_LABELS: Record<string, string> = {
 
 export function MyWorkSocialPlannerBoard() {
   const { toast } = useToast();
+  const [searchParams] = useSearchParams();
   const { users } = useTenantUsers();
   const { topics, loading: topicBacklogLoading, createTopic } = useTopicBacklog();
   const { items, channels, loading, updateItem, createItem } = useSocialPlannerItems();
@@ -209,6 +211,26 @@ export function MyWorkSocialPlannerBoard() {
 
   const hasActiveFilters = channelFilter !== "all" || ownerFilter !== "all" || statusFilter !== "all" || tagSearch.trim().length > 0 || sortBy !== "scheduled";
 
+  useEffect(() => {
+    const highlightId = searchParams.get("highlight");
+    if (!highlightId || items.length === 0) return;
+
+    const targetItem = items.find((item) => item.id === highlightId);
+    if (!targetItem) return;
+
+    setViewMode("kanban");
+    const timeout = window.setTimeout(() => {
+      const element = document.querySelector(`[data-social-planner-item-id="${highlightId}"]`);
+      if (element instanceof HTMLElement) {
+        element.scrollIntoView({ behavior: "smooth", block: "center" });
+        element.classList.add("notification-highlight");
+        window.setTimeout(() => element.classList.remove("notification-highlight"), 2200);
+      }
+    }, 150);
+
+    return () => window.clearTimeout(timeout);
+  }, [items, searchParams]);
+
   return (
     <Card>
       <CardHeader className="space-y-3">
@@ -316,6 +338,7 @@ export function MyWorkSocialPlannerBoard() {
                                   ref={dragProvided.innerRef}
                                   {...dragProvided.draggableProps}
                                   className="rounded-md border bg-card p-2 text-xs"
+                                  data-social-planner-item-id={item.id}
                                 >
                                   <div className="mb-1 flex items-start gap-2">
                                     <div {...dragProvided.dragHandleProps} className="mt-0.5 text-muted-foreground">
