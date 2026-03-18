@@ -3,6 +3,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 
 type Listener = () => void;
+type RealtimeSubscriber = (onEvent: Listener) => void;
 
 /**
  * Shared Realtime hook for messages, message_recipients, and message_confirmations.
@@ -16,14 +17,14 @@ let channelRef: ReturnType<typeof supabase.channel> | null = null;
 let currentUserId: string | null = null;
 let debounceTimer: ReturnType<typeof setTimeout> | null = null;
 
-function notifyListeners() {
+function notifyListeners(): void {
   if (debounceTimer) clearTimeout(debounceTimer);
   debounceTimer = setTimeout(() => {
     listeners.forEach(fn => fn());
   }, 1000);
 }
 
-function ensureChannel(userId: string) {
+function ensureChannel(userId: string): void {
   if (channelRef && currentUserId === userId) return;
   
   // Clean up old channel
@@ -62,7 +63,7 @@ function ensureChannel(userId: string) {
     .subscribe();
 }
 
-function cleanupChannel() {
+function cleanupChannel(): void {
   if (listeners.size > 0) return; // Other subscribers still active
   if (channelRef) {
     supabase.removeChannel(channelRef);
@@ -80,7 +81,7 @@ function cleanupChannel() {
  * Call the returned callback (onEvent) whenever messages/confirmations/recipients change.
  * The callback is debounced at 1s to prevent rapid refetches.
  */
-export function useMessagesRealtime(onEvent: () => void) {
+export function useMessagesRealtime(onEvent: Listener): void {
   const { user } = useAuth();
   const callbackRef = useRef(onEvent);
   callbackRef.current = onEvent;

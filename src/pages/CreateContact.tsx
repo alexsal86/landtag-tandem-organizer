@@ -25,26 +25,14 @@ import {
 } from "@/lib/utils";
 import { DuplicateWarning } from "@/components/DuplicateWarning";
 import { TagInput } from "@/components/ui/tag-input";
+import type { ContactCategory, ContactDuplicateCandidate, ContactPriority, EditableContact } from "@/types/contact";
 
-interface ContactFormData {
-  contact_type: "person" | "organization";
-  gender: string;
-  name: string;
-  role: string;
-  organization_id: string;
-  email: string;
-  phone: string;
-  website: string;
-  address: string;
-  category: "citizen" | "colleague" | "lobbyist" | "media" | "business" | "";
-  priority: "low" | "medium" | "high" | "";
-  notes: string;
-  tags: string[];
-  industry: string;
-  main_contact_person: string;
+type ContactFormData = Pick<EditableContact, "contact_type" | "gender" | "name" | "role" | "organization_id" | "email" | "phone" | "website" | "address" | "notes" | "tags" | "industry" | "main_contact_person"> & {
+  category: ContactCategory | "";
+  priority: ContactPriority | "";
   added_reason: string;
   added_at: string;
-}
+};
 
 const ADDED_REASON_OPTIONS = [
   { value: "veranstaltung", label: "Veranstaltung" },
@@ -86,7 +74,7 @@ export function CreateContact() {
   const [organizations, setOrganizations] = useState<
     Array<{ id: string; name: string }>
   >([]);
-  const [existingContacts, setExistingContacts] = useState<Contact[]>([]);
+  const [existingContacts, setExistingContacts] = useState<ContactDuplicateCandidate[]>([]);
   const [duplicateMatches, setDuplicateMatches] = useState<DuplicateMatch[]>(
     [],
   );
@@ -103,7 +91,7 @@ export function CreateContact() {
     }
   }, [user, currentTenant]);
 
-  const fetchOrganizations = async () => {
+  const fetchOrganizations = async (): Promise<void> => {
     const { data, error } = await supabase
       .from("contacts")
       .select("id, name")
@@ -114,7 +102,7 @@ export function CreateContact() {
     if (!error) setOrganizations(data || []);
   };
 
-  const fetchExistingContacts = async () => {
+  const fetchExistingContacts = async (): Promise<void> => {
     const { data, error } = await supabase
       .from("contacts")
       .select("id, name, email, phone, organization, organization_id")
@@ -135,7 +123,7 @@ export function CreateContact() {
     );
   };
 
-  const fetchAllTags = async () => {
+  const fetchAllTags = async (): Promise<void> => {
     const { data, error } = await supabase
       .from("contacts")
       .select("tags")
@@ -152,7 +140,7 @@ export function CreateContact() {
     setAllTags(Array.from(tagsSet));
   };
 
-  const validateEmail = (email: string) => {
+  const validateEmail = (email: string): boolean => {
     if (!email) {
       setEmailValidationError("");
       return true;
@@ -169,13 +157,13 @@ export function CreateContact() {
     return true;
   };
 
-  const checkForDuplicates = (contactData: Omit<Contact, "id">) => {
+  const checkForDuplicates = (contactData: Omit<ContactDuplicateCandidate, "id">) => {
     const matches = findPotentialDuplicates(contactData, existingContacts);
     setDuplicateMatches(matches);
     return matches;
   };
 
-  const handleInputChange = (field: keyof ContactFormData, value: string) => {
+  const handleInputChange = (field: keyof ContactFormData, value: string): void => {
     setFormData((prev) => ({ ...prev, [field]: value }));
 
     if (field === "email") validateEmail(value);
@@ -193,7 +181,7 @@ export function CreateContact() {
     }
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>): Promise<void> => {
     e.preventDefault();
 
     const requiredFields: Array<keyof ContactFormData> = [
