@@ -1,7 +1,12 @@
 // Type augmentation for @supabase/supabase-js
-// Adds missing members to SupabaseAuthClient and ensures key types are exported.
+// Adds missing members while preserving all original exports (including createClient).
+
+import '@supabase/supabase-js';
 
 declare module '@supabase/supabase-js' {
+  // Re-export createClient so the augmentation doesn't shadow it
+  export function createClient<T = any>(url: string, key: string, options?: any): any;
+
   export interface User {
     id: string;
     email?: string;
@@ -32,25 +37,4 @@ declare module '@supabase/supabase-js' {
     errors: any[];
     [key: string]: any;
   };
-
-  interface SupabaseAuthClient {
-    getUser(): Promise<{ data: { user: User | null }; error: any }>;
-    getSession(): Promise<{ data: { session: Session | null }; error: any }>;
-    updateUser(attributes: Record<string, any>): Promise<{ data: { user: User | null }; error: any }>;
-    signInWithPassword(credentials: { email: string; password: string }): Promise<any>;
-    signUp(credentials: { email: string; password: string; options?: any }): Promise<any>;
-    signOut(): Promise<any>;
-    onAuthStateChange(callback: (event: string, session: any) => void): { data: { subscription: any } };
-    resetPasswordForEmail(email: string, options?: any): Promise<any>;
-    mfa: {
-      enroll(params: any): Promise<any>;
-      challenge(params: any): Promise<any>;
-      verify(params: any): Promise<any>;
-      unenroll(params: any): Promise<any>;
-      listFactors(): Promise<any>;
-      getAuthenticatorAssuranceLevel(): Promise<any>;
-      [key: string]: any;
-    };
-    [key: string]: any;
-  }
 }
