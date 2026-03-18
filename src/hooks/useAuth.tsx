@@ -1,12 +1,13 @@
 import React, { useState, useEffect, createContext, useContext } from "react";
 import type {
-  AuthChangeEvent,
-  AuthResponse,
-  AuthTokenResponsePassword,
   Session,
-  Subscription,
   User,
 } from "@supabase/supabase-js";
+
+type AuthChangeEvent = string;
+type AuthResponse = any;
+type AuthTokenResponsePassword = any;
+type Subscription = { unsubscribe: () => void };
 import { supabase } from "@/integrations/supabase/client";
 import type { Database } from "@/integrations/supabase/types";
 import { logAuditEvent, AuditActions } from "@/hooks/useAuditLog";
