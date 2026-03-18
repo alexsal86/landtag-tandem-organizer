@@ -1,31 +1,7 @@
-// Type augmentation to bridge supabase-js v2 API used throughout codebase
-// with the installed version's type declarations.
-
-declare module '@supabase/supabase-js' {
-  export interface User {
-    id: string;
-    email?: string;
-    [key: string]: any;
-  }
-
-  interface SupabaseAuthClient {
-    getUser(): Promise<{ data: { user: User | null }; error: any }>;
-    getSession(): Promise<{ data: { session: any | null }; error: any }>;
-    updateUser(attributes: Record<string, any>): Promise<{ data: { user: User | null }; error: any }>;
-    signInWithPassword(credentials: { email: string; password: string }): Promise<any>;
-    signUp(credentials: { email: string; password: string; options?: any }): Promise<any>;
-    signOut(): Promise<any>;
-    onAuthStateChange(callback: (event: string, session: any) => void): { data: { subscription: any } };
-    resetPasswordForEmail(email: string, options?: any): Promise<any>;
-    mfa: {
-      enroll(params: any): Promise<any>;
-      challenge(params: any): Promise<any>;
-      verify(params: any): Promise<any>;
-      unenroll(params: any): Promise<any>;
-      listFactors(): Promise<any>;
-      getAuthenticatorAssuranceLevel(): Promise<any>;
-      [key: string]: any;
-    };
-    [key: string]: any;
-  }
-}
+// This file intentionally left minimal.
+// The real @supabase/supabase-js v2 types already export User, Session,
+// RealtimePostgresChangesPayload, and define auth methods (getUser, updateUser, mfa, etc.).
+// Previous augmentations here were BREAKING type resolution by shadowing the real types.
+//
+// If you need to extend Supabase types, prefer creating local interfaces
+// rather than using `declare module '@supabase/supabase-js'`.
