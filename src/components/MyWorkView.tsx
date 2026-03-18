@@ -497,7 +497,7 @@ export function MyWorkView() {
       {activeTab === "dashboard" && (
         <div className="space-y-6">
           <DashboardHeader />
-          <div className="grid grid-cols-1 lg:grid-cols-[3fr_2fr] 2xl:grid-cols-[3fr_2fr_2fr] gap-6 items-start">
+          <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,35fr)_minmax(0,35fr)_minmax(0,30fr)] gap-6 items-start">
             <Card>
               <CardHeader className="pb-3">
                 <CardTitle className="text-base font-semibold">📋 Fristen</CardTitle>
@@ -516,7 +516,7 @@ export function MyWorkView() {
                 <DashboardAppointments data={dashboardData} />
               </CardContent>
             </Card>
-            <div className="lg:col-span-2 2xl:col-span-1">
+            <div className="min-w-0">
               <Card>
                 <CardHeader className="pb-3">
                   <CardTitle className="text-base font-semibold">📰 News</CardTitle>
