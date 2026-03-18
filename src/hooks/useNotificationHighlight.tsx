@@ -1,68 +1,81 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { useSearchParams } from 'react-router-dom';
 
+export interface NotificationHighlightResult {
+  highlightId: string | null;
+  isHighlighted: (id: string | number | null | undefined) => boolean;
+  highlightRef: (id: string | number | null | undefined) => (element: HTMLElement | null) => void;
+}
+
 /**
  * Hook that reads ?highlight=xxx from the URL,
  * provides an isHighlighted(id) function,
  * scrolls to the highlighted element,
  * and clears the highlight after a timeout.
  */
-export const useNotificationHighlight = (clearDelayMs = 5000) => {
+export const useNotificationHighlight = (clearDelayMs = 5000): NotificationHighlightResult => {
   const [searchParams, setSearchParams] = useSearchParams();
   const highlightId = searchParams.get('highlight');
   const [activeHighlightId, setActiveHighlightId] = useState<string | null>(null);
-  const scrolledRef = useRef(false);
+  const scrolledRef = useRef<boolean>(false);
 
-  // Set active highlight when URL param changes
   useEffect(() => {
-    if (highlightId) {
-      setActiveHighlightId(highlightId);
-      scrolledRef.current = false;
+    if (!highlightId) {
+      setActiveHighlightId(null);
+      return;
+    }
 
-      // Clear highlight after delay
-      const timer = setTimeout(() => {
-        setActiveHighlightId(null);
-        // Remove highlight param from URL without navigation
-        setSearchParams(prev => {
+    setActiveHighlightId(highlightId);
+    scrolledRef.current = false;
+
+    const timer = window.setTimeout((): void => {
+      setActiveHighlightId(null);
+      setSearchParams(
+        (prev: URLSearchParams): URLSearchParams => {
           const next = new URLSearchParams(prev);
           next.delete('highlight');
           return next;
-        }, { replace: true });
-      }, clearDelayMs);
+        },
+        { replace: true },
+      );
+    }, clearDelayMs);
 
-      return () => clearTimeout(timer);
-    } else {
-      setActiveHighlightId(null);
-    }
-  }, [highlightId, clearDelayMs, setSearchParams]);
+    return () => {
+      window.clearTimeout(timer);
+    };
+  }, [clearDelayMs, highlightId, setSearchParams]);
 
-  // Scroll to highlighted element
-  const scrollToHighlight = useCallback((element: HTMLElement | null) => {
-    if (element && activeHighlightId && !scrolledRef.current) {
-      scrolledRef.current = true;
-      // Small delay to ensure element is rendered
-      requestAnimationFrame(() => {
-        element.scrollIntoView({ behavior: 'smooth', block: 'center' });
-      });
+  const scrollToHighlight = useCallback((element: HTMLElement | null): void => {
+    if (!element || !activeHighlightId || scrolledRef.current) {
+      return;
     }
+
+    scrolledRef.current = true;
+    requestAnimationFrame((): void => {
+      element.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    });
   }, [activeHighlightId]);
 
-  const isHighlighted = useCallback((id: string | number) => {
-    if (activeHighlightId == null) {
+  const isHighlighted = useCallback((id: string | number | null | undefined): boolean => {
+    if (activeHighlightId == null || id == null) {
       return false;
     }
 
     return activeHighlightId === String(id);
   }, [activeHighlightId]);
 
-  // Ref callback for the highlighted element
-  const highlightRef = useCallback((id: string | number) => {
-    return (element: HTMLElement | null) => {
-      if (element && isHighlighted(id)) {
+  const highlightRef = useCallback(
+    (id: string | number | null | undefined) => {
+      return (element: HTMLElement | null): void => {
+        if (!isHighlighted(id)) {
+          return;
+        }
+
         scrollToHighlight(element);
-      }
-    };
-  }, [isHighlighted, scrollToHighlight]);
+      };
+    },
+    [isHighlighted, scrollToHighlight],
+  );
 
   return {
     highlightId: activeHighlightId,

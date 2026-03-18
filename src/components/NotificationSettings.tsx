@@ -1,6 +1,7 @@
-import React, { useState, useEffect, useMemo, useCallback } from 'react';
+import { useState, useEffect, useMemo, useCallback } from 'react';
+import type { ChangeEvent, JSX } from 'react';
 import { debugConsole } from '@/utils/debugConsole';
-import { Bell, Clock, Mail, Smartphone, ChevronDown, ChevronRight } from 'lucide-react';
+import { Clock, Mail, Smartphone, ChevronDown, ChevronRight } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Switch } from '@/components/ui/switch';
 import { Button } from '@/components/ui/button';
@@ -8,18 +9,10 @@ import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { useNotifications } from '@/hooks/useNotifications';
+import type { NotificationType } from '@/hooks/useNotifications';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { useToast } from '@/hooks/use-toast';
-import { cn } from '@/lib/utils';
-
-interface NotificationType {
-  id: string;
-  name: string;
-  label: string;
-  description?: string;
-  category?: string;
-}
 
 interface NotificationTypeSettings {
   id: string;
@@ -27,12 +20,26 @@ interface NotificationTypeSettings {
   is_enabled: boolean;
   push_enabled: boolean;
   email_enabled: boolean;
-  quiet_hours_start?: string;
-  quiet_hours_end?: string;
-  type: NotificationType;
+  quiet_hours_start: string | null;
+  quiet_hours_end: string | null;
+  type: NotificationType & { category?: string | null };
 }
 
-// Category metadata with German labels and icons
+interface UserNotificationSettingsRow {
+  id: string;
+  notification_type_id: string;
+  is_enabled: boolean | null;
+  push_enabled: boolean | null;
+  email_enabled: boolean | null;
+  quiet_hours_start: string | null;
+  quiet_hours_end: string | null;
+}
+
+type NotificationSettingField = 'is_enabled' | 'push_enabled' | 'email_enabled';
+
+const DEFAULT_QUIET_HOURS_START = '22:00';
+const DEFAULT_QUIET_HOURS_END = '08:00';
+
 const CATEGORY_META: Record<string, { label: string; icon: string; order: number }> = {
   tasks: { label: 'Aufgaben', icon: '✅', order: 1 },
   decisions: { label: 'Entscheidungen', icon: '🗳️', order: 2 },
@@ -58,41 +65,53 @@ interface CategoryGroup {
   settings: NotificationTypeSettings[];
 }
 
-const CategorySection: React.FC<{
+interface CategorySectionProps {
   group: CategoryGroup;
   loading: boolean;
   pushPermission: NotificationPermission;
-  onToggleCategory: (category: string, field: 'is_enabled' | 'push_enabled' | 'email_enabled', value: boolean) => void;
-  onToggleSingle: (typeId: string, field: 'is_enabled' | 'push_enabled' | 'email_enabled', value: boolean) => void;
-}> = ({ group, loading, pushPermission, onToggleCategory, onToggleSingle }) => {
-  const [isOpen, setIsOpen] = useState(false);
+  onToggleCategory: (category: string, field: NotificationSettingField, value: boolean) => void;
+  onToggleSingle: (typeId: string, field: NotificationSettingField, value: boolean) => void;
+}
 
-  const allEnabled = group.settings.every(s => s.is_enabled);
-  const someEnabled = group.settings.some(s => s.is_enabled);
-  const allPush = group.settings.every(s => s.push_enabled);
-  const allEmail = group.settings.every(s => s.email_enabled);
+const getCategoryKey = (setting: NotificationTypeSettings): string => setting.type.category ?? 'system';
+const getQuietHoursStart = (value?: string | null): string => value ?? DEFAULT_QUIET_HOURS_START;
+const getQuietHoursEnd = (value?: string | null): string => value ?? DEFAULT_QUIET_HOURS_END;
+
+const CategorySection = ({
+  group,
+  loading,
+  pushPermission,
+  onToggleCategory,
+  onToggleSingle,
+}: CategorySectionProps): JSX.Element => {
+  const [isOpen, setIsOpen] = useState<boolean>(false);
+
+  const allEnabled = group.settings.every((setting: NotificationTypeSettings): boolean => setting.is_enabled);
+  const someEnabled = group.settings.some((setting: NotificationTypeSettings): boolean => setting.is_enabled);
+  const allPush = group.settings.every((setting: NotificationTypeSettings): boolean => setting.push_enabled);
+  const allEmail = group.settings.every((setting: NotificationTypeSettings): boolean => setting.email_enabled);
 
   return (
-    <div className="border rounded-lg overflow-hidden">
-      <div className="flex items-center justify-between p-4 bg-muted/30">
-        <div className="flex items-center gap-3 flex-1 min-w-0">
-          <span className="text-lg flex-shrink-0">{group.icon}</span>
+    <div className="overflow-hidden rounded-lg border">
+      <div className="flex items-center justify-between bg-muted/30 p-4">
+        <div className="flex min-w-0 flex-1 items-center gap-3">
+          <span className="text-lg shrink-0">{group.icon}</span>
           <div className="min-w-0">
-            <h4 className="font-medium text-sm">{group.label}</h4>
-            <p className="text-xs text-muted-foreground truncate">
-              {group.settings.map(s => s.type.label).join(', ')}
+            <h4 className="text-sm font-medium">{group.label}</h4>
+            <p className="truncate text-xs text-muted-foreground">
+              {group.settings.map((setting: NotificationTypeSettings): string => setting.type.label).join(', ')}
             </p>
           </div>
         </div>
 
-        <div className="flex items-center gap-4 flex-shrink-0">
+        <div className="flex shrink-0 items-center gap-4">
           {someEnabled && (
             <>
               <div className="flex items-center gap-1.5" title="Push für alle">
                 <Smartphone className="h-3.5 w-3.5 text-muted-foreground" />
                 <Switch
                   checked={allPush}
-                  onCheckedChange={(checked) => onToggleCategory(group.category, 'push_enabled', checked)}
+                  onCheckedChange={(checked: boolean): void => onToggleCategory(group.category, 'push_enabled', checked)}
                   disabled={loading || pushPermission !== 'granted'}
                   className="scale-75"
                 />
@@ -101,7 +120,7 @@ const CategorySection: React.FC<{
                 <Mail className="h-3.5 w-3.5 text-muted-foreground" />
                 <Switch
                   checked={allEmail}
-                  onCheckedChange={(checked) => onToggleCategory(group.category, 'email_enabled', checked)}
+                  onCheckedChange={(checked: boolean): void => onToggleCategory(group.category, 'email_enabled', checked)}
                   disabled={loading}
                   className="scale-75"
                 />
@@ -110,7 +129,7 @@ const CategorySection: React.FC<{
           )}
           <Switch
             checked={allEnabled}
-            onCheckedChange={(checked) => onToggleCategory(group.category, 'is_enabled', checked)}
+            onCheckedChange={(checked: boolean): void => onToggleCategory(group.category, 'is_enabled', checked)}
             disabled={loading}
           />
         </div>
@@ -118,32 +137,32 @@ const CategorySection: React.FC<{
 
       {someEnabled && group.settings.length > 1 && (
         <Collapsible open={isOpen} onOpenChange={setIsOpen}>
-          <CollapsibleTrigger className="flex items-center gap-1 px-4 py-2 text-xs text-muted-foreground hover:text-foreground transition-colors w-full">
+          <CollapsibleTrigger className="flex w-full items-center gap-1 px-4 py-2 text-xs text-muted-foreground transition-colors hover:text-foreground">
             {isOpen ? <ChevronDown className="h-3 w-3" /> : <ChevronRight className="h-3 w-3" />}
             Einzelne Typen anpassen
           </CollapsibleTrigger>
           <CollapsibleContent>
             <div className="divide-y border-t">
-              {group.settings.map((setting) => (
+              {group.settings.map((setting: NotificationTypeSettings) => (
                 <div key={setting.notification_type_id} className="flex items-center justify-between px-4 py-3">
-                  <div className="min-w-0 mr-3">
+                  <div className="mr-3 min-w-0">
                     <p className="text-sm">{setting.type.label}</p>
                     {setting.type.description && (
-                      <p className="text-xs text-muted-foreground truncate">{setting.type.description}</p>
+                      <p className="truncate text-xs text-muted-foreground">{setting.type.description}</p>
                     )}
                   </div>
-                  <div className="flex items-center gap-3 flex-shrink-0">
+                  <div className="flex shrink-0 items-center gap-3">
                     {setting.is_enabled && (
                       <>
                         <Switch
                           checked={setting.push_enabled}
-                          onCheckedChange={(checked) => onToggleSingle(setting.notification_type_id, 'push_enabled', checked)}
+                          onCheckedChange={(checked: boolean): void => onToggleSingle(setting.notification_type_id, 'push_enabled', checked)}
                           disabled={loading || pushPermission !== 'granted'}
                           className="scale-75"
                         />
                         <Switch
                           checked={setting.email_enabled}
-                          onCheckedChange={(checked) => onToggleSingle(setting.notification_type_id, 'email_enabled', checked)}
+                          onCheckedChange={(checked: boolean): void => onToggleSingle(setting.notification_type_id, 'email_enabled', checked)}
                           disabled={loading}
                           className="scale-75"
                         />
@@ -151,7 +170,7 @@ const CategorySection: React.FC<{
                     )}
                     <Switch
                       checked={setting.is_enabled}
-                      onCheckedChange={(checked) => onToggleSingle(setting.notification_type_id, 'is_enabled', checked)}
+                      onCheckedChange={(checked: boolean): void => onToggleSingle(setting.notification_type_id, 'is_enabled', checked)}
                       disabled={loading}
                     />
                   </div>
@@ -165,34 +184,37 @@ const CategorySection: React.FC<{
   );
 };
 
-export const NotificationSettings: React.FC = () => {
+export const NotificationSettings = (): JSX.Element => {
   const { user } = useAuth();
   const { toast } = useToast();
-  const {
-    pushSupported,
-    pushPermission,
-    requestPushPermission,
-    subscribeToPush
-  } = useNotifications();
+  const { pushSupported, pushPermission, requestPushPermission, subscribeToPush } = useNotifications();
 
   const [settings, setSettings] = useState<NotificationTypeSettings[]>([]);
-  const [loading, setLoading] = useState(false);
-  const [quietHoursStart, setQuietHoursStart] = useState('22:00');
-  const [quietHoursEnd, setQuietHoursEnd] = useState('08:00');
+  const [loading, setLoading] = useState<boolean>(false);
+  const [quietHoursStart, setQuietHoursStart] = useState<string>(DEFAULT_QUIET_HOURS_START);
+  const [quietHoursEnd, setQuietHoursEnd] = useState<string>(DEFAULT_QUIET_HOURS_END);
   const [hasActiveSubscription, setHasActiveSubscription] = useState<boolean | null>(null);
 
-  // Check if user has an active push subscription in the DB
-  const checkActiveSubscription = useCallback(async () => {
-    if (!user) return;
+  const checkActiveSubscription = useCallback(async (): Promise<void> => {
+    if (!user) {
+      setHasActiveSubscription(null);
+      return;
+    }
+
     try {
-      const { data } = await supabase
+      const { data, error } = await supabase
         .from('push_subscriptions')
         .select('id')
         .eq('user_id', user.id)
         .eq('is_active', true)
         .limit(1);
-      setHasActiveSubscription(!!data && data.length > 0);
-    } catch (error) {
+
+      if (error) {
+        throw error;
+      }
+
+      setHasActiveSubscription(Boolean(data && data.length > 0));
+    } catch (error: unknown) {
       debugConsole.error('Error checking active subscription:', error);
       setHasActiveSubscription(false);
     }
@@ -200,14 +222,16 @@ export const NotificationSettings: React.FC = () => {
 
   useEffect(() => {
     if (pushPermission === 'granted') {
-      checkActiveSubscription();
+      void checkActiveSubscription();
     }
-  }, [pushPermission, checkActiveSubscription]);
+  }, [checkActiveSubscription, pushPermission]);
 
-  // Load notification settings
   useEffect(() => {
-    const loadSettings = async () => {
-      if (!user) return;
+    const loadSettings = async (): Promise<void> => {
+      if (!user) {
+        setSettings([]);
+        return;
+      }
 
       try {
         const { data: types, error: typesError } = await supabase
@@ -215,36 +239,46 @@ export const NotificationSettings: React.FC = () => {
           .select('*')
           .eq('is_active', true);
 
-        if (typesError) throw typesError;
+        if (typesError) {
+          throw typesError;
+        }
 
         const { data: userSettings, error: settingsError } = await supabase
           .from('user_notification_settings')
           .select('*')
           .eq('user_id', user.id);
 
-        if (settingsError) throw settingsError;
+        if (settingsError) {
+          throw settingsError;
+        }
 
-        const combined = types?.map(type => {
-          const setting = userSettings?.find(s => s.notification_type_id === type.id);
+        const typedTypes = ((types as Array<NotificationType & { category?: string | null }> | null) ?? []);
+        const typedUserSettings = (userSettings as UserNotificationSettingsRow[] | null) ?? [];
+
+        const combined = typedTypes.map((type): NotificationTypeSettings => {
+          const setting = typedUserSettings.find(
+            (candidate: UserNotificationSettingsRow): boolean => candidate.notification_type_id === type.id,
+          );
+
           return {
-            id: setting?.id || '',
+            id: setting?.id ?? '',
             notification_type_id: type.id,
             is_enabled: setting?.is_enabled ?? true,
             push_enabled: setting?.push_enabled ?? false,
             email_enabled: setting?.email_enabled ?? false,
-            quiet_hours_start: setting?.quiet_hours_start || '22:00',
-            quiet_hours_end: setting?.quiet_hours_end || '08:00',
-            type: type as NotificationType,
+            quiet_hours_start: setting?.quiet_hours_start ?? DEFAULT_QUIET_HOURS_START,
+            quiet_hours_end: setting?.quiet_hours_end ?? DEFAULT_QUIET_HOURS_END,
+            type,
           };
-        }) || [];
+        });
 
         setSettings(combined);
 
         if (combined.length > 0) {
-          setQuietHoursStart(combined[0].quiet_hours_start || '22:00');
-          setQuietHoursEnd(combined[0].quiet_hours_end || '08:00');
+          setQuietHoursStart(getQuietHoursStart(combined[0].quiet_hours_start));
+          setQuietHoursEnd(getQuietHoursEnd(combined[0].quiet_hours_end));
         }
-      } catch (error) {
+      } catch (error: unknown) {
         debugConsole.error('Error loading notification settings:', error);
         toast({
           title: 'Fehler',
@@ -254,22 +288,21 @@ export const NotificationSettings: React.FC = () => {
       }
     };
 
-    loadSettings();
-  }, [user, toast]);
+    void loadSettings();
+  }, [toast, user]);
 
-  // Group settings by category
   const categoryGroups = useMemo((): CategoryGroup[] => {
     const groups: Record<string, NotificationTypeSettings[]> = {};
 
-    settings.forEach(setting => {
-      const category = setting.type.category || 'system';
-      if (!groups[category]) groups[category] = [];
+    settings.forEach((setting: NotificationTypeSettings): void => {
+      const category = getCategoryKey(setting);
+      groups[category] ??= [];
       groups[category].push(setting);
     });
 
     return Object.entries(groups)
-      .map(([category, items]) => {
-        const meta = CATEGORY_META[category] || { label: category, icon: '📌', order: 99 };
+      .map(([category, items]): CategoryGroup => {
+        const meta = CATEGORY_META[category] ?? { label: category, icon: '📌', order: 99 };
         return {
           category,
           label: meta.label,
@@ -278,52 +311,58 @@ export const NotificationSettings: React.FC = () => {
           settings: items,
         };
       })
-      .sort((a, b) => a.order - b.order);
+      .sort((left: CategoryGroup, right: CategoryGroup): number => left.order - right.order);
   }, [settings]);
 
-  // Update a single setting
-  const updateSetting = async (
+  const updateSetting = useCallback(async (
     typeId: string,
-    field: 'is_enabled' | 'push_enabled' | 'email_enabled',
-    value: boolean
-  ) => {
-    if (!user) return;
+    field: NotificationSettingField,
+    value: boolean,
+  ): Promise<void> => {
+    if (!user) {
+      return;
+    }
 
-    // Optimistic update
-    setSettings(prev => prev.map(s =>
-      s.notification_type_id === typeId ? { ...s, [field]: value } : s
-    ));
+    const previousSettings = settings;
+    const currentSetting = previousSettings.find(
+      (setting: NotificationTypeSettings): boolean => setting.notification_type_id === typeId,
+    );
+
+    setSettings((prev: NotificationTypeSettings[]): NotificationTypeSettings[] =>
+      prev.map((setting: NotificationTypeSettings): NotificationTypeSettings =>
+        setting.notification_type_id === typeId ? { ...setting, [field]: value } : setting,
+      ),
+    );
 
     try {
-      const setting = settings.find(s => s.notification_type_id === typeId);
-
-      const updateData = {
-        user_id: user.id,
-        notification_type_id: typeId,
-        is_enabled: setting?.is_enabled ?? true,
-        push_enabled: setting?.push_enabled ?? false,
-        email_enabled: setting?.email_enabled ?? false,
-        quiet_hours_start: setting?.quiet_hours_start || '22:00',
-        quiet_hours_end: setting?.quiet_hours_end || '08:00',
-        [field]: value,
-      };
-
       const { error, data } = await supabase
         .from('user_notification_settings')
-        .upsert(updateData, { onConflict: 'user_id,notification_type_id' })
-        .select()
+        .upsert(
+          {
+            user_id: user.id,
+            notification_type_id: typeId,
+            is_enabled: field === 'is_enabled' ? value : currentSetting?.is_enabled ?? true,
+            push_enabled: field === 'push_enabled' ? value : currentSetting?.push_enabled ?? false,
+            email_enabled: field === 'email_enabled' ? value : currentSetting?.email_enabled ?? false,
+            quiet_hours_start: getQuietHoursStart(currentSetting?.quiet_hours_start),
+            quiet_hours_end: getQuietHoursEnd(currentSetting?.quiet_hours_end),
+          },
+          { onConflict: 'user_id,notification_type_id' },
+        )
+        .select('id')
         .single();
 
-      if (error) throw error;
+      if (error) {
+        throw error;
+      }
 
-      setSettings(prev => prev.map(s =>
-        s.notification_type_id === typeId ? { ...s, id: data.id, [field]: value } : s
-      ));
-    } catch (error) {
-      // Revert optimistic update
-      setSettings(prev => prev.map(s =>
-        s.notification_type_id === typeId ? { ...s, [field]: !value } : s
-      ));
+      setSettings((prev: NotificationTypeSettings[]): NotificationTypeSettings[] =>
+        prev.map((setting: NotificationTypeSettings): NotificationTypeSettings =>
+          setting.notification_type_id === typeId ? { ...setting, id: data.id, [field]: value } : setting,
+        ),
+      );
+    } catch (error: unknown) {
+      setSettings(previousSettings);
       debugConsole.error('Error updating setting:', error);
       toast({
         title: 'Fehler',
@@ -331,44 +370,48 @@ export const NotificationSettings: React.FC = () => {
         variant: 'destructive',
       });
     }
-  };
+  }, [settings, toast, user]);
 
-  // Toggle all settings in a category
-  const toggleCategory = async (
+  const toggleCategory = useCallback(async (
     category: string,
-    field: 'is_enabled' | 'push_enabled' | 'email_enabled',
-    value: boolean
-  ) => {
-    if (!user) return;
+    field: NotificationSettingField,
+    value: boolean,
+  ): Promise<void> => {
+    if (!user) {
+      return;
+    }
 
-    const categorySettings = settings.filter(s => (s.type.category || 'system') === category);
+    const categorySettings = settings.filter(
+      (setting: NotificationTypeSettings): boolean => getCategoryKey(setting) === category,
+    );
+    const previousSettings = settings;
 
-    // Optimistic update
-    setSettings(prev => prev.map(s =>
-      (s.type.category || 'system') === category ? { ...s, [field]: value } : s
-    ));
+    setSettings((prev: NotificationTypeSettings[]): NotificationTypeSettings[] =>
+      prev.map((setting: NotificationTypeSettings): NotificationTypeSettings =>
+        getCategoryKey(setting) === category ? { ...setting, [field]: value } : setting,
+      ),
+    );
 
     try {
-      const updates = categorySettings.map(setting => ({
+      const updates = categorySettings.map((setting: NotificationTypeSettings) => ({
         user_id: user.id,
         notification_type_id: setting.notification_type_id,
         is_enabled: field === 'is_enabled' ? value : setting.is_enabled,
         push_enabled: field === 'push_enabled' ? value : setting.push_enabled,
         email_enabled: field === 'email_enabled' ? value : setting.email_enabled,
-        quiet_hours_start: setting.quiet_hours_start || '22:00',
-        quiet_hours_end: setting.quiet_hours_end || '08:00',
+        quiet_hours_start: getQuietHoursStart(setting.quiet_hours_start),
+        quiet_hours_end: getQuietHoursEnd(setting.quiet_hours_end),
       }));
 
       const { error } = await supabase
         .from('user_notification_settings')
         .upsert(updates, { onConflict: 'user_id,notification_type_id' });
 
-      if (error) throw error;
-    } catch (error) {
-      // Revert
-      setSettings(prev => prev.map(s =>
-        (s.type.category || 'system') === category ? { ...s, [field]: !value } : s
-      ));
+      if (error) {
+        throw error;
+      }
+    } catch (error: unknown) {
+      setSettings(previousSettings);
       debugConsole.error('Error updating category settings:', error);
       toast({
         title: 'Fehler',
@@ -376,15 +419,16 @@ export const NotificationSettings: React.FC = () => {
         variant: 'destructive',
       });
     }
-  };
+  }, [settings, toast, user]);
 
-  // Update quiet hours
-  const updateQuietHours = async () => {
-    if (!user) return;
+  const updateQuietHours = useCallback(async (): Promise<void> => {
+    if (!user) {
+      return;
+    }
 
     setLoading(true);
     try {
-      const updates = settings.map(setting => ({
+      const updates = settings.map((setting: NotificationTypeSettings) => ({
         user_id: user.id,
         notification_type_id: setting.notification_type_id,
         quiet_hours_start: quietHoursStart,
@@ -398,19 +442,23 @@ export const NotificationSettings: React.FC = () => {
         .from('user_notification_settings')
         .upsert(updates, { onConflict: 'user_id,notification_type_id' });
 
-      if (error) throw error;
+      if (error) {
+        throw error;
+      }
 
-      setSettings(prev => prev.map(s => ({
-        ...s,
-        quiet_hours_start: quietHoursStart,
-        quiet_hours_end: quietHoursEnd,
-      })));
+      setSettings((prev: NotificationTypeSettings[]): NotificationTypeSettings[] =>
+        prev.map((setting: NotificationTypeSettings): NotificationTypeSettings => ({
+          ...setting,
+          quiet_hours_start: quietHoursStart,
+          quiet_hours_end: quietHoursEnd,
+        })),
+      );
 
       toast({
         title: 'Gespeichert',
         description: 'Ruhezeiten wurden erfolgreich gespeichert.',
       });
-    } catch (error) {
+    } catch (error: unknown) {
       debugConsole.error('Error updating quiet hours:', error);
       toast({
         title: 'Fehler',
@@ -420,41 +468,38 @@ export const NotificationSettings: React.FC = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [quietHoursEnd, quietHoursStart, settings, toast, user]);
 
-  const enablePushNotifications = async () => {
+  const enablePushNotifications = useCallback(async (): Promise<void> => {
     const success = await requestPushPermission();
     if (success) {
       await subscribeToPush();
       await checkActiveSubscription();
     }
-  };
+  }, [checkActiveSubscription, requestPushPermission, subscribeToPush]);
 
-  const renewPushSubscription = async () => {
+  const renewPushSubscription = useCallback(async (): Promise<void> => {
     try {
       await subscribeToPush();
       await checkActiveSubscription();
-    } catch (error) {
+    } catch (error: unknown) {
       debugConsole.error('Error renewing push subscription:', error);
     }
-  };
+  }, [checkActiveSubscription, subscribeToPush]);
 
   return (
     <div className="space-y-6">
-      {/* Push Notifications */}
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <Smartphone className="h-5 w-5" />
             Push-Benachrichtigungen
           </CardTitle>
-          <CardDescription>
-            Erhalten Sie sofortige Benachrichtigungen in Ihrem Browser
-          </CardDescription>
+          <CardDescription>Erhalten Sie sofortige Benachrichtigungen in Ihrem Browser</CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
           {!pushSupported && (
-            <div className="p-4 bg-destructive/10 text-destructive rounded-lg">
+            <div className="rounded-lg bg-destructive/10 p-4 text-destructive">
               Push-Benachrichtigungen werden von diesem Browser nicht unterstützt.
             </div>
           )}
@@ -464,25 +509,23 @@ export const NotificationSettings: React.FC = () => {
               <div>
                 <Label className="text-base">Browser-Benachrichtigungen</Label>
                 <p className="text-sm text-muted-foreground">
-                  Status: {
-                    pushPermission === 'granted'
-                      ? (hasActiveSubscription === false ? 'Berechtigung erteilt, aber Verbindung abgelaufen' : 'Aktiviert')
-                      : pushPermission === 'denied' ? 'Blockiert' : 'Nicht aktiviert'
-                  }
+                  Status:{' '}
+                  {pushPermission === 'granted'
+                    ? (hasActiveSubscription === false ? 'Berechtigung erteilt, aber Verbindung abgelaufen' : 'Aktiviert')
+                    : pushPermission === 'denied'
+                      ? 'Blockiert'
+                      : 'Nicht aktiviert'}
                 </p>
               </div>
 
               {pushPermission !== 'granted' && (
-                <Button
-                  onClick={enablePushNotifications}
-                  disabled={pushPermission === 'denied'}
-                >
+                <Button onClick={(): void => void enablePushNotifications()} disabled={pushPermission === 'denied'}>
                   Aktivieren
                 </Button>
               )}
 
               {pushPermission === 'granted' && hasActiveSubscription === false && (
-                <Button onClick={renewPushSubscription} variant="outline">
+                <Button onClick={(): void => void renewPushSubscription()} variant="outline">
                   Push erneuern
                 </Button>
               )}
@@ -491,16 +534,13 @@ export const NotificationSettings: React.FC = () => {
         </CardContent>
       </Card>
 
-      {/* Quiet Hours */}
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <Clock className="h-5 w-5" />
             Ruhezeiten
           </CardTitle>
-          <CardDescription>
-            Keine Benachrichtigungen während dieser Zeiten
-          </CardDescription>
+          <CardDescription>Keine Benachrichtigungen während dieser Zeiten</CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="grid grid-cols-2 gap-4">
@@ -510,7 +550,7 @@ export const NotificationSettings: React.FC = () => {
                 id="quiet-start"
                 type="time"
                 value={quietHoursStart}
-                onChange={(e) => setQuietHoursStart(e.target.value)}
+                onChange={(event: ChangeEvent<HTMLInputElement>): void => setQuietHoursStart(event.target.value)}
               />
             </div>
             <div>
@@ -519,41 +559,36 @@ export const NotificationSettings: React.FC = () => {
                 id="quiet-end"
                 type="time"
                 value={quietHoursEnd}
-                onChange={(e) => setQuietHoursEnd(e.target.value)}
+                onChange={(event: ChangeEvent<HTMLInputElement>): void => setQuietHoursEnd(event.target.value)}
               />
             </div>
           </div>
-          <Button onClick={updateQuietHours} disabled={loading}>
+          <Button onClick={(): void => void updateQuietHours()} disabled={loading}>
             Ruhezeiten speichern
           </Button>
         </CardContent>
       </Card>
 
-      {/* Grouped Notification Types */}
       <Card>
         <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Bell className="h-5 w-5" />
-            Benachrichtigungstypen
-          </CardTitle>
-          <CardDescription>
-            Wählen Sie pro Bereich, wie Sie benachrichtigt werden möchten.
-            Die Spalten zeigen: <Smartphone className="h-3 w-3 inline" /> Push · <Mail className="h-3 w-3 inline" /> E-Mail · Hauptschalter
-          </CardDescription>
+          <CardTitle>Benachrichtigungstypen</CardTitle>
+          <CardDescription>Legen Sie fest, welche Benachrichtigungen Sie erhalten möchten.</CardDescription>
         </CardHeader>
-        <CardContent>
-          <div className="space-y-3">
-            {categoryGroups.map((group) => (
-              <CategorySection
-                key={group.category}
-                group={group}
-                loading={loading}
-                pushPermission={pushPermission}
-                onToggleCategory={toggleCategory}
-                onToggleSingle={updateSetting}
-              />
-            ))}
-          </div>
+        <CardContent className="space-y-4">
+          {categoryGroups.map((group: CategoryGroup) => (
+            <CategorySection
+              key={group.category}
+              group={group}
+              loading={loading}
+              pushPermission={pushPermission}
+              onToggleCategory={(category: string, field: NotificationSettingField, value: boolean): void => {
+                void toggleCategory(category, field, value);
+              }}
+              onToggleSingle={(typeId: string, field: NotificationSettingField, value: boolean): void => {
+                void updateSetting(typeId, field, value);
+              }}
+            />
+          ))}
         </CardContent>
       </Card>
     </div>
