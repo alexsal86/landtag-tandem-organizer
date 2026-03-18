@@ -81,8 +81,8 @@ export function useTimelineGeometry({
 
       const nextLines = assignments
         .map((assignment) => {
-          const checklistElement = checklistItemRefs[assignment.checklistItemId]?.current;
-          const timelinePoint = timelinePointRefs.current.get(`item-${assignment.checklistItemId}`) ?? null;
+          const checklistElement = checklistItemRefs[assignment.checklist_item_id]?.current;
+          const timelinePoint = timelinePointRefs.current.get(`item-${assignment.checklist_item_id}`) ?? null;
 
           if (!checklistElement || !timelinePoint) {
             return null;
