@@ -64,9 +64,9 @@ export function DecisionComments({
 
     if (reactionProfilesError) throw reactionProfilesError;
 
-    const reactionProfileMap = new Map(
-      (reactionProfiles || []).map((profile) => [profile.user_id, profile]),
-    ) as Map<string, any>;
+    const reactionProfileMap = new Map<string, any>(
+      (reactionProfiles || []).map((profile: any) => [profile.user_id, profile]),
+    );
 
     return (reactionRows || []).map((row) => ({
       ...row,
@@ -110,7 +110,7 @@ export function DecisionComments({
         .select('user_id, display_name, badge_color, avatar_url')
         .in('user_id', userIds);
 
-      const profileMap = new Map(profiles?.map(p => [p.user_id, p]) || []);
+      const profileMap = new Map<string, any>(profiles?.map((p: any) => [p.user_id, p]) || []);
 
       const reactionsByCommentId = buildReactionMap(reactionRows || [], user?.id);
 

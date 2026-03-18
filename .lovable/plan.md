@@ -1,30 +1,43 @@
 
+## Code-Qualität — Status
 
-## Analyse
+### Erledigt
 
-Es gibt zwei separate Probleme: einen Build-Fehler und die unzuverlässige Systempunkt-Erstellung.
+- **strictNullChecks: true** — aktiviert, alle Build-Fehler behoben
+- **noImplicitAny: true** — aktiviert, alle Build-Fehler behoben
+- **DOMPurify** als zentraler HTML-Sanitizer — alle `dangerouslySetInnerHTML` nutzen jetzt `sanitizeRichHtml()`
+- **Tenant-Access Guard** für Edge Functions — existiert in `supabase/functions/_shared/tenant-access.ts`
+- **ESLint `no-unused-vars: warn`** — aktiviert mit `argsIgnorePattern: '^_'`, erste Bereinigungsrunde in Pages/Hooks abgeschlossen
+- **Standalone `React`-Imports entfernt** — ~60 Dateien bereinigt
+- **State-Mutation fix** — `existingContacts.push()` → immutables Update in `useContactImport.ts`
+- **Non-null Assertion Guards** — `user!.id` / `currentTenant!.id` durch Early-Return-Guards ersetzt (~11 Dateien)
+- **Leere catch-Blöcke** — kritische Stellen in MatrixContext & DaySlipStore mit `debugConsole.warn` versehen
+- **JSON-Protocol Speaker-Normalisierung** — `speaker: string | { name }` korrekt normalisiert
 
-### 1. Build-Fehler: PostCSS/Tailwind v4
+### Noch offen
 
-`postcss.config.js` referenziert `tailwindcss` direkt als Plugin. Tailwind v4 hat das PostCSS-Plugin nach `@tailwindcss/postcss` verschoben (das Paket ist bereits installiert). Einfacher Config-Fix.
+1. ~~**`strict: true` aktivieren**~~ ✅ — war bereits aktiv in `tsconfig.app.json` inkl. `strictNullChecks` und `noImplicitAny`
+2. **Tote Imports weiter bereinigen** — ~65 standalone `React`-Imports in Components prüfen, weitere lucide-Icons und ungenutzte Variablen entfernen (ESLint-Regel zeigt Warnungen)
+3. **`no-explicit-any` schrittweise einführen** — nach Abschluss der `no-unused-vars`-Bereinigung
+4. ~~**Edge Functions `verify_jwt`-Audit**~~ ✅ — alle 18 Functions mit `verify_jwt = false` klassifiziert und abgesichert: Cron-Functions mit `requireServiceRole`, WebSocket mit `requireAuth`, Token-Endpoints mit eigener Validierung, `send-push-notification` + `fetch-karlsruhe-districts` mit Service-Role-Guard
+5. **CORS einschränken** — `Access-Control-Allow-Origin: *` durch Allowlist ersetzen für sensible Operationen
 
-### 2. Systempunkt-Erstellung schlägt fehl
+---
 
-Ich habe die tatsächlichen RLS-Policies in der Datenbank geprüft und folgende Probleme identifiziert:
+## No-Code Automations-Hub — Status
 
-**a) RSVP-Timeline: falscher Spaltenname**
-Der Code (Zeile 251-256) fügt `assigned_date` ein, aber die Tabelle `event_planning_timeline_assignments` hat die Spalte `due_date`. Das lässt den RSVP-Systempunkt bei versandten Einladungen fehlschlagen.
+### Erledigt
 
-**b) RLS-Policies sind korrekt** — die Migration wurde erfolgreich angewandt. Die `event_planning_item_actions`-Policies nutzen jetzt das Owner/Collaborator-Pattern. Die `topic_backlog` und `social_content_items` Policies nutzen `has_active_tenant_role()`, was funktioniert solange der User eine aktive Tenant-Mitgliedschaft hat.
-
-**c) Potentielles Problem: `.select().single()` nach Insert**
-Zeile 128-132 macht `.insert([...]).select().single()`. Falls der Insert zwar funktioniert aber das `.select()` durch eine RLS-Race-Condition kein Ergebnis liefert, ist `data` null und der gesamte Folge-Code bricht ab. Lösung: Pre-generierte ID verwenden (wie schon bei topic_backlog/social_content_items).
-
-### Plan
-
-1. **`postcss.config.js`**: `tailwindcss` durch `@tailwindcss/postcss` ersetzen, `autoprefixer` entfernen (Tailwind v4 inkludiert es)
-2. **`useChecklistOperations.ts`**:
-   - Checklist-Item-ID vorab generieren (`crypto.randomUUID()`) statt auf `.select().single()` zu vertrauen
-   - RSVP-Timeline: `assigned_date` → `due_date` korrigieren
-   - Bessere Fehlerbehandlung: wenn `data` null ist, sofort abbrechen mit Fehlermeldung
-
+- 4-Step Wizard (Grundlagen → Trigger → Bedingungen → Aktionen)
+- 10 Templates, Template-Galerie mit Suche/Filter
+- Kill-Switch, Dry-Run, Run-Now, Run-Historie mit Step-Logs
+- Error-Dashboard mit Retry, Regel-Versionierung, Import/Export
+- Rate Limiting, Idempotency, Audit-Trail
+- 5 Action-Typen, 5 Condition-Operators, 4 Trigger-Typen (inkl. Webhook)
+- Rollenbasierte Zugriffskontrolle
+- **Regel duplizieren** — Copy-Button pro Regel-Karte
+- **Nächste geplante Ausführung** — Badge für schedule-Regeln
+- **Regel-Statistiken** — Erfolgsrate (%) + Ø Laufzeit als Tooltip-Badge
+- **Notification-Kontext** — `rule_name`, `trigger_reason`, `run_id` in Notification-Payload
+- **Webhook-Trigger** — neue Edge Function `automation-webhook`, Secret-Authentifizierung, URL-Anzeige im Wizard
+- **Verschachtelte Condition-Gruppen** — rekursives AND/OR-Nesting bis 3 Ebenen im Wizard, backward-kompatible DB-Serialisierung

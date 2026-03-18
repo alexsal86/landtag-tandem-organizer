@@ -3,9 +3,10 @@ import { Calendar, dateFnsLocalizer, Views, type View } from "react-big-calendar
 import { format, parse, startOfWeek, getDay, getISOWeek, isSameDay } from "date-fns";
 import { de } from "date-fns/locale";
 import { Badge } from "@/components/ui/badge";
-import { ArrowLeft, ArrowRight, CalendarDays, Tag } from "lucide-react";
+import { ArrowLeft, ArrowRight, CalendarDays, Tag, icons } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import type { SocialPlannerItem, PlannerWorkflowStatus } from "@/hooks/useSocialPlannerItems";
+import { getSpecialDayHint, type SpecialDay } from "@/utils/dashboard/specialDays";
 import "react-big-calendar/lib/css/react-big-calendar.css";
 
 const locales = { de };
@@ -49,6 +50,7 @@ interface CalendarEvent {
 interface Props {
   items: SocialPlannerItem[];
   onUpdateSchedule: (id: string, date: string) => void;
+  specialDays: SpecialDay[];
 }
 
 interface DateHeaderProps {
@@ -74,7 +76,7 @@ function MonthDateHeader({ date, label }: DateHeaderProps) {
   );
 }
 
-export function SocialPlannerCalendar({ items, onUpdateSchedule }: Props) {
+export function SocialPlannerCalendar({ items, onUpdateSchedule, specialDays }: Props) {
   const [currentDate, setCurrentDate] = useState(new Date());
   const [view, setView] = useState<View>(Views.MONTH);
 
@@ -114,6 +116,25 @@ export function SocialPlannerCalendar({ items, onUpdateSchedule }: Props) {
     [onUpdateSchedule],
   );
 
+
+  const specialDayHint = useMemo(() => getSpecialDayHint(currentDate, specialDays), [currentDate, specialDays]);
+
+  const HintIcon = specialDayHint?.icon
+    ? icons[specialDayHint.icon as keyof typeof icons]
+    : null;
+
+  const renderHintText = useCallback((text: string) => {
+    const parts = text.split(/(\*\*.*?\*\*)/g);
+
+    return parts.map((part, index) => {
+      if (part.startsWith("**") && part.endsWith("**")) {
+        return <strong key={`${part}-${index}`} className="font-semibold">{part.slice(2, -2)}</strong>;
+      }
+
+      return <span key={`${part}-${index}`}>{part}</span>;
+    });
+  }, []);
+
   const messages = useMemo(() => ({
     today: "Heute",
     previous: "Zurück",
@@ -149,6 +170,19 @@ export function SocialPlannerCalendar({ items, onUpdateSchedule }: Props) {
           </div>
         </div>
       </div>
+
+      {specialDayHint && (
+        <div className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-950 dark:border-amber-900/70 dark:bg-amber-950/30 dark:text-amber-100">
+          <div className="flex items-start gap-2">
+            {HintIcon && <HintIcon className="mt-0.5 h-4 w-4 shrink-0 text-amber-600 dark:text-amber-400" />}
+            <div className="space-y-1">
+              {specialDayHint.text.split("\n").map((line, index) => (
+                <p key={`${line}-${index}`}>{renderHintText(line)}</p>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
 
       <div className="min-h-[500px]">
         <Calendar

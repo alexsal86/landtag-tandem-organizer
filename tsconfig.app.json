@@ -24,8 +24,6 @@
     "skipLibCheck": true,
     "strict": false,
     "strictNullChecks": false,
-    "strictFunctionTypes": false,
-    "strictPropertyInitialization": false,
     "target": "ES2020",
     "useDefineForClassFields": true
   },

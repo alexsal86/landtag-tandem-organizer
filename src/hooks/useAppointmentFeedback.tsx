@@ -145,7 +145,7 @@ export const useAppointmentFeedback = () => {
         .in('external_event_id', eventIds);
 
       // 3. Finde Events ohne Feedback
-      const feedbackMap = new Map<string, any>(feedbackData?.map(f => [f.external_event_id, f]) || []);
+      const feedbackMap = new Map<string, any>(feedbackData?.map((f: any) => [f.external_event_id, f]) || []);
       const eventsWithoutFeedback = externalEventsRaw.filter(e => !feedbackMap.has(e.id));
 
       // 4. Erstelle Feedback-Einträge für Events ohne Feedback
