@@ -142,70 +142,133 @@ export function useChecklistOperations({
         return;
       }
 
-      try {
+      if (itemType === "system_social_media") {
         const topicId = crypto.randomUUID();
         const plannerItemId = crypto.randomUUID();
-        const topicTitle = `${title}: ${selectedPlanningTitle || "Veranstaltung"}`;
 
-        const { error: topicError } = await supabase.from("topic_backlog").insert({
-          id: topicId,
-          tenant_id: currentTenantId,
-          created_by: currentProfileId,
-          topic: topicTitle,
-          tags: ["eventplanung", "social-media"],
-          priority: 1,
-          status: "idea",
-          short_description: selectedPlanningTitle ? `Automatisch aus Veranstaltungsplanung "${selectedPlanningTitle}" angelegt.` : "Automatisch aus der Veranstaltungsplanung angelegt.",
-        } as any);
-        if (topicError) throw topicError;
+        try {
+          const topicTitle = `${title}: ${selectedPlanningTitle || "Veranstaltung"}`;
 
-        const { error: plannerError } = await supabase.from("social_content_items").insert({
-          id: plannerItemId,
-          tenant_id: currentTenantId,
-          created_by: currentProfileId,
-          topic_backlog_id: topicId,
-          workflow_status: "idea",
-          approval_state: "draft",
-          format: "Social Media",
-          notes: selectedPlanningTitle ? `Automatisch aus Veranstaltungsplanung "${selectedPlanningTitle}" angelegt.` : "Automatisch aus der Veranstaltungsplanung angelegt.",
-        } as any);
-        if (plannerError) throw plannerError;
+          const { error: topicError } = await supabase.from("topic_backlog").insert({
+            id: topicId,
+            tenant_id: currentTenantId,
+            created_by: currentProfileId,
+            topic: topicTitle,
+            tags: ["eventplanung", "social-media"],
+            priority: 1,
+            status: "idea",
+            short_description: selectedPlanningTitle ? `Automatisch aus Veranstaltungsplanung "${selectedPlanningTitle}" angelegt.` : "Automatisch aus der Veranstaltungsplanung angelegt.",
+          } as any);
+          if (topicError) throw topicError;
 
-        const plannerUrl = `/my-work?tab=redaktion&highlight=${plannerItemId}`;
-        const { data: createdAction, error: actionError } = await supabase
-          .from("event_planning_item_actions")
-          .insert({
-            checklist_item_id: data.id,
-            action_type: "social_planner",
-            is_enabled: true,
-            action_config: {
-              system_point: "social_media",
-              planner_item_id: plannerItemId,
-              topic_backlog_id: topicId,
-              planner_url: plannerUrl,
-              label: "Im Social Planner öffnen",
-            },
-          })
-          .select()
-          .single();
-        if (actionError) throw actionError;
+          const { error: plannerError } = await supabase.from("social_content_items").insert({
+            id: plannerItemId,
+            tenant_id: currentTenantId,
+            created_by: currentProfileId,
+            topic_backlog_id: topicId,
+            workflow_status: "idea",
+            approval_state: "draft",
+            format: "Social Media",
+            notes: selectedPlanningTitle ? `Automatisch aus Veranstaltungsplanung "${selectedPlanningTitle}" angelegt.` : "Automatisch aus der Veranstaltungsplanung angelegt.",
+          } as any);
+          if (plannerError) throw plannerError;
 
-        onSocialPlannerActionCreated?.(data.id, createdAction);
-        toast({ title: "Systempunkt angelegt", description: "Social-Media-Punkt wurde erstellt und mit dem Social Planner verknüpft." });
-      } catch (systemPointError: any) {
-        debugConsole.error("Error creating social media system point:", systemPointError);
-        // Rollback: clean up checklist item AND any created topic_backlog/social_content_items
-        await supabase.from("event_planning_checklist_items").delete().eq("id", data.id);
-        // topicId and plannerItemId may have been created before the error
-        // We generated them with crypto.randomUUID() so we can reference them
-        // They are scoped inside the try block, so we need to attempt cleanup broadly
-        await supabase.from("social_content_items").delete().match({ 
-          tenant_id: currentTenantId, 
-          created_by: currentProfileId,
-          format: "Social Media",
-        } as any).filter("notes", "ilike", `%${selectedPlanningTitle || "Veranstaltungsplanung"}%`);
-        toast({ title: "Fehler", description: "Systempunkt konnte nicht vollständig angelegt werden.", variant: "destructive" });
-        return;
+          const plannerUrl = `/my-work?tab=redaktion&highlight=${plannerItemId}`;
+          const { data: createdAction, error: actionError } = await supabase
+            .from("event_planning_item_actions")
+            .insert({
+              checklist_item_id: data.id,
+              action_type: "social_planner",
+              is_enabled: true,
+              action_config: {
+                system_point: "social_media",
+                planner_item_id: plannerItemId,
+                topic_backlog_id: topicId,
+                planner_url: plannerUrl,
+                label: "Im Social Planner öffnen",
+              },
+            })
+            .select()
+            .single();
+          if (actionError) throw actionError;
+
+          onSocialPlannerActionCreated?.(data.id, createdAction);
+          toast({ title: "Systempunkt angelegt", description: "Social-Media-Punkt wurde erstellt und mit dem Social Planner verknüpft." });
+        } catch (systemPointError: any) {
+          debugConsole.error("Error creating social media system point:", systemPointError);
+          // Rollback all created resources using pre-generated IDs
+          await Promise.allSettled([
+            supabase.from("event_planning_checklist_items").delete().eq("id", data.id),
+            supabase.from("social_content_items").delete().eq("id", plannerItemId),
+            supabase.from("topic_backlog").delete().eq("id", topicId),
+          ]);
+          toast({ title: "Fehler", description: "Systempunkt konnte nicht vollständig angelegt werden.", variant: "destructive" });
+          return;
+        }
+      }
+
+      if (itemType === "system_rsvp") {
+        try {
+          // Check if RSVP guests exist for this event planning
+          const { data: rsvpGuests } = await supabase
+            .from("event_rsvps")
+            .select("id, status, invitation_sent, invited_at")
+            .eq("event_planning_id", selectedPlanningId)
+            .limit(100);
+
+          const guestCount = rsvpGuests?.length || 0;
+          const sentCount = rsvpGuests?.filter((g: any) => g.invitation_sent)?.length || 0;
+
+          const rsvpUrl = `/veranstaltungsplanung?highlight=${selectedPlanningId}`;
+          const { data: createdAction, error: actionError } = await supabase
+            .from("event_planning_item_actions")
+            .insert({
+              checklist_item_id: data.id,
+              action_type: "rsvp",
+              is_enabled: true,
+              action_config: {
+                system_point: "rsvp",
+                event_planning_id: selectedPlanningId,
+                rsvp_url: rsvpUrl,
+                label: "Einladungen verwalten",
+                guest_count: guestCount,
+                sent_count: sentCount,
+              },
+            })
+            .select()
+            .single();
+          if (actionError) throw actionError;
+
+          onSocialPlannerActionCreated?.(data.id, createdAction);
+
+          // If invitations were already sent, create a timeline assignment
+          if (sentCount > 0) {
+            const earliestSent = rsvpGuests
+              ?.filter((g: any) => g.invitation_sent && g.invited_at)
+              ?.sort((a: any, b: any) => new Date(a.invited_at).getTime() - new Date(b.invited_at).getTime())?.[0];
+
+            if (earliestSent) {
+              await supabase.from("event_planning_timeline_assignments").insert({
+                event_planning_id: selectedPlanningId,
+                checklist_item_id: data.id,
+                assigned_date: earliestSent.invited_at.split("T")[0],
+                notes: `${sentCount} Einladung(en) versandt`,
+              } as any);
+            }
+          }
+
+          toast({
+            title: "Systempunkt angelegt",
+            description: guestCount > 0
+              ? `RSVP-Punkt erstellt (${guestCount} Gäste, ${sentCount} eingeladen).`
+              : "RSVP-Punkt erstellt. Fügen Sie Gäste im RSVP-Manager hinzu.",
+          });
+        } catch (rsvpError: any) {
+          debugConsole.error("Error creating RSVP system point:", rsvpError);
+          await supabase.from("event_planning_checklist_items").delete().eq("id", data.id);
+          toast({ title: "Fehler", description: "RSVP-Systempunkt konnte nicht angelegt werden.", variant: "destructive" });
+          return;
+        }
       }
     }
 
