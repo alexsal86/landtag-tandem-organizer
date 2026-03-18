@@ -253,8 +253,8 @@ export function useChecklistOperations({
             if (earliestSent) {
               await supabase.from("event_planning_timeline_assignments").insert({
                 event_planning_id: selectedPlanningId,
-                checklist_item_id: data.id,
-                assigned_date: earliestSent.invited_at.split("T")[0],
+                checklist_item_id: itemId,
+                due_date: earliestSent.invited_at.split("T")[0],
                 notes: `${sentCount} Einladung(en) versandt`,
               } as any);
             }
