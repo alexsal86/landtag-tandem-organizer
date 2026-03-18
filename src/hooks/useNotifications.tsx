@@ -5,12 +5,48 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from './useAuth';
 import { useToast } from './use-toast';
 import { debugConsole } from '@/utils/debugConsole';
+import type { UnknownRecord } from '@/utils/typeSafety';
+
+export interface NotificationFeedbackContext {
+  target?: {
+    type?: string;
+    id?: string;
+  };
+  source?: {
+    id?: string;
+  };
+}
+
+export interface NotificationData extends UnknownRecord {
+  type?: string;
+  task_id?: string;
+  decision_id?: string;
+  start_time?: string;
+  message_id?: string;
+  document_id?: string;
+  document_type?: string;
+  documentId?: string;
+  letter_id?: string;
+  meeting_id?: string;
+  noteId?: string;
+  feedback_context?: NotificationFeedbackContext;
+  feedback_id?: string;
+  poll_id?: string;
+  request_id?: string;
+  planning_id?: string;
+  article_link?: string;
+  link?: string;
+  run_id?: string;
+  rule_id?: string;
+  source?: string;
+  navigation_context?: string;
+}
 
 export interface Notification {
   id: string;
   title: string;
   message: string;
-  data?: unknown;
+  data?: NotificationData | null;
   is_read: boolean;
   priority: 'low' | 'medium' | 'high' | 'urgent';
   created_at: string;
@@ -48,7 +84,7 @@ type NotificationRow = {
   id: string;
   title: string;
   message: string;
-  data: unknown;
+  data: NotificationData | null;
   is_read: boolean;
   priority: Notification['priority'];
   created_at: string;
@@ -364,7 +400,7 @@ export const useNotifications = () => {
 
           subscription = await pushManager.subscribe({
             userVisibleOnly: true,
-            applicationServerKey: urlBase64ToUint8Array(vapidData.publicKey).buffer,
+            applicationServerKey: urlBase64ToUint8Array(vapidData.publicKey) as BufferSource,
           });
         } catch (error: unknown) {
           debugConsole.error('❌ Failed to get VAPID key or create subscription:', error);

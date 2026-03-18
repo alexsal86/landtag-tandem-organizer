@@ -20,11 +20,30 @@ import { Switch } from '@/components/ui/switch';
 import { Slider } from '@/components/ui/slider';
 import { Label } from '@/components/ui/label';
 import { useNotifications, type Notification } from '@/contexts/NotificationContext';
+import type { NotificationDisplayPreferences } from '@/hooks/useNotificationDisplayPreferences';
 import { NotificationSettings } from '@/components/NotificationSettings';
 import { useNotificationDisplayPreferences } from '@/hooks/useNotificationDisplayPreferences';
 import { NOTIFICATION_SOUNDS, playNotificationSound, type SoundName, hasCustomSound, saveCustomSound, removeCustomSound } from '@/utils/notificationSounds';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
+
+
+type NotificationPosition = NotificationDisplayPreferences['position'];
+type NotificationSize = NotificationDisplayPreferences['size'];
+type NotificationsPageTab = 'all' | 'settings';
+type NotificationFilterStatus = 'all' | 'unread' | 'read';
+
+const isNotificationPosition = (value: string): value is NotificationPosition =>
+  value === 'top-right' || value === 'top-center' || value === 'bottom-right';
+
+const isNotificationSize = (value: string): value is NotificationSize =>
+  value === 'normal' || value === 'large';
+
+const isNotificationsPageTab = (value: string): value is NotificationsPageTab =>
+  value === 'all' || value === 'settings';
+
+const isNotificationFilterStatus = (value: string): value is NotificationFilterStatus =>
+  value === 'all' || value === 'unread' || value === 'read';
 
 const getNotificationIcon = (type: string) => {
   switch (type) {
@@ -157,7 +176,11 @@ function NotificationDisplaySettings() {
             <Label>Position</Label>
             <RadioGroup
               value={preferences.position}
-              onValueChange={(v) => setPreferences({ position: v as any })}
+              onValueChange={(value: string) => {
+                if (isNotificationPosition(value)) {
+                  setPreferences({ position: value });
+                }
+              }}
               className="grid grid-cols-3 gap-3"
             >
               <div className="flex items-center space-x-2 p-3 border rounded-lg hover:bg-muted/50 cursor-pointer">
@@ -188,7 +211,11 @@ function NotificationDisplaySettings() {
             <Label>Größe</Label>
             <RadioGroup
               value={preferences.size}
-              onValueChange={(v) => setPreferences({ size: v as any })}
+              onValueChange={(value: string) => {
+                if (isNotificationSize(value)) {
+                  setPreferences({ size: value });
+                }
+              }}
               className="grid grid-cols-2 gap-3"
             >
               <div className="flex items-center space-x-2 p-3 border rounded-lg hover:bg-muted/50 cursor-pointer">
@@ -207,11 +234,11 @@ function NotificationDisplaySettings() {
             <div className="flex items-center gap-3">
               <Select
                 value={preferences.persist ? 'persist' : String(preferences.duration)}
-                onValueChange={(v) => {
-                  if (v === 'persist') {
+                onValueChange={(value: string) => {
+                  if (value === 'persist') {
                     setPreferences({ persist: true });
                   } else {
-                    setPreferences({ persist: false, duration: Number(v) });
+                    setPreferences({ persist: false, duration: Number(value) });
                   }
                 }}
               >
@@ -256,7 +283,7 @@ function NotificationDisplaySettings() {
             <Label>Ton aktiviert</Label>
             <Switch
               checked={preferences.soundEnabled}
-              onCheckedChange={(checked) => setPreferences({ soundEnabled: checked })}
+              onCheckedChange={(checked: boolean) => setPreferences({ soundEnabled: checked })}
             />
           </div>
 
@@ -287,8 +314,8 @@ function NotificationDisplaySettings() {
                               variant="ghost"
                               size="icon"
                               className="h-7 w-7 text-destructive hover:text-destructive"
-                              onClick={(e) => {
-                                e.stopPropagation();
+                              onClick={(event: React.MouseEvent<HTMLButtonElement>) => {
+                                event.stopPropagation();
                                 handleRemoveCustomSound();
                               }}
                             >
@@ -299,8 +326,8 @@ function NotificationDisplaySettings() {
                             variant="ghost"
                             size="icon"
                             className="h-7 w-7"
-                            onClick={(e) => {
-                              e.stopPropagation();
+                            onClick={(event: React.MouseEvent<HTMLButtonElement>) => {
+                              event.stopPropagation();
                               playNotificationSound(sound.value, preferences.soundVolume);
                             }}
                           >
@@ -342,7 +369,10 @@ function NotificationDisplaySettings() {
                   <VolumeX className="h-4 w-4 text-muted-foreground flex-shrink-0" />
                   <Slider
                     value={[preferences.soundVolume * 100]}
-                    onValueChange={([v]) => setPreferences({ soundVolume: v / 100 })}
+                    onValueChange={(values: number[]) => {
+                      const [volume = 0] = values;
+                      setPreferences({ soundVolume: volume / 100 });
+                    }}
                     max={100}
                     step={5}
                     className="flex-1"
@@ -361,19 +391,19 @@ function NotificationDisplaySettings() {
 export function NotificationsPage() {
   const { notifications, unreadCount, markAsRead, markAllAsRead, deleteNotification } = useNotifications();
   const navigate = useNavigate();
-  const [activeTab, setActiveTab] = useState<'all' | 'settings'>('all');
-  const [filterStatus, setFilterStatus] = useState<'all' | 'unread' | 'read'>('all');
+  const [activeTab, setActiveTab] = useState<NotificationsPageTab>('all');
+  const [filterStatus, setFilterStatus] = useState<NotificationFilterStatus>('all');
   const [searchQuery, setSearchQuery] = useState('');
 
   const filteredNotifications = useMemo(() => {
     let filtered = notifications;
-    if (filterStatus === 'unread') filtered = filtered.filter(n => !n.is_read);
-    if (filterStatus === 'read') filtered = filtered.filter(n => n.is_read);
+    if (filterStatus === 'unread') filtered = filtered.filter((notification: Notification) => !notification.is_read);
+    if (filterStatus === 'read') filtered = filtered.filter((notification: Notification) => notification.is_read);
     if (searchQuery.trim()) {
       const q = searchQuery.toLowerCase();
-      filtered = filtered.filter(n =>
-        n.title.toLowerCase().includes(q) ||
-        n.message.toLowerCase().includes(q)
+      filtered = filtered.filter((notification: Notification) =>
+        notification.title.toLowerCase().includes(q) ||
+        notification.message.toLowerCase().includes(q)
       );
     }
     return filtered;
@@ -389,7 +419,11 @@ export function NotificationsPage() {
           </p>
         </div>
 
-        <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as any)}>
+        <Tabs value={activeTab} onValueChange={(value: string) => {
+          if (isNotificationsPageTab(value)) {
+            setActiveTab(value);
+          }
+        }}>
           <TabsList className="mb-6">
             <TabsTrigger value="all" className="gap-2">
               <Bell className="h-4 w-4" />
@@ -412,11 +446,15 @@ export function NotificationsPage() {
                 <Input
                   placeholder="Benachrichtigungen durchsuchen..."
                   value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
+                  onChange={(event: React.ChangeEvent<HTMLInputElement>) => setSearchQuery(event.target.value)}
                   className="pl-10"
                 />
               </div>
-              <Select value={filterStatus} onValueChange={(v) => setFilterStatus(v as any)}>
+              <Select value={filterStatus} onValueChange={(value: string) => {
+                if (isNotificationFilterStatus(value)) {
+                  setFilterStatus(value);
+                }
+              }}>
                 <SelectTrigger className="w-40">
                   <Filter className="h-4 w-4 mr-2" />
                   <SelectValue />
@@ -447,8 +485,9 @@ export function NotificationsPage() {
                   </div>
                 ) : (
                   <div className="divide-y">
-                    {filteredNotifications.map((notification) => {
+                    {filteredNotifications.map((notification: Notification) => {
                       const Icon = getNotificationIcon(notification.notification_types?.name || 'default');
+                      const notificationData = notification.data ?? null;
                       return (
                         <div
                           key={notification.id}
@@ -483,7 +522,7 @@ export function NotificationsPage() {
                                   variant="ghost"
                                   size="icon"
                                   className="h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity"
-                                  onClick={(e) => { e.stopPropagation(); deleteNotification(notification.id); }}
+                                  onClick={(event: React.MouseEvent<HTMLButtonElement>) => { event.stopPropagation(); void deleteNotification(notification.id); }}
                                 >
                                   <X className="h-3.5 w-3.5 text-muted-foreground" />
                                 </Button>
@@ -496,12 +535,12 @@ export function NotificationsPage() {
                                 {' · '}
                                 {formatDistanceToNow(new Date(notification.created_at), { addSuffix: true, locale: de })}
                               </span>
-                              {notification.data?.source === 'automation_rule' && notification.data?.rule_id && (
+                              {notificationData?.source === 'automation_rule' && notificationData.rule_id && (
                                 <button
                                   className="text-xs text-muted-foreground underline hover:text-primary text-left"
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    navigate(`/admin?tab=automation&highlight=${notification.data.run_id || notification.data.rule_id}`);
+                                  onClick={(event: React.MouseEvent<HTMLButtonElement>) => {
+                                    event.stopPropagation();
+                                    navigate(`/admin?tab=automation&highlight=${notificationData.run_id || notificationData.rule_id}`);
                                   }}
                                 >
                                   Warum diese Benachrichtigung?

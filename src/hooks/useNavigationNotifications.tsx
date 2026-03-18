@@ -4,6 +4,25 @@ import { useAuth } from './useAuth';
 import { useTenant } from './useTenant';
 import { debugConsole } from '@/utils/debugConsole';
 
+interface NavigationNotificationRow {
+  navigation_context: string | null;
+}
+
+interface AnnualTaskCompletionRow {
+  year: number | null;
+  completed_at: string | null;
+}
+
+interface AnnualTaskRow {
+  due_month: number;
+  annual_task_completions: AnnualTaskCompletionRow[] | null;
+}
+
+interface NavigationVisitRow {
+  navigation_context: string;
+  last_visited_at: string;
+}
+
 export interface NavigationCounts {
   [key: string]: number;
 }
@@ -24,7 +43,7 @@ export const useNavigationNotifications = (): NavigationNotifications => {
   // Suppress realtime reload briefly after manual mark-as-read
   const suppressReloadUntil = useRef<number>(0);
 
-  const loadNavigationCounts = async () => {
+  const loadNavigationCounts = async (): Promise<void> => {
     if (!user || !currentTenant) return;
     // Skip if we just manually updated
     if (Date.now() < suppressReloadUntil.current) return;
@@ -44,7 +63,7 @@ export const useNavigationNotifications = (): NavigationNotifications => {
 
       // Count notifications by context
       const counts: NavigationCounts = {};
-      notifications?.forEach((notification) => {
+      (notifications as NavigationNotificationRow[] | null)?.forEach((notification: NavigationNotificationRow) => {
         const context = notification.navigation_context;
         if (context) {
           counts[context] = (counts[context] || 0) + 1;
@@ -64,10 +83,11 @@ export const useNavigationNotifications = (): NavigationNotifications => {
         `)
         .or(`tenant_id.eq.${currentTenant.id},tenant_id.is.null`);
 
-      if (annualTasks) {
-        const overdueOrDueCount = annualTasks.filter((task: any) => {
-          const completions = task.annual_task_completions || [];
-          const currentYearCompletion = completions.find((c: any) => c.year === currentYear && c.completed_at);
+      const annualTaskRows = (annualTasks as AnnualTaskRow[] | null) ?? [];
+      if (annualTaskRows.length > 0) {
+        const overdueOrDueCount = annualTaskRows.filter((task: AnnualTaskRow) => {
+          const completions = task.annual_task_completions ?? [];
+          const currentYearCompletion = completions.find((completion: AnnualTaskCompletionRow) => completion.year === currentYear && completion.completed_at);
           if (currentYearCompletion) return false;
           return task.due_month <= currentMonth;
         }).length;
@@ -90,7 +110,7 @@ export const useNavigationNotifications = (): NavigationNotifications => {
       }
 
       const visitMap: Record<string, Date> = {};
-      visits?.forEach((visit) => {
+      (visits as NavigationVisitRow[] | null)?.forEach((visit: NavigationVisitRow) => {
         visitMap[visit.navigation_context] = new Date(visit.last_visited_at);
       });
 
@@ -102,7 +122,7 @@ export const useNavigationNotifications = (): NavigationNotifications => {
     }
   };
 
-  const markNavigationAsVisited = async (context: string) => {
+  const markNavigationAsVisited = async (context: string): Promise<void> => {
     if (!user) return;
 
     try {
@@ -138,13 +158,13 @@ export const useNavigationNotifications = (): NavigationNotifications => {
         .eq('is_read', false);
 
       // Update local state immediately
-      setLastVisited(prev => ({
+      setLastVisited((prev: Record<string, Date>) => ({
         ...prev,
         [context]: now,
       }));
 
       // Reset navigation count for this context
-      setNavigationCounts(prev => {
+      setNavigationCounts((prev: NavigationCounts) => {
         const updated = { ...prev, [context]: 0 };
         return updated;
       });
@@ -229,11 +249,11 @@ export const useNavigationNotifications = (): NavigationNotifications => {
         try {
           const data = JSON.parse(e.newValue);
           if (data.userId === user.id) {
-            setLastVisited(prev => ({
+            setLastVisited((prev: Record<string, Date>) => ({
               ...prev,
               [data.context]: new Date(data.timestamp),
             }));
-            setNavigationCounts(prev => ({
+            setNavigationCounts((prev: NavigationCounts) => ({
               ...prev,
               [data.context]: 0,
             }));

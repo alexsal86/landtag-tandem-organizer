@@ -1,12 +1,12 @@
-import type { Notification } from '@/hooks/useNotifications';
+import type { Notification, NotificationData } from '@/hooks/useNotifications';
 
 /**
  * Build a granular deep-link path based on notification type and data.
  * Shared between NotificationCenter (popover) and NotificationsPage.
  */
 export const buildDeepLinkPath = (notification: Notification): string => {
-  const typeName = notification.notification_types?.name || notification.data?.type;
-  const data = notification.data || {};
+  const data: NotificationData = notification.data ?? {};
+  const typeName = notification.notification_types?.name ?? data.type;
 
   switch (typeName) {
     // Tasks
