@@ -1,0 +1,22 @@
+{
+  "extends": "./tsconfig.app.json",
+  "compilerOptions": {
+    "strict": false,
+    "strictNullChecks": true,
+    "noImplicitAny": true,
+    "noUnusedLocals": false,
+    "noUnusedParameters": false
+  },
+  "include": [
+    "src/hooks/useAuth.tsx",
+    "src/hooks/useTenant.tsx",
+    "src/features/matrix-widget/api.ts",
+    "src/features/matrix-widget/MatrixWebsiteWidget.tsx",
+    "src/features/matrix-widget/types.ts",
+    "src/components/layout/AppHeader.tsx",
+    "src/components/Navigation.tsx",
+    "src/components/administration/SuperadminTenantManagement.tsx",
+    "src/components/administration/UserRolesManager.tsx",
+    "src/pages/Administration.tsx"
+  ]
+}

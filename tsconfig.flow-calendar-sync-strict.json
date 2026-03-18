@@ -1,0 +1,17 @@
+{
+  "extends": "./tsconfig.app.json",
+  "compilerOptions": {
+    "strict": false,
+    "strictNullChecks": true,
+    "noImplicitAny": true,
+    "noUnusedLocals": false,
+    "noUnusedParameters": false
+  },
+  "include": [
+    "src/components/calendar/hooks/useCalendarData.ts",
+    "src/components/ExternalCalendarSettings.tsx",
+    "src/components/CalendarSyncDebug.tsx",
+    "src/components/SettingsView.tsx",
+    "src/components/administration/CalendarSyncSettings.tsx"
+  ]
+}

@@ -1,0 +1,21 @@
+{
+  "extends": "./tsconfig.app.json",
+  "compilerOptions": {
+    "strict": false,
+    "strictNullChecks": true,
+    "noImplicitAny": true,
+    "noUnusedLocals": false,
+    "noUnusedParameters": false
+  },
+  "include": [
+    "src/hooks/useNotifications.tsx",
+    "src/hooks/useNavigationNotifications.tsx",
+    "src/components/NotificationBell.tsx",
+    "src/components/NotificationCenter.tsx",
+    "src/components/NotificationSettings.tsx",
+    "src/components/Navigation.tsx",
+    "src/components/MessageComposer.tsx",
+    "src/pages/NotificationsPage.tsx",
+    "src/pages/Index.tsx"
+  ]
+}
