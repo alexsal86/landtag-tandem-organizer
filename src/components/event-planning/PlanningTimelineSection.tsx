@@ -10,7 +10,7 @@ import type { ChecklistItem, EventPlanningDate } from "./types";
 
 const DAY_IN_MS = 1000 * 60 * 60 * 24;
 const DOT_SIZE_CLASS = "h-5 w-5";
-const DOT_LEFT_CLASS = "-left-[20px]";
+const DOT_LEFT_CLASS = "-left-6";
 
 type TimelineAssignment = {
   checklistItemId: string;
@@ -241,7 +241,7 @@ export function PlanningTimelineSection({
             </div>
           )}
 
-          <div ref={timelineListRef} className="relative pl-10">
+          <div ref={timelineListRef} className="relative pl-6">
             {entries.length === 0 ? (
               <p className="text-xs text-muted-foreground">Noch keine Termine im Zeitstrahl.</p>
             ) : (
@@ -271,7 +271,7 @@ export function PlanningTimelineSection({
                           timelinePointRefs.current[entry.id] = element;
                         }}
                       />
-                      <div className="rounded border border-border bg-background p-2">
+                      <div className="rounded border border-border bg-background p-2 pl-4">
                         <div className="mb-1 flex items-center justify-between gap-2">
                           <p className="text-xs text-muted-foreground">{format(entry.date, "dd.MM.yyyy", { locale: de })}</p>
                           <Badge variant="outline" className="text-[10px]">
