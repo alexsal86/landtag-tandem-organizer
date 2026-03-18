@@ -144,6 +144,9 @@ export function useEventPlanningData() {
     selectedPlanningTitle: selectedPlanning?.title,
     toast,
     onRefreshDetails: fetchPlanningDetails,
+    onSocialPlannerActionCreated: (itemId, action) => {
+      setItemSocialPlannerActions((prev) => ({ ...prev, [itemId]: action }));
+    },
   });
 
   const itemDetails = useItemDetails({
