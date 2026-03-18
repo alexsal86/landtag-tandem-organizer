@@ -9,6 +9,8 @@ import { Droppable } from "@hello-pangea/dnd";
 import type { ChecklistItem, EventPlanningDate } from "./types";
 
 const DAY_IN_MS = 1000 * 60 * 60 * 24;
+const DOT_SIZE_CLASS = "h-6 w-6";
+const DOT_LEFT_CLASS = "-left-[24px]";
 
 type TimelineAssignment = {
   checklistItemId: string;
@@ -41,6 +43,12 @@ type ConnectorLine = {
   endY: number;
 };
 
+type TimelineAxis = {
+  left: number;
+  top: number;
+  height: number;
+};
+
 export function PlanningTimelineSection({
   planningCreatedAt,
   planningDates,
@@ -51,6 +59,7 @@ export function PlanningTimelineSection({
 }: PlanningTimelineSectionProps) {
   const [isDropActive, setIsDropActive] = useState(false);
   const [connectorLines, setConnectorLines] = useState<ConnectorLine[]>([]);
+  const [timelineAxis, setTimelineAxis] = useState<TimelineAxis | null>(null);
   const sectionRef = useRef<HTMLDivElement | null>(null);
   const timelinePointRefs = useRef<Record<string, HTMLSpanElement | null>>({});
 
@@ -131,7 +140,24 @@ export function PlanningTimelineSection({
       const sectionRect = sectionRef.current?.getBoundingClientRect();
       if (!sectionRect || !checklistItemRefs) {
         setConnectorLines([]);
+        setTimelineAxis(null);
         return;
+      }
+
+      const firstEntry = entries[0];
+      const lastEntry = entries[entries.length - 1];
+      const firstPoint = firstEntry ? timelinePointRefs.current[firstEntry.id] : null;
+      const lastPoint = lastEntry ? timelinePointRefs.current[lastEntry.id] : null;
+
+      if (firstPoint && lastPoint) {
+        const firstRect = firstPoint.getBoundingClientRect();
+        const lastRect = lastPoint.getBoundingClientRect();
+        const left = firstRect.left + firstRect.width / 2 - sectionRect.left;
+        const top = firstRect.top + firstRect.height / 2 - sectionRect.top;
+        const lastCenter = lastRect.top + lastRect.height / 2 - sectionRect.top;
+        setTimelineAxis({ left, top, height: Math.max(0, lastCenter - top) });
+      } else {
+        setTimelineAxis(null);
       }
 
       const nextLines = assignments
@@ -216,7 +242,16 @@ export function PlanningTimelineSection({
               <p className="text-xs text-muted-foreground">Noch keine Termine im Zeitstrahl.</p>
             ) : (
               <>
-                <span className="absolute -left-[13px] top-2 bottom-2 w-0.5 bg-border" />
+                {timelineAxis && (
+                  <span
+                    className="absolute w-0.5 bg-border"
+                    style={{
+                      left: `${timelineAxis.left}px`,
+                      top: `${timelineAxis.top}px`,
+                      height: `${timelineAxis.height}px`,
+                    }}
+                  />
+                )}
                 {entries.map((entry, index) => {
                   const assignment = assignments.find((a) => a.checklistItemId === entry.id.replace("item-", ""));
 
@@ -227,7 +262,7 @@ export function PlanningTimelineSection({
                       style={index > 0 ? { marginTop: `${entrySpacings[index]}px` } : undefined}
                     >
                       <span
-                        className={`absolute -left-[18px] top-1.5 h-3 w-3 rounded-full ${entry.type === "known" ? "bg-blue-500" : "bg-amber-500"}`}
+                        className={`absolute top-1.5 rounded-full ${DOT_SIZE_CLASS} ${DOT_LEFT_CLASS} ${entry.type === "known" ? "bg-blue-500" : "bg-amber-500"}`}
                         ref={(element) => {
                           timelinePointRefs.current[entry.id] = element;
                         }}
