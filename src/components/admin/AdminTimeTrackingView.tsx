@@ -17,6 +17,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
+import type { Database } from "@/integrations/supabase/types";
 import { useAuth } from "@/hooks/useAuth";
 import { useTenant } from "@/hooks/useTenant";
 import { useCombinedTimeEntries, CombinedTimeEntry } from "@/hooks/useCombinedTimeEntries";
@@ -222,8 +223,13 @@ export function AdminTimeTrackingView() {
         supabase.from("employee_settings").select("user_id, hours_per_week, days_per_week").in("user_id", employeeIds),
       ]);
 
-      const profileMap = new Map<string, any>(profilesRes.data?.map((p: any) => [p.user_id, p]) || []);
-      const settingsMap = new Map<string, any>(settingsRes.data?.map((s: any) => [s.user_id, s]) || []);
+      type EmployeeProfileRow = Pick<Database["public"]["Tables"]["profiles"]["Row"], "user_id" | "display_name" | "avatar_url">;
+      type EmployeeSettingRow = Pick<Database["public"]["Tables"]["employee_settings"]["Row"], "user_id" | "hours_per_week" | "days_per_week">;
+
+      const profileRows = (profilesRes.data ?? []) as EmployeeProfileRow[];
+      const settingRows = (settingsRes.data ?? []) as EmployeeSettingRow[];
+      const profileMap = new Map(profileRows.map((profile) => [profile.user_id, profile]));
+      const settingsMap = new Map(settingRows.map((setting) => [setting.user_id, setting]));
 
       const emps: Employee[] = employeeIds.map(uid => ({
         user_id: uid,

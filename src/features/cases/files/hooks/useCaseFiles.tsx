@@ -4,6 +4,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { useTenant } from "@/hooks/useTenant";
 import { useToast } from "@/components/ui/use-toast";
 import { debugConsole } from "@/utils/debugConsole";
+import type { Json, Tables, TablesInsert, TablesUpdate } from "@/integrations/supabase/types";
 
 export interface CaseFile {
   id: string;
@@ -23,7 +24,7 @@ export interface CaseFile {
   visibility: string;
   current_status_note: string | null;
   current_status_updated_at: string | null;
-  risks_and_opportunities: any;
+  risks_and_opportunities: Json | null;
   assigned_to: string | null;
   created_at: string;
   updated_at: string;
@@ -49,6 +50,10 @@ export interface CaseFileFormData {
   is_private?: boolean;
   visibility?: 'private' | 'shared' | 'public';
 }
+
+type CaseFileRelationRow = { case_file_id: string };
+type CaseFileInsert = TablesInsert<"case_files">;
+type CaseFileUpdate = TablesUpdate<"case_files">;
 
 interface CaseFileParticipantInput {
   user_id: string;
@@ -121,7 +126,7 @@ export const useCaseFiles = () => {
         throw contactsRes.error || documentsRes.error || tasksRes.error || appointmentsRes.error || lettersRes.error;
       }
 
-      const countByCaseFileId = (items?: { case_file_id: string }[] | null) => {
+      const countByCaseFileId = (items?: CaseFileRelationRow[] | null) => {
         return (items || []).reduce<Record<string, number>>((acc, item) => {
           acc[item.case_file_id] = (acc[item.case_file_id] || 0) + 1;
           return acc;
@@ -160,13 +165,15 @@ export const useCaseFiles = () => {
     if (!user || !currentTenant) return null;
 
     try {
+      const insertPayload: CaseFileInsert = {
+        ...data,
+        user_id: user.id,
+        tenant_id: currentTenant.id,
+      };
+
       const { data: newCaseFile, error } = await supabase
         .from('case_files')
-        .insert([{
-          ...data,
-          user_id: user.id,
-          tenant_id: currentTenant.id,
-        }])
+        .insert([insertPayload])
         .select()
         .single();
 
@@ -216,7 +223,7 @@ export const useCaseFiles = () => {
     try {
       const { error } = await supabase
         .from('case_files')
-        .update(data)
+        .update(data as CaseFileUpdate)
         .eq('id', id);
 
       if (error) throw error;

@@ -10,6 +10,12 @@ const DEFAULT_FLAGS: FeatureFlags = {
   useReactBigCalendar: true,
 };
 
+const isFeatureFlags = (value: unknown): value is Partial<FeatureFlags> => {
+  if (!value || typeof value !== 'object') return false;
+  const candidate = value as Record<string, unknown>;
+  return Object.entries(candidate).every(([key, entryValue]) => key in DEFAULT_FLAGS && typeof entryValue === 'boolean');
+};
+
 /**
  * Hook for managing feature flags
  * In production, this could be connected to a feature flag service
@@ -22,8 +28,12 @@ export function useFeatureFlag() {
     const savedFlags = localStorage.getItem('featureFlags');
     if (savedFlags) {
       try {
-        const parsedFlags = JSON.parse(savedFlags);
-        setFlags(prevFlags => ({ ...prevFlags, ...parsedFlags }));
+        const parsedFlags: unknown = JSON.parse(savedFlags);
+        if (isFeatureFlags(parsedFlags)) {
+          setFlags(prevFlags => ({ ...prevFlags, ...parsedFlags }));
+        } else {
+          debugConsole.warn('Invalid feature flags in localStorage:', parsedFlags);
+        }
       } catch (error) {
         debugConsole.warn('Failed to parse feature flags from localStorage:', error);
       }

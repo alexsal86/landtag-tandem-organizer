@@ -61,7 +61,7 @@ export function CaseItemsArchiveSheet({ open, onOpenChange, onRestore }: CaseIte
         .from("case_items")
         .select("id, subject, source_channel, priority, updated_at")
         .eq("tenant_id", currentTenant.id)
-        .eq("status", "archiviert" as any)
+        .eq("status", "archiviert")
         .order("updated_at", { ascending: false })
         .limit(100);
 
@@ -83,7 +83,7 @@ export function CaseItemsArchiveSheet({ open, onOpenChange, onRestore }: CaseIte
     try {
       const { error } = await supabase
         .from("case_items")
-        .update({ status: "neu" } as any)
+        .update({ status: "neu" })
         .eq("id", id);
 
       if (error) throw error;

@@ -31,6 +31,8 @@ import { MobileSubNavigation } from "@/components/layout/MobileSubNavigation";
 
 type CaseScale = "small" | "large";
 
+type TimelineEntry = { id: string; created_at: string; subject: string | null };
+
 type CaseItemRecord = {
   id: string;
   source_channel: "phone" | "email" | "social" | "in_person" | "other";
@@ -71,7 +73,7 @@ const CaseItemDetail = () => {
 
   const [caseItem, setCaseItem] = useState<CaseItemRecord | null>(null);
   const [caseFile, setCaseFile] = useState<CaseFileRecord | null>(null);
-  const [timelineEntries, setTimelineEntries] = useState<Array<{ id: string; created_at: string; summary: string | null }>>([]);
+  const [timelineEntries, setTimelineEntries] = useState<TimelineEntry[]>([]);
   const [assignableFiles, setAssignableFiles] = useState<Array<{ id: string; title: string }>>([]);
   const [selectedCaseFileId, setSelectedCaseFileId] = useState<string>("");
   const [newCaseFileTitle, setNewCaseFileTitle] = useState<string>("");
@@ -159,11 +161,11 @@ const CaseItemDetail = () => {
 
     const [{ data: files }, { data: itemTimeline }] = await Promise.all([
       supabase.from("case_files").select("id, title").eq("tenant_id", currentTenant.id).in("status", ["active", "pending"]).order("updated_at", { ascending: false }).limit(20),
-      supabase.from("case_item_interactions").select("id, created_at, subject").eq("case_item_id", caseItemId).order("created_at", { ascending: false }).limit(20) as any,
+      supabase.from("case_item_interactions").select("id, created_at, subject").eq("case_item_id", caseItemId).order("created_at", { ascending: false }).limit(20),
     ]);
 
     setAssignableFiles(files ?? []);
-    setTimelineEntries(itemTimeline ?? []);
+    setTimelineEntries((itemTimeline ?? []) as TimelineEntry[]);
 
     if (ci?.case_file_id) {
       const { data: cf } = await supabase
@@ -281,7 +283,7 @@ const CaseItemDetail = () => {
                   <Button variant="outline" onClick={() => navigate("/mywork")}> <ArrowLeft className="h-4 w-4 mr-2" /> Zurück</Button>
                   {caseItem.status === "archiviert" ? (
                     <Button variant="outline" onClick={async () => {
-                      await supabase.from("case_items").update({ status: "neu" } as any).eq("id", caseItem.id);
+                      await supabase.from("case_items").update({ status: "neu" }).eq("id", caseItem.id);
                       toast({ title: "Wiederhergestellt", description: "Vorgang wurde wiederhergestellt." });
                       loadData();
                     }}>
@@ -289,7 +291,7 @@ const CaseItemDetail = () => {
                     </Button>
                   ) : (
                     <Button variant="outline" onClick={async () => {
-                      await supabase.from("case_items").update({ status: "archiviert" } as any).eq("id", caseItem.id);
+                      await supabase.from("case_items").update({ status: "archiviert" }).eq("id", caseItem.id);
                       toast({ title: "Archiviert", description: "Vorgang wurde archiviert." });
                       navigate("/mywork");
                     }}>

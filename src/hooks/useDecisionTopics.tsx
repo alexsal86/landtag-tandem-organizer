@@ -3,6 +3,8 @@ import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { debugConsole } from '@/utils/debugConsole';
 
+type DecisionTopicRow = { topic_id: string | null };
+
 export const useDecisionTopics = (decisionId: string | undefined) => {
   const [assignedTopics, setAssignedTopics] = useState<string[]>([]);
   const [loading, setLoading] = useState(false);
@@ -23,7 +25,8 @@ export const useDecisionTopics = (decisionId: string | undefined) => {
 
       if (error) throw error;
 
-      setAssignedTopics(data?.map(item => item.topic_id) || []);
+      const topicIds = (data ?? []).flatMap((item: DecisionTopicRow) => item.topic_id ? [item.topic_id] : []);
+      setAssignedTopics(topicIds);
     } catch (error) {
       debugConsole.error('Error fetching decision topics:', error);
     } finally {
@@ -102,7 +105,7 @@ export const useDecisionTopics = (decisionId: string | undefined) => {
       if (topicIds.length > 0) {
         const { error: insertError } = await supabase
           .from('task_decision_topics')
-          .insert(topicIds.map(topicId => ({
+          .insert(topicIds.map((topicId: string) => ({
             decision_id: decisionId,
             topic_id: topicId
           })));
@@ -140,7 +143,7 @@ export const saveDecisionTopics = async (decisionId: string, topicIds: string[])
   try {
     const { error } = await supabase
       .from('task_decision_topics')
-      .insert(topicIds.map(topicId => ({
+      .insert(topicIds.map((topicId: string) => ({
         decision_id: decisionId,
         topic_id: topicId
       })));

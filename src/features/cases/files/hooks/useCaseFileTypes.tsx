@@ -3,6 +3,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/components/ui/use-toast";
 import { useTenant } from "@/hooks/useTenant";
 import { debugConsole } from "@/utils/debugConsole";
+import type { TablesInsert, TablesUpdate } from "@/integrations/supabase/types";
 
 export interface CaseFileType {
   id: string;
@@ -46,16 +47,20 @@ export const useCaseFileTypes = () => {
 
   const createCaseFileType = async (data: { label: string; icon?: string; color?: string }) => {
     try {
+      if (!currentTenant?.id) return false;
+
+      const insertPayload: TablesInsert<"case_file_types"> = {
+        name: data.label.toLowerCase().replace(/\s+/g, '_'),
+        label: data.label,
+        icon: data.icon || 'Folder',
+        color: data.color || '#3b82f6',
+        order_index: Math.max(...caseFileTypes.map((t) => t.order_index), -1) + 1,
+        tenant_id: currentTenant.id,
+      };
+
       const { error } = await supabase
         .from('case_file_types')
-        .insert([{
-          name: data.label.toLowerCase().replace(/\s+/g, '_'),
-          label: data.label,
-          icon: data.icon || 'Folder',
-          color: data.color || '#3b82f6',
-          order_index: Math.max(...caseFileTypes.map(t => t.order_index), -1) + 1,
-          tenant_id: currentTenant!.id,
-        }]);
+        .insert([insertPayload]);
 
       if (error) throw error;
 
@@ -79,7 +84,7 @@ export const useCaseFileTypes = () => {
 
   const updateCaseFileType = async (id: string, data: { label?: string; icon?: string; color?: string }) => {
     try {
-      const updateData: Record<string, unknown> = {};
+      const updateData: TablesUpdate<"case_file_types"> = {};
       if (data.label) {
         updateData.name = data.label.toLowerCase().replace(/\s+/g, '_');
         updateData.label = data.label;
@@ -193,9 +198,7 @@ export const useCaseFileTypes = () => {
   }, [fetchCaseFileTypes]);
 
   // Helper to get type config by name (for compatibility with existing code)
-  const getTypeConfig = (typeName: string) => {
-    return caseFileTypes.find(t => t.name === typeName);
-  };
+  const getTypeConfig = (typeName: string) => caseFileTypes.find((type) => type.name === typeName) ?? null;
 
   return {
     caseFileTypes,

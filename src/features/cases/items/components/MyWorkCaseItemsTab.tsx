@@ -26,6 +26,7 @@ import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { cn } from "@/lib/utils";
 import { useCaseItems } from "@/features/cases/items/hooks";
+import type { CaseItemListEntry, EscalationSuggestion } from "@/features/cases/items/types";
 import { debugConsole } from "@/utils/debugConsole";
 import { DEFAULT_CASE_ITEM_CATEGORIES, useCaseItemCategories } from "@/hooks/useCaseItemCategories";
 
@@ -34,14 +35,6 @@ type SortBy = "updated_desc" | "due_asc" | "priority_desc";
 type CaseFileOption = {
   id: string;
   title: string;
-};
-
-type EscalationSuggestion = {
-  id: string;
-  suggested_case_file_id: string | null;
-  case_items: {
-    id: string;
-  };
 };
 
 const STATUS_STYLES: Record<string, string> = {
@@ -84,7 +77,7 @@ export function MyWorkCaseItemsTab() {
   const { toast } = useToast();
   const navigate = useNavigate();
 
-  const [items, setItems] = useState<any[]>([]);
+  const [items, setItems] = useState<CaseItemListEntry[]>([]);
   const [caseFiles, setCaseFiles] = useState<CaseFileOption[]>([]);
   const [escalationSuggestionByItemId, setEscalationSuggestionByItemId] = useState<Record<string, EscalationSuggestion>>({});
   const [selectedCaseFileByItemId, setSelectedCaseFileByItemId] = useState<Record<string, string>>({});
@@ -143,7 +136,7 @@ export function MyWorkCaseItemsTab() {
       if (caseFilesError) throw caseFilesError;
 
       // Escalation suggestions loaded separately (best-effort)
-      let escalationData: any = null;
+      let escalationData: { suggestions?: EscalationSuggestion[] } | null = null;
       try {
         const { data: escData, error: escError } = await supabase.functions.invoke("suggest-case-escalations", {
           body: { action: "list" },
@@ -153,10 +146,10 @@ export function MyWorkCaseItemsTab() {
         debugConsole.warn("Eskalationsvorschläge konnten nicht geladen werden:", e);
       }
 
-      const visibleItems = ((data || []) as any[])
+      const visibleItems = (data ?? [])
         .filter((row) => row.user_id === user.id || row.owner_user_id === user.id)
         .filter((row) => row.status !== "archiviert")
-        .map((row) => ({
+        .map((row): CaseItemListEntry => ({
           id: row.id,
           title: row.subject || row.resolution_summary || "Ohne Titel",
           description: row.summary || null,
@@ -170,12 +163,14 @@ export function MyWorkCaseItemsTab() {
           case_file_id: row.case_file_id || null,
           created_at: row.created_at,
           updated_at: row.updated_at || null,
+          meeting_id: row.meeting_id || null,
+          pending_for_jour_fixe: row.pending_for_jour_fixe ?? false,
         }));
 
       setItems(visibleItems);
       setCaseFiles((caseFileData || []) as CaseFileOption[]);
 
-      const incomingSuggestions = (escalationData?.suggestions ?? []) as EscalationSuggestion[];
+      const incomingSuggestions = escalationData?.suggestions ?? [];
       const byItemId = incomingSuggestions.reduce<Record<string, EscalationSuggestion>>((acc, suggestion) => {
         acc[suggestion.case_items.id] = suggestion;
         return acc;
@@ -329,7 +324,7 @@ export function MyWorkCaseItemsTab() {
     try {
       const { error } = await supabase
         .from("case_items")
-        .update({ status: "archiviert" } as any)
+        .update({ status: "archiviert" })
         .eq("id", itemId);
       if (error) throw error;
       toast({ title: "Archiviert", description: "Vorgang wurde archiviert." });
@@ -377,7 +372,7 @@ export function MyWorkCaseItemsTab() {
 
           const { error } = await supabase
             .from("case_items")
-            .update({ meeting_id: meetingId, pending_for_jour_fixe: false } as any)
+            .update({ meeting_id: meetingId, pending_for_jour_fixe: false })
             .eq("id", meetingSelectorItemId);
 
           if (error) {
@@ -398,7 +393,7 @@ export function MyWorkCaseItemsTab() {
 
           const { error } = await supabase
             .from("case_items")
-            .update({ pending_for_jour_fixe: true } as any)
+            .update({ pending_for_jour_fixe: true })
             .eq("id", meetingSelectorItemId);
 
           if (error) {
