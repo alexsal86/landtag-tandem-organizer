@@ -71,7 +71,7 @@ const resolveNavigationState = (
   section: string | null,
   subSection: string | null,
   isSuperAdmin: boolean,
-) => {
+) : { section: string; subSection: string } => {
   const visibleSections = adminMenuItems.filter((item) => !item.superAdminOnly || isSuperAdmin);
   const fallbackSection = visibleSections[0]?.id ?? "security";
   const matchedSection = visibleSections.find((item) => item.id === section) ??
@@ -88,7 +88,7 @@ const resolveNavigationState = (
   return { section: nextSection, subSection: nextSubSection };
 };
 
-export default function Administration() {
+export default function Administration(): React.JSX.Element | null {
   const { user, loading } = useAuth();
   const { currentTenant } = useTenant();
   const { toast } = useToast();
@@ -97,7 +97,7 @@ export default function Administration() {
   const [isAdmin, setIsAdmin] = useState<boolean>(false);
   const [isSuperAdmin, setIsSuperAdmin] = useState<boolean>(false);
   const [checkingAdmin, setCheckingAdmin] = useState<boolean>(true);
-  const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
+  const [mobileSidebarOpen, setMobileSidebarOpen] = useState<boolean>(false);
   const isMobile = useIsMobile();
 
   // Navigation state
@@ -138,7 +138,7 @@ export default function Administration() {
     }
   }, [isSuperAdmin, location.pathname, location.search, navigate]);
 
-  const checkAdminStatus = async () => {
+  const checkAdminStatus = async (): Promise<void> => {
     if (!user) {
       setCheckingAdmin(false);
       return;
@@ -153,14 +153,14 @@ export default function Administration() {
       
       setIsAdmin(roleData?.role === 'abgeordneter' || roleData?.role === 'bueroleitung');
       setIsSuperAdmin(roleData?.role === 'abgeordneter');
-    } catch (error) {
+    } catch (error: unknown) {
       debugConsole.error('Error checking admin status:', error);
     } finally {
       setCheckingAdmin(false);
     }
   };
 
-  const loadAnnualTasksBadge = async () => {
+  const loadAnnualTasksBadge = async (): Promise<void> => {
     if (!currentTenant?.id) return;
     
     try {
@@ -179,21 +179,21 @@ export default function Administration() {
         .select('annual_task_id')
         .eq('year', currentYear);
       
-      const completedIds = new Set(completions?.map(c => c.annual_task_id) || []);
+      const completedIds = new Set((completions ?? []).map((completion) => completion.annual_task_id));
       
-      const pendingCount = tasks.filter(task => {
+      const pendingCount = tasks.filter((task) => {
         const isDue = task.due_month <= currentMonth;
         const isCompleted = completedIds.has(task.id);
         return isDue && !isCompleted;
       }).length;
       
       setAnnualTasksBadge(pendingCount);
-    } catch (error) {
+    } catch (error: unknown) {
       debugConsole.error('Error loading annual tasks badge:', error);
     }
   };
 
-  const handleNavigate = (section: string, subSection?: string) => {
+  const handleNavigate = (section: string, subSection?: string): void => {
     const nextNavigation = resolveNavigationState(section, subSection ?? null, isSuperAdmin);
     const params = new URLSearchParams(location.search);
     params.set("adminSection", nextNavigation.section);
@@ -228,7 +228,7 @@ export default function Administration() {
     );
   }
 
-  const renderContent = () => {
+  const renderContent = (): React.JSX.Element | null => {
     // SECTION 1: System & Sicherheit
     if (activeSection === "security") {
       switch (activeSubSection) {

@@ -1,4 +1,6 @@
 import { useState, useEffect } from "react";
+import type { FormEvent } from "react";
+import type { AuthError, MFAFactor, Session } from "@supabase/supabase-js";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
@@ -13,151 +15,178 @@ import { useLoginCustomization } from "@/hooks/useLoginCustomization";
 import { logAuditEvent, AuditActions } from "@/hooks/useAuditLog";
 import { useFavicon } from "@/hooks/useFavicon";
 
-const Auth = () => {
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
-  const [displayName, setDisplayName] = useState("");
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState("");
-  const [showMfaChallenge, setShowMfaChallenge] = useState(false);
-  const [mfaCode, setMfaCode] = useState("");
-  const [factorId, setFactorId] = useState("");
+type VerifiedMfaFactor = MFAFactor & { status: "verified" };
+
+const isVerifiedFactor = (factor: MFAFactor): factor is VerifiedMfaFactor => factor.status === "verified";
+
+const getAuthErrorMessage = (error: AuthError): string => {
+  if (error.message.includes("User already registered")) {
+    return "Diese E-Mail-Adresse ist bereits registriert. Bitte versuchen Sie sich anzumelden.";
+  }
+
+  if (error.message.includes("Invalid login credentials")) {
+    return "Ungültige Anmeldedaten. Bitte überprüfen Sie E-Mail und Passwort.";
+  }
+
+  return error.message;
+};
+
+const Auth = (): React.JSX.Element => {
+  const [email, setEmail] = useState<string>("");
+  const [password, setPassword] = useState<string>("");
+  const [displayName, setDisplayName] = useState<string>("");
+  const [loading, setLoading] = useState<boolean>(false);
+  const [error, setError] = useState<string>("");
+  const [showMfaChallenge, setShowMfaChallenge] = useState<boolean>(false);
+  const [mfaCode, setMfaCode] = useState<string>("");
+  const [factorId, setFactorId] = useState<string>("");
   const navigate = useNavigate();
   const { toast } = useToast();
   const { customization, isLoading: customLoading } = useLoginCustomization();
 
-  useFavicon(customization.logo_url);
+  useFavicon(customization.logo_url ?? undefined);
 
-  useEffect(() => {
-    // Check if user is already logged in
-    const checkUser = async () => {
-      const { data: { session } } = await supabase.auth.getSession();
+  useEffect((): void => {
+    const checkUser = async (): Promise<void> => {
+      const {
+        data: { session },
+        error: sessionError,
+      }: { data: { session: Session | null }; error: AuthError | null } = await supabase.auth.getSession();
+
+      if (sessionError) {
+        setError(sessionError.message);
+        return;
+      }
+
       if (session) {
         navigate("/");
       }
     };
-    checkUser();
+
+    void checkUser();
   }, [navigate]);
 
-  const handleSignUp = async (e: React.FormEvent) => {
+  const handleSignUp = async (e: FormEvent<HTMLFormElement>): Promise<void> => {
     e.preventDefault();
     setLoading(true);
     setError("");
 
     const redirectUrl = `${window.location.origin}/`;
 
-    const { error } = await supabase.auth.signUp({
+    const { error: signUpError } = await supabase.auth.signUp({
       email,
       password,
       options: {
         emailRedirectTo: redirectUrl,
         data: {
-          display_name: displayName
-        }
-      }
+          display_name: displayName,
+        },
+      },
     });
 
     setLoading(false);
 
-    if (error) {
-      if (error.message.includes("User already registered")) {
-        setError("Diese E-Mail-Adresse ist bereits registriert. Bitte versuchen Sie sich anzumelden.");
-      } else {
-        setError(error.message);
-      }
-    } else {
-      // Log signup
-      logAuditEvent({ 
-        action: AuditActions.SIGNUP, 
-        email,
-        details: { display_name: displayName }
-      });
-      toast({
-        title: "Registrierung erfolgreich",
-        description: "Bitte überprüfen Sie Ihre E-Mail für den Bestätigungslink.",
-      });
+    if (signUpError) {
+      setError(getAuthErrorMessage(signUpError));
+      return;
     }
+
+    logAuditEvent({
+      action: AuditActions.SIGNUP,
+      email,
+      details: { display_name: displayName },
+    });
+    toast({
+      title: "Registrierung erfolgreich",
+      description: "Bitte überprüfen Sie Ihre E-Mail für den Bestätigungslink.",
+    });
   };
 
-  const handleSignIn = async (e: React.FormEvent) => {
+  const handleSignIn = async (e: FormEvent<HTMLFormElement>): Promise<void> => {
     e.preventDefault();
     setLoading(true);
     setError("");
 
-    const { data, error } = await supabase.auth.signInWithPassword({
+    const { error: signInError } = await supabase.auth.signInWithPassword({
       email,
       password,
     });
 
-    setLoading(false);
-
-    if (error) {
-      // Log failed login attempt
-      logAuditEvent({ 
-        action: AuditActions.LOGIN_FAILED, 
+    if (signInError) {
+      setLoading(false);
+      logAuditEvent({
+        action: AuditActions.LOGIN_FAILED,
         email,
-        details: { error: error.message }
+        details: { error: signInError.message },
       });
-      if (error.message.includes("Invalid login credentials")) {
-        setError("Ungültige Anmeldedaten. Bitte überprüfen Sie E-Mail und Passwort.");
-      } else {
-        setError(error.message);
-      }
+      setError(getAuthErrorMessage(signInError));
       return;
     }
 
-    // Check if MFA is required
-    const { data: factors } = await supabase.auth.mfa.listFactors();
-    const hasVerifiedFactor = factors?.all?.some((f: any) => f.status === "verified");
-    
-    if (hasVerifiedFactor && factors?.all && factors.all.length > 0) {
-      setFactorId(factors.all[0].id);
-      setShowMfaChallenge(true);
-    } else {
-      // Log successful login (no MFA)
-      logAuditEvent({ 
-        action: AuditActions.LOGIN_SUCCESS, 
-        email,
-        details: { mfa_used: false }
-      });
-      navigate("/");
+    const { data: factorsData, error: factorsError } = await supabase.auth.mfa.listFactors();
+    setLoading(false);
+
+    if (factorsError) {
+      setError(factorsError.message);
+      return;
     }
+
+    const verifiedFactors = (factorsData?.all ?? []).filter(isVerifiedFactor);
+    const primaryFactor = verifiedFactors[0] ?? null;
+
+    if (primaryFactor?.id) {
+      setFactorId(primaryFactor.id);
+      setShowMfaChallenge(true);
+      return;
+    }
+
+    logAuditEvent({
+      action: AuditActions.LOGIN_SUCCESS,
+      email,
+      details: { mfa_used: false },
+    });
+    navigate("/");
   };
 
-  const handleMfaVerify = async (e: React.FormEvent) => {
+  const handleMfaVerify = async (e: FormEvent<HTMLFormElement>): Promise<void> => {
     e.preventDefault();
     setLoading(true);
     setError("");
 
+    if (!factorId) {
+      setError("Es wurde kein MFA-Faktor ausgewählt.");
+      setLoading(false);
+      return;
+    }
+
     try {
-      const { error } = await supabase.auth.mfa.challengeAndVerify({
-        factorId: factorId,
-        code: mfaCode
+      const { error: challengeError } = await supabase.auth.mfa.challengeAndVerify({
+        factorId,
+        code: mfaCode,
       });
 
-      if (error) throw error;
+      if (challengeError) {
+        throw challengeError;
+      }
 
-      // Log successful MFA verification
-      logAuditEvent({ 
-        action: AuditActions.MFA_VERIFIED, 
+      logAuditEvent({
+        action: AuditActions.MFA_VERIFIED,
         email,
-        details: { mfa_used: true }
+        details: { mfa_used: true },
       });
-      
-      // Log successful login with MFA
-      logAuditEvent({ 
-        action: AuditActions.LOGIN_SUCCESS, 
+
+      logAuditEvent({
+        action: AuditActions.LOGIN_SUCCESS,
         email,
-        details: { mfa_used: true }
+        details: { mfa_used: true },
       });
-      
+
       navigate("/");
-    } catch (error: unknown) {
-      // Log failed MFA attempt
-      logAuditEvent({ 
-        action: AuditActions.MFA_FAILED, 
+    } catch (mfaError: unknown) {
+      logAuditEvent({
+        action: AuditActions.MFA_FAILED,
         email,
-        details: { error: 'Invalid MFA code' }
+        details: { error: mfaError instanceof Error ? mfaError.message : "Invalid MFA code" },
       });
       setError("Ungültiger 2FA-Code. Bitte versuchen Sie es erneut.");
     } finally {
@@ -175,68 +204,46 @@ const Auth = () => {
 
   return (
     <main id="main-content" className="min-h-screen flex flex-col lg:flex-row" tabIndex={-1}>
-      {/* Left Side - Branding & Background */}
-      <div 
+      <div
         className="hidden lg:flex lg:w-2/5 relative overflow-hidden"
         style={{
-          backgroundImage: customization.background_image_url 
-            ? `url(${customization.background_image_url})` 
-            : 'none',
-          backgroundSize: 'cover',
-          backgroundPosition: customization.background_position || 'center'
+          backgroundImage: customization.background_image_url ? `url(${customization.background_image_url})` : "none",
+          backgroundSize: "cover",
+          backgroundPosition: customization.background_position ?? "center",
         }}
       >
-        {/* Gradient Overlay */}
-        <div 
+        <div
           className="absolute inset-0 bg-gradient-to-br from-primary/90 via-primary/70 to-transparent"
           style={{
-            background: `linear-gradient(135deg, ${customization.primary_color || '#57ab27'}aa, ${customization.primary_color || '#57ab27'}66, transparent)`
+            background: `linear-gradient(135deg, ${customization.primary_color ?? "#57ab27"}aa, ${customization.primary_color ?? "#57ab27"}66, transparent)`,
           }}
         />
-        
-        {/* Content */}
         <div className="relative z-10 flex flex-col justify-center items-center w-full p-12 text-white">
           {customization.logo_url && (
             <div className="mb-8 animate-fade-in">
-              <img 
-                src={customization.logo_url} 
-                alt="Logo" 
-                className="h-24 w-auto object-contain drop-shadow-lg"
-              />
+              <img src={customization.logo_url} alt="Logo" className="h-24 w-auto object-contain drop-shadow-lg" />
             </div>
           )}
-          
           <h1 className="font-headline text-4xl font-bold text-center mb-4 animate-fade-in">
-            {customization.welcome_text || 'Willkommen bei LandtagsOS'}
+            {customization.welcome_text ?? "Willkommen bei LandtagsOS"}
           </h1>
-          
           <p className="text-lg text-center text-white/90 mb-8 animate-fade-in">
-            {customization.tagline || 'Ihre politische Arbeit. Organisiert.'}
+            {customization.tagline ?? "Ihre politische Arbeit. Organisiert."}
           </p>
-
-          <div className="mt-auto text-sm text-white/70 text-center">
-            {customization.footer_text || '© 2025 LandtagsOS'}
-          </div>
-
-          {/* Unsplash Attribution */}
+          <div className="mt-auto text-sm text-white/70 text-center">{customization.footer_text ?? "© 2025 LandtagsOS"}</div>
           {customization.background_attribution && (
             <div className="absolute bottom-4 right-4 text-xs text-white/50">
-              Foto von{' '}
-              <a 
+              Foto von{" "}
+              <a
                 href={customization.background_attribution.photographerUrl}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="underline hover:text-white/70"
               >
                 {customization.background_attribution.photographerName}
-              </a>
-              {' '}auf{' '}
-              <a 
-                href="https://unsplash.com"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="underline hover:text-white/70"
-              >
+              </a>{" "}
+              auf{" "}
+              <a href="https://unsplash.com" target="_blank" rel="noopener noreferrer" className="underline hover:text-white/70">
                 Unsplash
               </a>
             </div>
@@ -244,17 +251,9 @@ const Auth = () => {
         </div>
       </div>
 
-      {/* Right Side - Auth Forms */}
       <div className="flex-1 lg:w-3/5 flex items-center justify-center p-6 bg-background">
-        {/* Mobile Logo */}
         <div className="lg:hidden absolute top-6 left-6">
-          {customization.logo_url && (
-            <img 
-              src={customization.logo_url} 
-              alt="Logo" 
-              className="h-12 w-auto object-contain"
-            />
-          )}
+          {customization.logo_url && <img src={customization.logo_url} alt="Logo" className="h-12 w-auto object-contain" />}
         </div>
 
         <Card className="w-full max-w-md shadow-elegant animate-scale-in-bounce border-0">
@@ -262,62 +261,56 @@ const Auth = () => {
             <Tabs defaultValue="signin" className="w-full">
               <TabsList className="grid w-full grid-cols-2 mb-6">
                 <TabsTrigger value="signin">Anmelden</TabsTrigger>
-                {customization.registration_enabled && (
-                  <TabsTrigger value="signup">Registrieren</TabsTrigger>
-                )}
+                {customization.registration_enabled && <TabsTrigger value="signup">Registrieren</TabsTrigger>}
               </TabsList>
-              
+
               <TabsContent value="signin">
                 {!showMfaChallenge ? (
                   <form onSubmit={handleSignIn} className="space-y-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="signin-email">E-Mail</Label>
-                    <Input
-                      id="signin-email"
-                      type="email"
-                      value={email}
-                      onChange={(e) => setEmail(e.target.value)}
-                      required
-                      placeholder="ihre.email@beispiel.de"
-                      className="transition-all focus:ring-2 focus:ring-primary"
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="signin-password">Passwort</Label>
-                    <Input
-                      id="signin-password"
-                      type="password"
-                      value={password}
-                      onChange={(e) => setPassword(e.target.value)}
-                      required
-                      placeholder="Ihr Passwort"
-                      className="transition-all focus:ring-2 focus:ring-primary"
-                    />
-                  </div>
-                  {error && (
-                    <Alert variant="destructive">
-                      <AlertDescription>{error}</AlertDescription>
-                    </Alert>
-                  )}
-                  <Button 
-                    type="submit" 
-                    className="w-full font-semibold"
-                    disabled={loading}
-                    style={{
-                      backgroundColor: customization.primary_color || '#57ab27'
-                    }}
-                  >
-                    {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                    Anmelden
-                  </Button>
-                </form>
+                    <div className="space-y-2">
+                      <Label htmlFor="signin-email">E-Mail</Label>
+                      <Input
+                        id="signin-email"
+                        type="email"
+                        value={email}
+                        onChange={(e: React.ChangeEvent<HTMLInputElement>): void => setEmail(e.target.value)}
+                        required
+                        placeholder="ihre.email@beispiel.de"
+                        className="transition-all focus:ring-2 focus:ring-primary"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="signin-password">Passwort</Label>
+                      <Input
+                        id="signin-password"
+                        type="password"
+                        value={password}
+                        onChange={(e: React.ChangeEvent<HTMLInputElement>): void => setPassword(e.target.value)}
+                        required
+                        placeholder="Ihr Passwort"
+                        className="transition-all focus:ring-2 focus:ring-primary"
+                      />
+                    </div>
+                    {error && (
+                      <Alert variant="destructive">
+                        <AlertDescription>{error}</AlertDescription>
+                      </Alert>
+                    )}
+                    <Button
+                      type="submit"
+                      className="w-full font-semibold"
+                      disabled={loading}
+                      style={{ backgroundColor: customization.primary_color ?? "#57ab27" }}
+                    >
+                      {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                      Anmelden
+                    </Button>
+                  </form>
                 ) : (
                   <form onSubmit={handleMfaVerify} className="space-y-4">
                     <div className="text-center mb-4">
                       <h3 className="font-semibold text-lg mb-2">Zwei-Faktor-Authentifizierung</h3>
-                      <p className="text-sm text-muted-foreground">
-                        Geben Sie den 6-stelligen Code aus Ihrer Authenticator-App ein
-                      </p>
+                      <p className="text-sm text-muted-foreground">Geben Sie den 6-stelligen Code aus Ihrer Authenticator-App ein</p>
                     </div>
                     <div className="space-y-2">
                       <Label htmlFor="mfa-code">6-stelliger Code</Label>
@@ -327,7 +320,7 @@ const Auth = () => {
                         inputMode="numeric"
                         maxLength={6}
                         value={mfaCode}
-                        onChange={(e) => setMfaCode(e.target.value.replace(/\D/g, ""))}
+                        onChange={(e: React.ChangeEvent<HTMLInputElement>): void => setMfaCode(e.target.value.replace(/\D/g, ""))}
                         required
                         placeholder="000000"
                         className="text-center text-2xl tracking-widest font-mono transition-all focus:ring-2 focus:ring-primary"
@@ -339,24 +332,23 @@ const Auth = () => {
                         <AlertDescription>{error}</AlertDescription>
                       </Alert>
                     )}
-                    <Button 
-                      type="submit" 
+                    <Button
+                      type="submit"
                       className="w-full font-semibold"
                       disabled={loading || mfaCode.length !== 6}
-                      style={{
-                        backgroundColor: customization.primary_color || '#57ab27'
-                      }}
+                      style={{ backgroundColor: customization.primary_color ?? "#57ab27" }}
                     >
                       {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                       Verifizieren
                     </Button>
-                    <Button 
+                    <Button
                       type="button"
                       variant="ghost"
                       className="w-full"
-                      onClick={() => {
+                      onClick={(): void => {
                         setShowMfaChallenge(false);
                         setMfaCode("");
+                        setFactorId("");
                         setError("");
                       }}
                     >
@@ -365,7 +357,7 @@ const Auth = () => {
                   </form>
                 )}
               </TabsContent>
-              
+
               {customization.registration_enabled && (
                 <TabsContent value="signup">
                   <form onSubmit={handleSignUp} className="space-y-4">
@@ -375,7 +367,7 @@ const Auth = () => {
                         id="signup-name"
                         type="text"
                         value={displayName}
-                        onChange={(e) => setDisplayName(e.target.value)}
+                        onChange={(e: React.ChangeEvent<HTMLInputElement>): void => setDisplayName(e.target.value)}
                         placeholder="Ihr Name"
                         className="transition-all focus:ring-2 focus:ring-primary"
                       />
@@ -386,7 +378,7 @@ const Auth = () => {
                         id="signup-email"
                         type="email"
                         value={email}
-                        onChange={(e) => setEmail(e.target.value)}
+                        onChange={(e: React.ChangeEvent<HTMLInputElement>): void => setEmail(e.target.value)}
                         required
                         placeholder="ihre.email@beispiel.de"
                         className="transition-all focus:ring-2 focus:ring-primary"
@@ -398,7 +390,7 @@ const Auth = () => {
                         id="signup-password"
                         type="password"
                         value={password}
-                        onChange={(e) => setPassword(e.target.value)}
+                        onChange={(e: React.ChangeEvent<HTMLInputElement>): void => setPassword(e.target.value)}
                         required
                         placeholder="Mindestens 6 Zeichen"
                         minLength={6}
@@ -410,13 +402,11 @@ const Auth = () => {
                         <AlertDescription>{error}</AlertDescription>
                       </Alert>
                     )}
-                    <Button 
-                      type="submit" 
-                      className="w-full font-semibold" 
+                    <Button
+                      type="submit"
+                      className="w-full font-semibold"
                       disabled={loading}
-                      style={{
-                        backgroundColor: customization.primary_color || '#57ab27'
-                      }}
+                      style={{ backgroundColor: customization.primary_color ?? "#57ab27" }}
                     >
                       {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                       Registrieren
@@ -426,10 +416,7 @@ const Auth = () => {
               )}
             </Tabs>
 
-            {/* Mobile Footer */}
-            <div className="mt-6 text-center text-sm text-muted-foreground lg:hidden">
-              {customization.footer_text || '© 2025 LandtagsOS'}
-            </div>
+            <div className="mt-6 text-center text-sm text-muted-foreground lg:hidden">{customization.footer_text ?? "© 2025 LandtagsOS"}</div>
           </CardContent>
         </Card>
       </div>

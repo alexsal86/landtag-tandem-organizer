@@ -65,7 +65,7 @@ const myworkTabActions: Record<string, { label: string; action: string }> = {
   plannings: { label: 'Neue Planung', action: 'create-eventplanning' },
 };
 
-export const AppHeader = ({ onOpenSearch }: AppHeaderProps) => {
+export const AppHeader = ({ onOpenSearch }: AppHeaderProps): React.JSX.Element => {
   const { user, signOut } = useAuth();
   const { currentStatus, getStatusDisplay, onlineUsers } = useUserStatus();
   const { currentTenant } = useTenant();
@@ -78,11 +78,11 @@ export const AppHeader = ({ onOpenSearch }: AppHeaderProps) => {
 
   // Get current section from path
   const currentSection = location.pathname === '/' ? 'dashboard' : location.pathname.slice(1).split('/')[0];
-  const sectionInfo = sectionConfig[currentSection] || { label: currentSection };
+  const sectionInfo: { label: string; quickAction?: { label: string; action: string } } = sectionConfig[currentSection] ?? { label: currentSection };
 
   // Load user profile only - app settings now come from context
-  useEffect(() => {
-    const loadProfile = async () => {
+  useEffect((): void => {
+    const loadProfile = async (): Promise<void> => {
       if (user && currentTenant?.id) {
         const { data: profile } = await supabase
           .from('profiles')
@@ -91,14 +91,14 @@ export const AppHeader = ({ onOpenSearch }: AppHeaderProps) => {
           .eq('tenant_id', currentTenant.id)
           .maybeSingle();
         
-        setUserProfile(profile);
+        setUserProfile(profile ?? null);
       }
     };
     
-    loadProfile();
+    void loadProfile();
   }, [user, currentTenant]);
 
-  const handleSignOut = async () => {
+  const handleSignOut = async (): Promise<void> => {
     try {
       await signOut();
       toast({
@@ -107,7 +107,7 @@ export const AppHeader = ({ onOpenSearch }: AppHeaderProps) => {
       });
       // Navigate to auth page after successful logout
       navigate('/auth');
-    } catch (error) {
+    } catch (error: unknown) {
       toast({
         title: 'Fehler beim Abmelden',
         description: 'Ein Fehler ist beim Abmelden aufgetreten.',
@@ -121,7 +121,7 @@ export const AppHeader = ({ onOpenSearch }: AppHeaderProps) => {
   const isLetterManagement = currentSection === 'documents' && myworkTab === 'letters';
   
   // Determine quick action - check mywork tabs first
-  const getQuickAction = () => {
+  const getQuickAction = (): { label: string; action: string } | undefined => {
     if (currentSection === 'mywork' && myworkTab && myworkTabActions[myworkTab]) {
       return myworkTabActions[myworkTab];
     }
@@ -130,7 +130,7 @@ export const AppHeader = ({ onOpenSearch }: AppHeaderProps) => {
   
   const quickAction = getQuickAction();
 
-  const handleQuickAction = () => {
+  const handleQuickAction = (): void => {
     if (quickAction) {
       const urlParams = new URLSearchParams(location.search);
       urlParams.set('action', quickAction.action);
@@ -140,7 +140,7 @@ export const AppHeader = ({ onOpenSearch }: AppHeaderProps) => {
 
   const statusDisplay = currentStatus ? getStatusDisplay(currentStatus) : null;
 
-  const getStatusRingColor = (statusType: string) => {
+  const getStatusRingColor = (statusType: string): string => {
     switch (statusType) {
       case 'online':
         return 'ring-green-500';

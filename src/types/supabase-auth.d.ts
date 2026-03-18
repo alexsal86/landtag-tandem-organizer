@@ -5,11 +5,11 @@ declare module '@supabase/supabase-js' {
   export interface User {
     id: string;
     email?: string;
-    app_metadata: Record<string, any>;
-    user_metadata: Record<string, any>;
+    app_metadata: Record<string, unknown>;
+    user_metadata: Record<string, unknown>;
     aud: string;
     created_at: string;
-    [key: string]: any;
+    [key: string]: unknown;
   }
 
   export interface Session {
@@ -19,38 +19,41 @@ declare module '@supabase/supabase-js' {
     expires_at?: number;
     token_type: string;
     user: User;
-    [key: string]: any;
+    [key: string]: unknown;
   }
 
-  export type RealtimePostgresChangesPayload<T = any> = {
+  export type RealtimePostgresChangesPayload<T = Record<string, unknown>> = {
     schema: string;
     table: string;
     commit_timestamp: string;
     eventType: 'INSERT' | 'UPDATE' | 'DELETE';
     new: T;
     old: T;
-    errors: any[];
-    [key: string]: any;
+    errors: unknown[];
+    [key: string]: unknown;
   };
 
   interface SupabaseAuthClient {
-    getUser(): Promise<{ data: { user: User | null }; error: any }>;
-    getSession(): Promise<{ data: { session: Session | null }; error: any }>;
-    updateUser(attributes: Record<string, any>): Promise<{ data: { user: User | null }; error: any }>;
-    signInWithPassword(credentials: { email: string; password: string }): Promise<any>;
-    signUp(credentials: { email: string; password: string; options?: any }): Promise<any>;
-    signOut(): Promise<any>;
-    onAuthStateChange(callback: (event: string, session: any) => void): { data: { subscription: any } };
-    resetPasswordForEmail(email: string, options?: any): Promise<any>;
-    mfa: {
-      enroll(params: any): Promise<any>;
-      challenge(params: any): Promise<any>;
-      verify(params: any): Promise<any>;
-      unenroll(params: any): Promise<any>;
-      listFactors(): Promise<any>;
-      getAuthenticatorAssuranceLevel(): Promise<any>;
-      [key: string]: any;
+    getUser(): Promise<{ data: { user: User | null }; error: AuthError | null }>;
+    getSession(): Promise<{ data: { session: Session | null }; error: AuthError | null }>;
+    updateUser(attributes: Record<string, unknown>): Promise<{ data: { user: User | null }; error: AuthError | null }>;
+    signInWithPassword(credentials: { email: string; password: string }): Promise<AuthTokenResponsePassword>;
+    signUp(credentials: { email: string; password: string; options?: { emailRedirectTo?: string; data?: Record<string, unknown> } }): Promise<AuthResponse>;
+    signOut(options?: { scope?: 'global' | 'local' | 'others' }): Promise<{ error: AuthError | null }>;
+    onAuthStateChange(callback: (event: AuthChangeEvent, session: Session | null) => void): {
+      data: { subscription: Subscription };
     };
-    [key: string]: any;
+    resetPasswordForEmail(email: string, options?: { redirectTo?: string }): Promise<{ data: object; error: AuthError | null }>;
+    mfa: {
+      enroll(params: Record<string, unknown>): Promise<unknown>;
+      challenge(params: Record<string, unknown>): Promise<unknown>;
+      verify(params: Record<string, unknown>): Promise<unknown>;
+      unenroll(params: Record<string, unknown>): Promise<unknown>;
+      listFactors(): Promise<MFAListFactorsResponse>;
+      getAuthenticatorAssuranceLevel(): Promise<unknown>;
+      challengeAndVerify(params: { factorId: string; code: string }): Promise<{ data: object | null; error: AuthError | null }>;
+      [key: string]: unknown;
+    };
+    [key: string]: unknown;
   }
 }

@@ -1,3 +1,4 @@
+import type { PropsWithChildren } from "react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { AuthProvider } from "@/hooks/useAuth";
 import { TenantProvider } from "@/hooks/useTenant";
@@ -17,7 +18,7 @@ const queryClient = new QueryClient({
   },
 });
 
-export const AppProviders = ({ children }: { children: React.ReactNode }) => (
+export const AppProviders = ({ children }: PropsWithChildren): React.JSX.Element => (
   <QueryClientProvider client={queryClient}>
     <AuthProvider>
       <TenantProvider>

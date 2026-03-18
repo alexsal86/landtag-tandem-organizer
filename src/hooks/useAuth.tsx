@@ -1,6 +1,14 @@
 import React, { useState, useEffect, createContext, useContext } from "react";
-import type { AuthChangeEvent, Session, User } from "@supabase/supabase-js";
+import type {
+  AuthChangeEvent,
+  AuthResponse,
+  AuthTokenResponsePassword,
+  Session,
+  Subscription,
+  User,
+} from "@supabase/supabase-js";
 import { supabase } from "@/integrations/supabase/client";
+import type { Database } from "@/integrations/supabase/types";
 import { logAuditEvent, AuditActions } from "@/hooks/useAuditLog";
 import { debugConsole } from "@/utils/debugConsole";
 
@@ -11,9 +19,8 @@ interface AuthContextType {
   signOut: () => Promise<void>;
 }
 
-type UserSessionRow = {
-  id: string;
-};
+type UserSessionRow = Pick<Database["public"]["Tables"]["user_sessions"]["Row"], "id">;
+type SessionResult = AuthResponse;
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
@@ -21,61 +28,76 @@ const trackSession = async (userId: string): Promise<void> => {
   try {
     const deviceInfo = navigator.userAgent;
 
-    await supabase
-      .from('user_sessions')
+    const { error: clearExistingError } = await supabase
+      .from("user_sessions")
       .update({ is_current: false })
-      .eq('user_id', userId)
-      .eq('is_current', true);
+      .eq("user_id", userId)
+      .eq("is_current", true);
 
-    const { data: existing } = await supabase
-      .from('user_sessions')
-      .select('id')
-      .eq('user_id', userId)
-      .eq('device_info', deviceInfo)
-      .order('last_active_at', { ascending: false })
-      .limit(1);
+    if (clearExistingError) {
+      throw clearExistingError;
+    }
 
-    const existingSessions = (existing ?? []) as UserSessionRow[];
-    const latestSessionId = existingSessions[0]?.id;
+    const { data: existing, error: existingError } = await supabase
+      .from("user_sessions")
+      .select("id")
+      .eq("user_id", userId)
+      .eq("device_info", deviceInfo)
+      .order("last_active_at", { ascending: false })
+      .limit(1)
+      .returns<UserSessionRow[]>();
+
+    if (existingError) {
+      throw existingError;
+    }
+
+    const latestSessionId = existing?.[0]?.id;
 
     if (latestSessionId) {
-      await supabase
-        .from('user_sessions')
+      const { error: updateError } = await supabase
+        .from("user_sessions")
         .update({ last_active_at: new Date().toISOString(), is_current: true })
-        .eq('id', latestSessionId);
+        .eq("id", latestSessionId);
+
+      if (updateError) {
+        throw updateError;
+      }
+
       return;
     }
 
-    await supabase
-      .from('user_sessions')
-      .insert([
-        {
-          user_id: userId,
-          device_info: deviceInfo,
-          is_current: true,
-          last_active_at: new Date().toISOString(),
-        },
-      ]);
+    const { error: insertError } = await supabase.from("user_sessions").insert([
+      {
+        user_id: userId,
+        device_info: deviceInfo,
+        is_current: true,
+        last_active_at: new Date().toISOString(),
+      },
+    ]);
+
+    if (insertError) {
+      throw insertError;
+    }
   } catch (error: unknown) {
-    debugConsole.error('Error tracking session:', error);
+    debugConsole.error("Error tracking session:", error);
   }
 };
 
-export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
+export const AuthProvider = ({ children }: { children: React.ReactNode }): React.JSX.Element => {
   const [user, setUser] = useState<User | null>(null);
   const [session, setSession] = useState<Session | null>(null);
   const [loading, setLoading] = useState<boolean>(true);
 
-  useEffect(() => {
+  useEffect((): (() => void) => {
     const handleAuthStateChange = (event: AuthChangeEvent, nextSession: Session | null): void => {
       setSession(nextSession);
       setUser(nextSession?.user ?? null);
       setLoading(false);
 
-      if (event === 'SIGNED_IN') {
+      if (event === "SIGNED_IN") {
         const signedInUserId = nextSession?.user?.id;
         if (signedInUserId) {
-          setTimeout(() => {
+          setTimeout((): void => {
             void trackSession(signedInUserId);
           }, 0);
         }
@@ -84,23 +106,31 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
     const {
       data: { subscription },
-    } = supabase.auth.onAuthStateChange(handleAuthStateChange);
+    }: { data: { subscription: Subscription } } = supabase.auth.onAuthStateChange(handleAuthStateChange);
 
-    void supabase.auth.getSession().then((sessionResult: { data: { session: Session | null } }): void => {
-      const existingSession = sessionResult.data.session ?? null;
+    void supabase.auth.getSession().then(({ data, error }: SessionResult): void => {
+      if (error) {
+        debugConsole.error("Error loading initial session:", error);
+        setSession(null);
+        setUser(null);
+        setLoading(false);
+        return;
+      }
+
+      const existingSession = data.session ?? null;
       setSession(existingSession);
       setUser(existingSession?.user ?? null);
       setLoading(false);
 
       const existingUserId = existingSession?.user?.id;
       if (existingUserId) {
-        setTimeout(() => {
+        setTimeout((): void => {
           void trackSession(existingUserId);
         }, 0);
       }
     });
 
-    return () => {
+    return (): void => {
       subscription.unsubscribe();
     };
   }, []);
@@ -115,24 +145,31 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       });
     }
 
-    localStorage.removeItem('currentTenantId');
+    localStorage.removeItem("currentTenantId");
     if (activeUser?.id) {
       localStorage.removeItem(`currentTenantId_${activeUser.id}`);
     }
 
     if (activeUser?.id) {
       try {
-        await supabase
-          .from('user_sessions')
+        const { error: deleteSessionError } = await supabase
+          .from("user_sessions")
           .delete()
-          .eq('user_id', activeUser.id)
-          .eq('device_info', navigator.userAgent);
+          .eq("user_id", activeUser.id)
+          .eq("device_info", navigator.userAgent);
+
+        if (deleteSessionError) {
+          throw deleteSessionError;
+        }
       } catch (error: unknown) {
-        debugConsole.error('Error removing session:', error);
+        debugConsole.error("Error removing session:", error);
       }
     }
 
-    await supabase.auth.signOut({ scope: 'local' });
+    const { error: signOutError }: { error: AuthTokenResponsePassword["error"] } = await supabase.auth.signOut({ scope: "local" });
+    if (signOutError) {
+      throw signOutError;
+    }
   };
 
   const value: AuthContextType = {
