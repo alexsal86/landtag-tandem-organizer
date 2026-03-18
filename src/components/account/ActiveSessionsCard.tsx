@@ -59,7 +59,7 @@ export function ActiveSessionsCard(): React.JSX.Element {
         .select("id, device_info, ip_address, last_active_at, created_at, is_current")
         .eq("user_id", user.id)
         .order("last_active_at", { ascending: false })
-        .returns<UserSession[]>();
+        .returns();
 
       if (error) throw error;
       setSessions(data ?? []);

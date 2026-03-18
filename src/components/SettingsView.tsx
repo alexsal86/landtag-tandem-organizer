@@ -73,7 +73,7 @@ export function SettingsView(): React.JSX.Element {
         .from("user_roles")
         .select("role")
         .eq("user_id", user.id)
-        .maybeSingle<UserRoleRow>();
+        .maybeSingle();
       
       if (roleData?.role) {
         const roleLabels: Record<string, string> = {

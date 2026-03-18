@@ -347,7 +347,7 @@ export async function generatePDF(options: GeneratePDFOptions): Promise<{ blob: 
   // Template header
   if (template) {
     const headerRenderer = new HeaderRenderer(pdf, LEFT_MARGIN);
-    await headerRenderer.renderHeader(template);
+    await headerRenderer.renderHeader(template as any);
   }
   
   // Return address line

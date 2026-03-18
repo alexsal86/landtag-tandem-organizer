@@ -43,7 +43,7 @@ export function ChatSearch({ messages, onSelectMessage, onClose }: ChatSearchPro
       .slice(0, 50); // Limit results
   }, [messages, debouncedSearchQuery]);
 
-  const highlightMatch = (text: string, query: string): string | JSX.Element[] => {
+  const highlightMatch = (text: string, query: string): React.ReactNode => {
     if (!query.trim()) return text;
 
     const escapedQuery = escapeRegExp(query);

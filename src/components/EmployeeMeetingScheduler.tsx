@@ -68,7 +68,7 @@ export function EmployeeMeetingScheduler({
   const tenantTimeZone =
     (typeof currentTenant?.settings === "object" &&
       currentTenant.settings !== null &&
-      (currentTenant.settings.timezone ?? currentTenant.settings.time_zone)) ||
+      ((currentTenant.settings as any)?.timezone ?? (currentTenant.settings as any)?.time_zone)) ||
     DEFAULT_TENANT_TIME_ZONE;
 
   const toUtcFromTenantLocal = (date: Date, time: string) => {

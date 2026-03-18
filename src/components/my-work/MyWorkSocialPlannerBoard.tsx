@@ -153,7 +153,7 @@ function applyTemplateToState(
   setters.setFormatVariant(template.format_variant);
   setters.setHook(template.hook);
   setters.setCta(template.cta);
-  setters.setAssetRequirements(template.asset_requirements);
+  setters.setAssetRequirements([...template.asset_requirements]);
 }
 
 function BriefingGroup({

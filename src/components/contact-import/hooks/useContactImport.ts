@@ -267,7 +267,7 @@ export function useContactImport() {
     const validMappings = fieldMappings.filter((m) => m.targetField);
     const contactData: ContactDuplicateCandidate = { id: "", name: "" };
     validMappings.forEach((m) => { const v = row[m.sourceField]; if (v && v.trim()) contactData[m.targetField] = v.trim(); });
-    if ((contactData.first_name || contactData.last_name) && !contactData.name) contactData.name = `${contactData.first_name || ""} ${contactData.last_name || ""}`.trim();
+    if (((contactData as any).first_name || (contactData as any).last_name) && !contactData.name) contactData.name = `${(contactData as any).first_name || ""} ${(contactData as any).last_name || ""}`.trim();
     if (!contactData.name?.trim()) { setErrors((prev) => [...prev, `Zeile ${rowIndex + 1}: Kein Name angegeben`]); continueImport(); return; }
     if (contactData.email && !isValidEmail(contactData.email)) { setErrors((prev) => [...prev, `Zeile ${rowIndex + 1}: Ungültige E-Mail-Adresse (${contactData.email})`]); continueImport(); return; }
     const currentContactData = { id: "", name: contactData.name, email: contactData.email, phone: contactData.phone, organization: contactData.organization };
