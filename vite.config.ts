@@ -55,8 +55,8 @@ export default defineConfig(({ mode }) => ({
     //   include: ['buffer', 'process'],
     //   globals: { Buffer: true, process: true },
     // }),
-    mode === 'development' &&
-    componentTagger(),
+    // mode === 'development' &&
+    // componentTagger(),
   ].filter(Boolean),
   resolve: {
     dedupe: [
