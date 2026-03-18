@@ -787,7 +787,7 @@ export function MyWorkTasksTab() {
     const listContent = tasks.length === 0 ? (
       <p className="text-sm text-muted-foreground px-2 py-4">{emptyMessage}</p>
     ) : viewType === "card" ? (
-      <div className="space-y-2 pr-2">
+      <div className="space-y-2 pr-2 pb-6">
         {tasks.map((task) => (
           <TaskCard
             key={task.id}
@@ -828,7 +828,7 @@ export function MyWorkTasksTab() {
         ))}
       </div>
     ) : (
-      <div className="border rounded-lg overflow-hidden">
+      <div className="border rounded-lg overflow-hidden pb-6">
         {tasks.map((task) => (
           <TaskListRow
             key={task.id}
