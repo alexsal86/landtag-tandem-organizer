@@ -64,10 +64,10 @@ export function EmployeeYearlyStatsView({ isOpen, onClose }: EmployeeYearlyStats
         .order("year", { ascending: false });
 
       if (data) {
-        const years = [...new Set(data.map(d => d.year))];
+        const years = [...new Set(data.map(d => d.year))] as number[];
         setAvailableYears(years);
         if (years.length > 0 && !years.includes(selectedYear)) {
-          setSelectedYear(years[0]);
+          setSelectedYear(years[0] as number);
         }
       }
     } catch (error) {

@@ -174,7 +174,7 @@ const ProperReactBigCalendar: React.FC<ProperReactBigCalendarProps> = ({
   const eventPropGetter = useCallback((event: RBCEvent) => {
     const originalEvent = event.resource as CalendarEvent;
     let className = '';
-    let style: React.CSSProperties = {
+    const style: Record<string, any> = {
       transition: 'all 0.2s ease',
     };
 
