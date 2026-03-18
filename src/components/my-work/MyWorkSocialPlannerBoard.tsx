@@ -531,7 +531,7 @@ export function MyWorkSocialPlannerBoard({ specialDays = [] }: MyWorkSocialPlann
 
       <CardContent>
         {viewMode === "calendar" ? (
-          <SocialPlannerCalendar items={filteredItems} onUpdateSchedule={handleCalendarScheduleUpdate} specialDays={specialDays} />
+          <SocialPlannerCalendar items={filteredItems} onUpdateSchedule={handleCalendarScheduleUpdate} onEditItem={setEditingItemId} specialDays={specialDays} />
         ) : (
           <DragDropContext onDragEnd={onDragEnd}>
             <div className="grid grid-cols-1 gap-3 lg:grid-cols-2 2xl:grid-cols-3">
