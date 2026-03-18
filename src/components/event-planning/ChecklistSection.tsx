@@ -179,7 +179,7 @@ export function ChecklistSection(props: ChecklistSectionProps) {
                                       <Bot className="h-3.5 w-3.5 text-primary" />
                                       <span>Systempunkt aktiv: Social Planner-Eintrag wurde automatisch angelegt.</span>
                                       <a
-                                        href={String(itemSocialPlannerActions[item.id].action_config.planner_url || "/my-work?tab=redaktion")}
+                                        href={String(itemSocialPlannerActions[item.id].action_config.planner_url || "/mywork?tab=redaktion")}
                                         className="inline-flex items-center gap-1 font-medium text-primary hover:underline"
                                       >
                                         {String(itemSocialPlannerActions[item.id].action_config.label || "Im Social Planner öffnen")}

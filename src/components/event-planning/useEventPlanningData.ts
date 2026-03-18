@@ -30,6 +30,8 @@ export function useEventPlanningData() {
   const { currentTenant } = useTenant();
   const currentProfileId = useCurrentProfileId();
   const navigate = useNavigate();
+  const location = useLocation();
+  const { subId } = useParams();
   const [searchParams, setSearchParams] = useSearchParams();
   const { toast } = useToast();
   const { isItemNew, clearAllIndicators } = useNewItemIndicators('eventplanning');
@@ -215,15 +217,20 @@ export function useEventPlanningData() {
 
   // ── Deep-link to planning ──
   useEffect(() => {
-    const planningIdParam = searchParams.get('planningId');
-    if (planningIdParam && plannings.length > 0 && !selectedPlanning) {
-      const planningToSelect = plannings.find(p => p.id === planningIdParam);
-      if (planningToSelect) {
-        setSelectedPlanning(planningToSelect);
-        navigate('/eventplanning', { replace: true });
-      }
+    const planningIdParam = subId || searchParams.get('planningId');
+    if (!planningIdParam || plannings.length === 0) return;
+
+    const planningToSelect = plannings.find((planning) => planning.id === planningIdParam);
+    if (!planningToSelect) return;
+
+    if (selectedPlanning?.id !== planningToSelect.id) {
+      setSelectedPlanning(planningToSelect);
     }
-  }, [plannings, searchParams, selectedPlanning, navigate]);
+
+    if (!subId && searchParams.get('planningId')) {
+      navigate(`/eventplanning/${planningToSelect.id}${location.hash || ''}`, { replace: true });
+    }
+  }, [location.hash, navigate, plannings, searchParams, selectedPlanning?.id, subId]);
 
   // ── Load details on selection ──
   useEffect(() => {

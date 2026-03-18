@@ -519,7 +519,7 @@ export function MyWorkPlanningsTab() {
                   size="icon"
                   className="h-7 w-7"
                   onClick={() => {
-                    navigate(`/eventplanning?planningId=${planning.id}`);
+                    navigate(`/eventplanning/${planning.id}`);
                   }}
                 >
                   <ExternalLink className="h-3 w-3" />

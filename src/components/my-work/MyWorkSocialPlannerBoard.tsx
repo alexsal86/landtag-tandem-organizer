@@ -1,18 +1,20 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { type ReactNode, useCallback, useEffect, useMemo, useState } from "react";
 import { DragDropContext, Draggable, Droppable, type DropResult } from "@hello-pangea/dnd";
-import { ArrowLeft, ArrowRight, CalendarDays, GripVertical, Kanban, Pencil, Plus, Tag } from "lucide-react";
+import { ArrowLeft, ArrowRight, CalendarDays, CheckSquare, ClipboardList, GripVertical, Kanban, Pencil, Plus, Tag, type LucideIcon } from "lucide-react";
 import { format } from "date-fns";
 import { useSearchParams } from "react-router-dom";
 import { de } from "date-fns/locale";
 import { SocialPlannerCalendar } from "./SocialPlannerCalendar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { MultiSelect } from "@/components/ui/multi-select-simple";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
 import { useTenantUsers } from "@/hooks/useTenantUsers";
 import { type SocialPlannerItem, PlannerWorkflowStatus, useSocialPlannerItems } from "@/hooks/useSocialPlannerItems";
@@ -42,33 +44,167 @@ const APPROVAL_LABELS: Record<string, string> = {
   rejected: "Abgelehnt",
 };
 
+const CONTENT_GOAL_OPTIONS = [
+  "informieren",
+  "mobilisieren",
+  "Terminankündigung",
+  "Rückblick",
+  "Statement",
+  "Bürgerdialog",
+  "Presse-/Linkhinweis",
+];
+
+const FORMAT_VARIANT_OPTIONS = ["Story", "Carousel", "Reel", "Feed-Post", "Link-Post"];
+const ASSET_OPTIONS = ["Bild nötig", "Video nötig", "Grafik nötig", "Zitatkarte nötig"];
+
+const TEMPLATE_OPTIONS = [
+  {
+    id: "terminankuendigung",
+    label: "Terminankündigung",
+    content_goal: "Terminankündigung",
+    format: "Feed-Post",
+    format_variant: "Feed-Post",
+    hook: "Schon vormerken: Wir sind vor Ort und freuen uns auf den Austausch.",
+    cta: "Termin sichern und vorbeikommen.",
+    asset_requirements: ["Bild nötig", "Grafik nötig"],
+  },
+  {
+    id: "rueckblick",
+    label: "Rückblick",
+    content_goal: "Rückblick",
+    format: "Carousel",
+    format_variant: "Carousel",
+    hook: "Danke für den starken gemeinsamen Termin – das nehmen wir mit.",
+    cta: "Eindrücke teilen oder die wichtigsten Punkte nachlesen.",
+    asset_requirements: ["Bild nötig", "Grafik nötig"],
+  },
+  {
+    id: "statement",
+    label: "Statement",
+    content_goal: "Statement",
+    format: "Reel",
+    format_variant: "Reel",
+    hook: "Meine klare Haltung zum Thema in drei Sätzen.",
+    cta: "Position unterstützen oder in die Diskussion einsteigen.",
+    asset_requirements: ["Video nötig", "Zitatkarte nötig"],
+  },
+  {
+    id: "buergerdialog",
+    label: "Bürgerdialog",
+    content_goal: "Bürgerdialog",
+    format: "Story",
+    format_variant: "Story",
+    hook: "Welche Fragen aus dem Wahlkreis sollen wir als Nächstes mitnehmen?",
+    cta: "Fragen schicken oder direkt zum Gespräch kommen.",
+    asset_requirements: ["Bild nötig", "Grafik nötig"],
+  },
+  {
+    id: "presse-linkhinweis",
+    label: "Presse-/Linkhinweis",
+    content_goal: "Presse-/Linkhinweis",
+    format: "Link-Post",
+    format_variant: "Link-Post",
+    hook: "Neu erschienen: Die wichtigsten Punkte auf einen Blick.",
+    cta: "Artikel öffnen und weiterleiten.",
+    asset_requirements: ["Grafik nötig", "Zitatkarte nötig"],
+  },
+] as const;
+
+type SocialPlannerDraftPayload = {
+  topic: string;
+  channel_ids: string[];
+  format: string | null;
+  content_goal: string | null;
+  format_variant: string | null;
+  asset_requirements: string[];
+  approval_required: boolean;
+  publish_link: string | null;
+  performance_notes: string | null;
+  hook: string | null;
+  core_message: string | null;
+  draft_text: string | null;
+  cta: string | null;
+  notes: string | null;
+  responsible_user_id: string | null;
+  scheduled_for: string | null;
+  approval_state: string;
+  workflow_status: PlannerWorkflowStatus;
+};
+
+type SocialPlannerTemplateId = (typeof TEMPLATE_OPTIONS)[number]["id"];
+
+function applyTemplateToState(
+  templateId: SocialPlannerTemplateId,
+  setters: {
+    setFormat: (value: string) => void;
+    setContentGoal: (value: string) => void;
+    setFormatVariant: (value: string) => void;
+    setHook: (value: string) => void;
+    setCta: (value: string) => void;
+    setAssetRequirements: (value: string[]) => void;
+  },
+) {
+  const template = TEMPLATE_OPTIONS.find((entry) => entry.id === templateId);
+  if (!template) return;
+
+  setters.setFormat(template.format);
+  setters.setContentGoal(template.content_goal);
+  setters.setFormatVariant(template.format_variant);
+  setters.setHook(template.hook);
+  setters.setCta(template.cta);
+  setters.setAssetRequirements(template.asset_requirements);
+}
+
+function BriefingGroup({
+  title,
+  description,
+  icon: Icon,
+  children,
+}: {
+  title: string;
+  description: string;
+  icon: LucideIcon;
+  children: ReactNode;
+}) {
+  return (
+    <Card className="border-dashed">
+      <CardHeader className="pb-3">
+        <div className="flex items-start gap-3">
+          <div className="rounded-md bg-primary/10 p-2 text-primary">
+            <Icon className="h-4 w-4" />
+          </div>
+          <div>
+            <CardTitle className="text-sm">{title}</CardTitle>
+            <CardDescription>{description}</CardDescription>
+          </div>
+        </div>
+      </CardHeader>
+      <CardContent className="grid gap-4 md:grid-cols-2">{children}</CardContent>
+    </Card>
+  );
+}
+
 interface SocialPlannerEditDialogProps {
   item: SocialPlannerItem | null;
   open: boolean;
   users: Array<{ id: string; display_name: string }>;
   channels: Array<{ id: string; name: string }>;
   onOpenChange: (open: boolean) => void;
-  onSave: (itemId: string, payload: {
-    topic: string;
-    channel_ids: string[];
-    format: string | null;
-    hook: string | null;
-    core_message: string | null;
-    draft_text: string | null;
-    cta: string | null;
-    notes: string | null;
-    responsible_user_id: string | null;
-    scheduled_for: string | null;
-    approval_state: string;
-    workflow_status: PlannerWorkflowStatus;
-  }) => Promise<void>;
+  onSave: (itemId: string, payload: SocialPlannerDraftPayload) => Promise<void>;
 }
 
 function SocialPlannerEditDialog({ item, open, users, channels, onOpenChange, onSave }: SocialPlannerEditDialogProps) {
   const { toast } = useToast();
+  const [selectedTemplate, setSelectedTemplate] = useState<string>("none");
   const [topic, setTopic] = useState("");
   const [selectedChannels, setSelectedChannels] = useState<string[]>([]);
   const [formatValue, setFormatValue] = useState("");
+  const [contentGoal, setContentGoal] = useState("");
+  const [formatVariant, setFormatVariant] = useState("");
+  const [assetRequirements, setAssetRequirements] = useState<string[]>([]);
+  const [approvalRequired, setApprovalRequired] = useState(true);
+  const [publishLink, setPublishLink] = useState("");
+  const [performanceNotes, setPerformanceNotes] = useState("");
   const [hookValue, setHookValue] = useState("");
   const [coreMessage, setCoreMessage] = useState("");
   const [draftText, setDraftText] = useState("");
@@ -83,9 +219,16 @@ function SocialPlannerEditDialog({ item, open, users, channels, onOpenChange, on
   useEffect(() => {
     if (!item) return;
 
+    setSelectedTemplate("none");
     setTopic(item.topic);
     setSelectedChannels(item.channel_ids);
     setFormatValue(item.format || "");
+    setContentGoal(item.content_goal || "");
+    setFormatVariant(item.format_variant || item.format || "");
+    setAssetRequirements(item.asset_requirements || []);
+    setApprovalRequired(item.approval_required ?? true);
+    setPublishLink(item.publish_link || "");
+    setPerformanceNotes(item.performance_notes || "");
     setHookValue(item.hook || "");
     setCoreMessage(item.core_message || "");
     setDraftText(item.draft_text || "");
@@ -102,6 +245,20 @@ function SocialPlannerEditDialog({ item, open, users, channels, onOpenChange, on
     [channels],
   );
 
+  const handleTemplateChange = (value: string) => {
+    setSelectedTemplate(value);
+    if (value === "none") return;
+
+    applyTemplateToState(value as SocialPlannerTemplateId, {
+      setFormat: setFormatValue,
+      setContentGoal,
+      setFormatVariant,
+      setHook: setHookValue,
+      setCta: setCtaValue,
+      setAssetRequirements,
+    });
+  };
+
   const handleSave = async () => {
     if (!item) return;
 
@@ -116,6 +273,12 @@ function SocialPlannerEditDialog({ item, open, users, channels, onOpenChange, on
         topic: topic.trim(),
         channel_ids: selectedChannels,
         format: formatValue.trim() || null,
+        content_goal: contentGoal.trim() || null,
+        format_variant: formatVariant.trim() || null,
+        asset_requirements: assetRequirements,
+        approval_required: approvalRequired,
+        publish_link: publishLink.trim() || null,
+        performance_notes: performanceNotes.trim() || null,
         hook: hookValue.trim() || null,
         core_message: coreMessage.trim() || null,
         draft_text: draftText.trim() || null,
@@ -136,101 +299,184 @@ function SocialPlannerEditDialog({ item, open, users, channels, onOpenChange, on
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
+      <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>Beitrag bearbeiten</DialogTitle>
           <DialogDescription>
-            Pflege Inhalte, Kanäle, Verantwortlichkeit und Veröffentlichung direkt im Social Planner.
+            Pflege Inhalte, Kanäle, Briefing und Veröffentlichungsstatus direkt im Social Planner.
           </DialogDescription>
         </DialogHeader>
 
-        <div className="grid gap-4 md:grid-cols-2">
-          <div className="space-y-2 md:col-span-2">
-            <Label htmlFor="edit-topic">Thema</Label>
-            <Input id="edit-topic" value={topic} onChange={(event) => setTopic(event.target.value)} placeholder="Thema des Beitrags" />
+        <div className="space-y-4">
+          <div className="grid gap-4 md:grid-cols-2">
+            <div className="space-y-2 md:col-span-2">
+              <Label htmlFor="edit-topic">Thema</Label>
+              <Input id="edit-topic" value={topic} onChange={(event) => setTopic(event.target.value)} placeholder="Thema des Beitrags" />
+            </div>
+
+            <div className="space-y-2 md:col-span-2">
+              <Label>Vorlage</Label>
+              <Select value={selectedTemplate} onValueChange={handleTemplateChange}>
+                <SelectTrigger><SelectValue placeholder="Vorlage anwenden" /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="none">Keine Vorlage</SelectItem>
+                  {TEMPLATE_OPTIONS.map((template) => (
+                    <SelectItem key={template.id} value={template.id}>{template.label}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="space-y-2 md:col-span-2">
+              <Label>Kanäle</Label>
+              <MultiSelect
+                options={channelOptions}
+                selected={selectedChannels}
+                onChange={setSelectedChannels}
+                placeholder="Kanäle auswählen"
+              />
+            </div>
           </div>
 
-          <div className="space-y-2 md:col-span-2">
-            <Label>Kanäle</Label>
-            <MultiSelect
-              options={channelOptions}
-              selected={selectedChannels}
-              onChange={setSelectedChannels}
-              placeholder="Kanäle auswählen"
-            />
-          </div>
+          <BriefingGroup title="Wofür ist der Beitrag?" description="Lege Nutzen, Aufhänger und Ziel des Beitrags fest." icon={ClipboardList}>
+            <div className="space-y-2">
+              <Label>Beitragsziel</Label>
+              <Select value={contentGoal || "none"} onValueChange={(value) => setContentGoal(value === "none" ? "" : value)}>
+                <SelectTrigger><SelectValue placeholder="Ziel wählen" /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="none">Nicht festgelegt</SelectItem>
+                  {CONTENT_GOAL_OPTIONS.map((option) => <SelectItem key={option} value={option}>{option}</SelectItem>)}
+                </SelectContent>
+              </Select>
+            </div>
 
-          <div className="space-y-2">
-            <Label htmlFor="edit-format">Format</Label>
-            <Input id="edit-format" value={formatValue} onChange={(event) => setFormatValue(event.target.value)} placeholder="z. B. Reel, Carousel" />
-          </div>
+            <div className="space-y-2">
+              <Label htmlFor="edit-hook">Hook</Label>
+              <Input id="edit-hook" value={hookValue} onChange={(event) => setHookValue(event.target.value)} placeholder="Einstieg oder Aufhänger" />
+            </div>
 
-          <div className="space-y-2">
-            <Label>Freigabestatus</Label>
-            <Select value={approvalState} onValueChange={setApprovalState}>
-              <SelectTrigger><SelectValue placeholder="Freigabestatus wählen" /></SelectTrigger>
-              <SelectContent>
-                {Object.entries(APPROVAL_LABELS).map(([value, label]) => (
-                  <SelectItem key={value} value={value}>{label}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
+            <div className="space-y-2">
+              <Label htmlFor="edit-core-message">Kernaussage</Label>
+              <Input id="edit-core-message" value={coreMessage} onChange={(event) => setCoreMessage(event.target.value)} placeholder="Was soll hängen bleiben?" />
+            </div>
 
-          <div className="space-y-2">
-            <Label>Verantwortliche Person</Label>
-            <Select value={responsibleUserId} onValueChange={setResponsibleUserId}>
-              <SelectTrigger><SelectValue placeholder="Person auswählen" /></SelectTrigger>
-              <SelectContent>
-                <SelectItem value="none">Nicht zugewiesen</SelectItem>
-                {users.map((user) => (
-                  <SelectItem key={user.id} value={user.id}>{user.display_name}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
+            <div className="space-y-2">
+              <Label htmlFor="edit-cta">CTA</Label>
+              <Input id="edit-cta" value={ctaValue} onChange={(event) => setCtaValue(event.target.value)} placeholder="z. B. Jetzt kommentieren oder teilen" />
+            </div>
+          </BriefingGroup>
 
-          <div className="space-y-2">
-            <Label htmlFor="edit-scheduled-for">Veröffentlichungsdatum</Label>
-            <Input id="edit-scheduled-for" type="datetime-local" value={scheduledDate} onChange={(event) => setScheduledDate(event.target.value)} />
-          </div>
+          <BriefingGroup title="Welches Format ist geplant?" description="Definiere Kanal-Logik und Ausgabeformat für Redaktion und Produktion." icon={Pencil}>
+            <div className="space-y-2">
+              <Label htmlFor="edit-format">Format</Label>
+              <Input id="edit-format" value={formatValue} onChange={(event) => setFormatValue(event.target.value)} placeholder="z. B. Reel, Carousel" />
+            </div>
 
-          <div className="space-y-2">
-            <Label>Status im Board</Label>
-            <Select value={workflowStatus} onValueChange={(value) => setWorkflowStatus(value as PlannerWorkflowStatus)}>
-              <SelectTrigger><SelectValue placeholder="Status wählen" /></SelectTrigger>
-              <SelectContent>
-                {STATUS_COLUMNS.map((status) => (
-                  <SelectItem key={status.id} value={status.id}>{status.title}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
+            <div className="space-y-2">
+              <Label>Formatvariante</Label>
+              <Select value={formatVariant || "none"} onValueChange={(value) => setFormatVariant(value === "none" ? "" : value)}>
+                <SelectTrigger><SelectValue placeholder="Formatvariante wählen" /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="none">Nicht festgelegt</SelectItem>
+                  {FORMAT_VARIANT_OPTIONS.map((option) => <SelectItem key={option} value={option}>{option}</SelectItem>)}
+                </SelectContent>
+              </Select>
+            </div>
 
-          <div className="space-y-2">
-            <Label htmlFor="edit-hook">Hook</Label>
-            <Input id="edit-hook" value={hookValue} onChange={(event) => setHookValue(event.target.value)} placeholder="Einstieg oder Aufhänger" />
-          </div>
+            <div className="space-y-2 md:col-span-2">
+              <Label htmlFor="edit-draft-text">Entwurfstext</Label>
+              <Textarea id="edit-draft-text" rows={6} value={draftText} onChange={(event) => setDraftText(event.target.value)} placeholder="Textentwurf für den Beitrag" />
+            </div>
+          </BriefingGroup>
 
-          <div className="space-y-2">
-            <Label htmlFor="edit-core-message">Kernaussage</Label>
-            <Input id="edit-core-message" value={coreMessage} onChange={(event) => setCoreMessage(event.target.value)} placeholder="Was soll hängen bleiben?" />
-          </div>
+          <BriefingGroup title="Welche Assets werden gebraucht?" description="Halte Materialbedarf für Grafik, Foto, Video und Posting sauber fest." icon={CheckSquare}>
+            <div className="space-y-3 md:col-span-2">
+              <Label>Asset-Checkliste</Label>
+              <div className="grid gap-3 md:grid-cols-2">
+                {ASSET_OPTIONS.map((asset) => {
+                  const checked = assetRequirements.includes(asset);
+                  return (
+                    <label key={asset} className="flex items-center gap-3 rounded-md border p-3 text-sm">
+                      <Checkbox
+                        checked={checked}
+                        onCheckedChange={(nextChecked) => {
+                          setAssetRequirements((current) => nextChecked ? [...current, asset] : current.filter((entry) => entry !== asset));
+                        }}
+                      />
+                      <span>{asset}</span>
+                    </label>
+                  );
+                })}
+              </div>
+            </div>
 
-          <div className="space-y-2 md:col-span-2">
-            <Label htmlFor="edit-draft-text">Entwurfstext</Label>
-            <Textarea id="edit-draft-text" rows={6} value={draftText} onChange={(event) => setDraftText(event.target.value)} placeholder="Textentwurf für den Beitrag" />
-          </div>
+            <div className="space-y-2 md:col-span-2">
+              <Label htmlFor="edit-notes">Interne Notizen</Label>
+              <Textarea id="edit-notes" rows={4} value={notesValue} onChange={(event) => setNotesValue(event.target.value)} placeholder="Interne Hinweise, Freigabekommentare oder To-dos" />
+            </div>
+          </BriefingGroup>
 
-          <div className="space-y-2 md:col-span-2">
-            <Label htmlFor="edit-cta">CTA</Label>
-            <Input id="edit-cta" value={ctaValue} onChange={(event) => setCtaValue(event.target.value)} placeholder="z. B. Jetzt kommentieren oder teilen" />
-          </div>
+          <BriefingGroup title="Was fehlt noch bis zur Veröffentlichung?" description="Behalte Freigabe, Termin, Link und spätere Learnings gemeinsam im Blick." icon={CalendarDays}>
+            <div className="flex items-center justify-between gap-4 rounded-md border p-3 md:col-span-2">
+              <div>
+                <Label htmlFor="edit-approval-required">Freigabe erforderlich</Label>
+                <p className="text-xs text-muted-foreground">Aktiviere dies, wenn der Beitrag vor Veröffentlichung redaktionell freigegeben werden muss.</p>
+              </div>
+              <Switch id="edit-approval-required" checked={approvalRequired} onCheckedChange={setApprovalRequired} />
+            </div>
 
-          <div className="space-y-2 md:col-span-2">
-            <Label htmlFor="edit-notes">Notizen</Label>
-            <Textarea id="edit-notes" rows={4} value={notesValue} onChange={(event) => setNotesValue(event.target.value)} placeholder="Interne Hinweise, Freigabekommentare oder To-dos" />
-          </div>
+            <div className="space-y-2">
+              <Label>Freigabestatus</Label>
+              <Select value={approvalState} onValueChange={setApprovalState}>
+                <SelectTrigger><SelectValue placeholder="Freigabestatus wählen" /></SelectTrigger>
+                <SelectContent>
+                  {Object.entries(APPROVAL_LABELS).map(([value, label]) => (
+                    <SelectItem key={value} value={value}>{label}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="space-y-2">
+              <Label>Status im Board</Label>
+              <Select value={workflowStatus} onValueChange={(value) => setWorkflowStatus(value as PlannerWorkflowStatus)}>
+                <SelectTrigger><SelectValue placeholder="Status wählen" /></SelectTrigger>
+                <SelectContent>
+                  {STATUS_COLUMNS.map((status) => (
+                    <SelectItem key={status.id} value={status.id}>{status.title}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="space-y-2">
+              <Label>Verantwortliche Person</Label>
+              <Select value={responsibleUserId} onValueChange={setResponsibleUserId}>
+                <SelectTrigger><SelectValue placeholder="Person auswählen" /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="none">Nicht zugewiesen</SelectItem>
+                  {users.map((user) => (
+                    <SelectItem key={user.id} value={user.id}>{user.display_name}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="edit-scheduled-for">Veröffentlichungsdatum</Label>
+              <Input id="edit-scheduled-for" type="datetime-local" value={scheduledDate} onChange={(event) => setScheduledDate(event.target.value)} />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="edit-publish-link">Publish-Link</Label>
+              <Input id="edit-publish-link" value={publishLink} onChange={(event) => setPublishLink(event.target.value)} placeholder="https://…" />
+            </div>
+
+            <div className="space-y-2 md:col-span-2">
+              <Label htmlFor="edit-performance-notes">Performance-Notizen</Label>
+              <Textarea id="edit-performance-notes" rows={3} value={performanceNotes} onChange={(event) => setPerformanceNotes(event.target.value)} placeholder="z. B. starke Reichweite bei Carousel, CTA im ersten Slide gut funktioniert" />
+            </div>
+          </BriefingGroup>
         </div>
 
         <DialogFooter>
@@ -261,19 +507,36 @@ export function MyWorkSocialPlannerBoard({ specialDays = [] }: MyWorkSocialPlann
   const [sortBy, setSortBy] = useState<(typeof SORT_OPTIONS)[number]["value"]>("scheduled");
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
   const [editingItemId, setEditingItemId] = useState<string | null>(null);
+  const [createTemplate, setCreateTemplate] = useState<string>("none");
   const [createTopicId, setCreateTopicId] = useState<string>("none");
   const [createTopicTitle, setCreateTopicTitle] = useState("");
-  const [createChannelId, setCreateChannelId] = useState<string>("none");
+  const [createChannelIds, setCreateChannelIds] = useState<string[]>([]);
   const [createFormat, setCreateFormat] = useState("");
+  const [createContentGoal, setCreateContentGoal] = useState("");
+  const [createFormatVariant, setCreateFormatVariant] = useState("");
+  const [createAssetRequirements, setCreateAssetRequirements] = useState<string[]>([]);
+  const [createApprovalRequired, setCreateApprovalRequired] = useState(true);
+  const [createPublishLink, setCreatePublishLink] = useState("");
+  const [createPerformanceNotes, setCreatePerformanceNotes] = useState("");
   const [createHook, setCreateHook] = useState("");
   const [createCoreMessage, setCreateCoreMessage] = useState("");
   const [createDraftText, setCreateDraftText] = useState("");
+  const [createCta, setCreateCta] = useState("");
+  const [createNotes, setCreateNotes] = useState("");
+  const [createResponsibleUserId, setCreateResponsibleUserId] = useState<string>("none");
+  const [createApprovalState, setCreateApprovalState] = useState("draft");
+  const [createWorkflowStatus, setCreateWorkflowStatus] = useState<PlannerWorkflowStatus>("ideas");
   const [createScheduledDate, setCreateScheduledDate] = useState("");
   const [isCreatingDraft, setIsCreatingDraft] = useState(false);
 
   const editingItem = useMemo(
     () => items.find((item) => item.id === editingItemId) || null,
     [editingItemId, items],
+  );
+
+  const channelOptions = useMemo(
+    () => channels.map((channel) => ({ value: channel.id, label: channel.name })),
+    [channels],
   );
 
   const filteredItems = useMemo(() => {
@@ -288,7 +551,9 @@ export function MyWorkSocialPlannerBoard({ specialDays = [] }: MyWorkSocialPlann
 
         return (
           item.topic.toLowerCase().includes(search) ||
-          item.tags.some((tag) => tag.toLowerCase().includes(search))
+          item.tags.some((tag) => tag.toLowerCase().includes(search)) ||
+          item.content_goal?.toLowerCase().includes(search) ||
+          item.format_variant?.toLowerCase().includes(search)
         );
       })
       .sort((a, b) => {
@@ -325,7 +590,7 @@ export function MyWorkSocialPlannerBoard({ specialDays = [] }: MyWorkSocialPlann
     }
   };
 
-  const handleSaveItem = useCallback(async (itemId: string, payload: Parameters<NonNullable<SocialPlannerEditDialogProps["onSave"]>>[1]) => {
+  const handleSaveItem = useCallback(async (itemId: string, payload: SocialPlannerDraftPayload) => {
     await updateItem(itemId, payload);
     toast({ title: "Beitrag aktualisiert", description: "Änderungen sind im Board und Kalender sichtbar." });
   }, [toast, updateItem]);
@@ -355,14 +620,40 @@ export function MyWorkSocialPlannerBoard({ specialDays = [] }: MyWorkSocialPlann
   };
 
   const resetCreateDialog = () => {
+    setCreateTemplate("none");
     setCreateTopicId("none");
-    setCreateChannelId("none");
     setCreateTopicTitle("");
+    setCreateChannelIds([]);
     setCreateFormat("");
+    setCreateContentGoal("");
+    setCreateFormatVariant("");
+    setCreateAssetRequirements([]);
+    setCreateApprovalRequired(true);
+    setCreatePublishLink("");
+    setCreatePerformanceNotes("");
     setCreateHook("");
     setCreateCoreMessage("");
     setCreateDraftText("");
+    setCreateCta("");
+    setCreateNotes("");
+    setCreateResponsibleUserId("none");
+    setCreateApprovalState("draft");
+    setCreateWorkflowStatus("ideas");
     setCreateScheduledDate("");
+  };
+
+  const handleCreateTemplateChange = (value: string) => {
+    setCreateTemplate(value);
+    if (value === "none") return;
+
+    applyTemplateToState(value as SocialPlannerTemplateId, {
+      setFormat: setCreateFormat,
+      setContentGoal: setCreateContentGoal,
+      setFormatVariant: setCreateFormatVariant,
+      setHook: setCreateHook,
+      setCta: setCreateCta,
+      setAssetRequirements: setCreateAssetRequirements,
+    });
   };
 
   const createDraft = async () => {
@@ -391,16 +682,26 @@ export function MyWorkSocialPlannerBoard({ specialDays = [] }: MyWorkSocialPlann
 
       await createItem({
         topic_backlog_id: topicBacklogId,
-        workflow_status: "ideas",
+        workflow_status: createWorkflowStatus,
+        approval_state: createApprovalState,
         format: createFormat.trim() || null,
+        content_goal: createContentGoal.trim() || null,
+        format_variant: createFormatVariant.trim() || null,
+        asset_requirements: createAssetRequirements,
+        approval_required: createApprovalRequired,
+        publish_link: createPublishLink.trim() || null,
+        performance_notes: createPerformanceNotes.trim() || null,
         hook: createHook.trim() || null,
         core_message: createCoreMessage.trim() || null,
         draft_text: createDraftText.trim() || null,
+        cta: createCta.trim() || null,
+        notes: createNotes.trim() || null,
+        responsible_user_id: createResponsibleUserId === "none" ? null : createResponsibleUserId,
         scheduled_for: createScheduledDate ? new Date(`${createScheduledDate}T09:00:00`).toISOString() : null,
-        channel_ids: createChannelId !== "none" ? [createChannelId] : [],
+        channel_ids: createChannelIds,
       });
 
-      toast({ title: "Entwurf erstellt", description: "Der Beitrag wurde als Idee im Social Planner angelegt." });
+      toast({ title: "Entwurf erstellt", description: "Der Beitrag wurde mit Briefing-Feldern im Social Planner angelegt." });
       setIsCreateDialogOpen(false);
       resetCreateDialog();
     } catch {
@@ -568,16 +869,25 @@ export function MyWorkSocialPlannerBoard({ specialDays = [] }: MyWorkSocialPlann
                                     >
                                       <p className="font-medium text-sm leading-tight">{item.topic}</p>
                                       <p className="text-muted-foreground">Kanal: {item.channel_names.join(", ") || "-"}</p>
-                                      <p className="text-muted-foreground">Format: {item.format || "-"}</p>
+                                      <p className="text-muted-foreground">Ziel: {item.content_goal || "-"}</p>
+                                      <p className="text-muted-foreground">Format: {item.format_variant || item.format || "-"}</p>
                                       <p className="text-muted-foreground">Verantwortlich: {ownerName}</p>
                                       <p className="text-muted-foreground">
                                         Veröffentlichungsfenster: {item.scheduled_for ? format(new Date(item.scheduled_for), "dd.MM.yyyy HH:mm", { locale: de }) : "offen"}
                                       </p>
                                       <p className="text-muted-foreground">
-                                        Freigabestatus: {APPROVAL_LABELS[item.approval_state] || item.approval_state}
+                                        Freigabestatus: {item.approval_required ? (APPROVAL_LABELS[item.approval_state] || item.approval_state) : "Keine Freigabe nötig"}
                                       </p>
                                     </button>
                                   </div>
+
+                                  {item.asset_requirements.length > 0 && (
+                                    <div className="mb-2 flex flex-wrap gap-1">
+                                      {item.asset_requirements.slice(0, 3).map((asset) => (
+                                        <Badge variant="secondary" key={`${item.id}-${asset}`} className="text-[10px]">{asset}</Badge>
+                                      ))}
+                                    </div>
+                                  )}
 
                                   {item.tags.length > 0 && (
                                     <div className="mb-2 flex flex-wrap gap-1">
@@ -651,75 +961,197 @@ export function MyWorkSocialPlannerBoard({ specialDays = [] }: MyWorkSocialPlann
         setIsCreateDialogOpen(open);
         if (!open) resetCreateDialog();
       }}>
-        <DialogContent>
+        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>Neuen Social-Media-Inhalt entwerfen</DialogTitle>
             <DialogDescription>
-              Lege direkt aus dem Planner einen neuen Entwurf an.
+              Lege direkt aus dem Planner einen neuen Entwurf an – inklusive redaktionellem Briefing und Vorlagen.
             </DialogDescription>
           </DialogHeader>
 
-          <div className="space-y-3">
-            <div>
-              <Label>Thema</Label>
-              <Select value={createTopicId} onValueChange={setCreateTopicId}>
-                <SelectTrigger><SelectValue placeholder="Thema wählen" /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="none">Bitte wählen</SelectItem>
-                  {topics.map((topic) => (
-                    <SelectItem key={topic.id} value={topic.id}>{topic.topic}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+          <div className="space-y-4">
+            <div className="grid gap-4 md:grid-cols-2">
+              <div className="space-y-2 md:col-span-2">
+                <Label>Vorlage</Label>
+                <Select value={createTemplate} onValueChange={handleCreateTemplateChange}>
+                  <SelectTrigger><SelectValue placeholder="Vorlage auswählen" /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="none">Keine Vorlage</SelectItem>
+                    {TEMPLATE_OPTIONS.map((template) => (
+                      <SelectItem key={template.id} value={template.id}>{template.label}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="space-y-2">
+                <Label>Thema</Label>
+                <Select value={createTopicId} onValueChange={setCreateTopicId}>
+                  <SelectTrigger><SelectValue placeholder="Thema wählen" /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="none">Bitte wählen</SelectItem>
+                    {topics.map((topic) => (
+                      <SelectItem key={topic.id} value={topic.id}>{topic.topic}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="create-topic-title">Oder neues Thema</Label>
+                <Input
+                  id="create-topic-title"
+                  value={createTopicTitle}
+                  onChange={(event) => setCreateTopicTitle(event.target.value)}
+                  placeholder="z. B. Verkehrssicherheit in Karlsruhe"
+                />
+              </div>
+
+              <div className="space-y-2 md:col-span-2">
+                <Label>Kanäle</Label>
+                <MultiSelect options={channelOptions} selected={createChannelIds} onChange={setCreateChannelIds} placeholder="Kanäle auswählen" />
+              </div>
             </div>
 
-            <div>
-              <Label htmlFor="create-topic-title">Oder neues Thema (optional)</Label>
-              <Input
-                id="create-topic-title"
-                value={createTopicTitle}
-                onChange={(event) => setCreateTopicTitle(event.target.value)}
-                placeholder="z. B. Verkehrssicherheit in Karlsruhe"
-              />
-            </div>
+            <BriefingGroup title="Wofür ist der Beitrag?" description="Vorlagen füllen Hook/CTA an, du kannst sie hier weiter schärfen." icon={ClipboardList}>
+              <div className="space-y-2">
+                <Label>Beitragsziel</Label>
+                <Select value={createContentGoal || "none"} onValueChange={(value) => setCreateContentGoal(value === "none" ? "" : value)}>
+                  <SelectTrigger><SelectValue placeholder="Ziel wählen" /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="none">Nicht festgelegt</SelectItem>
+                    {CONTENT_GOAL_OPTIONS.map((option) => <SelectItem key={option} value={option}>{option}</SelectItem>)}
+                  </SelectContent>
+                </Select>
+              </div>
 
-            <div>
-              <Label>Kanal (optional)</Label>
-              <Select value={createChannelId} onValueChange={setCreateChannelId}>
-                <SelectTrigger><SelectValue placeholder="Kanal wählen" /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="none">Kein Kanal</SelectItem>
-                  {channels.map((channel) => (
-                    <SelectItem key={channel.id} value={channel.id}>{channel.name}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
+              <div className="space-y-2">
+                <Label htmlFor="create-hook">Hook</Label>
+                <Input id="create-hook" value={createHook} onChange={(event) => setCreateHook(event.target.value)} placeholder="Aufhänger für den Post" />
+              </div>
 
-            <div>
-              <Label htmlFor="create-format">Format (optional)</Label>
-              <Input id="create-format" value={createFormat} onChange={(event) => setCreateFormat(event.target.value)} placeholder="z. B. Carousel" />
-            </div>
+              <div className="space-y-2">
+                <Label htmlFor="create-core-message">Kernaussage</Label>
+                <Input id="create-core-message" value={createCoreMessage} onChange={(event) => setCreateCoreMessage(event.target.value)} placeholder="Was soll hängen bleiben?" />
+              </div>
 
-            <div>
-              <Label htmlFor="create-hook">Hook (optional)</Label>
-              <Input id="create-hook" value={createHook} onChange={(event) => setCreateHook(event.target.value)} placeholder="Aufhänger für den Post" />
-            </div>
+              <div className="space-y-2">
+                <Label htmlFor="create-cta">CTA</Label>
+                <Input id="create-cta" value={createCta} onChange={(event) => setCreateCta(event.target.value)} placeholder="Handlungsaufforderung" />
+              </div>
+            </BriefingGroup>
 
-            <div>
-              <Label htmlFor="create-core-message">Kernaussage (optional)</Label>
-              <Input id="create-core-message" value={createCoreMessage} onChange={(event) => setCreateCoreMessage(event.target.value)} placeholder="Was soll hängen bleiben?" />
-            </div>
+            <BriefingGroup title="Welches Format ist geplant?" description="Plane direkt mit Format- und Kanalentscheidungen für den Entwurf." icon={Pencil}>
+              <div className="space-y-2">
+                <Label htmlFor="create-format">Format</Label>
+                <Input id="create-format" value={createFormat} onChange={(event) => setCreateFormat(event.target.value)} placeholder="z. B. Carousel" />
+              </div>
 
-            <div>
-              <Label htmlFor="create-draft-text">Entwurfstext (optional)</Label>
-              <Textarea id="create-draft-text" value={createDraftText} onChange={(event) => setCreateDraftText(event.target.value)} placeholder="Textentwurf..." rows={4} />
-            </div>
+              <div className="space-y-2">
+                <Label>Formatvariante</Label>
+                <Select value={createFormatVariant || "none"} onValueChange={(value) => setCreateFormatVariant(value === "none" ? "" : value)}>
+                  <SelectTrigger><SelectValue placeholder="Formatvariante wählen" /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="none">Nicht festgelegt</SelectItem>
+                    {FORMAT_VARIANT_OPTIONS.map((option) => <SelectItem key={option} value={option}>{option}</SelectItem>)}
+                  </SelectContent>
+                </Select>
+              </div>
 
-            <div>
-              <Label htmlFor="create-scheduled-date">Veröffentlichungsdatum (optional)</Label>
-              <Input id="create-scheduled-date" type="date" value={createScheduledDate} onChange={(event) => setCreateScheduledDate(event.target.value)} />
-            </div>
+              <div className="space-y-2 md:col-span-2">
+                <Label htmlFor="create-draft-text">Entwurfstext</Label>
+                <Textarea id="create-draft-text" value={createDraftText} onChange={(event) => setCreateDraftText(event.target.value)} placeholder="Textentwurf..." rows={4} />
+              </div>
+            </BriefingGroup>
+
+            <BriefingGroup title="Welche Assets werden gebraucht?" description="Die Vorlagen setzen passende Checklisten für politische Standardfälle." icon={CheckSquare}>
+              <div className="space-y-3 md:col-span-2">
+                <Label>Asset-Checkliste</Label>
+                <div className="grid gap-3 md:grid-cols-2">
+                  {ASSET_OPTIONS.map((asset) => {
+                    const checked = createAssetRequirements.includes(asset);
+                    return (
+                      <label key={asset} className="flex items-center gap-3 rounded-md border p-3 text-sm">
+                        <Checkbox
+                          checked={checked}
+                          onCheckedChange={(nextChecked) => {
+                            setCreateAssetRequirements((current) => nextChecked ? [...current, asset] : current.filter((entry) => entry !== asset));
+                          }}
+                        />
+                        <span>{asset}</span>
+                      </label>
+                    );
+                  })}
+                </div>
+              </div>
+
+              <div className="space-y-2 md:col-span-2">
+                <Label htmlFor="create-notes">Interne Notizen</Label>
+                <Textarea id="create-notes" value={createNotes} onChange={(event) => setCreateNotes(event.target.value)} placeholder="Offene Punkte, Asset-Briefing, Abstimmungshinweise" rows={3} />
+              </div>
+            </BriefingGroup>
+
+            <BriefingGroup title="Was fehlt noch bis zur Veröffentlichung?" description="Organisiere Freigabe, Veröffentlichung und spätere Learnings direkt beim Anlegen." icon={CalendarDays}>
+              <div className="flex items-center justify-between gap-4 rounded-md border p-3 md:col-span-2">
+                <div>
+                  <Label htmlFor="create-approval-required">Freigabe erforderlich</Label>
+                  <p className="text-xs text-muted-foreground">Vor Aktivierung von „geplant“ oder „veröffentlicht“ kann hier eine interne Freigabe eingefordert werden.</p>
+                </div>
+                <Switch id="create-approval-required" checked={createApprovalRequired} onCheckedChange={setCreateApprovalRequired} />
+              </div>
+
+              <div className="space-y-2">
+                <Label>Freigabestatus</Label>
+                <Select value={createApprovalState} onValueChange={setCreateApprovalState}>
+                  <SelectTrigger><SelectValue placeholder="Freigabestatus wählen" /></SelectTrigger>
+                  <SelectContent>
+                    {Object.entries(APPROVAL_LABELS).map(([value, label]) => (
+                      <SelectItem key={value} value={value}>{label}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="space-y-2">
+                <Label>Status im Board</Label>
+                <Select value={createWorkflowStatus} onValueChange={(value) => setCreateWorkflowStatus(value as PlannerWorkflowStatus)}>
+                  <SelectTrigger><SelectValue placeholder="Status wählen" /></SelectTrigger>
+                  <SelectContent>
+                    {STATUS_COLUMNS.map((status) => (
+                      <SelectItem key={status.id} value={status.id}>{status.title}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="space-y-2">
+                <Label>Verantwortliche Person</Label>
+                <Select value={createResponsibleUserId} onValueChange={setCreateResponsibleUserId}>
+                  <SelectTrigger><SelectValue placeholder="Person auswählen" /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="none">Nicht zugewiesen</SelectItem>
+                    {users.map((user) => (
+                      <SelectItem key={user.id} value={user.id}>{user.display_name}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="create-scheduled-date">Veröffentlichungsdatum</Label>
+                <Input id="create-scheduled-date" type="date" value={createScheduledDate} onChange={(event) => setCreateScheduledDate(event.target.value)} />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="create-publish-link">Publish-Link</Label>
+                <Input id="create-publish-link" value={createPublishLink} onChange={(event) => setCreatePublishLink(event.target.value)} placeholder="https://…" />
+              </div>
+
+              <div className="space-y-2 md:col-span-2">
+                <Label htmlFor="create-performance-notes">Performance-Notizen</Label>
+                <Textarea id="create-performance-notes" value={createPerformanceNotes} onChange={(event) => setCreatePerformanceNotes(event.target.value)} placeholder="Learnings, Benchmarks oder Erwartungen festhalten" rows={3} />
+              </div>
+            </BriefingGroup>
           </div>
 
           <DialogFooter>
