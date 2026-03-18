@@ -1,5 +1,6 @@
 import { useState, useEffect, createContext, useContext, ReactNode } from 'react';
 import { supabase } from '@/integrations/supabase/client';
+import type { Database } from '@/integrations/supabase/types';
 import { debugConsole } from '@/utils/debugConsole';
 import { useTenant } from './useTenant';
 
@@ -18,6 +19,20 @@ const defaultSettings: AppSettings = {
 };
 
 const AppSettingsContext = createContext<AppSettings>(defaultSettings);
+
+type AppSettingRow = Pick<Database['public']['Tables']['app_settings']['Row'], 'setting_key' | 'setting_value'>;
+
+const APP_SETTING_KEYS = ['app_name', 'app_subtitle', 'app_logo_url'] as const;
+type AppSettingKey = typeof APP_SETTING_KEYS[number];
+
+const mapAppSettings = (rows: AppSettingRow[] | null | undefined): Partial<Record<AppSettingKey, string>> =>
+  (rows ?? []).reduce<Partial<Record<AppSettingKey, string>>>((acc, item) => {
+    const key = item.setting_key as AppSettingKey;
+    if (APP_SETTING_KEYS.includes(key)) {
+      acc[key] = item.setting_value ?? '';
+    }
+    return acc;
+  }, {});
 
 export function AppSettingsProvider({ children }: { children: ReactNode }) {
   const { currentTenant, loading: tenantLoading } = useTenant();
@@ -38,10 +53,7 @@ export function AppSettingsProvider({ children }: { children: ReactNode }) {
             .in('setting_key', ['app_name', 'app_subtitle', 'app_logo_url']);
 
           if (tenantData && tenantData.length > 0) {
-            const settingsMap = tenantData.reduce((acc, item) => {
-              acc[item.setting_key] = item.setting_value || '';
-              return acc;
-            }, {} as Record<string, string>);
+            const settingsMap = mapAppSettings(tenantData as AppSettingRow[]);
 
             setSettings({
               app_name: settingsMap.app_name || 'LandtagsOS',
@@ -61,10 +73,7 @@ export function AppSettingsProvider({ children }: { children: ReactNode }) {
           .in('setting_key', ['app_name', 'app_subtitle', 'app_logo_url']);
 
         if (globalData && globalData.length > 0) {
-          const settingsMap = globalData.reduce((acc, item) => {
-            acc[item.setting_key] = item.setting_value || '';
-            return acc;
-          }, {} as Record<string, string>);
+          const settingsMap = mapAppSettings(globalData as AppSettingRow[]);
 
           setSettings({
             app_name: settingsMap.app_name || 'LandtagsOS',
