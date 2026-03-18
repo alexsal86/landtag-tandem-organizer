@@ -405,7 +405,7 @@ All colors MUST be HSL.
            hover:shadow-elegant hover:bg-primary/90
            transition-all duration-300 
            hover:scale-105 active:scale-95
-           focus-ring;
+           focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 focus:ring-offset-background;
   }
 
   .btn-secondary {
