@@ -50,10 +50,11 @@ export default defineConfig(({ mode }) => ({
   plugins: [
     lexicalDedupePlugin(),
     react(),
-    nodePolyfills({
-      include: ['buffer', 'process'],
-      globals: { Buffer: true, process: true },
-    }),
+    // nodePolyfills temporarily disabled due to @rollup/plugin-inject resolution issue
+    // nodePolyfills({
+    //   include: ['buffer', 'process'],
+    //   globals: { Buffer: true, process: true },
+    // }),
     mode === 'development' &&
     componentTagger(),
   ].filter(Boolean),
