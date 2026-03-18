@@ -176,7 +176,7 @@ export function useChecklistOperations({
           } as any);
           if (plannerError) throw plannerError;
 
-          const plannerUrl = `/my-work?tab=redaktion&highlight=${plannerItemId}`;
+          const plannerUrl = `/mywork?tab=redaktion&highlight=${plannerItemId}`;
           const { data: createdAction, error: actionError } = await supabase
             .from("event_planning_item_actions")
             .insert({
@@ -223,7 +223,7 @@ export function useChecklistOperations({
           const guestCount = rsvpGuests?.length || 0;
           const sentCount = rsvpGuests?.filter((g: any) => g.invitation_sent)?.length || 0;
 
-          const rsvpUrl = `/veranstaltungsplanung?highlight=${selectedPlanningId}`;
+          const rsvpUrl = `/eventplanning/${selectedPlanningId}#rsvp-manager`;
           const { data: createdAction, error: actionError } = await supabase
             .from("event_planning_item_actions")
             .insert({
