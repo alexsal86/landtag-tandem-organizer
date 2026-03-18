@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
 import { useTenant } from "@/hooks/useTenant";
+import { useCurrentProfileId } from "@/hooks/useCurrentProfileId";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { useNewItemIndicators } from "@/hooks/useNewItemIndicators";
@@ -25,6 +26,7 @@ export function useEventPlanningData() {
   debugConsole.log('=== EventPlanningView component loaded ===');
   const { user } = useAuth();
   const { currentTenant } = useTenant();
+  const currentProfileId = useCurrentProfileId();
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
   const { toast } = useToast();
@@ -70,6 +72,7 @@ export function useEventPlanningData() {
 
   // ── Email actions ──
   const [itemEmailActions, setItemEmailActions] = useState<Record<string, any>>({});
+  const [itemSocialPlannerActions, setItemSocialPlannerActions] = useState<Record<string, any>>({});
   const [emailDialogOpen, setEmailDialogOpen] = useState(false);
   const [selectedEmailItemId, setSelectedEmailItemId] = useState<string | null>(null);
 
@@ -136,6 +139,9 @@ export function useEventPlanningData() {
     collaborators,
     selectedPlanningUserId: selectedPlanning?.user_id,
     itemEmailActions,
+    currentTenantId: currentTenant?.id,
+    currentProfileId,
+    selectedPlanningTitle: selectedPlanning?.title,
     toast,
     onRefreshDetails: fetchPlanningDetails,
   });
@@ -322,12 +328,19 @@ export function useEventPlanningData() {
     const { data: items } = await supabase.from("event_planning_checklist_items").select("id").eq("event_planning_id", planningId);
     if (!items) return;
     const itemIds = items.map((i) => i.id);
-    const { data: actions } = await supabase.from("event_planning_item_actions").select("*").in("checklist_item_id", itemIds).eq("action_type", "email");
-    if (actions) {
-      const actionsMap: Record<string, any> = {};
-      actions.forEach((action) => { actionsMap[action.checklist_item_id] = action; });
-      setItemEmailActions(actionsMap);
-    }
+    const { data: actions } = await supabase.from("event_planning_item_actions").select("*").in("checklist_item_id", itemIds).in("action_type", ["email", "social_planner"]);
+    const emailActionsMap: Record<string, any> = {};
+    const socialPlannerActionsMap: Record<string, any> = {};
+    (actions || []).forEach((action) => {
+      if (action.action_type === "email") {
+        emailActionsMap[action.checklist_item_id] = action;
+      }
+      if (action.action_type === "social_planner") {
+        socialPlannerActionsMap[action.checklist_item_id] = action;
+      }
+    });
+    setItemEmailActions(emailActionsMap);
+    setItemSocialPlannerActions(socialPlannerActionsMap);
   };
 
   const loadGeneralDocuments = async (planningId: string) => {
@@ -695,6 +708,7 @@ export function useEventPlanningData() {
     selectedDate, setSelectedDate,
     selectedTime, setSelectedTime,
     newChecklistItem: checklist.newChecklistItem, setNewChecklistItem: checklist.setNewChecklistItem,
+    newChecklistItemType: checklist.newChecklistItemType, setNewChecklistItemType: checklist.setNewChecklistItemType,
     loading,
     newContact, setNewContact,
     newSpeaker, setNewSpeaker,
@@ -711,7 +725,7 @@ export function useEventPlanningData() {
     newComment: itemDetails.newComment, setNewComment: itemDetails.setNewComment,
     newSubtask: itemDetails.newSubtask, setNewSubtask: itemDetails.setNewSubtask,
     uploading: uploading || itemDetails.uploading,
-    itemEmailActions,
+    itemEmailActions, itemSocialPlannerActions,
     emailDialogOpen, setEmailDialogOpen,
     selectedEmailItemId, setSelectedEmailItemId,
     editingComment: itemDetails.editingComment, setEditingComment: itemDetails.setEditingComment,
