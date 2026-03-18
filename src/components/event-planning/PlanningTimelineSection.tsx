@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState, type RefObject } from "react";
+import { useCallback, useMemo, useRef, type RefObject } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { CalendarClock, Flag, Trash2 } from "lucide-react";
@@ -6,6 +6,7 @@ import { format } from "date-fns";
 import { de } from "date-fns/locale";
 import { Droppable } from "@hello-pangea/dnd";
 import type { ChecklistItem, EventPlanningDate } from "./types";
+import { useTimelineGeometry } from "./useTimelineGeometry";
 
 const DAY_IN_MS = 1000 * 60 * 60 * 24;
 const DOT_SIZE_CLASS = "h-5 w-5";
@@ -28,25 +29,12 @@ interface PlanningTimelineSectionProps {
 
 type TimelineEntry = {
   id: string;
+  checklistItemId?: string;
   date: Date;
   title: string;
   type: "known" | "checklist";
   isConfirmed?: boolean;
   isCompleted?: boolean;
-};
-
-type ConnectorLine = {
-  assignmentId: string;
-  startX: number;
-  startY: number;
-  endX: number;
-  endY: number;
-};
-
-type TimelineAxis = {
-  left: number;
-  top: number;
-  height: number;
 };
 
 export function PlanningTimelineSection({
@@ -57,11 +45,9 @@ export function PlanningTimelineSection({
   onRemoveAssignment,
   checklistItemRefs,
 }: PlanningTimelineSectionProps) {
-  const [connectorLines, setConnectorLines] = useState<ConnectorLine[]>([]);
-  const [timelineAxis, setTimelineAxis] = useState<TimelineAxis | null>(null);
   const sectionRef = useRef<HTMLDivElement | null>(null);
   const timelineListRef = useRef<HTMLDivElement | null>(null);
-  const timelinePointRefs = useRef<Record<string, HTMLSpanElement | null>>({});
+  const timelinePointRefs = useRef(new Map<string, HTMLSpanElement>());
 
   const entries = useMemo<TimelineEntry[]>(() => {
     const planningStartEntry: TimelineEntry[] = planningCreatedAt
@@ -91,6 +77,7 @@ export function PlanningTimelineSection({
 
         return {
           id: `item-${assignment.checklistItemId}`,
+          checklistItemId: assignment.checklistItemId,
           date: new Date(assignment.dueDate),
           title: checklistItem.title || assignment.title,
           type: "checklist" as const,
@@ -132,73 +119,23 @@ export function PlanningTimelineSection({
     });
   }, [entries]);
 
-  useEffect(() => {
-    const updateGeometry = () => {
-      const sectionRect = sectionRef.current?.getBoundingClientRect();
-      const listRect = timelineListRef.current?.getBoundingClientRect();
+  const { connectorLines, timelineAxis } = useTimelineGeometry({
+    sectionRef,
+    timelineListRef,
+    timelinePointRefs,
+    checklistItemRefs,
+    assignments,
+    entries,
+  });
 
-      if (!sectionRect || !listRect) {
-        setConnectorLines([]);
-        setTimelineAxis(null);
-        return;
-      }
+  const setTimelinePointRef = useCallback((entryId: string, element: HTMLSpanElement | null) => {
+    if (element) {
+      timelinePointRefs.current.set(entryId, element);
+      return;
+    }
 
-      const firstEntry = entries[0];
-      const lastEntry = entries[entries.length - 1];
-      const firstPoint = firstEntry ? timelinePointRefs.current[firstEntry.id] : null;
-      const lastPoint = lastEntry ? timelinePointRefs.current[lastEntry.id] : null;
-
-      if (firstPoint && lastPoint) {
-        const firstRect = firstPoint.getBoundingClientRect();
-        const lastRect = lastPoint.getBoundingClientRect();
-        setTimelineAxis({
-          left: firstRect.left + firstRect.width / 2 - listRect.left,
-          top: firstRect.top + firstRect.height / 2 - listRect.top,
-          height: Math.max(0, lastRect.top + lastRect.height / 2 - (firstRect.top + firstRect.height / 2)),
-        });
-      } else {
-        setTimelineAxis(null);
-      }
-
-      if (!checklistItemRefs) {
-        setConnectorLines([]);
-        return;
-      }
-
-      const nextLines = assignments
-        .map((assignment) => {
-          const checklistElement = checklistItemRefs[assignment.checklistItemId]?.current;
-          const timelinePoint = timelinePointRefs.current[`item-${assignment.checklistItemId}`];
-
-          if (!checklistElement || !timelinePoint) {
-            return null;
-          }
-
-          const checklistRect = checklistElement.getBoundingClientRect();
-          const pointRect = timelinePoint.getBoundingClientRect();
-
-          return {
-            assignmentId: assignment.checklistItemId,
-            startX: checklistRect.right - sectionRect.left,
-            startY: checklistRect.top + checklistRect.height / 2 - sectionRect.top,
-            endX: pointRect.left + pointRect.width / 2 - sectionRect.left,
-            endY: pointRect.top + pointRect.height / 2 - sectionRect.top,
-          };
-        })
-        .filter((line): line is ConnectorLine => line !== null);
-
-      setConnectorLines(nextLines);
-    };
-
-    updateGeometry();
-    window.addEventListener("resize", updateGeometry);
-    window.addEventListener("scroll", updateGeometry, true);
-
-    return () => {
-      window.removeEventListener("resize", updateGeometry);
-      window.removeEventListener("scroll", updateGeometry, true);
-    };
-  }, [assignments, checklistItemRefs, entries, entrySpacings]);
+    timelinePointRefs.current.delete(entryId);
+  }, []);
 
   return (
     <div ref={sectionRef} className="relative">
@@ -260,7 +197,9 @@ export function PlanningTimelineSection({
                         </div>
                       )}
                       {entries.map((entry, index) => {
-                        const assignment = assignments.find((a) => a.checklistItemId === entry.id.replace("item-", ""));
+                        const assignment = entry.checklistItemId
+                          ? assignments.find((a) => a.checklistItemId === entry.checklistItemId)
+                          : undefined;
                         const isPastEntry = entry.date.getTime() < now;
                         const pointColorClass = isPastEntry
                           ? "bg-muted text-muted-foreground"
@@ -277,9 +216,7 @@ export function PlanningTimelineSection({
                           >
                             <span
                               className={`absolute top-1.5 z-20 flex items-center justify-center rounded-full ${DOT_SIZE_CLASS} ${DOT_LEFT_CLASS} ${pointColorClass}`}
-                              ref={(element) => {
-                                timelinePointRefs.current[entry.id] = element;
-                              }}
+                              ref={(element) => setTimelinePointRef(entry.id, element)}
                             >
                               <Icon className="h-3 w-3" />
                             </span>
