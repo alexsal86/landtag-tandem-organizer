@@ -9,6 +9,7 @@ import { useTenant } from '@/hooks/useTenant';
 import { supabase } from '@/integrations/supabase/client';
 import { debugConsole, isDebugConsoleEnabled } from '@/utils/debugConsole';
 import { getCoiCapabilityStatus } from '@/lib/coiRuntime';
+import type { MatrixCreateRoomOptions, MatrixMessage, MatrixReplyPreview } from '@/types/matrix';
 
 // ─── Interfaces ──────────────────────────────────────────────────────────────
 
@@ -54,36 +55,6 @@ interface MatrixSasVerificationState {
   confirm: () => Promise<void>;
   mismatch: () => void;
   cancel: () => void;
-}
-
-export interface MatrixMessage {
-  eventId: string;
-  roomId: string;
-  sender: string;
-  senderDisplayName: string;
-  content: string;
-  timestamp: number;
-  type: string;
-  status: 'sending' | 'sent' | 'delivered' | 'read' | 'error';
-  replyTo?: {
-    eventId: string;
-    sender: string;
-    content: string;
-  };
-  reactions: Map<string, { count: number; userReacted: boolean }>;
-  mediaContent?: {
-    msgtype: string;
-    body: string;
-    url?: string;
-    info?: {
-      mimetype?: string;
-      size?: number;
-      w?: number;
-      h?: number;
-      duration?: number;
-      thumbnail_url?: string;
-    };
-  };
 }
 
 // ─── Constants ───────────────────────────────────────────────────────────────
@@ -196,7 +167,7 @@ const mapMatrixEventToMessage = (room: sdk.Room, event: sdk.MatrixEvent): Matrix
     return null;
   }
 
-  let replyTo: MatrixMessage['replyTo'] = undefined;
+  let replyTo: MatrixReplyPreview | undefined;
   if (relatesTo?.['m.in_reply_to']?.event_id) {
     const replyEvent = room.findEventById(relatesTo['m.in_reply_to'].event_id);
     if (replyEvent) {
@@ -318,7 +289,7 @@ interface MatrixClientContextType {
   sendReadReceiptForLatestVisibleEvent: (roomId: string) => Promise<void>;
   addReaction: (roomId: string, eventId: string, emoji: string) => Promise<void>;
   removeReaction: (roomId: string, eventId: string, emoji: string) => Promise<void>;
-  createRoom: (options: { name: string; topic?: string; isPrivate: boolean; enableEncryption: boolean; inviteUserIds?: string[] }) => Promise<string>;
+  createRoom: (options: MatrixCreateRoomOptions) => Promise<string>;
   requestSelfVerification: (otherDeviceId?: string) => Promise<void>;
   activeSasVerification: MatrixSasVerificationState | null;
   confirmSasVerification: () => Promise<void>;

@@ -30,7 +30,7 @@ export function EmployeesView() {
   const [yearlyStatsOpen, setYearlyStatsOpen] = useState(false);
   const [meetingHistoryRefreshTrigger, setMeetingHistoryRefreshTrigger] = useState(0);
 
-  const reloadMeetingFlows = useCallback(async () => {
+  const reloadMeetingFlows = useCallback(async (): Promise<void> => {
     setMeetingHistoryRefreshTrigger((prev) => prev + 1);
     await data.reloadPendingRequestsCount();
   }, [data.reloadPendingRequestsCount]);
@@ -109,7 +109,7 @@ export function EmployeesView() {
             updateDaysPerWeek={ops.updateDaysPerWeek}
             updateVacationDays={ops.updateVacationDays}
             updateStartDate={ops.updateStartDate}
-            onScheduleMeeting={(emp) => { setSelectedEmployee(emp); setSchedulerOpen(true); }}
+            onScheduleMeeting={(emp): void => { setSelectedEmployee(emp); setSchedulerOpen(true); }}
           />
           <section className="pb-6">
             <EmployeeMeetingHistory showFilters={true} refreshTrigger={meetingHistoryRefreshTrigger} />
@@ -127,7 +127,7 @@ export function EmployeesView() {
           employeeName={selectedEmployee.name}
           open={schedulerOpen}
           onOpenChange={setSchedulerOpen}
-          onScheduled={async () => {
+          onScheduled={async (): Promise<void> => {
             setSchedulerOpen(false);
             setSelectedEmployee(null);
             await reloadMeetingFlows();

@@ -9,6 +9,7 @@ import * as XLSX from "xlsx";
 import VCF from "vcf";
 import { isValidEmail } from "@/lib/utils";
 import { findPotentialDuplicates } from "@/utils/duplicateDetection";
+import type { ContactDuplicateCandidate } from "@/types/contact";
 import type { Contact, DuplicateMatch } from "@/utils/duplicateDetection";
 import { ImportData, FieldMapping, FIELD_MAPPINGS } from "../types";
 
@@ -23,7 +24,8 @@ export function useContactImport() {
   const [errors, setErrors] = useState<string[]>([]);
   const [existingContacts, setExistingContacts] = useState<Contact[]>([]);
   const [duplicateWarnings, setDuplicateWarnings] = useState<string[]>([]);
-  const [currentDuplicate, setCurrentDuplicate] = useState<{ newContact: Contact; duplicates: DuplicateMatch[]; rowIndex: number } | null>(null);
+  type PendingDuplicate = { newContact: ContactDuplicateCandidate; duplicates: DuplicateMatch[]; rowIndex: number };
+  const [currentDuplicate, setCurrentDuplicate] = useState<PendingDuplicate | null>(null);
   const [duplicateStrategy, setDuplicateStrategy] = useState<"ask" | "skip" | "overwrite" | "merge" | "import">("ask");
   const [importQueue, setImportQueue] = useState<number[]>([]);
 
@@ -144,7 +146,7 @@ export function useContactImport() {
     setStep("preview");
   };
 
-  const parseDistributionListNames = (rawValue: string | undefined) => {
+  const parseDistributionListNames = (rawValue: string | null | undefined): string[] => {
     if (!rawValue) return [];
     return rawValue
       .split(/[;,|]/)
@@ -152,7 +154,7 @@ export function useContactImport() {
       .filter(Boolean);
   };
 
-  const assignContactToDistributionLists = async (contactId: string, listNames: string[], rowIndex: number) => {
+  const assignContactToDistributionLists = async (contactId: string, listNames: string[], rowIndex: number): Promise<void> => {
     if (!user || !currentTenant || listNames.length === 0) return;
 
     for (const listName of listNames) {
@@ -202,12 +204,28 @@ export function useContactImport() {
     }
   };
 
-  const importContact = async (rowIndex: number) => {
+  type ContactImportPayload = Record<string, string> & {
+    user_id?: string;
+    tenant_id?: string;
+    distribution_list_names?: string;
+    first_name?: string;
+    last_name?: string;
+    name?: string;
+    organization?: string;
+    organization_id?: string;
+    contact_type?: string;
+    category?: string;
+    priority?: string;
+    email?: string;
+    phone?: string;
+  };
+
+  const importContact = async (rowIndex: number): Promise<void> => {
     if (!user || !currentTenant) return;
     const row = data[rowIndex];
     const validMappings = fieldMappings.filter((m) => m.targetField);
     try {
-      const contactData: any = { user_id: user.id, tenant_id: currentTenant.id };
+      const contactData: ContactImportPayload = { user_id: user.id, tenant_id: currentTenant.id };
       validMappings.forEach((m) => { const v = row[m.sourceField]; if (v && v.trim()) contactData[m.targetField] = v.trim(); });
       const distributionListNames = parseDistributionListNames(contactData.distribution_list_names);
       delete contactData.distribution_list_names;
@@ -238,16 +256,16 @@ export function useContactImport() {
     }
   };
 
-  const continueImport = () => {
+  const continueImport = (): void => {
     setCurrentDuplicate(null);
     if (importQueue.length > 0) { const next = importQueue[0]; setImportQueue((prev) => prev.slice(1)); processRow(next); }
     else finishImport();
   };
 
-  const processRow = async (rowIndex: number) => {
+  const processRow = async (rowIndex: number): Promise<void> => {
     const row = data[rowIndex];
     const validMappings = fieldMappings.filter((m) => m.targetField);
-    const contactData: any = {};
+    const contactData: ContactDuplicateCandidate = { id: "", name: "" };
     validMappings.forEach((m) => { const v = row[m.sourceField]; if (v && v.trim()) contactData[m.targetField] = v.trim(); });
     if ((contactData.first_name || contactData.last_name) && !contactData.name) contactData.name = `${contactData.first_name || ""} ${contactData.last_name || ""}`.trim();
     if (!contactData.name?.trim()) { setErrors((prev) => [...prev, `Zeile ${rowIndex + 1}: Kein Name angegeben`]); continueImport(); return; }
@@ -263,7 +281,7 @@ export function useContactImport() {
     continueImport();
   };
 
-  const startImport = async () => {
+  const startImport = async (): Promise<void> => {
     if (!user || !currentTenant) { toast({ title: "Fehler", description: "Sie müssen angemeldet sein", variant: "destructive" }); return; }
     setStep("importing"); setProgress(0); setImportedCount(0); setSkippedCount(0); setErrors([]); setDuplicateWarnings([]);
     const queue = data.map((_, i) => i);
@@ -271,7 +289,7 @@ export function useContactImport() {
     if (queue.length > 0) { processRow(queue[0]); setImportQueue(queue.slice(1)); }
   };
 
-  const finishImport = () => {
+  const finishImport = (): void => {
     toast({ title: "Import abgeschlossen", description: `${importedCount} importiert${skippedCount > 0 ? `, ${skippedCount} übersprungen` : ""}${errors.length > 0 ? `, ${errors.length} Fehler` : ""}`, variant: errors.length > 0 ? "destructive" : "default" });
     setStep("complete");
   };
