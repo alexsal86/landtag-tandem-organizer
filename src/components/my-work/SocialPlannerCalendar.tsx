@@ -1,15 +1,23 @@
 import { useCallback, useMemo, useState } from "react";
+import { CalendarDays, AlertTriangle, Tag, icons, Move, Clock3 } from "lucide-react";
 import { Calendar, dateFnsLocalizer, Views, type View } from "react-big-calendar";
-import { format, parse, startOfWeek, getDay, getISOWeek, isSameDay } from "date-fns";
+import withDragAndDrop from "react-big-calendar/lib/addons/dragAndDrop";
+import { format, parse, startOfDay, startOfWeek, getDay, getISOWeek, isSameDay, isWithinInterval } from "date-fns";
 import { de } from "date-fns/locale";
 import { Badge } from "@/components/ui/badge";
-import { ArrowLeft, ArrowRight, CalendarDays, Tag, icons } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import type { SocialPlannerItem, PlannerWorkflowStatus } from "@/hooks/useSocialPlannerItems";
 import { getSpecialDayHint, type SpecialDay } from "@/utils/dashboard/specialDays";
 import "react-big-calendar/lib/css/react-big-calendar.css";
+import "react-big-calendar/lib/addons/dragAndDrop/styles.css";
 
 const locales = { de };
+const DragAndDropCalendar = withDragAndDrop<CalendarEvent>(Calendar);
+const OVERLOAD_THRESHOLD_PER_DAY = 4;
 
 const localizer = dateFnsLocalizer({
   format: (date: Date, formatStr: string, options?: Record<string, unknown>) =>
@@ -45,11 +53,13 @@ interface CalendarEvent {
   start: Date;
   end: Date;
   item: SocialPlannerItem;
+  sameChannelCount: number;
 }
 
 interface Props {
   items: SocialPlannerItem[];
-  onUpdateSchedule: (id: string, date: string) => void;
+  onUpdateSchedule: (id: string, date: string) => Promise<void> | void;
+  onEditItem: (id: string) => void;
   specialDays: SpecialDay[];
 }
 
@@ -61,7 +71,6 @@ interface DateHeaderProps {
 function MonthDateHeader({ date, label }: DateHeaderProps) {
   const weekStart = startOfWeek(date, { locale: de });
   const showWeekNumber = isSameDay(date, weekStart);
-
   const isoWeek = getISOWeek(date);
 
   return (
@@ -76,63 +85,146 @@ function MonthDateHeader({ date, label }: DateHeaderProps) {
   );
 }
 
-export function SocialPlannerCalendar({ items, onUpdateSchedule, specialDays }: Props) {
-  const [currentDate, setCurrentDate] = useState(new Date());
-  const [view, setView] = useState<View>(Views.MONTH);
+function inferFormatType(item: SocialPlannerItem): "story" | "feed" | "other" {
+  const normalized = [item.format, item.topic, item.draft_text].filter(Boolean).join(" ").toLowerCase();
+  if (normalized.includes("story") || normalized.includes("stories")) return "story";
+  if (normalized.includes("feed") || normalized.includes("post") || normalized.includes("carousel") || normalized.includes("reel")) return "feed";
+  return "other";
+}
 
-  const { events, unscheduled } = useMemo(() => {
+function CalendarEventCard({ event }: { event: CalendarEvent }) {
+  return (
+    <div className="flex h-full flex-col gap-1 overflow-hidden">
+      <span className="truncate font-medium">{event.title}</span>
+      <div className="flex flex-wrap items-center gap-1">
+        <Badge variant="secondary" className="bg-white/15 px-1 py-0 text-[9px] text-white hover:bg-white/15">
+          {STATUS_LABELS[event.item.workflow_status]}
+        </Badge>
+        {event.sameChannelCount > 1 && (
+          <Badge variant="secondary" className="bg-amber-100 px-1 py-0 text-[9px] text-amber-950 hover:bg-amber-100">
+            Kanal-Konflikt ×{event.sameChannelCount}
+          </Badge>
+        )}
+      </div>
+    </div>
+  );
+}
+
+export function SocialPlannerCalendar({ items, onUpdateSchedule, onEditItem, specialDays }: Props) {
+  const [currentDate, setCurrentDate] = useState(new Date());
+  const [view, setView] = useState<View>(Views.WEEK);
+  const [scheduleFilter, setScheduleFilter] = useState<"all" | "unscheduled" | "scheduled">("all");
+  const [formatFilter, setFormatFilter] = useState<"all" | "story" | "feed">("all");
+  const [slotSelection, setSlotSelection] = useState<Date | null>(null);
+  const [slotSelectedItemId, setSlotSelectedItemId] = useState<string>("none");
+  const [inlineScheduleDates, setInlineScheduleDates] = useState<Record<string, string>>({});
+  const [isScheduling, setIsScheduling] = useState(false);
+
+  const filteredItems = useMemo(() => {
+    return items.filter((item) => {
+      const formatType = inferFormatType(item);
+      if (scheduleFilter === "unscheduled" && item.scheduled_for) return false;
+      if (scheduleFilter === "scheduled" && !item.scheduled_for) return false;
+      if (formatFilter !== "all" && formatType !== formatFilter) return false;
+      return true;
+    });
+  }, [formatFilter, items, scheduleFilter]);
+
+  const { events, unscheduled, countsByDay } = useMemo(() => {
     const scheduled: CalendarEvent[] = [];
     const unscheduledItems: SocialPlannerItem[] = [];
+    const dayCountMap = new Map<string, number>();
+    const conflictMap = new Map<string, number>();
 
-    for (const item of items) {
+    const scheduledItems = filteredItems.filter((item) => item.scheduled_for);
+    for (const item of scheduledItems) {
+      const dayKey = format(new Date(item.scheduled_for as string), "yyyy-MM-dd");
+      dayCountMap.set(dayKey, (dayCountMap.get(dayKey) || 0) + 1);
+
+      for (const channelId of item.channel_ids) {
+        const conflictKey = `${dayKey}::${channelId}`;
+        conflictMap.set(conflictKey, (conflictMap.get(conflictKey) || 0) + 1);
+      }
+    }
+
+    for (const item of filteredItems) {
       if (item.scheduled_for) {
         const start = new Date(item.scheduled_for);
         const end = new Date(start.getTime() + 60 * 60 * 1000);
-        scheduled.push({ id: item.id, title: item.topic, start, end, item });
+        const dayKey = format(start, "yyyy-MM-dd");
+        const sameChannelCount = item.channel_ids.reduce((maxCount, channelId) => {
+          const count = conflictMap.get(`${dayKey}::${channelId}`) || 0;
+          return Math.max(maxCount, count);
+        }, 1);
+
+        scheduled.push({ id: item.id, title: item.topic, start, end, item, sameChannelCount });
       } else {
         unscheduledItems.push(item);
       }
     }
 
-    return { events: scheduled, unscheduled: unscheduledItems };
-  }, [items]);
+    return { events: scheduled, unscheduled: unscheduledItems, countsByDay: dayCountMap };
+  }, [filteredItems]);
+
+  const overloadedDays = useMemo(
+    () => Array.from(countsByDay.entries()).filter(([, count]) => count >= OVERLOAD_THRESHOLD_PER_DAY),
+    [countsByDay],
+  );
 
   const eventStyleGetter = useCallback((event: CalendarEvent) => ({
     style: {
       backgroundColor: STATUS_COLORS[event.item.workflow_status] || "hsl(var(--primary))",
-      borderRadius: "4px",
-      border: "none",
+      borderRadius: "6px",
+      border: event.sameChannelCount > 1 ? "2px solid rgba(251,191,36,0.95)" : "none",
       color: "white",
       fontSize: "11px",
       padding: "2px 4px",
+      boxShadow: event.sameChannelCount > 1 ? "0 0 0 1px rgba(120,53,15,0.25)" : "none",
     },
   }), []);
 
-  const handleEventDrop = useCallback(
-    ({ event, start }: { event: CalendarEvent; start: string | Date }) => {
-      const date = start instanceof Date ? start : new Date(start);
-      onUpdateSchedule(event.id, date.toISOString());
-    },
-    [onUpdateSchedule],
-  );
+  const persistSchedule = useCallback(async (itemId: string, date: Date) => {
+    const normalizedDate = new Date(date);
+    if (Number.isNaN(normalizedDate.getTime())) return;
+    setIsScheduling(true);
+    try {
+      await onUpdateSchedule(itemId, normalizedDate.toISOString());
+    } finally {
+      setIsScheduling(false);
+    }
+  }, [onUpdateSchedule]);
 
+  const handleEventMove = useCallback(async ({ event, start }: { event: CalendarEvent; start: Date }) => {
+    await persistSchedule(event.id, start);
+  }, [persistSchedule]);
+
+  const handleSelectSlot = useCallback(({ start }: { start: Date }) => {
+    setSlotSelection(start);
+    setSlotSelectedItemId("none");
+  }, []);
+
+  const handleDayPropGetter = useCallback((date: Date) => {
+    const key = format(date, "yyyy-MM-dd");
+    const count = countsByDay.get(key) || 0;
+    if (count >= OVERLOAD_THRESHOLD_PER_DAY) {
+      return {
+        className: "bg-amber-50/70 dark:bg-amber-950/10",
+        style: { boxShadow: "inset 0 0 0 1px rgba(245,158,11,0.35)" },
+      };
+    }
+    return {};
+  }, [countsByDay]);
 
   const specialDayHint = useMemo(() => getSpecialDayHint(currentDate, specialDays), [currentDate, specialDays]);
-
-  const HintIcon = specialDayHint?.icon
-    ? icons[specialDayHint.icon as keyof typeof icons]
-    : null;
+  const HintIcon = specialDayHint?.icon ? icons[specialDayHint.icon as keyof typeof icons] : null;
 
   const renderHintText = useCallback((text: string) => {
     const parts = text.split(/(\*\*.*?\*\*)/g);
-
-    return parts.map((part, index) => {
-      if (part.startsWith("**") && part.endsWith("**")) {
-        return <strong key={`${part}-${index}`} className="font-semibold">{part.slice(2, -2)}</strong>;
-      }
-
-      return <span key={`${part}-${index}`}>{part}</span>;
-    });
+    return parts.map((part, index) => (
+      part.startsWith("**") && part.endsWith("**")
+        ? <strong key={`${part}-${index}`} className="font-semibold">{part.slice(2, -2)}</strong>
+        : <span key={`${part}-${index}`}>{part}</span>
+    ));
   }, []);
 
   const messages = useMemo(() => ({
@@ -146,46 +238,81 @@ export function SocialPlannerCalendar({ items, onUpdateSchedule, specialDays }: 
     noEventsInRange: "Keine Beiträge in diesem Zeitraum.",
   }), []);
 
+  const rangeLabel = useMemo(() => {
+    return format(currentDate, view === Views.MONTH ? "MMMM yyyy" : "'Woche vom' dd. MMMM yyyy", { locale: de });
+  }, [currentDate, view]);
+
+  const visibleOverloadedDays = useMemo(() => overloadedDays.filter(([day]) => {
+    const date = new Date(`${day}T12:00:00`);
+    if (view === Views.WEEK) {
+      const weekStart = startOfWeek(currentDate, { locale: de });
+      const weekEnd = new Date(weekStart);
+      weekEnd.setDate(weekEnd.getDate() + 6);
+      return isWithinInterval(date, { start: startOfDay(weekStart), end: new Date(weekEnd.setHours(23, 59, 59, 999)) });
+    }
+    return currentDate.getMonth() === date.getMonth() && currentDate.getFullYear() === date.getFullYear();
+  }), [currentDate, overloadedDays, view]);
+
   return (
     <div className="space-y-3">
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+      <div className="flex flex-col gap-3 xl:flex-row xl:items-center xl:justify-between">
         <div>
           <h4 className="text-sm font-semibold text-foreground">Planungskalender</h4>
-          <p className="text-xs text-muted-foreground">
-            {format(currentDate, view === Views.MONTH ? "MMMM yyyy" : "'Woche vom' dd. MMMM yyyy", { locale: de })}
-          </p>
+          <p className="text-xs text-muted-foreground">{rangeLabel}</p>
         </div>
 
         <div className="flex flex-wrap items-center gap-2">
           <div className="flex items-center rounded-md border overflow-hidden">
-            <Button type="button" size="sm" variant="ghost" className="rounded-none h-8 px-2" onClick={() => setCurrentDate(new Date())}>
-              Heute
-            </Button>
-            <Button type="button" size="icon" variant="ghost" className="rounded-none h-8 w-8" onClick={() => setCurrentDate((current) => new Date(current.getFullYear(), current.getMonth() - 1, 1))}>
-              <ArrowLeft className="h-4 w-4" />
-            </Button>
-            <Button type="button" size="icon" variant="ghost" className="rounded-none h-8 w-8" onClick={() => setCurrentDate((current) => new Date(current.getFullYear(), current.getMonth() + 1, 1))}>
-              <ArrowRight className="h-4 w-4" />
-            </Button>
+            <Button type="button" size="sm" variant="ghost" className="rounded-none h-8 px-2" onClick={() => setCurrentDate(new Date())}>Heute</Button>
+            <Button type="button" size="sm" variant={view === Views.WEEK ? "default" : "ghost"} className="rounded-none h-8 px-2" onClick={() => setView(Views.WEEK)}>Woche</Button>
+            <Button type="button" size="sm" variant={view === Views.MONTH ? "default" : "ghost"} className="rounded-none h-8 px-2" onClick={() => setView(Views.MONTH)}>Monat</Button>
           </div>
+          <Select value={scheduleFilter} onValueChange={(value) => setScheduleFilter(value as typeof scheduleFilter)}>
+            <SelectTrigger className="h-8 w-[180px]"><SelectValue placeholder="Planungsstatus" /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Alle Beiträge</SelectItem>
+              <SelectItem value="unscheduled">Nur ungeplante Beiträge</SelectItem>
+              <SelectItem value="scheduled">Nur eingeplante Beiträge</SelectItem>
+            </SelectContent>
+          </Select>
+          <Select value={formatFilter} onValueChange={(value) => setFormatFilter(value as typeof formatFilter)}>
+            <SelectTrigger className="h-8 w-[150px]"><SelectValue placeholder="Format" /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Alle Formate</SelectItem>
+              <SelectItem value="story">Nur Stories</SelectItem>
+              <SelectItem value="feed">Nur Feed</SelectItem>
+            </SelectContent>
+          </Select>
         </div>
       </div>
+
+      {view === Views.WEEK && visibleOverloadedDays.length > 0 && (
+        <div className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-950 dark:border-amber-900/70 dark:bg-amber-950/30 dark:text-amber-100">
+          <div className="flex items-start gap-2">
+            <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
+            <div>
+              <p className="font-medium">Überlastungswarnung in dieser Woche</p>
+              <p className="text-xs">
+                {visibleOverloadedDays.map(([day, count]) => `${format(new Date(`${day}T12:00:00`), "EEE, dd.MM.", { locale: de })}: ${count} Beiträge`).join(" · ")}
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
 
       {specialDayHint && (
         <div className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-950 dark:border-amber-900/70 dark:bg-amber-950/30 dark:text-amber-100">
           <div className="flex items-start gap-2">
             {HintIcon && <HintIcon className="mt-0.5 h-4 w-4 shrink-0 text-amber-600 dark:text-amber-400" />}
             <div className="space-y-1">
-              {specialDayHint.text.split("\n").map((line, index) => (
-                <p key={`${line}-${index}`}>{renderHintText(line)}</p>
-              ))}
+              {specialDayHint.text.split("\n").map((line, index) => <p key={`${line}-${index}`}>{renderHintText(line)}</p>)}
             </div>
           </div>
         </div>
       )}
 
       <div className="min-h-[500px]">
-        <Calendar
+        <DragAndDropCalendar
           localizer={localizer}
           events={events}
           startAccessor="start"
@@ -196,6 +323,7 @@ export function SocialPlannerCalendar({ items, onUpdateSchedule, specialDays }: 
           onView={setView}
           views={[Views.WEEK, Views.MONTH]}
           eventPropGetter={eventStyleGetter}
+          dayPropGetter={handleDayPropGetter}
           messages={messages}
           culture="de"
           step={60}
@@ -204,57 +332,136 @@ export function SocialPlannerCalendar({ items, onUpdateSchedule, specialDays }: 
           max={new Date(2020, 0, 1, 20, 0)}
           formats={{
             dayHeaderFormat: (date: Date) => format(date, "EEEE, dd. MMMM", { locale: de }),
-            dayRangeHeaderFormat: ({ start, end }: { start: Date; end: Date }) =>
-              `${format(start, "dd. MMM", { locale: de })} – ${format(end, "dd. MMM yyyy", { locale: de })}`,
+            dayRangeHeaderFormat: ({ start, end }: { start: Date; end: Date }) => `${format(start, "dd. MMM", { locale: de })} – ${format(end, "dd. MMM yyyy", { locale: de })}`,
             timeGutterFormat: (date: Date) => format(date, "HH:mm"),
           }}
           components={{
-            month: {
-              dateHeader: MonthDateHeader,
-            },
+            event: CalendarEventCard,
+            month: { dateHeader: MonthDateHeader },
           }}
           popup
-          selectable={false}
+          selectable
+          resizable={false}
+          draggableAccessor={() => true}
+          onEventDrop={handleEventMove}
+          onSelectSlot={handleSelectSlot}
+          onSelectEvent={(event) => onEditItem(event.id)}
           className="social-planner-calendar"
         />
       </div>
 
-      {unscheduled.length > 0 && (
+      <div className="grid gap-3 xl:grid-cols-[minmax(0,2fr)_minmax(280px,1fr)]">
+        <section className="rounded-lg border bg-muted/20 p-3">
+          <div className="mb-2 flex items-center justify-between gap-2">
+            <h4 className="text-xs font-semibold text-foreground flex items-center gap-1.5">
+              <Move className="h-3.5 w-3.5" />
+              Planungshinweise
+            </h4>
+            <Badge variant="outline">{events.length} Termine</Badge>
+          </div>
+          <div className="space-y-2 text-xs text-muted-foreground">
+            <p>• Beiträge können direkt im Kalender per Drag-and-Drop neu terminiert werden.</p>
+            <p>• Klick auf einen freien Slot öffnet die Terminierung für ungeplante Beiträge.</p>
+            <p>• Klick auf einen Beitrag öffnet den Bearbeitungsdialog für Status, Datum und Inhalte.</p>
+            <p>• Gelb umrandete Termine markieren mehrere Beiträge im selben Kanal am selben Tag.</p>
+          </div>
+        </section>
+
         <aside className="space-y-2 rounded-lg border bg-muted/30 p-3">
           <h4 className="text-xs font-semibold text-foreground flex items-center gap-1.5">
             <CalendarDays className="h-3.5 w-3.5" />
             Ungeplant ({unscheduled.length})
           </h4>
-          <div className="grid gap-2 md:grid-cols-2 xl:grid-cols-3">
-            {unscheduled.map((item) => (
-              <div key={item.id} className="rounded-md border bg-card p-2 text-xs space-y-1">
-                <p className="font-medium leading-tight">{item.topic}</p>
-                <div className="flex items-center gap-1">
-                  <Badge
-                    variant="secondary"
-                    className="text-[10px]"
-                    style={{ backgroundColor: STATUS_COLORS[item.workflow_status], color: "white" }}
-                  >
-                    {STATUS_LABELS[item.workflow_status]}
-                  </Badge>
-                </div>
-                {item.tags.length > 0 && (
-                  <div className="flex flex-wrap gap-0.5">
-                    {item.tags.slice(0, 2).map((tag) => (
-                      <Badge variant="outline" key={tag} className="text-[9px]">
-                        <Tag className="mr-0.5 h-2 w-2" />{tag}
+          {unscheduled.length === 0 ? (
+            <p className="text-xs text-muted-foreground">Keine ungeplanten Beiträge im aktuellen Filter.</p>
+          ) : (
+            <div className="grid gap-2">
+              {unscheduled.map((item) => (
+                <div key={item.id} className="rounded-md border bg-card p-2 text-xs space-y-2">
+                  <div className="space-y-1">
+                    <p className="font-medium leading-tight">{item.topic}</p>
+                    <div className="flex items-center gap-1">
+                      <Badge variant="secondary" className="text-[10px]" style={{ backgroundColor: STATUS_COLORS[item.workflow_status], color: "white" }}>
+                        {STATUS_LABELS[item.workflow_status]}
                       </Badge>
-                    ))}
+                      <Badge variant="outline" className="text-[10px]">{inferFormatType(item) === "story" ? "Story" : inferFormatType(item) === "feed" ? "Feed" : "Format offen"}</Badge>
+                    </div>
+                    {item.tags.length > 0 && (
+                      <div className="flex flex-wrap gap-0.5">
+                        {item.tags.slice(0, 2).map((tag) => (
+                          <Badge variant="outline" key={tag} className="text-[9px]"><Tag className="mr-0.5 h-2 w-2" />{tag}</Badge>
+                        ))}
+                      </div>
+                    )}
+                    <p className="text-muted-foreground">{item.channel_names.join(", ") || "Kein Kanal"}</p>
                   </div>
-                )}
-                <p className="text-muted-foreground">
-                  {item.channel_names.join(", ") || "Kein Kanal"}
-                </p>
-              </div>
-            ))}
-          </div>
+                  <div className="grid gap-2 sm:grid-cols-[1fr_auto_auto]">
+                    <div className="space-y-1">
+                      <Label htmlFor={`schedule-${item.id}`} className="text-[10px]">Einplanen am</Label>
+                      <Input
+                        id={`schedule-${item.id}`}
+                        type="datetime-local"
+                        value={inlineScheduleDates[item.id] || ""}
+                        onChange={(event) => setInlineScheduleDates((current) => ({ ...current, [item.id]: event.target.value }))}
+                        className="h-8 text-[11px]"
+                      />
+                    </div>
+                    <Button type="button" variant="outline" size="sm" className="self-end" onClick={() => onEditItem(item.id)}>Bearbeiten</Button>
+                    <Button
+                      type="button"
+                      size="sm"
+                      className="self-end"
+                      disabled={!inlineScheduleDates[item.id] || isScheduling}
+                      onClick={() => void persistSchedule(item.id, new Date(inlineScheduleDates[item.id]))}
+                    >
+                      <Clock3 className="mr-1 h-3 w-3" />Einplanen
+                    </Button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
         </aside>
-      )}
+      </div>
+
+      <Dialog open={slotSelection !== null} onOpenChange={(open) => !open && setSlotSelection(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Beitrag in freien Slot einplanen</DialogTitle>
+            <DialogDescription>
+              {slotSelection ? `Ausgewählter Slot: ${format(slotSelection, "dd.MM.yyyy HH:mm", { locale: de })}` : "Wähle einen ungeplanten Beitrag aus."}
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-3">
+            <div>
+              <Label>Ungeplanten Beitrag auswählen</Label>
+              <Select value={slotSelectedItemId} onValueChange={setSlotSelectedItemId}>
+                <SelectTrigger><SelectValue placeholder="Beitrag wählen" /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="none">Bitte wählen</SelectItem>
+                  {unscheduled.map((item) => (
+                    <SelectItem key={item.id} value={item.id}>{item.topic}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setSlotSelection(null)}>Abbrechen</Button>
+            <Button
+              disabled={!slotSelection || slotSelectedItemId === "none" || isScheduling}
+              onClick={() => {
+                if (!slotSelection || slotSelectedItemId === "none") return;
+                void persistSchedule(slotSelectedItemId, slotSelection).then(() => setSlotSelection(null));
+              }}
+            >
+              Termin speichern
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
