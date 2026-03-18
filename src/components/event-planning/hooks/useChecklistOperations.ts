@@ -201,7 +201,7 @@ export function useChecklistOperations({
           debugConsole.error("Error creating social media system point:", systemPointError);
           // Rollback all created resources using pre-generated IDs
           await Promise.allSettled([
-            supabase.from("event_planning_checklist_items").delete().eq("id", data.id),
+            supabase.from("event_planning_checklist_items").delete().eq("id", itemId),
             supabase.from("social_content_items").delete().eq("id", plannerItemId),
             supabase.from("topic_backlog").delete().eq("id", topicId),
           ]);
