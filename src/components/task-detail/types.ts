@@ -10,6 +10,7 @@ export interface Task {
   progress?: number;
   call_log_id?: string | null;
   tenant_id?: string | null;
+  parent_task_id?: string | null;
 }
 
 export interface TaskDocument {

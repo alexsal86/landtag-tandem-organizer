@@ -4,6 +4,14 @@ import { useToast } from "@/hooks/use-toast";
 import { debugConsole } from "@/utils/debugConsole";
 import { useAuth } from "@/hooks/useAuth";
 import type { Task, TaskComment, TaskDocument, Subtask } from "./types";
+import type { Tables, TablesInsert, TablesUpdate } from "@/integrations/supabase/types";
+
+type TaskRow = Tables<"tasks">;
+type TaskDocumentRow = Tables<"task_documents">;
+type TaskCommentRow = Tables<"task_comments">;
+type ProfileRow = Pick<Tables<"profiles">, "user_id" | "display_name" | "avatar_url">;
+type TaskInsert = TablesInsert<"tasks">;
+type TaskUpdate = TablesUpdate<"tasks">;
 
 export function useTaskDetailData(task: Task | null) {
   const [editFormData, setEditFormData] = useState<Partial<Task>>({});
@@ -49,7 +57,7 @@ export function useTaskDetailData(task: Task | null) {
         .order("created_at", { ascending: true });
       if (error) throw error;
       setSubtasks(
-        (data || []).map((s, i) => ({
+        (data ?? []).map((s: TaskRow, i: number) => ({
           id: s.id,
           task_id: s.parent_task_id ?? '',
           user_id: s.user_id,
@@ -73,7 +81,7 @@ export function useTaskDetailData(task: Task | null) {
     try {
       const { data, error } = await supabase.from("task_documents").select("*").eq("task_id", taskId).order("created_at", { ascending: false });
       if (error) throw error;
-      setTaskDocuments((data || []).map(d => ({ ...d, file_size: d.file_size ?? undefined, file_type: d.file_type ?? undefined })));
+      setTaskDocuments((data ?? []).map((document: TaskDocumentRow) => ({ ...document, file_size: document.file_size ?? undefined, file_type: document.file_type ?? undefined })));
     } catch (e) {
       debugConsole.error("Error loading task documents:", e);
     }
@@ -83,7 +91,7 @@ export function useTaskDetailData(task: Task | null) {
     try {
       const { data, error } = await supabase.from("profiles").select("user_id, display_name").order("display_name");
       if (error) throw error;
-      setUsers((data || []).map(u => ({ user_id: u.user_id, display_name: u.display_name ?? undefined })));
+      setUsers((data ?? []).map((profile: Pick<ProfileRow, "user_id" | "display_name">) => ({ user_id: profile.user_id, display_name: profile.display_name ?? undefined })));
     } catch (e) {
       debugConsole.error("Error loading users:", e);
     }
@@ -93,14 +101,14 @@ export function useTaskDetailData(task: Task | null) {
     try {
       const { data: commentsData, error } = await supabase.from("task_comments").select("*").eq("task_id", taskId).order("created_at", { ascending: true });
       if (error) throw error;
-      const userIds = [...new Set(commentsData?.map((c) => c.user_id) || [])];
-      let profiles: any[] = [];
+      const userIds = [...new Set((commentsData ?? []).map((comment: TaskCommentRow) => comment.user_id))];
+      let profiles: ProfileRow[] = [];
       if (userIds.length > 0) {
         const { data } = await supabase.from("profiles").select("user_id, display_name, avatar_url").in("user_id", userIds);
-        profiles = data || [];
+        profiles = data ?? [];
       }
       setComments(
-        (commentsData || []).map((c) => ({
+        (commentsData ?? []).map((c: TaskCommentRow) => ({
           id: c.id,
           task_id: c.task_id,
           user_id: c.user_id,
@@ -129,7 +137,7 @@ export function useTaskDetailData(task: Task | null) {
           category: editFormData.category,
           assigned_to: editFormData.assignedTo || "",
           progress: editFormData.progress,
-        })
+        } as TaskUpdate)
         .eq("id", task.id);
 
       if (error) {
@@ -270,7 +278,7 @@ export function useTaskDetailData(task: Task | null) {
       const { error } = await supabase.from("tasks").insert([{
         parent_task_id: task.id,
         user_id: user.id,
-        tenant_id: (task as any).tenant_id,
+        tenant_id: task.tenant_id ?? null,
         title: newSubtask.description.trim(),
         description: "",
         assigned_to: newSubtask.assigned_to || "",
@@ -279,7 +287,7 @@ export function useTaskDetailData(task: Task | null) {
         priority: task.priority || "medium",
         category: task.category || "personal",
         progress: 0,
-      }] as any);
+      }] as TaskInsert);
       if (error) throw error;
       setNewSubtask({ description: "", assigned_to: "", due_date: "" });
       loadSubtasks(task.id);
@@ -291,7 +299,7 @@ export function useTaskDetailData(task: Task | null) {
 
   const updateSubtask = async (subtaskId: string, updates: Partial<Subtask>) => {
     try {
-      const u: any = {};
+      const u: TaskUpdate = {};
       if (updates.description !== undefined) u.title = updates.description;
       if (updates.assigned_to !== undefined) u.assigned_to = updates.assigned_to;
       if (updates.due_date !== undefined) u.due_date = updates.due_date;

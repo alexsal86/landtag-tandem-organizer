@@ -15,6 +15,12 @@ import { TopicSelector } from "@/components/topics/TopicSelector";
 import { useCreateTaskWithTopics } from "@/hooks/useTaskTopics";
 import { debugConsole } from "@/utils/debugConsole";
 import { notifyTaskShared } from "@/utils/shareNotifications";
+import type { Tables, TablesInsert } from "@/integrations/supabase/types";
+
+type ProfileOption = Pick<Tables<"profiles">, "id" | "display_name" | "user_id"> & { isCurrentUser: boolean };
+type TaskCategoryOption = Pick<Tables<"task_categories">, "name" | "label">;
+type TaskStatusOption = Pick<Tables<"task_statuses">, "name" | "label">;
+type TaskInsert = TablesInsert<"tasks">;
 
 export default function CreateTask() {
   const navigate = useNavigate();
@@ -22,15 +28,10 @@ export default function CreateTask() {
   const { currentTenant } = useTenant();
   const { saveTaskTopics } = useCreateTaskWithTopics();
   const [loading, setLoading] = useState(false);
-  const [userProfiles, setUserProfiles] = useState<Array<{
-    id: string;
-    display_name: string | null;
-    user_id: string;
-    isCurrentUser: boolean;
-  }>>([]);
+  const [userProfiles, setUserProfiles] = useState<ProfileOption[]>([]);
   const [_currentUserId, setCurrentUserId] = useState<string | null>(null);
-  const [taskCategories, setTaskCategories] = useState<Array<{ name: string; label: string }>>([]);
-  const [_taskStatuses, setTaskStatuses] = useState<Array<{ name: string; label: string }>>([]);
+  const [taskCategories, setTaskCategories] = useState<TaskCategoryOption[]>([]);
+  const [_taskStatuses, setTaskStatuses] = useState<TaskStatusOption[]>([]);
   const [formData, setFormData] = useState({
     title: "",
     description: "",
@@ -67,7 +68,7 @@ export default function CreateTask() {
         if (statusesError) throw statusesError;
 
         // Sort profiles with current user first
-        const sortedProfiles = (profiles || []).map(profile => ({
+        const sortedProfiles = (profiles || []).map((profile) => ({
           ...profile,
           isCurrentUser: profile.user_id === user.id
         })).sort((a, b) => {
@@ -137,7 +138,7 @@ export default function CreateTask() {
         }
 
         // Create task with assigned_to as comma-separated string
-        const taskData = {
+        const taskData: TaskInsert = {
           title: formData.title.trim(),
           description: formData.description?.trim() || null,
           priority: formData.priority,
@@ -324,7 +325,7 @@ export default function CreateTask() {
                 <div className="space-y-2">
                   <Label htmlFor="assignedTo">Zuweisungen (optional)</Label>
                   <MultiSelect
-                    options={userProfiles.map(profile => ({
+                    options={userProfiles.map((profile) => ({
                       value: profile.user_id,
                       label: profile.display_name || `User ${profile.user_id.slice(0, 8)}`
                     }))}

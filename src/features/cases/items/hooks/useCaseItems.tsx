@@ -5,6 +5,12 @@ import { useTenant } from "@/hooks/useTenant";
 import { useToast } from "@/components/ui/use-toast";
 import type { CaseItemIntakePayload } from "@/features/cases/items/types";
 import { debugConsole } from "@/utils/debugConsole";
+import type { Tables, TablesInsert, TablesUpdate } from "@/integrations/supabase/types";
+
+type CaseItemRow = Tables<"case_items">;
+type CaseItemInsert = TablesInsert<"case_items">;
+type CaseItemUpdate = TablesUpdate<"case_items">;
+type CaseItemInteractionInsert = TablesInsert<"case_item_interactions">;
 
 export interface CaseItem {
   id: string;
@@ -105,7 +111,7 @@ export const useCaseItems = () => {
         .order("updated_at", { ascending: false });
 
       if (error) throw error;
-      setCaseItems((data ?? []) as unknown as CaseItem[]);
+      setCaseItems((data ?? []) as CaseItemRow[] as CaseItem[]);
     } catch (error) {
       debugConsole.error("Error fetching case items:", error);
       toast({
@@ -166,7 +172,7 @@ export const useCaseItems = () => {
 
       const { error } = await supabase
         .from("case_items")
-        .insert(insertData as any);
+        .insert(insertData as CaseItemInsert);
 
       if (error) {
         debugConsole.error("[createCaseItem] Supabase error:", error.message, error.code, error.details, error.hint);
@@ -202,7 +208,7 @@ export const useCaseItems = () => {
       if (error instanceof Error) {
         detail = error.message;
       } else if (error && typeof error === "object" && "message" in error) {
-        detail = (error as any).message;
+        detail = String((error as { message?: unknown }).message ?? detail);
       }
       toast({
         title: "Fehler beim Erstellen",
@@ -220,8 +226,8 @@ export const useCaseItems = () => {
       // Fetch existing item to detect changes
       const existing = caseItems.find(ci => ci.id === id);
 
-      const updateData = { ...data, intake_payload: data.intake_payload as any };
-      const { error } = await supabase.from("case_items").update(updateData as any).eq("id", id);
+      const updateData: CaseItemUpdate = { ...data, intake_payload: data.intake_payload ?? null };
+      const { error } = await supabase.from("case_items").update(updateData).eq("id", id);
 
       if (error) throw error;
 
@@ -312,7 +318,7 @@ export const useCaseItems = () => {
           ...data,
           tenant_id: currentTenant.id,
           created_by: user.id,
-        } as any])
+        } as CaseItemInteractionInsert])
         .select()
         .single();
 

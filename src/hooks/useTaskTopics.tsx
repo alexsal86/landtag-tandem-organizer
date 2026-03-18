@@ -1,7 +1,8 @@
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import { debugConsole } from "@/utils/debugConsole";
 import { handleAppError } from "@/utils/errorHandler";
+
+type TaskTopicRow = { topic_id: string | null };
 
 export const useTaskTopics = (taskId: string | undefined) => {
   const [assignedTopics, setAssignedTopics] = useState<string[]>([]);
@@ -18,7 +19,8 @@ export const useTaskTopics = (taskId: string | undefined) => {
         .eq('task_id', taskId);
 
       if (error) throw error;
-      setAssignedTopics(data?.map(t => t.topic_id) || []);
+      const topicIds = (data ?? []).flatMap((topic: TaskTopicRow) => topic.topic_id ? [topic.topic_id] : []);
+      setAssignedTopics(topicIds);
     } catch (error) {
       handleAppError(error, { context: 'useTaskTopics.fetch' });
     } finally {
@@ -80,7 +82,7 @@ export const useTaskTopics = (taskId: string | undefined) => {
       if (topicIds.length > 0) {
         const { error } = await supabase
           .from('task_topics')
-          .insert(topicIds.map(topic_id => ({ task_id: taskId, topic_id })));
+          .insert(topicIds.map((topic_id: string) => ({ task_id: taskId, topic_id })));
 
         if (error) throw error;
       }
@@ -111,7 +113,7 @@ export const useCreateTaskWithTopics = () => {
     try {
       const { error } = await supabase
         .from('task_topics')
-        .insert(topicIds.map(topic_id => ({ task_id: taskId, topic_id })));
+        .insert(topicIds.map((topic_id: string) => ({ task_id: taskId, topic_id })));
 
       if (error) throw error;
       return true;
