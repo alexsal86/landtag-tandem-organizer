@@ -14,7 +14,17 @@ Dieses Dokument ist kein reines Reporting mehr, sondern das operative Steuerungs
 
 ## Operative Batch-Reihenfolge
 
-Jede vorhandene `tsconfig.*-strict.json` Datei bildet einen operativen Migrationsbatch. Die Reihenfolge ist verbindlich in den `typecheck:*`-Skripten aus `package.json` abgebildet und wird zusätzlich über `npm run typecheck:strict-all` in genau dieser Reihenfolge ausgeführt. Ein Batch gilt erst dann als abgeschlossen, wenn
+Seit dem Update vom 2026-03-18 wird die Migration **fachlich flow-first** gesteuert. Die fünf Flow-Pakete
+
+1. `typecheck:flow-auth-tenant`
+2. `typecheck:flow-calendar-sync`
+3. `typecheck:flow-letter-workflow`
+4. `typecheck:flow-notifications`
+5. `typecheck:flow-edge-auth-role-tenant`
+
+sind die verbindliche primäre Reihenfolge. Die vorhandenen Ordner-/Batch-Configs bleiben als nachgelagerte technische Schutznetze bestehen. `npm run typecheck:strict-all` führt deshalb zuerst die Flow-Typechecks und danach die bestehenden Batch-Checks aus.
+
+Jede vorhandene `tsconfig.*-strict.json` Datei bildet weiterhin einen operativen Migrationsbatch. Ein Batch gilt erst dann als abgeschlossen, wenn
 
 - der zugehörige Typecheck grün ist,
 - die für den Batch relevanten Tests grün sind,

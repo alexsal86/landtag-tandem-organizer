@@ -1,0 +1,20 @@
+{
+  "extends": "./tsconfig.app.json",
+  "compilerOptions": {
+    "strict": false,
+    "strictNullChecks": true,
+    "noImplicitAny": true,
+    "noUnusedLocals": false,
+    "noUnusedParameters": false
+  },
+  "include": [
+    "src/hooks/useLetterArchiving.tsx",
+    "src/features/cases/files/hooks/useCaseFileDetails.tsx",
+    "src/features/cases/files/components/tabs/CaseFileLettersTab.tsx",
+    "src/components/LettersView.tsx",
+    "src/components/LetterEditor.tsx",
+    "src/components/LetterTemplateSelector.tsx",
+    "src/components/letters/LetterWizard.tsx",
+    "src/components/letters/LetterAttachmentManager.tsx"
+  ]
+}
