@@ -9,37 +9,43 @@ import type { UnknownRecord } from '@/utils/typeSafety';
 
 export interface NotificationFeedbackContext {
   target?: {
-    type?: string;
-    id?: string;
-  };
+    type?: string | null;
+    id?: string | null;
+  } | null;
   source?: {
-    id?: string;
-  };
+    id?: string | null;
+  } | null;
+}
+
+export interface NotificationTypeInfo {
+  name: string;
+  label: string;
 }
 
 export interface NotificationData extends UnknownRecord {
-  type?: string;
-  task_id?: string;
-  decision_id?: string;
-  start_time?: string;
-  message_id?: string;
-  document_id?: string;
-  document_type?: string;
-  documentId?: string;
-  letter_id?: string;
-  meeting_id?: string;
-  noteId?: string;
-  feedback_context?: NotificationFeedbackContext;
-  feedback_id?: string;
-  poll_id?: string;
-  request_id?: string;
-  planning_id?: string;
-  article_link?: string;
-  link?: string;
-  run_id?: string;
-  rule_id?: string;
-  source?: string;
-  navigation_context?: string;
+  type?: string | null;
+  task_id?: string | null;
+  taskId?: string | null;
+  decision_id?: string | null;
+  start_time?: string | null;
+  message_id?: string | null;
+  document_id?: string | null;
+  document_type?: string | null;
+  documentId?: string | null;
+  letter_id?: string | null;
+  meeting_id?: string | null;
+  noteId?: string | null;
+  feedback_context?: NotificationFeedbackContext | null;
+  feedback_id?: string | null;
+  poll_id?: string | null;
+  request_id?: string | null;
+  planning_id?: string | null;
+  article_link?: string | null;
+  link?: string | null;
+  run_id?: string | null;
+  rule_id?: string | null;
+  source?: string | null;
+  navigation_context?: string | null;
 }
 
 export interface Notification {
@@ -51,10 +57,7 @@ export interface Notification {
   priority: 'low' | 'medium' | 'high' | 'urgent';
   created_at: string;
   navigation_context?: string | null;
-  notification_types: {
-    name: string;
-    label: string;
-  } | null;
+  notification_types: NotificationTypeInfo | null;
 }
 
 export interface NotificationSettings {
@@ -63,15 +66,15 @@ export interface NotificationSettings {
   is_enabled: boolean;
   push_enabled: boolean;
   email_enabled: boolean;
-  quiet_hours_start?: string;
-  quiet_hours_end?: string;
+  quiet_hours_start?: string | null;
+  quiet_hours_end?: string | null;
 }
 
 export interface NotificationType {
   id: string;
   name: string;
   label: string;
-  description?: string;
+  description?: string | null;
 }
 
 export interface PushSubscription {
@@ -93,6 +96,16 @@ type NotificationRow = {
 };
 
 type NotificationUpdateRow = Pick<NotificationRow, 'id' | 'is_read'>;
+
+type NotificationSyncEventDetail = {
+  source: 'notifications' | 'navigation';
+  notificationId?: string;
+  context?: string;
+};
+
+const emitNotificationsChanged = (detail: NotificationSyncEventDetail): void => {
+  window.dispatchEvent(new CustomEvent<NotificationSyncEventDetail>('notifications-changed', { detail }));
+};
 
 type PushManagerRegistration = ServiceWorkerRegistration & {
   pushManager?: globalThis.PushManager;
@@ -209,6 +222,7 @@ export const useNotifications = () => {
 
       localStorage.setItem(`notifications-update-${user.id}`, Date.now().toString());
       localStorage.removeItem(`notifications-update-${user.id}`);
+      emitNotificationsChanged({ source: 'notifications', notificationId: notificationId });
 
       localStorage.setItem(
         'notifications_marked_read',
@@ -252,6 +266,8 @@ export const useNotifications = () => {
         .eq('user_id', user.id);
 
       if (error) throw error;
+
+      emitNotificationsChanged({ source: 'notifications', notificationId: notificationId });
     } catch (error: unknown) {
       debugConsole.error('Error deleting notification:', error);
       await loadNotifications();
@@ -302,6 +318,7 @@ export const useNotifications = () => {
 
       localStorage.setItem(`notifications-update-${user.id}`, Date.now().toString());
       localStorage.removeItem(`notifications-update-${user.id}`);
+      emitNotificationsChanged({ source: 'notifications' });
 
       localStorage.setItem('notifications_marked_read', Date.now().toString());
       localStorage.removeItem('notifications_marked_read');
@@ -580,7 +597,7 @@ export const useNotifications = () => {
               setUnreadCount((prev: number) => prev + 1);
             }
 
-            window.dispatchEvent(new Event('notifications-changed'));
+            emitNotificationsChanged({ source: 'notifications', notificationId: newNotification.id });
             toast({
               title: newNotification.title || 'Neue Benachrichtigung',
               description: newNotification.message || 'Sie haben eine neue Benachrichtigung erhalten.',
@@ -619,7 +636,7 @@ export const useNotifications = () => {
               }
             }
 
-            window.dispatchEvent(new Event('notifications-changed'));
+            emitNotificationsChanged({ source: 'notifications', notificationId: updatedId });
           },
         )
         .subscribe((status: string) => {

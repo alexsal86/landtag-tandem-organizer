@@ -1,4 +1,5 @@
-import React, { useState, useMemo, useRef } from 'react';
+import { useState, useMemo, useRef } from 'react';
+import type { ChangeEvent, MouseEvent, JSX } from 'react';
 import { formatDistanceToNow, format } from 'date-fns';
 import { de } from 'date-fns/locale';
 import { useNavigate } from 'react-router-dom';
@@ -23,7 +24,7 @@ import { useNotifications, type Notification } from '@/contexts/NotificationCont
 import type { NotificationDisplayPreferences } from '@/hooks/useNotificationDisplayPreferences';
 import { NotificationSettings } from '@/components/NotificationSettings';
 import { useNotificationDisplayPreferences } from '@/hooks/useNotificationDisplayPreferences';
-import { NOTIFICATION_SOUNDS, playNotificationSound, type SoundName, hasCustomSound, saveCustomSound, removeCustomSound } from '@/utils/notificationSounds';
+import { NOTIFICATION_SOUNDS, playNotificationSound, hasCustomSound, saveCustomSound, removeCustomSound } from '@/utils/notificationSounds';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 
@@ -73,10 +74,10 @@ const getNotificationIcon = (type: string) => {
 };
 
 // Visual position preview box
-function PositionPreviewBox({ position, size }: { position: string; size: string }) {
+function PositionPreviewBox({ position, size }: { position: NotificationPosition; size: NotificationSize }): JSX.Element {
   const isLarge = size === 'large';
 
-  const getToastPosition = () => {
+  const getToastPosition = (): string => {
     switch (position) {
       case 'top-right': return 'top-1 right-1';
       case 'top-center': return 'top-1 left-1/2 -translate-x-1/2';
@@ -102,12 +103,12 @@ function PositionPreviewBox({ position, size }: { position: string; size: string
 }
 
 // Display settings component
-function NotificationDisplaySettings() {
+function NotificationDisplaySettings(): JSX.Element {
   const { preferences, setPreferences } = useNotificationDisplayPreferences();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [customSoundLoaded, setCustomSoundLoaded] = useState(hasCustomSound());
 
-  const handlePreview = () => {
+  const handlePreview = (): void => {
     // Dismiss existing toasts first so new position/size is visible
     toast.dismiss();
     setTimeout(() => {
@@ -120,12 +121,12 @@ function NotificationDisplaySettings() {
         closeButton: true,
       });
       if (preferences.soundEnabled) {
-        playNotificationSound(preferences.soundName as SoundName, preferences.soundVolume);
+        playNotificationSound(preferences.soundName, preferences.soundVolume);
       }
     }, 150);
   };
 
-  const handleCustomSoundUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleCustomSoundUpload = (e: ChangeEvent<HTMLInputElement>): void => {
     const file = e.target.files?.[0];
     if (!file) return;
 
@@ -135,7 +136,7 @@ function NotificationDisplaySettings() {
     }
 
     const reader = new FileReader();
-    reader.onload = () => {
+    reader.onload = (): void => {
       const dataUrl = reader.result as string;
       saveCustomSound(dataUrl);
       setCustomSoundLoaded(true);
@@ -148,7 +149,7 @@ function NotificationDisplaySettings() {
     if (fileInputRef.current) fileInputRef.current.value = '';
   };
 
-  const handleRemoveCustomSound = () => {
+  const handleRemoveCustomSound = (): void => {
     removeCustomSound();
     setCustomSoundLoaded(false);
     if (preferences.soundName === 'custom') {
@@ -314,7 +315,7 @@ function NotificationDisplaySettings() {
                               variant="ghost"
                               size="icon"
                               className="h-7 w-7 text-destructive hover:text-destructive"
-                              onClick={(event: React.MouseEvent<HTMLButtonElement>) => {
+                              onClick={(event: MouseEvent<HTMLButtonElement>): void => {
                                 event.stopPropagation();
                                 handleRemoveCustomSound();
                               }}
@@ -326,7 +327,7 @@ function NotificationDisplaySettings() {
                             variant="ghost"
                             size="icon"
                             className="h-7 w-7"
-                            onClick={(event: React.MouseEvent<HTMLButtonElement>) => {
+                            onClick={(event: MouseEvent<HTMLButtonElement>): void => {
                               event.stopPropagation();
                               playNotificationSound(sound.value, preferences.soundVolume);
                             }}
@@ -388,7 +389,7 @@ function NotificationDisplaySettings() {
   );
 }
 
-export function NotificationsPage() {
+export function NotificationsPage(): JSX.Element {
   const { notifications, unreadCount, markAsRead, markAllAsRead, deleteNotification } = useNotifications();
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState<NotificationsPageTab>('all');
@@ -446,7 +447,7 @@ export function NotificationsPage() {
                 <Input
                   placeholder="Benachrichtigungen durchsuchen..."
                   value={searchQuery}
-                  onChange={(event: React.ChangeEvent<HTMLInputElement>) => setSearchQuery(event.target.value)}
+                  onChange={(event: ChangeEvent<HTMLInputElement>): void => setSearchQuery(event.target.value)}
                   className="pl-10"
                 />
               </div>
@@ -522,7 +523,7 @@ export function NotificationsPage() {
                                   variant="ghost"
                                   size="icon"
                                   className="h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity"
-                                  onClick={(event: React.MouseEvent<HTMLButtonElement>) => { event.stopPropagation(); void deleteNotification(notification.id); }}
+                                  onClick={(event: MouseEvent<HTMLButtonElement>): void => { event.stopPropagation(); void deleteNotification(notification.id); }}
                                 >
                                   <X className="h-3.5 w-3.5 text-muted-foreground" />
                                 </Button>
@@ -538,7 +539,7 @@ export function NotificationsPage() {
                               {notificationData?.source === 'automation_rule' && notificationData.rule_id && (
                                 <button
                                   className="text-xs text-muted-foreground underline hover:text-primary text-left"
-                                  onClick={(event: React.MouseEvent<HTMLButtonElement>) => {
+                                  onClick={(event: MouseEvent<HTMLButtonElement>): void => {
                                     event.stopPropagation();
                                     navigate(`/admin?tab=automation&highlight=${notificationData.run_id || notificationData.rule_id}`);
                                   }}

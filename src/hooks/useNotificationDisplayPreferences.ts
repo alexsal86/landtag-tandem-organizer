@@ -1,5 +1,6 @@
 import { useCallback, useMemo } from 'react';
 import { useUserPreference } from '@/hooks/useUserPreference';
+import type { SoundName } from '@/utils/notificationSounds';
 
 export interface NotificationDisplayPreferences {
   position: 'top-right' | 'top-center' | 'bottom-right';
@@ -7,9 +8,9 @@ export interface NotificationDisplayPreferences {
   duration: number;
   persist: boolean;
   soundEnabled: boolean;
-  soundName: string;
+  soundName: SoundName;
   soundVolume: number;
-  categorySounds: Record<string, string>;
+  categorySounds: Record<string, SoundName>;
 }
 
 const DEFAULT_PREFERENCES: NotificationDisplayPreferences = {
@@ -23,25 +24,31 @@ const DEFAULT_PREFERENCES: NotificationDisplayPreferences = {
   categorySounds: {},
 };
 
-export const useNotificationDisplayPreferences = () => {
+export interface NotificationDisplayPreferencesHookResult {
+  preferences: NotificationDisplayPreferences;
+  setPreferences: (update: Partial<NotificationDisplayPreferences>) => void;
+  resetPreferences: () => void;
+}
+
+export const useNotificationDisplayPreferences = (): NotificationDisplayPreferencesHookResult => {
   const [raw, setRaw] = useUserPreference<NotificationDisplayPreferences>(
     'notification_display_preferences',
     DEFAULT_PREFERENCES,
   );
 
-  const preferences = useMemo(
+  const preferences = useMemo<NotificationDisplayPreferences>(
     () => ({ ...DEFAULT_PREFERENCES, ...raw }),
     [raw],
   );
 
-  const setPreferences = useCallback(
-    (update: Partial<NotificationDisplayPreferences>) => {
-      setRaw((prev) => ({ ...prev, ...update }));
-    },
-    [setRaw],
-  );
+  const setPreferences = useCallback((update: Partial<NotificationDisplayPreferences>): void => {
+    setRaw((prev: NotificationDisplayPreferences): NotificationDisplayPreferences => ({
+      ...prev,
+      ...update,
+    }));
+  }, [setRaw]);
 
-  const resetPreferences = useCallback(() => {
+  const resetPreferences = useCallback((): void => {
     setRaw(DEFAULT_PREFERENCES);
   }, [setRaw]);
 
