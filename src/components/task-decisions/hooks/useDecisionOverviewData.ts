@@ -259,7 +259,7 @@ export const useDecisionOverviewData = () => {
             id: participant.id,
             user_id: participant.user_id,
             profile: {
-              display_name: (profileMap as Map<string, any>).get(participant.user_id)?.display_name || null,
+              display_name: profileMap.get(participant.user_id)?.display_name || null,
               badge_color: profileMap.get(participant.user_id)?.badge_color || null,
               avatar_url: profileMap.get(participant.user_id)?.avatar_url || null,
             },
