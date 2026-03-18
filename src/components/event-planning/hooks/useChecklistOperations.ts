@@ -7,6 +7,7 @@ import type { ChecklistItem } from "../types";
 const SYSTEM_POINT_OPTIONS = {
   none: { title: "", type: "item" },
   social_media: { title: "Social Media", type: "system_social_media" },
+  rsvp: { title: "Einladungen & RSVP", type: "system_rsvp" },
 } as const;
 
 type SystemPointKey = keyof typeof SYSTEM_POINT_OPTIONS;

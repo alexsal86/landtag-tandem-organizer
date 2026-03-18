@@ -1,8 +1,8 @@
 import { defineConfig, type Plugin } from "vite";
-import react from "@vitejs/plugin-react";
+import react from "@vitejs/plugin-react-swc";
 import path from "path";
-import { componentTagger } from "lovable-tagger";
-import { nodePolyfills } from 'vite-plugin-node-polyfills';
+// import { componentTagger } from "lovable-tagger";
+// import { nodePolyfills } from 'vite-plugin-node-polyfills';
 
 const securityHeaders = {
   'Content-Security-Policy': "default-src 'self'; script-src 'self' 'unsafe-eval' https://cdn.gpteng.co; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://unpkg.com; font-src 'self' https://fonts.gstatic.com data:; img-src 'self' data: blob: https:; connect-src 'self' https: wss: ws:; object-src 'none'; frame-ancestors https://*.lovable.app https://*.lovableproject.com https://lovable.dev; base-uri 'self'",  
@@ -50,12 +50,13 @@ export default defineConfig(({ mode }) => ({
   plugins: [
     lexicalDedupePlugin(),
     react(),
-    nodePolyfills({
-      include: ['buffer', 'process'],
-      globals: { Buffer: true, process: true },
-    }),
-    mode === 'development' &&
-    componentTagger(),
+    // nodePolyfills temporarily disabled due to @rollup/plugin-inject resolution issue
+    // nodePolyfills({
+    //   include: ['buffer', 'process'],
+    //   globals: { Buffer: true, process: true },
+    // }),
+    // mode === 'development' &&
+    // componentTagger(),
   ].filter(Boolean),
   resolve: {
     dedupe: [

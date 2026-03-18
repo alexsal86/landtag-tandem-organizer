@@ -5,7 +5,7 @@ type TimelineEntryGeometry = {
 };
 
 type TimelineAssignment = {
-  checklistItemId: string;
+  checklist_item_id: string;
 };
 
 type ConnectorLine = {
@@ -81,8 +81,8 @@ export function useTimelineGeometry({
 
       const nextLines = assignments
         .map((assignment) => {
-          const checklistElement = checklistItemRefs[assignment.checklistItemId]?.current;
-          const timelinePoint = timelinePointRefs.current.get(`item-${assignment.checklistItemId}`) ?? null;
+          const checklistElement = checklistItemRefs[assignment.checklist_item_id]?.current;
+          const timelinePoint = timelinePointRefs.current.get(`item-${assignment.checklist_item_id}`) ?? null;
 
           if (!checklistElement || !timelinePoint) {
             return null;
@@ -92,7 +92,7 @@ export function useTimelineGeometry({
           const pointRect = timelinePoint.getBoundingClientRect();
 
           return {
-            assignmentId: assignment.checklistItemId,
+            assignmentId: assignment.checklist_item_id,
             startX: checklistRect.right - sectionRect.left,
             startY: checklistRect.top + checklistRect.height / 2 - sectionRect.top,
             endX: pointRect.left + pointRect.width / 2 - sectionRect.left,
@@ -134,7 +134,7 @@ export function useTimelineGeometry({
 
     if (checklistItemRefs) {
       for (const assignment of assignments) {
-        observeElement(checklistItemRefs[assignment.checklistItemId]?.current);
+        observeElement(checklistItemRefs[assignment.checklist_item_id]?.current);
       }
     }
 

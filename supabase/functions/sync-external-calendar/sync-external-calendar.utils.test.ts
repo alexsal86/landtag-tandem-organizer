@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { dedupeEventsByLatestLastModified, getSyncExternalErrorResponse, parseICS } from './sync-external-calendar.utils';
+import { dedupeEventsByLatestLastModified, getSyncExternalErrorResponse, parseICS } from './sync-external-calendar.utils.ts';
 
 describe('sync-external-calendar utils', () => {
   it('parst RRULE Events im Sync-Bereich (Wiederholungssynchronisation)', () => {
@@ -26,7 +26,7 @@ describe('sync-external-calendar utils', () => {
     ]);
 
     expect(deduped).toHaveLength(2);
-    expect(deduped.find((item) => item.external_uid === 'dupe-1')?.marker).toBe('new');
+    expect(deduped.find((item: any) => item.external_uid === 'dupe-1')?.marker).toBe('new');
   });
 
   it('liefert externe Fehlerantworten für Timeout und invalid feed', () => {
