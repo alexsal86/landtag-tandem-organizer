@@ -253,12 +253,10 @@ export function PlanningTimelineSection({
                             transform: "translate(-50%, -50%)",
                           }}
                         >
-                          <div className="flex items-center gap-2">
-                            <span className="h-3 w-3 rounded-full border-2 border-background bg-primary shadow-sm" />
-                            <span className="rounded-full bg-background/95 px-2 py-0.5 text-[11px] font-medium text-primary shadow-sm">
-                              Heute
-                            </span>
-                          </div>
+                          <span className="block h-3 w-3 rounded-full border-2 border-background bg-primary shadow-sm" />
+                          <span className="absolute left-full top-1/2 ml-2 -translate-y-1/2 rounded-full bg-background/95 px-2 py-0.5 text-[11px] font-medium text-primary shadow-sm">
+                            Heute
+                          </span>
                         </div>
                       )}
                       {entries.map((entry, index) => {
