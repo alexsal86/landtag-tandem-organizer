@@ -17,7 +17,6 @@ import { useTenantUsers } from "@/hooks/useTenantUsers";
 import { useTopicBacklog } from "@/hooks/useTopicBacklog";
 import { PlannerWorkflowStatus, useSocialPlannerItems } from "@/hooks/useSocialPlannerItems";
 import { useToast } from "@/hooks/use-toast";
-import type { SpecialDay } from "@/utils/dashboard/specialDays";
 
 const STATUS_COLUMNS: Array<{ id: PlannerWorkflowStatus; title: string }> = [
   { id: "ideas", title: "Ideen" },
@@ -41,11 +40,7 @@ const APPROVAL_LABELS: Record<string, string> = {
   rejected: "Abgelehnt",
 };
 
-interface MyWorkSocialPlannerBoardProps {
-  specialDays: SpecialDay[];
-}
-
-export function MyWorkSocialPlannerBoard({ specialDays }: MyWorkSocialPlannerBoardProps) {
+export function MyWorkSocialPlannerBoard() {
   const { toast } = useToast();
   const [searchParams] = useSearchParams();
   const { users } = useTenantUsers();
@@ -319,7 +314,7 @@ export function MyWorkSocialPlannerBoard({ specialDays }: MyWorkSocialPlannerBoa
 
       <CardContent>
         {viewMode === "calendar" ? (
-          <SocialPlannerCalendar items={filteredItems} onUpdateSchedule={handleCalendarScheduleUpdate} specialDays={specialDays} />
+          <SocialPlannerCalendar items={filteredItems} onUpdateSchedule={handleCalendarScheduleUpdate} />
         ) : (
           <DragDropContext onDragEnd={onDragEnd}>
             <div className="grid grid-cols-1 gap-3 lg:grid-cols-2 2xl:grid-cols-3">

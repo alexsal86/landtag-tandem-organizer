@@ -57,7 +57,7 @@ export function useKnowledgeData() {
     if (ids.length === 0) return {} as Record<string, string>;
     const { data, error } = await supabase.from('profiles').select('user_id, display_name').in('user_id', ids);
     if (error) throw error;
-    return (data ?? []).reduce<Record<string, string>>((acc, p) => { acc[p.user_id] = p.display_name || 'Unbekannt'; return acc; }, {});
+    return ((data ?? []) as any[]).reduce<Record<string, string>>((acc, p) => { acc[p.user_id] = p.display_name || 'Unbekannt'; return acc; }, {});
   }, []);
 
   const hydrateDocuments = useCallback(async (rows: KnowledgeDocumentRow[]) => {

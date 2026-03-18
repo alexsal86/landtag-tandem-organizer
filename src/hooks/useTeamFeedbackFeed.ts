@@ -137,9 +137,9 @@ export const useTeamFeedbackFeed = (filters?: TeamFeedbackFeedFilters) => {
         }
       });
 
-      const appointmentMap = new Map((appointmentsResult.data || []).map(a => [a.id, a]));
-      const externalEventMap = new Map((externalEventsResult.data || []).map(e => [e.id, e]));
-      const profileMap = new Map((profilesResult.data || []).map(p => [p.user_id, p.display_name]));
+      const appointmentMap = new Map<string, any>((appointmentsResult.data || []).map(a => [a.id, a]));
+      const externalEventMap = new Map<string, any>((externalEventsResult.data || []).map(e => [e.id, e]));
+      const profileMap = new Map<string, any>((profilesResult.data || []).map(p => [p.user_id, p.display_name]));
 
       const mappedEntries = feedbackData.map(f => {
         const appointment = f.appointment_id ? appointmentMap.get(f.appointment_id) : null;

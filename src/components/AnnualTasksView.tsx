@@ -188,7 +188,7 @@ export function AnnualTasksView() {
 
       if (completionsError) throw completionsError;
 
-      const completionMap = new Map(
+      const completionMap = new Map<string, any>(
         (completionsData || []).map(c => [c.annual_task_id, c])
       );
 

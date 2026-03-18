@@ -106,7 +106,7 @@ export function DecisionFileUpload({
         .select('user_id, display_name')
         .in('user_id', uploaderIds);
 
-      const profileMap = new Map(profiles?.map(p => [p.user_id, p]) || []);
+      const profileMap = new Map<string, any>(profiles?.map(p => [p.user_id, p]) || []);
 
       const formattedFiles = data?.map(file => ({
         id: file.id,

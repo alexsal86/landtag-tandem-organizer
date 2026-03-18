@@ -235,8 +235,8 @@ export function MyWorkTeamTab() {
 
         if (cancelled) return;
 
-        const profileMap = new Map((profilesRes.data || []).map((p) => [p.user_id, p]));
-        const settingsMap = new Map((settingsRes.data || []).map((s) => [s.user_id, s]));
+        const profileMap = new Map<string, any>((profilesRes.data || []).map((p) => [p.user_id, p]));
+        const settingsMap = new Map<string, any>((settingsRes.data || []).map((s) => [s.user_id, s]));
 
         // Count open requests per employee
         const requestCounts: Record<string, number> = {};

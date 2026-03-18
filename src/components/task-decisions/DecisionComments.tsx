@@ -66,7 +66,7 @@ export function DecisionComments({
 
     const reactionProfileMap = new Map(
       (reactionProfiles || []).map((profile) => [profile.user_id, profile]),
-    );
+    ) as Map<string, any>;
 
     return (reactionRows || []).map((row) => ({
       ...row,
