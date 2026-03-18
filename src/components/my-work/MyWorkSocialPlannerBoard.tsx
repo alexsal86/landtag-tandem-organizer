@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { DragDropContext, Draggable, Droppable, type DropResult } from "@hello-pangea/dnd";
-import { ArrowLeft, ArrowRight, CalendarDays, GripVertical, Kanban, Plus, Tag } from "lucide-react";
+import { ArrowLeft, ArrowRight, CalendarDays, GripVertical, Kanban, Pencil, Plus, Tag } from "lucide-react";
 import { format } from "date-fns";
 import { useSearchParams } from "react-router-dom";
 import { de } from "date-fns/locale";
@@ -11,11 +11,12 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { MultiSelect } from "@/components/ui/multi-select-simple";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { useTenantUsers } from "@/hooks/useTenantUsers";
+import { type SocialPlannerItem, PlannerWorkflowStatus, useSocialPlannerItems } from "@/hooks/useSocialPlannerItems";
 import { useTopicBacklog } from "@/hooks/useTopicBacklog";
-import { PlannerWorkflowStatus, useSocialPlannerItems } from "@/hooks/useSocialPlannerItems";
 import { useToast } from "@/hooks/use-toast";
 
 const STATUS_COLUMNS: Array<{ id: PlannerWorkflowStatus; title: string }> = [
@@ -40,6 +41,206 @@ const APPROVAL_LABELS: Record<string, string> = {
   rejected: "Abgelehnt",
 };
 
+interface SocialPlannerEditDialogProps {
+  item: SocialPlannerItem | null;
+  open: boolean;
+  users: Array<{ id: string; display_name: string }>;
+  channels: Array<{ id: string; name: string }>;
+  onOpenChange: (open: boolean) => void;
+  onSave: (itemId: string, payload: {
+    topic: string;
+    channel_ids: string[];
+    format: string | null;
+    hook: string | null;
+    core_message: string | null;
+    draft_text: string | null;
+    cta: string | null;
+    notes: string | null;
+    responsible_user_id: string | null;
+    scheduled_for: string | null;
+    approval_state: string;
+    workflow_status: PlannerWorkflowStatus;
+  }) => Promise<void>;
+}
+
+function SocialPlannerEditDialog({ item, open, users, channels, onOpenChange, onSave }: SocialPlannerEditDialogProps) {
+  const { toast } = useToast();
+  const [topic, setTopic] = useState("");
+  const [selectedChannels, setSelectedChannels] = useState<string[]>([]);
+  const [formatValue, setFormatValue] = useState("");
+  const [hookValue, setHookValue] = useState("");
+  const [coreMessage, setCoreMessage] = useState("");
+  const [draftText, setDraftText] = useState("");
+  const [ctaValue, setCtaValue] = useState("");
+  const [notesValue, setNotesValue] = useState("");
+  const [responsibleUserId, setResponsibleUserId] = useState<string>("none");
+  const [scheduledDate, setScheduledDate] = useState("");
+  const [approvalState, setApprovalState] = useState("draft");
+  const [workflowStatus, setWorkflowStatus] = useState<PlannerWorkflowStatus>("ideas");
+  const [isSaving, setIsSaving] = useState(false);
+
+  useEffect(() => {
+    if (!item) return;
+
+    setTopic(item.topic);
+    setSelectedChannels(item.channel_ids);
+    setFormatValue(item.format || "");
+    setHookValue(item.hook || "");
+    setCoreMessage(item.core_message || "");
+    setDraftText(item.draft_text || "");
+    setCtaValue(item.cta || "");
+    setNotesValue(item.notes || "");
+    setResponsibleUserId(item.responsible_user_id || "none");
+    setScheduledDate(item.scheduled_for ? item.scheduled_for.slice(0, 16) : "");
+    setApprovalState(item.approval_state || "draft");
+    setWorkflowStatus(item.workflow_status);
+  }, [item]);
+
+  const channelOptions = useMemo(
+    () => channels.map((channel) => ({ value: channel.id, label: channel.name })),
+    [channels],
+  );
+
+  const handleSave = async () => {
+    if (!item) return;
+
+    if (!topic.trim()) {
+      toast({ title: "Thema fehlt", description: "Bitte ein Thema eintragen.", variant: "destructive" });
+      return;
+    }
+
+    try {
+      setIsSaving(true);
+      await onSave(item.id, {
+        topic: topic.trim(),
+        channel_ids: selectedChannels,
+        format: formatValue.trim() || null,
+        hook: hookValue.trim() || null,
+        core_message: coreMessage.trim() || null,
+        draft_text: draftText.trim() || null,
+        cta: ctaValue.trim() || null,
+        notes: notesValue.trim() || null,
+        responsible_user_id: responsibleUserId === "none" ? null : responsibleUserId,
+        scheduled_for: scheduledDate ? new Date(scheduledDate).toISOString() : null,
+        approval_state: approvalState,
+        workflow_status: workflowStatus,
+      });
+      onOpenChange(false);
+    } catch {
+      toast({ title: "Änderungen konnten nicht gespeichert werden", variant: "destructive" });
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
+        <DialogHeader>
+          <DialogTitle>Beitrag bearbeiten</DialogTitle>
+          <DialogDescription>
+            Pflege Inhalte, Kanäle, Verantwortlichkeit und Veröffentlichung direkt im Social Planner.
+          </DialogDescription>
+        </DialogHeader>
+
+        <div className="grid gap-4 md:grid-cols-2">
+          <div className="space-y-2 md:col-span-2">
+            <Label htmlFor="edit-topic">Thema</Label>
+            <Input id="edit-topic" value={topic} onChange={(event) => setTopic(event.target.value)} placeholder="Thema des Beitrags" />
+          </div>
+
+          <div className="space-y-2 md:col-span-2">
+            <Label>Kanäle</Label>
+            <MultiSelect
+              options={channelOptions}
+              selected={selectedChannels}
+              onChange={setSelectedChannels}
+              placeholder="Kanäle auswählen"
+            />
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="edit-format">Format</Label>
+            <Input id="edit-format" value={formatValue} onChange={(event) => setFormatValue(event.target.value)} placeholder="z. B. Reel, Carousel" />
+          </div>
+
+          <div className="space-y-2">
+            <Label>Freigabestatus</Label>
+            <Select value={approvalState} onValueChange={setApprovalState}>
+              <SelectTrigger><SelectValue placeholder="Freigabestatus wählen" /></SelectTrigger>
+              <SelectContent>
+                {Object.entries(APPROVAL_LABELS).map(([value, label]) => (
+                  <SelectItem key={value} value={value}>{label}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+
+          <div className="space-y-2">
+            <Label>Verantwortliche Person</Label>
+            <Select value={responsibleUserId} onValueChange={setResponsibleUserId}>
+              <SelectTrigger><SelectValue placeholder="Person auswählen" /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="none">Nicht zugewiesen</SelectItem>
+                {users.map((user) => (
+                  <SelectItem key={user.id} value={user.id}>{user.display_name}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="edit-scheduled-for">Veröffentlichungsdatum</Label>
+            <Input id="edit-scheduled-for" type="datetime-local" value={scheduledDate} onChange={(event) => setScheduledDate(event.target.value)} />
+          </div>
+
+          <div className="space-y-2">
+            <Label>Status im Board</Label>
+            <Select value={workflowStatus} onValueChange={(value) => setWorkflowStatus(value as PlannerWorkflowStatus)}>
+              <SelectTrigger><SelectValue placeholder="Status wählen" /></SelectTrigger>
+              <SelectContent>
+                {STATUS_COLUMNS.map((status) => (
+                  <SelectItem key={status.id} value={status.id}>{status.title}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="edit-hook">Hook</Label>
+            <Input id="edit-hook" value={hookValue} onChange={(event) => setHookValue(event.target.value)} placeholder="Einstieg oder Aufhänger" />
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="edit-core-message">Kernaussage</Label>
+            <Input id="edit-core-message" value={coreMessage} onChange={(event) => setCoreMessage(event.target.value)} placeholder="Was soll hängen bleiben?" />
+          </div>
+
+          <div className="space-y-2 md:col-span-2">
+            <Label htmlFor="edit-draft-text">Entwurfstext</Label>
+            <Textarea id="edit-draft-text" rows={6} value={draftText} onChange={(event) => setDraftText(event.target.value)} placeholder="Textentwurf für den Beitrag" />
+          </div>
+
+          <div className="space-y-2 md:col-span-2">
+            <Label htmlFor="edit-cta">CTA</Label>
+            <Input id="edit-cta" value={ctaValue} onChange={(event) => setCtaValue(event.target.value)} placeholder="z. B. Jetzt kommentieren oder teilen" />
+          </div>
+
+          <div className="space-y-2 md:col-span-2">
+            <Label htmlFor="edit-notes">Notizen</Label>
+            <Textarea id="edit-notes" rows={4} value={notesValue} onChange={(event) => setNotesValue(event.target.value)} placeholder="Interne Hinweise, Freigabekommentare oder To-dos" />
+          </div>
+        </div>
+
+        <DialogFooter>
+          <Button variant="outline" onClick={() => onOpenChange(false)} disabled={isSaving}>Abbrechen</Button>
+          <Button onClick={() => void handleSave()} disabled={isSaving}>Speichern</Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
 export function MyWorkSocialPlannerBoard() {
   const { toast } = useToast();
   const [searchParams] = useSearchParams();
@@ -54,6 +255,7 @@ export function MyWorkSocialPlannerBoard() {
   const [tagSearch, setTagSearch] = useState("");
   const [sortBy, setSortBy] = useState<(typeof SORT_OPTIONS)[number]["value"]>("scheduled");
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
+  const [editingItemId, setEditingItemId] = useState<string | null>(null);
   const [createTopicId, setCreateTopicId] = useState<string>("none");
   const [createTopicTitle, setCreateTopicTitle] = useState("");
   const [createChannelId, setCreateChannelId] = useState<string>("none");
@@ -63,6 +265,11 @@ export function MyWorkSocialPlannerBoard() {
   const [createDraftText, setCreateDraftText] = useState("");
   const [createScheduledDate, setCreateScheduledDate] = useState("");
   const [isCreatingDraft, setIsCreatingDraft] = useState(false);
+
+  const editingItem = useMemo(
+    () => items.find((item) => item.id === editingItemId) || null,
+    [editingItemId, items],
+  );
 
   const filteredItems = useMemo(() => {
     const search = tagSearch.trim().toLowerCase();
@@ -112,6 +319,11 @@ export function MyWorkSocialPlannerBoard() {
       toast({ title: "Statuswechsel fehlgeschlagen", variant: "destructive" });
     }
   };
+
+  const handleSaveItem = useCallback(async (itemId: string, payload: Parameters<NonNullable<SocialPlannerEditDialogProps["onSave"]>>[1]) => {
+    await updateItem(itemId, payload);
+    toast({ title: "Beitrag aktualisiert", description: "Änderungen sind im Board und Kalender sichtbar." });
+  }, [toast, updateItem]);
 
   const onDragEnd = async (result: DropResult) => {
     if (!result.destination) return;
@@ -340,11 +552,15 @@ export function MyWorkSocialPlannerBoard() {
                                   className="rounded-md border bg-card p-2 text-xs"
                                   data-social-planner-item-id={item.id}
                                 >
-                                  <div className="mb-1 flex items-start gap-2">
+                                  <div className="mb-2 flex items-start gap-2">
                                     <div {...dragProvided.dragHandleProps} className="mt-0.5 text-muted-foreground">
                                       <GripVertical className="h-3.5 w-3.5" />
                                     </div>
-                                    <div className="min-w-0 flex-1">
+                                    <button
+                                      type="button"
+                                      className="min-w-0 flex-1 text-left"
+                                      onClick={() => setEditingItemId(item.id)}
+                                    >
                                       <p className="font-medium text-sm leading-tight">{item.topic}</p>
                                       <p className="text-muted-foreground">Kanal: {item.channel_names.join(", ") || "-"}</p>
                                       <p className="text-muted-foreground">Format: {item.format || "-"}</p>
@@ -355,7 +571,7 @@ export function MyWorkSocialPlannerBoard() {
                                       <p className="text-muted-foreground">
                                         Freigabestatus: {APPROVAL_LABELS[item.approval_state] || item.approval_state}
                                       </p>
-                                    </div>
+                                    </button>
                                   </div>
 
                                   {item.tags.length > 0 && (
@@ -368,7 +584,11 @@ export function MyWorkSocialPlannerBoard() {
                                     </div>
                                   )}
 
-                                  <div className="flex justify-between gap-1">
+                                  <div className="flex justify-between gap-2">
+                                    <Button variant="outline" size="sm" className="h-7" onClick={() => setEditingItemId(item.id)}>
+                                      <Pencil className="mr-1 h-3 w-3" />
+                                      Bearbeiten
+                                    </Button>
                                     <div className="flex gap-1 flex-wrap">
                                       {(() => {
                                         const idx = STATUS_COLUMNS.findIndex((s) => s.id === item.workflow_status);
@@ -410,6 +630,17 @@ export function MyWorkSocialPlannerBoard() {
 
         {loading && <p className="mt-3 text-xs text-muted-foreground">Lade Social-Planer…</p>}
       </CardContent>
+
+      <SocialPlannerEditDialog
+        item={editingItem}
+        open={editingItem !== null}
+        users={users}
+        channels={channels}
+        onOpenChange={(open) => {
+          if (!open) setEditingItemId(null);
+        }}
+        onSave={handleSaveItem}
+      />
 
       <Dialog open={isCreateDialogOpen} onOpenChange={(open) => {
         setIsCreateDialogOpen(open);

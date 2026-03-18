@@ -17,6 +17,11 @@ export interface SocialPlannerItem {
   channel_ids: string[];
   channel_names: string[];
   format: string | null;
+  hook: string | null;
+  core_message: string | null;
+  draft_text: string | null;
+  cta: string | null;
+  notes: string | null;
   responsible_user_id: string | null;
   scheduled_for: string | null;
 }
@@ -89,6 +94,11 @@ export function useSocialPlannerItems() {
             workflow_status,
             approval_state,
             format,
+            hook,
+            core_message,
+            draft_text,
+            cta,
+            notes,
             responsible_user_id,
             scheduled_for,
             topic_backlog:topic_backlog_id(topic, tags),
@@ -126,6 +136,11 @@ export function useSocialPlannerItems() {
             workflow_status: deriveUiStatus(row.workflow_status, row.approval_state),
             approval_state: row.approval_state || "draft",
             format: row.format,
+            hook: row.hook,
+            core_message: row.core_message,
+            draft_text: row.draft_text,
+            cta: row.cta,
+            notes: row.notes,
             responsible_user_id: row.responsible_user_id,
             scheduled_for: row.scheduled_for,
             channel_ids: channelLinks.map((entry) => entry.channel_id),
@@ -206,7 +221,10 @@ export function useSocialPlannerItems() {
     [currentTenant?.id, loadItems, user?.id, profileId],
   );
 
-  const updateItem = useCallback(async (id: string, patch: Partial<Pick<SocialPlannerItem, "workflow_status" | "approval_state" | "responsible_user_id" | "format" | "scheduled_for">>) => {
+  const updateItem = useCallback(async (
+    id: string,
+    patch: Partial<Pick<SocialPlannerItem, "topic" | "workflow_status" | "approval_state" | "responsible_user_id" | "format" | "scheduled_for" | "hook" | "core_message" | "draft_text" | "cta" | "notes" | "channel_ids">>,
+  ) => {
     if (!currentTenant?.id) return;
 
     const dbPatch: Record<string, string | null> = {};
@@ -220,14 +238,59 @@ export function useSocialPlannerItems() {
     if (typeof patch.responsible_user_id !== "undefined") dbPatch.responsible_user_id = patch.responsible_user_id;
     if (typeof patch.format !== "undefined") dbPatch.format = patch.format;
     if (typeof patch.scheduled_for !== "undefined") dbPatch.scheduled_for = patch.scheduled_for;
+    if (typeof patch.hook !== "undefined") dbPatch.hook = patch.hook;
+    if (typeof patch.core_message !== "undefined") dbPatch.core_message = patch.core_message;
+    if (typeof patch.draft_text !== "undefined") dbPatch.draft_text = patch.draft_text;
+    if (typeof patch.cta !== "undefined") dbPatch.cta = patch.cta;
+    if (typeof patch.notes !== "undefined") dbPatch.notes = patch.notes;
 
-    const { error } = await supabase
-      .from("social_content_items")
-      .update(dbPatch)
-      .eq("id", id)
-      .eq("tenant_id", currentTenant.id);
-    if (error) throw new Error(getErrorMessage(error));
-  }, [currentTenant?.id]);
+    if (Object.keys(dbPatch).length > 0) {
+      const { error } = await supabase
+        .from("social_content_items")
+        .update(dbPatch)
+        .eq("id", id)
+        .eq("tenant_id", currentTenant.id);
+      if (error) throw new Error(getErrorMessage(error));
+    }
+
+    const currentItem = items.find((item) => item.id === id);
+    if (typeof patch.topic !== "undefined" && patch.topic.trim() && currentItem?.topic_backlog_id) {
+      const { error: topicError } = await supabase
+        .from("topic_backlog")
+        .update({ topic: patch.topic.trim() })
+        .eq("id", currentItem.topic_backlog_id)
+        .eq("tenant_id", currentTenant.id);
+      if (topicError) throw new Error(getErrorMessage(topicError));
+    }
+
+    if (typeof patch.channel_ids !== "undefined") {
+      if (!user?.id || !profileId) return;
+
+      const { error: deleteError } = await supabase
+        .from("social_content_item_channels")
+        .delete()
+        .eq("content_item_id", id)
+        .eq("tenant_id", currentTenant.id);
+
+      if (deleteError) throw new Error(getErrorMessage(deleteError));
+
+      if (patch.channel_ids.length > 0) {
+        const { error: channelError } = await supabase.from("social_content_item_channels").insert(
+          patch.channel_ids.map((channelId, index) => ({
+            content_item_id: id,
+            channel_id: channelId,
+            created_by: profileId,
+            tenant_id: currentTenant.id,
+            is_primary: index === 0,
+          })),
+        );
+
+        if (channelError) throw new Error(getErrorMessage(channelError));
+      }
+    }
+
+    await loadItems();
+  }, [currentTenant?.id, items, loadItems, profileId, user?.id]);
 
   const updateItemChannels = useCallback(
     async (id: string, channelIds: string[]) => {
