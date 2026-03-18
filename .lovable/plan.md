@@ -1,53 +1,43 @@
 
+## Code-Qualität — Status
 
-## Analyse
+### Erledigt
 
-Ich habe die relevanten Tabellen, RLS-Policies und den Code in `useChecklistOperations.ts` untersucht. Es gibt zwei konkrete Probleme:
+- **strictNullChecks: true** — aktiviert, alle Build-Fehler behoben
+- **noImplicitAny: true** — aktiviert, alle Build-Fehler behoben
+- **DOMPurify** als zentraler HTML-Sanitizer — alle `dangerouslySetInnerHTML` nutzen jetzt `sanitizeRichHtml()`
+- **Tenant-Access Guard** für Edge Functions — existiert in `supabase/functions/_shared/tenant-access.ts`
+- **ESLint `no-unused-vars: warn`** — aktiviert mit `argsIgnorePattern: '^_'`, erste Bereinigungsrunde in Pages/Hooks abgeschlossen
+- **Standalone `React`-Imports entfernt** — ~60 Dateien bereinigt
+- **State-Mutation fix** — `existingContacts.push()` → immutables Update in `useContactImport.ts`
+- **Non-null Assertion Guards** — `user!.id` / `currentTenant!.id` durch Early-Return-Guards ersetzt (~11 Dateien)
+- **Leere catch-Blöcke** — kritische Stellen in MatrixContext & DaySlipStore mit `debugConsole.warn` versehen
+- **JSON-Protocol Speaker-Normalisierung** — `speaker: string | { name }` korrekt normalisiert
 
-### Problem 1: RSVP-Systempunkt — `notes`-Spalte existiert nicht
+### Noch offen
 
-In Zeile 258 wird beim RSVP-Pfad ein Insert auf `event_planning_timeline_assignments` mit einem `notes`-Feld gemacht:
-
-```ts
-await supabase.from("event_planning_timeline_assignments").insert({
-  event_planning_id: selectedPlanningId,
-  checklist_item_id: itemId,
-  due_date: earliestSent.invited_at.split("T")[0],
-  notes: `${sentCount} Einladung(en) versandt`,  // ← Spalte existiert nicht!
-} as any);
-```
-
-Die Tabelle `event_planning_timeline_assignments` hat nur die Spalten: `id`, `event_planning_id`, `checklist_item_id`, `due_date`, `created_at`, `updated_at`. Es gibt **kein** `notes`-Feld. Das `as any` unterdrückt den TypeScript-Fehler, aber PostgreSQL wirft einen Fehler. Da dies innerhalb des `try`-Blocks (Zeile 214) liegt, löst es den `catch` (Zeile 269) aus, der den gesamten Checklisten-Punkt wieder löscht → "RSVP-Systempunkt konnte nicht angelegt werden".
-
-### Problem 2: Social Media — vermutlich RLS oder FK-Problem
-
-Der Social-Media-Pfad (Zeile 148-210) insertet in `topic_backlog` und `social_content_items`. Beide Tabellen haben RLS-INSERT-Policies, die `has_active_tenant_role(auth.uid(), tenant_id, ARRAY['mitarbeiter','bueroleitung','abgeordneter'])` prüfen. Falls der aktuelle User keine aktive Mitgliedschaft mit einer dieser Rollen hat, schlägt der Insert fehl. Außerdem fehlt im Catch-Block (Zeile 200) die Ausgabe der eigentlichen Fehlermeldung.
-
-### Problem 3: Fehlende Fehlerdetails
-
-Beide Catch-Blöcke loggen den Fehler nur via `debugConsole.error`, aber die Toast-Nachricht gibt keine Details aus. Das macht Debugging unmöglich.
+1. ~~**`strict: true` aktivieren**~~ ✅ — war bereits aktiv in `tsconfig.app.json` inkl. `strictNullChecks` und `noImplicitAny`
+2. **Tote Imports weiter bereinigen** — ~65 standalone `React`-Imports in Components prüfen, weitere lucide-Icons und ungenutzte Variablen entfernen (ESLint-Regel zeigt Warnungen)
+3. **`no-explicit-any` schrittweise einführen** — nach Abschluss der `no-unused-vars`-Bereinigung
+4. ~~**Edge Functions `verify_jwt`-Audit**~~ ✅ — alle 18 Functions mit `verify_jwt = false` klassifiziert und abgesichert: Cron-Functions mit `requireServiceRole`, WebSocket mit `requireAuth`, Token-Endpoints mit eigener Validierung, `send-push-notification` + `fetch-karlsruhe-districts` mit Service-Role-Guard
+5. **CORS einschränken** — `Access-Control-Allow-Origin: *` durch Allowlist ersetzen für sensible Operationen
 
 ---
 
-## Geplante Änderungen
+## No-Code Automations-Hub — Status
 
-### 1. `useChecklistOperations.ts` — RSVP-Timeline-Insert fixen
-- `notes`-Feld aus dem Insert entfernen, da die Spalte nicht existiert
-- ODER: Migration erstellen, die eine `notes`-Spalte zu `event_planning_timeline_assignments` hinzufügt
+### Erledigt
 
-**Empfehlung:** `notes`-Spalte per Migration hinzufügen, da die Info "X Einladungen versandt" sinnvoll ist.
-
-### 2. `useChecklistOperations.ts` — Bessere Fehlerausgabe
-- In beiden Catch-Blöcken (Social Media Zeile 200, RSVP Zeile 269) die tatsächliche Fehlermeldung in den Toast aufnehmen, z.B.:
-  ```ts
-  toast({ title: "Fehler", description: `Systempunkt konnte nicht angelegt werden: ${systemPointError?.message || "Unbekannter Fehler"}`, variant: "destructive" });
-  ```
-
-### 3. Migration: `notes`-Spalte auf `event_planning_timeline_assignments`
-```sql
-ALTER TABLE public.event_planning_timeline_assignments 
-ADD COLUMN notes text;
-```
-
-Dies ist eine einfache, nullable Spalte — keine RLS-Änderungen nötig, da die bestehende ALL-Policy bereits greift.
-
+- 4-Step Wizard (Grundlagen → Trigger → Bedingungen → Aktionen)
+- 10 Templates, Template-Galerie mit Suche/Filter
+- Kill-Switch, Dry-Run, Run-Now, Run-Historie mit Step-Logs
+- Error-Dashboard mit Retry, Regel-Versionierung, Import/Export
+- Rate Limiting, Idempotency, Audit-Trail
+- 5 Action-Typen, 5 Condition-Operators, 4 Trigger-Typen (inkl. Webhook)
+- Rollenbasierte Zugriffskontrolle
+- **Regel duplizieren** — Copy-Button pro Regel-Karte
+- **Nächste geplante Ausführung** — Badge für schedule-Regeln
+- **Regel-Statistiken** — Erfolgsrate (%) + Ø Laufzeit als Tooltip-Badge
+- **Notification-Kontext** — `rule_name`, `trigger_reason`, `run_id` in Notification-Payload
+- **Webhook-Trigger** — neue Edge Function `automation-webhook`, Secret-Authentifizierung, URL-Anzeige im Wizard
+- **Verschachtelte Condition-Gruppen** — rekursives AND/OR-Nesting bis 3 Ebenen im Wizard, backward-kompatible DB-Serialisierung

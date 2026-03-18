@@ -4631,6 +4631,7 @@ export type Database = {
           due_date: string
           event_planning_id: string
           id: string
+          notes: string | null
           updated_at: string
         }
         Insert: {
@@ -4639,6 +4640,7 @@ export type Database = {
           due_date: string
           event_planning_id: string
           id?: string
+          notes?: string | null
           updated_at?: string
         }
         Update: {
@@ -4647,6 +4649,7 @@ export type Database = {
           due_date?: string
           event_planning_id?: string
           id?: string
+          notes?: string | null
           updated_at?: string
         }
         Relationships: [

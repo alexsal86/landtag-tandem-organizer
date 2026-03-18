@@ -1,0 +1,1 @@
+ALTER TABLE public.event_planning_timeline_assignments ADD COLUMN notes text;
