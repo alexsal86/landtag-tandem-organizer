@@ -5,7 +5,7 @@ type TimelineEntryGeometry = {
 };
 
 type TimelineAssignment = {
-  checklistItemId: string;
+  checklist_item_id: string;
 };
 
 type ConnectorLine = {
