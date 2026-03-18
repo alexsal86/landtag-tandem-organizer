@@ -23,19 +23,21 @@ interface Letter {
   created_at: string;
 }
 
-interface LetterTemplate {
+interface LetterAttachment {
   id: string;
-  name: string;
-  letterhead_html: string;
-  letterhead_css: string;
-  response_time_days: number;
+  [key: string]: unknown;
+}
+
+interface PdfGenerationResult {
+  blob: Blob;
+  filename: string;
 }
 
 export const useLetterArchiving = () => {
   const { user } = useAuth();
   const { currentTenant } = useTenant();
   const { toast } = useToast();
-  const [isArchiving, setIsArchiving] = useState(false);
+  const [isArchiving, setIsArchiving] = useState<boolean>(false);
 
   const archiveLetter = async (letter: Letter): Promise<boolean> => {
     if (!user || !currentTenant) {
@@ -50,71 +52,73 @@ export const useLetterArchiving = () => {
     setIsArchiving(true);
 
     try {
-      // Use generateLetterPDF from letterPDFGenerator which has the exact same logic as LetterPDFExport
       const { generateLetterPDF } = await import('@/utils/letterPDFGenerator');
-      
-      // Generate PDF blob using the exact same logic as LetterPDFExport
-      const pdfResult = await generateLetterPDF(letter);
-      
+      const pdfResult = (await generateLetterPDF(letter)) as PdfGenerationResult | null;
+
       if (!pdfResult) {
         throw new Error('PDF generation failed');
       }
 
       const { blob: pdfBlob, filename } = pdfResult;
-
-      // Upload PDF to storage
       const filePath = `archived_letters/${filename}`;
       const { error: uploadError } = await supabase.storage
         .from('documents')
         .upload(filePath, pdfBlob, {
           contentType: 'application/pdf',
           cacheControl: '3600',
-          upsert: false
+          upsert: false,
         });
 
-      if (uploadError) throw uploadError;
+      if (uploadError) {
+        throw uploadError;
+      }
 
-      // Fetch letter attachments for archiving metadata
       const { data: attachments } = await supabase
         .from('letter_attachments')
         .select('*')
         .eq('letter_id', letter.id)
         .order('created_at');
 
-      // Create document record in database
-      const { data: documentData, error: dbError } = await supabase
+      const archivedAttachments = (attachments ?? []) as LetterAttachment[];
+
+      const { error: dbError } = await supabase
         .from('documents')
-        .insert([{
-          user_id: user.id,
-          tenant_id: currentTenant.id,
-          title: `Archivierter Brief: ${letter.title}`,
-          description: `Automatisch archiviert am ${new Date().toLocaleDateString('de-DE')}`,
-          file_name: filename,
-          file_path: filePath,
-          file_size: pdfBlob.size,
-          file_type: 'application/pdf',
-          category: 'correspondence',
-          status: 'archived',
-          document_type: 'archived_letter',
-          source_letter_id: letter.id,
-          archived_attachments: attachments || []
-        }])
+        .insert([
+          {
+            user_id: user.id,
+            tenant_id: currentTenant.id,
+            title: `Archivierter Brief: ${letter.title}`,
+            description: `Automatisch archiviert am ${new Date().toLocaleDateString('de-DE')}`,
+            file_name: filename,
+            file_path: filePath,
+            file_size: pdfBlob.size,
+            file_type: 'application/pdf',
+            category: 'correspondence',
+            status: 'archived',
+            document_type: 'archived_letter',
+            source_letter_id: letter.id,
+            archived_attachments: archivedAttachments,
+          },
+        ])
         .select()
         .single();
 
-      if (dbError) throw dbError;
+      if (dbError) {
+        throw dbError;
+      }
 
-      // Update letter status to sent (if not already)
       const { error: letterUpdateError } = await supabase
         .from('letters')
-        .update({ 
+        .update({
           status: 'sent',
           sent_at: new Date().toISOString(),
-          sent_by: user.id
+          sent_by: user.id,
         })
         .eq('id', letter.id);
 
-      if (letterUpdateError) throw letterUpdateError;
+      if (letterUpdateError) {
+        throw letterUpdateError;
+      }
 
       toast({
         title: "Brief archiviert",
@@ -122,7 +126,6 @@ export const useLetterArchiving = () => {
       });
 
       return true;
-
     } catch (error: unknown) {
       debugConsole.error('Error archiving letter:', error);
       toast({
@@ -138,6 +141,6 @@ export const useLetterArchiving = () => {
 
   return {
     archiveLetter,
-    isArchiving
+    isArchiving,
   };
 };
