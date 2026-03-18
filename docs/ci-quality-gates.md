@@ -127,6 +127,8 @@ Diese Grenzwerte sind bewusst konservativ gestartet und können schrittweise erh
 
 Details zur Batch-Strategie, Migrationsregel und Fortschrittsmetrik: `docs/typescript-strict-migration.md`. Die Strict-Migration wird dort zusätzlich flow-basiert entlang der fünf priorisierten Kernflows organisiert; dieselben Flows sollten deshalb auch für Coverage-Interpretation, PR-Zuschnitt und Batch-Freigaben verwendet werden.
 
+Für PRs, die Strict-Batches erweitern, sind außerdem die dokumentierten **Review-Checkfragen für Type-Sicherheits-Schulden** aus `docs/typescript-strict-migration.md` verbindlich zu beantworten. Dazu gehören insbesondere das Verbot neuer `@ts-ignore`-Kommentare, die fachliche Prüfung von Non-Null-Assertions und Typ-Casts sowie ein expliziter Abbauplan für verbleibende Typ-Schulden.
+
 ## Python-Test-Gate (Parser)
 
 - `pytest -q` ist ein verpflichtender Gate-Check im Job `parser-and-tests`.
