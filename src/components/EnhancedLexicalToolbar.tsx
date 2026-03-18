@@ -357,7 +357,7 @@ export const EnhancedLexicalToolbar: React.FC<EnhancedLexicalToolbarProps> = ({
           const linkNode = $createLinkNode(url);
           const text = selection.getTextContent() || url;
           linkNode.append($createTextNode(text));
-          selection.insertNodes([linkNode]);
+          selection.insertNodes([linkNode as any]);
         }
       });
     }

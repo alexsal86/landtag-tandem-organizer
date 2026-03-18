@@ -22,7 +22,7 @@ export async function submitWebsiteWidgetCallbackRequest(
   callbackRequest: WebsiteWidgetCallbackRequest,
   conversationId: string,
 ) {
-  return supabase.functions.invoke<WebsiteWidgetTestResponse>("matrix-bot-handler", {
+  return supabase.functions.invoke("matrix-bot-handler", {
     body: {
       type: "website_widget_callback_request",
       source: "data_view_widget",
