@@ -85,7 +85,7 @@ export function PlanningTimelineSection({
         isConfirmed: d.is_confirmed,
       }));
 
-    const assignmentEntries: TimelineEntry[] = assignments
+    const assignmentEntries = assignments
       .map((assignment) => {
         const checklistItem = checklistItems.find((item) => item.id === assignment.checklistItemId);
         if (!checklistItem) return null;
@@ -97,7 +97,7 @@ export function PlanningTimelineSection({
           type: "checklist" as const,
         };
       })
-      .filter((entry): entry is TimelineEntry => entry !== null);
+      .filter((entry): entry is NonNullable<typeof entry> => entry !== null) as TimelineEntry[];
 
     return [...planningStartEntry, ...knownEntries, ...assignmentEntries].sort((a, b) => a.date.getTime() - b.date.getTime());
   }, [assignments, checklistItems, planningCreatedAt, planningDates]);
