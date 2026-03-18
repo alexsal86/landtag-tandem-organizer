@@ -242,7 +242,7 @@ export function useChecklistOperations({
             .single();
           if (actionError) throw actionError;
 
-          onSocialPlannerActionCreated?.(data.id, createdAction);
+          onSocialPlannerActionCreated?.(itemId, createdAction);
 
           // If invitations were already sent, create a timeline assignment
           if (sentCount > 0) {
