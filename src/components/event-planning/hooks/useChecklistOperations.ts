@@ -205,7 +205,8 @@ export function useChecklistOperations({
             supabase.from("social_content_items").delete().eq("id", plannerItemId),
             supabase.from("topic_backlog").delete().eq("id", topicId),
           ]);
-          toast({ title: "Fehler", description: "Systempunkt konnte nicht vollständig angelegt werden.", variant: "destructive" });
+          const errMsg = systemPointError?.message || systemPointError?.details || "Unbekannter Fehler";
+          toast({ title: "Fehler", description: `Social-Media-Systempunkt konnte nicht angelegt werden: ${errMsg}`, variant: "destructive" });
           return;
         }
       }
