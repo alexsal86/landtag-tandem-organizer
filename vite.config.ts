@@ -51,7 +51,7 @@ export default defineConfig(({ mode }) => ({
   plugins: [
     lexicalDedupePlugin(),
     react(),
-    // nodePolyfills temporarily disabled due to @rollup/plugin-inject resolution issue
+    tailwindcss(),
     // nodePolyfills({
     //   include: ['buffer', 'process'],
     //   globals: { Buffer: true, process: true },
