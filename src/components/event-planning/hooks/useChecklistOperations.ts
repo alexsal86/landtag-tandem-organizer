@@ -125,19 +125,22 @@ export function useChecklistOperations({
 
     const maxOrder = Math.max(...checklistItems.map(item => item.order_index), -1);
 
-    const { data, error } = await supabase
+    const itemId = crypto.randomUUID();
+
+    const { error } = await supabase
       .from("event_planning_checklist_items")
-      .insert([{ event_planning_id: selectedPlanningId, title, order_index: maxOrder + 1, type: itemType }])
-      .select()
-      .single();
+      .insert([{ id: itemId, event_planning_id: selectedPlanningId, title, order_index: maxOrder + 1, type: itemType }]);
     if (error) {
       toast({ title: "Fehler", description: "Checklisten-Punkt konnte nicht hinzugefügt werden.", variant: "destructive" });
       return;
     }
 
+    // Build a data object from the known values (no .select().single() needed)
+    const data = { id: itemId, event_planning_id: selectedPlanningId, title, order_index: maxOrder + 1, type: itemType, is_completed: false, sub_items: [] as any[] };
+
     if (itemType === "system_social_media" || itemType === "system_rsvp") {
       if (!currentTenantId || !currentProfileId) {
-        await supabase.from("event_planning_checklist_items").delete().eq("id", data.id);
+        await supabase.from("event_planning_checklist_items").delete().eq("id", itemId);
         toast({ title: "Fehler", description: "Systempunkt konnte ohne Tenant-/Profilkontext nicht angelegt werden.", variant: "destructive" });
         return;
       }
@@ -177,7 +180,7 @@ export function useChecklistOperations({
           const { data: createdAction, error: actionError } = await supabase
             .from("event_planning_item_actions")
             .insert({
-              checklist_item_id: data.id,
+              checklist_item_id: itemId,
               action_type: "social_planner",
               is_enabled: true,
               action_config: {
@@ -192,13 +195,13 @@ export function useChecklistOperations({
             .single();
           if (actionError) throw actionError;
 
-          onSocialPlannerActionCreated?.(data.id, createdAction);
+          onSocialPlannerActionCreated?.(itemId, createdAction);
           toast({ title: "Systempunkt angelegt", description: "Social-Media-Punkt wurde erstellt und mit dem Social Planner verknüpft." });
         } catch (systemPointError: any) {
           debugConsole.error("Error creating social media system point:", systemPointError);
           // Rollback all created resources using pre-generated IDs
           await Promise.allSettled([
-            supabase.from("event_planning_checklist_items").delete().eq("id", data.id),
+            supabase.from("event_planning_checklist_items").delete().eq("id", itemId),
             supabase.from("social_content_items").delete().eq("id", plannerItemId),
             supabase.from("topic_backlog").delete().eq("id", topicId),
           ]);
@@ -223,7 +226,7 @@ export function useChecklistOperations({
           const { data: createdAction, error: actionError } = await supabase
             .from("event_planning_item_actions")
             .insert({
-              checklist_item_id: data.id,
+              checklist_item_id: itemId,
               action_type: "rsvp",
               is_enabled: true,
               action_config: {
@@ -239,7 +242,7 @@ export function useChecklistOperations({
             .single();
           if (actionError) throw actionError;
 
-          onSocialPlannerActionCreated?.(data.id, createdAction);
+          onSocialPlannerActionCreated?.(itemId, createdAction);
 
           // If invitations were already sent, create a timeline assignment
           if (sentCount > 0) {
@@ -250,8 +253,8 @@ export function useChecklistOperations({
             if (earliestSent) {
               await supabase.from("event_planning_timeline_assignments").insert({
                 event_planning_id: selectedPlanningId,
-                checklist_item_id: data.id,
-                assigned_date: earliestSent.invited_at.split("T")[0],
+                checklist_item_id: itemId,
+                due_date: earliestSent.invited_at.split("T")[0],
                 notes: `${sentCount} Einladung(en) versandt`,
               } as any);
             }
@@ -265,7 +268,7 @@ export function useChecklistOperations({
           });
         } catch (rsvpError: any) {
           debugConsole.error("Error creating RSVP system point:", rsvpError);
-          await supabase.from("event_planning_checklist_items").delete().eq("id", data.id);
+          await supabase.from("event_planning_checklist_items").delete().eq("id", itemId);
           toast({ title: "Fehler", description: "RSVP-Systempunkt konnte nicht angelegt werden.", variant: "destructive" });
           return;
         }

@@ -18,6 +18,7 @@ import { useTenantUsers } from "@/hooks/useTenantUsers";
 import { type SocialPlannerItem, PlannerWorkflowStatus, useSocialPlannerItems } from "@/hooks/useSocialPlannerItems";
 import { useTopicBacklog } from "@/hooks/useTopicBacklog";
 import { useToast } from "@/hooks/use-toast";
+import type { SpecialDay } from "@/utils/dashboard/specialDays";
 
 const STATUS_COLUMNS: Array<{ id: PlannerWorkflowStatus; title: string }> = [
   { id: "ideas", title: "Ideen" },
@@ -526,7 +527,7 @@ export function MyWorkSocialPlannerBoard() {
 
       <CardContent>
         {viewMode === "calendar" ? (
-          <SocialPlannerCalendar items={filteredItems} onUpdateSchedule={handleCalendarScheduleUpdate} />
+          <SocialPlannerCalendar items={filteredItems} onUpdateSchedule={handleCalendarScheduleUpdate} specialDays={specialDays} />
         ) : (
           <DragDropContext onDragEnd={onDragEnd}>
             <div className="grid grid-cols-1 gap-3 lg:grid-cols-2 2xl:grid-cols-3">

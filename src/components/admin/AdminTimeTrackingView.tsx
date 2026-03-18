@@ -222,8 +222,8 @@ export function AdminTimeTrackingView() {
         supabase.from("employee_settings").select("user_id, hours_per_week, days_per_week").in("user_id", employeeIds),
       ]);
 
-      const profileMap = new Map<string, any>(profilesRes.data?.map(p => [p.user_id, p]) || []);
-      const settingsMap = new Map<string, any>(settingsRes.data?.map(s => [s.user_id, s]) || []);
+      const profileMap = new Map<string, any>(profilesRes.data?.map((p: any) => [p.user_id, p]) || []);
+      const settingsMap = new Map<string, any>(settingsRes.data?.map((s: any) => [s.user_id, s]) || []);
 
       const emps: Employee[] = employeeIds.map(uid => ({
         user_id: uid,
