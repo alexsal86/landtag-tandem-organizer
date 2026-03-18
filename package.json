@@ -122,7 +122,7 @@
     "leaflet-routing-machine": "^3.2.12",
     "leaflet.heat": "^0.2.0",
     "lexical": "0.40.0",
-    "lovable-tagger": "^1.1.9",
+    "lovable-tagger": "^1.1.13",
     "lucide-react": "0.544.0",
     "mammoth": "^1.11.0",
     "matrix-js-sdk": "^34.13.0",
