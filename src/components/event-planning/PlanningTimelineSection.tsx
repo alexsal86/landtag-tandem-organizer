@@ -9,8 +9,8 @@ import { Droppable } from "@hello-pangea/dnd";
 import type { ChecklistItem, EventPlanningDate } from "./types";
 
 const DAY_IN_MS = 1000 * 60 * 60 * 24;
-const DOT_SIZE_CLASS = "h-6 w-6";
-const DOT_LEFT_CLASS = "-left-[24px]";
+const DOT_SIZE_CLASS = "h-5 w-5";
+const DOT_LEFT_CLASS = "-left-[20px]";
 
 type TimelineAssignment = {
   checklistItemId: string;
@@ -61,6 +61,7 @@ export function PlanningTimelineSection({
   const [connectorLines, setConnectorLines] = useState<ConnectorLine[]>([]);
   const [timelineAxis, setTimelineAxis] = useState<TimelineAxis | null>(null);
   const sectionRef = useRef<HTMLDivElement | null>(null);
+  const timelineListRef = useRef<HTMLDivElement | null>(null);
   const timelinePointRefs = useRef<Record<string, HTMLSpanElement | null>>({});
 
   const entries = useMemo<TimelineEntry[]>(() => {
@@ -126,19 +127,16 @@ export function PlanningTimelineSection({
       const previousEntry = entries[index - 1];
       const diffInDays = Math.max(0, (entry.date.getTime() - previousEntry.date.getTime()) / DAY_IN_MS);
       const scaledSpacing = Math.round(diffInDays * pixelsPerDay);
-
-      if (diffInDays > 0 && scaledSpacing < 14) {
-        return 14;
-      }
-
-      return scaledSpacing;
+      return diffInDays > 0 && scaledSpacing < 14 ? 14 : scaledSpacing;
     });
   }, [entries]);
 
   useEffect(() => {
-    const updateConnectors = () => {
+    const updateGeometry = () => {
       const sectionRect = sectionRef.current?.getBoundingClientRect();
-      if (!sectionRect || !checklistItemRefs) {
+      const listRect = timelineListRef.current?.getBoundingClientRect();
+
+      if (!sectionRect || !listRect) {
         setConnectorLines([]);
         setTimelineAxis(null);
         return;
@@ -152,12 +150,18 @@ export function PlanningTimelineSection({
       if (firstPoint && lastPoint) {
         const firstRect = firstPoint.getBoundingClientRect();
         const lastRect = lastPoint.getBoundingClientRect();
-        const left = firstRect.left + firstRect.width / 2 - sectionRect.left;
-        const top = firstRect.top + firstRect.height / 2 - sectionRect.top;
-        const lastCenter = lastRect.top + lastRect.height / 2 - sectionRect.top;
-        setTimelineAxis({ left, top, height: Math.max(0, lastCenter - top) });
+        setTimelineAxis({
+          left: firstRect.left + firstRect.width / 2 - listRect.left,
+          top: firstRect.top + firstRect.height / 2 - listRect.top,
+          height: Math.max(0, lastRect.top + lastRect.height / 2 - (firstRect.top + firstRect.height / 2)),
+        });
       } else {
         setTimelineAxis(null);
+      }
+
+      if (!checklistItemRefs) {
+        setConnectorLines([]);
+        return;
       }
 
       const nextLines = assignments
@@ -185,13 +189,13 @@ export function PlanningTimelineSection({
       setConnectorLines(nextLines);
     };
 
-    updateConnectors();
-    window.addEventListener("resize", updateConnectors);
-    window.addEventListener("scroll", updateConnectors, true);
+    updateGeometry();
+    window.addEventListener("resize", updateGeometry);
+    window.addEventListener("scroll", updateGeometry, true);
 
     return () => {
-      window.removeEventListener("resize", updateConnectors);
-      window.removeEventListener("scroll", updateConnectors, true);
+      window.removeEventListener("resize", updateGeometry);
+      window.removeEventListener("scroll", updateGeometry, true);
     };
   }, [assignments, checklistItemRefs, entries, entrySpacings]);
 
@@ -237,7 +241,7 @@ export function PlanningTimelineSection({
             </div>
           )}
 
-          <div className="relative pl-6">
+          <div ref={timelineListRef} className="relative pl-10">
             {entries.length === 0 ? (
               <p className="text-xs text-muted-foreground">Noch keine Termine im Zeitstrahl.</p>
             ) : (
