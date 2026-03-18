@@ -10,11 +10,13 @@ import {
 } from "lucide-react";
 import { DragDropContext, Droppable, Draggable } from "@hello-pangea/dnd";
 import { cn } from "@/lib/utils";
-import { useQuickNotes } from "@/hooks/useQuickNotes";
+import { stripHtml, useQuickNotes } from "@/hooks/useQuickNotes";
 import { useNotificationHighlight } from "@/hooks/useNotificationHighlight";
 import { NoteCard } from "@/components/shared/NoteCard";
 import { NoteDialogs } from "@/components/shared/NoteDialogs";
-import { TransferToThemenspeicherDialog } from "@/components/shared/TransferToThemenspeicherDialog";
+import { useTopicBacklog } from "@/hooks/useTopicBacklog";
+import { supabase } from "@/integrations/supabase/client";
+import { toast } from "sonner";
 
 // Type for archived info from database (JSON)
 type ArchivedInfo = { id: string; title: string; archived_at: string } | null;
@@ -82,7 +84,8 @@ export function QuickNotesList({
 }: QuickNotesListProps) {
   const hook = useQuickNotes(refreshTrigger);
   const { isHighlighted, highlightRef } = useNotificationHighlight();
-  const [themenspeicherNote, setThemenspeicherNote] = useState<QuickNote | null>(null);
+  const { createTopic } = useTopicBacklog();
+  const [transferringNoteId, setTransferringNoteId] = useState<string | null>(null);
 
   useEffect(() => {
     onSearchApiReady?.({
@@ -112,6 +115,53 @@ export function QuickNotesList({
       </div>
     );
   }
+
+  const handleTransferToThemenspeicher = async (note: QuickNote) => {
+    if (!hook.user?.id) {
+      toast.error("Nicht angemeldet");
+      return;
+    }
+
+    const fallbackTitle = stripHtml(note.content).slice(0, 100);
+    const topicTitle = stripHtml(note.title || "") || fallbackTitle;
+
+    if (!topicTitle) {
+      toast.error("Die Notiz enthält keinen übernehmbaren Titel");
+      return;
+    }
+
+    setTransferringNoteId(note.id);
+
+    try {
+      await createTopic({
+        topic: topicTitle,
+        status: "idea",
+        priority: 1,
+        short_description: stripHtml(note.content) || null,
+      });
+
+      const { error } = await supabase
+        .from("quick_notes")
+        .update({
+          deleted_at: new Date().toISOString(),
+          permanent_delete_at: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
+        })
+        .eq("id", note.id)
+        .eq("user_id", hook.user.id);
+
+      if (error) {
+        throw error;
+      }
+
+      await hook.loadNotes();
+      toast.success("Notiz in den Themenspeicher verschoben");
+    } catch (error) {
+      console.error("Error transferring quick note to themenspeicher:", error);
+      toast.error("Notiz konnte nicht in den Themenspeicher verschoben werden");
+    } finally {
+      setTransferringNoteId(null);
+    }
+  };
 
   const noteCardProps = (note: QuickNote) => ({
     note,
@@ -144,7 +194,8 @@ export function QuickNotesList({
     onShare: (n: QuickNote) => { hook.setNoteForShare(n); hook.setShareDialogOpen(true); },
     onCreateCaseItem: hook.createCaseItemFromNote,
     onRemoveCaseItem: hook.setConfirmRemoveCaseItem,
-    onTransferToThemenspeicher: (n: QuickNote) => setThemenspeicherNote(n),
+    onTransferToThemenspeicher: handleTransferToThemenspeicher,
+    isTransferringToThemenspeicher: transferringNoteId === note.id,
   });
 
   return (
@@ -313,12 +364,6 @@ export function QuickNotesList({
         deleteLinkedMeeting={hook.deleteLinkedMeeting}
         setDeleteLinkedMeeting={hook.setDeleteLinkedMeeting}
         handleDeleteNoteWithLinks={hook.handleDeleteNoteWithLinks}
-      />
-
-      <TransferToThemenspeicherDialog
-        open={!!themenspeicherNote}
-        onOpenChange={(open) => { if (!open) setThemenspeicherNote(null); }}
-        prefillTitle={themenspeicherNote?.title || themenspeicherNote?.content.replace(/<[^>]*>/g, '').slice(0, 100) || ""}
       />
     </>
   );
