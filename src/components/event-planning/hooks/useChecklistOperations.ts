@@ -270,7 +270,8 @@ export function useChecklistOperations({
         } catch (rsvpError: any) {
           debugConsole.error("Error creating RSVP system point:", rsvpError);
           await supabase.from("event_planning_checklist_items").delete().eq("id", itemId);
-          toast({ title: "Fehler", description: "RSVP-Systempunkt konnte nicht angelegt werden.", variant: "destructive" });
+          const errMsg = rsvpError?.message || rsvpError?.details || "Unbekannter Fehler";
+          toast({ title: "Fehler", description: `RSVP-Systempunkt konnte nicht angelegt werden: ${errMsg}`, variant: "destructive" });
           return;
         }
       }
