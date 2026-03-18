@@ -340,14 +340,14 @@ export function useEventPlanningData() {
     const { data: items } = await supabase.from("event_planning_checklist_items").select("id").eq("event_planning_id", planningId);
     if (!items) return;
     const itemIds = items.map((i) => i.id);
-    const { data: actions } = await supabase.from("event_planning_item_actions").select("*").in("checklist_item_id", itemIds).in("action_type", ["email", "social_planner"]);
+    const { data: actions } = await supabase.from("event_planning_item_actions").select("*").in("checklist_item_id", itemIds).in("action_type", ["email", "social_planner", "rsvp"]);
     const emailActionsMap: Record<string, any> = {};
     const socialPlannerActionsMap: Record<string, any> = {};
     (actions || []).forEach((action) => {
       if (action.action_type === "email") {
         emailActionsMap[action.checklist_item_id] = action;
       }
-      if (action.action_type === "social_planner") {
+      if (action.action_type === "social_planner" || action.action_type === "rsvp") {
         socialPlannerActionsMap[action.checklist_item_id] = action;
       }
     });
