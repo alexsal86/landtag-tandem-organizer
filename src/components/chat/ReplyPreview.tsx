@@ -2,13 +2,10 @@ import React from 'react';
 import { X, Reply } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
+import type { MatrixReplyPreview } from '@/types/matrix';
 
 interface ReplyPreviewProps {
-  replyTo: {
-    eventId: string;
-    sender: string;
-    content: string;
-  };
+  replyTo: MatrixReplyPreview;
   onCancel: () => void;
   className?: string;
 }
