@@ -64,9 +64,9 @@ export function EventPlanningDetailView(data: EventPlanningDataReturn) {
     tempTitle, setTempTitle,
     selectedDate, setSelectedDate,
     selectedTime, setSelectedTime,
-    newChecklistItem, setNewChecklistItem,
+    newChecklistItem, setNewChecklistItem, newChecklistItemType, setNewChecklistItemType,
     uploading, generalDocuments,
-    itemEmailActions, emailDialogOpen, setEmailDialogOpen,
+    itemEmailActions, itemSocialPlannerActions, emailDialogOpen, setEmailDialogOpen,
     selectedEmailItemId, setSelectedEmailItemId,
     editingComment, setEditingComment,
     itemSubtasks, itemComments, itemDocuments,
@@ -642,6 +642,8 @@ export function EventPlanningDetailView(data: EventPlanningDataReturn) {
                 checklistItems={checklistItems}
                 newChecklistItem={newChecklistItem}
                 setNewChecklistItem={setNewChecklistItem}
+                newChecklistItemType={newChecklistItemType}
+                setNewChecklistItemType={setNewChecklistItemType}
                 toggleChecklistItem={toggleChecklistItem}
                 updateChecklistItemTitle={updateChecklistItemTitle}
                 addChecklistItem={addChecklistItem}
@@ -659,6 +661,7 @@ export function EventPlanningDetailView(data: EventPlanningDataReturn) {
                 user={user}
                 uploading={uploading}
                 itemEmailActions={itemEmailActions}
+                itemSocialPlannerActions={itemSocialPlannerActions}
                 editingComment={editingComment}
                 setEditingComment={setEditingComment}
                 addItemSubtask={addItemSubtask}
