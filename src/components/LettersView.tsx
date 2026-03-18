@@ -108,7 +108,7 @@ const LettersView: React.FC = () => {
   const handleWizardComplete = (config: WizardCompletionConfig) => {
     setShowWizard(false);
     
-    const newLetter: Letter = {
+    const newLetter = {
       id: undefined,
       title: '',
       content: '',
@@ -126,7 +126,7 @@ const LettersView: React.FC = () => {
       recipient_address: config.recipientAddress,
       contact_id: config.contactId,
       archived_at: null
-    };
+    } as unknown as Letter;
     
     setSelectedLetter(newLetter);
     setIsEditorOpen(true);
