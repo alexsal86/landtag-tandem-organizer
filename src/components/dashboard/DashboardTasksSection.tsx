@@ -1,5 +1,5 @@
 import { useEffect, useState, useMemo } from 'react';
-import { GripVertical, CheckSquare, StickyNote, Briefcase, Vote } from 'lucide-react';
+import { GripVertical, CheckSquare, StickyNote, Briefcase, Vote, CalendarPlus } from 'lucide-react';
 import { format, isToday, isAfter, isBefore, startOfDay, addDays } from 'date-fns';
 import { de } from 'date-fns/locale';
 import { supabase } from '@/integrations/supabase/client';
@@ -11,7 +11,8 @@ interface DeadlineItem {
   id: string;
   title: string;
   dueDate: string;
-  type: 'task' | 'note' | 'case' | 'decision';
+  type: 'task' | 'note' | 'case' | 'decision' | 'eventPlanning';
+  planningId?: string;
 }
 
 const TYPE_CONFIG = {
@@ -19,6 +20,7 @@ const TYPE_CONFIG = {
   note: { icon: StickyNote, label: 'Notiz', tabBase: '/mywork?tab=capture', color: 'text-amber-500' },
   case: { icon: Briefcase, label: 'Vorgang', tabBase: '/mywork?tab=cases', color: 'text-emerald-500' },
   decision: { icon: Vote, label: 'Entscheidung', tabBase: '/mywork?tab=decisions', color: 'text-purple-500' },
+  eventPlanning: { icon: CalendarPlus, label: 'Veranstaltungsplanung', tabBase: '/eventplanning', color: 'text-rose-500' },
 };
 
 export const DashboardTasksSection = () => {
@@ -49,7 +51,7 @@ export const DashboardTasksSection = () => {
     const load = async () => {
       setIsLoading(true);
 
-      const [tasksRes, notesRes, casesRes, decisionsRes] = await Promise.all([
+      const [tasksRes, notesRes, casesRes, decisionsRes, planningDeadlinesRes] = await Promise.all([
         supabase.from('tasks').select('id, title, due_date')
           .or(`assigned_to.eq.${userId},assigned_to.ilike.%${userId}%,user_id.eq.${userId}`)
           .neq('status', 'completed')
@@ -69,6 +71,15 @@ export const DashboardTasksSection = () => {
           .neq('status', 'resolved')
           .is('archived_at', null)
           .not('response_deadline', 'is', null),
+        supabase
+          .from('event_planning_timeline_assignments')
+          .select(`
+            id,
+            due_date,
+            event_planning_id,
+            event_plannings (id, title, user_id, is_archived, is_completed),
+            event_planning_checklist_items (id, title, is_completed)
+          `),
       ]);
 
       const all: DeadlineItem[] = [
@@ -84,6 +95,32 @@ export const DashboardTasksSection = () => {
         ...(decisionsRes.data || []).filter((d: any) => d.response_deadline && d.title?.trim()).map((d: any) => ({
           id: d.id, title: d.title.trim(), dueDate: d.response_deadline, type: 'decision' as const,
         })),
+        ...((planningDeadlinesRes.data || [])
+          .filter((assignment: any) => {
+            const planning = Array.isArray(assignment.event_plannings) ? assignment.event_plannings[0] : assignment.event_plannings;
+            const checklistItem = Array.isArray(assignment.event_planning_checklist_items) ? assignment.event_planning_checklist_items[0] : assignment.event_planning_checklist_items;
+            return Boolean(
+              assignment.due_date &&
+              planning?.id &&
+              !planning.is_archived &&
+              !planning.is_completed &&
+              checklistItem?.title?.trim() &&
+              !checklistItem.is_completed
+            );
+          })
+          .map((assignment: any) => {
+            const planning = Array.isArray(assignment.event_plannings) ? assignment.event_plannings[0] : assignment.event_plannings;
+            const checklistItem = Array.isArray(assignment.event_planning_checklist_items) ? assignment.event_planning_checklist_items[0] : assignment.event_planning_checklist_items;
+            const checklistTitle = checklistItem?.title?.trim();
+            const planningTitle = planning?.title?.trim();
+            return {
+              id: assignment.id,
+              title: planningTitle ? `${checklistTitle} · ${planningTitle}` : checklistTitle,
+              dueDate: assignment.due_date,
+              type: 'eventPlanning' as const,
+              planningId: planning?.id ?? assignment.event_planning_id,
+            };
+          })),
       ];
 
       all.sort((a, b) => new Date(a.dueDate).getTime() - new Date(b.dueDate).getTime());
@@ -119,7 +156,7 @@ export const DashboardTasksSection = () => {
       <div
         key={`${item.type}-${item.id}`}
         className="flex items-center gap-1.5 rounded px-1 py-0.5 text-sm text-foreground/90 cursor-pointer hover:bg-muted/40 transition-colors"
-        onClick={() => navigate(`${cfg.tabBase}&highlight=${item.id}`)}
+        onClick={() => navigate(item.type === 'eventPlanning' && item.planningId ? `${cfg.tabBase}/${item.planningId}` : `${cfg.tabBase}&highlight=${item.id}`)}
         title={`${cfg.label} – Klicken zum Öffnen, oder per Handle in den Tageszettel ziehen`}
       >
         <span
