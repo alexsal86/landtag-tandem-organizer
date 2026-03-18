@@ -7,7 +7,7 @@ on:
   workflow_dispatch:
     inputs:
       run_e2e_smoke:
-        description: 'Optionalen E2E-Smoke-Job ausführen'
+        description: "Optionalen E2E-Smoke-Job ausführen"
         required: false
         default: false
         type: boolean
@@ -26,7 +26,7 @@ jobs:
       - name: Setup Python
         uses: actions/setup-python@v5
         with:
-          python-version: '3.12'
+          python-version: "3.12"
 
       - name: Cache pip
         uses: actions/cache@v4
@@ -62,8 +62,8 @@ jobs:
       - name: Use Node
         uses: actions/setup-node@v4
         with:
-          node-version: '20'
-          cache: 'npm'
+          node-version: "20"
+          cache: "npm"
 
       - name: Install deps
         run: npm ci
@@ -102,7 +102,7 @@ jobs:
       - name: Setup Python
         uses: actions/setup-python@v5
         with:
-          python-version: '3.12'
+          python-version: "3.12"
 
       - name: Install Semgrep
         run: pip install semgrep
@@ -124,8 +124,8 @@ jobs:
       - name: Use Node
         uses: actions/setup-node@v4
         with:
-          node-version: '20'
-          cache: 'npm'
+          node-version: "20"
+          cache: "npm"
 
       - name: Install deps
         run: npm ci
@@ -153,11 +153,31 @@ jobs:
       - name: Strict Type Check Knowledge-Bereich
         run: npm run typecheck:knowledge
 
-      - name: Strict Type Check Migration-Batches (Stufe 1: strictNullChecks)
+      - name: "Strict Type Check Migration-Batches (Stufe 1: strictNullChecks)"
         run: |
           npm run typecheck:hooks-batch1
           npm run typecheck:pages-batch1
           npm run typecheck:services-batch1
+
+      - name: "Hinweis auf fehlende Batch-Dokumentation"
+        if: github.event_name == 'pull_request'
+        run: |
+          set -euo pipefail
+          git fetch --no-tags --depth=1 origin "${{ github.base_ref }}"
+          CHANGED_FILES=$(git diff --name-only "origin/${{ github.base_ref }}...HEAD")
+          echo "Geänderte Dateien:"
+          echo "$CHANGED_FILES"
+
+          if echo "$CHANGED_FILES" | rg -q '(^package\.json$|^tsconfig\..*-strict\.json$|^src/(hooks|contexts|providers|services|features|components|pages)/)'; then
+            if ! echo "$CHANGED_FILES" | rg -q '(^docs/strict-progress\.md$|^docs/.+batch.+\.md$)'; then
+              {
+                echo "### Hinweis: Strict-Migrationsdokumentation prüfen"
+                echo "Dieser PR ändert Strict-Batches oder betroffene Scopes, aber kein Batch-Dokument."
+                echo "Bitte prüfen, ob \\`docs/strict-progress.md\\` oder ein zugehöriges Batch-Dokument aktualisiert werden muss."
+              } >> "$GITHUB_STEP_SUMMARY"
+              echo "Warnung: Bitte Strict-Migrationsdokumentation prüfen."
+            fi
+          fi
       - name: Build (falls vorhanden)
         run: |
           if npm run | grep -q "build"; then
@@ -191,8 +211,8 @@ jobs:
       - name: Use Node
         uses: actions/setup-node@v4
         with:
-          node-version: '20'
-          cache: 'npm'
+          node-version: "20"
+          cache: "npm"
 
       - name: Install deps
         run: npm ci
@@ -210,8 +230,8 @@ jobs:
       - name: Use Node
         uses: actions/setup-node@v4
         with:
-          node-version: '20'
-          cache: 'npm'
+          node-version: "20"
+          cache: "npm"
 
       - name: Install deps
         run: npm ci
@@ -240,8 +260,8 @@ jobs:
       - name: Use Node
         uses: actions/setup-node@v4
         with:
-          node-version: '20'
-          cache: 'npm'
+          node-version: "20"
+          cache: "npm"
 
       - name: Install deps
         run: npm ci
@@ -334,8 +354,8 @@ jobs:
       - name: Use Node
         uses: actions/setup-node@v4
         with:
-          node-version: '20'
-          cache: 'npm'
+          node-version: "20"
+          cache: "npm"
 
       - name: Install deps
         run: npm ci
@@ -356,8 +376,8 @@ jobs:
       - name: Use Node
         uses: actions/setup-node@v4
         with:
-          node-version: '20'
-          cache: 'npm'
+          node-version: "20"
+          cache: "npm"
 
       - name: Install deps
         run: npm ci
