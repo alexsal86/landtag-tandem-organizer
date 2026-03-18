@@ -1,5 +1,6 @@
 import { useEffect, useState, useMemo } from 'react';
 import { supabase } from '@/integrations/supabase/client';
+import type { Database } from '@/integrations/supabase/types';
 import { useAuth } from '@/hooks/useAuth';
 import { useTenant } from '@/hooks/useTenant';
 import { useAppointmentFeedback } from '@/hooks/useAppointmentFeedback';
@@ -16,6 +17,24 @@ export interface AppointmentData {
   end_time?: string;
   is_all_day: boolean;
 }
+
+
+type DashboardRpcResult = {
+  display_name: string | null;
+  role: string | null;
+  open_tasks_count: number | null;
+  completed_today: number | null;
+  open_task_titles: { id: string; title: string }[] | null;
+  appointments: AppointmentData[] | null;
+};
+
+type ExternalEventRow = Pick<Database['public']['Tables']['external_events']['Row'], 'id' | 'title' | 'start_time' | 'end_time' | 'all_day'>;
+
+const isDashboardRpcResult = (value: unknown): value is DashboardRpcResult => {
+  if (!value || typeof value !== 'object') return false;
+  const candidate = value as Record<string, unknown>;
+  return 'display_name' in candidate && 'role' in candidate;
+};
 
 export interface DashboardData {
   userName: string;
@@ -78,27 +97,24 @@ export const useDashboardData = (): DashboardData => {
       if (!user?.id || !currentTenant?.id) return;
 
       try {
-        const { data, error } = await (supabase as any).rpc('get_dashboard_data', {
+        const { data, error } = await supabase.rpc('get_dashboard_data', {
           p_user_id: user.id,
           p_tenant_id: currentTenant.id,
         });
 
         if (error) throw error;
 
-        const rpcResult = data as {
-          display_name: string;
-          role: string;
-          open_tasks_count: number;
-          completed_today: number;
-          open_task_titles: { id: string; title: string }[];
-          appointments: AppointmentData[];
-        };
+        if (!isDashboardRpcResult(data)) {
+          throw new Error('Unexpected dashboard RPC response');
+        }
+
+        const rpcResult = data;
 
         setUserName(rpcResult.display_name || user.email?.split('@')[0] || 'Nutzer');
         setUserRole(rpcResult.role || '');
-        setOpenTasksCount(rpcResult.open_tasks_count);
-        setCompletedTasksToday(rpcResult.completed_today);
-        setOpenTaskTitles(rpcResult.open_task_titles || []);
+        setOpenTasksCount(rpcResult.open_tasks_count ?? 0);
+        setCompletedTasksToday(rpcResult.completed_today ?? 0);
+        setOpenTaskTitles(rpcResult.open_task_titles ?? []);
 
         // Process appointments: filter today/tomorrow like before
         const now = new Date();
@@ -108,20 +124,23 @@ export const useDashboardData = (): DashboardData => {
         // Also fetch external events (not in RPC since they use a different schema pattern)
         let externalAppointments: AppointmentData[] = [];
         try {
-          const externalResult = await (supabase as any).from('external_events')
+          const externalResult = await supabase.from('external_events')
             .select('id, title, start_time, end_time, all_day, external_calendars!inner(tenant_id)')
             .eq('external_calendars.tenant_id', currentTenant.id)
             .gte('start_time', new Date(today.getTime() - 86400000).toISOString())
             .lt('start_time', new Date(today.getTime() + 3 * 86400000).toISOString())
             .order('start_time', { ascending: true });
 
-          externalAppointments = (externalResult.data || []).map((e: any) => ({
-            id: e.id, title: e.title, start_time: e.start_time,
-            end_time: e.end_time, is_all_day: e.all_day ?? false,
+          externalAppointments = (externalResult.data as ExternalEventRow[] | null ?? []).map((event) => ({
+            id: event.id,
+            title: event.title,
+            start_time: event.start_time,
+            end_time: event.end_time,
+            is_all_day: event.all_day ?? false,
           }));
         } catch { /* external events are optional */ }
 
-        const all = [...(rpcResult.appointments || []), ...externalAppointments];
+        const all = [...(rpcResult.appointments ?? []), ...externalAppointments];
 
         const todayUpcoming = all.filter(event => {
           const localDate = new Date(new Date(event.start_time).toLocaleString('en-US', { timeZone: 'Europe/Berlin' }));
