@@ -3,7 +3,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Plus, Trash2, GripVertical, MessageCircle, Paperclip, ListTodo, Mail, Download, Edit2, X, Milestone, ExternalLink, Bot } from "lucide-react";
+import { Plus, Trash2, GripVertical, MessageCircle, Paperclip, ListTodo, Mail, Download, Edit2, X, Milestone, ExternalLink, Bot, Users } from "lucide-react";
 import { Droppable, Draggable } from "@hello-pangea/dnd";
 import { cn } from "@/lib/utils";
 import { format } from "date-fns";
@@ -15,8 +15,8 @@ interface ChecklistSectionProps {
   checklistItems: ChecklistItem[];
   newChecklistItem: string;
   setNewChecklistItem: (value: string) => void;
-  newChecklistItemType: "none" | "social_media";
-  setNewChecklistItemType: (value: "none" | "social_media") => void;
+  newChecklistItemType: "none" | "social_media" | "rsvp";
+  setNewChecklistItemType: (value: "none" | "social_media" | "rsvp") => void;
   toggleChecklistItem: (itemId: string, isCompleted: boolean) => void;
   updateChecklistItemTitle: (itemId: string, title: string) => void;
   addChecklistItem: () => void;
@@ -157,15 +157,36 @@ export function ChecklistSection(props: ChecklistSectionProps) {
 
                               {itemSocialPlannerActions[item.id]?.action_config && (
                                 <div className="ml-8 mt-2 flex flex-wrap items-center gap-2 rounded-md border border-primary/20 bg-primary/5 px-3 py-2 text-xs text-muted-foreground">
-                                  <Bot className="h-3.5 w-3.5 text-primary" />
-                                  <span>Systempunkt aktiv: Social Planner-Eintrag wurde automatisch angelegt.</span>
-                                  <a
-                                    href={String(itemSocialPlannerActions[item.id].action_config.planner_url || "/my-work?tab=redaktion")}
-                                    className="inline-flex items-center gap-1 font-medium text-primary hover:underline"
-                                  >
-                                    {String(itemSocialPlannerActions[item.id].action_config.label || "Im Social Planner öffnen")}
-                                    <ExternalLink className="h-3 w-3" />
-                                  </a>
+                                  {itemSocialPlannerActions[item.id].action_type === "rsvp" ? (
+                                    <>
+                                      <Users className="h-3.5 w-3.5 text-primary" />
+                                      <span>
+                                        Systempunkt aktiv: RSVP-Einladungen
+                                        {itemSocialPlannerActions[item.id].action_config.guest_count != null && (
+                                          <> ({itemSocialPlannerActions[item.id].action_config.guest_count} Gäste, {itemSocialPlannerActions[item.id].action_config.sent_count || 0} eingeladen)</>
+                                        )}
+                                      </span>
+                                      <a
+                                        href={String(itemSocialPlannerActions[item.id].action_config.rsvp_url || "#")}
+                                        className="inline-flex items-center gap-1 font-medium text-primary hover:underline"
+                                      >
+                                        {String(itemSocialPlannerActions[item.id].action_config.label || "Einladungen verwalten")}
+                                        <ExternalLink className="h-3 w-3" />
+                                      </a>
+                                    </>
+                                  ) : (
+                                    <>
+                                      <Bot className="h-3.5 w-3.5 text-primary" />
+                                      <span>Systempunkt aktiv: Social Planner-Eintrag wurde automatisch angelegt.</span>
+                                      <a
+                                        href={String(itemSocialPlannerActions[item.id].action_config.planner_url || "/my-work?tab=redaktion")}
+                                        className="inline-flex items-center gap-1 font-medium text-primary hover:underline"
+                                      >
+                                        {String(itemSocialPlannerActions[item.id].action_config.label || "Im Social Planner öffnen")}
+                                        <ExternalLink className="h-3 w-3" />
+                                      </a>
+                                    </>
+                                  )}
                                 </div>
                               )}
 
@@ -301,10 +322,13 @@ export function ChecklistSection(props: ChecklistSectionProps) {
           <div className="mt-4 flex flex-col gap-2 md:flex-row md:items-center">
             <Select
               value={newChecklistItemType}
-              onValueChange={(value: "none" | "social_media") => {
+              onValueChange={(value: "none" | "social_media" | "rsvp") => {
                 setNewChecklistItemType(value);
                 if (value === "social_media" && !newChecklistItem.trim()) {
                   setNewChecklistItem("Social Media");
+                }
+                if (value === "rsvp" && !newChecklistItem.trim()) {
+                  setNewChecklistItem("Einladungen & RSVP");
                 }
               }}
             >
@@ -312,6 +336,7 @@ export function ChecklistSection(props: ChecklistSectionProps) {
               <SelectContent>
                 <SelectItem value="none">Standardpunkt / Trenner</SelectItem>
                 <SelectItem value="social_media">Systempunkt: Social Media</SelectItem>
+                <SelectItem value="rsvp">Systempunkt: Einladungen & RSVP</SelectItem>
               </SelectContent>
             </Select>
             <Input
