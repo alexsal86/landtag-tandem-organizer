@@ -14,6 +14,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { CaseItemFormData, useCaseItems } from "@/features/cases/items/hooks";
 import { useAuth } from "@/hooks/useAuth";
 import { useTenant } from "@/hooks/useTenant";
+import { LinkedValueChip } from "@/components/my-work/LinkedValueChip";
 
 interface CaseItemCreateDialogProps {
   open: boolean;
@@ -241,6 +242,14 @@ export function CaseItemCreateDialog({ open, onOpenChange, onCreated, createCase
 
   const channelLabel = sourceChannelOptions.find(o => o.value === sourceChannel)?.label ?? sourceChannel;
   const priorityLabel = priorityOptions.find(o => o.value === priority)?.label ?? priority;
+  const clearSelectedContact = () => {
+    setSelectedContactId(null);
+    setContactName("");
+    setContactEmail("");
+    setContactPhone("");
+    setSearchResults([]);
+    setShowSearchResults(false);
+  };
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -288,81 +297,94 @@ export function CaseItemCreateDialog({ open, onOpenChange, onCreated, createCase
               <Label htmlFor="case-item-contact-name" className="font-bold">Von / Gesprächspartner</Label>
 
               <div className="space-y-2">
-                <Label htmlFor="case-item-contact-name" className="text-xs font-semibold text-muted-foreground">Name</Label>
-                <div className="relative">
-                  <Input
-                    id="case-item-contact-name"
-                    placeholder="Name des Bürgers"
+                {selectedContactId ? (
+                  <LinkedValueChip
+                    label="Verknüpfter Kontakt"
                     value={contactName}
-                    onFocus={() => setShowSearchResults(true)}
-                    onBlur={() => {
-                      setTimeout(() => setShowSearchResults(false), 120);
-                    }}
-                    onChange={(event) => {
-                      setContactName(event.target.value);
-                      if (selectedContactId) {
-                        setSelectedContactId(null);
-                        setContactEmail("");
-                        setContactPhone("");
-                      }
-                    }}
+                    onRemove={clearSelectedContact}
+                    className="w-full justify-between"
                   />
+                ) : (
+                  <>
+                    <Label htmlFor="case-item-contact-name" className="text-xs font-semibold text-muted-foreground">Name</Label>
+                    <div className="relative">
+                      <Input
+                        id="case-item-contact-name"
+                        placeholder="Name des Bürgers"
+                        value={contactName}
+                        onFocus={() => setShowSearchResults(true)}
+                        onBlur={() => {
+                          setTimeout(() => setShowSearchResults(false), 120);
+                        }}
+                        onChange={(event) => {
+                          setContactName(event.target.value);
+                          if (selectedContactId) {
+                            clearSelectedContact();
+                          }
+                        }}
+                      />
 
-                  {showSearchResults && (searchingContacts || searchResults.length > 0) && (
-                    <div className="absolute z-20 mt-1 max-h-48 w-full overflow-y-auto rounded-md border bg-background p-1 shadow-md">
-                      {searchingContacts ? (
-                        <p className="px-2 py-1 text-xs text-muted-foreground">Suche Kontakte…</p>
-                      ) : (
-                        searchResults.map((contact) => (
-                          <button
-                            key={contact.id}
-                            type="button"
-                            className="flex w-full flex-col rounded-sm px-2 py-1 text-left hover:bg-muted"
-                            onMouseDown={(event) => {
-                              event.preventDefault();
-                              setSelectedContactId(contact.id);
-                              setContactName(contact.name);
-                              setContactEmail(contact.email || "");
-                              setContactPhone(contact.phone || "");
-                              setShowSearchResults(false);
-                            }}
-                          >
-                            <span className="text-sm font-medium">{contact.name}</span>
-                            <span className="text-xs text-muted-foreground">
-                              {[contact.organization, contact.email, contact.phone].filter(Boolean).join(" · ") || "Kontakt ohne E-Mail/Telefon"}
-                            </span>
-                          </button>
-                        ))
+                      {showSearchResults && (searchingContacts || searchResults.length > 0) && (
+                        <div className="absolute z-20 mt-1 max-h-48 w-full overflow-y-auto rounded-md border bg-background p-1 shadow-md">
+                          {searchingContacts ? (
+                            <p className="px-2 py-1 text-xs text-muted-foreground">Suche Kontakte…</p>
+                          ) : (
+                            searchResults.map((contact) => (
+                              <button
+                                key={contact.id}
+                                type="button"
+                                className="flex w-full flex-col rounded-sm px-2 py-1 text-left hover:bg-muted"
+                                onMouseDown={(event) => {
+                                  event.preventDefault();
+                                  setSelectedContactId(contact.id);
+                                  setContactName(contact.name);
+                                  setContactEmail(contact.email || "");
+                                  setContactPhone(contact.phone || "");
+                                  setShowSearchResults(false);
+                                }}
+                              >
+                                <span className="text-sm font-medium">{contact.name}</span>
+                                <span className="text-xs text-muted-foreground">
+                                  {[contact.organization, contact.email, contact.phone].filter(Boolean).join(" · ") || "Kontakt ohne E-Mail/Telefon"}
+                                </span>
+                              </button>
+                            ))
+                          )}
+                        </div>
                       )}
                     </div>
-                  )}
-                </div>
-                {selectedContactId ? (
-                  <p className="text-xs text-primary">Kontakt verknüpft.</p>
-                ) : (
-                  <p className="text-xs text-muted-foreground">Ab 2 Zeichen wird in den Kontakten gesucht.</p>
+                    <p className="text-xs text-muted-foreground">Ab 2 Zeichen wird in den Kontakten gesucht.</p>
+                  </>
                 )}
               </div>
 
               <div className="grid gap-2 sm:grid-cols-2">
                 <div className="space-y-2">
                   <Label htmlFor="case-item-contact-email" className="text-xs font-semibold text-muted-foreground">E-Mail</Label>
-                  <Input
-                    id="case-item-contact-email"
-                    placeholder="E-Mail-Adresse"
-                    value={contactEmail}
-                    onChange={(event) => setContactEmail(event.target.value)}
-                  />
+                  {selectedContactId && contactEmail ? (
+                    <LinkedValueChip label="E-Mail" value={contactEmail} onRemove={() => setContactEmail("")} className="w-full justify-between" />
+                  ) : (
+                    <Input
+                      id="case-item-contact-email"
+                      placeholder="E-Mail-Adresse"
+                      value={contactEmail}
+                      onChange={(event) => setContactEmail(event.target.value)}
+                    />
+                  )}
                 </div>
 
                 <div className="space-y-2">
                   <Label htmlFor="case-item-contact-phone" className="text-xs font-semibold text-muted-foreground">Telefon</Label>
-                  <Input
-                    id="case-item-contact-phone"
-                    placeholder="Telefonnummer"
-                    value={contactPhone}
-                    onChange={(event) => setContactPhone(event.target.value)}
-                  />
+                  {selectedContactId && contactPhone ? (
+                    <LinkedValueChip label="Telefon" value={contactPhone} onRemove={() => setContactPhone("")} className="w-full justify-between" />
+                  ) : (
+                    <Input
+                      id="case-item-contact-phone"
+                      placeholder="Telefonnummer"
+                      value={contactPhone}
+                      onChange={(event) => setContactPhone(event.target.value)}
+                    />
+                  )}
                 </div>
               </div>
             </div>
