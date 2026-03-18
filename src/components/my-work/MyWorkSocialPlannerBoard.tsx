@@ -242,7 +242,11 @@ function SocialPlannerEditDialog({ item, open, users, channels, onOpenChange, on
   );
 }
 
-export function MyWorkSocialPlannerBoard() {
+interface MyWorkSocialPlannerBoardProps {
+  specialDays?: SpecialDay[];
+}
+
+export function MyWorkSocialPlannerBoard({ specialDays = [] }: MyWorkSocialPlannerBoardProps) {
   const { toast } = useToast();
   const [searchParams] = useSearchParams();
   const { users } = useTenantUsers();
