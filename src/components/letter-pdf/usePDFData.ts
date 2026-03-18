@@ -1,13 +1,13 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
-import type { Letter, LetterTemplate } from './types';
+import type { LetterRecord, LetterTemplate, PDFDataState } from './types';
 import { debugConsole } from '@/utils/debugConsole';
 
-export function usePDFData(letter: Letter) {
+export function usePDFData(letter: LetterRecord): PDFDataState {
   const [template, setTemplate] = useState<LetterTemplate | null>(null);
-  const [senderInfo, setSenderInfo] = useState<any>(null);
-  const [informationBlock, setInformationBlock] = useState<any>(null);
-  const [attachments, setAttachments] = useState<any[]>([]);
+  const [senderInfo, setSenderInfo] = useState<PDFDataState['senderInfo']>(null);
+  const [informationBlock, setInformationBlock] = useState<PDFDataState['informationBlock']>(null);
+  const [attachments, setAttachments] = useState<PDFDataState['attachments']>([]);
 
   useEffect(() => {
     const fetchData = async () => {
@@ -55,7 +55,7 @@ export function usePDFData(letter: Letter) {
             .eq('letter_id', letter.id)
             .order('created_at');
           if (error) throw error;
-          setAttachments(data || []);
+          setAttachments(data ?? []);
         }
       } catch (error) {
         debugConsole.error('Error fetching data:', error);

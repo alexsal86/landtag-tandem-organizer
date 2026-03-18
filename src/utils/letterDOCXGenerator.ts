@@ -3,47 +3,9 @@ import { supabase } from '@/integrations/supabase/client';
 import { format } from 'date-fns';
 import { de } from 'date-fns/locale';
 import { debugConsole } from '@/utils/debugConsole';
-
-interface Letter {
-  id: string;
-  title: string;
-  content: string;
-  content_html?: string;
-  recipient_name?: string;
-  recipient_address?: string;
-  template_id?: string;
-  subject?: string;
-  reference_number?: string;
-  sender_info_id?: string;
-  information_block_ids?: string[];
-  letter_date?: string;
-  status: string;
-  sent_date?: string;
-  created_at: string;
-}
-
-interface LetterTemplate {
-  id: string;
-  name: string;
-  letterhead_html: string;
-  letterhead_css: string;
-  response_time_days: number;
-}
-
-interface SenderInfo {
-  id: string;
-  name: string;
-  address?: string | null;
-  phone?: string | null;
-  email?: string | null;
-  website?: string | null;
-}
-
-interface InformationBlock {
-  id: string;
-  block_type: string;
-  block_data: any;
-}
+import type { DbInformationBlock, DbSenderInformation } from '@/components/letter-pdf/types';
+import type { LetterPdfGenerationResult, LetterRecord, LetterTemplate } from '@/components/letter-pdf/types';
+import type { LetterLayoutSettings } from '@/types/letterLayout';
 
 // Convert HTML content to plain text for DOCX
 function htmlToText(html: string): string {
@@ -101,7 +63,7 @@ function parseContentToParagraphs(content: string, fontSizeHalfPt = 22): Paragra
   return paragraphs;
 }
 
-export async function generateLetterDOCX(letter: Letter): Promise<{ blob: Blob; filename: string } | null> {
+export async function generateLetterDOCX(letter: LetterRecord): Promise<LetterPdfGenerationResult | null> {
   try {
     // Default layout settings
     const DEFAULT_LAYOUT = {
@@ -117,7 +79,7 @@ export async function generateLetterDOCX(letter: Letter): Promise<{ blob: Blob; 
       attachments: { top: 230 }
     };
     
-    let layoutSettings = DEFAULT_LAYOUT;
+    let layoutSettings: LetterLayoutSettings | typeof DEFAULT_LAYOUT = DEFAULT_LAYOUT;
 
     
     // Fetch template data
@@ -130,7 +92,7 @@ export async function generateLetterDOCX(letter: Letter): Promise<{ blob: Blob; 
         .single();
       
       if (templateData) {
-        template = templateData;
+        template = templateData as LetterTemplate;
         // Parse layout_settings from jsonb
         if (templateData.layout_settings && typeof templateData.layout_settings === 'object') {
           layoutSettings = templateData.layout_settings as typeof DEFAULT_LAYOUT;
@@ -139,24 +101,24 @@ export async function generateLetterDOCX(letter: Letter): Promise<{ blob: Blob; 
     }
 
     // Fetch sender information
-    let senderInfo: SenderInfo | null = null;
+    let senderInfo: DbSenderInformation | null = null;
     if (letter.sender_info_id) {
       const { data: senderData } = await supabase
         .from('sender_information')
         .select('*')
         .eq('id', letter.sender_info_id)
         .single();
-      senderInfo = senderData;
+      senderInfo = senderData as DbSenderInformation | null;
     }
 
     // Fetch information blocks
-    let informationBlocks: InformationBlock[] = [];
+    let informationBlocks: DbInformationBlock[] = [];
     if (letter.information_block_ids && letter.information_block_ids.length > 0) {
       const { data: blocksData } = await supabase
         .from('information_blocks')
         .select('*')
         .in('id', letter.information_block_ids);
-      informationBlocks = blocksData || [];
+      informationBlocks = blocksData ?? [];
     }
 
     // Prepare document content
@@ -178,8 +140,14 @@ export async function generateLetterDOCX(letter: Letter): Promise<{ blob: Blob; 
         })
       );
 
-      if (senderInfo.address) {
-        const addressLines = senderInfo.address.split('\n');
+      const senderAddress = [
+        senderInfo.return_address_line,
+        [senderInfo.landtag_street, senderInfo.landtag_house_number].filter(Boolean).join(' '),
+        [senderInfo.landtag_postal_code, senderInfo.landtag_city].filter(Boolean).join(' '),
+      ].filter((line): line is string => Boolean(line && line.trim()));
+
+      if (senderAddress.length > 0) {
+        const addressLines = senderAddress;
         addressLines.forEach(line => {
           documentChildren.push(
             new Paragraph({
@@ -191,12 +159,12 @@ export async function generateLetterDOCX(letter: Letter): Promise<{ blob: Blob; 
         });
       }
 
-      if (senderInfo.phone || senderInfo.email) {
+      if (senderInfo.phone || senderInfo.landtag_email) {
         documentChildren.push(
           new Paragraph({
             children: [
               new TextRun({ 
-                text: [senderInfo.phone, senderInfo.email].filter(Boolean).join(' | '), 
+                text: [senderInfo.phone, senderInfo.landtag_email].filter(Boolean).join(' | '),
                 size: 20 
               })
             ],

@@ -4,27 +4,10 @@ import { de } from 'date-fns/locale';
 import { supabase } from '@/integrations/supabase/client';
 import { buildFooterBlocksFromStored, resolveBlockWidthMm } from '@/components/letters/footerBlockUtils';
 import { debugConsole } from '@/utils/debugConsole';
+import type { DbInformationBlock, DbLetterAttachment, DbSenderInformation, HeaderImagePosition, InformationBlockData, LetterPdfGenerationResult, LetterRecord, LetterTemplate } from '@/components/letter-pdf/types';
+import type { LetterLayoutSettings } from '@/types/letterLayout';
 
-interface Letter {
-  id: string;
-  title: string;
-  content: string;
-  content_html?: string;
-  recipient_name?: string;
-  recipient_address?: string;
-  template_id?: string;
-  subject?: string;
-  reference_number?: string;
-  sender_info_id?: string;
-  information_block_ids?: string[];
-  letter_date?: string;
-  status: string;
-  sent_date?: string;
-  created_at: string;
-  show_pagination?: boolean;
-}
-
-export const generateLetterPDF = async (letter: Letter): Promise<{ blob: Blob; filename: string } | null> => {
+export const generateLetterPDF = async (letter: LetterRecord): Promise<LetterPdfGenerationResult | null> => {
   try {
     // Create LetterPDFExport component's PDF generation logic inline
     // This ensures 100% identical PDFs by using the EXACT same code
@@ -59,11 +42,11 @@ export const generateLetterPDF = async (letter: Letter): Promise<{ blob: Blob; f
       }
     };
     
-    let template: any = null;
-    let senderInfo: any = null;
-    let informationBlock: any = null;
-    let attachments: any[] = [];
-    let layoutSettings = DEFAULT_LAYOUT;
+    let template: LetterTemplate | null = null;
+    let senderInfo: DbSenderInformation | null = null;
+    let informationBlock: DbInformationBlock | null = null;
+    let attachments: DbLetterAttachment[] = [];
+    let layoutSettings: LetterLayoutSettings | typeof DEFAULT_LAYOUT = DEFAULT_LAYOUT;
 
     // Fetch template
     if (letter.template_id) {
@@ -74,7 +57,7 @@ export const generateLetterPDF = async (letter: Letter): Promise<{ blob: Blob; f
         .single();
 
       if (!templateError && templateData) {
-        template = templateData;
+        template = templateData as LetterTemplate;
         // Parse layout_settings from jsonb
         if (templateData.layout_settings && typeof templateData.layout_settings === 'object') {
           layoutSettings = templateData.layout_settings as typeof DEFAULT_LAYOUT;
@@ -91,7 +74,7 @@ export const generateLetterPDF = async (letter: Letter): Promise<{ blob: Blob; f
         .single();
 
       if (!senderError) {
-        senderInfo = senderData;
+        senderInfo = senderData as DbSenderInformation | null;
       }
     }
 
@@ -104,7 +87,7 @@ export const generateLetterPDF = async (letter: Letter): Promise<{ blob: Blob; f
         .single();
 
       if (!blockError) {
-        informationBlock = blockData;
+        informationBlock = blockData as DbInformationBlock | null;
       }
     }
 
@@ -117,7 +100,7 @@ export const generateLetterPDF = async (letter: Letter): Promise<{ blob: Blob; f
         .order('created_at');
 
       if (!attachmentError) {
-        attachments = attachmentData || [];
+        attachments = attachmentData ?? [];
       }
     }
 
@@ -174,6 +157,26 @@ export const generateLetterPDF = async (letter: Letter): Promise<{ blob: Blob; f
       return processElement(temp)
         .replace(/\n{3,}/g, '\n\n') // Remove excessive line breaks
         .trim();
+    };
+
+    const getInformationBlockData = (block: DbInformationBlock | null): InformationBlockData => {
+      if (!block?.block_data || typeof block.block_data !== 'object' || Array.isArray(block.block_data)) {
+        return {};
+      }
+      return block.block_data as InformationBlockData;
+    };
+
+    const resolveHeaderImagePosition = (position: LetterTemplate['header_image_position']): HeaderImagePosition => {
+      if (!position || typeof position !== 'object' || Array.isArray(position)) {
+        return { x: 0, y: 0, width: 200, height: 100 };
+      }
+      const record = position as Partial<HeaderImagePosition>;
+      return {
+        x: Number(record.x) || 0,
+        y: Number(record.y) || 0,
+        width: Number(record.width) || 200,
+        height: Number(record.height) || 100,
+      };
     };
 
     // Create PDF with EXACT same logic as LetterPDFExport exportWithDIN5008Features function
@@ -444,7 +447,7 @@ export const generateLetterPDF = async (letter: Letter): Promise<{ blob: Blob; f
         try {
           // For now, we'll indicate the image position but not render it directly
           // In a full implementation, you'd need to load and embed the image
-          const imgPosition = template.header_image_position || { x: 0, y: 0, width: 200, height: 100 };
+          const imgPosition = resolveHeaderImagePosition(template.header_image_position);
           pdf.setDrawColor(200, 200, 200);
           pdf.rect(
             leftMargin + imgPosition.x * 0.264583,
@@ -515,6 +518,7 @@ export const generateLetterPDF = async (letter: Letter): Promise<{ blob: Blob; f
     // Information block
     let infoYPos = infoBlockTop + 3;
     if (informationBlock) {
+      const informationBlockData = getInformationBlockData(informationBlock);
       pdf.setFontSize(8);
       pdf.setFont('helvetica', 'bold');
       pdf.text(informationBlock.label || 'Information', infoBlockLeft, infoYPos);
@@ -524,16 +528,16 @@ export const generateLetterPDF = async (letter: Letter): Promise<{ blob: Blob; f
       
       switch (informationBlock.block_type) {
         case 'contact':
-          if (informationBlock.block_data?.contact_name) {
-            pdf.text(informationBlock.block_data.contact_name, infoBlockLeft, infoYPos);
+          if (informationBlockData.contact_name) {
+            pdf.text(informationBlockData.contact_name, infoBlockLeft, infoYPos);
             infoYPos += 4;
           }
-          if (informationBlock.block_data?.contact_phone) {
-            pdf.text(`Tel: ${informationBlock.block_data.contact_phone}`, infoBlockLeft, infoYPos);
+          if (informationBlockData.contact_phone) {
+            pdf.text(`Tel: ${informationBlockData.contact_phone}`, infoBlockLeft, infoYPos);
             infoYPos += 4;
           }
-          if (informationBlock.block_data?.contact_email) {
-            pdf.text(informationBlock.block_data.contact_email, infoBlockLeft, infoYPos);
+          if (informationBlockData.contact_email) {
+            pdf.text(informationBlockData.contact_email, infoBlockLeft, infoYPos);
             infoYPos += 4;
           }
           break;
@@ -547,21 +551,21 @@ export const generateLetterPDF = async (letter: Letter): Promise<{ blob: Blob; f
               default: return format(date, 'd. MMMM yyyy', { locale: de });
             }
           };
-          pdf.text(formatDate(date, informationBlock.block_data?.date_format || 'dd.mm.yyyy'), infoBlockLeft, infoYPos);
+          pdf.text(formatDate(date, informationBlockData.date_format || 'dd.mm.yyyy'), infoBlockLeft, infoYPos);
           infoYPos += 4;
-          if (informationBlock.block_data?.show_time) {
+          if (informationBlockData.show_time) {
             pdf.text(`${date.toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' })} Uhr`, infoBlockLeft, infoYPos);
             infoYPos += 4;
           }
           break;
         case 'reference':
-          const refText = `${informationBlock.block_data?.reference_prefix || ''}${letter.reference_number || informationBlock.block_data?.reference_pattern || ''}`;
+          const refText = `${informationBlockData.reference_prefix || ''}${letter.reference_number || informationBlockData.reference_pattern || ''}`;
           pdf.text(refText, infoBlockLeft, infoYPos);
           infoYPos += 4;
           break;
         case 'custom':
-          if (informationBlock.block_data?.custom_content) {
-            const customLines = informationBlock.block_data.custom_content.split('\n');
+          if (informationBlockData.custom_content) {
+            const customLines = informationBlockData.custom_content.split('\n');
             customLines.forEach((line: string) => {
               if (infoYPos < addressFieldTop + addressFieldHeight - 5) {
                 pdf.text(line, infoBlockLeft, infoYPos);
