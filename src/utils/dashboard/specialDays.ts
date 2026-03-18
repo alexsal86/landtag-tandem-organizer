@@ -11,6 +11,9 @@ export interface SpecialDay {
 export interface SpecialDayHint {
   text: string;
   icon?: string;
+  name: string;
+  targetDate: string;
+  isToday: boolean;
 }
 
 export const AVAILABLE_HINT_ICONS = [
@@ -115,9 +118,13 @@ export const getSpecialDayHint = (
 
   const today = specialDays.find((specialDay) => specialDay.month === month && specialDay.day === day);
   if (today) {
+    const targetDate = normalizeDate(baseDate);
     return {
       text: `**Heute ist ${today.name}.**\n${today.hint}`,
       icon: today.icon,
+      name: today.name,
+      targetDate: format(targetDate, 'yyyy-MM-dd'),
+      isToday: true,
     };
   }
 
@@ -151,5 +158,8 @@ export const getSpecialDayHint = (
   return {
     text: `**Hinweis:** In ${upcoming.daysUntil} Tag${upcoming.daysUntil === 1 ? '' : 'en'} ist ${upcoming.name} (${format(upcoming.targetDate, 'dd.MM.')}).\n${upcoming.hint}`,
     icon: upcoming.icon,
+    name: upcoming.name,
+    targetDate: format(upcoming.targetDate, 'yyyy-MM-dd'),
+    isToday: false,
   };
 };

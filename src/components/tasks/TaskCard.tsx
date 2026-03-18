@@ -124,6 +124,7 @@ export function TaskCard({
   const assignTooltipText = currentAssigneeName
     ? `Zugewiesen an ${currentAssigneeName}`
     : "Zuweisen";
+  const connectorOffset = 12;
 
   useEffect(() => {
     if (editingTitle && titleInputRef.current) {
@@ -187,8 +188,21 @@ export function TaskCard({
   return (
     <div
       ref={getHighlightRef ? getHighlightRef(task.id) : highlightRef}
-      className={cn("relative", className)}
+      className={cn("relative", depth > 0 && "pl-8", className)}
     >
+      {depth > 0 && (
+        <div
+          aria-hidden="true"
+          className="absolute border-l-2 border-b-2 border-border/70 rounded-bl-md"
+          style={{
+            left: `${connectorOffset}px`,
+            top: "-8px",
+            width: "20px",
+            height: "24px",
+          }}
+        />
+      )}
+
       <div
         className={cn(
           "border border-border rounded-lg bg-card",
@@ -274,7 +288,7 @@ export function TaskCard({
             </div>
           </div>
 
-          <div className="flex items-center">
+          <div className="ml-auto flex items-center">
             {followUpDate && (
               <Badge
                 variant="outline"
@@ -325,15 +339,21 @@ export function TaskCard({
               />
             </div>
 
-            <Button variant="ghost" size="sm" className="h-6 w-6 p-0 flex-shrink-0" onClick={() => onNavigate(task.id)}>
-              <ExternalLink className="h-3 w-3" />
-            </Button>
+            {isHovered && (
+              <Button variant="ghost" size="sm" className="h-6 w-6 p-0 flex-shrink-0" onClick={() => onNavigate(task.id)}>
+                <ExternalLink className="h-3 w-3" />
+              </Button>
+            )}
           </div>
         </div>
       </div>
 
       {hasSubtasks && (
-        <div className="ml-6 mt-2 space-y-2 border-l border-border pl-3">
+        <div className="relative mt-2 ml-3 space-y-2 pl-8">
+          <div
+            aria-hidden="true"
+            className="absolute left-3 top-0 bottom-0 w-px bg-border/70"
+          />
           {childTasks.map((childTask, index) => (
             <TaskCard
               key={childTask.id}

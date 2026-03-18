@@ -24,6 +24,25 @@ const statusConfig = {
   completed: { color: "bg-green-500", label: "Erledigt", textColor: "text-green-600", borderColor: "border-green-300", bgLight: "bg-green-50 dark:bg-green-900/30" },
 };
 
+const formatStatusLabel = (status: string) =>
+  status
+    .replace(/[_-]+/g, " ")
+    .trim()
+    .replace(/\b\w/g, (char) => char.toUpperCase());
+
+const getStatusConfig = (status: string) => {
+  const knownStatus = statusConfig[status as keyof typeof statusConfig];
+  if (knownStatus) return knownStatus;
+
+  return {
+    color: "bg-amber-500",
+    label: formatStatusLabel(status),
+    textColor: "text-amber-700",
+    borderColor: "border-amber-300",
+    bgLight: "bg-amber-50 dark:bg-amber-900/30",
+  };
+};
+
 export function TaskBadges({ 
   priority, 
   status, 
@@ -34,7 +53,7 @@ export function TaskBadges({
   className 
 }: TaskBadgesProps) {
   const priorityCfg = priorityConfig[priority as keyof typeof priorityConfig] || priorityConfig.low;
-  const statusCfg = statusConfig[status as keyof typeof statusConfig] || statusConfig.todo;
+  const statusCfg = getStatusConfig(status);
 
   // Small squares view (default)
   if (!isHovered) {

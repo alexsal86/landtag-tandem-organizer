@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo } from "react";
-import { debugConsole } from '@/utils/debugConsole';
+import { debugConsole } from "@/utils/debugConsole";
 import { useSearchParams } from "react-router-dom";
 import { useNotificationHighlight } from "@/hooks/useNotificationHighlight";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -19,41 +19,89 @@ import { UserBadge } from "@/components/ui/user-badge";
 import { AvatarStack } from "@/components/ui/AvatarStack";
 import { TopicDisplay } from "@/components/topics/TopicSelector";
 import { useDecisionComments } from "@/hooks/useDecisionComments";
-import { 
-  Check, X, MessageCircle, Send, Vote, CheckSquare, Globe, Edit, Trash2, 
-  MoreVertical, Archive, RotateCcw, Paperclip, CheckCircle, ClipboardList, 
-  Search, FolderArchive, MessageSquare, Star, Settings2
+import {
+  Check,
+  X,
+  MessageCircle,
+  Send,
+  Vote,
+  CheckSquare,
+  Globe,
+  Edit,
+  Trash2,
+  MoreVertical,
+  Archive,
+  RotateCcw,
+  Paperclip,
+  CheckCircle,
+  ClipboardList,
+  Search,
+  FolderArchive,
+  MessageSquare,
+  Star,
+  Settings2,
 } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator } from "@/components/ui/dropdown-menu";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+  DropdownMenuSeparator,
+} from "@/components/ui/dropdown-menu";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { useTenant } from "@/hooks/useTenant";
 import { useToast } from "@/hooks/use-toast";
 import { useMyWorkSettings, DecisionTabId } from "@/hooks/useMyWorkSettings";
 import { useDecisionOverviewData } from "./hooks/useDecisionOverviewData";
-import { getAvatarParticipants, getBorderColor, getResponseSummary } from "./utils/decisionOverview";
+import {
+  getAvatarParticipants,
+  getBorderColor,
+  getResponseSummary,
+} from "./utils/decisionOverview";
 import type { DecisionRequest } from "./utils/decisionOverview";
 
 // Truncated description component
-const TruncatedDescription = ({ content, maxLength = 150 }: { content: string; maxLength?: number }) => {
+const TruncatedDescription = ({
+  content,
+  maxLength = 150,
+}: {
+  content: string;
+  maxLength?: number;
+}) => {
   const [expanded, setExpanded] = useState(false);
-  
-  const plainText = content.replace(/<[^>]*>/g, '');
+
+  const plainText = content.replace(/<[^>]*>/g, "");
   const isTruncated = plainText.length > maxLength;
-  
+
   if (!isTruncated || expanded) {
     return (
       <div>
-        <RichTextDisplay content={content} className="text-sm text-muted-foreground" />
+        <RichTextDisplay
+          content={content}
+          className="text-sm text-muted-foreground"
+        />
         {isTruncated && (
-          <Button 
-            variant="link" 
-            size="sm" 
-            onClick={(e) => { e.stopPropagation(); setExpanded(false); }}
+          <Button
+            variant="link"
+            size="sm"
+            onClick={(e) => {
+              e.stopPropagation();
+              setExpanded(false);
+            }}
             className="text-xs p-0 h-auto text-muted-foreground hover:text-primary"
           >
             weniger
@@ -62,16 +110,20 @@ const TruncatedDescription = ({ content, maxLength = 150 }: { content: string; m
       </div>
     );
   }
-  
-  const truncatedPlain = plainText.substring(0, maxLength).replace(/\s+\S*$/, '') + '...';
-  
+
+  const truncatedPlain =
+    plainText.substring(0, maxLength).replace(/\s+\S*$/, "") + "...";
+
   return (
     <div>
       <p className="text-sm text-muted-foreground">{truncatedPlain}</p>
-      <Button 
-        variant="link" 
-        size="sm" 
-        onClick={(e) => { e.stopPropagation(); setExpanded(true); }}
+      <Button
+        variant="link"
+        size="sm"
+        onClick={(e) => {
+          e.stopPropagation();
+          setExpanded(true);
+        }}
         className="text-xs p-0 h-auto text-muted-foreground hover:text-primary"
       >
         mehr
@@ -80,50 +132,74 @@ const TruncatedDescription = ({ content, maxLength = 150 }: { content: string; m
   );
 };
 
-
 export const DecisionOverview = () => {
   const [searchParams, setSearchParams] = useSearchParams();
   const { user } = useAuth();
   const { currentTenant } = useTenant();
   const { toast } = useToast();
-  const { decisionTabOrder, hiddenDecisionTabs, updateDecisionTabSettings } = useMyWorkSettings();
+  const { decisionTabOrder, hiddenDecisionTabs, updateDecisionTabSettings } =
+    useMyWorkSettings();
   const { isHighlighted, highlightRef } = useNotificationHighlight();
   const { decisions, loadDecisionRequests } = useDecisionOverviewData();
-  const [selectedDecisionId, setSelectedDecisionId] = useState<string | null>(null);
+  const [selectedDecisionId, setSelectedDecisionId] = useState<string | null>(
+    null,
+  );
   const [isDetailsOpen, setIsDetailsOpen] = useState(false);
-  const [highlightCommentId, setHighlightCommentId] = useState<string | null>(null);
-  const [highlightResponseId, setHighlightResponseId] = useState<string | null>(null);
-  const [creatorResponses, setCreatorResponses] = useState<{[key: string]: string}>({});
+  const [highlightCommentId, setHighlightCommentId] = useState<string | null>(
+    null,
+  );
+  const [highlightResponseId, setHighlightResponseId] = useState<string | null>(
+    null,
+  );
+  const [creatorResponses, setCreatorResponses] = useState<{
+    [key: string]: string;
+  }>({});
   const [isLoading, setIsLoading] = useState(false);
   const [activeTab, setActiveTab] = useState("for-me");
   const [defaultParticipantsOpen, setDefaultParticipantsOpen] = useState(false);
-  const [editingDecisionId, setEditingDecisionId] = useState<string | null>(null);
-  const [deletingDecisionId, setDeletingDecisionId] = useState<string | null>(null);
+  const [editingDecisionId, setEditingDecisionId] = useState<string | null>(
+    null,
+  );
+  const [deletingDecisionId, setDeletingDecisionId] = useState<string | null>(
+    null,
+  );
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
-  const [creatingTaskFromDecisionId, setCreatingTaskFromDecisionId] = useState<string | null>(null);
+  const [creatingTaskFromDecisionId, setCreatingTaskFromDecisionId] = useState<
+    string | null
+  >(null);
   const [searchQuery, setSearchQuery] = useState("");
-  const [commentsDecisionId, setCommentsDecisionId] = useState<string | null>(null);
-  const [commentsDecisionTitle, setCommentsDecisionTitle] = useState<string>("");
-  const [recentDiscussionActivities, setRecentDiscussionActivities] = useState<Array<{
-    id: string;
-    decisionId: string;
-    decisionTitle: string;
-    type: "comment";
-    targetId: string;
-    actorName: string | null;
-    actorBadgeColor: string | null;
-    actorAvatarUrl: string | null;
-    content: string | null;
-    createdAt: string;
-  }>>([]);
-  const [attachmentFilesByDecision, setAttachmentFilesByDecision] = useState<Record<string, Array<{ id: string; file_name: string; file_path: string }>>>({});
-  const [previewAttachment, setPreviewAttachment] = useState<{ file_path: string; file_name: string } | null>(null);
+  const [commentsDecisionId, setCommentsDecisionId] = useState<string | null>(
+    null,
+  );
+  const [commentsDecisionTitle, setCommentsDecisionTitle] =
+    useState<string>("");
+  const [recentDiscussionActivities, setRecentDiscussionActivities] = useState<
+    Array<{
+      id: string;
+      decisionId: string;
+      decisionTitle: string;
+      type: "comment";
+      targetId: string;
+      actorName: string | null;
+      actorBadgeColor: string | null;
+      actorAvatarUrl: string | null;
+      content: string | null;
+      createdAt: string;
+    }>
+  >([]);
+  const [attachmentFilesByDecision, setAttachmentFilesByDecision] = useState<
+    Record<string, Array<{ id: string; file_name: string; file_path: string }>>
+  >({});
+  const [previewAttachment, setPreviewAttachment] = useState<{
+    file_path: string;
+    file_name: string;
+  } | null>(null);
   // Handle URL action parameter for QuickActions
   useEffect(() => {
-    const action = searchParams.get('action');
-    if (action === 'create-decision') {
+    const action = searchParams.get("action");
+    if (action === "create-decision") {
       setIsCreateDialogOpen(true);
-      searchParams.delete('action');
+      searchParams.delete("action");
       setSearchParams(searchParams, { replace: true });
     }
   }, [searchParams, setSearchParams]);
@@ -136,28 +212,32 @@ export const DecisionOverview = () => {
 
   // Auto-switch tab when highlight param points to a decision in a different tab
   useEffect(() => {
-    const highlightId = searchParams.get('highlight');
+    const highlightId = searchParams.get("highlight");
     if (!highlightId || decisions.length === 0 || !user?.id) return;
 
-    const decision = decisions.find(d => d.id === highlightId);
+    const decision = decisions.find((d) => d.id === highlightId);
     if (!decision) return;
 
     let targetTab = activeTab;
-    if (decision.status === 'archived') {
-      targetTab = 'archived';
-    } else if (decision.isParticipant && !decision.hasResponded && !decision.isCreator) {
-      targetTab = 'for-me';
+    if (decision.status === "archived") {
+      targetTab = "archived";
+    } else if (
+      decision.isParticipant &&
+      !decision.hasResponded &&
+      !decision.isCreator
+    ) {
+      targetTab = "for-me";
     } else if (decision.isCreator) {
       const s = getResponseSummary(decision.participants);
       if (s.questionCount > 0 || (s.total > 0 && s.pending < s.total)) {
-        targetTab = 'for-me';
+        targetTab = "for-me";
       } else {
-        targetTab = 'my-decisions';
+        targetTab = "my-decisions";
       }
     } else if (decision.isParticipant && decision.hasResponded) {
-      targetTab = 'answered';
+      targetTab = "answered";
     } else if (decision.visible_to_all) {
-      targetTab = 'public';
+      targetTab = "public";
     }
 
     if (targetTab !== activeTab) {
@@ -168,93 +248,108 @@ export const DecisionOverview = () => {
   const sendCreatorResponse = async (
     responseId: string,
     responseText?: string,
-    mode: 'creator_response' | 'participant_followup' = 'creator_response'
+    mode: "creator_response" | "participant_followup" = "creator_response",
   ) => {
     const text = responseText || creatorResponses[responseId];
     if (!text?.trim()) return;
 
     setIsLoading(true);
-    
+
     try {
       // Core action: Persist creator response/follow-up
-      const actionError = mode === 'creator_response'
-        ? (await supabase
-            .from('task_decision_responses')
-            .update({ creator_response: text.trim() })
-            .eq('id', responseId)).error
-        : (await supabase
-            .from('task_decision_responses')
-            .select('decision_id, participant_id')
-            .eq('id', responseId)
-            .maybeSingle()
-            .then(async ({ data, error }) => {
-              if (error) return error;
-              if (!data) return new Error('Ausgangsnachricht nicht gefunden.');
+      const actionError =
+        mode === "creator_response"
+          ? (
+              await supabase
+                .from("task_decision_responses")
+                .update({ creator_response: text.trim() })
+                .eq("id", responseId)
+            ).error
+          : await supabase
+              .from("task_decision_responses")
+              .select("decision_id, participant_id")
+              .eq("id", responseId)
+              .maybeSingle()
+              .then(async ({ data, error }) => {
+                if (error) return error;
+                if (!data)
+                  return new Error("Ausgangsnachricht nicht gefunden.");
 
-              const { error: insertError } = await supabase
-                .from('task_decision_responses')
-                .insert([{
-                  decision_id: data.decision_id,
-                  participant_id: data.participant_id,
-                  response_type: 'question',
-                  comment: text.trim(),
-                  parent_response_id: responseId,
-                }]);
+                const { error: insertError } = await supabase
+                  .from("task_decision_responses")
+                  .insert([
+                    {
+                      decision_id: data.decision_id,
+                      participant_id: data.participant_id,
+                      response_type: "question",
+                      comment: text.trim(),
+                      parent_response_id: responseId,
+                    },
+                  ]);
 
-              return insertError;
-            }));
+                return insertError;
+              });
 
       if (actionError) throw actionError;
 
       // Erfolg nur für Kernaktion
       toast({
         title: "Erfolgreich",
-        description: mode === 'creator_response' ? "Antwort wurde gesendet." : "Rückmeldung wurde gesendet.",
+        description:
+          mode === "creator_response"
+            ? "Antwort wurde gesendet."
+            : "Rückmeldung wurde gesendet.",
       });
 
-      setCreatorResponses(prev => ({ ...prev, [responseId]: '' }));
+      setCreatorResponses((prev) => ({ ...prev, [responseId]: "" }));
 
       // Nach Kernaktion immer neu laden, um konsistenten Stand zu erhalten
       if (user?.id) await loadDecisionRequests(user.id);
 
       // Side effect (non-blocking): Notification senden
       try {
-        if (mode !== 'creator_response') return;
+        if (mode !== "creator_response") return;
 
         const { data: responseData } = await supabase
-          .from('task_decision_responses')
-          .select(`
+          .from("task_decision_responses")
+          .select(
+            `
             id,
             decision_id,
             task_decision_participants!inner(user_id),
             task_decisions!inner(title)
-          `)
-          .eq('id', responseId)
+          `,
+          )
+          .eq("id", responseId)
           .maybeSingle();
 
         if (responseData) {
-          const participantUserId = (responseData as any).task_decision_participants?.user_id;
+          const participantUserId = (responseData as any)
+            .task_decision_participants?.user_id;
           const decisionTitle = (responseData as any).task_decisions?.title;
 
           if (participantUserId && participantUserId !== user?.id) {
-            await supabase.rpc('create_notification', {
+            await supabase.rpc("create_notification", {
               user_id_param: participantUserId,
-              type_name: 'task_decision_creator_response',
-              title_param: 'Antwort auf Ihren Kommentar',
+              type_name: "task_decision_creator_response",
+              title_param: "Antwort auf Ihren Kommentar",
               message_param: `Der Ersteller hat auf Ihren Kommentar zu "${decisionTitle}" geantwortet.`,
               data_param: JSON.stringify({
                 decision_id: responseData.decision_id,
-                decision_title: decisionTitle
+                decision_title: decisionTitle,
               }),
-              priority_param: 'medium'
+              priority_param: "medium",
             });
           }
         }
       } catch (notifError) {
-        debugConsole.warn('Creator response notification failed (core action succeeded):', notifError);
+        debugConsole.warn(
+          "Creator response notification failed (core action succeeded):",
+          notifError,
+        );
       }
     } catch (error) {
-      debugConsole.error('Creator response core action failed:', error);
+      debugConsole.error("Creator response core action failed:", error);
       toast({
         title: "Fehler",
         description: "Antwort konnte nicht gesendet werden.",
@@ -276,10 +371,18 @@ export const DecisionOverview = () => {
     setIsDetailsOpen(true);
   };
 
-  const handleActivityOpen = (activity: { decisionId: string; type: "comment" | "response" | "decision"; targetId: string }) => {
+  const handleActivityOpen = (activity: {
+    decisionId: string;
+    type: "comment" | "response" | "decision";
+    targetId: string;
+  }) => {
     setSelectedDecisionId(activity.decisionId);
-    setHighlightCommentId(activity.type === "comment" ? activity.targetId : null);
-    setHighlightResponseId(activity.type === "response" ? activity.targetId : null);
+    setHighlightCommentId(
+      activity.type === "comment" ? activity.targetId : null,
+    );
+    setHighlightResponseId(
+      activity.type === "response" ? activity.targetId : null,
+    );
     setIsDetailsOpen(true);
   };
 
@@ -297,27 +400,38 @@ export const DecisionOverview = () => {
 
   const archiveDecision = async (decisionId: string) => {
     if (!user?.id) {
-      toast({ title: "Fehler", description: "Nicht angemeldet.", variant: "destructive" });
+      toast({
+        title: "Fehler",
+        description: "Nicht angemeldet.",
+        variant: "destructive",
+      });
       return;
     }
 
     try {
       const { error } = await supabase
-        .from('task_decisions')
-        .update({ 
-          status: 'archived',
+        .from("task_decisions")
+        .update({
+          status: "archived",
           archived_at: new Date().toISOString(),
-          archived_by: user.id
+          archived_by: user.id,
         })
-        .eq('id', decisionId);
+        .eq("id", decisionId);
 
       if (error) throw error;
 
-      toast({ title: "Archiviert", description: "Entscheidung wurde archiviert." });
+      toast({
+        title: "Archiviert",
+        description: "Entscheidung wurde archiviert.",
+      });
       loadDecisionRequests(user.id);
     } catch (error) {
-      debugConsole.error('Error archiving decision:', error);
-      toast({ title: "Fehler", description: "Entscheidung konnte nicht archiviert werden.", variant: "destructive" });
+      debugConsole.error("Error archiving decision:", error);
+      toast({
+        title: "Fehler",
+        description: "Entscheidung konnte nicht archiviert werden.",
+        variant: "destructive",
+      });
     }
   };
 
@@ -326,78 +440,103 @@ export const DecisionOverview = () => {
 
     try {
       const { error } = await supabase
-        .from('task_decisions')
+        .from("task_decisions")
         .delete()
-        .eq('id', deletingDecisionId);
+        .eq("id", deletingDecisionId);
 
       if (error) throw error;
 
-      toast({ title: "Gelöscht", description: "Entscheidung wurde endgültig gelöscht." });
+      toast({
+        title: "Gelöscht",
+        description: "Entscheidung wurde endgültig gelöscht.",
+      });
       setDeletingDecisionId(null);
       if (user?.id) loadDecisionRequests(user.id);
     } catch (error) {
-      debugConsole.error('Error deleting decision:', error);
-      toast({ title: "Fehler", description: "Entscheidung konnte nicht gelöscht werden.", variant: "destructive" });
+      debugConsole.error("Error deleting decision:", error);
+      toast({
+        title: "Fehler",
+        description: "Entscheidung konnte nicht gelöscht werden.",
+        variant: "destructive",
+      });
     }
   };
 
   const restoreDecision = async (decisionId: string) => {
     try {
       const { error } = await supabase
-        .from('task_decisions')
-        .update({ status: 'active', archived_at: null, archived_by: null })
-        .eq('id', decisionId);
+        .from("task_decisions")
+        .update({ status: "active", archived_at: null, archived_by: null })
+        .eq("id", decisionId);
 
       if (error) throw error;
-      toast({ title: "Erfolgreich", description: "Entscheidung wurde wiederhergestellt." });
+      toast({
+        title: "Erfolgreich",
+        description: "Entscheidung wurde wiederhergestellt.",
+      });
       if (user?.id) loadDecisionRequests(user.id);
     } catch (error) {
-      debugConsole.error('Error restoring decision:', error);
-      toast({ title: "Fehler", description: "Entscheidung konnte nicht wiederhergestellt werden.", variant: "destructive" });
+      debugConsole.error("Error restoring decision:", error);
+      toast({
+        title: "Fehler",
+        description: "Entscheidung konnte nicht wiederhergestellt werden.",
+        variant: "destructive",
+      });
     }
   };
 
   const createTaskFromDecision = async (decision: DecisionRequest) => {
     if (!user?.id || !currentTenant?.id) {
-      toast({ title: "Fehler", description: "Nicht angemeldet", variant: "destructive" });
+      toast({
+        title: "Fehler",
+        description: "Nicht angemeldet",
+        variant: "destructive",
+      });
       return;
     }
-    
+
     setCreatingTaskFromDecisionId(decision.id);
     const summary = getResponseSummary(decision.participants);
-    
-    let resultText = 'Ergebnis: ';
-    if (summary.yesCount > summary.noCount) resultText += 'Angenommen';
-    else if (summary.noCount > summary.yesCount) resultText += 'Abgelehnt';
-    else resultText += 'Unentschieden';
-    
+
+    let resultText = "Ergebnis: ";
+    if (summary.yesCount > summary.noCount) resultText += "Angenommen";
+    else if (summary.noCount > summary.yesCount) resultText += "Abgelehnt";
+    else resultText += "Unentschieden";
+
     const taskDescription = `
       <h3>Aus Entscheidung: ${decision.title}</h3>
       <p><strong>${resultText}</strong> (Ja: ${summary.yesCount}, Nein: ${summary.noCount})</p>
-      ${decision.description ? `<div>${decision.description}</div>` : ''}
+      ${decision.description ? `<div>${decision.description}</div>` : ""}
     `;
-    
+
     try {
-      const { error } = await supabase
-        .from('tasks')
-        .insert([{
+      const { error } = await supabase.from("tasks").insert([
+        {
           user_id: user.id,
           title: `[Entscheidung] ${decision.title}`,
           description: taskDescription,
           assigned_to: user.id,
           tenant_id: currentTenant.id,
-          status: 'todo',
-          priority: 'medium',
-          category: 'personal'
-        }]);
-      
+          status: "todo",
+          priority: "medium",
+          category: "personal",
+        },
+      ]);
+
       if (error) throw error;
-      toast({ title: "Aufgabe erstellt", description: "Die Aufgabe wurde aus der Entscheidung erstellt." });
+      toast({
+        title: "Aufgabe erstellt",
+        description: "Die Aufgabe wurde aus der Entscheidung erstellt.",
+      });
       setCreatingTaskFromDecisionId(null);
       loadDecisionRequests(user.id);
     } catch (error) {
-      debugConsole.error('Error creating task from decision:', error);
-      toast({ title: "Fehler", description: "Aufgabe konnte nicht erstellt werden.", variant: "destructive" });
+      debugConsole.error("Error creating task from decision:", error);
+      toast({
+        title: "Fehler",
+        description: "Aufgabe konnte nicht erstellt werden.",
+        variant: "destructive",
+      });
       setCreatingTaskFromDecisionId(null);
     }
   };
@@ -444,16 +583,22 @@ export const DecisionOverview = () => {
     }> = [];
 
     // Find open questions (for creator), new comments and direct replies to current user
-    decisions.forEach(decision => {
-      if (decision.status === 'archived') return;
-      
-      decision.participants?.forEach(participant => {
-        const rootResponses = participant.responses.filter((response) => !response.parent_response_id);
+    decisions.forEach((decision) => {
+      if (decision.status === "archived") return;
+
+      decision.participants?.forEach((participant) => {
+        const rootResponses = participant.responses.filter(
+          (response) => !response.parent_response_id,
+        );
         const latestResponse = rootResponses[0];
         if (!latestResponse) return;
 
         // Open questions: questions without creator response (for decision creator)
-        if (decision.isCreator && latestResponse.response_type === 'question' && !latestResponse.creator_response) {
+        if (
+          decision.isCreator &&
+          latestResponse.response_type === "question" &&
+          !latestResponse.creator_response
+        ) {
           openQuestions.push({
             id: latestResponse.id,
             decisionId: decision.id,
@@ -469,10 +614,17 @@ export const DecisionOverview = () => {
         }
 
         // New comments: responses with comments in the last 7 days (for non-creators)
-        if (decision.isCreator && latestResponse.comment && !latestResponse.creator_response) {
+        if (
+          decision.isCreator &&
+          latestResponse.comment &&
+          !latestResponse.creator_response
+        ) {
           const sevenDaysAgo = new Date();
           sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
-          if (new Date(latestResponse.created_at) > sevenDaysAgo && latestResponse.response_type !== 'question') {
+          if (
+            new Date(latestResponse.created_at) > sevenDaysAgo &&
+            latestResponse.response_type !== "question"
+          ) {
             newComments.push({
               id: latestResponse.id,
               decisionId: decision.id,
@@ -491,7 +643,10 @@ export const DecisionOverview = () => {
         const participantHasFollowedUp = participant.responses.some(
           (response) =>
             response.parent_response_id === latestResponse.id &&
-            new Date(response.created_at).getTime() > new Date(latestResponse.updated_at || latestResponse.created_at).getTime()
+            new Date(response.created_at).getTime() >
+              new Date(
+                latestResponse.updated_at || latestResponse.created_at,
+              ).getTime(),
         );
 
         if (
@@ -507,7 +662,7 @@ export const DecisionOverview = () => {
             decisionTitle: decision.title,
             participantName: decision.creator?.display_name || null,
             participantBadgeColor: decision.creator?.badge_color || null,
-            participantUserId: decision.creator?.user_id || '',
+            participantUserId: decision.creator?.user_id || "",
             participantAvatarUrl: decision.creator?.avatar_url || null,
             responseType: latestResponse.response_type,
             comment: latestResponse.creator_response,
@@ -518,31 +673,31 @@ export const DecisionOverview = () => {
     });
 
     const responseActivities = decisions
-      .filter((decision) => decision.status !== 'archived')
+      .filter((decision) => decision.status !== "archived")
       .flatMap((decision) =>
         (decision.participants || []).flatMap((participant) =>
           participant.responses.map((response) => ({
             id: `response-${response.id}`,
             decisionId: decision.id,
             decisionTitle: decision.title,
-            type: 'response' as const,
+            type: "response" as const,
             targetId: response.id,
             actorName: participant.profile?.display_name || null,
             actorBadgeColor: participant.profile?.badge_color || null,
             actorAvatarUrl: participant.profile?.avatar_url || null,
             content: response.comment,
             createdAt: response.created_at,
-          }))
-        )
+          })),
+        ),
       );
 
     const decisionActivities = decisions
-      .filter((decision) => decision.status !== 'archived')
+      .filter((decision) => decision.status !== "archived")
       .map((decision) => ({
         id: `decision-${decision.id}`,
         decisionId: decision.id,
         decisionTitle: decision.title,
-        type: 'decision' as const,
+        type: "decision" as const,
         targetId: decision.id,
         actorName: null,
         actorBadgeColor: null,
@@ -551,10 +706,21 @@ export const DecisionOverview = () => {
         createdAt: decision.created_at,
       }));
 
-    const recentActivities = [...responseActivities, ...recentDiscussionActivities, ...decisionActivities]
-      .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+    const recentActivities = [
+      ...responseActivities,
+      ...recentDiscussionActivities,
+      ...decisionActivities,
+    ].sort(
+      (a, b) =>
+        new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
+    );
 
-    return { openQuestions, newComments, pendingDirectReplies, recentActivities };
+    return {
+      openQuestions,
+      newComments,
+      pendingDirectReplies,
+      recentActivities,
+    };
   }, [decisions, recentDiscussionActivities, user?.id]);
 
   useEffect(() => {
@@ -566,10 +732,10 @@ export const DecisionOverview = () => {
     const loadRecentComments = async () => {
       const decisionIds = decisions.map((d) => d.id);
       const { data: comments } = await supabase
-        .from('task_decision_comments')
-        .select('id, decision_id, user_id, content, created_at')
-        .in('decision_id', decisionIds)
-        .order('created_at', { ascending: false })
+        .from("task_decision_comments")
+        .select("id, decision_id, user_id, content, created_at")
+        .in("decision_id", decisionIds)
+        .order("created_at", { ascending: false })
         .limit(40);
 
       if (!comments || comments.length === 0) {
@@ -580,25 +746,28 @@ export const DecisionOverview = () => {
       const decisionTitleMap = new Map(decisions.map((d) => [d.id, d.title]));
       const userIds = [...new Set(comments.map((c) => c.user_id))];
       const { data: profiles } = await supabase
-        .from('profiles')
-        .select('user_id, display_name, badge_color, avatar_url')
-        .in('user_id', userIds);
+        .from("profiles")
+        .select("user_id, display_name, badge_color, avatar_url")
+        .in("user_id", userIds);
 
-      const profileMap = new Map<string, any>(profiles?.map((p: any) => [p.user_id, p]) || []);
+      const profileMap = new Map<string, any>(
+        profiles?.map((p: any) => [p.user_id, p]) || [],
+      );
 
       setRecentDiscussionActivities(
         comments.map((comment) => ({
           id: `comment-${comment.id}`,
           decisionId: comment.decision_id,
-          decisionTitle: decisionTitleMap.get(comment.decision_id) || 'Entscheidung',
-          type: 'comment' as const,
+          decisionTitle:
+            decisionTitleMap.get(comment.decision_id) || "Entscheidung",
+          type: "comment" as const,
           targetId: comment.id,
           actorName: profileMap.get(comment.user_id)?.display_name || null,
           actorBadgeColor: profileMap.get(comment.user_id)?.badge_color || null,
           actorAvatarUrl: profileMap.get(comment.user_id)?.avatar_url || null,
           content: comment.content,
           createdAt: comment.created_at,
-        }))
+        })),
       );
     };
 
@@ -606,49 +775,66 @@ export const DecisionOverview = () => {
   }, [decisions]);
 
   // Get decision IDs for comment counts
-  const decisionIds = useMemo(() => decisions.map(d => d.id), [decisions]);
-  const { getCommentCount, refresh: refreshCommentCounts } = useDecisionComments(decisionIds);
+  const decisionIds = useMemo(() => decisions.map((d) => d.id), [decisions]);
+  const { getCommentCount, refresh: refreshCommentCounts } =
+    useDecisionComments(decisionIds);
 
   // Tab counts
   const tabCounts = useMemo(() => {
-    const active = decisions.filter(d => d.status !== 'archived');
+    const active = decisions.filter((d) => d.status !== "archived");
     return {
-      forMe: active.filter(d => 
-        (d.isParticipant && !d.hasResponded && !d.isCreator) ||
-        (d.isCreator && (() => { const s = getResponseSummary(d.participants); return s.questionCount > 0 || (s.total > 0 && s.pending < s.total); })())
+      forMe: active.filter(
+        (d) =>
+          (d.isParticipant && !d.hasResponded && !d.isCreator) ||
+          (d.isCreator &&
+            (() => {
+              const s = getResponseSummary(d.participants);
+              return (
+                s.questionCount > 0 || (s.total > 0 && s.pending < s.total)
+              );
+            })()),
       ).length,
-      answered: active.filter(d => d.isParticipant && d.hasResponded && !d.isCreator).length,
-      myDecisions: active.filter(d => d.isCreator).length,
-      public: active.filter(d => d.visible_to_all && !d.isCreator && !d.isParticipant).length,
-      questions: active.filter(d => {
+      answered: active.filter(
+        (d) => d.isParticipant && d.hasResponded && !d.isCreator,
+      ).length,
+      myDecisions: active.filter((d) => d.isCreator).length,
+      public: active.filter(
+        (d) => d.visible_to_all && !d.isCreator && !d.isParticipant,
+      ).length,
+      questions: active.filter((d) => {
         if (!d.isCreator) return false;
         const summary = getResponseSummary(d.participants);
         return summary.questionCount > 0;
       }).length,
-      archived: decisions.filter(d => d.status === 'archived').length,
+      archived: decisions.filter((d) => d.status === "archived").length,
     };
   }, [decisions]);
 
   // Filter decisions
-  const configuredDecisionTabs = decisionTabOrder.filter((tab) => !hiddenDecisionTabs.includes(tab));
+  const configuredDecisionTabs = decisionTabOrder.filter(
+    (tab) => !hiddenDecisionTabs.includes(tab),
+  );
 
   const decisionTabCounts: Record<DecisionTabId, number> = {
     "for-me": tabCounts.forMe,
-    "answered": tabCounts.answered,
+    answered: tabCounts.answered,
     "my-decisions": tabCounts.myDecisions,
-    "public": tabCounts.public,
+    public: tabCounts.public,
   };
 
   const decisionTabLabels: Record<DecisionTabId, string> = {
     "for-me": "Für mich",
-    "answered": "Beantwortet",
+    answered: "Beantwortet",
     "my-decisions": "Von mir",
-    "public": "Öffentlich",
+    public: "Öffentlich",
   };
 
   useEffect(() => {
     if (configuredDecisionTabs.length === 0) return;
-    if (["for-me", "answered", "my-decisions", "public"].includes(activeTab) && !configuredDecisionTabs.includes(activeTab as DecisionTabId)) {
+    if (
+      ["for-me", "answered", "my-decisions", "public"].includes(activeTab) &&
+      !configuredDecisionTabs.includes(activeTab as DecisionTabId)
+    ) {
       setActiveTab(configuredDecisionTabs[0]);
     }
   }, [activeTab, configuredDecisionTabs]);
@@ -659,38 +845,45 @@ export const DecisionOverview = () => {
     // Search filter
     if (searchQuery.trim()) {
       const query = searchQuery.toLowerCase();
-      filtered = filtered.filter(d => 
-        d.title.toLowerCase().includes(query) ||
-        (d.description && d.description.toLowerCase().includes(query))
+      filtered = filtered.filter(
+        (d) =>
+          d.title.toLowerCase().includes(query) ||
+          (d.description && d.description.toLowerCase().includes(query)),
       );
     }
 
     // Tab filter
     if (activeTab === "archived") {
-      return filtered.filter(d => d.status === 'archived');
+      return filtered.filter((d) => d.status === "archived");
     }
 
-    filtered = filtered.filter(d => d.status !== 'archived');
+    filtered = filtered.filter((d) => d.status !== "archived");
 
     switch (activeTab) {
       case "for-me": {
-        const forMe = filtered.filter(d => d.isParticipant && !d.hasResponded && !d.isCreator);
-        const myWithActivity = filtered.filter(d => {
+        const forMe = filtered.filter(
+          (d) => d.isParticipant && !d.hasResponded && !d.isCreator,
+        );
+        const myWithActivity = filtered.filter((d) => {
           if (!d.isCreator) return false;
           const s = getResponseSummary(d.participants);
           return s.questionCount > 0 || (s.total > 0 && s.pending < s.total);
         });
-        const ids = new Set(forMe.map(d => d.id));
-        return [...forMe, ...myWithActivity.filter(d => !ids.has(d.id))];
+        const ids = new Set(forMe.map((d) => d.id));
+        return [...forMe, ...myWithActivity.filter((d) => !ids.has(d.id))];
       }
       case "answered":
-        return filtered.filter(d => d.isParticipant && d.hasResponded && !d.isCreator);
+        return filtered.filter(
+          (d) => d.isParticipant && d.hasResponded && !d.isCreator,
+        );
       case "my-decisions":
-        return filtered.filter(d => d.isCreator);
+        return filtered.filter((d) => d.isCreator);
       case "public":
-        return filtered.filter(d => d.visible_to_all && !d.isCreator && !d.isParticipant);
+        return filtered.filter(
+          (d) => d.visible_to_all && !d.isCreator && !d.isParticipant,
+        );
       case "questions":
-        return filtered.filter(d => {
+        return filtered.filter((d) => {
           if (!d.isCreator) return false;
           const summary = getResponseSummary(d.participants);
           return summary.questionCount > 0;
@@ -709,39 +902,51 @@ export const DecisionOverview = () => {
     if (attachmentFilesByDecision[decisionId]) return;
 
     const { data, error } = await supabase
-      .from('task_decision_attachments')
-      .select('id, file_name, file_path')
-      .eq('decision_id', decisionId)
-      .order('created_at', { ascending: false });
+      .from("task_decision_attachments")
+      .select("id, file_name, file_path")
+      .eq("decision_id", decisionId)
+      .order("created_at", { ascending: false });
 
     if (error) {
-      debugConsole.error('Error loading attachment files:', error);
-      toast({ title: 'Fehler', description: 'Anhänge konnten nicht geladen werden.', variant: 'destructive' });
+      debugConsole.error("Error loading attachment files:", error);
+      toast({
+        title: "Fehler",
+        description: "Anhänge konnten nicht geladen werden.",
+        variant: "destructive",
+      });
       return;
     }
 
-    setAttachmentFilesByDecision(prev => ({ ...prev, [decisionId]: data || [] }));
+    setAttachmentFilesByDecision((prev) => ({
+      ...prev,
+      [decisionId]: data || [],
+    }));
   };
 
   const renderCompactCard = (decision: DecisionRequest) => {
     const summary = getResponseSummary(decision.participants);
-    
+
     // Prepare avatar stack data
     const avatarParticipants = getAvatarParticipants(decision);
 
-  const getInitials = (name: string | null) => {
-      if (!name) return '?';
-      return name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2);
+    const getInitials = (name: string | null) => {
+      if (!name) return "?";
+      return name
+        .split(" ")
+        .map((n) => n[0])
+        .join("")
+        .toUpperCase()
+        .slice(0, 2);
     };
 
     return (
-      <Card 
+      <Card
         key={decision.id}
         ref={highlightRef(decision.id)}
         className={cn(
           "group border-l-4 hover:bg-muted/50 transition-colors cursor-pointer",
           getBorderColor(decision, summary),
-          isHighlighted(decision.id) && "notification-highlight"
+          isHighlighted(decision.id) && "notification-highlight",
         )}
         onClick={() => handleOpenDetails(decision.id)}
       >
@@ -772,18 +977,22 @@ export const DecisionOverview = () => {
                     <TooltipTrigger asChild>
                       <Star className="h-4 w-4 text-amber-500 fill-amber-500" />
                     </TooltipTrigger>
-                    <TooltipContent><p>Prioritär</p></TooltipContent>
+                    <TooltipContent>
+                      <p>Prioritär</p>
+                    </TooltipContent>
                   </Tooltip>
                 </TooltipProvider>
               )}
 
-            {decision.visible_to_all && (
+              {decision.visible_to_all && (
                 <TooltipProvider>
                   <Tooltip>
                     <TooltipTrigger asChild>
                       <Globe className="h-4 w-4 text-muted-foreground" />
                     </TooltipTrigger>
-                    <TooltipContent><p>Öffentlich</p></TooltipContent>
+                    <TooltipContent>
+                      <p>Öffentlich</p>
+                    </TooltipContent>
                   </Tooltip>
                 </TooltipProvider>
               )}
@@ -795,38 +1004,64 @@ export const DecisionOverview = () => {
 
             {decision.isCreator && (
               <DropdownMenu>
-                <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
+                <DropdownMenuTrigger
+                  asChild
+                  onClick={(e) => e.stopPropagation()}
+                >
                   <Button variant="ghost" size="sm" className="h-7 w-7 p-0">
                     <MoreVertical className="h-4 w-4" />
                   </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end">
-                  <DropdownMenuItem onClick={(e) => { e.stopPropagation(); setEditingDecisionId(decision.id); }}>
-                    <Edit className="h-4 w-4 mr-2" />Bearbeiten
+                  <DropdownMenuItem
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setEditingDecisionId(decision.id);
+                    }}
+                  >
+                    <Edit className="h-4 w-4 mr-2" />
+                    Bearbeiten
                   </DropdownMenuItem>
-                  {decision.status !== 'archived' && (
-                    <DropdownMenuItem onClick={(e) => { e.stopPropagation(); archiveDecision(decision.id); }}>
-                      <Archive className="h-4 w-4 mr-2" />Archivieren
+                  {decision.status !== "archived" && (
+                    <DropdownMenuItem
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        archiveDecision(decision.id);
+                      }}
+                    >
+                      <Archive className="h-4 w-4 mr-2" />
+                      Archivieren
                     </DropdownMenuItem>
                   )}
-                  {summary.pending === 0 && decision.participants && decision.participants.length > 0 && (
-                    <>
-                      <DropdownMenuSeparator />
-                      <DropdownMenuItem 
-                        onClick={(e) => { e.stopPropagation(); createTaskFromDecision(decision); }}
-                        disabled={creatingTaskFromDecisionId === decision.id}
-                      >
-                        <ClipboardList className="h-4 w-4 mr-2" />
-                        {creatingTaskFromDecisionId === decision.id ? 'Erstelle...' : 'Aufgabe erstellen'}
-                      </DropdownMenuItem>
-                    </>
-                  )}
+                  {summary.pending === 0 &&
+                    decision.participants &&
+                    decision.participants.length > 0 && (
+                      <>
+                        <DropdownMenuSeparator />
+                        <DropdownMenuItem
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            createTaskFromDecision(decision);
+                          }}
+                          disabled={creatingTaskFromDecisionId === decision.id}
+                        >
+                          <ClipboardList className="h-4 w-4 mr-2" />
+                          {creatingTaskFromDecisionId === decision.id
+                            ? "Erstelle..."
+                            : "Aufgabe erstellen"}
+                        </DropdownMenuItem>
+                      </>
+                    )}
                   <DropdownMenuSeparator />
-                  <DropdownMenuItem 
-                    onClick={(e) => { e.stopPropagation(); setDeletingDecisionId(decision.id); }}
+                  <DropdownMenuItem
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setDeletingDecisionId(decision.id);
+                    }}
                     className="text-destructive"
                   >
-                    <Trash2 className="h-4 w-4 mr-2" />Endgültig löschen
+                    <Trash2 className="h-4 w-4 mr-2" />
+                    Endgültig löschen
                   </DropdownMenuItem>
                 </DropdownMenuContent>
               </DropdownMenu>
@@ -835,12 +1070,17 @@ export const DecisionOverview = () => {
 
           {/* Title */}
           <div className="max-w-[85%]">
-            <h3 className="font-bold text-lg mb-1 line-clamp-2">{decision.title}</h3>
+            <h3 className="font-bold text-lg mb-1 line-clamp-2">
+              {decision.title}
+            </h3>
 
             {/* Description */}
             {decision.description && (
               <div onClick={(e) => e.stopPropagation()}>
-                <TruncatedDescription content={decision.description} maxLength={300} />
+                <TruncatedDescription
+                  content={decision.description}
+                  maxLength={300}
+                />
               </div>
             )}
           </div>
@@ -849,13 +1089,36 @@ export const DecisionOverview = () => {
           <div className="flex items-center flex-wrap gap-3 mt-4 text-xs text-muted-foreground">
             {/* Date */}
             <span className="flex items-center gap-1">
-                        <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg>
-              {new Date(decision.created_at).toLocaleDateString('de-DE')}
+              <svg
+                className="h-3.5 w-3.5"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+                strokeWidth={2}
+              >
+                <rect x="3" y="4" width="18" height="18" rx="2" />
+                <path d="M16 2v4M8 2v4M3 10h18" />
+              </svg>
+              {new Date(decision.created_at).toLocaleDateString("de-DE")}
             </span>
 
             {decision.response_deadline && (
-              <Badge variant={new Date(decision.response_deadline) < new Date() ? "destructive" : "secondary"} className="gap-1">
-                Frist: {new Date(decision.response_deadline).toLocaleDateString('de-DE')} {new Date(decision.response_deadline).toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' })}
+              <Badge
+                variant={
+                  new Date(decision.response_deadline) < new Date()
+                    ? "destructive"
+                    : "secondary"
+                }
+                className="gap-1"
+              >
+                Frist:{" "}
+                {new Date(decision.response_deadline).toLocaleDateString(
+                  "de-DE",
+                )}{" "}
+                {new Date(decision.response_deadline).toLocaleTimeString(
+                  "de-DE",
+                  { hour: "2-digit", minute: "2-digit" },
+                )}
               </Badge>
             )}
 
@@ -864,29 +1127,39 @@ export const DecisionOverview = () => {
               <span className="flex items-center gap-1">
                 <Avatar className="h-5 w-5">
                   {decision.creator.avatar_url && (
-                    <AvatarImage src={decision.creator.avatar_url} alt={decision.creator.display_name || 'Avatar'} />
+                    <AvatarImage
+                      src={decision.creator.avatar_url}
+                      alt={decision.creator.display_name || "Avatar"}
+                    />
                   )}
-                  <AvatarFallback 
+                  <AvatarFallback
                     className="text-[8px]"
-                    style={{ backgroundColor: decision.creator.badge_color || undefined }}
+                    style={{
+                      backgroundColor:
+                        decision.creator.badge_color || undefined,
+                    }}
                   >
                     {getInitials(decision.creator.display_name)}
                   </AvatarFallback>
                 </Avatar>
-                <span className="font-medium text-foreground">{decision.creator.display_name || 'Unbekannt'}</span>
+                <span className="font-medium text-foreground">
+                  {decision.creator.display_name || "Unbekannt"}
+                </span>
               </span>
             )}
 
             {/* Comments */}
             <button
-              onClick={(e) => { e.stopPropagation(); openComments(decision.id, decision.title); }}
+              onClick={(e) => {
+                e.stopPropagation();
+                openComments(decision.id, decision.title);
+              }}
               className="flex items-center gap-1 hover:text-foreground transition-colors"
             >
               <MessageSquare className="h-3.5 w-3.5" />
-              {getCommentCount(decision.id) > 0 
-                ? `${getCommentCount(decision.id)} Kommentar${getCommentCount(decision.id) !== 1 ? 'e' : ''}`
-                : 'Kommentar schreiben'
-              }
+              {getCommentCount(decision.id) > 0
+                ? `${getCommentCount(decision.id)} Kommentar${getCommentCount(decision.id) !== 1 ? "e" : ""}`
+                : "Kommentar schreiben"}
             </button>
 
             {/* Attachments */}
@@ -904,21 +1177,36 @@ export const DecisionOverview = () => {
                     {decision.attachmentCount}
                   </button>
                 </PopoverTrigger>
-                <PopoverContent className="w-72 p-2" onClick={(e) => e.stopPropagation()}>
-                  <p className="text-xs font-medium mb-1.5">Angehängte Dateien</p>
+                <PopoverContent
+                  className="w-72 p-2"
+                  onClick={(e) => e.stopPropagation()}
+                >
+                  <p className="text-xs font-medium mb-1.5">
+                    Angehängte Dateien
+                  </p>
                   <div className="space-y-1 max-h-56 overflow-y-auto">
-                    {(attachmentFilesByDecision[decision.id] || []).map((att) => (
-                      <button
-                        key={att.id}
-                        onClick={() => setPreviewAttachment({ file_path: att.file_path, file_name: att.file_name })}
-                        className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground hover:bg-muted/50 rounded px-1 py-1 transition-colors w-full text-left cursor-pointer"
-                      >
-                        <Paperclip className="h-3 w-3 flex-shrink-0" />
-                        <span className="truncate">{att.file_name}</span>
-                      </button>
-                    ))}
-                    {(attachmentFilesByDecision[decision.id] || []).length === 0 && (
-                      <p className="text-xs text-muted-foreground">Keine Dateiliste verfügbar.</p>
+                    {(attachmentFilesByDecision[decision.id] || []).map(
+                      (att) => (
+                        <button
+                          key={att.id}
+                          onClick={() =>
+                            setPreviewAttachment({
+                              file_path: att.file_path,
+                              file_name: att.file_name,
+                            })
+                          }
+                          className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground hover:bg-muted/50 rounded px-1 py-1 transition-colors w-full text-left cursor-pointer"
+                        >
+                          <Paperclip className="h-3 w-3 flex-shrink-0" />
+                          <span className="truncate">{att.file_name}</span>
+                        </button>
+                      ),
+                    )}
+                    {(attachmentFilesByDecision[decision.id] || []).length ===
+                      0 && (
+                      <p className="text-xs text-muted-foreground">
+                        Keine Dateiliste verfügbar.
+                      </p>
                     )}
                   </div>
                 </PopoverContent>
@@ -927,7 +1215,11 @@ export const DecisionOverview = () => {
 
             {/* Topics */}
             {decision.topicIds && decision.topicIds.length > 0 && (
-              <TopicDisplay topicIds={decision.topicIds} maxDisplay={2} expandable />
+              <TopicDisplay
+                topicIds={decision.topicIds}
+                maxDisplay={2}
+                expandable
+              />
             )}
           </div>
 
@@ -935,16 +1227,21 @@ export const DecisionOverview = () => {
           {decision.participants && decision.participants.length > 0 && (
             <div className="flex items-start justify-between gap-4 mt-4">
               {/* Left: Inline voting for unanswered participants */}
-              <div className="flex-1 min-w-0 max-w-3xl" onClick={(e) => e.stopPropagation()}>
-                {decision.isParticipant && decision.participant_id && !decision.hasResponded && (
-                  <TaskDecisionResponse 
-                    decisionId={decision.id}
-                    participantId={decision.participant_id}
-                    onResponseSubmitted={handleResponseSubmitted}
-                    hasResponded={decision.hasResponded}
-                    creatorId={decision.created_by}
-                  />
-                )}
+              <div
+                className="flex-1 min-w-0 max-w-3xl"
+                onClick={(e) => e.stopPropagation()}
+              >
+                {decision.isParticipant &&
+                  decision.participant_id &&
+                  !decision.hasResponded && (
+                    <TaskDecisionResponse
+                      decisionId={decision.id}
+                      participantId={decision.participant_id}
+                      onResponseSubmitted={handleResponseSubmitted}
+                      hasResponded={decision.hasResponded}
+                      creatorId={decision.created_by}
+                    />
+                  )}
               </div>
 
               {/* Right: Voting results + AvatarStack */}
@@ -953,82 +1250,146 @@ export const DecisionOverview = () => {
                   {(() => {
                     // Check if custom template (not standard yes/no/question)
                     const responseOptions = decision.response_options;
-                    const isCustom = responseOptions && responseOptions.length > 0 &&
-                      !(['yes','no','question'].every((k: string) => responseOptions.some((o) => o.key === k)) && responseOptions.length <= 3);
-                    
+                    const isCustom =
+                      responseOptions &&
+                      responseOptions.length > 0 &&
+                      !(
+                        ["yes", "no", "question"].every((k: string) =>
+                          responseOptions.some((o) => o.key === k),
+                        ) && responseOptions.length <= 3
+                      );
+
                     if (isCustom) {
                       const optionCounts: Record<string, number> = {};
-                      decision.participants?.forEach(p => {
+                      decision.participants?.forEach((p) => {
                         const rt = p.responses[0]?.response_type;
                         if (rt) optionCounts[rt] = (optionCounts[rt] || 0) + 1;
                       });
-                      const sortedOptions = [...responseOptions].sort((a, b) => {
-                        const countDiff = (optionCounts[b.key] || 0) - (optionCounts[a.key] || 0);
-                        if (countDiff !== 0) return countDiff;
-                        return responseOptions.findIndex((opt) => opt.key === a.key) - responseOptions.findIndex((opt) => opt.key === b.key);
-                      });
+                      const sortedOptions = [...responseOptions].sort(
+                        (a, b) => {
+                          const countDiff =
+                            (optionCounts[b.key] || 0) -
+                            (optionCounts[a.key] || 0);
+                          if (countDiff !== 0) return countDiff;
+                          return (
+                            responseOptions.findIndex(
+                              (opt) => opt.key === a.key,
+                            ) -
+                            responseOptions.findIndex(
+                              (opt) => opt.key === b.key,
+                            )
+                          );
+                        },
+                      );
 
                       const winningOption = sortedOptions[0];
-                      const winningCount = winningOption ? (optionCounts[winningOption.key] || 0) : 0;
+                      const winningCount = winningOption
+                        ? optionCounts[winningOption.key] || 0
+                        : 0;
 
                       if (!winningOption || winningCount === 0) {
-                        return <span className="text-muted-foreground font-medium">Noch offen</span>;
+                        return (
+                          <span className="text-muted-foreground font-medium">
+                            Noch offen
+                          </span>
+                        );
                       }
 
                       const winnerTextColorMap: Record<string, string> = {
-                        green: 'text-green-600',
-                        red: 'text-red-600',
-                        orange: 'text-orange-600',
-                        yellow: 'text-yellow-600',
-                        blue: 'text-blue-600',
-                        purple: 'text-purple-600',
-                        teal: 'text-teal-600',
-                        pink: 'text-pink-600',
-                        lime: 'text-lime-600',
-                        gray: 'text-gray-600',
+                        green: "text-green-600",
+                        red: "text-red-600",
+                        orange: "text-orange-600",
+                        yellow: "text-yellow-600",
+                        blue: "text-blue-600",
+                        purple: "text-purple-600",
+                        teal: "text-teal-600",
+                        pink: "text-pink-600",
+                        lime: "text-lime-600",
+                        gray: "text-gray-600",
                       };
 
                       return (
                         <>
-                          {summary.pending === 0 && !winningOption.requires_comment && (
-                            <span className={cn("text-lg font-extrabold", winnerTextColorMap[winningOption.color || 'gray'] || 'text-foreground')}>
-                              Ergebnis: {winningOption.label}
-                            </span>
-                          )}
+                          {summary.pending === 0 &&
+                            !winningOption.requires_comment && (
+                              <span
+                                className={cn(
+                                  "text-lg font-extrabold",
+                                  winnerTextColorMap[
+                                    winningOption.color || "gray"
+                                  ] || "text-foreground",
+                                )}
+                              >
+                                Ergebnis: {winningOption.label}
+                              </span>
+                            )}
                           <div className="flex items-center gap-1 flex-wrap justify-end">
                             {sortedOptions.map((opt, idx) => {
-                              const optColor = winnerTextColorMap[opt.color || 'gray'] || 'text-foreground';
+                              const optColor =
+                                winnerTextColorMap[opt.color || "gray"] ||
+                                "text-foreground";
                               return (
-                                <span key={opt.key} className="inline-flex items-center gap-1">
-                                  {idx > 0 && <span className="text-muted-foreground">•</span>}
-                                  <span className={optColor}>{optionCounts[opt.key] || 0}</span>
+                                <span
+                                  key={opt.key}
+                                  className="inline-flex items-center gap-1"
+                                >
+                                  {idx > 0 && (
+                                    <span className="text-muted-foreground">
+                                      •
+                                    </span>
+                                  )}
+                                  <span className={optColor}>
+                                    {optionCounts[opt.key] || 0}
+                                  </span>
                                   <span className={optColor}>{opt.label}</span>
                                 </span>
                               );
                             })}
                             <span className="text-muted-foreground">•</span>
-                            <span className="text-muted-foreground">{summary.pending} Ausstehend</span>
+                            <span className="text-muted-foreground">
+                              {summary.pending} Ausstehend
+                            </span>
                           </div>
                         </>
                       );
                     }
                     return (
                       <>
-                        {summary.pending === 0 && summary.total > 0 && summary.questionCount === 0 && (
-                          <span className={cn("text-lg font-extrabold", summary.yesCount >= summary.noCount ? 'text-green-600' : 'text-red-600')}>
-                            Ergebnis: {summary.yesCount >= summary.noCount ? 'Ja' : 'Nein'}
-                          </span>
-                        )}
+                        {summary.pending === 0 &&
+                          summary.total > 0 &&
+                          summary.questionCount === 0 && (
+                            <span
+                              className={cn(
+                                "text-lg font-extrabold",
+                                summary.yesCount >= summary.noCount
+                                  ? "text-green-600"
+                                  : "text-red-600",
+                              )}
+                            >
+                              Ergebnis:{" "}
+                              {summary.yesCount >= summary.noCount
+                                ? "Ja"
+                                : "Nein"}
+                            </span>
+                          )}
                         <div className="flex items-center gap-1 flex-wrap justify-end">
-                          <span className="text-green-600">{summary.yesCount} Ja</span>
+                          <span className="text-green-600">
+                            {summary.yesCount} Ja
+                          </span>
                           <span className="text-muted-foreground">•</span>
-                          <span className="text-red-600">{summary.noCount} Nein</span>
+                          <span className="text-red-600">
+                            {summary.noCount} Nein
+                          </span>
                           <span className="text-muted-foreground">•</span>
-                          <span className="text-orange-600">{summary.questionCount} Rückfrage</span>
+                          <span className="text-orange-600">
+                            {summary.questionCount} Rückfrage
+                          </span>
                           {summary.otherCount > 0 && (
                             <>
                               <span className="text-muted-foreground">•</span>
-                              <span className="text-blue-600">{summary.otherCount} Sonstige</span>
+                              <span className="text-blue-600">
+                                {summary.otherCount} Sonstige
+                              </span>
                             </>
                           )}
                         </div>
@@ -1037,26 +1398,35 @@ export const DecisionOverview = () => {
                   })()}
                 </div>
                 <div className="ml-2">
-                  <AvatarStack participants={avatarParticipants} maxVisible={4} size="sm" />
+                  <AvatarStack
+                    participants={avatarParticipants}
+                    maxVisible={4}
+                    size="sm"
+                  />
                 </div>
               </div>
             </div>
           )}
 
           {/* Activity preview */}
-          <DecisionCardActivity 
-            participants={decision.participants} 
-            maxItems={2} 
+          <DecisionCardActivity
+            participants={decision.participants}
+            maxItems={2}
             isCreator={decision.isCreator}
             currentUserId={user?.id}
-            creatorProfile={decision.creator ? {
-              display_name: decision.creator.display_name,
-              badge_color: decision.creator.badge_color,
-              avatar_url: decision.creator.avatar_url,
-            } : undefined}
-            onReply={({ responseId, text, mode }) => sendCreatorResponse(responseId, text, mode)}
+            creatorProfile={
+              decision.creator
+                ? {
+                    display_name: decision.creator.display_name,
+                    badge_color: decision.creator.badge_color,
+                    avatar_url: decision.creator.avatar_url,
+                  }
+                : undefined
+            }
+            onReply={({ responseId, text, mode }) =>
+              sendCreatorResponse(responseId, text, mode)
+            }
           />
-
         </CardContent>
       </Card>
     );
@@ -1064,28 +1434,34 @@ export const DecisionOverview = () => {
 
   const renderArchivedCard = (decision: DecisionRequest) => {
     const summary = getResponseSummary(decision.participants);
-    
+
     return (
-      <Card 
+      <Card
         key={decision.id}
         ref={highlightRef(decision.id)}
         className={cn(
           "border-l-4 bg-muted/30",
           getBorderColor(decision, summary),
-          isHighlighted(decision.id) && "notification-highlight"
+          isHighlighted(decision.id) && "notification-highlight",
         )}
         onClick={() => handleOpenDetails(decision.id)}
       >
         <CardContent className="p-4">
           <div className="flex items-center justify-between gap-2">
             <div>
-              <h3 className="font-medium text-sm text-muted-foreground">{decision.title}</h3>
+              <h3 className="font-medium text-sm text-muted-foreground">
+                {decision.title}
+              </h3>
               <div className="flex items-center gap-2 mt-1 text-[10px] text-muted-foreground">
-                <span>Archiviert: {decision.archived_at && new Date(decision.archived_at).toLocaleDateString('de-DE')}</span>
+                <span>
+                  Archiviert:{" "}
+                  {decision.archived_at &&
+                    new Date(decision.archived_at).toLocaleDateString("de-DE")}
+                </span>
                 {decision.creator && (
                   <>
                     <span>•</span>
-                    <UserBadge 
+                    <UserBadge
                       userId={decision.creator.user_id}
                       displayName={decision.creator.display_name}
                       badgeColor={decision.creator.badge_color}
@@ -1095,12 +1471,15 @@ export const DecisionOverview = () => {
                 )}
               </div>
             </div>
-            
+
             {decision.isCreator && (
               <Button
                 variant="outline"
                 size="sm"
-                onClick={(e) => { e.stopPropagation(); restoreDecision(decision.id); }}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  restoreDecision(decision.id);
+                }}
               >
                 <RotateCcw className="h-3.5 w-3.5 mr-1" />
                 Wiederherstellen
@@ -1115,92 +1494,109 @@ export const DecisionOverview = () => {
   return (
     <div className="min-h-screen bg-gradient-subtle p-6">
       <div className="mb-6">
-        <h1 className="text-3xl font-bold text-foreground mb-1">Entscheidungen</h1>
+        <h1 className="text-3xl font-bold text-foreground mb-1">
+          Entscheidungen
+        </h1>
         <p className="text-base text-muted-foreground">
           Verwalten Sie Entscheidungsanfragen und Abstimmungen
         </p>
       </div>
-      
-      {/* Search + Create */}
-      <div className="flex items-center gap-3 mb-4">
-        <div className="relative flex-1">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-          <Input
-            placeholder="Entscheidungen durchsuchen..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            className="pl-9"
-          />
-        </div>
-        <StandaloneDecisionCreator 
-          onDecisionCreated={() => user?.id && loadDecisionRequests(user.id)} 
+
+      {/* Create + Grid Layout */}
+      <div className="flex items-center justify-end mb-4">
+        <StandaloneDecisionCreator
+          onDecisionCreated={() => user?.id && loadDecisionRequests(user.id)}
           isOpen={isCreateDialogOpen}
           onOpenChange={setIsCreateDialogOpen}
         />
-        <Button
-          variant="ghost"
-          size="icon"
-          className="h-9 w-9"
-          onClick={() => setDefaultParticipantsOpen(true)}
-          title="Standard-Einstellungen"
-        >
-          <Settings2 className="h-4 w-4" />
-        </Button>
       </div>
 
-      {/* Tabs + Grid Layout */}
       <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-        {/* TabsList AUSSERHALB des Grids */}
-        <TabsList className="grid w-full h-9 mb-4" style={{ gridTemplateColumns: `repeat(${configuredDecisionTabs.length + 2}, minmax(0, 1fr))` }}>
-          {configuredDecisionTabs.map((tab) => (
-            <TabsTrigger key={tab} value={tab} className="text-xs">
-              {decisionTabLabels[tab]}
-              {tab === "for-me" && decisionTabCounts[tab] > 0 ? (
-                <Badge variant="destructive" className="ml-1.5 text-[10px] px-1.5 py-0">
-                  {decisionTabCounts[tab]}
-                </Badge>
-              ) : (
-                tab !== "for-me" ? ` (${decisionTabCounts[tab]})` : null
-              )}
-            </TabsTrigger>
-          ))}
-          <TabsTrigger value="questions" className="text-xs">
-            Rückfragen
-            {tabCounts.questions > 0 && (
-              <Badge variant="outline" className="ml-1.5 text-orange-600 border-orange-600 text-[10px] px-1.5 py-0">
-                {tabCounts.questions}
-              </Badge>
-            )}
-          </TabsTrigger>
-          <TabsTrigger value="archived" className="text-xs">
-            <FolderArchive className="h-3 w-3 mr-1" />
-            Archiv ({tabCounts.archived})
-          </TabsTrigger>
-        </TabsList>
-        
-        {/* Grid: Content + Sidebar auf GLEICHER HÖHE */}
-        <div className="grid grid-cols-1 lg:grid-cols-[1fr_340px] gap-6">
+        <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_340px] gap-6 items-start">
           {/* Main Content */}
-          <TabsContent value={activeTab} className="mt-0 space-y-3">
-            <DecisionCardList
-              activeTab={activeTab}
-              filteredDecisions={filteredDecisions}
-              renderArchivedCard={renderArchivedCard}
-              renderCompactCard={renderCompactCard}
-            />
-          </TabsContent>
+          <div>
+            <TabsList
+              className="grid w-full h-9 mb-4"
+              style={{
+                gridTemplateColumns: `repeat(${configuredDecisionTabs.length + 2}, minmax(0, 1fr))`,
+              }}
+            >
+              {configuredDecisionTabs.map((tab) => (
+                <TabsTrigger key={tab} value={tab} className="text-xs">
+                  {decisionTabLabels[tab]}
+                  {tab === "for-me" && decisionTabCounts[tab] > 0 ? (
+                    <Badge
+                      variant="destructive"
+                      className="ml-1.5 text-[10px] px-1.5 py-0"
+                    >
+                      {decisionTabCounts[tab]}
+                    </Badge>
+                  ) : tab !== "for-me" ? (
+                    ` (${decisionTabCounts[tab]})`
+                  ) : null}
+                </TabsTrigger>
+              ))}
+              <TabsTrigger value="questions" className="text-xs">
+                Rückfragen
+                {tabCounts.questions > 0 && (
+                  <Badge
+                    variant="outline"
+                    className="ml-1.5 text-orange-600 border-orange-600 text-[10px] px-1.5 py-0"
+                  >
+                    {tabCounts.questions}
+                  </Badge>
+                )}
+              </TabsTrigger>
+              <TabsTrigger value="archived" className="text-xs">
+                <FolderArchive className="h-3 w-3 mr-1" />
+                Archiv ({tabCounts.archived})
+              </TabsTrigger>
+            </TabsList>
+
+            <TabsContent value={activeTab} className="mt-0 space-y-3">
+              <DecisionCardList
+                activeTab={activeTab}
+                filteredDecisions={filteredDecisions}
+                renderArchivedCard={renderArchivedCard}
+                renderCompactCard={renderCompactCard}
+              />
+            </TabsContent>
+          </div>
 
           {/* Right Sidebar */}
-          <DecisionSidebar
-            openQuestions={sidebarData.openQuestions}
-            newComments={sidebarData.newComments}
-            pendingDirectReplies={sidebarData.pendingDirectReplies}
-            recentActivities={sidebarData.recentActivities}
-            onQuestionClick={handleOpenDetails}
-            onCommentClick={handleOpenDetails}
-            onActivityClick={handleActivityOpen}
-            onResponseSent={() => user?.id && loadDecisionRequests(user.id)}
-          />
+          <div className="space-y-4">
+            <div className="flex items-center gap-3">
+              <div className="relative flex-1">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                <Input
+                  placeholder="Entscheidungen durchsuchen..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="pl-9"
+                />
+              </div>
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-9 w-9 shrink-0"
+                onClick={() => setDefaultParticipantsOpen(true)}
+                title="Standard-Einstellungen"
+              >
+                <Settings2 className="h-4 w-4" />
+              </Button>
+            </div>
+
+            <DecisionSidebar
+              openQuestions={sidebarData.openQuestions}
+              newComments={sidebarData.newComments}
+              pendingDirectReplies={sidebarData.pendingDirectReplies}
+              recentActivities={sidebarData.recentActivities}
+              onQuestionClick={handleOpenDetails}
+              onCommentClick={handleOpenDetails}
+              onActivityClick={handleActivityOpen}
+              onResponseSent={() => user?.id && loadDecisionRequests(user.id)}
+            />
+          </div>
         </div>
       </Tabs>
 
