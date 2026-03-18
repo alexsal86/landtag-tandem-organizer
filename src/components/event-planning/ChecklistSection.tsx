@@ -15,8 +15,8 @@ interface ChecklistSectionProps {
   checklistItems: ChecklistItem[];
   newChecklistItem: string;
   setNewChecklistItem: (value: string) => void;
-  newChecklistItemType: "none" | "social_media";
-  setNewChecklistItemType: (value: "none" | "social_media") => void;
+  newChecklistItemType: "none" | "social_media" | "rsvp";
+  setNewChecklistItemType: (value: "none" | "social_media" | "rsvp") => void;
   toggleChecklistItem: (itemId: string, isCompleted: boolean) => void;
   updateChecklistItemTitle: (itemId: string, title: string) => void;
   addChecklistItem: () => void;
