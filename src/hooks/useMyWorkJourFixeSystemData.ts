@@ -31,6 +31,17 @@ export interface UserProfileData {
   display_name: string | null;
 }
 
+interface TaskDecisionParticipantRow {
+  user_id: string;
+}
+
+interface TaskDecisionRow {
+  id: string;
+  title: string;
+  created_by: string;
+  task_decision_participants: TaskDecisionParticipantRow[] | null;
+}
+
 export interface BirthdayItemData {
   id: string;
   name: string;
@@ -101,7 +112,7 @@ export function useMyWorkJourFixeSystemData(userId?: string, tenantId?: string) 
               .or(`priority.gte.1,response_deadline.lt.${now},and(response_deadline.gte.${now},response_deadline.lte.${in7Days})`)
               .order("priority", { ascending: false, nullsFirst: false })
               .order("response_deadline", { ascending: true, nullsFirst: false })
-          : Promise.resolve({ data: [] as any[], error: null }),
+          : Promise.resolve({ data: [] as TaskDecisionRow[], error: null }),
         hasBirthdays && tenantId
           ? supabase
               .from("contacts")
@@ -142,11 +153,11 @@ export function useMyWorkJourFixeSystemData(userId?: string, tenantId?: string) 
       } else {
         const decisions = decisionsResult.data || [];
         const relevantDecisions = decisions
-          .filter((decision: any) => {
+          .filter((decision: TaskDecisionRow) => {
             const participants = decision.task_decision_participants || [];
-            return decision.created_by === userId || participants.some((participant: any) => participant.user_id === userId);
+            return decision.created_by === userId || participants.some((participant) => participant.user_id === userId);
           })
-          .map((decision: any) => ({
+          .map((decision: TaskDecisionRow) => ({
             id: decision.id,
             title: decision.title,
             user_id: decision.created_by,

@@ -10,14 +10,22 @@ export interface RecurrenceData {
   endDate?: string;
 }
 
+export interface ParticipantProfileSummary {
+  id: string;
+  display_name: string;
+  avatar_url?: string | null;
+}
+
+export interface MeetingParticipantProfileRow {
+  user_id: string;
+  display_name: string | null;
+  avatar_url?: string | null;
+}
+
 export interface NewMeetingParticipant {
   userId: string;
   role: ParticipantRole;
-  user?: {
-    id: string;
-    display_name: string;
-    avatar_url?: string | null;
-  };
+  user?: ParticipantProfileSummary;
 }
 
 export interface AgendaItem {
@@ -35,7 +43,7 @@ export interface AgendaItem {
   file_path?: string | null;
   result_text?: string | null;
   carry_over_to_next?: boolean | null;
-  sub_items?: AgendaItem[] | unknown;
+  sub_items?: AgendaItem[] | null;
   source_meeting_id?: string | null;
   carried_over_from?: string | null;
   original_meeting_date?: string | null;
@@ -60,7 +68,7 @@ export interface LinkedQuickNote {
   is_pinned?: boolean | null;
   meeting_id?: string | null;
   meeting_result?: string | null;
-  meeting_archived_info?: unknown;
+  meeting_archived_info?: Record<string, unknown> | null;
   user_id: string;
   created_at: string;
   updated_at: string;
@@ -75,8 +83,8 @@ export interface LinkedQuickNote {
   archived_at?: string | null;
   deleted_at?: string | null;
   permanent_delete_at?: string | null;
-  task_archived_info?: unknown;
-  decision_archived_info?: unknown;
+  task_archived_info?: Record<string, unknown> | null;
+  decision_archived_info?: Record<string, unknown> | null;
 }
 
 /** A task linked to a meeting (select subset from tasks table) */
@@ -124,6 +132,13 @@ export interface MeetingUpcomingAppointment {
   isExternal: boolean;
   calendarName?: string;
   calendarColor?: string;
+}
+
+export interface ExternalCalendarSummary {
+  name: string | null;
+  color: string | null;
+  tenant_id?: string | null;
+  user_id?: string | null;
 }
 
 /** A participant in a meeting */
@@ -179,9 +194,9 @@ export interface MeetingTemplate {
   id: string;
   name: string;
   description?: string | null;
-  template_items: MeetingTemplateItem[] | unknown;
+  template_items: MeetingTemplateItem[];
   default_participants?: string[] | null;
-  default_recurrence?: RecurrenceData | unknown;
+  default_recurrence?: RecurrenceData | null;
   is_default?: boolean | null;
   auto_create_count?: number | null;
 }

@@ -10,19 +10,31 @@ import { format, addDays, startOfDay, endOfDay, isSameWeek, addWeeks } from 'dat
 import { de } from 'date-fns/locale';
 import { debugConsole } from '@/utils/debugConsole';
 import { cn } from '@/lib/utils';
+import type { ExternalCalendarSummary, MeetingUpcomingAppointment } from '@/components/meetings/types';
 
-interface Appointment {
+type Appointment = MeetingUpcomingAppointment;
+
+interface ExternalAppointmentRow {
   id: string;
   title: string;
   start_time: string;
   end_time: string;
-  location?: string | null;
-  category?: string | null;
-  status?: string | null;
-  isExternal?: boolean;
-  calendarName?: string;
-  calendarColor?: string;
+  location: string | null;
+  external_calendars: ExternalCalendarSummary | ExternalCalendarSummary[] | null;
 }
+
+interface StarredAppointmentInsert {
+  meeting_id: string;
+  user_id: string;
+  tenant_id: string;
+  appointment_id?: string;
+  external_event_id?: string;
+}
+
+const extractExternalCalendar = (value: ExternalAppointmentRow['external_calendars']): ExternalCalendarSummary | null => {
+  if (!value) return null;
+  return Array.isArray(value) ? value[0] ?? null : value;
+};
 
 export interface FocusModeUpcomingAppointmentsHandle {
   getAppointmentsCount: () => number;
@@ -129,17 +141,21 @@ export const FocusModeUpcomingAppointments = forwardRef<
         isExternal: false
       }));
 
-      const externalAppointments: Appointment[] = (externalData || []).map((event: any) => ({
-        id: event.id,
-        title: event.title,
-        start_time: event.start_time,
-        end_time: event.end_time,
-        location: event.location,
-        category: 'external',
-        isExternal: true,
-        calendarName: event.external_calendars?.name,
-        calendarColor: event.external_calendars?.color
-      }));
+      const externalAppointments: Appointment[] = ((externalData || []) as ExternalAppointmentRow[]).map((event) => {
+        const calendar = extractExternalCalendar(event.external_calendars);
+
+        return {
+          id: event.id,
+          title: event.title,
+          start_time: event.start_time,
+          end_time: event.end_time,
+          location: event.location,
+          category: 'external',
+          isExternal: true,
+          calendarName: calendar?.name ?? undefined,
+          calendarColor: calendar?.color ?? undefined,
+        };
+      });
 
       // Combine and sort by start_time
       const allAppointments = [...internalAppointments, ...externalAppointments]
@@ -203,7 +219,7 @@ export const FocusModeUpcomingAppointments = forwardRef<
           .or(`appointment_id.eq.${apt.id},external_event_id.eq.${apt.id}`);
       } else {
         // Add star
-        const insertData: any = {
+        const insertData: StarredAppointmentInsert = {
           meeting_id: meetingId,
           user_id: user.id,
           tenant_id: currentTenant.id

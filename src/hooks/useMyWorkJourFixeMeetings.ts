@@ -19,6 +19,16 @@ export interface Meeting {
   user_id?: string;
 }
 
+interface MeetingParticipantMeetingRow {
+  meeting_id: string;
+  meetings: Meeting | Meeting[] | null;
+}
+
+const extractMeeting = (row: MeetingParticipantMeetingRow): Meeting | null => {
+  if (!row.meetings) return null;
+  return Array.isArray(row.meetings) ? row.meetings[0] ?? null : row.meetings;
+};
+
 export function useMyWorkJourFixeMeetings(userId?: string) {
   const [upcomingMeetings, setUpcomingMeetings] = useState<Meeting[]>([]);
   const [pastMeetings, setPastMeetings] = useState<Meeting[]>([]);
@@ -134,8 +144,8 @@ export function useMyWorkJourFixeMeetings(userId?: string) {
 
       const ownIds = new Set([...ownUpcoming.map(m => m.id), ...ownPast.map(m => m.id)]);
       const participantMeetings = participantData
-        .filter((p: any) => p.meetings && !ownIds.has(p.meetings.id) && p.meetings.status !== 'archived')
-        .map((p: any) => p.meetings as Meeting);
+        .map((row) => extractMeeting(row as MeetingParticipantMeetingRow))
+        .filter((meeting): meeting is Meeting => Boolean(meeting && !ownIds.has(meeting.id) && meeting.status !== 'archived'));
 
       const allIds = new Set([...ownIds, ...participantMeetings.map(m => m.id)]);
       const publicExtra = publicMeetings.filter(m => !allIds.has(m.id));

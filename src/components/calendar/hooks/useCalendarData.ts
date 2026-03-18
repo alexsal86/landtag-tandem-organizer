@@ -5,12 +5,80 @@ import { supabase } from "@/integrations/supabase/client";
 import { useTenant } from "@/hooks/useTenant";
 import { rrulestr } from "rrule";
 import type { CalendarEvent } from "../types";
+import type { ExternalCalendarSummary } from "@/components/meetings/types";
 
 const APPOINTMENT_SELECT = `
   id, title, description, start_time, end_time, category, priority,
   location, status, is_all_day, meeting_id, contact_id, poll_id,
   reminder_minutes, recurrence_rule, recurrence_end_date
 `;
+
+interface AppointmentRow {
+  id: string;
+  title: string;
+  description: string | null;
+  start_time: string;
+  end_time: string;
+  category: string | null;
+  priority: string | null;
+  location: string | null;
+  status: string | null;
+  is_all_day: boolean | null;
+  meeting_id: string | null;
+  contact_id: string | null;
+  poll_id: string | null;
+  reminder_minutes: number | null;
+  recurrence_rule: string | null;
+  recurrence_end_date: string | null;
+  _isRecurring?: boolean;
+  _originalId?: string;
+  _isBirthdayInstance?: boolean;
+}
+
+interface AppointmentCategoryRow {
+  name: string;
+  color: string;
+}
+
+interface AppointmentContactRow {
+  appointment_id: string;
+  role: string | null;
+  contacts: { id: string; name: string } | { id: string; name: string }[] | null;
+}
+
+interface ExternalEventRow {
+  id: string;
+  title: string;
+  description: string | null;
+  start_time: string;
+  end_time: string;
+  location: string | null;
+  all_day?: boolean | null;
+  recurrence_rule?: string | null;
+  category?: string | null;
+  external_calendars: ExternalCalendarSummary | ExternalCalendarSummary[] | null;
+  _isRecurring?: boolean;
+  _originalId?: string;
+}
+
+interface EventPlanningRow {
+  id: string;
+  date_time: string;
+  event_plannings: { title: string; user_id: string | null } | { title: string; user_id: string | null }[] | null;
+}
+
+interface LeaveRequestRow {
+  id: string;
+  start_date: string;
+  end_date: string;
+  status: string;
+  profiles: { display_name: string | null } | { display_name: string | null }[] | null;
+}
+
+const extractSingle = <T,>(value: T | T[] | null | undefined): T | null => {
+  if (!value) return null;
+  return Array.isArray(value) ? value[0] ?? null : value;
+};
 
 function getWeekStart(date: Date): Date {
   const d = new Date(date);
@@ -48,7 +116,7 @@ function isExternalAllDayEvent(start: Date, end: Date): boolean {
   return sm && em && diff === 1;
 }
 
-function expandRecurringEvent(event: any, startDate: Date, endDate: Date): any[] {
+function expandRecurringEvent<T extends AppointmentRow | ExternalEventRow>(event: T, startDate: Date, endDate: Date): T[] {
   if (!event.recurrence_rule) return [event];
   try {
     const rule = rrulestr(event.recurrence_rule, { dtstart: new Date(event.start_time) });
@@ -56,17 +124,18 @@ function expandRecurringEvent(event: any, startDate: Date, endDate: Date): any[]
       ? (() => {
           const es = new Date(startDate); es.setFullYear(es.getFullYear() - 1);
           const ee = new Date(endDate); ee.setFullYear(ee.getFullYear() + 2);
-          return rule.between(es, ee, true).filter(o => o >= startDate && o <= endDate);
+          return rule.between(es, ee, true).filter((occurrence: Date) => occurrence >= startDate && occurrence <= endDate);
         })()
       : rule.between(startDate, endDate, true);
 
-    return expanded.map((occurrence, index) => {
+    return expanded.map((occurrence: Date, index: number) => {
       const origStart = new Date(event.start_time);
       const origEnd = new Date(event.end_time);
       const newStart = new Date(occurrence);
 
       let newEnd: Date;
-      if (event.is_all_day || event.category === "birthday") {
+      const isAllDayEvent = "is_all_day" in event ? Boolean(event.is_all_day) : Boolean(event.all_day);
+      if (isAllDayEvent || event.category === "birthday") {
         newStart.setHours(origStart.getHours(), origStart.getMinutes(), origStart.getSeconds());
         newEnd = new Date(newStart);
         const dur24 = origEnd.getTime() - origStart.getTime() === 24 * 60 * 60 * 1000;
@@ -82,11 +151,11 @@ function expandRecurringEvent(event: any, startDate: Date, endDate: Date): any[]
 }
 
 function expandBirthdayEvents(
-  event: any,
+  event: AppointmentRow,
   startDate: Date,
   endDate: Date,
   birthdayByContactId: Map<string, string>,
-): any[] {
+): AppointmentRow[] {
   if (event.category !== "birthday" || !event.contact_id) return [event];
 
   const birthday = birthdayByContactId.get(event.contact_id);
@@ -98,7 +167,7 @@ function expandBirthdayEvents(
   const startYear = startDate.getFullYear();
   const endYear = Math.min(endDate.getFullYear(), maxYear);
 
-  const instances: any[] = [];
+  const instances: AppointmentRow[] = [];
   for (let year = startYear; year <= endYear; year++) {
     if (year === originalDate.getFullYear()) continue;
     const bd = new Date(originalDate); bd.setFullYear(year);
@@ -157,7 +226,7 @@ async function fetchCalendarData(currentDate: Date, view: string, tenantId: stri
   ]);
 
   const categoryColors = new Map<string, string>();
-  categoriesData?.forEach((cat: any) => categoryColors.set(cat.name, cat.color));
+  (categoriesData as AppointmentCategoryRow[] | null)?.forEach((cat) => categoryColors.set(cat.name, cat.color));
 
   const formattedEvents: CalendarEvent[] = [];
 
@@ -181,7 +250,7 @@ async function fetchCalendarData(currentDate: Date, view: string, tenantId: stri
   }
 
   // Expand recurring & birthday events
-  const expandedAppointments: any[] = [];
+  const expandedAppointments: AppointmentRow[] = [];
   for (const appointment of appointmentsData) {
     if (appointment.category === "birthday") {
       expandedAppointments.push(...expandBirthdayEvents(appointment, startDate, endDate, birthdayByContactId));
@@ -195,13 +264,14 @@ async function fetchCalendarData(currentDate: Date, view: string, tenantId: stri
 
   const { data: contactsRows } = sourceAppointmentIds.length > 0
     ? await supabase.from("appointment_contacts").select("appointment_id, role, contacts (id, name)").in("appointment_id", sourceAppointmentIds)
-    : { data: [] as any[] };
+    : { data: [] as AppointmentContactRow[] };
 
   const participantsByAppointmentId = new Map<string, Array<{ id: string; name: string; role: string }>>();
-  for (const row of contactsRows || []) {
-    const appointmentId = row.appointment_id as string;
+  for (const row of (contactsRows || []) as AppointmentContactRow[]) {
+    const appointmentId = row.appointment_id;
     const existing = participantsByAppointmentId.get(appointmentId) || [];
-    existing.push({ id: (row.contacts as any)?.id || "", name: (row.contacts as any)?.name || "Unknown", role: row.role || "participant" });
+    const contact = extractSingle(row.contacts);
+    existing.push({ id: contact?.id || "", name: contact?.name || "Unknown", role: row.role || "participant" });
     participantsByAppointmentId.set(appointmentId, existing);
   }
 
@@ -222,7 +292,7 @@ async function fetchCalendarData(currentDate: Date, view: string, tenantId: stri
       type: (appointment.category as CalendarEvent["type"]) || "meeting",
       priority: (appointment.priority as CalendarEvent["priority"]) || "medium",
       participants, attendees: participants.length,
-      category_color: categoryColors.get(appointment.category),
+      category_color: appointment.category ? categoryColors.get(appointment.category) : undefined,
       is_all_day: appointment.is_all_day || false,
     });
   }
@@ -230,14 +300,14 @@ async function fetchCalendarData(currentDate: Date, view: string, tenantId: stri
   // External events
   const { data: externalEvents } = await supabase
     .from("external_events")
-    .select(`*, external_calendars!inner (name, color, calendar_type, user_id, tenant_id)`)
+    .select(`id, title, description, start_time, end_time, location, all_day, recurrence_rule, external_calendars!inner (name, color, user_id, tenant_id)`)
     .or(`and(start_time.lte.${endDate.toISOString()},end_time.gte.${startDate.toISOString()}),and(start_time.gte.${startDate.toISOString()},start_time.lte.${endDate.toISOString()})`)
     .eq("external_calendars.tenant_id", tenantId)
     .order("start_time", { ascending: true });
 
   if (externalEvents) {
-    const expandedExternal: any[] = [];
-    for (const ev of externalEvents) expandedExternal.push(...expandRecurringEvent(ev, startDate, endDate));
+    const expandedExternal: ExternalEventRow[] = [];
+    for (const ev of externalEvents as ExternalEventRow[]) expandedExternal.push(...expandRecurringEvent(ev, startDate, endDate));
 
     for (const ext of expandedExternal) {
       const st = new Date(ext.start_time);
@@ -245,6 +315,7 @@ async function fetchCalendarData(currentDate: Date, view: string, tenantId: stri
       const isAllDay = ext.all_day || isExternalAllDayEvent(st, et);
       if (isAllDay) { et = new Date(et); et.setDate(et.getDate() - 1); et.setHours(23, 59, 59, 999); }
       const dur = ((et.getTime() - st.getTime()) / (1000 * 60 * 60)).toFixed(1);
+      const externalCalendar = extractSingle(ext.external_calendars);
       formattedEvents.push({
         id: `external-${ext.id}`, title: `📅 ${ext.title}`,
         description: ext.description || undefined,
@@ -252,7 +323,7 @@ async function fetchCalendarData(currentDate: Date, view: string, tenantId: stri
         duration: isAllDay ? "Ganztägig" : `${dur}h`,
         date: st, endTime: et, location: ext.location || undefined,
         type: "appointment", priority: "medium", participants: [], attendees: 0,
-        category_color: ext.external_calendars?.color || "#6b7280",
+        category_color: externalCalendar?.color || "#6b7280",
         is_all_day: isAllDay, _isExternal: true,
       });
     }
@@ -268,12 +339,13 @@ async function fetchCalendarData(currentDate: Date, view: string, tenantId: stri
     .eq("event_plannings.user_id", currentUserId ?? '');
 
   if (eventPlanningData) {
-    for (const eventDate of eventPlanningData) {
-      if (eventDate.event_plannings) {
+    for (const eventDate of eventPlanningData as EventPlanningRow[]) {
+      const eventPlanning = extractSingle(eventDate.event_plannings);
+      if (eventPlanning) {
         const st = new Date(eventDate.date_time);
         const et = new Date(st.getTime() + 2 * 60 * 60 * 1000);
         formattedEvents.push({
-          id: `blocked-${eventDate.id}`, title: `🔒 ${(eventDate.event_plannings as any).title}`,
+          id: `blocked-${eventDate.id}`, title: `🔒 ${eventPlanning.title}`,
           time: st.toLocaleTimeString("de-DE", { hour: "2-digit", minute: "2-digit" }),
           duration: "2h", date: st, endTime: et, type: "blocked", priority: "medium",
           participants: [], attendees: 0,
@@ -283,10 +355,11 @@ async function fetchCalendarData(currentDate: Date, view: string, tenantId: stri
   }
 
   if (leaveRequests) {
-    for (const leave of leaveRequests) {
+    for (const leave of leaveRequests as LeaveRequestRow[]) {
       const ls = new Date(leave.start_date + "T00:00:00");
       const le = new Date(leave.end_date + "T23:59:59");
-      const name = (leave.profiles as any)?.display_name || "Mitarbeiter";
+      const profile = extractSingle(leave.profiles);
+      const name = profile?.display_name || "Mitarbeiter";
       const isApproved = leave.status === "approved";
       formattedEvents.push({
         id: `leave-${leave.id}`,
@@ -315,7 +388,7 @@ export function useCalendarData(currentDate: Date, view: string) {
     queryKey,
     queryFn: () => fetchCalendarData(currentDate, view, currentTenant?.id),
     enabled: view !== "polls" && !!currentTenant,
-    placeholderData: (previousData) => previousData,
+    placeholderData: (previousData: CalendarEvent[] | undefined) => previousData,
     staleTime: 5 * 60 * 1000, // 5 minutes
     gcTime: 10 * 60 * 1000,
     refetchOnWindowFocus: false,
