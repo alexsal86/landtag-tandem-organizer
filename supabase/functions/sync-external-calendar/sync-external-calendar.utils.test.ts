@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { dedupeEventsByLatestLastModified, getSyncExternalErrorResponse, parseICS } from './sync-external-calendar.utils';
+import { dedupeEventsByLatestLastModified, getSyncExternalErrorResponse, parseICS } from './sync-external-calendar.utils.ts';
 
 describe('sync-external-calendar utils', () => {
   it('parst RRULE Events im Sync-Bereich (Wiederholungssynchronisation)', () => {
