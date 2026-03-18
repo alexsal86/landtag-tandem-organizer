@@ -17,6 +17,12 @@ export interface SocialPlannerItem {
   channel_ids: string[];
   channel_names: string[];
   format: string | null;
+  content_goal: string | null;
+  format_variant: string | null;
+  asset_requirements: string[];
+  approval_required: boolean;
+  publish_link: string | null;
+  performance_notes: string | null;
   hook: string | null;
   core_message: string | null;
   draft_text: string | null;
@@ -94,6 +100,12 @@ export function useSocialPlannerItems() {
             workflow_status,
             approval_state,
             format,
+            content_goal,
+            format_variant,
+            asset_requirements,
+            approval_required,
+            publish_link,
+            performance_notes,
             hook,
             core_message,
             draft_text,
@@ -136,6 +148,12 @@ export function useSocialPlannerItems() {
             workflow_status: deriveUiStatus(row.workflow_status, row.approval_state),
             approval_state: row.approval_state || "draft",
             format: row.format,
+            content_goal: row.content_goal,
+            format_variant: row.format_variant,
+            asset_requirements: row.asset_requirements || [],
+            approval_required: row.approval_required ?? true,
+            publish_link: row.publish_link,
+            performance_notes: row.performance_notes,
             hook: row.hook,
             core_message: row.core_message,
             draft_text: row.draft_text,
@@ -164,6 +182,12 @@ export function useSocialPlannerItems() {
       responsible_user_id?: string | null;
       scheduled_for?: string | null;
       channel_ids?: string[];
+      content_goal?: string | null;
+      format_variant?: string | null;
+      asset_requirements?: string[];
+      approval_required?: boolean;
+      publish_link?: string | null;
+      performance_notes?: string | null;
       hook?: string | null;
       core_message?: string | null;
       draft_text?: string | null;
@@ -184,6 +208,12 @@ export function useSocialPlannerItems() {
           workflow_status: STATUS_TO_DB[uiStatus],
           approval_state: APPROVAL_TO_DB[uiStatus] || payload.approval_state || "draft",
           format: payload.format || null,
+          content_goal: payload.content_goal || null,
+          format_variant: payload.format_variant || payload.format || null,
+          asset_requirements: payload.asset_requirements || [],
+          approval_required: payload.approval_required ?? true,
+          publish_link: payload.publish_link || null,
+          performance_notes: payload.performance_notes || null,
           responsible_user_id: payload.responsible_user_id || null,
           scheduled_for: payload.scheduled_for || null,
           hook: payload.hook || null,
@@ -223,11 +253,11 @@ export function useSocialPlannerItems() {
 
   const updateItem = useCallback(async (
     id: string,
-    patch: Partial<Pick<SocialPlannerItem, "topic" | "workflow_status" | "approval_state" | "responsible_user_id" | "format" | "scheduled_for" | "hook" | "core_message" | "draft_text" | "cta" | "notes" | "channel_ids">>,
+    patch: Partial<Pick<SocialPlannerItem, "topic" | "workflow_status" | "approval_state" | "responsible_user_id" | "format" | "content_goal" | "format_variant" | "asset_requirements" | "approval_required" | "publish_link" | "performance_notes" | "scheduled_for" | "hook" | "core_message" | "draft_text" | "cta" | "notes" | "channel_ids">>,
   ) => {
     if (!currentTenant?.id) return;
 
-    const dbPatch: Record<string, string | null> = {};
+    const dbPatch: Record<string, string | string[] | boolean | null> = {};
 
     if (patch.workflow_status) {
       dbPatch.workflow_status = STATUS_TO_DB[patch.workflow_status];
@@ -237,6 +267,12 @@ export function useSocialPlannerItems() {
     if (typeof patch.approval_state !== "undefined") dbPatch.approval_state = patch.approval_state;
     if (typeof patch.responsible_user_id !== "undefined") dbPatch.responsible_user_id = patch.responsible_user_id;
     if (typeof patch.format !== "undefined") dbPatch.format = patch.format;
+    if (typeof patch.content_goal !== "undefined") dbPatch.content_goal = patch.content_goal;
+    if (typeof patch.format_variant !== "undefined") dbPatch.format_variant = patch.format_variant;
+    if (typeof patch.asset_requirements !== "undefined") dbPatch.asset_requirements = patch.asset_requirements;
+    if (typeof patch.approval_required !== "undefined") dbPatch.approval_required = patch.approval_required;
+    if (typeof patch.publish_link !== "undefined") dbPatch.publish_link = patch.publish_link;
+    if (typeof patch.performance_notes !== "undefined") dbPatch.performance_notes = patch.performance_notes;
     if (typeof patch.scheduled_for !== "undefined") dbPatch.scheduled_for = patch.scheduled_for;
     if (typeof patch.hook !== "undefined") dbPatch.hook = patch.hook;
     if (typeof patch.core_message !== "undefined") dbPatch.core_message = patch.core_message;

@@ -9032,18 +9032,24 @@ export type Database = {
       }
       social_content_items: {
         Row: {
+          approval_required: boolean
           approval_state: string
           approved_at: string | null
           approved_by: string | null
+          asset_requirements: string[]
+          content_goal: string | null
           core_message: string | null
           created_at: string
           created_by: string
           cta: string | null
           draft_text: string | null
           format: string | null
+          format_variant: string | null
           hook: string | null
           id: string
           notes: string | null
+          performance_notes: string | null
+          publish_link: string | null
           published_at: string | null
           responsible_user_id: string | null
           scheduled_for: string | null
@@ -9053,18 +9059,24 @@ export type Database = {
           workflow_status: string
         }
         Insert: {
+          approval_required?: boolean
           approval_state?: string
           approved_at?: string | null
           approved_by?: string | null
+          asset_requirements?: string[]
+          content_goal?: string | null
           core_message?: string | null
           created_at?: string
           created_by: string
           cta?: string | null
           draft_text?: string | null
           format?: string | null
+          format_variant?: string | null
           hook?: string | null
           id?: string
           notes?: string | null
+          performance_notes?: string | null
+          publish_link?: string | null
           published_at?: string | null
           responsible_user_id?: string | null
           scheduled_for?: string | null
@@ -9074,18 +9086,24 @@ export type Database = {
           workflow_status?: string
         }
         Update: {
+          approval_required?: boolean
           approval_state?: string
           approved_at?: string | null
           approved_by?: string | null
+          asset_requirements?: string[]
+          content_goal?: string | null
           core_message?: string | null
           created_at?: string
           created_by?: string
           cta?: string | null
           draft_text?: string | null
           format?: string | null
+          format_variant?: string | null
           hook?: string | null
           id?: string
           notes?: string | null
+          performance_notes?: string | null
+          publish_link?: string | null
           published_at?: string | null
           responsible_user_id?: string | null
           scheduled_for?: string | null
