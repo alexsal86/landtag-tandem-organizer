@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, type ChangeEvent } from 'react';
 import { Search, Plus, FileText, Filter, Calendar, User, Edit3, Trash2, Grid, List, ListTodo, ListTree, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -18,33 +18,22 @@ import { useViewPreference } from '@/hooks/useViewPreference';
 import LetterEditor from './LetterEditor';
 import { LetterWizard } from './letters/LetterWizard';
 import LetterPDFExport from './LetterPDFExport';
+import type { Database } from '@/integrations/supabase/types';
+import type { LetterRecord } from '@/components/letter-pdf/types';
 
-interface Letter {
-  id?: string;
-  title: string;
-  content: string;
-  content_html?: string;
-  recipient_name?: string;
-  recipient_address?: string;
-  contact_id?: string;
-  template_id?: string;
-  sender_info_id?: string;
-  information_block_ids?: string[];
-  status: 'draft' | 'review' | 'approved' | 'sent';
-  sent_date?: string;
-  sent_method?: string;
-  expected_response_date?: string;
-  created_by: string;
-  created_at: string;
-  updated_at: string;
-  tenant_id: string;
-  user_id?: string;
-  archived_at?: string | null;
-}
+type Letter = LetterRecord;
+type ParentTaskOption = Pick<Database['public']['Tables']['tasks']['Row'], 'id' | 'title'>;
+type TaskDialogMode = 'task' | 'subtask';
+type TaskInsert = Database['public']['Tables']['tasks']['Insert'];
+type LetterStatusFilter = 'all' | 'draft' | 'review' | 'approved' | 'sent';
 
-interface ParentTaskOption {
-  id: string;
-  title: string;
+interface WizardCompletionConfig {
+  occasion: string;
+  recipientName: string;
+  recipientAddress: string;
+  contactId?: string;
+  templateId?: string;
+  senderInfoId?: string;
 }
 
 const LettersView: React.FC = () => {
@@ -56,11 +45,11 @@ const LettersView: React.FC = () => {
   const [letters, setLetters] = useState<Letter[]>([]);
   const [loading, setLoading] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
-  const [statusFilter, setStatusFilter] = useState<string>('all');
+  const [statusFilter, setStatusFilter] = useState<LetterStatusFilter>('all');
   const [selectedLetter, setSelectedLetter] = useState<Letter | null>(null);
   const [isEditorOpen, setIsEditorOpen] = useState(false);
   const [showWizard, setShowWizard] = useState(false);
-  const [taskDialogMode, setTaskDialogMode] = useState<'task' | 'subtask' | null>(null);
+  const [taskDialogMode, setTaskDialogMode] = useState<TaskDialogMode | null>(null);
   const [sourceLetterForTask, setSourceLetterForTask] = useState<Letter | null>(null);
   const [taskTitle, setTaskTitle] = useState('');
   const [taskDescription, setTaskDescription] = useState('');
@@ -87,7 +76,7 @@ const LettersView: React.FC = () => {
         .order('updated_at', { ascending: false });
 
       if (error) throw error;
-      setLetters(data as any || []);
+      setLetters((data as Letter[] | null) ?? []);
     } catch (error) {
       debugConsole.error('Error fetching letters:', error);
       toast({
@@ -116,17 +105,10 @@ const LettersView: React.FC = () => {
     setShowWizard(true);
   };
 
-  const handleWizardComplete = (config: {
-    occasion: string;
-    recipientName: string;
-    recipientAddress: string;
-    contactId?: string;
-    templateId?: string;
-    senderInfoId?: string;
-  }) => {
+  const handleWizardComplete = (config: WizardCompletionConfig) => {
     setShowWizard(false);
     
-    const newLetter: any = {
+    const newLetter: Letter = {
       id: undefined,
       title: '',
       content: '',
@@ -155,7 +137,7 @@ const LettersView: React.FC = () => {
     setIsEditorOpen(true);
   };
 
-  const openTaskDialog = async (letter: Letter, mode: 'task' | 'subtask') => {
+  const openTaskDialog = async (letter: Letter, mode: TaskDialogMode) => {
     setSourceLetterForTask(letter);
     setTaskDialogMode(mode);
     const initialTitle = letter.title?.trim() || `Aufgabe aus Brief vom ${new Date(letter.updated_at).toLocaleDateString('de-DE')}`;
@@ -174,7 +156,7 @@ const LettersView: React.FC = () => {
           .limit(100);
 
         if (error) throw error;
-        setAvailableParentTasks((data || []) as ParentTaskOption[]);
+        setAvailableParentTasks((data as ParentTaskOption[] | null) ?? []);
       } catch (error) {
         debugConsole.error('Error fetching parent tasks:', error);
         setAvailableParentTasks([]);
@@ -302,14 +284,14 @@ const LettersView: React.FC = () => {
     }
   };
 
-  const statusLabels: { [key: string]: string } = {
+  const statusLabels: Record<Exclude<LetterStatusFilter, 'all'>, string> = {
     draft: 'Entwurf',
     review: 'Zur Prüfung',
     approved: 'Genehmigt',
     sent: 'Versendet'
   };
 
-  const statusColors: { [key: string]: string } = {
+  const statusColors: Record<Exclude<LetterStatusFilter, 'all'>, string> = {
     draft: 'bg-gray-100 text-gray-800',
     review: 'bg-yellow-100 text-yellow-800',
     approved: 'bg-green-100 text-green-800',
@@ -341,7 +323,7 @@ const LettersView: React.FC = () => {
                   <Input
                     placeholder="Briefe durchsuchen..."
                     value={searchTerm}
-                    onChange={(e) => setSearchTerm(e.target.value)}
+                    onChange={(e: ChangeEvent<HTMLInputElement>) => setSearchTerm(e.target.value)}
                     className="pl-10"
                   />
                 </div>

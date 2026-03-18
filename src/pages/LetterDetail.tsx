@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { ArrowLeft, Loader2 } from 'lucide-react';
 import { ThemeProvider } from 'next-themes';
@@ -13,32 +13,10 @@ import { AppHeader } from '@/components/layout/AppHeader';
 import { SubNavigation } from '@/components/layout/SubNavigation';
 import { MobileHeader } from '@/components/MobileHeader';
 import { MobileSubNavigation } from '@/components/layout/MobileSubNavigation';
+import { debugConsole } from '@/utils/debugConsole';
+import type { LetterRecord } from '@/components/letter-pdf/types';
 
-interface LetterRecord {
-  id: string;
-  title: string;
-  content: string;
-  content_html?: string;
-  content_nodes?: any;
-  recipient_name?: string;
-  recipient_address?: string;
-  contact_id?: string;
-  template_id?: string;
-  subject?: string;
-  reference_number?: string;
-  sender_info_id?: string;
-  information_block_ids?: string[];
-  letter_date?: string;
-  status: 'draft' | 'review' | 'approved' | 'sent' | 'pending_approval' | 'revision_requested';
-  sent_date?: string;
-  sent_method?: 'post' | 'email' | 'both';
-  expected_response_date?: string;
-  created_by: string;
-  created_at: string;
-  updated_at: string;
-  tenant_id: string;
-  show_pagination?: boolean;
-}
+const LETTER_SELECT = 'id, title, content, content_html, content_nodes, recipient_name, recipient_address, contact_id, template_id, subject, reference_number, sender_info_id, information_block_ids, letter_date, status, sent_date, sent_method, expected_response_date, created_by, created_at, updated_at, tenant_id, show_pagination';
 
 const LetterDetail = () => {
   const { letterId } = useParams<{ letterId: string }>();
@@ -51,33 +29,48 @@ const LetterDetail = () => {
   const activeSection = 'documents';
 
   const navGroups = useMemo(() => getNavigationGroups(), []);
-  const activeGroup = useMemo(() =>
-    navGroups.find(g =>
-      g.subItems?.some(item => item.id === activeSection) ||
-      (g.route && g.route.slice(1) === activeSection) ||
-      g.id === activeSection,
+  const activeGroup = useMemo(
+    () => navGroups.find((group) =>
+      group.subItems?.some((item) => item.id === activeSection)
+      || (group.route && group.route.slice(1) === activeSection)
+      || group.id === activeSection,
     ),
-  [navGroups]);
+    [navGroups],
+  );
 
-  const handleSectionChange = (section: string) => {
+  const handleSectionChange = useCallback((section: string) => {
     const path = section === 'dashboard' ? '/' : `/${section}`;
     navigate(path);
-  };
+  }, [navigate]);
 
-  const fetchLetter = async () => {
-    if (!letterId || !currentTenant) return;
+  const fetchLetter = useCallback(async (): Promise<void> => {
+    if (!letterId || !currentTenant) {
+      setLetter(null);
+      setLoading(false);
+      return;
+    }
 
     setLoading(true);
-    const { data } = await supabase
-      .from('letters')
-      .select('id, title, content, content_html, content_nodes, recipient_name, recipient_address, contact_id, template_id, subject, reference_number, sender_info_id, information_block_ids, letter_date, status, sent_date, sent_method, expected_response_date, created_by, created_at, updated_at, tenant_id, show_pagination')
-      .eq('id', letterId)
-      .eq('tenant_id', currentTenant.id)
-      .maybeSingle();
+    try {
+      const { data, error } = await supabase
+        .from('letters')
+        .select(LETTER_SELECT)
+        .eq('id', letterId)
+        .eq('tenant_id', currentTenant.id)
+        .maybeSingle();
 
-    setLetter((data as LetterRecord | null) || null);
-    setLoading(false);
-  };
+      if (error) {
+        throw error;
+      }
+
+      setLetter((data as LetterRecord | null) ?? null);
+    } catch (error: unknown) {
+      debugConsole.error('Error fetching letter:', error);
+      setLetter(null);
+    } finally {
+      setLoading(false);
+    }
+  }, [currentTenant, letterId]);
 
   useEffect(() => {
     if (authLoading || tenantLoading) return;
@@ -86,8 +79,12 @@ const LetterDetail = () => {
       return;
     }
 
-    fetchLetter();
-  }, [letterId, currentTenant, user, authLoading, tenantLoading, navigate]);
+    void fetchLetter();
+  }, [fetchLetter, user, authLoading, tenantLoading, navigate]);
+
+  const handleBackToLetters = useCallback(() => {
+    navigate('/documents?tab=letters');
+  }, [navigate]);
 
   const renderMain = () => {
     if (authLoading || tenantLoading || loading) {
@@ -109,7 +106,7 @@ const LetterDetail = () => {
               </CardDescription>
             </CardHeader>
             <CardContent>
-              <Button onClick={() => navigate('/documents?tab=letters')}>
+              <Button onClick={handleBackToLetters}>
                 Zurück zu Briefen
               </Button>
             </CardContent>
@@ -121,7 +118,7 @@ const LetterDetail = () => {
     return (
       <div className="p-4 md:p-6">
         <div className="max-w-[1800px] mx-auto space-y-4">
-          <Button variant="outline" onClick={() => navigate('/documents?tab=letters')}>
+          <Button variant="outline" onClick={handleBackToLetters}>
             <ArrowLeft className="h-4 w-4 mr-2" />
             Zurück zu Briefen
           </Button>
@@ -129,8 +126,8 @@ const LetterDetail = () => {
           <div className="h-[calc(100vh-12rem)] min-h-[600px]">
             <LetterEditor
               letter={letter}
-              isOpen={true}
-              onClose={() => navigate('/documents?tab=letters')}
+              isOpen
+              onClose={handleBackToLetters}
               onSave={fetchLetter}
             />
           </div>

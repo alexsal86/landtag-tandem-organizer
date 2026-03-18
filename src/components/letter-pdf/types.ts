@@ -1,20 +1,40 @@
-export interface Letter {
-  id: string;
-  title: string;
-  content: string;
-  content_html?: string;
-  recipient_name?: string;
-  recipient_address?: string;
-  template_id?: string;
-  subject?: string;
-  reference_number?: string;
-  sender_info_id?: string;
-  information_block_ids?: string[];
-  letter_date?: string;
-  status: string;
-  sent_date?: string;
-  created_at: string;
-  show_pagination?: boolean;
+import type { Json, Database } from '@/integrations/supabase/types';
+import type { LetterLayoutSettings } from '@/types/letterLayout';
+
+export type DbLetter = Database['public']['Tables']['letters']['Row'];
+export type DbLetterAttachment = Database['public']['Tables']['letter_attachments']['Row'];
+export type DbLetterTemplateRow = Database['public']['Tables']['letter_templates']['Row'];
+export type DbSenderInformation = Database['public']['Tables']['sender_information']['Row'];
+export type DbInformationBlock = Database['public']['Tables']['information_blocks']['Row'];
+
+export type LetterStatus = DbLetter['status'];
+export type LetterSentMethod = NonNullable<DbLetter['sent_method']>;
+
+
+export interface HeaderImagePosition {
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+}
+
+export interface InformationBlockData {
+  contact_name?: string;
+  contact_phone?: string;
+  contact_email?: string;
+  date_format?: string;
+  show_time?: boolean;
+  reference_prefix?: string;
+  reference_pattern?: string;
+  custom_content?: string;
+}
+
+export interface LetterRecord extends Pick<DbLetter,
+  'id' | 'title' | 'content' | 'content_html' | 'recipient_name' | 'recipient_address' | 'template_id' | 'subject' | 'reference_number' | 'sender_info_id' | 'information_block_ids' | 'letter_date' | 'status' | 'sent_date' | 'created_at' | 'show_pagination' | 'contact_id' | 'expected_response_date' | 'created_by' | 'updated_at' | 'tenant_id'> {
+  content_nodes?: Json | null;
+  sent_method?: LetterSentMethod | null;
+  user_id?: string;
+  archived_at?: string | null;
 }
 
 export interface LetterTemplate {
@@ -23,17 +43,33 @@ export interface LetterTemplate {
   letterhead_html: string;
   letterhead_css: string;
   response_time_days: number;
-  header_layout_type?: any;
-  header_text_elements?: any;
-  footer_blocks?: any;
+  header_layout_type?: string | null;
+  header_text_elements?: Json | null;
+  footer_blocks?: Json | null;
+  layout_settings?: LetterLayoutSettings | null;
+  header_image_url?: string | null;
+  header_image_position?: Json | HeaderImagePosition | null;
+}
+
+
+export interface LetterPdfGenerationResult {
+  blob: Blob;
+  filename: string;
 }
 
 export interface LetterPDFExportProps {
-  letter: Letter;
+  letter: LetterRecord;
   disabled?: boolean;
   debugMode?: boolean;
   showPagination?: boolean;
   variant?: 'default' | 'icon-only';
   size?: 'sm' | 'default';
   onPDFGenerated?: (pdfBlob: Blob, filename: string) => void;
+}
+
+export interface PDFDataState {
+  template: LetterTemplate | null;
+  senderInfo: DbSenderInformation | null;
+  informationBlock: DbInformationBlock | null;
+  attachments: DbLetterAttachment[];
 }
