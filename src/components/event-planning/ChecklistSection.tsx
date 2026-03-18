@@ -301,10 +301,13 @@ export function ChecklistSection(props: ChecklistSectionProps) {
           <div className="mt-4 flex flex-col gap-2 md:flex-row md:items-center">
             <Select
               value={newChecklistItemType}
-              onValueChange={(value: "none" | "social_media") => {
+              onValueChange={(value: "none" | "social_media" | "rsvp") => {
                 setNewChecklistItemType(value);
                 if (value === "social_media" && !newChecklistItem.trim()) {
                   setNewChecklistItem("Social Media");
+                }
+                if (value === "rsvp" && !newChecklistItem.trim()) {
+                  setNewChecklistItem("Einladungen & RSVP");
                 }
               }}
             >
@@ -312,6 +315,7 @@ export function ChecklistSection(props: ChecklistSectionProps) {
               <SelectContent>
                 <SelectItem value="none">Standardpunkt / Trenner</SelectItem>
                 <SelectItem value="social_media">Systempunkt: Social Media</SelectItem>
+                <SelectItem value="rsvp">Systempunkt: Einladungen & RSVP</SelectItem>
               </SelectContent>
             </Select>
             <Input
