@@ -8499,6 +8499,7 @@ export type Database = {
           task_archived_info: Json | null
           task_id: string | null
           title: string | null
+          topic_backlog_id: string | null
           updated_at: string
           user_id: string
         }
@@ -8528,6 +8529,7 @@ export type Database = {
           task_archived_info?: Json | null
           task_id?: string | null
           title?: string | null
+          topic_backlog_id?: string | null
           updated_at?: string
           user_id: string
         }
@@ -8557,6 +8559,7 @@ export type Database = {
           task_archived_info?: Json | null
           task_id?: string | null
           title?: string | null
+          topic_backlog_id?: string | null
           updated_at?: string
           user_id?: string
         }
@@ -8587,6 +8590,13 @@ export type Database = {
             columns: ["task_id"]
             isOneToOne: false
             referencedRelation: "tasks"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "quick_notes_topic_backlog_id_fkey"
+            columns: ["topic_backlog_id"]
+            isOneToOne: false
+            referencedRelation: "topic_backlog"
             referencedColumns: ["id"]
           },
         ]

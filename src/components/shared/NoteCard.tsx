@@ -61,6 +61,8 @@ interface NoteCardProps {
   onSplitNote: (note: QuickNote) => void;
   onShare: (note: QuickNote) => void;
   onTransferToThemenspeicher?: (note: QuickNote) => void;
+  onMoveToThemenspeicher?: (note: QuickNote) => void;
+  isInThemenspeicher?: boolean;
   isTransferringToThemenspeicher?: boolean;
 }
 
@@ -75,6 +77,8 @@ export function NoteCard({
   onOpenMeetingSelector, onRemoveFromMeeting,
   onOpenEdit, onOpenVersionHistory, onSplitNote, onShare,
   onTransferToThemenspeicher,
+  onMoveToThemenspeicher,
+  isInThemenspeicher = false,
   isTransferringToThemenspeicher = false,
 }: NoteCardProps) {
   const [transferPopoverOpen, setTransferPopoverOpen] = useState(false);
@@ -243,9 +247,16 @@ export function NoteCard({
                               <Button
                                 variant="ghost"
                                 size="icon"
-                                className="h-6 w-6 hover:bg-muted/80 rounded-full"
+                                className={cn(
+                                  "h-6 w-6 hover:bg-muted/80 rounded-full",
+                                  isInThemenspeicher && "text-amber-600",
+                                )}
                                 disabled={isTransferringToThemenspeicher}
-                                onClick={(e) => e.stopPropagation()}
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  onTransferToThemenspeicher(note);
+                                  setTransferPopoverOpen(true);
+                                }}
                               >
                                 <Lightbulb className="h-3 w-3" />
                               </Button>
@@ -265,7 +276,7 @@ export function NoteCard({
                             disabled={isTransferringToThemenspeicher}
                             onClick={(e) => {
                               e.stopPropagation();
-                              onTransferToThemenspeicher(note);
+                              onMoveToThemenspeicher?.(note);
                               setTransferPopoverOpen(false);
                             }}
                           >
@@ -338,8 +349,8 @@ export function NoteCard({
                     <CalendarIcon className="h-3 w-3 mr-2" />Auf Jour Fixe setzen
                   </DropdownMenuItem>
                 )}
-                {onTransferToThemenspeicher && (
-                  <DropdownMenuItem onClick={() => onTransferToThemenspeicher(note)}>
+                {onMoveToThemenspeicher && (
+                  <DropdownMenuItem onClick={() => onMoveToThemenspeicher(note)}>
                     <Lightbulb className="h-3 w-3 mr-2" />In Themenspeicher verschieben
                   </DropdownMenuItem>
                 )}
