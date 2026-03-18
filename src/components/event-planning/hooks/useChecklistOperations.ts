@@ -22,6 +22,7 @@ interface UseChecklistOperationsParams {
   selectedPlanningTitle?: string;
   toast: (opts: { title: string; description?: string; variant?: "default" | "destructive" }) => void;
   onRefreshDetails: (planningId: string) => Promise<void>;
+  onSocialPlannerActionCreated?: (itemId: string, action: any) => void;
 }
 
 export function useChecklistOperations({
@@ -35,6 +36,7 @@ export function useChecklistOperations({
   selectedPlanningTitle,
   toast,
   onRefreshDetails,
+  onSocialPlannerActionCreated,
 }: UseChecklistOperationsParams) {
   const [checklistItems, setChecklistItems] = useState<ChecklistItem[]>([]);
   const [newChecklistItem, setNewChecklistItem] = useState("");
@@ -169,20 +171,25 @@ export function useChecklistOperations({
         if (plannerError) throw plannerError;
 
         const plannerUrl = `/my-work?tab=redaktion&highlight=${plannerItemId}`;
-        const { error: actionError } = await supabase.from("event_planning_item_actions").insert({
-          checklist_item_id: data.id,
-          action_type: "social_planner",
-          is_enabled: true,
-          action_config: {
-            system_point: "social_media",
-            planner_item_id: plannerItemId,
-            topic_backlog_id: topicId,
-            planner_url: plannerUrl,
-            label: "Im Social Planner öffnen",
-          },
-        });
+        const { data: createdAction, error: actionError } = await supabase
+          .from("event_planning_item_actions")
+          .insert({
+            checklist_item_id: data.id,
+            action_type: "social_planner",
+            is_enabled: true,
+            action_config: {
+              system_point: "social_media",
+              planner_item_id: plannerItemId,
+              topic_backlog_id: topicId,
+              planner_url: plannerUrl,
+              label: "Im Social Planner öffnen",
+            },
+          })
+          .select()
+          .single();
         if (actionError) throw actionError;
 
+        onSocialPlannerActionCreated?.(data.id, createdAction);
         toast({ title: "Systempunkt angelegt", description: "Social-Media-Punkt wurde erstellt und mit dem Social Planner verknüpft." });
       } catch (systemPointError) {
         debugConsole.error("Error creating social media system point:", systemPointError);
@@ -193,10 +200,18 @@ export function useChecklistOperations({
     }
 
     const transformedData: ChecklistItem = { ...data, sub_items: Array.isArray(data.sub_items) ? data.sub_items as any : (data.sub_items ? JSON.parse(data.sub_items as string) : []) };
-    setChecklistItems([...checklistItems, transformedData]);
+    setChecklistItems((prev) => {
+      const nextItems = [...prev.filter((item) => item.id !== transformedData.id), transformedData];
+      return nextItems.sort((a, b) => a.order_index - b.order_index);
+    });
     setNewChecklistItem("");
     setNewChecklistItemType("none");
-    await onRefreshDetails(selectedPlanningId);
+
+    try {
+      await onRefreshDetails(selectedPlanningId);
+    } catch (refreshError) {
+      debugConsole.warn("Checklist refresh after item creation failed; keeping optimistic system point.", refreshError);
+    }
   };
 
   const deleteChecklistItem = async (itemId: string) => {
