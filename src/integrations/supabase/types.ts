@@ -4333,6 +4333,7 @@ export type Database = {
           id: string
           is_completed: boolean
           order_index: number
+          relative_due_days: number | null
           sub_items: Json | null
           title: string
           type: string | null
@@ -4344,6 +4345,7 @@ export type Database = {
           id?: string
           is_completed?: boolean
           order_index?: number
+          relative_due_days?: number | null
           sub_items?: Json | null
           title: string
           type?: string | null
@@ -4355,6 +4357,7 @@ export type Database = {
           id?: string
           is_completed?: boolean
           order_index?: number
+          relative_due_days?: number | null
           sub_items?: Json | null
           title?: string
           type?: string | null
