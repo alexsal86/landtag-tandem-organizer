@@ -195,7 +195,7 @@ export const TaskDecisionDetails = ({ decisionId, isOpen, onClose, onArchived, h
 
       if (profilesError) throw profilesError;
 
-      const profileMap = new Map(profiles?.map(p => [p.user_id, p]) || []);
+      const profileMap = new Map<string, any>(profiles?.map(p => [p.user_id, p]) || []);
 
       const { data: commentsData, error: commentsError } = await supabase
         .from('task_decision_comments')

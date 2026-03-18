@@ -39,7 +39,7 @@ export function useMyWorkDecisionsSidebarData(decisions: MyWorkDecision[], userI
 
       if (requestRef.current !== requestId) return;
 
-      const profileMap = new Map(profiles?.map((p) => [p.user_id, p]) || []);
+      const profileMap = new Map<string, any>(profiles?.map((p) => [p.user_id, p]) || []);
       const decisionTitleMap = new Map(decisions.map((d) => [d.id, d.title]));
 
       const recentComments: SidebarDiscussionComment[] = comments.map((c) => {
