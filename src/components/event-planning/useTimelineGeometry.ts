@@ -92,7 +92,7 @@ export function useTimelineGeometry({
           const pointRect = timelinePoint.getBoundingClientRect();
 
           return {
-            assignmentId: assignment.checklistItemId,
+            assignmentId: assignment.checklist_item_id,
             startX: checklistRect.right - sectionRect.left,
             startY: checklistRect.top + checklistRect.height / 2 - sectionRect.top,
             endX: pointRect.left + pointRect.width / 2 - sectionRect.left,
