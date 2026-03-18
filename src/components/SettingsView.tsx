@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import type { ChangeEvent } from "react";
 import { useNavigate } from "react-router-dom";
 import { useTheme } from "next-themes";
 import { Monitor, Moon, Sun, Bell, Shield, Globe, User, Save, Volume2, Calendar, Mail, Activity, ClipboardList, Eye, EyeOff } from "lucide-react";
@@ -24,38 +25,39 @@ import { supabase } from "@/integrations/supabase/client";
 import type { Database } from "@/integrations/supabase/types";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 
-type UserProfile = Pick<Database["public"]["Tables"]["profiles"]["Row"], "display_name" | "avatar_url">;
+type ProfileRow = Database["public"]["Tables"]["profiles"]["Row"];
+type UserRoleRow = Pick<Database["public"]["Tables"]["user_roles"]["Row"], "role">;
 
-export function SettingsView() {
+export function SettingsView(): React.JSX.Element {
   const { theme, setTheme } = useTheme();
   const { toast } = useToast();
   const navigate = useNavigate();
   const { user } = useAuth();
   
-  const [notifications, setNotifications] = useState(true);
-  const [emailAlerts, setEmailAlerts] = useState(false);
-  const [soundEnabled, setSoundEnabled] = useState(true);
-  const [autoSave, setAutoSave] = useState(true);
-  const [language, setLanguage] = useState("de");
-  const [timezone, setTimezone] = useState("Europe/Berlin");
-  const [isAdmin, setIsAdmin] = useState(false);
-  const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
+  const [notifications, setNotifications] = useState<boolean>(true);
+  const [emailAlerts, setEmailAlerts] = useState<boolean>(false);
+  const [soundEnabled, setSoundEnabled] = useState<boolean>(true);
+  const [autoSave, setAutoSave] = useState<boolean>(true);
+  const [language, setLanguage] = useState<string>("de");
+  const [timezone, setTimezone] = useState<string>("Europe/Berlin");
+  const [isAdmin, setIsAdmin] = useState<boolean>(false);
+  const [userProfile, setUserProfile] = useState<ProfileRow | null>(null);
   
   // Password change state
-  const [passwordDialogOpen, setPasswordDialogOpen] = useState(false);
-  const [newPassword, setNewPassword] = useState("");
-  const [confirmPassword, setConfirmPassword] = useState("");
-  const [showPassword, setShowPassword] = useState(false);
-  const [changingPassword, setChangingPassword] = useState(false);
+  const [passwordDialogOpen, setPasswordDialogOpen] = useState<boolean>(false);
+  const [newPassword, setNewPassword] = useState<string>("");
+  const [confirmPassword, setConfirmPassword] = useState<string>("");
+  const [showPassword, setShowPassword] = useState<boolean>(false);
+  const [changingPassword, setChangingPassword] = useState<boolean>(false);
   
   // My Work Settings
   const { badgeDisplayMode, updateBadgeDisplayMode, isLoading: myWorkSettingsLoading } = useMyWorkSettings();
 
   const [userRole, setUserRole] = useState<string>('Benutzer');
 
-  useEffect(() => {
-    if (!user) return;
-    const loadUserData = async () => {
+  useEffect((): void => {
+    if (!user?.id) return;
+    const loadUserData = async (): Promise<void> => {
       const { data: adminData } = await supabase.rpc("is_admin", { _user_id: user.id });
       setIsAdmin(!!adminData);
       
@@ -63,7 +65,7 @@ export function SettingsView() {
         .from("profiles")
         .select("*")
         .eq("user_id", user.id)
-        .maybeSingle();
+        .maybeSingle<ProfileRow>();
       setUserProfile(profile);
 
       // Load role from user_roles table
@@ -71,7 +73,7 @@ export function SettingsView() {
         .from("user_roles")
         .select("role")
         .eq("user_id", user.id)
-        .maybeSingle();
+        .maybeSingle<UserRoleRow>();
       
       if (roleData?.role) {
         const roleLabels: Record<string, string> = {
@@ -84,10 +86,10 @@ export function SettingsView() {
         setUserRole(roleLabels[roleData.role] || roleData.role);
       }
     };
-    loadUserData();
+    void loadUserData();
   }, [user]);
 
-  const handleChangePassword = async () => {
+  const handleChangePassword = async (): Promise<void> => {
     if (newPassword !== confirmPassword) {
       toast({
         title: "Fehler",
@@ -134,7 +136,7 @@ export function SettingsView() {
     }
   };
 
-  const handleSaveSettings = () => {
+  const handleSaveSettings = (): void => {
     toast({
       title: "Einstellungen gespeichert",
       description: "Ihre Einstellungen wurden erfolgreich gespeichert.",
@@ -427,7 +429,7 @@ export function SettingsView() {
                     id="new-password"
                     type={showPassword ? "text" : "password"} 
                     value={newPassword}
-                    onChange={(e) => setNewPassword(e.target.value)}
+                    onChange={(e: ChangeEvent<HTMLInputElement>): void => setNewPassword(e.target.value)}
                     placeholder="Mindestens 8 Zeichen"
                   />
                   <Button
@@ -435,7 +437,7 @@ export function SettingsView() {
                     variant="ghost"
                     size="icon"
                     className="absolute right-0 top-0 h-full px-3 hover:bg-transparent"
-                    onClick={() => setShowPassword(!showPassword)}
+                    onClick={(): void => setShowPassword(!showPassword)}
                   >
                     {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                   </Button>
@@ -447,7 +449,7 @@ export function SettingsView() {
                   id="confirm-password"
                   type={showPassword ? "text" : "password"} 
                   value={confirmPassword}
-                  onChange={(e) => setConfirmPassword(e.target.value)}
+                  onChange={(e: ChangeEvent<HTMLInputElement>): void => setConfirmPassword(e.target.value)}
                   placeholder="Passwort wiederholen"
                 />
               </div>
@@ -459,7 +461,7 @@ export function SettingsView() {
               )}
             </div>
             <DialogFooter>
-              <Button variant="outline" onClick={() => {
+              <Button variant="outline" onClick={(): void => {
                 setPasswordDialogOpen(false);
                 setNewPassword("");
                 setConfirmPassword("");

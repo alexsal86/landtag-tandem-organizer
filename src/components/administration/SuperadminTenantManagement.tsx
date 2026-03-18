@@ -43,45 +43,45 @@ const ROLE_OPTIONS = [
   { value: "praktikant", label: "Praktikant" },
 ];
 
-export function SuperadminTenantManagement() {
+export function SuperadminTenantManagement(): React.JSX.Element {
   const { user } = useAuth();
   const { toast } = useToast();
-  const [isPlatformAdmin, setIsPlatformAdmin] = useState(false);
-  const [roleCheckLoading, setRoleCheckLoading] = useState(true);
+  const [isPlatformAdmin, setIsPlatformAdmin] = useState<boolean>(false);
+  const [roleCheckLoading, setRoleCheckLoading] = useState<boolean>(true);
   
   // Tenant states
   const [tenants, setTenants] = useState<TenantWithStats[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [dialogOpen, setDialogOpen] = useState(false);
+  const [loading, setLoading] = useState<boolean>(true);
+  const [dialogOpen, setDialogOpen] = useState<boolean>(false);
   const [editingTenant, setEditingTenant] = useState<TenantWithStats | null>(null);
   
   // Tenant form state
-  const [formName, setFormName] = useState("");
-  const [formDescription, setFormDescription] = useState("");
-  const [formIsActive, setFormIsActive] = useState(true);
+  const [formName, setFormName] = useState<string>("");
+  const [formDescription, setFormDescription] = useState<string>("");
+  const [formIsActive, setFormIsActive] = useState<boolean>(true);
 
   // User states
   const [allUsers, setAllUsers] = useState<UserWithTenants[]>([]);
-  const [usersLoading, setUsersLoading] = useState(false);
+  const [usersLoading, setUsersLoading] = useState<boolean>(false);
   const [selectedTenantFilter, setSelectedTenantFilter] = useState<string>("all");
   
   // Create user form
-  const [createUserDialogOpen, setCreateUserDialogOpen] = useState(false);
-  const [newUserEmail, setNewUserEmail] = useState("");
-  const [newUserName, setNewUserName] = useState("");
-  const [newUserRole, setNewUserRole] = useState("mitarbeiter");
-  const [newUserTenantId, setNewUserTenantId] = useState("");
+  const [createUserDialogOpen, setCreateUserDialogOpen] = useState<boolean>(false);
+  const [newUserEmail, setNewUserEmail] = useState<string>("");
+  const [newUserName, setNewUserName] = useState<string>("");
+  const [newUserRole, setNewUserRole] = useState<string>("mitarbeiter");
+  const [newUserTenantId, setNewUserTenantId] = useState<string>("");
   const [createdUserPassword, setCreatedUserPassword] = useState<string | null>(null);
-  const [passwordCopied, setPasswordCopied] = useState(false);
+  const [passwordCopied, setPasswordCopied] = useState<boolean>(false);
   
   // Assign tenant dialog
-  const [assignDialogOpen, setAssignDialogOpen] = useState(false);
+  const [assignDialogOpen, setAssignDialogOpen] = useState<boolean>(false);
   const [assigningUser, setAssigningUser] = useState<UserWithTenants | null>(null);
-  const [assignTenantId, setAssignTenantId] = useState("");
-  const [assignRole, setAssignRole] = useState("mitarbeiter");
+  const [assignTenantId, setAssignTenantId] = useState<string>("");
+  const [assignRole, setAssignRole] = useState<string>("mitarbeiter");
 
-  useEffect(() => {
-    const checkPlatformRole = async () => {
+  useEffect((): void => {
+    const checkPlatformRole = async (): Promise<void> => {
       if (!user?.id) {
         setIsPlatformAdmin(false);
         setRoleCheckLoading(false);
@@ -99,10 +99,10 @@ export function SuperadminTenantManagement() {
       setRoleCheckLoading(false);
     };
 
-    checkPlatformRole();
+    void checkPlatformRole();
   }, [user?.id]);
 
-  const loadTenants = async () => {
+  const loadTenants = async (): Promise<void> => {
     try {
       setLoading(true);
       const { data, error } = await supabase
@@ -113,7 +113,7 @@ export function SuperadminTenantManagement() {
       if (error) throw error;
 
       setTenants(data || []);
-    } catch (error) {
+    } catch (error: unknown) {
       debugConsole.error("Error loading tenants:", error);
       toast({ title: "Fehler", description: "Tenants konnten nicht geladen werden", variant: "destructive" });
     } finally {
@@ -121,7 +121,7 @@ export function SuperadminTenantManagement() {
     }
   };
 
-  const loadAllUsers = async () => {
+  const loadAllUsers = async (): Promise<void> => {
     try {
       setUsersLoading(true);
       const { data, error } = await supabase.functions.invoke('manage-tenant-user', {
@@ -131,7 +131,7 @@ export function SuperadminTenantManagement() {
       if (error) throw error;
       if (!data.success) throw new Error(data.error);
 
-      setAllUsers(data.users || []);
+      setAllUsers(data.users ?? []);
     } catch (error: unknown) {
       debugConsole.error("Error loading users:", error);
       toast({ title: "Fehler", description: error instanceof Error ? error.message : "Benutzer konnten nicht geladen werden", variant: "destructive" });
@@ -147,7 +147,7 @@ export function SuperadminTenantManagement() {
     }
   }, [isPlatformAdmin]);
 
-  const handleSaveTenant = async () => {
+  const handleSaveTenant = async (): Promise<void> => {
     if (!formName.trim()) {
       toast({ title: "Fehler", description: "Name ist erforderlich", variant: "destructive" });
       return;
@@ -232,7 +232,7 @@ export function SuperadminTenantManagement() {
     }
   };
 
-  const handleCreateUser = async () => {
+  const handleCreateUser = async (): Promise<void> => {
     if (!newUserEmail.trim() || !newUserName.trim() || !newUserTenantId) {
       toast({ title: "Fehler", description: "Alle Felder sind erforderlich", variant: "destructive" });
       return;
@@ -264,7 +264,7 @@ export function SuperadminTenantManagement() {
     }
   };
 
-  const handleAssignTenant = async () => {
+  const handleAssignTenant = async (): Promise<void> => {
     if (!assigningUser || !assignTenantId) {
       toast({ title: "Fehler", description: "Tenant ist erforderlich", variant: "destructive" });
       return;
@@ -293,7 +293,7 @@ export function SuperadminTenantManagement() {
     }
   };
 
-  const handleDeleteUser = async (userToDelete: UserWithTenants) => {
+  const handleDeleteUser = async (userToDelete: UserWithTenants): Promise<void> => {
     try {
       const { data, error } = await supabase.functions.invoke('manage-tenant-user', {
         body: {
@@ -313,7 +313,7 @@ export function SuperadminTenantManagement() {
     }
   };
 
-  const copyPassword = () => {
+  const copyPassword = (): void => {
     if (createdUserPassword) {
       navigator.clipboard.writeText(createdUserPassword);
       setPasswordCopied(true);
@@ -321,13 +321,13 @@ export function SuperadminTenantManagement() {
     }
   };
 
-  const openCreateTenantDialog = () => {
+  const openCreateTenantDialog = (): void => {
     setEditingTenant(null);
     resetTenantForm();
     setDialogOpen(true);
   };
 
-  const openEditTenantDialog = (tenant: TenantWithStats) => {
+  const openEditTenantDialog = (tenant: TenantWithStats): void => {
     setEditingTenant(tenant);
     setFormName(tenant.name);
     setFormDescription(tenant.description || "");
@@ -335,21 +335,21 @@ export function SuperadminTenantManagement() {
     setDialogOpen(true);
   };
 
-  const openAssignDialog = (userToAssign: UserWithTenants) => {
+  const openAssignDialog = (userToAssign: UserWithTenants): void => {
     setAssigningUser(userToAssign);
     setAssignTenantId("");
     setAssignRole("mitarbeiter");
     setAssignDialogOpen(true);
   };
 
-  const resetTenantForm = () => {
+  const resetTenantForm = (): void => {
     setFormName("");
     setFormDescription("");
     setFormIsActive(true);
     setEditingTenant(null);
   };
 
-  const resetCreateUserForm = () => {
+  const resetCreateUserForm = (): void => {
     setNewUserEmail("");
     setNewUserName("");
     setNewUserRole("mitarbeiter");
@@ -361,7 +361,7 @@ export function SuperadminTenantManagement() {
   // Filter users by selected tenant
   const filteredUsers = selectedTenantFilter === "all" 
     ? allUsers 
-    : allUsers.filter(u => u.tenants.some(t => t.id === selectedTenantFilter));
+    : allUsers.filter((u) => u.tenants.some((t) => t.id === selectedTenantFilter));
 
   const usersByTenantId = useMemo(() => {
     const map = new Map<string, Map<string, UserWithTenants>>();

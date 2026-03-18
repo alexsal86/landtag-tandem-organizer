@@ -48,7 +48,7 @@ import { MobileSubNavigation } from "@/components/layout/MobileSubNavigation";
 const CreateContact = lazyWithRetry(() => import("./CreateContact"));
 const NotFound = lazyWithRetry(() => import("./NotFound"));
 
-const Index = () => {
+const Index = (): React.JSX.Element => {
   const { user, loading: authLoading } = useAuth();
   const { currentTenant, loading: tenantLoading } = useTenant();
   const navigate = useNavigate();
@@ -59,7 +59,7 @@ const Index = () => {
   const loading = authLoading || (user && tenantLoading);
   
   // Determine active section from URL
-  const getActiveSectionFromPath = (pathname: string) => {
+  const getActiveSectionFromPath = (pathname: string): string => {
     if (pathname === '/') return 'dashboard';
     const pathSection = pathname.slice(1).split('/')[0];
 
@@ -70,12 +70,12 @@ const Index = () => {
     return pathSection || 'dashboard';
   };
   
-  const [activeSection, setActiveSection] = useState(() => getActiveSectionFromPath(location.pathname));
+  const [activeSection, setActiveSection] = useState<string>(() => getActiveSectionFromPath(location.pathname));
   const isCalendar = activeSection === "calendar";
   const isCreateContactRoute = activeSection === "contacts" && new URLSearchParams(location.search).get("action") === "new";
   
   // Dialog state management
-  const [showCreateAppointmentDialog, setShowCreateAppointmentDialog] = useState(false);
+  const [showCreateAppointmentDialog, setShowCreateAppointmentDialog] = useState<boolean>(false);
 
   const navGroups = useMemo(() => getNavigationGroups(), []);
   const activeGroup = useMemo(() =>
@@ -162,13 +162,13 @@ const Index = () => {
   }
 
   /** Wraps a section component with its own ErrorBoundary for isolated crash recovery */
-  const withSectionBoundary = (label: string, node: React.ReactNode) => (
+  const withSectionBoundary = (label: string, node: React.ReactNode): React.JSX.Element => (
     <ErrorBoundary fallbackMessage={`Der Bereich „${label}" konnte nicht geladen werden. Bitte laden Sie die Seite neu.`}>
       {node}
     </ErrorBoundary>
   );
 
-  const renderActiveSection = () => {
+  const renderActiveSection = (): React.JSX.Element => {
     switch (activeSection) {
       case 'dashboard':
         return withSectionBoundary('Dashboard', <CustomizableDashboard />);
