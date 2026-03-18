@@ -44,6 +44,7 @@
     "test:e2e:smoke-extended": "E2E_SMOKE_SUITE=extended node scripts/e2e-smoke-flows.mjs"
   },
   "dependencies": {
+    "@babel/parser": "^7.29.2",
     "@eslint/js": "^10.0.1",
     "@hello-pangea/dnd": "^18.0.1",
     "@hookform/resolvers": "^5.2.1",
@@ -141,7 +142,6 @@
     "react-resizable-panels": "^3.0.5",
     "react-router-dom": "^7.13.1",
     "recharts": "3.2.0",
-    
     "rrule": "^2.8.1",
     "rss-parser": "^3.13.0",
     "sonner": "^2.0.7",
