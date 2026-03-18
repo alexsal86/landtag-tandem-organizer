@@ -6,6 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import { ArrowLeft, ArrowRight, CalendarDays, Tag } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import type { SocialPlannerItem, PlannerWorkflowStatus } from "@/hooks/useSocialPlannerItems";
+import { type SpecialDay } from "@/utils/dashboard/specialDays";
 import "react-big-calendar/lib/css/react-big-calendar.css";
 
 const locales = { de };
@@ -38,17 +39,31 @@ const STATUS_LABELS: Record<PlannerWorkflowStatus, string> = {
   published: "Veröffentlicht",
 };
 
-interface CalendarEvent {
+interface PlannerCalendarEvent {
   id: string;
   title: string;
   start: Date;
   end: Date;
   item: SocialPlannerItem;
+  eventType: "planner";
 }
+
+interface HintCalendarEvent {
+  id: string;
+  title: string;
+  start: Date;
+  end: Date;
+  eventType: "hint";
+  hint: string;
+  allDay: true;
+}
+
+type CalendarEvent = PlannerCalendarEvent | HintCalendarEvent;
 
 interface Props {
   items: SocialPlannerItem[];
   onUpdateSchedule: (id: string, date: string) => void;
+  specialDays: SpecialDay[];
 }
 
 interface DateHeaderProps {
@@ -74,37 +89,69 @@ function MonthDateHeader({ date, label }: DateHeaderProps) {
   );
 }
 
-export function SocialPlannerCalendar({ items, onUpdateSchedule }: Props) {
+export function SocialPlannerCalendar({ items, onUpdateSchedule, specialDays }: Props) {
   const [currentDate, setCurrentDate] = useState(new Date());
   const [view, setView] = useState<View>(Views.MONTH);
 
   const { events, unscheduled } = useMemo(() => {
-    const scheduled: CalendarEvent[] = [];
+    const scheduled: PlannerCalendarEvent[] = [];
     const unscheduledItems: SocialPlannerItem[] = [];
 
     for (const item of items) {
       if (item.scheduled_for) {
         const start = new Date(item.scheduled_for);
         const end = new Date(start.getTime() + 60 * 60 * 1000);
-        scheduled.push({ id: item.id, title: item.topic, start, end, item });
+        scheduled.push({ id: item.id, title: item.topic, start, end, item, eventType: "planner" });
       } else {
         unscheduledItems.push(item);
       }
     }
 
-    return { events: scheduled, unscheduled: unscheduledItems };
-  }, [items]);
+    const visibleYear = currentDate.getFullYear();
+    const hintEvents: HintCalendarEvent[] = specialDays.map((specialDay) => {
+      const start = new Date(visibleYear, specialDay.month - 1, specialDay.day);
+      const end = new Date(visibleYear, specialDay.month - 1, specialDay.day + 1);
 
-  const eventStyleGetter = useCallback((event: CalendarEvent) => ({
-    style: {
-      backgroundColor: STATUS_COLORS[event.item.workflow_status] || "hsl(var(--primary))",
-      borderRadius: "4px",
-      border: "none",
-      color: "white",
-      fontSize: "11px",
-      padding: "2px 4px",
-    },
-  }), []);
+      return {
+        id: `special-day-${visibleYear}-${specialDay.month}-${specialDay.day}-${specialDay.name}`,
+        title: `Hinweis: ${specialDay.name}`,
+        start,
+        end,
+        eventType: "hint",
+        hint: specialDay.hint,
+        allDay: true,
+      };
+    });
+
+    return { events: [...scheduled, ...hintEvents], unscheduled: unscheduledItems };
+  }, [items, currentDate, specialDays]);
+
+  const eventStyleGetter = useCallback((event: CalendarEvent) => {
+    if (event.eventType === "hint") {
+      return {
+        style: {
+          backgroundColor: "hsl(42 96% 56%)",
+          borderRadius: "4px",
+          border: "1px solid hsl(35 92% 32% / 0.35)",
+          color: "hsl(20 14% 12%)",
+          fontSize: "11px",
+          fontWeight: 600,
+          padding: "2px 4px",
+        },
+      };
+    }
+
+    return {
+      style: {
+        backgroundColor: STATUS_COLORS[event.item.workflow_status] || "hsl(var(--primary))",
+        borderRadius: "4px",
+        border: "none",
+        color: "white",
+        fontSize: "11px",
+        padding: "2px 4px",
+      },
+    };
+  }, []);
 
   const handleEventDrop = useCallback(
     ({ event, start }: { event: CalendarEvent; start: string | Date }) => {
@@ -113,6 +160,7 @@ export function SocialPlannerCalendar({ items, onUpdateSchedule }: Props) {
     },
     [onUpdateSchedule],
   );
+
 
   const messages = useMemo(() => ({
     today: "Heute",
@@ -124,6 +172,8 @@ export function SocialPlannerCalendar({ items, onUpdateSchedule }: Props) {
     agenda: "Agenda",
     noEventsInRange: "Keine Beiträge in diesem Zeitraum.",
   }), []);
+
+  const tooltipAccessor = useCallback((event: CalendarEvent) => event.eventType === "hint" ? event.hint : event.title, []);
 
   return (
     <div className="space-y-3">
@@ -156,6 +206,8 @@ export function SocialPlannerCalendar({ items, onUpdateSchedule }: Props) {
           events={events}
           startAccessor="start"
           endAccessor="end"
+          allDayAccessor={(event: CalendarEvent) => event.eventType === "hint"}
+          tooltipAccessor={tooltipAccessor}
           date={currentDate}
           onNavigate={setCurrentDate}
           view={view}
