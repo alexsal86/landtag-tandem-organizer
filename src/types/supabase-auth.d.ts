@@ -2,7 +2,6 @@
 // Adds missing members to SupabaseAuthClient and ensures key types are exported.
 
 declare module '@supabase/supabase-js' {
-  // Re-export types that components import directly
   export interface User {
     id: string;
     email?: string;
@@ -34,7 +33,6 @@ declare module '@supabase/supabase-js' {
     [key: string]: any;
   };
 
-  // Augment the auth client with methods used throughout the codebase
   interface SupabaseAuthClient {
     getUser(): Promise<{ data: { user: User | null }; error: any }>;
     getSession(): Promise<{ data: { session: Session | null }; error: any }>;
