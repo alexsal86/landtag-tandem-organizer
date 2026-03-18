@@ -223,7 +223,7 @@ export function AdminTimeTrackingView() {
       ]);
 
       const profileMap = new Map(profilesRes.data?.map(p => [p.user_id, p]) || []);
-      const settingsMap = new Map(settingsRes.data?.map(s => [s.user_id, s]) || []);
+      const settingsMap = new Map<string, any>(settingsRes.data?.map((s: any) => [s.user_id, s]) || []);
 
       const emps: Employee[] = employeeIds.map(uid => ({
         user_id: uid,

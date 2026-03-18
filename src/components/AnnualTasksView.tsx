@@ -193,7 +193,7 @@ export function AnnualTasksView() {
       );
 
       const tasksWithStatus: AnnualTaskWithStatus[] = (tasksData || []).map(task => {
-        const completion = completionMap.get(task.id);
+        const completion = completionMap.get(task.id) as any;
         let status: AnnualTaskWithStatus['status'] = 'upcoming';
 
         if (completion?.completed_at) {
