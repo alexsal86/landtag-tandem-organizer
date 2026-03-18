@@ -37,6 +37,25 @@ interface Profile {
   display_name: string | null;
 }
 
+const DEFAULT_TASK_PRIORITIES = [
+  { value: "high", label: "Hoch" },
+  { value: "medium", label: "Mittel" },
+  { value: "low", label: "Niedrig" },
+];
+
+const DEFAULT_TASK_STATUSES = [
+  { name: "todo", label: "Offen" },
+  { name: "in-progress", label: "In Bearbeitung" },
+  { name: "completed", label: "Erledigt" },
+];
+
+const DEFAULT_TASK_CATEGORIES = [
+  { name: "legislation", label: "Gesetzgebung" },
+  { name: "committee", label: "Ausschuss" },
+  { name: "constituency", label: "Wahlkreis" },
+  { name: "personal", label: "Persönlich" },
+];
+
 export function MyWorkTasksTab() {
   const { user } = useAuth();
   const { toast } = useToast();
@@ -60,6 +79,7 @@ export function MyWorkTasksTab() {
   } = useMyWorkTasksData(user?.id);
   const [statusFilter, setStatusFilter] = usePersistentState<string>('mywork-tasks-status-filter', 'all');
   const [taskStatuses, setTaskStatuses] = useState<{name: string, label: string}[]>([]);
+  const [taskCategories, setTaskCategories] = useState<{name: string, label: string}[]>([]);
   const [dueFollowUpsExpanded, setDueFollowUpsExpanded] = useState(true);
   const [scheduledFollowUpsExpanded, setScheduledFollowUpsExpanded] = useState(false);
 
@@ -92,6 +112,12 @@ export function MyWorkTasksTab() {
   const [editingTaskId, setEditingTaskId] = useState<string | null>(null);
   const [editTaskTitle, setEditTaskTitle] = useState('');
   const [editTaskDescription, setEditTaskDescription] = useState('');
+  const [editTaskPriority, setEditTaskPriority] = useState('medium');
+  const [editTaskStatus, setEditTaskStatus] = useState('todo');
+  const [editTaskCategory, setEditTaskCategory] = useState('personal');
+
+  const availableTaskStatuses = taskStatuses.length > 0 ? taskStatuses : DEFAULT_TASK_STATUSES;
+  const availableTaskCategories = taskCategories.length > 0 ? taskCategories : DEFAULT_TASK_CATEGORIES;
 
 
   // Handle action parameter from URL
@@ -108,6 +134,7 @@ export function MyWorkTasksTab() {
     if (user) {
       loadProfiles();
       loadTaskStatuses();
+      loadTaskCategories();
     }
   }, [user]);
 
@@ -121,6 +148,19 @@ export function MyWorkTasksTab() {
       setTaskStatuses(statuses || []);
     } catch (error) {
       debugConsole.error('Error loading task statuses:', error);
+    }
+  };
+
+  const loadTaskCategories = async () => {
+    try {
+      const { data: categories } = await supabase
+        .from('task_categories')
+        .select('name, label')
+        .eq('is_active', true)
+        .order('order_index');
+      setTaskCategories(categories || []);
+    } catch (error) {
+      debugConsole.error('Error loading task categories:', error);
     }
   };
 
@@ -600,6 +640,9 @@ export function MyWorkTasksTab() {
     setEditingTaskId(taskId);
     setEditTaskTitle(task.title || '');
     setEditTaskDescription(toEditorHtml(task.description));
+    setEditTaskPriority(task.priority || 'medium');
+    setEditTaskStatus(task.status || 'todo');
+    setEditTaskCategory(task.category || 'personal');
     setTaskEditDialogOpen(true);
   };
 
@@ -612,6 +655,9 @@ export function MyWorkTasksTab() {
         .update({
           title: editTaskTitle.trim() || 'Ohne Titel',
           description: editTaskDescription || null,
+          priority: editTaskPriority,
+          status: editTaskStatus,
+          category: editTaskCategory,
         })
         .eq("id", editingTaskId)
         .select();
@@ -623,12 +669,26 @@ export function MyWorkTasksTab() {
       setEditingTaskId(null);
       setAssignedTasks(prev => prev.map((task) =>
         task.id === editingTaskId
-          ? { ...task, title: editTaskTitle.trim() || 'Ohne Titel', description: editTaskDescription || null }
+          ? {
+              ...task,
+              title: editTaskTitle.trim() || 'Ohne Titel',
+              description: editTaskDescription || null,
+              priority: editTaskPriority,
+              status: editTaskStatus,
+              category: editTaskCategory,
+            }
           : task
       ));
       setCreatedTasks(prev => prev.map((task) =>
         task.id === editingTaskId
-          ? { ...task, title: editTaskTitle.trim() || 'Ohne Titel', description: editTaskDescription || null }
+          ? {
+              ...task,
+              title: editTaskTitle.trim() || 'Ohne Titel',
+              description: editTaskDescription || null,
+              priority: editTaskPriority,
+              status: editTaskStatus,
+              category: editTaskCategory,
+            }
           : task
       ));
       setSubtasks(prev => {
@@ -636,7 +696,14 @@ export function MyWorkTasksTab() {
         Object.entries(prev).forEach(([parentId, list]) => {
           next[parentId] = list.map((task) =>
             task.id === editingTaskId
-              ? { ...task, title: editTaskTitle.trim() || 'Ohne Titel', description: editTaskDescription || null }
+              ? {
+                  ...task,
+                  title: editTaskTitle.trim() || 'Ohne Titel',
+                  description: editTaskDescription || null,
+                  priority: editTaskPriority,
+                  status: editTaskStatus,
+                  category: editTaskCategory,
+                }
               : task
           );
         });
@@ -879,13 +946,13 @@ export function MyWorkTasksTab() {
           <Badge variant="outline">{totalTasks}</Badge>
         </div>
         <div className="flex items-center gap-2">
-          <Select value={statusFilter} onValueChange={setStatusFilter}>
+              <Select value={statusFilter} onValueChange={setStatusFilter}>
             <SelectTrigger className="h-8 w-[140px] text-xs">
               <SelectValue placeholder="Status" />
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="all">Alle Status</SelectItem>
-              {taskStatuses.map(status => (
+              {availableTaskStatuses.map(status => (
                 <SelectItem key={status.name} value={status.name}>
                   {status.label}
                 </SelectItem>
@@ -1040,6 +1107,53 @@ export function MyWorkTasksTab() {
                 placeholder="Beschreibung eingeben..."
                 minHeight="180px"
               />
+            </div>
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+              <div className="space-y-2">
+                <div className="text-sm font-medium">Priorität</div>
+                <Select value={editTaskPriority} onValueChange={setEditTaskPriority}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Priorität wählen" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {DEFAULT_TASK_PRIORITIES.map((priority) => (
+                      <SelectItem key={priority.value} value={priority.value}>
+                        {priority.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-2">
+                <div className="text-sm font-medium">Status</div>
+                <Select value={editTaskStatus} onValueChange={setEditTaskStatus}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Status wählen" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {availableTaskStatuses.map((status) => (
+                      <SelectItem key={status.name} value={status.name}>
+                        {status.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-2">
+                <div className="text-sm font-medium">Kategorie</div>
+                <Select value={editTaskCategory} onValueChange={setEditTaskCategory}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Kategorie wählen" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {availableTaskCategories.map((category) => (
+                      <SelectItem key={category.name} value={category.name}>
+                        {category.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
             </div>
             <div className="flex justify-end">
               <Button onClick={handleSaveTaskEdit}>Speichern</Button>
