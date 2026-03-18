@@ -1,5 +1,6 @@
 import { defineConfig, type Plugin } from "vite";
 import react from "@vitejs/plugin-react-swc";
+import tailwindcss from "@tailwindcss/vite";
 import path from "path";
 // import { componentTagger } from "lovable-tagger";
 // import { nodePolyfills } from 'vite-plugin-node-polyfills';
@@ -50,7 +51,7 @@ export default defineConfig(({ mode }) => ({
   plugins: [
     lexicalDedupePlugin(),
     react(),
-    // nodePolyfills temporarily disabled due to @rollup/plugin-inject resolution issue
+    tailwindcss(),
     // nodePolyfills({
     //   include: ['buffer', 'process'],
     //   globals: { Buffer: true, process: true },
