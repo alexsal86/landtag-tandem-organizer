@@ -21,7 +21,10 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogD
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
+import type { Database } from "@/integrations/supabase/types";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+
+type UserProfile = Pick<Database["public"]["Tables"]["profiles"]["Row"], "display_name" | "avatar_url">;
 
 export function SettingsView() {
   const { theme, setTheme } = useTheme();
@@ -36,7 +39,7 @@ export function SettingsView() {
   const [language, setLanguage] = useState("de");
   const [timezone, setTimezone] = useState("Europe/Berlin");
   const [isAdmin, setIsAdmin] = useState(false);
-  const [userProfile, setUserProfile] = useState<any>(null);
+  const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
   
   // Password change state
   const [passwordDialogOpen, setPasswordDialogOpen] = useState(false);
