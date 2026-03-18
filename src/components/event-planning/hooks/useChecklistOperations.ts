@@ -180,7 +180,7 @@ export function useChecklistOperations({
           const { data: createdAction, error: actionError } = await supabase
             .from("event_planning_item_actions")
             .insert({
-              checklist_item_id: data.id,
+              checklist_item_id: itemId,
               action_type: "social_planner",
               is_enabled: true,
               action_config: {
