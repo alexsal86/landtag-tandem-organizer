@@ -7,9 +7,10 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
-import { Users, Plus, Mail, Send, Check, X, AlertCircle, Clock, Bell, MessageSquare, BookmarkPlus, ListPlus } from 'lucide-react';
+import { Users, Plus, Mail, Send, Check, X, AlertCircle, Clock, Bell, MessageSquare, BookmarkPlus, ListPlus, ChevronDown } from 'lucide-react';
 import { format } from 'date-fns';
 import { de } from 'date-fns/locale';
 import { supabase } from '@/integrations/supabase/client';
@@ -85,11 +86,19 @@ export const EventRSVPManager = ({ eventPlanningId, eventTitle }: EventRSVPManag
   // Distribution list
   const [distributionLists, setDistributionLists] = useState<any[]>([]);
   const [selectedDistList, setSelectedDistList] = useState('');
+  const [isRsvpListOpen, setIsRsvpListOpen] = useState(true);
+  const [hasUserToggledRsvpList, setHasUserToggledRsvpList] = useState(false);
 
   useEffect(() => {
     loadRSVPs();
     loadDistributionLists();
+    setHasUserToggledRsvpList(false);
   }, [eventPlanningId]);
+
+  useEffect(() => {
+    if (hasUserToggledRsvpList) return;
+    setIsRsvpListOpen(rsvps.length < 10);
+  }, [rsvps.length, hasUserToggledRsvpList]);
 
   const loadRSVPs = async () => {
     try {
@@ -592,97 +601,115 @@ export const EventRSVPManager = ({ eventPlanningId, eventTitle }: EventRSVPManag
               <span className="text-muted-foreground">{pending} ausstehend</span>
               {unsent > 0 && <span className="text-orange-500 font-medium">{unsent} vorgemerkt</span>}
             </div>
-            <div className="overflow-x-auto">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Name</TableHead>
-                    <TableHead>E-Mail</TableHead>
-                    <TableHead className="text-center">Status</TableHead>
-                    <TableHead className="text-center">Gesendet</TableHead>
-                    <TableHead className="text-center">Erinnerungen</TableHead>
-                    <TableHead className="text-center">Antwort am</TableHead>
-                    <TableHead className="text-center">Aktionen</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {rsvps.map((rsvp) => (
-                    <TableRow key={rsvp.id}>
-                      <TableCell className="font-medium">{rsvp.name}</TableCell>
-                      <TableCell className="text-sm text-muted-foreground">{rsvp.email}</TableCell>
-                      <TableCell className="text-center">
-                        {!rsvp.invitation_sent ? (
-                          <Badge variant="outline" className="border-orange-300 text-orange-600">
-                            <BookmarkPlus className="h-3 w-3 mr-1" />Vorgemerkt
-                          </Badge>
-                        ) : getStatusBadge(rsvp.status)}
-                      </TableCell>
-                      <TableCell className="text-center text-sm">
-                        {rsvp.invited_at
-                          ? format(new Date(rsvp.invited_at), 'dd.MM.yy', { locale: de })
-                          : '-'}
-                      </TableCell>
-                      <TableCell className="text-center text-sm">
-                        <TooltipProvider>
-                          <Tooltip>
-                            <TooltipTrigger>
-                              {rsvp.reminder_count > 0 ? (
-                                <Badge variant="secondary" className="text-xs">
-                                  {rsvp.reminder_count}x
-                                </Badge>
-                              ) : '-'}
-                            </TooltipTrigger>
-                            {rsvp.reminder_sent_at && (
-                              <TooltipContent>
-                                Letzte: {format(new Date(rsvp.reminder_sent_at), 'dd.MM.yy HH:mm', { locale: de })}
-                              </TooltipContent>
-                            )}
-                          </Tooltip>
-                        </TooltipProvider>
-                      </TableCell>
-                      <TableCell className="text-center text-sm">
-                        {rsvp.responded_at
-                          ? format(new Date(rsvp.responded_at), 'dd.MM.yy HH:mm', { locale: de })
-                          : '-'}
-                      </TableCell>
-                      <TableCell className="text-center">
-                        <div className="flex items-center justify-center gap-1">
-                          {rsvp.invitation_sent && rsvp.status === 'invited' && (
+            <Collapsible
+              open={isRsvpListOpen}
+              onOpenChange={(open) => {
+                setIsRsvpListOpen(open);
+                setHasUserToggledRsvpList(true);
+              }}
+            >
+              <CollapsibleTrigger asChild>
+                <Button variant="ghost" className="mb-4 flex w-full items-center justify-between px-3">
+                  <span className="text-sm font-medium">
+                    Liste mit Einladungen & RSVP {isRsvpListOpen ? 'ausblenden' : 'einblenden'}
+                  </span>
+                  <ChevronDown className={`h-4 w-4 transition-transform ${isRsvpListOpen ? 'rotate-180' : ''}`} />
+                </Button>
+              </CollapsibleTrigger>
+              <CollapsibleContent>
+                <div className="overflow-x-auto">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Name</TableHead>
+                        <TableHead>E-Mail</TableHead>
+                        <TableHead className="text-center">Status</TableHead>
+                        <TableHead className="text-center">Gesendet</TableHead>
+                        <TableHead className="text-center">Erinnerungen</TableHead>
+                        <TableHead className="text-center">Antwort am</TableHead>
+                        <TableHead className="text-center">Aktionen</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {rsvps.map((rsvp) => (
+                        <TableRow key={rsvp.id}>
+                          <TableCell className="font-medium">{rsvp.name}</TableCell>
+                          <TableCell className="text-sm text-muted-foreground">{rsvp.email}</TableCell>
+                          <TableCell className="text-center">
+                            {!rsvp.invitation_sent ? (
+                              <Badge variant="outline" className="border-orange-300 text-orange-600">
+                                <BookmarkPlus className="h-3 w-3 mr-1" />Vorgemerkt
+                              </Badge>
+                            ) : getStatusBadge(rsvp.status)}
+                          </TableCell>
+                          <TableCell className="text-center text-sm">
+                            {rsvp.invited_at
+                              ? format(new Date(rsvp.invited_at), 'dd.MM.yy', { locale: de })
+                              : '-'}
+                          </TableCell>
+                          <TableCell className="text-center text-sm">
                             <TooltipProvider>
                               <Tooltip>
-                                <TooltipTrigger asChild>
-                                  <Button
-                                    size="sm"
-                                    variant="ghost"
-                                    onClick={() => {
-                                      setReminderTargetIds([rsvp.id]);
-                                      setReminderText(DEFAULT_REMINDER_TEXT.replace('{eventTitle}', eventTitle));
-                                      setReminderDialogOpen(true);
-                                    }}
-                                    className="h-7 w-7 p-0"
-                                  >
-                                    <Bell className="h-4 w-4 text-muted-foreground" />
-                                  </Button>
+                                <TooltipTrigger>
+                                  {rsvp.reminder_count > 0 ? (
+                                    <Badge variant="secondary" className="text-xs">
+                                      {rsvp.reminder_count}x
+                                    </Badge>
+                                  ) : '-'}
                                 </TooltipTrigger>
-                                <TooltipContent>Erinnerung senden</TooltipContent>
+                                {rsvp.reminder_sent_at && (
+                                  <TooltipContent>
+                                    Letzte: {format(new Date(rsvp.reminder_sent_at), 'dd.MM.yy HH:mm', { locale: de })}
+                                  </TooltipContent>
+                                )}
                               </Tooltip>
                             </TooltipProvider>
-                          )}
-                          <Button
-                            size="sm"
-                            variant="ghost"
-                            onClick={() => deleteRSVP(rsvp.id)}
-                            className="h-7 w-7 p-0"
-                          >
-                            <X className="h-4 w-4 text-destructive" />
-                          </Button>
-                        </div>
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </div>
+                          </TableCell>
+                          <TableCell className="text-center text-sm">
+                            {rsvp.responded_at
+                              ? format(new Date(rsvp.responded_at), 'dd.MM.yy HH:mm', { locale: de })
+                              : '-'}
+                          </TableCell>
+                          <TableCell className="text-center">
+                            <div className="flex items-center justify-center gap-1">
+                              {rsvp.invitation_sent && rsvp.status === 'invited' && (
+                                <TooltipProvider>
+                                  <Tooltip>
+                                    <TooltipTrigger asChild>
+                                      <Button
+                                        size="sm"
+                                        variant="ghost"
+                                        onClick={() => {
+                                          setReminderTargetIds([rsvp.id]);
+                                          setReminderText(DEFAULT_REMINDER_TEXT.replace('{eventTitle}', eventTitle));
+                                          setReminderDialogOpen(true);
+                                        }}
+                                        className="h-7 w-7 p-0"
+                                      >
+                                        <Bell className="h-4 w-4 text-muted-foreground" />
+                                      </Button>
+                                    </TooltipTrigger>
+                                    <TooltipContent>Erinnerung senden</TooltipContent>
+                                  </Tooltip>
+                                </TooltipProvider>
+                              )}
+                              <Button
+                                size="sm"
+                                variant="ghost"
+                                onClick={() => deleteRSVP(rsvp.id)}
+                                className="h-7 w-7 p-0"
+                              >
+                                <X className="h-4 w-4 text-destructive" />
+                              </Button>
+                            </div>
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </div>
+              </CollapsibleContent>
+            </Collapsible>
           </>
         )}
       </CardContent>
