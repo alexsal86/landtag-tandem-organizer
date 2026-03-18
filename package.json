@@ -44,7 +44,6 @@
     "test:e2e:smoke-extended": "E2E_SMOKE_SUITE=extended node scripts/e2e-smoke-flows.mjs"
   },
   "dependencies": {
-    
     "@eslint/js": "^10.0.1",
     "@hello-pangea/dnd": "^18.0.1",
     "@hookform/resolvers": "^5.2.1",
