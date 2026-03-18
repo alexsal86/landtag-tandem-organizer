@@ -276,6 +276,16 @@ Empfohlene Weiterentwicklung mit Flow-Fokus:
 - Wenn ein Flow angefasst wird, sollen die direkt nachgelagerten Dateien desselben Datenflusses bevorzugt im selben Paket bereinigt werden.
 - Legacy-Dateien außerhalb des aktiven Flow-Scope dürfen vorübergehend abweichen, aber nur mit dokumentierter Ausnahme.
 
+### Ausnahmeregeln für Type-Sicherheits-Schulden in der Migrationsphase
+
+1. **Keine neuen `@ts-ignore`-Kommentare.** Während der Strict-Migration werden neue `@ts-ignore`-Ausnahmen grundsätzlich nicht eingeführt. Wenn ein Compilerproblem nur unter Zeitdruck überbrückt werden kann, muss zuerst geprüft werden, ob `unknown`, ein Guard, ein schmalerer Hilfstyp oder eine lokale Refaktorierung die sauberere Alternative ist.
+2. **Technisch unvermeidbare Ausnahmen nur mit vollständiger Begründung.** Falls eine Ausnahme nachweislich unvermeidbar ist, ist sie direkt am Code und zusätzlich im PR zu dokumentieren mit:
+   - kurzem fachlich-technischem Grund,
+   - Ticket- oder Issue-Referenz,
+   - geplantem Entfernungsdatum.
+3. **Non-Null-Assertions (`!`) und Typ-Casts (`as ...`) in migrierten Dateien aktiv prüfen.** Für jede neue oder geänderte Non-Null-Assertion bzw. jeden neuen oder geänderten Cast muss klar sein, welche Invariante fachlich gilt und warum sie an dieser Stelle zuverlässig erfüllt ist. Wo möglich, sind Guard, Assertion-Helper oder enger modellierte Typen vorzuziehen.
+4. **Strict-Batch-Erweiterungen erhalten einen eigenen Review-Checkpoint für Type-Sicherheits-Schulden.** Jede PR, die Dateien zu einem Strict-Batch hinzufügt oder einen bestehenden Batch erweitert, dokumentiert offen verbliebene Typ-Schulden und deren Abbauplan.
+
 ### Ausnahme-Dokumentation (temporär)
 
 Ausnahmen werden in PR-Beschreibungen oder einem technischen Schulden-Log dokumentiert mit:
@@ -283,8 +293,18 @@ Ausnahmen werden in PR-Beschreibungen oder einem technischen Schulden-Log dokume
 - Datei
 - betroffenem Flow
 - Grund
+- Ticket-/Issue-Referenz
 - geplantem Ziel-Batch
-- Zieltermin
+- Entfernungsdatum
+
+## Review-Checkfragen für PRs mit Strict-Batch-Änderungen
+
+Diese Checkfragen sollen in der PR-Beschreibung oder im Review explizit beantwortet werden, sobald eine PR einen Strict-Batch erweitert oder neue Dateien in ein Flow-Paket der Strict-Migration aufnimmt:
+
+1. Wurden **keine neuen `@ts-ignore`**-Kommentare eingeführt? Falls doch, warum war die Ausnahme technisch unvermeidbar, welches Ticket referenziert sie und bis wann wird sie entfernt?
+2. Sind **neue oder geänderte Non-Null-Assertions (`!`)** fachlich begründet und durch nachvollziehbare Invarianten oder Guards abgesichert?
+3. Sind **neue oder geänderte Typ-Casts (`as ...`)** auf das notwendige Minimum begrenzt und fachlich/technisch erklärt?
+4. Welche **offenen Type-Sicherheits-Schulden** verbleiben nach dieser PR im erweiterten Strict-Batch, und in welchem Folge-Batch oder Ticket werden sie abgebaut?
 
 ## Fortschrittsmetrik
 
