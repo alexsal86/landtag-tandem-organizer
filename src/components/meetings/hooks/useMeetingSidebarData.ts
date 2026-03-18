@@ -8,6 +8,7 @@ import type {
   LinkedCaseItem,
   RelevantDecision,
   MeetingUpcomingAppointment,
+  ExternalCalendarSummary,
 } from "@/components/meetings/types";
 
 interface UseMeetingSidebarDataDeps {
@@ -16,6 +17,22 @@ interface UseMeetingSidebarDataDeps {
   activeMeetingId: string | null;
   toast: (opts: { title: string; description: string; variant?: "default" | "destructive" }) => void;
 }
+
+interface ExternalEventAppointmentRow {
+  id: string;
+  title: string;
+  start_time: string;
+  end_time: string;
+  location: string | null;
+  external_calendars: ExternalCalendarSummary | ExternalCalendarSummary[] | null;
+}
+
+const extractExternalCalendar = (
+  value: ExternalEventAppointmentRow["external_calendars"],
+): ExternalCalendarSummary | null => {
+  if (!value) return null;
+  return Array.isArray(value) ? value[0] ?? null : value;
+};
 
 export function useMeetingSidebarData(deps: UseMeetingSidebarDataDeps) {
   const { userId, tenantId, toast } = deps;
@@ -207,17 +224,20 @@ export function useMeetingSidebarData(deps: UseMeetingSidebarDataDeps) {
 
         const all: MeetingUpcomingAppointment[] = [
           ...(internalData || []).map((a) => ({ ...a, isExternal: false as const })),
-          ...(externalData || []).map(
-            (e: any) => ({
+          ...((externalData || []) as ExternalEventAppointmentRow[]).map(
+            (e) => {
+              const calendar = extractExternalCalendar(e.external_calendars);
+              return {
               id: e.id,
               title: e.title,
               start_time: e.start_time,
               end_time: e.end_time,
               location: e.location,
               isExternal: true as const,
-              calendarName: e.external_calendars?.name,
-              calendarColor: e.external_calendars?.color,
-            })
+              calendarName: calendar?.name ?? undefined,
+              calendarColor: calendar?.color ?? undefined,
+            };
+            }
           ),
         ].sort((a, b) => new Date(a.start_time).getTime() - new Date(b.start_time).getTime());
         setMeetingUpcomingAppointments(all);

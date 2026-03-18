@@ -42,6 +42,26 @@ export interface AppointmentPreparation {
   }>;
 }
 
+type AppointmentPreparationData = AppointmentPreparation['preparation_data'];
+type AppointmentChecklistItem = AppointmentPreparation['checklist_items'][number];
+
+interface AppointmentPreparationRow {
+  id: string;
+  title: string;
+  status: string;
+  notes: string | null;
+  appointment_id: string | null;
+  template_id: string | null;
+  tenant_id: string;
+  created_by: string;
+  created_at: string;
+  updated_at: string;
+  is_archived: boolean;
+  archived_at: string | null;
+  preparation_data: AppointmentPreparationData | null;
+  checklist_items: AppointmentChecklistItem[] | null;
+}
+
 export function useAppointmentPreparation(preparationId: string | undefined) {
   const [preparation, setPreparation] = useState<AppointmentPreparation | null>(null);
   const [loading, setLoading] = useState(true);
@@ -64,21 +84,22 @@ export function useAppointmentPreparation(preparationId: string | undefined) {
       if (fetchError) throw fetchError;
 
       if (data) {
+        const row = data as AppointmentPreparationRow;
         setPreparation({
-          id: data.id,
-          title: data.title,
-          status: data.status,
-          notes: data.notes,
-          appointment_id: data.appointment_id,
-          template_id: data.template_id,
-          tenant_id: data.tenant_id,
-          created_by: data.created_by,
-          created_at: data.created_at,
-          updated_at: data.updated_at,
-          is_archived: data.is_archived,
-          archived_at: data.archived_at,
-          preparation_data: data.preparation_data as any || {},
-          checklist_items: data.checklist_items as any || []
+          id: row.id,
+          title: row.title,
+          status: row.status,
+          notes: row.notes,
+          appointment_id: row.appointment_id,
+          template_id: row.template_id,
+          tenant_id: row.tenant_id,
+          created_by: row.created_by,
+          created_at: row.created_at,
+          updated_at: row.updated_at,
+          is_archived: row.is_archived,
+          archived_at: row.archived_at,
+          preparation_data: row.preparation_data ?? {},
+          checklist_items: row.checklist_items ?? []
         });
       }
     } catch (err) {
@@ -93,12 +114,14 @@ export function useAppointmentPreparation(preparationId: string | undefined) {
     if (!preparationId || !user) return;
 
     try {
+      const updatePayload: Partial<AppointmentPreparationRow> = {
+        ...updates,
+        updated_at: new Date().toISOString(),
+      };
+
       const { error: updateError } = await supabase
         .from('appointment_preparations')
-        .update({
-          ...(updates as any),
-          updated_at: new Date().toISOString()
-        })
+        .update(updatePayload)
         .eq('id', preparationId);
 
       if (updateError) throw updateError;

@@ -2,20 +2,58 @@ import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { debugConsole } from '@/utils/debugConsole';
+import type { MeetingParticipantProfileRow, ParticipantRole } from '@/components/meetings/types';
 
 export interface MeetingParticipant {
   id: string;
   meeting_id: string;
   user_id: string;
-  role: 'organizer' | 'participant' | 'optional';
+  role: ParticipantRole;
   status: 'pending' | 'confirmed' | 'declined';
   created_at: string | null;
   user?: {
     id: string;
     display_name: string;
-    avatar_url?: string;
+    avatar_url?: string | null;
   };
 }
+
+interface MeetingParticipantRow {
+  id: string;
+  meeting_id: string;
+  user_id: string;
+  role: string;
+  status: string;
+  created_at: string | null;
+  user: MeetingParticipantProfileRow | MeetingParticipantProfileRow[] | null;
+}
+
+const getSingleProfile = (
+  profile: MeetingParticipantRow['user'],
+): MeetingParticipantProfileRow | null => {
+  if (!profile) return null;
+  return Array.isArray(profile) ? profile[0] ?? null : profile;
+};
+
+const mapParticipant = (item: MeetingParticipantRow): MeetingParticipant => {
+  const profile = getSingleProfile(item.user);
+
+  return {
+    id: item.id,
+    meeting_id: item.meeting_id,
+    user_id: item.user_id,
+    role: item.role as MeetingParticipant['role'],
+    status: item.status as MeetingParticipant['status'],
+    created_at: item.created_at,
+    user: profile
+      ? {
+          id: profile.user_id,
+          display_name: profile.display_name || 'Unbekannt',
+          avatar_url: profile.avatar_url,
+        }
+      : undefined,
+  };
+};
 
 export function useMeetingParticipants(meetingId?: string) {
   const [participants, setParticipants] = useState<MeetingParticipant[]>([]);
@@ -40,19 +78,9 @@ export function useMeetingParticipants(meetingId?: string) {
 
       if (error) throw error;
       
-      const transformedData: MeetingParticipant[] = (data || []).map(item => ({
-        id: item.id,
-        meeting_id: item.meeting_id,
-        user_id: item.user_id,
-        role: item.role as MeetingParticipant['role'],
-        status: item.status as MeetingParticipant['status'],
-        created_at: item.created_at,
-        user: item.user ? {
-          id: (item.user as any).user_id,
-          display_name: (item.user as any).display_name || 'Unbekannt',
-          avatar_url: (item.user as any).avatar_url
-        } : undefined
-      }));
+      const transformedData: MeetingParticipant[] = (data || []).map((item) =>
+        mapParticipant(item as MeetingParticipantRow),
+      );
       
       setParticipants(transformedData);
     } catch (error) {
@@ -66,7 +94,7 @@ export function useMeetingParticipants(meetingId?: string) {
     loadParticipants();
   }, [loadParticipants]);
 
-  const addParticipant = async (userId: string, role: 'organizer' | 'participant' | 'optional' = 'participant') => {
+  const addParticipant = async (userId: string, role: ParticipantRole = 'participant') => {
     if (!meetingId) return null;
 
     try {
@@ -96,19 +124,7 @@ export function useMeetingParticipants(meetingId?: string) {
         throw error;
       }
 
-      const newParticipant: MeetingParticipant = {
-        id: data.id,
-        meeting_id: data.meeting_id,
-        user_id: data.user_id,
-        role: data.role as MeetingParticipant['role'],
-        status: data.status as MeetingParticipant['status'],
-        created_at: data.created_at,
-        user: data.user ? {
-          id: (data.user as any).user_id,
-          display_name: (data.user as any).display_name || 'Unbekannt',
-          avatar_url: (data.user as any).avatar_url
-        } : undefined
-      };
+      const newParticipant = mapParticipant(data as MeetingParticipantRow);
 
       setParticipants(prev => [...prev, newParticipant]);
       return newParticipant;
@@ -165,7 +181,7 @@ export function useMeetingParticipants(meetingId?: string) {
     }
   };
 
-  const addMultipleParticipants = async (userIds: string[], role: 'organizer' | 'participant' | 'optional' = 'participant') => {
+  const addMultipleParticipants = async (userIds: string[], role: ParticipantRole = 'participant') => {
     if (!meetingId || userIds.length === 0) return [];
 
     const results: MeetingParticipant[] = [];

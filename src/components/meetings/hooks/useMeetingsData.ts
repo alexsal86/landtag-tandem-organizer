@@ -11,6 +11,27 @@ import { format } from "date-fns";
 import type { RecurrenceData, NewMeetingParticipant, AgendaItem, Meeting, MeetingTemplate, Profile, LinkedTask, MeetingParticipant, AgendaDocument } from "@/components/meetings/types";
 import { useMeetingSidebarData } from "./useMeetingSidebarData";
 
+interface MeetingTemplateRow extends Omit<MeetingTemplate, "template_items" | "default_recurrence"> {
+  template_items: MeetingTemplate["template_items"] | null;
+  default_recurrence?: MeetingTemplate["default_recurrence"] | null;
+}
+
+interface ParticipantMeetingRow {
+  meeting_id: string;
+  meetings: Meeting | Meeting[] | null;
+}
+
+const normalizeMeeting = (meeting: Meeting): Meeting => ({
+  ...meeting,
+  meeting_date: meeting.meeting_date instanceof Date ? meeting.meeting_date : new Date(meeting.meeting_date),
+});
+
+const normalizeMeetingTemplate = (template: MeetingTemplateRow): MeetingTemplate => ({
+  ...template,
+  template_items: template.template_items ?? [],
+  default_recurrence: template.default_recurrence ?? null,
+});
+
 export function useMeetingsData() {
   const [searchParams, setSearchParams] = useSearchParams();
   const { isHighlighted, highlightRef } = useNotificationHighlight();
@@ -90,9 +111,9 @@ export function useMeetingsData() {
     const urlMeetingId = searchParams.get('id');
     if (!urlMeetingId || meetings.length === 0) return;
 
-    const selectMeeting = (meeting: any) => {
+    const selectMeeting = (meeting: Meeting) => {
       if (selectedMeeting?.id === urlMeetingId) return;
-      const normalized = { ...meeting, meeting_date: meeting.meeting_date instanceof Date ? meeting.meeting_date : new Date(meeting.meeting_date) };
+      const normalized = normalizeMeeting(meeting);
       setSelectedMeeting(normalized);
       loadAgendaItems(urlMeetingId);
       searchParams.delete('id');
@@ -110,7 +131,7 @@ export function useMeetingsData() {
         .eq('id', urlMeetingId)
         .maybeSingle()
         .then(({ data }) => {
-          if (data) selectMeeting(data);
+          if (data) selectMeeting(data as Meeting);
         });
     }
   }, [searchParams, meetings, selectedMeeting, setSearchParams]);
@@ -270,12 +291,12 @@ export function useMeetingsData() {
       if (participantError) debugConsole.error('Error loading participant meetings:', participantError);
 
       const ownMeetingIds = new Set((ownMeetings || []).map(m => m.id));
-      const participantMeetingsData = (participantMeetings || [])
-        .filter(p => p.meetings && !ownMeetingIds.has(p.meeting_id) && p.meetings.status !== 'archived')
-        .map(p => p.meetings);
+      const participantMeetingsData = ((participantMeetings || []) as ParticipantMeetingRow[])
+        .map((row) => (Array.isArray(row.meetings) ? row.meetings[0] ?? null : row.meetings))
+        .filter((meeting): meeting is Meeting => Boolean(meeting && !ownMeetingIds.has(meeting.id!) && meeting.status !== 'archived'));
 
       const allMeetings = [...(ownMeetings || []), ...participantMeetingsData];
-      setMeetings(allMeetings.map(meeting => ({ ...meeting, meeting_date: new Date(meeting.meeting_date) })));
+      setMeetings(allMeetings.map((meeting) => normalizeMeeting(meeting as Meeting)));
     } catch (error) {
       handleAppError(error, { context: 'loadMeetings', toast: { fn: toast, title: 'Fehler beim Laden der Meetings', description: 'Die Meetings konnten nicht geladen werden.' } });
     }
@@ -338,9 +359,10 @@ export function useMeetingsData() {
       const { data, error } = await supabase
         .from('meeting_templates').select('*').order('is_default', { ascending: false }).order('name');
       if (error) throw error;
-      setMeetingTemplates((data || []) as MeetingTemplate[]);
+      const normalizedTemplates = ((data || []) as MeetingTemplateRow[]).map(normalizeMeetingTemplate);
+      setMeetingTemplates(normalizedTemplates);
 
-      const defaultTemplate = data?.find(t => t.is_default);
+      const defaultTemplate = normalizedTemplates.find((template) => template.is_default);
       if (defaultTemplate) {
         setNewMeeting(prev => ({ ...prev, template_id: defaultTemplate.id }));
         if (defaultTemplate.default_participants?.length) {
@@ -356,7 +378,7 @@ export function useMeetingsData() {
             });
         }
         if (defaultTemplate.default_recurrence) {
-          setNewMeetingRecurrence(defaultTemplate.default_recurrence as unknown as RecurrenceData);
+          setNewMeetingRecurrence(defaultTemplate.default_recurrence);
         }
       }
     } catch (error) {

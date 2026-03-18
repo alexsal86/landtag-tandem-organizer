@@ -6,6 +6,7 @@ import { useTenant } from './useTenant';
 import { format } from 'date-fns';
 import { toast } from './use-toast';
 import { debugConsole } from '@/utils/debugConsole';
+import type { ExternalCalendarSummary } from '@/components/meetings/types';
 
 export interface AppointmentWithFeedback {
   id: string;
@@ -39,6 +40,47 @@ export interface FeedbackSettings {
   show_all_appointments: boolean;
   auto_skip_internal: boolean;
 }
+
+interface AppointmentFeedbackRow {
+  id: string;
+  external_event_id: string | null;
+  appointment_id: string | null;
+  feedback_status: 'pending' | 'completed' | 'skipped';
+  notes: string | null;
+  has_documents: boolean | null;
+  has_tasks: boolean | null;
+  completed_at: string | null;
+  user_id: string;
+  tenant_id: string;
+  event_type: 'appointment' | 'external_event';
+  priority_score: number;
+  reminder_dismissed: boolean | null;
+}
+
+interface ExternalEventWithCalendarRow {
+  id: string;
+  title: string;
+  start_time: string;
+  end_time: string;
+  location: string | null;
+  description: string | null;
+  all_day: boolean | null;
+  external_calendar_id: string | null;
+  external_calendars: ExternalCalendarSummary | ExternalCalendarSummary[];
+}
+
+interface AppointmentFeedbackUpdate {
+  feedback_status?: 'pending' | 'completed' | 'skipped';
+  notes?: string;
+  has_documents?: boolean;
+  has_tasks?: boolean;
+  completed_at?: string;
+  reminder_dismissed?: boolean;
+}
+
+const extractExternalCalendar = (
+  value: ExternalEventWithCalendarRow['external_calendars'],
+): ExternalCalendarSummary | null => (Array.isArray(value) ? value[0] ?? null : value ?? null);
 
 export const useAppointmentFeedback = () => {
   const { user } = useAuth();
@@ -145,7 +187,11 @@ export const useAppointmentFeedback = () => {
         .in('external_event_id', eventIds);
 
       // 3. Finde Events ohne Feedback
-      const feedbackMap = new Map<string, any>(feedbackData?.map((f: any) => [f.external_event_id, f]) || []);
+      const feedbackMap = new Map<string, AppointmentFeedbackRow>(
+        (feedbackData as AppointmentFeedbackRow[] | null)?.flatMap((feedback) =>
+          feedback.external_event_id ? [[feedback.external_event_id, feedback] as const] : [],
+        ) || [],
+      );
       const eventsWithoutFeedback = externalEventsRaw.filter(e => !feedbackMap.has(e.id));
 
       // 4. Erstelle Feedback-Einträge für Events ohne Feedback
@@ -171,7 +217,8 @@ export const useAppointmentFeedback = () => {
       }
 
       // 5. Transform zu AppointmentWithFeedback Interface
-      return externalEventsRaw.map(event => {
+      return (externalEventsRaw as ExternalEventWithCalendarRow[]).map((event) => {
+        const calendar = extractExternalCalendar(event.external_calendars);
         const feedback = feedbackMap.get(event.id);
         return {
           id: event.id,
@@ -180,8 +227,8 @@ export const useAppointmentFeedback = () => {
           end_time: event.end_time,
           location: event.location,
           description: event.description,
-          user_id: event.external_calendars.user_id,
-          tenant_id: event.external_calendars.tenant_id,
+          user_id: calendar?.user_id ?? user.id,
+          tenant_id: calendar?.tenant_id ?? currentTenant.id,
           event_type: 'external_event' as const,
           feedback: feedback ? {
             id: feedback.id,
@@ -259,16 +306,9 @@ export const useAppointmentFeedback = () => {
       updates 
     }: { 
       feedbackId: string; 
-      updates: Partial<{
-        feedback_status: 'pending' | 'completed' | 'skipped';
-        notes: string;
-        has_documents: boolean;
-        has_tasks: boolean;
-        completed_at: string;
-        reminder_dismissed: boolean;
-      }> 
+      updates: AppointmentFeedbackUpdate 
     }) => {
-      const updateData: any = { ...updates, updated_at: new Date().toISOString() };
+      const updateData: AppointmentFeedbackUpdate & { updated_at: string } = { ...updates, updated_at: new Date().toISOString() };
       
       if (updates.feedback_status === 'completed' && !updates.completed_at) {
         updateData.completed_at = new Date().toISOString();
