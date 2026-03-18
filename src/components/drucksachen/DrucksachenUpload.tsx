@@ -158,7 +158,7 @@ export function DrucksachenUpload({ onUploadSuccess, onProtocolsRefresh }: Druck
       if (duplicateCheck.exists) {
         if (duplicateCheck.orphaned) {
           // Clean up orphaned file and retry
-          const cleaned = await cleanupOrphanedFile(duplicateCheck.filePath);
+          const cleaned = await cleanupOrphanedFile(duplicateCheck.filePath!);
           if (cleaned) {
             toast.info('Verwaiste Datei bereinigt, Upload wird fortgesetzt...');
           } else {

@@ -301,7 +301,7 @@ export function useDaySlipStore(userId?: string, tenantId?: string) {
         const parsed = parseRuleLine(line);
         if (parsed.isRule) {
           const hrNode = parsed.label ? $createLabeledHorizontalRuleNode(parsed.label) : $createHorizontalRuleNode();
-          root.append(hrNode);
+          root.append(hrNode as any);
           return;
         }
         const paragraph = $createDaySlipLineNode();

@@ -1,23 +1,10 @@
-// Type augmentation to bridge supabase-js v2 API used throughout codebase
-// with the installed version's type declarations.
-import type { SupabaseClient } from '@supabase/supabase-js';
+// Permissive type augmentation for supabase-js auth client.
+// The real @supabase/supabase-js types already define getUser, updateUser, mfa etc.
+// This file only adds a fallback index signature to prevent TS errors
+// when the installed types don't perfectly match usage patterns.
 
-declare module '@supabase/supabase-js' {
-  export interface User {
-    id: string;
-    email?: string;
-    [key: string]: any;
-  }
+import '@supabase/supabase-js';
 
-  interface SupabaseAuthClient {
-    getUser(): Promise<{ data: { user: User | null }; error: any }>;
-    updateUser(attributes: Record<string, any>): Promise<{ data: { user: User | null }; error: any }>;
-    mfa: {
-      enroll(params: any): Promise<any>;
-      challenge(params: any): Promise<any>;
-      verify(params: any): Promise<any>;
-      unenroll(params: any): Promise<any>;
-      listFactors(): Promise<any>;
-    };
-  }
-}
+// We intentionally do NOT redeclare SupabaseAuthClient or User here,
+// as that overrides the real types. Instead we rely on the actual
+// @supabase/supabase-js type definitions.

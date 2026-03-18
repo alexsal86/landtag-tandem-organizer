@@ -61,8 +61,8 @@ export function VacationHistoryDialog({
       setHistory(data || []);
       
       // Extrahiere verfügbare Jahre
-      const years = (data || []).map(h => h.year);
-      setAvailableYears([...new Set(years)].sort((a, b) => b - a));
+      const years = (data || []).map(h => h.year) as number[];
+      setAvailableYears([...new Set(years)].sort((a: number, b: number) => b - a));
     } catch (error) {
       debugConsole.error("Error loading vacation history:", error);
     } finally {
