@@ -43,7 +43,7 @@ export default function LetterDOCXExport({
     setIsExporting(true);
     
     try {
-      const result = await generateLetterDOCX(letter);
+      const result = await generateLetterDOCX(letter as any);
       
       if (!result) {
         throw new Error('DOCX-Generierung fehlgeschlagen');

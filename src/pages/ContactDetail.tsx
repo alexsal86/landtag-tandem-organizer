@@ -43,6 +43,7 @@ export default function ContactDetail() {
       if (error) throw error;
       if (data) {
         setContact({
+          contact_type: 'person' as const,
           id: data.id,
           name: data.name,
           role: data.role,
@@ -55,7 +56,7 @@ export default function ContactDetail() {
           last_contact: data.last_contact,
           avatar_url: data.avatar_url,
           notes: data.notes,
-        });
+        } as any);
       }
     } catch (error) {
       debugConsole.error('Error fetching contact:', error);

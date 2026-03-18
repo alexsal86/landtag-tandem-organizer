@@ -218,7 +218,7 @@ export function useLetterOperations(opts: UseLetterOperationsOptions) {
         if (newStatus === 'sent') {
           try {
             const { archiveLetter } = await import('@/utils/letterArchiving');
-            const archiveResult = await archiveLetter(letter, userId!);
+            const archiveResult = await archiveLetter(letter as any, userId!);
             toast({
               title: archiveResult ? 'Brief versendet und archiviert' : 'Brief versendet',
               description: archiveResult

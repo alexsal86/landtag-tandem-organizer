@@ -287,7 +287,7 @@ export function useTaskDetailData(task: Task | null) {
         priority: task.priority || "medium",
         category: task.category || "personal",
         progress: 0,
-      }] as TaskInsert);
+      }] as any);
       if (error) throw error;
       setNewSubtask({ description: "", assigned_to: "", due_date: "" });
       loadSubtasks(task.id);

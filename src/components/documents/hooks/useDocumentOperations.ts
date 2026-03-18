@@ -197,7 +197,7 @@ export function useDocumentOperations({
     if (!confirm('Möchten Sie diesen Brief archivieren?')) return;
     const letter = letters.find(l => l.id === letterId);
     if (!letter) { toast({ title: "Fehler", description: "Brief nicht gefunden.", variant: "destructive" }); return; }
-    const success = await archiveLetter(letter);
+    const success = await archiveLetter(letter as any);
     if (success) { fetchLetters(); if (activeTab === 'documents') fetchDocuments(); }
   };
 

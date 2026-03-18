@@ -63,7 +63,7 @@ export const TenantProvider = ({ children }: { children: React.ReactNode }): Rea
         `)
         .eq("user_id", user.id)
         .eq("is_active", true)
-        .returns<UserTenantMembership[]>();
+        .returns();
 
       if (membershipError) {
         debugConsole.error("❌ Error fetching tenant memberships:", membershipError);

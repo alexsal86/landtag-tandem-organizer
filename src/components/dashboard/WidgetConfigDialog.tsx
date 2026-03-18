@@ -44,7 +44,7 @@ const REFRESH_INTERVALS = [
 ];
 
 export function WidgetConfigDialog({ widget, open, onOpenChange, onSave }: WidgetConfigDialogProps) {
-  const [config, setConfig] = useState(widget.configuration || {});
+  const [config, setConfig] = useState<Record<string, any>>(widget.configuration || {});
 
   const handleSave = () => {
     onSave(config);

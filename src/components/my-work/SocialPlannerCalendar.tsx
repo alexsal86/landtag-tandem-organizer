@@ -271,7 +271,7 @@ export function SocialPlannerCalendar({ items, onUpdateSchedule, onEditItem, spe
     }
   }, [onUpdateSchedule]);
 
-  const handleEventMove = useCallback(async ({ event, start }: { event: CalendarEvent; start: Date }) => {
+  const handleEventMove = useCallback(async ({ event, start }: { event: CalendarEvent; start: any }) => {
     await persistSchedule(event.id, start);
   }, [persistSchedule]);
 
