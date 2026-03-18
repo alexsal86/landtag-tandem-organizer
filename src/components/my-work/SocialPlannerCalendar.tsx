@@ -3,7 +3,8 @@ import { Calendar, dateFnsLocalizer, Views, type View } from "react-big-calendar
 import { format, parse, startOfWeek, getDay, getISOWeek, isSameDay } from "date-fns";
 import { de } from "date-fns/locale";
 import { Badge } from "@/components/ui/badge";
-import { CalendarDays, Tag } from "lucide-react";
+import { ArrowLeft, ArrowRight, CalendarDays, Tag } from "lucide-react";
+import { Button } from "@/components/ui/button";
 import type { SocialPlannerItem, PlannerWorkflowStatus } from "@/hooks/useSocialPlannerItems";
 import "react-big-calendar/lib/css/react-big-calendar.css";
 
@@ -65,7 +66,7 @@ function MonthDateHeader({ date, label }: DateHeaderProps) {
     <div className="social-planner-month-date-header">
       {showWeekNumber && (
         <span className="social-planner-week-gutter" aria-label={`Kalenderwoche ${isoWeek}`}>
-          KW {isoWeek}
+          {isoWeek}
         </span>
       )}
       <span className="social-planner-day-label">{label}</span>
@@ -125,8 +126,31 @@ export function SocialPlannerCalendar({ items, onUpdateSchedule }: Props) {
   }), []);
 
   return (
-    <div className="flex gap-3">
-      <div className="flex-1 min-h-[500px]">
+    <div className="space-y-3">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <div>
+          <h4 className="text-sm font-semibold text-foreground">Planungskalender</h4>
+          <p className="text-xs text-muted-foreground">
+            {format(currentDate, view === Views.MONTH ? "MMMM yyyy" : "'Woche vom' dd. MMMM yyyy", { locale: de })}
+          </p>
+        </div>
+
+        <div className="flex flex-wrap items-center gap-2">
+          <div className="flex items-center rounded-md border overflow-hidden">
+            <Button type="button" size="sm" variant="ghost" className="rounded-none h-8 px-2" onClick={() => setCurrentDate(new Date())}>
+              Heute
+            </Button>
+            <Button type="button" size="icon" variant="ghost" className="rounded-none h-8 w-8" onClick={() => setCurrentDate((current) => new Date(current.getFullYear(), current.getMonth() - 1, 1))}>
+              <ArrowLeft className="h-4 w-4" />
+            </Button>
+            <Button type="button" size="icon" variant="ghost" className="rounded-none h-8 w-8" onClick={() => setCurrentDate((current) => new Date(current.getFullYear(), current.getMonth() + 1, 1))}>
+              <ArrowRight className="h-4 w-4" />
+            </Button>
+          </div>
+        </div>
+      </div>
+
+      <div className="min-h-[500px]">
         <Calendar
           localizer={localizer}
           events={events}
@@ -162,12 +186,12 @@ export function SocialPlannerCalendar({ items, onUpdateSchedule }: Props) {
       </div>
 
       {unscheduled.length > 0 && (
-        <aside className="w-56 shrink-0 space-y-2 rounded-lg border bg-muted/30 p-3">
+        <aside className="space-y-2 rounded-lg border bg-muted/30 p-3">
           <h4 className="text-xs font-semibold text-foreground flex items-center gap-1.5">
             <CalendarDays className="h-3.5 w-3.5" />
             Ungeplant ({unscheduled.length})
           </h4>
-          <div className="space-y-1.5 max-h-[400px] overflow-y-auto">
+          <div className="grid gap-2 md:grid-cols-2 xl:grid-cols-3">
             {unscheduled.map((item) => (
               <div key={item.id} className="rounded-md border bg-card p-2 text-xs space-y-1">
                 <p className="font-medium leading-tight">{item.topic}</p>
