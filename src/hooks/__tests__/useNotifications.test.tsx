@@ -127,6 +127,26 @@ describe('useNotifications', () => {
     expect(toastSpy).not.toHaveBeenCalled();
   });
 
+  it('shows a destructive toast when the initial notifications fetch fails', async () => {
+    state.notificationsResult = { data: null, error: new Error('select failed') };
+
+    const { result } = renderHook(() => useNotifications());
+
+    await waitFor(() => {
+      expect(result.current.loading).toBe(false);
+    });
+
+    expect(result.current.notifications).toEqual([]);
+    expect(result.current.unreadCount).toBe(0);
+    expect(toastSpy).toHaveBeenCalledWith(
+      expect.objectContaining({
+        title: 'Fehler',
+        description: 'Benachrichtigungen konnten nicht geladen werden.',
+        variant: 'destructive',
+      }),
+    );
+  });
+
   it('rolls back optimistic markAllAsRead and shows a destructive toast on Supabase errors', async () => {
     state.updateResult = { error: new Error('update failed') };
 

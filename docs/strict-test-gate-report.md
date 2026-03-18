@@ -9,14 +9,29 @@ Vor einer Strict-Aktivierung gilt ein Modul in diesem Report nur dann als **frei
 - `docs/architecture-guidelines.md`: mindestens ein Happy-Path- und ein Negativtest; Supabase wird bei Datenzugriff gemockt.
 - `docs/ci-quality-gates.md`: die priorisierten Kernflows bleiben pro Modul in den dokumentierten Positiv- und Negativpfaden sichtbar.
 
+## Verbindlicher Preflight für neue Hook-Migrationswellen
+
+Vor **jeder** neuen Migrationswelle unter `src/hooks/**` wird dieser Report für die betroffenen Kernmodule aktualisiert. Für priorisierte Kernflows gilt:
+
+1. Zuerst Test-Gate gegen `docs/architecture-guidelines.md` prüfen.
+2. Bei fehlendem Happy-Path oder Negativtest die Testlücke schließen.
+3. Erst danach `strictNullChecks` und anschließend `noImplicitAny` für den jeweiligen Batch erweitern.
+
+Die priorisierten Prüffälle für diesen Preflight bleiben:
+
+- `src/hooks/useAuth.tsx`
+- `src/hooks/useTenant.tsx`
+- `src/hooks/useNotifications.tsx`
+- `src/hooks/useLetterArchiving.tsx`
+
 ## Welle 1 – priorisierte Hooks
 
 | Modul | Happy Path | Negativpfad | Supabase-Mock bei Datenzugriff | Strict-Migration blockieren? | Begründung |
 |---|---|---|---|---|---|
 | `src/hooks/useAuth.tsx` | Ja | Ja | Ja | Nein | Dedizierte Hook-Tests decken Session-Wiederherstellung, Sign-out, Auth-State-Wechsel und Guard-Verhalten ab; damit ist der dokumentierte Flow „Auth / Tenant-Wechsel“ auf Hook-Ebene belastbar genug. |
 | `src/hooks/useTenant.tsx` | Ja | Ja | Ja | Nein | Dedizierte Tests decken leeren User-Kontext, erfolgreiche Tenant-Auflösung, Storage-Persistenz, Legacy-Key-Bereinigung und Fehlerpfade ab; das passt zu den CI-Negativpfaden für fehlende Session/Tenant-Zuordnung. |
-| `src/hooks/useNotifications.tsx` | Ja | Ja | Ja | Nein | Dedizierte Hook-Tests sichern Laden, `markAllAsRead`, Optimistic Update und Rollback bei Persistenzfehlern ab; damit ist der priorisierte Read/Unread-Flow vor Strict-Aktivierung ausreichend abgesichert. |
-| `src/hooks/useLetterArchiving.tsx` | Ja | Ja | Ja | Nein | Dedizierte Hook-Tests sichern PDF-/Dokument-Archivierung, Statuswechsel auf `sent` sowie den destruktiven Fehlerpfad bei fehlendem User/Tenant-Kontext ab. |
+| `src/hooks/useNotifications.tsx` | Ja | Ja | Ja | Nein | Dedizierte Hook-Tests sichern Laden, den Fehlerpfad beim initialen Fetch, `markAllAsRead`, Optimistic Update und Rollback bei Persistenzfehlern ab; damit ist der priorisierte Read/Unread-Flow vor Strict-Aktivierung ausreichend abgesichert. |
+| `src/hooks/useLetterArchiving.tsx` | Ja | Ja | Ja | Nein | Dedizierte Hook-Tests sichern PDF-/Dokument-Archivierung, Statuswechsel auf `sent`, den destruktiven Fehlerpfad bei fehlendem User/Tenant-Kontext sowie Upload-/Archivierungsfehler vor dem Strict-Schritt ab. |
 
 ## Welle 2 – Services / Features im aktuellen Strict-Zuschnitt
 

@@ -41,6 +41,14 @@ Die Flag-Priorität für die **aktuelle Migrationsphase** folgt den priorisierte
 
 ## Steuerungsregeln
 
+### Verbindliches Test-Gate vor jeder neuen Migrationswelle in `src/hooks/**`
+
+- Bevor ein weiterer Hook-Batch oder ein zusätzlicher priorisierter Hook auf `strictNullChecks` oder `noImplicitAny` umgestellt wird, ist für die betroffenen Kernmodule ein dokumentierter **Happy-Path- und Negativtest** nachzuweisen.
+- Für die priorisierten Kernmodule `src/hooks/useAuth.tsx`, `src/hooks/useTenant.tsx`, `src/hooks/useNotifications.tsx` und `src/hooks/useLetterArchiving.tsx` gilt dieses Gate mit Vorrang vor jeder weiteren TypeScript-Verschärfung.
+- Maßgebliche Freigabegrundlage ist `docs/architecture-guidelines.md`: Tests müssen relevant sein, bei Datenzugriff Supabase mocken und den fachlichen Kernflow sichtbar machen.
+- Fehlt dieser Nachweis oder ist er fachlich zu schwach, wird die Migration **zuerst** durch fehlende Tests ergänzt und **erst danach** auf `strictNullChecks` bzw. `noImplicitAny` erweitert.
+- Die Freigabe ist pro Welle in `docs/strict-test-gate-report.md` oder in einem gleichwertigen Batch-Dokument festzuhalten.
+
 ### Pflegegrundsatz: realer Fortschritt statt Plan-Fortschritt
 
 - Die Statusangabe `Abgeschlossen` darf nur verwendet werden, wenn der Batch bereits gemergt ist.
