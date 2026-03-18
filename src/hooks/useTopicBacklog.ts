@@ -155,7 +155,7 @@ export function useTopicBacklog() {
           workflow_status: row.workflow_status,
           scheduled_for: row.scheduled_for,
           responsible_user_id: row.responsible_user_id,
-          responsible_person_name: row.responsible_user_id ? responsibleNameById.get(row.responsible_user_id) || null : null,
+          responsible_person_name: row.responsible_user_id ? (responsibleNameById.get(row.responsible_user_id) as string) || null : null,
           asset_requirements: row.asset_requirements || [],
           primary_channel_name: primaryChannel,
           channel_names: channelNames,

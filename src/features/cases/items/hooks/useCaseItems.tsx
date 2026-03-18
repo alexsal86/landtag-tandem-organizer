@@ -226,7 +226,7 @@ export const useCaseItems = () => {
       // Fetch existing item to detect changes
       const existing = caseItems.find(ci => ci.id === id);
 
-      const updateData: CaseItemUpdate = { ...data, intake_payload: data.intake_payload ?? null };
+      const updateData: any = { ...data, intake_payload: data.intake_payload ?? null };
       const { error } = await supabase.from("case_items").update(updateData).eq("id", id);
 
       if (error) throw error;

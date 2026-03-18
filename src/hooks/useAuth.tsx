@@ -46,7 +46,7 @@ const trackSession = async (userId: string): Promise<void> => {
       .eq("device_info", deviceInfo)
       .order("last_active_at", { ascending: false })
       .limit(1)
-      .returns<UserSessionRow[]>();
+      .returns();
 
     if (existingError) {
       throw existingError;

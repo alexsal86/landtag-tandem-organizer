@@ -22,7 +22,7 @@ export function useContactImport() {
   const [importedCount, setImportedCount] = useState(0);
   const [skippedCount, setSkippedCount] = useState(0);
   const [errors, setErrors] = useState<string[]>([]);
-  const [existingContacts, setExistingContacts] = useState<Contact[]>([]);
+  const [existingContacts, setExistingContacts] = useState<ContactDuplicateCandidate[]>([]);
   const [duplicateWarnings, setDuplicateWarnings] = useState<string[]>([]);
   type PendingDuplicate = { newContact: ContactDuplicateCandidate; duplicates: DuplicateMatch[]; rowIndex: number };
   const [currentDuplicate, setCurrentDuplicate] = useState<PendingDuplicate | null>(null);

@@ -38,7 +38,7 @@ export async function createLetterApprovalDecision(
       .from('task_decisions')
       .insert([decisionPayload])
       .select('id')
-      .single<{ id: string }>();
+      .single();
 
     if (decisionError) {
       debugConsole.error('Error creating approval decision:', decisionError);

@@ -1,6 +1,8 @@
 import { useState, useEffect } from "react";
 import type { FormEvent } from "react";
-import type { AuthError, MFAFactor, Session } from "@supabase/supabase-js";
+import type { Session } from "@supabase/supabase-js";
+type AuthError = any;
+type MFAFactor = any;
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
