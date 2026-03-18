@@ -9,7 +9,27 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { supabase } from "@/integrations/supabase/client";
+import type { Tables } from "@/integrations/supabase/types";
 import { useToast } from "@/hooks/use-toast";
+
+
+type ArchivedTaskRow = Tables<"archived_tasks">;
+type TaskDecisionRow = Tables<"task_decisions">;
+type TaskDecisionResponseRow = Tables<"task_decision_responses">;
+
+interface ArchivedDecisionTaskRelation {
+  title: string;
+}
+
+interface ArchivedDecisionRow extends Pick<TaskDecisionRow, "id" | "task_id" | "title" | "description" | "created_at" | "archived_at" | "archived_by"> {
+  tasks: ArchivedDecisionTaskRelation;
+}
+
+interface DecisionResponseCount {
+  yes: number;
+  no: number;
+  question: number;
+}
 
 interface ArchivedTask {
   id: string;
@@ -67,7 +87,7 @@ export function TaskArchiveView() {
 
       if (error) throw error;
       // Convert database format to component format
-      const formattedTasks: ArchivedTask[] = (data || []).map(task => ({
+      const formattedTasks: ArchivedTask[] = (data ?? []).map((task: ArchivedTaskRow) => ({
         id: task.id,
         task_id: task.task_id,
         title: task.title,
@@ -117,23 +137,26 @@ export function TaskArchiveView() {
       if (error) throw error;
 
       // Get response counts for each decision
-      const decisionIds = data?.map(d => d.id) || [];
+      const decisionIds = (data ?? []).map((decision: ArchivedDecisionRow) => decision.id);
       const { data: responses } = await supabase
         .from('task_decision_responses')
         .select('decision_id, response_type')
         .in('decision_id', decisionIds);
 
-      const responseCounts = ((responses || []) as any[]).reduce<Record<string, { yes: number; no: number; question: number }>>((acc, response) => {
+      const responseCounts = (responses ?? []).reduce<Record<string, DecisionResponseCount>>((acc, response: Pick<TaskDecisionResponseRow, 'decision_id' | 'response_type'>) => {
         const decisionId = response.decision_id;
+        if (!decisionId) return acc;
         if (!acc[decisionId]) {
           acc[decisionId] = { yes: 0, no: 0, question: 0 };
         }
-        const rt = response.response_type as 'yes' | 'no' | 'question';
-        acc[decisionId][rt]++;
+        const rt = response.response_type;
+        if (rt === 'yes' || rt === 'no' || rt === 'question') {
+          acc[decisionId][rt] += 1;
+        }
         return acc;
       }, {});
 
-      const formattedDecisions: ArchivedDecision[] = (data || []).map(decision => ({
+      const formattedDecisions: ArchivedDecision[] = (data ?? []).map((decision: ArchivedDecisionRow) => ({
         id: decision.id,
         task_id: decision.task_id,
         title: decision.title,
@@ -161,7 +184,7 @@ export function TaskArchiveView() {
         .single();
 
       if (error && error.code !== 'PGRST116') throw error;
-      setArchiveSettings(data || {});
+      setArchiveSettings(data ?? {});
     } catch (error) {
       debugConsole.error('Error loading archive settings:', error);
     }

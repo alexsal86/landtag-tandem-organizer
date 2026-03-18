@@ -4,6 +4,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/components/ui/use-toast";
 import { debugConsole } from "@/utils/debugConsole";
 import { CaseFile } from "./useCaseFiles";
+import type { Tables, TablesInsert, TablesUpdate } from "@/integrations/supabase/types";
 
 export interface CaseFileContact {
   id: string;
@@ -145,6 +146,10 @@ export const DOCUMENT_RELEVANCE = [
   { value: 'reference', label: 'Referenz' },
 ];
 
+type CaseFileRow = Tables<"case_files">;
+type CaseFileNoteUpdate = TablesUpdate<"case_file_notes">;
+type CaseItemInteractionInsert = TablesInsert<"case_item_interactions">;
+
 export const useCaseFileDetails = (caseFileId: string | null) => {
   const [caseFile, setCaseFile] = useState<CaseFile | null>(null);
   const [contacts, setContacts] = useState<CaseFileContact[]>([]);
@@ -174,7 +179,7 @@ export const useCaseFileDetails = (caseFileId: string | null) => {
         .single();
 
       if (error) throw error;
-      setCaseFile(data as unknown as CaseFile);
+      setCaseFile((data as CaseFileRow | null) as CaseFile | null);
     } catch (error) {
       debugConsole.error('Error fetching case file:', error);
     }
@@ -645,7 +650,7 @@ export const useCaseFileDetails = (caseFileId: string | null) => {
 
   const updateNote = async (id: string, content: string, isPinned?: boolean) => {
     try {
-      const updates: any = { content };
+      const updates: CaseFileNoteUpdate = { content };
       if (isPinned !== undefined) updates.is_pinned = isPinned;
 
       const { error } = await supabase
@@ -723,7 +728,7 @@ export const useCaseFileDetails = (caseFileId: string | null) => {
     if (!user) return false;
     const { error } = await supabase
       .from("case_item_interactions")
-      .insert([{ ...interaction, created_by: user.id }] as any);
+      .insert([{ ...interaction, created_by: user.id }] as CaseItemInteractionInsert);
 
     if (error) {
       toast({ title: "Fehler beim Hinzufügen", variant: "destructive" });

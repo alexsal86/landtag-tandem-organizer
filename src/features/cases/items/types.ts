@@ -9,3 +9,29 @@ export interface CaseItemIntakePayload extends Record<string, unknown> {
   matched_contact_id?: string | null;
 }
 
+
+export interface CaseItemListEntry {
+  id: string;
+  title: string;
+  description: string | null;
+  status: string | null;
+  priority: string | null;
+  channel: string | null;
+  follow_up_at: string | null;
+  due_date: string | null;
+  assigned_to: string | null;
+  user_id: string | null;
+  case_file_id: string | null;
+  created_at: string;
+  updated_at: string | null;
+  meeting_id?: string | null;
+  pending_for_jour_fixe?: boolean | null;
+}
+
+export interface EscalationSuggestion {
+  id: string;
+  suggested_case_file_id: string | null;
+  case_items: {
+    id: string;
+  };
+}
