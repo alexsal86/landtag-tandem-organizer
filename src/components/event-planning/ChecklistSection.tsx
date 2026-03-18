@@ -52,6 +52,8 @@ interface ChecklistSectionProps {
   updateSubItemTitle: (itemId: string, subItemIndex: number, title: string) => void;
   removeSubItem: (itemId: string, subItemIndex: number) => void;
   onAssignToTimeline: (item: { id: string; title: string }) => void;
+  timelineDueDates?: Record<string, string>;
+  onSetTimelineDueDate?: (item: { id: string; title: string }, dueDate: string) => void;
   registerChecklistItemRef?: (itemId: string, element: HTMLDivElement | null) => void;
 }
 
@@ -72,6 +74,8 @@ export function ChecklistSection(props: ChecklistSectionProps) {
     setEmailDialogOpen, setSelectedEmailItemId,
     toggleSubItem, updateSubItemTitle, removeSubItem,
     onAssignToTimeline,
+    timelineDueDates,
+    onSetTimelineDueDate,
     registerChecklistItemRef,
   } = props;
 
@@ -108,7 +112,14 @@ export function ChecklistSection(props: ChecklistSectionProps) {
                                 <div {...provided.dragHandleProps} className="text-muted-foreground cursor-grab"><GripVertical className="h-4 w-4" /></div>
                                 <Checkbox checked={item.is_completed} onCheckedChange={() => toggleChecklistItem(item.id, item.is_completed)} />
                                 <Input value={item.title} onChange={(e) => updateChecklistItemTitle(item.id, e.target.value)} className={cn("flex-1 border-none bg-transparent focus:bg-background text-sm", item.is_completed && "line-through text-muted-foreground")} />
-                                
+                                <Input
+                                  type="date"
+                                  value={timelineDueDates?.[item.id] || ""}
+                                  onChange={(e) => onSetTimelineDueDate?.({ id: item.id, title: item.title }, e.target.value)}
+                                  className="h-8 w-[140px] text-xs"
+                                  title="Frist für Zeitstrahl"
+                                />
+
                                 {/* Action buttons */}
                                 <div className="flex items-center space-x-1 opacity-0 group-hover:opacity-100 transition-opacity">
                                   <Button

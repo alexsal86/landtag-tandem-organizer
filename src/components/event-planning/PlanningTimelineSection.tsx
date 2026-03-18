@@ -103,11 +103,26 @@ export function PlanningTimelineSection({
   }, [entries]);
 
   const entrySpacings = useMemo(() => {
+    if (entries.length < 2) {
+      return entries.map(() => 0);
+    }
+
+    const firstDate = entries[0].date.getTime();
+    const lastDate = entries[entries.length - 1].date.getTime();
+    const totalDays = Math.max(1, (lastDate - firstDate) / DAY_IN_MS);
+    const pixelsPerDay = Math.max(2, Math.min(8, 560 / totalDays));
+
     return entries.map((entry, index) => {
       if (index === 0) return 0;
       const previousEntry = entries[index - 1];
       const diffInDays = Math.max(0, (entry.date.getTime() - previousEntry.date.getTime()) / DAY_IN_MS);
-      return Math.min(120, Math.max(12, Math.round(diffInDays * 8)));
+      const scaledSpacing = Math.round(diffInDays * pixelsPerDay);
+
+      if (diffInDays > 0 && scaledSpacing < 14) {
+        return 14;
+      }
+
+      return scaledSpacing;
     });
   }, [entries]);
 
