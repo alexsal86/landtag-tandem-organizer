@@ -134,7 +134,7 @@ export function useTimelineGeometry({
 
     if (checklistItemRefs) {
       for (const assignment of assignments) {
-        observeElement(checklistItemRefs[assignment.checklistItemId]?.current);
+        observeElement(checklistItemRefs[assignment.checklist_item_id]?.current);
       }
     }
 

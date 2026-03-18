@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { escapeICSValue, formatDateToICS, generateICS, validateInviteDates } from './generate-calendar-invite.utils';
+import { escapeICSValue, formatDateToICS, generateICS, validateInviteDates } from './generate-calendar-invite.utils.ts';
 
 describe('generate-calendar-invite utils', () => {
   it('escaped problematische Zeichen korrekt für ICS', () => {
