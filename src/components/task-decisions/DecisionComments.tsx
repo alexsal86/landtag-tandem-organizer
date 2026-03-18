@@ -110,7 +110,7 @@ export function DecisionComments({
         .select('user_id, display_name, badge_color, avatar_url')
         .in('user_id', userIds);
 
-      const profileMap = new Map(profiles?.map(p => [p.user_id, p]) || []);
+      const profileMap = new Map<string, any>(profiles?.map((p: any) => [p.user_id, p]) || []);
 
       const reactionsByCommentId = buildReactionMap(reactionRows || [], user?.id);
 
