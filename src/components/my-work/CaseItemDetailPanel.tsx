@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { format } from "date-fns";
 import { de } from "date-fns/locale";
-import { AlertCircle, Archive, Check, CheckCircle2, ChevronDown, Clock, Download, ExternalLink, FileEdit, FileText, Gavel, Globe, Loader2, Mail, MessageSquare, Phone, Search, Trash2, Users, Vote } from "lucide-react";
+import { AlertCircle, Archive, CheckCircle2, ChevronDown, Clock, Download, ExternalLink, FileEdit, FileText, Gavel, Globe, Loader2, Mail, MessageSquare, Phone, Search, Trash2, Users, Vote } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useTenant } from "@/hooks/useTenant";
 import { Button } from "@/components/ui/button";
@@ -19,6 +19,8 @@ import { debugConsole } from "@/utils/debugConsole";
 import { TaskDecisionDetails } from "@/components/task-decisions/TaskDecisionDetails";
 import { DecisionFileUpload } from "@/components/task-decisions/DecisionFileUpload";
 import type { CaseItemInteractionDocument, EditableCaseItem, TimelineInteractionType, TimelineDocumentAttachment } from "@/components/my-work/hooks/useCaseItemEdit";
+import { LinkedValueChip } from "@/components/my-work/LinkedValueChip";
+import { stripHtml } from "@/utils/textDiff";
 
 type TimelineEntry = {
   id: string;
@@ -323,29 +325,32 @@ export function CaseItemDetailPanel({
           <div className="space-y-2 rounded-md border bg-background p-3 text-sm">
             <Label className="font-bold" htmlFor="detail-contact-name">Von / Gesprächspartner</Label>
             <div className="relative" ref={searchContainerRef}>
-              <div className="flex items-center gap-2">
-                <Label className="text-xs font-semibold text-muted-foreground shrink-0 w-14" htmlFor="detail-contact-name">Name</Label>
-                <div className="relative flex-1">
-                  <Input
-                    id="detail-contact-name"
-                    value={contactPerson}
-                    placeholder={contactDisplay || "Suchen…"}
-                    onChange={(event) => {
-                      onContactPersonChange(event.target.value);
-                      if (selectedContactId) handleClearContact();
-                    }}
-                    onFocus={() => { if (contactSearchResults.length > 0) setShowSearchResults(true); }}
-                    className="pr-8 h-8"
-                  />
-                  {searchingContacts && <Loader2 className="absolute right-2.5 top-1/2 -translate-y-1/2 h-4 w-4 animate-spin text-muted-foreground" />}
-                  {!searchingContacts && !selectedContactId && contactPerson.length >= 2 && <Search className="absolute right-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />}
+              {selectedContactId ? (
+                <LinkedValueChip
+                  label="Verknüpfter Kontakt"
+                  value={contactPerson || contactDisplay}
+                  onRemove={handleClearContact}
+                  className="w-full justify-between"
+                />
+              ) : (
+                <div className="flex items-center gap-2">
+                  <Label className="text-xs font-semibold text-muted-foreground shrink-0 w-14" htmlFor="detail-contact-name">Name</Label>
+                  <div className="relative flex-1">
+                    <Input
+                      id="detail-contact-name"
+                      value={contactPerson}
+                      placeholder={contactDisplay || "Suchen…"}
+                      onChange={(event) => {
+                        onContactPersonChange(event.target.value);
+                        if (selectedContactId) handleClearContact();
+                      }}
+                      onFocus={() => { if (contactSearchResults.length > 0) setShowSearchResults(true); }}
+                      className="pr-8 h-8"
+                    />
+                    {searchingContacts && <Loader2 className="absolute right-2.5 top-1/2 -translate-y-1/2 h-4 w-4 animate-spin text-muted-foreground" />}
+                    {!searchingContacts && !selectedContactId && contactPerson.length >= 2 && <Search className="absolute right-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />}
+                  </div>
                 </div>
-              </div>
-              {selectedContactId && (
-                <p className="flex items-center gap-1 text-xs text-emerald-600 mt-1 ml-16">
-                  <Check className="h-3 w-3" />
-                  Kontakt verknüpft
-                </p>
               )}
               {showSearchResults && contactSearchResults.length > 0 && (
                 <div className="absolute left-14 right-0 top-full z-50 mt-1 max-h-56 overflow-y-auto rounded-md border bg-popover shadow-lg">
@@ -367,25 +372,37 @@ export function CaseItemDetailPanel({
             </div>
             <div className="flex items-center gap-2">
               <Label className="text-xs font-semibold text-muted-foreground shrink-0 w-14" htmlFor="detail-contact-email">E-Mail</Label>
-              <Input
-                id="detail-contact-email"
-                type="email"
-                value={contactEmail}
-                placeholder="name@beispiel.de"
-                onChange={(event) => onContactEmailChange(event.target.value)}
-                className="h-8"
-              />
+              <div className="flex-1">
+                {selectedContactId && contactEmail ? (
+                  <LinkedValueChip label="E-Mail" value={contactEmail} onRemove={() => onContactEmailChange("")} className="w-full justify-between" />
+                ) : (
+                  <Input
+                    id="detail-contact-email"
+                    type="email"
+                    value={contactEmail}
+                    placeholder="name@beispiel.de"
+                    onChange={(event) => onContactEmailChange(event.target.value)}
+                    className="h-8"
+                  />
+                )}
+              </div>
             </div>
             <div className="flex items-center gap-2">
               <Label className="text-xs font-semibold text-muted-foreground shrink-0 w-14" htmlFor="detail-contact-phone">Telefon</Label>
-              <Input
-                id="detail-contact-phone"
-                type="tel"
-                value={contactPhone}
-                placeholder="+49 …"
-                onChange={(event) => onContactPhoneChange(event.target.value)}
-                className="h-8"
-              />
+              <div className="flex-1">
+                {selectedContactId && contactPhone ? (
+                  <LinkedValueChip label="Telefon" value={contactPhone} onRemove={() => onContactPhoneChange("")} className="w-full justify-between" />
+                ) : (
+                  <Input
+                    id="detail-contact-phone"
+                    type="tel"
+                    value={contactPhone}
+                    placeholder="+49 …"
+                    onChange={(event) => onContactPhoneChange(event.target.value)}
+                    className="h-8"
+                  />
+                )}
+              </div>
             </div>
           </div>
 
@@ -579,7 +596,7 @@ export function CaseItemDetailPanel({
                                 <p>Hochgeladen von: {document.uploadedByName || 'Unbekannt'}</p>
                                 <p>Upload: {formatTimelineDateOnly(document.uploadedAt)} {formatTimelineTimeOnly(document.uploadedAt)} Uhr</p>
                                 {document.documentDate && <p>Dokumentdatum: {formatTimelineDateOnly(document.documentDate)}</p>}
-                                {document.shortText && <p>Kurztext: {document.shortText.replace(/<[^>]+>/g, ' ')}</p>}
+                                {document.shortText && <p>Kurztext: {stripHtml(document.shortText)}</p>}
                               </TooltipContent>
                             </Tooltip>
                           </TooltipProvider>
