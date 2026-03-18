@@ -9,12 +9,14 @@ import {
   DropdownMenuSeparator, DropdownMenuSub, DropdownMenuSubTrigger,
   DropdownMenuSubContent, DropdownMenuPortal
 } from "@/components/ui/dropdown-menu";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import {
   Pin, Trash2, MoreHorizontal, CheckSquare, Vote,
   Calendar as CalendarIcon, Archive, ChevronDown, ChevronUp, Clock,
   Star, Share2, Users, Hourglass, Pencil, GripVertical, ListTree,
   History, ArrowRight, Palette, X, FileText, Lightbulb
 } from "lucide-react";
+import { useState } from "react";
 import { cn } from "@/lib/utils";
 import { format, isPast, isToday } from "date-fns";
 import { de } from "date-fns/locale";
@@ -59,6 +61,7 @@ interface NoteCardProps {
   onSplitNote: (note: QuickNote) => void;
   onShare: (note: QuickNote) => void;
   onTransferToThemenspeicher?: (note: QuickNote) => void;
+  isTransferringToThemenspeicher?: boolean;
 }
 
 export function NoteCard({
@@ -72,7 +75,9 @@ export function NoteCard({
   onOpenMeetingSelector, onRemoveFromMeeting,
   onOpenEdit, onOpenVersionHistory, onSplitNote, onShare,
   onTransferToThemenspeicher,
+  isTransferringToThemenspeicher = false,
 }: NoteCardProps) {
+  const [transferPopoverOpen, setTransferPopoverOpen] = useState(false);
   const fullText = note.content.replace(/<[^>]*>/g, '');
   const needsTruncation = fullText.length > 150;
   const hasLinkedItems = note.task_id || note.decision_id || note.meeting_id;
@@ -230,6 +235,46 @@ export function NoteCard({
                         <Archive className="h-3 w-3" />
                       </Button>
                     </TooltipTrigger><TooltipContent side="top">Archivieren</TooltipContent></Tooltip>
+                    {onTransferToThemenspeicher && (
+                      <Popover open={transferPopoverOpen} onOpenChange={setTransferPopoverOpen}>
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <PopoverTrigger asChild>
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="h-6 w-6 hover:bg-muted/80 rounded-full"
+                                disabled={isTransferringToThemenspeicher}
+                                onClick={(e) => e.stopPropagation()}
+                              >
+                                <Lightbulb className="h-3 w-3" />
+                              </Button>
+                            </PopoverTrigger>
+                          </TooltipTrigger>
+                          <TooltipContent side="top">In Themenspeicher verschieben</TooltipContent>
+                        </Tooltip>
+                        <PopoverContent
+                          side="top"
+                          align="end"
+                          className="w-64 p-2"
+                          onClick={(e) => e.stopPropagation()}
+                        >
+                          <button
+                            type="button"
+                            className="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-sm hover:bg-muted text-left"
+                            disabled={isTransferringToThemenspeicher}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              onTransferToThemenspeicher(note);
+                              setTransferPopoverOpen(false);
+                            }}
+                          >
+                            <Lightbulb className="h-4 w-4 text-amber-500" />
+                            <span>In Themenspeicher verschieben</span>
+                          </button>
+                        </PopoverContent>
+                      </Popover>
+                    )}
                     {dragHandleProps && (
                       <div {...dragHandleProps} className="cursor-grab p-1 hover:bg-muted/80 rounded-full">
                         <GripVertical className="h-3.5 w-3.5 text-muted-foreground" />
@@ -295,7 +340,7 @@ export function NoteCard({
                 )}
                 {onTransferToThemenspeicher && (
                   <DropdownMenuItem onClick={() => onTransferToThemenspeicher(note)}>
-                    <Lightbulb className="h-3 w-3 mr-2" />In Themenspeicher
+                    <Lightbulb className="h-3 w-3 mr-2" />In Themenspeicher verschieben
                   </DropdownMenuItem>
                 )}
                 <DropdownMenuSeparator />
