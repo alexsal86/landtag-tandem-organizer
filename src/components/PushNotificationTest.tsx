@@ -86,7 +86,7 @@ export const PushNotificationTest = (): JSX.Element => {
 
       debugConsole.log('🚀 Invoking REAL push notification...');
 
-      const response = await supabase.functions.invoke<PushTestResponseData>('send-push-notification', {
+      const response = await supabase.functions.invoke('send-push-notification', {
         body: {
           title: 'Echte Push-Notification! 🔔',
           message: 'Dies ist eine echte Browser-Push-Notification!',
