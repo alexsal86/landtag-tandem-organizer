@@ -7,11 +7,11 @@ export function MyWorkRedaktionTab() {
 
   return (
     <div className="p-4">
-      <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
-        <div className="min-w-0">
+      <div className="grid grid-cols-1 gap-4 lg:grid-cols-5">
+        <div className="min-w-0 lg:col-span-3">
           <SocialMediaPlannerPanel />
         </div>
-        <div className="min-w-0">
+        <div className="min-w-0 lg:col-span-2">
           <ThemenspeicherPanel onContentCreated={() => setContentRefreshToken((prev) => prev + 1)} />
         </div>
       </div>
