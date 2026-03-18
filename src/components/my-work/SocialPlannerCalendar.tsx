@@ -1,8 +1,8 @@
 import { useCallback, useMemo, useState } from "react";
-import { CalendarDays, AlertTriangle, Tag, icons, Move, Clock3 } from "lucide-react";
+import { CalendarDays, AlertTriangle, Tag, icons, Move, Clock3, Sparkles } from "lucide-react";
 import { Calendar, dateFnsLocalizer, Views, type View } from "react-big-calendar";
 import withDragAndDrop from "react-big-calendar/lib/addons/dragAndDrop";
-import { format, parse, startOfDay, startOfWeek, getDay, getISOWeek, isSameDay, isWithinInterval } from "date-fns";
+import { addDays, endOfMonth, endOfWeek, format, parse, startOfDay, startOfMonth, startOfWeek, getDay, getISOWeek, isSameDay, isWithinInterval } from "date-fns";
 import { de } from "date-fns/locale";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -11,7 +11,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import type { SocialPlannerItem, PlannerWorkflowStatus } from "@/hooks/useSocialPlannerItems";
-import { getSpecialDayHint, type SpecialDay } from "@/utils/dashboard/specialDays";
+import { type SpecialDay } from "@/utils/dashboard/specialDays";
 import "react-big-calendar/lib/css/react-big-calendar.css";
 import "react-big-calendar/lib/addons/dragAndDrop/styles.css";
 
@@ -47,14 +47,26 @@ const STATUS_LABELS: Record<PlannerWorkflowStatus, string> = {
   published: "Veröffentlicht",
 };
 
-interface CalendarEvent {
+interface PlannerCalendarEvent {
   id: string;
   title: string;
   start: Date;
   end: Date;
   item: SocialPlannerItem;
   sameChannelCount: number;
+  kind: "planner";
 }
+
+interface SpecialDayCalendarEvent {
+  id: string;
+  title: string;
+  start: Date;
+  end: Date;
+  specialDay: SpecialDay;
+  kind: "special-day";
+}
+
+type CalendarEvent = PlannerCalendarEvent | SpecialDayCalendarEvent;
 
 interface Props {
   items: SocialPlannerItem[];
@@ -93,6 +105,20 @@ function inferFormatType(item: SocialPlannerItem): "story" | "feed" | "other" {
 }
 
 function CalendarEventCard({ event }: { event: CalendarEvent }) {
+  if (event.kind === "special-day") {
+    const HintIcon = event.specialDay.icon ? icons[event.specialDay.icon as keyof typeof icons] : Sparkles;
+
+    return (
+      <div className="flex h-full flex-col gap-1 overflow-hidden">
+        <div className="flex items-center gap-1">
+          <HintIcon className="h-3 w-3 shrink-0" />
+          <span className="truncate font-medium">{event.title}</span>
+        </div>
+        <span className="line-clamp-2 text-[10px] leading-snug text-amber-950/90">{event.specialDay.hint}</span>
+      </div>
+    );
+  }
+
   return (
     <div className="flex h-full flex-col gap-1 overflow-hidden">
       <span className="truncate font-medium">{event.title}</span>
@@ -130,8 +156,23 @@ export function SocialPlannerCalendar({ items, onUpdateSchedule, onEditItem, spe
     });
   }, [formatFilter, items, scheduleFilter]);
 
+  const calendarRange = useMemo(() => {
+    if (view === Views.MONTH) {
+      return {
+        start: startOfWeek(startOfMonth(currentDate), { locale: de }),
+        end: endOfWeek(endOfMonth(currentDate), { locale: de }),
+      };
+    }
+
+    const start = startOfWeek(currentDate, { locale: de });
+    return {
+      start,
+      end: endOfWeek(currentDate, { locale: de }),
+    };
+  }, [currentDate, view]);
+
   const { events, unscheduled, countsByDay } = useMemo(() => {
-    const scheduled: CalendarEvent[] = [];
+    const scheduled: PlannerCalendarEvent[] = [];
     const unscheduledItems: SocialPlannerItem[] = [];
     const dayCountMap = new Map<string, number>();
     const conflictMap = new Map<string, number>();
@@ -157,31 +198,67 @@ export function SocialPlannerCalendar({ items, onUpdateSchedule, onEditItem, spe
           return Math.max(maxCount, count);
         }, 1);
 
-        scheduled.push({ id: item.id, title: item.topic, start, end, item, sameChannelCount });
+        scheduled.push({ id: item.id, title: item.topic, start, end, item, sameChannelCount, kind: "planner" });
       } else {
         unscheduledItems.push(item);
       }
     }
 
-    return { events: scheduled, unscheduled: unscheduledItems, countsByDay: dayCountMap };
-  }, [filteredItems]);
+    const specialDayEvents: SpecialDayCalendarEvent[] = specialDays
+      .flatMap((specialDay) => {
+        const candidateYears = [calendarRange.start.getFullYear(), calendarRange.end.getFullYear()];
+        return candidateYears
+          .map((year) => {
+            const start = new Date(year, specialDay.month - 1, specialDay.day, 9, 0, 0, 0);
+            const end = addDays(start, 1);
+            return {
+              id: `special-day-${year}-${specialDay.month}-${specialDay.day}`,
+              title: `Hinweis: ${specialDay.name}`,
+              start,
+              end,
+              specialDay,
+              kind: "special-day" as const,
+            };
+          })
+          .filter((event, index, all) => all.findIndex((candidate) => candidate.id === event.id) === index)
+          .filter((event) => isWithinInterval(event.start, { start: calendarRange.start, end: calendarRange.end }));
+      });
+
+    return { events: [...scheduled, ...specialDayEvents], unscheduled: unscheduledItems, countsByDay: dayCountMap };
+  }, [calendarRange.end, calendarRange.start, filteredItems, specialDays]);
 
   const overloadedDays = useMemo(
     () => Array.from(countsByDay.entries()).filter(([, count]) => count >= OVERLOAD_THRESHOLD_PER_DAY),
     [countsByDay],
   );
 
-  const eventStyleGetter = useCallback((event: CalendarEvent) => ({
-    style: {
-      backgroundColor: STATUS_COLORS[event.item.workflow_status] || "hsl(var(--primary))",
-      borderRadius: "6px",
-      border: event.sameChannelCount > 1 ? "2px solid rgba(251,191,36,0.95)" : "none",
-      color: "white",
-      fontSize: "11px",
-      padding: "2px 4px",
-      boxShadow: event.sameChannelCount > 1 ? "0 0 0 1px rgba(120,53,15,0.25)" : "none",
-    },
-  }), []);
+  const eventStyleGetter = useCallback((event: CalendarEvent) => {
+    if (event.kind === "special-day") {
+      return {
+        style: {
+          backgroundColor: "rgba(251, 191, 36, 0.22)",
+          borderRadius: "6px",
+          border: "1px solid rgba(245, 158, 11, 0.75)",
+          color: "rgb(120, 53, 15)",
+          fontSize: "11px",
+          padding: "2px 4px",
+          boxShadow: "inset 0 0 0 1px rgba(255,255,255,0.35)",
+        },
+      };
+    }
+
+    return {
+      style: {
+        backgroundColor: STATUS_COLORS[event.item.workflow_status] || "hsl(var(--primary))",
+        borderRadius: "6px",
+        border: event.sameChannelCount > 1 ? "2px solid rgba(251,191,36,0.95)" : "none",
+        color: "white",
+        fontSize: "11px",
+        padding: "2px 4px",
+        boxShadow: event.sameChannelCount > 1 ? "0 0 0 1px rgba(120,53,15,0.25)" : "none",
+      },
+    };
+  }, []);
 
   const persistSchedule = useCallback(async (itemId: string, date: Date) => {
     const normalizedDate = new Date(date);
@@ -214,18 +291,6 @@ export function SocialPlannerCalendar({ items, onUpdateSchedule, onEditItem, spe
     }
     return {};
   }, [countsByDay]);
-
-  const specialDayHint = useMemo(() => getSpecialDayHint(currentDate, specialDays), [currentDate, specialDays]);
-  const HintIcon = specialDayHint?.icon ? icons[specialDayHint.icon as keyof typeof icons] : null;
-
-  const renderHintText = useCallback((text: string) => {
-    const parts = text.split(/(\*\*.*?\*\*)/g);
-    return parts.map((part, index) => (
-      part.startsWith("**") && part.endsWith("**")
-        ? <strong key={`${part}-${index}`} className="font-semibold">{part.slice(2, -2)}</strong>
-        : <span key={`${part}-${index}`}>{part}</span>
-    ));
-  }, []);
 
   const messages = useMemo(() => ({
     today: "Heute",
@@ -300,17 +365,6 @@ export function SocialPlannerCalendar({ items, onUpdateSchedule, onEditItem, spe
         </div>
       )}
 
-      {specialDayHint && (
-        <div className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-950 dark:border-amber-900/70 dark:bg-amber-950/30 dark:text-amber-100">
-          <div className="flex items-start gap-2">
-            {HintIcon && <HintIcon className="mt-0.5 h-4 w-4 shrink-0 text-amber-600 dark:text-amber-400" />}
-            <div className="space-y-1">
-              {specialDayHint.text.split("\n").map((line, index) => <p key={`${line}-${index}`}>{renderHintText(line)}</p>)}
-            </div>
-          </div>
-        </div>
-      )}
-
       <div className="min-h-[500px]">
         <DragAndDropCalendar
           localizer={localizer}
@@ -342,10 +396,12 @@ export function SocialPlannerCalendar({ items, onUpdateSchedule, onEditItem, spe
           popup
           selectable
           resizable={false}
-          draggableAccessor={() => true}
+          draggableAccessor={(event) => event.kind === "planner"}
           onEventDrop={handleEventMove}
           onSelectSlot={handleSelectSlot}
-          onSelectEvent={(event) => onEditItem(event.id)}
+          onSelectEvent={(event) => {
+            if (event.kind === "planner") onEditItem(event.id);
+          }}
           className="social-planner-calendar"
         />
       </div>
