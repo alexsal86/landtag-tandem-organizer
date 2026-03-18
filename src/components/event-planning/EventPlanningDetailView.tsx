@@ -198,6 +198,9 @@ export function EventPlanningDetailView(data: EventPlanningDataReturn) {
     }
   };
 
+  const sectionTitleClassName = "text-xl font-semibold tracking-tight text-foreground";
+  const fieldLabelClassName = "text-sm font-semibold text-foreground";
+
   return (
     <div className="min-h-screen bg-gradient-subtle p-6">
       <div className="space-y-6">
@@ -309,172 +312,236 @@ export function EventPlanningDetailView(data: EventPlanningDataReturn) {
         </div>
 
         <div className="grid gap-6 lg:grid-cols-2">
-          {/* Grunddaten */}
-          <Card className="bg-card shadow-card border-border">
-            <CardHeader><CardTitle>Grunddaten</CardTitle></CardHeader>
-            <CardContent className="space-y-4">
-              <div>
-                <Label htmlFor="title">Titel der Veranstaltung</Label>
-                <div className="flex items-center space-x-2">
-                  {editingTitle ? (
-                    <Input value={tempTitle} onChange={(e) => setTempTitle(e.target.value)} onBlur={() => { updatePlanningField("title", tempTitle); setEditingTitle(false); }}
-                      onKeyDown={(e) => { if (e.key === "Enter") { updatePlanningField("title", tempTitle); setEditingTitle(false); } if (e.key === "Escape") { setTempTitle(selectedPlanning.title); setEditingTitle(false); } }} className="flex-1" autoFocus />
-                  ) : (
-                    <Input value={selectedPlanning.title} onClick={() => { setTempTitle(selectedPlanning.title); setEditingTitle(true); }} readOnly className="flex-1 cursor-pointer" />
-                  )}
-                  <Button variant="ghost" size="sm" onClick={() => { setTempTitle(selectedPlanning.title); setEditingTitle(true); }}><Edit2 className="h-4 w-4" /></Button>
-                </div>
-              </div>
-              <div>
-                <Label htmlFor="description">Beschreibung</Label>
-                <Textarea id="description" value={selectedPlanning.description || ""} onChange={(e) => { updatePlanningField("description", e.target.value); const target = e.target as HTMLTextAreaElement; target.style.height = 'auto'; target.style.height = target.scrollHeight + 'px'; }} placeholder="Beschreibung der Veranstaltung..." className="min-h-[80px] resize-none overflow-hidden" ref={(el) => { if (el) { el.style.height = 'auto'; el.style.height = el.scrollHeight + 'px'; } }} />
-              </div>
-              <div>
-                <Label htmlFor="location">Ort</Label>
-                <Input id="location" value={selectedPlanning.location || ""} onChange={(e) => updatePlanningField("location", e.target.value)} placeholder="Veranstaltungsort..." />
-                {!selectedPlanning.is_digital && (
-                  <Button variant="outline" size="sm" onClick={() => { setDigitalEvent({ platform: selectedPlanning.digital_platform || "", link: selectedPlanning.digital_link || "", access_info: selectedPlanning.digital_access_info || "" }); setIsDigitalDialogOpen(true); }} className="mt-2"><Plus className="w-4 h-4 mr-2" />Digital</Button>
-                )}
-                {selectedPlanning.is_digital && (
-                  <div className="mt-2 p-2 bg-muted rounded-md">
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <p className="text-sm font-medium">Digital: {selectedPlanning.digital_platform}</p>
-                        {selectedPlanning.digital_link && <p className="text-xs text-muted-foreground">{selectedPlanning.digital_link}</p>}
-                      </div>
-                      <div className="flex gap-1">
-                        <Button variant="ghost" size="sm" onClick={() => { setDigitalEvent({ platform: selectedPlanning.digital_platform || "", link: selectedPlanning.digital_link || "", access_info: selectedPlanning.digital_access_info || "" }); setIsDigitalDialogOpen(true); }}><Edit2 className="w-3 h-3" /></Button>
-                        <Button variant="ghost" size="sm" onClick={removeDigitalEventSettings}><X className="w-3 h-3" /></Button>
-                      </div>
-                    </div>
-                  </div>
-                )}
-              </div>
-              <div>
-                <Label htmlFor="background">Hintergründe</Label>
-                <Textarea id="background" value={selectedPlanning.background_info || ""} onChange={(e) => { updatePlanningField("background_info", e.target.value); const target = e.target as HTMLTextAreaElement; target.style.height = 'auto'; target.style.height = target.scrollHeight + 'px'; }} placeholder="Hintergrundinformationen..." className="min-h-[80px] resize-none overflow-hidden" ref={(el) => { if (el) { el.style.height = 'auto'; el.style.height = el.scrollHeight + 'px'; } }} />
-              </div>
-
-              <Separator className="my-4" />
-
-              {/* Termine */}
-              <div className="space-y-3">
-                <div className="flex items-center justify-between">
-                  <Label className="text-base font-semibold">Termine</Label>
-                  {!planningDates.some(d => d.is_confirmed) && (
-                    <Dialog open={isDateDialogOpen} onOpenChange={setIsDateDialogOpen}>
-                      <DialogTrigger asChild><Button size="sm" variant="outline"><Plus className="mr-2 h-4 w-4" />Termin hinzufügen</Button></DialogTrigger>
-                      <DialogContent>
-                        <DialogHeader><DialogTitle>Neuen Termin hinzufügen</DialogTitle></DialogHeader>
-                        <div className="space-y-4">
-                          <div>
-                            <Label>Datum</Label>
-                            <Popover>
-                              <PopoverTrigger asChild>
-                                <Button variant="outline" className={cn("w-full justify-start text-left font-normal", !selectedDate && "text-muted-foreground")}>
-                                  <CalendarIcon className="mr-2 h-4 w-4" />{selectedDate ? format(selectedDate, "dd.MM.yyyy", { locale: de }) : "Datum wählen"}
-                                </Button>
-                              </PopoverTrigger>
-                              <PopoverContent className="w-auto p-0"><Calendar mode="single" selected={selectedDate} onSelect={setSelectedDate} initialFocus className="pointer-events-auto" /></PopoverContent>
-                            </Popover>
-                          </div>
-                          <div className="space-y-2"><Label htmlFor="time">Uhrzeit</Label><TimePickerCombobox value={selectedTime} onChange={setSelectedTime} /></div>
-                        </div>
-                        <DialogFooter><Button onClick={addPlanningDate}>Hinzufügen</Button></DialogFooter>
-                      </DialogContent>
-                    </Dialog>
-                  )}
-                </div>
-                <div className="space-y-2">
-                  {planningDates.map((date) => (
-                    <div key={date.id}>
-                      {date.is_confirmed ? (
-                        <div className="flex items-center justify-between p-3 rounded-md border bg-primary/10 border-primary">
-                          <div className="flex items-center space-x-2">
-                            <Clock className="h-4 w-4" />
-                            <input type="datetime-local" value={new Date(date.date_time).toISOString().slice(0, 16)} onChange={(e) => updateConfirmedDate(date.id, new Date(e.target.value).toISOString())} className="bg-transparent border-none outline-none font-medium" />
-                            <Badge variant="default">Bestätigt</Badge>
-                          </div>
-                          <Button variant="ghost" size="sm"><Edit2 className="h-4 w-4" /></Button>
-                        </div>
-                      ) : (
-                        <div className="flex items-center justify-between p-3 rounded-md border">
-                          <div className="flex items-center space-x-2"><Clock className="h-4 w-4" /><span>{format(new Date(date.date_time), "dd.MM.yyyy HH:mm", { locale: de })}</span></div>
-                          <Button size="sm" onClick={() => confirmDate(date.id)}><Check className="h-4 w-4" /></Button>
-                        </div>
-                      )}
-                    </div>
-                  ))}
-                  {planningDates.length === 0 && <p className="text-sm text-muted-foreground text-center py-2">Noch keine Termine hinzugefügt</p>}
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-
           <div className="space-y-6">
-            {/* Ansprechpersonen */}
+            {/* Grunddaten */}
             <Card className="bg-card shadow-card border-border">
               <CardHeader>
-                <CardTitle className="flex items-center justify-between">
-                  Ansprechpersonen
-                  <Dialog open={isContactDialogOpen} onOpenChange={setIsContactDialogOpen}>
-                    <DialogTrigger asChild><Button variant="outline" size="sm"><Plus className="mr-2 h-4 w-4" />Ansprechperson</Button></DialogTrigger>
-                    <DialogContent>
-                      <DialogHeader><DialogTitle>Ansprechperson hinzufügen</DialogTitle></DialogHeader>
-                      <div className="space-y-4">
-                        <div>
-                          <Label>Aus vorhandenen Kontakten</Label>
-                          <Select onValueChange={(v) => { if (v !== "none") fillFromContact(v); }}><SelectTrigger><SelectValue placeholder="Kontakt auswählen..." /></SelectTrigger><SelectContent><SelectItem value="none">Manuell eingeben</SelectItem>{availableContacts.map((c) => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}</SelectContent></Select>
-                        </div>
-                        <div>
-                          <Label>Aus Team-Mitgliedern</Label>
-                          <Select onValueChange={(v) => { if (v !== "none") fillFromProfile(v); }}><SelectTrigger><SelectValue placeholder="Team-Mitglied auswählen..." /></SelectTrigger><SelectContent><SelectItem value="none">Manuell eingeben</SelectItem>{allProfiles.map((p) => <SelectItem key={p.user_id} value={p.user_id}>{p.display_name || 'Unbenannt'}</SelectItem>)}</SelectContent></Select>
-                        </div>
-                        <Separator />
-                        <div><Label>Name</Label><Input value={newContact.name} onChange={(e) => setNewContact({ ...newContact, name: e.target.value })} placeholder="Name" /></div>
-                        <div><Label>E-Mail</Label><Input type="email" value={newContact.email} onChange={(e) => setNewContact({ ...newContact, email: e.target.value })} placeholder="email@beispiel.de" /></div>
-                        <div><Label>Telefon</Label><Input type="tel" value={newContact.phone} onChange={(e) => setNewContact({ ...newContact, phone: e.target.value })} placeholder="+49 123 456789" /></div>
-                      </div>
-                      <DialogFooter><Button onClick={addContact}>Hinzufügen</Button></DialogFooter>
-                    </DialogContent>
-                  </Dialog>
-                </CardTitle>
+                <CardTitle className={sectionTitleClassName}>Grunddaten</CardTitle>
               </CardHeader>
-              <CardContent>
-                {contacts.length > 0 ? (
+              <CardContent className="space-y-6">
+                <div className="space-y-2">
+                  <Label htmlFor="title" className={fieldLabelClassName}>Titel der Veranstaltung</Label>
+                  <Input
+                    id="title"
+                    value={editingTitle ? tempTitle : selectedPlanning.title}
+                    onChange={(e) => editingTitle && setTempTitle(e.target.value)}
+                    onFocus={() => {
+                      if (!editingTitle) {
+                        setTempTitle(selectedPlanning.title);
+                        setEditingTitle(true);
+                      }
+                    }}
+                    onBlur={() => {
+                      if (editingTitle) {
+                        updatePlanningField("title", tempTitle);
+                        setEditingTitle(false);
+                      }
+                    }}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") {
+                        updatePlanningField("title", tempTitle);
+                        setEditingTitle(false);
+                      }
+                      if (e.key === "Escape") {
+                        setTempTitle(selectedPlanning.title);
+                        setEditingTitle(false);
+                      }
+                    }}
+                    className="w-full"
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="description" className={fieldLabelClassName}>Beschreibung</Label>
+                  <Textarea
+                    id="description"
+                    value={selectedPlanning.description || ""}
+                    onChange={(e) => {
+                      updatePlanningField("description", e.target.value);
+                      const target = e.target as HTMLTextAreaElement;
+                      target.style.height = 'auto';
+                      target.style.height = target.scrollHeight + 'px';
+                    }}
+                    placeholder="Beschreibung der Veranstaltung..."
+                    className="min-h-[96px] resize-none overflow-hidden"
+                    ref={(el) => {
+                      if (el) {
+                        el.style.height = 'auto';
+                        el.style.height = el.scrollHeight + 'px';
+                      }
+                    }}
+                  />
+                </div>
+
+                <div className="grid gap-6 lg:grid-cols-2 lg:items-start">
                   <div className="space-y-2">
-                    {contacts.map((contact) => (
-                      <div key={contact.id} className="flex items-center justify-between p-2 rounded-md border">
-                        <div><p className="font-medium">{contact.name}</p><div className="text-sm text-muted-foreground">{contact.email && <p>📧 {contact.email}</p>}{contact.phone && <p>📞 {contact.phone}</p>}</div></div>
-                        <div className="flex gap-1">
-                          <Button variant="ghost" size="sm" onClick={() => { setEditingContact(contact); setIsEditContactDialogOpen(true); }}><Edit2 className="h-4 w-4" /></Button>
-                          <Button variant="ghost" size="sm" onClick={() => removeContact(contact.id)}><X className="h-4 w-4" /></Button>
+                    <Label htmlFor="location" className={fieldLabelClassName}>Veranstaltungsort</Label>
+                    <Input id="location" value={selectedPlanning.location || ""} onChange={(e) => updatePlanningField("location", e.target.value)} placeholder="Veranstaltungsort..." />
+                    {!selectedPlanning.is_digital && (
+                      <Button variant="outline" size="sm" onClick={() => { setDigitalEvent({ platform: selectedPlanning.digital_platform || "", link: selectedPlanning.digital_link || "", access_info: selectedPlanning.digital_access_info || "" }); setIsDigitalDialogOpen(true); }} className="mt-2"><Plus className="w-4 h-4 mr-2" />Digital</Button>
+                    )}
+                    {selectedPlanning.is_digital && (
+                      <div className="mt-2 rounded-md bg-muted p-2">
+                        <div className="flex items-center justify-between">
+                          <div>
+                            <p className="text-sm font-medium">Digital: {selectedPlanning.digital_platform}</p>
+                            {selectedPlanning.digital_link && <p className="text-xs text-muted-foreground">{selectedPlanning.digital_link}</p>}
+                          </div>
+                          <div className="flex gap-1">
+                            <Button variant="ghost" size="sm" onClick={() => { setDigitalEvent({ platform: selectedPlanning.digital_platform || "", link: selectedPlanning.digital_link || "", access_info: selectedPlanning.digital_access_info || "" }); setIsDigitalDialogOpen(true); }}><Edit2 className="w-3 h-3" /></Button>
+                            <Button variant="ghost" size="sm" onClick={removeDigitalEventSettings}><X className="w-3 h-3" /></Button>
+                          </div>
                         </div>
+                      </div>
+                    )}
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="background" className={fieldLabelClassName}>Hintergründe</Label>
+                    <Textarea
+                      id="background"
+                      value={selectedPlanning.background_info || ""}
+                      onChange={(e) => {
+                        updatePlanningField("background_info", e.target.value);
+                        const target = e.target as HTMLTextAreaElement;
+                        target.style.height = 'auto';
+                        target.style.height = target.scrollHeight + 'px';
+                      }}
+                      placeholder="Hintergrundinformationen..."
+                      className="min-h-[96px] resize-none overflow-hidden"
+                      ref={(el) => {
+                        if (el) {
+                          el.style.height = 'auto';
+                          el.style.height = el.scrollHeight + 'px';
+                        }
+                      }}
+                    />
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
+            <div className="grid gap-6 lg:grid-cols-2 lg:items-start">
+              {/* Ansprechperson */}
+              <Card className="bg-card shadow-card border-border">
+                <CardHeader>
+                  <CardTitle className={cn(sectionTitleClassName, "flex items-center justify-between gap-3")}>
+                    <span>Ansprechperson</span>
+                    <Dialog open={isContactDialogOpen} onOpenChange={setIsContactDialogOpen}>
+                      <DialogTrigger asChild><Button variant="outline" size="sm"><Plus className="mr-2 h-4 w-4" />Ansprechperson</Button></DialogTrigger>
+                      <DialogContent>
+                        <DialogHeader><DialogTitle>Ansprechperson hinzufügen</DialogTitle></DialogHeader>
+                        <div className="space-y-4">
+                          <div>
+                            <Label>Aus vorhandenen Kontakten</Label>
+                            <Select onValueChange={(v) => { if (v !== "none") fillFromContact(v); }}><SelectTrigger><SelectValue placeholder="Kontakt auswählen..." /></SelectTrigger><SelectContent><SelectItem value="none">Manuell eingeben</SelectItem>{availableContacts.map((c) => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}</SelectContent></Select>
+                          </div>
+                          <div>
+                            <Label>Aus Team-Mitgliedern</Label>
+                            <Select onValueChange={(v) => { if (v !== "none") fillFromProfile(v); }}><SelectTrigger><SelectValue placeholder="Team-Mitglied auswählen..." /></SelectTrigger><SelectContent><SelectItem value="none">Manuell eingeben</SelectItem>{allProfiles.map((p) => <SelectItem key={p.user_id} value={p.user_id}>{p.display_name || 'Unbenannt'}</SelectItem>)}</SelectContent></Select>
+                          </div>
+                          <Separator />
+                          <div><Label>Name</Label><Input value={newContact.name} onChange={(e) => setNewContact({ ...newContact, name: e.target.value })} placeholder="Name" /></div>
+                          <div><Label>E-Mail</Label><Input type="email" value={newContact.email} onChange={(e) => setNewContact({ ...newContact, email: e.target.value })} placeholder="email@beispiel.de" /></div>
+                          <div><Label>Telefon</Label><Input type="tel" value={newContact.phone} onChange={(e) => setNewContact({ ...newContact, phone: e.target.value })} placeholder="+49 123 456789" /></div>
+                        </div>
+                        <DialogFooter><Button onClick={addContact}>Hinzufügen</Button></DialogFooter>
+                      </DialogContent>
+                    </Dialog>
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  {contacts.length > 0 ? (
+                    <div className="space-y-2">
+                      {contacts.map((contact) => (
+                        <div key={contact.id} className="flex items-center justify-between rounded-md border p-3">
+                          <div><p className="font-medium">{contact.name}</p><div className="text-sm text-muted-foreground">{contact.email && <p>📧 {contact.email}</p>}{contact.phone && <p>📞 {contact.phone}</p>}</div></div>
+                          <div className="flex gap-1">
+                            <Button variant="ghost" size="sm" onClick={() => { setEditingContact(contact); setIsEditContactDialogOpen(true); }}><Edit2 className="h-4 w-4" /></Button>
+                            <Button variant="ghost" size="sm" onClick={() => removeContact(contact.id)}><X className="h-4 w-4" /></Button>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (<p className="text-sm text-muted-foreground">Noch keine Ansprechpersonen hinzugefügt</p>)}
+                </CardContent>
+                <Dialog open={isEditContactDialogOpen} onOpenChange={setIsEditContactDialogOpen}>
+                  <DialogContent>
+                    <DialogHeader><DialogTitle>Ansprechperson bearbeiten</DialogTitle></DialogHeader>
+                    {editingContact && (
+                      <div className="space-y-4">
+                        <div><Label>Name</Label><Input value={editingContact.name} onChange={(e) => setEditingContact({ ...editingContact, name: e.target.value })} /></div>
+                        <div><Label>E-Mail</Label><Input type="email" value={editingContact.email || ""} onChange={(e) => setEditingContact({ ...editingContact, email: e.target.value })} /></div>
+                        <div><Label>Telefon</Label><Input type="tel" value={editingContact.phone || ""} onChange={(e) => setEditingContact({ ...editingContact, phone: e.target.value })} /></div>
+                      </div>
+                    )}
+                    <DialogFooter><Button variant="outline" onClick={() => setIsEditContactDialogOpen(false)}>Abbrechen</Button><Button onClick={editContact}>Speichern</Button></DialogFooter>
+                  </DialogContent>
+                </Dialog>
+              </Card>
+
+              {/* Termine */}
+              <Card className="bg-card shadow-card border-border">
+                <CardHeader>
+                  <CardTitle className={cn(sectionTitleClassName, "flex items-center justify-between gap-3")}>
+                    <span>Termine</span>
+                    {!planningDates.some(d => d.is_confirmed) && (
+                      <Dialog open={isDateDialogOpen} onOpenChange={setIsDateDialogOpen}>
+                        <DialogTrigger asChild><Button size="sm" variant="outline"><Plus className="mr-2 h-4 w-4" />Termin hinzufügen</Button></DialogTrigger>
+                        <DialogContent>
+                          <DialogHeader><DialogTitle>Neuen Termin hinzufügen</DialogTitle></DialogHeader>
+                          <div className="space-y-4">
+                            <div>
+                              <Label>Datum</Label>
+                              <Popover>
+                                <PopoverTrigger asChild>
+                                  <Button variant="outline" className={cn("w-full justify-start text-left font-normal", !selectedDate && "text-muted-foreground")}>
+                                    <CalendarIcon className="mr-2 h-4 w-4" />{selectedDate ? format(selectedDate, "dd.MM.yyyy", { locale: de }) : "Datum wählen"}
+                                  </Button>
+                                </PopoverTrigger>
+                                <PopoverContent className="w-auto p-0"><Calendar mode="single" selected={selectedDate} onSelect={setSelectedDate} initialFocus className="pointer-events-auto" /></PopoverContent>
+                              </Popover>
+                            </div>
+                            <div className="space-y-2"><Label htmlFor="time">Uhrzeit</Label><TimePickerCombobox value={selectedTime} onChange={setSelectedTime} /></div>
+                          </div>
+                          <DialogFooter><Button onClick={addPlanningDate}>Hinzufügen</Button></DialogFooter>
+                        </DialogContent>
+                      </Dialog>
+                    )}
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-2">
+                    {planningDates.map((date) => (
+                      <div key={date.id}>
+                        {date.is_confirmed ? (
+                          <div className="flex items-center justify-between rounded-md border border-primary bg-primary/10 p-3">
+                            <div className="flex items-center space-x-2">
+                              <Clock className="h-4 w-4" />
+                              <input type="datetime-local" value={new Date(date.date_time).toISOString().slice(0, 16)} onChange={(e) => updateConfirmedDate(date.id, new Date(e.target.value).toISOString())} className="bg-transparent border-none outline-none font-medium" />
+                              <Badge variant="default">Bestätigt</Badge>
+                            </div>
+                            <Button variant="ghost" size="sm"><Edit2 className="h-4 w-4" /></Button>
+                          </div>
+                        ) : (
+                          <div className="flex items-center justify-between rounded-md border p-3">
+                            <div className="flex items-center space-x-2"><Clock className="h-4 w-4" /><span>{format(new Date(date.date_time), "dd.MM.yyyy HH:mm", { locale: de })}</span></div>
+                            <Button size="sm" onClick={() => confirmDate(date.id)}><Check className="h-4 w-4" /></Button>
+                          </div>
+                        )}
                       </div>
                     ))}
+                    {planningDates.length === 0 && <p className="py-2 text-center text-sm text-muted-foreground">Noch keine Termine hinzugefügt</p>}
                   </div>
-                ) : (<p className="text-sm text-muted-foreground">Noch keine Ansprechpersonen hinzugefügt</p>)}
-              </CardContent>
-              <Dialog open={isEditContactDialogOpen} onOpenChange={setIsEditContactDialogOpen}>
-                <DialogContent>
-                  <DialogHeader><DialogTitle>Ansprechperson bearbeiten</DialogTitle></DialogHeader>
-                  {editingContact && (
-                    <div className="space-y-4">
-                      <div><Label>Name</Label><Input value={editingContact.name} onChange={(e) => setEditingContact({ ...editingContact, name: e.target.value })} /></div>
-                      <div><Label>E-Mail</Label><Input type="email" value={editingContact.email || ""} onChange={(e) => setEditingContact({ ...editingContact, email: e.target.value })} /></div>
-                      <div><Label>Telefon</Label><Input type="tel" value={editingContact.phone || ""} onChange={(e) => setEditingContact({ ...editingContact, phone: e.target.value })} /></div>
-                    </div>
-                  )}
-                  <DialogFooter><Button variant="outline" onClick={() => setIsEditContactDialogOpen(false)}>Abbrechen</Button><Button onClick={editContact}>Speichern</Button></DialogFooter>
-                </DialogContent>
-              </Dialog>
-            </Card>
+                </CardContent>
+              </Card>
+            </div>
 
             {/* Referenten */}
             <Card className="bg-card shadow-card border-border">
               <CardHeader>
-                <CardTitle className="flex items-center justify-between">
-                  Referenten
+                <CardTitle className={cn(sectionTitleClassName, "flex items-center justify-between gap-3")}>
+                  <span>Referenten</span>
                   <Dialog open={isSpeakerDialogOpen} onOpenChange={setIsSpeakerDialogOpen}>
                     <DialogTrigger asChild><Button variant="outline" size="sm"><Plus className="mr-2 h-4 w-4" />Referent</Button></DialogTrigger>
                     <DialogContent>
@@ -518,32 +585,18 @@ export function EventPlanningDetailView(data: EventPlanningDataReturn) {
                           {(speaker.email || speaker.phone) && (
                             <div className="mt-3 flex flex-wrap items-center gap-3 text-muted-foreground">
                               {speaker.email && (
-                                <button
-                                  type="button"
-                                  onClick={() => handleCopySpeakerContact(speaker.email!, speaker.id, "email")}
-                                  className="flex items-center gap-2 rounded-md p-1 transition-colors hover:bg-muted/60"
-                                  title="E-Mail-Adresse kopieren"
-                                >
+                                <button type="button" onClick={() => handleCopySpeakerContact(speaker.email!, speaker.id, "email")} className="flex items-center gap-2 rounded-md p-1 transition-colors hover:bg-muted/60" title="E-Mail-Adresse kopieren">
                                   <Mail className="h-4 w-4" />
-                                  <span className="max-w-0 overflow-hidden whitespace-nowrap text-sm opacity-0 transition-all duration-200 group-hover:max-w-[280px] group-hover:opacity-100 hover:max-w-[280px] hover:opacity-100">
-                                    {speaker.email}
-                                  </span>
+                                  <span className="max-w-0 overflow-hidden whitespace-nowrap text-sm opacity-0 transition-all duration-200 group-hover:max-w-[280px] group-hover:opacity-100 hover:max-w-[280px] hover:opacity-100">{speaker.email}</span>
                                   {copiedSpeakerContact === `${speaker.id}-email` && (
                                     <span className="text-xs font-medium text-green-600">Kopiert</span>
                                   )}
                                 </button>
                               )}
                               {speaker.phone && (
-                                <button
-                                  type="button"
-                                  onClick={() => handleCopySpeakerContact(speaker.phone!, speaker.id, "phone")}
-                                  className="flex items-center gap-2 rounded-md p-1 transition-colors hover:bg-muted/60"
-                                  title="Telefonnummer kopieren"
-                                >
+                                <button type="button" onClick={() => handleCopySpeakerContact(speaker.phone!, speaker.id, "phone")} className="flex items-center gap-2 rounded-md p-1 transition-colors hover:bg-muted/60" title="Telefonnummer kopieren">
                                   <Phone className="h-4 w-4" />
-                                  <span className="max-w-0 overflow-hidden whitespace-nowrap text-sm opacity-0 transition-all duration-200 group-hover:max-w-[280px] group-hover:opacity-100 hover:max-w-[280px] hover:opacity-100">
-                                    {speaker.phone}
-                                  </span>
+                                  <span className="max-w-0 overflow-hidden whitespace-nowrap text-sm opacity-0 transition-all duration-200 group-hover:max-w-[280px] group-hover:opacity-100 hover:max-w-[280px] hover:opacity-100">{speaker.phone}</span>
                                   {copiedSpeakerContact === `${speaker.id}-phone` && (
                                     <span className="text-xs font-medium text-green-600">Kopiert</span>
                                   )}
@@ -577,12 +630,14 @@ export function EventPlanningDetailView(data: EventPlanningDataReturn) {
                 </DialogContent>
               </Dialog>
             </Card>
+          </div>
 
+          <div className="space-y-6">
             {/* Dokumente */}
             <Card className="bg-card shadow-card border-border">
               <CardHeader>
-                <CardTitle className="flex items-center justify-between">
-                  Dokumente
+                <CardTitle className={cn(sectionTitleClassName, "flex items-center justify-between gap-3")}>
+                  <span>Dokumente</span>
                   <Button variant="outline" size="sm" onClick={() => document.getElementById('general-file-upload')?.click()} disabled={uploading}><Upload className="mr-2 h-4 w-4" />Hochladen</Button>
                 </CardTitle>
               </CardHeader>
@@ -590,7 +645,7 @@ export function EventPlanningDetailView(data: EventPlanningDataReturn) {
                 <input id="general-file-upload" type="file" multiple className="hidden" onChange={(e) => handleGeneralFileUpload(e.target.files)} />
                 <div className="space-y-2">
                   {generalDocuments.map((doc) => (
-                    <div key={doc.id} className="flex items-center justify-between p-2 border rounded">
+                    <div key={doc.id} className="flex items-center justify-between rounded border p-2">
                       <div className="flex items-center space-x-2"><FileText className="h-4 w-4" /><span className="text-sm">{doc.file_name}</span>{doc.file_size && <span className="text-xs text-muted-foreground">({(doc.file_size / 1024).toFixed(1)} KB)</span>}</div>
                       <div className="flex items-center space-x-1">
                         <Button variant="ghost" size="sm" onClick={() => downloadGeneralDocument(doc)}><Download className="h-4 w-4" /></Button>
@@ -598,17 +653,16 @@ export function EventPlanningDetailView(data: EventPlanningDataReturn) {
                       </div>
                     </div>
                   ))}
-                  {generalDocuments.length === 0 && <p className="text-sm text-muted-foreground text-center py-4">Noch keine allgemeinen Dokumente hochgeladen</p>}
+                  {generalDocuments.length === 0 && <p className="py-4 text-center text-sm text-muted-foreground">Noch keine allgemeinen Dokumente hochgeladen</p>}
                 </div>
               </CardContent>
             </Card>
-          </div>
 
-          {/* RSVP Manager - NEU */}
-          <div id="rsvp-manager" className="lg:col-span-2 scroll-mt-24">
-            <EventRSVPManager eventPlanningId={selectedPlanning.id} eventTitle={selectedPlanning.title} />
+            {/* RSVP Manager */}
+            <div id="rsvp-manager" className="scroll-mt-24">
+              <EventRSVPManager eventPlanningId={selectedPlanning.id} eventTitle={selectedPlanning.title} />
+            </div>
           </div>
-
           <DragDropContext onDragEnd={handlePlanningDragEnd}>
             <div className="lg:col-span-2 grid gap-6 lg:grid-cols-2">
               {/* Checkliste */}
