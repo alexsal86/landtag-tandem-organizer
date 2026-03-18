@@ -1,6 +1,5 @@
 import { useEffect, useMemo, useRef, useState, type RefObject } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { CalendarClock, Flag, Trash2 } from "lucide-react";
 import { format } from "date-fns";
@@ -10,7 +9,7 @@ import type { ChecklistItem, EventPlanningDate } from "./types";
 
 const DAY_IN_MS = 1000 * 60 * 60 * 24;
 const DOT_SIZE_CLASS = "h-5 w-5";
-const DOT_LEFT_CLASS = "-left-6";
+const DOT_LEFT_CLASS = "-left-7";
 
 type TimelineAssignment = {
   checklistItemId: string;
@@ -33,6 +32,7 @@ type TimelineEntry = {
   title: string;
   type: "known" | "checklist";
   isConfirmed?: boolean;
+  isCompleted?: boolean;
 };
 
 type ConnectorLine = {
@@ -57,7 +57,6 @@ export function PlanningTimelineSection({
   onRemoveAssignment,
   checklistItemRefs,
 }: PlanningTimelineSectionProps) {
-  const [isDropActive, setIsDropActive] = useState(false);
   const [connectorLines, setConnectorLines] = useState<ConnectorLine[]>([]);
   const [timelineAxis, setTimelineAxis] = useState<TimelineAxis | null>(null);
   const sectionRef = useRef<HTMLDivElement | null>(null);
@@ -95,6 +94,7 @@ export function PlanningTimelineSection({
           date: new Date(assignment.dueDate),
           title: checklistItem.title || assignment.title,
           type: "checklist" as const,
+          isCompleted: checklistItem.is_completed,
         };
       })
       .filter((entry): entry is NonNullable<typeof entry> => entry !== null) as TimelineEntry[];
@@ -102,15 +102,16 @@ export function PlanningTimelineSection({
     return [...planningStartEntry, ...knownEntries, ...assignmentEntries].sort((a, b) => a.date.getTime() - b.date.getTime());
   }, [assignments, checklistItems, planningCreatedAt, planningDates]);
 
+  const now = Date.now();
+
   const timelineProgress = useMemo(() => {
     if (entries.length < 2) return null;
-    const now = Date.now();
     const start = entries[0].date.getTime();
     const end = entries[entries.length - 1].date.getTime();
     if (end <= start) return null;
     const raw = ((now - start) / (end - start)) * 100;
     return Math.max(0, Math.min(100, raw));
-  }, [entries]);
+  }, [entries, now]);
 
   const entrySpacings = useMemo(() => {
     if (entries.length < 2) {
@@ -202,7 +203,7 @@ export function PlanningTimelineSection({
   return (
     <div ref={sectionRef} className="relative">
       {connectorLines.length > 0 && (
-        <svg className="pointer-events-none absolute inset-0 z-10 h-full w-full overflow-visible" aria-hidden>
+        <svg className="pointer-events-none absolute inset-0 z-0 h-full w-full overflow-visible" aria-hidden>
           {connectorLines.map((line) => {
             const controlOffset = Math.max(40, Math.abs(line.endX - line.startX) * 0.35);
             const path = `M ${line.startX} ${line.startY} C ${line.startX + controlOffset} ${line.startY}, ${line.endX - controlOffset} ${line.endY}, ${line.endX} ${line.endY}`;
@@ -211,97 +212,115 @@ export function PlanningTimelineSection({
         </svg>
       )}
 
-      <Card className="bg-card shadow-card border-border">
-        <CardHeader>
-          <CardTitle>Zeitstrahl</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <Droppable droppableId="planning-timeline">
-            {(provided, snapshot) => (
-              <div
-                ref={provided.innerRef}
-                {...provided.droppableProps}
-                className={`mb-4 rounded-md border-2 border-dashed p-3 text-sm transition-colors ${snapshot.isDraggingOver || isDropActive ? "border-primary bg-primary/5" : "border-border"}`}
-                onDragEnter={() => setIsDropActive(true)}
-                onDragLeave={() => setIsDropActive(false)}
-                onDrop={() => setIsDropActive(false)}
-              >
-                Checklisten-Punkt hier fallen lassen, um ihn mit einer Frist im Zeitstrahl zu planen.
-                {provided.placeholder}
-              </div>
-            )}
-          </Droppable>
+      <Droppable droppableId="planning-timeline">
+        {(provided, snapshot) => (
+          <Card
+            ref={provided.innerRef}
+            {...provided.droppableProps}
+            className={`bg-card shadow-card border-border transition-colors ${
+              snapshot.isDraggingOver ? "bg-primary/5 ring-1 ring-primary/30" : ""
+            }`}
+          >
+            <CardHeader>
+              <CardTitle>Zeitstrahl</CardTitle>
+            </CardHeader>
+            <CardContent>
+                <p className="mb-4 text-sm text-muted-foreground">
+                  Checklisten-Punkt auf diese Karte ziehen, um ihn mit einer Frist im Zeitstrahl zu planen.
+                </p>
 
-          {timelineProgress !== null && (
-            <div className="mb-4 space-y-1">
-              <div className="relative h-2 rounded bg-muted">
-                <div className="absolute inset-y-0 w-0.5 bg-primary" style={{ left: `${timelineProgress}%` }} />
-              </div>
-              <p className="text-[11px] text-muted-foreground">Heute-Marker</p>
-            </div>
-          )}
-
-          <div ref={timelineListRef} className="relative pl-6">
-            {entries.length === 0 ? (
-              <p className="text-xs text-muted-foreground">Noch keine Termine im Zeitstrahl.</p>
-            ) : (
-              <>
-                {timelineAxis && (
-                  <span
-                    className="absolute w-0.5 bg-border"
-                    style={{
-                      left: `${timelineAxis.left}px`,
-                      top: `${timelineAxis.top}px`,
-                      height: `${timelineAxis.height}px`,
-                    }}
-                  />
-                )}
-                {entries.map((entry, index) => {
-                  const assignment = assignments.find((a) => a.checklistItemId === entry.id.replace("item-", ""));
-
-                  return (
-                    <div
-                      key={entry.id}
-                      className="relative"
-                      style={index > 0 ? { marginTop: `${entrySpacings[index]}px` } : undefined}
-                    >
-                      <span
-                        className={`absolute top-1.5 rounded-full ${DOT_SIZE_CLASS} ${DOT_LEFT_CLASS} ${entry.type === "known" ? "bg-blue-500" : "bg-amber-500"}`}
-                        ref={(element) => {
-                          timelinePointRefs.current[entry.id] = element;
-                        }}
-                      />
-                      <div className="rounded border border-border bg-background p-2 pl-4">
-                        <div className="mb-1 flex items-center justify-between gap-2">
-                          <p className="text-xs text-muted-foreground">{format(entry.date, "dd.MM.yyyy", { locale: de })}</p>
-                          <Badge variant="outline" className="text-[10px]">
-                            {entry.type === "known" ? <CalendarClock className="mr-1 h-3 w-3" /> : <Flag className="mr-1 h-3 w-3" />}
-                            {entry.type === "known" ? "Termin" : "Checkliste"}
-                          </Badge>
+                <div ref={timelineListRef} className="relative pl-6">
+                  {entries.length === 0 ? (
+                    <p className="text-xs text-muted-foreground">Noch keine Termine im Zeitstrahl.</p>
+                  ) : (
+                    <>
+                      {timelineAxis && (
+                        <span
+                          className="absolute w-0.5 bg-border"
+                          style={{
+                            left: `${timelineAxis.left}px`,
+                            top: `${timelineAxis.top}px`,
+                            height: `${timelineAxis.height}px`,
+                          }}
+                        />
+                      )}
+                      {timelineProgress !== null && timelineAxis && (
+                        <div
+                          className="pointer-events-none absolute z-30"
+                          style={{
+                            left: `${timelineAxis.left}px`,
+                            top: `${timelineAxis.top + (timelineAxis.height * timelineProgress) / 100}px`,
+                            transform: "translate(-50%, -50%)",
+                          }}
+                        >
+                          <div className="flex items-center gap-2">
+                            <span className="h-3 w-3 rounded-full border-2 border-background bg-primary shadow-sm" />
+                            <span className="rounded-full bg-background/95 px-2 py-0.5 text-[11px] font-medium text-primary shadow-sm">
+                              Heute
+                            </span>
+                          </div>
                         </div>
-                        <div className="flex items-center justify-between gap-2">
-                          <p className="text-sm font-medium leading-tight">{entry.title}</p>
-                          {entry.type === "checklist" && assignment && (
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              className="h-6 w-6 p-0 text-muted-foreground hover:text-destructive"
-                              onClick={() => onRemoveAssignment(assignment.checklistItemId)}
-                              title="Vom Zeitstrahl entfernen"
+                      )}
+                      {entries.map((entry, index) => {
+                        const assignment = assignments.find((a) => a.checklistItemId === entry.id.replace("item-", ""));
+                        const isPastEntry = entry.date.getTime() < now;
+                        const pointColorClass = isPastEntry
+                          ? "bg-muted text-muted-foreground"
+                          : entry.type === "known"
+                            ? "bg-blue-500 text-white"
+                            : "bg-amber-500 text-white";
+                        const Icon = entry.type === "known" ? CalendarClock : Flag;
+
+                        return (
+                          <div
+                            key={entry.id}
+                            className="group relative z-10"
+                            style={index > 0 ? { marginTop: `${entrySpacings[index]}px` } : undefined}
+                          >
+                            <span
+                              className={`absolute top-1.5 z-20 flex items-center justify-center rounded-full ${DOT_SIZE_CLASS} ${DOT_LEFT_CLASS} ${pointColorClass}`}
+                              ref={(element) => {
+                                timelinePointRefs.current[entry.id] = element;
+                              }}
                             >
-                              <Trash2 className="h-3 w-3" />
-                            </Button>
-                          )}
-                        </div>
-                      </div>
-                    </div>
-                  );
-                })}
-              </>
-            )}
-          </div>
-        </CardContent>
-      </Card>
+                              <Icon className="h-3 w-3" />
+                            </span>
+                            <div className="rounded border border-border bg-background p-2 pl-4">
+                              <div className="mb-1 flex items-center justify-between gap-2">
+                                <p className="text-xs text-muted-foreground">{format(entry.date, "dd.MM.yyyy", { locale: de })}</p>
+                              </div>
+                              <div className="flex items-center justify-between gap-2">
+                                <p
+                                  className={`text-sm font-medium leading-tight ${
+                                    isPastEntry ? "text-muted-foreground" : "text-foreground"
+                                  } ${entry.type === "checklist" && entry.isCompleted ? "line-through" : ""}`}
+                                >
+                                  {entry.title}
+                                </p>
+                                {entry.type === "checklist" && assignment && (
+                                  <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    className="h-6 w-6 p-0 text-muted-foreground opacity-0 transition-opacity hover:text-destructive group-hover:opacity-100"
+                                    onClick={() => onRemoveAssignment(assignment.checklistItemId)}
+                                    title="Vom Zeitstrahl entfernen"
+                                  >
+                                    <Trash2 className="h-3 w-3" />
+                                  </Button>
+                                )}
+                              </div>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </>
+                  )}
+                </div>
+                {provided.placeholder}
+            </CardContent>
+          </Card>
+        )}
+      </Droppable>
     </div>
   );
 }
