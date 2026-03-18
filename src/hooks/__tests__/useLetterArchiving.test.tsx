@@ -145,4 +145,29 @@ describe('useLetterArchiving', () => {
       }),
     );
   });
+
+  it('surfaces upload failures with a destructive archiving toast and resets the loading state', async () => {
+    state.uploadResult = { data: null, error: new Error('upload failed') };
+
+    const { result } = renderHook(() => useLetterArchiving());
+
+    let archived = true;
+    await act(async () => {
+      archived = await result.current.archiveLetter(letterFixture);
+    });
+
+    await waitFor(() => {
+      expect(result.current.isArchiving).toBe(false);
+    });
+
+    expect(archived).toBe(false);
+    expect(generateLetterPDFMock).toHaveBeenCalledWith(letterFixture);
+    expect(toastSpy).toHaveBeenCalledWith(
+      expect.objectContaining({
+        title: 'Archivierungsfehler',
+        description: 'upload failed',
+        variant: 'destructive',
+      }),
+    );
+  });
 });
