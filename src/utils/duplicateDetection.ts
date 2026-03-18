@@ -2,15 +2,7 @@
  * Utility functions for detecting duplicate contacts
  */
 
-export interface Contact {
-  id: string;
-  name: string;
-  email?: string | null;
-  phone?: string | null;
-  organization?: string | null;
-  organization_id?: string | null;
-  contact_type?: string;
-}
+import type { ContactDuplicateCandidate as Contact } from '@/types/contact';
 
 export interface DuplicateMatch {
   contact: Contact;

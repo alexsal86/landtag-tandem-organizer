@@ -1,5 +1,6 @@
 import { clsx, type ClassValue } from "clsx"
 import { twMerge } from "tailwind-merge"
+import type { ContactDuplicateCandidate } from '@/types/contact';
 
 export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs))
@@ -17,13 +18,7 @@ export function isValidEmail(email: string): boolean {
 }
 
 // Contact duplicate detection utilities
-export interface Contact {
-  id?: string;
-  name: string;
-  email?: string;
-  phone?: string;
-  organization?: string;
-}
+export type Contact = ContactDuplicateCandidate;
 
 export interface DuplicateMatch {
   contact: Contact;

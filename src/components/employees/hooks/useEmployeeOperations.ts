@@ -5,11 +5,14 @@ import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
 import { Employee, PendingLeaveRequest, LeaveType, calculateWorkingDays } from "../types";
 
+type EmployeeUpdateSetter = React.Dispatch<React.SetStateAction<Employee[]>>;
+type PendingLeaveSetter = React.Dispatch<React.SetStateAction<PendingLeaveRequest[]>>;
+
 interface UseEmployeeOperationsProps {
   employees: Employee[];
-  setEmployees: React.Dispatch<React.SetStateAction<Employee[]>>;
+  setEmployees: EmployeeUpdateSetter;
   pendingLeaves: PendingLeaveRequest[];
-  setPendingLeaves: React.Dispatch<React.SetStateAction<PendingLeaveRequest[]>>;
+  setPendingLeaves: PendingLeaveSetter;
 }
 
 export function useEmployeeOperations({
@@ -18,7 +21,7 @@ export function useEmployeeOperations({
   const { user } = useAuth();
   const { toast } = useToast();
 
-  const createLeaveCalendarEntry = async (leaveRequest: PendingLeaveRequest, userId: string, leaveType: LeaveType) => {
+  const createLeaveCalendarEntry = async (leaveRequest: PendingLeaveRequest, userId: string, leaveType: LeaveType): Promise<void> => {
     try {
       const { data: userProfile } = await supabase.from("profiles").select("display_name").eq("user_id", userId).single();
       const { data: tenantData } = await supabase.from("user_tenant_memberships").select("tenant_id").eq("user_id", user?.id ?? '').eq("is_active", true).limit(1).single();
@@ -55,7 +58,7 @@ export function useEmployeeOperations({
     }
   };
 
-  const handleLeaveAction = async (leaveId: string, action: "approved" | "rejected") => {
+  const handleLeaveAction = async (leaveId: string, action: "approved" | "rejected"): Promise<void> => {
     const leaveRequest = pendingLeaves.find(req => req.id === leaveId);
     const previousLeaves = [...pendingLeaves];
     setPendingLeaves(prev => prev.filter(l => l.id !== leaveId));
@@ -79,9 +82,11 @@ export function useEmployeeOperations({
       const typeLabel = leaveRequest?.type === "medical" ? "Arzttermin" : leaveRequest?.type === "overtime_reduction" ? "Überstundenabbau" : leaveRequest?.type === "vacation" ? "Urlaubsantrag" : "Antrag";
       toast({ title: action === "approved" ? `${typeLabel} genehmigt` : `${typeLabel} abgelehnt`, description: action === "approved" ? `Der ${typeLabel} wurde genehmigt.` : `Der ${typeLabel} wurde abgelehnt.` });
       setTimeout(() => window.location.reload(), 300);
-    } catch (e: any) {
+    } catch (e: unknown) {
       debugConsole.error(e);
-      if (e?.message?.includes('Failed to fetch') || e?.message?.includes('NetworkError') || e?.name === 'TypeError') {
+      const errorMessage = e instanceof Error ? e.message : '';
+      const errorName = e instanceof Error ? e.name : '';
+      if (errorMessage.includes('Failed to fetch') || errorMessage.includes('NetworkError') || errorName === 'TypeError') {
         await new Promise(r => setTimeout(r, 500));
         const { data: checkData } = await supabase.from("leave_requests").select("status").eq("id", leaveId).maybeSingle();
         if (checkData?.status === action) {
@@ -91,11 +96,11 @@ export function useEmployeeOperations({
         }
       }
       setPendingLeaves(previousLeaves);
-      toast({ title: "Fehler", description: e?.message ?? "Antrag konnte nicht aktualisiert werden.", variant: "destructive" });
+      toast({ title: "Fehler", description: errorMessage || "Antrag konnte nicht aktualisiert werden.", variant: "destructive" });
     }
   };
 
-  const handleCancelApproval = async (leaveId: string, approve: boolean) => {
+  const handleCancelApproval = async (leaveId: string, approve: boolean): Promise<void> => {
     try {
       const leaveRequest = pendingLeaves.find(req => req.id === leaveId);
       const newStatus: Database["public"]["Enums"]["leave_status"] = approve ? 'cancelled' : 'approved';
@@ -111,69 +116,69 @@ export function useEmployeeOperations({
 
       toast({ title: approve ? "Stornierung genehmigt" : "Stornierung abgelehnt", description: approve ? "Die Urlaubsstornierung wurde genehmigt und der Kalendereintrag entfernt." : "Die Stornierung wurde abgelehnt. Der Urlaub bleibt bestehen." });
       window.location.reload();
-    } catch (e: any) {
+    } catch (e: unknown) {
       debugConsole.error(e);
-      toast({ title: "Fehler", description: e?.message ?? "Stornierungsanfrage konnte nicht verarbeitet werden.", variant: "destructive" });
+      toast({ title: "Fehler", description: e instanceof Error ? e.message : "Stornierungsanfrage konnte nicht verarbeitet werden.", variant: "destructive" });
     }
   };
 
-  const updateHours = async (userId: string, newHours: number) => {
+  const updateHours = async (userId: string, newHours: number): Promise<void> => {
     if (newHours < 1 || newHours > 39.5) { toast({ title: "Ungültige Eingabe", description: "Stunden müssen zwischen 1 und 39,5 liegen.", variant: "destructive" }); return; }
     try {
       const { data, error } = await supabase.from("employee_settings").upsert({ user_id: userId, hours_per_week: newHours, admin_id: user?.id }, { onConflict: 'user_id', ignoreDuplicates: false }).select();
       if (error) throw error;
       setEmployees(prev => prev.map(emp => emp.user_id === userId ? { ...emp, hours_per_week: newHours } : emp));
       toast({ title: "Gespeichert", description: "Stunden pro Woche wurden aktualisiert." });
-    } catch (e: any) {
+    } catch (e: unknown) {
       debugConsole.error(e);
-      toast({ title: "Fehler", description: e?.message ?? "Stunden konnten nicht aktualisiert werden.", variant: "destructive" });
+      toast({ title: "Fehler", description: e instanceof Error ? e.message : "Stunden konnten nicht aktualisiert werden.", variant: "destructive" });
     }
   };
 
-  const updateDaysPerWeek = async (userId: string, newDays: number) => {
+  const updateDaysPerWeek = async (userId: string, newDays: number): Promise<void> => {
     if (newDays < 1 || newDays > 5) { toast({ title: "Ungültige Eingabe", description: "Tage müssen zwischen 1 und 5 liegen.", variant: "destructive" }); return; }
     try {
       const { error } = await supabase.from("employee_settings").upsert({ user_id: userId, days_per_week: newDays, admin_id: user?.id }, { onConflict: 'user_id', ignoreDuplicates: false });
       if (error) throw error;
       setEmployees(prev => prev.map(emp => emp.user_id === userId ? { ...emp, days_per_week: newDays } : emp));
       toast({ title: "Gespeichert", description: "Tage pro Woche wurden aktualisiert." });
-    } catch (e: any) {
-      debugConsole.error(e); toast({ title: "Fehler", description: e?.message ?? "Tage konnten nicht aktualisiert werden.", variant: "destructive" });
+    } catch (e: unknown) {
+      debugConsole.error(e); toast({ title: "Fehler", description: e instanceof Error ? e.message : "Tage konnten nicht aktualisiert werden.", variant: "destructive" });
     }
   };
 
-  const updateDaysPerMonth = async (userId: string, newDays: number) => {
+  const updateDaysPerMonth = async (userId: string, newDays: number): Promise<void> => {
     if (newDays < 1 || newDays > 31) { toast({ title: "Ungültige Eingabe", description: "Tage müssen zwischen 1 und 31 liegen.", variant: "destructive" }); return; }
     try {
       const { error } = await supabase.from("employee_settings").upsert({ user_id: userId, days_per_month: newDays, admin_id: user?.id }, { onConflict: 'user_id', ignoreDuplicates: false });
       if (error) throw error;
       setEmployees(prev => prev.map(emp => emp.user_id === userId ? { ...emp, days_per_month: newDays } : emp));
       toast({ title: "Gespeichert", description: "Tage pro Monat wurden aktualisiert." });
-    } catch (e: any) {
-      debugConsole.error(e); toast({ title: "Fehler", description: e?.message ?? "Tage konnten nicht aktualisiert werden.", variant: "destructive" });
+    } catch (e: unknown) {
+      debugConsole.error(e); toast({ title: "Fehler", description: e instanceof Error ? e.message : "Tage konnten nicht aktualisiert werden.", variant: "destructive" });
     }
   };
 
-  const updateVacationDays = async (userId: string, newDays: number) => {
+  const updateVacationDays = async (userId: string, newDays: number): Promise<void> => {
     if (newDays < 0 || newDays > 50) { toast({ title: "Ungültige Eingabe", description: "Urlaubstage müssen zwischen 0 und 50 liegen.", variant: "destructive" }); return; }
     try {
       const { error } = await supabase.from("employee_settings").upsert({ user_id: userId, annual_vacation_days: newDays, admin_id: user?.id }, { onConflict: 'user_id', ignoreDuplicates: false });
       if (error) throw error;
       setEmployees(prev => prev.map(emp => emp.user_id === userId ? { ...emp, annual_vacation_days: newDays } : emp));
       toast({ title: "Gespeichert", description: "Urlaubstage wurden aktualisiert." });
-    } catch (e: any) {
-      debugConsole.error(e); toast({ title: "Fehler", description: e?.message ?? "Urlaubstage konnten nicht aktualisiert werden.", variant: "destructive" });
+    } catch (e: unknown) {
+      debugConsole.error(e); toast({ title: "Fehler", description: e instanceof Error ? e.message : "Urlaubstage konnten nicht aktualisiert werden.", variant: "destructive" });
     }
   };
 
-  const updateStartDate = async (userId: string, newDate: string) => {
+  const updateStartDate = async (userId: string, newDate: string): Promise<void> => {
     try {
       const { error } = await supabase.from("employee_settings").upsert({ user_id: userId, employment_start_date: newDate, admin_id: user?.id }, { onConflict: 'user_id', ignoreDuplicates: false });
       if (error) throw error;
       setEmployees(prev => prev.map(emp => emp.user_id === userId ? { ...emp, employment_start_date: newDate } : emp));
       toast({ title: "Gespeichert", description: "Startdatum wurde aktualisiert." });
-    } catch (e: any) {
-      debugConsole.error(e); toast({ title: "Fehler", description: e?.message ?? "Startdatum konnte nicht aktualisiert werden.", variant: "destructive" });
+    } catch (e: unknown) {
+      debugConsole.error(e); toast({ title: "Fehler", description: e instanceof Error ? e.message : "Startdatum konnte nicht aktualisiert werden.", variant: "destructive" });
     }
   };
 

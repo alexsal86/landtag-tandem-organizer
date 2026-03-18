@@ -22,25 +22,26 @@ import { ThemeProvider } from "next-themes";
 import { Navigation } from "@/components/Navigation";
 import { SidebarProvider } from "@/components/ui/sidebar";
 import { ImageCropper } from "@/components/ui/ImageCropper";
+import type { EditableContact } from "@/types/contact";
 
-interface Contact {
-  id: string;
-  contact_type?: "person" | "organization" | null;
-  name: string;
-  role?: string | null;
-  organization_id?: string | null;
-  organization?: string | null;
-  email?: string | null;
-  phone?: string | null;
-  website?: string | null;
-  address?: string | null;
-  category?: "citizen" | "colleague" | "lobbyist" | "media" | "business" | null;
-  priority?: "low" | "medium" | "high" | null;
-  notes?: string | null;
-  industry?: string | null;
-  main_contact_person?: string | null;
-  avatar_url?: string | null;
-}
+const createEmptyContact = (): EditableContact => ({
+  id: "",
+  contact_type: "person",
+  name: "",
+  role: "",
+  organization_id: "",
+  organization: "",
+  email: "",
+  phone: "",
+  website: "",
+  address: "",
+  category: "citizen",
+  priority: "medium",
+  notes: "",
+  industry: "",
+  main_contact_person: "",
+  avatar_url: "",
+});
 
 export default function EditContact() {
   const { id } = useParams();
@@ -56,24 +57,7 @@ export default function EditContact() {
   const [organizations, setOrganizations] = useState<
     Array<{ id: string; name: string }>
   >([]);
-  const [contact, setContact] = useState<Contact>({
-    id: "",
-    contact_type: "person",
-    name: "",
-    role: "",
-    organization_id: "",
-    organization: "",
-    email: "",
-    phone: "",
-    website: "",
-    address: "",
-    category: "citizen",
-    priority: "medium",
-    notes: "",
-    industry: "",
-    main_contact_person: "",
-    avatar_url: "",
-  });
+  const [contact, setContact] = useState<EditableContact>(createEmptyContact);
 
   useEffect(() => {
     if (id && user && currentTenant) {
@@ -120,8 +104,8 @@ export default function EditContact() {
       phone: data.phone || "",
       website: data.website || "",
       address: data.address || "",
-      category: (data.category as Contact["category"]) || "citizen",
-      priority: (data.priority as Contact["priority"]) || "medium",
+      category: data.category ?? "citizen",
+      priority: data.priority ?? "medium",
       notes: data.notes || "",
       industry: "",
       main_contact_person: "",
@@ -129,7 +113,7 @@ export default function EditContact() {
     });
   };
 
-  const handleAvatarUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
+  const handleAvatarUpload = (event: React.ChangeEvent<HTMLInputElement>): void => {
     const file = event.target.files?.[0];
     if (!file) return;
 
@@ -163,7 +147,7 @@ export default function EditContact() {
     }
   };
 
-  const handleCropComplete = async (croppedBlob: Blob) => {
+  const handleCropComplete = async (croppedBlob: Blob): Promise<void> => {
     try {
       setUploading(true);
       if (!user) return;
@@ -199,12 +183,12 @@ export default function EditContact() {
     }
   };
 
-  const handleCropCancel = () => {
+  const handleCropCancel = (): void => {
     setCropperOpen(false);
     setImageToEdit(null);
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>): Promise<void> => {
     e.preventDefault();
 
     if (!contact.name) {
