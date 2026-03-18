@@ -135,7 +135,7 @@ export function useChecklistOperations({
       return;
     }
 
-    if (itemType === "system_social_media") {
+    if (itemType === "system_social_media" || itemType === "system_rsvp") {
       if (!currentTenantId || !currentProfileId) {
         await supabase.from("event_planning_checklist_items").delete().eq("id", data.id);
         toast({ title: "Fehler", description: "Systempunkt konnte ohne Tenant-/Profilkontext nicht angelegt werden.", variant: "destructive" });
