@@ -125,7 +125,7 @@ Diese Grenzwerte sind bewusst konservativ gestartet und können schrittweise erh
 
 ## TypeScript Strict Migration
 
-Details zur Batch-Strategie, Migrationsregel und Fortschrittsmetrik: `docs/typescript-strict-migration.md`.
+Details zur Batch-Strategie, Migrationsregel und Fortschrittsmetrik: `docs/typescript-strict-migration.md`. Die Strict-Migration wird dort zusätzlich flow-basiert entlang der fünf priorisierten Kernflows organisiert; dieselben Flows sollten deshalb auch für Coverage-Interpretation, PR-Zuschnitt und Batch-Freigaben verwendet werden.
 
 ## Python-Test-Gate (Parser)
 
