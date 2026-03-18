@@ -1,14 +1,14 @@
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import { format } from "date-fns";
 import { de } from "date-fns/locale";
-import { Lightbulb, Link2, PlusCircle, TriangleAlert } from "lucide-react";
+import { CalendarClock, Lightbulb, Link2, PlusCircle, RadioTower, TriangleAlert, UserRound, Wrench } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { useTenant } from "@/hooks/useTenant";
 import { useCurrentProfileId } from "@/hooks/useCurrentProfileId";
 import { useToast } from "@/hooks/use-toast";
 import { getErrorMessage } from "@/utils/errorHandler";
-import { useTopicBacklog } from "@/hooks/useTopicBacklog";
+import { TopicBacklogEntry, TopicEditorialStatus, useTopicBacklog } from "@/hooks/useTopicBacklog";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -16,42 +16,41 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
-interface TopicBacklogItem {
-  id: string;
-  topic: string;
-  short_description: string | null;
-  tags: string[];
-  status: string;
-}
-
-interface ContentLink {
-  id: string;
-  hook: string | null;
-  workflow_status: string;
-  scheduled_for: string | null;
-}
-
-interface Channel {
-  id: string;
-  name: string;
-}
-
 interface TemplateDefinition {
   key: string;
   label: string;
   format: string;
+  formatVariant: string;
   cta: string;
   draftIntro: string;
 }
 
 const TEMPLATES: TemplateDefinition[] = [
-  { key: "statement", label: "Statement", format: "Text + Visual", cta: "Jetzt Position teilen", draftIntro: "Kernaussage in 2-3 Sätzen." },
-  { key: "terminankuendigung", label: "Terminankündigung", format: "Feed + Story", cta: "Termin vormerken", draftIntro: "Was, wann, wo – kurz und klar." },
-  { key: "rueckblick", label: "Rückblick", format: "Carousel", cta: "Feedback in die Kommentare", draftIntro: "Ergebnis und Learnings zusammenfassen." },
+  { key: "simple_post", label: "Einfacher Social-Post", format: "Social Post", formatVariant: "single_post", cta: "Jetzt Position teilen", draftIntro: "Kernaussage in 2-3 Sätzen verdichten." },
+  { key: "story_series", label: "Story-Serie", format: "Story-Serie", formatVariant: "story_series", cta: "Storys nacheinander erzählen", draftIntro: "Story-Frames mit rotem Faden und Interaktionen skizzieren." },
+  { key: "event_post", label: "Termin-Post", format: "Termin-Post", formatVariant: "event_post", cta: "Termin vormerken", draftIntro: "Was, wann, wo und warum kurz und klar nennen." },
+  { key: "recap_post", label: "Rückblick-Post", format: "Rückblick-Post", formatVariant: "recap_post", cta: "Feedback in die Kommentare", draftIntro: "Ergebnis, Wirkung und Learnings zusammenfassen." },
 ];
+
+const STATUS_META: Record<TopicEditorialStatus, { label: string; variant: "secondary" | "outline" | "default" }> = {
+  idea: { label: "Idee", variant: "secondary" },
+  planning: { label: "in Planung", variant: "outline" },
+  production: { label: "in Produktion", variant: "default" },
+  published: { label: "veröffentlicht", variant: "default" },
+  repurpose: { label: "wiederverwenden", variant: "secondary" },
+};
 
 interface Props {
   onContentCreated?: () => void;
+}
+
+function formatScheduledDate(value: string | null) {
+  if (!value) return "Noch nicht terminiert";
+  try {
+    return format(new Date(value), "dd. MMM yyyy", { locale: de });
+  } catch {
+    return "Ungültiges Datum";
+  }
 }
 
 export function ThemenspeicherPanel({ onContentCreated }: Props) {
@@ -59,14 +58,9 @@ export function ThemenspeicherPanel({ onContentCreated }: Props) {
   const { currentTenant } = useTenant();
   const { toast } = useToast();
   const profileId = useCurrentProfileId();
-  const { createTopic: createBacklogTopic } = useTopicBacklog();
+  const { createTopic: createBacklogTopic, topics, loading, channels, loadTopics } = useTopicBacklog();
 
-  const [loading, setLoading] = useState(true);
-  const [topics, setTopics] = useState<TopicBacklogItem[]>([]);
-  const [linksByTopic, setLinksByTopic] = useState<Record<string, ContentLink[]>>({});
-  const [channels, setChannels] = useState<Channel[]>([]);
-
-  const [selectedTopic, setSelectedTopic] = useState<TopicBacklogItem | null>(null);
+  const [selectedTopic, setSelectedTopic] = useState<TopicBacklogEntry | null>(null);
   const [isCreateTopicDialogOpen, setIsCreateTopicDialogOpen] = useState(false);
   const [newTopicTitle, setNewTopicTitle] = useState("");
   const [newTopicDescription, setNewTopicDescription] = useState("");
@@ -80,67 +74,8 @@ export function ThemenspeicherPanel({ onContentCreated }: Props) {
 
   const selectedTemplate = useMemo(
     () => TEMPLATES.find((template) => template.key === selectedTemplateKey) ?? TEMPLATES[0],
-    [selectedTemplateKey]
+    [selectedTemplateKey],
   );
-
-  const loadData = async () => {
-    if (!user?.id || !currentTenant?.id) return;
-
-    setLoading(true);
-    const { data: topicRows, error: topicError } = await supabase
-      .from("topic_backlog")
-      .select("id, topic, short_description, tags, status")
-      .eq("tenant_id", currentTenant.id)
-      .order("created_at", { ascending: false });
-
-    if (topicError) {
-      toast({ title: "Fehler", description: "Themenspeicher konnte nicht geladen werden.", variant: "destructive" });
-      setLoading(false);
-      return;
-    }
-
-    const topicData = (topicRows ?? []) as TopicBacklogItem[];
-    setTopics(topicData);
-
-    if (topicData.length > 0) {
-      const topicIds = topicData.map((topic) => topic.id);
-      const { data: linkedItems } = await supabase
-        .from("social_content_items")
-        .select("id, hook, workflow_status, scheduled_for, topic_backlog_id")
-        .in("topic_backlog_id", topicIds)
-        .eq("tenant_id", currentTenant.id)
-        .order("created_at", { ascending: false });
-
-      const mapped: Record<string, ContentLink[]> = {};
-      for (const row of linkedItems ?? []) {
-        const topicId = row.topic_backlog_id;
-        if (!mapped[topicId]) mapped[topicId] = [];
-        mapped[topicId].push({
-          id: row.id,
-          hook: row.hook,
-          workflow_status: row.workflow_status,
-          scheduled_for: row.scheduled_for,
-        });
-      }
-      setLinksByTopic(mapped);
-    } else {
-      setLinksByTopic({});
-    }
-
-    const { data: channelRows } = await supabase
-      .from("social_content_channels")
-      .select("id, name")
-      .eq("tenant_id", currentTenant.id)
-      .eq("is_active", true)
-      .order("sort_order", { ascending: true });
-
-    setChannels((channelRows ?? []) as Channel[]);
-    setLoading(false);
-  };
-
-  useEffect(() => {
-    void loadData();
-  }, [user?.id, currentTenant?.id]);
 
   const resetDialogState = () => {
     setSelectedChannelId("none");
@@ -181,7 +116,10 @@ export function ThemenspeicherPanel({ onContentCreated }: Props) {
 
     const prefilledHook = selectedTopic.short_description || selectedTopic.topic;
     const prefilledCoreMessage = selectedTopic.topic;
-    const prefilledDraft = `${selectedTemplate.draftIntro}\n\nTags: ${(selectedTopic.tags ?? []).join(", ")}`;
+    const openNeedsHint = selectedTopic.open_production_needs.length
+      ? `Offener Produktionsbedarf: ${selectedTopic.open_production_needs.join(", ")}`
+      : "Produktionsbedarf bei Bedarf ergänzen.";
+    const prefilledDraft = `${selectedTemplate.draftIntro}\n\nTags: ${(selectedTopic.tags ?? []).join(", ")}\n${openNeedsHint}`;
 
     const newItemId = crypto.randomUUID();
     const { error: itemError } = await supabase
@@ -189,18 +127,21 @@ export function ThemenspeicherPanel({ onContentCreated }: Props) {
       .insert({
         id: newItemId,
         tenant_id: currentTenant.id,
-        created_by: profileId!,
+        created_by: profileId,
         topic_backlog_id: selectedTopic.id,
         hook: prefilledHook,
         core_message: prefilledCoreMessage,
         format: selectedTemplate.format,
+        format_variant: selectedTemplate.formatVariant,
         cta: selectedTemplate.cta,
         draft_text: prefilledDraft,
         notes: `Aus Themenspeicher übernommen (${selectedTopic.topic})`,
         scheduled_for: scheduledFor,
         workflow_status: "idea",
         approval_state: "draft",
-      } as any);
+        responsible_user_id: selectedTopic.owner_id,
+        asset_requirements: selectedTopic.open_production_needs,
+      } as never);
 
     if (itemError) {
       console.error("createFromTopic insert failed:", itemError);
@@ -213,23 +154,23 @@ export function ThemenspeicherPanel({ onContentCreated }: Props) {
     if (selectedChannelId !== "none") {
       const { error: channelError } = await supabase.from("social_content_item_channels").insert({
         tenant_id: currentTenant.id,
-        created_by: profileId!,
+        created_by: profileId,
         content_item_id: newItemId,
         channel_id: selectedChannelId,
         is_primary: true,
-      } as any);
+      } as never);
 
       if (channelError) {
         toast({ title: "Hinweis", description: "Beitrag erstellt, aber Kanal-Verknüpfung fehlgeschlagen.", variant: "destructive" });
       }
     }
 
-    toast({ title: "Übernommen", description: "Thema wurde in die Redaktionsplanung übernommen." });
+    toast({ title: "Übernommen", description: `Thema wurde als ${selectedTemplate.label.toLowerCase()} in die Redaktionsplanung übernommen.` });
     setSelectedTopic(null);
     resetDialogState();
     setIsSubmitting(false);
     onContentCreated?.();
-    void loadData();
+    void loadTopics();
   };
 
   const createTopic = async () => {
@@ -255,7 +196,7 @@ export function ThemenspeicherPanel({ onContentCreated }: Props) {
       setNewTopicDescription("");
       setNewTopicTags("");
       setIsCreateTopicDialogOpen(false);
-      void loadData();
+      void loadTopics();
       onContentCreated?.();
     } catch (error: unknown) {
       const msg = error instanceof Error ? error.message : String(error);
@@ -284,12 +225,15 @@ export function ThemenspeicherPanel({ onContentCreated }: Props) {
       ) : (
         <div className="space-y-2">
           {topics.map((topic) => {
-            const linkedItems = linksByTopic[topic.id] ?? [];
+            const statusMeta = STATUS_META[topic.status];
             return (
-              <div key={topic.id} className="rounded-md border p-3 space-y-2">
+              <div key={topic.id} className="rounded-md border p-3 space-y-3">
                 <div className="flex items-start justify-between gap-2">
-                  <div>
-                    <p className="text-sm font-medium">{topic.topic}</p>
+                  <div className="space-y-1">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <p className="text-sm font-medium">{topic.topic}</p>
+                      <Badge variant={statusMeta.variant}>{statusMeta.label}</Badge>
+                    </div>
                     {topic.short_description && <p className="text-xs text-muted-foreground">{topic.short_description}</p>}
                   </div>
                   <Button size="sm" variant="outline" onClick={() => setSelectedTopic(topic)}>
@@ -306,14 +250,43 @@ export function ThemenspeicherPanel({ onContentCreated }: Props) {
                   ))}
                 </div>
 
-                <div className="text-xs text-muted-foreground flex flex-wrap items-center gap-1">
-                  <Link2 className="h-3 w-3" />
-                  {linkedItems.length === 0 ? "Noch keine verknüpften Beiträge" : `${linkedItems.length} verknüpfte Beiträge:`}
-                  {linkedItems.slice(0, 2).map((item) => (
-                    <Badge key={item.id} variant="outline" className="text-[10px]">
-                      {item.hook ?? "Ohne Hook"}
-                    </Badge>
-                  ))}
+                <div className="grid gap-2 text-xs text-muted-foreground sm:grid-cols-2 xl:grid-cols-4">
+                  <div className="flex items-start gap-2 rounded-md bg-muted/40 px-2 py-1.5">
+                    <Link2 className="mt-0.5 h-3.5 w-3.5" />
+                    <div>
+                      <p className="font-medium text-foreground">{topic.linked_content_count} verknüpfte Beiträge</p>
+                      <p>{topic.linked_content_items.slice(0, 2).map((item) => item.hook ?? item.format ?? "Ohne Hook").join(" • ") || "Noch keine Beiträge"}</p>
+                    </div>
+                  </div>
+                  <div className="flex items-start gap-2 rounded-md bg-muted/40 px-2 py-1.5">
+                    <CalendarClock className="mt-0.5 h-3.5 w-3.5" />
+                    <div>
+                      <p className="font-medium text-foreground">Letzter Veröffentlichungstermin</p>
+                      <p>{formatScheduledDate(topic.latest_scheduled_for)}</p>
+                    </div>
+                  </div>
+                  <div className="flex items-start gap-2 rounded-md bg-muted/40 px-2 py-1.5">
+                    <RadioTower className="mt-0.5 h-3.5 w-3.5" />
+                    <div>
+                      <p className="font-medium text-foreground">Hauptkanal</p>
+                      <p>{topic.primary_channel_name || "Noch kein Kanal"}</p>
+                    </div>
+                  </div>
+                  <div className="flex items-start gap-2 rounded-md bg-muted/40 px-2 py-1.5">
+                    <UserRound className="mt-0.5 h-3.5 w-3.5" />
+                    <div>
+                      <p className="font-medium text-foreground">Verantwortlich</p>
+                      <p>{topic.responsible_person_name || topic.owner_name || "Nicht zugewiesen"}</p>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="flex items-start gap-2 rounded-md border border-dashed px-2 py-2 text-xs text-muted-foreground">
+                  <Wrench className="mt-0.5 h-3.5 w-3.5" />
+                  <div>
+                    <p className="font-medium text-foreground">Offener Produktionsbedarf</p>
+                    <p>{topic.open_production_needs.length > 0 ? topic.open_production_needs.join(", ") : "Aktuell kein offener Produktionsbedarf hinterlegt."}</p>
+                  </div>
                 </div>
               </div>
             );
@@ -326,7 +299,7 @@ export function ThemenspeicherPanel({ onContentCreated }: Props) {
           <DialogHeader>
             <DialogTitle>Thema in Redaktionsplanung übernehmen</DialogTitle>
             <DialogDescription>
-              Vorausfüllung mit Titel, Hook und Tags aus dem Themenspeicher.
+              Wähle das Format für die Übernahme und nutze vorhandene Metadaten aus dem Themen-Backlog.
             </DialogDescription>
           </DialogHeader>
 
@@ -337,7 +310,7 @@ export function ThemenspeicherPanel({ onContentCreated }: Props) {
             </div>
 
             <div>
-              <Label>Vorlage (optional)</Label>
+              <Label>Format der Übernahme</Label>
               <Select value={selectedTemplateKey} onValueChange={setSelectedTemplateKey}>
                 <SelectTrigger>
                   <SelectValue />
