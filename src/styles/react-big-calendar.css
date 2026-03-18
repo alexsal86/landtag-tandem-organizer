@@ -136,14 +136,14 @@
 }
 
 .social-planner-calendar .rbc-month-header::before {
-  content: "KW";
+  content: "";
   position: absolute;
   left: -2.35rem;
   top: 50%;
   transform: translateY(-50%);
   font-size: 0.65rem;
   font-weight: 700;
-  color: hsl(var(--muted-foreground));
+  color: hsl(var(--foreground) / 0.75);
 }
 
 .social-planner-calendar .rbc-month-row,
@@ -169,8 +169,8 @@
   left: -2.35rem;
   top: 0.45rem;
   font-size: 0.65rem;
-  font-weight: 600;
-  color: hsl(var(--muted-foreground));
+  font-weight: 700;
+  color: hsl(var(--foreground) / 0.75);
 }
 
 /* More events indicator */
