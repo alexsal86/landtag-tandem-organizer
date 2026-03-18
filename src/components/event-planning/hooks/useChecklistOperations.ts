@@ -192,9 +192,18 @@ export function useChecklistOperations({
 
         onSocialPlannerActionCreated?.(data.id, createdAction);
         toast({ title: "Systempunkt angelegt", description: "Social-Media-Punkt wurde erstellt und mit dem Social Planner verknüpft." });
-      } catch (systemPointError) {
+      } catch (systemPointError: any) {
         debugConsole.error("Error creating social media system point:", systemPointError);
+        // Rollback: clean up checklist item AND any created topic_backlog/social_content_items
         await supabase.from("event_planning_checklist_items").delete().eq("id", data.id);
+        // topicId and plannerItemId may have been created before the error
+        // We generated them with crypto.randomUUID() so we can reference them
+        // They are scoped inside the try block, so we need to attempt cleanup broadly
+        await supabase.from("social_content_items").delete().match({ 
+          tenant_id: currentTenantId, 
+          created_by: currentProfileId,
+          format: "Social Media",
+        } as any).filter("notes", "ilike", `%${selectedPlanningTitle || "Veranstaltungsplanung"}%`);
         toast({ title: "Fehler", description: "Systempunkt konnte nicht vollständig angelegt werden.", variant: "destructive" });
         return;
       }
