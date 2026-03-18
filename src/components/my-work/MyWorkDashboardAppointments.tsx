@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { format } from 'date-fns';
 import { de } from 'date-fns/locale';
 import { useNavigate } from 'react-router-dom';
-import { icons } from 'lucide-react';
+import { icons, X } from 'lucide-react';
 import { Separator } from '@/components/ui/separator';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { getCurrentTimeSlot, getCurrentDayOfWeek } from '@/utils/dashboard/timeUtils';
@@ -60,6 +60,40 @@ interface TimelineLayoutItem {
   column: number;
   totalColumns: number;
 }
+
+const SPECIAL_DAY_DISMISSALS_STORAGE_KEY = 'mywork-dashboard-special-day-dismissals';
+
+interface StoredSpecialDayDismissal {
+  hiddenUntilDate: string;
+}
+
+const getSpecialDayDismissals = (): Record<string, StoredSpecialDayDismissal> => {
+  if (typeof window === 'undefined') return {};
+
+  try {
+    const rawValue = window.localStorage.getItem(SPECIAL_DAY_DISMISSALS_STORAGE_KEY);
+    if (!rawValue) return {};
+
+    const parsed = JSON.parse(rawValue);
+    if (!parsed || typeof parsed !== 'object') return {};
+
+    return Object.entries(parsed).reduce<Record<string, StoredSpecialDayDismissal>>((acc, [key, value]) => {
+      if (value && typeof value === 'object' && typeof (value as StoredSpecialDayDismissal).hiddenUntilDate === 'string') {
+        acc[key] = { hiddenUntilDate: (value as StoredSpecialDayDismissal).hiddenUntilDate };
+      }
+      return acc;
+    }, {});
+  } catch {
+    return {};
+  }
+};
+
+const setSpecialDayDismissals = (dismissals: Record<string, StoredSpecialDayDismissal>) => {
+  if (typeof window === 'undefined') return;
+  window.localStorage.setItem(SPECIAL_DAY_DISMISSALS_STORAGE_KEY, JSON.stringify(dismissals));
+};
+
+const buildSpecialDayDismissalKey = (name: string, targetDate: string) => `${name}::${targetDate}`;
 
 /** Check if an appointment is currently happening */
 const isCurrentlyActive = (apt: { start_time: string; end_time?: string; is_all_day: boolean }) => {
@@ -294,7 +328,43 @@ export const DashboardAppointments = ({ data }: Props) => {
     });
   }, [appointments, openTasksCount, completedTasksToday, userRole, hasPlenum, hasCommittee, timeSlot]);
 
-  const specialDayHint = getSpecialDayHint(new Date(), specialDays);
+  const specialDayHint = useMemo(() => getSpecialDayHint(new Date(), specialDays), [specialDays]);
+  const [isSpecialDayHintVisible, setIsSpecialDayHintVisible] = useState(true);
+
+  useEffect(() => {
+    if (!specialDayHint) {
+      setIsSpecialDayHintVisible(false);
+      return;
+    }
+
+    const dismissalKey = buildSpecialDayDismissalKey(specialDayHint.name, specialDayHint.targetDate);
+    const dismissals = getSpecialDayDismissals();
+    const dismissal = dismissals[dismissalKey];
+
+    if (!dismissal) {
+      setIsSpecialDayHintVisible(true);
+      return;
+    }
+
+    if (specialDayHint.isToday || dismissal.hiddenUntilDate < specialDayHint.targetDate) {
+      delete dismissals[dismissalKey];
+      setSpecialDayDismissals(dismissals);
+      setIsSpecialDayHintVisible(true);
+      return;
+    }
+
+    setIsSpecialDayHintVisible(false);
+  }, [specialDayHint]);
+
+  const dismissSpecialDayHint = useCallback(() => {
+    if (!specialDayHint) return;
+
+    const dismissalKey = buildSpecialDayDismissalKey(specialDayHint.name, specialDayHint.targetDate);
+    const dismissals = getSpecialDayDismissals();
+    dismissals[dismissalKey] = { hiddenUntilDate: specialDayHint.targetDate };
+    setSpecialDayDismissals(dismissals);
+    setIsSpecialDayHintVisible(false);
+  }, [specialDayHint]);
 
   if (isLoading) return <div className="animate-pulse h-32 bg-muted rounded-lg" />;
 
@@ -358,12 +428,22 @@ export const DashboardAppointments = ({ data }: Props) => {
         )}
       </div>
 
-      {specialDayHint && <Separator className="my-2" />}
+      {specialDayHint && isSpecialDayHintVisible && <Separator className="my-2" />}
 
-      {specialDayHint && (
-        <div className="bg-amber-50 dark:bg-amber-950/30 border-l-2 border-amber-400 px-3 py-1.5 rounded text-sm text-foreground flex items-start gap-2">
+      {specialDayHint && isSpecialDayHintVisible && (
+        <div className="group relative bg-amber-50 dark:bg-amber-950/30 border-l-2 border-amber-400 px-3 py-1.5 pr-9 rounded text-sm text-foreground flex items-start gap-2">
           {HintIcon && <HintIcon className="h-4 w-4 mt-0.5 shrink-0 text-amber-600 dark:text-amber-400" />}
           <span dangerouslySetInnerHTML={{ __html: sanitizeRichHtml(specialDayHint.text.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>').replace(/\n/g, '<br/>')) }} />
+          <Button
+            type="button"
+            variant="ghost"
+            size="icon"
+            className="absolute right-1.5 top-1.5 h-6 w-6 rounded-full text-amber-700 opacity-0 transition-opacity hover:bg-amber-100 hover:text-amber-900 focus-visible:opacity-100 group-hover:opacity-100 dark:text-amber-300 dark:hover:bg-amber-900/60 dark:hover:text-amber-100"
+            onClick={dismissSpecialDayHint}
+            aria-label="Hinweis ausblenden"
+          >
+            <X className="h-4 w-4" />
+          </Button>
         </div>
       )}
 
