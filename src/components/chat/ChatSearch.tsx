@@ -6,19 +6,10 @@ import { Button } from '@/components/ui/button';
 import { format } from 'date-fns';
 import { de } from 'date-fns/locale';
 import { cn } from '@/lib/utils';
-
-interface Message {
-  eventId: string;
-  roomId: string;
-  sender: string;
-  senderDisplayName: string;
-  content: string;
-  timestamp: number;
-  type: string;
-}
+import type { MatrixMessage } from '@/types/matrix';
 
 interface ChatSearchProps {
-  messages: Message[];
+  messages: MatrixMessage[];
   onSelectMessage?: (eventId: string) => void;
   onClose: () => void;
 }
@@ -52,7 +43,7 @@ export function ChatSearch({ messages, onSelectMessage, onClose }: ChatSearchPro
       .slice(0, 50); // Limit results
   }, [messages, debouncedSearchQuery]);
 
-  const highlightMatch = (text: string, query: string) => {
+  const highlightMatch = (text: string, query: string): string | JSX.Element[] => {
     if (!query.trim()) return text;
 
     const escapedQuery = escapeRegExp(query);
