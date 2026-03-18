@@ -115,6 +115,9 @@ catch (error: unknown) {
 }
 ```
 
+### `typeSafety`
+Das kleine Type-Hardening-Paket in `src/utils/typeSafety.ts` bündelt Guards und Normalisierer für `unknown`-Werte, optionale Callbacks, Hook-Rückgaben und Supabase-Responses. Verbindliche Migrationsregeln stehen in `docs/type-migration-rules.md`.
+
 ### Multi-Tenant-System
 - Jeder Datensatz gehört zu einem `tenant_id`
 - RLS-Policies nutzen `get_user_tenant_ids(auth.uid())` für Zugriffskontrolle
