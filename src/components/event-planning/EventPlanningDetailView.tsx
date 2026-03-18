@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState, type RefObject } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -27,11 +27,21 @@ import type { useEventPlanningData } from "./useEventPlanningData";
 
 type EventPlanningDataReturn = ReturnType<typeof useEventPlanningData>;
 type TimelineAssignment = { checklistItemId: string; title: string; dueDate: string };
+type ChecklistItemRefMap = Record<string, RefObject<HTMLDivElement | null>>;
 
 export function EventPlanningDetailView(data: EventPlanningDataReturn) {
   const [copiedSpeakerContact, setCopiedSpeakerContact] = useState<string | null>(null);
   const [timelineAssignments, setTimelineAssignments] = useState<TimelineAssignment[]>([]);
+  const checklistItemRefs = useRef<ChecklistItemRefMap>({});
   const copyFeedbackTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const registerChecklistItemRef = (itemId: string, element: HTMLDivElement | null) => {
+    if (!checklistItemRefs.current[itemId]) {
+      checklistItemRefs.current[itemId] = { current: null };
+    }
+
+    checklistItemRefs.current[itemId].current = element;
+  };
 
   const {
     user, selectedPlanning, setSelectedPlanning,
@@ -151,6 +161,31 @@ export function EventPlanningDetailView(data: EventPlanningDataReturn) {
     localStorage.setItem(key, JSON.stringify(timelineAssignments));
   }, [selectedPlanning, timelineAssignments]);
 
+  const upsertTimelineAssignment = (item: { id: string; title: string }, dueDate: string) => {
+    const parsedDate = new Date(dueDate);
+    if (Number.isNaN(parsedDate.getTime())) {
+      window.alert("Ungültiges Datum. Bitte Format YYYY-MM-DD nutzen.");
+      return false;
+    }
+
+    const normalizedDate = format(parsedDate, "yyyy-MM-dd");
+    setTimelineAssignments((prev) => {
+      const withoutCurrent = prev.filter((assignment) => assignment.checklistItemId !== item.id);
+      return [...withoutCurrent, { checklistItemId: item.id, title: item.title, dueDate: normalizedDate }];
+    });
+
+    return true;
+  };
+
+  const handleSetTimelineDueDate = (item: { id: string; title: string }, dueDate: string) => {
+    if (!dueDate) {
+      handleRemoveTimelineAssignment(item.id);
+      return;
+    }
+
+    upsertTimelineAssignment(item, dueDate);
+  };
+
   const handleDropChecklistItemOnTimeline = (item: { id: string; title: string }) => {
     const existing = timelineAssignments.find((assignment) => assignment.checklistItemId === item.id);
     const defaultDate = existing?.dueDate ? existing.dueDate.slice(0, 10) : format(new Date(), "yyyy-MM-dd");
@@ -160,22 +195,16 @@ export function EventPlanningDetailView(data: EventPlanningDataReturn) {
       return;
     }
 
-    const parsedDate = new Date(dueDateInput);
-    if (Number.isNaN(parsedDate.getTime())) {
-      window.alert("Ungültiges Datum. Bitte Format YYYY-MM-DD nutzen.");
-      return;
-    }
-
-    const dueDate = format(parsedDate, "yyyy-MM-dd");
-    setTimelineAssignments((prev) => {
-      const withoutCurrent = prev.filter((assignment) => assignment.checklistItemId !== item.id);
-      return [...withoutCurrent, { checklistItemId: item.id, title: item.title, dueDate }];
-    });
+    upsertTimelineAssignment(item, dueDateInput);
   };
 
   const handleRemoveTimelineAssignment = (checklistItemId: string) => {
     setTimelineAssignments((prev) => prev.filter((assignment) => assignment.checklistItemId !== checklistItemId));
   };
+
+  const timelineDueDates = useMemo(() => {
+    return Object.fromEntries(timelineAssignments.map((assignment) => [assignment.checklistItemId, assignment.dueDate]));
+  }, [timelineAssignments]);
 
   const handlePlanningDragEnd = (result: DropResult) => {
     if (!result.destination) {
@@ -649,6 +678,9 @@ export function EventPlanningDetailView(data: EventPlanningDataReturn) {
                 updateSubItemTitle={updateSubItemTitle}
                 removeSubItem={removeSubItem}
                 onAssignToTimeline={handleDropChecklistItemOnTimeline}
+                timelineDueDates={timelineDueDates}
+                onSetTimelineDueDate={handleSetTimelineDueDate}
+                registerChecklistItemRef={registerChecklistItemRef}
               />
 
               <PlanningTimelineSection
@@ -657,6 +689,7 @@ export function EventPlanningDetailView(data: EventPlanningDataReturn) {
                 checklistItems={checklistItems}
                 assignments={timelineAssignments}
                 onRemoveAssignment={handleRemoveTimelineAssignment}
+                checklistItemRefs={checklistItemRefs.current}
               />
             </div>
           </DragDropContext>
