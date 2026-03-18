@@ -125,19 +125,22 @@ export function useChecklistOperations({
 
     const maxOrder = Math.max(...checklistItems.map(item => item.order_index), -1);
 
-    const { data, error } = await supabase
+    const itemId = crypto.randomUUID();
+
+    const { error } = await supabase
       .from("event_planning_checklist_items")
-      .insert([{ event_planning_id: selectedPlanningId, title, order_index: maxOrder + 1, type: itemType }])
-      .select()
-      .single();
+      .insert([{ id: itemId, event_planning_id: selectedPlanningId, title, order_index: maxOrder + 1, type: itemType }]);
     if (error) {
       toast({ title: "Fehler", description: "Checklisten-Punkt konnte nicht hinzugefügt werden.", variant: "destructive" });
       return;
     }
 
+    // Build a data object from the known values (no .select().single() needed)
+    const data = { id: itemId, event_planning_id: selectedPlanningId, title, order_index: maxOrder + 1, type: itemType, is_completed: false, sub_items: [] as any[] };
+
     if (itemType === "system_social_media" || itemType === "system_rsvp") {
       if (!currentTenantId || !currentProfileId) {
-        await supabase.from("event_planning_checklist_items").delete().eq("id", data.id);
+        await supabase.from("event_planning_checklist_items").delete().eq("id", itemId);
         toast({ title: "Fehler", description: "Systempunkt konnte ohne Tenant-/Profilkontext nicht angelegt werden.", variant: "destructive" });
         return;
       }
