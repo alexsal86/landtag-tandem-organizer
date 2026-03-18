@@ -9,7 +9,7 @@ import type { ChecklistItem, EventPlanningDate } from "./types";
 
 const DAY_IN_MS = 1000 * 60 * 60 * 24;
 const DOT_SIZE_CLASS = "h-5 w-5";
-const DOT_LEFT_CLASS = "-left-6";
+const DOT_LEFT_CLASS = "-left-7";
 
 type TimelineAssignment = {
   checklistItemId: string;
@@ -203,7 +203,7 @@ export function PlanningTimelineSection({
   return (
     <div ref={sectionRef} className="relative">
       {connectorLines.length > 0 && (
-        <svg className="pointer-events-none absolute inset-0 z-10 h-full w-full overflow-visible" aria-hidden>
+        <svg className="pointer-events-none absolute inset-0 z-0 h-full w-full overflow-visible" aria-hidden>
           {connectorLines.map((line) => {
             const controlOffset = Math.max(40, Math.abs(line.endX - line.startX) * 0.35);
             const path = `M ${line.startX} ${line.startY} C ${line.startX + controlOffset} ${line.startY}, ${line.endX - controlOffset} ${line.endY}, ${line.endX} ${line.endY}`;
@@ -212,20 +212,19 @@ export function PlanningTimelineSection({
         </svg>
       )}
 
-      <Card className="bg-card shadow-card border-border">
-        <CardHeader>
-          <CardTitle>Zeitstrahl</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <Droppable droppableId="planning-timeline">
-            {(provided, snapshot) => (
-              <div
-                ref={provided.innerRef}
-                {...provided.droppableProps}
-                className={`relative rounded-lg border-2 border-dashed p-4 transition-colors ${
-                  snapshot.isDraggingOver ? "border-primary bg-primary/5" : "border-border/70"
-                }`}
-              >
+      <Droppable droppableId="planning-timeline">
+        {(provided, snapshot) => (
+          <Card
+            ref={provided.innerRef}
+            {...provided.droppableProps}
+            className={`bg-card shadow-card border-border transition-colors ${
+              snapshot.isDraggingOver ? "bg-primary/5 ring-1 ring-primary/30" : ""
+            }`}
+          >
+            <CardHeader>
+              <CardTitle>Zeitstrahl</CardTitle>
+            </CardHeader>
+            <CardContent>
                 <p className="mb-4 text-sm text-muted-foreground">
                   Checklisten-Punkt auf diese Karte ziehen, um ihn mit einer Frist im Zeitstrahl zu planen.
                 </p>
@@ -247,7 +246,7 @@ export function PlanningTimelineSection({
                       )}
                       {timelineProgress !== null && timelineAxis && (
                         <div
-                          className="pointer-events-none absolute z-20"
+                          className="pointer-events-none absolute z-30"
                           style={{
                             left: `${timelineAxis.left}px`,
                             top: `${timelineAxis.top + (timelineAxis.height * timelineProgress) / 100}px`,
@@ -275,11 +274,11 @@ export function PlanningTimelineSection({
                         return (
                           <div
                             key={entry.id}
-                            className="group relative"
+                            className="group relative z-10"
                             style={index > 0 ? { marginTop: `${entrySpacings[index]}px` } : undefined}
                           >
                             <span
-                              className={`absolute top-1.5 flex items-center justify-center rounded-full ${DOT_SIZE_CLASS} ${DOT_LEFT_CLASS} ${pointColorClass}`}
+                              className={`absolute top-1.5 z-20 flex items-center justify-center rounded-full ${DOT_SIZE_CLASS} ${DOT_LEFT_CLASS} ${pointColorClass}`}
                               ref={(element) => {
                                 timelinePointRefs.current[entry.id] = element;
                               }}
@@ -318,11 +317,10 @@ export function PlanningTimelineSection({
                   )}
                 </div>
                 {provided.placeholder}
-              </div>
-            )}
-          </Droppable>
-        </CardContent>
-      </Card>
+            </CardContent>
+          </Card>
+        )}
+      </Droppable>
     </div>
   );
 }
