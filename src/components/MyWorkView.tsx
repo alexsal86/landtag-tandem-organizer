@@ -36,7 +36,7 @@ const MyWorkAppointmentFeedbackTab = lazyWithRetry(() => import("./my-work/MyWor
 const MyWorkFeedbackFeedTab = lazyWithRetry(() => import("./my-work/MyWorkFeedbackFeedTab").then(m => ({ default: m.MyWorkFeedbackFeedTab })));
 import { DashboardHeader } from "./dashboard/DashboardHeader";
 import { DashboardTasksSection } from "./dashboard/DashboardTasksSection";
-import { DashboardAppointments } from "./dashboard/DashboardAppointments";
+import { MyWorkDashboardAppointments } from "./my-work/MyWorkDashboardAppointments";
 import { useDashboardData } from "@/hooks/useDashboardData";
 import { canViewTab, getRoleFlags, type UserRole } from "@/components/my-work/tabVisibility";
 import { MyWorkTabErrorState } from "@/components/my-work/MyWorkTabErrorState";
@@ -513,7 +513,7 @@ export function MyWorkView() {
                 </CardTitle>
               </CardHeader>
               <CardContent>
-                <DashboardAppointments data={dashboardData} />
+                <MyWorkDashboardAppointments data={dashboardData} />
               </CardContent>
             </Card>
             <div className="min-w-0">
