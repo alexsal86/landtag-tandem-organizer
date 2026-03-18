@@ -114,6 +114,8 @@ export function TaskListRow({
   const assignTooltipText = currentAssigneeName
     ? `Zugewiesen an ${currentAssigneeName}`
     : "Zuweisen";
+  const rowPaddingLeft = 12 + depth * 20;
+  const connectorX = 10 + depth * 20;
 
   useEffect(() => {
     if (editingTitle && titleInputRef.current) {
@@ -159,11 +161,32 @@ export function TaskListRow({
   return (
     <div ref={getHighlightRef ? getHighlightRef(task.id) : highlightRef} className={cn(className, isHighlighted?.(task.id) && "notification-highlight")}>
       <div
-        className="flex items-center gap-2 px-3 py-2 hover:bg-muted/50 transition-colors border-b"
-        style={{ paddingLeft: `${12 + depth * 20}px` }}
+        className="relative flex items-center gap-2 px-3 py-2 hover:bg-muted/50 transition-colors border-b"
+        style={{ paddingLeft: `${rowPaddingLeft}px` }}
         onMouseEnter={() => setIsHovered(true)}
         onMouseLeave={() => setIsHovered(false)}
       >
+        {depth > 0 && (
+          <>
+            <div
+              aria-hidden="true"
+              className="absolute w-px bg-border/70"
+              style={{ left: `${connectorX}px`, top: "-1px", bottom: "50%" }}
+            />
+            <div
+              aria-hidden="true"
+              className="absolute border-l-2 border-b-2 border-border/70 rounded-bl-md"
+              style={{
+                left: `${connectorX}px`,
+                top: "50%",
+                width: "16px",
+                height: "12px",
+                transform: "translateY(-100%)",
+              }}
+            />
+          </>
+        )}
+
         <div className="w-4 flex-shrink-0">
           {hasSubtasks && (
             <button onClick={() => setExpanded(!expanded)} className="text-muted-foreground hover:text-foreground">
@@ -222,7 +245,7 @@ export function TaskListRow({
           </div>
         </div>
 
-        <div className="flex items-center flex-shrink-0">
+        <div className="ml-auto flex items-center flex-shrink-0">
           {followUpDate && (
             <Badge
               variant="outline"
@@ -265,14 +288,21 @@ export function TaskListRow({
             />
           </div>
 
-          <Button variant="ghost" size="sm" className="h-6 w-6 p-0 flex-shrink-0" onClick={() => onNavigate(task.id)}>
-            <ExternalLink className="h-3 w-3" />
-          </Button>
+          {isHovered && (
+            <Button variant="ghost" size="sm" className="h-6 w-6 p-0 flex-shrink-0" onClick={() => onNavigate(task.id)}>
+              <ExternalLink className="h-3 w-3" />
+            </Button>
+          )}
         </div>
       </div>
 
       {expanded && hasSubtasks && (
-        <div className="bg-muted/30 border-b">
+        <div className="relative bg-muted/30 border-b">
+          <div
+            aria-hidden="true"
+            className="absolute w-px bg-border/70"
+            style={{ left: `${connectorX}px`, top: 0, bottom: 0 }}
+          />
           {childTasks.map((childTask) => (
             <TaskListRow
               key={childTask.id}
