@@ -16,6 +16,7 @@ import type {
   EventPlanningContact,
   EventPlanningSpeaker,
   EventPlanningDate,
+  EventPlanningTimelineAssignment,
   GeneralPlanningDocument,
   Collaborator,
   Profile,
@@ -40,6 +41,7 @@ export function useEventPlanningData() {
   const [allProfiles, setAllProfiles] = useState<Profile[]>([]);
   const [contacts, setContacts] = useState<EventPlanningContact[]>([]);
   const [speakers, setSpeakers] = useState<EventPlanningSpeaker[]>([]);
+  const [timelineAssignments, setTimelineAssignments] = useState<EventPlanningTimelineAssignment[]>([]);
   const [loading, setLoading] = useState(false);
 
   // ── Dialog state ──
@@ -127,6 +129,13 @@ export function useEventPlanningData() {
 
     const { data: speakersData } = await supabase.from("event_planning_speakers").select("*").eq("event_planning_id", planningId).order("order_index");
     setSpeakers(speakersData || []);
+
+    const { data: timelineData } = await supabase
+      .from("event_planning_timeline_assignments")
+      .select("*")
+      .eq("event_planning_id", planningId)
+      .order("due_date", { ascending: true });
+    setTimelineAssignments(timelineData || []);
 
     await loadGeneralDocuments(planningId);
     await fetchEmailActions(planningId);
@@ -369,6 +378,53 @@ export function useEventPlanningData() {
     if (!selectedPlanning) return;
     setSelectedPlanning({ ...selectedPlanning, [field]: value });
     debouncedUpdate(field, value, selectedPlanning.id);
+  };
+
+  const upsertTimelineAssignment = async (checklistItemId: string, dueDate: string) => {
+    if (!selectedPlanning) return { success: false as const };
+
+    const { data, error } = await supabase
+      .from("event_planning_timeline_assignments")
+      .upsert(
+        [{
+          event_planning_id: selectedPlanning.id,
+          checklist_item_id: checklistItemId,
+          due_date: dueDate,
+        }],
+        { onConflict: "event_planning_id,checklist_item_id" },
+      )
+      .select()
+      .single();
+
+    if (error || !data) {
+      toast({ title: "Fehler", description: "Zeitstrahl-Punkt konnte nicht gespeichert werden.", variant: "destructive" });
+      return { success: false as const };
+    }
+
+    setTimelineAssignments((prev) => {
+      const withoutCurrent = prev.filter((assignment) => assignment.checklist_item_id !== checklistItemId);
+      return [...withoutCurrent, data].sort((a, b) => a.due_date.localeCompare(b.due_date));
+    });
+
+    return { success: true as const, data };
+  };
+
+  const removeTimelineAssignment = async (checklistItemId: string) => {
+    if (!selectedPlanning) return { success: false as const };
+
+    const { error } = await supabase
+      .from("event_planning_timeline_assignments")
+      .delete()
+      .eq("event_planning_id", selectedPlanning.id)
+      .eq("checklist_item_id", checklistItemId);
+
+    if (error) {
+      toast({ title: "Fehler", description: "Zeitstrahl-Punkt konnte nicht entfernt werden.", variant: "destructive" });
+      return { success: false as const };
+    }
+
+    setTimelineAssignments((prev) => prev.filter((assignment) => assignment.checklist_item_id !== checklistItemId));
+    return { success: true as const };
   };
 
   const createPlanning = async () => {
@@ -779,5 +835,6 @@ export function useEventPlanningData() {
     loadItemSubtasks: itemDetails.loadItemSubtasks,
     loadAllItemCounts: itemDetails.loadAllItemCounts,
     fetchPlanningDetails, fetchEmailActions,
+    timelineAssignments, upsertTimelineAssignment, removeTimelineAssignment,
   };
 }

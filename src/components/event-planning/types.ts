@@ -48,6 +48,15 @@ export interface EventPlanningSpeaker {
   updated_at: string;
 }
 
+export interface EventPlanningTimelineAssignment {
+  id: string;
+  event_planning_id: string;
+  checklist_item_id: string;
+  due_date: string;
+  created_at: string;
+  updated_at: string;
+}
+
 export interface EventPlanningDate {
   id: string;
   event_planning_id: string;
