@@ -231,6 +231,69 @@ Damit vermeiden wir, dass z. B. `useAuth` oder `useTenant` isoliert verbessert w
 3. Rollen-/Tenant-sensitive Admin- und Navigationskomponenten
 4. Contract-Tests und UI-Gegenprüfungen gegen die dokumentierten Edge-Negativpfade
 
+## Ownership & Review-Konventionen für die laufende Migrationsarbeit
+
+In Anlehnung an `docs/architecture-guidelines.md` erhält **jede Migrationswelle** der Strict-Migration eine klar dokumentierte fachliche und technische Zuständigkeit. Für die laufende Migrationsarbeit gilt deshalb dieselbe Ownership-Konvention wie für neue Hooks und Edge Functions — erweitert um Flow-Verantwortung, Review-Kreis und PR-Pflichtangaben.
+
+### Verbindliche Ownership-Angaben pro Migrationswelle
+
+Jede Welle dokumentiert mindestens:
+
+1. **Primary Owner** für fachliche Priorisierung, Scope-Zuschnitt und Merge-Freigabe.
+2. **Secondary Owner / Vertretung** für Review- oder Freigabe-Vertretung bei Abwesenheit.
+3. **Feature-/Flow-Zuordnung** analog zur Ownership-Konvention aus `docs/architecture-guidelines.md`.
+4. **Review-Kreis**, der bei Strict-PRs mit Änderungen im jeweiligen Flow verbindlich eingebunden wird.
+
+Empfohlene Kennzeichnung in PRs, Tickets und Migrationsnotizen:
+
+```md
+- Primary Owner: team-...
+- Secondary Owner: team-...
+- Flow: ...
+- Review-Kreis: ...
+```
+
+### Ownership-Matrix der aktuellen Migrationswellen
+
+| Migrationswelle / Kernbereich | Primärer Scope | Primary Owner | Vertretung | Verbindlicher Review-Kreis |
+| --- | --- | --- | --- | --- |
+| 1. Auth / Tenant-Wechsel | Session-Wiederherstellung, Tenant-Lookup, Guard-UI, rollen-/tenant-sensitive Navigation | `team-platform` | `team-office` | Auth/Tenant Review-Kreis (`team-platform`, `team-security`, `team-office`) |
+| 2. Kalender-Sync | Kalenderdaten, Sync-Trigger, Admin-/Debug-Pfade, Fehlerdarstellung | `team-office` | `team-platform` | Kalender Review-Kreis (`team-office`, `team-platform`, `team-security`) |
+| 3. Briefstatus-Workflow | Letter-Archiving, Editor/Wizard, Attachments, `draft`/`sent`-Übergänge | `team-office` | `team-cases` | Letters Review-Kreis (`team-office`, `team-cases`, `team-platform`) |
+| 4. Benachrichtigungen | Laden, Read/Unread, Optimistic Updates, Realtime-/Push-nahe UI | `team-platform` | `team-office` | Notifications Review-Kreis (`team-platform`, `team-office`) |
+| 5. Cases-/Edge-nahe Frontend-Logik | Fallakten, Owner-/Role-/Tenant-Guards, Matrix-/Edge-nahe Feature-API | `team-cases` | `team-platform` | Cases Review-Kreis (`team-cases`, `team-platform`, `team-security`) |
+
+### Review-Kreise der laufenden Migration
+
+Für Änderungen an den folgenden Bereichen ist der jeweilige Review-Kreis **verbindlich** in Strict-PRs anzugeben oder zu pingen:
+
+- **Auth/Tenant:** `team-platform`, `team-security`, `team-office`
+- **Notifications:** `team-platform`, `team-office`
+- **Letters:** `team-office`, `team-cases`, `team-platform`
+- **Kalender:** `team-office`, `team-platform`, `team-security`
+- **Cases:** `team-cases`, `team-platform`, `team-security`
+
+Wenn eine PR mehrere Kernbereiche berührt, müssen alle betroffenen Review-Kreise sichtbar genannt werden. Der Primary Owner des dominanten Flows koordiniert in diesem Fall die Reihenfolge der Reviews und dokumentiert, welcher Flow die Merge-Entscheidung führt.
+
+### Zusätzliche PR-Pflichtangaben für Strict-PRs
+
+Jede PR, die einen Strict-Batch erweitert, eine Migrationswelle vorzieht oder neue Dateien in ein aktives Flow-Paket aufnimmt, enthält zusätzlich einen kurzen Abschnitt `Strict-Migrationskontext` mit mindestens diesen drei Angaben:
+
+1. **Betroffener Flow** — welcher Kernflow oder welche Migrationswelle konkret geändert wird.
+2. **Reduziertes Risiko** — welches fachliche oder technische Risiko durch die Änderung konkret gesenkt wird.
+3. **Vorbereitete Folge-Batches** — welche nachfolgenden Batches, Dateien oder Teilflüsse dadurch als Nächstes strict-clean gezogen werden können.
+
+Empfohlenes PR-Schema:
+
+```md
+## Strict-Migrationskontext
+- Flow: Auth / Tenant-Wechsel
+- Reduziertes Risiko: Nullability-Lücken zwischen `useAuth` und tenant-sensitiver Navigation werden vor Batch-2-Freigabe geschlossen.
+- Vorbereitete Folge-Batches: `typecheck:hooks-batch2`, nachgelagerte Header-/Settings-Komponenten, Edge-Guard-UI im Cases-/Matrix-Umfeld.
+```
+
+Diese Pflichtangaben ergänzen die bestehenden Review-Checkfragen für Type-Sicherheits-Schulden und sollen sicherstellen, dass Strict-PRs nicht nur technische Compiler-Fortschritte zeigen, sondern ihren fachlichen Nutzen und ihre Batch-Folgen transparent machen.
+
 ## Batch-Configs & Commands
 
 Die bestehenden Batch-Konfigurationen bleiben als **technische Ausführungsmechanik** erhalten. Die Auswahl, **welche Dateien als nächstes strict-clean werden**, richtet sich aber ab jetzt nach den oben definierten Flow-Paketen.
@@ -301,10 +364,13 @@ Ausnahmen werden in PR-Beschreibungen oder einem technischen Schulden-Log dokume
 
 Diese Checkfragen sollen in der PR-Beschreibung oder im Review explizit beantwortet werden, sobald eine PR einen Strict-Batch erweitert oder neue Dateien in ein Flow-Paket der Strict-Migration aufnimmt:
 
-1. Wurden **keine neuen `@ts-ignore`**-Kommentare eingeführt? Falls doch, warum war die Ausnahme technisch unvermeidbar, welches Ticket referenziert sie und bis wann wird sie entfernt?
-2. Sind **neue oder geänderte Non-Null-Assertions (`!`)** fachlich begründet und durch nachvollziehbare Invarianten oder Guards abgesichert?
-3. Sind **neue oder geänderte Typ-Casts (`as ...`)** auf das notwendige Minimum begrenzt und fachlich/technisch erklärt?
-4. Welche **offenen Type-Sicherheits-Schulden** verbleiben nach dieser PR im erweiterten Strict-Batch, und in welchem Folge-Batch oder Ticket werden sie abgebaut?
+1. Welcher **betroffene Flow** bzw. welche **Migrationswelle** wird geändert?
+2. Welches **fachliche oder technische Risiko** wird durch diese Strict-PR konkret reduziert?
+3. Welche **Folge-Batches, Dateien oder Teilflüsse** werden durch diese PR vorbereitet?
+4. Wurden **keine neuen `@ts-ignore`**-Kommentare eingeführt? Falls doch, warum war die Ausnahme technisch unvermeidbar, welches Ticket referenziert sie und bis wann wird sie entfernt?
+5. Sind **neue oder geänderte Non-Null-Assertions (`!`)** fachlich begründet und durch nachvollziehbare Invarianten oder Guards abgesichert?
+6. Sind **neue oder geänderte Typ-Casts (`as ...`)** auf das notwendige Minimum begrenzt und fachlich/technisch erklärt?
+7. Welche **offenen Type-Sicherheits-Schulden** verbleiben nach dieser PR im erweiterten Strict-Batch, und in welchem Folge-Batch oder Ticket werden sie abgebaut?
 
 ## Fortschrittsmetrik
 
