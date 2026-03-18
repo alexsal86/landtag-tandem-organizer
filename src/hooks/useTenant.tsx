@@ -1,4 +1,5 @@
-import { useState, useEffect, createContext, useContext } from "react";
+import React, { createContext, useContext, useEffect, useState } from "react";
+import type { Json } from "@/integrations/supabase/types";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "./useAuth";
 import { debugConsole } from '@/utils/debugConsole';
@@ -7,7 +8,7 @@ interface Tenant {
   id: string;
   name: string;
   description?: string | null;
-  settings: any; // Changed from Record<string, any> to any to match Json type
+  settings: Json;
   created_at: string;
   updated_at: string;
   is_active: boolean;
@@ -21,7 +22,7 @@ interface UserTenantMembership {
   is_active: boolean;
   created_at: string;
   updated_at: string;
-  tenant?: Tenant;
+  tenant?: Tenant | null;
 }
 
 interface TenantContextType {
@@ -40,9 +41,9 @@ export const TenantProvider = ({ children }: { children: React.ReactNode }) => {
   const [tenants, setTenants] = useState<Tenant[]>([]);
   const [currentTenant, setCurrentTenant] = useState<Tenant | null>(null);
   const [memberships, setMemberships] = useState<UserTenantMembership[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState<boolean>(true);
 
-  const fetchTenants = async () => {
+  const fetchTenants = async (): Promise<void> => {
     if (!user) {
       setTenants([]);
       setCurrentTenant(null);
@@ -53,18 +54,15 @@ export const TenantProvider = ({ children }: { children: React.ReactNode }) => {
 
     try {
       debugConsole.log('🏢 Fetching tenant memberships for user:', user.id);
-      
-      // Clean up legacy global key (one-time migration)
+
       const legacyKey = 'currentTenantId';
       if (localStorage.getItem(legacyKey)) {
         localStorage.removeItem(legacyKey);
         debugConsole.log('🧹 Cleaned up legacy tenant storage key');
       }
-      
-      // User-specific storage key for tenant isolation
+
       const tenantStorageKey = `currentTenantId_${user.id}`;
-      
-      // Fetch user's tenant memberships with tenant details
+
       const { data: membershipData, error: membershipError } = await supabase
         .from('user_tenant_memberships')
         .select(`
@@ -83,25 +81,23 @@ export const TenantProvider = ({ children }: { children: React.ReactNode }) => {
         return;
       }
 
-      debugConsole.log('🏢 Tenant memberships:', membershipData);
+      const membershipsWithTenants = (membershipData ?? []) as UserTenantMembership[];
+      debugConsole.log('🏢 Tenant memberships:', membershipsWithTenants);
 
-      const membershipsWithTenants = membershipData || [];
       const tenantsData = membershipsWithTenants
-        .map(m => m.tenant)
-        .filter(Boolean) as Tenant[];
+        .map((membership: UserTenantMembership) => membership.tenant)
+        .filter((tenant): tenant is Tenant => tenant !== null && tenant !== undefined);
 
       setMemberships(membershipsWithTenants);
       setTenants(tenantsData);
+      debugConsole.log('🏢 Available tenants for user:', tenantsData.map((tenant: Tenant) => tenant.name));
 
-      debugConsole.log('🏢 Available tenants for user:', tenantsData.map(t => t.name));
-
-      // Set current tenant from user-specific localStorage or default to first tenant
       const savedTenantId = localStorage.getItem(tenantStorageKey);
       let currentTenantToSet: Tenant | null = null;
 
       if (savedTenantId) {
-        currentTenantToSet = tenantsData.find(t => t.id === savedTenantId) || null;
-        
+        currentTenantToSet = tenantsData.find((tenant: Tenant) => tenant.id === savedTenantId) ?? null;
+
         if (currentTenantToSet) {
           debugConsole.log('🏢 Restored tenant from localStorage:', currentTenantToSet.name);
         } else {
@@ -111,8 +107,10 @@ export const TenantProvider = ({ children }: { children: React.ReactNode }) => {
       }
 
       if (!currentTenantToSet && tenantsData.length > 0) {
-        currentTenantToSet = tenantsData[0];
-        debugConsole.log('🏢 Using first available tenant:', currentTenantToSet.name);
+        currentTenantToSet = tenantsData[0] ?? null;
+        if (currentTenantToSet) {
+          debugConsole.log('🏢 Using first available tenant:', currentTenantToSet.name);
+        }
       }
 
       setCurrentTenant(currentTenantToSet);
@@ -123,35 +121,41 @@ export const TenantProvider = ({ children }: { children: React.ReactNode }) => {
         debugConsole.warn('⚠️ No tenant available for user - user may need tenant assignment');
         localStorage.removeItem(tenantStorageKey);
       }
-    } catch (error) {
+    } catch (error: unknown) {
       debugConsole.error('Error in fetchTenants:', error);
+      setTenants([]);
+      setCurrentTenant(null);
+      setMemberships([]);
     } finally {
       setLoading(false);
     }
   };
 
-  const switchTenant = (tenantId: string) => {
-    if (!user) return;
-    
-    const tenant = tenants.find(t => t.id === tenantId);
-    if (tenant) {
-      setCurrentTenant(tenant);
-      // Use user-specific key for tenant isolation
-      localStorage.setItem(`currentTenantId_${user.id}`, tenantId);
-      debugConsole.log('🏢 Switched to tenant:', tenant.name);
+  const switchTenant = (tenantId: string): void => {
+    if (!user) {
+      return;
     }
+
+    const tenant = tenants.find((availableTenant: Tenant) => availableTenant.id === tenantId) ?? null;
+    if (!tenant) {
+      return;
+    }
+
+    setCurrentTenant(tenant);
+    localStorage.setItem(`currentTenantId_${user.id}`, tenantId);
+    debugConsole.log('🏢 Switched to tenant:', tenant.name);
   };
 
-  const refreshTenants = async () => {
+  const refreshTenants = async (): Promise<void> => {
     setLoading(true);
     await fetchTenants();
   };
 
   useEffect(() => {
-    fetchTenants();
+    void fetchTenants();
   }, [user]);
 
-  const value = {
+  const value: TenantContextType = {
     tenants,
     currentTenant,
     memberships,
@@ -160,14 +164,10 @@ export const TenantProvider = ({ children }: { children: React.ReactNode }) => {
     refreshTenants,
   };
 
-  return (
-    <TenantContext.Provider value={value}>
-      {children}
-    </TenantContext.Provider>
-  );
+  return <TenantContext.Provider value={value}>{children}</TenantContext.Provider>;
 };
 
-export const useTenant = () => {
+export const useTenant = (): TenantContextType => {
   const context = useContext(TenantContext);
   if (context === undefined) {
     throw new Error("useTenant must be used within a TenantProvider");

@@ -1,5 +1,6 @@
 // @refresh reset
 import { useState, useEffect, useCallback } from 'react';
+import type { RealtimePostgresChangesPayload } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from './useAuth';
 import { useToast } from './use-toast';
@@ -9,15 +10,15 @@ export interface Notification {
   id: string;
   title: string;
   message: string;
-  data?: any;
+  data?: unknown;
   is_read: boolean;
   priority: 'low' | 'medium' | 'high' | 'urgent';
   created_at: string;
-  navigation_context?: string;
+  navigation_context?: string | null;
   notification_types: {
     name: string;
     label: string;
-  };
+  } | null;
 }
 
 export interface NotificationSettings {
@@ -43,21 +44,56 @@ export interface PushSubscription {
   auth: string;
 }
 
+type NotificationRow = {
+  id: string;
+  title: string;
+  message: string;
+  data: unknown;
+  is_read: boolean;
+  priority: Notification['priority'];
+  created_at: string;
+  navigation_context: string | null;
+  notification_types: Notification['notification_types'];
+};
+
+type NotificationUpdateRow = Pick<NotificationRow, 'id' | 'is_read'>;
+
+type PushManagerRegistration = ServiceWorkerRegistration & {
+  pushManager?: globalThis.PushManager;
+};
+
+type VapidResponse = {
+  success?: boolean;
+  publicKey?: string;
+  error?: string;
+};
+
+const mapNotificationRow = (row: NotificationRow): Notification => ({
+  id: row.id,
+  title: row.title,
+  message: row.message,
+  data: row.data,
+  is_read: row.is_read,
+  priority: row.priority,
+  created_at: row.created_at,
+  navigation_context: row.navigation_context,
+  notification_types: row.notification_types,
+});
+
 export const useNotifications = () => {
   const { user } = useAuth();
   const { toast } = useToast();
   const [notifications, setNotifications] = useState<Notification[]>([]);
-  const [unreadCount, setUnreadCount] = useState(0);
-  const [loading, setLoading] = useState(false);
-  const [pushSupported, setPushSupported] = useState(false);
+  const [unreadCount, setUnreadCount] = useState<number>(0);
+  const [loading, setLoading] = useState<boolean>(false);
+  const [pushSupported, setPushSupported] = useState<boolean>(false);
   const [pushPermission, setPushPermission] = useState<NotificationPermission>('default');
 
-  // Check push notification support
   useEffect(() => {
-    const checkPushSupport = () => {
+    const checkPushSupport = (): void => {
       const supported = 'serviceWorker' in navigator && 'PushManager' in window;
       setPushSupported(supported);
-      
+
       if (supported && 'Notification' in window) {
         setPushPermission(Notification.permission);
       }
@@ -66,16 +102,27 @@ export const useNotifications = () => {
     checkPushSupport();
   }, []);
 
-  // Load notifications
-  const loadNotifications = useCallback(async () => {
-    if (!user) return;
+  const loadNotifications = useCallback(async (): Promise<void> => {
+    if (!user) {
+      setNotifications([]);
+      setUnreadCount(0);
+      setLoading(false);
+      return;
+    }
 
     setLoading(true);
     try {
       const { data, error } = await supabase
         .from('notifications')
         .select(`
-          *,
+          id,
+          title,
+          message,
+          data,
+          is_read,
+          priority,
+          created_at,
+          navigation_context,
           notification_types(name, label)
         `)
         .eq('user_id', user.id)
@@ -84,10 +131,11 @@ export const useNotifications = () => {
 
       if (error) throw error;
 
-      setNotifications((data || []) as Notification[]);
-      const unread = data?.filter(n => !n.is_read).length || 0;
-      setUnreadCount(unread);
-    } catch (error) {
+      const notificationRows: NotificationRow[] = (data ?? []) as NotificationRow[];
+      const mappedNotifications = notificationRows.map(mapNotificationRow);
+      setNotifications(mappedNotifications);
+      setUnreadCount(mappedNotifications.filter((notification: Notification) => !notification.is_read).length);
+    } catch (error: unknown) {
       debugConsole.error('Error loading notifications:', error);
       toast({
         title: 'Fehler',
@@ -99,64 +147,66 @@ export const useNotifications = () => {
     }
   }, [user, toast]);
 
-  // Mark notification as read with cross-tab sync
-  const markAsRead = useCallback(async (notificationId: string) => {
-    if (!user) return;
+  const markAsRead = useCallback(async (notificationId: string): Promise<void> => {
+    if (!user) {
+      return;
+    }
 
-    // Optimistic update
-    setNotifications(prev => 
-      prev.map(n => 
-        n.id === notificationId 
-          ? { ...n, is_read: true }
-          : n
-      )
+    setNotifications((prev: Notification[]) =>
+      prev.map((notification: Notification) =>
+        notification.id === notificationId ? { ...notification, is_read: true } : notification,
+      ),
     );
-    setUnreadCount(prev => Math.max(0, prev - 1));
+    setUnreadCount((prev: number) => Math.max(0, prev - 1));
 
     try {
       const { error } = await supabase
         .from('notifications')
-        .update({ 
-          is_read: true, 
-          read_at: new Date().toISOString() 
+        .update({
+          is_read: true,
+          read_at: new Date().toISOString(),
         })
         .eq('id', notificationId)
         .eq('user_id', user.id);
 
       if (error) throw error;
 
-      // Trigger cross-tab update
       localStorage.setItem(`notifications-update-${user.id}`, Date.now().toString());
       localStorage.removeItem(`notifications-update-${user.id}`);
-      
-      // Also trigger navigation notifications update
-      localStorage.setItem('notifications_marked_read', JSON.stringify({
-        timestamp: Date.now(),
-        userId: user.id
-      }));
-      localStorage.removeItem('notifications_marked_read');
-    } catch (error) {
-      debugConsole.error('Error marking notification as read:', error);
-      // Revert optimistic update on error
-      setNotifications(prev => 
-        prev.map(n => 
-          n.id === notificationId 
-            ? { ...n, is_read: false }
-            : n
-        )
+
+      localStorage.setItem(
+        'notifications_marked_read',
+        JSON.stringify({
+          timestamp: Date.now(),
+          userId: user.id,
+        }),
       );
-      setUnreadCount(prev => prev + 1);
+      localStorage.removeItem('notifications_marked_read');
+    } catch (error: unknown) {
+      debugConsole.error('Error marking notification as read:', error);
+      setNotifications((prev: Notification[]) =>
+        prev.map((notification: Notification) =>
+          notification.id === notificationId ? { ...notification, is_read: false } : notification,
+        ),
+      );
+      setUnreadCount((prev: number) => prev + 1);
     }
   }, [user]);
 
-  // Delete a single notification
-  const deleteNotification = useCallback(async (notificationId: string) => {
-    if (!user) return;
+  const deleteNotification = useCallback(async (notificationId: string): Promise<void> => {
+    if (!user) {
+      return;
+    }
 
-    // Optimistic update
-    const wasUnread = notifications.find(n => n.id === notificationId && !n.is_read);
-    setNotifications(prev => prev.filter(n => n.id !== notificationId));
-    if (wasUnread) setUnreadCount(prev => Math.max(0, prev - 1));
+    const wasUnread = notifications.some(
+      (notification: Notification) => notification.id === notificationId && !notification.is_read,
+    );
+    setNotifications((prev: Notification[]) =>
+      prev.filter((notification: Notification) => notification.id !== notificationId),
+    );
+    if (wasUnread) {
+      setUnreadCount((prev: number) => Math.max(0, prev - 1));
+    }
 
     try {
       const { error } = await supabase
@@ -166,85 +216,74 @@ export const useNotifications = () => {
         .eq('user_id', user.id);
 
       if (error) throw error;
-    } catch (error) {
+    } catch (error: unknown) {
       debugConsole.error('Error deleting notification:', error);
-      // Reload to restore state
-      loadNotifications();
+      await loadNotifications();
     }
   }, [user, notifications, loadNotifications]);
 
-  // Mark all notifications as read with cross-tab sync
-  const markAllAsRead = useCallback(async () => {
-    if (!user) return;
-
-    // Check if there are any unread notifications locally first
-    const hasUnread = notifications.some(n => !n.is_read);
-    if (!hasUnread) {
-      // Nothing to do - no unread notifications
+  const markAllAsRead = useCallback(async (): Promise<void> => {
+    if (!user) {
       return;
     }
 
-    // Store previous state for potential rollback
+    const hasUnread = notifications.some((notification: Notification) => !notification.is_read);
+    if (!hasUnread) {
+      return;
+    }
+
     const previousNotifications = [...notifications];
     const previousUnreadCount = unreadCount;
-    
-    // Optimistic update
-    setNotifications(prev => 
-      prev.map(n => ({ ...n, is_read: true }))
+
+    setNotifications((prev: Notification[]) =>
+      prev.map((notification: Notification) => ({ ...notification, is_read: true })),
     );
     setUnreadCount(0);
 
     try {
-      // First get the IDs of unread notifications from database
       const { data: unreadNotifications, error: fetchError } = await supabase
         .from('notifications')
-        .select('id')
+        .select('id, is_read')
         .eq('user_id', user.id)
         .eq('is_read', false);
 
       if (fetchError) throw fetchError;
 
-      // If database says no unread notifications, optimistic update is already correct
-      if (!unreadNotifications || unreadNotifications.length === 0) {
+      const unreadRows: NotificationUpdateRow[] = (unreadNotifications ?? []) as NotificationUpdateRow[];
+      if (unreadRows.length === 0) {
         return;
       }
 
-      // Update by ID list to avoid potential RLS issues
       const { error } = await supabase
         .from('notifications')
-        .update({ 
-          is_read: true, 
-          read_at: new Date().toISOString() 
+        .update({
+          is_read: true,
+          read_at: new Date().toISOString(),
         })
-        .in('id', unreadNotifications.map(n => n.id));
+        .in('id', unreadRows.map((notification: NotificationUpdateRow) => notification.id));
 
       if (error) throw error;
 
-      // Trigger cross-tab update
       localStorage.setItem(`notifications-update-${user.id}`, Date.now().toString());
       localStorage.removeItem(`notifications-update-${user.id}`);
-      
-      // Also trigger navigation notifications update
+
       localStorage.setItem('notifications_marked_read', Date.now().toString());
       localStorage.removeItem('notifications_marked_read');
     } catch (error: unknown) {
       debugConsole.error('Error marking all notifications as read:', error);
-      
-      // Check if it's a network error - the operation may have succeeded
-      const msg = error instanceof Error ? error.message : '';
-      const isNetworkError = msg.includes('Failed to fetch') || 
-                             msg.includes('NetworkError') ||
-                             msg.includes('fetch');
-      
+
+      const message = error instanceof Error ? error.message : '';
+      const isNetworkError =
+        message.includes('Failed to fetch') || message.includes('NetworkError') || message.includes('fetch');
+
       if (isNetworkError) {
-        // Don't revert - operation likely succeeded, reload to confirm
-        
-        setTimeout(() => loadNotifications(), 1000);
+        setTimeout(() => {
+          void loadNotifications();
+        }, 1000);
       } else {
-        // Revert optimistic update on real error
         setNotifications(previousNotifications);
         setUnreadCount(previousUnreadCount);
-        
+
         toast({
           title: 'Fehler',
           description: 'Benachrichtigungen konnten nicht als gelesen markiert werden.',
@@ -254,7 +293,134 @@ export const useNotifications = () => {
     }
   }, [user, toast, notifications, unreadCount, loadNotifications]);
 
-  // Request push permission
+  const urlBase64ToUint8Array = (base64String: string): Uint8Array => {
+    const padding = '='.repeat((4 - (base64String.length % 4)) % 4);
+    const base64 = (base64String + padding).replace(/-/g, '+').replace(/_/g, '/');
+    const rawData = window.atob(base64);
+    const outputArray = new Uint8Array(rawData.length);
+
+    for (let index = 0; index < rawData.length; index += 1) {
+      outputArray[index] = rawData.charCodeAt(index);
+    }
+
+    return outputArray;
+  };
+
+  const subscribeToPush = useCallback(async (): Promise<void> => {
+    if (!user || !pushSupported || pushPermission !== 'granted') {
+      return;
+    }
+
+    try {
+      const registration = (await navigator.serviceWorker.ready) as PushManagerRegistration;
+      const pushManager = registration.pushManager;
+
+      if (!pushManager) {
+        throw new Error('PushManager is not available on the active service worker registration');
+      }
+
+      let subscription = await pushManager.getSubscription();
+      let needNewSubscription = subscription === null;
+
+      if (subscription) {
+        const { data: dbSubscription } = await supabase
+          .from('push_subscriptions')
+          .select('is_active')
+          .eq('user_id', user.id)
+          .eq('endpoint', subscription.endpoint)
+          .single();
+
+        if (!dbSubscription || dbSubscription.is_active !== true) {
+          await subscription.unsubscribe();
+          subscription = null;
+          needNewSubscription = true;
+        }
+      }
+
+      if (needNewSubscription) {
+        try {
+          const vapidResponse = await fetch(
+            'https://wawofclbehbkebjivdte.supabase.co/functions/v1/send-push-notification',
+            {
+              method: 'GET',
+              headers: {
+                Authorization:
+                  'Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Indhd29mY2xiZWhia2Viaml2ZHRlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTMwOTMxNTEsImV4cCI6MjA2ODY2OTE1MX0.Bc5Jf1Uyvl_i8ooX-IK2kYNJMxpdCT1mKCwfFPVTI50',
+                apikey:
+                  'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Indhd29mY2xiZWhia2Viaml2ZHRlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTMwOTMxNTEsImV4cCI6MjA2ODY2OTE1MX0.Bc5Jf1Uyvl_i8ooX-IK2kYNJMxpdCT1mKCwfFPVTI50',
+                'Content-Type': 'application/json',
+              },
+            },
+          );
+
+          if (!vapidResponse.ok) {
+            throw new Error(`HTTP error! status: ${vapidResponse.status}`);
+          }
+
+          const vapidData: VapidResponse = (await vapidResponse.json()) as VapidResponse;
+          if (!vapidData.success || !vapidData.publicKey) {
+            throw new Error(`Failed to fetch VAPID public key: ${vapidData.error ?? 'Unknown error'}`);
+          }
+
+          subscription = await pushManager.subscribe({
+            userVisibleOnly: true,
+            applicationServerKey: urlBase64ToUint8Array(vapidData.publicKey).buffer,
+          });
+        } catch (error: unknown) {
+          debugConsole.error('❌ Failed to get VAPID key or create subscription:', error);
+          throw error;
+        }
+      }
+
+      if (subscription) {
+        const p256dh = subscription.getKey('p256dh');
+        const auth = subscription.getKey('auth');
+
+        if (!p256dh || !auth) {
+          debugConsole.error('❌ Invalid subscription keys');
+          throw new Error('Invalid subscription keys');
+        }
+
+        const p256dhBase64 = btoa(String.fromCharCode(...new Uint8Array(p256dh)));
+        const authBase64 = btoa(String.fromCharCode(...new Uint8Array(auth)));
+
+        const { error } = await supabase
+          .from('push_subscriptions')
+          .upsert(
+            {
+              user_id: user.id,
+              endpoint: subscription.endpoint,
+              p256dh_key: p256dhBase64,
+              auth_key: authBase64,
+              user_agent: navigator.userAgent,
+              is_active: true,
+            },
+            {
+              onConflict: 'user_id,endpoint',
+            },
+          );
+
+        if (error) {
+          debugConsole.error('❌ Database error:', error);
+          throw error;
+        }
+
+        toast({
+          title: 'Erfolgreich',
+          description: 'Push-Benachrichtigungen wurden aktiviert.',
+        });
+      }
+    } catch (error: unknown) {
+      debugConsole.error('❌ Error subscribing to push:', error);
+      toast({
+        title: 'Fehler',
+        description: 'Push-Benachrichtigungen konnten nicht aktiviert werden.',
+        variant: 'destructive',
+      });
+      throw error;
+    }
+  }, [user, pushSupported, pushPermission, toast]);
+
   const requestPushPermission = useCallback(async (): Promise<boolean> => {
     if (!pushSupported) {
       toast({
@@ -268,19 +434,19 @@ export const useNotifications = () => {
     try {
       const permission = await Notification.requestPermission();
       setPushPermission(permission);
-      
+
       if (permission === 'granted') {
         await subscribeToPush();
         return true;
-      } else {
-        toast({
-          title: 'Berechtigung verweigert',
-          description: 'Push-Benachrichtigungen wurden nicht erlaubt.',
-          variant: 'destructive',
-        });
-        return false;
       }
-    } catch (error) {
+
+      toast({
+        title: 'Berechtigung verweigert',
+        description: 'Push-Benachrichtigungen wurden nicht erlaubt.',
+        variant: 'destructive',
+      });
+      return false;
+    } catch (error: unknown) {
       debugConsole.error('Error requesting push permission:', error);
       toast({
         title: 'Fehler',
@@ -289,162 +455,12 @@ export const useNotifications = () => {
       });
       return false;
     }
-  }, [pushSupported, toast]);
+  }, [pushSupported, subscribeToPush, toast]);
 
-  // Subscribe to push notifications
-  const subscribeToPush = useCallback(async () => {
-    if (!user || !pushSupported || pushPermission !== 'granted') {
+  useEffect(() => {
+    if (!user) {
       return;
     }
-
-    try {
-      // Use the already-registered root service worker (COOP/COEP worker at /coi-serviceworker.js)
-      // Registering a second worker at scope '/' caused non-deterministic replacement and flaky push delivery.
-      const registration = await navigator.serviceWorker.ready;
-      if (!(registration as any).pushManager) {
-        throw new Error('PushManager is not available on the active service worker registration');
-      }
-      
-
-      // Get existing subscription or create new one
-      let subscription = await (registration as any).pushManager.getSubscription();
-      
-      
-      // Always check if we need to create a new subscription
-      // Either no subscription exists OR the database subscription is inactive
-      let needNewSubscription = !subscription;
-      
-      if (subscription) {
-        // Check if current subscription is active in database
-        const { data: dbSubscription } = await supabase
-          .from('push_subscriptions')
-          .select('is_active')
-          .eq('user_id', user.id)
-          .eq('endpoint', subscription.endpoint)
-          .single();
-          
-        if (!dbSubscription || !dbSubscription.is_active) {
-          
-          await subscription.unsubscribe();
-          needNewSubscription = true;
-        }
-      }
-      
-      if (needNewSubscription) {
-        // Fetch VAPID public key from Edge Function using GET request
-        try {
-          const vapidResponse = await fetch(`https://wawofclbehbkebjivdte.supabase.co/functions/v1/send-push-notification`, {
-            method: 'GET',
-            headers: {
-              'Authorization': 'Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Indhd29mY2xiZWhia2Viaml2ZHRlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTMwOTMxNTEsImV4cCI6MjA2ODY2OTE1MX0.Bc5Jf1Uyvl_i8ooX-IK2kYNJMxpdCT1mKCwfFPVTI50',
-              'apikey': 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Indhd29mY2xiZWhia2Viaml2ZHRlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTMwOTMxNTEsImV4cCI6MjA2ODY2OTE1MX0.Bc5Jf1Uyvl_i8ooX-IK2kYNJMxpdCT1mKCwfFPVTI50',
-              'Content-Type': 'application/json'
-            }
-          });
-          
-          if (!vapidResponse.ok) {
-            throw new Error(`HTTP error! status: ${vapidResponse.status}`);
-          }
-          
-          const vapidData = await vapidResponse.json();
-          
-          if (!vapidData.success) {
-            throw new Error('Failed to fetch VAPID public key: ' + (vapidData.error || 'Unknown error'));
-          }
-          
-          const vapidPublicKey = vapidData.publicKey;
-          
-        
-          subscription = await (registration as any).pushManager.subscribe({
-            userVisibleOnly: true,
-            applicationServerKey: urlBase64ToUint8Array(vapidPublicKey),
-          });
-          
-        } catch (error) {
-          debugConsole.error('❌ Failed to get VAPID key or create subscription:', error);
-          throw error;
-        }
-      } else {
-        
-      }
-
-      if (subscription) {
-        // Extract keys from subscription
-        
-        // Extract keys from subscription
-        const p256dh = subscription.getKey('p256dh');
-        const auth = subscription.getKey('auth');
-
-        if (!p256dh || !auth) {
-          debugConsole.error('❌ Invalid subscription keys');
-          throw new Error('Invalid subscription keys');
-        }
-
-        
-
-        // Convert keys to base64
-        const p256dhBase64 = btoa(String.fromCharCode(...new Uint8Array(p256dh)));
-        const authBase64 = btoa(String.fromCharCode(...new Uint8Array(auth)));
-
-
-        // Save to database
-
-        // Save to database
-        const { error } = await supabase
-          .from('push_subscriptions')
-          .upsert({
-            user_id: user.id,
-            endpoint: subscription.endpoint,
-            p256dh_key: p256dhBase64,
-            auth_key: authBase64,
-            user_agent: navigator.userAgent,
-            is_active: true,
-          }, {
-            onConflict: 'user_id,endpoint'
-          });
-
-        if (error) {
-          debugConsole.error('❌ Database error:', error);
-          throw error;
-        }
-
-        
-
-        toast({
-          title: 'Erfolgreich',
-          description: 'Push-Benachrichtigungen wurden aktiviert.',
-        });
-      }
-    } catch (error) {
-      debugConsole.error('❌ Error subscribing to push:', error);
-      toast({
-        title: 'Fehler',
-        description: 'Push-Benachrichtigungen konnten nicht aktiviert werden.',
-        variant: 'destructive',
-      });
-      throw error; // Re-throw so calling code can handle it
-    }
-  }, [user, pushSupported, pushPermission, toast]);
-
-  // Helper function to convert VAPID key
-  const urlBase64ToUint8Array = (base64String: string) => {
-    const padding = '='.repeat((4 - base64String.length % 4) % 4);
-    const base64 = (base64String + padding)
-      .replace(/-/g, '+')
-      .replace(/_/g, '/');
-
-    const rawData = window.atob(base64);
-    const outputArray = new Uint8Array(rawData.length);
-
-    for (let i = 0; i < rawData.length; ++i) {
-      outputArray[i] = rawData.charCodeAt(i);
-    }
-    return outputArray;
-  };
-
-  // Set up real-time subscription with cross-tab synchronization and retry logic
-  useEffect(() => {
-    if (!user) return;
 
     let retryCount = 0;
     const maxRetries = 5;
@@ -453,26 +469,30 @@ export const useNotifications = () => {
     let pollingInterval: ReturnType<typeof setInterval> | null = null;
     let subscriptionHealthy = false;
 
-    const startPollingFallback = () => {
-      if (pollingInterval) return;
-      // Polling is fallback-only and should not run continuously during healthy realtime.
+    const startPollingFallback = (): void => {
+      if (pollingInterval) {
+        return;
+      }
+
       pollingInterval = setInterval(() => {
         if (!subscriptionHealthy) {
-          loadNotifications();
+          void loadNotifications();
         }
       }, 120000);
     };
 
-    const stopPollingFallback = () => {
-      if (!pollingInterval) return;
+    const stopPollingFallback = (): void => {
+      if (!pollingInterval) {
+        return;
+      }
+
       clearInterval(pollingInterval);
       pollingInterval = null;
     };
 
-    const setupChannel = () => {
-      // Clean up previous channel if exists
+    const setupChannel = (): void => {
       if (currentChannel) {
-        supabase.removeChannel(currentChannel);
+        void supabase.removeChannel(currentChannel);
       }
 
       debugConsole.log(`Setting up notifications realtime subscription for user: ${user.id} (attempt ${retryCount + 1})`);
@@ -487,36 +507,50 @@ export const useNotifications = () => {
             table: 'notifications',
             filter: `user_id=eq.${user.id}`,
           },
-          async (payload) => {
+          async (payload: RealtimePostgresChangesPayload<NotificationRow>) => {
             debugConsole.log('📥 New notification received via realtime:', payload);
-            
+
+            const insertedId = payload.new.id;
+            if (!insertedId) {
+              return;
+            }
+
             const { data: fullNotification } = await supabase
               .from('notifications')
-              .select('*, notification_types(name, label)')
-              .eq('id', (payload.new as any).id)
+              .select(`
+                id,
+                title,
+                message,
+                data,
+                is_read,
+                priority,
+                created_at,
+                navigation_context,
+                notification_types(name, label)
+              `)
+              .eq('id', insertedId)
               .maybeSingle();
-            
-            const newNotification = (fullNotification || payload.new) as Notification;
-            
-            setNotifications(prev => {
-              const exists = prev.some(n => n.id === newNotification.id);
-              if (exists) return prev;
-              return [newNotification, ...prev];
+
+            const newNotification = fullNotification
+              ? mapNotificationRow(fullNotification as NotificationRow)
+              : mapNotificationRow(payload.new);
+
+            setNotifications((prev: Notification[]) => {
+              const exists = prev.some((notification: Notification) => notification.id === newNotification.id);
+              return exists ? prev : [newNotification, ...prev];
             });
-            
+
             if (!newNotification.is_read) {
-              setUnreadCount(prev => prev + 1);
+              setUnreadCount((prev: number) => prev + 1);
             }
-            
-            // Notify navigation notifications hook about the change
+
             window.dispatchEvent(new Event('notifications-changed'));
-            
             toast({
               title: newNotification.title || 'Neue Benachrichtigung',
               description: newNotification.message || 'Sie haben eine neue Benachrichtigung erhalten.',
               duration: 4000,
             });
-          }
+          },
         )
         .on(
           'postgres_changes',
@@ -526,41 +560,44 @@ export const useNotifications = () => {
             table: 'notifications',
             filter: `user_id=eq.${user.id}`,
           },
-          (payload) => {
-            const updatedNotification = payload.new as Notification;
-            const oldNotification = payload.old as Notification;
-            
-            setNotifications(prev => 
-              prev.map(notif => 
-                notif.id === updatedNotification.id ? { ...updatedNotification } : notif
-              )
+          (payload: RealtimePostgresChangesPayload<NotificationRow>) => {
+            const updatedId = payload.new.id;
+            const oldNotification = payload.old.id ? mapNotificationRow(payload.old as NotificationRow) : null;
+
+            if (!updatedId) {
+              return;
+            }
+
+            const updatedNotification = mapNotificationRow(payload.new);
+            setNotifications((prev: Notification[]) =>
+              prev.map((notification: Notification) =>
+                notification.id === updatedId ? { ...updatedNotification } : notification,
+              ),
             );
-            
+
             if (oldNotification && updatedNotification.is_read !== oldNotification.is_read) {
               if (updatedNotification.is_read && !oldNotification.is_read) {
-                setUnreadCount(prev => Math.max(0, prev - 1));
+                setUnreadCount((prev: number) => Math.max(0, prev - 1));
               } else if (!updatedNotification.is_read && oldNotification.is_read) {
-                setUnreadCount(prev => prev + 1);
+                setUnreadCount((prev: number) => prev + 1);
               }
             }
-            
-            // Notify navigation notifications hook about the change
+
             window.dispatchEvent(new Event('notifications-changed'));
-          }
+          },
         )
-        .subscribe((status) => {
+        .subscribe((status: string) => {
           debugConsole.log('📡 Notifications realtime subscription status:', status);
           if (status === 'SUBSCRIBED') {
             subscriptionHealthy = true;
-            retryCount = 0; // Reset on successful connection
+            retryCount = 0;
             stopPollingFallback();
-            // Load notifications immediately after subscribing to catch any missed during setup
-            loadNotifications();
+            void loadNotifications();
           } else if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') {
             subscriptionHealthy = false;
             startPollingFallback();
             if (retryCount < maxRetries) {
-              retryCount++;
+              retryCount += 1;
               const delay = Math.min(1000 * Math.pow(2, retryCount), 30000);
               debugConsole.log(`🔄 Retrying subscription in ${delay}ms (attempt ${retryCount}/${maxRetries})`);
               retryTimeout = setTimeout(setupChannel, delay);
@@ -573,15 +610,12 @@ export const useNotifications = () => {
     };
 
     setupChannel();
-
-    // Start fallback until realtime is confirmed healthy.
     startPollingFallback();
 
-    // Listen for storage events for cross-tab synchronization
-    const handleStorageChange = (e: StorageEvent) => {
-      if (e.key === `notifications-update-${user.id}` && e.newValue) {
+    const handleStorageChange = (event: StorageEvent): void => {
+      if (event.key === `notifications-update-${user.id}` && event.newValue) {
         debugConsole.log('🔄 Cross-tab notification update detected');
-        loadNotifications();
+        void loadNotifications();
       }
     };
 
@@ -589,28 +623,33 @@ export const useNotifications = () => {
 
     return () => {
       debugConsole.log('🧹 Cleaning up notifications realtime subscription');
-      if (retryTimeout) clearTimeout(retryTimeout);
+      if (retryTimeout) {
+        clearTimeout(retryTimeout);
+      }
       stopPollingFallback();
-      if (currentChannel) supabase.removeChannel(currentChannel);
+      if (currentChannel) {
+        void supabase.removeChannel(currentChannel);
+      }
       window.removeEventListener('storage', handleStorageChange);
     };
   }, [user, toast, loadNotifications]);
 
-  // Load notifications on mount
   useEffect(() => {
-    loadNotifications();
+    void loadNotifications();
   }, [loadNotifications]);
 
-  // Auto-renew push subscription if permission is granted but no active DB subscription
   useEffect(() => {
-    if (!user || !pushSupported || pushPermission !== 'granted') return;
+    if (!user || !pushSupported || pushPermission !== 'granted') {
+      return;
+    }
 
-    const checkAndRenewSubscription = async () => {
+    const checkAndRenewSubscription = async (): Promise<void> => {
       try {
-        // Get current browser subscription endpoint
-        const registration = await navigator.serviceWorker?.ready;
-        const currentSub = registration ? await (registration as any).pushManager?.getSubscription() : null;
-        const currentEndpoint = currentSub?.endpoint;
+        const registration = (await navigator.serviceWorker.ready) as PushManagerRegistration | undefined;
+        const currentSubscription = registration?.pushManager
+          ? await registration.pushManager.getSubscription()
+          : null;
+        const currentEndpoint = currentSubscription?.endpoint ?? null;
 
         const { data } = await supabase
           .from('push_subscriptions')
@@ -619,22 +658,21 @@ export const useNotifications = () => {
           .eq('is_active', true)
           .limit(1);
 
-        const dbEndpoint = data?.[0]?.endpoint;
-        
-        // Re-subscribe if no active DB record OR endpoint mismatch
+        const dbEndpoint = data?.[0]?.endpoint ?? null;
+
         if (!data || data.length === 0 || (currentEndpoint && dbEndpoint && currentEndpoint !== dbEndpoint)) {
           debugConsole.log('🔄 Push subscription mismatch or missing, auto-renewing...', {
-            hasDbRecord: !!data?.length,
-            endpointMatch: currentEndpoint === dbEndpoint
+            hasDbRecord: Boolean(data?.length),
+            endpointMatch: currentEndpoint === dbEndpoint,
           });
           await subscribeToPush();
         }
-      } catch (error) {
+      } catch (error: unknown) {
         debugConsole.error('Error checking/renewing push subscription:', error);
       }
     };
 
-    checkAndRenewSubscription();
+    void checkAndRenewSubscription();
   }, [user, pushSupported, pushPermission, subscribeToPush]);
 
   return {
