@@ -4577,6 +4577,48 @@ export type Database = {
           },
         ]
       }
+      event_planning_timeline_assignments: {
+        Row: {
+          checklist_item_id: string
+          created_at: string
+          due_date: string
+          event_planning_id: string
+          id: string
+          updated_at: string
+        }
+        Insert: {
+          checklist_item_id: string
+          created_at?: string
+          due_date: string
+          event_planning_id: string
+          id?: string
+          updated_at?: string
+        }
+        Update: {
+          checklist_item_id?: string
+          created_at?: string
+          due_date?: string
+          event_planning_id?: string
+          id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "event_planning_timeline_assignments_checklist_item_id_fkey"
+            columns: ["checklist_item_id"]
+            isOneToOne: false
+            referencedRelation: "event_planning_checklist_items"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "event_planning_timeline_assignments_event_planning_id_fkey"
+            columns: ["event_planning_id"]
+            isOneToOne: false
+            referencedRelation: "event_plannings"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       event_planning_speakers: {
         Row: {
           bio: string | null

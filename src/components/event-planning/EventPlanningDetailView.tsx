@@ -26,12 +26,10 @@ import { PlanningTimelineSection } from "./PlanningTimelineSection";
 import type { useEventPlanningData } from "./useEventPlanningData";
 
 type EventPlanningDataReturn = ReturnType<typeof useEventPlanningData>;
-type TimelineAssignment = { checklistItemId: string; title: string; dueDate: string };
 type ChecklistItemRefMap = Record<string, RefObject<HTMLDivElement | null>>;
 
 export function EventPlanningDetailView(data: EventPlanningDataReturn) {
   const [copiedSpeakerContact, setCopiedSpeakerContact] = useState<string | null>(null);
-  const [timelineAssignments, setTimelineAssignments] = useState<TimelineAssignment[]>([]);
   const checklistItemRefs = useRef<ChecklistItemRefMap>({});
   const copyFeedbackTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -93,6 +91,7 @@ export function EventPlanningDetailView(data: EventPlanningDataReturn) {
     archivePlanning, togglePlanningCompleted,
     toggleSubItem, updateSubItemTitle, removeSubItem,
     fetchPlanningDetails, fetchEmailActions,
+    timelineAssignments, upsertTimelineAssignment: saveTimelineAssignment, removeTimelineAssignment: deleteTimelineAssignment,
   } = data;
 
   if (!selectedPlanning) return null;
@@ -138,30 +137,8 @@ export function EventPlanningDetailView(data: EventPlanningDataReturn) {
     };
   }, []);
 
-  useEffect(() => {
-    if (!selectedPlanning) return;
-    const key = `eventPlanningTimelineAssignments:${selectedPlanning.id}`;
-    const saved = localStorage.getItem(key);
-    if (!saved) {
-      setTimelineAssignments([]);
-      return;
-    }
 
-    try {
-      const parsed = JSON.parse(saved) as TimelineAssignment[];
-      setTimelineAssignments(parsed);
-    } catch {
-      setTimelineAssignments([]);
-    }
-  }, [selectedPlanning]);
-
-  useEffect(() => {
-    if (!selectedPlanning) return;
-    const key = `eventPlanningTimelineAssignments:${selectedPlanning.id}`;
-    localStorage.setItem(key, JSON.stringify(timelineAssignments));
-  }, [selectedPlanning, timelineAssignments]);
-
-  const upsertTimelineAssignment = (item: { id: string; title: string }, dueDate: string) => {
+  const handleUpsertTimelineAssignment = (item: { id: string; title: string }, dueDate: string) => {
     const parsedDate = new Date(dueDate);
     if (Number.isNaN(parsedDate.getTime())) {
       window.alert("Ungültiges Datum. Bitte Format YYYY-MM-DD nutzen.");
@@ -169,10 +146,7 @@ export function EventPlanningDetailView(data: EventPlanningDataReturn) {
     }
 
     const normalizedDate = format(parsedDate, "yyyy-MM-dd");
-    setTimelineAssignments((prev) => {
-      const withoutCurrent = prev.filter((assignment) => assignment.checklistItemId !== item.id);
-      return [...withoutCurrent, { checklistItemId: item.id, title: item.title, dueDate: normalizedDate }];
-    });
+    void saveTimelineAssignment(item.id, normalizedDate);
 
     return true;
   };
@@ -183,27 +157,27 @@ export function EventPlanningDetailView(data: EventPlanningDataReturn) {
       return;
     }
 
-    upsertTimelineAssignment(item, dueDate);
+    handleUpsertTimelineAssignment(item, dueDate);
   };
 
   const handleDropChecklistItemOnTimeline = (item: { id: string; title: string }) => {
-    const existing = timelineAssignments.find((assignment) => assignment.checklistItemId === item.id);
-    const defaultDate = existing?.dueDate ? existing.dueDate.slice(0, 10) : format(new Date(), "yyyy-MM-dd");
+    const existing = timelineAssignments.find((assignment) => assignment.checklist_item_id === item.id);
+    const defaultDate = existing?.due_date ? existing.due_date.slice(0, 10) : format(new Date(), "yyyy-MM-dd");
     const dueDateInput = window.prompt(`Frist für "${item.title}" (YYYY-MM-DD):`, defaultDate);
 
     if (!dueDateInput) {
       return;
     }
 
-    upsertTimelineAssignment(item, dueDateInput);
+    handleUpsertTimelineAssignment(item, dueDateInput);
   };
 
   const handleRemoveTimelineAssignment = (checklistItemId: string) => {
-    setTimelineAssignments((prev) => prev.filter((assignment) => assignment.checklistItemId !== checklistItemId));
+    void deleteTimelineAssignment(checklistItemId);
   };
 
   const timelineDueDates = useMemo(() => {
-    return Object.fromEntries(timelineAssignments.map((assignment) => [assignment.checklistItemId, assignment.dueDate]));
+    return Object.fromEntries(timelineAssignments.map((assignment) => [assignment.checklist_item_id, assignment.due_date]));
   }, [timelineAssignments]);
 
   const handlePlanningDragEnd = (result: DropResult) => {

@@ -5,24 +5,18 @@ import { CalendarClock, Flag, Trash2 } from "lucide-react";
 import { format } from "date-fns";
 import { de } from "date-fns/locale";
 import { Droppable } from "@hello-pangea/dnd";
-import type { ChecklistItem, EventPlanningDate } from "./types";
+import type { ChecklistItem, EventPlanningDate, EventPlanningTimelineAssignment } from "./types";
 import { useTimelineGeometry } from "./useTimelineGeometry";
 
 const DAY_IN_MS = 1000 * 60 * 60 * 24;
 const DOT_SIZE_CLASS = "h-5 w-5";
 const DOT_LEFT_CLASS = "-left-7";
 
-type TimelineAssignment = {
-  checklistItemId: string;
-  title: string;
-  dueDate: string;
-};
-
 interface PlanningTimelineSectionProps {
   planningCreatedAt?: string | null;
   planningDates: EventPlanningDate[];
   checklistItems: ChecklistItem[];
-  assignments: TimelineAssignment[];
+  assignments: EventPlanningTimelineAssignment[];
   onRemoveAssignment: (checklistItemId: string) => void;
   checklistItemRefs?: Record<string, RefObject<HTMLDivElement | null>>;
 }
@@ -72,14 +66,14 @@ export function PlanningTimelineSection({
 
     const assignmentEntries = assignments
       .map((assignment) => {
-        const checklistItem = checklistItems.find((item) => item.id === assignment.checklistItemId);
+        const checklistItem = checklistItems.find((item) => item.id === assignment.checklist_item_id);
         if (!checklistItem) return null;
 
         return {
-          id: `item-${assignment.checklistItemId}`,
-          checklistItemId: assignment.checklistItemId,
-          date: new Date(assignment.dueDate),
-          title: checklistItem.title || assignment.title,
+          id: `item-${assignment.checklist_item_id}`,
+          checklistItemId: assignment.checklist_item_id,
+          date: new Date(assignment.due_date),
+          title: checklistItem.title,
           type: "checklist" as const,
           isCompleted: checklistItem.is_completed,
         };
@@ -198,7 +192,7 @@ export function PlanningTimelineSection({
                       )}
                       {entries.map((entry, index) => {
                         const assignment = entry.checklistItemId
-                          ? assignments.find((a) => a.checklistItemId === entry.checklistItemId)
+                          ? assignments.find((a) => a.checklist_item_id === entry.checklistItemId)
                           : undefined;
                         const isPastEntry = entry.date.getTime() < now;
                         const pointColorClass = isPastEntry
@@ -237,7 +231,7 @@ export function PlanningTimelineSection({
                                     variant="ghost"
                                     size="sm"
                                     className="h-6 w-6 p-0 text-muted-foreground opacity-0 transition-opacity hover:text-destructive group-hover:opacity-100"
-                                    onClick={() => onRemoveAssignment(assignment.checklistItemId)}
+                                    onClick={() => onRemoveAssignment(assignment.checklist_item_id)}
                                     title="Vom Zeitstrahl entfernen"
                                   >
                                     <Trash2 className="h-3 w-3" />
