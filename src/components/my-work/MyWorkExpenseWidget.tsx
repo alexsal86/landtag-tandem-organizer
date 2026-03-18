@@ -98,7 +98,7 @@ export function MyWorkExpenseWidget({ userRole }: Props) {
 
     const cats = categoriesRes.data || [];
     setCategories(cats);
-    const catMap = new Map(cats.map(c => [c.id, c]));
+    const catMap = new Map<string, any>(cats.map((c: any) => [c.id, c]));
 
     // Monthly total & top categories
     const expenses = expensesRes.data || [];

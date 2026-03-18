@@ -219,9 +219,9 @@ export function useAgendaOperations(deps: AgendaOpsDeps) {
         .eq('meeting_id', selectedMeeting.id);
       if (existingError) throw existingError;
 
-      const existingIds = new Set((existingRows || []).map(row => row.id));
-      const incomingIds = new Set(ordered.map(item => item.id).filter((id): id is string => Boolean(id)));
-      const idsToDelete = [...existingIds].filter(id => !incomingIds.has(id));
+      const existingIds = new Set<string>((existingRows || []).map((row: any) => row.id));
+      const incomingIds = new Set<string>(ordered.map(item => item.id).filter((id): id is string => Boolean(id)));
+      const idsToDelete = [...existingIds].filter(id => !incomingIds.has(id)) as string[];
 
       const getStableKey = (item: AgendaItem) => item.id || item.localKey || `${item.title}-${item.order_index}`;
       const parentItems = ordered.filter(item => !(item.parent_id || item.parentLocalKey));

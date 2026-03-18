@@ -99,7 +99,7 @@ export const useCaseWorkspaceData = ({ tenantId, userId }: { tenantId?: string; 
       .in("user_id", memberIds);
     if (profilesError) throw profilesError;
 
-    const profileById = new Map((profileRows || []).map((row) => [row.user_id, { name: row.display_name || "Unbekannt", avatarUrl: row.avatar_url || null }]));
+    const profileById = new Map<string, any>((profileRows || []).map((row: any) => [row.user_id, { name: row.display_name || "Unbekannt", avatarUrl: row.avatar_url || null }]));
     return memberIds.map((id) => {
       const profile = profileById.get(id);
       return { id, name: profile?.name || "Unbekannt", avatarUrl: profile?.avatarUrl || null };
