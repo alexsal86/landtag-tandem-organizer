@@ -195,7 +195,7 @@ export function useChecklistOperations({
             .single();
           if (actionError) throw actionError;
 
-          onSocialPlannerActionCreated?.(data.id, createdAction);
+          onSocialPlannerActionCreated?.(itemId, createdAction);
           toast({ title: "Systempunkt angelegt", description: "Social-Media-Punkt wurde erstellt und mit dem Social Planner verknüpft." });
         } catch (systemPointError: any) {
           debugConsole.error("Error creating social media system point:", systemPointError);
