@@ -10,7 +10,7 @@ import VCF from "vcf";
 import { isValidEmail } from "@/lib/utils";
 import { findPotentialDuplicates } from "@/utils/duplicateDetection";
 import type { ContactDuplicateCandidate } from "@/types/contact";
-import type { Contact, DuplicateMatch } from "@/utils/duplicateDetection";
+import type { DuplicateMatch } from "@/utils/duplicateDetection";
 import { ImportData, FieldMapping, FIELD_MAPPINGS } from "../types";
 
 export function useContactImport() {
