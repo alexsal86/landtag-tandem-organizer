@@ -157,15 +157,36 @@ export function ChecklistSection(props: ChecklistSectionProps) {
 
                               {itemSocialPlannerActions[item.id]?.action_config && (
                                 <div className="ml-8 mt-2 flex flex-wrap items-center gap-2 rounded-md border border-primary/20 bg-primary/5 px-3 py-2 text-xs text-muted-foreground">
-                                  <Bot className="h-3.5 w-3.5 text-primary" />
-                                  <span>Systempunkt aktiv: Social Planner-Eintrag wurde automatisch angelegt.</span>
-                                  <a
-                                    href={String(itemSocialPlannerActions[item.id].action_config.planner_url || "/my-work?tab=redaktion")}
-                                    className="inline-flex items-center gap-1 font-medium text-primary hover:underline"
-                                  >
-                                    {String(itemSocialPlannerActions[item.id].action_config.label || "Im Social Planner öffnen")}
-                                    <ExternalLink className="h-3 w-3" />
-                                  </a>
+                                  {itemSocialPlannerActions[item.id].action_type === "rsvp" ? (
+                                    <>
+                                      <Users className="h-3.5 w-3.5 text-primary" />
+                                      <span>
+                                        Systempunkt aktiv: RSVP-Einladungen
+                                        {itemSocialPlannerActions[item.id].action_config.guest_count != null && (
+                                          <> ({itemSocialPlannerActions[item.id].action_config.guest_count} Gäste, {itemSocialPlannerActions[item.id].action_config.sent_count || 0} eingeladen)</>
+                                        )}
+                                      </span>
+                                      <a
+                                        href={String(itemSocialPlannerActions[item.id].action_config.rsvp_url || "#")}
+                                        className="inline-flex items-center gap-1 font-medium text-primary hover:underline"
+                                      >
+                                        {String(itemSocialPlannerActions[item.id].action_config.label || "Einladungen verwalten")}
+                                        <ExternalLink className="h-3 w-3" />
+                                      </a>
+                                    </>
+                                  ) : (
+                                    <>
+                                      <Bot className="h-3.5 w-3.5 text-primary" />
+                                      <span>Systempunkt aktiv: Social Planner-Eintrag wurde automatisch angelegt.</span>
+                                      <a
+                                        href={String(itemSocialPlannerActions[item.id].action_config.planner_url || "/my-work?tab=redaktion")}
+                                        className="inline-flex items-center gap-1 font-medium text-primary hover:underline"
+                                      >
+                                        {String(itemSocialPlannerActions[item.id].action_config.label || "Im Social Planner öffnen")}
+                                        <ExternalLink className="h-3 w-3" />
+                                      </a>
+                                    </>
+                                  )}
                                 </div>
                               )}
 
