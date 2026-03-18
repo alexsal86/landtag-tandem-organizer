@@ -73,6 +73,7 @@ export interface ChecklistItem {
   is_completed: boolean;
   order_index: number;
   type?: string | null;
+  relative_due_days?: number | null;
   sub_items?: Array<{
     title: string;
     is_completed: boolean;

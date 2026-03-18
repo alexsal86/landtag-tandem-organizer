@@ -129,14 +129,14 @@ export function useChecklistOperations({
 
     const { error } = await supabase
       .from("event_planning_checklist_items")
-      .insert([{ id: itemId, event_planning_id: selectedPlanningId, title, order_index: maxOrder + 1, type: itemType }]);
+      .insert([{ id: itemId, event_planning_id: selectedPlanningId, title, order_index: maxOrder + 1, type: itemType, relative_due_days: null }]);
     if (error) {
       toast({ title: "Fehler", description: "Checklisten-Punkt konnte nicht hinzugefügt werden.", variant: "destructive" });
       return;
     }
 
     // Build a data object from the known values (no .select().single() needed)
-    const data = { id: itemId, event_planning_id: selectedPlanningId, title, order_index: maxOrder + 1, type: itemType, is_completed: false, sub_items: [] as any[] };
+    const data = { id: itemId, event_planning_id: selectedPlanningId, title, order_index: maxOrder + 1, type: itemType, relative_due_days: null, is_completed: false, sub_items: [] as any[] };
 
     if (itemType === "system_social_media" || itemType === "system_rsvp") {
       if (!currentTenantId || !currentProfileId) {

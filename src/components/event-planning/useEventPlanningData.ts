@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from "react";
+import { addDays, format } from "date-fns";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
 import { useTenant } from "@/hooks/useTenant";
@@ -380,6 +381,51 @@ export function useEventPlanningData() {
     debouncedUpdate(field, value, selectedPlanning.id);
   };
 
+  const syncRelativeTimelineAssignments = async (planningId: string, confirmedDate: string | null | undefined) => {
+    if (!confirmedDate) return;
+
+    const eventDate = new Date(confirmedDate);
+    if (Number.isNaN(eventDate.getTime())) return;
+
+    const { data: relativeItems, error: relativeItemsError } = await supabase
+      .from("event_planning_checklist_items")
+      .select("id, relative_due_days")
+      .eq("event_planning_id", planningId)
+      .not("relative_due_days", "is", null);
+
+    if (relativeItemsError || !relativeItems?.length) {
+      return;
+    }
+
+    const assignments = relativeItems
+      .filter((item) => typeof item.relative_due_days === "number")
+      .map((item) => ({
+        event_planning_id: planningId,
+        checklist_item_id: item.id,
+        due_date: format(addDays(eventDate, item.relative_due_days as number), "yyyy-MM-dd"),
+      }));
+
+    if (!assignments.length) {
+      return;
+    }
+
+    const { data, error } = await supabase
+      .from("event_planning_timeline_assignments")
+      .upsert(assignments, { onConflict: "event_planning_id,checklist_item_id" })
+      .select();
+
+    if (error || !data) {
+      toast({ title: "Fehler", description: "Relative Fristen konnten nicht in den Zeitstrahl übernommen werden.", variant: "destructive" });
+      return;
+    }
+
+    setTimelineAssignments((prev) => {
+      const updatedIds = new Set(data.map((assignment) => assignment.checklist_item_id));
+      const remaining = prev.filter((assignment) => !updatedIds.has(assignment.checklist_item_id));
+      return [...remaining, ...data].sort((a, b) => a.due_date.localeCompare(b.due_date));
+    });
+  };
+
   const upsertTimelineAssignment = async (checklistItemId: string, dueDate: string) => {
     if (!selectedPlanning) return { success: false as const };
 
@@ -558,6 +604,7 @@ export function useEventPlanningData() {
     const { data, error } = await supabase.from("event_planning_dates").update({ is_confirmed: true }).eq("id", dateId).select().single();
     if (error) { toast({ title: "Fehler", description: "Termin konnte nicht bestätigt werden.", variant: "destructive" }); return; }
     await updatePlanningField("confirmed_date", data.date_time);
+    await syncRelativeTimelineAssignments(selectedPlanning.id, data.date_time);
     const confirmedDate = planningDates.find(d => d.id === dateId);
     if (confirmedDate?.appointment_id) {
       await supabase.from("appointments").update({ title: selectedPlanning.title, category: "appointment", status: "confirmed" }).eq("id", confirmedDate.appointment_id);
@@ -581,6 +628,7 @@ export function useEventPlanningData() {
       await supabase.from("appointments").update({ start_time: newDate.toISOString(), end_time: new Date(newDate.getTime() + 2 * 60 * 60 * 1000).toISOString() }).eq("id", dateToUpdate.appointment_id);
     }
     await updatePlanningField("confirmed_date", newDateTime);
+    await syncRelativeTimelineAssignments(selectedPlanning.id, newDateTime);
     fetchPlanningDetails(selectedPlanning.id);
     toast({ title: "Erfolg", description: "Termin wurde aktualisiert." });
   };
