@@ -37,6 +37,8 @@ export interface LetterRecord extends Pick<DbLetter,
   archived_at?: string | null;
 }
 
+export type Letter = LetterRecord;
+
 export interface LetterTemplate {
   id: string;
   name: string;
