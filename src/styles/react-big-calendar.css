@@ -58,7 +58,8 @@
 /* ── Month view ── */
 .rbc-month-view {
   border: none;
-  min-height: 500px;
+  min-height: 600px;
+  overflow: visible;
 }
 
 .rbc-month-row {
