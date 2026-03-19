@@ -54,7 +54,7 @@ export function MermaidRenderer({ chart }: MermaidRendererProps) {
     ensureMermaidScript()
       .then(async () => {
         if (!window.mermaid) throw new Error("Mermaid API unavailable");
-        window.mermaid.initialize({ startOnLoad: false, securityLevel: "loose", theme: "default" });
+        window.mermaid.initialize({ startOnLoad: false, securityLevel: "strict", theme: "default" });
         const result = await window.mermaid.render(renderId, chart);
         if (active) setSvg(result.svg);
       })
