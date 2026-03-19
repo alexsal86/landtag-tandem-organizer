@@ -100,7 +100,7 @@ export function useDocumentsData(activeTab: string) {
     try {
       const { data, error } = await supabase
         .from('letters')
-        .select('*')
+        .select('id, subject, status, recipient_name, recipient_address, sender_info_id, template_id, created_at, updated_at, user_id, tenant_id, category')
         .eq('tenant_id', currentTenant.id)
         .order('created_at', { ascending: false });
       if (error) throw error;
