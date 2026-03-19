@@ -327,7 +327,7 @@ export function useMeetingsData() {
     if (!user?.id || !currentTenant?.id) return;
     try {
       const { data: allTenantTasks, error } = await supabase
-        .from('tasks').select('*').eq('tenant_id', currentTenant.id).eq('status', 'todo').order('created_at', { ascending: false });
+        .from('tasks').select('id, title, description, priority, status, due_date, assigned_to, user_id, created_at, category, meeting_id, pending_for_jour_fixe, parent_task_id, tenant_id').eq('tenant_id', currentTenant.id).eq('status', 'todo').order('created_at', { ascending: false });
       if (error) { debugConsole.error('Error loading tasks:', error); return; }
 
       const filteredTasks = (allTenantTasks || []).filter(task => 
