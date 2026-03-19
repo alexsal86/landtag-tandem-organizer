@@ -644,14 +644,6 @@ export function MyWorkDecisionsTab() {
   return (
     <>
       <div className="space-y-3 p-4">
-        <div className="flex items-center justify-end">
-          <StandaloneDecisionCreator
-            isOpen={isCreateOpen}
-            onOpenChange={setIsCreateOpen}
-            onDecisionCreated={() => scheduleDecisionsRefresh(0)}
-          />
-        </div>
-
         <Tabs
           value={activeTab}
           onValueChange={(v) => setActiveTab(v as typeof activeTab)}
@@ -753,6 +745,11 @@ export function MyWorkDecisionsTab() {
                     className="pl-8 h-8 text-xs"
                   />
                 </div>
+                <StandaloneDecisionCreator
+                  isOpen={isCreateOpen}
+                  onOpenChange={setIsCreateOpen}
+                  onDecisionCreated={() => scheduleDecisionsRefresh(0)}
+                />
                 <Button
                   variant="ghost"
                   size="icon"
