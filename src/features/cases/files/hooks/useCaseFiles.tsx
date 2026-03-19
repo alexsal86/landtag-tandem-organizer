@@ -28,7 +28,8 @@ export interface CaseFile {
   assigned_to: string | null;
   created_at: string;
   updated_at: string;
-  // Counts from relations
+  processing_status?: string | null;
+  processing_statuses?: Json | null;
   contacts_count?: number;
   documents_count?: number;
   tasks_count?: number;
@@ -51,16 +52,46 @@ export interface CaseFileFormData {
   visibility?: 'private' | 'shared' | 'public';
 }
 
-type CaseFileRelationRow = { case_file_id: string };
 type CaseFileInsert = TablesInsert<"case_files">;
 type CaseFileUpdate = TablesUpdate<"case_files">;
+type CaseFileRealtimePayload = Tables<"case_files">;
+
+type CaseFileCountRow = Pick<CaseFile,
+  | 'id'
+  | 'user_id'
+  | 'tenant_id'
+  | 'title'
+  | 'description'
+  | 'case_type'
+  | 'case_scale'
+  | 'status'
+  | 'priority'
+  | 'reference_number'
+  | 'start_date'
+  | 'target_date'
+  | 'tags'
+  | 'is_private'
+  | 'visibility'
+  | 'current_status_note'
+  | 'current_status_updated_at'
+  | 'risks_and_opportunities'
+  | 'assigned_to'
+  | 'created_at'
+  | 'updated_at'
+  | 'processing_status'
+  | 'processing_statuses'
+  | 'contacts_count'
+  | 'documents_count'
+  | 'tasks_count'
+  | 'appointments_count'
+  | 'letters_count'
+>;
 
 interface CaseFileParticipantInput {
   user_id: string;
   role: 'viewer' | 'editor';
 }
 
-// Legacy fallback - types are now loaded from database via useCaseFileTypes
 export const CASE_TYPES = [
   { value: 'general', label: 'Allgemein' },
   { value: 'legislation', label: 'Gesetzgebung' },
@@ -81,6 +112,24 @@ export const CASE_STATUSES = [
   { value: 'archived', label: 'Archiviert', color: 'bg-gray-500' },
 ];
 
+const CASE_FILE_COUNTS_RPC = 'get_case_files_with_counts';
+
+const normalizeCaseFileRow = (row: CaseFileCountRow): CaseFile => ({
+  ...row,
+  processing_status: row.processing_status ?? null,
+  processing_statuses: row.processing_statuses ?? null,
+  contacts_count: row.contacts_count ?? 0,
+  documents_count: row.documents_count ?? 0,
+  tasks_count: row.tasks_count ?? 0,
+  appointments_count: row.appointments_count ?? 0,
+  letters_count: row.letters_count ?? 0,
+});
+
+const patchCaseFile = (existing: CaseFile, payload: Partial<CaseFileRealtimePayload>): CaseFile => ({
+  ...existing,
+  ...(Object.fromEntries(Object.entries(payload).filter(([, value]) => value !== undefined)) as Partial<CaseFile>),
+});
+
 export const useCaseFiles = () => {
   const [caseFiles, setCaseFiles] = useState<CaseFile[]>([]);
   const [loading, setLoading] = useState(true);
@@ -96,59 +145,11 @@ export const useCaseFiles = () => {
 
     try {
       setLoading(true);
-      const { data, error } = await supabase
-        .from('case_files')
-        .select('id, user_id, tenant_id, title, description, case_type, case_scale, status, priority, reference_number, start_date, target_date, tags, is_private, visibility, current_status_note, current_status_updated_at, risks_and_opportunities, assigned_to, created_at, updated_at, processing_status, processing_statuses')
-        .eq('tenant_id', currentTenant.id)
-        .order('updated_at', { ascending: false });
+      const { data, error } = await supabase.rpc(CASE_FILE_COUNTS_RPC, { p_tenant_id: currentTenant.id });
 
       if (error) throw error;
 
-      const caseFileIds = (data || []).map((cf) => cf.id);
-
-      const [contactsRes, documentsRes, tasksRes, appointmentsRes, lettersRes] = caseFileIds.length
-        ? await Promise.all([
-            supabase.from('case_file_contacts').select('case_file_id').in('case_file_id', caseFileIds),
-            supabase.from('case_file_documents').select('case_file_id').in('case_file_id', caseFileIds),
-            supabase.from('case_file_tasks').select('case_file_id').in('case_file_id', caseFileIds),
-            supabase.from('case_file_appointments').select('case_file_id').in('case_file_id', caseFileIds),
-            supabase.from('case_file_letters').select('case_file_id').in('case_file_id', caseFileIds),
-          ])
-        : [{ data: [] }, { data: [] }, { data: [] }, { data: [] }, { data: [] }];
-
-      if (
-        contactsRes.error ||
-        documentsRes.error ||
-        tasksRes.error ||
-        appointmentsRes.error ||
-        lettersRes.error
-      ) {
-        throw contactsRes.error || documentsRes.error || tasksRes.error || appointmentsRes.error || lettersRes.error;
-      }
-
-      const countByCaseFileId = (items?: CaseFileRelationRow[] | null) => {
-        return (items || []).reduce<Record<string, number>>((acc, item) => {
-          acc[item.case_file_id] = (acc[item.case_file_id] || 0) + 1;
-          return acc;
-        }, {});
-      };
-
-      const contactsByCaseFileId = countByCaseFileId(contactsRes.data);
-      const documentsByCaseFileId = countByCaseFileId(documentsRes.data);
-      const tasksByCaseFileId = countByCaseFileId(tasksRes.data);
-      const appointmentsByCaseFileId = countByCaseFileId(appointmentsRes.data);
-      const lettersByCaseFileId = countByCaseFileId(lettersRes.data);
-
-      const caseFilesWithCounts = (data || []).map((cf) => ({
-        ...cf,
-        contacts_count: contactsByCaseFileId[cf.id] || 0,
-        documents_count: documentsByCaseFileId[cf.id] || 0,
-        tasks_count: tasksByCaseFileId[cf.id] || 0,
-        appointments_count: appointmentsByCaseFileId[cf.id] || 0,
-        letters_count: lettersByCaseFileId[cf.id] || 0,
-      }));
-
-      setCaseFiles(caseFilesWithCounts);
+      setCaseFiles(((data ?? []) as CaseFileCountRow[]).map(normalizeCaseFileRow));
     } catch (error) {
       debugConsole.error('Error fetching case files:', error);
       toast({
@@ -228,12 +229,23 @@ export const useCaseFiles = () => {
 
       if (error) throw error;
 
+      setCaseFiles((prev) =>
+        prev.map((caseFile) =>
+          caseFile.id === id
+            ? {
+                ...caseFile,
+                ...data,
+                updated_at: new Date().toISOString(),
+              }
+            : caseFile,
+        ),
+      );
+
       toast({
         title: "Erfolgreich",
         description: "Fallakte wurde aktualisiert.",
       });
 
-      await fetchCaseFiles();
       return true;
     } catch (error) {
       debugConsole.error('Error updating case file:', error);
@@ -258,12 +270,13 @@ export const useCaseFiles = () => {
 
       if (error) throw error;
 
+      setCaseFiles((prev) => prev.filter((caseFile) => caseFile.id !== id));
+
       toast({
         title: "Erfolgreich",
         description: "Fallakte wurde gelöscht.",
       });
 
-      await fetchCaseFiles();
       return true;
     } catch (error) {
       debugConsole.error('Error deleting case file:', error);
@@ -280,9 +293,12 @@ export const useCaseFiles = () => {
     fetchCaseFiles();
   }, [fetchCaseFiles]);
 
-  // Real-time subscription
   useEffect(() => {
     if (!user || !currentTenant) return;
+
+    const handleRealtimeRefresh = () => {
+      void fetchCaseFiles();
+    };
 
     const channel = supabase
       .channel('case-files-changes')
@@ -294,9 +310,35 @@ export const useCaseFiles = () => {
           table: 'case_files',
           filter: `tenant_id=eq.${currentTenant.id}`,
         },
-        () => {
-          fetchCaseFiles();
-        }
+        (payload) => {
+          if (payload.eventType === 'DELETE') {
+            const deletedId = payload.old?.id as string | undefined;
+            if (deletedId) {
+              setCaseFiles((prev) => prev.filter((caseFile) => caseFile.id !== deletedId));
+            }
+            return;
+          }
+
+          if (payload.eventType === 'UPDATE') {
+            const updated = payload.new as Partial<CaseFileRealtimePayload>;
+            const updatedId = updated.id;
+            if (updatedId) {
+              setCaseFiles((prev) => {
+                const existingIndex = prev.findIndex((caseFile) => caseFile.id === updatedId);
+                if (existingIndex === -1) {
+                  return prev;
+                }
+                const next = [...prev];
+                next[existingIndex] = patchCaseFile(next[existingIndex], updated);
+                return next.sort((a, b) => new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime());
+              });
+            }
+            handleRealtimeRefresh();
+            return;
+          }
+
+          handleRealtimeRefresh();
+        },
       )
       .subscribe();
 

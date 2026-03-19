@@ -116,13 +116,16 @@ export function MyWorkCaseItemsTab() {
     try {
       setLoading(true);
 
+      const userFilter = `user_id.eq.${user.id},owner_user_id.eq.${user.id}`;
       const [{ data, error }, { data: caseFileData, error: caseFilesError }] = await Promise.all([
         supabase
           .from("case_items")
-          .select("*")
+          .select("id, user_id, owner_user_id, subject, summary, resolution_summary, status, priority, source_channel, follow_up_at, due_at, case_file_id, created_at, updated_at, meeting_id, pending_for_jour_fixe")
           .eq("tenant_id", currentTenant.id)
+          .or(userFilter)
+          .neq("status", "archiviert")
           .order("updated_at", { ascending: false, nullsFirst: false })
-          .limit(150),
+          .limit(100),
         supabase
           .from("case_files")
           .select("id, title")
@@ -146,10 +149,7 @@ export function MyWorkCaseItemsTab() {
         debugConsole.warn("Eskalationsvorschläge konnten nicht geladen werden:", e);
       }
 
-      const visibleItems = (data ?? [])
-        .filter((row) => row.user_id === user.id || row.owner_user_id === user.id)
-        .filter((row) => row.status !== "archiviert")
-        .map((row): CaseItemListEntry => ({
+      const visibleItems = (data ?? []).map((row): CaseItemListEntry => ({
           id: row.id,
           title: row.subject || row.resolution_summary || "Ohne Titel",
           description: row.summary || null,

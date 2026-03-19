@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, useCallback } from 'react';
+import { useEffect, useRef, useState, useCallback, useMemo } from 'react';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import '@/styles/leaflet-overrides.css';
@@ -36,6 +36,22 @@ const getIconDisplay = (iconName: string, color: string = '#ffffff', size: numbe
   // Fallback: treat as emoji
   return `<span style="font-size: ${size}px; line-height: 1;">${iconName}</span>`;
 };
+
+
+
+interface StakeholderContact {
+  id: string;
+  name: string | null;
+  organization: string | null;
+  email: string | null;
+  phone: string | null;
+  tags: string[] | null;
+  website: string | null;
+  coordinates: { lat: number; lng: number } | null;
+  business_street: string | null;
+  business_city: string | null;
+  business_postal_code: string | null;
+}
 
 interface KarlsruheDistrictsMapProps {
   districts: KarlsruheDistrict[];
@@ -89,6 +105,11 @@ export const KarlsruheDistrictsMap = ({
   const tileLayerRef = useRef<L.TileLayer | null>(null);
   const [mapReady, setMapReady] = useState(false);
 
+  const visibleStakeholderTypes = useMemo(
+    () => flagTypes.filter((type) => visibleFlagTypes.has(type.id) && type.tag_filter),
+    [flagTypes, visibleFlagTypes],
+  );
+
   // Extract stakeholder loading logic into a reusable function
   const loadStakeholders = useCallback(async () => {
     if (!mapInstanceRef.current || !showStakeholders) return;
@@ -99,27 +120,44 @@ export const KarlsruheDistrictsMap = ({
     stakeholderMarkersRef.current.forEach(marker => marker.remove());
     stakeholderMarkersRef.current.clear();
 
-    for (const flagTypeId of Array.from(visibleFlagTypes)) {
-      const flagType = flagTypes.find(t => t.id === flagTypeId);
-      if (!flagType || !flagType.tag_filter) continue;
+    if (visibleStakeholderTypes.length === 0) return;
 
-      const { data: allData } = await supabase
-        .from('contacts')
-        .select('id, name, organization, email, phone, tags, website, coordinates, business_street, business_city, business_postal_code')
-        .eq('contact_type', 'organization')
-        .not('coordinates', 'is', null);
+    const activeTagFilters = Array.from(
+      new Set(
+        visibleStakeholderTypes
+          .map((flagType) => flagType.tag_filter?.trim().toLowerCase())
+          .filter((tag): tag is string => Boolean(tag)),
+      ),
+    );
 
-      // Filter case-insensitive for tag match
-      const data = allData?.filter(contact => 
-        contact.tags?.some((tag: string) => 
-          tag.toLowerCase() === flagType.tag_filter!.toLowerCase()
-        )
+    if (activeTagFilters.length === 0) return;
+
+    const { data: allData, error } = await supabase
+      .from('contacts')
+      .select('id, name, organization, email, phone, tags, website, coordinates, business_street, business_city, business_postal_code')
+      .eq('contact_type', 'organization')
+      .not('coordinates', 'is', null)
+      .overlaps('tags', activeTagFilters);
+
+    if (error) {
+      debugConsole.error('Error loading stakeholder contacts:', error);
+      return;
+    }
+
+    const stakeholders = (allData ?? []) as StakeholderContact[];
+
+    for (const flagType of visibleStakeholderTypes) {
+      const normalizedTag = flagType.tag_filter?.trim().toLowerCase();
+      if (!normalizedTag) continue;
+
+      const data = stakeholders.filter((contact) =>
+        contact.tags?.some((tag) => tag.toLowerCase() === normalizedTag),
       );
 
-      if (!data || data.length === 0) continue;
+      if (data.length === 0) continue;
 
       // Add stakeholder markers
-      data.forEach((stakeholder: any) => {
+      data.forEach((stakeholder) => {
         const lat = stakeholder.coordinates.lat;
         const lng = stakeholder.coordinates.lng;
 
@@ -176,7 +214,7 @@ export const KarlsruheDistrictsMap = ({
         stakeholderMarkersRef.current.set(`${flagType.id}-${stakeholder.id}`, stakeholderMarker);
       });
     }
-  }, [flagTypes, visibleFlagTypes, showStakeholders]);
+  }, [showStakeholders, visibleStakeholderTypes]);
 
   // Initialize map
   useEffect(() => {
@@ -370,9 +408,9 @@ export const KarlsruheDistrictsMap = ({
         const updated = payload.new as any;
         debugConsole.log('Contact updated via realtime:', updated);
         
-        if (updated.coordinates) {
-          debugConsole.log('Coordinates found, reloading stakeholders...');
-          loadStakeholders();
+        if (updated.coordinates || updated.tags) {
+          debugConsole.log('Relevant stakeholder change found, reloading stakeholders...');
+          void loadStakeholders();
         }
       })
       .subscribe();
