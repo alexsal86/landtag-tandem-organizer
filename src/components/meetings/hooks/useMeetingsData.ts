@@ -282,8 +282,9 @@ export function useMeetingsData() {
 
   const loadMeetings = async () => {
     try {
+      const meetingSelectFields = "id, title, meeting_date, meeting_time, status, description, is_public, user_id, template_id, location, created_at, recurrence_rule, recurrence_end_date";
       const { data: ownMeetings, error: ownError } = await supabase
-        .from('meetings').select('*').eq('user_id', user?.id ?? '').neq('status', 'archived').order('meeting_date', { ascending: false });
+        .from('meetings').select(meetingSelectFields).eq('user_id', user?.id ?? '').neq('status', 'archived').order('meeting_date', { ascending: false });
       if (ownError) throw ownError;
 
       const { data: participantMeetings, error: participantError } = await supabase
