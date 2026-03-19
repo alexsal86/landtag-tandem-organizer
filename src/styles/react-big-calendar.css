@@ -62,7 +62,7 @@
 }
 
 .rbc-month-row {
-  min-height: 100px;
+  min-height: 120px;
   border-bottom: 1px solid hsl(var(--border));
   overflow: visible;
 }
@@ -73,17 +73,15 @@
   z-index: 1;
 }
 
+/* rbc-date-cell is only the date number header, NOT the full day cell */
 .rbc-date-cell {
-  padding: 0.5rem;
-  border-right: 1px solid hsl(var(--border));
-  min-height: 100px;
-  vertical-align: top;
+  padding: 4px 6px 2px;
+  text-align: right;
 }
 
 .rbc-date-cell:last-child { border-right: none; }
 
 .rbc-date-cell.rbc-off-range {
-  background-color: hsl(var(--muted) / 0.3);
   color: hsl(var(--muted-foreground));
 }
 
@@ -91,20 +89,52 @@
   color: hsl(var(--muted-foreground));
 }
 
+/* Off-range background on the row-bg cells, not date-cell */
+.rbc-month-view .rbc-off-range-bg {
+  background-color: hsl(var(--muted) / 0.15);
+}
+
+/* Row background cells need to fill properly */
+.rbc-month-view .rbc-row-bg {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+}
+
+.rbc-month-view .rbc-day-bg {
+  border-right: 1px solid hsl(var(--border) / 0.4);
+}
+
+.rbc-month-view .rbc-day-bg:last-child {
+  border-right: none;
+}
+
+/* Event segments in month view */
 .rbc-month-view .rbc-event {
   margin: 1px 2px;
-  padding: 2px 4px;
-  font-size: 0.75rem;
-  line-height: 1.2;
-  border-radius: 3px;
-  max-width: calc(100% - 4px);
+  padding: 2px 6px;
+  font-size: 0.7rem;
+  line-height: 1.3;
+  border-radius: 4px;
+  border: none;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+  cursor: pointer;
 }
 
 .rbc-month-view .rbc-event.rbc-selected {
   box-shadow: 0 0 0 2px hsl(var(--primary));
+}
+
+/* Ensure event-content span is visible */
+.rbc-month-view .rbc-event-content {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 /* Day numbers */

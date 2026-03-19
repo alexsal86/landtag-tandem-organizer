@@ -400,6 +400,9 @@ const ProperReactBigCalendar: React.FC<ProperReactBigCalendarProps> = ({
           week: {
             header: WeekHeader,
           },
+          month: {
+            event: MonthEvent,
+          },
         }}
         className="rbc-calendar"
         style={{ height: '100%', minHeight: 'calc(100vh - 260px)' }}
