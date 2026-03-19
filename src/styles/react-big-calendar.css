@@ -62,14 +62,21 @@
 }
 
 .rbc-month-row {
-  min-height: 80px;
+  min-height: 100px;
   border-bottom: 1px solid hsl(var(--border));
+  overflow: visible;
+}
+
+.rbc-month-view .rbc-row-content {
+  overflow: visible;
+  position: relative;
+  z-index: 1;
 }
 
 .rbc-date-cell {
   padding: 0.5rem;
   border-right: 1px solid hsl(var(--border));
-  min-height: 80px;
+  min-height: 100px;
   vertical-align: top;
 }
 
