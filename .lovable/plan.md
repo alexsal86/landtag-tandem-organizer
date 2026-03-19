@@ -1,35 +1,37 @@
 
 
-## Problem Analysis
+## Problem
 
-Four issues with the calendar view:
+Die Browser-Push-Benachrichtigungen sind kaputt, weil die Edge Function `send-push-notification` **alle Anfragen** zuerst durch `requireServiceRole()` prüft (Zeile 302). Das blockiert:
 
-### 1. New appointments not showing immediately
-After creating an appointment, `useCreateAppointment.ts` navigates to `/calendar` but never invalidates the `calendar-data` React Query cache. The cache has a 5-minute `staleTime`, so the new appointment won't appear until a manual refresh.
+1. **VAPID Public Key abrufen (GET)**: Der Client braucht den VAPID-Schlüssel, um sich für Push-Notifications zu registrieren. Der GET-Handler (Zeile 309) wird nie erreicht, weil die Service-Role-Prüfung vorher mit 401 abweist. Der Client sendet nur den Anon-Key.
 
-**Fix**: In `useCreateAppointment.ts`, use `useQueryClient` to invalidate the `calendar-data` queries after successful creation.
+2. **Direkte Push-Aufrufe aus dem Client**: `MessageComposer.tsx` und die Test-Komponenten rufen die Funktion mit dem Anon-Key auf → 401.
 
-### 2. First day column (Monday) shifted left
-The spacer column CSS (lines 299-303 in `react-big-calendar.css`) applies `margin-left: -8px` to the first day column after the gutter spacer. This causes events in the Monday column to appear shifted.
+Der **Datenbank-Trigger** (`trigger_push_on_notification`) funktioniert korrekt, da er den Service-Role-Key aus dem Vault verwendet. Aber ohne VAPID-Key-Zugang kann sich kein Browser überhaupt für Push registrieren.
 
-**Fix**: Review and adjust the margin/padding on `.rbc-time-content > .rbc-time-gutter-spacer-column + .rbc-day-slot.rbc-time-column` so events align properly. The all-day row also has a similar offset (lines 226-229) that needs to match.
+## Lösung
 
-### 3. Header row misaligned with day columns
-The sticky header (`.rbc-time-header`) doesn't account for the 8px spacer column that exists in `.rbc-time-content`. The day headers are therefore offset from their corresponding columns below.
+### 1. Edge Function `send-push-notification/index.ts` anpassen
 
-**Fix**: Add matching left-margin/padding to the header's content area (`.rbc-time-header-content` or `.rbc-row.rbc-time-header-cell`) so headers align with the columns that include the spacer offset.
+Den GET-Handler für den VAPID Public Key **vor** die `requireServiceRole`-Prüfung verschieben. Für GET reicht eine einfache Auth-Prüfung (angemeldeter User) oder gar keine (der Public Key ist öffentlich):
 
-### 4. Month view events not visible
-The month view cells have `min-height: 80px` and events use `overflow: hidden` with `text-overflow: ellipsis`, but the row content area likely clips events. The `.rbc-month-row` and `.rbc-row-content` need to allow overflow or have sufficient height.
+```
+// CORS → GET (VAPID key, kein Service-Role nötig) → requireServiceRole für POST
+```
 
-**Fix**: Adjust `.rbc-month-row` and `.rbc-row-content` CSS to ensure events are visible within cells. May need to increase row height or fix overflow settings.
+Konkret:
+- Zeile 301-306: Die `requireServiceRole`-Prüfung erst **nach** dem GET-Handler ausführen
+- GET-Anfragen brauchen nur einen gültigen Auth-Header (oder gar keinen, da der VAPID Public Key per Definition öffentlich ist)
 
-## Files to Change
+### 2. MessageComposer.tsx - Direkten Push-Aufruf entfernen
 
-1. **`src/components/appointments/hooks/useCreateAppointment.ts`** — Add `useQueryClient` and call `queryClient.invalidateQueries({ queryKey: ["calendar-data"] })` after successful appointment creation (before `onOpenChange(false)`).
+Der direkte Aufruf von `send-push-notification` in `MessageComposer.tsx` (Zeile 104-118) ist redundant: Wenn eine Nachricht erstellt wird, wird eine Notification in die DB eingefügt, was den Trigger auslöst, der wiederum die Push-Notification sendet. Der direkte Aufruf würde ohnehin mit 401 scheitern.
 
-2. **`src/styles/react-big-calendar.css`** — Fix three CSS issues:
-   - Adjust first-day-column margin to prevent Monday shift
-   - Add header offset to match the spacer column alignment
-   - Fix month view row/event overflow so events are visible
+→ Den `try`-Block (Zeilen 101-123) entfernen.
+
+## Dateien
+
+1. **`supabase/functions/send-push-notification/index.ts`** — GET-Handler vor `requireServiceRole` verschieben
+2. **`src/components/MessageComposer.tsx`** — Redundanten direkten Push-Aufruf entfernen
 
