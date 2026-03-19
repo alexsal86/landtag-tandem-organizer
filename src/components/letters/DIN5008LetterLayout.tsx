@@ -2,10 +2,10 @@ import React from 'react';
 import { Card } from '@/components/ui/card';
 import type { HeaderElement, TextElement, ShapeElement } from '@/components/canvas-engine/types';
 import { type BlockLine, type BlockLineData, getBlockLineFontStack, isLineMode } from '@/components/letters/BlockLineEditor';
-import { buildFooterBlocksFromStored } from '@/components/letters/footerBlockUtils';
 import { SunflowerSVG, LionSVG, WappenSVG } from '@/components/letters/elements/shapeSVGs';
 import { sanitizeRichHtml, sanitizeCss } from '@/utils/htmlSanitizer';
 import { LetterAttachmentList, LetterClosingBlock, getLetterAttachmentNames } from './LetterContentBlocks';
+import { FoldHoleMarks, PaginationFooter, TemplateFooterBlocks } from './DIN5008LayoutChrome';
 
 interface DIN5008LetterLayoutProps {
   template?: any;
@@ -277,55 +277,6 @@ export const DIN5008LetterLayout: React.FC<DIN5008LetterLayoutProps> = ({
     }
   };
 
-  // Footer blocks rendering (identical to PDF logic)
-  const renderFooterBlocks = () => {
-    if (!template?.footer_blocks) return null;
-
-    const sortedBlocks = buildFooterBlocksFromStored(template.footer_blocks);
-
-    return (
-      <div
-        className="flex"
-        style={{
-          position: 'absolute',
-          top: '272mm',
-          left: '25mm',
-          right: '20mm',
-          height: '18mm',
-          fontSize: '8pt',
-          zIndex: 30,
-          backgroundColor: debugMode ? 'rgba(128,0,128,0.05)' : '#fff'
-        }}
-      >
-        {sortedBlocks.map((block: any, index: number) => {
-          const blockWidth = block.widthUnit === 'cm'
-            ? `${Math.max(1, Number(block.widthValue) || 1)}cm`
-            : `${Math.max(1, Number(block.widthValue) || 25)}%`;
-
-          return (
-            <div
-              key={block.id || index}
-              style={{ width: blockWidth, paddingRight: '2mm', fontSize: '8pt', lineHeight: 1 }}
-            >
-              {block.title && <div style={{ fontWeight: 'bold', marginBottom: '1mm' }}>{block.title}</div>}
-              <div>
-                {(block.lines || []).map((line: any, lineIndex: number) => {
-                  if (line.type === 'spacer') {
-                    return <div key={lineIndex} style={{ height: `${Math.max(0.5, Number(line.spacerHeight) || 1)}mm` }} />;
-                  }
-                  const content = line.type === 'label-value'
-                    ? `${line.label || ''} ${line.value || ''}`.trim()
-                    : (line.value || '');
-                  if (!content) return null;
-                  return <div key={lineIndex} style={{ fontSize: `${Math.max(6, Math.min(12, Number(line.fontSize) || 8))}pt`, fontFamily: getBlockLineFontStack(line.fontFamily), fontWeight: line.valueBold ? 'bold' : 'normal', color: line.color || undefined }}>{content}</div>;
-                })}
-              </div>
-            </div>
-          );
-        })}
-      </div>
-    );
-  };
   /** Render canvas-based block elements positioned in mm coordinates */
   const renderCanvasBlockElements = (elements: HeaderElement[]) => (
     <div className="relative w-full h-full">
@@ -480,28 +431,7 @@ export const DIN5008LetterLayout: React.FC<DIN5008LetterLayoutProps> = ({
       lineHeight: '1.2',
       position: 'relative'
     }}>
-      {(foldHoleMarks.enabled ?? true) && (
-        <>
-          {[
-            { y: foldHoleMarks.topMarkY, width: foldHoleMarks.foldMarkWidth, key: 'fold-top' },
-            { y: foldHoleMarks.holeMarkY, width: foldHoleMarks.holeMarkWidth, key: 'hole' },
-            { y: foldHoleMarks.bottomMarkY, width: foldHoleMarks.foldMarkWidth, key: 'fold-bottom' },
-          ].map((mark) => (
-            <div
-              key={mark.key}
-              style={{
-                position: 'absolute',
-                left: `${foldHoleMarks.left}mm`,
-                top: `${mark.y}mm`,
-                width: `${mark.width}mm`,
-                height: `${Math.max(0.1, (foldHoleMarks.strokeWidthPt || 1) * 0.3528)}mm`,
-                backgroundColor: '#111',
-                pointerEvents: 'none',
-              }}
-            />
-          ))}
-        </>
-      )}
+      <FoldHoleMarks foldHoleMarks={foldHoleMarks} />
       {/* Template Header */}
       {template && (
         <div 
@@ -834,7 +764,7 @@ export const DIN5008LetterLayout: React.FC<DIN5008LetterLayoutProps> = ({
       )}
 
       {/* Template Footer Blocks - matches PDF exactly */}
-      {renderFooterBlocks()}
+      <TemplateFooterBlocks footerBlocks={template?.footer_blocks} debugMode={debugMode} />
 
       {/* Fallback Sender Address Block - only if no template footer */}
       {!template?.footer_blocks && senderInfo && (
@@ -857,23 +787,12 @@ export const DIN5008LetterLayout: React.FC<DIN5008LetterLayoutProps> = ({
       )}
 
       {/* Pagination Footer */}
-      {paginationEnabled && (
-        <div style={{
-          position: 'absolute',
-          top: `${paginationTopMm}mm`,
-          left: layout.pagination?.align === 'left' ? '25mm' : undefined,
-          right: layout.pagination?.align !== 'left' ? '20mm' : undefined,
-          textAlign: layout.pagination?.align || 'right',
-          fontSize: `${layout.pagination?.fontSize || 8}pt`,
-          color: '#666',
-          zIndex: 30,
-          backgroundColor: '#fff',
-          padding: '0 1mm',
-          fontFamily: 'Calibri, Carlito, "Segoe UI", Arial, sans-serif'
-        }}>
-          Seite 1 von 1
-        </div>
-      )}
+      <PaginationFooter
+        enabled={paginationEnabled}
+        topMm={paginationTopMm}
+        align={layout.pagination?.align || 'right'}
+        fontSize={layout.pagination?.fontSize || 8}
+      />
 
       {/* Custom CSS from template */}
       {template?.letterhead_css && (
