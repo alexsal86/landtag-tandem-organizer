@@ -193,12 +193,17 @@ const ProperReactBigCalendar: React.FC<ProperReactBigCalendarProps> = ({
       transition: 'all 0.2s ease',
     };
 
-    // Color coding by type
+    // Color coding by type – all colors must have good contrast with white text
     const categoryColors: Record<string, string> = {
-      'meeting': 'hsl(var(--primary))',
-      'deadline': 'hsl(var(--secondary))',
-      'appointment': 'hsl(var(--accent))',
-      'task': 'hsl(var(--gruene-green-light))',
+      'session': 'hsl(var(--primary))',
+      'meeting': 'hsl(var(--chart-2))',
+      'appointment': 'hsl(var(--chart-3))',
+      'deadline': 'hsl(var(--destructive))',
+      'blocked': 'hsl(var(--chart-4))',
+      'veranstaltung': 'hsl(var(--chart-5))',
+      'vacation': 'hsl(var(--chart-3))',
+      'vacation_request': 'hsl(var(--chart-4))',
+      'birthday': 'hsl(var(--primary))',
       'default': 'hsl(var(--primary))'
     };
 
