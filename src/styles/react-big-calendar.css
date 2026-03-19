@@ -218,6 +218,7 @@
 .rbc-time-header-content {
   display: flex;
   flex-direction: column;
+  margin-left: 8px;
 }
 
 .rbc-time-header .rbc-row.rbc-time-header-cell {
