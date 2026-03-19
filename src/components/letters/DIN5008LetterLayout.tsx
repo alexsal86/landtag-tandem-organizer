@@ -7,6 +7,7 @@ import { sanitizeRichHtml, sanitizeCss } from '@/utils/htmlSanitizer';
 import { LetterAttachmentList, LetterClosingBlock, getLetterAttachmentNames } from './LetterContentBlocks';
 import { FoldHoleMarks, PaginationFooter, TemplateFooterBlocks } from './DIN5008LayoutChrome';
 import { DIN5008AddressInfoSection } from './DIN5008AddressInfoSection';
+import { getLetterAssetPublicUrl } from './letterAssetUrls';
 
 interface DIN5008LetterLayoutProps {
   template?: any;

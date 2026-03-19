@@ -108,7 +108,7 @@ export function toAutomationRuleUpdate(
   };
 }
 
-function isUnknownRecord(value: Json | null): value is Record<string, unknown> {
+function isUnknownRecord(value: Json | null): value is Record<string, Json | undefined> {
   return !!value && typeof value === "object" && !Array.isArray(value);
 }
 
