@@ -18,6 +18,7 @@ import { Plus, Save, X, Check, GripVertical, Minus, Edit, Trash2, CalendarDays, 
 type MeetingTemplateChildItem = {
   title: string;
   order_index: number;
+  type?: string;
   is_available?: boolean;
   is_optional?: boolean;
   system_type?: string;
