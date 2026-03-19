@@ -348,7 +348,7 @@ const ProperReactBigCalendar: React.FC<ProperReactBigCalendarProps> = ({
   }, [date, view]);
 
   return (
-    <div ref={calendarContainerRef} className="h-full w-full bg-background min-h-[calc(100vh-220px)]">
+    <div ref={calendarContainerRef} className="h-full w-full bg-background min-h-[calc(100vh-180px)]">
       <DnDCalendar
         localizer={localizer}
         events={rbcEvents}
