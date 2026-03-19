@@ -173,12 +173,13 @@ export const useCaseFileTypes = () => {
 
   const updateOrder = async (items: CaseFileType[]) => {
     try {
-      for (const item of items) {
-        await supabase
-          .from('case_file_types')
-          .update({ order_index: item.order_index })
-          .eq('id', item.id);
-      }
+      const reorderPayload = items.map((item) => ({ id: item.id, order_index: item.order_index }));
+      const { error } = await supabase
+        .from('case_file_types')
+        .upsert(reorderPayload as TablesUpdate<"case_file_types">[], { onConflict: 'id' });
+
+      if (error) throw error;
+
       setCaseFileTypes(items);
       return true;
     } catch (error) {

@@ -15,13 +15,36 @@ import { DragDropContext, Droppable, Draggable } from "@hello-pangea/dnd";
 import { MeetingTemplateParticipantsEditor } from "@/components/meetings/MeetingTemplateParticipantsEditor";
 import { Plus, Save, X, Check, GripVertical, Minus, Edit, Trash2, CalendarDays, StickyNote, ListTodo, Cake, Scale, MoveVertical, ArrowUp, ArrowDown, CornerUpLeft } from "lucide-react";
 
+type MeetingTemplateChildItem = {
+  title: string;
+  order_index: number;
+  is_available?: boolean;
+  is_optional?: boolean;
+  system_type?: string;
+};
+
+type MeetingTemplateItem = {
+  title: string;
+  order_index: number;
+  type?: string;
+  system_type?: string;
+  children?: MeetingTemplateChildItem[];
+};
+
+type MeetingTemplateRecord = {
+  id: string;
+  name: string;
+  description: string | null;
+  template_items: MeetingTemplateItem[] | null;
+};
+
 export function MeetingTemplateManager() {
   const { user } = useAuth();
   const { toast } = useToast();
 
-  const [meetingTemplates, setMeetingTemplates] = useState<any[]>([]);
-  const [selectedTemplate, setSelectedTemplate] = useState<any>(null);
-  const [templateItems, setTemplateItems] = useState<any[]>([]);
+  const [meetingTemplates, setMeetingTemplates] = useState<MeetingTemplateRecord[]>([]);
+  const [selectedTemplate, setSelectedTemplate] = useState<MeetingTemplateRecord | null>(null);
+  const [templateItems, setTemplateItems] = useState<MeetingTemplateItem[]>([]);
   const [editingTemplate, setEditingTemplate] = useState<{ id: string; field: string; value: string } | null>(null);
   const [newTemplateItem, setNewTemplateItem] = useState<{ title: string; parentIndex?: number } | null>(null);
   const [editingTemplateName, setEditingTemplateName] = useState<{ id: string; value: string } | null>(null);
@@ -38,7 +61,7 @@ export function MeetingTemplateManager() {
     if (!error) setMeetingTemplates(data || []);
   };
 
-  const loadTemplate = (template: any) => {
+  const loadTemplate = (template: MeetingTemplateRecord) => {
     setSelectedTemplate(template);
     setTemplateItems(Array.isArray(template.template_items) ? template.template_items : []);
   };
@@ -53,8 +76,8 @@ export function MeetingTemplateManager() {
         .select()
         .single();
       if (error) throw error;
-      setMeetingTemplates([...meetingTemplates, data]);
-      loadTemplate(data);
+      setMeetingTemplates([...meetingTemplates, data as MeetingTemplateRecord]);
+      loadTemplate(data as MeetingTemplateRecord);
       setEditingTemplateName({ id: data.id, value: data.name });
       toast({ title: "Template erstellt", description: "Neues Meeting-Template wurde angelegt." });
     } catch (error) {
@@ -63,11 +86,12 @@ export function MeetingTemplateManager() {
     }
   };
 
-  const saveTemplateItems = async (items = templateItems, retryCount = 0) => {
-    if (!selectedTemplate) return;
+  const saveTemplateItems = async (items: MeetingTemplateItem[] = templateItems, retryCount = 0): Promise<boolean> => {
+    if (!selectedTemplate) return false;
     try {
       const { error } = await supabase.from('meeting_templates').update({ template_items: items }).eq('id', selectedTemplate.id);
       if (error) throw error;
+      return true;
     } catch (error: unknown) {
       debugConsole.error('Save error:', error);
       const isNetworkError = (error instanceof Error && (error.message?.includes('Failed to fetch') || error.message?.includes('NetworkError') || error.message?.includes('network'))) || (error instanceof TypeError) || !navigator.onLine;
@@ -75,18 +99,21 @@ export function MeetingTemplateManager() {
         await new Promise(r => setTimeout(r, 500 * (retryCount + 1)));
         return saveTemplateItems(items, retryCount + 1);
       }
-      if (!isNetworkError) {
-        toast({ title: "Fehler", description: "Fehler beim Speichern.", variant: "destructive" });
-      }
+      toast({
+        title: isNetworkError ? "Netzwerkfehler" : "Fehler",
+        description: isNetworkError ? "Änderungen konnten nach mehreren Versuchen nicht gespeichert werden. Bitte erneut versuchen." : "Fehler beim Speichern.",
+        variant: "destructive",
+      });
+      return false;
     }
   };
 
-  const handleDragEnd = (result: any) => {
+  const handleDragEnd = (result: { destination: { index: number } | null; source: { index: number } }) => {
     if (!result.destination) return;
     const items = Array.from(templateItems);
     const [reorderedItem] = items.splice(result.source.index, 1);
     items.splice(result.destination.index, 0, reorderedItem);
-    const updatedItems = items.map((item, index) => ({ ...item, order_index: index }));
+    const updatedItems: MeetingTemplateItem[] = items.map((item, index) => ({ ...item, order_index: index }));
     setTemplateItems(updatedItems);
     saveTemplateItems(updatedItems);
   };
@@ -115,7 +142,7 @@ export function MeetingTemplateManager() {
 
   const confirmDeleteChild = (parentIndex: number, childIndex: number) => {
     const newItems = [...templateItems];
-    newItems[parentIndex].children = newItems[parentIndex].children.filter((_: any, i: number) => i !== childIndex);
+    newItems[parentIndex].children = (newItems[parentIndex].children || []).filter((_, i: number) => i !== childIndex);
     if (newItems[parentIndex].children.length === 0) delete newItems[parentIndex].children;
     setTemplateItems(newItems);
     saveTemplateItems(newItems);
@@ -162,7 +189,7 @@ export function MeetingTemplateManager() {
   };
 
   const addTemplateItem = (title: string, parentIndex?: number) => {
-    if (!selectedTemplate) return;
+    if (!selectedTemplate) return false;
     const newItems = [...templateItems];
     if (parentIndex !== undefined) {
       if (!newItems[parentIndex].children) newItems[parentIndex].children = [];
@@ -177,9 +204,9 @@ export function MeetingTemplateManager() {
   };
 
   const addSystemTemplateItem = (systemType: 'upcoming_appointments' | 'quick_notes' | 'tasks' | 'birthdays' | 'decisions', parentIndex?: number) => {
-    if (!selectedTemplate) return;
+    if (!selectedTemplate) return false;
     const existsInMain = templateItems.find(item => item.system_type === systemType);
-    const existsInChildren = templateItems.some(item => item.children?.some((child: any) => child.system_type === systemType));
+    const existsInChildren = templateItems.some(item => item.children?.some((child) => child.system_type === systemType));
     if (existsInMain || existsInChildren) {
       toast({ title: "Bereits vorhanden", description: `"${getTitleForSystemType(systemType)}" ist bereits in der Agenda.`, variant: "destructive" });
       return;
@@ -198,7 +225,7 @@ export function MeetingTemplateManager() {
 
   const moveSystemItem = (fromMain: boolean, fromIndex: number, fromChildIndex: number | null, toParentIndex: number | null) => {
     const newItems = [...templateItems];
-    let movedItem: any;
+    let movedItem: MeetingTemplateItem | MeetingTemplateChildItem;
     if (fromMain && fromChildIndex === null) {
       [movedItem] = newItems.splice(fromIndex, 1);
     } else if (!fromMain && fromChildIndex !== null) {
@@ -215,7 +242,7 @@ export function MeetingTemplateManager() {
     }
     const reindexedItems = newItems.map((item, idx) => ({
       ...item, order_index: idx,
-      children: item.children?.map((child: any, childIdx: number) => ({ ...child, order_index: childIdx }))
+      children: item.children?.map((child, childIdx: number) => ({ ...child, order_index: childIdx }))
     }));
     setTemplateItems(reindexedItems);
     saveTemplateItems(reindexedItems);
@@ -223,7 +250,7 @@ export function MeetingTemplateManager() {
   };
 
   const addSeparator = () => {
-    if (!selectedTemplate) return;
+    if (!selectedTemplate) return false;
     const newItems = [...templateItems];
     newItems.push({ title: '', type: 'separator', order_index: newItems.length });
     setTemplateItems(newItems);

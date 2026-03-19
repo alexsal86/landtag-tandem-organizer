@@ -432,6 +432,10 @@ function collectSemanticIssues(
     issues.push({ level: "error", message: "Trigger-Wert ist bei Datenänderung verpflichtend." });
   }
 
+  if (form.triggerType === "webhook" && sanitizeTriggerValue(form.triggerType, form.triggerValue) !== form.triggerValue.trim()) {
+    issues.push({ level: "warning", message: "Webhook-Trigger-Werte werden auf sichere Zeichen (a-z, 0-9, Punkt, Doppelpunkt, Bindestrich, Unterstrich) reduziert." });
+  }
+
   const validateGroup = (group: ConditionGroup) => {
     group.conditions.forEach((condition) => {
       const spec = fieldSpecs[condition.field];
@@ -476,6 +480,12 @@ function collectSemanticIssues(
   }
 
   return issues;
+}
+
+export function sanitizeTriggerValue(triggerType: string, value: string): string {
+  const trimmed = value.trim();
+  if (triggerType !== "webhook") return trimmed;
+  return trimmed.replace(/[^a-zA-Z0-9._:-]/g, "").slice(0, 120);
 }
 
 export const DEFAULT_CONDITION_GROUP: ConditionGroup = {
@@ -1307,7 +1317,7 @@ export function AutomationRuleWizard({
               <Label>Trigger-Wert {form.triggerType === "record_changed" ? "*" : ""}</Label>
               <Input
                 value={form.triggerValue}
-                onChange={(e) => setForm((prev) => ({ ...prev, triggerValue: e.target.value }))}
+                onChange={(e) => setForm((prev) => ({ ...prev, triggerValue: sanitizeTriggerValue(prev.triggerType, e.target.value) }))}
                 placeholder={form.triggerType === "record_changed" ? "z. B. overdue" : "z. B. 90_days"}
               />
             </div>

@@ -1,5 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
-import { supabase } from "@/integrations/supabase/client";
+import { useMemo, useState } from "react";
 import type { Json } from "@/integrations/supabase/types";
 import { useAuth } from "@/hooks/useAuth";
 import { useTenant } from "@/hooks/useTenant";
@@ -14,7 +13,7 @@ import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { formatDistanceToNow, addMinutes } from "date-fns";
 import { de } from "date-fns/locale";
-import { AutomationRuleWizard, DEFAULT_FORM, DEFAULT_ACTION, RULE_TEMPLATES, type WizardForm, type ActionItem, type ConditionItem, type ConditionGroup } from "./AutomationRuleWizard";
+import { AutomationRuleWizard, DEFAULT_FORM, DEFAULT_ACTION, RULE_TEMPLATES, sanitizeTriggerValue, type WizardForm, type ActionItem, type ConditionItem, type ConditionGroup } from "./AutomationRuleWizard";
 
 // --- Helpers for nested condition group serialization ---
 
@@ -69,56 +68,17 @@ import { AutomationRuleVersions } from "./AutomationRuleVersions";
 import { AutomationRuleExportDialog, AutomationRuleImportDialog } from "./AutomationRuleImportExport";
 import { AutomationErrorDashboard } from "./AutomationErrorDashboard";
 import { logAuditEvent, AuditActions } from "@/hooks/useAuditLog";
-
-type RuleRow = {
-  id: string;
-  name: string;
-  description: string | null;
-  module: string;
-  trigger_type: "record_changed" | "schedule" | "manual" | "webhook";
-  trigger_config: Record<string, string>;
-  conditions: { all?: Array<{ field: string; operator: string; value: string }>; any?: Array<{ field: string; operator: string; value: string }> };
-  actions: Array<{ type: string; payload?: Record<string, string> }>;
-  enabled: boolean;
-  updated_at: string;
-};
-
-type RunRow = {
-  id: string;
-  rule_id: string;
-  status: string;
-  dry_run?: boolean;
-  trigger_source: string;
-  started_at: string;
-  finished_at: string | null;
-  error_message: string | null;
-  input_payload?: Record<string, unknown> | null;
-  result_payload?: Record<string, unknown> | null;
-};
-
-type RunStepRow = {
-  id: string;
-  run_id: string;
-  step_order: number;
-  step_type: string;
-  status: string;
-  result_payload: Record<string, unknown> | null;
-  error_message: string | null;
-};
+import { useAutomationAdminMutations, useAutomationMembershipRole, useAutomationPauseState, useAutomationRules, useAutomationRunSteps, useAutomationRuns } from "./hooks/useAutomationAdminData";
+import type { AutomationRuleRecordView as RuleRow, AutomationRunRecordView as RunRow } from "./automationShared";
 
 export function AutomationRulesManager() {
   const { user } = useAuth();
   const { currentTenant } = useTenant();
   const { toast } = useToast();
 
-  const [loading, setLoading] = useState(true);
-  const [saving, setSaving] = useState(false);
   const [runningRuleId, setRunningRuleId] = useState<string | null>(null);
-  const [rules, setRules] = useState<RuleRow[]>([]);
-  const [runs, setRuns] = useState<RunRow[]>([]);
   const [editingRuleId, setEditingRuleId] = useState<string | null>(null);
   const [expandedRunId, setExpandedRunId] = useState<string | null>(null);
-  const [runStepsByRunId, setRunStepsByRunId] = useState<Record<string, RunStepRow[]>>({});
   const [form, setForm] = useState<WizardForm>(DEFAULT_FORM);
   const [wizardOpen, setWizardOpen] = useState(false);
   const [runStatusFilter, setRunStatusFilter] = useState<string>("all");
@@ -126,13 +86,22 @@ export function AutomationRulesManager() {
   const [runOwnerFilter, setRunOwnerFilter] = useState<string>("all");
   const [runRuleFilter, setRunRuleFilter] = useState<string>("all");
   const [runTimeFilter, setRunTimeFilter] = useState<string>("all");
-  const [automationsPaused, setAutomationsPaused] = useState(false);
-  const [togglingPause, setTogglingPause] = useState(false);
   const [versionsRuleId, setVersionsRuleId] = useState<string | null>(null);
   const [versionsRuleName, setVersionsRuleName] = useState("");
   const [exportOpen, setExportOpen] = useState(false);
   const [importOpen, setImportOpen] = useState(false);
-  const [userRole, setUserRole] = useState<string | null>(null);
+
+  const tenantId = currentTenant?.id;
+  const { data: userRole } = useAutomationMembershipRole(tenantId, user?.id);
+  const { data: automationsPaused = false, isLoading: pauseLoading, error: pauseError } = useAutomationPauseState(tenantId);
+  const { data: rules = [], isLoading: rulesLoading, error: rulesError } = useAutomationRules(tenantId);
+  const { data: runs = [], isLoading: runsLoading, error: runsError } = useAutomationRuns(tenantId);
+  const { data: expandedRunSteps = [], isLoading: runStepsLoading, isError: runStepsError, error: runStepsQueryError, refetch: refetchRunSteps } = useAutomationRunSteps(expandedRunId || undefined);
+  const { togglePause, upsertRule: upsertRuleMutation, deleteRule: deleteRuleMutation, toggleRuleEnabled: toggleRuleEnabledMutation, runRule, refreshAll } = useAutomationAdminMutations(tenantId, user?.id);
+
+  const loading = pauseLoading || rulesLoading || runsLoading;
+  const saving = upsertRuleMutation.isPending;
+  const togglingPause = togglePause.isPending;
 
   const isAdmin = userRole === "abgeordneter";
   const canEdit = isAdmin;
@@ -216,87 +185,24 @@ export function AutomationRulesManager() {
   };
 
   const toggleAutomationsPaused = async () => {
-    if (!currentTenant) return;
-    setTogglingPause(true);
+    if (!tenantId) return;
     const newVal = !automationsPaused;
-    const { error } = await supabase
-      .from("tenants")
-      .update({ automations_paused: newVal } as any)
-      .eq("id", currentTenant.id);
-    setTogglingPause(false);
-    if (error) {
-      toast({ title: "Fehler", description: error.message, variant: "destructive" });
-      return;
-    }
-    setAutomationsPaused(newVal);
-    toast({ title: newVal ? "Alle Automations pausiert" : "Automations reaktiviert" });
 
-    logAuditEvent({
-      action: AuditActions.SETTINGS_CHANGED,
-      details: { type: "automation_kill_switch", paused: newVal, tenant_id: currentTenant.id },
-    });
-  };
-
-  const loadData = async () => {
-    if (!currentTenant) return;
-
-    setLoading(true);
-
-    // Load user role
-    if (user) {
-      const { data: membership } = await supabase
-        .from("user_tenant_memberships")
-        .select("role")
-        .eq("user_id", user.id)
-        .eq("tenant_id", currentTenant.id)
-        .eq("is_active", true)
-        .maybeSingle();
-      setUserRole(membership?.role || null);
-    }
-
-    // Load pause state from tenant
-    const { data: tenantData } = await supabase
-      .from("tenants")
-      .select("automations_paused")
-      .eq("id", currentTenant.id)
-      .maybeSingle();
-    if (tenantData) {
-      setAutomationsPaused(!!(tenantData as any).automations_paused);
-    }
-
-    const [{ data: rulesData, error: rulesError }, { data: runData, error: runsError }] = await Promise.all([
-      supabase
-        .from("automation_rules")
-        .select("id, name, description, module, trigger_type, trigger_config, conditions, actions, enabled, updated_at")
-        .eq("tenant_id", currentTenant.id)
-        .order("updated_at", { ascending: false }),
-      supabase
-        .from("automation_rule_runs")
-        .select("id, rule_id, status, dry_run, trigger_source, started_at, finished_at, error_message, input_payload, result_payload")
-        .eq("tenant_id", currentTenant.id)
-        .order("started_at", { ascending: false })
-        .limit(30),
-    ]);
-
-    if (rulesError || runsError) {
+    try {
+      await togglePause.mutateAsync(newVal);
+      toast({ title: newVal ? "Alle Automations pausiert" : "Automations reaktiviert" });
+      logAuditEvent({
+        action: AuditActions.SETTINGS_CHANGED,
+        details: { type: "automation_kill_switch", paused: newVal, tenant_id: tenantId },
+      });
+    } catch (error) {
       toast({
-        title: "Fehler beim Laden",
-        description: rulesError?.message || runsError?.message || "Automations konnten nicht geladen werden.",
+        title: "Fehler",
+        description: error instanceof Error ? error.message : "Automations konnten nicht umgeschaltet werden.",
         variant: "destructive",
       });
-      setLoading(false);
-      return;
     }
-
-    setRules((rulesData || []) as unknown as RuleRow[]);
-    setRuns((runData || []) as unknown as RunRow[]);
-    setLoading(false);
   };
-
-  useEffect(() => {
-    loadData();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [currentTenant?.id]);
 
   const resetForm = () => {
     setEditingRuleId(null);
@@ -377,30 +283,12 @@ export function AutomationRulesManager() {
     setWizardOpen(true);
   };
 
-  const loadRunSteps = async (runId: string) => {
-    const { data, error } = await supabase
-      .from("automation_rule_run_steps")
-      .select("id, run_id, step_order, step_type, status, result_payload, error_message")
-      .eq("run_id", runId)
-      .order("step_order", { ascending: true });
-
-    if (error) {
-      toast({ title: "Schritte konnten nicht geladen werden", description: error.message, variant: "destructive" });
-      return;
-    }
-
-    setRunStepsByRunId((prev) => ({ ...prev, [runId]: (data || []) as unknown as RunStepRow[] }));
-  };
-
   const toggleRunDetails = async (runId: string) => {
     if (expandedRunId === runId) {
       setExpandedRunId(null);
       return;
     }
     setExpandedRunId(runId);
-    if (!runStepsByRunId[runId]) {
-      await loadRunSteps(runId);
-    }
   };
 
   const upsertRule = async () => {
@@ -414,7 +302,6 @@ export function AutomationRulesManager() {
       return;
     }
 
-    setSaving(true);
     const conditionsPayload = serializeConditionGroup(form.conditionGroup);
 
     const payload = {
@@ -422,8 +309,8 @@ export function AutomationRulesManager() {
       name: form.name.trim(),
       description: form.description.trim() || null,
       module: form.module,
-      trigger_type: form.triggerType,
-      trigger_config: { field: form.triggerField, value: form.triggerValue },
+      trigger_type: form.triggerType as RuleRow["trigger_type"],
+      trigger_config: { field: form.triggerField, value: sanitizeTriggerValue(form.triggerType, form.triggerValue) },
       conditions: conditionsPayload,
       actions: form.actions.map((a) => ({
         type: a.type,
@@ -449,15 +336,14 @@ export function AutomationRulesManager() {
       enabled: form.enabled,
     };
 
-    const query = editingRuleId
-      ? supabase.from("automation_rules").update(payload).eq("id", editingRuleId)
-      : supabase.from("automation_rules").insert([{ ...payload, created_by: user.id }]);
-
-    const { error } = await query;
-    setSaving(false);
-
-    if (error) {
-      toast({ title: "Speichern fehlgeschlagen", description: error.message, variant: "destructive" });
+    try {
+      await upsertRuleMutation.mutateAsync({ editingRuleId, payload });
+    } catch (error) {
+      toast({
+        title: "Speichern fehlgeschlagen",
+        description: error instanceof Error ? error.message : "Regel konnte nicht gespeichert werden.",
+        variant: "destructive",
+      });
       return;
     }
 
@@ -470,7 +356,6 @@ export function AutomationRulesManager() {
     toast({ title: editingRuleId ? "Regel aktualisiert" : "Regel erstellt" });
     resetForm();
     setWizardOpen(false);
-    loadData();
   };
 
   const deleteRule = async (ruleId: string) => {
@@ -480,9 +365,14 @@ export function AutomationRulesManager() {
     }
 
     const ruleName = rules.find((r) => r.id === ruleId)?.name || ruleId;
-    const { error } = await supabase.from("automation_rules").delete().eq("id", ruleId);
-    if (error) {
-      toast({ title: "Löschen fehlgeschlagen", description: error.message, variant: "destructive" });
+    try {
+      await deleteRuleMutation.mutateAsync(ruleId);
+    } catch (error) {
+      toast({
+        title: "Löschen fehlgeschlagen",
+        description: error instanceof Error ? error.message : "Regel konnte nicht gelöscht werden.",
+        variant: "destructive",
+      });
       return;
     }
 
@@ -493,7 +383,6 @@ export function AutomationRulesManager() {
 
     toast({ title: "Regel gelöscht" });
     if (editingRuleId === ruleId) resetForm();
-    loadData();
   };
 
   const toggleRuleEnabled = async (rule: RuleRow, checked: boolean) => {
@@ -502,23 +391,18 @@ export function AutomationRulesManager() {
       return;
     }
 
-    setRules((prev) =>
-      prev.map((r) => (r.id === rule.id ? { ...r, enabled: checked } : r))
-    );
-    const { error } = await supabase
-      .from("automation_rules")
-      .update({ enabled: checked })
-      .eq("id", rule.id);
-    if (error) {
-      setRules((prev) =>
-        prev.map((r) => (r.id === rule.id ? { ...r, enabled: !checked } : r))
-      );
-      toast({ title: "Fehler", description: error.message, variant: "destructive" });
-    } else {
+    try {
+      await toggleRuleEnabledMutation.mutateAsync({ ruleId: rule.id, enabled: checked });
       toast({ title: checked ? "Regel aktiviert" : "Regel deaktiviert" });
       logAuditEvent({
         action: checked ? "automation.rule_enabled" : "automation.rule_disabled",
         details: { rule_id: rule.id, rule_name: rule.name },
+      });
+    } catch (error) {
+      toast({
+        title: "Fehler",
+        description: error instanceof Error ? error.message : "Regel konnte nicht umgeschaltet werden.",
+        variant: "destructive",
       });
     }
   };
@@ -542,46 +426,42 @@ export function AutomationRulesManager() {
     if (!currentTenant || !user || !targetRule) return;
     setRunningRuleId(targetRule.id);
 
-    const idempotencyKey = crypto.randomUUID();
-    const { error } = await supabase.functions.invoke("run-automation-rule", {
-      body: {
+    try {
+      await runRule.mutateAsync({
         ruleId: targetRule.id,
         dryRun: true,
-        idempotencyKey,
         sourcePayload: buildSourcePayloadFromRule(targetRule),
-      },
-    });
-
-    setRunningRuleId(null);
-    if (error) {
-      toast({ title: "Dry-Run fehlgeschlagen", description: error.message, variant: "destructive" });
-      return;
+      });
+    } catch (error) {
+      toast({
+        title: "Dry-Run fehlgeschlagen",
+        description: error instanceof Error ? error.message : "Dry-Run konnte nicht gestartet werden.",
+        variant: "destructive",
+      });
+    } finally {
+      setRunningRuleId(null);
     }
-    toast({ title: "Dry-Run erstellt", description: "Ausführung wurde in der Historie protokolliert." });
-    loadData();
   };
 
   const triggerRunNow = async (rule: RuleRow) => {
     if (!currentTenant || !user) return;
     setRunningRuleId(rule.id);
 
-    const idempotencyKey = crypto.randomUUID();
-    const { error } = await supabase.functions.invoke("run-automation-rule", {
-      body: {
+    try {
+      await runRule.mutateAsync({
         ruleId: rule.id,
         dryRun: false,
-        idempotencyKey,
         sourcePayload: buildSourcePayloadFromRule(rule),
-      },
-    });
-
-    setRunningRuleId(null);
-    if (error) {
-      toast({ title: "Ausführung fehlgeschlagen", description: error.message, variant: "destructive" });
-      return;
+      });
+    } catch (error) {
+      toast({
+        title: "Ausführung fehlgeschlagen",
+        description: error instanceof Error ? error.message : "Regel konnte nicht ausgeführt werden.",
+        variant: "destructive",
+      });
+    } finally {
+      setRunningRuleId(null);
     }
-    toast({ title: "Regel ausgeführt", description: "Die Ausführung wurde protokolliert." });
-    loadData();
   };
 
   const handleWizardDryRun = () => {
@@ -604,11 +484,22 @@ export function AutomationRulesManager() {
       </div>
     );
   }
+  const failedRunCount = runs.filter((r) => r.status === "failed").length;
+  const loadError = pauseError || rulesError || runsError;
 
-    const failedRunCount = runs.filter((r) => r.status === "failed").length;
-
-    return (
+  return (
     <div className="space-y-6">
+      {loadError && (
+        <Alert variant="destructive">
+          <AlertTriangle className="h-4 w-4" />
+          <AlertTitle>Automations konnten nicht vollständig geladen werden</AlertTitle>
+          <AlertDescription className="flex items-center justify-between gap-3">
+            <span>{loadError instanceof Error ? loadError.message : "Bitte erneut versuchen."}</span>
+            <Button size="sm" variant="outline" onClick={() => void refreshAll()}>Neu laden</Button>
+          </AlertDescription>
+        </Alert>
+      )}
+
       {/* Role hint for non-admins */}
       {!canEdit && (
         <Alert>
@@ -685,7 +576,7 @@ export function AutomationRulesManager() {
       <AutomationTemplateGallery onUseTemplate={useTemplate} />
 
       {/* Error Dashboard */}
-      <AutomationErrorDashboard onRetrigger={loadData} />
+      <AutomationErrorDashboard onRetrigger={refreshAll} />
 
       {/* Rules list */}
       <Card>
@@ -892,15 +783,22 @@ export function AutomationRulesManager() {
                     ) : null}
                     {!!run.result_payload?.explainability && (
                       <div className="text-xs space-y-1 rounded border bg-background p-2">
-                        <p><span className="font-medium">Warum ausgelöst?</span> {String((run.result_payload as Record<string, any>).explainability?.why_triggered ?? "—")}</p>
-                        <p><span className="font-medium">Warum nicht?</span> {String((run.result_payload as Record<string, any>).explainability?.why_not_triggered ?? "—")}</p>
+                        <p><span className="font-medium">Warum ausgelöst?</span> {String((run.result_payload?.explainability as Record<string, unknown> | undefined)?.why_triggered ?? "—")}</p>
+                        <p><span className="font-medium">Warum nicht?</span> {String((run.result_payload?.explainability as Record<string, unknown> | undefined)?.why_not_triggered ?? "—")}</p>
                         <p className="text-muted-foreground">run_id: {String(run.result_payload?.run_id ?? run.id)} · workflow_version: {String(run.result_payload?.workflow_version ?? "v1")} · entity_id: {String(run.result_payload?.entity_id ?? "unknown")}</p>
                       </div>
                     )}
-                    {(runStepsByRunId[run.id] || []).length === 0 ? (
+                    {runStepsLoading && expandedRunId === run.id ? (
+                      <p className="text-xs text-muted-foreground">Schritte werden geladen…</p>
+                    ) : runStepsError && expandedRunId === run.id ? (
+                      <div className="space-y-2">
+                        <p className="text-xs text-destructive">Fehler: {runStepsQueryError instanceof Error ? runStepsQueryError.message : "Schritte konnten nicht geladen werden."}</p>
+                        <Button size="sm" variant="outline" onClick={() => void refetchRunSteps()}>Erneut versuchen</Button>
+                      </div>
+                    ) : expandedRunSteps.length === 0 ? (
                       <p className="text-xs text-muted-foreground">Keine Step-Logs vorhanden.</p>
                     ) : (
-                      (runStepsByRunId[run.id] || []).map((step) => (
+                      expandedRunSteps.map((step) => (
                         <div key={step.id} className="text-xs border-b last:border-b-0 py-1 space-y-1">
                           <div className="flex items-center justify-between">
                             <span>
@@ -934,7 +832,7 @@ export function AutomationRulesManager() {
           ruleName={versionsRuleName}
           open={!!versionsRuleId}
           onOpenChange={(open) => { if (!open) setVersionsRuleId(null); }}
-          onRestore={loadData}
+          onRestore={refreshAll}
         />
       )}
 
@@ -949,7 +847,7 @@ export function AutomationRulesManager() {
       <AutomationRuleImportDialog
         open={importOpen}
         onOpenChange={setImportOpen}
-        onImported={loadData}
+        onImported={refreshAll}
       />
     </div>
   );

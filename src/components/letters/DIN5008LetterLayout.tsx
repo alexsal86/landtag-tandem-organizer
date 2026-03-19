@@ -126,6 +126,7 @@ export const DIN5008LetterLayout: React.FC<DIN5008LetterLayoutProps> = ({
   const subjectFontSizePt = toFontSizePt(layout.subject?.fontSize, 13);
   const attachmentList = getLetterAttachmentNames(attachments);
   const hasSignature = Boolean(layout.closing?.signatureName || layout.closing?.signatureImagePath);
+  const signatureImageUrl = getLetterAssetPublicUrl(layout.closing?.signatureImagePath);
   const paginationGapMm = 4.23;
   const paginationHeightMm = 4;
   const contentTopMm = Number(layout.content?.top ?? 98.46);

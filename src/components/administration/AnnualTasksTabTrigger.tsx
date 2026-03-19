@@ -4,6 +4,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 import { RefreshCcw } from "lucide-react";
+import { useToast } from "@/components/ui/use-toast";
 
 interface AnnualTasksTabTriggerProps {
   tenantId: string | undefined;
@@ -11,14 +12,24 @@ interface AnnualTasksTabTriggerProps {
 
 export function AnnualTasksTabTrigger({ tenantId }: AnnualTasksTabTriggerProps) {
   const [count, setCount] = useState(0);
+  const { toast } = useToast();
   
   useEffect(() => {
-    if (tenantId) {
-      loadCount();
-    }
+    let active = true;
+
+    const run = async () => {
+      if (!tenantId) return;
+      await loadCount(active);
+    };
+
+    void run();
+
+    return () => {
+      active = false;
+    };
   }, [tenantId]);
 
-  const loadCount = async () => {
+  const loadCount = async (active = true) => {
     if (!tenantId) return;
     
     const currentMonth = new Date().getMonth() + 1;
@@ -32,7 +43,7 @@ export function AnnualTasksTabTrigger({ tenantId }: AnnualTasksTabTriggerProps) 
         .eq("tenant_id", tenantId);
 
       if (!tasks || tasks.length === 0) {
-        setCount(0);
+        if (active) setCount(0);
         return;
       }
 
@@ -51,9 +62,16 @@ export function AnnualTasksTabTrigger({ tenantId }: AnnualTasksTabTriggerProps) 
         return task.due_month <= currentMonth;
       }).length;
 
-      setCount(pendingCount);
+      if (active) setCount(pendingCount);
     } catch (error) {
       debugConsole.error("Error loading annual tasks count:", error);
+      if (active) {
+        toast({
+          title: "Jährliche Aufgaben konnten nicht geladen werden",
+          description: error instanceof Error ? error.message : "Bitte erneut versuchen.",
+          variant: "destructive",
+        });
+      }
     }
   };
 
