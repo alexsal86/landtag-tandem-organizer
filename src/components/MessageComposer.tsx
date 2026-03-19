@@ -98,27 +98,6 @@ export function MessageComposer({ onClose, onSent }: MessageComposerProps) {
           recipient_ids_param: isForAllUsers ? [] : selectedRecipients
         });
 
-      // Send push notification for new message
-      try {
-        const authorName = currentUserProfile?.display_name || user.user_metadata?.display_name || user.email;
-        const response = await supabase.functions.invoke('send-push-notification', {
-          body: {
-            title: `📧 Neue Nachricht: ${title.trim() || "Ohne Betreff"}`,
-            message: `Von ${authorName}: ${content.trim().substring(0, 100)}${content.trim().length > 100 ? '...' : ''}`,
-            priority: 'medium',
-            data: {
-              type: 'new_message',
-              message_title: title.trim() || "Ohne Betreff",
-              message_content: content.trim(),
-              author_name: authorName,
-              is_for_all_users: isForAllUsers,
-              timestamp: new Date().toISOString()
-            }
-          }
-        });
-      } catch (pushError) {
-        // Don't fail the entire message sending process if push fails
-      }
 
       toast({
         title: "Nachricht gesendet",

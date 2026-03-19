@@ -298,14 +298,7 @@ serve(async (req) => {
     return new Response(null, { headers: corsHeaders });
   }
 
-  // Require service role (called by pg_net trigger)
-  if (!requireServiceRole(req)) {
-    return new Response(JSON.stringify({ error: 'Unauthorized' }), {
-      status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-    });
-  }
-
-  // GET: Return VAPID public key
+  // GET: Return VAPID public key (public endpoint, no service role needed)
   if (req.method === 'GET') {
     const vapidPublicKey = Deno.env.get('VAPID_PUBLIC_KEY');
     if (!vapidPublicKey) {
@@ -315,6 +308,13 @@ serve(async (req) => {
     }
     return new Response(JSON.stringify({ success: true, publicKey: vapidPublicKey }), {
       status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+    });
+  }
+
+  // Require service role for POST (called by pg_net trigger)
+  if (!requireServiceRole(req)) {
+    return new Response(JSON.stringify({ error: 'Unauthorized' }), {
+      status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' }
     });
   }
 
