@@ -25,6 +25,7 @@ export interface QuickNote {
   id: string;
   title: string | null;
   content: string;
+  topic_backlog_id?: string | null;
   color: string | null;
   color_full_card?: boolean;
   is_pinned: boolean;
@@ -85,7 +86,7 @@ export function QuickNotesList({
   const hook = useQuickNotes(refreshTrigger);
   const { isHighlighted, highlightRef } = useNotificationHighlight();
   const { createTopic } = useTopicBacklog();
-  const [transferringNoteId, setTransferringNoteId] = useState<string | null>(null);
+  const [topicActionNoteId, setTopicActionNoteId] = useState<string | null>(null);
 
   useEffect(() => {
     onSearchApiReady?.({
@@ -116,35 +117,91 @@ export function QuickNotesList({
     );
   }
 
-  const handleTransferToThemenspeicher = async (note: QuickNote) => {
-    if (!hook.user?.id) {
-      toast.error("Nicht angemeldet");
-      return;
-    }
-
+  const buildTopicPayload = (note: QuickNote) => {
     const fallbackTitle = stripHtml(note.content).slice(0, 100);
     const topicTitle = stripHtml(note.title || "") || fallbackTitle;
 
-    if (!topicTitle) {
-      toast.error("Die Notiz enthält keinen übernehmbaren Titel");
-      return;
+    return {
+      topicTitle,
+      shortDescription: stripHtml(note.content) || null,
+    };
+  };
+
+  const ensureTopicBacklogLink = async (note: QuickNote) => {
+    if (!hook.user?.id) {
+      toast.error("Nicht angemeldet");
+      return null;
     }
 
-    setTransferringNoteId(note.id);
+    if (note.topic_backlog_id) {
+      return note.topic_backlog_id;
+    }
+
+    const { topicTitle, shortDescription } = buildTopicPayload(note);
+
+    if (!topicTitle) {
+      toast.error("Die Notiz enthält keinen übernehmbaren Titel");
+      return null;
+    }
+
+    setTopicActionNoteId(note.id);
 
     try {
-      await createTopic({
+      const createdTopic = await createTopic({
         topic: topicTitle,
         status: "idea",
         priority: 1,
-        short_description: stripHtml(note.content) || null,
+        short_description: shortDescription,
       });
 
+      if (!createdTopic?.id) {
+        throw new Error("Themenspeicher-Eintrag konnte nicht erstellt werden");
+      }
+
+      const { error } = await supabase
+        .from("quick_notes")
+        .update({
+          topic_backlog_id: createdTopic.id,
+        })
+        .eq("id", note.id)
+        .eq("user_id", hook.user.id);
+
+      if (error) {
+        throw error;
+      }
+
+      await hook.loadNotes();
+      toast.success("Notiz in den Themenspeicher kopiert");
+      return createdTopic.id;
+    } catch (error) {
+      console.error("Error transferring quick note to themenspeicher:", error);
+      toast.error("Notiz konnte nicht in den Themenspeicher kopiert werden");
+      return null;
+    } finally {
+      setTopicActionNoteId(null);
+    }
+  };
+
+  const handleCopyToThemenspeicher = async (note: QuickNote) => {
+    const linkedTopicId = await ensureTopicBacklogLink(note);
+    if (linkedTopicId) {
+      await hook.loadNotes();
+    }
+  };
+
+  const handleMoveToThemenspeicher = async (note: QuickNote) => {
+    const linkedTopicId = await ensureTopicBacklogLink(note);
+    if (!linkedTopicId || !hook.user?.id) return;
+
+    setTopicActionNoteId(note.id);
+
+    try {
       const { error } = await supabase
         .from("quick_notes")
         .update({
           deleted_at: new Date().toISOString(),
           permanent_delete_at: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
+          topic_backlog_id: linkedTopicId,
         })
         .eq("id", note.id)
         .eq("user_id", hook.user.id);
@@ -156,10 +213,10 @@ export function QuickNotesList({
       await hook.loadNotes();
       toast.success("Notiz in den Themenspeicher verschoben");
     } catch (error) {
-      console.error("Error transferring quick note to themenspeicher:", error);
+      console.error("Error moving quick note to themenspeicher:", error);
       toast.error("Notiz konnte nicht in den Themenspeicher verschoben werden");
     } finally {
-      setTransferringNoteId(null);
+      setTopicActionNoteId(null);
     }
   };
 
@@ -194,8 +251,10 @@ export function QuickNotesList({
     onShare: (n: QuickNote) => { hook.setNoteForShare(n); hook.setShareDialogOpen(true); },
     onCreateCaseItem: hook.createCaseItemFromNote,
     onRemoveCaseItem: hook.setConfirmRemoveCaseItem,
-    onTransferToThemenspeicher: handleTransferToThemenspeicher,
-    isTransferringToThemenspeicher: transferringNoteId === note.id,
+    onTransferToThemenspeicher: handleCopyToThemenspeicher,
+    onMoveToThemenspeicher: handleMoveToThemenspeicher,
+    isInThemenspeicher: !!note.topic_backlog_id,
+    isTransferringToThemenspeicher: topicActionNoteId === note.id,
   });
 
   return (
