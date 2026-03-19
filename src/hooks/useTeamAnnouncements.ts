@@ -132,7 +132,7 @@ export function useTeamAnnouncements() {
           event: '*',
           schema: 'public',
           table: 'team_announcement_dismissals',
-          filter: `user_id=eq.${currentTenant?.id ? '' : ''}`,
+          filter: `user_id=eq.${user?.id}`,
         },
         () => {
           fetchAnnouncements();
