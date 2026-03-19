@@ -71,7 +71,7 @@ export function MyWorkFeedbackFeedTab() {
     };
     const channel = supabase
       .channel(`my-work-feedback-${user.id}`)
-      .on("postgres_changes", { event: "*", schema: "public", table: "appointment_feedback" }, scheduleRefresh)
+      .on("postgres_changes", { event: "*", schema: "public", table: "appointment_feedback", filter: `user_id=eq.${user.id}` }, scheduleRefresh)
       .subscribe();
     return () => {
       if (timeout) clearTimeout(timeout);

@@ -127,7 +127,7 @@ export function useMeetingsData() {
     } else {
       supabase
         .from('meetings')
-        .select('*')
+        .select("id, title, meeting_date, meeting_time, status, description, is_public, user_id, template_id, location, created_at, recurrence_rule, recurrence_end_date")
         .eq('id', urlMeetingId)
         .maybeSingle()
         .then(({ data }) => {
@@ -205,7 +205,7 @@ export function useMeetingsData() {
       try {
         const { data: agendaItemsWithTasks, error } = await supabase
           .from('meeting_agenda_items')
-          .select('*')
+          .select('id, meeting_id, task_id')
           .not('task_id', 'is', null);
         if (error) throw error;
         if (agendaItemsWithTasks && agendaItemsWithTasks.length > 0) {
@@ -282,12 +282,13 @@ export function useMeetingsData() {
 
   const loadMeetings = async () => {
     try {
+      const meetingSelectFields = "id, title, meeting_date, meeting_time, status, description, is_public, user_id, template_id, location, created_at, recurrence_rule, recurrence_end_date";
       const { data: ownMeetings, error: ownError } = await supabase
-        .from('meetings').select('*').eq('user_id', user?.id ?? '').neq('status', 'archived').order('meeting_date', { ascending: false });
+        .from('meetings').select(meetingSelectFields).eq('user_id', user?.id ?? '').neq('status', 'archived').order('meeting_date', { ascending: false });
       if (ownError) throw ownError;
 
       const { data: participantMeetings, error: participantError } = await supabase
-        .from('meeting_participants').select('meeting_id, meetings(*)').eq('user_id', user?.id ?? '');
+        .from('meeting_participants').select(`meeting_id, meetings(${meetingSelectFields})`).eq('user_id', user?.id ?? '');
       if (participantError) debugConsole.error('Error loading participant meetings:', participantError);
 
       const ownMeetingIds = new Set((ownMeetings || []).map(m => m.id));
@@ -326,7 +327,7 @@ export function useMeetingsData() {
     if (!user?.id || !currentTenant?.id) return;
     try {
       const { data: allTenantTasks, error } = await supabase
-        .from('tasks').select('*').eq('tenant_id', currentTenant.id).eq('status', 'todo').order('created_at', { ascending: false });
+        .from('tasks').select('id, title, description, priority, status, due_date, assigned_to, user_id, created_at, category, meeting_id, pending_for_jour_fixe, parent_task_id, tenant_id').eq('tenant_id', currentTenant.id).eq('status', 'todo').order('created_at', { ascending: false });
       if (error) { debugConsole.error('Error loading tasks:', error); return; }
 
       const filteredTasks = (allTenantTasks || []).filter(task => 
@@ -341,7 +342,7 @@ export function useMeetingsData() {
 
   const loadTaskDocuments = async (taskIds: string[]) => {
     try {
-      const { data, error } = await supabase.from('task_documents').select('*').in('task_id', taskIds);
+      const { data, error } = await supabase.from('task_documents').select('id, task_id, file_name, file_path, file_size, file_type, created_at').in('task_id', taskIds);
       if (error) throw error;
       const docsByTaskId: Record<string, AgendaDocument[]> = {};
       data?.forEach(doc => {
@@ -357,7 +358,7 @@ export function useMeetingsData() {
   const loadMeetingTemplates = async () => {
     try {
       const { data, error } = await supabase
-        .from('meeting_templates').select('*').order('is_default', { ascending: false }).order('name');
+        .from('meeting_templates').select('id, name, description, template_items, default_participants, is_default, default_recurrence, user_id, created_at').order('is_default', { ascending: false }).order('name');
       if (error) throw error;
       const normalizedTemplates = ((data || []) as MeetingTemplateRow[]).map(normalizeMeetingTemplate);
       setMeetingTemplates(normalizedTemplates);
@@ -389,7 +390,7 @@ export function useMeetingsData() {
   const loadAgendaItems = async (meetingId: string) => {
     try {
       const { data, error } = await supabase
-        .from('meeting_agenda_items').select('*').eq('meeting_id', meetingId).order('order_index');
+        .from('meeting_agenda_items').select('id, meeting_id, title, description, duration_minutes, order_index, type, parent_id, task_id, result_text, assigned_to, is_completed, completed_at, planning_item_id').eq('meeting_id', meetingId).order('order_index');
       if (error) throw error;
 
       const mainItems = (data || []).filter(item => !item.parent_id).sort((a, b) => a.order_index - b.order_index);
@@ -414,7 +415,7 @@ export function useMeetingsData() {
   const loadAgendaDocuments = async (agendaItemIds: string[]) => {
     try {
       const { data, error } = await supabase
-        .from('meeting_agenda_documents').select('*').in('meeting_agenda_item_id', agendaItemIds);
+        .from('meeting_agenda_documents').select('id, meeting_agenda_item_id, file_name, file_path, file_size, file_type, created_at').in('meeting_agenda_item_id', agendaItemIds);
       if (error) throw error;
       const docsByItemId: Record<string, AgendaDocument[]> = {};
       data?.forEach(doc => {
