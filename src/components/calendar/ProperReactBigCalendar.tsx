@@ -207,7 +207,10 @@ const ProperReactBigCalendar: React.FC<ProperReactBigCalendarProps> = ({
       'default': 'hsl(var(--primary))'
     };
 
-    const bgColor = categoryColors[originalEvent?.type || 'default'] || categoryColors.default;
+    // Use category_color from external calendars when available, otherwise fall back to type mapping
+    const bgColor = originalEvent?.category_color
+      ? originalEvent.category_color
+      : (categoryColors[originalEvent?.type || 'default'] || categoryColors.default);
     const hasOverlap = overlappingEventIds.has(String(event.id));
     
     style.backgroundColor = bgColor;
