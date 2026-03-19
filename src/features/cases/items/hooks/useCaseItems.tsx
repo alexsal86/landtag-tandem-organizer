@@ -89,6 +89,36 @@ export interface CaseItemInteractionFormData {
   visibility?: CaseItemInteraction["visibility"];
 }
 
+
+const caseItemComparator = (a: CaseItem, b: CaseItem) =>
+  new Date(b.updated_at ?? b.created_at).getTime() - new Date(a.updated_at ?? a.created_at).getTime();
+
+const normalizeCaseItem = (row: Partial<CaseItemRow> & { id: string }): CaseItem => ({
+  visible_to_all: false,
+  intake_payload: null,
+  confidentiality_level: null,
+  contains_personal_data: false,
+  resolution_summary: null,
+  source_channel: null,
+  status: null,
+  priority: null,
+  owner_user_id: null,
+  contact_id: null,
+  due_at: null,
+  follow_up_at: null,
+  subject: null,
+  summary: null,
+  source_received_at: null,
+  source_reference: null,
+  reporter_name: null,
+  reporter_contact: null,
+  case_file_id: null,
+  case_scale: null,
+  created_at: new Date().toISOString(),
+  updated_at: new Date().toISOString(),
+  ...row,
+} as CaseItem);
+
 export const useCaseItems = () => {
   const [caseItems, setCaseItems] = useState<CaseItem[]>([]);
   const [loading, setLoading] = useState(true);
@@ -111,7 +141,7 @@ export const useCaseItems = () => {
         .order("updated_at", { ascending: false });
 
       if (error) throw error;
-      setCaseItems((data ?? []) as CaseItemRow[] as CaseItem[]);
+      setCaseItems(((data ?? []) as CaseItemRow[]).map((row) => normalizeCaseItem(row)).sort(caseItemComparator));
     } catch (error) {
       debugConsole.error("Error fetching case items:", error);
       toast({
@@ -405,8 +435,34 @@ export const useCaseItems = () => {
           table: "case_items",
           filter: `tenant_id=eq.${currentTenant.id}`,
         },
-        () => {
-          fetchCaseItems();
+        (payload) => {
+          if (payload.eventType === "DELETE") {
+            const deletedId = payload.old?.id as string | undefined;
+            if (deletedId) {
+              setCaseItems((prev) => prev.filter((item) => item.id !== deletedId));
+            }
+            return;
+          }
+
+          const nextRow = payload.new as Partial<CaseItemRow> & { id?: string };
+          if (!nextRow.id) {
+            void fetchCaseItems();
+            return;
+          }
+
+          const normalized = normalizeCaseItem(nextRow as Partial<CaseItemRow> & { id: string });
+
+          setCaseItems((prev) => {
+            const existingIndex = prev.findIndex((item) => item.id === normalized.id);
+
+            if (existingIndex === -1) {
+              return [normalized, ...prev].sort(caseItemComparator);
+            }
+
+            const next = [...prev];
+            next[existingIndex] = { ...next[existingIndex], ...normalized };
+            return next.sort(caseItemComparator);
+          });
         }
       )
       .subscribe();
