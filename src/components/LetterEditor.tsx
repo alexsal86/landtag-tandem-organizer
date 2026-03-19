@@ -87,6 +87,16 @@ const LetterEditor: React.FC<LetterEditorProps> = ({ letter, isOpen, onClose, on
     onSave, setSaving, setLastSaved, setIsProofreadingMode, setShowAssignmentDialog,
     fetchComments, fetchCollaborators, senderInfos, informationBlocks,
   });
+  const {
+    handleAutoSave,
+    handleManualSave,
+    handleStatusTransition,
+    handleReturnLetter,
+    handleAddComment,
+    handleAttachmentNameChange,
+    broadcastContentChange,
+    applyTemplateDefaults,
+  } = ops;
 
   // Initialize draft content
   useEffect(() => {
@@ -129,30 +139,31 @@ const LetterEditor: React.FC<LetterEditorProps> = ({ letter, isOpen, onClose, on
 
   useEffect(() => { if (letter && letter.show_pagination !== undefined) setShowPagination(letter.show_pagination); }, [letter?.show_pagination]);
   useEffect(() => { if (isOpen && currentTenant && letter?.id) fetchWorkflowUserProfiles(letter); }, [isOpen, currentTenant, letter?.id]);
-  useEffect(() => {
-    if (isOpen && currentTenant && senderInfos.length > 0 && informationBlocks.length > 0) {
-      const templateId = editedLetter?.template_id || letter?.template_id;
-      if (templateId) fetchCurrentTemplate();
-    }
-  }, [isOpen, currentTenant, editedLetter?.template_id, letter?.template_id, letter?.id, senderInfos.length, informationBlocks.length]);
-
-  useEffect(() => {
-    if (!canEdit || isUpdatingFromRemoteRef.current || !letter?.id) return;
-    if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current);
-    saveTimeoutRef.current = setTimeout(() => { if (!isUpdatingFromRemoteRef.current && letter?.id) ops.handleAutoSave(); }, 3000);
-    return () => { if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current); };
-  }, [editedLetter, canEdit, letter?.id, showPagination]);
-
-  const fetchCurrentTemplate = async () => {
+  const fetchCurrentTemplate = useCallback(async () => {
     const templateId = editedLetter?.template_id || letter?.template_id;
     if (!templateId) return;
     try {
       const { data, error } = await supabase.from('letter_templates').select('*').eq('id', templateId).single();
       if (error) throw error;
       setCurrentTemplate(data as LetterTemplate);
-      if (data) ops.applyTemplateDefaults(data as LetterTemplate);
-    } catch (error) { debugConsole.error('Error fetching current template:', error); }
-  };
+      if (data) applyTemplateDefaults(data as LetterTemplate);
+    } catch (error) {
+      debugConsole.error('Error fetching current template:', error);
+    }
+  }, [editedLetter?.template_id, letter?.template_id, applyTemplateDefaults]);
+
+  useEffect(() => {
+    if (isOpen && currentTenant && senderInfos.length > 0 && informationBlocks.length > 0) {
+      void fetchCurrentTemplate();
+    }
+  }, [isOpen, currentTenant, letter?.id, senderInfos.length, informationBlocks.length, fetchCurrentTemplate]);
+
+  useEffect(() => {
+    if (!canEdit || isUpdatingFromRemoteRef.current || !letter?.id) return;
+    if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current);
+    saveTimeoutRef.current = setTimeout(() => { if (!isUpdatingFromRemoteRef.current && letter?.id) void handleAutoSave(); }, 3000);
+    return () => { if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current); };
+  }, [editedLetter, canEdit, letter?.id, showPagination, handleAutoSave]);
 
   const handleTemplateChange = async (templateId: string) => {
     if (!templateId || templateId === 'none') {
@@ -160,7 +171,7 @@ const LetterEditor: React.FC<LetterEditorProps> = ({ letter, isOpen, onClose, on
       setCurrentTemplate(null); return;
     }
     const template = templates.find(t => t.id === templateId);
-    if (template) { setEditedLetter(prev => ({ ...prev, template_id: templateId })); setCurrentTemplate(template); ops.applyTemplateDefaults(template); }
+    if (template) { setEditedLetter(prev => ({ ...prev, template_id: templateId })); setCurrentTemplate(template); applyTemplateDefaults(template); }
   };
 
   const handleContactSelect = (contactId: string) => {
@@ -270,7 +281,7 @@ const LetterEditor: React.FC<LetterEditorProps> = ({ letter, isOpen, onClose, on
         onTemplateChange={handleTemplateChange}
         onAutoSaveSchedule={() => {
           if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current);
-          saveTimeoutRef.current = setTimeout(() => ops.handleAutoSave(), 1000);
+          saveTimeoutRef.current = setTimeout(() => void handleAutoSave(), 1000);
         }}
       />
 
@@ -282,7 +293,7 @@ const LetterEditor: React.FC<LetterEditorProps> = ({ letter, isOpen, onClose, on
 
       {showBriefDetails && (
         <LetterBriefDetails editedLetter={editedLetter} setEditedLetter={setEditedLetter} canEdit={canEdit} isReviewer={isReviewer} userProfiles={userProfiles}
-          onStatusTransition={ops.handleStatusTransition} onReturnLetter={ops.handleReturnLetter} broadcastContentChange={ops.broadcastContentChange} />
+          onStatusTransition={handleStatusTransition} onReturnLetter={handleReturnLetter} broadcastContentChange={broadcastContentChange} />
       )}
 
       {/* Content */}
@@ -328,7 +339,7 @@ const LetterEditor: React.FC<LetterEditorProps> = ({ letter, isOpen, onClose, on
                       <Badge variant="secondary" className="text-[10px] px-1.5 py-0">Live</Badge>
                     </div>
                     <Button size="sm" variant="default" className="h-7 px-2" disabled={!canEdit || saving}
-                      onClick={() => ops.handleManualSave(latestContentRef.current.content, latestContentRef.current.contentNodes)}>
+                      onClick={() => handleManualSave(latestContentRef.current.content, latestContentRef.current.contentNodes)}>
                       <Save className="h-3.5 w-3.5 mr-1" />Speichern
                     </Button>
                     <Button size="sm" variant="ghost" className="h-7 px-2" onClick={() => setShowTextSplitEditor(false)}><X className="h-3.5 w-3.5" /></Button>
@@ -371,7 +382,7 @@ const LetterEditor: React.FC<LetterEditorProps> = ({ letter, isOpen, onClose, on
                   }}
                   onSenderChange={(value) => setEditedLetter(prev => ({ ...prev, sender_info_id: value || undefined }))}
                   onInfoBlockChange={(newIds) => setEditedLetter(prev => ({ ...prev, information_block_ids: newIds }))}
-                  onAttachmentNameChange={(attachmentId, displayName) => ops.handleAttachmentNameChange(attachmentId, displayName, attachments, () => fetchAttachments())}
+                  onAttachmentNameChange={(attachmentId, displayName) => handleAttachmentNameChange(attachmentId, displayName, attachments, fetchAttachments)}
                   senderInfos={senderInfos} informationBlocks={informationBlocks} selectedSenderId={editedLetter.sender_info_id}
                   selectedRecipientContactId={editedLetter.contact_id} selectedInfoBlockIds={editedLetter.information_block_ids || []}
                   templateName={currentTemplate?.name} zoom={previewZoom} onZoomChange={setPreviewZoom} />
@@ -381,7 +392,7 @@ const LetterEditor: React.FC<LetterEditorProps> = ({ letter, isOpen, onClose, on
         </div>
       </div>
 
-      {showCommentDialog && <LetterCommentDialog onSubmit={(content) => { ops.handleAddComment(content); setShowCommentDialog(false); }} onClose={() => setShowCommentDialog(false)} />}
+      {showCommentDialog && <LetterCommentDialog onSubmit={(content) => { void handleAddComment(content); setShowCommentDialog(false); }} onClose={() => setShowCommentDialog(false)} />}
 
       <ReviewAssignmentDialog isOpen={showAssignmentDialog} onClose={() => setShowAssignmentDialog(false)} letterId={letter?.id || ''}
         onReviewAssigned={async () => {
