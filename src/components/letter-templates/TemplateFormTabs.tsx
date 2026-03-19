@@ -1,4 +1,4 @@
-import React, { useCallback } from 'react';
+import React, { useCallback, useMemo } from 'react';
 import { Save, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -44,7 +44,10 @@ export const useTemplateFormTabs = ({
   getBlockItems, setBlockItems, currentTenant, toast,
 }: TemplateFormTabsProps) => {
   const isMobile = useIsMobile();
-  const signaturePreviewUrl = getLetterAssetPublicUrl(formData.layout_settings.closing?.signatureImagePath);
+  const signaturePreviewUrl = useMemo(
+    () => getLetterAssetPublicUrl(formData.layout_settings.closing?.signatureImagePath),
+    [formData.layout_settings.closing?.signatureImagePath],
+  );
 
   const getMarginsForRect = useCallback((rect: TabRect): MarginKey[] => {
     const { pageWidth, pageHeight, margins } = formData.layout_settings;

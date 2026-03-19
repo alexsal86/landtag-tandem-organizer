@@ -6,6 +6,7 @@ import { SunflowerSVG, LionSVG, WappenSVG } from '@/components/letters/elements/
 import { sanitizeRichHtml, sanitizeCss } from '@/utils/htmlSanitizer';
 import { LetterAttachmentList, LetterClosingBlock, getLetterAttachmentNames } from './LetterContentBlocks';
 import { FoldHoleMarks, PaginationFooter, TemplateFooterBlocks } from './DIN5008LayoutChrome';
+import { DIN5008AddressInfoSection } from './DIN5008AddressInfoSection';
 
 interface DIN5008LetterLayoutProps {
   template?: any;
@@ -537,94 +538,26 @@ export const DIN5008LetterLayout: React.FC<DIN5008LetterLayoutProps> = ({
       )}
 
       {/* All elements positioned absolutely to page - exactly like PDF */}
-      
-      {/* Main Address and Info Block Container - positioned at 50mm from top (same as PDF) */}
-      <div className="flex" style={{ 
-        position: 'absolute',
-        top: '50mm', // DIN 5008 position from page top
-        left: '25mm',
-        right: '20mm'
-      }}>
-          
-          {/* Recipient Address Field - DIN 5008 exact dimensions */}
-          <div style={{ 
-            width: `${layout.addressField?.width || 85}mm`,
-            height: `${layout.addressField?.height || 45}mm`,
-            border: debugMode ? '2px dashed red' : 'none',
-            padding: '0',
-            marginRight: '10mm',
-            backgroundColor: debugMode ? 'rgba(255,0,0,0.05)' : 'transparent',
-            position: 'relative',
-          }}>
-            {/* Vermerkzone (return address) */}
-            <div style={{ height: `${layout.addressField?.returnAddressHeight || 17.7}mm`, display: 'flex', flexDirection: 'column', justifyContent: 'flex-end' }}>
-              {returnAddressLines && returnAddressLines.length > 0 ? (
-                <div>
-                  {renderBlockLines(returnAddressLines, { underlineLastContentLine: true })}
-                </div>
-              ) : returnAddressElements && returnAddressElements.length > 0 ? (
-                <div style={{ position: 'relative', height: '100%' }}>
-                  {renderCanvasBlockElements(returnAddressElements)}
-                </div>
-              ) : senderInfo?.return_address_line ? (
-                <div style={{ fontSize: `${returnAddressFontSizePt}pt`, lineHeight: '1.0', maxWidth: '75mm' }}>
-                  {senderInfo.return_address_line.split('\n').filter((line: string) => line.trim()).map((line: string, index: number, arr: string[]) => (
-                    <div key={`${line}-${index}`}>
-                      <span style={index === arr.length - 1 ? { display: 'inline-block', borderBottom: '0.5pt solid #000', paddingBottom: '0.3mm' } : { display: 'inline-block' }}>
-                        {line}
-                      </span>
-                    </div>
-                  ))}
-                </div>
-              ) : null}
-            </div>
-            
-            {/* Anschriftzone (recipient address) */}
-            <div style={{ height: `${layout.addressField?.addressZoneHeight || 27.3}mm` }}>
-              {addressFieldLines && addressFieldLines.length > 0 ? (
-                renderBlockLines(addressFieldLines)
-              ) : addressFieldElements && addressFieldElements.length > 0 ? (
-                renderCanvasBlockElements(addressFieldElements)
-              ) : (
-                <div style={{ 
-                  fontSize: `${recipientFontSizePt}pt`,
-                  lineHeight: '1.2',
-                  maxWidth: '75mm'
-                }}>
-                  {formatAddress(recipientAddress)}
-                </div>
-              )}
-            </div>
-          </div>
-
-          {/* Information Block - DIN 5008 positioned */}
-          <div style={{ 
-            position: 'absolute',
-            left: '100mm', // 125mm from left edge of page (corrected positioning)
-            top: '0mm', // Same top as address field
-            width: '75mm', // DIN 5008 standard
-            height: '40mm',
-            backgroundColor: debugMode ? 'rgba(0,0,255,0.05)' : 'transparent',
-            border: debugMode ? '2px dashed blue' : 'none',
-            padding: '2mm'
-          }}>
-            {infoBlockLines && infoBlockLines.length > 0 ? (
-              renderBlockLines(infoBlockLines)
-            ) : infoBlockElements && infoBlockElements.length > 0 ? (
-              renderCanvasBlockElements(infoBlockElements)
-            ) : (
-              <>
-                {renderInformationBlock(informationBlock)}
-                {letterDate && !informationBlock && (
-                  <div style={{ marginTop: '8mm' }}>
-                    <div className="font-medium" style={{ fontSize: '9pt' }}>Datum</div>
-                    <div style={{ fontSize: '9pt' }}>{new Date(letterDate).toLocaleDateString('de-DE')}</div>
-                  </div>
-                )}
-              </>
-            )}
-          </div>
-        </div>
+      <DIN5008AddressInfoSection
+        layout={layout}
+        debugMode={debugMode}
+        returnAddressLines={returnAddressLines}
+        returnAddressElements={returnAddressElements}
+        senderInfo={senderInfo}
+        returnAddressFontSizePt={returnAddressFontSizePt}
+        renderBlockLines={renderBlockLines}
+        renderCanvasBlockElements={renderCanvasBlockElements}
+        addressFieldLines={addressFieldLines}
+        addressFieldElements={addressFieldElements}
+        recipientFontSizePt={recipientFontSizePt}
+        formatAddress={formatAddress}
+        recipientAddress={recipientAddress}
+        infoBlockLines={infoBlockLines}
+        infoBlockElements={infoBlockElements}
+        renderInformationBlock={renderInformationBlock}
+        informationBlock={informationBlock}
+        letterDate={letterDate}
+      />
 
       {/* Subject + Salutation + Content - integrated per DIN 5008 */}
       {layout.subject?.integrated !== false ? (

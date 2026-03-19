@@ -26,7 +26,10 @@ export const LetterClosingBlock: React.FC<LetterClosingBlockProps> = ({
   className,
 }) => {
   if (!formula) return null;
-  const signatureImageUrl = getLetterAssetPublicUrl(signatureImagePath);
+  const signatureImageUrl = React.useMemo(
+    () => getLetterAssetPublicUrl(signatureImagePath),
+    [signatureImagePath],
+  );
 
   return (
     <>
