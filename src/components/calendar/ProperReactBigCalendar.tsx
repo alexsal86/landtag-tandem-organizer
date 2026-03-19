@@ -211,6 +211,7 @@ const ProperReactBigCalendar: React.FC<ProperReactBigCalendarProps> = ({
     const hasOverlap = overlappingEventIds.has(String(event.id));
     
     style.backgroundColor = bgColor;
+    style.background = bgColor;
     style.border = hasOverlap ? '1px solid white' : 'none';
     style.color = 'white';
 
@@ -347,7 +348,7 @@ const ProperReactBigCalendar: React.FC<ProperReactBigCalendarProps> = ({
   }, [date, view]);
 
   return (
-    <div ref={calendarContainerRef} className="h-full w-full bg-background min-h-[calc(100vh-220px)]">
+    <div ref={calendarContainerRef} className="h-full w-full bg-background min-h-[calc(100vh-180px)]">
       <DnDCalendar
         localizer={localizer}
         events={rbcEvents}
@@ -405,7 +406,7 @@ const ProperReactBigCalendar: React.FC<ProperReactBigCalendarProps> = ({
           },
         }}
         className="rbc-calendar"
-        style={{ height: '100%', minHeight: 'calc(100vh - 260px)' }}
+        style={{ height: '100%', minHeight: 'calc(100vh - 220px)' }}
       />
     </div>
   );
