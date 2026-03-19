@@ -62,14 +62,21 @@
 }
 
 .rbc-month-row {
-  min-height: 80px;
+  min-height: 100px;
   border-bottom: 1px solid hsl(var(--border));
+  overflow: visible;
+}
+
+.rbc-month-view .rbc-row-content {
+  overflow: visible;
+  position: relative;
+  z-index: 1;
 }
 
 .rbc-date-cell {
   padding: 0.5rem;
   border-right: 1px solid hsl(var(--border));
-  min-height: 80px;
+  min-height: 100px;
   vertical-align: top;
 }
 
@@ -211,6 +218,7 @@
 .rbc-time-header-content {
   display: flex;
   flex-direction: column;
+  margin-left: 8px;
 }
 
 .rbc-time-header .rbc-row.rbc-time-header-cell {
@@ -222,10 +230,10 @@
   min-height: 0;
 }
 
-/* Keep all-day events aligned with the shifted Monday column */
+/* Keep all-day events aligned with the day columns */
 .rbc-time-view .rbc-allday-cell .rbc-row-content {
-  margin-left: -8px;
-  padding-left: 8px;
+  margin-left: 0;
+  padding-left: 0;
 }
 
 /* Week/Day header cells */
@@ -298,8 +306,6 @@
 /* 8px overhang: day-column gridlines extend into spacer area (Google style) */
 .rbc-time-content > .rbc-time-gutter-spacer-column + .rbc-day-slot.rbc-time-column {
   box-sizing: border-box;
-  margin-left: -8px;
-  padding-left: 8px;
 }
 
 /* ── Time gutter: labels ON the line (Google style) ── */

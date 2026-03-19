@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
+import { useQueryClient } from '@tanstack/react-query';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
@@ -44,6 +45,7 @@ const appointmentSchema = z.object({
 export function useCreateAppointment(open: boolean, onOpenChange: (open: boolean) => void) {
   const navigate = useNavigate();
   const location = useLocation();
+  const queryClient = useQueryClient();
   const { user } = useAuth();
   const { currentTenant } = useTenant();
   const { toast } = useToast();
@@ -148,6 +150,7 @@ export function useCreateAppointment(open: boolean, onOpenChange: (open: boolean
         } catch { toast({ title: "Warnung", description: "Einladungen konnten nicht versendet werden.", variant: "destructive" }); }
       }
       toast({ title: "Termin erstellt", description: "Der Termin wurde erfolgreich gespeichert." });
+      await queryClient.invalidateQueries({ queryKey: ["calendar-data"] });
       onOpenChange(false);
       navigate("/calendar");
     } catch (error: unknown) {
