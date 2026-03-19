@@ -11,7 +11,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Trash2, Edit, Plus, Save, X, GripVertical } from "lucide-react";
 import { icons, LucideIcon } from "lucide-react";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
-import { DragDropContext, Droppable, Draggable } from "@hello-pangea/dnd";
+import { DragDropContext, Droppable, Draggable, type DropResult } from "@hello-pangea/dnd";
 import { TagIconPicker } from "@/components/contacts/TagIconPicker";
 
 type ConfigurableType = {
@@ -104,7 +104,7 @@ export function ConfigurableTypeSettings({
     return Icon || null;
   };
 
-  const handleDragEnd = async (result: any) => {
+  const handleDragEnd = async (result: DropResult) => {
     if (!result.destination) return;
 
     const reorderedItems = Array.from(items);
@@ -119,9 +119,9 @@ export function ConfigurableTypeSettings({
     setItems(updatedItems);
 
     try {
-      for (const item of updatedItems) {
-        await supabase.from(tableName).update({ order_index: item.order_index }).eq('id', item.id);
-      }
+      const reorderPayload = updatedItems.map((item) => ({ id: item.id, order_index: item.order_index }));
+      const { error } = await supabase.from(tableName).upsert(reorderPayload as never[], { onConflict: 'id' });
+      if (error) throw error;
       toast({ title: "Erfolg", description: "Reihenfolge wurde gespeichert." });
     } catch (error) {
       debugConsole.error('Error updating order:', error);

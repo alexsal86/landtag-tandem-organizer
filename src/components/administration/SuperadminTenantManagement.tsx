@@ -317,7 +317,10 @@ export function SuperadminTenantManagement(): React.JSX.Element {
     if (createdUserPassword) {
       navigator.clipboard.writeText(createdUserPassword);
       setPasswordCopied(true);
-      setTimeout(() => setPasswordCopied(false), 2000);
+      setTimeout(() => {
+        setPasswordCopied(false);
+        setCreatedUserPassword(null);
+      }, 2000);
     }
   };
 
