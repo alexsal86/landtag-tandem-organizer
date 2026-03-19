@@ -1,4 +1,5 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { debugConsole } from '@/utils/debugConsole';
 
@@ -20,22 +21,9 @@ export interface MyWorkTask {
 }
 
 const TASK_LIST_SELECT = "id, title, description, priority, status, due_date, assigned_to, user_id, created_at, category, meeting_id, pending_for_jour_fixe, parent_task_id, tenant_id";
-const TASKS_CACHE_TTL_MS = 30_000;
-
-interface TasksCacheEntry {
-  timestamp: number;
-  assignedTasks: MyWorkTask[];
-  createdTasks: MyWorkTask[];
-  subtasks: Record<string, MyWorkTask[]>;
-  taskSnoozes: Record<string, string>;
-  taskCommentCounts: Record<string, number>;
-}
-
-const tasksCache = new Map<string, TasksCacheEntry>();
 
 const normalizeAssignedTo = (assignedTo: string | null | undefined) => {
   if (!assignedTo) return [];
-
   return assignedTo
     .replace(/[{}]/g, "")
     .split(",")
@@ -43,170 +31,155 @@ const normalizeAssignedTo = (assignedTo: string | null | undefined) => {
     .filter(Boolean);
 };
 
+interface TasksQueryResult {
+  assignedTasks: MyWorkTask[];
+  createdTasks: MyWorkTask[];
+  subtasks: Record<string, MyWorkTask[]>;
+  taskSnoozes: Record<string, string>;
+  taskCommentCounts: Record<string, number>;
+}
+
+const fetchTasks = async (userId: string): Promise<TasksQueryResult> => {
+  const [assignedResult, createdResult] = await Promise.all([
+    supabase
+      .from("tasks")
+      .select(TASK_LIST_SELECT)
+      .or(`assigned_to.eq.${userId},assigned_to.ilike.%${userId}%`)
+      .neq("status", "completed")
+      .is("parent_task_id", null)
+      .order("due_date", { ascending: true, nullsFirst: false }),
+    supabase
+      .from("tasks")
+      .select(TASK_LIST_SELECT)
+      .eq("user_id", userId)
+      .neq("status", "completed")
+      .is("parent_task_id", null)
+      .order("due_date", { ascending: true, nullsFirst: false }),
+  ]);
+
+  if (assignedResult.error) throw assignedResult.error;
+  if (createdResult.error) throw createdResult.error;
+
+  const allAssigned = assignedResult.data || [];
+  const allCreated = createdResult.data || [];
+
+  const createdByMe = allCreated.filter(
+    (task) => !(task.category === "meeting" && normalizeAssignedTo(task.assigned_to).includes(userId))
+  );
+
+  const meetingTasksAssignedToMe = allCreated.filter(
+    (task) => task.category === "meeting" && normalizeAssignedTo(task.assigned_to).includes(userId)
+  );
+
+  const assignedByOthers = [
+    ...allAssigned.filter((task) => task.user_id !== userId),
+    ...meetingTasksAssignedToMe,
+  ];
+
+  const allTaskIds = [...new Set([...createdByMe, ...assignedByOthers].map((task) => task.id))];
+  if (allTaskIds.length === 0) {
+    return { assignedTasks: assignedByOthers, createdTasks: createdByMe, subtasks: {}, taskSnoozes: {}, taskCommentCounts: {} };
+  }
+
+  const [snoozesSettled, subtasksSettled, commentsSettled] = await Promise.allSettled([
+    supabase.from("task_snoozes").select("task_id, snoozed_until").eq("user_id", userId),
+    supabase
+      .from("tasks")
+      .select(TASK_LIST_SELECT)
+      .not("parent_task_id", "is", null)
+      .neq("status", "completed")
+      .order("due_date", { ascending: true, nullsFirst: false }),
+    supabase.from("task_comments").select("task_id").in("task_id", allTaskIds),
+  ]);
+
+  const snoozesData = snoozesSettled.status === 'fulfilled' && !snoozesSettled.value.error ? snoozesSettled.value.data || [] : [];
+  const allSubtasksData: MyWorkTask[] = subtasksSettled.status === 'fulfilled' && !subtasksSettled.value.error ? subtasksSettled.value.data || [] : [];
+  const commentsData = commentsSettled.status === 'fulfilled' && !commentsSettled.value.error ? commentsSettled.value.data || [] : [];
+
+  // Build subtask tree
+  const childrenByParent = new Map<string, MyWorkTask[]>();
+  allSubtasksData.forEach((task) => {
+    if (!task.parent_task_id) return;
+    const siblings = childrenByParent.get(task.parent_task_id) || [];
+    siblings.push(task);
+    childrenByParent.set(task.parent_task_id, siblings);
+  });
+
+  const grouped: Record<string, MyWorkTask[]> = {};
+  const queue = [...allTaskIds];
+  const visited = new Set<string>();
+  const visibleTaskIds = new Set<string>(allTaskIds);
+  while (queue.length > 0) {
+    const parentId = queue.shift();
+    if (!parentId || visited.has(parentId)) continue;
+    visited.add(parentId);
+    const children = childrenByParent.get(parentId) || [];
+    if (children.length > 0) {
+      grouped[parentId] = children;
+      children.forEach((childTask) => {
+        visibleTaskIds.add(childTask.id);
+        if (!visited.has(childTask.id)) queue.push(childTask.id);
+      });
+    }
+  }
+
+  const snoozeMap: Record<string, string> = {};
+  snoozesData.forEach((snooze) => {
+    if (snooze.task_id) snoozeMap[snooze.task_id] = snooze.snoozed_until;
+  });
+
+  const commentCounts: Record<string, number> = {};
+  commentsData.forEach((comment) => {
+    if (!comment.task_id || !visibleTaskIds.has(comment.task_id)) return;
+    commentCounts[comment.task_id] = (commentCounts[comment.task_id] || 0) + 1;
+  });
+
+  return {
+    assignedTasks: assignedByOthers,
+    createdTasks: createdByMe,
+    subtasks: grouped,
+    taskSnoozes: snoozeMap,
+    taskCommentCounts: commentCounts,
+  };
+};
+
 export function useMyWorkTasksData(userId?: string) {
-  const [assignedTasks, setAssignedTasks] = useState<MyWorkTask[]>([]);
-  const [createdTasks, setCreatedTasks] = useState<MyWorkTask[]>([]);
-  const [subtasks, setSubtasks] = useState<Record<string, MyWorkTask[]>>({});
-  const [taskSnoozes, setTaskSnoozes] = useState<Record<string, string>>({});
-  const [taskCommentCounts, setTaskCommentCounts] = useState<Record<string, number>>({});
-  const [loading, setLoading] = useState(true);
+  const queryClient = useQueryClient();
 
-  const applyCacheEntry = useCallback((entry: TasksCacheEntry) => {
-    setAssignedTasks(entry.assignedTasks);
-    setCreatedTasks(entry.createdTasks);
-    setSubtasks(entry.subtasks);
-    setTaskSnoozes(entry.taskSnoozes);
-    setTaskCommentCounts(entry.taskCommentCounts);
-  }, []);
+  const { data, isLoading } = useQuery({
+    queryKey: ['my-work-tasks', userId],
+    queryFn: () => fetchTasks(userId!),
+    enabled: !!userId,
+    staleTime: 60_000,
+    gcTime: 5 * 60_000,
+    refetchOnWindowFocus: false,
+  });
 
-  const loadTasks = useCallback(async () => {
-    if (!userId) return;
+  const assignedTasks = data?.assignedTasks ?? [];
+  const createdTasks = data?.createdTasks ?? [];
+  const subtasks = data?.subtasks ?? {};
+  const taskSnoozes = data?.taskSnoozes ?? {};
+  const taskCommentCounts = data?.taskCommentCounts ?? {};
 
-    try {
-      const [assignedResult, createdResult] = await Promise.all([
-        supabase
-          .from("tasks")
-          .select(TASK_LIST_SELECT)
-          .or(`assigned_to.eq.${userId},assigned_to.ilike.%${userId}%`)
-          .neq("status", "completed")
-          .is("parent_task_id", null)
-          .order("due_date", { ascending: true, nullsFirst: false }),
-        supabase
-          .from("tasks")
-          .select(TASK_LIST_SELECT)
-          .eq("user_id", userId)
-          .neq("status", "completed")
-          .is("parent_task_id", null)
-          .order("due_date", { ascending: true, nullsFirst: false }),
-      ]);
+  // Provide setters for optimistic UI updates from consuming components
+  const [localOverrides, setLocalOverrides] = useState<Partial<TasksQueryResult>>({});
+  const effectiveAssigned = localOverrides.assignedTasks ?? assignedTasks;
+  const effectiveCreated = localOverrides.createdTasks ?? createdTasks;
+  const effectiveSubtasks = localOverrides.subtasks ?? subtasks;
+  const effectiveSnoozes = localOverrides.taskSnoozes ?? taskSnoozes;
+  const effectiveComments = localOverrides.taskCommentCounts ?? taskCommentCounts;
 
-      if (assignedResult.error) throw assignedResult.error;
-      if (createdResult.error) throw createdResult.error;
-
-      const allAssigned = assignedResult.data || [];
-      const allCreated = createdResult.data || [];
-
-      const createdByMe = allCreated.filter(
-        (task) => !(task.category === "meeting" && normalizeAssignedTo(task.assigned_to).includes(userId))
-      );
-
-      const meetingTasksAssignedToMe = allCreated.filter(
-        (task) => task.category === "meeting" && normalizeAssignedTo(task.assigned_to).includes(userId)
-      );
-
-      const assignedByOthers = [
-        ...allAssigned.filter((task) => task.user_id !== userId),
-        ...meetingTasksAssignedToMe,
-      ];
-
-      setCreatedTasks(createdByMe);
-      setAssignedTasks(assignedByOthers);
-
-      const allTaskIds = [...new Set([...createdByMe, ...assignedByOthers].map((task) => task.id))];
-      if (allTaskIds.length === 0) {
-        setSubtasks({});
-        setTaskSnoozes({});
-        setTaskCommentCounts({});
-        return;
-      }
-
-      const grouped: Record<string, MyWorkTask[]> = {};
-
-      const [snoozesSettled, subtasksSettled, commentsSettled] = await Promise.allSettled([
-        supabase
-          .from("task_snoozes")
-          .select("task_id, snoozed_until")
-          .eq("user_id", userId),
-        supabase
-          .from("tasks")
-          .select(TASK_LIST_SELECT)
-          .not("parent_task_id", "is", null)
-          .neq("status", "completed")
-          .order("due_date", { ascending: true, nullsFirst: false }),
-        supabase
-          .from("task_comments")
-          .select("task_id")
-          .in("task_id", allTaskIds),
-      ]);
-
-      const snoozesData = snoozesSettled.status === 'fulfilled' && !snoozesSettled.value.error ? snoozesSettled.value.data || [] : [];
-      const allSubtasksData: MyWorkTask[] = subtasksSettled.status === 'fulfilled' && !subtasksSettled.value.error ? subtasksSettled.value.data || [] : [];
-      const commentsData = commentsSettled.status === 'fulfilled' && !commentsSettled.value.error ? commentsSettled.value.data || [] : [];
-
-      const childrenByParent = new Map<string, MyWorkTask[]>();
-      allSubtasksData.forEach((task) => {
-        if (!task.parent_task_id) return;
-        const siblings = childrenByParent.get(task.parent_task_id) || [];
-        siblings.push(task);
-        childrenByParent.set(task.parent_task_id, siblings);
-      });
-
-      const queue = [...allTaskIds];
-      const visited = new Set<string>();
-      const visibleTaskIds = new Set<string>(allTaskIds);
-      while (queue.length > 0) {
-        const parentId = queue.shift();
-        if (!parentId || visited.has(parentId)) continue;
-        visited.add(parentId);
-
-        const children = childrenByParent.get(parentId) || [];
-        if (children.length > 0) {
-          grouped[parentId] = children;
-          children.forEach((childTask) => {
-            visibleTaskIds.add(childTask.id);
-            if (!visited.has(childTask.id)) queue.push(childTask.id);
-          });
-        }
-      }
-
-      setSubtasks(grouped);
-
-      const snoozeMap: Record<string, string> = {};
-      snoozesData.forEach((snooze) => {
-        if (snooze.task_id) snoozeMap[snooze.task_id] = snooze.snoozed_until;
-      });
-      setTaskSnoozes(snoozeMap);
-
-      const commentCounts: Record<string, number> = {};
-      commentsData.forEach((comment) => {
-        if (!comment.task_id) return;
-        if (!visibleTaskIds.has(comment.task_id)) return;
-        commentCounts[comment.task_id] = (commentCounts[comment.task_id] || 0) + 1;
-      });
-      setTaskCommentCounts(commentCounts);
-
-      tasksCache.set(userId, {
-        timestamp: Date.now(),
-        assignedTasks: assignedByOthers,
-        createdTasks: createdByMe,
-        subtasks: grouped,
-        taskSnoozes: snoozeMap,
-        taskCommentCounts: commentCounts,
-      });
-    } catch (error) {
-      debugConsole.error("Error loading tasks:", error);
-    } finally {
-      setLoading(false);
-    }
-  }, [userId]);
-
+  // Reset overrides when query data changes
   useEffect(() => {
-    if (!userId) return;
+    setLocalOverrides({});
+  }, [data]);
 
-    const cached = tasksCache.get(userId);
-    const isFresh = !!cached && Date.now() - cached.timestamp < TASKS_CACHE_TTL_MS;
+  const loadTasks = useCallback(() => {
+    queryClient.invalidateQueries({ queryKey: ['my-work-tasks', userId] });
+  }, [queryClient, userId]);
 
-    if (cached) {
-      applyCacheEntry(cached);
-      setLoading(!isFresh);
-      if (isFresh) return;
-    } else {
-      setLoading(true);
-    }
-
-    void loadTasks();
-  }, [userId, loadTasks, applyCacheEntry]);
-
+  // Realtime: tasks subscription needs to be broad (cross-user assignments)
+  // but we filter task_snoozes by user_id
   useEffect(() => {
     if (!userId) return;
 
@@ -215,14 +188,12 @@ export function useMyWorkTasksData(userId?: string) {
       if (timeout) clearTimeout(timeout);
       timeout = setTimeout(() => {
         timeout = null;
-        void loadTasks();
-      }, 250);
+        queryClient.invalidateQueries({ queryKey: ['my-work-tasks', userId] });
+      }, 300);
     };
 
     const channel = supabase
       .channel(`my-work-tasks-${userId}`)
-      // Realtime must include tasks owned by others but assigned to me as well.
-      // A user_id-only filter misses assignment changes and external updates.
       .on("postgres_changes", { event: "*", schema: "public", table: "tasks" }, scheduleRefresh)
       .on("postgres_changes", { event: "*", schema: "public", table: "task_snoozes", filter: `user_id=eq.${userId}` }, scheduleRefresh)
       .on("postgres_changes", { event: "*", schema: "public", table: "task_comments" }, scheduleRefresh)
@@ -232,20 +203,20 @@ export function useMyWorkTasksData(userId?: string) {
       if (timeout) clearTimeout(timeout);
       supabase.removeChannel(channel);
     };
-  }, [userId, loadTasks]);
+  }, [userId, queryClient]);
 
   return {
-    assignedTasks,
-    setAssignedTasks,
-    createdTasks,
-    setCreatedTasks,
-    subtasks,
-    setSubtasks,
-    taskSnoozes,
-    setTaskSnoozes,
-    taskCommentCounts,
-    setTaskCommentCounts,
-    loading,
+    assignedTasks: effectiveAssigned,
+    setAssignedTasks: (val: MyWorkTask[]) => setLocalOverrides(prev => ({ ...prev, assignedTasks: val })),
+    createdTasks: effectiveCreated,
+    setCreatedTasks: (val: MyWorkTask[]) => setLocalOverrides(prev => ({ ...prev, createdTasks: val })),
+    subtasks: effectiveSubtasks,
+    setSubtasks: (val: Record<string, MyWorkTask[]>) => setLocalOverrides(prev => ({ ...prev, subtasks: val })),
+    taskSnoozes: effectiveSnoozes,
+    setTaskSnoozes: (val: Record<string, string>) => setLocalOverrides(prev => ({ ...prev, taskSnoozes: val })),
+    taskCommentCounts: effectiveComments,
+    setTaskCommentCounts: (val: Record<string, number>) => setLocalOverrides(prev => ({ ...prev, taskCommentCounts: val })),
+    loading: isLoading,
     loadTasks,
   };
 }

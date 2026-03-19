@@ -273,7 +273,7 @@ export const useAppointmentFeedback = () => {
 
       const { data, error } = await supabase
         .from('appointment_feedback_settings')
-        .select('*')
+        .select('id, user_id, tenant_id, reminder_start_time, priority_categories, show_all_appointments, auto_skip_internal')
         .eq('user_id', user.id)
         .maybeSingle();
 
@@ -302,7 +302,10 @@ export const useAppointmentFeedback = () => {
 
       return data as FeedbackSettings;
     },
-    enabled: !!user?.id && !!currentTenant?.id
+    enabled: !!user?.id && !!currentTenant?.id,
+    staleTime: 5 * 60_000,
+    gcTime: 10 * 60_000,
+    refetchOnWindowFocus: false,
   });
 
   // Update Feedback Mutation
