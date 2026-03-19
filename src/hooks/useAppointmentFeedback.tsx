@@ -138,7 +138,10 @@ export const useAppointmentFeedback = () => {
           : null
       })) as AppointmentWithFeedback[];
     },
-    enabled: !!user?.id && !!currentTenant?.id
+    enabled: !!user?.id && !!currentTenant?.id,
+    staleTime: 2 * 60_000,
+    gcTime: 5 * 60_000,
+    refetchOnWindowFocus: false,
   });
 
   // Lädt externe Events mit Feedback (letzte 7 Tage)
