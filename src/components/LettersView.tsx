@@ -18,6 +18,7 @@ import { useViewPreference } from '@/hooks/useViewPreference';
 import LetterEditor from './LetterEditor';
 import { LetterWizard } from './letters/LetterWizard';
 import LetterPDFExport from './LetterPDFExport';
+import { ConfirmDialog } from './shared/ConfirmDialog';
 import type { Database } from '@/integrations/supabase/types';
 import type { LetterRecord } from '@/components/letter-pdf/types';
 
@@ -56,6 +57,7 @@ const LettersView: React.FC = () => {
   const [parentTaskId, setParentTaskId] = useState<string>('none');
   const [availableParentTasks, setAvailableParentTasks] = useState<ParentTaskOption[]>([]);
   const [isCreatingTask, setIsCreatingTask] = useState(false);
+  const [letterPendingDelete, setLetterPendingDelete] = useState<Letter | null>(null);
 
 
   useEffect(() => {
@@ -258,8 +260,6 @@ const LettersView: React.FC = () => {
   };
 
   const handleDeleteLetter = async (letterId: string) => {
-    if (!confirm('Möchten Sie diesen Brief wirklich löschen?')) return;
-
     try {
       const { error } = await supabase
         .from('letters')
@@ -281,6 +281,8 @@ const LettersView: React.FC = () => {
         description: "Der Brief konnte nicht gelöscht werden.",
         variant: "destructive",
       });
+    } finally {
+      setLetterPendingDelete(null);
     }
   };
 
@@ -461,7 +463,7 @@ const LettersView: React.FC = () => {
                       <Button 
                         variant="ghost" 
                         size="sm"
-                        onClick={() => handleDeleteLetter(letter.id!)}
+                        onClick={() => setLetterPendingDelete(letter)}
                         className="text-destructive hover:text-destructive"
                       >
                         <Trash2 className="h-4 w-4" />
@@ -545,7 +547,7 @@ const LettersView: React.FC = () => {
                         <Button 
                           variant="ghost" 
                           size="sm"
-                          onClick={() => handleDeleteLetter(letter.id!)}
+                          onClick={() => setLetterPendingDelete(letter)}
                           className="text-destructive hover:text-destructive"
                         >
                           <Trash2 className="h-4 w-4" />
@@ -653,6 +655,27 @@ const LettersView: React.FC = () => {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      <ConfirmDialog
+        open={letterPendingDelete !== null}
+        onOpenChange={(open) => {
+          if (!open) setLetterPendingDelete(null);
+        }}
+        title="Brief löschen?"
+        description={
+          letterPendingDelete
+            ? `Möchten Sie den Brief "${letterPendingDelete.title || 'Ohne Titel'}" wirklich löschen?`
+            : 'Möchten Sie diesen Brief wirklich löschen?'
+        }
+        confirmLabel="Löschen"
+        cancelLabel="Abbrechen"
+        destructive
+        onConfirm={() => {
+          if (letterPendingDelete) {
+            void handleDeleteLetter(letterPendingDelete.id);
+          }
+        }}
+      />
     </div>
   );
 };
