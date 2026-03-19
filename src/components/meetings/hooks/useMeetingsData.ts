@@ -358,7 +358,7 @@ export function useMeetingsData() {
   const loadMeetingTemplates = async () => {
     try {
       const { data, error } = await supabase
-        .from('meeting_templates').select('*').order('is_default', { ascending: false }).order('name');
+        .from('meeting_templates').select('id, name, description, template_items, default_participants, is_default, default_recurrence, user_id, created_at').order('is_default', { ascending: false }).order('name');
       if (error) throw error;
       const normalizedTemplates = ((data || []) as MeetingTemplateRow[]).map(normalizeMeetingTemplate);
       setMeetingTemplates(normalizedTemplates);
