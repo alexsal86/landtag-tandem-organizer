@@ -127,7 +127,7 @@ export function useMeetingsData() {
     } else {
       supabase
         .from('meetings')
-        .select('*')
+        .select(meetingSelectFields)
         .eq('id', urlMeetingId)
         .maybeSingle()
         .then(({ data }) => {
