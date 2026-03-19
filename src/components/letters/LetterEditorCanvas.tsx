@@ -10,10 +10,10 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { ContactSelector } from '@/components/ContactSelector';
 import { DIN5008LetterLayout } from './DIN5008LetterLayout';
-import { supabase } from '@/integrations/supabase/client';
 import { EditableCanvasOverlay } from './EditableCanvasOverlay';
 import type { HeaderElement } from '@/components/canvas-engine/types';
 import type { BlockLine } from '@/components/letters/BlockLineEditor';
+import { getLetterAssetPublicUrl } from './letterAssetUrls';
 
 // ─── DIN A4 constants ────────────────────────────────────────────────────────
 const PAGE_W_MM = 210;
@@ -309,6 +309,7 @@ export const LetterEditorCanvas: React.FC<LetterEditorCanvasProps> = ({
   // ── closing block ──
   const renderClosing = () => {
     if (!closingFormula) return null;
+    const closingImageUrl = getLetterAssetPublicUrl(closingImagePath);
     return (
       <div style={{
         fontSize: `${closingFontSizePt}pt`,
@@ -317,20 +318,15 @@ export const LetterEditorCanvas: React.FC<LetterEditorCanvasProps> = ({
       }}>
         <div style={{ height: '9mm' }} />
         <div>{closingFormula}</div>
-        {closingImagePath && (() => {
-          const { data: { publicUrl } } = supabase.storage
-            .from('letter-assets')
-            .getPublicUrl(closingImagePath);
-          return (
-            <div style={{ marginTop: '2mm', marginBottom: '2mm' }}>
-              <img
-                src={publicUrl}
-                alt="Unterschrift"
-                style={{ maxHeight: '15mm', maxWidth: '50mm', objectFit: 'contain' }}
-              />
-            </div>
-          );
-        })()}
+        {closingImageUrl && (
+          <div style={{ marginTop: '2mm', marginBottom: '2mm' }}>
+            <img
+              src={closingImageUrl}
+              alt="Unterschrift"
+              style={{ maxHeight: '15mm', maxWidth: '50mm', objectFit: 'contain' }}
+            />
+          </div>
+        )}
         {!closingImagePath && closingName && <div style={{ height: '4.5mm' }} />}
         {closingName && <div>{closingName}</div>}
         {closingTitle && (
