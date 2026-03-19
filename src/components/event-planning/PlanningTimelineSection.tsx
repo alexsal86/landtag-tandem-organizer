@@ -8,7 +8,8 @@ import { Droppable } from "@hello-pangea/dnd";
 import type { ChecklistItem, EventPlanningDate, EventPlanningTimelineAssignment } from "./types";
 import { useTimelineGeometry } from "./useTimelineGeometry";
 
-const DAY_IN_MS = 1000 * 60 * 60 * 24;
+const MIN_ENTRY_GAP_PX = 18;
+const TARGET_TIMELINE_HEIGHT_PX = 560;
 const DOT_SIZE_CLASS = "h-5 w-5";
 const DOT_LEFT_CLASS = "-left-7";
 
@@ -19,6 +20,11 @@ interface PlanningTimelineSectionProps {
   assignments: EventPlanningTimelineAssignment[];
   onRemoveAssignment: (checklistItemId: string) => void;
   checklistItemRefs?: Record<string, RefObject<HTMLDivElement | null>>;
+}
+
+function formatTimelineDate(date: Date) {
+  const hasExplicitTime = date.getHours() !== 0 || date.getMinutes() !== 0;
+  return format(date, hasExplicitTime ? "dd.MM.yyyy, HH:mm" : "dd.MM.yyyy", { locale: de });
 }
 
 type TimelineEntry = {
@@ -95,21 +101,39 @@ export function PlanningTimelineSection({
   }, [entries, now]);
 
   const entrySpacings = useMemo(() => {
-    if (entries.length < 2) {
-      return entries.map(() => 0);
+    if (entries.length === 0) {
+      return [];
     }
 
-    const firstDate = entries[0].date.getTime();
-    const lastDate = entries[entries.length - 1].date.getTime();
-    const totalDays = Math.max(1, (lastDate - firstDate) / DAY_IN_MS);
-    const pixelsPerDay = Math.max(2, Math.min(8, 560 / totalDays));
+    if (entries.length === 1) {
+      return [0];
+    }
 
-    return entries.map((entry, index) => {
-      if (index === 0) return 0;
-      const previousEntry = entries[index - 1];
-      const diffInDays = Math.max(0, (entry.date.getTime() - previousEntry.date.getTime()) / DAY_IN_MS);
-      const scaledSpacing = Math.round(diffInDays * pixelsPerDay);
-      return diffInDays > 0 && scaledSpacing < 14 ? 14 : scaledSpacing;
+    const firstTimestamp = entries[0].date.getTime();
+    const lastTimestamp = entries[entries.length - 1].date.getTime();
+    const totalDuration = Math.max(1, lastTimestamp - firstTimestamp);
+
+    const proportionalOffsets = entries.map((entry) => {
+      const elapsed = Math.max(0, entry.date.getTime() - firstTimestamp);
+      return Math.round((elapsed / totalDuration) * TARGET_TIMELINE_HEIGHT_PX);
+    });
+
+    const resolvedOffsets = proportionalOffsets.reduce<number[]>((offsets, offset, index) => {
+      if (index === 0) {
+        offsets.push(0);
+        return offsets;
+      }
+
+      offsets.push(Math.max(offset, offsets[index - 1] + MIN_ENTRY_GAP_PX));
+      return offsets;
+    }, []);
+
+    return resolvedOffsets.map((offset, index) => {
+      if (index === 0) {
+        return 0;
+      }
+
+      return offset - resolvedOffsets[index - 1];
     });
   }, [entries]);
 
@@ -216,7 +240,7 @@ export function PlanningTimelineSection({
                             </span>
                             <div className="rounded border border-border bg-background p-2 pl-4">
                               <div className="mb-1 flex items-center justify-between gap-2">
-                                <p className="text-xs text-muted-foreground">{format(entry.date, "dd.MM.yyyy", { locale: de })}</p>
+                                <p className="text-xs text-muted-foreground">{formatTimelineDate(entry.date)}</p>
                               </div>
                               <div className="flex items-center justify-between gap-2">
                                 <p
