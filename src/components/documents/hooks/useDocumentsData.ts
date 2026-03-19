@@ -77,7 +77,7 @@ export function useDocumentsData(activeTab: string) {
     try {
       const { data, error } = await supabase
         .from('document_folders')
-        .select('*')
+        .select('id, name, description, parent_id, order_index, tenant_id, created_at')
         .eq('tenant_id', currentTenant.id)
         .order('order_index', { ascending: true });
       if (error) throw error;
