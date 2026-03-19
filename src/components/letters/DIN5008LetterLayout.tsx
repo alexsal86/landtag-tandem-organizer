@@ -5,7 +5,7 @@ import { type BlockLine, type BlockLineData, getBlockLineFontStack, isLineMode }
 import { buildFooterBlocksFromStored } from '@/components/letters/footerBlockUtils';
 import { SunflowerSVG, LionSVG, WappenSVG } from '@/components/letters/elements/shapeSVGs';
 import { sanitizeRichHtml, sanitizeCss } from '@/utils/htmlSanitizer';
-import { getLetterAssetPublicUrl } from './types';
+import { getLetterAssetPublicUrl } from './letterAssetUrls';
 
 interface DIN5008LetterLayoutProps {
   template?: any;

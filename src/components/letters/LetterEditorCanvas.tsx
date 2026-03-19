@@ -13,7 +13,7 @@ import { DIN5008LetterLayout } from './DIN5008LetterLayout';
 import { EditableCanvasOverlay } from './EditableCanvasOverlay';
 import type { HeaderElement } from '@/components/canvas-engine/types';
 import type { BlockLine } from '@/components/letters/BlockLineEditor';
-import { getLetterAssetPublicUrl } from './types';
+import { getLetterAssetPublicUrl } from './letterAssetUrls';
 
 // ─── DIN A4 constants ────────────────────────────────────────────────────────
 const PAGE_W_MM = 210;
