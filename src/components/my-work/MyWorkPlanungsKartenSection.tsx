@@ -32,6 +32,7 @@ interface Planning {
 
 export function MyWorkPlanungsKartenSection() {
   const { user } = useAuth();
+  const { currentTenant } = useTenant();
   const { toast } = useToast();
   const navigate = useNavigate();
 
