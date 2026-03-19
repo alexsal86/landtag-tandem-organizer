@@ -406,7 +406,7 @@ const ProperReactBigCalendar: React.FC<ProperReactBigCalendarProps> = ({
           },
         }}
         className="rbc-calendar"
-        style={{ height: '100%', minHeight: 'calc(100vh - 260px)' }}
+        style={{ height: '100%', minHeight: 'calc(100vh - 220px)' }}
       />
     </div>
   );
