@@ -230,10 +230,10 @@
   min-height: 0;
 }
 
-/* Keep all-day events aligned with the shifted Monday column */
+/* Keep all-day events aligned with the day columns */
 .rbc-time-view .rbc-allday-cell .rbc-row-content {
-  margin-left: -8px;
-  padding-left: 8px;
+  margin-left: 0;
+  padding-left: 0;
 }
 
 /* Week/Day header cells */
