@@ -1,11 +1,11 @@
 import React from 'react';
 import { Card } from '@/components/ui/card';
-import { supabase } from '@/integrations/supabase/client';
 import type { HeaderElement, TextElement, ShapeElement } from '@/components/canvas-engine/types';
 import { type BlockLine, type BlockLineData, getBlockLineFontStack, isLineMode } from '@/components/letters/BlockLineEditor';
 import { buildFooterBlocksFromStored } from '@/components/letters/footerBlockUtils';
 import { SunflowerSVG, LionSVG, WappenSVG } from '@/components/letters/elements/shapeSVGs';
 import { sanitizeRichHtml, sanitizeCss } from '@/utils/htmlSanitizer';
+import { LetterAttachmentList, LetterClosingBlock, getLetterAttachmentNames } from './LetterContentBlocks';
 
 interface DIN5008LetterLayoutProps {
   template?: any;
@@ -123,9 +123,7 @@ export const DIN5008LetterLayout: React.FC<DIN5008LetterLayoutProps> = ({
   const returnAddressFontSizePt = toFontSizePt(layout.addressField?.returnAddressFontSize, 8);
   const recipientFontSizePt = toFontSizePt(layout.addressField?.recipientFontSize, 10);
   const subjectFontSizePt = toFontSizePt(layout.subject?.fontSize, 13);
-  const attachmentList = (attachments || [])
-    .map((attachment) => (typeof attachment === 'string' ? attachment : (attachment.display_name || attachment.file_name || '')))
-    .filter(Boolean);
+  const attachmentList = getLetterAttachmentNames(attachments);
   const hasSignature = Boolean(layout.closing?.signatureName || layout.closing?.signatureImagePath);
   const paginationGapMm = 4.23;
   const paginationHeightMm = 4;
@@ -750,50 +748,23 @@ export const DIN5008LetterLayout: React.FC<DIN5008LetterLayoutProps> = ({
           {/* Letter content */}
           <div className="din5008-content-text" style={contentTextStyle} dangerouslySetInnerHTML={{ __html: sanitizeRichHtml(content) }} />
           {/* Closing formula + signature */}
-          {!hideClosing && layout.closing?.formula && (
-            <>
-              <div style={{ height: '9mm' }} />
-              <div className="din5008-content-text" style={{ fontSize: `${layout.closing?.fontSize || 11}pt` }}>
-                {layout.closing.formula}
-              </div>
-              {layout.closing.signatureImagePath && (
-                <div style={{ marginTop: '2mm', marginBottom: '2mm' }}>
-                  <img 
-                    src={(() => {
-                      const { data: { publicUrl } } = supabase.storage.from('letter-assets').getPublicUrl(layout.closing.signatureImagePath!);
-                      return publicUrl;
-                    })()}
-                    alt="Unterschrift"
-                    style={{ maxHeight: '15mm', maxWidth: '50mm', objectFit: 'contain' }}
-                  />
-                </div>
-              )}
-              {!layout.closing.signatureImagePath && layout.closing.signatureName && <div style={{ height: '4.5mm' }} />}
-              {!layout.closing.signatureImagePath && !layout.closing.signatureName && null}
-              {layout.closing.signatureName && (
-                <div className="din5008-content-text" style={{ fontSize: `${layout.closing?.fontSize || 11}pt`, color: '#000' }}>
-                  {layout.closing.signatureName}
-                </div>
-              )}
-              {layout.closing.signatureTitle && (
-                <div style={{ fontSize: `${(layout.closing?.fontSize || 11) - 1}pt`, color: '#555' }}>
-                  {layout.closing.signatureTitle}
-                </div>
-              )}
-            </>
+          {!hideClosing && (
+            <LetterClosingBlock
+              formula={layout.closing?.formula}
+              signatureImagePath={layout.closing?.signatureImagePath}
+              signatureName={layout.closing?.signatureName}
+              signatureTitle={layout.closing?.signatureTitle}
+              fontSizePt={layout.closing?.fontSize || 11}
+              className="din5008-content-text"
+            />
           )}
 
           {/* Attachments integrated into content area */}
-          {attachmentList.length > 0 && (
-            <div style={{ marginTop: hasSignature ? '4.5mm' : '13.5mm', fontSize: `${layout.salutation?.fontSize || 11}pt` }}>
-              <div style={{ fontWeight: 700 }}>Anlagen</div>
-              {attachmentList.map((attachmentName, index) => (
-                <div key={`${attachmentName}-${index}`} style={{ marginTop: '1mm', paddingLeft: '5mm' }}>
-                  - {attachmentName}
-                </div>
-              ))}
-            </div>
-          )}
+          <LetterAttachmentList
+            attachments={attachments}
+            hasSignature={hasSignature}
+            fontSizePt={layout.salutation?.fontSize || 11}
+          />
         </div>
       ) : (
         <>
@@ -845,22 +816,20 @@ export const DIN5008LetterLayout: React.FC<DIN5008LetterLayoutProps> = ({
 
       {/* Attachments in legacy mode */}
       {layout.subject?.integrated === false && attachmentList.length > 0 && (
-        <div style={{
-          position: 'absolute',
-          top: `calc(${subject ? contentTopMm + 11 : contentTopMm + 3}mm + ${hasSignature ? 4.5 : 13.5}mm)`,
-          left: '25mm',
-          right: '20mm',
-          fontWeight: 700,
-          fontSize: '10pt',
-          backgroundColor: debugMode ? 'rgba(128,128,128,0.05)' : 'transparent'
-        }}>
-          <div>Anlagen</div>
-          {attachmentList.map((attachmentName, index) => (
-            <div key={`${attachmentName}-${index}`} style={{ marginTop: '1mm' }}>
-              - {attachmentName}
-            </div>
-          ))}
-        </div>
+        <LetterAttachmentList
+          attachments={attachments}
+          hasSignature={hasSignature}
+          fontSizePt={10}
+          containerStyle={{
+            position: 'absolute',
+            top: `calc(${subject ? contentTopMm + 11 : contentTopMm + 3}mm + ${hasSignature ? 4.5 : 13.5}mm)`,
+            left: '25mm',
+            right: '20mm',
+            backgroundColor: debugMode ? 'rgba(128,128,128,0.05)' : 'transparent',
+          }}
+          headingStyle={{ fontWeight: 700 }}
+          itemStyle={{ paddingLeft: 0 }}
+        />
       )}
 
       {/* Template Footer Blocks - matches PDF exactly */}
