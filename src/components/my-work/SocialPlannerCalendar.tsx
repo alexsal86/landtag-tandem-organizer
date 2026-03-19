@@ -2,7 +2,7 @@ import { useCallback, useMemo, useState } from "react";
 import { CalendarDays, AlertTriangle, Tag, icons, Move, Clock3, Sparkles } from "lucide-react";
 import { Calendar, dateFnsLocalizer, Views, type View } from "react-big-calendar";
 import withDragAndDrop from "react-big-calendar/lib/addons/dragAndDrop";
-import { addDays, endOfMonth, endOfWeek, format, parse, startOfDay, startOfMonth, startOfWeek, getDay, getISOWeek, isSameDay, isWithinInterval } from "date-fns";
+import { endOfMonth, endOfWeek, format, parse, startOfDay, startOfMonth, startOfWeek, getDay, getISOWeek, isSameDay, isWithinInterval } from "date-fns";
 import { de } from "date-fns/locale";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -210,7 +210,7 @@ export function SocialPlannerCalendar({ items, onUpdateSchedule, onEditItem, spe
         return candidateYears
           .map((year) => {
             const start = new Date(year, specialDay.month - 1, specialDay.day, 9, 0, 0, 0);
-            const end = addDays(start, 1);
+            const end = new Date(year, specialDay.month - 1, specialDay.day, 10, 0, 0, 0);
             return {
               id: `special-day-${year}-${specialDay.month}-${specialDay.day}`,
               title: `Hinweis: ${specialDay.name}`,
@@ -382,8 +382,8 @@ export function SocialPlannerCalendar({ items, onUpdateSchedule, onEditItem, spe
           culture="de"
           step={60}
           timeslots={1}
-          min={new Date(2020, 0, 1, 7, 0)}
-          max={new Date(2020, 0, 1, 20, 0)}
+          min={new Date(2020, 0, 1, 0, 0)}
+          max={new Date(2020, 0, 1, 23, 59, 59, 999)}
           formats={{
             dayHeaderFormat: (date: Date) => format(date, "EEEE, dd. MMMM", { locale: de }),
             dayRangeHeaderFormat: ({ start, end }: { start: Date; end: Date }) => `${format(start, "dd. MMM", { locale: de })} – ${format(end, "dd. MMM yyyy", { locale: de })}`,

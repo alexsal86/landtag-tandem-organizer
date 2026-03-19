@@ -96,7 +96,20 @@ export function useTopicBacklog() {
 
       setChannels((channelRows || []) as TopicBacklogChannel[]);
 
-      const topicData = topicRows || [];
+      const { data: plannerActionRows, error: plannerActionError } = await supabase
+        .from("event_planning_item_actions")
+        .select("action_config")
+        .eq("action_type", "social_planner");
+
+      if (plannerActionError) throw plannerActionError;
+
+      const eventPlanningTopicIds = new Set(
+        (plannerActionRows || [])
+          .map((row) => (row.action_config as { topic_backlog_id?: string | null } | null)?.topic_backlog_id)
+          .filter((value): value is string => Boolean(value)),
+      );
+
+      const topicData = (topicRows || []).filter((row) => !eventPlanningTopicIds.has(row.id));
       const ownerIds = Array.from(new Set(topicData.map((row) => row.owner_id).filter((value): value is string => Boolean(value))));
       const topicIds = topicData.map((row) => row.id);
 

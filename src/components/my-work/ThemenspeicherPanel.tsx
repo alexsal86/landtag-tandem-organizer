@@ -1,7 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { format } from "date-fns";
-import { de } from "date-fns/locale";
-import { CalendarClock, Lightbulb, Link2, Pencil, PlusCircle, RadioTower, Trash2, TriangleAlert, UserRound, Wrench } from "lucide-react";
+import { Lightbulb, Pencil, PlusCircle, Trash2, TriangleAlert } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { useTenant } from "@/hooks/useTenant";
@@ -43,15 +42,6 @@ const STATUS_META: Record<TopicEditorialStatus, { label: string; variant: "secon
 
 interface Props {
   onContentCreated?: () => void;
-}
-
-function formatScheduledDate(value: string | null) {
-  if (!value) return "Noch nicht terminiert";
-  try {
-    return format(new Date(value), "dd. MMM yyyy", { locale: de });
-  } catch {
-    return "Ungültiges Datum";
-  }
 }
 
 export function ThemenspeicherPanel({ onContentCreated }: Props) {
@@ -302,7 +292,7 @@ export function ThemenspeicherPanel({ onContentCreated }: Props) {
                     </Button>
                     <Button size="sm" variant="outline" onClick={() => setSelectedTopic(topic)}>
                       <PlusCircle className="h-3.5 w-3.5 mr-1" />
-                      In Redaktionsplanung übernehmen
+                      In Planner
                     </Button>
                     <Button size="icon" variant="ghost" className="h-8 w-8 text-destructive hover:text-destructive" onClick={() => setDeleteTopicCandidate(topic)}>
                       <Trash2 className="h-4 w-4" />
@@ -318,44 +308,6 @@ export function ThemenspeicherPanel({ onContentCreated }: Props) {
                   ))}
                 </div>
 
-                <div className="grid gap-2 text-xs text-muted-foreground sm:grid-cols-2 xl:grid-cols-4">
-                  <div className="flex items-start gap-2 rounded-md bg-muted/40 px-2 py-1.5">
-                    <Link2 className="mt-0.5 h-3.5 w-3.5" />
-                    <div>
-                      <p className="font-medium text-foreground">{topic.linked_content_count} verknüpfte Beiträge</p>
-                      <p>{topic.linked_content_items.slice(0, 2).map((item) => item.hook ?? item.format ?? "Ohne Hook").join(" • ") || "Noch keine Beiträge"}</p>
-                    </div>
-                  </div>
-                  <div className="flex items-start gap-2 rounded-md bg-muted/40 px-2 py-1.5">
-                    <CalendarClock className="mt-0.5 h-3.5 w-3.5" />
-                    <div>
-                      <p className="font-medium text-foreground">Letzter Veröffentlichungstermin</p>
-                      <p>{formatScheduledDate(topic.latest_scheduled_for)}</p>
-                    </div>
-                  </div>
-                  <div className="flex items-start gap-2 rounded-md bg-muted/40 px-2 py-1.5">
-                    <RadioTower className="mt-0.5 h-3.5 w-3.5" />
-                    <div>
-                      <p className="font-medium text-foreground">Hauptkanal</p>
-                      <p>{topic.primary_channel_name || "Noch kein Kanal"}</p>
-                    </div>
-                  </div>
-                  <div className="flex items-start gap-2 rounded-md bg-muted/40 px-2 py-1.5">
-                    <UserRound className="mt-0.5 h-3.5 w-3.5" />
-                    <div>
-                      <p className="font-medium text-foreground">Verantwortlich</p>
-                      <p>{topic.responsible_person_name || topic.owner_name || "Nicht zugewiesen"}</p>
-                    </div>
-                  </div>
-                </div>
-
-                <div className="flex items-start gap-2 rounded-md border border-dashed px-2 py-2 text-xs text-muted-foreground">
-                  <Wrench className="mt-0.5 h-3.5 w-3.5" />
-                  <div>
-                    <p className="font-medium text-foreground">Offener Produktionsbedarf</p>
-                    <p>{topic.open_production_needs.length > 0 ? topic.open_production_needs.join(", ") : "Aktuell kein offener Produktionsbedarf hinterlegt."}</p>
-                  </div>
-                </div>
               </div>
             );
           })}
