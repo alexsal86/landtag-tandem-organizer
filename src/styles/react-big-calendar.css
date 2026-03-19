@@ -36,15 +36,15 @@
   font-weight: 500;
 }
 
-.rbc-event.event-session { background: hsl(var(--primary)); color: hsl(var(--primary-foreground)); }
-.rbc-event.event-meeting { background: hsl(var(--chart-2)); color: white; }
-.rbc-event.event-appointment { background: hsl(var(--chart-3)); color: white; }
-.rbc-event.event-deadline { background: hsl(var(--destructive)); color: hsl(var(--destructive-foreground)); }
-.rbc-event.event-blocked { background: hsl(var(--chart-4)); color: white; }
-.rbc-event.event-veranstaltung { background: hsl(var(--chart-5)); color: white; }
-.rbc-event.event-vacation { background: hsl(var(--chart-3)); color: white; }
-.rbc-event.event-vacation_request { background: hsl(var(--chart-4)); color: white; }
-.rbc-event.event-birthday { background: hsl(var(--accent)); color: hsl(var(--accent-foreground)); }
+.rbc-event.event-session { background-color: hsl(var(--primary)); color: hsl(var(--primary-foreground)); }
+.rbc-event.event-meeting { background-color: hsl(var(--chart-2)); color: white; }
+.rbc-event.event-appointment { background-color: hsl(var(--chart-3)); color: white; }
+.rbc-event.event-deadline { background-color: hsl(var(--destructive)); color: hsl(var(--destructive-foreground)); }
+.rbc-event.event-blocked { background-color: hsl(var(--chart-4)); color: white; }
+.rbc-event.event-veranstaltung { background-color: hsl(var(--chart-5)); color: white; }
+.rbc-event.event-vacation { background-color: hsl(var(--chart-3)); color: white; }
+.rbc-event.event-vacation_request { background-color: hsl(var(--chart-4)); color: white; }
+.rbc-event.event-birthday { background-color: hsl(var(--accent)); color: hsl(var(--accent-foreground)); }
 
 /* ── Today highlight ── */
 .rbc-today {
