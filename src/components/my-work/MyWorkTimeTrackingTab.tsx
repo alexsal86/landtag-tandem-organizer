@@ -201,7 +201,7 @@ export function MyWorkTimeTrackingTab() {
       // Load settings and entries
       const [settingsRes, weekEntriesRes, monthEntriesRes] = await Promise.all([
         supabase.from("employee_settings").select("hours_per_week, hours_per_month, days_per_month, days_per_week").eq("user_id", user.id).single(),
-        supabase.from("time_entries").select("*").eq("user_id", user.id)
+        supabase.from("time_entries").select("id, user_id, work_date, minutes, notes, started_at, ended_at, pause_minutes, edit_reason, edited_at, edited_by, created_at, updated_at").eq("user_id", user.id)
           .gte("work_date", format(weekStart, "yyyy-MM-dd"))
           .lte("work_date", format(weekEnd, "yyyy-MM-dd"))
           .order("work_date", { ascending: false }),
