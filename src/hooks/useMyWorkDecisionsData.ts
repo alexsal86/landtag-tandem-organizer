@@ -346,7 +346,7 @@ export function useMyWorkDecisionsData(userId?: string) {
 
     const channel = supabase
       .channel(`my-work-decisions-${userId}`)
-      .on("postgres_changes", { event: "*", schema: "public", table: "task_decisions" }, scheduleRefresh)
+      .on("postgres_changes", { event: "*", schema: "public", table: "task_decisions", filter: `created_by=eq.${userId}` }, scheduleRefresh)
       // Listen without filter – filtered subscriptions on task_decision_participants
       // can silently drop events when RLS prevents the anon/authenticated role from
       // seeing the newly-inserted row at the moment the event fires.
