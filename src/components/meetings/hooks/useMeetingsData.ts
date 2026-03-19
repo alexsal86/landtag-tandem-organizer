@@ -342,7 +342,7 @@ export function useMeetingsData() {
 
   const loadTaskDocuments = async (taskIds: string[]) => {
     try {
-      const { data, error } = await supabase.from('task_documents').select('*').in('task_id', taskIds);
+      const { data, error } = await supabase.from('task_documents').select('id, task_id, file_name, file_path, file_size, file_type, created_at').in('task_id', taskIds);
       if (error) throw error;
       const docsByTaskId: Record<string, AgendaDocument[]> = {};
       data?.forEach(doc => {
