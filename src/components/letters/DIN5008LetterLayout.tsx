@@ -1,11 +1,11 @@
 import React from 'react';
 import { Card } from '@/components/ui/card';
-import { supabase } from '@/integrations/supabase/client';
 import type { HeaderElement, TextElement, ShapeElement } from '@/components/canvas-engine/types';
 import { type BlockLine, type BlockLineData, getBlockLineFontStack, isLineMode } from '@/components/letters/BlockLineEditor';
 import { buildFooterBlocksFromStored } from '@/components/letters/footerBlockUtils';
 import { SunflowerSVG, LionSVG, WappenSVG } from '@/components/letters/elements/shapeSVGs';
 import { sanitizeRichHtml, sanitizeCss } from '@/utils/htmlSanitizer';
+import { getLetterAssetPublicUrl } from './types';
 
 interface DIN5008LetterLayoutProps {
   template?: any;
@@ -127,6 +127,7 @@ export const DIN5008LetterLayout: React.FC<DIN5008LetterLayoutProps> = ({
     .map((attachment) => (typeof attachment === 'string' ? attachment : (attachment.display_name || attachment.file_name || '')))
     .filter(Boolean);
   const hasSignature = Boolean(layout.closing?.signatureName || layout.closing?.signatureImagePath);
+  const signatureImageUrl = getLetterAssetPublicUrl(layout.closing?.signatureImagePath);
   const paginationGapMm = 4.23;
   const paginationHeightMm = 4;
   const contentTopMm = Number(layout.content?.top ?? 98.46);
@@ -756,13 +757,10 @@ export const DIN5008LetterLayout: React.FC<DIN5008LetterLayoutProps> = ({
               <div className="din5008-content-text" style={{ fontSize: `${layout.closing?.fontSize || 11}pt` }}>
                 {layout.closing.formula}
               </div>
-              {layout.closing.signatureImagePath && (
+              {signatureImageUrl && (
                 <div style={{ marginTop: '2mm', marginBottom: '2mm' }}>
                   <img 
-                    src={(() => {
-                      const { data: { publicUrl } } = supabase.storage.from('letter-assets').getPublicUrl(layout.closing.signatureImagePath!);
-                      return publicUrl;
-                    })()}
+                    src={signatureImageUrl}
                     alt="Unterschrift"
                     style={{ maxHeight: '15mm', maxWidth: '50mm', objectFit: 'contain' }}
                   />

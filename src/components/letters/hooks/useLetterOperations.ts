@@ -4,6 +4,9 @@ import { useToast } from '@/hooks/use-toast';
 import type { Letter, LetterTemplate } from '../types';
 import { canTransitionStatus, STATUS_LABELS } from '../types';
 import { debugConsole } from '@/utils/debugConsole';
+import type { Database } from '@/integrations/supabase/types';
+
+type LetterAttachment = Database['public']['Tables']['letter_attachments']['Row'];
 
 interface UseLetterOperationsOptions {
   letter?: Letter;
@@ -180,7 +183,7 @@ export function useLetterOperations(opts: UseLetterOperationsOptions) {
     }
 
     const now = new Date().toISOString();
-    const workflowUpdates: any = { status: newStatus };
+    const workflowUpdates: Partial<Letter> = { status: newStatus as Letter['status'] };
 
     if (newStatus === 'review' && !editedLetter.workflow_locked) {
       workflowUpdates.submitted_for_review_at = now;
@@ -269,7 +272,12 @@ export function useLetterOperations(opts: UseLetterOperationsOptions) {
     }
   }, [letter?.id, userId, setEditedLetter, setIsProofreadingMode, toast]);
 
-  const handleAttachmentNameChange = useCallback(async (attachmentId: string, displayName: string, attachments: any[], setAttachments: (fn: (prev: any[]) => any[]) => void) => {
+  const handleAttachmentNameChange = useCallback(async (
+    attachmentId: string,
+    displayName: string,
+    attachments: LetterAttachment[],
+    onRenameSuccess?: () => void | Promise<void>,
+  ) => {
     const existingAttachment = attachments.find((a) => a.id === attachmentId);
     if (!existingAttachment) return;
     const sanitizedDisplayName = displayName.trim();
@@ -282,7 +290,7 @@ export function useLetterOperations(opts: UseLetterOperationsOptions) {
         .update({ display_name: sanitizedDisplayName || null, updated_at: new Date().toISOString() })
         .eq('id', attachmentId);
       if (error) throw error;
-      setAttachments((prev) => prev.map((a) => a.id === attachmentId ? { ...a, display_name: sanitizedDisplayName || null } : a));
+      await onRenameSuccess?.();
     } catch (error) {
       debugConsole.error('Error updating attachment display name:', error);
       toast({ title: 'Fehler beim Umbenennen', description: 'Der Anlagenname konnte nicht aktualisiert werden.', variant: 'destructive' });
