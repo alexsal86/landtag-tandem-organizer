@@ -1,4 +1,4 @@
-import React, { useCallback } from 'react';
+import React, { useCallback, useMemo } from 'react';
 import { Save, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -17,6 +17,7 @@ import { LetterLayoutSettings } from '@/types/letterLayout';
 import { SenderInformationManager } from '@/components/administration/SenderInformationManager';
 import { BlockLineEditor, type BlockLine } from '@/components/letters/BlockLineEditor';
 import { parseFooterLinesForEditor, toFooterLineData } from '@/components/letters/footerBlockUtils';
+import { getLetterAssetPublicUrl } from '@/components/letters/letterAssetUrls';
 import { MarginKey, TabRect, SenderInformation, InformationBlock, DEFAULT_ATTACHMENT_PREVIEW_LINES } from './types';
 
 interface TemplateFormTabsProps {
@@ -43,6 +44,10 @@ export const useTemplateFormTabs = ({
   getBlockItems, setBlockItems, currentTenant, toast,
 }: TemplateFormTabsProps) => {
   const isMobile = useIsMobile();
+  const signaturePreviewUrl = useMemo(
+    () => getLetterAssetPublicUrl(formData.layout_settings.closing?.signatureImagePath),
+    [formData.layout_settings.closing?.signatureImagePath],
+  );
 
   const getMarginsForRect = useCallback((rect: TabRect): MarginKey[] => {
     const { pageWidth, pageHeight, margins } = formData.layout_settings;
@@ -361,9 +366,9 @@ export const useTemplateFormTabs = ({
               </div>
               <div>
                 <Label>Unterschriftsbild</Label>
-                {formData.layout_settings.closing?.signatureImagePath && (
+                {signaturePreviewUrl && (
                   <div className="mb-2 p-2 border rounded-lg bg-muted/30">
-                    <img src={(() => { const { data: { publicUrl } } = supabase.storage.from('letter-assets').getPublicUrl(formData.layout_settings.closing.signatureImagePath!); return publicUrl; })()} alt="Unterschrift" className="max-h-16 max-w-[200px] object-contain" />
+                    <img src={signaturePreviewUrl} alt="Unterschrift" className="max-h-16 max-w-[200px] object-contain" />
                   </div>
                 )}
                 <div className="flex gap-2">
