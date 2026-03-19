@@ -1,20 +1,35 @@
 
 
-## Problem
+## Problem Analysis
 
-Der Build schlägt fehl, weil in `DIN5008LetterLayout.tsx` die Funktion `getLetterAssetPublicUrl` verwendet wird (Zeile 129), aber nicht importiert ist. Ohne erfolgreichen Build kann kein Brief geöffnet werden.
+Four issues with the calendar view:
 
-## Lösung
+### 1. New appointments not showing immediately
+After creating an appointment, `useCreateAppointment.ts` navigates to `/calendar` but never invalidates the `calendar-data` React Query cache. The cache has a 5-minute `staleTime`, so the new appointment won't appear until a manual refresh.
 
-In `src/components/letters/DIN5008LetterLayout.tsx` den fehlenden Import hinzufügen:
+**Fix**: In `useCreateAppointment.ts`, use `useQueryClient` to invalidate the `calendar-data` queries after successful creation.
 
-```ts
-import { getLetterAssetPublicUrl } from './letterAssetUrls';
-```
+### 2. First day column (Monday) shifted left
+The spacer column CSS (lines 299-303 in `react-big-calendar.css`) applies `margin-left: -8px` to the first day column after the gutter spacer. This causes events in the Monday column to appear shifted.
 
-Dies wird in die bestehenden Imports (Zeile 1-9) eingefügt. Die Funktion existiert bereits in `letterAssetUrls.ts` und wird dort korrekt exportiert.
+**Fix**: Review and adjust the margin/padding on `.rbc-time-content > .rbc-time-gutter-spacer-column + .rbc-day-slot.rbc-time-column` so events align properly. The all-day row also has a similar offset (lines 226-229) that needs to match.
 
-## Zusätzliche Build-Fehler
+### 3. Header row misaligned with day columns
+The sticky header (`.rbc-time-header`) doesn't account for the 8px spacer column that exists in `.rbc-time-content`. The day headers are therefore offset from their corresponding columns below.
 
-Es gibt weitere Build-Fehler in `AutomationRulesManager.tsx` und `MeetingTemplateManager.tsx`, die aber nicht mit dem Brief-Problem zusammenhängen. Diese können separat behoben werden.
+**Fix**: Add matching left-margin/padding to the header's content area (`.rbc-time-header-content` or `.rbc-row.rbc-time-header-cell`) so headers align with the columns that include the spacer offset.
+
+### 4. Month view events not visible
+The month view cells have `min-height: 80px` and events use `overflow: hidden` with `text-overflow: ellipsis`, but the row content area likely clips events. The `.rbc-month-row` and `.rbc-row-content` need to allow overflow or have sufficient height.
+
+**Fix**: Adjust `.rbc-month-row` and `.rbc-row-content` CSS to ensure events are visible within cells. May need to increase row height or fix overflow settings.
+
+## Files to Change
+
+1. **`src/components/appointments/hooks/useCreateAppointment.ts`** — Add `useQueryClient` and call `queryClient.invalidateQueries({ queryKey: ["calendar-data"] })` after successful appointment creation (before `onOpenChange(false)`).
+
+2. **`src/styles/react-big-calendar.css`** — Fix three CSS issues:
+   - Adjust first-day-column margin to prevent Monday shift
+   - Add header offset to match the spacer column alignment
+   - Fix month view row/event overflow so events are visible
 
