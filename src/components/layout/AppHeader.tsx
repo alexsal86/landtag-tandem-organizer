@@ -49,7 +49,6 @@ const sectionConfig: Record<string, { label: string; quickAction?: { label: stri
   knowledge: { label: 'Wissen', quickAction: { label: 'Neuer Artikel', action: 'create-article' } },
   karten: { label: 'Karten' },
   chat: { label: 'Chat' },
-  calls: { label: 'Anrufe', quickAction: { label: 'Neuer Anruf', action: 'create-call' } },
   time: { label: 'Zeiterfassung', quickAction: { label: 'Zeit erfassen', action: 'create-timeentry' } },
   employee: { label: 'Mitarbeiter', quickAction: { label: 'Neuer Mitarbeiter', action: 'create-employee' } },
   settings: { label: 'Einstellungen' },

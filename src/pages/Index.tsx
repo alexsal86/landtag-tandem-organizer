@@ -28,7 +28,6 @@ const CaseFilesView = lazyWithRetry(() => import("@/components/CaseFilesView").t
 const MatrixChatView = lazyWithRetry(() => import("@/components/chat/MatrixChatView").then(m => ({ default: m.MatrixChatView })));
 const MatrixClientProvider = lazyWithRetry(() => import("@/contexts/MatrixClientContext").then(m => ({ default: m.MatrixClientProvider })));
 const MyWorkView = lazyWithRetry(() => import("@/components/MyWorkView").then(m => ({ default: m.MyWorkView })));
-const CallsView = lazyWithRetry(() => import("@/components/CallsView").then(m => ({ default: m.CallsView })));
 const DataView = lazyWithRetry(() => import("@/components/DataView").then(m => ({ default: m.DataView })));
 const EditProfile = lazyWithRetry(() => import("@/pages/EditProfile"));
 const NotificationsPage = lazyWithRetry(() => import("@/pages/NotificationsPage"));
@@ -216,8 +215,6 @@ const Index = (): React.JSX.Element => {
         return withSectionBoundary('Vorgänge', <CaseFilesView />);
       case "chat":
         return withSectionBoundary('Chat', <Suspense fallback={null}><MatrixClientProvider><MatrixChatView /></MatrixClientProvider></Suspense>);
-      case "calls":
-        return withSectionBoundary('Anrufe', <CallsView />);
       case "daten":
         return withSectionBoundary('Daten', <DataView />);
       case "notifications":
