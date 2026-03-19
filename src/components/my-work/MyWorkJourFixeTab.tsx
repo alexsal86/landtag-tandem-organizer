@@ -398,7 +398,8 @@ export function MyWorkJourFixeTab() {
   const totalMeetings = upcomingMeetings.length + pastMeetings.length;
 
   return (
-      <div className="space-y-4 p-4">
+      <section className="space-y-4 p-4">
+        <h3 className="text-sm font-semibold text-foreground">Meeting-Übersicht</h3>
         {totalMeetings === 0 ? (
           <div className="text-center py-8 text-muted-foreground">
             <Calendar className="h-10 w-10 mx-auto mb-2 opacity-50" />
@@ -445,6 +446,6 @@ export function MyWorkJourFixeTab() {
             )}
           </>
         )}
-      </div>
+      </section>
   );
 }
