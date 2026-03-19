@@ -1,11 +1,11 @@
 import React from 'react';
 import { Card } from '@/components/ui/card';
-import { supabase } from '@/integrations/supabase/client';
 import type { HeaderElement, TextElement, ShapeElement } from '@/components/canvas-engine/types';
 import { type BlockLine, type BlockLineData, getBlockLineFontStack, isLineMode } from '@/components/letters/BlockLineEditor';
-import { buildFooterBlocksFromStored } from '@/components/letters/footerBlockUtils';
 import { SunflowerSVG, LionSVG, WappenSVG } from '@/components/letters/elements/shapeSVGs';
 import { sanitizeRichHtml, sanitizeCss } from '@/utils/htmlSanitizer';
+import { LetterAttachmentList, LetterClosingBlock, getLetterAttachmentNames } from './LetterContentBlocks';
+import { FoldHoleMarks, PaginationFooter, TemplateFooterBlocks } from './DIN5008LayoutChrome';
 
 interface DIN5008LetterLayoutProps {
   template?: any;
@@ -123,9 +123,7 @@ export const DIN5008LetterLayout: React.FC<DIN5008LetterLayoutProps> = ({
   const returnAddressFontSizePt = toFontSizePt(layout.addressField?.returnAddressFontSize, 8);
   const recipientFontSizePt = toFontSizePt(layout.addressField?.recipientFontSize, 10);
   const subjectFontSizePt = toFontSizePt(layout.subject?.fontSize, 13);
-  const attachmentList = (attachments || [])
-    .map((attachment) => (typeof attachment === 'string' ? attachment : (attachment.display_name || attachment.file_name || '')))
-    .filter(Boolean);
+  const attachmentList = getLetterAttachmentNames(attachments);
   const hasSignature = Boolean(layout.closing?.signatureName || layout.closing?.signatureImagePath);
   const paginationGapMm = 4.23;
   const paginationHeightMm = 4;
@@ -278,55 +276,6 @@ export const DIN5008LetterLayout: React.FC<DIN5008LetterLayoutProps> = ({
     }
   };
 
-  // Footer blocks rendering (identical to PDF logic)
-  const renderFooterBlocks = () => {
-    if (!template?.footer_blocks) return null;
-
-    const sortedBlocks = buildFooterBlocksFromStored(template.footer_blocks);
-
-    return (
-      <div
-        className="flex"
-        style={{
-          position: 'absolute',
-          top: '272mm',
-          left: '25mm',
-          right: '20mm',
-          height: '18mm',
-          fontSize: '8pt',
-          zIndex: 30,
-          backgroundColor: debugMode ? 'rgba(128,0,128,0.05)' : '#fff'
-        }}
-      >
-        {sortedBlocks.map((block: any, index: number) => {
-          const blockWidth = block.widthUnit === 'cm'
-            ? `${Math.max(1, Number(block.widthValue) || 1)}cm`
-            : `${Math.max(1, Number(block.widthValue) || 25)}%`;
-
-          return (
-            <div
-              key={block.id || index}
-              style={{ width: blockWidth, paddingRight: '2mm', fontSize: '8pt', lineHeight: 1 }}
-            >
-              {block.title && <div style={{ fontWeight: 'bold', marginBottom: '1mm' }}>{block.title}</div>}
-              <div>
-                {(block.lines || []).map((line: any, lineIndex: number) => {
-                  if (line.type === 'spacer') {
-                    return <div key={lineIndex} style={{ height: `${Math.max(0.5, Number(line.spacerHeight) || 1)}mm` }} />;
-                  }
-                  const content = line.type === 'label-value'
-                    ? `${line.label || ''} ${line.value || ''}`.trim()
-                    : (line.value || '');
-                  if (!content) return null;
-                  return <div key={lineIndex} style={{ fontSize: `${Math.max(6, Math.min(12, Number(line.fontSize) || 8))}pt`, fontFamily: getBlockLineFontStack(line.fontFamily), fontWeight: line.valueBold ? 'bold' : 'normal', color: line.color || undefined }}>{content}</div>;
-                })}
-              </div>
-            </div>
-          );
-        })}
-      </div>
-    );
-  };
   /** Render canvas-based block elements positioned in mm coordinates */
   const renderCanvasBlockElements = (elements: HeaderElement[]) => (
     <div className="relative w-full h-full">
@@ -481,28 +430,7 @@ export const DIN5008LetterLayout: React.FC<DIN5008LetterLayoutProps> = ({
       lineHeight: '1.2',
       position: 'relative'
     }}>
-      {(foldHoleMarks.enabled ?? true) && (
-        <>
-          {[
-            { y: foldHoleMarks.topMarkY, width: foldHoleMarks.foldMarkWidth, key: 'fold-top' },
-            { y: foldHoleMarks.holeMarkY, width: foldHoleMarks.holeMarkWidth, key: 'hole' },
-            { y: foldHoleMarks.bottomMarkY, width: foldHoleMarks.foldMarkWidth, key: 'fold-bottom' },
-          ].map((mark) => (
-            <div
-              key={mark.key}
-              style={{
-                position: 'absolute',
-                left: `${foldHoleMarks.left}mm`,
-                top: `${mark.y}mm`,
-                width: `${mark.width}mm`,
-                height: `${Math.max(0.1, (foldHoleMarks.strokeWidthPt || 1) * 0.3528)}mm`,
-                backgroundColor: '#111',
-                pointerEvents: 'none',
-              }}
-            />
-          ))}
-        </>
-      )}
+      <FoldHoleMarks foldHoleMarks={foldHoleMarks} />
       {/* Template Header */}
       {template && (
         <div 
@@ -750,50 +678,23 @@ export const DIN5008LetterLayout: React.FC<DIN5008LetterLayoutProps> = ({
           {/* Letter content */}
           <div className="din5008-content-text" style={contentTextStyle} dangerouslySetInnerHTML={{ __html: sanitizeRichHtml(content) }} />
           {/* Closing formula + signature */}
-          {!hideClosing && layout.closing?.formula && (
-            <>
-              <div style={{ height: '9mm' }} />
-              <div className="din5008-content-text" style={{ fontSize: `${layout.closing?.fontSize || 11}pt` }}>
-                {layout.closing.formula}
-              </div>
-              {layout.closing.signatureImagePath && (
-                <div style={{ marginTop: '2mm', marginBottom: '2mm' }}>
-                  <img 
-                    src={(() => {
-                      const { data: { publicUrl } } = supabase.storage.from('letter-assets').getPublicUrl(layout.closing.signatureImagePath!);
-                      return publicUrl;
-                    })()}
-                    alt="Unterschrift"
-                    style={{ maxHeight: '15mm', maxWidth: '50mm', objectFit: 'contain' }}
-                  />
-                </div>
-              )}
-              {!layout.closing.signatureImagePath && layout.closing.signatureName && <div style={{ height: '4.5mm' }} />}
-              {!layout.closing.signatureImagePath && !layout.closing.signatureName && null}
-              {layout.closing.signatureName && (
-                <div className="din5008-content-text" style={{ fontSize: `${layout.closing?.fontSize || 11}pt`, color: '#000' }}>
-                  {layout.closing.signatureName}
-                </div>
-              )}
-              {layout.closing.signatureTitle && (
-                <div style={{ fontSize: `${(layout.closing?.fontSize || 11) - 1}pt`, color: '#555' }}>
-                  {layout.closing.signatureTitle}
-                </div>
-              )}
-            </>
+          {!hideClosing && (
+            <LetterClosingBlock
+              formula={layout.closing?.formula}
+              signatureImagePath={layout.closing?.signatureImagePath}
+              signatureName={layout.closing?.signatureName}
+              signatureTitle={layout.closing?.signatureTitle}
+              fontSizePt={layout.closing?.fontSize || 11}
+              className="din5008-content-text"
+            />
           )}
 
           {/* Attachments integrated into content area */}
-          {attachmentList.length > 0 && (
-            <div style={{ marginTop: hasSignature ? '4.5mm' : '13.5mm', fontSize: `${layout.salutation?.fontSize || 11}pt` }}>
-              <div style={{ fontWeight: 700 }}>Anlagen</div>
-              {attachmentList.map((attachmentName, index) => (
-                <div key={`${attachmentName}-${index}`} style={{ marginTop: '1mm', paddingLeft: '5mm' }}>
-                  - {attachmentName}
-                </div>
-              ))}
-            </div>
-          )}
+          <LetterAttachmentList
+            attachments={attachments}
+            hasSignature={hasSignature}
+            fontSizePt={layout.salutation?.fontSize || 11}
+          />
         </div>
       ) : (
         <>
@@ -845,26 +746,24 @@ export const DIN5008LetterLayout: React.FC<DIN5008LetterLayoutProps> = ({
 
       {/* Attachments in legacy mode */}
       {layout.subject?.integrated === false && attachmentList.length > 0 && (
-        <div style={{
-          position: 'absolute',
-          top: `calc(${subject ? contentTopMm + 11 : contentTopMm + 3}mm + ${hasSignature ? 4.5 : 13.5}mm)`,
-          left: '25mm',
-          right: '20mm',
-          fontWeight: 700,
-          fontSize: '10pt',
-          backgroundColor: debugMode ? 'rgba(128,128,128,0.05)' : 'transparent'
-        }}>
-          <div>Anlagen</div>
-          {attachmentList.map((attachmentName, index) => (
-            <div key={`${attachmentName}-${index}`} style={{ marginTop: '1mm' }}>
-              - {attachmentName}
-            </div>
-          ))}
-        </div>
+        <LetterAttachmentList
+          attachments={attachments}
+          hasSignature={hasSignature}
+          fontSizePt={10}
+          containerStyle={{
+            position: 'absolute',
+            top: `calc(${subject ? contentTopMm + 11 : contentTopMm + 3}mm + ${hasSignature ? 4.5 : 13.5}mm)`,
+            left: '25mm',
+            right: '20mm',
+            backgroundColor: debugMode ? 'rgba(128,128,128,0.05)' : 'transparent',
+          }}
+          headingStyle={{ fontWeight: 700 }}
+          itemStyle={{ paddingLeft: 0 }}
+        />
       )}
 
       {/* Template Footer Blocks - matches PDF exactly */}
-      {renderFooterBlocks()}
+      <TemplateFooterBlocks footerBlocks={template?.footer_blocks} debugMode={debugMode} />
 
       {/* Fallback Sender Address Block - only if no template footer */}
       {!template?.footer_blocks && senderInfo && (
@@ -887,23 +786,12 @@ export const DIN5008LetterLayout: React.FC<DIN5008LetterLayoutProps> = ({
       )}
 
       {/* Pagination Footer */}
-      {paginationEnabled && (
-        <div style={{
-          position: 'absolute',
-          top: `${paginationTopMm}mm`,
-          left: layout.pagination?.align === 'left' ? '25mm' : undefined,
-          right: layout.pagination?.align !== 'left' ? '20mm' : undefined,
-          textAlign: layout.pagination?.align || 'right',
-          fontSize: `${layout.pagination?.fontSize || 8}pt`,
-          color: '#666',
-          zIndex: 30,
-          backgroundColor: '#fff',
-          padding: '0 1mm',
-          fontFamily: 'Calibri, Carlito, "Segoe UI", Arial, sans-serif'
-        }}>
-          Seite 1 von 1
-        </div>
-      )}
+      <PaginationFooter
+        enabled={paginationEnabled}
+        topMm={paginationTopMm}
+        align={layout.pagination?.align || 'right'}
+        fontSize={layout.pagination?.fontSize || 8}
+      />
 
       {/* Custom CSS from template */}
       {template?.letterhead_css && (

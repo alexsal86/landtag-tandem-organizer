@@ -10,10 +10,10 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { ContactSelector } from '@/components/ContactSelector';
 import { DIN5008LetterLayout } from './DIN5008LetterLayout';
-import { supabase } from '@/integrations/supabase/client';
 import { EditableCanvasOverlay } from './EditableCanvasOverlay';
 import type { HeaderElement } from '@/components/canvas-engine/types';
 import type { BlockLine } from '@/components/letters/BlockLineEditor';
+import { LetterAttachmentList, LetterClosingBlock } from './LetterContentBlocks';
 
 // ─── DIN A4 constants ────────────────────────────────────────────────────────
 const PAGE_W_MM = 210;
@@ -308,54 +308,33 @@ export const LetterEditorCanvas: React.FC<LetterEditorCanvasProps> = ({
 
   // ── closing block ──
   const renderClosing = () => {
-    if (!closingFormula) return null;
     return (
       <div style={{
-        fontSize: `${closingFontSizePt}pt`,
         color: '#000',
         fontFamily: 'Calibri,Carlito,"Segoe UI",Arial,sans-serif',
       }}>
-        <div style={{ height: '9mm' }} />
-        <div>{closingFormula}</div>
-        {closingImagePath && (() => {
-          const { data: { publicUrl } } = supabase.storage
-            .from('letter-assets')
-            .getPublicUrl(closingImagePath);
-          return (
-            <div style={{ marginTop: '2mm', marginBottom: '2mm' }}>
-              <img
-                src={publicUrl}
-                alt="Unterschrift"
-                style={{ maxHeight: '15mm', maxWidth: '50mm', objectFit: 'contain' }}
-              />
-            </div>
-          );
-        })()}
-        {!closingImagePath && closingName && <div style={{ height: '4.5mm' }} />}
-        {closingName && <div>{closingName}</div>}
-        {closingTitle && (
-          <div style={{ fontSize: `${closingFontSizePt - 1}pt`, color: '#555' }}>
-            {closingTitle}
-          </div>
-        )}
+        <LetterClosingBlock
+          formula={closingFormula}
+          signatureImagePath={closingImagePath}
+          signatureName={closingName}
+          signatureTitle={closingTitle}
+          fontSizePt={closingFontSizePt}
+        />
       </div>
     );
   };
 
   // ── attachment list ──
   const renderAttachments = () => {
-    const list = (attachments ?? [])
-      .map((a) => (typeof a === 'string' ? a : a.display_name || a.file_name || ''))
-      .filter(Boolean);
-    if (!list.length) return null;
-
     const canEditAttachments = canEdit && !!onAttachmentNameChange && editableAttachmentList.length > 0;
 
     return (
-      <div
-        style={{
-          marginTop: closingFormula ? '4.5mm' : '13.5mm',
-          fontSize: `${contentFontSizePt}pt`,
+      <LetterAttachmentList
+        attachments={attachments}
+        hasSignature={Boolean(closingFormula)}
+        fontSizePt={contentFontSizePt}
+        dash="–"
+        containerStyle={{
           color: '#000',
           fontFamily: 'Calibri,Carlito,"Segoe UI",Arial,sans-serif',
           position: 'relative',
@@ -419,14 +398,7 @@ export const LetterEditorCanvas: React.FC<LetterEditorCanvasProps> = ({
             </PopoverContent>
           </Popover>
         )}
-
-        <div style={{ fontWeight: 700 }}>Anlagen</div>
-        {list.map((name, i) => (
-          <div key={`${name}-${i}`} style={{ marginTop: '1mm', paddingLeft: '5mm' }}>
-            – {name}
-          </div>
-        ))}
-      </div>
+      </LetterAttachmentList>
     );
   };
 
