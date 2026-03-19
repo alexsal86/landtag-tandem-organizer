@@ -252,10 +252,89 @@ export const useCaseWorkspaceData = ({ tenantId, userId }: { tenantId?: string; 
       }, 250);
     };
 
+    const handleCaseItemChange = (payload: any) => {
+      const eventType = payload.eventType as string;
+      const newRow = payload.new as CaseItem | undefined;
+      const oldRow = payload.old as { id?: string } | undefined;
+
+      if (eventType === 'INSERT' && newRow) {
+        setCaseItems((prev) => {
+          if (prev.some((item) => item.id === newRow.id)) return prev;
+          const updated = [newRow, ...prev];
+          persistCache({ caseItems: updated });
+          return updated;
+        });
+        return;
+      }
+
+      if (eventType === 'UPDATE' && newRow) {
+        setCaseItems((prev) => {
+          const idx = prev.findIndex((item) => item.id === newRow.id);
+          if (idx === -1) return prev;
+          const updated = [...prev];
+          updated[idx] = newRow;
+          persistCache({ caseItems: updated });
+          return updated;
+        });
+        return;
+      }
+
+      if (eventType === 'DELETE' && oldRow?.id) {
+        setCaseItems((prev) => {
+          const updated = prev.filter((item) => item.id !== oldRow.id);
+          persistCache({ caseItems: updated });
+          return updated;
+        });
+        return;
+      }
+
+      // Fallback for unexpected event types
+      scheduleRefresh();
+    };
+
+    const handleCaseFileChange = (payload: any) => {
+      const eventType = payload.eventType as string;
+      const newRow = payload.new as CaseFile | undefined;
+      const oldRow = payload.old as { id?: string } | undefined;
+
+      if (eventType === 'INSERT' && newRow) {
+        setCaseFiles((prev) => {
+          if (prev.some((f) => f.id === newRow.id)) return prev;
+          const updated = [newRow, ...prev];
+          persistCache({ caseFiles: updated });
+          return updated;
+        });
+        return;
+      }
+
+      if (eventType === 'UPDATE' && newRow) {
+        setCaseFiles((prev) => {
+          const idx = prev.findIndex((f) => f.id === newRow.id);
+          if (idx === -1) return prev;
+          const updated = [...prev];
+          updated[idx] = newRow;
+          persistCache({ caseFiles: updated });
+          return updated;
+        });
+        return;
+      }
+
+      if (eventType === 'DELETE' && oldRow?.id) {
+        setCaseFiles((prev) => {
+          const updated = prev.filter((f) => f.id !== oldRow.id);
+          persistCache({ caseFiles: updated });
+          return updated;
+        });
+        return;
+      }
+
+      scheduleRefresh();
+    };
+
     const channel = supabase
       .channel(`case-workspace-${tenantId}`)
-      .on("postgres_changes", { event: "*", schema: "public", table: "case_items", filter: `tenant_id=eq.${tenantId}` }, scheduleRefresh)
-      .on("postgres_changes", { event: "*", schema: "public", table: "case_files", filter: `tenant_id=eq.${tenantId}` }, scheduleRefresh)
+      .on("postgres_changes", { event: "*", schema: "public", table: "case_items", filter: `tenant_id=eq.${tenantId}` }, handleCaseItemChange)
+      .on("postgres_changes", { event: "*", schema: "public", table: "case_files", filter: `tenant_id=eq.${tenantId}` }, handleCaseFileChange)
       .on("postgres_changes", { event: "*", schema: "public", table: "task_decisions", filter: `tenant_id=eq.${tenantId}` }, scheduleRefresh)
       .subscribe();
 
@@ -263,7 +342,7 @@ export const useCaseWorkspaceData = ({ tenantId, userId }: { tenantId?: string; 
       if (timeout) clearTimeout(timeout);
       supabase.removeChannel(channel);
     };
-  }, [refreshAll, tenantId, userId]);
+  }, [refreshAll, tenantId, userId, persistCache]);
 
   const caseFilesById = useMemo(() => caseFiles.reduce<Record<string, CaseFile>>((acc, row) => {
     acc[row.id] = row;

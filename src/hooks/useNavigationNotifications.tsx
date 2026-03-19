@@ -1,13 +1,10 @@
-import { useState, useEffect, useRef, useCallback } from 'react';
+import { useEffect, useRef, useCallback } from 'react';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import type { RealtimePostgresChangesPayload } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from './useAuth';
 import { useTenant } from './useTenant';
 import { debugConsole } from '@/utils/debugConsole';
-
-interface NavigationNotificationRow {
-  navigation_context: string | null;
-}
 
 interface AnnualTaskCompletionRow {
   year: number | null;
@@ -56,114 +53,89 @@ const parseNavigationSyncPayload = (value: string): NavigationSyncPayload | null
   }
 };
 
+const QUERY_KEY = 'navigation-notification-counts';
+
+const fetchNavigationCounts = async (userId: string, tenantId: string): Promise<NavigationCounts> => {
+  // Use RPC to get aggregated counts instead of fetching all notification rows
+  const { data: rpcCounts, error: rpcError } = await supabase
+    .rpc('get_unread_notification_counts', { p_user_id: userId });
+
+  if (rpcError) {
+    debugConsole.error('Error loading navigation counts via RPC:', rpcError);
+    throw rpcError;
+  }
+
+  const counts: NavigationCounts = (rpcCounts as NavigationCounts) ?? {};
+
+  const currentMonth = new Date().getMonth() + 1;
+  const currentYear = new Date().getFullYear();
+
+  const { data: annualTasks, error: annualTasksError } = await supabase
+    .from('annual_tasks')
+    .select(`
+      id,
+      due_month,
+      annual_task_completions!left(id, year, completed_at)
+    `)
+    .or(`tenant_id.eq.${tenantId},tenant_id.is.null`);
+
+  if (annualTasksError) {
+    debugConsole.error('Error loading annual task counts:', annualTasksError);
+  }
+
+  const annualTaskRows = (annualTasks as AnnualTaskRow[] | null) ?? [];
+  const overdueOrDueCount = annualTaskRows.filter((task: AnnualTaskRow): boolean => {
+    if (task.due_month == null) return false;
+    const completions = task.annual_task_completions ?? [];
+    const currentYearCompletion = completions.find(
+      (completion: AnnualTaskCompletionRow): boolean =>
+        completion.year === currentYear && completion.completed_at != null,
+    );
+    if (currentYearCompletion) return false;
+    return task.due_month <= currentMonth;
+  }).length;
+
+  counts.annual_tasks = overdueOrDueCount;
+  counts.administration = (counts.administration ?? 0) + overdueOrDueCount;
+
+  return counts;
+};
+
 export const useNavigationNotifications = (): NavigationNotifications => {
   const { user } = useAuth();
   const { currentTenant } = useTenant();
-  const [navigationCounts, setNavigationCounts] = useState<NavigationCounts>({});
-  const [, setLastVisited] = useState<Record<string, Date>>({});
-  const [isLoading, setIsLoading] = useState<boolean>(true);
+  const queryClient = useQueryClient();
   const suppressReloadUntil = useRef<number>(0);
 
-  const loadNavigationCounts = useCallback(async (): Promise<void> => {
-    if (!user || !currentTenant) {
-      setNavigationCounts({});
-      setLastVisited({});
-      setIsLoading(false);
-      return;
-    }
+  const userId = user?.id;
+  const tenantId = currentTenant?.id;
 
-    if (Date.now() < suppressReloadUntil.current) {
-      return;
-    }
+  const { data: navigationCounts = {}, isLoading } = useQuery({
+    queryKey: [QUERY_KEY, userId, tenantId],
+    queryFn: () => fetchNavigationCounts(userId!, tenantId!),
+    enabled: !!userId && !!tenantId,
+    staleTime: 60_000, // 1 minute — prevents refetch on every mount
+    gcTime: 5 * 60_000,
+    refetchOnWindowFocus: false,
+  });
 
-    setIsLoading(true);
-
-    try {
-      // Use RPC to get aggregated counts instead of fetching all notification rows
-      const { data: rpcCounts, error: rpcError } = await supabase
-        .rpc('get_unread_notification_counts', { p_user_id: user.id });
-
-      if (rpcError) {
-        debugConsole.error('Error loading navigation counts via RPC:', rpcError);
-        return;
-      }
-
-      const counts: NavigationCounts = (rpcCounts as NavigationCounts) ?? {};
-
-      const currentMonth = new Date().getMonth() + 1;
-      const currentYear = new Date().getFullYear();
-
-      const { data: annualTasks, error: annualTasksError } = await supabase
-        .from('annual_tasks')
-        .select(`
-          id,
-          due_month,
-          annual_task_completions!left(id, year, completed_at)
-        `)
-        .or(`tenant_id.eq.${currentTenant.id},tenant_id.is.null`);
-
-      if (annualTasksError) {
-        debugConsole.error('Error loading annual task counts:', annualTasksError);
-      }
-
-      const annualTaskRows = (annualTasks as AnnualTaskRow[] | null) ?? [];
-      const overdueOrDueCount = annualTaskRows.filter((task: AnnualTaskRow): boolean => {
-        if (task.due_month == null) {
-          return false;
-        }
-
-        const completions = task.annual_task_completions ?? [];
-        const currentYearCompletion = completions.find(
-          (completion: AnnualTaskCompletionRow): boolean =>
-            completion.year === currentYear && completion.completed_at != null,
-        );
-
-        if (currentYearCompletion) {
-          return false;
-        }
-
-        return task.due_month <= currentMonth;
-      }).length;
-
-      counts.annual_tasks = overdueOrDueCount;
-      counts.administration = (counts.administration ?? 0) + overdueOrDueCount;
-      setNavigationCounts(counts);
-
-      const { data: visits, error: visitsError } = await supabase
-        .from('user_navigation_visits')
-        .select('navigation_context, last_visited_at')
-        .eq('user_id', user.id);
-
-      if (visitsError) {
-        debugConsole.error('Error loading visits:', visitsError);
-        return;
-      }
-
-      const visitMap: Record<string, Date> = {};
-      ((visits as NavigationVisitRow[] | null) ?? []).forEach((visit: NavigationVisitRow): void => {
-        if (!visit.navigation_context || !visit.last_visited_at) {
-          return;
-        }
-
-        visitMap[visit.navigation_context] = new Date(visit.last_visited_at);
-      });
-
-      setLastVisited(visitMap);
-    } catch (error: unknown) {
-      debugConsole.error('Error in loadNavigationCounts:', error);
-    } finally {
-      setIsLoading(false);
-    }
-  }, [currentTenant, user]);
+  const invalidateCounts = useCallback(() => {
+    if (Date.now() < suppressReloadUntil.current) return;
+    void queryClient.invalidateQueries({ queryKey: [QUERY_KEY, userId, tenantId] });
+  }, [queryClient, userId, tenantId]);
 
   const markNavigationAsVisited = useCallback(async (context: string): Promise<void> => {
-    if (!user || context.trim() === '') {
-      return;
-    }
+    if (!user || context.trim() === '') return;
 
     try {
       const now = new Date();
       suppressReloadUntil.current = Date.now() + 5000;
+
+      // Optimistic update
+      queryClient.setQueryData<NavigationCounts>(
+        [QUERY_KEY, userId, tenantId],
+        (prev) => prev ? { ...prev, [context]: 0 } : { [context]: 0 },
+      );
 
       const { error: visitError } = await supabase
         .from('user_navigation_visits')
@@ -192,15 +164,6 @@ export const useNavigationNotifications = (): NavigationNotifications => {
         debugConsole.error('Error marking notifications as read for navigation context:', notificationsError);
       }
 
-      setLastVisited((prev: Record<string, Date>) => ({
-        ...prev,
-        [context]: now,
-      }));
-      setNavigationCounts((prev: NavigationCounts) => ({
-        ...prev,
-        [context]: 0,
-      }));
-
       const syncPayload = JSON.stringify({
         context,
         timestamp: now.toISOString(),
@@ -220,34 +183,24 @@ export const useNavigationNotifications = (): NavigationNotifications => {
     } catch (error: unknown) {
       debugConsole.error('Error in markNavigationAsVisited:', error);
     }
-  }, [user]);
+  }, [user, userId, tenantId, queryClient]);
 
   const hasNewSinceLastVisit = useCallback((context: string): boolean => {
     return (navigationCounts[context] ?? 0) > 0;
   }, [navigationCounts]);
 
+  // Realtime + event listeners for invalidation
   useEffect(() => {
-    void loadNavigationCounts();
-  }, [loadNavigationCounts]);
-
-  useEffect(() => {
-    if (!user) {
-      return;
-    }
+    if (!user) return;
 
     let debounceTimer: ReturnType<typeof setTimeout> | null = null;
-    const debouncedLoad = (): void => {
-      if (debounceTimer) {
-        clearTimeout(debounceTimer);
-      }
-
-      debounceTimer = setTimeout((): void => {
-        void loadNavigationCounts();
-      }, 1000);
+    const debouncedInvalidate = (): void => {
+      if (debounceTimer) clearTimeout(debounceTimer);
+      debounceTimer = setTimeout(invalidateCounts, 1000);
     };
 
     const handleNotificationUpdate = (_event: Event): void => {
-      debouncedLoad();
+      debouncedInvalidate();
     };
 
     const channel = supabase
@@ -261,7 +214,7 @@ export const useNavigationNotifications = (): NavigationNotifications => {
           filter: `user_id=eq.${user.id}`,
         },
         (_payload: RealtimePostgresChangesPayload<NavigationVisitRow>): void => {
-          debouncedLoad();
+          debouncedInvalidate();
         },
       )
       .subscribe();
@@ -269,40 +222,30 @@ export const useNavigationNotifications = (): NavigationNotifications => {
     window.addEventListener('notifications-changed', handleNotificationUpdate);
 
     return () => {
-      if (debounceTimer) {
-        clearTimeout(debounceTimer);
-      }
-
+      if (debounceTimer) clearTimeout(debounceTimer);
       void supabase.removeChannel(channel);
       window.removeEventListener('notifications-changed', handleNotificationUpdate);
     };
-  }, [loadNavigationCounts, user]);
+  }, [invalidateCounts, user]);
 
+  // Cross-tab sync
   useEffect(() => {
     const handleStorageChange = (event: StorageEvent): void => {
-      if (!user || !event.newValue) {
-        return;
-      }
+      if (!user || !event.newValue) return;
 
       if (event.key === 'navigation_visit_sync') {
         const payload = parseNavigationSyncPayload(event.newValue);
-        if (!payload || payload.userId !== user.id || !payload.context || !payload.timestamp) {
-          return;
-        }
+        if (!payload || payload.userId !== user.id || !payload.context || !payload.timestamp) return;
 
-        setLastVisited((prev: Record<string, Date>) => ({
-          ...prev,
-          [payload.context as string]: new Date(payload.timestamp as string),
-        }));
-        setNavigationCounts((prev: NavigationCounts) => ({
-          ...prev,
-          [payload.context as string]: 0,
-        }));
+        queryClient.setQueryData<NavigationCounts>(
+          [QUERY_KEY, userId, tenantId],
+          (prev) => prev ? { ...prev, [payload.context as string]: 0 } : { [payload.context as string]: 0 },
+        );
         return;
       }
 
       if (event.key === 'notifications_marked_read') {
-        void loadNavigationCounts();
+        invalidateCounts();
       }
     };
 
@@ -310,7 +253,7 @@ export const useNavigationNotifications = (): NavigationNotifications => {
     return () => {
       window.removeEventListener('storage', handleStorageChange);
     };
-  }, [loadNavigationCounts, user]);
+  }, [invalidateCounts, user, userId, tenantId, queryClient]);
 
   return {
     navigationCounts,

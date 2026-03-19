@@ -6,7 +6,7 @@ import { MyWorkDecision, getResponseSummary } from "@/components/my-work/decisio
 import type { ResponseOption } from "@/lib/decisionTemplates";
 
 const isEmailFile = (name: string) => /\.(eml|msg)$/i.test(name);
-const DECISIONS_CACHE_TTL_MS = 30_000;
+const DECISIONS_CACHE_TTL_MS = 60_000;
 
 interface DecisionsCacheEntry {
   timestamp: number;
