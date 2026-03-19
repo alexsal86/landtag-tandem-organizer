@@ -161,7 +161,7 @@ export function useMyWorkTasksData(userId?: string) {
   const taskSnoozes = data?.taskSnoozes ?? {};
   const taskCommentCounts = data?.taskCommentCounts ?? {};
 
-  // Provide setters for optimistic UI updates from consuming components
+  // Provide setters for optimistic UI updates — support both direct values and functional updaters
   const [localOverrides, setLocalOverrides] = useState<Partial<TasksQueryResult>>({});
   const effectiveAssigned = localOverrides.assignedTasks ?? assignedTasks;
   const effectiveCreated = localOverrides.createdTasks ?? createdTasks;
@@ -177,6 +177,9 @@ export function useMyWorkTasksData(userId?: string) {
   const loadTasks = useCallback(() => {
     queryClient.invalidateQueries({ queryKey: ['my-work-tasks', userId] });
   }, [queryClient, userId]);
+
+  type SetterArg<T> = T | ((prev: T) => T);
+  const resolveArg = <T,>(arg: SetterArg<T>, prev: T): T => (typeof arg === 'function' ? (arg as (prev: T) => T)(prev) : arg);
 
   // Realtime: tasks subscription needs to be broad (cross-user assignments)
   // but we filter task_snoozes by user_id
