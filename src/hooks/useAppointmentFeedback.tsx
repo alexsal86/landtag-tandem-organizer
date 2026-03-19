@@ -246,7 +246,10 @@ export const useAppointmentFeedback = () => {
         };
       }) as AppointmentWithFeedback[];
     },
-    enabled: !!user?.id && !!currentTenant?.id
+    enabled: !!user?.id && !!currentTenant?.id,
+    staleTime: 2 * 60_000,
+    gcTime: 5 * 60_000,
+    refetchOnWindowFocus: false,
   });
 
   // Kombiniere und sortiere alle Events
