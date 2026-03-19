@@ -9,6 +9,21 @@ import 'react-big-calendar/lib/addons/dragAndDrop/styles.css';
 import { CalendarEventAdapter, type RBCEvent } from './CalendarEventAdapter';
 import type { CalendarEvent } from './types';
 
+/* ── Compact month event component ── */
+const MonthEvent = ({ event }: { event: RBCEvent }) => {
+  const original = event.resource as CalendarEvent;
+  const timeStr = event.allDay ? '' : format(event.start, 'HH:mm', { locale: de });
+
+  return (
+    <div className="flex items-center gap-1 truncate text-[0.65rem] leading-tight">
+      {timeStr && (
+        <span className="font-semibold opacity-90">{timeStr}</span>
+      )}
+      <span className="truncate">{event.title}</span>
+    </div>
+  );
+};
+
 interface ProperReactBigCalendarProps {
   events: CalendarEvent[];
   onEventSelect?: (event: CalendarEvent) => void;
