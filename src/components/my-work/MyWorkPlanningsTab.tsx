@@ -10,6 +10,7 @@ import { CalendarPlus, ExternalLink, MapPin, CheckSquare, Calendar, CheckCircle,
 import { supabase } from "@/integrations/supabase/client";
 import { debugConsole } from "@/utils/debugConsole";
 import { useAuth } from "@/hooks/useAuth";
+import { useTenant } from "@/hooks/useTenant";
 import { useToast } from "@/hooks/use-toast";
 import { format } from "date-fns";
 import { de } from "date-fns/locale";
@@ -39,6 +40,7 @@ interface Planning {
 
 export function MyWorkPlanningsTab() {
   const { user } = useAuth();
+  const { currentTenant } = useTenant();
   const { toast } = useToast();
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
@@ -67,7 +69,7 @@ export function MyWorkPlanningsTab() {
 
   // Realtime subscription
   useEffect(() => {
-    if (!user?.id) return;
+    if (!user?.id || !currentTenant?.id) return;
     let timeout: ReturnType<typeof setTimeout> | null = null;
     const scheduleRefresh = () => {
       if (timeout) clearTimeout(timeout);
@@ -75,14 +77,14 @@ export function MyWorkPlanningsTab() {
     };
     const channel = supabase
       .channel(`my-work-plannings-${user.id}`)
-      .on("postgres_changes", { event: "*", schema: "public", table: "event_plannings" }, scheduleRefresh)
+      .on("postgres_changes", { event: "*", schema: "public", table: "event_plannings", filter: `tenant_id=eq.${currentTenant.id}` }, scheduleRefresh)
       .on("postgres_changes", { event: "*", schema: "public", table: "event_planning_checklist_items" }, scheduleRefresh)
       .subscribe();
     return () => {
       if (timeout) clearTimeout(timeout);
       supabase.removeChannel(channel);
     };
-  }, [user?.id]);
+  }, [user?.id, currentTenant?.id]);
 
   const loadPlannings = async () => {
     if (!user) return;
