@@ -12,7 +12,6 @@ import {
   Vote,
   FileText,
   Archive,
-  Phone,
   Calculator,
 } from "lucide-react";
 
@@ -89,7 +88,6 @@ export const navigationGroups: NavGroup[] = [
     icon: MoreHorizontal,
     subItems: [
       { id: "karten", label: "Karten", icon: MapPin },
-      { id: "calls", label: "Anrufe", icon: Phone },
       { id: "daten", label: "Daten", icon: Calculator },
     ]
   }

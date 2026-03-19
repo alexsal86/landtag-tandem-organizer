@@ -20,7 +20,6 @@ const prefetchMap: Record<string, ImportFn> = {
   time: () => import("@/components/TimeTrackingView"),
   eventplanning: () => import("@/components/EventPlanningView"),
   casefiles: () => import("@/components/CaseFilesView"),
-  calls: () => import("@/components/CallsView"),
   daten: () => import("@/components/DataView"),
   drucksachen: () => import("@/components/DrucksachenView"),
   chat: () => import("@/components/chat/MatrixChatView"),
