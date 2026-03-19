@@ -18,6 +18,7 @@ import { Plus, Save, X, Check, GripVertical, Minus, Edit, Trash2, CalendarDays, 
 type MeetingTemplateChildItem = {
   title: string;
   order_index: number;
+  type?: string;
   is_available?: boolean;
   is_optional?: boolean;
   system_type?: string;
@@ -36,6 +37,11 @@ type MeetingTemplateRecord = {
   name: string;
   description: string | null;
   template_items: MeetingTemplateItem[] | null;
+  is_default?: boolean;
+  default_participants?: any[];
+  default_recurrence?: any;
+  auto_create_count?: number;
+  default_visibility?: string;
 };
 
 export function MeetingTemplateManager() {
