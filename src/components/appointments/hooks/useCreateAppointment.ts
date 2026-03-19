@@ -150,6 +150,7 @@ export function useCreateAppointment(open: boolean, onOpenChange: (open: boolean
         } catch { toast({ title: "Warnung", description: "Einladungen konnten nicht versendet werden.", variant: "destructive" }); }
       }
       toast({ title: "Termin erstellt", description: "Der Termin wurde erfolgreich gespeichert." });
+      await queryClient.invalidateQueries({ queryKey: ["calendar-data"] });
       onOpenChange(false);
       navigate("/calendar");
     } catch (error: unknown) {
