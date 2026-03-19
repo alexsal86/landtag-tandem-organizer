@@ -328,8 +328,8 @@ export function MyWorkTeamTab() {
     };
     const channel = supabase
       .channel(`my-work-team-${user.id}`)
-      .on("postgres_changes", { event: "*", schema: "public", table: "time_entries" }, scheduleRefresh)
-      .on("postgres_changes", { event: "*", schema: "public", table: "employee_meeting_requests" }, scheduleRefresh)
+      .on("postgres_changes", { event: "*", schema: "public", table: "time_entries", filter: `tenant_id=eq.${currentTenant.id}` }, scheduleRefresh)
+      .on("postgres_changes", { event: "*", schema: "public", table: "employee_meeting_requests", filter: `tenant_id=eq.${currentTenant.id}` }, scheduleRefresh)
       .subscribe();
     return () => {
       if (timeout) clearTimeout(timeout);

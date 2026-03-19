@@ -256,7 +256,7 @@ export const useCaseWorkspaceData = ({ tenantId, userId }: { tenantId?: string; 
       .channel(`case-workspace-${tenantId}`)
       .on("postgres_changes", { event: "*", schema: "public", table: "case_items", filter: `tenant_id=eq.${tenantId}` }, scheduleRefresh)
       .on("postgres_changes", { event: "*", schema: "public", table: "case_files", filter: `tenant_id=eq.${tenantId}` }, scheduleRefresh)
-      .on("postgres_changes", { event: "*", schema: "public", table: "task_decisions" }, scheduleRefresh)
+      .on("postgres_changes", { event: "*", schema: "public", table: "task_decisions", filter: `tenant_id=eq.${tenantId}` }, scheduleRefresh)
       .subscribe();
 
     return () => {

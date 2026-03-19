@@ -11373,6 +11373,10 @@ export type Database = {
         Returns: Json
       }
       get_shared_note_ids: { Args: { _user_id: string }; Returns: string[] }
+      get_unread_notification_counts: {
+        Args: { p_user_id: string }
+        Returns: Json
+      }
       get_user_messages: {
         Args: { user_id_param: string }
         Returns: {

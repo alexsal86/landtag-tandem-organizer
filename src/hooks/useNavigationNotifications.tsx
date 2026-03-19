@@ -79,28 +79,16 @@ export const useNavigationNotifications = (): NavigationNotifications => {
     setIsLoading(true);
 
     try {
-      const { data: notifications, error: notificationsError } = await supabase
-        .from('notifications')
-        .select('navigation_context')
-        .eq('user_id', user.id)
-        .eq('is_read', false);
+      // Use RPC to get aggregated counts instead of fetching all notification rows
+      const { data: rpcCounts, error: rpcError } = await supabase
+        .rpc('get_unread_notification_counts', { p_user_id: user.id });
 
-      if (notificationsError) {
-        debugConsole.error('Error loading navigation counts:', notificationsError);
+      if (rpcError) {
+        debugConsole.error('Error loading navigation counts via RPC:', rpcError);
         return;
       }
 
-      const counts: NavigationCounts = {};
-      ((notifications as NavigationNotificationRow[] | null) ?? []).forEach(
-        (notification: NavigationNotificationRow): void => {
-          const context = notification.navigation_context;
-          if (!context) {
-            return;
-          }
-
-          counts[context] = (counts[context] ?? 0) + 1;
-        },
-      );
+      const counts: NavigationCounts = (rpcCounts as NavigationCounts) ?? {};
 
       const currentMonth = new Date().getMonth() + 1;
       const currentYear = new Date().getFullYear();
