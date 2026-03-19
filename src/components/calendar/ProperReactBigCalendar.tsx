@@ -9,6 +9,21 @@ import 'react-big-calendar/lib/addons/dragAndDrop/styles.css';
 import { CalendarEventAdapter, type RBCEvent } from './CalendarEventAdapter';
 import type { CalendarEvent } from './types';
 
+/* ── Compact month event component ── */
+const MonthEvent = ({ event }: { event: object }) => {
+  const rbcEvent = event as RBCEvent;
+  const timeStr = rbcEvent.allDay ? '' : format(rbcEvent.start, 'HH:mm', { locale: de });
+
+  return (
+    <div className="flex items-center gap-1 truncate text-[0.65rem] leading-tight">
+      {timeStr && (
+        <span className="font-semibold opacity-90">{timeStr}</span>
+      )}
+      <span className="truncate">{rbcEvent.title}</span>
+    </div>
+  );
+};
+
 interface ProperReactBigCalendarProps {
   events: CalendarEvent[];
   onEventSelect?: (event: CalendarEvent) => void;
@@ -178,12 +193,17 @@ const ProperReactBigCalendar: React.FC<ProperReactBigCalendarProps> = ({
       transition: 'all 0.2s ease',
     };
 
-    // Color coding by type
+    // Color coding by type – all colors must have good contrast with white text
     const categoryColors: Record<string, string> = {
-      'meeting': 'hsl(var(--primary))',
-      'deadline': 'hsl(var(--secondary))',
-      'appointment': 'hsl(var(--accent))',
-      'task': 'hsl(var(--gruene-green-light))',
+      'session': 'hsl(var(--primary))',
+      'meeting': 'hsl(var(--chart-2))',
+      'appointment': 'hsl(var(--chart-3))',
+      'deadline': 'hsl(var(--destructive))',
+      'blocked': 'hsl(var(--chart-4))',
+      'veranstaltung': 'hsl(var(--chart-5))',
+      'vacation': 'hsl(var(--chart-3))',
+      'vacation_request': 'hsl(var(--chart-4))',
+      'birthday': 'hsl(var(--primary))',
       'default': 'hsl(var(--primary))'
     };
 
@@ -379,6 +399,9 @@ const ProperReactBigCalendar: React.FC<ProperReactBigCalendarProps> = ({
         components={{
           week: {
             header: WeekHeader,
+          },
+          month: {
+            event: MonthEvent,
           },
         }}
         className="rbc-calendar"
