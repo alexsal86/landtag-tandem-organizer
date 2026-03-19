@@ -154,6 +154,7 @@ export function useEventPlanningData() {
     currentTenantId: currentTenant?.id,
     currentProfileId,
     selectedPlanningTitle: selectedPlanning?.title,
+    selectedPlanningConfirmedDate: selectedPlanning?.confirmed_date,
     toast,
     onRefreshDetails: fetchPlanningDetails,
     onSocialPlannerActionCreated: (itemId, action) => {

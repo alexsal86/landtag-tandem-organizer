@@ -21,6 +21,7 @@ interface UseChecklistOperationsParams {
   currentTenantId?: string;
   currentProfileId?: string | null;
   selectedPlanningTitle?: string;
+  selectedPlanningConfirmedDate?: string | null;
   toast: (opts: { title: string; description?: string; variant?: "default" | "destructive" }) => void;
   onRefreshDetails: (planningId: string) => Promise<void>;
   onSocialPlannerActionCreated?: (itemId: string, action: any) => void;
@@ -35,6 +36,7 @@ export function useChecklistOperations({
   currentTenantId,
   currentProfileId,
   selectedPlanningTitle,
+  selectedPlanningConfirmedDate,
   toast,
   onRefreshDetails,
   onSocialPlannerActionCreated,
@@ -173,6 +175,7 @@ export function useChecklistOperations({
             approval_state: "draft",
             format: "Social Media",
             notes: selectedPlanningTitle ? `Automatisch aus Veranstaltungsplanung "${selectedPlanningTitle}" angelegt.` : "Automatisch aus der Veranstaltungsplanung angelegt.",
+            scheduled_for: selectedPlanningConfirmedDate || null,
           } as any);
           if (plannerError) throw plannerError;
 
