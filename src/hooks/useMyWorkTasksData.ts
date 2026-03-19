@@ -210,15 +210,15 @@ export function useMyWorkTasksData(userId?: string) {
 
   return {
     assignedTasks: effectiveAssigned,
-    setAssignedTasks: (val: MyWorkTask[]) => setLocalOverrides(prev => ({ ...prev, assignedTasks: val })),
+    setAssignedTasks: (val: SetterArg<MyWorkTask[]>) => setLocalOverrides(prev => ({ ...prev, assignedTasks: resolveArg(val, prev.assignedTasks ?? assignedTasks) })),
     createdTasks: effectiveCreated,
-    setCreatedTasks: (val: MyWorkTask[]) => setLocalOverrides(prev => ({ ...prev, createdTasks: val })),
+    setCreatedTasks: (val: SetterArg<MyWorkTask[]>) => setLocalOverrides(prev => ({ ...prev, createdTasks: resolveArg(val, prev.createdTasks ?? createdTasks) })),
     subtasks: effectiveSubtasks,
-    setSubtasks: (val: Record<string, MyWorkTask[]>) => setLocalOverrides(prev => ({ ...prev, subtasks: val })),
+    setSubtasks: (val: SetterArg<Record<string, MyWorkTask[]>>) => setLocalOverrides(prev => ({ ...prev, subtasks: resolveArg(val, prev.subtasks ?? subtasks) })),
     taskSnoozes: effectiveSnoozes,
-    setTaskSnoozes: (val: Record<string, string>) => setLocalOverrides(prev => ({ ...prev, taskSnoozes: val })),
+    setTaskSnoozes: (val: SetterArg<Record<string, string>>) => setLocalOverrides(prev => ({ ...prev, taskSnoozes: resolveArg(val, prev.taskSnoozes ?? taskSnoozes) })),
     taskCommentCounts: effectiveComments,
-    setTaskCommentCounts: (val: Record<string, number>) => setLocalOverrides(prev => ({ ...prev, taskCommentCounts: val })),
+    setTaskCommentCounts: (val: SetterArg<Record<string, number>>) => setLocalOverrides(prev => ({ ...prev, taskCommentCounts: resolveArg(val, prev.taskCommentCounts ?? taskCommentCounts) })),
     loading: isLoading,
     loadTasks,
   };
