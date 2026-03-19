@@ -45,6 +45,7 @@ const appointmentSchema = z.object({
 export function useCreateAppointment(open: boolean, onOpenChange: (open: boolean) => void) {
   const navigate = useNavigate();
   const location = useLocation();
+  const queryClient = useQueryClient();
   const { user } = useAuth();
   const { currentTenant } = useTenant();
   const { toast } = useToast();
