@@ -205,7 +205,7 @@ export function useMeetingsData() {
       try {
         const { data: agendaItemsWithTasks, error } = await supabase
           .from('meeting_agenda_items')
-          .select('*')
+          .select('id, meeting_id, task_id')
           .not('task_id', 'is', null);
         if (error) throw error;
         if (agendaItemsWithTasks && agendaItemsWithTasks.length > 0) {
