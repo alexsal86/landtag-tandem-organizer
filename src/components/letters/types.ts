@@ -1,3 +1,5 @@
+import { supabase } from '@/integrations/supabase/client';
+
 export interface Letter {
   id: string;
   title: string;
@@ -155,4 +157,10 @@ export const formatContactAddress = (contact: Contact, useBusinessAddress = fals
   ].filter(Boolean);
 
   return addressParts.join('\n');
+};
+
+export const getLetterAssetPublicUrl = (storagePath?: string | null): string | null => {
+  if (!storagePath) return null;
+  const { data } = supabase.storage.from('letter-assets').getPublicUrl(storagePath);
+  return data?.publicUrl || null;
 };
