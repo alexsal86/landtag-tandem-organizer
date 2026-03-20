@@ -77,7 +77,7 @@ export function useDocumentsData(activeTab: string) {
     try {
       const { data, error } = await supabase
         .from('document_folders')
-        .select('id, name, description, parent_id, order_index, tenant_id, created_at')
+        .select('id, name, description, parent_folder_id, order_index, tenant_id, created_at')
         .eq('tenant_id', currentTenant.id)
         .order('order_index', { ascending: true });
       if (error) throw error;
@@ -100,7 +100,7 @@ export function useDocumentsData(activeTab: string) {
     try {
       const { data, error } = await supabase
         .from('letters')
-        .select('id, title, content, content_html, subject, status, recipient_name, recipient_address, contact_id, sender_info_id, template_id, sent_date, sent_method, expected_response_date, created_by, created_at, updated_at, user_id, tenant_id, category, show_pagination, archived_at, archived_by')
+        .select('id, title, content, content_html, subject, status, recipient_name, recipient_address, contact_id, sender_info_id, template_id, sent_date, sent_method, expected_response_date, created_by, created_at, updated_at, tenant_id, show_pagination')
         .eq('tenant_id', currentTenant.id)
         .order('created_at', { ascending: false });
       if (error) throw error;
