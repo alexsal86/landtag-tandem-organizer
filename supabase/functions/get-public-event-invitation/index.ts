@@ -13,13 +13,21 @@ type AuditStatus =
 
 const RATE_LIMIT_WINDOW_MS = 60_000;
 const RATE_LIMIT_MAX_REQUESTS = 30;
+const RATE_LIMIT_MAX_INVALID_REQUESTS = 10;
+const DEFAULT_RESPONSE_POLICY = "latest_wins" as const;
 const rateLimitStore = new Map<string, { count: number; resetAt: number }>();
+const invalidAttemptStore = new Map<
+  string,
+  { count: number; resetAt: number }
+>();
 
 function getClientIp(req: Request): string {
-  return req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ||
+  return (
+    req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ||
     req.headers.get("x-real-ip") ||
     req.headers.get("cf-connecting-ip") ||
-    "unknown";
+    "unknown"
+  );
 }
 
 function auditLog(status: AuditStatus, details: Record<string, unknown>) {
@@ -28,38 +36,43 @@ function auditLog(status: AuditStatus, details: Record<string, unknown>) {
       audit_type: "public_event_invitation_lookup",
       status,
       timestamp: new Date().toISOString(),
+      endpoint: "get-public-event-invitation",
       ...details,
     }),
   );
 }
 
-function rateLimit(ipAddress: string) {
+function rateLimit(
+  ipAddress: string,
+  store = rateLimitStore,
+  maxRequests = RATE_LIMIT_MAX_REQUESTS,
+) {
   const now = Date.now();
-  const current = rateLimitStore.get(ipAddress);
+  const current = store.get(ipAddress);
 
   if (!current || current.resetAt <= now) {
-    rateLimitStore.set(ipAddress, {
+    store.set(ipAddress, {
       count: 1,
       resetAt: now + RATE_LIMIT_WINDOW_MS,
     });
 
     return {
       allowed: true,
-      remaining: RATE_LIMIT_MAX_REQUESTS - 1,
+      remaining: maxRequests - 1,
       resetAt: now + RATE_LIMIT_WINDOW_MS,
     };
   }
 
-  if (current.count >= RATE_LIMIT_MAX_REQUESTS) {
+  if (current.count >= maxRequests) {
     return { allowed: false, remaining: 0, resetAt: current.resetAt };
   }
 
   current.count += 1;
-  rateLimitStore.set(ipAddress, current);
+  store.set(ipAddress, current);
 
   return {
     allowed: true,
-    remaining: RATE_LIMIT_MAX_REQUESTS - current.count,
+    remaining: maxRequests - current.count,
     resetAt: current.resetAt,
   };
 }
@@ -82,11 +95,9 @@ function jsonResponse(
 Deno.serve(
   withSafeHandler("get-public-event-invitation", async (req) => {
     if (req.method !== "POST") {
-      return jsonResponse(
-        { error: "Method not allowed" },
-        405,
-        { Allow: "POST" },
-      );
+      return jsonResponse({ error: "Method not allowed" }, 405, {
+        Allow: "POST",
+      });
     }
 
     const ipAddress = getClientIp(req);
@@ -96,6 +107,7 @@ Deno.serve(
       "X-RateLimit-Limit": String(RATE_LIMIT_MAX_REQUESTS),
       "X-RateLimit-Remaining": String(limit.remaining),
       "X-RateLimit-Reset": new Date(limit.resetAt).toISOString(),
+      "X-RateLimit-Policy": `lookup-ip;w=${Math.floor(RATE_LIMIT_WINDOW_MS / 1000)};max=${RATE_LIMIT_MAX_REQUESTS}, invalid-ip;w=${Math.floor(RATE_LIMIT_WINDOW_MS / 1000)};max=${RATE_LIMIT_MAX_INVALID_REQUESTS}`,
     };
 
     if (!limit.allowed) {
@@ -104,25 +116,56 @@ Deno.serve(
         userAgent,
         resetAt: new Date(limit.resetAt).toISOString(),
       });
+      return jsonResponse({ error: "Too many requests" }, 429, {
+        ...rateLimitHeaders,
+        "Retry-After": String(
+          Math.max(1, Math.ceil((limit.resetAt - Date.now()) / 1000)),
+        ),
+      });
+    }
+
+    const { public_code: publicCode } = await req.json();
+
+    const invalidLimitState = invalidAttemptStore.get(ipAddress);
+    if (
+      invalidLimitState &&
+      invalidLimitState.count >= RATE_LIMIT_MAX_INVALID_REQUESTS &&
+      invalidLimitState.resetAt > Date.now()
+    ) {
+      auditLog("rate_limited", {
+        ipAddress,
+        userAgent,
+        strategy: "invalid_attempts",
+        resetAt: new Date(invalidLimitState.resetAt).toISOString(),
+      });
       return jsonResponse(
-        { error: "Too many requests" },
+        { error: "Too many invalid requests", code: "rate_limited_invalid" },
         429,
         {
           ...rateLimitHeaders,
           "Retry-After": String(
-            Math.max(1, Math.ceil((limit.resetAt - Date.now()) / 1000)),
+            Math.max(
+              1,
+              Math.ceil((invalidLimitState.resetAt - Date.now()) / 1000),
+            ),
           ),
         },
       );
     }
 
-    const { public_code: publicCode } = await req.json();
-
     if (typeof publicCode !== "string" || publicCode.trim().length < 16) {
+      const invalidLimit = rateLimit(
+        ipAddress,
+        invalidAttemptStore,
+        Date.now(),
+        RATE_LIMIT_MAX_INVALID_REQUESTS,
+      );
       auditLog("bad_request", {
         ipAddress,
         userAgent,
         reason: "invalid_public_code_shape",
+        invalidAttemptCount:
+          RATE_LIMIT_MAX_INVALID_REQUESTS - invalidLimit.remaining,
       });
       return jsonResponse(
         { error: "Invalid code", code: "invalid_code" },
@@ -147,6 +190,7 @@ Deno.serve(
         ipAddress,
         userAgent,
         publicCodePrefix: normalizedCode.slice(0, 8),
+        failure_reason: "unknown_code",
       });
       return jsonResponse(
         { error: "Invalid code", code: "invalid_code" },
@@ -160,6 +204,7 @@ Deno.serve(
         ipAddress,
         userAgent,
         publicLinkId: publicLink.id,
+        failure_reason: "revoked_code",
       });
       return jsonResponse(
         { error: "Invitation revoked", code: "revoked_invitation" },
@@ -176,6 +221,7 @@ Deno.serve(
         ipAddress,
         userAgent,
         publicLinkId: publicLink.id,
+        failure_reason: "expired_code",
         expiresAt: publicLink.expires_at,
       });
       return jsonResponse(
@@ -260,6 +306,12 @@ Deno.serve(
           guest_display_name: rsvp.name,
           rsvp_status: rsvp.status,
           comment: rsvp.comment,
+          expires_at: publicLink.expires_at,
+          response_policy: DEFAULT_RESPONSE_POLICY,
+          allow_response_updates: true,
+          captcha_required: false,
+          captcha_provider: null,
+          captcha_site_key: null,
         },
       },
       200,
