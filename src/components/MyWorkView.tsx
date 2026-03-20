@@ -4,7 +4,7 @@ import { useSearchParams, useNavigate } from "react-router-dom";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
+
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -34,13 +34,9 @@ const MyWorkTerminePlanungTab = lazyWithRetry(() => import("./my-work/MyWorkTerm
 const MyWorkTimeTrackingTab = lazyWithRetry(() => import("./my-work/MyWorkTimeTrackingTab").then(m => ({ default: m.MyWorkTimeTrackingTab })));
 const MyWorkAppointmentFeedbackTab = lazyWithRetry(() => import("./my-work/MyWorkAppointmentFeedbackTab").then(m => ({ default: m.MyWorkAppointmentFeedbackTab })));
 const MyWorkFeedbackFeedTab = lazyWithRetry(() => import("./my-work/MyWorkFeedbackFeedTab").then(m => ({ default: m.MyWorkFeedbackFeedTab })));
-import { DashboardHeader } from "./dashboard/DashboardHeader";
-import { DashboardTasksSection } from "./dashboard/DashboardTasksSection";
-import { DashboardAppointments as MyWorkDashboardAppointments } from "./my-work/MyWorkDashboardAppointments";
-import { useDashboardData } from "@/hooks/useDashboardData";
+const MyWorkDashboardTab = lazyWithRetry(() => import("./my-work/MyWorkDashboardTab").then(m => ({ default: m.MyWorkDashboardTab })));
 import { canViewTab, getRoleFlags, type UserRole } from "@/components/my-work/tabVisibility";
 import { MyWorkTabErrorState } from "@/components/my-work/MyWorkTabErrorState";
-import { NewsWidget } from "./widgets/NewsWidget";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 
 interface TabCounts {
@@ -94,7 +90,6 @@ const ALLOWED_TABS = new Set<TabValue>(BASE_TABS.map((tab) => tab.value));
 export function MyWorkView() {
   const { user } = useAuth();
   const { currentTenant } = useTenant();
-  const dashboardData = useDashboardData();
   const { app_logo_url } = useAppSettings();
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
@@ -495,39 +490,11 @@ export function MyWorkView() {
 
       {/* Tab Content */}
       {activeTab === "dashboard" && (
-        <div className="space-y-6">
-          <DashboardHeader />
-          <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,35fr)_minmax(0,35fr)_minmax(0,30fr)] gap-6 items-start">
-            <Card>
-              <CardHeader className="pb-3">
-                <CardTitle className="text-base font-semibold">📋 Fristen</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <DashboardTasksSection />
-              </CardContent>
-            </Card>
-            <Card>
-              <CardHeader className="pb-3">
-                <CardTitle className="text-base font-semibold">
-                  📅 {dashboardData.isShowingTomorrow ? 'Deine Termine morgen' : 'Deine Termine heute'}
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <MyWorkDashboardAppointments data={dashboardData} />
-              </CardContent>
-            </Card>
-            <div className="min-w-0">
-              <Card>
-                <CardHeader className="pb-3">
-                  <CardTitle className="text-base font-semibold">📰 News</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <NewsWidget compact />
-                </CardContent>
-              </Card>
-            </div>
-          </div>
-        </div>
+        <ErrorBoundary fallback={tabError("Dashboard")}>
+          <Suspense fallback={tabFallback}>
+            <MyWorkDashboardTab />
+          </Suspense>
+        </ErrorBoundary>
       )}
 
       {activeTab === "capture" && (
@@ -543,7 +510,7 @@ export function MyWorkView() {
       {activeTab === "decisions" && <ErrorBoundary fallback={tabError("Entscheidungen")}><Suspense fallback={tabFallback}><MyWorkDecisionsTab /></Suspense></ErrorBoundary>}
       {activeTab === "jourFixe" && <ErrorBoundary fallback={tabError("Jour fixe & Planungen")}><Suspense fallback={tabFallback}><MyWorkTerminePlanungTab /></Suspense></ErrorBoundary>}
       {activeTab === "cases" && <ErrorBoundary fallback={tabError("Vorgänge")}><Suspense fallback={tabFallback}><MyWorkCasesWorkspace /></Suspense></ErrorBoundary>}
-      {activeTab === "redaktion" && <ErrorBoundary fallback={tabError("Redaktion")}><Suspense fallback={tabFallback}><MyWorkRedaktionTab specialDays={dashboardData.specialDays} /></Suspense></ErrorBoundary>}
+      {activeTab === "redaktion" && <ErrorBoundary fallback={tabError("Redaktion")}><Suspense fallback={tabFallback}><MyWorkRedaktionTab /></Suspense></ErrorBoundary>}
       {activeTab === "time" && <ErrorBoundary fallback={tabError("Meine Zeit")}><Suspense fallback={tabFallback}><MyWorkTimeTrackingTab /></Suspense></ErrorBoundary>}
       {activeTab === "team" && <ErrorBoundary fallback={tabError("Team")}><Suspense fallback={tabFallback}><MyWorkTeamTab /></Suspense></ErrorBoundary>}
       {activeTab === "feedbackfeed" && (
