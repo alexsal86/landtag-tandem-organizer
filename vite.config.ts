@@ -101,7 +101,11 @@ export default defineConfig(({ mode }) => ({
     rollupOptions: {
       output: {
         manualChunks: {
-          'vendor-react': ['react', 'react-dom', 'react-router-dom', '@tanstack/react-query'],
+          // Core React runtime — never changes between deploys, maximizes long-term cache hits
+          'vendor-react-core': ['react', 'react-dom'],
+          // Router & data-fetching split from core so a React Query upgrade doesn't bust the core cache
+          'vendor-react-router': ['react-router-dom'],
+          'vendor-react-query': ['@tanstack/react-query'],
           'vendor-editor': ['lexical', '@lexical/rich-text', '@lexical/list', '@lexical/link', '@lexical/markdown', '@lexical/html', '@lexical/code', '@lexical/table', '@lexical/yjs'],
           'vendor-matrix': ['matrix-js-sdk', 'yjs', 'y-websocket', 'y-indexeddb'],
           'vendor-pdf': ['pdfjs-dist', 'jspdf', 'docx'],
@@ -109,7 +113,10 @@ export default defineConfig(({ mode }) => ({
           'vendor-date': ['date-fns', 'rrule'],
           'vendor-motion': ['framer-motion'],
           'vendor-dnd': ['@hello-pangea/dnd'],
-          'vendor-ui': ['class-variance-authority', 'clsx', 'tailwind-merge', 'cmdk', 'input-otp', 'embla-carousel-react', 'vaul', 'sonner'],
+          // cmdk (command palette) is only needed when the search dialog is open — kept separate
+          // so it doesn't inflate the always-loaded vendor-ui bundle
+          'vendor-search': ['cmdk'],
+          'vendor-ui': ['class-variance-authority', 'clsx', 'tailwind-merge', 'input-otp', 'embla-carousel-react', 'vaul', 'sonner'],
         },
       },
     },
