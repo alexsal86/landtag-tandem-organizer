@@ -334,8 +334,7 @@
 (function() {
   'use strict';
 
-  var API_BASE = 'https://wawofclbehbkebjivdte.supabase.co/functions/v1';
-  var ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Indhd29mY2xiZWhia2Viaml2ZHRlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTMwOTMxNTEsImV4cCI6MjA2ODY2OTE1MX0.Bc5Jf1Uyvl_i8ooX-IK2kYNJMxpdCT1mKCwfFPVTI50';
+  var PROXY_BASE = 'https://einladung.alexander-salomon.de';
 
   var root = document.getElementById('rsvp-root');
   var code = extractCode();
@@ -380,13 +379,9 @@
     }
 
     try {
-      var res = await fetch(API_BASE + '/get-public-event-invitation', {
+      var res = await fetch(PROXY_BASE + '/pruefe', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': 'Bearer ' + ANON_KEY,
-          'apikey': ANON_KEY
-        },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ public_code: code })
       });
 
@@ -518,13 +513,9 @@
     var comment = (document.getElementById('rsvp-comment').value || '').trim();
 
     try {
-      var res = await fetch(API_BASE + '/respond-public-event-invitation', {
+      var res = await fetch(PROXY_BASE + '/antwort', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': 'Bearer ' + ANON_KEY,
-          'apikey': ANON_KEY
-        },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           public_code: code,
           status: selectedStatus,
