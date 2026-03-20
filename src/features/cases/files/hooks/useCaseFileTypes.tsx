@@ -13,6 +13,7 @@ export interface CaseFileType {
   color: string | null;
   order_index: number;
   is_active: boolean;
+  tenant_id: string;
   created_at: string;
   updated_at: string;
 }
@@ -24,11 +25,13 @@ export const useCaseFileTypes = () => {
   const { currentTenant } = useTenant();
 
   const fetchCaseFileTypes = useCallback(async () => {
+    if (!currentTenant) return;
     try {
       setLoading(true);
       const { data, error } = await supabase
         .from('case_file_types')
         .select('*')
+        .eq('tenant_id', currentTenant.id)
         .order('order_index');
 
       if (error) throw error;
@@ -43,7 +46,7 @@ export const useCaseFileTypes = () => {
     } finally {
       setLoading(false);
     }
-  }, [toast]);
+  }, [toast, currentTenant]);
 
   const createCaseFileType = async (data: { label: string; icon?: string; color?: string }) => {
     try {
