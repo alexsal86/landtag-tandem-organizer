@@ -1,6 +1,5 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { Resend } from "https://esm.sh/resend@4.0.0";
-import { requireAppBaseUrl } from "../_shared/url.ts";
 import { createServiceRoleClient } from "../_shared/supabase.ts";
 
 const resend = new Resend(Deno.env.get("RESEND_API_KEY"));
@@ -62,8 +61,6 @@ const handler = async (req: Request): Promise<Response> => {
 
     if (rsvpError) throw rsvpError;
 
-    const domain = requireAppBaseUrl(req);
-
     const getSubject = (rsvpName: string) => {
       switch (type) {
         case "reminder":
@@ -75,7 +72,7 @@ const handler = async (req: Request): Promise<Response> => {
       }
     };
 
-    const getEmailHtml = (rsvp: { name: string }, rsvpUrl: string) => {
+    const getEmailHtml = (rsvp: { name: string }, invitationUrl: string) => {
       const personalizedMessage = customMessage
         ? customMessage
             .replace(/\{name\}/g, rsvp.name)
@@ -118,11 +115,11 @@ const handler = async (req: Request): Promise<Response> => {
             </div>
             <p style="color: #666;">Bitte teilen Sie uns mit, ob Sie teilnehmen können:</p>
             <div style="text-align: center; margin: 30px 0;">
-              <a href="${rsvpUrl}" style="background: #f59e0b; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; font-weight: bold;">
+              <a href="${invitationUrl}" style="background: #f59e0b; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; font-weight: bold;">
                 Zu-/Absage mitteilen
               </a>
             </div>
-            <p style="color: #999; font-size: 14px;"><a href="${rsvpUrl}" style="color: #3b82f6;">${rsvpUrl}</a></p>
+            <p style="color: #999; font-size: 14px;"><a href="${invitationUrl}" style="color: #3b82f6;">${invitationUrl}</a></p>
             <hr style="border: none; border-top: 1px solid #eee; margin: 30px 0;">
             <p style="color: #999; font-size: 12px;">Diese E-Mail wurde automatisch generiert.</p>
           </div>
@@ -147,11 +144,11 @@ const handler = async (req: Request): Promise<Response> => {
           </div>
           <p style="color: #666;">Bitte teilen Sie uns mit, ob Sie teilnehmen können:</p>
           <div style="text-align: center; margin: 30px 0;">
-            <a href="${rsvpUrl}" style="background: #3b82f6; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; font-weight: bold;">
+            <a href="${invitationUrl}" style="background: #3b82f6; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; font-weight: bold;">
               Zu-/Absage mitteilen
             </a>
           </div>
-          <p style="color: #999; font-size: 14px;"><a href="${rsvpUrl}" style="color: #3b82f6;">${rsvpUrl}</a></p>
+          <p style="color: #999; font-size: 14px;"><a href="${invitationUrl}" style="color: #3b82f6;">${invitationUrl}</a></p>
           <hr style="border: none; border-top: 1px solid #eee; margin: 30px 0;">
           <p style="color: #999; font-size: 12px;">Diese E-Mail wurde automatisch generiert.</p>
         </div>
@@ -171,6 +168,8 @@ const handler = async (req: Request): Promise<Response> => {
 
         let publicLink = existingLink;
 
+        // Public invitations and reminders are bound only to the stable public domain
+        // and public_code, not to the old platform-specific event-rsvp route.
         if (!publicLink) {
           const { data: insertedLink, error: insertedLinkError } =
             await supabase
@@ -187,14 +186,14 @@ const handler = async (req: Request): Promise<Response> => {
           throw new Error(`Missing public RSVP code for ${rsvp.id}`);
         }
 
-        const rsvpUrl = `${domain}/event-rsvp/${eventPlanningId}?code=${publicLink.public_code}`;
+        const invitationUrl = `https://www.alexander-salomon.de/einladung/${publicLink.public_code}`;
 
         try {
           const emailResponse = await resend.emails.send({
             from: "Veranstaltung <noreply@alexander-salomon.de>",
             to: [rsvp.email],
             subject: getSubject(rsvp.name),
-            html: getEmailHtml(rsvp, rsvpUrl),
+            html: getEmailHtml(rsvp, invitationUrl),
           });
 
           console.log(`Email sent to ${rsvp.email}:`, emailResponse);
