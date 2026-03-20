@@ -763,7 +763,10 @@ export const EventRSVPManager = ({ eventPlanningId, eventTitle }: EventRSVPManag
                 <SelectContent>
                   <SelectItem value="accepted">Nur Zugesagte ({accepted})</SelectItem>
                   <SelectItem value="tentative">Nur Vorbehalt ({tentative})</SelectItem>
-                  <SelectItem value="all">Zugesagte + Vorbehalt ({accepted + tentative})</SelectItem>
+                  <SelectItem value="accepted_tentative">Zugesagte + Vorbehalt ({accepted + tentative})</SelectItem>
+                  <SelectItem value="declined">Nur Abgesagte ({declined})</SelectItem>
+                  <SelectItem value="invited">Nur Ausstehende ({pending})</SelectItem>
+                  <SelectItem value="everyone">Alle ({rsvps.length})</SelectItem>
                 </SelectContent>
               </Select>
             </div>
