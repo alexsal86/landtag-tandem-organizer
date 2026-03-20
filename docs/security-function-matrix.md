@@ -1,6 +1,6 @@
 # Security Function Matrix
 
-Stand: 2026-03-11
+Stand: 2026-03-20
 
 Diese Matrix klassifiziert alle Supabase Edge Functions nach Sicherheitsmodell.
 
@@ -51,6 +51,7 @@ Diese Matrix klassifiziert alle Supabase Edge Functions nach Sicherheitsmodell.
 | manage-tenant-user | true | authenticated | JWT erforderlich |
 | publish-to-ghost | true | authenticated | JWT erforderlich |
 | send-event-invitation | true | authenticated | JWT erforderlich |
+| get-public-event-invitation | false | public-readonly | Lädt RSVP-Gastdaten ausschließlich per `public_code`, validiert Widerruf/Ablauf und begrenzt Zugriffe per einfachem IP-Rate-Limit |
 | force-resync-calendar | true | authenticated | JWT + Rollen-/Tenant-Checks im Code |
 | global-logout | true | authenticated | JWT erforderlich |
 | run-automation-rule | true | authenticated | JWT erforderlich |
