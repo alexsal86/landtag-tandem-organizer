@@ -236,7 +236,7 @@ const handler = async (req: Request): Promise<Response> => {
           throw new Error(`Missing public RSVP code for ${rsvp.id}`);
         }
 
-        const invitationUrl = `https://www.alexander-salomon.de/einladung/${publicLink.public_code}`;
+        const invitationUrl = `https://www.alexander-salomon.de/einladung/?code=${encodeURIComponent(publicLink.public_code)}`;
 
         try {
           const emailResponse = await resend.emails.send({
