@@ -91,7 +91,6 @@ export function MyWorkView() {
   const { user } = useAuth();
   const { currentTenant } = useTenant();
   const { app_logo_url } = useAppSettings();
-  const { app_logo_url } = useAppSettings();
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
   const [refreshTrigger, setRefreshTrigger] = useState(0);
