@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useRef, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { 
@@ -76,9 +76,20 @@ export function GlobalSearchCommand() {
     category: "",
     status: ""
   });
+  const [debouncedQuery, setDebouncedQuery] = useState("");
+  const debounceTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const navigate = useNavigate();
   const { currentTenant } = useTenant();
   const { user } = useAuth();
+
+  // Debounce search query to avoid firing 12 queries on every keystroke
+  useEffect(() => {
+    if (debounceTimerRef.current) clearTimeout(debounceTimerRef.current);
+    debounceTimerRef.current = setTimeout(() => setDebouncedQuery(searchQuery), 500);
+    return () => {
+      if (debounceTimerRef.current) clearTimeout(debounceTimerRef.current);
+    };
+  }, [searchQuery]);
 
   // Load recent searches
   useEffect(() => {
@@ -162,21 +173,18 @@ export function GlobalSearchCommand() {
     enabled: !!currentTenant?.id && open
   });
 
-  // No more debounce wrapper - use direct state updates
-  // react-query handles the "debounce" via enabled condition (length >= 2)
-
-  // Search queries with fuzzy search
+  // Search queries with fuzzy search - all use debouncedQuery to prevent firing on every keystroke
   const { data: contacts, isLoading: contactsLoading } = useQuery({
-    queryKey: ['global-search-contacts', searchQuery, currentTenant?.id, filters],
+    queryKey: ['global-search-contacts', debouncedQuery, currentTenant?.id, filters],
     queryFn: async () => {
-      if (!searchQuery || searchQuery.length < 2) return [];
+      if (!debouncedQuery || debouncedQuery.length < 2) return [];
       let query = supabase
         .from('contacts')
         .select('id, name, organization, avatar_url, category, company, email, phone, mobile_phone, role, position')
         .eq('tenant_id', currentTenant?.id ?? '');
       
       // Fuzzy search using pg_trgm similarity
-      query = query.or(`name.ilike.%${searchQuery}%,organization.ilike.%${searchQuery}%,company.ilike.%${searchQuery}%,email.ilike.%${searchQuery}%,phone.ilike.%${searchQuery}%,mobile_phone.ilike.%${searchQuery}%,role.ilike.%${searchQuery}%,position.ilike.%${searchQuery}%`);
+      query = query.or(`name.ilike.%${debouncedQuery}%,organization.ilike.%${debouncedQuery}%,company.ilike.%${debouncedQuery}%,email.ilike.%${debouncedQuery}%,phone.ilike.%${debouncedQuery}%,mobile_phone.ilike.%${debouncedQuery}%,role.ilike.%${debouncedQuery}%,position.ilike.%${debouncedQuery}%`);
       
       if (filters.category) {
         query = query.eq('category', filters.category);
@@ -185,18 +193,18 @@ export function GlobalSearchCommand() {
       const { data } = await query.limit(10);
       return data || [];
     },
-    enabled: !!searchQuery && !!currentTenant?.id && searchQuery.length >= 2,
+    enabled: !!debouncedQuery && !!currentTenant?.id && debouncedQuery.length >= 2,
   });
 
   const { data: appointments, isLoading: appointmentsLoading } = useQuery({
-    queryKey: ['global-search-appointments', searchQuery, currentTenant?.id, filters],
+    queryKey: ['global-search-appointments', debouncedQuery, currentTenant?.id, filters],
     queryFn: async () => {
-      if (!searchQuery || searchQuery.length < 2) return [];
+      if (!debouncedQuery || debouncedQuery.length < 2) return [];
       let query = supabase
         .from('appointments')
         .select('id, title, start_time, location, category, description, meeting_details')
         .eq('tenant_id', currentTenant?.id ?? '')
-        .or(`title.ilike.%${searchQuery}%,location.ilike.%${searchQuery}%,description.ilike.%${searchQuery}%,meeting_details.ilike.%${searchQuery}%`);
+        .or(`title.ilike.%${debouncedQuery}%,location.ilike.%${debouncedQuery}%,description.ilike.%${debouncedQuery}%,meeting_details.ilike.%${debouncedQuery}%`);
       
       if (filters.dateFrom) {
         query = query.gte('start_time', filters.dateFrom);
@@ -214,18 +222,18 @@ export function GlobalSearchCommand() {
         .limit(10);
       return data || [];
     },
-    enabled: !!searchQuery && !!currentTenant?.id && searchQuery.length >= 2,
+    enabled: !!debouncedQuery && !!currentTenant?.id && debouncedQuery.length >= 2,
   });
 
   const { data: tasks, isLoading: tasksLoading } = useQuery({
-    queryKey: ['global-search-tasks', searchQuery, currentTenant?.id, filters],
+    queryKey: ['global-search-tasks', debouncedQuery, currentTenant?.id, filters],
     queryFn: async () => {
-      if (!searchQuery || searchQuery.length < 2) return [];
+      if (!debouncedQuery || debouncedQuery.length < 2) return [];
       let query = supabase
         .from('tasks')
         .select('id, title, due_date, status, priority, category')
         .eq('tenant_id', currentTenant?.id ?? '')
-        .or(`title.ilike.%${searchQuery}%,description.ilike.%${searchQuery}%,category.ilike.%${searchQuery}%,status.ilike.%${searchQuery}%`);
+        .or(`title.ilike.%${debouncedQuery}%,description.ilike.%${debouncedQuery}%,category.ilike.%${debouncedQuery}%,status.ilike.%${debouncedQuery}%`);
       
       if (filters.status && filters.status !== 'completed') {
         query = query.eq('status', filters.status);
@@ -245,18 +253,18 @@ export function GlobalSearchCommand() {
         .limit(10);
       return data || [];
     },
-    enabled: !!searchQuery && !!currentTenant?.id && searchQuery.length >= 2,
+    enabled: !!debouncedQuery && !!currentTenant?.id && debouncedQuery.length >= 2,
   });
 
   const { data: documents, isLoading: documentsLoading } = useQuery({
-    queryKey: ['global-search-documents', searchQuery, currentTenant?.id, filters],
+    queryKey: ['global-search-documents', debouncedQuery, currentTenant?.id, filters],
     queryFn: async () => {
-      if (!searchQuery || searchQuery.length < 2) return [];
+      if (!debouncedQuery || debouncedQuery.length < 2) return [];
       let query = supabase
         .from('documents')
         .select('id, title, description, category, status, file_name, document_type, file_type, tags')
         .eq('tenant_id', currentTenant?.id ?? '')
-        .or(`title.ilike.%${searchQuery}%,description.ilike.%${searchQuery}%,file_name.ilike.%${searchQuery}%,document_type.ilike.%${searchQuery}%,file_type.ilike.%${searchQuery}%`);
+        .or(`title.ilike.%${debouncedQuery}%,description.ilike.%${debouncedQuery}%,file_name.ilike.%${debouncedQuery}%,document_type.ilike.%${debouncedQuery}%,file_type.ilike.%${debouncedQuery}%`);
       
       if (filters.category) {
         query = query.eq('category', filters.category);
@@ -270,137 +278,139 @@ export function GlobalSearchCommand() {
         .limit(10);
       return data || [];
     },
-    enabled: !!searchQuery && !!currentTenant?.id && searchQuery.length >= 2,
+    enabled: !!debouncedQuery && !!currentTenant?.id && debouncedQuery.length >= 2,
   });
 
   const { data: letters, isLoading: lettersLoading } = useQuery({
-    queryKey: ['global-search-letters', searchQuery, currentTenant?.id],
+    queryKey: ['global-search-letters', debouncedQuery, currentTenant?.id],
     queryFn: async () => {
-      if (!searchQuery || searchQuery.length < 2) return [];
+      if (!debouncedQuery || debouncedQuery.length < 2) return [];
       const { data } = await supabase
         .from('letters')
         .select('id, title, recipient_name, letter_date, subject, subject_line, reference_number')
         .eq('tenant_id', currentTenant?.id ?? '')
-        .or(`title.ilike.%${searchQuery}%,recipient_name.ilike.%${searchQuery}%,subject.ilike.%${searchQuery}%,subject_line.ilike.%${searchQuery}%,reference_number.ilike.%${searchQuery}%`)
+        .or(`title.ilike.%${debouncedQuery}%,recipient_name.ilike.%${debouncedQuery}%,subject.ilike.%${debouncedQuery}%,subject_line.ilike.%${debouncedQuery}%,reference_number.ilike.%${debouncedQuery}%`)
         .order('letter_date', { ascending: false })
         .limit(10);
       return data || [];
     },
-    enabled: !!searchQuery && !!currentTenant?.id && searchQuery.length >= 2,
+    enabled: !!debouncedQuery && !!currentTenant?.id && debouncedQuery.length >= 2,
   });
 
   const { data: protocols, isLoading: protocolsLoading } = useQuery({
-    queryKey: ['global-search-protocols', searchQuery, currentTenant?.id],
+    queryKey: ['global-search-protocols', debouncedQuery, currentTenant?.id],
     queryFn: async () => {
-      if (!searchQuery || searchQuery.length < 2) return [];
+      if (!debouncedQuery || debouncedQuery.length < 2) return [];
       const { data } = await supabase
         .from('meetings')
         .select('id, title, meeting_date, description, location')
         .eq('tenant_id', currentTenant?.id ?? '')
-        .or(`title.ilike.%${searchQuery}%,description.ilike.%${searchQuery}%,location.ilike.%${searchQuery}%`)
+        .or(`title.ilike.%${debouncedQuery}%,description.ilike.%${debouncedQuery}%,location.ilike.%${debouncedQuery}%`)
         .order('meeting_date', { ascending: false })
         .limit(10);
       return data || [];
     },
-    enabled: !!searchQuery && !!currentTenant?.id && searchQuery.length >= 2,
+    enabled: !!debouncedQuery && !!currentTenant?.id && debouncedQuery.length >= 2,
   });
 
   const { data: caseFiles, isLoading: caseFilesLoading } = useQuery({
-    queryKey: ['global-search-casefiles', searchQuery, currentTenant?.id],
+    queryKey: ['global-search-casefiles', debouncedQuery, currentTenant?.id],
     queryFn: async () => {
-      if (!searchQuery || searchQuery.length < 2) return [];
+      if (!debouncedQuery || debouncedQuery.length < 2) return [];
       const { data } = await supabase
         .from('case_files')
         .select('id, title, reference_number, status, case_type, tags, current_status_note, processing_status, priority')
         .eq('tenant_id', currentTenant?.id ?? '')
-        .or(`title.ilike.%${searchQuery}%,description.ilike.%${searchQuery}%,reference_number.ilike.%${searchQuery}%,current_status_note.ilike.%${searchQuery}%,case_type.ilike.%${searchQuery}%,processing_status.ilike.%${searchQuery}%,status.ilike.%${searchQuery}%,priority.ilike.%${searchQuery}%`)
+        .or(`title.ilike.%${debouncedQuery}%,description.ilike.%${debouncedQuery}%,reference_number.ilike.%${debouncedQuery}%,current_status_note.ilike.%${debouncedQuery}%,case_type.ilike.%${debouncedQuery}%,processing_status.ilike.%${debouncedQuery}%,status.ilike.%${debouncedQuery}%,priority.ilike.%${debouncedQuery}%`)
         .order('updated_at', { ascending: false })
         .limit(10);
       return data || [];
     },
-    enabled: !!searchQuery && !!currentTenant?.id && searchQuery.length >= 2,
+    enabled: !!debouncedQuery && !!currentTenant?.id && debouncedQuery.length >= 2,
   });
 
   // Search archived tasks
   const { data: archivedTasks, isLoading: archivedTasksLoading } = useQuery({
-    queryKey: ['global-search-archived-tasks', searchQuery, currentTenant?.id],
+    queryKey: ['global-search-archived-tasks', debouncedQuery, currentTenant?.id],
     queryFn: async () => {
-      if (!searchQuery || searchQuery.length < 2) return [];
+      if (!debouncedQuery || debouncedQuery.length < 2) return [];
       const { data } = await supabase
         .from('archived_tasks')
         .select('id, title, description, completed_at, category, priority')
         .eq('user_id', user?.id ?? '')
-        .or(`title.ilike.%${searchQuery}%,description.ilike.%${searchQuery}%,category.ilike.%${searchQuery}%,priority.ilike.%${searchQuery}%`)
+        .or(`title.ilike.%${debouncedQuery}%,description.ilike.%${debouncedQuery}%,category.ilike.%${debouncedQuery}%,priority.ilike.%${debouncedQuery}%`)
         .order('archived_at', { ascending: false })
         .limit(10);
       return data || [];
     },
-    enabled: !!searchQuery && !!currentTenant?.id && !!user && searchQuery.length >= 2,
+    enabled: !!debouncedQuery && !!currentTenant?.id && !!user && debouncedQuery.length >= 2,
   });
 
   const { data: decisions, isLoading: decisionsLoading } = useQuery({
-    queryKey: ['global-search-decisions', searchQuery, currentTenant?.id],
+    queryKey: ['global-search-decisions', debouncedQuery, currentTenant?.id],
     queryFn: async () => {
-      if (!searchQuery || searchQuery.length < 2) return [];
+      if (!debouncedQuery || debouncedQuery.length < 2) return [];
       const { data } = await supabase
         .from('task_decisions')
         .select('id, title, description, status, priority, archived_at, updated_at')
         .eq('tenant_id', currentTenant!.id)
-        .or(`title.ilike.%${searchQuery}%,description.ilike.%${searchQuery}%,status.ilike.%${searchQuery}%`)
+        .or(`title.ilike.%${debouncedQuery}%,description.ilike.%${debouncedQuery}%,status.ilike.%${debouncedQuery}%`)
         .order('updated_at', { ascending: false })
         .limit(10);
       return data || [];
     },
-    enabled: !!searchQuery && !!currentTenant?.id && searchQuery.length >= 2,
+    enabled: !!debouncedQuery && !!currentTenant?.id && debouncedQuery.length >= 2,
   });
 
   const { data: plannings, isLoading: planningsLoading } = useQuery({
-    queryKey: ['global-search-plannings', searchQuery, currentTenant?.id],
+    queryKey: ['global-search-plannings', debouncedQuery, currentTenant?.id],
     queryFn: async () => {
-      if (!searchQuery || searchQuery.length < 2) return [];
+      if (!debouncedQuery || debouncedQuery.length < 2) return [];
       const { data } = await supabase
         .from('event_plannings')
         .select('id, title, description, location, contact_person, is_archived, archived_at, updated_at')
         .eq('tenant_id', currentTenant!.id)
-        .or(`title.ilike.%${searchQuery}%,description.ilike.%${searchQuery}%,location.ilike.%${searchQuery}%,contact_person.ilike.%${searchQuery}%`)
+        .or(`title.ilike.%${debouncedQuery}%,description.ilike.%${debouncedQuery}%,location.ilike.%${debouncedQuery}%,contact_person.ilike.%${debouncedQuery}%`)
         .order('updated_at', { ascending: false })
         .limit(10);
       return data || [];
     },
-    enabled: !!searchQuery && !!currentTenant?.id && searchQuery.length >= 2,
+    enabled: !!debouncedQuery && !!currentTenant?.id && debouncedQuery.length >= 2,
   });
 
-  const activeDecisions = decisions?.filter((decision) => !decision.archived_at) || [];
-  const archivedDecisions = decisions?.filter((decision) => !!decision.archived_at) || [];
-  const activePlannings = plannings?.filter((planning) => !planning.archived_at && !planning.is_archived) || [];
-  const archivedPlannings = plannings?.filter((planning) => !!planning.archived_at || !!planning.is_archived) || [];
+  const activeDecisions = useMemo(() => decisions?.filter((decision) => !decision.archived_at) || [], [decisions]);
+  const archivedDecisions = useMemo(() => decisions?.filter((decision) => !!decision.archived_at) || [], [decisions]);
+  const activePlannings = useMemo(() => plannings?.filter((planning) => !planning.archived_at && !planning.is_archived) || [], [plannings]);
+  const archivedPlannings = useMemo(() => plannings?.filter((planning) => !!planning.archived_at || !!planning.is_archived) || [], [plannings]);
 
-  // Track search when results change
+  // Track search analytics only when all queries have settled and the debounced query is stable
+  const isStillSearching = contactsLoading || appointmentsLoading || tasksLoading ||
+    documentsLoading || lettersLoading || protocolsLoading || caseFilesLoading ||
+    archivedTasksLoading || decisionsLoading || planningsLoading;
+
   useEffect(() => {
-    if (searchQuery && searchQuery.length >= 2) {
-      const resultCount = (contacts?.length || 0) + (appointments?.length || 0) + 
-                          (tasks?.length || 0) + (documents?.length || 0) + 
-                          (letters?.length || 0) + (protocols?.length || 0) +
-                          (caseFiles?.length || 0) + (archivedTasks?.length || 0) +
-                          activeDecisions.length + archivedDecisions.length +
-                          activePlannings.length + archivedPlannings.length;
-      const resultTypes: string[] = [];
-      if (contacts?.length) resultTypes.push('contacts');
-      if (appointments?.length) resultTypes.push('appointments');
-      if (tasks?.length) resultTypes.push('tasks');
-      if (documents?.length) resultTypes.push('documents');
-      if (letters?.length) resultTypes.push('letters');
-      if (protocols?.length) resultTypes.push('protocols');
-      if (caseFiles?.length) resultTypes.push('casefiles');
-      if (archivedTasks?.length) resultTypes.push('archived_tasks');
-      if (activeDecisions.length) resultTypes.push('decisions');
-      if (archivedDecisions.length) resultTypes.push('archived_decisions');
-      if (activePlannings.length) resultTypes.push('plannings');
-      if (archivedPlannings.length) resultTypes.push('archived_plannings');
-      
-      trackSearchMutation.mutate({ query: searchQuery, resultCount, resultTypes });
-    }
-  }, [contacts, appointments, tasks, documents, letters, protocols, caseFiles, archivedTasks, activeDecisions.length, archivedDecisions.length, activePlannings.length, archivedPlannings.length, searchQuery]);
+    if (!debouncedQuery || debouncedQuery.length < 2 || isStillSearching) return;
+    const resultCount = (contacts?.length || 0) + (appointments?.length || 0) +
+                        (tasks?.length || 0) + (documents?.length || 0) +
+                        (letters?.length || 0) + (protocols?.length || 0) +
+                        (caseFiles?.length || 0) + (archivedTasks?.length || 0) +
+                        activeDecisions.length + archivedDecisions.length +
+                        activePlannings.length + archivedPlannings.length;
+    const resultTypes: string[] = [];
+    if (contacts?.length) resultTypes.push('contacts');
+    if (appointments?.length) resultTypes.push('appointments');
+    if (tasks?.length) resultTypes.push('tasks');
+    if (documents?.length) resultTypes.push('documents');
+    if (letters?.length) resultTypes.push('letters');
+    if (protocols?.length) resultTypes.push('protocols');
+    if (caseFiles?.length) resultTypes.push('casefiles');
+    if (archivedTasks?.length) resultTypes.push('archived_tasks');
+    if (activeDecisions.length) resultTypes.push('decisions');
+    if (archivedDecisions.length) resultTypes.push('archived_decisions');
+    if (activePlannings.length) resultTypes.push('plannings');
+    if (archivedPlannings.length) resultTypes.push('archived_plannings');
+    trackSearchMutation.mutate({ query: debouncedQuery, resultCount, resultTypes });
+  }, [debouncedQuery, isStillSearching]);
 
   const runCommand = useCallback((command: () => void) => {
     if (searchQuery && searchQuery.length >= 2) {
@@ -445,9 +455,7 @@ export function GlobalSearchCommand() {
                      activeDecisions.length + archivedDecisions.length +
                      activePlannings.length + archivedPlannings.length > 0;
 
-  const isSearching = contactsLoading || appointmentsLoading || tasksLoading || 
-                      documentsLoading || lettersLoading || protocolsLoading || caseFilesLoading || archivedTasksLoading ||
-                      decisionsLoading || planningsLoading;
+  const isSearching = searchQuery !== debouncedQuery || isStillSearching;
 
   return (
     <CommandDialog open={open} onOpenChange={setOpen}>
