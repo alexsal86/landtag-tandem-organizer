@@ -4,6 +4,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { useTenant } from "@/hooks/useTenant";
 import { useToast } from "@/components/ui/use-toast";
 import { debugConsole } from "@/utils/debugConsole";
+import { handleAppError } from "@/utils/errorHandler";
 import type { Json, Tables, TablesInsert, TablesUpdate } from "@/integrations/supabase/types";
 
 export interface CaseFile {
