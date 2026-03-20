@@ -2,6 +2,7 @@ import { useNavigate } from "react-router-dom";
 import { Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Calendar } from "@/components/ui/calendar";
+import { CalendarSidebarSources } from "./CalendarSidebarSources";
 
 interface CalendarHeaderProps {
   onShowPolls: () => void;
@@ -89,6 +90,8 @@ export function CalendarHeader({ onShowPolls, selectedDate, onSelectDate }: Cale
           className="w-full p-0"
         />
       </div>
+
+      <CalendarSidebarSources />
     </div>
   );
 }
