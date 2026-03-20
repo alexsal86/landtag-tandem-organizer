@@ -90,7 +90,7 @@ const ALLOWED_TABS = new Set<TabValue>(BASE_TABS.map((tab) => tab.value));
 export function MyWorkView() {
   const { user } = useAuth();
   const { currentTenant } = useTenant();
-  const dashboardData = useDashboardData();
+  const { app_logo_url } = useAppSettings();
   const { app_logo_url } = useAppSettings();
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
