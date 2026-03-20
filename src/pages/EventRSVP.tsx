@@ -12,7 +12,15 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
-import { CalendarIcon, Check, Clock3, Info, MapPin, MessageSquare, X } from "lucide-react";
+import {
+  CalendarIcon,
+  Check,
+  Clock3,
+  Info,
+  MapPin,
+  MessageSquare,
+  X,
+} from "lucide-react";
 import { format } from "date-fns";
 import { de } from "date-fns/locale";
 import { useToast } from "@/hooks/use-toast";
@@ -29,8 +37,10 @@ type ResponseStatus = Exclude<InvitationStatus, "invited">;
 
 const LEGACY_RSVP_MIGRATION_PLAN = {
   newInvitationsTarget: "https://alexander-salomon.de",
-  oldLinksPolicy: "Bereits versandte Links auf /einladung/:code und /event-rsvp/:eventId bleiben für eine Übergangszeit erreichbar.",
-  shutdownPolicy: "Die Legacy-Routen werden erst nach kontrollierter Abschaltung entfernt, sobald keine Altlinks mehr im Umlauf sind.",
+  oldLinksPolicy:
+    "Bereits versandte Links auf /einladung/:code und /event-rsvp/:eventId bleiben für eine Übergangszeit erreichbar.",
+  shutdownPolicy:
+    "Die Legacy-Routen werden erst nach kontrollierter Abschaltung entfernt, sobald keine Altlinks mehr im Umlauf sind.",
 } as const;
 
 const responseButtonConfig: Array<{
@@ -65,7 +75,10 @@ const responseButtonConfig: Array<{
   },
 ];
 
-const statusCopy: Record<InvitationStatus, { label: string; className?: string; variant?: "outline" | "destructive" }> = {
+const statusCopy: Record<
+  InvitationStatus,
+  { label: string; className?: string; variant?: "outline" | "destructive" }
+> = {
   invited: { label: "Noch offen", variant: "outline" },
   accepted: { label: "Zugesagt", className: "bg-green-500 text-white" },
   tentative: { label: "Unter Vorbehalt", className: "bg-amber-500 text-white" },
@@ -111,7 +124,9 @@ export default function EventRSVP() {
 
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
-  const [invitation, setInvitation] = useState<PublicInvitationData | null>(null);
+  const [invitation, setInvitation] = useState<PublicInvitationData | null>(
+    null,
+  );
   const [comment, setComment] = useState("");
   const [confirmationVisible, setConfirmationVisible] = useState(false);
   const [loadError, setLoadError] = useState<string | null>(null);
@@ -141,7 +156,10 @@ export default function EventRSVP() {
     void loadInvitation();
   }, [code]);
 
-  const formattedDate = useMemo(() => formatEventDate(invitation?.eventDate ?? null), [invitation?.eventDate]);
+  const formattedDate = useMemo(
+    () => formatEventDate(invitation?.eventDate ?? null),
+    [invitation?.eventDate],
+  );
 
   const respond = async (status: ResponseStatus) => {
     if (!code || !invitation) return;
@@ -153,8 +171,11 @@ export default function EventRSVP() {
         ...invitation,
         rsvpStatus: response.status,
         comment: response.comment,
-        guestDisplayName: response.guestDisplayName ?? invitation.guestDisplayName,
+        guestDisplayName:
+          response.guestDisplayName ?? invitation.guestDisplayName,
         eventTitle: response.eventTitle ?? invitation.eventTitle,
+        responsePolicy: response.responsePolicy,
+        allowResponseUpdates: response.allowResponseUpdates,
       });
       setComment(response.comment ?? "");
       setConfirmationVisible(true);
@@ -181,11 +202,17 @@ export default function EventRSVP() {
 
   const currentStatus = invitation?.rsvpStatus ?? "invited";
   const badgeConfig = statusCopy[currentStatus];
+  const responsePolicyText =
+    invitation?.allowResponseUpdates === false
+      ? "Die erste Rückmeldung sperrt diesen Link. Für Änderungen muss intern ein neuer Einladungslink erzeugt werden."
+      : "Mehrfachklicks und spätere Änderungen überschreiben die vorherige Rückmeldung. Intern kann der Link bei Bedarf später neu erzeugt werden.";
 
   if (loading) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-slate-50 px-4">
-        <div className="text-sm text-muted-foreground animate-pulse">Einladung wird geladen…</div>
+        <div className="text-sm text-muted-foreground animate-pulse">
+          Einladung wird geladen…
+        </div>
       </div>
     );
   }
@@ -199,17 +226,24 @@ export default function EventRSVP() {
             <AlertTitle>Legacy-Einladungsseite</AlertTitle>
             <AlertDescription>
               Neue Einladungen werden sofort über{" "}
-              <a className="font-medium underline underline-offset-2" href={LEGACY_RSVP_MIGRATION_PLAN.newInvitationsTarget}>
+              <a
+                className="font-medium underline underline-offset-2"
+                href={LEGACY_RSVP_MIGRATION_PLAN.newInvitationsTarget}
+              >
                 alexander-salomon.de
               </a>{" "}
-              versendet. Bereits versandte Links bleiben nur während der Übergangszeit gültig.
+              versendet. Bereits versandte Links bleiben nur während der
+              Übergangszeit gültig.
             </AlertDescription>
           </Alert>
           <Card className="border-destructive/20 shadow-sm">
             <CardContent className="p-6 text-center sm:p-8">
-              <p className="text-base font-medium text-destructive">{loadError ?? "Ungültiger Einladungslink."}</p>
+              <p className="text-base font-medium text-destructive">
+                {loadError ?? "Ungültiger Einladungslink."}
+              </p>
               <p className="mt-2 text-sm text-muted-foreground">
-                Bitte verwenden Sie den vollständigen Link aus der Einladung oder wenden Sie sich an das Büro.
+                Bitte verwenden Sie den vollständigen Link aus der Einladung
+                oder wenden Sie sich an das Büro.
               </p>
             </CardContent>
           </Card>
@@ -227,7 +261,10 @@ export default function EventRSVP() {
           <AlertDescription className="space-y-2">
             <p>
               Neue Einladungen sollen ab sofort ausschließlich über{" "}
-              <a className="font-medium underline underline-offset-2" href={LEGACY_RSVP_MIGRATION_PLAN.newInvitationsTarget}>
+              <a
+                className="font-medium underline underline-offset-2"
+                href={LEGACY_RSVP_MIGRATION_PLAN.newInvitationsTarget}
+              >
                 alexander-salomon.de
               </a>{" "}
               bereitgestellt werden.
@@ -237,7 +274,8 @@ export default function EventRSVP() {
               <li>{LEGACY_RSVP_MIGRATION_PLAN.shutdownPolicy}</li>
             </ul>
             <p>
-              Diese Seite bleibt daher nur als Kompatibilitätspfad aktiv und sollte nicht mehr für neue Mailings verwendet werden.
+              Diese Seite bleibt daher nur als Kompatibilitätspfad aktiv und
+              sollte nicht mehr für neue Mailings verwendet werden.
             </p>
           </AlertDescription>
         </Alert>
@@ -245,25 +283,38 @@ export default function EventRSVP() {
           <CardHeader className="space-y-4 bg-white p-5 sm:p-8">
             <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
               <div className="space-y-2">
-                <p className="text-sm font-medium uppercase tracking-[0.2em] text-slate-500">Veranstaltungseinladung</p>
+                <p className="text-sm font-medium uppercase tracking-[0.2em] text-slate-500">
+                  Veranstaltungseinladung
+                </p>
                 <CardTitle className="flex items-start gap-3 text-2xl leading-tight sm:text-3xl">
                   <CalendarIcon className="mt-1 h-6 w-6 shrink-0 text-primary" />
                   <span>{invitation.eventTitle ?? "Veranstaltung"}</span>
                 </CardTitle>
               </div>
-              <Badge variant={badgeConfig.variant} className={badgeConfig.className}>
+              <Badge
+                variant={badgeConfig.variant}
+                className={badgeConfig.className}
+              >
                 {badgeConfig.label}
               </Badge>
             </div>
             <CardDescription className="space-y-4 text-sm leading-6 text-slate-700 sm:text-base">
-              {invitation.eventDescription && <p className="whitespace-pre-line">{invitation.eventDescription}</p>}
+              {invitation.eventDescription && (
+                <p className="whitespace-pre-line">
+                  {invitation.eventDescription}
+                </p>
+              )}
               <div className="grid gap-3 rounded-2xl bg-slate-50 p-4 sm:grid-cols-2">
                 {formattedDate && (
                   <div className="flex items-start gap-3">
                     <CalendarIcon className="mt-0.5 h-4 w-4 text-slate-500" />
                     <div>
-                      <p className="text-xs uppercase tracking-wide text-slate-500">Datum</p>
-                      <p className="font-medium text-slate-900">{formattedDate}</p>
+                      <p className="text-xs uppercase tracking-wide text-slate-500">
+                        Datum
+                      </p>
+                      <p className="font-medium text-slate-900">
+                        {formattedDate}
+                      </p>
                     </div>
                   </div>
                 )}
@@ -271,14 +322,22 @@ export default function EventRSVP() {
                   <div className="flex items-start gap-3">
                     <MapPin className="mt-0.5 h-4 w-4 text-slate-500" />
                     <div>
-                      <p className="text-xs uppercase tracking-wide text-slate-500">Ort</p>
-                      <p className="font-medium text-slate-900">{invitation.eventLocation}</p>
+                      <p className="text-xs uppercase tracking-wide text-slate-500">
+                        Ort
+                      </p>
+                      <p className="font-medium text-slate-900">
+                        {invitation.eventLocation}
+                      </p>
                     </div>
                   </div>
                 )}
                 <div className="sm:col-span-2">
-                  <p className="text-xs uppercase tracking-wide text-slate-500">Eingeladene Person</p>
-                  <p className="font-medium text-slate-900">{invitation.guestDisplayName ?? "Unbekannter Gast"}</p>
+                  <p className="text-xs uppercase tracking-wide text-slate-500">
+                    Eingeladene Person
+                  </p>
+                  <p className="font-medium text-slate-900">
+                    {invitation.guestDisplayName ?? "Unbekannter Gast"}
+                  </p>
                 </div>
               </div>
             </CardDescription>
@@ -289,10 +348,18 @@ export default function EventRSVP() {
               <div className="space-y-4 rounded-2xl border border-emerald-100 bg-emerald-50/60 p-4 sm:p-5">
                 <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                   <div>
-                    <h2 className="text-lg font-semibold text-slate-900">Antwort bestätigt</h2>
-                    <p className="text-sm text-slate-600">Ihre Rückmeldung wurde auf dieser Website gespeichert und kann bei Bedarf erneut geändert werden.</p>
+                    <h2 className="text-lg font-semibold text-slate-900">
+                      Antwort bestätigt
+                    </h2>
+                    <p className="text-sm text-slate-600">
+                      Ihre Rückmeldung wurde auf dieser Website gespeichert und
+                      kann bei Bedarf erneut geändert werden.
+                    </p>
                   </div>
-                  <Badge variant={badgeConfig.variant} className={badgeConfig.className}>
+                  <Badge
+                    variant={badgeConfig.variant}
+                    className={badgeConfig.className}
+                  >
                     {badgeConfig.label}
                   </Badge>
                 </div>
@@ -301,10 +368,16 @@ export default function EventRSVP() {
                     <p className="flex items-center gap-2 text-sm font-medium text-slate-700">
                       <MessageSquare className="h-4 w-4" /> Ihr Kommentar
                     </p>
-                    <p className="mt-2 whitespace-pre-line text-sm text-slate-600">{comment}</p>
+                    <p className="mt-2 whitespace-pre-line text-sm text-slate-600">
+                      {comment}
+                    </p>
                   </div>
                 )}
-                <Button variant="outline" className="w-full sm:w-auto" onClick={() => setConfirmationVisible(false)}>
+                <Button
+                  variant="outline"
+                  className="w-full sm:w-auto"
+                  onClick={() => setConfirmationVisible(false)}
+                >
                   Antwort ändern
                 </Button>
               </div>
@@ -313,7 +386,12 @@ export default function EventRSVP() {
             {!confirmationVisible ? (
               <div className="space-y-5">
                 <div className="space-y-2">
-                  <Label htmlFor="comment" className="text-sm font-medium text-slate-900">Kommentar</Label>
+                  <Label
+                    htmlFor="comment"
+                    className="text-sm font-medium text-slate-900"
+                  >
+                    Kommentar
+                  </Label>
                   <Textarea
                     id="comment"
                     value={comment}
@@ -324,30 +402,63 @@ export default function EventRSVP() {
                   />
                 </div>
 
+                <div className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm leading-6 text-slate-700">
+                  <p className="font-medium text-slate-900">
+                    Antwortlogik für diesen Link
+                  </p>
+                  <p>{responsePolicyText}</p>
+                  {invitation.expiresAt && (
+                    <p className="mt-1 text-xs text-slate-500">
+                      Gültig bis{" "}
+                      {format(
+                        new Date(invitation.expiresAt),
+                        "dd.MM.yyyy HH:mm",
+                        { locale: de },
+                      )}{" "}
+                      Uhr.
+                    </p>
+                  )}
+                </div>
+
                 <div className="grid gap-3 sm:grid-cols-3">
-                  {responseButtonConfig.map(({ status, label, mobileLabel, className, variant, icon: Icon }) => (
-                    <Button
-                      key={status}
-                      onClick={() => void respond(status)}
-                      disabled={saving}
-                      variant={variant}
-                      className={`min-h-12 rounded-2xl text-sm font-semibold sm:text-base ${className ?? ""}`.trim()}
-                    >
-                      <Icon className="mr-2 h-4 w-4" />
-                      <span className="sm:hidden">{mobileLabel}</span>
-                      <span className="hidden sm:inline">{label}</span>
-                    </Button>
-                  ))}
+                  {responseButtonConfig.map(
+                    ({
+                      status,
+                      label,
+                      mobileLabel,
+                      className,
+                      variant,
+                      icon: Icon,
+                    }) => (
+                      <Button
+                        key={status}
+                        onClick={() => void respond(status)}
+                        disabled={saving}
+                        variant={variant}
+                        className={`min-h-12 rounded-2xl text-sm font-semibold sm:text-base ${className ?? ""}`.trim()}
+                      >
+                        <Icon className="mr-2 h-4 w-4" />
+                        <span className="sm:hidden">{mobileLabel}</span>
+                        <span className="hidden sm:inline">{label}</span>
+                      </Button>
+                    ),
+                  )}
                 </div>
               </div>
             ) : null}
 
             <div className="rounded-lg border border-slate-200 bg-slate-50 px-4 py-3 text-xs leading-5 text-slate-600">
-              Technischer Hinweis: Dieser RSVP-Link gehört zur Übergangsphase der alten Einladungsstrecke. Neue Einladungen verweisen ab sofort auf{" "}
-              <a className="font-medium underline underline-offset-2" href={LEGACY_RSVP_MIGRATION_PLAN.newInvitationsTarget}>
+              Technischer Hinweis: Dieser RSVP-Link gehört zur Übergangsphase
+              der alten Einladungsstrecke. Neue Einladungen verweisen ab sofort
+              auf{" "}
+              <a
+                className="font-medium underline underline-offset-2"
+                href={LEGACY_RSVP_MIGRATION_PLAN.newInvitationsTarget}
+              >
                 alexander-salomon.de
               </a>
-              . Die Abschaltung dieses Legacy-Pfads erfolgt später kontrolliert, sobald keine Altlinks mehr im Umlauf sind.
+              . Die Abschaltung dieses Legacy-Pfads erfolgt später kontrolliert,
+              sobald keine Altlinks mehr im Umlauf sind.
             </div>
           </CardContent>
         </Card>

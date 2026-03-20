@@ -10,8 +10,10 @@ export const ALLOWED_STATUSES = ["accepted", "declined", "tentative"] as const;
 export const MAX_COMMENT_LENGTH = 500;
 export const RATE_LIMIT_WINDOW_MS = 60_000;
 export const RATE_LIMIT_MAX_REQUESTS = 20;
+export const RATE_LIMIT_MAX_INVALID_REQUESTS = 8;
+export const DEFAULT_RESPONSE_POLICY = "latest_wins" as const;
 
-export type AllowedStatus = typeof ALLOWED_STATUSES[number];
+export type AllowedStatus = (typeof ALLOWED_STATUSES)[number];
 export type AuditStatus =
   | "success"
   | "invalid_code"
@@ -46,7 +48,10 @@ export type EventRecord = {
 export type ServiceClient = {
   from: (table: string) => {
     select: (query: string) => {
-      eq: (column: string, value: string) => {
+      eq: (
+        column: string,
+        value: string,
+      ) => {
         maybeSingle: () => Promise<{ data: any; error: unknown }>;
       };
     };
@@ -62,6 +67,19 @@ export type HandlerDependencies = {
   now?: () => number;
   hashText?: (value: string) => Promise<string>;
   auditLog?: (status: AuditStatus, details: Record<string, unknown>) => void;
+  verifyCaptcha?: (payload: {
+    token?: string;
+    provider?: "turnstile" | "hcaptcha";
+    ipAddress: string;
+    userAgent: string;
+  }) => Promise<{
+    verified: boolean;
+    required: boolean;
+    provider: "turnstile" | "hcaptcha" | null;
+    siteKey: string | null;
+    error?: string;
+  }>;
+  invalidRateLimitStore?: Map<string, { count: number; resetAt: number }>;
 };
 
 function jsonResponse(
@@ -80,58 +98,80 @@ function jsonResponse(
 }
 
 export function getClientIp(req: Request): string {
-  return req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ||
+  return (
+    req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ||
     req.headers.get("x-real-ip") ||
     req.headers.get("cf-connecting-ip") ||
-    "unknown";
+    "unknown"
+  );
 }
 
-export function validatePublicCodeShape(publicCode: unknown): publicCode is string {
+export function validatePublicCodeShape(
+  publicCode: unknown,
+): publicCode is string {
   return typeof publicCode === "string" && publicCode.trim().length >= 16;
 }
 
 export function validateStatus(status: unknown): status is AllowedStatus {
-  return typeof status === "string" && (ALLOWED_STATUSES as readonly string[]).includes(status);
+  return (
+    typeof status === "string" &&
+    (ALLOWED_STATUSES as readonly string[]).includes(status)
+  );
 }
 
-export function validateComment(comment: unknown): comment is string | undefined {
-  return comment === undefined || comment === null || typeof comment === "string";
+export function validateComment(
+  comment: unknown,
+): comment is string | undefined {
+  return (
+    comment === undefined || comment === null || typeof comment === "string"
+  );
 }
 
 export function rateLimit(
   ipAddress: string,
   store: Map<string, { count: number; resetAt: number }>,
   now = Date.now(),
+  maxRequests = RATE_LIMIT_MAX_REQUESTS,
 ) {
   const current = store.get(ipAddress);
 
   if (!current || current.resetAt <= now) {
     const resetAt = now + RATE_LIMIT_WINDOW_MS;
     store.set(ipAddress, { count: 1, resetAt });
-    return { allowed: true, remaining: RATE_LIMIT_MAX_REQUESTS - 1, resetAt };
+    return { allowed: true, remaining: maxRequests - 1, resetAt };
   }
 
-  if (current.count >= RATE_LIMIT_MAX_REQUESTS) {
+  if (current.count >= maxRequests) {
     return { allowed: false, remaining: 0, resetAt: current.resetAt };
   }
 
   current.count += 1;
   store.set(ipAddress, current);
-  return { allowed: true, remaining: RATE_LIMIT_MAX_REQUESTS - current.count, resetAt: current.resetAt };
+  return {
+    allowed: true,
+    remaining: maxRequests - current.count,
+    resetAt: current.resetAt,
+  };
 }
 
 export async function defaultHashText(value: string): Promise<string> {
   const encoded = new TextEncoder().encode(value);
   const digest = await crypto.subtle.digest("SHA-256", encoded);
-  return Array.from(new Uint8Array(digest)).map((byte) => byte.toString(16).padStart(2, "0")).join("");
+  return Array.from(new Uint8Array(digest))
+    .map((byte) => byte.toString(16).padStart(2, "0"))
+    .join("");
 }
 
-function defaultAuditLog(status: AuditStatus, details: Record<string, unknown>) {
+function defaultAuditLog(
+  status: AuditStatus,
+  details: Record<string, unknown>,
+) {
   console.log(
     JSON.stringify({
       audit_type: "public_event_invitation_response",
       status,
       timestamp: new Date().toISOString(),
+      endpoint: "respond-public-event-invitation",
       ...details,
     }),
   );
@@ -142,7 +182,9 @@ export async function handleRespondPublicEventInvitation(
   deps: HandlerDependencies,
 ): Promise<Response> {
   if (req.method !== "POST") {
-    return jsonResponse({ error: "Method not allowed" }, 405, { Allow: "POST" });
+    return jsonResponse({ error: "Method not allowed" }, 405, {
+      Allow: "POST",
+    });
   }
 
   const ipAddress = getClientIp(req);
@@ -162,32 +204,131 @@ export async function handleRespondPublicEventInvitation(
   const auditLog = deps.auditLog ?? defaultAuditLog;
 
   if (!limit.allowed) {
-    auditLog("rate_limited", { ipAddress, userAgent, resetAt: new Date(limit.resetAt).toISOString() });
-    return jsonResponse(
-      { error: "Too many requests" },
-      429,
-      {
-        ...rateLimitHeaders,
-        "Retry-After": String(Math.max(1, Math.ceil((limit.resetAt - currentNow) / 1000))),
-      },
-    );
+    auditLog("rate_limited", {
+      ipAddress,
+      userAgent,
+      resetAt: new Date(limit.resetAt).toISOString(),
+    });
+    return jsonResponse({ error: "Too many requests" }, 429, {
+      ...rateLimitHeaders,
+      "Retry-After": String(
+        Math.max(1, Math.ceil((limit.resetAt - currentNow) / 1000)),
+      ),
+    });
   }
 
+  const invalidRateLimitStore = deps.invalidRateLimitStore ?? new Map();
+  const readInvalidLimit = () =>
+    rateLimit(
+      ipAddress,
+      invalidRateLimitStore,
+      currentNow,
+      RATE_LIMIT_MAX_INVALID_REQUESTS,
+    );
+  const currentInvalidLimit = invalidRateLimitStore.get(ipAddress);
   const body = await req.json().catch(() => null);
   const publicCode = body?.public_code;
   const status = body?.status;
   const commentInput = body?.comment;
+  const captchaToken =
+    typeof body?.captcha_token === "string"
+      ? body.captcha_token.trim()
+      : undefined;
+  const captchaProvider =
+    body?.captcha_provider === "turnstile" ||
+    body?.captcha_provider === "hcaptcha"
+      ? body.captcha_provider
+      : undefined;
 
-  if (!validatePublicCodeShape(publicCode) || !validateStatus(status) || !validateComment(commentInput)) {
-    auditLog("bad_request", { ipAddress, userAgent, reason: "invalid_payload_shape" });
-    return jsonResponse({ error: "Invalid request", code: "invalid_request" }, 400, rateLimitHeaders);
+  if (
+    currentInvalidLimit &&
+    currentInvalidLimit.count >= RATE_LIMIT_MAX_INVALID_REQUESTS &&
+    currentInvalidLimit.resetAt > currentNow
+  ) {
+    auditLog("rate_limited", {
+      ipAddress,
+      userAgent,
+      strategy: "invalid_attempts",
+      resetAt: new Date(currentInvalidLimit.resetAt).toISOString(),
+    });
+    return jsonResponse(
+      { error: "Too many invalid requests", code: "rate_limited_invalid" },
+      429,
+      {
+        ...rateLimitHeaders,
+        "Retry-After": String(
+          Math.max(
+            1,
+            Math.ceil((currentInvalidLimit.resetAt - currentNow) / 1000),
+          ),
+        ),
+      },
+    );
+  }
+
+  if (
+    !validatePublicCodeShape(publicCode) ||
+    !validateStatus(status) ||
+    !validateComment(commentInput)
+  ) {
+    const invalidLimit = readInvalidLimit();
+    auditLog("bad_request", {
+      ipAddress,
+      userAgent,
+      reason: "invalid_payload_shape",
+      invalidAttemptCount:
+        RATE_LIMIT_MAX_INVALID_REQUESTS - invalidLimit.remaining,
+    });
+    return jsonResponse(
+      { error: "Invalid request", code: "invalid_request" },
+      400,
+      rateLimitHeaders,
+    );
   }
 
   const normalizedCode = publicCode.trim();
-  const normalizedComment = typeof commentInput === "string" ? commentInput.trim() : "";
+  const normalizedComment =
+    typeof commentInput === "string" ? commentInput.trim() : "";
+  const captchaResult = await (
+    deps.verifyCaptcha ??
+    (async ({ provider }: { provider?: "turnstile" | "hcaptcha" }) => ({
+      verified: true,
+      required: false,
+      provider: provider ?? null,
+      siteKey: null,
+    }))
+  )({
+    token: captchaToken,
+    provider: captchaProvider,
+    ipAddress,
+    userAgent,
+  });
+
+  if (!captchaResult.verified) {
+    auditLog("bad_request", {
+      ipAddress,
+      userAgent,
+      reason: "captcha_failed",
+      captchaProvider: captchaResult.provider,
+      captchaRequired: captchaResult.required,
+    });
+    return jsonResponse(
+      {
+        error: captchaResult.error ?? "Captcha verification failed",
+        code: "captcha_failed",
+        captcha_required: captchaResult.required,
+      },
+      400,
+      rateLimitHeaders,
+    );
+  }
 
   if (normalizedComment.length > MAX_COMMENT_LENGTH) {
-    auditLog("bad_request", { ipAddress, userAgent, reason: "comment_too_long" });
+    auditLog("bad_request", {
+      ipAddress,
+      userAgent,
+      reason: "comment_too_long",
+    });
     return jsonResponse(
       {
         error: "Comment too long",
@@ -200,53 +341,101 @@ export async function handleRespondPublicEventInvitation(
   }
 
   const supabase = deps.createServiceRoleClient();
-  const { data: publicLink, error: publicLinkError } = await supabase
+  const { data: publicLink, error: publicLinkError } = (await supabase
     .from("event_rsvp_public_links")
     .select("id, event_rsvp_id, expires_at, revoked_at, response_count")
     .eq("public_code", normalizedCode)
-    .maybeSingle() as { data: PublicLinkRecord | null; error: unknown };
+    .maybeSingle()) as { data: PublicLinkRecord | null; error: unknown };
 
   if (publicLinkError) throw publicLinkError;
 
   if (!publicLink) {
-    auditLog("invalid_code", { ipAddress, userAgent, publicCodePrefix: normalizedCode.slice(0, 8) });
-    return jsonResponse({ error: "Invalid code", code: "invalid_code" }, 404, rateLimitHeaders);
+    auditLog("invalid_code", {
+      ipAddress,
+      userAgent,
+      publicCodePrefix: normalizedCode.slice(0, 8),
+      failure_reason: "unknown_code",
+    });
+    return jsonResponse(
+      { error: "Invalid code", code: "invalid_code" },
+      404,
+      rateLimitHeaders,
+    );
   }
 
   if (publicLink.revoked_at) {
-    auditLog("revoked", { ipAddress, userAgent, publicLinkId: publicLink.id });
-    return jsonResponse({ error: "Invitation revoked", code: "revoked_invitation" }, 410, rateLimitHeaders);
+    auditLog("revoked", {
+      ipAddress,
+      userAgent,
+      publicLinkId: publicLink.id,
+      failure_reason: "revoked_code",
+    });
+    return jsonResponse(
+      { error: "Invitation revoked", code: "revoked_invitation" },
+      410,
+      rateLimitHeaders,
+    );
   }
 
-  if (publicLink.expires_at && new Date(publicLink.expires_at).getTime() <= currentNow) {
-    auditLog("expired", { ipAddress, userAgent, publicLinkId: publicLink.id, expiresAt: publicLink.expires_at });
-    return jsonResponse({ error: "Invitation expired", code: "expired_invitation" }, 410, rateLimitHeaders);
+  if (
+    publicLink.expires_at &&
+    new Date(publicLink.expires_at).getTime() <= currentNow
+  ) {
+    auditLog("expired", {
+      ipAddress,
+      userAgent,
+      publicLinkId: publicLink.id,
+      expiresAt: publicLink.expires_at,
+      failure_reason: "expired_code",
+    });
+    return jsonResponse(
+      { error: "Invitation expired", code: "expired_invitation" },
+      410,
+      rateLimitHeaders,
+    );
   }
 
-  const { data: rsvp, error: rsvpError } = await supabase
+  const { data: rsvp, error: rsvpError } = (await supabase
     .from("event_rsvps")
     .select("id, event_planning_id, name, status")
     .eq("id", publicLink.event_rsvp_id)
-    .maybeSingle() as { data: RsvpRecord | null; error: unknown };
+    .maybeSingle()) as { data: RsvpRecord | null; error: unknown };
 
   if (rsvpError) throw rsvpError;
 
   if (!rsvp) {
-    auditLog("missing_rsvp", { ipAddress, userAgent, publicLinkId: publicLink.id });
-    return jsonResponse({ error: "Invitation unavailable", code: "invitation_unavailable" }, 404, rateLimitHeaders);
+    auditLog("missing_rsvp", {
+      ipAddress,
+      userAgent,
+      publicLinkId: publicLink.id,
+    });
+    return jsonResponse(
+      { error: "Invitation unavailable", code: "invitation_unavailable" },
+      404,
+      rateLimitHeaders,
+    );
   }
 
-  const { data: event, error: eventError } = await supabase
+  const { data: event, error: eventError } = (await supabase
     .from("event_plannings")
     .select("title, is_archived, archived_at")
     .eq("id", rsvp.event_planning_id)
-    .maybeSingle() as { data: EventRecord | null; error: unknown };
+    .maybeSingle()) as { data: EventRecord | null; error: unknown };
 
   if (eventError) throw eventError;
 
   if (!event || event.is_archived || event.archived_at) {
-    auditLog("missing_event", { ipAddress, userAgent, publicLinkId: publicLink.id, eventPlanningId: rsvp.event_planning_id });
-    return jsonResponse({ error: "Event unavailable", code: "event_unavailable" }, 404, rateLimitHeaders);
+    auditLog("missing_event", {
+      ipAddress,
+      userAgent,
+      publicLinkId: publicLink.id,
+      eventPlanningId: rsvp.event_planning_id,
+    });
+    return jsonResponse(
+      { error: "Event unavailable", code: "event_unavailable" },
+      404,
+      rateLimitHeaders,
+    );
   }
 
   const respondedAt = new Date(currentNow).toISOString();
@@ -293,6 +482,8 @@ export async function handleRespondPublicEventInvitation(
         responded_at: respondedAt,
         guest_display_name: rsvp.name,
         event_title: event.title,
+        response_policy: DEFAULT_RESPONSE_POLICY,
+        allow_response_updates: true,
       },
     },
     200,
