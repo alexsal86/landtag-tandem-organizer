@@ -34,13 +34,9 @@ const MyWorkTerminePlanungTab = lazyWithRetry(() => import("./my-work/MyWorkTerm
 const MyWorkTimeTrackingTab = lazyWithRetry(() => import("./my-work/MyWorkTimeTrackingTab").then(m => ({ default: m.MyWorkTimeTrackingTab })));
 const MyWorkAppointmentFeedbackTab = lazyWithRetry(() => import("./my-work/MyWorkAppointmentFeedbackTab").then(m => ({ default: m.MyWorkAppointmentFeedbackTab })));
 const MyWorkFeedbackFeedTab = lazyWithRetry(() => import("./my-work/MyWorkFeedbackFeedTab").then(m => ({ default: m.MyWorkFeedbackFeedTab })));
-import { DashboardHeader } from "./dashboard/DashboardHeader";
-import { DashboardTasksSection } from "./dashboard/DashboardTasksSection";
-import { DashboardAppointments as MyWorkDashboardAppointments } from "./my-work/MyWorkDashboardAppointments";
-import { useDashboardData } from "@/hooks/useDashboardData";
+const MyWorkDashboardTab = lazyWithRetry(() => import("./my-work/MyWorkDashboardTab").then(m => ({ default: m.MyWorkDashboardTab })));
 import { canViewTab, getRoleFlags, type UserRole } from "@/components/my-work/tabVisibility";
 import { MyWorkTabErrorState } from "@/components/my-work/MyWorkTabErrorState";
-import { NewsWidget } from "./widgets/NewsWidget";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 
 interface TabCounts {
