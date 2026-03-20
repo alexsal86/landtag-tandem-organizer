@@ -2,15 +2,23 @@ import { useNavigate } from "react-router-dom";
 import { Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Calendar } from "@/components/ui/calendar";
-import { CalendarSidebarSources } from "./CalendarSidebarSources";
+import { CalendarSidebarSources, type CalendarSource } from "./CalendarSidebarSources";
 
 interface CalendarHeaderProps {
   onShowPolls: () => void;
   selectedDate: Date;
   onSelectDate: (date: Date) => void;
+  hiddenSourceKeys: string[];
+  onToggleSourceVisibility: (source: CalendarSource) => void;
 }
 
-export function CalendarHeader({ onShowPolls, selectedDate, onSelectDate }: CalendarHeaderProps) {
+export function CalendarHeader({
+  onShowPolls,
+  selectedDate,
+  onSelectDate,
+  hiddenSourceKeys,
+  onToggleSourceVisibility,
+}: CalendarHeaderProps) {
   const navigate = useNavigate();
 
   const changeMonthPreservingDay = (direction: 1 | -1) => {
@@ -91,7 +99,10 @@ export function CalendarHeader({ onShowPolls, selectedDate, onSelectDate }: Cale
         />
       </div>
 
-      <CalendarSidebarSources />
+      <CalendarSidebarSources
+        hiddenSourceKeys={hiddenSourceKeys}
+        onToggleVisibility={onToggleSourceVisibility}
+      />
     </div>
   );
 }

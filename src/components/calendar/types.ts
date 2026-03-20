@@ -24,6 +24,8 @@ export interface CalendarEvent {
   _isExternal?: boolean;
   _isRecurring?: boolean;
   _originalId?: string;
+  sourceScope?: "internal" | "external" | "system";
+  sourceId?: string;
 }
 
 export const getEventTypeColor = (type: CalendarEvent["type"]) => {
