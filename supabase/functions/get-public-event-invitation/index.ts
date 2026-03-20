@@ -45,9 +45,9 @@ function auditLog(status: AuditStatus, details: Record<string, unknown>) {
 function rateLimit(
   ipAddress: string,
   store = rateLimitStore,
+  now = Date.now(),
   maxRequests = RATE_LIMIT_MAX_REQUESTS,
 ) {
-  const now = Date.now();
   const current = store.get(ipAddress);
 
   if (!current || current.resetAt <= now) {
