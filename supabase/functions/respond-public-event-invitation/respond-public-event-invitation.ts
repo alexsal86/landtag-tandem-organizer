@@ -45,6 +45,7 @@ export type EventRecord = {
   archived_at: string | null;
 };
 
+// deno-lint-ignore no-explicit-any
 export type ServiceClient = {
   from: (table: string) => {
     select: (query: string) => {
@@ -52,11 +53,11 @@ export type ServiceClient = {
         column: string,
         value: string,
       ) => {
-        maybeSingle: () => Promise<{ data: any; error: unknown }>;
+        maybeSingle: () => PromiseLike<{ data: any; error: unknown }>;
       };
     };
     update: (values: Record<string, unknown>) => {
-      eq: (column: string, value: string) => Promise<{ error: unknown }>;
+      eq: (column: string, value: string) => PromiseLike<{ error: unknown }>;
     };
   };
 };

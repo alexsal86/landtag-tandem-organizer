@@ -4,7 +4,7 @@ import {
   MAX_COMMENT_LENGTH,
   RATE_LIMIT_MAX_INVALID_REQUESTS,
   RATE_LIMIT_MAX_REQUESTS,
-} from "./respond-public-event-invitation";
+} from "./respond-public-event-invitation.ts";
 
 function createMockClient(overrides?: {
   publicLink?: any;
