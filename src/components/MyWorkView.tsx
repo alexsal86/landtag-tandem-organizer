@@ -490,39 +490,11 @@ export function MyWorkView() {
 
       {/* Tab Content */}
       {activeTab === "dashboard" && (
-        <div className="space-y-6">
-          <DashboardHeader />
-          <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,35fr)_minmax(0,35fr)_minmax(0,30fr)] gap-6 items-start">
-            <Card>
-              <CardHeader className="pb-3">
-                <CardTitle className="text-base font-semibold">📋 Fristen</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <DashboardTasksSection />
-              </CardContent>
-            </Card>
-            <Card>
-              <CardHeader className="pb-3">
-                <CardTitle className="text-base font-semibold">
-                  📅 {dashboardData.isShowingTomorrow ? 'Deine Termine morgen' : 'Deine Termine heute'}
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <MyWorkDashboardAppointments data={dashboardData} />
-              </CardContent>
-            </Card>
-            <div className="min-w-0">
-              <Card>
-                <CardHeader className="pb-3">
-                  <CardTitle className="text-base font-semibold">📰 News</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <NewsWidget compact />
-                </CardContent>
-              </Card>
-            </div>
-          </div>
-        </div>
+        <ErrorBoundary fallback={tabError("Dashboard")}>
+          <Suspense fallback={tabFallback}>
+            <MyWorkDashboardTab />
+          </Suspense>
+        </ErrorBoundary>
       )}
 
       {activeTab === "capture" && (
