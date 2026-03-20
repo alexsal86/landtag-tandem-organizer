@@ -11369,7 +11369,7 @@ export type Database = {
           letters_count: number
           priority: string
           processing_status: string
-          processing_statuses: Json
+          processing_statuses: string[]
           reference_number: string
           risks_and_opportunities: Json
           start_date: string
