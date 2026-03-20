@@ -78,7 +78,7 @@ In Ghost Admin → **Settings** → **Labs** → **Routes**:
 
 ```yaml
 routes:
-  /einladung/{code}/:
+  /einladung/:
     template: custom-einladung
 ```
 
