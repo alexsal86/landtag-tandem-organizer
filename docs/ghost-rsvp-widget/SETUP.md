@@ -91,7 +91,7 @@ Theme als ZIP hochladen oder Ghost neu starten.
 Öffnen Sie eine Test-URL mit einem echten RSVP-Code:
 
 ```
-https://www.alexander-salomon.de/einladung/DEIN_TEST_CODE
+https://www.alexander-salomon.de/einladung/?code=DEIN_TEST_CODE
 ```
 
 ## Architektur

@@ -7,7 +7,7 @@ export default function LegacyEventRSVPRedirect() {
   const code = searchParams.get("code");
 
   if (code) {
-    return <Navigate to={`/einladung/${encodeURIComponent(code)}`} replace />;
+    return <Navigate to={`/einladung/?code=${encodeURIComponent(code)}`} replace />;
   }
 
   return (
