@@ -479,6 +479,12 @@
       "rule": "wildcard-cors",
       "reviewer": "@security-reviewer",
       "reason": "Legacy implementation; remediation tracked separately."
+    },
+    {
+      "functionName": "respond-public-event-invitation",
+      "rule": "missing-webhook-secret",
+      "reviewer": "@security-reviewer",
+      "reason": "Public RSVP write endpoint intentionally relies on a high-entropy public_code plus server-side validation/rate limiting instead of a second shared secret."
     }
   ]
 }

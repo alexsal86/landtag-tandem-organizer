@@ -18,6 +18,29 @@ import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { debugConsole } from "@/utils/debugConsole";
 
+type PublicInvitationPayload = {
+  invitation: {
+    event_title: string | null;
+    event_description: string | null;
+    event_date: string | null;
+    event_location: string | null;
+    guest_display_name: string | null;
+    rsvp_status: string;
+    comment: string | null;
+  };
+};
+
+type PublicInvitationResponse = {
+  success: true;
+  response: {
+    status: "accepted" | "declined" | "tentative";
+    comment: string | null;
+    responded_at: string;
+    guest_display_name: string | null;
+    event_title: string | null;
+  };
+};
+
 export default function EventRSVP() {
   const { eventId } = useParams<{ eventId: string }>();
   const [searchParams] = useSearchParams();
@@ -39,33 +62,47 @@ export default function EventRSVP() {
         return;
       }
       try {
-        let rsvpData: any = null;
-
         if (publicCode) {
-          const { data: publicLink, error: publicLinkError } = await supabase
-            .from("event_rsvp_public_links")
-            .select("id, event_rsvp_id, event_rsvps!inner(*)")
-            .eq("public_code", publicCode)
-            .eq("event_rsvps.event_planning_id", eventId)
-            .is("revoked_at", null)
-            .or("expires_at.is.null,expires_at.gt." + new Date().toISOString())
-            .maybeSingle();
+          const { data, error } = await supabase.functions.invoke<PublicInvitationPayload>(
+            "get-public-event-invitation",
+            {
+              body: { public_code: publicCode },
+            },
+          );
 
-          if (publicLinkError) throw publicLinkError;
-          if (!publicLink?.event_rsvps) {
+          if (error) throw error;
+
+          const invitation = data?.invitation;
+          if (!invitation) {
             setLoading(false);
             return;
           }
 
-          rsvpData = Array.isArray(publicLink.event_rsvps)
-            ? publicLink.event_rsvps[0]
-            : publicLink.event_rsvps;
+          const rsvpData = {
+            name: invitation.guest_display_name,
+            status: invitation.rsvp_status,
+            comment: invitation.comment,
+          };
 
-          await supabase
-            .from("event_rsvp_public_links")
-            .update({ last_used_at: new Date().toISOString() })
-            .eq("id", publicLink.id);
-        } else if (legacyToken) {
+          setRsvp(rsvpData);
+          setComment(invitation.comment || "");
+          setEvent({
+            title: invitation.event_title,
+            description: invitation.event_description,
+            confirmed_date: invitation.event_date,
+            location: invitation.event_location,
+          });
+
+          if (invitation.rsvp_status !== "invited") {
+            setSubmitted(true);
+          }
+
+          return;
+        }
+
+        let rsvpData: any = null;
+
+        if (legacyToken) {
           const { data: legacyRsvpData, error: rsvpError } = await supabase
             .from("event_rsvps")
             .select("*")
@@ -85,7 +122,6 @@ export default function EventRSVP() {
         setRsvp(rsvpData);
         setComment(rsvpData.comment || "");
 
-        // Load event
         const { data: eventData, error: eventError } = await supabase
           .from("event_plannings")
           .select("title, description, confirmed_date, location")
@@ -108,21 +144,28 @@ export default function EventRSVP() {
   }, [eventId, legacyToken, publicCode]);
 
   const respond = async (status: "accepted" | "declined" | "tentative") => {
-    if (!rsvp) return;
+    if (!rsvp || !publicCode) return;
     setSaving(true);
     try {
-      const { error } = await supabase
-        .from("event_rsvps")
-        .update({
-          status,
-          comment: comment || null,
-          responded_at: new Date().toISOString(),
-        })
-        .eq("id", rsvp.id);
+      const { data, error } = await supabase.functions.invoke<PublicInvitationResponse>(
+        "respond-public-event-invitation",
+        {
+          body: {
+            public_code: publicCode,
+            status,
+            comment: comment || undefined,
+          },
+        },
+      );
 
       if (error) throw error;
 
-      setRsvp({ ...rsvp, status });
+      setRsvp({
+        ...rsvp,
+        status: data?.response.status ?? status,
+        comment: data?.response.comment ?? (comment || null),
+      });
+      setComment(data?.response.comment ?? comment ?? "");
       setSubmitted(true);
       toast({
         title: "Antwort gespeichert",

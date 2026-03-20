@@ -151,6 +151,8 @@ verify_jwt = true
 [functions.get-public-event-invitation]
 verify_jwt = false
 
+[functions.respond-public-event-invitation]
+verify_jwt = false
 
 [functions.force-resync-calendar]
 verify_jwt = true
