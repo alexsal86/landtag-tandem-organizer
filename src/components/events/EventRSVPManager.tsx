@@ -80,7 +80,7 @@ export const EventRSVPManager = ({ eventPlanningId, eventTitle }: EventRSVPManag
   // Note/hint dialog
   const [noteDialogOpen, setNoteDialogOpen] = useState(false);
   const [noteText, setNoteText] = useState('');
-  const [noteTarget, setNoteTarget] = useState<'accepted' | 'tentative' | 'all'>('accepted');
+  const [noteTarget, setNoteTarget] = useState<'accepted' | 'tentative' | 'accepted_tentative' | 'declined' | 'invited' | 'everyone'>('accepted');
   const [sendingNote, setSendingNote] = useState(false);
 
   // Distribution list
