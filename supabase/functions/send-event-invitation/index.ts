@@ -3,6 +3,29 @@ import { Resend } from "https://esm.sh/resend@4.0.0";
 import { createServiceRoleClient } from "../_shared/supabase.ts";
 
 const resend = new Resend(Deno.env.get("RESEND_API_KEY"));
+const DEFAULT_PUBLIC_LINK_TTL_DAYS = 45;
+
+function computePublicLinkExpiry(
+  confirmedDate: string | null | undefined,
+): string {
+  const now = new Date();
+  const defaultExpiry = new Date(
+    now.getTime() + DEFAULT_PUBLIC_LINK_TTL_DAYS * 24 * 60 * 60 * 1000,
+  );
+
+  if (!confirmedDate) return defaultExpiry.toISOString();
+
+  const parsedEventDate = new Date(confirmedDate);
+  if (Number.isNaN(parsedEventDate.getTime()))
+    return defaultExpiry.toISOString();
+
+  const eventExpiry = new Date(
+    parsedEventDate.getTime() + 14 * 24 * 60 * 60 * 1000,
+  );
+  return new Date(
+    Math.max(defaultExpiry.getTime(), eventExpiry.getTime()),
+  ).toISOString();
+}
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -159,7 +182,7 @@ const handler = async (req: Request): Promise<Response> => {
       (rsvps || []).map(async (rsvp) => {
         const { data: existingLink, error: existingLinkError } = await supabase
           .from("event_rsvp_public_links")
-          .select("id, public_code")
+          .select("id, public_code, expires_at")
           .eq("event_rsvp_id", rsvp.id)
           .is("revoked_at", null)
           .maybeSingle();
@@ -174,12 +197,39 @@ const handler = async (req: Request): Promise<Response> => {
           const { data: insertedLink, error: insertedLinkError } =
             await supabase
               .from("event_rsvp_public_links")
-              .insert({ event_rsvp_id: rsvp.id })
-              .select("id, public_code")
+              .insert({
+                event_rsvp_id: rsvp.id,
+                expires_at: computePublicLinkExpiry(event.confirmed_date),
+              })
+              .select("id, public_code, expires_at")
               .single();
 
           if (insertedLinkError) throw insertedLinkError;
           publicLink = insertedLink;
+        }
+
+        if (
+          publicLink?.expires_at &&
+          new Date(publicLink.expires_at).getTime() <= Date.now()
+        ) {
+          const { error: revokeExpiredLinkError } = await supabase
+            .from("event_rsvp_public_links")
+            .update({ revoked_at: new Date().toISOString() })
+            .eq("id", publicLink.id);
+
+          if (revokeExpiredLinkError) throw revokeExpiredLinkError;
+
+          const { data: rotatedLink, error: rotatedLinkError } = await supabase
+            .from("event_rsvp_public_links")
+            .insert({
+              event_rsvp_id: rsvp.id,
+              expires_at: computePublicLinkExpiry(event.confirmed_date),
+            })
+            .select("id, public_code, expires_at")
+            .single();
+
+          if (rotatedLinkError) throw rotatedLinkError;
+          publicLink = rotatedLink;
         }
 
         if (!publicLink?.public_code) {
