@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { useParams } from "react-router-dom";
+import { Link, useParams } from "react-router-dom";
 import {
   Card,
   CardContent,
@@ -7,11 +7,12 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
-import { CalendarIcon, Check, Clock3, MapPin, MessageSquare, X } from "lucide-react";
+import { CalendarIcon, Check, Clock3, Info, MapPin, MessageSquare, X } from "lucide-react";
 import { format } from "date-fns";
 import { de } from "date-fns/locale";
 import { useToast } from "@/hooks/use-toast";
@@ -25,6 +26,12 @@ import {
 } from "@/services/publicInvitationApi";
 
 type ResponseStatus = Exclude<InvitationStatus, "invited">;
+
+const LEGACY_RSVP_MIGRATION_PLAN = {
+  newInvitationsTarget: "https://alexander-salomon.de",
+  oldLinksPolicy: "Bereits versandte Links auf /einladung/:code und /event-rsvp/:eventId bleiben für eine Übergangszeit erreichbar.",
+  shutdownPolicy: "Die Legacy-Routen werden erst nach kontrollierter Abschaltung entfernt, sobald keine Altlinks mehr im Umlauf sind.",
+} as const;
 
 const responseButtonConfig: Array<{
   status: ResponseStatus;
@@ -186,7 +193,18 @@ export default function EventRSVP() {
   if (!code || loadError || !invitation) {
     return (
       <div className="min-h-screen bg-slate-50 px-4 py-8 sm:px-6">
-        <div className="mx-auto max-w-lg">
+        <div className="mx-auto max-w-lg space-y-4">
+          <Alert>
+            <Info className="h-4 w-4" />
+            <AlertTitle>Legacy-Einladungsseite</AlertTitle>
+            <AlertDescription>
+              Neue Einladungen werden sofort über{" "}
+              <a className="font-medium underline underline-offset-2" href={LEGACY_RSVP_MIGRATION_PLAN.newInvitationsTarget}>
+                alexander-salomon.de
+              </a>{" "}
+              versendet. Bereits versandte Links bleiben nur während der Übergangszeit gültig.
+            </AlertDescription>
+          </Alert>
           <Card className="border-destructive/20 shadow-sm">
             <CardContent className="p-6 text-center sm:p-8">
               <p className="text-base font-medium text-destructive">{loadError ?? "Ungültiger Einladungslink."}</p>
@@ -202,7 +220,27 @@ export default function EventRSVP() {
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-slate-50 to-white px-4 py-4 sm:px-6 sm:py-8">
-      <div className="mx-auto max-w-2xl">
+      <div className="mx-auto max-w-2xl space-y-4">
+        <Alert>
+          <Info className="h-4 w-4" />
+          <AlertTitle>Legacy-Pfad für bereits versandte Einladungen</AlertTitle>
+          <AlertDescription className="space-y-2">
+            <p>
+              Neue Einladungen sollen ab sofort ausschließlich über{" "}
+              <a className="font-medium underline underline-offset-2" href={LEGACY_RSVP_MIGRATION_PLAN.newInvitationsTarget}>
+                alexander-salomon.de
+              </a>{" "}
+              bereitgestellt werden.
+            </p>
+            <ul className="list-disc space-y-1 pl-5">
+              <li>{LEGACY_RSVP_MIGRATION_PLAN.oldLinksPolicy}</li>
+              <li>{LEGACY_RSVP_MIGRATION_PLAN.shutdownPolicy}</li>
+            </ul>
+            <p>
+              Diese Seite bleibt daher nur als Kompatibilitätspfad aktiv und sollte nicht mehr für neue Mailings verwendet werden.
+            </p>
+          </AlertDescription>
+        </Alert>
         <Card className="overflow-hidden border-slate-200 shadow-lg shadow-slate-200/50">
           <CardHeader className="space-y-4 bg-white p-5 sm:p-8">
             <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
@@ -303,6 +341,14 @@ export default function EventRSVP() {
                 </div>
               </div>
             ) : null}
+
+            <div className="rounded-lg border border-slate-200 bg-slate-50 px-4 py-3 text-xs leading-5 text-slate-600">
+              Technischer Hinweis: Dieser RSVP-Link gehört zur Übergangsphase der alten Einladungsstrecke. Neue Einladungen verweisen ab sofort auf{" "}
+              <a className="font-medium underline underline-offset-2" href={LEGACY_RSVP_MIGRATION_PLAN.newInvitationsTarget}>
+                alexander-salomon.de
+              </a>
+              . Die Abschaltung dieses Legacy-Pfads erfolgt später kontrolliert, sobald keine Altlinks mehr im Umlauf sind.
+            </div>
           </CardContent>
         </Card>
       </div>

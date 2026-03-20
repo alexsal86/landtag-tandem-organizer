@@ -148,6 +148,16 @@ Vollständige Liste: `supabase/functions/`
 
 ---
 
+## Legacy-Hinweis: Event-Einladungen / RSVP
+
+- `src/pages/EventRSVP.tsx` und die Route `/einladung/:code` gelten ab sofort als **Legacy-Kompatibilitätspfad** für bereits versandte Einladungen.
+- Neue Einladungs-Mails sollen **sofort** auf die öffentliche Lösung unter **`https://alexander-salomon.de`** verweisen.
+- Die Altlinks `/einladung/:code` und `/event-rsvp/:eventId` bleiben während einer Übergangszeit erreichbar, damit bereits versandte Einladungen weiter funktionieren.
+- Die Route `Route path="/event-rsvp/:eventId"` in `src/router/routes.tsx` wird **erst dann** entfernt, wenn keine Altlinks mehr in Umlauf sind und die Abschaltung kontrolliert geplant wurde.
+- Optional kann die Legacy-Strecke neutral auf die neue öffentliche Lösung hinweisen oder intern dorthin weiterleiten, aber nur sofern dies für Altlinks sicher getestet ist.
+
+---
+
 ## Testing
 
 ```bash
