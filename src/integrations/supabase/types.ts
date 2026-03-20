@@ -11405,6 +11405,39 @@ export type Database = {
         Args: { p_contexts?: string[]; p_user_id: string }
         Returns: Json
       }
+      get_case_files_with_counts: {
+        Args: { p_tenant_id: string }
+        Returns: {
+          id: string
+          user_id: string
+          tenant_id: string
+          title: string
+          description: string | null
+          case_type: string
+          case_scale: string | null
+          status: string
+          priority: string | null
+          reference_number: string | null
+          start_date: string | null
+          target_date: string | null
+          tags: string[] | null
+          is_private: boolean | null
+          visibility: string
+          current_status_note: string | null
+          current_status_updated_at: string | null
+          risks_and_opportunities: Json | null
+          assigned_to: string | null
+          created_at: string
+          updated_at: string
+          processing_status: string | null
+          processing_statuses: Json | null
+          contacts_count: number
+          documents_count: number
+          tasks_count: number
+          appointments_count: number
+          letters_count: number
+        }[]
+      }
       get_shared_note_ids: { Args: { _user_id: string }; Returns: string[] }
       get_unread_notification_counts: {
         Args: { p_user_id: string }
