@@ -3,7 +3,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Plus, Trash2, GripVertical, MessageCircle, Paperclip, ListTodo, Mail, Download, Edit2, X, Milestone, ExternalLink, Bot, Users } from "lucide-react";
+import { Plus, Trash2, GripVertical, MessageCircle, Paperclip, ListTodo, Mail, Download, Edit2, X, Milestone, ExternalLink, Bot, Users, CalendarClock } from "lucide-react";
 import { Droppable, Draggable } from "@hello-pangea/dnd";
 import { cn } from "@/lib/utils";
 import { format } from "date-fns";
@@ -109,19 +109,37 @@ export function ChecklistSection(props: ChecklistSectionProps) {
                           ) : (
                             <div className="space-y-2">
                               <div
-                                className="flex items-center space-x-2 p-3 border border-border rounded-md bg-background hover:bg-muted/50 transition-colors"
+                                className="group/checklist-item flex items-center space-x-2 overflow-hidden p-3 border border-border rounded-md bg-background hover:bg-muted/50 transition-colors"
                                 ref={(element) => registerChecklistItemRef?.(item.id, element)}
                               >
                                 <div {...provided.dragHandleProps} className="text-muted-foreground cursor-grab"><GripVertical className="h-4 w-4" /></div>
                                 <Checkbox checked={item.is_completed} onCheckedChange={() => toggleChecklistItem(item.id, item.is_completed)} />
-                                <Input value={item.title} onChange={(e) => updateChecklistItemTitle(item.id, e.target.value)} className={cn("flex-1 border-none bg-transparent focus:bg-background text-sm", item.is_completed && "line-through text-muted-foreground")} />
-                                <Input
-                                  type="date"
-                                  value={timelineDueDates?.[item.id] || ""}
-                                  onChange={(e) => onSetTimelineDueDate?.({ id: item.id, title: item.title }, e.target.value)}
-                                  className="h-8 w-[140px] text-xs"
-                                  title="Frist für Zeitstrahl"
-                                />
+                                <Input value={item.title} onChange={(e) => updateChecklistItemTitle(item.id, e.target.value)} className={cn("min-w-0 flex-1 border-none bg-transparent focus:bg-background text-sm", item.is_completed && "line-through text-muted-foreground")} />
+                                <div className="ml-auto flex shrink-0 items-center justify-end">
+                                  <div className="relative h-8 w-[132px]">
+                                    <div
+                                      className={cn(
+                                        "absolute inset-0 flex items-center justify-end gap-2 rounded-md border border-dashed border-transparent px-2 text-xs text-muted-foreground transition-all duration-200 group-hover/checklist-item:translate-x-[-8px] group-hover/checklist-item:opacity-0",
+                                        timelineDueDates?.[item.id] ? "opacity-100" : "opacity-70",
+                                      )}
+                                      title={timelineDueDates?.[item.id] ? `Frist: ${format(new Date(timelineDueDates[item.id]), "dd.MM.yyyy", { locale: de })}` : "Frist hinzufügen"}
+                                    >
+                                      <CalendarClock className="h-3.5 w-3.5" />
+                                      <span className="truncate">
+                                        {timelineDueDates?.[item.id]
+                                          ? format(new Date(timelineDueDates[item.id]), "dd.MM.yyyy", { locale: de })
+                                          : "Frist"}
+                                      </span>
+                                    </div>
+                                    <Input
+                                      type="date"
+                                      value={timelineDueDates?.[item.id] || ""}
+                                      onChange={(e) => onSetTimelineDueDate?.({ id: item.id, title: item.title }, e.target.value)}
+                                      className="absolute inset-0 h-8 w-full translate-x-3 text-xs opacity-0 transition-all duration-200 group-hover/checklist-item:translate-x-0 group-hover/checklist-item:opacity-100 focus:translate-x-0 focus:opacity-100"
+                                      title="Frist für Zeitstrahl"
+                                    />
+                                  </div>
+                                </div>
 
                                 {/* Action buttons */}
                                 <div className="flex items-center space-x-1 opacity-0 group-hover:opacity-100 transition-opacity">
