@@ -379,13 +379,9 @@
     }
 
     try {
-      var res = await fetch(API_BASE + '/get-public-event-invitation', {
+      var res = await fetch(PROXY_BASE + '/pruefe', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': 'Bearer ' + ANON_KEY,
-          'apikey': ANON_KEY
-        },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ public_code: code })
       });
 
