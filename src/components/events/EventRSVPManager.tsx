@@ -455,7 +455,7 @@ export const EventRSVPManager = ({ eventPlanningId, eventTitle }: EventRSVPManag
                 Erinnerung
               </Button>
             )}
-            {rsvps.some(r => r.status === 'accepted' || r.status === 'tentative') && (
+            {rsvps.length > 0 && (
               <Button size="sm" variant="outline" onClick={() => setNoteDialogOpen(true)}>
                 <MessageSquare className="h-4 w-4 mr-2" />
                 Hinweis senden
