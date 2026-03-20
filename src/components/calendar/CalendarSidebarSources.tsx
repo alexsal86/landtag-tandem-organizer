@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { CalendarClock, ChevronDown, ChevronUp, Palette } from "lucide-react";
+import { CalendarClock, CheckSquare, ChevronDown, ChevronUp, Palette, Square } from "lucide-react";
 import { toast } from "sonner";
 
 import { supabase } from "@/integrations/supabase/client";
@@ -23,7 +23,7 @@ interface ExternalCalendarRow {
   calendar_type: string;
 }
 
-type CalendarSource = {
+export type CalendarSource = {
   id: string;
   name: string;
   color: string;
@@ -72,9 +72,15 @@ async function fetchCalendarSources(tenantId: string): Promise<CalendarSource[]>
 
 interface CalendarSidebarSourcesProps {
   onColorsUpdated?: () => void;
+  hiddenSourceKeys?: string[];
+  onToggleVisibility?: (source: CalendarSource) => void;
 }
 
-export function CalendarSidebarSources({ onColorsUpdated }: CalendarSidebarSourcesProps) {
+export function CalendarSidebarSources({
+  onColorsUpdated,
+  hiddenSourceKeys = [],
+  onToggleVisibility,
+}: CalendarSidebarSourcesProps) {
   const { currentTenant } = useTenant();
   const queryClient = useQueryClient();
   const [expanded, setExpanded] = useState(true);
@@ -146,12 +152,26 @@ export function CalendarSidebarSources({ onColorsUpdated }: CalendarSidebarSourc
           {calendars.map((calendar) => {
             const savingKey = `${calendar.scope}-${calendar.id}`;
             const isSaving = savingIds.has(savingKey);
+            const visibilityKey = `${calendar.scope}:${calendar.id}`;
+            const isVisible = !hiddenSourceKeys.includes(visibilityKey);
 
             return (
               <div
                 key={savingKey}
                 className="flex items-center gap-2 rounded-md border border-border/60 bg-background/80 px-2 py-2"
               >
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="icon"
+                  className="h-8 w-8 shrink-0 text-muted-foreground"
+                  onClick={() => onToggleVisibility?.(calendar)}
+                  title={isVisible ? `${calendar.name} ausblenden` : `${calendar.name} einblenden`}
+                  aria-pressed={isVisible}
+                  aria-label={isVisible ? `${calendar.name} ausblenden` : `${calendar.name} einblenden`}
+                >
+                  {isVisible ? <CheckSquare className="h-4 w-4 text-primary" /> : <Square className="h-4 w-4" />}
+                </Button>
                 <span
                   className="h-3.5 w-3.5 shrink-0 rounded-full border border-black/10"
                   style={{ backgroundColor: calendar.color }}
@@ -198,7 +218,7 @@ export function CalendarSidebarSources({ onColorsUpdated }: CalendarSidebarSourc
           <CalendarClock className="h-4 w-4 text-primary" />
           <div>
             <p className="text-sm font-semibold">Kalender</p>
-            <p className="text-xs text-muted-foreground">Interne und externe Kalenderfarben</p>
+            <p className="text-xs text-muted-foreground">Ein- und ausblenden sowie Farben anpassen</p>
           </div>
         </div>
         {expanded ? <ChevronUp className="h-4 w-4 text-muted-foreground" /> : <ChevronDown className="h-4 w-4 text-muted-foreground" />}

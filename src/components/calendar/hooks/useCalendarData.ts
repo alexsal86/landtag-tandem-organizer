@@ -36,6 +36,7 @@ interface AppointmentRow {
 }
 
 interface AppointmentCategoryRow {
+  id: string;
   name: string;
   color: string;
 }
@@ -216,7 +217,7 @@ async function fetchCalendarData(currentDate: Date, view: string, tenantId: stri
     { data: userData },
     { data: leaveRequests },
   ] = await Promise.all([
-    supabase.from("appointment_categories").select("name, color"),
+    supabase.from("appointment_categories").select("id, name, color"),
     supabase.auth.getUser(),
     supabase
       .from("leave_requests")
@@ -225,8 +226,8 @@ async function fetchCalendarData(currentDate: Date, view: string, tenantId: stri
       .in("status", ["approved", "pending"]),
   ]);
 
-  const categoryColors = new Map<string, string>();
-  (categoriesData as AppointmentCategoryRow[] | null)?.forEach((cat) => categoryColors.set(cat.name, cat.color));
+  const categoryMetadata = new Map<string, { id: string; color: string }>();
+  (categoriesData as AppointmentCategoryRow[] | null)?.forEach((cat) => categoryMetadata.set(cat.name, { id: cat.id, color: cat.color }));
 
   const formattedEvents: CalendarEvent[] = [];
 
@@ -292,15 +293,17 @@ async function fetchCalendarData(currentDate: Date, view: string, tenantId: stri
       type: (appointment.category as CalendarEvent["type"]) || "meeting",
       priority: (appointment.priority as CalendarEvent["priority"]) || "medium",
       participants, attendees: participants.length,
-      category_color: appointment.category ? categoryColors.get(appointment.category) : undefined,
+      category_color: appointment.category ? categoryMetadata.get(appointment.category)?.color : undefined,
       is_all_day: appointment.is_all_day || false,
+      sourceScope: "internal",
+      sourceId: appointment.category ? categoryMetadata.get(appointment.category)?.id : undefined,
     });
   }
 
   // External events
   const { data: externalEvents } = await supabase
     .from("external_events")
-    .select(`id, title, description, start_time, end_time, location, all_day, recurrence_rule, external_calendars!inner (name, color, user_id, tenant_id)`)
+    .select(`id, title, description, start_time, end_time, location, all_day, recurrence_rule, external_calendars!inner (id, name, color, user_id, tenant_id)`)
     .or(`and(start_time.lte.${endDate.toISOString()},end_time.gte.${startDate.toISOString()}),and(start_time.gte.${startDate.toISOString()},start_time.lte.${endDate.toISOString()})`)
     .eq("external_calendars.tenant_id", tenantId)
     .order("start_time", { ascending: true });
@@ -325,6 +328,8 @@ async function fetchCalendarData(currentDate: Date, view: string, tenantId: stri
         type: "appointment", priority: "medium", participants: [], attendees: 0,
         category_color: externalCalendar?.color || "#6b7280",
         is_all_day: isAllDay, _isExternal: true,
+        sourceScope: "external",
+        sourceId: externalCalendar?.id,
       });
     }
   }
@@ -348,7 +353,7 @@ async function fetchCalendarData(currentDate: Date, view: string, tenantId: stri
           id: `blocked-${eventDate.id}`, title: `🔒 ${eventPlanning.title}`,
           time: st.toLocaleTimeString("de-DE", { hour: "2-digit", minute: "2-digit" }),
           duration: "2h", date: st, endTime: et, type: "blocked", priority: "medium",
-          participants: [], attendees: 0,
+          participants: [], attendees: 0, sourceScope: "system", sourceId: "event-planning",
         });
       }
     }
@@ -366,7 +371,7 @@ async function fetchCalendarData(currentDate: Date, view: string, tenantId: stri
         title: isApproved ? `🏖️ ${name} - Urlaub` : `⏳ ${name} - Urlaubsantrag`,
         time: "Ganztägig", duration: "Ganztägig", date: ls, endTime: le,
         type: isApproved ? "vacation" : "vacation_request", priority: "low",
-        is_all_day: true, participants: [], attendees: 0,
+        is_all_day: true, participants: [], attendees: 0, sourceScope: "system", sourceId: "leave-requests",
       });
     }
   }

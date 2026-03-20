@@ -135,6 +135,7 @@ export interface MeetingUpcomingAppointment {
 }
 
 export interface ExternalCalendarSummary {
+  id?: string | null;
   name: string | null;
   color: string | null;
   tenant_id?: string | null;

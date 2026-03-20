@@ -1,192 +1,51 @@
 import { useState, useEffect, useMemo } from "react";
-import { debugConsole } from "@/utils/debugConsole";
 import { useSearchParams } from "react-router-dom";
 import { useNotificationHighlight } from "@/hooks/useNotificationHighlight";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { TaskDecisionResponse } from "./TaskDecisionResponse";
-import { RichTextDisplay } from "@/components/ui/RichTextDisplay";
-import SimpleRichTextEditor from "@/components/ui/SimpleRichTextEditor";
+import { FolderArchive, Search, Settings2 } from "lucide-react";
 import { StandaloneDecisionCreator } from "./StandaloneDecisionCreator";
 import { DecisionSidebar } from "./DecisionSidebar";
-import { DecisionCardActivity } from "./DecisionCardActivity";
 import { DecisionDialogs } from "./DecisionDialogs";
 import { DecisionCardList } from "./DecisionCardList";
-import { UserBadge } from "@/components/ui/user-badge";
-import { AvatarStack } from "@/components/ui/AvatarStack";
-import { TopicDisplay } from "@/components/topics/TopicSelector";
+import { DecisionCompactCard } from "./DecisionCompactCard";
+import { DecisionArchivedCard } from "./DecisionArchivedCard";
 import { useDecisionComments } from "@/hooks/useDecisionComments";
-import {
-  Check,
-  X,
-  MessageCircle,
-  Send,
-  Vote,
-  CheckSquare,
-  Globe,
-  Edit,
-  Trash2,
-  MoreVertical,
-  Archive,
-  RotateCcw,
-  Paperclip,
-  CheckCircle,
-  ClipboardList,
-  Search,
-  FolderArchive,
-  MessageSquare,
-  Star,
-  Settings2,
-} from "lucide-react";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from "@/components/ui/tooltip";
-import { cn } from "@/lib/utils";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-  DropdownMenuSeparator,
-} from "@/components/ui/dropdown-menu";
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "@/components/ui/popover";
 import { supabase } from "@/integrations/supabase/client";
+import { debugConsole } from "@/utils/debugConsole";
+import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
 import { useTenant } from "@/hooks/useTenant";
-import { useToast } from "@/hooks/use-toast";
-import { useMyWorkSettings, DecisionTabId } from "@/hooks/useMyWorkSettings";
+import { useMyWorkSettings } from "@/hooks/useMyWorkSettings";
 import { useDecisionOverviewData } from "./hooks/useDecisionOverviewData";
-import {
-  getAvatarParticipants,
-  getBorderColor,
-  getResponseSummary,
-} from "./utils/decisionOverview";
+import { useDecisionActions } from "./hooks/useDecisionActions";
+import { useDecisionSidebarData } from "./hooks/useDecisionSidebarData";
+import { useDecisionFiltering } from "./hooks/useDecisionFiltering";
+import { getResponseSummary } from "./utils/decisionOverview";
 import type { DecisionRequest } from "./utils/decisionOverview";
-
-// Truncated description component
-const TruncatedDescription = ({
-  content,
-  maxLength = 150,
-}: {
-  content: string;
-  maxLength?: number;
-}) => {
-  const [expanded, setExpanded] = useState(false);
-
-  const plainText = content.replace(/<[^>]*>/g, "");
-  const isTruncated = plainText.length > maxLength;
-
-  if (!isTruncated || expanded) {
-    return (
-      <div>
-        <RichTextDisplay
-          content={content}
-          className="text-sm text-muted-foreground"
-        />
-        {isTruncated && (
-          <Button
-            variant="link"
-            size="sm"
-            onClick={(e) => {
-              e.stopPropagation();
-              setExpanded(false);
-            }}
-            className="text-xs p-0 h-auto text-muted-foreground hover:text-primary"
-          >
-            weniger
-          </Button>
-        )}
-      </div>
-    );
-  }
-
-  const truncatedPlain =
-    plainText.substring(0, maxLength).replace(/\s+\S*$/, "") + "...";
-
-  return (
-    <div>
-      <p className="text-sm text-muted-foreground">{truncatedPlain}</p>
-      <Button
-        variant="link"
-        size="sm"
-        onClick={(e) => {
-          e.stopPropagation();
-          setExpanded(true);
-        }}
-        className="text-xs p-0 h-auto text-muted-foreground hover:text-primary"
-      >
-        mehr
-      </Button>
-    </div>
-  );
-};
 
 export const DecisionOverview = () => {
   const [searchParams, setSearchParams] = useSearchParams();
   const { user } = useAuth();
   const { currentTenant } = useTenant();
   const { toast } = useToast();
-  const { decisionTabOrder, hiddenDecisionTabs, updateDecisionTabSettings } =
-    useMyWorkSettings();
+  const { decisionTabOrder, hiddenDecisionTabs, updateDecisionTabSettings } = useMyWorkSettings();
   const { isHighlighted, highlightRef } = useNotificationHighlight();
   const { decisions, loadDecisionRequests } = useDecisionOverviewData();
-  const [selectedDecisionId, setSelectedDecisionId] = useState<string | null>(
-    null,
-  );
+
+  // Dialog/panel state
+  const [selectedDecisionId, setSelectedDecisionId] = useState<string | null>(null);
   const [isDetailsOpen, setIsDetailsOpen] = useState(false);
-  const [highlightCommentId, setHighlightCommentId] = useState<string | null>(
-    null,
-  );
-  const [highlightResponseId, setHighlightResponseId] = useState<string | null>(
-    null,
-  );
-  const [creatorResponses, setCreatorResponses] = useState<{
-    [key: string]: string;
-  }>({});
-  const [isLoading, setIsLoading] = useState(false);
-  const [activeTab, setActiveTab] = useState("for-me");
-  const [defaultParticipantsOpen, setDefaultParticipantsOpen] = useState(false);
-  const [editingDecisionId, setEditingDecisionId] = useState<string | null>(
-    null,
-  );
-  const [deletingDecisionId, setDeletingDecisionId] = useState<string | null>(
-    null,
-  );
+  const [highlightCommentId, setHighlightCommentId] = useState<string | null>(null);
+  const [highlightResponseId, setHighlightResponseId] = useState<string | null>(null);
+  const [editingDecisionId, setEditingDecisionId] = useState<string | null>(null);
+  const [deletingDecisionId, setDeletingDecisionId] = useState<string | null>(null);
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
-  const [creatingTaskFromDecisionId, setCreatingTaskFromDecisionId] = useState<
-    string | null
-  >(null);
-  const [searchQuery, setSearchQuery] = useState("");
-  const [commentsDecisionId, setCommentsDecisionId] = useState<string | null>(
-    null,
-  );
-  const [commentsDecisionTitle, setCommentsDecisionTitle] =
-    useState<string>("");
-  const [recentDiscussionActivities, setRecentDiscussionActivities] = useState<
-    Array<{
-      id: string;
-      decisionId: string;
-      decisionTitle: string;
-      type: "comment";
-      targetId: string;
-      actorName: string | null;
-      actorBadgeColor: string | null;
-      actorAvatarUrl: string | null;
-      content: string | null;
-      createdAt: string;
-    }>
-  >([]);
+  const [defaultParticipantsOpen, setDefaultParticipantsOpen] = useState(false);
+  const [commentsDecisionId, setCommentsDecisionId] = useState<string | null>(null);
+  const [commentsDecisionTitle, setCommentsDecisionTitle] = useState<string>("");
   const [attachmentFilesByDecision, setAttachmentFilesByDecision] = useState<
     Record<string, Array<{ id: string; file_name: string; file_path: string }>>
   >({});
@@ -194,7 +53,17 @@ export const DecisionOverview = () => {
     file_path: string;
     file_name: string;
   } | null>(null);
-  // Handle URL action parameter for QuickActions
+
+  // Core hooks
+  const refresh = (userId: string) => loadDecisionRequests(userId);
+
+  const actions = useDecisionActions({ user, currentTenant, onRefresh: refresh });
+
+  const sidebarData = useDecisionSidebarData(decisions, user?.id);
+
+  const filtering = useDecisionFiltering({ decisions, decisionTabOrder, hiddenDecisionTabs });
+
+  // URL action handler
   useEffect(() => {
     const action = searchParams.get("action");
     if (action === "create-decision") {
@@ -205,12 +74,10 @@ export const DecisionOverview = () => {
   }, [searchParams, setSearchParams]);
 
   useEffect(() => {
-    if (user?.id) {
-      loadDecisionRequests(user.id);
-    }
+    if (user?.id) loadDecisionRequests(user.id);
   }, [user?.id]);
 
-  // Auto-switch tab when highlight param points to a decision in a different tab
+  // Auto-switch tab when notification highlight points to a decision in a different tab
   useEffect(() => {
     const highlightId = searchParams.get("highlight");
     if (!highlightId || decisions.length === 0 || !user?.id) return;
@@ -218,152 +85,29 @@ export const DecisionOverview = () => {
     const decision = decisions.find((d) => d.id === highlightId);
     if (!decision) return;
 
-    let targetTab = activeTab;
+    let targetTab = filtering.activeTab;
     if (decision.status === "archived") {
       targetTab = "archived";
-    } else if (
-      decision.isParticipant &&
-      !decision.hasResponded &&
-      !decision.isCreator
-    ) {
+    } else if (decision.isParticipant && !decision.hasResponded && !decision.isCreator) {
       targetTab = "for-me";
     } else if (decision.isCreator) {
       const s = getResponseSummary(decision.participants);
-      if (s.questionCount > 0 || (s.total > 0 && s.pending < s.total)) {
-        targetTab = "for-me";
-      } else {
-        targetTab = "my-decisions";
-      }
+      targetTab =
+        s.questionCount > 0 || (s.total > 0 && s.pending < s.total) ? "for-me" : "my-decisions";
     } else if (decision.isParticipant && decision.hasResponded) {
       targetTab = "answered";
     } else if (decision.visible_to_all) {
       targetTab = "public";
     }
 
-    if (targetTab !== activeTab) {
-      setActiveTab(targetTab);
-    }
+    if (targetTab !== filtering.activeTab) filtering.setActiveTab(targetTab);
   }, [decisions, searchParams]);
 
-  const sendCreatorResponse = async (
-    responseId: string,
-    responseText?: string,
-    mode: "creator_response" | "participant_followup" = "creator_response",
-  ) => {
-    const text = responseText || creatorResponses[responseId];
-    if (!text?.trim()) return;
+  // Comment counts
+  const decisionIds = useMemo(() => decisions.map((d) => d.id), [decisions]);
+  const { getCommentCount, refresh: refreshCommentCounts } = useDecisionComments(decisionIds);
 
-    setIsLoading(true);
-
-    try {
-      // Core action: Persist creator response/follow-up
-      const actionError =
-        mode === "creator_response"
-          ? (
-              await supabase
-                .from("task_decision_responses")
-                .update({ creator_response: text.trim() })
-                .eq("id", responseId)
-            ).error
-          : await supabase
-              .from("task_decision_responses")
-              .select("decision_id, participant_id")
-              .eq("id", responseId)
-              .maybeSingle()
-              .then(async ({ data, error }) => {
-                if (error) return error;
-                if (!data)
-                  return new Error("Ausgangsnachricht nicht gefunden.");
-
-                const { error: insertError } = await supabase
-                  .from("task_decision_responses")
-                  .insert([
-                    {
-                      decision_id: data.decision_id,
-                      participant_id: data.participant_id,
-                      response_type: "question",
-                      comment: text.trim(),
-                      parent_response_id: responseId,
-                    },
-                  ]);
-
-                return insertError;
-              });
-
-      if (actionError) throw actionError;
-
-      // Erfolg nur für Kernaktion
-      toast({
-        title: "Erfolgreich",
-        description:
-          mode === "creator_response"
-            ? "Antwort wurde gesendet."
-            : "Rückmeldung wurde gesendet.",
-      });
-
-      setCreatorResponses((prev) => ({ ...prev, [responseId]: "" }));
-
-      // Nach Kernaktion immer neu laden, um konsistenten Stand zu erhalten
-      if (user?.id) await loadDecisionRequests(user.id);
-
-      // Side effect (non-blocking): Notification senden
-      try {
-        if (mode !== "creator_response") return;
-
-        const { data: responseData } = await supabase
-          .from("task_decision_responses")
-          .select(
-            `
-            id,
-            decision_id,
-            task_decision_participants!inner(user_id),
-            task_decisions!inner(title)
-          `,
-          )
-          .eq("id", responseId)
-          .maybeSingle();
-
-        if (responseData) {
-          const participantUserId = (responseData as any)
-            .task_decision_participants?.user_id;
-          const decisionTitle = (responseData as any).task_decisions?.title;
-
-          if (participantUserId && participantUserId !== user?.id) {
-            await supabase.rpc("create_notification", {
-              user_id_param: participantUserId,
-              type_name: "task_decision_creator_response",
-              title_param: "Antwort auf Ihren Kommentar",
-              message_param: `Der Ersteller hat auf Ihren Kommentar zu "${decisionTitle}" geantwortet.`,
-              data_param: JSON.stringify({
-                decision_id: responseData.decision_id,
-                decision_title: decisionTitle,
-              }),
-              priority_param: "medium",
-            });
-          }
-        }
-      } catch (notifError) {
-        debugConsole.warn(
-          "Creator response notification failed (core action succeeded):",
-          notifError,
-        );
-      }
-    } catch (error) {
-      debugConsole.error("Creator response core action failed:", error);
-      toast({
-        title: "Fehler",
-        description: "Antwort konnte nicht gesendet werden.",
-        variant: "destructive",
-      });
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  const handleResponseSubmitted = () => {
-    if (user?.id) loadDecisionRequests(user.id);
-  };
-
+  // Navigation handlers
   const handleOpenDetails = (decisionId: string) => {
     setSelectedDecisionId(decisionId);
     setHighlightCommentId(null);
@@ -377,12 +121,8 @@ export const DecisionOverview = () => {
     targetId: string;
   }) => {
     setSelectedDecisionId(activity.decisionId);
-    setHighlightCommentId(
-      activity.type === "comment" ? activity.targetId : null,
-    );
-    setHighlightResponseId(
-      activity.type === "response" ? activity.targetId : null,
-    );
+    setHighlightCommentId(activity.type === "comment" ? activity.targetId : null);
+    setHighlightResponseId(activity.type === "response" ? activity.targetId : null);
     setIsDetailsOpen(true);
   };
 
@@ -398,506 +138,6 @@ export const DecisionOverview = () => {
     handleCloseDetails();
   };
 
-  const archiveDecision = async (decisionId: string) => {
-    if (!user?.id) {
-      toast({
-        title: "Fehler",
-        description: "Nicht angemeldet.",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    try {
-      const { error } = await supabase
-        .from("task_decisions")
-        .update({
-          status: "archived",
-          archived_at: new Date().toISOString(),
-          archived_by: user.id,
-        })
-        .eq("id", decisionId);
-
-      if (error) throw error;
-
-      toast({
-        title: "Archiviert",
-        description: "Entscheidung wurde archiviert.",
-      });
-      loadDecisionRequests(user.id);
-    } catch (error) {
-      debugConsole.error("Error archiving decision:", error);
-      toast({
-        title: "Fehler",
-        description: "Entscheidung konnte nicht archiviert werden.",
-        variant: "destructive",
-      });
-    }
-  };
-
-  const handleDeleteDecision = async () => {
-    if (!deletingDecisionId) return;
-
-    try {
-      const { error } = await supabase
-        .from("task_decisions")
-        .delete()
-        .eq("id", deletingDecisionId);
-
-      if (error) throw error;
-
-      toast({
-        title: "Gelöscht",
-        description: "Entscheidung wurde endgültig gelöscht.",
-      });
-      setDeletingDecisionId(null);
-      if (user?.id) loadDecisionRequests(user.id);
-    } catch (error) {
-      debugConsole.error("Error deleting decision:", error);
-      toast({
-        title: "Fehler",
-        description: "Entscheidung konnte nicht gelöscht werden.",
-        variant: "destructive",
-      });
-    }
-  };
-
-  const restoreDecision = async (decisionId: string) => {
-    try {
-      const { error } = await supabase
-        .from("task_decisions")
-        .update({ status: "active", archived_at: null, archived_by: null })
-        .eq("id", decisionId);
-
-      if (error) throw error;
-      toast({
-        title: "Erfolgreich",
-        description: "Entscheidung wurde wiederhergestellt.",
-      });
-      if (user?.id) loadDecisionRequests(user.id);
-    } catch (error) {
-      debugConsole.error("Error restoring decision:", error);
-      toast({
-        title: "Fehler",
-        description: "Entscheidung konnte nicht wiederhergestellt werden.",
-        variant: "destructive",
-      });
-    }
-  };
-
-  const createTaskFromDecision = async (decision: DecisionRequest) => {
-    if (!user?.id || !currentTenant?.id) {
-      toast({
-        title: "Fehler",
-        description: "Nicht angemeldet",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    setCreatingTaskFromDecisionId(decision.id);
-    const summary = getResponseSummary(decision.participants);
-
-    let resultText = "Ergebnis: ";
-    if (summary.yesCount > summary.noCount) resultText += "Angenommen";
-    else if (summary.noCount > summary.yesCount) resultText += "Abgelehnt";
-    else resultText += "Unentschieden";
-
-    const taskDescription = `
-      <h3>Aus Entscheidung: ${decision.title}</h3>
-      <p><strong>${resultText}</strong> (Ja: ${summary.yesCount}, Nein: ${summary.noCount})</p>
-      ${decision.description ? `<div>${decision.description}</div>` : ""}
-    `;
-
-    try {
-      const { error } = await supabase.from("tasks").insert([
-        {
-          user_id: user.id,
-          title: `[Entscheidung] ${decision.title}`,
-          description: taskDescription,
-          assigned_to: user.id,
-          tenant_id: currentTenant.id,
-          status: "todo",
-          priority: "medium",
-          category: "personal",
-        },
-      ]);
-
-      if (error) throw error;
-      toast({
-        title: "Aufgabe erstellt",
-        description: "Die Aufgabe wurde aus der Entscheidung erstellt.",
-      });
-      setCreatingTaskFromDecisionId(null);
-      loadDecisionRequests(user.id);
-    } catch (error) {
-      debugConsole.error("Error creating task from decision:", error);
-      toast({
-        title: "Fehler",
-        description: "Aufgabe konnte nicht erstellt werden.",
-        variant: "destructive",
-      });
-      setCreatingTaskFromDecisionId(null);
-    }
-  };
-
-  // Sidebar data
-  const sidebarData = useMemo(() => {
-    const openQuestions: Array<{
-      id: string;
-      decisionId: string;
-      decisionTitle: string;
-      participantName: string | null;
-      participantBadgeColor: string | null;
-      participantUserId: string;
-      participantAvatarUrl: string | null;
-      comment: string | null;
-      createdAt: string;
-      hasCreatorResponse: boolean;
-    }> = [];
-
-    const newComments: Array<{
-      id: string;
-      decisionId: string;
-      decisionTitle: string;
-      participantName: string | null;
-      participantBadgeColor: string | null;
-      participantUserId: string;
-      participantAvatarUrl: string | null;
-      responseType: string;
-      comment: string | null;
-      createdAt: string;
-    }> = [];
-
-    const pendingDirectReplies: Array<{
-      id: string;
-      decisionId: string;
-      decisionTitle: string;
-      participantName: string | null;
-      participantBadgeColor: string | null;
-      participantUserId: string;
-      participantAvatarUrl: string | null;
-      responseType: string;
-      comment: string | null;
-      createdAt: string;
-    }> = [];
-
-    // Find open questions (for creator), new comments and direct replies to current user
-    decisions.forEach((decision) => {
-      if (decision.status === "archived") return;
-
-      decision.participants?.forEach((participant) => {
-        const rootResponses = participant.responses.filter(
-          (response) => !response.parent_response_id,
-        );
-        const latestResponse = rootResponses[0];
-        if (!latestResponse) return;
-
-        // Open questions: questions without creator response (for decision creator)
-        if (
-          decision.isCreator &&
-          latestResponse.response_type === "question" &&
-          !latestResponse.creator_response
-        ) {
-          openQuestions.push({
-            id: latestResponse.id,
-            decisionId: decision.id,
-            decisionTitle: decision.title,
-            participantName: participant.profile?.display_name || null,
-            participantBadgeColor: participant.profile?.badge_color || null,
-            participantUserId: participant.user_id,
-            participantAvatarUrl: participant.profile?.avatar_url || null,
-            comment: latestResponse.comment,
-            createdAt: latestResponse.created_at,
-            hasCreatorResponse: false,
-          });
-        }
-
-        // New comments: responses with comments in the last 7 days (for non-creators)
-        if (
-          decision.isCreator &&
-          latestResponse.comment &&
-          !latestResponse.creator_response
-        ) {
-          const sevenDaysAgo = new Date();
-          sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
-          if (
-            new Date(latestResponse.created_at) > sevenDaysAgo &&
-            latestResponse.response_type !== "question"
-          ) {
-            newComments.push({
-              id: latestResponse.id,
-              decisionId: decision.id,
-              decisionTitle: decision.title,
-              participantName: participant.profile?.display_name || null,
-              participantBadgeColor: participant.profile?.badge_color || null,
-              participantUserId: participant.user_id,
-              participantAvatarUrl: participant.profile?.avatar_url || null,
-              responseType: latestResponse.response_type,
-              comment: latestResponse.comment,
-              createdAt: latestResponse.created_at,
-            });
-          }
-        }
-
-        const participantHasFollowedUp = participant.responses.some(
-          (response) =>
-            response.parent_response_id === latestResponse.id &&
-            new Date(response.created_at).getTime() >
-              new Date(
-                latestResponse.updated_at || latestResponse.created_at,
-              ).getTime(),
-        );
-
-        if (
-          user?.id &&
-          participant.user_id === user.id &&
-          !decision.isCreator &&
-          latestResponse.creator_response &&
-          !participantHasFollowedUp
-        ) {
-          pendingDirectReplies.push({
-            id: latestResponse.id,
-            decisionId: decision.id,
-            decisionTitle: decision.title,
-            participantName: decision.creator?.display_name || null,
-            participantBadgeColor: decision.creator?.badge_color || null,
-            participantUserId: decision.creator?.user_id || "",
-            participantAvatarUrl: decision.creator?.avatar_url || null,
-            responseType: latestResponse.response_type,
-            comment: latestResponse.creator_response,
-            createdAt: latestResponse.updated_at || latestResponse.created_at,
-          });
-        }
-      });
-    });
-
-    const responseActivities = decisions
-      .filter((decision) => decision.status !== "archived")
-      .flatMap((decision) =>
-        (decision.participants || []).flatMap((participant) =>
-          participant.responses.map((response) => ({
-            id: `response-${response.id}`,
-            decisionId: decision.id,
-            decisionTitle: decision.title,
-            type: "response" as const,
-            targetId: response.id,
-            actorName: participant.profile?.display_name || null,
-            actorBadgeColor: participant.profile?.badge_color || null,
-            actorAvatarUrl: participant.profile?.avatar_url || null,
-            content: response.comment,
-            createdAt: response.created_at,
-          })),
-        ),
-      );
-
-    const decisionActivities = decisions
-      .filter((decision) => decision.status !== "archived")
-      .map((decision) => ({
-        id: `decision-${decision.id}`,
-        decisionId: decision.id,
-        decisionTitle: decision.title,
-        type: "decision" as const,
-        targetId: decision.id,
-        actorName: null,
-        actorBadgeColor: null,
-        actorAvatarUrl: null,
-        content: decision.description,
-        createdAt: decision.created_at,
-      }));
-
-    const recentActivities = [
-      ...responseActivities,
-      ...recentDiscussionActivities,
-      ...decisionActivities,
-    ].sort(
-      (a, b) =>
-        new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
-    );
-
-    return {
-      openQuestions,
-      newComments,
-      pendingDirectReplies,
-      recentActivities,
-    };
-  }, [decisions, recentDiscussionActivities, user?.id]);
-
-  useEffect(() => {
-    if (decisions.length === 0) {
-      setRecentDiscussionActivities([]);
-      return;
-    }
-
-    const loadRecentComments = async () => {
-      const decisionIds = decisions.map((d) => d.id);
-      const { data: comments } = await supabase
-        .from("task_decision_comments")
-        .select("id, decision_id, user_id, content, created_at")
-        .in("decision_id", decisionIds)
-        .order("created_at", { ascending: false })
-        .limit(40);
-
-      if (!comments || comments.length === 0) {
-        setRecentDiscussionActivities([]);
-        return;
-      }
-
-      const decisionTitleMap = new Map(decisions.map((d) => [d.id, d.title]));
-      const userIds = [...new Set(comments.map((c) => c.user_id))];
-      const { data: profiles } = await supabase
-        .from("profiles")
-        .select("user_id, display_name, badge_color, avatar_url")
-        .in("user_id", userIds);
-
-      const profileMap = new Map<string, any>(
-        profiles?.map((p: any) => [p.user_id, p]) || [],
-      );
-
-      setRecentDiscussionActivities(
-        comments.map((comment) => ({
-          id: `comment-${comment.id}`,
-          decisionId: comment.decision_id,
-          decisionTitle:
-            decisionTitleMap.get(comment.decision_id) || "Entscheidung",
-          type: "comment" as const,
-          targetId: comment.id,
-          actorName: profileMap.get(comment.user_id)?.display_name || null,
-          actorBadgeColor: profileMap.get(comment.user_id)?.badge_color || null,
-          actorAvatarUrl: profileMap.get(comment.user_id)?.avatar_url || null,
-          content: comment.content,
-          createdAt: comment.created_at,
-        })),
-      );
-    };
-
-    loadRecentComments();
-  }, [decisions]);
-
-  // Get decision IDs for comment counts
-  const decisionIds = useMemo(() => decisions.map((d) => d.id), [decisions]);
-  const { getCommentCount, refresh: refreshCommentCounts } =
-    useDecisionComments(decisionIds);
-
-  // Tab counts
-  const tabCounts = useMemo(() => {
-    const active = decisions.filter((d) => d.status !== "archived");
-    return {
-      forMe: active.filter(
-        (d) =>
-          (d.isParticipant && !d.hasResponded && !d.isCreator) ||
-          (d.isCreator &&
-            (() => {
-              const s = getResponseSummary(d.participants);
-              return (
-                s.questionCount > 0 || (s.total > 0 && s.pending < s.total)
-              );
-            })()),
-      ).length,
-      answered: active.filter(
-        (d) => d.isParticipant && d.hasResponded && !d.isCreator,
-      ).length,
-      myDecisions: active.filter((d) => d.isCreator).length,
-      public: active.filter(
-        (d) => d.visible_to_all && !d.isCreator && !d.isParticipant,
-      ).length,
-      questions: active.filter((d) => {
-        if (!d.isCreator) return false;
-        const summary = getResponseSummary(d.participants);
-        return summary.questionCount > 0;
-      }).length,
-      archived: decisions.filter((d) => d.status === "archived").length,
-    };
-  }, [decisions]);
-
-  // Filter decisions
-  const configuredDecisionTabs = decisionTabOrder.filter(
-    (tab) => !hiddenDecisionTabs.includes(tab),
-  );
-
-  const decisionTabCounts: Record<DecisionTabId, number> = {
-    "for-me": tabCounts.forMe,
-    answered: tabCounts.answered,
-    "my-decisions": tabCounts.myDecisions,
-    public: tabCounts.public,
-  };
-
-  const decisionTabLabels: Record<DecisionTabId, string> = {
-    "for-me": "Für mich",
-    answered: "Beantwortet",
-    "my-decisions": "Von mir",
-    public: "Öffentlich",
-  };
-
-  useEffect(() => {
-    if (configuredDecisionTabs.length === 0) return;
-    if (
-      ["for-me", "answered", "my-decisions", "public"].includes(activeTab) &&
-      !configuredDecisionTabs.includes(activeTab as DecisionTabId)
-    ) {
-      setActiveTab(configuredDecisionTabs[0]);
-    }
-  }, [activeTab, configuredDecisionTabs]);
-
-  const filteredDecisions = useMemo(() => {
-    let filtered = decisions;
-
-    // Search filter
-    if (searchQuery.trim()) {
-      const query = searchQuery.toLowerCase();
-      filtered = filtered.filter(
-        (d) =>
-          d.title.toLowerCase().includes(query) ||
-          (d.description && d.description.toLowerCase().includes(query)),
-      );
-    }
-
-    // Tab filter
-    if (activeTab === "archived") {
-      return filtered.filter((d) => d.status === "archived");
-    }
-
-    filtered = filtered.filter((d) => d.status !== "archived");
-
-    switch (activeTab) {
-      case "for-me": {
-        const forMe = filtered.filter(
-          (d) => d.isParticipant && !d.hasResponded && !d.isCreator,
-        );
-        const myWithActivity = filtered.filter((d) => {
-          if (!d.isCreator) return false;
-          const s = getResponseSummary(d.participants);
-          return s.questionCount > 0 || (s.total > 0 && s.pending < s.total);
-        });
-        const ids = new Set(forMe.map((d) => d.id));
-        return [...forMe, ...myWithActivity.filter((d) => !ids.has(d.id))];
-      }
-      case "answered":
-        return filtered.filter(
-          (d) => d.isParticipant && d.hasResponded && !d.isCreator,
-        );
-      case "my-decisions":
-        return filtered.filter((d) => d.isCreator);
-      case "public":
-        return filtered.filter(
-          (d) => d.visible_to_all && !d.isCreator && !d.isParticipant,
-        );
-      case "questions":
-        return filtered.filter((d) => {
-          if (!d.isCreator) return false;
-          const summary = getResponseSummary(d.participants);
-          return summary.questionCount > 0;
-        });
-      default:
-        return filtered;
-    }
-  }, [decisions, activeTab, searchQuery]);
-
-  const openComments = (decisionId: string, decisionTitle: string) => {
-    setCommentsDecisionId(decisionId);
-    setCommentsDecisionTitle(decisionTitle);
-  };
-
   const loadAttachmentFiles = async (decisionId: string) => {
     if (attachmentFilesByDecision[decisionId]) return;
 
@@ -909,600 +149,60 @@ export const DecisionOverview = () => {
 
     if (error) {
       debugConsole.error("Error loading attachment files:", error);
-      toast({
-        title: "Fehler",
-        description: "Anhänge konnten nicht geladen werden.",
-        variant: "destructive",
-      });
+      toast({ title: "Fehler", description: "Anhänge konnten nicht geladen werden.", variant: "destructive" });
       return;
     }
 
-    setAttachmentFilesByDecision((prev) => ({
-      ...prev,
-      [decisionId]: data || [],
-    }));
+    setAttachmentFilesByDecision((prev) => ({ ...prev, [decisionId]: data || [] }));
   };
 
-  const renderCompactCard = (decision: DecisionRequest) => {
-    const summary = getResponseSummary(decision.participants);
+  // Card render functions
+  const renderCompactCard = (decision: DecisionRequest) => (
+    <DecisionCompactCard
+      key={decision.id}
+      decision={decision}
+      highlightRef={highlightRef}
+      isHighlighted={isHighlighted}
+      currentUserId={user?.id}
+      creatingTaskFromDecisionId={actions.creatingTaskFromDecisionId}
+      attachmentFilesByDecision={attachmentFilesByDecision}
+      getCommentCount={getCommentCount}
+      onOpenDetails={handleOpenDetails}
+      onOpenComments={(id, title) => {
+        setCommentsDecisionId(id);
+        setCommentsDecisionTitle(title);
+      }}
+      onLoadAttachmentFiles={loadAttachmentFiles}
+      onPreviewAttachment={setPreviewAttachment}
+      onEdit={setEditingDecisionId}
+      onDelete={setDeletingDecisionId}
+      onArchive={actions.archiveDecision}
+      onCreateTask={actions.createTaskFromDecision}
+      onResponseSubmitted={() => user?.id && loadDecisionRequests(user.id)}
+      onSendCreatorResponse={actions.sendCreatorResponse}
+    />
+  );
 
-    // Prepare avatar stack data
-    const avatarParticipants = getAvatarParticipants(decision);
-
-    const getInitials = (name: string | null) => {
-      if (!name) return "?";
-      return name
-        .split(" ")
-        .map((n) => n[0])
-        .join("")
-        .toUpperCase()
-        .slice(0, 2);
-    };
-
-    return (
-      <Card
-        key={decision.id}
-        ref={highlightRef(decision.id)}
-        className={cn(
-          "group border-l-4 hover:bg-muted/50 transition-colors cursor-pointer",
-          getBorderColor(decision, summary),
-          isHighlighted(decision.id) && "notification-highlight",
-        )}
-        onClick={() => handleOpenDetails(decision.id)}
-      >
-        <CardContent className="p-4">
-          {/* Header: Status badges + Actions */}
-          <div className="flex items-center justify-between gap-2 mb-2">
-            <div className="flex items-center gap-2 flex-wrap">
-              {summary.questionCount > 0 ? (
-                <Badge className="bg-orange-100 hover:bg-orange-100 text-orange-700 dark:bg-orange-950/40 dark:text-orange-400 text-sm px-3 py-1 font-bold">
-                  <span className="w-2 h-2 rounded-full bg-orange-500 mr-1.5 inline-block" />
-                  Rückfrage
-                </Badge>
-              ) : summary.pending === 0 && summary.total > 0 ? (
-                <Badge className="bg-green-100 hover:bg-green-100 text-green-700 dark:bg-green-950/40 dark:text-green-400 text-sm px-3 py-1 font-bold">
-                  <span className="w-2 h-2 rounded-full bg-green-500 mr-1.5 inline-block" />
-                  Entschieden
-                </Badge>
-              ) : summary.total > 0 ? (
-                <Badge className="bg-blue-100 hover:bg-blue-100 text-blue-700 dark:bg-blue-950/40 dark:text-blue-400 text-sm px-3 py-1 font-bold">
-                  <span className="w-2 h-2 rounded-full bg-blue-500 mr-1.5 inline-block" />
-                  Ausstehend
-                </Badge>
-              ) : null}
-
-              {(decision.priority ?? 0) > 0 && (
-                <TooltipProvider>
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <Star className="h-4 w-4 text-amber-500 fill-amber-500" />
-                    </TooltipTrigger>
-                    <TooltipContent>
-                      <p>Prioritär</p>
-                    </TooltipContent>
-                  </Tooltip>
-                </TooltipProvider>
-              )}
-
-              {decision.visible_to_all && (
-                <TooltipProvider>
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <Globe className="h-4 w-4 text-muted-foreground" />
-                    </TooltipTrigger>
-                    <TooltipContent>
-                      <p>Öffentlich</p>
-                    </TooltipContent>
-                  </Tooltip>
-                </TooltipProvider>
-              )}
-
-              {decision.hasResponded && decision.isParticipant && (
-                <CheckCircle className="h-4 w-4 text-emerald-500" />
-              )}
-            </div>
-
-            {decision.isCreator && (
-              <DropdownMenu>
-                <DropdownMenuTrigger
-                  asChild
-                  onClick={(e) => e.stopPropagation()}
-                >
-                  <Button variant="ghost" size="sm" className="h-7 w-7 p-0">
-                    <MoreVertical className="h-4 w-4" />
-                  </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="end">
-                  <DropdownMenuItem
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      setEditingDecisionId(decision.id);
-                    }}
-                  >
-                    <Edit className="h-4 w-4 mr-2" />
-                    Bearbeiten
-                  </DropdownMenuItem>
-                  {decision.status !== "archived" && (
-                    <DropdownMenuItem
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        archiveDecision(decision.id);
-                      }}
-                    >
-                      <Archive className="h-4 w-4 mr-2" />
-                      Archivieren
-                    </DropdownMenuItem>
-                  )}
-                  {summary.pending === 0 &&
-                    decision.participants &&
-                    decision.participants.length > 0 && (
-                      <>
-                        <DropdownMenuSeparator />
-                        <DropdownMenuItem
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            createTaskFromDecision(decision);
-                          }}
-                          disabled={creatingTaskFromDecisionId === decision.id}
-                        >
-                          <ClipboardList className="h-4 w-4 mr-2" />
-                          {creatingTaskFromDecisionId === decision.id
-                            ? "Erstelle..."
-                            : "Aufgabe erstellen"}
-                        </DropdownMenuItem>
-                      </>
-                    )}
-                  <DropdownMenuSeparator />
-                  <DropdownMenuItem
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      setDeletingDecisionId(decision.id);
-                    }}
-                    className="text-destructive"
-                  >
-                    <Trash2 className="h-4 w-4 mr-2" />
-                    Endgültig löschen
-                  </DropdownMenuItem>
-                </DropdownMenuContent>
-              </DropdownMenu>
-            )}
-          </div>
-
-          {/* Title */}
-          <div className="max-w-[85%]">
-            <h3 className="font-bold text-lg mb-1 line-clamp-2">
-              {decision.title}
-            </h3>
-
-            {/* Description */}
-            {decision.description && (
-              <div onClick={(e) => e.stopPropagation()}>
-                <TruncatedDescription
-                  content={decision.description}
-                  maxLength={300}
-                />
-              </div>
-            )}
-          </div>
-
-          {/* Metadata row - no borders, more spacing */}
-          <div className="flex items-center flex-wrap gap-3 mt-4 text-xs text-muted-foreground">
-            {/* Date */}
-            <span className="flex items-center gap-1">
-              <svg
-                className="h-3.5 w-3.5"
-                fill="none"
-                viewBox="0 0 24 24"
-                stroke="currentColor"
-                strokeWidth={2}
-              >
-                <rect x="3" y="4" width="18" height="18" rx="2" />
-                <path d="M16 2v4M8 2v4M3 10h18" />
-              </svg>
-              {new Date(decision.created_at).toLocaleDateString("de-DE")}
-            </span>
-
-            {decision.response_deadline && (
-              <Badge
-                variant={
-                  new Date(decision.response_deadline) < new Date()
-                    ? "destructive"
-                    : "secondary"
-                }
-                className="gap-1"
-              >
-                Frist:{" "}
-                {new Date(decision.response_deadline).toLocaleDateString(
-                  "de-DE",
-                )}{" "}
-                {new Date(decision.response_deadline).toLocaleTimeString(
-                  "de-DE",
-                  { hour: "2-digit", minute: "2-digit" },
-                )}
-              </Badge>
-            )}
-
-            {/* Creator */}
-            {decision.creator && (
-              <span className="flex items-center gap-1">
-                <Avatar className="h-5 w-5">
-                  {decision.creator.avatar_url && (
-                    <AvatarImage
-                      src={decision.creator.avatar_url}
-                      alt={decision.creator.display_name || "Avatar"}
-                    />
-                  )}
-                  <AvatarFallback
-                    className="text-[8px]"
-                    style={{
-                      backgroundColor:
-                        decision.creator.badge_color || undefined,
-                    }}
-                  >
-                    {getInitials(decision.creator.display_name)}
-                  </AvatarFallback>
-                </Avatar>
-                <span className="font-medium text-foreground">
-                  {decision.creator.display_name || "Unbekannt"}
-                </span>
-              </span>
-            )}
-
-            {/* Comments */}
-            <button
-              onClick={(e) => {
-                e.stopPropagation();
-                openComments(decision.id, decision.title);
-              }}
-              className="flex items-center gap-1 hover:text-foreground transition-colors"
-            >
-              <MessageSquare className="h-3.5 w-3.5" />
-              {getCommentCount(decision.id) > 0
-                ? `${getCommentCount(decision.id)} Kommentar${getCommentCount(decision.id) !== 1 ? "e" : ""}`
-                : "Kommentar schreiben"}
-            </button>
-
-            {/* Attachments */}
-            {(decision.attachmentCount ?? 0) > 0 && (
-              <Popover>
-                <PopoverTrigger asChild>
-                  <button
-                    onClick={async (e) => {
-                      e.stopPropagation();
-                      await loadAttachmentFiles(decision.id);
-                    }}
-                    className="flex items-center gap-1 hover:text-foreground transition-colors"
-                  >
-                    <Paperclip className="h-3.5 w-3.5" />
-                    {decision.attachmentCount}
-                  </button>
-                </PopoverTrigger>
-                <PopoverContent
-                  className="w-72 p-2"
-                  onClick={(e) => e.stopPropagation()}
-                >
-                  <p className="text-xs font-medium mb-1.5">
-                    Angehängte Dateien
-                  </p>
-                  <div className="space-y-1 max-h-56 overflow-y-auto">
-                    {(attachmentFilesByDecision[decision.id] || []).map(
-                      (att) => (
-                        <button
-                          key={att.id}
-                          onClick={() =>
-                            setPreviewAttachment({
-                              file_path: att.file_path,
-                              file_name: att.file_name,
-                            })
-                          }
-                          className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground hover:bg-muted/50 rounded px-1 py-1 transition-colors w-full text-left cursor-pointer"
-                        >
-                          <Paperclip className="h-3 w-3 flex-shrink-0" />
-                          <span className="truncate">{att.file_name}</span>
-                        </button>
-                      ),
-                    )}
-                    {(attachmentFilesByDecision[decision.id] || []).length ===
-                      0 && (
-                      <p className="text-xs text-muted-foreground">
-                        Keine Dateiliste verfügbar.
-                      </p>
-                    )}
-                  </div>
-                </PopoverContent>
-              </Popover>
-            )}
-
-            {/* Topics */}
-            {decision.topicIds && decision.topicIds.length > 0 && (
-              <TopicDisplay
-                topicIds={decision.topicIds}
-                maxDisplay={2}
-                expandable
-              />
-            )}
-          </div>
-
-          {/* Voting row: buttons left, results + avatars right */}
-          {decision.participants && decision.participants.length > 0 && (
-            <div className="flex items-start justify-between gap-4 mt-4">
-              {/* Left: Inline voting for unanswered participants */}
-              <div
-                className="flex-1 min-w-0 max-w-3xl"
-                onClick={(e) => e.stopPropagation()}
-              >
-                {decision.isParticipant &&
-                  decision.participant_id &&
-                  !decision.hasResponded && (
-                    <TaskDecisionResponse
-                      decisionId={decision.id}
-                      participantId={decision.participant_id}
-                      onResponseSubmitted={handleResponseSubmitted}
-                      hasResponded={decision.hasResponded}
-                      creatorId={decision.created_by}
-                    />
-                  )}
-              </div>
-
-              {/* Right: Voting results + AvatarStack */}
-              <div className="flex items-center gap-3 ml-auto shrink-0">
-                <div className="flex flex-col items-end gap-1.5 text-sm font-bold">
-                  {(() => {
-                    // Check if custom template (not standard yes/no/question)
-                    const responseOptions = decision.response_options;
-                    const isCustom =
-                      responseOptions &&
-                      responseOptions.length > 0 &&
-                      !(
-                        ["yes", "no", "question"].every((k: string) =>
-                          responseOptions.some((o) => o.key === k),
-                        ) && responseOptions.length <= 3
-                      );
-
-                    if (isCustom) {
-                      const optionCounts: Record<string, number> = {};
-                      decision.participants?.forEach((p) => {
-                        const rt = p.responses[0]?.response_type;
-                        if (rt) optionCounts[rt] = (optionCounts[rt] || 0) + 1;
-                      });
-                      const sortedOptions = [...responseOptions].sort(
-                        (a, b) => {
-                          const countDiff =
-                            (optionCounts[b.key] || 0) -
-                            (optionCounts[a.key] || 0);
-                          if (countDiff !== 0) return countDiff;
-                          return (
-                            responseOptions.findIndex(
-                              (opt) => opt.key === a.key,
-                            ) -
-                            responseOptions.findIndex(
-                              (opt) => opt.key === b.key,
-                            )
-                          );
-                        },
-                      );
-
-                      const winningOption = sortedOptions[0];
-                      const winningCount = winningOption
-                        ? optionCounts[winningOption.key] || 0
-                        : 0;
-
-                      if (!winningOption || winningCount === 0) {
-                        return (
-                          <span className="text-muted-foreground font-medium">
-                            Noch offen
-                          </span>
-                        );
-                      }
-
-                      const winnerTextColorMap: Record<string, string> = {
-                        green: "text-green-600",
-                        red: "text-red-600",
-                        orange: "text-orange-600",
-                        yellow: "text-yellow-600",
-                        blue: "text-blue-600",
-                        purple: "text-purple-600",
-                        teal: "text-teal-600",
-                        pink: "text-pink-600",
-                        lime: "text-lime-600",
-                        gray: "text-gray-600",
-                      };
-
-                      return (
-                        <>
-                          {summary.pending === 0 &&
-                            !winningOption.requires_comment && (
-                              <span
-                                className={cn(
-                                  "text-lg font-extrabold",
-                                  winnerTextColorMap[
-                                    winningOption.color || "gray"
-                                  ] || "text-foreground",
-                                )}
-                              >
-                                Ergebnis: {winningOption.label}
-                              </span>
-                            )}
-                          <div className="flex items-center gap-1 flex-wrap justify-end">
-                            {sortedOptions.map((opt, idx) => {
-                              const optColor =
-                                winnerTextColorMap[opt.color || "gray"] ||
-                                "text-foreground";
-                              return (
-                                <span
-                                  key={opt.key}
-                                  className="inline-flex items-center gap-1"
-                                >
-                                  {idx > 0 && (
-                                    <span className="text-muted-foreground">
-                                      •
-                                    </span>
-                                  )}
-                                  <span className={optColor}>
-                                    {optionCounts[opt.key] || 0}
-                                  </span>
-                                  <span className={optColor}>{opt.label}</span>
-                                </span>
-                              );
-                            })}
-                            <span className="text-muted-foreground">•</span>
-                            <span className="text-muted-foreground">
-                              {summary.pending} Ausstehend
-                            </span>
-                          </div>
-                        </>
-                      );
-                    }
-                    return (
-                      <>
-                        {summary.pending === 0 &&
-                          summary.total > 0 &&
-                          summary.questionCount === 0 && (
-                            <span
-                              className={cn(
-                                "text-lg font-extrabold",
-                                summary.yesCount >= summary.noCount
-                                  ? "text-green-600"
-                                  : "text-red-600",
-                              )}
-                            >
-                              Ergebnis:{" "}
-                              {summary.yesCount >= summary.noCount
-                                ? "Ja"
-                                : "Nein"}
-                            </span>
-                          )}
-                        <div className="flex items-center gap-1 flex-wrap justify-end">
-                          <span className="text-green-600">
-                            {summary.yesCount} Ja
-                          </span>
-                          <span className="text-muted-foreground">•</span>
-                          <span className="text-red-600">
-                            {summary.noCount} Nein
-                          </span>
-                          <span className="text-muted-foreground">•</span>
-                          <span className="text-orange-600">
-                            {summary.questionCount} Rückfrage
-                          </span>
-                          {summary.otherCount > 0 && (
-                            <>
-                              <span className="text-muted-foreground">•</span>
-                              <span className="text-blue-600">
-                                {summary.otherCount} Sonstige
-                              </span>
-                            </>
-                          )}
-                        </div>
-                      </>
-                    );
-                  })()}
-                </div>
-                <div className="ml-2">
-                  <AvatarStack
-                    participants={avatarParticipants}
-                    maxVisible={4}
-                    size="sm"
-                  />
-                </div>
-              </div>
-            </div>
-          )}
-
-          {/* Activity preview */}
-          <DecisionCardActivity
-            participants={decision.participants}
-            maxItems={2}
-            isCreator={decision.isCreator}
-            currentUserId={user?.id}
-            creatorProfile={
-              decision.creator
-                ? {
-                    display_name: decision.creator.display_name,
-                    badge_color: decision.creator.badge_color,
-                    avatar_url: decision.creator.avatar_url,
-                  }
-                : undefined
-            }
-            onReply={({ responseId, text, mode }) =>
-              sendCreatorResponse(responseId, text, mode)
-            }
-          />
-        </CardContent>
-      </Card>
-    );
-  };
-
-  const renderArchivedCard = (decision: DecisionRequest) => {
-    const summary = getResponseSummary(decision.participants);
-
-    return (
-      <Card
-        key={decision.id}
-        ref={highlightRef(decision.id)}
-        className={cn(
-          "border-l-4 bg-muted/30",
-          getBorderColor(decision, summary),
-          isHighlighted(decision.id) && "notification-highlight",
-        )}
-        onClick={() => handleOpenDetails(decision.id)}
-      >
-        <CardContent className="p-4">
-          <div className="flex items-center justify-between gap-2">
-            <div>
-              <h3 className="font-medium text-sm text-muted-foreground">
-                {decision.title}
-              </h3>
-              <div className="flex items-center gap-2 mt-1 text-[10px] text-muted-foreground">
-                <span>
-                  Archiviert:{" "}
-                  {decision.archived_at &&
-                    new Date(decision.archived_at).toLocaleDateString("de-DE")}
-                </span>
-                {decision.creator && (
-                  <>
-                    <span>•</span>
-                    <UserBadge
-                      userId={decision.creator.user_id}
-                      displayName={decision.creator.display_name}
-                      badgeColor={decision.creator.badge_color}
-                      size="sm"
-                    />
-                  </>
-                )}
-              </div>
-            </div>
-
-            {decision.isCreator && (
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  restoreDecision(decision.id);
-                }}
-              >
-                <RotateCcw className="h-3.5 w-3.5 mr-1" />
-                Wiederherstellen
-              </Button>
-            )}
-          </div>
-        </CardContent>
-      </Card>
-    );
-  };
+  const renderArchivedCard = (decision: DecisionRequest) => (
+    <DecisionArchivedCard
+      key={decision.id}
+      decision={decision}
+      highlightRef={highlightRef}
+      isHighlighted={isHighlighted}
+      onOpenDetails={handleOpenDetails}
+      onRestore={actions.restoreDecision}
+    />
+  );
 
   return (
     <div className="min-h-screen bg-gradient-subtle p-6">
       <div className="mb-6">
-        <h1 className="text-3xl font-bold text-foreground mb-1">
-          Entscheidungen
-        </h1>
+        <h1 className="text-3xl font-bold text-foreground mb-1">Entscheidungen</h1>
         <p className="text-base text-muted-foreground">
           Verwalten Sie Entscheidungsanfragen und Abstimmungen
         </p>
       </div>
 
-      {/* Create + Grid Layout */}
       <div className="flex items-center justify-end mb-4">
         <StandaloneDecisionCreator
           onDecisionCreated={() => user?.id && loadDecisionRequests(user.id)}
@@ -1511,52 +211,49 @@ export const DecisionOverview = () => {
         />
       </div>
 
-      <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+      <Tabs value={filtering.activeTab} onValueChange={filtering.setActiveTab} className="w-full">
         <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_340px] gap-6 items-start">
           {/* Main Content */}
           <div>
             <TabsList
               className="grid w-full h-9 mb-4"
               style={{
-                gridTemplateColumns: `repeat(${configuredDecisionTabs.length + 2}, minmax(0, 1fr))`,
+                gridTemplateColumns: `repeat(${filtering.configuredDecisionTabs.length + 2}, minmax(0, 1fr))`,
               }}
             >
-              {configuredDecisionTabs.map((tab) => (
+              {filtering.configuredDecisionTabs.map((tab) => (
                 <TabsTrigger key={tab} value={tab} className="text-xs">
-                  {decisionTabLabels[tab]}
-                  {tab === "for-me" && decisionTabCounts[tab] > 0 ? (
-                    <Badge
-                      variant="destructive"
-                      className="ml-1.5 text-[10px] px-1.5 py-0"
-                    >
-                      {decisionTabCounts[tab]}
+                  {filtering.decisionTabLabels[tab]}
+                  {tab === "for-me" && filtering.decisionTabCounts[tab] > 0 ? (
+                    <Badge variant="destructive" className="ml-1.5 text-[10px] px-1.5 py-0">
+                      {filtering.decisionTabCounts[tab]}
                     </Badge>
                   ) : tab !== "for-me" ? (
-                    ` (${decisionTabCounts[tab]})`
+                    ` (${filtering.decisionTabCounts[tab]})`
                   ) : null}
                 </TabsTrigger>
               ))}
               <TabsTrigger value="questions" className="text-xs">
                 Rückfragen
-                {tabCounts.questions > 0 && (
+                {filtering.tabCounts.questions > 0 && (
                   <Badge
                     variant="outline"
                     className="ml-1.5 text-orange-600 border-orange-600 text-[10px] px-1.5 py-0"
                   >
-                    {tabCounts.questions}
+                    {filtering.tabCounts.questions}
                   </Badge>
                 )}
               </TabsTrigger>
               <TabsTrigger value="archived" className="text-xs">
                 <FolderArchive className="h-3 w-3 mr-1" />
-                Archiv ({tabCounts.archived})
+                Archiv ({filtering.tabCounts.archived})
               </TabsTrigger>
             </TabsList>
 
-            <TabsContent value={activeTab} className="mt-0 space-y-3">
+            <TabsContent value={filtering.activeTab} className="mt-0 space-y-3">
               <DecisionCardList
-                activeTab={activeTab}
-                filteredDecisions={filteredDecisions}
+                activeTab={filtering.activeTab}
+                filteredDecisions={filtering.filteredDecisions}
                 renderArchivedCard={renderArchivedCard}
                 renderCompactCard={renderCompactCard}
               />
@@ -1570,8 +267,8 @@ export const DecisionOverview = () => {
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                 <Input
                   placeholder="Entscheidungen durchsuchen..."
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
+                  value={filtering.searchQuery}
+                  onChange={(e) => filtering.setSearchQuery(e.target.value)}
                   className="pl-9"
                 />
               </div>
@@ -1629,7 +326,10 @@ export const DecisionOverview = () => {
         onPreviewAttachmentChange={() => setPreviewAttachment(null)}
         deletingDecisionId={deletingDecisionId}
         setDeletingDecisionId={setDeletingDecisionId}
-        onDeleteDecision={handleDeleteDecision}
+        onDeleteDecision={() => {
+          if (deletingDecisionId) actions.deleteDecision(deletingDecisionId);
+          setDeletingDecisionId(null);
+        }}
       />
     </div>
   );

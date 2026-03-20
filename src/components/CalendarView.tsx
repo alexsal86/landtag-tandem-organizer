@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, startTransition } from "react";
+import { useState, useEffect, useRef, startTransition, useMemo } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { Calendar, ChevronLeft, ChevronRight } from "lucide-react";
 import { getISOWeek } from "date-fns";
@@ -16,6 +16,8 @@ import { CalendarHeader } from "./calendar/CalendarHeader";
 import { useCalendarData } from "./calendar/hooks/useCalendarData";
 import { useCalendarOperations } from "./calendar/hooks/useCalendarOperations";
 import type { CalendarEvent } from "./calendar/types";
+import { usePersistentState } from "@/hooks/usePersistentState";
+import type { CalendarSource } from "./calendar/CalendarSidebarSources";
 
 export type { CalendarEvent } from "./calendar/types";
 
@@ -38,9 +40,21 @@ export function CalendarView() {
   const [preparationSidebarOpen, setPreparationSidebarOpen] = useState(false);
   const [selectedAppointmentForPreparation, setSelectedAppointmentForPreparation] = useState<CalendarEvent | null>(null);
   const handledHighlightRef = useRef<string | null>(null);
+  const [hiddenSourceKeys, setHiddenSourceKeys] = usePersistentState<string[]>("calendar.hidden-source-keys", []);
 
   const { appointments, loading, refreshAppointments } = useCalendarData(currentDate, view);
   const { handleEventDrop, handleEventResize } = useCalendarOperations(refreshAppointments);
+  const visibleAppointments = useMemo(
+    () => appointments.filter((appointment) => !appointment.sourceScope || !appointment.sourceId || !hiddenSourceKeys.includes(`${appointment.sourceScope}:${appointment.sourceId}`)),
+    [appointments, hiddenSourceKeys],
+  );
+
+  const handleToggleSourceVisibility = (source: CalendarSource) => {
+    const key = `${source.scope}:${source.id}`;
+    setHiddenSourceKeys((prev) =>
+      prev.includes(key) ? prev.filter((item) => item !== key) : [...prev, key],
+    );
+  };
 
   // Deep-link support
   useEffect(() => {
@@ -133,6 +147,8 @@ export function CalendarView() {
               if (view === "polls") setView("week");
             }}
             onShowPolls={() => setView("polls")}
+            hiddenSourceKeys={hiddenSourceKeys}
+            onToggleSourceVisibility={handleToggleSourceVisibility}
           />
         </div>
 
@@ -220,7 +236,7 @@ export function CalendarView() {
                 <div className="text-center py-8 text-muted-foreground">Termine werden geladen...</div>
               ) : isCalendarView(view) ? (
                 <ProperReactBigCalendar
-                  events={appointments}
+                  events={visibleAppointments}
                   view={view}
                   date={currentDate}
                   onNavigate={setCurrentDate}

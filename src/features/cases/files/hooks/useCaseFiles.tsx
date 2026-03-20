@@ -4,6 +4,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { useTenant } from "@/hooks/useTenant";
 import { useToast } from "@/components/ui/use-toast";
 import { debugConsole } from "@/utils/debugConsole";
+import { handleAppError } from "@/utils/errorHandler";
 import type { Json, Tables, TablesInsert, TablesUpdate } from "@/integrations/supabase/types";
 
 export interface CaseFile {
@@ -145,22 +146,17 @@ export const useCaseFiles = () => {
 
     try {
       setLoading(true);
-      console.log('[useCaseFiles] fetching case files via RPC for tenant:', currentTenant.id);
+      debugConsole.log('[useCaseFiles] fetching via RPC, tenant:', currentTenant.id);
       const { data, error } = await supabase.rpc(CASE_FILE_COUNTS_RPC, { p_tenant_id: currentTenant.id });
 
-      if (error) {
-        console.error('[useCaseFiles] RPC error:', error);
-        throw error;
-      }
+      if (error) throw error;
 
-      console.log('[useCaseFiles] received', (data ?? []).length, 'case files');
+      debugConsole.log('[useCaseFiles] received', (data ?? []).length, 'case files');
       setCaseFiles(((data ?? []) as CaseFileCountRow[]).map(normalizeCaseFileRow));
     } catch (error) {
-      console.error('[useCaseFiles] Error fetching case files:', error);
-      toast({
-        title: "Fehler",
-        description: "Fallakten konnten nicht geladen werden.",
-        variant: "destructive",
+      handleAppError(error, {
+        context: 'useCaseFiles.fetch',
+        toast: { fn: toast, title: 'Fehler', description: 'Fallakten konnten nicht geladen werden.' },
       });
     } finally {
       setLoading(false);

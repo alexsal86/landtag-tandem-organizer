@@ -202,7 +202,7 @@ classifyCaseScale({ explicitScale: cf.case_scale, caseType: cf.case_type }) === 
     );
   }
 
-  const isLoading = loading || typesLoading;
+  const isLoading = loading;
 
   return (
     <div className="space-y-6 p-6">
