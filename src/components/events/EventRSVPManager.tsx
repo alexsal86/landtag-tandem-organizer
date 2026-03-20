@@ -349,11 +349,14 @@ export const EventRSVPManager = ({ eventPlanningId, eventTitle }: EventRSVPManag
     if (!noteText.trim()) return;
     setSendingNote(true);
     try {
-      const targetStatuses = noteTarget === 'all'
-        ? ['accepted', 'tentative']
-        : [noteTarget];
-
-      const targetRsvps = rsvps.filter(r => targetStatuses.includes(r.status));
+      let targetRsvps: EventRSVP[];
+      if (noteTarget === 'everyone') {
+        targetRsvps = rsvps;
+      } else if (noteTarget === 'accepted_tentative') {
+        targetRsvps = rsvps.filter(r => r.status === 'accepted' || r.status === 'tentative');
+      } else {
+        targetRsvps = rsvps.filter(r => r.status === noteTarget);
+      }
       if (targetRsvps.length === 0) {
         toast({ title: "Keine Empfänger", description: "Keine Gäste mit dem gewählten Status.", variant: "destructive" });
         setSendingNote(false);
