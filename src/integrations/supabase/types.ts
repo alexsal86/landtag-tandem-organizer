@@ -4759,6 +4759,44 @@ export type Database = {
           },
         ]
       }
+      event_rsvp_public_links: {
+        Row: {
+          created_at: string
+          event_rsvp_id: string
+          expires_at: string | null
+          id: string
+          last_used_at: string | null
+          public_code: string
+          revoked_at: string | null
+        }
+        Insert: {
+          created_at?: string
+          event_rsvp_id: string
+          expires_at?: string | null
+          id?: string
+          last_used_at?: string | null
+          public_code?: string
+          revoked_at?: string | null
+        }
+        Update: {
+          created_at?: string
+          event_rsvp_id?: string
+          expires_at?: string | null
+          id?: string
+          last_used_at?: string | null
+          public_code?: string
+          revoked_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "event_rsvp_public_links_event_rsvp_id_fkey"
+            columns: ["event_rsvp_id"]
+            isOneToOne: false
+            referencedRelation: "event_rsvps"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       event_rsvps: {
         Row: {
           comment: string | null
