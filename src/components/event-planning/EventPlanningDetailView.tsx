@@ -13,6 +13,7 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Calendar } from "@/components/ui/calendar";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { DragDropContext, type DropResult } from "@hello-pangea/dnd";
 import { Plus, Calendar as CalendarIcon, Trash2, Check, X, Upload, Clock, Edit2, FileText, Download, Archive, Eye, CheckCircle, Info, Mail, Phone, Ellipsis, AlertCircle } from "lucide-react";
 import { TimePickerCombobox } from "@/components/ui/time-picker-combobox";
@@ -262,15 +263,28 @@ export function EventPlanningDetailView(data: EventPlanningDataReturn) {
                 </div>
               </div>
 
-              <div className="flex flex-wrap gap-3">
-                {participantStats.map(({ label, count, icon: Icon, tone }) => (
-                  <div key={label} className={cn("flex h-20 w-20 flex-col items-center justify-center rounded-full border text-center shadow-sm", tone)}>
-                    <Icon className="mb-1 h-4 w-4" />
-                    <span className="text-lg font-semibold leading-none">{count}</span>
-                    <span className="mt-1 px-2 text-[11px] font-medium leading-tight">{label}</span>
-                  </div>
-                ))}
-              </div>
+              <TooltipProvider>
+                <div className="flex flex-wrap gap-2">
+                  {participantStats.map(({ label, count, icon: Icon, tone }) => (
+                    <Tooltip key={label}>
+                      <TooltipTrigger asChild>
+                        <div
+                          className={cn(
+                            "flex h-12 w-12 cursor-default flex-col items-center justify-center rounded-full border text-center shadow-sm",
+                            tone,
+                          )}
+                        >
+                          <Icon className="h-3.5 w-3.5" />
+                          <span className="text-sm font-semibold leading-none">{count}</span>
+                        </div>
+                      </TooltipTrigger>
+                      <TooltipContent>
+                        <p>{label}</p>
+                      </TooltipContent>
+                    </Tooltip>
+                  ))}
+                </div>
+              </TooltipProvider>
             </div>
           </div>
           <div className="flex flex-wrap items-center gap-3">
