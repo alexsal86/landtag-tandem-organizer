@@ -13,12 +13,14 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Calendar } from "@/components/ui/calendar";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { DragDropContext, type DropResult } from "@hello-pangea/dnd";
-import { Plus, Calendar as CalendarIcon, Trash2, Check, X, Upload, Clock, Edit2, FileText, Download, Archive, Eye, CheckCircle, Info, Mail, Phone, Ellipsis } from "lucide-react";
+import { Plus, Calendar as CalendarIcon, Trash2, Check, X, Upload, Clock, Edit2, FileText, Download, Archive, Eye, CheckCircle, Info, Mail, Phone, Ellipsis, AlertCircle } from "lucide-react";
 import { TimePickerCombobox } from "@/components/ui/time-picker-combobox";
 import { format } from "date-fns";
 import { de } from "date-fns/locale";
 import { cn } from "@/lib/utils";
+import { supabase } from "@/integrations/supabase/client";
 import { ChecklistSection } from "./ChecklistSection";
 import { ChecklistItemEmailDialog } from "./ChecklistItemEmailDialog";
 import { PlanningDefaultCollaboratorsDialog } from "./PlanningDefaultCollaboratorsDialog";
@@ -31,6 +33,7 @@ type ChecklistItemRefMap = Record<string, RefObject<HTMLDivElement | null>>;
 
 export function EventPlanningDetailView(data: EventPlanningDataReturn) {
   const [copiedSpeakerContact, setCopiedSpeakerContact] = useState<string | null>(null);
+  const [rsvpCounts, setRsvpCounts] = useState({ accepted: 0, tentative: 0, declined: 0, invited: 0 });
   const checklistItemRefs = useRef<ChecklistItemRefMap>({});
   const copyFeedbackTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -138,6 +141,30 @@ export function EventPlanningDetailView(data: EventPlanningDataReturn) {
     };
   }, []);
 
+  useEffect(() => {
+    const loadRsvpCounts = async () => {
+      const { data, error } = await supabase
+        .from("event_rsvps")
+        .select("status")
+        .eq("event_planning_id", selectedPlanning.id);
+
+      if (error) {
+        return;
+      }
+
+      const counts = { accepted: 0, tentative: 0, declined: 0, invited: 0 };
+      (data || []).forEach((entry) => {
+        if (entry.status === "accepted") counts.accepted += 1;
+        else if (entry.status === "tentative") counts.tentative += 1;
+        else if (entry.status === "declined") counts.declined += 1;
+        else counts.invited += 1;
+      });
+      setRsvpCounts(counts);
+    };
+
+    void loadRsvpCounts();
+  }, [selectedPlanning.id]);
+
 
   const handleUpsertTimelineAssignment = (item: { id: string; title: string }, dueDate: string) => {
     const parsedDate = new Date(dueDate);
@@ -201,16 +228,66 @@ export function EventPlanningDetailView(data: EventPlanningDataReturn) {
 
   const sectionTitleClassName = "text-xl font-semibold tracking-tight text-foreground";
   const fieldLabelClassName = "text-sm font-semibold text-foreground";
+  const confirmedPlanningDate = planningDates.find((date) => date.is_confirmed)?.date_time ?? selectedPlanning.confirmed_date ?? null;
+  const headerDateLabel = confirmedPlanningDate
+    ? format(new Date(confirmedPlanningDate), "dd.MM.yyyy", { locale: de })
+    : "Termin offen";
+  const headerTimeLabel = confirmedPlanningDate
+    ? `${format(new Date(confirmedPlanningDate), "HH:mm", { locale: de })} Uhr`
+    : "Uhrzeit offen";
+  const participantStats = [
+    { label: "Zugesagt", count: rsvpCounts.accepted, icon: CheckCircle, tone: "bg-emerald-50 text-emerald-700 border-emerald-200" },
+    { label: "Vorbehalt", count: rsvpCounts.tentative, icon: AlertCircle, tone: "bg-amber-50 text-amber-700 border-amber-200" },
+    { label: "Abgesagt", count: rsvpCounts.declined, icon: X, tone: "bg-rose-50 text-rose-700 border-rose-200" },
+    { label: "Ausstehend", count: rsvpCounts.invited, icon: Clock, tone: "bg-slate-50 text-slate-700 border-slate-200" },
+  ] as const;
 
   return (
     <div className="min-h-screen bg-gradient-subtle p-6">
       <div className="space-y-6">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center space-x-4">
+        <div className="flex flex-col gap-4 xl:flex-row xl:items-start xl:justify-between">
+          <div className="flex items-start gap-4">
             <Button variant="ghost" onClick={() => setSelectedPlanning(null)}>← Zurück</Button>
-            <h1 className="text-3xl font-bold text-foreground">Veranstaltungsplanung</h1>
+            <div className="space-y-4">
+              <div>
+                <h1 className="text-3xl font-bold text-foreground">{selectedPlanning.title}</h1>
+                <div className="mt-2 flex flex-wrap items-center gap-3 text-sm text-muted-foreground">
+                  <span className="inline-flex items-center gap-2">
+                    <CalendarIcon className="h-4 w-4" />
+                    {headerDateLabel}
+                  </span>
+                  <span className="inline-flex items-center gap-2">
+                    <Clock className="h-4 w-4" />
+                    {headerTimeLabel}
+                  </span>
+                </div>
+              </div>
+
+              <TooltipProvider>
+                <div className="flex flex-wrap gap-2">
+                  {participantStats.map(({ label, count, icon: Icon, tone }) => (
+                    <Tooltip key={label}>
+                      <TooltipTrigger asChild>
+                        <div
+                          className={cn(
+                            "flex h-12 w-12 cursor-default flex-col items-center justify-center rounded-full border text-center shadow-sm",
+                            tone,
+                          )}
+                        >
+                          <Icon className="h-3.5 w-3.5" />
+                          <span className="text-sm font-semibold leading-none">{count}</span>
+                        </div>
+                      </TooltipTrigger>
+                      <TooltipContent>
+                        <p>{label}</p>
+                      </TooltipContent>
+                    </Tooltip>
+                  ))}
+                </div>
+              </TooltipProvider>
+            </div>
           </div>
-          <div className="flex items-center space-x-4">
+          <div className="flex flex-wrap items-center gap-3">
             {/* Collaborator avatars */}
             {uniquePlanningCollaborators.length > 0 && (
               <Dialog open={isManageCollaboratorsOpen} onOpenChange={setIsManageCollaboratorsOpen}>
@@ -486,17 +563,25 @@ export function EventPlanningDetailView(data: EventPlanningDataReturn) {
                   {planningDates.map((date) => (
                     <div key={date.id}>
                       {date.is_confirmed ? (
-                        <div className="flex items-center justify-between rounded-md border border-primary bg-primary/10 p-3">
-                          <div className="flex items-center space-x-2">
+                        <div className="flex flex-col gap-3 rounded-md border border-primary bg-primary/10 p-3 sm:flex-row sm:items-center sm:justify-between">
+                          <div className="flex min-w-0 flex-col gap-2 sm:flex-row sm:items-center sm:gap-3">
                             <Clock className="h-4 w-4" />
-                            <input type="datetime-local" value={new Date(date.date_time).toISOString().slice(0, 16)} onChange={(e) => updateConfirmedDate(date.id, new Date(e.target.value).toISOString())} className="bg-transparent border-none outline-none font-medium" />
+                            <input
+                              type="datetime-local"
+                              value={new Date(date.date_time).toISOString().slice(0, 16)}
+                              onChange={(e) => updateConfirmedDate(date.id, new Date(e.target.value).toISOString())}
+                              className="min-w-0 max-w-full rounded-md border border-primary/30 bg-background/80 px-3 py-2 text-sm font-medium outline-none"
+                            />
                             <Badge variant="default">Bestätigt</Badge>
                           </div>
                           <Button variant="ghost" size="sm"><Edit2 className="h-4 w-4" /></Button>
                         </div>
                       ) : (
-                        <div className="flex items-center justify-between rounded-md border p-3">
-                          <div className="flex items-center space-x-2"><Clock className="h-4 w-4" /><span>{format(new Date(date.date_time), "dd.MM.yyyy HH:mm", { locale: de })}</span></div>
+                        <div className="flex flex-col gap-3 rounded-md border p-3 sm:flex-row sm:items-center sm:justify-between">
+                          <div className="flex min-w-0 items-center space-x-2">
+                            <Clock className="h-4 w-4 shrink-0" />
+                            <span className="break-words">{format(new Date(date.date_time), "dd.MM.yyyy HH:mm", { locale: de })}</span>
+                          </div>
                           <Button size="sm" onClick={() => confirmDate(date.id)}><Check className="h-4 w-4" /></Button>
                         </div>
                       )}
