@@ -38,6 +38,99 @@ function lexicalDedupePlugin(): Plugin {
   };
 }
 
+
+function publicInvitationApiProxy(): Plugin {
+  const apiPrefix = '/api/public-event-invitations/';
+
+  const resolveSupabaseFunctionUrl = (pathName: string) => {
+    const supabaseUrl = process.env.VITE_SUPABASE_URL;
+    const publishableKey = process.env.VITE_SUPABASE_PUBLISHABLE_KEY;
+
+    if (!supabaseUrl || !publishableKey) {
+      return null;
+    }
+
+    const trimmedCode = decodeURIComponent(pathName.slice(apiPrefix.length)).replace(/\/respond$/, '');
+    const isRespondRequest = pathName.endsWith('/respond');
+    const functionName = isRespondRequest
+      ? 'respond-public-event-invitation'
+      : 'get-public-event-invitation';
+
+    return {
+      targetUrl: `${supabaseUrl}/functions/v1/${functionName}`,
+      publishableKey,
+      publicCode: trimmedCode,
+      isRespondRequest,
+    };
+  };
+
+  const proxyRequest = async (req: any, res: any) => {
+    if (!req.url?.startsWith(apiPrefix)) {
+      return false;
+    }
+
+    const requestUrl = new URL(req.url, 'http://localhost');
+    const target = resolveSupabaseFunctionUrl(requestUrl.pathname);
+
+    if (!target || !target.publicCode) {
+      res.statusCode = 500;
+      res.setHeader('Content-Type', 'application/json');
+      res.end(JSON.stringify({ error: 'Public invitation proxy is not configured.' }));
+      return true;
+    }
+
+    const requestBody = await new Promise<string>((resolve, reject) => {
+      let body = '';
+      req.on('data', (chunk: Buffer) => {
+        body += chunk.toString();
+      });
+      req.on('end', () => resolve(body));
+      req.on('error', reject);
+    });
+
+    const upstreamBody = target.isRespondRequest
+      ? JSON.stringify({ public_code: target.publicCode, ...(requestBody ? JSON.parse(requestBody) : {}) })
+      : JSON.stringify({ public_code: target.publicCode });
+
+    const upstreamResponse = await fetch(target.targetUrl, {
+      method: target.isRespondRequest ? 'POST' : 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        apikey: target.publishableKey,
+        Authorization: `Bearer ${target.publishableKey}`,
+      },
+      body: upstreamBody,
+    });
+
+    res.statusCode = upstreamResponse.status;
+    upstreamResponse.headers.forEach((value, key) => {
+      if (key.toLowerCase() !== 'content-encoding') {
+        res.setHeader(key, value);
+      }
+    });
+    res.end(await upstreamResponse.text());
+    return true;
+  };
+
+  return {
+    name: 'public-invitation-api-proxy',
+    configureServer(server) {
+      server.middlewares.use((req, res, next) => {
+        void proxyRequest(req, res)
+          .then((handled) => {
+            if (!handled) next();
+          })
+          .catch((error) => {
+            server.ssrFixStacktrace(error);
+            res.statusCode = 502;
+            res.setHeader('Content-Type', 'application/json');
+            res.end(JSON.stringify({ error: 'Failed to proxy invitation request.' }));
+          });
+      });
+    },
+  };
+}
+
 // https://vitejs.dev/config/
 export default defineConfig(({ mode }) => ({
   server: {
@@ -50,6 +143,7 @@ export default defineConfig(({ mode }) => ({
   },
   plugins: [
     lexicalDedupePlugin(),
+    publicInvitationApiProxy(),
     react(),
     tailwindcss(),
     // nodePolyfills({

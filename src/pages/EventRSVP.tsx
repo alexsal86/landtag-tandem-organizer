@@ -1,5 +1,5 @@
-import { useState, useEffect } from "react";
-import { useParams, useSearchParams } from "react-router-dom";
+import { useEffect, useMemo, useState } from "react";
+import { useParams } from "react-router-dom";
 import {
   Card,
   CardContent,
@@ -11,176 +11,160 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
-import { CalendarIcon, Check, X, AlertCircle } from "lucide-react";
+import { CalendarIcon, Check, Clock3, MapPin, MessageSquare, X } from "lucide-react";
 import { format } from "date-fns";
 import { de } from "date-fns/locale";
-import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { debugConsole } from "@/utils/debugConsole";
+import {
+  fetchPublicInvitation,
+  PublicInvitationApiError,
+  respondToPublicInvitation,
+  type InvitationStatus,
+  type PublicInvitationData,
+} from "@/services/publicInvitationApi";
 
-type PublicInvitationPayload = {
-  invitation: {
-    event_title: string | null;
-    event_description: string | null;
-    event_date: string | null;
-    event_location: string | null;
-    guest_display_name: string | null;
-    rsvp_status: string;
-    comment: string | null;
-  };
+type ResponseStatus = Exclude<InvitationStatus, "invited">;
+
+const responseButtonConfig: Array<{
+  status: ResponseStatus;
+  label: string;
+  mobileLabel: string;
+  className?: string;
+  variant?: "default" | "outline" | "destructive";
+  icon: typeof Check;
+}> = [
+  {
+    status: "accepted",
+    label: "Zusagen",
+    mobileLabel: "Zusage",
+    className: "bg-green-600 text-white hover:bg-green-700",
+    icon: Check,
+  },
+  {
+    status: "tentative",
+    label: "Unter Vorbehalt",
+    mobileLabel: "Vorbehalt",
+    variant: "outline",
+    className: "border-amber-300 text-amber-700 hover:bg-amber-50",
+    icon: Clock3,
+  },
+  {
+    status: "declined",
+    label: "Absagen",
+    mobileLabel: "Absage",
+    variant: "destructive",
+    icon: X,
+  },
+];
+
+const statusCopy: Record<InvitationStatus, { label: string; className?: string; variant?: "outline" | "destructive" }> = {
+  invited: { label: "Noch offen", variant: "outline" },
+  accepted: { label: "Zugesagt", className: "bg-green-500 text-white" },
+  tentative: { label: "Unter Vorbehalt", className: "bg-amber-500 text-white" },
+  declined: { label: "Abgesagt", variant: "destructive" },
 };
 
-type PublicInvitationResponse = {
-  success: true;
-  response: {
-    status: "accepted" | "declined" | "tentative";
-    comment: string | null;
-    responded_at: string;
-    guest_display_name: string | null;
-    event_title: string | null;
-  };
-};
+function formatEventDate(date: string | null): string | null {
+  if (!date) return null;
+
+  const parsed = new Date(date);
+  if (Number.isNaN(parsed.getTime())) {
+    return null;
+  }
+
+  return format(parsed, "EEEE, dd. MMMM yyyy 'um' HH:mm 'Uhr'", { locale: de });
+}
+
+function getFriendlyErrorMessage(error: unknown): string {
+  if (error instanceof PublicInvitationApiError) {
+    switch (error.code) {
+      case "invalid_code":
+        return "Diese Einladung wurde nicht gefunden.";
+      case "revoked_invitation":
+        return "Diese Einladung wurde deaktiviert.";
+      case "expired_invitation":
+        return "Diese Einladung ist abgelaufen.";
+      case "event_unavailable":
+      case "invitation_unavailable":
+        return "Diese Einladung ist aktuell nicht verfügbar.";
+      case "comment_too_long":
+        return "Der Kommentar ist zu lang. Bitte kürzen Sie ihn etwas.";
+      default:
+        return error.message;
+    }
+  }
+
+  return "Die Einladung konnte nicht geladen werden.";
+}
 
 export default function EventRSVP() {
-  const { eventId } = useParams<{ eventId: string }>();
-  const [searchParams] = useSearchParams();
-  const publicCode = searchParams.get("code");
-  const legacyToken = searchParams.get("token");
+  const { code } = useParams<{ code: string }>();
   const { toast } = useToast();
 
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
-  const [rsvp, setRsvp] = useState<any>(null);
-  const [event, setEvent] = useState<any>(null);
+  const [invitation, setInvitation] = useState<PublicInvitationData | null>(null);
   const [comment, setComment] = useState("");
-  const [submitted, setSubmitted] = useState(false);
+  const [confirmationVisible, setConfirmationVisible] = useState(false);
+  const [loadError, setLoadError] = useState<string | null>(null);
 
   useEffect(() => {
-    const loadData = async () => {
-      if (!eventId || (!publicCode && !legacyToken)) {
+    const loadInvitation = async () => {
+      if (!code) {
+        setLoadError("Ungültiger Einladungslink.");
         setLoading(false);
         return;
       }
+
       try {
-        if (publicCode) {
-          const { data, error } = await supabase.functions.invoke<PublicInvitationPayload>(
-            "get-public-event-invitation",
-            {
-              body: { public_code: publicCode },
-            },
-          );
-
-          if (error) throw error;
-
-          const invitation = data?.invitation;
-          if (!invitation) {
-            setLoading(false);
-            return;
-          }
-
-          const rsvpData = {
-            name: invitation.guest_display_name,
-            status: invitation.rsvp_status,
-            comment: invitation.comment,
-          };
-
-          setRsvp(rsvpData);
-          setComment(invitation.comment || "");
-          setEvent({
-            title: invitation.event_title,
-            description: invitation.event_description,
-            confirmed_date: invitation.event_date,
-            location: invitation.event_location,
-          });
-
-          if (invitation.rsvp_status !== "invited") {
-            setSubmitted(true);
-          }
-
-          return;
-        }
-
-        let rsvpData: any = null;
-
-        if (legacyToken) {
-          const { data: legacyRsvpData, error: rsvpError } = await supabase
-            .from("event_rsvps")
-            .select("*")
-            .eq("event_planning_id", eventId)
-            .eq("token", legacyToken)
-            .maybeSingle();
-
-          if (rsvpError) throw rsvpError;
-          rsvpData = legacyRsvpData;
-        }
-
-        if (!rsvpData) {
-          setLoading(false);
-          return;
-        }
-
-        setRsvp(rsvpData);
-        setComment(rsvpData.comment || "");
-
-        const { data: eventData, error: eventError } = await supabase
-          .from("event_plannings")
-          .select("title, description, confirmed_date, location")
-          .eq("id", eventId)
-          .maybeSingle();
-
-        if (eventError) throw eventError;
-        setEvent(eventData);
-
-        if (rsvpData.status !== "invited") {
-          setSubmitted(true);
-        }
+        setLoadError(null);
+        const payload = await fetchPublicInvitation(code);
+        setInvitation(payload);
+        setComment(payload.comment ?? "");
+        setConfirmationVisible(payload.rsvpStatus !== "invited");
       } catch (error) {
-        debugConsole.error("Error loading RSVP data:", error);
+        debugConsole.error("Error loading public invitation", error);
+        setLoadError(getFriendlyErrorMessage(error));
       } finally {
         setLoading(false);
       }
     };
-    loadData();
-  }, [eventId, legacyToken, publicCode]);
 
-  const respond = async (status: "accepted" | "declined" | "tentative") => {
-    if (!rsvp || !publicCode) return;
+    void loadInvitation();
+  }, [code]);
+
+  const formattedDate = useMemo(() => formatEventDate(invitation?.eventDate ?? null), [invitation?.eventDate]);
+
+  const respond = async (status: ResponseStatus) => {
+    if (!code || !invitation) return;
+
     setSaving(true);
     try {
-      const { data, error } = await supabase.functions.invoke<PublicInvitationResponse>(
-        "respond-public-event-invitation",
-        {
-          body: {
-            public_code: publicCode,
-            status,
-            comment: comment || undefined,
-          },
-        },
-      );
-
-      if (error) throw error;
-
-      setRsvp({
-        ...rsvp,
-        status: data?.response.status ?? status,
-        comment: data?.response.comment ?? (comment || null),
+      const response = await respondToPublicInvitation(code, status, comment);
+      setInvitation({
+        ...invitation,
+        rsvpStatus: response.status,
+        comment: response.comment,
+        guestDisplayName: response.guestDisplayName ?? invitation.guestDisplayName,
+        eventTitle: response.eventTitle ?? invitation.eventTitle,
       });
-      setComment(data?.response.comment ?? comment ?? "");
-      setSubmitted(true);
+      setComment(response.comment ?? "");
+      setConfirmationVisible(true);
       toast({
         title: "Antwort gespeichert",
         description:
           status === "accepted"
-            ? "Sie haben zugesagt."
+            ? "Vielen Dank, Ihre Zusage wurde gespeichert."
             : status === "declined"
-              ? "Sie haben abgesagt."
-              : "Sie haben unter Vorbehalt zugesagt.",
+              ? "Vielen Dank, Ihre Absage wurde gespeichert."
+              : "Vielen Dank, Ihre Rückmeldung unter Vorbehalt wurde gespeichert.",
       });
     } catch (error) {
-      debugConsole.error("Error saving response:", error);
+      debugConsole.error("Error saving public invitation response", error);
       toast({
-        title: "Fehler",
-        description: "Antwort konnte nicht gespeichert werden.",
+        title: "Speichern fehlgeschlagen",
+        description: getFriendlyErrorMessage(error),
         variant: "destructive",
       });
     } finally {
@@ -188,136 +172,137 @@ export default function EventRSVP() {
     }
   };
 
-  if (!eventId || (!publicCode && !legacyToken)) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-background">
-        <Card className="w-full max-w-md">
-          <CardContent className="p-6 text-center">
-            <div className="text-destructive">Ungültiger Einladungslink.</div>
-          </CardContent>
-        </Card>
-      </div>
-    );
-  }
+  const currentStatus = invitation?.rsvpStatus ?? "invited";
+  const badgeConfig = statusCopy[currentStatus];
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-background">
-        <div className="animate-pulse">Lädt...</div>
+      <div className="flex min-h-screen items-center justify-center bg-slate-50 px-4">
+        <div className="text-sm text-muted-foreground animate-pulse">Einladung wird geladen…</div>
       </div>
     );
   }
 
-  if (!rsvp || !event) {
+  if (!code || loadError || !invitation) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-background">
-        <Card className="w-full max-w-md">
-          <CardContent className="p-6 text-center">
-            <div className="text-destructive">
-              Einladung nicht gefunden oder ungültiger Link.
-            </div>
-          </CardContent>
-        </Card>
+      <div className="min-h-screen bg-slate-50 px-4 py-8 sm:px-6">
+        <div className="mx-auto max-w-lg">
+          <Card className="border-destructive/20 shadow-sm">
+            <CardContent className="p-6 text-center sm:p-8">
+              <p className="text-base font-medium text-destructive">{loadError ?? "Ungültiger Einladungslink."}</p>
+              <p className="mt-2 text-sm text-muted-foreground">
+                Bitte verwenden Sie den vollständigen Link aus der Einladung oder wenden Sie sich an das Büro.
+              </p>
+            </CardContent>
+          </Card>
+        </div>
       </div>
     );
   }
-
-  const getStatusBadge = (status: string) => {
-    switch (status) {
-      case "accepted":
-        return <Badge className="bg-green-500 text-white">Zugesagt</Badge>;
-      case "declined":
-        return <Badge variant="destructive">Abgesagt</Badge>;
-      case "tentative":
-        return (
-          <Badge className="bg-yellow-500 text-white">Unter Vorbehalt</Badge>
-        );
-      default:
-        return <Badge variant="outline">Eingeladen</Badge>;
-    }
-  };
 
   return (
-    <div className="min-h-screen bg-background p-4">
-      <div className="container mx-auto py-8 max-w-lg">
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <CalendarIcon className="h-5 w-5" />
-              {event.title}
-            </CardTitle>
-            <CardDescription>
-              {event.description && (
-                <div className="mb-2">{event.description}</div>
-              )}
-              {event.confirmed_date && (
-                <div className="text-sm">
-                  Datum:{" "}
-                  {format(new Date(event.confirmed_date), "dd. MMMM yyyy", {
-                    locale: de,
-                  })}
+    <div className="min-h-screen bg-gradient-to-b from-slate-50 to-white px-4 py-4 sm:px-6 sm:py-8">
+      <div className="mx-auto max-w-2xl">
+        <Card className="overflow-hidden border-slate-200 shadow-lg shadow-slate-200/50">
+          <CardHeader className="space-y-4 bg-white p-5 sm:p-8">
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+              <div className="space-y-2">
+                <p className="text-sm font-medium uppercase tracking-[0.2em] text-slate-500">Veranstaltungseinladung</p>
+                <CardTitle className="flex items-start gap-3 text-2xl leading-tight sm:text-3xl">
+                  <CalendarIcon className="mt-1 h-6 w-6 shrink-0 text-primary" />
+                  <span>{invitation.eventTitle ?? "Veranstaltung"}</span>
+                </CardTitle>
+              </div>
+              <Badge variant={badgeConfig.variant} className={badgeConfig.className}>
+                {badgeConfig.label}
+              </Badge>
+            </div>
+            <CardDescription className="space-y-4 text-sm leading-6 text-slate-700 sm:text-base">
+              {invitation.eventDescription && <p className="whitespace-pre-line">{invitation.eventDescription}</p>}
+              <div className="grid gap-3 rounded-2xl bg-slate-50 p-4 sm:grid-cols-2">
+                {formattedDate && (
+                  <div className="flex items-start gap-3">
+                    <CalendarIcon className="mt-0.5 h-4 w-4 text-slate-500" />
+                    <div>
+                      <p className="text-xs uppercase tracking-wide text-slate-500">Datum</p>
+                      <p className="font-medium text-slate-900">{formattedDate}</p>
+                    </div>
+                  </div>
+                )}
+                {invitation.eventLocation && (
+                  <div className="flex items-start gap-3">
+                    <MapPin className="mt-0.5 h-4 w-4 text-slate-500" />
+                    <div>
+                      <p className="text-xs uppercase tracking-wide text-slate-500">Ort</p>
+                      <p className="font-medium text-slate-900">{invitation.eventLocation}</p>
+                    </div>
+                  </div>
+                )}
+                <div className="sm:col-span-2">
+                  <p className="text-xs uppercase tracking-wide text-slate-500">Eingeladene Person</p>
+                  <p className="font-medium text-slate-900">{invitation.guestDisplayName ?? "Unbekannter Gast"}</p>
                 </div>
-              )}
-              {event.location && (
-                <div className="text-sm">Ort: {event.location}</div>
-              )}
-              <div className="mt-2">
-                Eingeladen: <strong>{rsvp.name}</strong> ({rsvp.email})
               </div>
             </CardDescription>
           </CardHeader>
-          <CardContent className="space-y-4">
-            {submitted ? (
-              <div className="text-center space-y-4">
-                <div className="flex justify-center">
-                  {getStatusBadge(rsvp.status)}
+
+          <CardContent className="space-y-6 p-5 sm:p-8">
+            {confirmationVisible ? (
+              <div className="space-y-4 rounded-2xl border border-emerald-100 bg-emerald-50/60 p-4 sm:p-5">
+                <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                  <div>
+                    <h2 className="text-lg font-semibold text-slate-900">Antwort bestätigt</h2>
+                    <p className="text-sm text-slate-600">Ihre Rückmeldung wurde auf dieser Website gespeichert und kann bei Bedarf erneut geändert werden.</p>
+                  </div>
+                  <Badge variant={badgeConfig.variant} className={badgeConfig.className}>
+                    {badgeConfig.label}
+                  </Badge>
                 </div>
-                <p className="text-muted-foreground">
-                  Ihre Antwort wurde gespeichert. Sie können sie jederzeit
-                  ändern.
-                </p>
-                <Button variant="outline" onClick={() => setSubmitted(false)}>
+                {comment.trim() && (
+                  <div className="rounded-xl bg-white/80 p-4">
+                    <p className="flex items-center gap-2 text-sm font-medium text-slate-700">
+                      <MessageSquare className="h-4 w-4" /> Ihr Kommentar
+                    </p>
+                    <p className="mt-2 whitespace-pre-line text-sm text-slate-600">{comment}</p>
+                  </div>
+                )}
+                <Button variant="outline" className="w-full sm:w-auto" onClick={() => setConfirmationVisible(false)}>
                   Antwort ändern
                 </Button>
               </div>
-            ) : (
-              <>
-                <div>
-                  <Label htmlFor="comment">Kommentar (optional)</Label>
+            ) : null}
+
+            {!confirmationVisible ? (
+              <div className="space-y-5">
+                <div className="space-y-2">
+                  <Label htmlFor="comment" className="text-sm font-medium text-slate-900">Kommentar</Label>
                   <Textarea
                     id="comment"
                     value={comment}
-                    onChange={(e) => setComment(e.target.value)}
-                    placeholder="Anmerkungen..."
-                    rows={2}
+                    onChange={(event) => setComment(event.target.value)}
+                    placeholder="Optional: Hinweise zur Teilnahme, Begleitperson oder Anreise"
+                    rows={4}
+                    className="resize-none rounded-2xl border-slate-200 bg-white text-base shadow-sm"
                   />
                 </div>
-                <div className="flex gap-2 justify-center">
-                  <Button
-                    onClick={() => respond("accepted")}
-                    disabled={saving}
-                    className="bg-green-600 hover:bg-green-700 text-white"
-                  >
-                    <Check className="h-4 w-4 mr-1" /> Zusagen
-                  </Button>
-                  <Button
-                    onClick={() => respond("tentative")}
-                    disabled={saving}
-                    variant="outline"
-                    className="border-yellow-500 text-yellow-600 hover:bg-yellow-50"
-                  >
-                    <AlertCircle className="h-4 w-4 mr-1" /> Vorbehalt
-                  </Button>
-                  <Button
-                    onClick={() => respond("declined")}
-                    disabled={saving}
-                    variant="destructive"
-                  >
-                    <X className="h-4 w-4 mr-1" /> Absagen
-                  </Button>
+
+                <div className="grid gap-3 sm:grid-cols-3">
+                  {responseButtonConfig.map(({ status, label, mobileLabel, className, variant, icon: Icon }) => (
+                    <Button
+                      key={status}
+                      onClick={() => void respond(status)}
+                      disabled={saving}
+                      variant={variant}
+                      className={`min-h-12 rounded-2xl text-sm font-semibold sm:text-base ${className ?? ""}`.trim()}
+                    >
+                      <Icon className="mr-2 h-4 w-4" />
+                      <span className="sm:hidden">{mobileLabel}</span>
+                      <span className="hidden sm:inline">{label}</span>
+                    </Button>
+                  ))}
                 </div>
-              </>
-            )}
+              </div>
+            ) : null}
           </CardContent>
         </Card>
       </div>
