@@ -120,13 +120,18 @@ export const useCaseWorkspaceData = ({ tenantId, userId }: { tenantId?: string; 
 
   const fetchFilesPage = useCallback(async (offset: number) => {
     if (!tenantId) return [] as CaseFile[];
+    console.log('[useCaseWorkspaceData] fetching case_files page, offset:', offset);
     const { data, error } = await supabase
       .from("case_files")
       .select("id, title, status, reference_number, current_status_note, case_type, updated_at")
       .eq("tenant_id", tenantId)
       .order("updated_at", { ascending: false })
       .range(offset, offset + PAGE_SIZE - 1);
-    if (error) throw error;
+    if (error) {
+      console.error('[useCaseWorkspaceData] case_files error:', error);
+      throw error;
+    }
+    console.log('[useCaseWorkspaceData] received', (data || []).length, 'case files');
     return (data || []) as CaseFile[];
   }, [tenantId]);
 
