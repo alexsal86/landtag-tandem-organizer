@@ -1,44 +1,35 @@
 
+Problem:
+- Meine Arbeit/Vorgänge lädt Fallakten direkt aus `case_files` und funktioniert deshalb teilweise weiter.
+- Die Akten-Seite hängt an zwei separaten Stellen:
+  1. `get_case_files_with_counts` ist sehr wahrscheinlich fachlich kaputt: Im RPC ist `processing_statuses` als `jsonb` definiert, in `case_files` aber als `text[]`; zusätzlich ist `assigned_to` im RPC `text`, in der Tabelle aber `uuid`.
+  2. `CaseFilesView` blockiert die ganze Seite mit `loading || typesLoading`; `useCaseFileTypes` startet mit `loading=true` und ist dadurch ein zusätzlicher Single Point of Failure.
 
-## Plan: Fix Case Files Not Loading on Akten Page
+Umsetzung:
+1. RPC korrigieren
+- `get_case_files_with_counts` auf die echten DB-Typen anpassen (`assigned_to uuid`, `processing_statuses text[]` oder sauber casten).
+- Gleichzeitig die Sichtbarkeitslogik in den RPC übernehmen. Der RPC läuft als `SECURITY DEFINER` und umgeht aktuell RLS; ohne zusätzlichen Filter würde er sonst private Akten tenant-weit offenlegen.
 
-### Problem Analysis
+2. Akten-Seite robuster machen
+- `useCaseFileTypes` so anpassen, dass `loading` nicht hängen bleibt, wenn Tenant/Auth verzögert geladen wird.
+- `CaseFilesView` nur wegen der Akten selbst blockieren, nicht wegen der Typ-Konfiguration.
+- Wenn Typen fehlen oder fehlschlagen, mit Fallbacks rendern statt die komplette Liste zu verstecken.
 
-Two separate issues are reported:
-1. **Meine Arbeit/Vorgänge**: Error appears but case files still display — uses `useCaseWorkspaceData` which queries `case_files` table directly
-2. **Akten page (`/?section=casefiles`)**: No case files at all — uses `useCaseFiles` which calls the `get_case_files_with_counts` RPC
+3. Fehler sichtbar und konsistent machen
+- `useCaseFiles` auf den projektweiten Fehlerpfad (`handleAppError`) umstellen, damit echte Supabase-/RPC-Meldungen sauber verarbeitet werden.
+- Die temporären `console.*`-Logs wieder auf Projektstandard (`debugConsole`) zurückführen.
 
-The RPC function, database data, and hook code all appear structurally correct. Without console logs or network requests visible, the most likely cause is a **silent runtime error** being swallowed by the catch block (which shows a toast but leaves `caseFiles` as `[]`).
+4. Konsistenzfix beim Öffnen
+- Deep-Link-Parameter vereinheitlichen (`caseFileId` vs. `casefile`), damit Öffnen aus Suche und anderen Bereichen zuverlässig dieselbe Akte lädt.
 
-### Root Cause Candidates
+Technische Details:
+- Daten sind vorhanden: `case_files` und `case_file_types` enthalten Datensätze.
+- Der Workspace-Hook funktioniert, weil er direkt auf `case_files` zugreift.
+- Der Standalone-Hook nutzt den RPC und ist damit der wahrscheinlichste eigentliche Fehlerpunkt.
+- Zusätzlich verschärft das aktuelle Loading-Gating im Frontend das Problem, weil selbst ein Typen-Problem die gesamte Akten-Seite blockiert.
 
-1. **RPC may be failing silently** — the catch block shows a toast ("Fallakten konnten nicht geladen werden") but the user may not notice it among other toasts
-2. **`useDocumentsData` fix side-effect** — the `document_folders` select is now missing `color`, `icon`, `user_id`, and `updated_at` columns that the `DocumentFolder` type expects. While this uses `as` cast, downstream code accessing `folder.color` or `folder.icon` could cause undefined-related crashes in shared layout components
-3. **Race condition** — `useAuth` or `useTenant` may return null briefly, causing the early return to fire and `setLoading(false)` before the context is ready
-
-### Plan
-
-#### Step 1: Fix `useDocumentsData` incomplete select (potential cascade fix)
-The `document_folders` select is missing columns used by the UI (`color`, `icon`, `user_id`, `updated_at`). Add these back to prevent undefined access errors in shared components.
-
-**File**: `src/components/documents/hooks/useDocumentsData.ts`
-- Change select from: `'id, name, description, parent_folder_id, order_index, tenant_id, created_at'`
-- To: `'id, name, description, parent_folder_id, order_index, tenant_id, created_at, updated_at, user_id, color, icon'`
-
-#### Step 2: Add robust error logging to `useCaseFiles`
-Replace `debugConsole.error` with explicit `console.error` in the catch block so errors are always visible. Add a `console.log` at mount time to confirm the hook is executing.
-
-**File**: `src/features/cases/files/hooks/useCaseFiles.tsx`
-- Ensure `fetchCaseFiles` logs both entry and any errors with `console.error` (not `debugConsole`)
-
-#### Step 3: Add defensive guard for loading state
-Ensure the hook doesn't permanently stay in `loading: true` if the context arrives late — add a re-fetch trigger when `user`/`currentTenant` transition from null to defined.
-
-**File**: `src/features/cases/files/hooks/useCaseFiles.tsx` — already handled by `useEffect([fetchCaseFiles])`, but verify the `useCallback` deps don't prevent re-execution.
-
-### Technical Details
-
-- The `useCaseFiles` hook's `fetchCaseFiles` depends on `[user, currentTenant, toast]`. When `user` or `currentTenant` change from null → defined, the callback identity changes, triggering the `useEffect`. This is correct.
-- The `document_folders` missing columns are the most likely cascade cause — if any component tries to render `folder.color` or `folder.icon` before the Akten page loads, it could crash a shared parent.
-- All changes are additive/safe — no schema or RPC modifications needed.
-
+Abnahme:
+- Akten-Seite zeigt wieder Fallakten.
+- In Meine Arbeit/Vorgänge erscheint kein Lade-/Fehlerzustand mehr für Fallakten.
+- Suche/Deep Links öffnen die richtige Akte.
+- Private/geteilte Sichtbarkeit bleibt korrekt erhalten.
