@@ -4765,8 +4765,12 @@ export type Database = {
           event_rsvp_id: string
           expires_at: string | null
           id: string
+          last_response_ip_hash: string | null
+          last_response_source: string | null
+          last_response_user_agent: string | null
           last_used_at: string | null
           public_code: string
+          response_count: number
           revoked_at: string | null
         }
         Insert: {
@@ -4774,8 +4778,12 @@ export type Database = {
           event_rsvp_id: string
           expires_at?: string | null
           id?: string
+          last_response_ip_hash?: string | null
+          last_response_source?: string | null
+          last_response_user_agent?: string | null
           last_used_at?: string | null
           public_code?: string
+          response_count?: number
           revoked_at?: string | null
         }
         Update: {
@@ -4783,8 +4791,12 @@ export type Database = {
           event_rsvp_id?: string
           expires_at?: string | null
           id?: string
+          last_response_ip_hash?: string | null
+          last_response_source?: string | null
+          last_response_user_agent?: string | null
           last_used_at?: string | null
           public_code?: string
+          response_count?: number
           revoked_at?: string | null
         }
         Relationships: [

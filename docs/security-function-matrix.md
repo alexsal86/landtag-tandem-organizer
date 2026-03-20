@@ -52,6 +52,7 @@ Diese Matrix klassifiziert alle Supabase Edge Functions nach Sicherheitsmodell.
 | publish-to-ghost | true | authenticated | JWT erforderlich |
 | send-event-invitation | true | authenticated | JWT erforderlich |
 | get-public-event-invitation | false | public-readonly | Lädt RSVP-Gastdaten ausschließlich per `public_code`, validiert Widerruf/Ablauf und begrenzt Zugriffe per einfachem IP-Rate-Limit |
+| respond-public-event-invitation | false | public-webhook | Schreibt RSVP-Antworten ausschließlich per starkem `public_code`, validiert Status/Kommentarlänge serverseitig und protokolliert Missbrauchsmetadaten |
 | force-resync-calendar | true | authenticated | JWT + Rollen-/Tenant-Checks im Code |
 | global-logout | true | authenticated | JWT erforderlich |
 | run-automation-rule | true | authenticated | JWT erforderlich |
