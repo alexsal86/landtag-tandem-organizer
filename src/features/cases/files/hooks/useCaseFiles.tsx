@@ -145,13 +145,18 @@ export const useCaseFiles = () => {
 
     try {
       setLoading(true);
+      console.log('[useCaseFiles] fetching case files via RPC for tenant:', currentTenant.id);
       const { data, error } = await supabase.rpc(CASE_FILE_COUNTS_RPC, { p_tenant_id: currentTenant.id });
 
-      if (error) throw error;
+      if (error) {
+        console.error('[useCaseFiles] RPC error:', error);
+        throw error;
+      }
 
+      console.log('[useCaseFiles] received', (data ?? []).length, 'case files');
       setCaseFiles(((data ?? []) as CaseFileCountRow[]).map(normalizeCaseFileRow));
     } catch (error) {
-      debugConsole.error('Error fetching case files:', error);
+      console.error('[useCaseFiles] Error fetching case files:', error);
       toast({
         title: "Fehler",
         description: "Fallakten konnten nicht geladen werden.",
