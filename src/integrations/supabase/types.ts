@@ -11351,6 +11351,39 @@ export type Database = {
           title: string
         }[]
       }
+      get_case_files_with_counts: {
+        Args: { p_tenant_id: string }
+        Returns: {
+          appointments_count: number
+          assigned_to: string
+          case_scale: string
+          case_type: string
+          contacts_count: number
+          created_at: string
+          current_status_note: string
+          current_status_updated_at: string
+          description: string
+          documents_count: number
+          id: string
+          is_private: boolean
+          letters_count: number
+          priority: string
+          processing_status: string
+          processing_statuses: Json
+          reference_number: string
+          risks_and_opportunities: Json
+          start_date: string
+          status: string
+          tags: string[]
+          target_date: string
+          tasks_count: number
+          tenant_id: string
+          title: string
+          updated_at: string
+          user_id: string
+          visibility: string
+        }[]
+      }
       get_daily_hours: { Args: { _user_id: string }; Returns: number }
       get_dashboard_data: {
         Args: { p_tenant_id: string; p_user_id: string }
