@@ -11,7 +11,6 @@ const DecisionResponse = lazyWithRetry(() => import("@/pages/DecisionResponse"))
 const GuestResponse = lazyWithRetry(() => import("@/pages/GuestResponse"));
 const EventRSVP = lazyWithRetry(() => import("@/pages/EventRSVP")); // Legacy-Kompatibilitätspfad für bereits versandte Einladungen
 const LegacyEventRSVPRedirect = lazyWithRetry(() => import("@/pages/LegacyEventRSVPRedirect")); // Legacy-Alias; erst entfernen, wenn keine Altlinks mehr im Umlauf sind
-const AppointmentPreparationDetail = lazyWithRetry(() => import("@/pages/AppointmentPreparationDetail"));
 const EmployeeMeetingDetail = lazyWithRetry(() => import("@/pages/EmployeeMeetingDetail"));
 const LetterDetail = lazyWithRetry(() => import("@/pages/LetterDetail"));
 const CaseItemDetail = lazyWithRetry(() =>
@@ -42,9 +41,6 @@ export const AppRoutes = () => (
     <Route path="/guest-response/:token" element={<GuestResponse />} />
     <Route path="/einladung/:code" element={<EventRSVP />} /> {/* Legacy-Pfad: neue Einladungen ab sofort über alexander-salomon.de, Altlinks bleiben vorerst gültig. */}
     <Route path="/event-rsvp/:eventId" element={<LegacyEventRSVPRedirect />} /> {/* Nicht entfernen, solange Altlinks aus früheren Mailings noch aktiv sein können. */}
-    <Route path="/appointment-preparation" element={<AppointmentPreparationDetail />} />
-    <Route path="/appointment-preparation/:id" element={<AppointmentPreparationDetail />} />
-    
     <Route path="/letters/:letterId" element={<LetterDetail />} />
     <Route path="/vorgaenge/:caseItemId" element={<CaseItemDetail />} />
     {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
