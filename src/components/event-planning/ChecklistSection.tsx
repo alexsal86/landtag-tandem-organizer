@@ -461,7 +461,7 @@ export function ChecklistSection(props: ChecklistSectionProps) {
       <CardHeader>
         <CardTitle>Checkliste</CardTitle>
       </CardHeader>
-      <CardContent className="pl-0 pr-6">
+      <CardContent className="pl-6 pr-6">
         <div className="space-y-2">
           <Droppable droppableId="checklist">
             {(provided) => (
