@@ -10,7 +10,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { DragDropContext, Droppable, Draggable } from "@hello-pangea/dnd";
 import { Plus, X, Check, GripVertical, Minus, Edit, Trash2 } from "lucide-react";
 
-type TemplateItemType = "item" | "separator" | "system_social_media" | "system_rsvp";
+type TemplateItemType = "item" | "separator" | "system_social_media" | "system_rsvp" | "phase_start";
 
 type TemplateItem = {
   title: string;
