@@ -107,7 +107,7 @@ export const EventRSVPManager = ({ eventPlanningId, eventTitle }: EventRSVPManag
 
   const [noteDialogOpen, setNoteDialogOpen] = useState(false);
   const [noteText, setNoteText] = useState('');
-  const [noteTarget, setNoteTarget] = useState<'accepted' | 'tentative' | 'all'>('accepted');
+  const [noteTarget, setNoteTarget] = useState<'accepted' | 'tentative' | 'accepted_tentative' | 'declined' | 'invited' | 'everyone'>('accepted');
   const [sendingNote, setSendingNote] = useState(false);
 
   const [distributionLists, setDistributionLists] = useState<any[]>([]);
@@ -870,7 +870,10 @@ export const EventRSVPManager = ({ eventPlanningId, eventTitle }: EventRSVPManag
                 <SelectContent>
                   <SelectItem value="accepted">Nur Zugesagte ({accepted})</SelectItem>
                   <SelectItem value="tentative">Nur Vorbehalt ({tentative})</SelectItem>
-                  <SelectItem value="all">Zugesagte + Vorbehalt ({accepted + tentative})</SelectItem>
+                  <SelectItem value="accepted_tentative">Zugesagte + Vorbehalt ({accepted + tentative})</SelectItem>
+                  <SelectItem value="declined">Nur Abgesagte ({declined})</SelectItem>
+                  <SelectItem value="invited">Nur Ausstehende ({pending})</SelectItem>
+                  <SelectItem value="everyone">Alle ({rsvps.length})</SelectItem>
                 </SelectContent>
               </Select>
             </div>

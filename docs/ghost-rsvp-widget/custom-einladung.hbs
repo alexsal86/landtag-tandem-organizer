@@ -1,0 +1,563 @@
+{{!-- 
+  Ghost Custom Template: custom-einladung.hbs
+  Platzieren in: content/themes/DEIN-THEME/custom-einladung.hbs
+  
+  routes.yaml Eintrag:
+  routes:
+    /einladung/:
+      template: custom-einladung
+--}}
+
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Einladung — Alexander Salomon</title>
+  <meta name="robots" content="noindex, nofollow">
+  <link rel="icon" href="{{asset "favicon.ico"}}">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --rsvp-bg: #1a1a2e;
+      --rsvp-card-bg: #ffffff;
+      --rsvp-card-text: #1a1a2e;
+      --rsvp-muted: #6b7280;
+      --rsvp-green: #005437;
+      --rsvp-green-hover: #00703f;
+      --rsvp-green-light: #e8f5e9;
+      --rsvp-red: #b91c1c;
+      --rsvp-red-hover: #991b1b;
+      --rsvp-red-light: #fef2f2;
+      --rsvp-amber: #92400e;
+      --rsvp-amber-hover: #78350f;
+      --rsvp-amber-light: #fffbeb;
+      --rsvp-border: #e5e7eb;
+      --rsvp-radius: 12px;
+      --rsvp-font: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    }
+
+    body {
+      font-family: var(--rsvp-font);
+      background: var(--rsvp-bg);
+      color: var(--rsvp-card-text);
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 24px 16px;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    .rsvp-container {
+      width: 100%;
+      max-width: 520px;
+    }
+
+    .rsvp-branding {
+      text-align: center;
+      margin-bottom: 24px;
+    }
+
+    .rsvp-branding img {
+      height: 48px;
+      width: auto;
+    }
+
+    .rsvp-card {
+      background: var(--rsvp-card-bg);
+      border-radius: var(--rsvp-radius);
+      box-shadow: 0 4px 24px rgba(0,0,0,0.18), 0 1px 3px rgba(0,0,0,0.08);
+      overflow: hidden;
+    }
+
+    .rsvp-header {
+      background: var(--rsvp-green);
+      color: #fff;
+      padding: 28px 28px 24px;
+    }
+
+    .rsvp-header h1 {
+      font-size: 1.35rem;
+      font-weight: 700;
+      line-height: 1.25;
+      margin-bottom: 4px;
+    }
+
+    .rsvp-header .rsvp-guest {
+      font-size: 0.95rem;
+      opacity: 0.85;
+      margin-top: 8px;
+    }
+
+    .rsvp-body {
+      padding: 28px;
+    }
+
+    .rsvp-meta {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      margin-bottom: 24px;
+    }
+
+    .rsvp-meta-item {
+      display: flex;
+      align-items: flex-start;
+      gap: 10px;
+      font-size: 0.9rem;
+      color: var(--rsvp-muted);
+    }
+
+    .rsvp-meta-icon {
+      flex-shrink: 0;
+      width: 18px;
+      height: 18px;
+      margin-top: 1px;
+    }
+
+    .rsvp-meta-value {
+      color: var(--rsvp-card-text);
+      font-weight: 500;
+    }
+
+    .rsvp-description {
+      font-size: 0.9rem;
+      line-height: 1.6;
+      color: var(--rsvp-muted);
+      margin-bottom: 24px;
+      padding-bottom: 24px;
+      border-bottom: 1px solid var(--rsvp-border);
+    }
+
+    .rsvp-current-status {
+      text-align: center;
+      padding: 12px 16px;
+      border-radius: 8px;
+      font-size: 0.85rem;
+      font-weight: 500;
+      margin-bottom: 20px;
+    }
+
+    .rsvp-current-status.accepted { background: var(--rsvp-green-light); color: var(--rsvp-green); }
+    .rsvp-current-status.declined { background: var(--rsvp-red-light); color: var(--rsvp-red); }
+    .rsvp-current-status.tentative { background: var(--rsvp-amber-light); color: var(--rsvp-amber); }
+
+    .rsvp-buttons {
+      display: grid;
+      grid-template-columns: 1fr 1fr 1fr;
+      gap: 10px;
+      margin-bottom: 20px;
+    }
+
+    .rsvp-btn {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      padding: 12px 8px;
+      border: 2px solid var(--rsvp-border);
+      border-radius: 8px;
+      background: #fff;
+      color: var(--rsvp-card-text);
+      font-size: 0.85rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: border-color 0.15s ease-out, background 0.15s ease-out, transform 0.1s ease-out;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    .rsvp-btn:hover { border-color: var(--rsvp-green); }
+    .rsvp-btn:active { transform: scale(0.97); }
+
+    .rsvp-btn.selected-accepted {
+      border-color: var(--rsvp-green);
+      background: var(--rsvp-green-light);
+      color: var(--rsvp-green);
+    }
+    .rsvp-btn.selected-declined {
+      border-color: var(--rsvp-red);
+      background: var(--rsvp-red-light);
+      color: var(--rsvp-red);
+    }
+    .rsvp-btn.selected-tentative {
+      border-color: var(--rsvp-amber);
+      background: var(--rsvp-amber-light);
+      color: var(--rsvp-amber);
+    }
+
+    .rsvp-comment-group {
+      margin-bottom: 20px;
+    }
+
+    .rsvp-comment-group label {
+      display: block;
+      font-size: 0.85rem;
+      font-weight: 500;
+      color: var(--rsvp-muted);
+      margin-bottom: 6px;
+    }
+
+    .rsvp-comment-group textarea {
+      width: 100%;
+      min-height: 80px;
+      padding: 10px 12px;
+      border: 1px solid var(--rsvp-border);
+      border-radius: 8px;
+      font-family: var(--rsvp-font);
+      font-size: 0.9rem;
+      resize: vertical;
+      outline: none;
+      transition: border-color 0.15s;
+    }
+
+    .rsvp-comment-group textarea:focus {
+      border-color: var(--rsvp-green);
+    }
+
+    .rsvp-submit {
+      width: 100%;
+      padding: 14px;
+      background: var(--rsvp-green);
+      color: #fff;
+      border: none;
+      border-radius: 8px;
+      font-size: 0.95rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: background 0.15s ease-out, transform 0.1s ease-out;
+    }
+
+    .rsvp-submit:hover { background: var(--rsvp-green-hover); }
+    .rsvp-submit:active { transform: scale(0.97); }
+    .rsvp-submit:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+      transform: none;
+    }
+
+    .rsvp-error {
+      text-align: center;
+      padding: 48px 28px;
+      color: var(--rsvp-muted);
+      font-size: 0.95rem;
+    }
+
+    .rsvp-error h2 {
+      color: var(--rsvp-card-text);
+      font-size: 1.15rem;
+      margin-bottom: 8px;
+    }
+
+    .rsvp-loading {
+      text-align: center;
+      padding: 64px 28px;
+      color: var(--rsvp-muted);
+    }
+
+    .rsvp-spinner {
+      width: 32px;
+      height: 32px;
+      border: 3px solid var(--rsvp-border);
+      border-top-color: var(--rsvp-green);
+      border-radius: 50%;
+      animation: rsvp-spin 0.7s linear infinite;
+      margin: 0 auto 16px;
+    }
+
+    @keyframes rsvp-spin {
+      to { transform: rotate(360deg); }
+    }
+
+    .rsvp-success {
+      text-align: center;
+      padding: 48px 28px;
+    }
+
+    .rsvp-success-icon {
+      width: 56px;
+      height: 56px;
+      background: var(--rsvp-green-light);
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin: 0 auto 16px;
+    }
+
+    .rsvp-success h2 {
+      font-size: 1.15rem;
+      margin-bottom: 8px;
+    }
+
+    .rsvp-success p {
+      color: var(--rsvp-muted);
+      font-size: 0.9rem;
+    }
+
+    .rsvp-policy {
+      text-align: center;
+      font-size: 0.78rem;
+      color: var(--rsvp-muted);
+      margin-top: 16px;
+      padding-top: 16px;
+      border-top: 1px solid var(--rsvp-border);
+    }
+
+    .rsvp-footer {
+      text-align: center;
+      margin-top: 20px;
+      font-size: 0.75rem;
+      color: rgba(255,255,255,0.35);
+    }
+
+    @media (max-width: 480px) {
+      .rsvp-header { padding: 20px 20px 18px; }
+      .rsvp-body { padding: 20px; }
+      .rsvp-buttons { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+
+<div class="rsvp-container" id="rsvp-root">
+  <div class="rsvp-card">
+    <div class="rsvp-loading" id="rsvp-loading">
+      <div class="rsvp-spinner"></div>
+      <p>Einladung wird geladen…</p>
+    </div>
+  </div>
+</div>
+
+<script>
+(function() {
+  'use strict';
+
+  var PROXY_BASE = 'https://einladung.alexander-salomon.de';
+
+  var root = document.getElementById('rsvp-root');
+  var code = extractCode();
+  var invitation = null;
+  var selectedStatus = null;
+  var submitting = false;
+
+  function extractCode() {
+    var params = new URLSearchParams(window.location.search);
+    return params.get('code') || null;
+  }
+
+  function formatDate(dateStr) {
+    if (!dateStr) return null;
+    try {
+      var d = new Date(dateStr);
+      return d.toLocaleDateString('de-DE', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
+    } catch(e) { return dateStr; }
+  }
+
+  function statusLabel(s) {
+    return { accepted: 'Zugesagt', declined: 'Abgesagt', tentative: 'Unter Vorbehalt', invited: 'Ausstehend' }[s] || s;
+  }
+
+  function svgCalendar() {
+    return '<svg class="rsvp-meta-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>';
+  }
+
+  function svgLocation() {
+    return '<svg class="rsvp-meta-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>';
+  }
+
+  function svgCheck() {
+    return '<svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#005437" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>';
+  }
+
+  async function loadInvitation() {
+    if (!code) {
+      renderError('Ungültiger Link', 'Der Einladungslink ist unvollständig. Bitte verwenden Sie den Link aus der Einladungs-E-Mail.');
+      return;
+    }
+
+    try {
+      var res = await fetch(PROXY_BASE + '/pruefe', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ public_code: code })
+      });
+
+      var data = await res.json();
+
+      if (!res.ok) {
+        var errorMap = {
+          'invalid_code': ['Einladung nicht gefunden', 'Dieser Einladungslink ist ungültig. Bitte prüfen Sie den Link aus der Einladungs-E-Mail.'],
+          'revoked_invitation': ['Einladung widerrufen', 'Diese Einladung wurde zurückgezogen. Bitte wenden Sie sich an das Büro.'],
+          'expired_invitation': ['Einladung abgelaufen', 'Der Einladungslink ist nicht mehr gültig. Bitte wenden Sie sich an das Büro.'],
+          'event_unavailable': ['Veranstaltung nicht verfügbar', 'Diese Veranstaltung ist nicht mehr aktiv.'],
+          'invitation_unavailable': ['Einladung nicht verfügbar', 'Diese Einladung kann momentan nicht geladen werden.']
+        };
+        var err = errorMap[data.code] || ['Fehler', data.error || 'Die Einladung konnte nicht geladen werden.'];
+        renderError(err[0], err[1]);
+        return;
+      }
+
+      invitation = data.invitation;
+      selectedStatus = (invitation.rsvp_status && invitation.rsvp_status !== 'invited') ? invitation.rsvp_status : null;
+      renderInvitation();
+    } catch (e) {
+      renderError('Verbindungsfehler', 'Die Einladung konnte nicht geladen werden. Bitte versuchen Sie es später erneut.');
+    }
+  }
+
+  function renderError(title, message) {
+    var card = root.querySelector('.rsvp-card');
+    card.innerHTML = '<div class="rsvp-error"><h2>' + escHtml(title) + '</h2><p>' + escHtml(message) + '</p></div>';
+  }
+
+  function escHtml(str) {
+    var el = document.createElement('span');
+    el.textContent = str;
+    return el.innerHTML;
+  }
+
+  function renderInvitation() {
+    var inv = invitation;
+    var card = root.querySelector('.rsvp-card');
+
+    var headerHtml = '<div class="rsvp-header">'
+      + '<h1>' + escHtml(inv.event_title || 'Veranstaltung') + '</h1>';
+    if (inv.guest_display_name) {
+      headerHtml += '<div class="rsvp-guest">Einladung für ' + escHtml(inv.guest_display_name) + '</div>';
+    }
+    headerHtml += '</div>';
+
+    var bodyHtml = '<div class="rsvp-body">';
+
+    // Meta
+    var metaItems = [];
+    if (inv.event_date) {
+      metaItems.push('<div class="rsvp-meta-item">' + svgCalendar() + '<span class="rsvp-meta-value">' + escHtml(formatDate(inv.event_date)) + '</span></div>');
+    }
+    if (inv.event_location) {
+      metaItems.push('<div class="rsvp-meta-item">' + svgLocation() + '<span class="rsvp-meta-value">' + escHtml(inv.event_location) + '</span></div>');
+    }
+    if (metaItems.length) {
+      bodyHtml += '<div class="rsvp-meta">' + metaItems.join('') + '</div>';
+    }
+
+    // Description
+    if (inv.event_description) {
+      bodyHtml += '<div class="rsvp-description">' + escHtml(inv.event_description) + '</div>';
+    }
+
+    // Current status
+    if (inv.rsvp_status && inv.rsvp_status !== 'invited') {
+      bodyHtml += '<div class="rsvp-current-status ' + inv.rsvp_status + '">Aktuelle Antwort: ' + statusLabel(inv.rsvp_status) + '</div>';
+    }
+
+    // Buttons
+    bodyHtml += '<div class="rsvp-buttons">'
+      + renderBtn('accepted', '✓', 'Zusage')
+      + renderBtn('declined', '✕', 'Absage')
+      + renderBtn('tentative', '?', 'Vorbehalt')
+      + '</div>';
+
+    // Comment
+    bodyHtml += '<div class="rsvp-comment-group">'
+      + '<label for="rsvp-comment">Nachricht (optional)</label>'
+      + '<textarea id="rsvp-comment" placeholder="Ihre Nachricht…" maxlength="500">' + escHtml(inv.comment || '') + '</textarea>'
+      + '</div>';
+
+    // Submit
+    bodyHtml += '<button class="rsvp-submit" id="rsvp-submit"' + (selectedStatus ? '' : ' disabled') + '>Antwort senden</button>';
+
+    // Policy
+    if (inv.response_policy === 'latest_wins' && inv.allow_response_updates) {
+      bodyHtml += '<div class="rsvp-policy">Sie können Ihre Antwort jederzeit ändern.</div>';
+    }
+
+    bodyHtml += '</div>';
+    card.innerHTML = headerHtml + bodyHtml;
+
+    // Bind events
+    root.querySelectorAll('.rsvp-btn').forEach(function(btn) {
+      btn.addEventListener('click', function() {
+        selectedStatus = this.dataset.status;
+        updateButtonStates();
+        document.getElementById('rsvp-submit').disabled = false;
+      });
+    });
+
+    document.getElementById('rsvp-submit').addEventListener('click', submitResponse);
+    updateButtonStates();
+  }
+
+  function renderBtn(status, icon, label) {
+    var cls = 'rsvp-btn' + (selectedStatus === status ? ' selected-' + status : '');
+    return '<button class="' + cls + '" data-status="' + status + '">' + icon + ' ' + escHtml(label) + '</button>';
+  }
+
+  function updateButtonStates() {
+    root.querySelectorAll('.rsvp-btn').forEach(function(btn) {
+      var s = btn.dataset.status;
+      btn.className = 'rsvp-btn' + (selectedStatus === s ? ' selected-' + s : '');
+    });
+  }
+
+  async function submitResponse() {
+    if (!selectedStatus || submitting) return;
+    submitting = true;
+    var submitBtn = document.getElementById('rsvp-submit');
+    submitBtn.disabled = true;
+    submitBtn.textContent = 'Wird gesendet…';
+
+    var comment = (document.getElementById('rsvp-comment').value || '').trim();
+
+    try {
+      var res = await fetch(PROXY_BASE + '/antwort', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          public_code: code,
+          status: selectedStatus,
+          comment: comment || undefined
+        })
+      });
+
+      var data = await res.json();
+
+      if (!res.ok) {
+        submitBtn.textContent = 'Antwort senden';
+        submitBtn.disabled = false;
+        submitting = false;
+        alert(data.error || 'Fehler beim Senden der Antwort.');
+        return;
+      }
+
+      renderSuccess(data.response);
+    } catch (e) {
+      submitBtn.textContent = 'Antwort senden';
+      submitBtn.disabled = false;
+      submitting = false;
+      alert('Verbindungsfehler. Bitte versuchen Sie es erneut.');
+    }
+  }
+
+  function renderSuccess(response) {
+    var card = root.querySelector('.rsvp-card');
+    var label = statusLabel(response.status);
+    card.innerHTML = '<div class="rsvp-success">'
+      + '<div class="rsvp-success-icon">' + svgCheck() + '</div>'
+      + '<h2>Antwort gespeichert</h2>'
+      + '<p>Ihre Antwort <strong>„' + escHtml(label) + '"</strong>' 
+      + (response.event_title ? ' für <strong>' + escHtml(response.event_title) + '</strong>' : '')
+      + ' wurde gespeichert.</p>'
+      + (response.allow_response_updates ? '<div class="rsvp-policy" style="margin-top:24px">Sie können Ihre Antwort jederzeit über denselben Link ändern.</div>' : '')
+      + '</div>';
+  }
+
+  // Init
+  loadInvitation();
+})();
+</script>
+
+</body>
+</html>

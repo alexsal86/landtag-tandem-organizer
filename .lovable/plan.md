@@ -1,35 +1,15 @@
+## RSVP-Widget: Ghost-Frontend + Plesk Node.js Proxy ✅
 
-Problem:
-- Meine Arbeit/Vorgänge lädt Fallakten direkt aus `case_files` und funktioniert deshalb teilweise weiter.
-- Die Akten-Seite hängt an zwei separaten Stellen:
-  1. `get_case_files_with_counts` ist sehr wahrscheinlich fachlich kaputt: Im RPC ist `processing_statuses` als `jsonb` definiert, in `case_files` aber als `text[]`; zusätzlich ist `assigned_to` im RPC `text`, in der Tabelle aber `uuid`.
-  2. `CaseFilesView` blockiert die ganze Seite mit `loading || typesLoading`; `useCaseFileTypes` startet mit `loading=true` und ist dadurch ein zusätzlicher Single Point of Failure.
+Umgesetzt: Ghost-Template (`custom-einladung.hbs`) als Frontend, Node.js-Proxy (`app.js`) auf `einladung.alexander-salomon.de` als API-Bridge zu Supabase. Keine Supabase-Credentials oder URLs im Browser sichtbar.
 
-Umsetzung:
-1. RPC korrigieren
-- `get_case_files_with_counts` auf die echten DB-Typen anpassen (`assigned_to uuid`, `processing_statuses text[]` oder sauber casten).
-- Gleichzeitig die Sichtbarkeitslogik in den RPC übernehmen. Der RPC läuft als `SECURITY DEFINER` und umgeht aktuell RLS; ohne zusätzlichen Filter würde er sonst private Akten tenant-weit offenlegen.
+### Query-Parameter statt URL-Segment ✅
 
-2. Akten-Seite robuster machen
-- `useCaseFileTypes` so anpassen, dass `loading` nicht hängen bleibt, wenn Tenant/Auth verzögert geladen wird.
-- `CaseFilesView` nur wegen der Akten selbst blockieren, nicht wegen der Typ-Konfiguration.
-- Wenn Typen fehlen oder fehlschlagen, mit Fallbacks rendern statt die komplette Liste zu verstecken.
+Ghost unterstützt keine dynamischen Routen. Einladungscodes werden jetzt per Query-Parameter (`?code=ABC`) statt URL-Segment (`/einladung/ABC`) übergeben.
 
-3. Fehler sichtbar und konsistent machen
-- `useCaseFiles` auf den projektweiten Fehlerpfad (`handleAppError`) umstellen, damit echte Supabase-/RPC-Meldungen sauber verarbeitet werden.
-- Die temporären `console.*`-Logs wieder auf Projektstandard (`debugConsole`) zurückführen.
+### Erstellte/geänderte Dateien
 
-4. Konsistenzfix beim Öffnen
-- Deep-Link-Parameter vereinheitlichen (`caseFileId` vs. `casefile`), damit Öffnen aus Suche und anderen Bereichen zuverlässig dieselbe Akte lädt.
-
-Technische Details:
-- Daten sind vorhanden: `case_files` und `case_file_types` enthalten Datensätze.
-- Der Workspace-Hook funktioniert, weil er direkt auf `case_files` zugreift.
-- Der Standalone-Hook nutzt den RPC und ist damit der wahrscheinlichste eigentliche Fehlerpunkt.
-- Zusätzlich verschärft das aktuelle Loading-Gating im Frontend das Problem, weil selbst ein Typen-Problem die gesamte Akten-Seite blockiert.
-
-Abnahme:
-- Akten-Seite zeigt wieder Fallakten.
-- In Meine Arbeit/Vorgänge erscheint kein Lade-/Fehlerzustand mehr für Fallakten.
-- Suche/Deep Links öffnen die richtige Akte.
-- Private/geteilte Sichtbarkeit bleibt korrekt erhalten.
+- `docs/ghost-rsvp-widget/app.js` — Node.js-Proxy (keine Dependencies, nur stdlib)
+- `docs/ghost-rsvp-widget/custom-einladung.hbs` — Widget mit `?code=` Query-Parameter
+- `docs/ghost-rsvp-widget/SETUP.md` — Plesk-Deployment-Anleitung
+- `supabase/functions/send-event-invitation/index.ts` — E-Mail-Links mit `?code=`
+- `src/pages/LegacyEventRSVPRedirect.tsx` — Redirect mit `?code=`
