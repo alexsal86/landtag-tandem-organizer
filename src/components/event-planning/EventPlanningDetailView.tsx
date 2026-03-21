@@ -34,6 +34,7 @@ type ChecklistItemRefMap = Record<string, RefObject<HTMLDivElement | null>>;
 export function EventPlanningDetailView(data: EventPlanningDataReturn) {
   const [copiedSpeakerContact, setCopiedSpeakerContact] = useState<string | null>(null);
   const [rsvpCounts, setRsvpCounts] = useState({ accepted: 0, tentative: 0, declined: 0, invited: 0 });
+  const [hoveredChecklistItemId, setHoveredChecklistItemId] = useState<string | null>(null);
   const checklistItemRefs = useRef<ChecklistItemRefMap>({});
   const copyFeedbackTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
