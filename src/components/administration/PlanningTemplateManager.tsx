@@ -273,7 +273,7 @@ export function PlanningTemplateManager() {
                             <Button size="sm" variant="destructive" onClick={() => deleteTemplateItem(index)}><Trash2 className="h-3 w-3" /></Button>
                           </div>
 
-                          {item.type !== "separator" && (
+                          {item.type !== "separator" && item.type !== "phase_start" && (
                             <div className="rounded-md border border-dashed border-border/80 bg-muted/30 p-3">
                               <div className="mb-2 flex items-center justify-between gap-2">
                                 <Label className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Frist relativ zum Endtermin</Label>
