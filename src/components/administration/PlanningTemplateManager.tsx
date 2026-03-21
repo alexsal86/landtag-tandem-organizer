@@ -6,9 +6,10 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { DragDropContext, Droppable, Draggable } from "@hello-pangea/dnd";
-import { Plus, X, Check, GripVertical, Minus, Edit, Trash2 } from "lucide-react";
+import { Plus, X, Check, GripVertical, Minus, Edit, Trash2, Layers } from "lucide-react";
 
 type TemplateItemType = "item" | "separator" | "system_social_media" | "system_rsvp" | "phase_start";
 
@@ -25,6 +26,13 @@ type NewTemplateItemDraft = {
   type: TemplateItemType;
   relativeDueValue: string;
   relativeDueDirection: "before" | "after";
+};
+
+type PhaseGroup = {
+  phaseItem: TemplateItem | null;
+  phaseIndex: number | null;
+  phaseName: string | null;
+  items: { item: TemplateItem; index: number }[];
 };
 
 const SYSTEM_POINT_OPTIONS: Array<{ value: TemplateItemType; label: string }> = [
@@ -68,6 +76,28 @@ const getRelativeDueSummary = (relativeDueDays?: number | null) => {
     : `${days} Tag${days === 1 ? "" : "e"} danach`;
 };
 
+function groupTemplateItemsByPhase(items: TemplateItem[]): PhaseGroup[] {
+  const groups: PhaseGroup[] = [];
+  let currentGroup: PhaseGroup = { phaseItem: null, phaseIndex: null, phaseName: null, items: [] };
+
+  items.forEach((item, index) => {
+    if (item.type === "phase_start") {
+      if (currentGroup.items.length > 0 || currentGroup.phaseName !== null) {
+        groups.push(currentGroup);
+      }
+      currentGroup = { phaseItem: item, phaseIndex: index, phaseName: item.title, items: [] };
+    } else {
+      currentGroup.items.push({ item, index });
+    }
+  });
+
+  if (currentGroup.items.length > 0 || currentGroup.phaseName !== null) {
+    groups.push(currentGroup);
+  }
+
+  return groups;
+}
+
 export function PlanningTemplateManager() {
   const { toast } = useToast();
 
@@ -85,6 +115,8 @@ export function PlanningTemplateManager() {
   }, []);
 
   const selectedTemplateName = useMemo(() => selectedTemplate?.name ?? "", [selectedTemplate]);
+  const phaseGroups = useMemo(() => groupTemplateItemsByPhase(templateItems), [templateItems]);
+  const hasPhases = phaseGroups.some((g) => g.phaseName !== null);
 
   const loadTemplates = async () => {
     const { data, error } = await supabase.from("planning_templates").select("*").order("name");
@@ -177,6 +209,158 @@ export function PlanningTemplateManager() {
     void saveTemplateItems(newItems);
   };
 
+  const renderTemplateItem = (item: TemplateItem, index: number, dragProvided: any) => {
+    if (item.type === "separator") {
+      return (
+        <div ref={dragProvided.innerRef} {...dragProvided.draggableProps} className="group rounded border bg-card p-2">
+          <div className="flex items-center gap-2">
+            <div {...dragProvided.dragHandleProps} className="cursor-grab opacity-0 group-hover:opacity-100 transition-opacity"><GripVertical className="h-4 w-4 text-muted-foreground" /></div>
+            <div className="flex-1 border-t border-dashed border-border" />
+            <span className="text-xs text-muted-foreground">Trenner</span>
+            <Button size="sm" variant="destructive" onClick={() => deleteTemplateItem(index)}><Trash2 className="h-3 w-3" /></Button>
+          </div>
+        </div>
+      );
+    }
+
+    if (item.type === "phase_start") {
+      // Phase items rendered as headers — keep hidden draggable for DnD
+      return (
+        <div ref={dragProvided.innerRef} {...dragProvided.draggableProps} {...dragProvided.dragHandleProps} className="hidden" />
+      );
+    }
+
+    return (
+      <div ref={dragProvided.innerRef} {...dragProvided.draggableProps} className="group space-y-2 rounded border bg-card p-2">
+        <div className="flex items-center gap-2">
+          <div {...dragProvided.dragHandleProps} className="cursor-grab opacity-0 group-hover:opacity-100 transition-opacity"><GripVertical className="h-4 w-4 text-muted-foreground" /></div>
+          {editingTemplate?.id === index.toString() ? (
+            <>
+              <Input value={editingTemplate.value} onChange={(e) => setEditingTemplate({ ...editingTemplate, value: e.target.value })} className="flex-1" />
+              <Button size="sm" onClick={() => { updateTemplateItem(index, { title: editingTemplate.value }); setEditingTemplate(null); }}><Check className="h-3 w-3" /></Button>
+              <Button size="sm" variant="outline" onClick={() => setEditingTemplate(null)}><X className="h-3 w-3" /></Button>
+            </>
+          ) : (
+            <>
+              <div className="flex-1">
+                <div className="flex items-center gap-2">
+                  <span>{item.title}</span>
+                  {item.type && item.type !== "item" && (
+                    <span className="rounded bg-primary/10 px-2 py-0.5 text-[11px] text-primary">
+                      {item.type === "system_social_media" ? "Systempunkt: Social Media" : "Systempunkt: RSVP"}
+                    </span>
+                  )}
+                </div>
+                <p className="text-xs text-muted-foreground">Frist: {getRelativeDueSummary(item.relative_due_days)}</p>
+              </div>
+              <Button size="sm" variant="outline" onClick={() => setEditingTemplate({ id: index.toString(), field: "title", value: item.title })}><Edit className="h-3 w-3" /></Button>
+            </>
+          )}
+          <Button size="sm" variant="destructive" onClick={() => deleteTemplateItem(index)}><Trash2 className="h-3 w-3" /></Button>
+        </div>
+
+        <div className="rounded-md border border-dashed border-border/80 bg-muted/30 p-3">
+          <div className="mb-2 flex items-center justify-between gap-2">
+            <Label className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Frist relativ zum Endtermin</Label>
+            {editingDeadlineIndex === index ? (
+              <div className="flex items-center gap-2">
+                <Button
+                  size="sm"
+                  onClick={() => {
+                    updateTemplateItem(index, {
+                      relative_due_days: toSignedRelativeDueDays(deadlineDraft.relativeDueValue, deadlineDraft.relativeDueDirection),
+                    });
+                    setEditingDeadlineIndex(null);
+                  }}
+                ><Check className="h-3 w-3" /></Button>
+                <Button size="sm" variant="outline" onClick={() => setEditingDeadlineIndex(null)}><X className="h-3 w-3" /></Button>
+              </div>
+            ) : (
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() => {
+                  setEditingDeadlineIndex(index);
+                  setDeadlineDraft(getRelativeDueFormState(item.relative_due_days));
+                }}
+              >
+                <Edit className="mr-1 h-3 w-3" /> Frist bearbeiten
+              </Button>
+            )}
+          </div>
+
+          {editingDeadlineIndex === index ? (
+            <div className="flex flex-col gap-2 sm:flex-row">
+              <Input
+                type="number"
+                min="0"
+                value={deadlineDraft.relativeDueValue}
+                onChange={(e) => setDeadlineDraft((prev) => ({ ...prev, relativeDueValue: e.target.value }))}
+                placeholder="Anzahl Tage"
+                className="sm:w-40"
+              />
+              <Select value={deadlineDraft.relativeDueDirection} onValueChange={(value: "before" | "after") => setDeadlineDraft((prev) => ({ ...prev, relativeDueDirection: value }))}>
+                <SelectTrigger className="sm:w-52"><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="before">Tage vor Endtermin</SelectItem>
+                  <SelectItem value="after">Tage nach Veranstaltung</SelectItem>
+                </SelectContent>
+              </Select>
+              <Button variant="ghost" onClick={() => {
+                setDeadlineDraft(getRelativeDueFormState());
+                updateTemplateItem(index, { relative_due_days: null });
+                setEditingDeadlineIndex(null);
+              }}>Frist entfernen</Button>
+            </div>
+          ) : (
+            <p className="text-sm text-muted-foreground">{getRelativeDueSummary(item.relative_due_days)}</p>
+          )}
+        </div>
+      </div>
+    );
+  };
+
+  const renderPhaseHeader = (group: PhaseGroup) => {
+    if (!group.phaseItem || group.phaseIndex === null) return null;
+    const phaseItem = group.phaseItem;
+    const phaseIndex = group.phaseIndex;
+    const itemCount = group.items.filter(i => i.item.type !== "separator").length;
+
+    return (
+      <div className="group mt-4 first:mt-0">
+        <div className="flex items-center gap-3 py-2">
+          <div className="flex items-center gap-2 min-w-0 flex-1">
+            <Layers className="h-4 w-4 text-primary shrink-0" />
+            {editingTemplate?.id === phaseIndex.toString() ? (
+              <>
+                <Input value={editingTemplate.value} onChange={(e) => setEditingTemplate({ ...editingTemplate, value: e.target.value })} className="flex-1" />
+                <Button size="sm" onClick={() => { updateTemplateItem(phaseIndex, { title: editingTemplate.value }); setEditingTemplate(null); }}><Check className="h-3 w-3" /></Button>
+                <Button size="sm" variant="outline" onClick={() => setEditingTemplate(null)}><X className="h-3 w-3" /></Button>
+              </>
+            ) : (
+              <>
+                <span className="text-sm font-semibold text-primary">{phaseItem.title}</span>
+                <Badge variant="secondary" className="shrink-0 text-[10px]">{itemCount}</Badge>
+                <Button size="sm" variant="outline" onClick={() => setEditingTemplate({ id: phaseIndex.toString(), field: "title", value: phaseItem.title })} className="opacity-0 group-hover:opacity-100 transition-opacity"><Edit className="h-3 w-3" /></Button>
+              </>
+            )}
+          </div>
+          <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+            <Button
+              size="sm"
+              variant="destructive"
+              onClick={() => deleteTemplateItem(phaseIndex)}
+              title="Phase löschen"
+            >
+              <Trash2 className="h-3 w-3" />
+            </Button>
+          </div>
+        </div>
+        <div className="h-0.5 bg-primary/30 rounded-full" />
+      </div>
+    );
+  };
+
   return (
     <Card>
       <CardHeader>
@@ -229,121 +413,35 @@ export function PlanningTemplateManager() {
             <Droppable droppableId="planning-template-items">
               {(provided) => (
                 <div {...provided.droppableProps} ref={provided.innerRef} className="space-y-2">
-                  {templateItems.map((item, index) => (
-                    <Draggable key={`${item.title}-${index}`} draggableId={index.toString()} index={index}>
-                      {(dragProvided) => (
-                        <div ref={dragProvided.innerRef} {...dragProvided.draggableProps} className="space-y-2 rounded border bg-card p-2">
-                          <div className="flex items-center gap-2">
-                            <div {...dragProvided.dragHandleProps} className="cursor-grab"><GripVertical className="h-4 w-4 text-muted-foreground" /></div>
-                            {item.type === "separator" ? (
-                              <>
-                                <div className="flex-1 border-t border-dashed border-border" />
-                                <span className="text-xs text-muted-foreground">Trenner</span>
-                              </>
-                            ) : item.type === "phase_start" ? (
-                              <>
-                                <span className="text-xs font-semibold uppercase tracking-wider text-primary">Phase:</span>
-                                {editingTemplate?.id === index.toString() ? (
-                                  <>
-                                    <Input value={editingTemplate.value} onChange={(e) => setEditingTemplate({ ...editingTemplate, value: e.target.value })} className="flex-1" />
-                                    <Button size="sm" onClick={() => { updateTemplateItem(index, { title: editingTemplate.value }); setEditingTemplate(null); }}><Check className="h-3 w-3" /></Button>
-                                    <Button size="sm" variant="outline" onClick={() => setEditingTemplate(null)}><X className="h-3 w-3" /></Button>
-                                  </>
-                                ) : (
-                                  <>
-                                    <span className="flex-1 font-medium text-primary">{item.title}</span>
-                                    <Button size="sm" variant="outline" onClick={() => setEditingTemplate({ id: index.toString(), field: "title", value: item.title })}><Edit className="h-3 w-3" /></Button>
-                                  </>
-                                )}
-                              </>
-                            ) : editingTemplate?.id === index.toString() ? (
-                              <>
-                                <Input value={editingTemplate.value} onChange={(e) => setEditingTemplate({ ...editingTemplate, value: e.target.value })} className="flex-1" />
-                                <Button size="sm" onClick={() => { updateTemplateItem(index, { title: editingTemplate.value }); setEditingTemplate(null); }}><Check className="h-3 w-3" /></Button>
-                                <Button size="sm" variant="outline" onClick={() => setEditingTemplate(null)}><X className="h-3 w-3" /></Button>
-                              </>
-                            ) : (
-                              <>
-                                <div className="flex-1">
-                                  <div className="flex items-center gap-2">
-                                    <span>{item.title}</span>
-                                    {item.type && item.type !== "item" && (
-                                      <span className="rounded bg-primary/10 px-2 py-0.5 text-[11px] text-primary">
-                                        {item.type === "system_social_media" ? "Systempunkt: Social Media" : "Systempunkt: RSVP"}
-                                      </span>
-                                    )}
-                                  </div>
-                                  <p className="text-xs text-muted-foreground">Frist: {getRelativeDueSummary(item.relative_due_days)}</p>
-                                </div>
-                                <Button size="sm" variant="outline" onClick={() => setEditingTemplate({ id: index.toString(), field: "title", value: item.title })}><Edit className="h-3 w-3" /></Button>
-                              </>
+                  {hasPhases ? (
+                    phaseGroups.map((group, groupIndex) => (
+                      <div key={groupIndex}>
+                        {group.phaseName !== null && renderPhaseHeader(group)}
+                        {group.phaseName !== null && group.items.length === 0 && (
+                          <div className="py-2 text-xs text-muted-foreground italic pl-4">Keine Punkte in dieser Phase</div>
+                        )}
+                        {group.items.map(({ item, index }) => (
+                          <Draggable key={`${item.title}-${index}`} draggableId={index.toString()} index={index}>
+                            {(dragProvided) => renderTemplateItem(item, index, dragProvided)}
+                          </Draggable>
+                        ))}
+                        {/* Hidden draggable for phase_start DnD */}
+                        {group.phaseIndex !== null && (
+                          <Draggable key={`phase-${group.phaseIndex}`} draggableId={group.phaseIndex.toString()} index={group.phaseIndex}>
+                            {(dragProvided) => (
+                              <div ref={dragProvided.innerRef} {...dragProvided.draggableProps} {...dragProvided.dragHandleProps} className="hidden" />
                             )}
-                            <Button size="sm" variant="destructive" onClick={() => deleteTemplateItem(index)}><Trash2 className="h-3 w-3" /></Button>
-                          </div>
-
-                          {item.type !== "separator" && item.type !== "phase_start" && (
-                            <div className="rounded-md border border-dashed border-border/80 bg-muted/30 p-3">
-                              <div className="mb-2 flex items-center justify-between gap-2">
-                                <Label className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Frist relativ zum Endtermin</Label>
-                                {editingDeadlineIndex === index ? (
-                                  <div className="flex items-center gap-2">
-                                    <Button
-                                      size="sm"
-                                      onClick={() => {
-                                        updateTemplateItem(index, {
-                                          relative_due_days: toSignedRelativeDueDays(deadlineDraft.relativeDueValue, deadlineDraft.relativeDueDirection),
-                                        });
-                                        setEditingDeadlineIndex(null);
-                                      }}
-                                    ><Check className="h-3 w-3" /></Button>
-                                    <Button size="sm" variant="outline" onClick={() => setEditingDeadlineIndex(null)}><X className="h-3 w-3" /></Button>
-                                  </div>
-                                ) : (
-                                  <Button
-                                    size="sm"
-                                    variant="outline"
-                                    onClick={() => {
-                                      setEditingDeadlineIndex(index);
-                                      setDeadlineDraft(getRelativeDueFormState(item.relative_due_days));
-                                    }}
-                                  >
-                                    <Edit className="mr-1 h-3 w-3" /> Frist bearbeiten
-                                  </Button>
-                                )}
-                              </div>
-
-                              {editingDeadlineIndex === index ? (
-                                <div className="flex flex-col gap-2 sm:flex-row">
-                                  <Input
-                                    type="number"
-                                    min="0"
-                                    value={deadlineDraft.relativeDueValue}
-                                    onChange={(e) => setDeadlineDraft((prev) => ({ ...prev, relativeDueValue: e.target.value }))}
-                                    placeholder="Anzahl Tage"
-                                    className="sm:w-40"
-                                  />
-                                  <Select value={deadlineDraft.relativeDueDirection} onValueChange={(value: "before" | "after") => setDeadlineDraft((prev) => ({ ...prev, relativeDueDirection: value }))}>
-                                    <SelectTrigger className="sm:w-52"><SelectValue /></SelectTrigger>
-                                    <SelectContent>
-                                      <SelectItem value="before">Tage vor Endtermin</SelectItem>
-                                      <SelectItem value="after">Tage nach Veranstaltung</SelectItem>
-                                    </SelectContent>
-                                  </Select>
-                                  <Button variant="ghost" onClick={() => {
-                                    setDeadlineDraft(getRelativeDueFormState());
-                                    updateTemplateItem(index, { relative_due_days: null });
-                                    setEditingDeadlineIndex(null);
-                                  }}>Frist entfernen</Button>
-                                </div>
-                              ) : (
-                                <p className="text-sm text-muted-foreground">{getRelativeDueSummary(item.relative_due_days)}</p>
-                              )}
-                            </div>
-                          )}
-                        </div>
-                      )}
-                    </Draggable>
-                  ))}
+                          </Draggable>
+                        )}
+                      </div>
+                    ))
+                  ) : (
+                    templateItems.map((item, index) => (
+                      <Draggable key={`${item.title}-${index}`} draggableId={index.toString()} index={index}>
+                        {(dragProvided) => renderTemplateItem(item, index, dragProvided)}
+                      </Draggable>
+                    ))
+                  )}
                   {provided.placeholder}
                 </div>
               )}
@@ -393,7 +491,7 @@ export function PlanningTemplateManager() {
               <div className="flex flex-wrap gap-2">
                 <Button variant="outline" onClick={() => setNewTemplateItem(createDraft())}><Plus className="mr-2 h-4 w-4" />Punkt hinzufügen</Button>
                 <Button variant="outline" onClick={addSeparator}><Minus className="mr-2 h-4 w-4" />Trenner hinzufügen</Button>
-                <Button variant="outline" onClick={addPhaseStart} className="text-primary border-primary/30"><Plus className="mr-2 h-4 w-4" />Phase hinzufügen</Button>
+                <Button variant="outline" onClick={addPhaseStart} className="text-primary border-primary/30"><Layers className="mr-2 h-4 w-4" />Phase hinzufügen</Button>
               </div>
             )}
           </div>

@@ -11,8 +11,6 @@ import { useTimelineGeometry } from "./useTimelineGeometry";
 
 const MIN_GROUP_GAP_PX = 32;
 const SAME_DAY_GAP_PX = 6;
-const DOT_SIZE_CLASS = "h-5 w-5";
-const DOT_LEFT_CLASS = "-left-[14px]";
 
 interface PlanningTimelineSectionProps {
   planningCreatedAt?: string | null;
@@ -224,10 +222,12 @@ export function PlanningTimelineSection({
                 key={line.assignmentId}
                 d={path}
                 fill="none"
-                stroke={isHighlighted ? "hsl(var(--primary))" : "hsl(var(--primary) / 0.55)"}
-                strokeWidth={isHighlighted ? 2.5 : 1.5}
-                strokeDasharray={isHighlighted ? undefined : "4 4"}
-                className="transition-all duration-200"
+                stroke="hsl(var(--primary))"
+                strokeWidth={2}
+                className={cn(
+                  "transition-all duration-200",
+                  isHighlighted ? "opacity-100" : "opacity-0",
+                )}
               />
             );
           })}
@@ -283,7 +283,6 @@ export function PlanningTimelineSection({
                     )}
                     {monthSections.map((section) => (
                       <div key={section.monthKey}>
-                        {/* Month header */}
                         <div className="mb-2 mt-3 first:mt-0">
                           <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
                             {section.monthLabel}
@@ -306,13 +305,21 @@ export function PlanningTimelineSection({
                                   : undefined;
                                 const isPastEntry = entry.date.getTime() < now;
                                 const isHighlighted = highlightedChecklistItemId && entry.checklistItemId === highlightedChecklistItemId;
-                                const pointColorClass = isHighlighted
+
+                                const dotBaseColor = isPastEntry
+                                  ? "bg-muted text-muted-foreground"
+                                  : entry.type === "known"
+                                    ? "bg-blue-500 text-white"
+                                    : "bg-amber-500 text-white";
+
+                                const dotColorClass = isHighlighted
                                   ? "bg-primary text-primary-foreground ring-2 ring-primary/30"
-                                  : isPastEntry
-                                    ? "bg-muted text-muted-foreground"
-                                    : entry.type === "known"
-                                      ? "bg-blue-500 text-white"
-                                      : "bg-amber-500 text-white";
+                                  : dotBaseColor;
+
+                                const dotSizeClass = isHighlighted ? "h-7 w-7" : "h-5 w-5";
+                                const dotLeftClass = isHighlighted ? "-left-[18px]" : "-left-[14px]";
+                                const iconSizeClass = isHighlighted ? "h-4 w-4" : "h-3 w-3";
+
                                 const Icon = entry.type === "known" ? CalendarClock : Flag;
 
                                 return (
@@ -327,13 +334,13 @@ export function PlanningTimelineSection({
                                     <span
                                       className={cn(
                                         "absolute z-20 flex items-center justify-center rounded-full transition-all duration-200",
-                                        DOT_SIZE_CLASS,
-                                        DOT_LEFT_CLASS,
-                                        pointColorClass,
+                                        dotSizeClass,
+                                        dotLeftClass,
+                                        dotColorClass,
                                       )}
                                       ref={(element) => setTimelinePointRef(entry.id, element)}
                                     >
-                                      <Icon className="h-3 w-3" />
+                                      <Icon className={cn(iconSizeClass, "transition-all duration-200")} />
                                     </span>
                                     <span className={cn(
                                       "text-sm font-mono tabular-nums w-6 text-right shrink-0",
@@ -343,7 +350,7 @@ export function PlanningTimelineSection({
                                     </span>
                                     <span
                                       className={cn(
-                                        "text-sm leading-tight flex-1 min-w-0 truncate",
+                                        "text-sm leading-tight flex-1 min-w-0 break-words",
                                         isPastEntry ? "text-muted-foreground" : "text-foreground",
                                         entry.type === "checklist" && entry.isCompleted && "line-through",
                                       )}

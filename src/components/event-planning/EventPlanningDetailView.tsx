@@ -209,6 +209,16 @@ export function EventPlanningDetailView(data: EventPlanningDataReturn) {
     return Object.fromEntries(timelineAssignments.map((assignment) => [assignment.checklist_item_id, assignment.due_date]));
   }, [timelineAssignments]);
 
+  const handleAddPhaseItem = async (title: string) => {
+    if (!selectedPlanning) return;
+    const maxOrder = Math.max(...checklistItems.map(item => item.order_index), -1);
+    const itemId = crypto.randomUUID();
+    await supabase
+      .from("event_planning_checklist_items")
+      .insert([{ id: itemId, event_planning_id: selectedPlanning.id, title, order_index: maxOrder + 1, type: "phase_start", is_completed: false }]);
+    fetchPlanningDetails(selectedPlanning.id);
+  };
+
   const handlePlanningDragEnd = (result: DropResult) => {
     if (!result.destination) {
       return;
@@ -822,6 +832,7 @@ export function EventPlanningDetailView(data: EventPlanningDataReturn) {
                 hoveredChecklistItemId={hoveredChecklistItemId}
                 onHoverItem={setHoveredChecklistItemId}
                 onUnhoverItem={() => setHoveredChecklistItemId(null)}
+                addPhaseItem={handleAddPhaseItem}
               />
 
               <PlanningTimelineSection
