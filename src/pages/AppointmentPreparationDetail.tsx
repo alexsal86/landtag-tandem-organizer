@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useParams, useNavigate, useSearchParams } from "react-router-dom";
-import { ArrowLeft, Edit, FileText, Upload } from "lucide-react";
+import { ArrowLeft, Edit, FileText, Upload, Calendar, Clock, MapPin } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -15,16 +15,30 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { debugConsole } from "@/utils/debugConsole";
 import { useTenant } from "@/hooks/useTenant";
+import { format } from "date-fns";
+import { de } from "date-fns/locale";
+
+interface AppointmentInfo {
+  id: string;
+  title: string;
+  start_time: string;
+  end_time: string;
+  location?: string | null;
+  description?: string | null;
+}
 
 export default function AppointmentPreparationDetail() {
-  const { id } = useParams();
+  // Support both standalone route (:id) and Index.tsx catch-all route (:section/:subId)
+  const { id, subId } = useParams();
+  const preparationId = id ?? subId;
   const navigate = useNavigate();
   const { toast } = useToast();
   const [searchParams] = useSearchParams();
   const { user } = useAuth();
   const { currentTenant } = useTenant();
-  const [activeTab, setActiveTab] = useState("preparation"); // Changed default from "overview"
+  const [activeTab, setActiveTab] = useState("preparation");
   const [isCreating, setIsCreating] = useState(false);
+  const [appointmentInfo, setAppointmentInfo] = useState<AppointmentInfo | null>(null);
 
   // Check if we have URL parameters for creating a new preparation
   const appointmentId = searchParams.get('appointmentId');
@@ -39,12 +53,31 @@ export default function AppointmentPreparationDetail() {
     error,
     updatePreparation,
     archivePreparation
-  } = useAppointmentPreparation(id);
+  } = useAppointmentPreparation(preparationId);
+
+  // Fetch linked appointment details for the prominent header
+  useEffect(() => {
+    const fetchAppointment = async () => {
+      const apptId = preparation?.appointment_id;
+      if (!apptId) return;
+      try {
+        const { data } = await supabase
+          .from('appointments')
+          .select('id, title, start_time, end_time, location, description')
+          .eq('id', apptId)
+          .single();
+        if (data) setAppointmentInfo(data);
+      } catch (e) {
+        debugConsole.error('Error fetching appointment info:', e);
+      }
+    };
+    fetchAppointment();
+  }, [preparation?.appointment_id]);
 
   // Create new preparation if we have URL parameters but no ID
   useEffect(() => {
     const createNewPreparation = async () => {
-      if (!id && appointmentId && title && !isCreating && user && currentTenant) {
+      if (!preparationId && appointmentId && title && !isCreating && user && currentTenant) {
         setIsCreating(true);
         try {
           const { data, error } = await supabase
@@ -59,8 +92,8 @@ export default function AppointmentPreparationDetail() {
                 contact_name: title.includes('@') ? title : '',
                 event_type: 'Termin',
                 ...(location && { contact_info: location }),
-                ...(date && time && { 
-                  notes: `Geplant für ${new Date(date).toLocaleDateString('de-DE')} um ${time}` 
+                ...(date && time && {
+                  notes: `Geplant für ${new Date(date).toLocaleDateString('de-DE')} um ${time}`
                 })
               },
               checklist_items: [
@@ -75,7 +108,6 @@ export default function AppointmentPreparationDetail() {
 
           if (error) throw error;
 
-          // Redirect to the new preparation
           navigate(`/appointment-preparation/${data.id}`, { replace: true });
         } catch (error) {
           debugConsole.error('Error creating preparation:', error);
@@ -91,11 +123,11 @@ export default function AppointmentPreparationDetail() {
     };
 
     createNewPreparation();
-  }, [id, appointmentId, title, date, time, location, isCreating, user, currentTenant, navigate, toast]);
+  }, [preparationId, appointmentId, title, date, time, location, isCreating, user, currentTenant, navigate, toast]);
 
   if (loading || isCreating) {
     return (
-      <div className="min-h-screen bg-gradient-subtle p-6 flex items-center justify-center">
+      <div className="p-6 flex items-center justify-center min-h-[40vh]">
         <div className="text-center">
           <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-4"></div>
           <p className="text-muted-foreground">
@@ -108,10 +140,10 @@ export default function AppointmentPreparationDetail() {
 
   if (error || !preparation) {
     return (
-      <div className="min-h-screen bg-gradient-subtle p-6">
+      <div className="p-6">
         <div className="max-w-6xl mx-auto">
-          <Button 
-            variant="outline" 
+          <Button
+            variant="outline"
             onClick={() => navigate(-1)}
             className="mb-6"
           >
@@ -160,12 +192,12 @@ export default function AppointmentPreparationDetail() {
   };
 
   return (
-    <main id="main-content" className="min-h-screen bg-gradient-subtle p-6" tabIndex={-1}>
+    <div className="p-6">
       <div className="max-w-6xl mx-auto">
-        {/* Header with Back Button */}
-        <div className="flex items-center justify-between mb-6">
-          <Button 
-            variant="outline" 
+        {/* Back Button */}
+        <div className="mb-6">
+          <Button
+            variant="outline"
             onClick={() => navigate("/calendar")}
           >
             <ArrowLeft className="h-4 w-4 mr-2" />
@@ -173,25 +205,63 @@ export default function AppointmentPreparationDetail() {
           </Button>
         </div>
 
-        {/* Title Card */}
-        <Card className="bg-card shadow-elegant border-border mb-6">
-          <CardHeader>
-            <div className="flex items-center justify-between">
-              <div>
-                <CardTitle className="text-2xl mb-2">{preparation.title}</CardTitle>
-                <div className="flex gap-2 items-center">
+        {/* Prominent Appointment Info Header */}
+        <Card className="bg-card shadow-elegant border-border mb-6 overflow-hidden">
+          <div className="bg-primary/5 border-b border-border px-6 py-4">
+            <div className="flex items-start justify-between gap-4">
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center gap-2 mb-2">
                   {getStatusBadge(preparation.status)}
-                  <span className="text-sm text-muted-foreground">
-                    Erstellt am {new Date(preparation.created_at).toLocaleDateString('de-DE')}
+                  <span className="text-xs text-muted-foreground">
+                    Erstellt {new Date(preparation.created_at).toLocaleDateString('de-DE')}
                   </span>
                 </div>
+                <h1 className="text-2xl font-bold leading-tight truncate">
+                  {appointmentInfo?.title ?? preparation.title}
+                </h1>
               </div>
-              <div className="text-right text-sm text-muted-foreground">
-                <p>Zuletzt bearbeitet:</p>
-                <p>{new Date(preparation.updated_at).toLocaleString('de-DE')}</p>
+              <div className="text-right text-xs text-muted-foreground whitespace-nowrap shrink-0">
+                <p>Zuletzt bearbeitet</p>
+                <p className="font-medium">{new Date(preparation.updated_at).toLocaleString('de-DE')}</p>
               </div>
             </div>
-          </CardHeader>
+          </div>
+
+          {appointmentInfo && (
+            <CardContent className="py-4">
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                <div className="flex items-center gap-3 rounded-lg bg-muted/40 px-4 py-3">
+                  <Calendar className="h-5 w-5 text-primary shrink-0" />
+                  <div>
+                    <p className="text-xs text-muted-foreground font-medium uppercase tracking-wide">Datum</p>
+                    <p className="font-semibold">
+                      {format(new Date(appointmentInfo.start_time), 'EEEE, dd. MMMM yyyy', { locale: de })}
+                    </p>
+                  </div>
+                </div>
+                <div className="flex items-center gap-3 rounded-lg bg-muted/40 px-4 py-3">
+                  <Clock className="h-5 w-5 text-primary shrink-0" />
+                  <div>
+                    <p className="text-xs text-muted-foreground font-medium uppercase tracking-wide">Uhrzeit</p>
+                    <p className="font-semibold">
+                      {format(new Date(appointmentInfo.start_time), 'HH:mm', { locale: de })}
+                      {' – '}
+                      {format(new Date(appointmentInfo.end_time), 'HH:mm', { locale: de })} Uhr
+                    </p>
+                  </div>
+                </div>
+                <div className="flex items-center gap-3 rounded-lg bg-muted/40 px-4 py-3">
+                  <MapPin className="h-5 w-5 text-primary shrink-0" />
+                  <div className="min-w-0">
+                    <p className="text-xs text-muted-foreground font-medium uppercase tracking-wide">Ort</p>
+                    <p className="font-semibold truncate">
+                      {appointmentInfo.location ?? <span className="text-muted-foreground font-normal italic">Kein Ort angegeben</span>}
+                    </p>
+                  </div>
+                </div>
+              </div>
+            </CardContent>
+          )}
         </Card>
 
         {/* Tab Navigation */}
@@ -253,6 +323,6 @@ export default function AppointmentPreparationDetail() {
           </div>
         </Tabs>
       </div>
-    </main>
+    </div>
   );
 }

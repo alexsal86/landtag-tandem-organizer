@@ -8,7 +8,15 @@ import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/component
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
-import { CalendarIcon, ClockIcon, MapPinIcon, UsersIcon, PlusIcon, EditIcon, SaveIcon, XIcon, ExternalLinkIcon, FileTextIcon, ChevronDownIcon, ChevronRightIcon, FolderIcon, MessageSquareIcon, SettingsIcon, CheckCircleIcon } from "lucide-react";
+import { Switch } from "@/components/ui/switch";
+import { Label } from "@/components/ui/label";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import {
+  CalendarIcon, ClockIcon, MapPinIcon, UsersIcon, PlusIcon, EditIcon, SaveIcon, XIcon,
+  ExternalLinkIcon, FileTextIcon, ChevronDownIcon, ChevronRightIcon, FolderIcon,
+  MessageSquareIcon, SettingsIcon, CheckCircleIcon, CarIcon, MapIcon, ClipboardListIcon,
+  TagIcon, TrashIcon
+} from "lucide-react";
 import { AppointmentPreparation } from "@/hooks/useAppointmentPreparation";
 import { debounce } from "@/utils/debounce";
 import { toast } from "@/hooks/use-toast";
@@ -17,6 +25,9 @@ import { useTenant } from "@/hooks/useTenant";
 import { format } from "date-fns";
 import { de } from "date-fns/locale";
 import { AppointmentDetailsSidebar } from "@/components/calendar/AppointmentDetailsSidebar";
+
+type Companion = NonNullable<AppointmentPreparation['preparation_data']['companions']>[number];
+type ProgramRow = NonNullable<AppointmentPreparation['preparation_data']['program']>[number];
 
 interface CalendarEvent {
   id: string;
@@ -32,7 +43,6 @@ interface CalendarEvent {
   meeting_details?: string;
 }
 
-// Extended interface with contact fields that might not be in the base interface
 interface ExtendedAppointmentPreparation extends AppointmentPreparation {
   contact_name?: string;
   contact_info?: string;
@@ -44,12 +54,27 @@ interface AppointmentPreparationDataTabProps {
   onUpdate: (updates: Partial<AppointmentPreparation>) => Promise<void>;
 }
 
-export function AppointmentPreparationDataTab({ 
-  preparation, 
-  onUpdate 
+const VISIT_REASON_OPTIONS = [
+  { value: 'einladung', label: 'Einladung der Person/Einrichtung' },
+  { value: 'eigeninitiative', label: 'Eigeninitiative' },
+  { value: 'fraktionsarbeit', label: 'Fraktionsarbeit' },
+  { value: 'pressetermin', label: 'Pressetermin' },
+] as const;
+
+const COMPANION_TYPE_OPTIONS = [
+  { value: 'mitarbeiter', label: 'Mitarbeiter' },
+  { value: 'fraktion', label: 'Fraktion' },
+  { value: 'partei', label: 'Partei' },
+  { value: 'presse', label: 'Presse' },
+  { value: 'sonstige', label: 'Sonstige' },
+] as const;
+
+export function AppointmentPreparationDataTab({
+  preparation,
+  onUpdate
 }: AppointmentPreparationDataTabProps) {
   const extendedPreparation = preparation as ExtendedAppointmentPreparation;
-  
+
   const [editData, setEditData] = useState<Record<string, string>>({
     ...preparation.preparation_data,
     contact_name: (extendedPreparation.contact_name || ""),
@@ -58,14 +83,31 @@ export function AppointmentPreparationDataTab({
   });
   const [saving, setSaving] = useState(false);
   const [expandedSections, setExpandedSections] = useState({
-    basics: true,
+    anlass: true,
+    begleitpersonen: true,
+    logistik: true,
+    programm: true,
+    basics: false,
     people: false,
     materials: false,
     communication: false,
     framework: false
   });
 
-  // Overview functionality state
+  // Local state for complex fields
+  const [companions, setCompanions] = useState<Companion[]>(
+    preparation.preparation_data.companions ?? []
+  );
+  const [hasParking, setHasParking] = useState<boolean>(
+    preparation.preparation_data.has_parking ?? false
+  );
+  const [programRows, setProgramRows] = useState<ProgramRow[]>(
+    preparation.preparation_data.program ?? []
+  );
+  const [visitReason, setVisitReason] = useState<string>(
+    preparation.preparation_data.visit_reason ?? ''
+  );
+
   const [isEditing, setIsEditing] = useState(false);
   const [contacts, setContacts] = useState<any[]>([]);
   const [selectedContactId, setSelectedContactId] = useState("");
@@ -74,13 +116,11 @@ export function AppointmentPreparationDataTab({
   const [showAppointmentSidebar, setShowAppointmentSidebar] = useState(false);
   const { currentTenant } = useTenant();
 
-  // Fetch appointment details and contacts
   useEffect(() => {
     if (preparation.appointment_id) {
       fetchAppointmentDetails();
       fetchContacts();
-      
-      // Initialize contact selection from preparation data
+
       if (extendedPreparation.contact_name && extendedPreparation.contact_info) {
         setShowCustomContact(true);
       } else if (extendedPreparation.contact_id) {
@@ -89,17 +129,18 @@ export function AppointmentPreparationDataTab({
     }
   }, [preparation.appointment_id, currentTenant]);
 
-  // Sync editData with preparation changes
   useEffect(() => {
     setEditData({
       ...preparation.preparation_data,
-      // Get contact info from preparation_data
       contact_name: preparation.preparation_data.contact_name || "",
       contact_info: preparation.preparation_data.contact_info || "",
       notes: preparation.notes || ""
     });
-    
-    // Initialize contact selection from preparation_data
+    setCompanions(preparation.preparation_data.companions ?? []);
+    setHasParking(preparation.preparation_data.has_parking ?? false);
+    setProgramRows(preparation.preparation_data.program ?? []);
+    setVisitReason(preparation.preparation_data.visit_reason ?? '');
+
     if (preparation.preparation_data.contact_name && preparation.preparation_data.contact_info) {
       setShowCustomContact(true);
     } else if (preparation.preparation_data.contact_id) {
@@ -139,7 +180,7 @@ export function AppointmentPreparationDataTab({
 
   const fetchContacts = async () => {
     if (!currentTenant) return;
-    
+
     try {
       const { data, error } = await supabase
         .from('contacts')
@@ -154,27 +195,41 @@ export function AppointmentPreparationDataTab({
     }
   };
 
+  // Build full preparation_data for saving
+  const buildPreparationData = (
+    base: Record<string, string>,
+    overrides?: Partial<AppointmentPreparation['preparation_data']>
+  ): AppointmentPreparation['preparation_data'] => ({
+    ...base,
+    visit_reason: (overrides?.visit_reason ?? visitReason) as any,
+    companions: overrides?.companions ?? companions,
+    has_parking: overrides?.has_parking ?? hasParking,
+    program: overrides?.program ?? programRows,
+  });
+
   const handleSave = async () => {
     try {
       setSaving(true);
-      
-      // Store all data including contact info in preparation_data
-      const updatedPreparationData = {
-        ...editData,
-        // Move contact fields into preparation_data
-        contact_name: showCustomContact ? editData.contact_name : (selectedContactId ? contacts.find(c => c.id === selectedContactId)?.name : undefined),
-        contact_info: showCustomContact ? editData.contact_info : (selectedContactId ? `${contacts.find(c => c.id === selectedContactId)?.email || ""}${contacts.find(c => c.id === selectedContactId)?.phone ? ` | ${contacts.find(c => c.id === selectedContactId)?.phone}` : ""}`.trim().replace(/^\|/, '').trim() || undefined : undefined),
-        contact_id: showCustomContact ? undefined : selectedContactId || undefined
-      };
 
-      const updates: Partial<AppointmentPreparation> = {
+      const updatedPreparationData = buildPreparationData({
+        ...editData,
+        contact_name: showCustomContact
+          ? editData.contact_name
+          : (selectedContactId ? contacts.find(c => c.id === selectedContactId)?.name : undefined),
+        contact_info: showCustomContact
+          ? editData.contact_info
+          : (selectedContactId
+            ? `${contacts.find(c => c.id === selectedContactId)?.email || ""}${contacts.find(c => c.id === selectedContactId)?.phone ? ` | ${contacts.find(c => c.id === selectedContactId)?.phone}` : ""}`.trim().replace(/^\|/, '').trim() || undefined
+            : undefined),
+        contact_id: showCustomContact ? undefined : selectedContactId || undefined
+      } as any);
+
+      await onUpdate({
         preparation_data: updatedPreparationData,
         notes: editData.notes || "",
-      };
-
-      await onUpdate(updates);
+      });
       setIsEditing(false);
-      
+
       toast({
         title: "Gespeichert",
         description: "Terminvorbereitung wurde erfolgreich gespeichert.",
@@ -198,6 +253,10 @@ export function AppointmentPreparationDataTab({
       contact_info: preparation.preparation_data.contact_info || "",
       notes: preparation.notes || ""
     });
+    setCompanions(preparation.preparation_data.companions ?? []);
+    setHasParking(preparation.preparation_data.has_parking ?? false);
+    setProgramRows(preparation.preparation_data.program ?? []);
+    setVisitReason(preparation.preparation_data.visit_reason ?? '');
     setIsEditing(false);
     setShowCustomContact(!!(preparation.preparation_data.contact_name && preparation.preparation_data.contact_info));
     setSelectedContactId(preparation.preparation_data.contact_id || "");
@@ -232,13 +291,13 @@ export function AppointmentPreparationDataTab({
       in_progress: "default",
       completed: "default"
     } as const;
-    
+
     const statusLabels = {
       draft: "Entwurf",
-      in_progress: "In Bearbeitung", 
+      in_progress: "In Bearbeitung",
       completed: "Abgeschlossen"
     } as const;
-    
+
     return (
       <Badge variant={statusColors[status as keyof typeof statusColors] || "secondary"}>
         {statusLabels[status as keyof typeof statusLabels] || status}
@@ -252,13 +311,8 @@ export function AppointmentPreparationDataTab({
     }
   };
 
-  const handleSidebarUpdate = (updatedAppointment: CalendarEvent) => {
-    setAppointmentDetails(updatedAppointment);
-    fetchAppointmentDetails(); // Refresh the data
-  };
-
   const debouncedSave = useCallback(
-    debounce(async (data: any) => {
+    debounce(async (data: AppointmentPreparation['preparation_data']) => {
       try {
         setSaving(true);
         await onUpdate({ preparation_data: data });
@@ -283,11 +337,64 @@ export function AppointmentPreparationDataTab({
   const handleFieldChange = (field: string, value: string) => {
     const newData = { ...editData, [field]: value };
     setEditData(newData);
-    debouncedSave(newData);
+    debouncedSave(buildPreparationData(newData));
   };
 
   const toggleSection = (section: keyof typeof expandedSections) => {
     setExpandedSections(prev => ({ ...prev, [section]: !prev[section] }));
+  };
+
+  // --- Visit Reason handlers ---
+  const handleVisitReasonChange = (value: string) => {
+    const newReason = visitReason === value ? '' : value;
+    setVisitReason(newReason);
+    debouncedSave(buildPreparationData(editData, { visit_reason: newReason as any }));
+  };
+
+  // --- Companion handlers ---
+  const addCompanion = () => {
+    const newCompanion: Companion = { id: crypto.randomUUID(), name: '', type: 'mitarbeiter', note: '' };
+    const updated = [...companions, newCompanion];
+    setCompanions(updated);
+    debouncedSave(buildPreparationData(editData, { companions: updated }));
+  };
+
+  const updateCompanion = (idx: number, field: keyof Companion, value: string) => {
+    const updated = companions.map((c, i) => i === idx ? { ...c, [field]: value } : c);
+    setCompanions(updated);
+    debouncedSave(buildPreparationData(editData, { companions: updated }));
+  };
+
+  const removeCompanion = (idx: number) => {
+    const updated = companions.filter((_, i) => i !== idx);
+    setCompanions(updated);
+    debouncedSave(buildPreparationData(editData, { companions: updated }));
+  };
+
+  // --- Parking handler ---
+  const handleParkingChange = (checked: boolean) => {
+    setHasParking(checked);
+    debouncedSave(buildPreparationData(editData, { has_parking: checked }));
+  };
+
+  // --- Program handlers ---
+  const addProgramRow = () => {
+    const newRow: ProgramRow = { id: crypto.randomUUID(), time: '', item: '', notes: '' };
+    const updated = [...programRows, newRow];
+    setProgramRows(updated);
+    debouncedSave(buildPreparationData(editData, { program: updated }));
+  };
+
+  const updateProgramRow = (idx: number, field: keyof ProgramRow, value: string) => {
+    const updated = programRows.map((r, i) => i === idx ? { ...r, [field]: value } : r);
+    setProgramRows(updated);
+    debouncedSave(buildPreparationData(editData, { program: updated }));
+  };
+
+  const removeProgramRow = (idx: number) => {
+    const updated = programRows.filter((_, i) => i !== idx);
+    setProgramRows(updated);
+    debouncedSave(buildPreparationData(editData, { program: updated }));
   };
 
   const fieldSections = {
@@ -373,7 +480,7 @@ export function AppointmentPreparationDataTab({
                 </div>
               </div>
             </div>
-            
+
             <div className="flex items-center gap-2">
               {isEditing ? (
                 <>
@@ -395,7 +502,7 @@ export function AppointmentPreparationDataTab({
             </div>
           </div>
         </CardHeader>
-        
+
         <CardContent className="space-y-6">
           {/* Appointment Details Section */}
           {appointmentDetails && (
@@ -404,7 +511,7 @@ export function AppointmentPreparationDataTab({
                 <CalendarIcon className="h-5 w-5" />
                 Termindetails
               </h3>
-              
+
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="flex items-center gap-2">
                   <CalendarIcon className="h-4 w-4 text-muted-foreground" />
@@ -413,7 +520,7 @@ export function AppointmentPreparationDataTab({
                     {format(new Date(appointmentDetails.start), 'dd.MM.yyyy', { locale: de })}
                   </span>
                 </div>
-                
+
                 <div className="flex items-center gap-2">
                   <ClockIcon className="h-4 w-4 text-muted-foreground" />
                   <span className="font-medium">Zeit:</span>
@@ -421,7 +528,7 @@ export function AppointmentPreparationDataTab({
                     {format(new Date(appointmentDetails.start), 'HH:mm', { locale: de })} - {format(new Date(appointmentDetails.end), 'HH:mm', { locale: de })}
                   </span>
                 </div>
-                
+
                 {appointmentDetails.location && (
                   <div className="flex items-center gap-2">
                     <MapPinIcon className="h-4 w-4 text-muted-foreground" />
@@ -429,7 +536,7 @@ export function AppointmentPreparationDataTab({
                     <span>{appointmentDetails.location}</span>
                   </div>
                 )}
-                
+
                 {appointmentDetails.description && (
                   <div className="flex items-start gap-2 md:col-span-2">
                     <FileTextIcon className="h-4 w-4 text-muted-foreground mt-0.5" />
@@ -440,7 +547,7 @@ export function AppointmentPreparationDataTab({
                   </div>
                 )}
               </div>
-              
+
               <Button
                 variant="outline"
                 size="sm"
@@ -461,13 +568,13 @@ export function AppointmentPreparationDataTab({
               <UsersIcon className="h-5 w-5" />
               Kontaktinformationen
             </h3>
-            
+
             {isEditing ? (
               <div className="space-y-4">
                 <div>
                   <label className="text-sm font-medium mb-2 block">Kontakt</label>
-                  <Select 
-                    value={selectedContactId || (showCustomContact ? "custom" : "none")} 
+                  <Select
+                    value={selectedContactId || (showCustomContact ? "custom" : "none")}
                     onValueChange={handleContactSelect}
                   >
                     <SelectTrigger>
@@ -543,7 +650,7 @@ export function AppointmentPreparationDataTab({
           {/* Notes Section */}
           <div className="space-y-4">
             <h3 className="font-semibold text-lg">Notizen</h3>
-            
+
             {isEditing ? (
               <Textarea
                 value={editData.notes}
@@ -567,8 +674,295 @@ export function AppointmentPreparationDataTab({
           </div>
         </CardContent>
       </Card>
-      
-      {/* Preparation Data Section */}
+
+      {/* ─── NEW SECTIONS ─── */}
+
+      {/* 1. Anlass des Besuchs */}
+      <Card>
+        <CardContent className="pt-6">
+          <Collapsible
+            open={expandedSections.anlass}
+            onOpenChange={() => toggleSection('anlass')}
+          >
+            <CollapsibleTrigger className="flex items-center justify-between w-full p-4 bg-muted/30 rounded-lg hover:bg-muted/50 transition-colors">
+              <div className="flex items-center gap-3">
+                <TagIcon className="h-5 w-5 text-primary" />
+                <h3 className="font-medium">Anlass des Besuchs</h3>
+                {visitReason && (
+                  <Badge variant="secondary" className="text-xs">
+                    {VISIT_REASON_OPTIONS.find(o => o.value === visitReason)?.label ?? visitReason}
+                  </Badge>
+                )}
+              </div>
+              {expandedSections.anlass ? (
+                <ChevronDownIcon className="h-4 w-4" />
+              ) : (
+                <ChevronRightIcon className="h-4 w-4" />
+              )}
+            </CollapsibleTrigger>
+            <CollapsibleContent className="pt-4">
+              <div className="flex flex-wrap gap-3 px-1">
+                {VISIT_REASON_OPTIONS.map(option => (
+                  <button
+                    key={option.value}
+                    type="button"
+                    onClick={() => handleVisitReasonChange(option.value)}
+                    className={`px-4 py-2 rounded-full border text-sm font-medium transition-colors ${
+                      visitReason === option.value
+                        ? 'bg-primary text-primary-foreground border-primary'
+                        : 'bg-background border-border hover:bg-muted'
+                    }`}
+                  >
+                    {option.label}
+                  </button>
+                ))}
+              </div>
+            </CollapsibleContent>
+          </Collapsible>
+        </CardContent>
+      </Card>
+
+      {/* 2. Begleitpersonen */}
+      <Card>
+        <CardContent className="pt-6">
+          <Collapsible
+            open={expandedSections.begleitpersonen}
+            onOpenChange={() => toggleSection('begleitpersonen')}
+          >
+            <CollapsibleTrigger className="flex items-center justify-between w-full p-4 bg-muted/30 rounded-lg hover:bg-muted/50 transition-colors">
+              <div className="flex items-center gap-3">
+                <UsersIcon className="h-5 w-5 text-primary" />
+                <h3 className="font-medium">Begleitpersonen</h3>
+                {companions.length > 0 && (
+                  <span className="text-xs bg-primary/10 text-primary px-2 py-1 rounded-full">
+                    {companions.length}
+                  </span>
+                )}
+              </div>
+              {expandedSections.begleitpersonen ? (
+                <ChevronDownIcon className="h-4 w-4" />
+              ) : (
+                <ChevronRightIcon className="h-4 w-4" />
+              )}
+            </CollapsibleTrigger>
+            <CollapsibleContent className="pt-4 space-y-3">
+              {companions.length === 0 && (
+                <p className="text-sm text-muted-foreground px-1">Noch keine Begleitpersonen hinzugefügt.</p>
+              )}
+              {companions.map((companion, idx) => (
+                <div key={companion.id} className="grid grid-cols-[1fr_auto_1fr_auto] gap-2 items-start p-3 border rounded-lg bg-muted/20">
+                  <div className="space-y-1">
+                    <label className="text-xs text-muted-foreground">Name</label>
+                    <Input
+                      value={companion.name}
+                      onChange={(e) => updateCompanion(idx, 'name', e.target.value)}
+                      placeholder="Name der Begleitperson"
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <label className="text-xs text-muted-foreground">Typ</label>
+                    <Select
+                      value={companion.type}
+                      onValueChange={(v) => updateCompanion(idx, 'type', v)}
+                    >
+                      <SelectTrigger className="w-[140px]">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {COMPANION_TYPE_OPTIONS.map(opt => (
+                          <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-1">
+                    <label className="text-xs text-muted-foreground">Hinweis (optional)</label>
+                    <Input
+                      value={companion.note ?? ''}
+                      onChange={(e) => updateCompanion(idx, 'note', e.target.value)}
+                      placeholder="z.B. Rolle, Funktion..."
+                    />
+                  </div>
+                  <div className="pt-6">
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      onClick={() => removeCompanion(idx)}
+                      className="text-destructive hover:text-destructive"
+                    >
+                      <TrashIcon className="h-4 w-4" />
+                    </Button>
+                  </div>
+                </div>
+              ))}
+              <Button variant="outline" size="sm" onClick={addCompanion} className="mt-2">
+                <PlusIcon className="h-4 w-4 mr-2" />
+                Begleitperson hinzufügen
+              </Button>
+            </CollapsibleContent>
+          </Collapsible>
+        </CardContent>
+      </Card>
+
+      {/* 3. Logistik */}
+      <Card>
+        <CardContent className="pt-6">
+          <Collapsible
+            open={expandedSections.logistik}
+            onOpenChange={() => toggleSection('logistik')}
+          >
+            <CollapsibleTrigger className="flex items-center justify-between w-full p-4 bg-muted/30 rounded-lg hover:bg-muted/50 transition-colors">
+              <div className="flex items-center gap-3">
+                <CarIcon className="h-5 w-5 text-primary" />
+                <h3 className="font-medium">Logistik & Anreise</h3>
+              </div>
+              {expandedSections.logistik ? (
+                <ChevronDownIcon className="h-4 w-4" />
+              ) : (
+                <ChevronRightIcon className="h-4 w-4" />
+              )}
+            </CollapsibleTrigger>
+            <CollapsibleContent className="pt-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6 px-1">
+                {/* Fahrtzeit */}
+                <div className="space-y-2">
+                  <label className="text-sm font-medium flex items-center gap-2">
+                    <ClockIcon className="h-4 w-4 text-muted-foreground" />
+                    Fahrtzeit
+                  </label>
+                  <Input
+                    value={editData.travel_time ?? ''}
+                    onChange={(e) => handleFieldChange('travel_time', e.target.value)}
+                    placeholder="z.B. 45 Minuten"
+                  />
+                </div>
+
+                {/* PKW-Stellplatz */}
+                <div className="space-y-2">
+                  <label className="text-sm font-medium flex items-center gap-2">
+                    <MapIcon className="h-4 w-4 text-muted-foreground" />
+                    PKW-Stellplatz
+                  </label>
+                  <div className="flex items-center gap-3 pt-1">
+                    <Switch
+                      id="has-parking"
+                      checked={hasParking}
+                      onCheckedChange={handleParkingChange}
+                    />
+                    <Label htmlFor="has-parking" className="text-sm">
+                      {hasParking ? 'Parkplatz vorhanden' : 'Kein Parkplatz'}
+                    </Label>
+                  </div>
+                </div>
+
+                {/* Folgetermin / Rückfahrt */}
+                <div className="md:col-span-2 space-y-2">
+                  <label className="text-sm font-medium flex items-center gap-2">
+                    <CalendarIcon className="h-4 w-4 text-muted-foreground" />
+                    Folgetermin / Rückfahrt
+                  </label>
+                  <Textarea
+                    value={editData.follow_up ?? ''}
+                    onChange={(e) => handleFieldChange('follow_up', e.target.value)}
+                    placeholder="Was passiert nach dem Termin? Rückfahrt, nächster Termin, Nachbereitung..."
+                    rows={3}
+                    className="resize-none"
+                  />
+                </div>
+              </div>
+            </CollapsibleContent>
+          </Collapsible>
+        </CardContent>
+      </Card>
+
+      {/* 4. Programm / Ablaufplan */}
+      <Card>
+        <CardContent className="pt-6">
+          <Collapsible
+            open={expandedSections.programm}
+            onOpenChange={() => toggleSection('programm')}
+          >
+            <CollapsibleTrigger className="flex items-center justify-between w-full p-4 bg-muted/30 rounded-lg hover:bg-muted/50 transition-colors">
+              <div className="flex items-center gap-3">
+                <ClipboardListIcon className="h-5 w-5 text-primary" />
+                <h3 className="font-medium">Programm / Ablaufplan</h3>
+                {programRows.length > 0 && (
+                  <span className="text-xs bg-primary/10 text-primary px-2 py-1 rounded-full">
+                    {programRows.length} {programRows.length === 1 ? 'Punkt' : 'Punkte'}
+                  </span>
+                )}
+              </div>
+              {expandedSections.programm ? (
+                <ChevronDownIcon className="h-4 w-4" />
+              ) : (
+                <ChevronRightIcon className="h-4 w-4" />
+              )}
+            </CollapsibleTrigger>
+            <CollapsibleContent className="pt-4">
+              {programRows.length > 0 ? (
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead className="w-[110px]">Zeit</TableHead>
+                      <TableHead>Programmpunkt</TableHead>
+                      <TableHead>Hinweise</TableHead>
+                      <TableHead className="w-[50px]"></TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {programRows.map((row, idx) => (
+                      <TableRow key={row.id}>
+                        <TableCell className="py-2">
+                          <Input
+                            value={row.time}
+                            onChange={(e) => updateProgramRow(idx, 'time', e.target.value)}
+                            placeholder="10:00"
+                            className="h-8"
+                          />
+                        </TableCell>
+                        <TableCell className="py-2">
+                          <Input
+                            value={row.item}
+                            onChange={(e) => updateProgramRow(idx, 'item', e.target.value)}
+                            placeholder="Programmpunkt"
+                            className="h-8"
+                          />
+                        </TableCell>
+                        <TableCell className="py-2">
+                          <Input
+                            value={row.notes}
+                            onChange={(e) => updateProgramRow(idx, 'notes', e.target.value)}
+                            placeholder="Hinweise"
+                            className="h-8"
+                          />
+                        </TableCell>
+                        <TableCell className="py-2">
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => removeProgramRow(idx)}
+                            className="h-8 w-8 text-destructive hover:text-destructive"
+                          >
+                            <TrashIcon className="h-4 w-4" />
+                          </Button>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              ) : (
+                <p className="text-sm text-muted-foreground px-1 mb-3">Noch keine Programmpunkte eingetragen.</p>
+              )}
+              <Button variant="outline" size="sm" onClick={addProgramRow} className="mt-3">
+                <PlusIcon className="h-4 w-4 mr-2" />
+                Programmpunkt hinzufügen
+              </Button>
+            </CollapsibleContent>
+          </Collapsible>
+        </CardContent>
+      </Card>
+
+      {/* ─── EXISTING PREPARATION DATA SECTIONS ─── */}
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
@@ -581,7 +975,7 @@ export function AppointmentPreparationDataTab({
             const SectionIcon = section.icon;
             const isExpanded = expandedSections[sectionKey as keyof typeof expandedSections];
             const filledCount = getFilledFieldsCount(sectionKey);
-            
+
             return (
               <Collapsible
                 key={sectionKey}
@@ -602,13 +996,13 @@ export function AppointmentPreparationDataTab({
                     <ChevronRightIcon className="h-4 w-4" />
                   )}
                 </CollapsibleTrigger>
-                
+
                 <CollapsibleContent className="pt-4">
                   <div className="grid gap-4 md:grid-cols-2">
                     {section.fields.map((field) => (
                       <div key={field.key} className="space-y-2">
                         <label className="text-sm font-medium">{field.label}</label>
-                        
+
                         {(field as any).type === "select" ? (
                           <div className="space-y-2">
                             <Select
@@ -626,7 +1020,7 @@ export function AppointmentPreparationDataTab({
                                 ))}
                               </SelectContent>
                             </Select>
-                            
+
                             {editData[field.key] === "custom" && (
                               <Input
                                 value={editData[`${field.key}_custom`] || ""}
@@ -650,7 +1044,7 @@ export function AppointmentPreparationDataTab({
                             placeholder={field.placeholder}
                           />
                         )}
-                        
+
                         {editData[field.key] && (
                           <div className="flex items-center gap-1 text-xs text-green-600">
                             <CheckCircleIcon className="h-3 w-3" />
@@ -664,8 +1058,8 @@ export function AppointmentPreparationDataTab({
               </Collapsible>
             );
           })}
-          
-          {Object.values(fieldSections).every(section => 
+
+          {Object.values(fieldSections).every(section =>
             section.fields.every(field => !editData[field.key])
           ) && (
             <div className="text-center py-8 text-muted-foreground">

@@ -33,6 +33,7 @@ const EditProfile = lazyWithRetry(() => import("@/pages/EditProfile"));
 const NotificationsPage = lazyWithRetry(() => import("@/pages/NotificationsPage"));
 const LetterDetail = lazyWithRetry(() => import("@/pages/LetterDetail"));
 const EmployeeMeetingDetail = lazyWithRetry(() => import("@/pages/EmployeeMeetingDetail"));
+const AppointmentPreparationDetail = lazyWithRetry(() => import("@/pages/AppointmentPreparationDetail"));
 const CreateAppointmentDialog = lazyWithRetry(() => import("@/components/CreateAppointmentDialog").then(m => ({ default: m.CreateAppointmentDialog })));
 const GlobalQuickActionHandler = lazyWithRetry(() => import("@/components/layout/GlobalQuickActionHandler").then(m => ({ default: m.GlobalQuickActionHandler })));
 const GlobalAnnouncementBanner = lazyWithRetry(() => import("@/components/announcements/GlobalAnnouncementBanner").then(m => ({ default: m.GlobalAnnouncementBanner })));
@@ -221,6 +222,8 @@ const Index = (): React.JSX.Element => {
         return withSectionBoundary('Benachrichtigungen', <NotificationsPage />);
       case "profile-edit":
         return withSectionBoundary('Profil bearbeiten', <EditProfile />);
+      case "appointment-preparation":
+        return withSectionBoundary('Terminvorbereitung', <AppointmentPreparationDetail />);
       default:
         return <NotFound />;
     }

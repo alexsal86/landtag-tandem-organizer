@@ -34,6 +34,26 @@ export interface AppointmentPreparation {
     contact_info?: string;
     contact_id?: string;
     notes?: string;
+    // Anlass des Besuchs
+    visit_reason?: 'einladung' | 'eigeninitiative' | 'fraktionsarbeit' | 'pressetermin';
+    // Begleitpersonen
+    companions?: Array<{
+      id: string;
+      name: string;
+      type: 'mitarbeiter' | 'fraktion' | 'partei' | 'presse' | 'sonstige';
+      note?: string;
+    }>;
+    // Logistik
+    travel_time?: string;
+    has_parking?: boolean;
+    follow_up?: string;
+    // Programm / Ablaufplan
+    program?: Array<{
+      id: string;
+      time: string;
+      item: string;
+      notes: string;
+    }>;
   };
   checklist_items: Array<{
     id: string;
