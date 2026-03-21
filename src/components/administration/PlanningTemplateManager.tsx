@@ -156,6 +156,14 @@ export function PlanningTemplateManager() {
     void saveTemplateItems(newItems);
   };
 
+  const addPhaseStart = () => {
+    if (!selectedTemplate) return;
+    const newItems = [...templateItems];
+    newItems.push({ title: "Neue Phase", type: "phase_start", order_index: newItems.length });
+    setTemplateItems(newItems);
+    void saveTemplateItems(newItems);
+  };
+
   const updateTemplateItem = (index: number, patch: Partial<TemplateItem>) => {
     const newItems = [...templateItems];
     newItems[index] = { ...newItems[index], ...patch };
