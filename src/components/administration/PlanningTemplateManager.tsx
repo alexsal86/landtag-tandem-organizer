@@ -232,6 +232,22 @@ export function PlanningTemplateManager() {
                                 <div className="flex-1 border-t border-dashed border-border" />
                                 <span className="text-xs text-muted-foreground">Trenner</span>
                               </>
+                            ) : item.type === "phase_start" ? (
+                              <>
+                                <span className="text-xs font-semibold uppercase tracking-wider text-primary">Phase:</span>
+                                {editingTemplate?.id === index.toString() ? (
+                                  <>
+                                    <Input value={editingTemplate.value} onChange={(e) => setEditingTemplate({ ...editingTemplate, value: e.target.value })} className="flex-1" />
+                                    <Button size="sm" onClick={() => { updateTemplateItem(index, { title: editingTemplate.value }); setEditingTemplate(null); }}><Check className="h-3 w-3" /></Button>
+                                    <Button size="sm" variant="outline" onClick={() => setEditingTemplate(null)}><X className="h-3 w-3" /></Button>
+                                  </>
+                                ) : (
+                                  <>
+                                    <span className="flex-1 font-medium text-primary">{item.title}</span>
+                                    <Button size="sm" variant="outline" onClick={() => setEditingTemplate({ id: index.toString(), field: "title", value: item.title })}><Edit className="h-3 w-3" /></Button>
+                                  </>
+                                )}
+                              </>
                             ) : editingTemplate?.id === index.toString() ? (
                               <>
                                 <Input value={editingTemplate.value} onChange={(e) => setEditingTemplate({ ...editingTemplate, value: e.target.value })} className="flex-1" />
