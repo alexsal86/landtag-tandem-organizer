@@ -1,11 +1,12 @@
 import { useCallback, useMemo, useState } from "react";
-import { CalendarDays, AlertTriangle, Tag, icons, Move, Clock3, Sparkles } from "lucide-react";
+import { CalendarDays, AlertTriangle, Tag, icons, Clock3, Sparkles, Info } from "lucide-react";
 import { Calendar, dateFnsLocalizer, Views, type View } from "react-big-calendar";
 import withDragAndDrop from "react-big-calendar/lib/addons/dragAndDrop";
 import { endOfMonth, endOfWeek, format, parse, startOfDay, startOfMonth, startOfWeek, getDay, getISOWeek, isSameDay, isWithinInterval } from "date-fns";
 import { de } from "date-fns/locale";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -406,21 +407,36 @@ export function SocialPlannerCalendar({ items, onUpdateSchedule, onEditItem, spe
         />
       </div>
 
-      <div className="grid gap-3 xl:grid-cols-[minmax(0,2fr)_minmax(280px,1fr)]">
+      <div className="grid gap-3 xl:grid-cols-[minmax(0,1.8fr)_minmax(280px,1fr)]">
         <section className="rounded-lg border bg-muted/20 p-3">
           <div className="mb-2 flex items-center justify-between gap-2">
-            <h4 className="text-xs font-semibold text-foreground flex items-center gap-1.5">
-              <Move className="h-3.5 w-3.5" />
-              Planungshinweise
-            </h4>
+            <div className="flex items-center gap-2">
+              <h4 className="text-xs font-semibold text-foreground flex items-center gap-1.5">
+                <CalendarDays className="h-3.5 w-3.5" />
+                Kalenderübersicht
+              </h4>
+              <TooltipProvider delayDuration={150}>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button type="button" variant="ghost" size="icon" className="h-6 w-6 rounded-full text-muted-foreground">
+                      <Info className="h-3.5 w-3.5" />
+                      <span className="sr-only">Planungshinweise anzeigen</span>
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent side="top" align="start" className="max-w-sm space-y-1 text-xs">
+                    <p>Beiträge können direkt im Kalender per Drag-and-Drop neu terminiert werden.</p>
+                    <p>Klick auf einen freien Slot öffnet die Terminierung für ungeplante Beiträge.</p>
+                    <p>Klick auf einen Beitrag öffnet den Bearbeitungsdialog für Status, Datum und Inhalte.</p>
+                    <p>Gelb umrandete Termine markieren mehrere Beiträge im selben Kanal am selben Tag.</p>
+                  </TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
+            </div>
             <Badge variant="outline">{events.length} Termine</Badge>
           </div>
-          <div className="space-y-2 text-xs text-muted-foreground">
-            <p>• Beiträge können direkt im Kalender per Drag-and-Drop neu terminiert werden.</p>
-            <p>• Klick auf einen freien Slot öffnet die Terminierung für ungeplante Beiträge.</p>
-            <p>• Klick auf einen Beitrag öffnet den Bearbeitungsdialog für Status, Datum und Inhalte.</p>
-            <p>• Gelb umrandete Termine markieren mehrere Beiträge im selben Kanal am selben Tag.</p>
-          </div>
+          <p className="text-xs text-muted-foreground">
+            Plane Beiträge direkt im Kalender und nutze das Info-Symbol für kurze Hinweise.
+          </p>
         </section>
 
         <aside className="space-y-2 rounded-lg border bg-muted/30 p-3">
