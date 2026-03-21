@@ -122,12 +122,14 @@ function EditableTitleInput({
   value,
   className,
   placeholder,
+  style,
   onCommit,
 }: {
   itemId: string;
   value: string;
   className?: string;
   placeholder?: string;
+  style?: React.CSSProperties;
   onCommit: (itemId: string, value: string) => void;
 }) {
   const [draft, setDraft] = useState(value);
@@ -179,6 +181,7 @@ function EditableTitleInput({
       }}
       className={className}
       placeholder={placeholder}
+      style={style}
     />
   );
 }
@@ -238,10 +241,10 @@ export function ChecklistSection(props: ChecklistSectionProps) {
     const isHovered = hoveredChecklistItemId === item.id;
 
     return (
-      <div ref={provided.innerRef} {...provided.draggableProps} className={cn("group relative pl-6", snapshot.isDragging && "z-50") }>
+      <div ref={provided.innerRef} {...provided.draggableProps} className={cn("group relative", snapshot.isDragging && "z-50") }>
         <button
           {...provided.dragHandleProps}
-          className="absolute left-0 top-4 flex h-7 w-5 items-center justify-center rounded-md text-muted-foreground opacity-0 transition-opacity hover:bg-muted group-hover:opacity-100"
+          className="absolute -left-5 top-2.5 flex h-6 w-5 items-center justify-center rounded-md text-muted-foreground opacity-0 transition-opacity hover:bg-muted group-hover:opacity-100"
           aria-label="Punkt verschieben"
         >
           <GripVertical className="h-4 w-4" />
@@ -249,7 +252,7 @@ export function ChecklistSection(props: ChecklistSectionProps) {
         <div className="space-y-2">
           <div
             className={cn(
-              "group/checklist-item flex items-start space-x-2 rounded-md border bg-background p-3 transition-all",
+              "group/checklist-item flex items-start space-x-2 rounded-md border bg-background px-3 py-2 transition-all",
               isHovered ? "border-primary/50 ring-1 ring-primary/20 bg-primary/5" : "border-border hover:bg-muted/50",
             )}
             ref={(element) => registerChecklistItemRef?.(item.id, element)}
@@ -268,6 +271,7 @@ export function ChecklistSection(props: ChecklistSectionProps) {
                 <Milestone className="mr-1 h-3 w-3" />
                 Frist
               </Button>
+              <div className="flex items-center gap-1 opacity-0 transition-opacity group-hover/checklist-item:opacity-100">
               <Button variant="ghost" size="sm" className="h-7 w-7 p-0 relative" onClick={() => setShowItemSubtasks(prev => ({ ...prev, [item.id]: !prev[item.id] }))}>
                 <ListTodo className="h-3 w-3" />
                 {(itemSubtasks[item.id]?.length || 0) > 0 && <span className="absolute -top-1 -right-1 bg-primary text-primary-foreground rounded-full text-[10px] w-4 h-4 flex items-center justify-center">{itemSubtasks[item.id]?.length}</span>}
@@ -286,6 +290,7 @@ export function ChecklistSection(props: ChecklistSectionProps) {
               <Button variant="ghost" size="sm" onClick={() => deleteChecklistItem(item.id)} className="h-7 w-7 p-0 text-destructive hover:text-destructive">
                 <Trash2 className="h-3 w-3" />
               </Button>
+              </div>
               <div className="relative h-8 w-[132px]">
                 <div className={cn("absolute inset-0 flex items-center justify-end gap-2 rounded-md border border-dashed border-transparent px-2 text-xs text-muted-foreground transition-all duration-200 group-hover/checklist-item:translate-x-[-8px] group-hover/checklist-item:opacity-0", timelineDueDates?.[item.id] ? "opacity-100" : "opacity-70")} title={timelineDueDates?.[item.id] ? `Frist: ${format(new Date(timelineDueDates[item.id]), "dd.MM.yyyy", { locale: de })}` : "Frist hinzufügen"}>
                   <CalendarClock className="h-3.5 w-3.5" />
@@ -423,27 +428,28 @@ export function ChecklistSection(props: ChecklistSectionProps) {
 
     return (
       <div className="group/phase mt-4 first:mt-0 pl-6">
-        <div className="relative rounded-lg px-4 py-3" style={{ borderLeft: `3px solid ${phaseColor}` }}>
-          <button
+          <div className="relative py-2">
+            <button
             {...dragHandleProps}
-            className="absolute -left-6 top-3 flex h-7 w-5 items-center justify-center rounded-md text-muted-foreground opacity-0 transition-opacity hover:bg-muted group-hover/phase:opacity-100"
+            className="absolute -left-5 top-1.5 flex h-6 w-5 items-center justify-center rounded-md text-muted-foreground opacity-0 transition-opacity hover:bg-muted group-hover/phase:opacity-100"
             aria-label="Phase verschieben"
           >
             <GripVertical className="h-4 w-4" />
           </button>
-          <div className="absolute inset-x-0 top-0 h-px" style={{ backgroundColor: hexToRgba(phaseColor, 0.35) }} />
-          <div className="absolute inset-x-0 bottom-0 h-px" style={{ backgroundColor: hexToRgba(phaseColor, 0.35) }} />
+          <div className="absolute inset-x-0 bottom-0 h-px" style={{ backgroundColor: hexToRgba(phaseColor, 0.45) }} />
           <div className="flex items-center gap-2">
-            <div className="flex min-w-0 flex-1 items-center gap-2">
-              <EditableTitleInput itemId={phaseItem.id} value={phaseItem.title} onCommit={updateChecklistItemTitle} className="h-8 border-none bg-transparent px-0 text-sm font-semibold focus:bg-transparent" placeholder="Phasenname..." />
-              <Badge className="border-0 text-[10px]" style={{ backgroundColor: hexToRgba(phaseColor, 0.14), color: phaseColor }}>{itemCount}</Badge>
+            <div className="flex min-w-0 flex-1 items-center gap-1">
+              <EditableTitleInput itemId={phaseItem.id} value={phaseItem.title} onCommit={updateChecklistItemTitle} className="h-7 border-none bg-transparent px-0 text-sm font-semibold focus:bg-transparent" placeholder="Phasenname..." style={{ color: phaseColor }} />
+              <Badge className="border-0 px-1.5 text-[10px]" style={{ backgroundColor: hexToRgba(phaseColor, 0.14), color: phaseColor }}>{itemCount}</Badge>
             </div>
+            <div className="flex items-center gap-1 opacity-0 transition-opacity group-hover/phase:opacity-100">
             <label className="flex cursor-pointer items-center gap-1 rounded-md border px-2 py-1 text-xs text-muted-foreground hover:text-foreground">
               <Palette className="h-3 w-3" />
               <span>Farbe</span>
               <input type="color" value={phaseColor} onChange={(e) => void updateChecklistItemColor(phaseItem.id, e.target.value)} className="h-5 w-5 cursor-pointer border-0 bg-transparent p-0" />
             </label>
             <Button variant="ghost" size="sm" onClick={() => deleteChecklistItem(phaseItem.id)} className="h-7 w-7 p-0 text-destructive hover:text-destructive" title="Phase löschen"><Trash2 className="h-3 w-3" /></Button>
+            </div>
           </div>
         </div>
       </div>
@@ -455,7 +461,7 @@ export function ChecklistSection(props: ChecklistSectionProps) {
       <CardHeader>
         <CardTitle>Checkliste</CardTitle>
       </CardHeader>
-      <CardContent>
+      <CardContent className="pl-0 pr-6">
         <div className="space-y-2">
           <Droppable droppableId="checklist">
             {(provided) => (
