@@ -490,7 +490,7 @@ export const EventRSVPManager = ({ eventPlanningId, eventTitle }: EventRSVPManag
     if (!noteText.trim()) return;
     setSendingNote(true);
     try {
-      const targetStatuses = noteTarget === 'all' ? ['accepted', 'tentative'] : [noteTarget];
+      const targetStatuses = noteTarget === 'everyone' ? ['accepted', 'tentative'] : [noteTarget];
       const targetRsvps = rsvps.filter((r) => targetStatuses.includes(r.status));
       if (targetRsvps.length === 0) {
         toast({ title: 'Keine Empfänger', description: 'Keine Gäste mit dem gewählten Status.', variant: 'destructive' });
