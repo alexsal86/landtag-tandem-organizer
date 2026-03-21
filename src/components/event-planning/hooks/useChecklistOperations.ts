@@ -110,6 +110,12 @@ export function useChecklistOperations({
     setChecklistItems(items => items.map(item => item.id === itemId ? { ...item, title } : item));
   };
 
+  const updateChecklistItemColor = async (itemId: string, color: string) => {
+    const { error } = await supabase.from("event_planning_checklist_items").update({ color }).eq("id", itemId);
+    if (error) { toast({ title: "Fehler", description: "Farbe konnte nicht aktualisiert werden.", variant: "destructive" }); return; }
+    setChecklistItems(items => items.map(item => item.id === itemId ? { ...item, color } : item));
+  };
+
   const addChecklistItem = async () => {
     if (!selectedPlanningId) return;
 
@@ -371,6 +377,7 @@ export function useChecklistOperations({
     setNewChecklistItemType,
     toggleChecklistItem,
     updateChecklistItemTitle,
+    updateChecklistItemColor,
     addChecklistItem,
     deleteChecklistItem,
     addSubItem,

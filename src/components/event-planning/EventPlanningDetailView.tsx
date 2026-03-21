@@ -82,7 +82,7 @@ export function EventPlanningDetailView(data: EventPlanningDataReturn) {
     showDefaultCollaboratorsDialog, setShowDefaultCollaboratorsDialog,
     updatePlanningField, deletePlanning,
     addPlanningDate, confirmDate, updateConfirmedDate,
-    toggleChecklistItem, updateChecklistItemTitle, addChecklistItem, deleteChecklistItem,
+    toggleChecklistItem, updateChecklistItemTitle, updateChecklistItemColor, addChecklistItem, deleteChecklistItem,
     addCollaborator, updateCollaboratorPermission, removeCollaborator,
     addContact, removeContact, editContact,
     addSpeaker, removeSpeaker, editSpeaker,
@@ -215,7 +215,7 @@ export function EventPlanningDetailView(data: EventPlanningDataReturn) {
     const itemId = crypto.randomUUID();
     await supabase
       .from("event_planning_checklist_items")
-      .insert([{ id: itemId, event_planning_id: selectedPlanning.id, title, order_index: maxOrder + 1, type: "phase_start", is_completed: false }]);
+      .insert([{ id: itemId, event_planning_id: selectedPlanning.id, title, order_index: maxOrder + 1, type: "phase_start", is_completed: false, color: "#65a30d" }]);
     fetchPlanningDetails(selectedPlanning.id);
   };
 
@@ -791,6 +791,7 @@ export function EventPlanningDetailView(data: EventPlanningDataReturn) {
                 setNewChecklistItemType={setNewChecklistItemType}
                 toggleChecklistItem={toggleChecklistItem}
                 updateChecklistItemTitle={updateChecklistItemTitle}
+                updateChecklistItemColor={updateChecklistItemColor}
                 addChecklistItem={addChecklistItem}
                 deleteChecklistItem={deleteChecklistItem}
                 itemSubtasks={itemSubtasks}
