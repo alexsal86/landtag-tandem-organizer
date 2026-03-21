@@ -114,8 +114,14 @@ export function TaskListRow({
   const assignTooltipText = currentAssigneeName
     ? `Zugewiesen an ${currentAssigneeName}`
     : "Zuweisen";
-  const rowPaddingLeft = 12 + depth * 20;
-  const connectorX = 10 + depth * 20;
+  const TREE_INDENT = 28;
+  const rowPaddingLeft = 12 + depth * TREE_INDENT;
+  const checkboxOffset = rowPaddingLeft + 20;
+  const checkboxCenter = checkboxOffset + 8;
+  const [parentLineHeight, setParentLineHeight] = useState<number | null>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
+  const childrenRef = useRef<HTMLDivElement>(null);
+  const measureRafIdRef = useRef<number | null>(null);
 
   useEffect(() => {
     if (editingTitle && titleInputRef.current) {
@@ -123,6 +129,48 @@ export function TaskListRow({
       titleInputRef.current.select();
     }
   }, [editingTitle]);
+
+  useEffect(() => {
+    if (!expanded || !hasSubtasks || !containerRef.current || !childrenRef.current) {
+      setParentLineHeight(null);
+      return;
+    }
+
+    const measure = () => {
+      const container = containerRef.current;
+      const childrenEl = childrenRef.current;
+      if (!container || !childrenEl) return;
+      const lastChild = childrenEl.lastElementChild as HTMLElement | null;
+      if (!lastChild) return;
+
+      const containerTop = container.getBoundingClientRect().top;
+      const lastChildTop = lastChild.getBoundingClientRect().top;
+      const rowTopOffset = 40;
+      const lineStart = rowTopOffset;
+      const lineEnd = lastChildTop - containerTop + 20;
+      setParentLineHeight(Math.max(0, lineEnd - lineStart));
+    };
+
+    const scheduleMeasure = () => {
+      if (measureRafIdRef.current != null) return;
+      measureRafIdRef.current = requestAnimationFrame(() => {
+        measureRafIdRef.current = null;
+        measure();
+      });
+    };
+
+    scheduleMeasure();
+    const observer = new ResizeObserver(scheduleMeasure);
+    observer.observe(childrenRef.current);
+
+    return () => {
+      observer.disconnect();
+      if (measureRafIdRef.current != null) {
+        cancelAnimationFrame(measureRafIdRef.current);
+        measureRafIdRef.current = null;
+      }
+    };
+  }, [expanded, hasSubtasks, childTasks.length, checkboxCenter]);
 
   const getDueDateColor = (dueDate: string | null) => {
     if (!dueDate) return "text-muted-foreground";
@@ -159,7 +207,22 @@ export function TaskListRow({
   };
 
   return (
-    <div ref={getHighlightRef ? getHighlightRef(task.id) : highlightRef} className={cn(className, isHighlighted?.(task.id) && "notification-highlight")}>
+    <div
+      ref={(el) => {
+        containerRef.current = el;
+        const targetRef = getHighlightRef ? getHighlightRef(task.id) : highlightRef;
+        targetRef?.(el);
+      }}
+      className={cn("relative rounded-md", className, isHighlighted?.(task.id) && "notification-highlight")}
+    >
+      {expanded && hasSubtasks && parentLineHeight != null && parentLineHeight > 0 && (
+        <div
+          className="absolute w-px bg-border/70"
+          aria-hidden="true"
+          style={{ left: `${checkboxCenter}px`, top: "40px", height: `${parentLineHeight}px` }}
+        />
+      )}
+
       <div
         className="relative flex items-center gap-2 px-3 py-2 hover:bg-muted/50 transition-colors border-b"
         style={{ paddingLeft: `${rowPaddingLeft}px` }}
@@ -167,24 +230,19 @@ export function TaskListRow({
         onMouseLeave={() => setIsHovered(false)}
       >
         {depth > 0 && (
-          <>
-            <div
-              aria-hidden="true"
-              className="absolute w-px bg-border/70"
-              style={{ left: `${connectorX}px`, top: "-1px", bottom: "50%" }}
-            />
-            <div
-              aria-hidden="true"
-              className="absolute border-l-2 border-b-2 border-border/70 rounded-bl-md"
-              style={{
-                left: `${connectorX}px`,
-                top: "50%",
-                width: "16px",
-                height: "12px",
-                transform: "translateY(-100%)",
-              }}
-            />
-          </>
+          <div
+            aria-hidden="true"
+            className="absolute"
+            style={{
+              left: `${checkboxCenter - rowPaddingLeft - 16}px`,
+              top: 0,
+              width: "20px",
+              height: "20px",
+              borderLeft: "2px solid hsl(var(--border) / 0.7)",
+              borderBottom: "2px solid hsl(var(--border) / 0.7)",
+              borderBottomLeftRadius: "8px",
+            }}
+          />
         )}
 
         <div className="w-4 flex-shrink-0">
@@ -297,12 +355,7 @@ export function TaskListRow({
       </div>
 
       {expanded && hasSubtasks && (
-        <div className="relative bg-muted/30 border-b">
-          <div
-            aria-hidden="true"
-            className="absolute w-px bg-border/70"
-            style={{ left: `${connectorX}px`, top: 0, bottom: 0 }}
-          />
+        <div ref={childrenRef} className="bg-muted/30 border-b">
           {childTasks.map((childTask) => (
             <TaskListRow
               key={childTask.id}
