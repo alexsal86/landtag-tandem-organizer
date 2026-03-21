@@ -216,7 +216,7 @@ export function EventPlanningDetailView(data: EventPlanningDataReturn) {
     await supabase
       .from("event_planning_checklist_items")
       .insert([{ id: itemId, event_planning_id: selectedPlanning.id, title, order_index: maxOrder + 1, type: "phase_start", is_completed: false }]);
-    fetchPlanningDetails?.();
+    fetchPlanningDetails(selectedPlanning.id);
   };
 
   const handlePlanningDragEnd = (result: DropResult) => {
