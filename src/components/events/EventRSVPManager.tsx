@@ -762,6 +762,9 @@ export const EventRSVPManager = ({ eventPlanningId, eventTitle }: EventRSVPManag
                               <div className="space-y-1">
                                 {getStatusBadge(rsvp.status)}
                                 <div className="text-xs text-muted-foreground">{formatDateTime(rsvp.responded_at, 'Noch keine Antwort')}</div>
+                                {rsvp.comment && (
+                                  <div className="text-xs text-muted-foreground italic mt-1">„{rsvp.comment}"</div>
+                                )}
                               </div>
                             </TableCell>
                             <TableCell className="text-center text-sm">
