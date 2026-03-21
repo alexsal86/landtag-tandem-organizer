@@ -417,7 +417,7 @@ export function ChecklistSection(props: ChecklistSectionProps) {
                 // We use addChecklistItem but need to set the title first
                 if (addPhaseItem) {
                   // Use a prompt or inline add
-                  const title = window.prompt("Neue Aufgabe in Phase „" + group.phaseName + "":");
+                  const title = window.prompt("Neue Aufgabe in Phase \"" + group.phaseName + "\":");
                   if (title?.trim()) {
                     // We'll use the existing addChecklistItem flow
                     props.setNewChecklistItem(title.trim());
