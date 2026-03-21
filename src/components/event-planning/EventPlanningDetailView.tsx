@@ -819,6 +819,9 @@ export function EventPlanningDetailView(data: EventPlanningDataReturn) {
                 timelineDueDates={timelineDueDates}
                 onSetTimelineDueDate={handleSetTimelineDueDate}
                 registerChecklistItemRef={registerChecklistItemRef}
+                hoveredChecklistItemId={hoveredChecklistItemId}
+                onHoverItem={setHoveredChecklistItemId}
+                onUnhoverItem={() => setHoveredChecklistItemId(null)}
               />
 
               <PlanningTimelineSection
