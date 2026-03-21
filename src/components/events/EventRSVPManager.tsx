@@ -97,11 +97,17 @@ export const EventRSVPManager = ({ eventPlanningId, eventTitle }: EventRSVPManag
   const [sending, setSending] = useState(false);
   const [actionRsvpId, setActionRsvpId] = useState<string | null>(null);
 
-  const [customEmailText, setCustomEmailText] = useState(DEFAULT_INVITATION_TEXT.replace('{eventTitle}', eventTitle));
+  // DB-loaded email templates (null = not yet loaded or not found in DB)
+  const [invitationTemplate, setInvitationTemplate] = useState<string | null>(null);
+  const [reminderTemplate, setReminderTemplate] = useState<string | null>(null);
+  const [noteTemplate, setNoteTemplate] = useState<string | null>(null);
+
+  // Email customization
+  const [customEmailText, setCustomEmailText] = useState('');
   const [showEmailEditor, setShowEmailEditor] = useState(false);
 
   const [reminderDialogOpen, setReminderDialogOpen] = useState(false);
-  const [reminderText, setReminderText] = useState(DEFAULT_REMINDER_TEXT.replace('{eventTitle}', eventTitle));
+  const [reminderText, setReminderText] = useState('');
   const [reminderTargetIds, setReminderTargetIds] = useState<string[]>([]);
   const [sendingReminder, setSendingReminder] = useState(false);
 
@@ -116,25 +122,38 @@ export const EventRSVPManager = ({ eventPlanningId, eventTitle }: EventRSVPManag
   const [hasUserToggledRsvpList, setHasUserToggledRsvpList] = useState(false);
 
   useEffect(() => {
-    setCustomEmailText(DEFAULT_INVITATION_TEXT.replace('{eventTitle}', eventTitle));
-    setReminderText(DEFAULT_REMINDER_TEXT.replace('{eventTitle}', eventTitle));
-  }, [eventTitle]);
-
-  useEffect(() => {
-    void loadRSVPs();
-    void loadDistributionLists();
+    loadRSVPs();
+    loadDistributionLists();
+    loadEmailTemplates();
     setHasUserToggledRsvpList(false);
   }, [eventPlanningId]);
+
+  useEffect(() => {
+    setCustomEmailText((invitationTemplate ?? DEFAULT_INVITATION_TEXT).replace('{eventTitle}', eventTitle));
+  }, [invitationTemplate, eventTitle]);
 
   useEffect(() => {
     if (hasUserToggledRsvpList) return;
     setIsRsvpListOpen(rsvps.length < 10);
   }, [rsvps.length, hasUserToggledRsvpList]);
 
-  const activeLinkCount = useMemo(
-    () => Object.values(publicLinksByRsvpId).filter((link) => Boolean(link) && link?.revoked_at == null && (!link?.expires_at || new Date(link.expires_at).getTime() > Date.now())).length,
-    [publicLinksByRsvpId],
-  );
+  const loadEmailTemplates = async () => {
+    if (!currentTenant?.id) return;
+    try {
+      const { data } = await supabase
+        .from('event_email_templates')
+        .select('type, body')
+        .eq('tenant_id', currentTenant.id)
+        .eq('is_active', true);
+      for (const row of (data ?? [])) {
+        if (row.type === 'invitation' && row.body) setInvitationTemplate(row.body);
+        if (row.type === 'reminder' && row.body) setReminderTemplate(row.body);
+        if (row.type === 'note' && row.body) setNoteTemplate(row.body);
+      }
+    } catch (e) {
+      debugConsole.error('Error loading event email templates:', e);
+    }
+  };
 
   const loadRSVPs = async () => {
     setLoading(true);
@@ -543,9 +562,9 @@ export const EventRSVPManager = ({ eventPlanningId, eventTitle }: EventRSVPManag
   const unsent = rsvps.filter((r) => !r.invitation_sent).length;
 
   const openReminderForPending = () => {
-    const pendingRsvps = rsvps.filter((r) => r.status === 'invited' && r.invitation_sent);
-    setReminderTargetIds(pendingRsvps.map((r) => r.id));
-    setReminderText(DEFAULT_REMINDER_TEXT.replace('{eventTitle}', eventTitle));
+    const pendingRsvps = rsvps.filter(r => r.status === 'invited' && r.invitation_sent);
+    setReminderTargetIds(pendingRsvps.map(r => r.id));
+    setReminderText((reminderTemplate ?? DEFAULT_REMINDER_TEXT).replace('{eventTitle}', eventTitle));
     setReminderDialogOpen(true);
   };
 
@@ -570,8 +589,11 @@ export const EventRSVPManager = ({ eventPlanningId, eventTitle }: EventRSVPManag
                 Erinnerung
               </Button>
             )}
-            {rsvps.some((r) => r.status === 'accepted' || r.status === 'tentative') && (
-              <Button size="sm" variant="outline" onClick={() => setNoteDialogOpen(true)}>
+            {rsvps.length > 0 && (
+              <Button size="sm" variant="outline" onClick={() => {
+                if (noteTemplate && !noteText) setNoteText(noteTemplate);
+                setNoteDialogOpen(true);
+              }}>
                 <MessageSquare className="h-4 w-4 mr-2" />
                 Hinweis senden
               </Button>
@@ -802,8 +824,17 @@ export const EventRSVPManager = ({ eventPlanningId, eventTitle }: EventRSVPManag
                                 <TooltipProvider>
                                   <Tooltip>
                                     <TooltipTrigger asChild>
-                                      <Button size="sm" variant="ghost" onClick={() => resendInvitation(rsvp)} disabled={actionPending} className="h-7 w-7 p-0">
-                                        <Mail className="h-4 w-4 text-muted-foreground" />
+                                      <Button
+                                        size="sm"
+                                        variant="ghost"
+                                        onClick={() => {
+                                          setReminderTargetIds([rsvp.id]);
+                                          setReminderText((reminderTemplate ?? DEFAULT_REMINDER_TEXT).replace('{eventTitle}', eventTitle));
+                                          setReminderDialogOpen(true);
+                                        }}
+                                        className="h-7 w-7 p-0"
+                                      >
+                                        <Bell className="h-4 w-4 text-muted-foreground" />
                                       </Button>
                                     </TooltipTrigger>
                                     <TooltipContent>Einladung erneut senden</TooltipContent>

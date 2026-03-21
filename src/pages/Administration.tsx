@@ -28,6 +28,7 @@ import { DecisionArchiveSettings } from "@/components/administration/DecisionArc
 import { MatrixSettings } from "@/components/MatrixSettings";
 import { VacationChecklistAdmin } from "@/components/administration/VacationChecklistAdmin";
 import { NewsEmailTemplateManager } from "@/components/administration/NewsEmailTemplateManager";
+import { EventEmailTemplateManager } from "@/components/administration/EventEmailTemplateManager";
 import { AuditLogViewer } from "@/components/administration/AuditLogViewer";
 import { TopicSettings } from "@/components/administration/TopicSettings";
 import { ConfigurableTypeSettings } from "@/components/administration/ConfigurableTypeSettings";
@@ -334,6 +335,13 @@ export default function Administration(): React.JSX.Element | null {
             <div>
               <h3 className="text-lg font-medium mb-4">News E-Mail-Vorlagen</h3>
               <NewsEmailTemplateManager />
+            </div>
+          );
+        case "event-emails":
+          return (
+            <div>
+              <h3 className="text-lg font-medium mb-4">Veranstaltungs-E-Mail-Vorlagen</h3>
+              <EventEmailTemplateManager />
             </div>
           );
         default: return null;
