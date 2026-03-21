@@ -832,6 +832,7 @@ export function EventPlanningDetailView(data: EventPlanningDataReturn) {
                 hoveredChecklistItemId={hoveredChecklistItemId}
                 onHoverItem={setHoveredChecklistItemId}
                 onUnhoverItem={() => setHoveredChecklistItemId(null)}
+                addPhaseItem={handleAddPhaseItem}
               />
 
               <PlanningTimelineSection
