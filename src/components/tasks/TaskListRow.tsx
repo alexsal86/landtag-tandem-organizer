@@ -144,10 +144,10 @@ export function TaskListRow({
       if (!lastChild) return;
 
       const containerTop = container.getBoundingClientRect().top;
-      const lastChildTop = lastChild.getBoundingClientRect().top;
-      const rowTopOffset = 40;
-      const lineStart = rowTopOffset;
-      const lineEnd = lastChildTop - containerTop + 20;
+      const lastChildRect = lastChild.getBoundingClientRect();
+      const rowMidpoint = 20;
+      const lineStart = rowMidpoint;
+      const lineEnd = lastChildRect.top - containerTop + lastChildRect.height / 2;
       setParentLineHeight(Math.max(0, lineEnd - lineStart));
     };
 
@@ -219,7 +219,7 @@ export function TaskListRow({
         <div
           className="absolute w-px bg-border/70"
           aria-hidden="true"
-          style={{ left: `${checkboxCenter}px`, top: "40px", height: `${parentLineHeight}px` }}
+          style={{ left: `${checkboxCenter}px`, top: "20px", height: `${parentLineHeight}px` }}
         />
       )}
 
@@ -235,9 +235,10 @@ export function TaskListRow({
             className="absolute"
             style={{
               left: `${checkboxCenter - rowPaddingLeft - 16}px`,
-              top: 0,
+              top: "50%",
               width: "20px",
               height: "20px",
+              transform: "translateY(-50%)",
               borderLeft: "2px solid hsl(var(--border) / 0.7)",
               borderBottom: "2px solid hsl(var(--border) / 0.7)",
               borderBottomLeftRadius: "8px",

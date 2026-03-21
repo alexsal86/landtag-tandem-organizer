@@ -158,9 +158,9 @@ export function TaskCard({
       if (!lastChild) return;
 
       const containerTop = container.getBoundingClientRect().top;
-      const lastChildTop = lastChild.getBoundingClientRect().top;
-      const lineStart = CHECKBOX_SIZE + 4;
-      const lineEnd = lastChildTop - containerTop + 12;
+      const lastChildRect = lastChild.getBoundingClientRect();
+      const lineStart = CHECKBOX_CENTER;
+      const lineEnd = lastChildRect.top - containerTop + lastChildRect.height / 2;
       setParentLineHeight(Math.max(0, lineEnd - lineStart));
     };
 
@@ -246,7 +246,7 @@ export function TaskCard({
           aria-hidden="true"
           style={{
             left: `${CHECKBOX_CENTER}px`,
-            top: `${CHECKBOX_SIZE + 4}px`,
+            top: `${CHECKBOX_CENTER}px`,
             height: `${parentLineHeight}px`,
             width: "2px",
           }}
@@ -259,9 +259,10 @@ export function TaskCard({
           aria-hidden="true"
           style={{
             left: `-${CHECKBOX_CENTER + 8}px`,
-            top: 0,
+            top: "50%",
             width: `${CHECKBOX_CENTER + 4}px`,
             height: `${CHECKBOX_CENTER + 4}px`,
+            transform: "translateY(-50%)",
             borderLeft: "2px solid hsl(var(--border) / 0.7)",
             borderBottom: "2px solid hsl(var(--border) / 0.7)",
             borderBottomLeftRadius: "8px",
