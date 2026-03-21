@@ -124,7 +124,12 @@ export function TaskCard({
   const assignTooltipText = currentAssigneeName
     ? `Zugewiesen an ${currentAssigneeName}`
     : "Zuweisen";
-  const connectorOffset = 12;
+  const CHECKBOX_SIZE = 16;
+  const CHECKBOX_CENTER = CHECKBOX_SIZE / 2;
+  const [parentLineHeight, setParentLineHeight] = useState<number | null>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
+  const childrenRef = useRef<HTMLDivElement>(null);
+  const measureRafIdRef = useRef<number | null>(null);
 
   useEffect(() => {
     if (editingTitle && titleInputRef.current) {
@@ -138,6 +143,47 @@ export function TaskCard({
       descriptionInputRef.current.focus();
     }
   }, [editingDescription]);
+
+  useEffect(() => {
+    if (!hasSubtasks || !containerRef.current || !childrenRef.current) {
+      setParentLineHeight(null);
+      return;
+    }
+
+    const measure = () => {
+      const container = containerRef.current;
+      const childrenEl = childrenRef.current;
+      if (!container || !childrenEl) return;
+      const lastChild = childrenEl.lastElementChild as HTMLElement | null;
+      if (!lastChild) return;
+
+      const containerTop = container.getBoundingClientRect().top;
+      const lastChildTop = lastChild.getBoundingClientRect().top;
+      const lineStart = CHECKBOX_SIZE + 4;
+      const lineEnd = lastChildTop - containerTop + 12;
+      setParentLineHeight(Math.max(0, lineEnd - lineStart));
+    };
+
+    const scheduleMeasure = () => {
+      if (measureRafIdRef.current != null) return;
+      measureRafIdRef.current = requestAnimationFrame(() => {
+        measureRafIdRef.current = null;
+        measure();
+      });
+    };
+
+    scheduleMeasure();
+    const observer = new ResizeObserver(scheduleMeasure);
+    observer.observe(childrenRef.current);
+
+    return () => {
+      observer.disconnect();
+      if (measureRafIdRef.current != null) {
+        cancelAnimationFrame(measureRafIdRef.current);
+        measureRafIdRef.current = null;
+      }
+    };
+  }, [hasSubtasks, childTasks.length]);
 
   const getDueDateColor = (dueDate: string | null) => {
     if (!dueDate) return "text-muted-foreground";
@@ -187,18 +233,38 @@ export function TaskCard({
 
   return (
     <div
-      ref={getHighlightRef ? getHighlightRef(task.id) : highlightRef}
-      className={cn("relative", depth > 0 && "pl-8", className)}
+      ref={(el) => {
+        containerRef.current = el;
+        const targetRef = getHighlightRef ? getHighlightRef(task.id) : highlightRef;
+        targetRef?.(el);
+      }}
+      className={cn("relative rounded-md", depth > 0 && "ml-8", className)}
     >
+      {hasSubtasks && parentLineHeight != null && parentLineHeight > 0 && (
+        <div
+          className="absolute bg-border/70"
+          aria-hidden="true"
+          style={{
+            left: `${CHECKBOX_CENTER}px`,
+            top: `${CHECKBOX_SIZE + 4}px`,
+            height: `${parentLineHeight}px`,
+            width: "2px",
+          }}
+        />
+      )}
+
       {depth > 0 && (
         <div
+          className="absolute"
           aria-hidden="true"
-          className="absolute border-l-2 border-b-2 border-border/70 rounded-bl-md"
           style={{
-            left: `${connectorOffset}px`,
-            top: "-8px",
-            width: "20px",
-            height: "24px",
+            left: `-${CHECKBOX_CENTER + 8}px`,
+            top: 0,
+            width: `${CHECKBOX_CENTER + 4}px`,
+            height: `${CHECKBOX_CENTER + 4}px`,
+            borderLeft: "2px solid hsl(var(--border) / 0.7)",
+            borderBottom: "2px solid hsl(var(--border) / 0.7)",
+            borderBottomLeftRadius: "8px",
           }}
         />
       )}
@@ -349,11 +415,7 @@ export function TaskCard({
       </div>
 
       {hasSubtasks && (
-        <div className="relative mt-2 ml-3 space-y-2 pl-8">
-          <div
-            aria-hidden="true"
-            className="absolute left-3 top-0 bottom-0 w-px bg-border/70"
-          />
+        <div ref={childrenRef} className="mt-2 space-y-2 pl-8">
           {childTasks.map((childTask, index) => (
             <TaskCard
               key={childTask.id}
