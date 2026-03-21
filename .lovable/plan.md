@@ -1,112 +1,83 @@
 
 
-## Phasen, Hover-Highlight, Timeline-Redesign
+## Checkliste & Zeitstrahl — UI-Verbesserungen
 
-### Überblick
-
-6 Änderungen an Checkliste und Zeitstrahl in der Veranstaltungsplanung:
-
-1. Hover-Highlight: Checklistenpunkt hovern → Verbindungslinie wird durchgehend + Zeitstrahl-Eintrag markiert
-2. Frist ganz rechts in der Checklisten-Card
-3. Timeline-Redesign: Monatsüberschriften + nur Tageszahl + Beschreibung inline
-4. Zeitlich nahe Einträge gruppieren
-5. Phasen in Administration (Template-Editor)
-6. Phasen in Checkliste + Zeitstrahl
-
----
-
-### 1. Hover-Highlight (Checkliste ↔ Zeitstrahl)
-
-**Dateien:** `EventPlanningDetailView.tsx`, `ChecklistSection.tsx`, `PlanningTimelineSection.tsx`
-
-- Neuer State `hoveredChecklistItemId: string | null` in `EventPlanningDetailView`
-- `ChecklistSection` bekommt `onHoverItem` / `onUnhoverItem` Callbacks → `onMouseEnter` / `onMouseLeave` auf der Checklist-Card
-- `PlanningTimelineSection` bekommt `highlightedChecklistItemId` Prop
-  - Connector-SVG: wenn `line.assignmentId === highlightedId` → `strokeDasharray` entfernen (durchgehend) + dickere Linie
-  - Timeline-Eintrag: wenn `entry.checklistItemId === highlightedId` → Ring/Highlight-Klasse auf die Card + Dot hervorheben
-
-### 2. Frist ganz rechts
-
-**Datei:** `ChecklistSection.tsx`
-
-Die Frist-Anzeige (Zeilen 118-141) ist bereits im `ml-auto` Bereich. Das Problem ist, dass die Action-Buttons danach kommen. Lösung: Die Frist nach den Action-Buttons positionieren oder die Action-Buttons vor die Frist setzen. Konkret: Reihenfolge in der Flex-Row ändern — Action-Buttons vor der Frist, Frist als letztes Element mit `ml-auto`.
-
-### 3. Timeline-Redesign: Monatsheader + kompaktes Format
+### 1. Connector-Linien nur beim Hovern anzeigen
 
 **Datei:** `PlanningTimelineSection.tsx`
 
-Statt der bisherigen Cards mit vollem Datum wird das Layout wie im Mockup:
+- Connector-SVG-Pfade: Standardmäßig `opacity-0` setzen
+- Nur wenn `highlightedChecklistItemId` gesetzt ist UND `line.assignmentId === highlightedChecklistItemId`, wird die Linie sichtbar (durchgehend, nicht gestrichelt)
+- Alle anderen Linien bleiben unsichtbar
+
+**Timeline-Dot beim Hover:** Statt den Dot nach links zu versetzen, wird er größer (z.B. `h-7 w-7` statt `h-5 w-5`) und bekommt seine Farbe intensiver. Das Icon wird ebenfalls größer (`h-4 w-4` statt `h-3 w-3`). Position bleibt zentriert auf der Achse. `DOT_LEFT_CLASS` wird dynamisch angepasst.
+
+### 2. Drag-Handle nur beim Hovern
+
+**Datei:** `ChecklistSection.tsx`
+
+- `GripVertical` bekommt `opacity-0 group-hover:opacity-100 transition-opacity` (analog zu den Action-Buttons)
+- Gilt für normale Items, Separator und Phase-Start
+
+### 3. Phasendarstellung wie im Screenshot
+
+**Datei:** `ChecklistSection.tsx`
+
+Statt der vertikalen Klammer mit gedrehtem Text wird die Phase als **horizontale Header-Zeile** dargestellt:
 
 ```text
-März 2026
-|
-● 17  Planungsbeginn
-|
-● 18  Einladung schreiben
-|
-● 27  RSVP
-|
-April 2026
-|
-● 15  Einladungen verschicken
-|
-● 28  RM Büro Leidig
+┌─────────────────────────────────────────────────┐
+│ Planung  (3)                        + Aufgabe   │
+│ ═══════════════════════════════════════════════  │ (farbige Linie)
+│ ☐ Einladung schreiben                    Frist   │
+│ ☐ Verteiler erstellen                    Frist   │
+│ ☐ Einladungen verschicken                Frist   │
+└─────────────────────────────────────────────────┘
 ```
 
-- Monatsüberschriften einfügen wenn sich der Monat zwischen Einträgen ändert (oder beim ersten Eintrag)
-- Datum-Anzeige: nur Tageszahl (`dd`), dann mit Gap der Titel — alles in einer Zeile
-- Keine umrandete Card mehr pro Eintrag, stattdessen schlanke Zeile mit Dot
+- Phasenname links, Anzahl Items als Badge, „+ Aufgabe"-Button rechts
+- Darunter eine farbige Trennlinie (primary color)
+- Items der Phase darunter aufgelistet
+- Der „+ Aufgabe"-Button fügt einen neuen Checklistenpunkt direkt in diese Phase ein (nach dem letzten Item der Phase, vor dem nächsten `phase_start`)
 
-### 4. Gruppierung zeitlich naher Einträge
+**Items zu Phasen zuordnen/entfernen:**
+- Drag & Drop funktioniert bereits über `order_index` — ein Item in eine andere Phase ziehen ändert automatisch die Zuordnung
+- Zusätzlich: Im Kontext jeder Phase ein „+ Aufgabe"-Button, der ein neues Item mit dem richtigen `order_index` einfügt
 
-**Datei:** `PlanningTimelineSection.tsx`
+### 4. Template-Editor anpassen
 
-- `MIN_ENTRY_GAP_PX` auf 8px setzen (für Same-Day oder sehr nahe Einträge)
-- Einträge am gleichen Tag bekommen nur 8px Abstand
-- Einträge an verschiedenen Tagen bekommen proportionalen Abstand (mindestens 24px)
-- `TARGET_TIMELINE_HEIGHT_PX` dynamisch: `Math.max(400, entries.length * 40)`
+**Datei:** `PlanningTemplateManager.tsx`
 
-### 5. Phasen in Administration (Template-Editor)
+- Phase-Start-Einträge werden wie im Screenshot als Header dargestellt (Phasenname + Anzahl + farbige Linie)
+- Items innerhalb einer Phase werden visuell gruppiert (eingerückt oder mit Border)
+- Der bestehende „Phase hinzufügen"-Button bleibt
 
-**Dateien:** `PlanningTemplateManager.tsx`, `types.ts`
-
-Neue `TemplateItemType`: `"phase_start"` hinzufügen (neben `item`, `separator`, `system_social_media`, `system_rsvp`).
-
-Phasen-Konzept: Ein `phase_start`-Eintrag markiert den Beginn einer Phase. Der Titel ist der Phasenname (z.B. "Planung", "Einladungen", "Event", "Nachbereitung"). Alle folgenden Items gehören zu dieser Phase, bis der nächste `phase_start` kommt.
-
-- Button "Phase hinzufügen" neben "Trenner hinzufügen"
-- Visuell: Phase als farbige Klammer links mit gedrehtem Label (wie gewünscht)
-- Standard-Phasen bei neuen Templates vorschlagen
-
-DB-Änderung: `planning_templates.template_items` ist JSON, daher kein Schema-Update nötig. Ebenso `event_planning_items.type` — hier muss der DB-Constraint erweitert werden um `phase_start`.
-
-**Migration:** `ALTER` auf `event_planning_items` um `phase_start` als erlaubten `type`-Wert hinzuzufügen.
-
-### 6. Phasen in Checkliste + Zeitstrahl
+### 5. Text-Umbruch in der Checkliste
 
 **Datei:** `ChecklistSection.tsx`
 
-- Items nach Phasen gruppieren (basierend auf `phase_start` Items in der Sortierung)
-- Jede Phase wird visuell mit einer vertikalen Klammer links dargestellt:
-  - Vertikale Linie links neben den zugehörigen Checklistenpunkten
-  - Phasenname um 90° gedreht (`writing-mode: vertical-rl; transform: rotate(180deg)`) links der Klammer
-  - Dezente Farbe/Border
+- Zeile 171: `truncate` entfernen vom Input bzw. den Text-Container
+- Stattdessen `whitespace-normal break-words` oder einfach das `overflow-hidden` von der umgebenden `div` (Zeile 162) entfernen und `truncate` durch `break-words` ersetzen
 
-**Datei:** `PlanningTimelineSection.tsx`
+### 6. Phasen in der Checkliste hinzufügen
 
-- Im Zeitstrahl: Phasen als farbige Hintergrundbereiche oder als dezente vertikale Klammern neben den zugehörigen Einträgen
-- Phasenname als kleine Label links oder als Überschrift zwischen den Monatsheadern
+**Datei:** `ChecklistSection.tsx`
+
+- Neben dem bestehenden „Neuen Punkt hinzufügen"-Bereich (Zeile 470-497) einen Button „Phase hinzufügen" ergänzen
+- Dieser erstellt einen neuen Checklistenpunkt vom Typ `phase_start` am Ende der Liste
+- Nutzt die bestehende `addChecklistItem`-Funktion, aber mit angepasstem Typ — oder eine neue Prop `addPhaseItem` die direkt einen `phase_start` Eintrag anlegt
+
+**Datei:** `EventPlanningDetailView.tsx` (oder zugehöriger Hook)
+- Neue Funktion `addPhaseItem(title: string)` die ein Item mit `type: 'phase_start'` erstellt
 
 ---
 
-### Technische Details
+### Zusammenfassung der Dateiänderungen
 
-| Änderung | Dateien |
+| Datei | Änderung |
 |---|---|
-| Hover State | `EventPlanningDetailView.tsx`, `ChecklistSection.tsx`, `PlanningTimelineSection.tsx` |
-| Frist rechts | `ChecklistSection.tsx` |
-| Timeline-Redesign | `PlanningTimelineSection.tsx` |
-| Gruppierung | `PlanningTimelineSection.tsx` |
-| Admin Phasen | `PlanningTemplateManager.tsx`, neue Migration |
-| Checkliste/Timeline Phasen | `ChecklistSection.tsx`, `PlanningTimelineSection.tsx` |
+| `ChecklistSection.tsx` | Phase-Header-UI, Drag-Handle hover, Text-Umbruch, Phase-hinzufügen-Button |
+| `PlanningTimelineSection.tsx` | Connector nur bei Hover, Dot-Vergrößerung statt Versatz |
+| `PlanningTemplateManager.tsx` | Phase-Header-Darstellung wie Checkliste |
+| `EventPlanningDetailView.tsx` | `addPhaseItem`-Funktion durchreichen |
 
