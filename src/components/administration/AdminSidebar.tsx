@@ -138,6 +138,7 @@ export const adminMenuItems: AdminMenuItem[] = [
       { id: "meetings", label: "Meeting-Templates", icon: Users },
       { id: "plannings", label: "Planungs-Templates", icon: Layout },
       { id: "emails", label: "E-Mail-Vorlagen", icon: Newspaper },
+      { id: "event-emails", label: "Veranstaltungs-Mails", icon: Mail },
     ],
   },
   {

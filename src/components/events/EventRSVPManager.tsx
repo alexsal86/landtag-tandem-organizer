@@ -67,13 +67,18 @@ export const EventRSVPManager = ({ eventPlanningId, eventTitle }: EventRSVPManag
   const [pendingInvites, setPendingInvites] = useState<{ name: string; email: string }[]>([]);
   const [sending, setSending] = useState(false);
 
+  // DB-loaded email templates (null = not yet loaded or not found in DB)
+  const [invitationTemplate, setInvitationTemplate] = useState<string | null>(null);
+  const [reminderTemplate, setReminderTemplate] = useState<string | null>(null);
+  const [noteTemplate, setNoteTemplate] = useState<string | null>(null);
+
   // Email customization
-  const [customEmailText, setCustomEmailText] = useState(DEFAULT_INVITATION_TEXT.replace('{eventTitle}', eventTitle));
+  const [customEmailText, setCustomEmailText] = useState('');
   const [showEmailEditor, setShowEmailEditor] = useState(false);
 
   // Reminder dialog
   const [reminderDialogOpen, setReminderDialogOpen] = useState(false);
-  const [reminderText, setReminderText] = useState(DEFAULT_REMINDER_TEXT.replace('{eventTitle}', eventTitle));
+  const [reminderText, setReminderText] = useState('');
   const [reminderTargetIds, setReminderTargetIds] = useState<string[]>([]);
   const [sendingReminder, setSendingReminder] = useState(false);
 
@@ -92,13 +97,36 @@ export const EventRSVPManager = ({ eventPlanningId, eventTitle }: EventRSVPManag
   useEffect(() => {
     loadRSVPs();
     loadDistributionLists();
+    loadEmailTemplates();
     setHasUserToggledRsvpList(false);
   }, [eventPlanningId]);
+
+  useEffect(() => {
+    setCustomEmailText((invitationTemplate ?? DEFAULT_INVITATION_TEXT).replace('{eventTitle}', eventTitle));
+  }, [invitationTemplate, eventTitle]);
 
   useEffect(() => {
     if (hasUserToggledRsvpList) return;
     setIsRsvpListOpen(rsvps.length < 10);
   }, [rsvps.length, hasUserToggledRsvpList]);
+
+  const loadEmailTemplates = async () => {
+    if (!currentTenant?.id) return;
+    try {
+      const { data } = await supabase
+        .from('event_email_templates')
+        .select('type, body')
+        .eq('tenant_id', currentTenant.id)
+        .eq('is_active', true);
+      for (const row of (data ?? [])) {
+        if (row.type === 'invitation' && row.body) setInvitationTemplate(row.body);
+        if (row.type === 'reminder' && row.body) setReminderTemplate(row.body);
+        if (row.type === 'note' && row.body) setNoteTemplate(row.body);
+      }
+    } catch (e) {
+      debugConsole.error('Error loading event email templates:', e);
+    }
+  };
 
   const loadRSVPs = async () => {
     try {
@@ -430,7 +458,7 @@ export const EventRSVPManager = ({ eventPlanningId, eventTitle }: EventRSVPManag
   const openReminderForPending = () => {
     const pendingRsvps = rsvps.filter(r => r.status === 'invited' && r.invitation_sent);
     setReminderTargetIds(pendingRsvps.map(r => r.id));
-    setReminderText(DEFAULT_REMINDER_TEXT.replace('{eventTitle}', eventTitle));
+    setReminderText((reminderTemplate ?? DEFAULT_REMINDER_TEXT).replace('{eventTitle}', eventTitle));
     setReminderDialogOpen(true);
   };
 
@@ -456,7 +484,10 @@ export const EventRSVPManager = ({ eventPlanningId, eventTitle }: EventRSVPManag
               </Button>
             )}
             {rsvps.length > 0 && (
-              <Button size="sm" variant="outline" onClick={() => setNoteDialogOpen(true)}>
+              <Button size="sm" variant="outline" onClick={() => {
+                if (noteTemplate && !noteText) setNoteText(noteTemplate);
+                setNoteDialogOpen(true);
+              }}>
                 <MessageSquare className="h-4 w-4 mr-2" />
                 Hinweis senden
               </Button>
@@ -684,7 +715,7 @@ export const EventRSVPManager = ({ eventPlanningId, eventTitle }: EventRSVPManag
                                         variant="ghost"
                                         onClick={() => {
                                           setReminderTargetIds([rsvp.id]);
-                                          setReminderText(DEFAULT_REMINDER_TEXT.replace('{eventTitle}', eventTitle));
+                                          setReminderText((reminderTemplate ?? DEFAULT_REMINDER_TEXT).replace('{eventTitle}', eventTitle));
                                           setReminderDialogOpen(true);
                                         }}
                                         className="h-7 w-7 p-0"
