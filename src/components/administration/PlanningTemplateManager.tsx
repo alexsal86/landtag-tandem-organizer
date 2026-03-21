@@ -393,6 +393,7 @@ export function PlanningTemplateManager() {
               <div className="flex flex-wrap gap-2">
                 <Button variant="outline" onClick={() => setNewTemplateItem(createDraft())}><Plus className="mr-2 h-4 w-4" />Punkt hinzufügen</Button>
                 <Button variant="outline" onClick={addSeparator}><Minus className="mr-2 h-4 w-4" />Trenner hinzufügen</Button>
+                <Button variant="outline" onClick={addPhaseStart} className="text-primary border-primary/30"><Plus className="mr-2 h-4 w-4" />Phase hinzufügen</Button>
               </div>
             )}
           </div>
