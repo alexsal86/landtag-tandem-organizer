@@ -8,11 +8,10 @@ import { Droppable } from "@hello-pangea/dnd";
 import type { ChecklistItem, EventPlanningDate, EventPlanningTimelineAssignment } from "./types";
 import { useTimelineGeometry } from "./useTimelineGeometry";
 
-const MIN_GROUP_GAP_PX = 80;
-const BASE_TIMELINE_HEIGHT_PX = 560;
+const MIN_ENTRY_GAP_PX = 18;
+const TARGET_TIMELINE_HEIGHT_PX = 560;
 const DOT_SIZE_CLASS = "h-5 w-5";
 const DOT_LEFT_CLASS = "-left-7";
-const INTRA_GROUP_GAP_PX = 8;
 
 interface PlanningTimelineSectionProps {
   planningCreatedAt?: string | null;
@@ -28,10 +27,6 @@ function formatTimelineDate(date: Date) {
   return format(date, hasExplicitTime ? "dd.MM.yyyy, HH:mm" : "dd.MM.yyyy", { locale: de });
 }
 
-function dateDayKey(date: Date) {
-  return format(date, "yyyy-MM-dd");
-}
-
 type TimelineEntry = {
   id: string;
   checklistItemId?: string;
@@ -40,12 +35,6 @@ type TimelineEntry = {
   type: "known" | "checklist";
   isConfirmed?: boolean;
   isCompleted?: boolean;
-};
-
-type TimelineGroup = {
-  dayKey: string;
-  date: Date;
-  entries: TimelineEntry[];
 };
 
 export function PlanningTimelineSection({
@@ -100,47 +89,33 @@ export function PlanningTimelineSection({
     return [...planningStartEntry, ...knownEntries, ...assignmentEntries].sort((a, b) => a.date.getTime() - b.date.getTime());
   }, [assignments, checklistItems, planningCreatedAt, planningDates]);
 
-  const groups = useMemo<TimelineGroup[]>(() => {
-    const groupMap = new Map<string, TimelineGroup>();
-    for (const entry of entries) {
-      const key = dateDayKey(entry.date);
-      const existing = groupMap.get(key);
-      if (existing) {
-        existing.entries.push(entry);
-      } else {
-        groupMap.set(key, { dayKey: key, date: entry.date, entries: [entry] });
-      }
-    }
-    return Array.from(groupMap.values());
-  }, [entries]);
-
   const now = Date.now();
 
   const timelineProgress = useMemo(() => {
-    if (groups.length < 2) return null;
-    const start = groups[0].date.getTime();
-    const end = groups[groups.length - 1].date.getTime();
+    if (entries.length < 2) return null;
+    const start = entries[0].date.getTime();
+    const end = entries[entries.length - 1].date.getTime();
     if (end <= start) return null;
     const raw = ((now - start) / (end - start)) * 100;
     return Math.max(0, Math.min(100, raw));
-  }, [groups, now]);
+  }, [entries, now]);
 
-  const targetHeight = useMemo(
-    () => Math.max(BASE_TIMELINE_HEIGHT_PX, groups.length * 100),
-    [groups],
-  );
+  const entrySpacings = useMemo(() => {
+    if (entries.length === 0) {
+      return [];
+    }
 
-  const groupSpacings = useMemo(() => {
-    if (groups.length === 0) return [];
-    if (groups.length === 1) return [0];
+    if (entries.length === 1) {
+      return [0];
+    }
 
-    const firstTs = groups[0].date.getTime();
-    const lastTs = groups[groups.length - 1].date.getTime();
-    const totalDuration = Math.max(1, lastTs - firstTs);
+    const firstTimestamp = entries[0].date.getTime();
+    const lastTimestamp = entries[entries.length - 1].date.getTime();
+    const totalDuration = Math.max(1, lastTimestamp - firstTimestamp);
 
-    const proportionalOffsets = groups.map((g) => {
-      const elapsed = Math.max(0, g.date.getTime() - firstTs);
-      return Math.round((elapsed / totalDuration) * targetHeight);
+    const proportionalOffsets = entries.map((entry) => {
+      const elapsed = Math.max(0, entry.date.getTime() - firstTimestamp);
+      return Math.round((elapsed / totalDuration) * TARGET_TIMELINE_HEIGHT_PX);
     });
 
     const resolvedOffsets = proportionalOffsets.reduce<number[]>((offsets, offset, index) => {
@@ -148,15 +123,19 @@ export function PlanningTimelineSection({
         offsets.push(0);
         return offsets;
       }
-      offsets.push(Math.max(offset, offsets[index - 1] + MIN_GROUP_GAP_PX));
+
+      offsets.push(Math.max(offset, offsets[index - 1] + MIN_ENTRY_GAP_PX));
       return offsets;
     }, []);
 
     return resolvedOffsets.map((offset, index) => {
-      if (index === 0) return 0;
+      if (index === 0) {
+        return 0;
+      }
+
       return offset - resolvedOffsets[index - 1];
     });
-  }, [groups, targetHeight]);
+  }, [entries]);
 
   const { connectorLines, timelineAxis } = useTimelineGeometry({
     sectionRef,
@@ -172,6 +151,7 @@ export function PlanningTimelineSection({
       timelinePointRefs.current.set(entryId, element);
       return;
     }
+
     timelinePointRefs.current.delete(entryId);
   }, []);
 
@@ -205,7 +185,7 @@ export function PlanningTimelineSection({
                 </p>
 
                 <div ref={timelineListRef} className="relative pl-6">
-                  {groups.length === 0 ? (
+                  {entries.length === 0 ? (
                     <p className="text-xs text-muted-foreground">Noch keine Termine im Zeitstrahl.</p>
                   ) : (
                     <>
@@ -234,66 +214,54 @@ export function PlanningTimelineSection({
                           </span>
                         </div>
                       )}
-                      {groups.map((group, groupIndex) => {
-                        const firstEntry = group.entries[0];
-                        const isPastGroup = group.date.getTime() < now;
-                        const dotColorClass = isPastGroup
+                      {entries.map((entry, index) => {
+                        const assignment = entry.checklistItemId
+                          ? assignments.find((a) => a.checklist_item_id === entry.checklistItemId)
+                          : undefined;
+                        const isPastEntry = entry.date.getTime() < now;
+                        const pointColorClass = isPastEntry
                           ? "bg-muted text-muted-foreground"
-                          : firstEntry.type === "known"
+                          : entry.type === "known"
                             ? "bg-blue-500 text-white"
                             : "bg-amber-500 text-white";
-                        const Icon = firstEntry.type === "known" ? CalendarClock : Flag;
+                        const Icon = entry.type === "known" ? CalendarClock : Flag;
 
                         return (
                           <div
-                            key={group.dayKey}
+                            key={entry.id}
                             className="group relative z-10"
-                            style={groupIndex > 0 ? { marginTop: `${groupSpacings[groupIndex]}px` } : undefined}
+                            style={index > 0 ? { marginTop: `${entrySpacings[index]}px` } : undefined}
                           >
-                            {/* Single dot for the group, anchored to first entry */}
                             <span
-                              className={`absolute top-1.5 z-20 flex items-center justify-center rounded-full ${DOT_SIZE_CLASS} ${DOT_LEFT_CLASS} ${dotColorClass}`}
-                              ref={(element) => setTimelinePointRef(firstEntry.id, element)}
+                              className={`absolute top-1.5 z-20 flex items-center justify-center rounded-full ${DOT_SIZE_CLASS} ${DOT_LEFT_CLASS} ${pointColorClass}`}
+                              ref={(element) => setTimelinePointRef(entry.id, element)}
                             >
                               <Icon className="h-3 w-3" />
                             </span>
-
-                            {/* Stacked cards */}
-                            <div className="flex flex-col" style={{ gap: `${INTRA_GROUP_GAP_PX}px` }}>
-                              {group.entries.map((entry) => {
-                                const assignment = entry.checklistItemId
-                                  ? assignments.find((a) => a.checklist_item_id === entry.checklistItemId)
-                                  : undefined;
-                                const isPastEntry = entry.date.getTime() < now;
-
-                                return (
-                                  <div key={entry.id} className="rounded border border-border bg-background p-2 pl-4">
-                                    <div className="mb-1 flex items-center justify-between gap-2">
-                                      <p className="text-xs text-muted-foreground">{formatTimelineDate(entry.date)}</p>
-                                    </div>
-                                    <div className="flex items-center justify-between gap-2">
-                                      <p
-                                        className={`text-sm font-medium leading-tight ${
-                                          isPastEntry ? "text-muted-foreground" : "text-foreground"
-                                        } ${entry.type === "checklist" && entry.isCompleted ? "line-through" : ""}`}
-                                      >
-                                        {entry.title}
-                                      </p>
-                                      {entry.type === "checklist" && assignment && (
-                                        <Button
-                                          variant="ghost"
-                                          size="sm"
-                                          className="h-6 w-6 p-0 text-muted-foreground opacity-0 transition-opacity hover:text-destructive group-hover:opacity-100"
-                                          onClick={() => onRemoveAssignment(assignment.checklist_item_id)}
-                                          title="Vom Zeitstrahl entfernen"
-                                        >
-                                          <Trash2 className="h-3 w-3" />
-                                        </Button>
-                                      )}
-                                    </div>
-                                  </div>
-                                );
-                              })}
+                            <div className="rounded border border-border bg-background p-2 pl-4">
+                              <div className="mb-1 flex items-center justify-between gap-2">
+                                <p className="text-xs text-muted-foreground">{formatTimelineDate(entry.date)}</p>
+                              </div>
+                              <div className="flex items-center justify-between gap-2">
+                                <p
+                                  className={`text-sm font-medium leading-tight ${
+                                    isPastEntry ? "text-muted-foreground" : "text-foreground"
+                                  } ${entry.type === "checklist" && entry.isCompleted ? "line-through" : ""}`}
+                                >
+                                  {entry.title}
+                                </p>
+                                {entry.type === "checklist" && assignment && (
+                                  <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    className="h-6 w-6 p-0 text-muted-foreground opacity-0 transition-opacity hover:text-destructive group-hover:opacity-100"
+                                    onClick={() => onRemoveAssignment(assignment.checklist_item_id)}
+                                    title="Vom Zeitstrahl entfernen"
+                                  >
+                                    <Trash2 className="h-3 w-3" />
+                                  </Button>
+                                )}
+                              </div>
                             </div>
                           </div>
                         );
