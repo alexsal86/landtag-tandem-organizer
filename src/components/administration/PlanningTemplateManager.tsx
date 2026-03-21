@@ -10,7 +10,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { DragDropContext, Droppable, Draggable } from "@hello-pangea/dnd";
 import { Plus, X, Check, GripVertical, Minus, Edit, Trash2 } from "lucide-react";
 
-type TemplateItemType = "item" | "separator" | "system_social_media" | "system_rsvp";
+type TemplateItemType = "item" | "separator" | "system_social_media" | "system_rsvp" | "phase_start";
 
 type TemplateItem = {
   title: string;
@@ -156,6 +156,14 @@ export function PlanningTemplateManager() {
     void saveTemplateItems(newItems);
   };
 
+  const addPhaseStart = () => {
+    if (!selectedTemplate) return;
+    const newItems = [...templateItems];
+    newItems.push({ title: "Neue Phase", type: "phase_start", order_index: newItems.length });
+    setTemplateItems(newItems);
+    void saveTemplateItems(newItems);
+  };
+
   const updateTemplateItem = (index: number, patch: Partial<TemplateItem>) => {
     const newItems = [...templateItems];
     newItems[index] = { ...newItems[index], ...patch };
@@ -232,6 +240,22 @@ export function PlanningTemplateManager() {
                                 <div className="flex-1 border-t border-dashed border-border" />
                                 <span className="text-xs text-muted-foreground">Trenner</span>
                               </>
+                            ) : item.type === "phase_start" ? (
+                              <>
+                                <span className="text-xs font-semibold uppercase tracking-wider text-primary">Phase:</span>
+                                {editingTemplate?.id === index.toString() ? (
+                                  <>
+                                    <Input value={editingTemplate.value} onChange={(e) => setEditingTemplate({ ...editingTemplate, value: e.target.value })} className="flex-1" />
+                                    <Button size="sm" onClick={() => { updateTemplateItem(index, { title: editingTemplate.value }); setEditingTemplate(null); }}><Check className="h-3 w-3" /></Button>
+                                    <Button size="sm" variant="outline" onClick={() => setEditingTemplate(null)}><X className="h-3 w-3" /></Button>
+                                  </>
+                                ) : (
+                                  <>
+                                    <span className="flex-1 font-medium text-primary">{item.title}</span>
+                                    <Button size="sm" variant="outline" onClick={() => setEditingTemplate({ id: index.toString(), field: "title", value: item.title })}><Edit className="h-3 w-3" /></Button>
+                                  </>
+                                )}
+                              </>
                             ) : editingTemplate?.id === index.toString() ? (
                               <>
                                 <Input value={editingTemplate.value} onChange={(e) => setEditingTemplate({ ...editingTemplate, value: e.target.value })} className="flex-1" />
@@ -257,7 +281,7 @@ export function PlanningTemplateManager() {
                             <Button size="sm" variant="destructive" onClick={() => deleteTemplateItem(index)}><Trash2 className="h-3 w-3" /></Button>
                           </div>
 
-                          {item.type !== "separator" && (
+                          {item.type !== "separator" && item.type !== "phase_start" && (
                             <div className="rounded-md border border-dashed border-border/80 bg-muted/30 p-3">
                               <div className="mb-2 flex items-center justify-between gap-2">
                                 <Label className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Frist relativ zum Endtermin</Label>
@@ -369,6 +393,7 @@ export function PlanningTemplateManager() {
               <div className="flex flex-wrap gap-2">
                 <Button variant="outline" onClick={() => setNewTemplateItem(createDraft())}><Plus className="mr-2 h-4 w-4" />Punkt hinzufügen</Button>
                 <Button variant="outline" onClick={addSeparator}><Minus className="mr-2 h-4 w-4" />Trenner hinzufügen</Button>
+                <Button variant="outline" onClick={addPhaseStart} className="text-primary border-primary/30"><Plus className="mr-2 h-4 w-4" />Phase hinzufügen</Button>
               </div>
             )}
           </div>
