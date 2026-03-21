@@ -490,7 +490,7 @@ export const EventRSVPManager = ({ eventPlanningId, eventTitle }: EventRSVPManag
     if (!noteText.trim()) return;
     setSendingNote(true);
     try {
-      const targetStatuses = noteTarget === 'all' ? ['accepted', 'tentative'] : [noteTarget];
+      const targetStatuses = noteTarget === 'everyone' ? ['accepted', 'tentative'] : [noteTarget];
       const targetRsvps = rsvps.filter((r) => targetStatuses.includes(r.status));
       if (targetRsvps.length === 0) {
         toast({ title: 'Keine Empfänger', description: 'Keine Gäste mit dem gewählten Status.', variant: 'destructive' });
@@ -711,8 +711,8 @@ export const EventRSVPManager = ({ eventPlanningId, eventTitle }: EventRSVPManag
             </AlertDescription>
           </Alert>
           <div className="flex gap-3 text-sm flex-wrap text-muted-foreground">
-            <span>{activeLinkCount} aktive öffentliche Links</span>
-            <span>{rsvps.length - activeLinkCount} ohne aktiven Link</span>
+            <span>{rsvps.filter(r => isLinkCurrentlyActive(publicLinksByRsvpId[r.id])).length} aktive öffentliche Links</span>
+            <span>{rsvps.filter(r => !isLinkCurrentlyActive(publicLinksByRsvpId[r.id])).length} ohne aktiven Link</span>
             <span>Erstversand und Reminder nutzen denselben öffentlichen Link-Workflow</span>
           </div>
         </div>
