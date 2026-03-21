@@ -4,7 +4,8 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Plus, Trash2, GripVertical, MessageCircle, Paperclip, ListTodo, Mail, Download, Edit2, X, Milestone, ExternalLink, Bot, Users, CalendarClock } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
+import { Plus, Trash2, GripVertical, MessageCircle, Paperclip, ListTodo, Mail, Download, Edit2, X, Milestone, ExternalLink, Bot, Users, CalendarClock, Layers } from "lucide-react";
 import { Droppable, Draggable } from "@hello-pangea/dnd";
 import { cn } from "@/lib/utils";
 import { format } from "date-fns";
@@ -61,23 +62,25 @@ interface ChecklistSectionProps {
   hoveredChecklistItemId?: string | null;
   onHoverItem?: (itemId: string) => void;
   onUnhoverItem?: () => void;
+  addPhaseItem?: (title: string) => void;
 }
 
 type PhaseGroup = {
+  phaseItem: ChecklistItem | null;
   phaseName: string | null;
   items: ChecklistItem[];
 };
 
 function groupItemsByPhase(items: ChecklistItem[]): PhaseGroup[] {
   const groups: PhaseGroup[] = [];
-  let currentGroup: PhaseGroup = { phaseName: null, items: [] };
+  let currentGroup: PhaseGroup = { phaseItem: null, phaseName: null, items: [] };
 
   for (const item of items) {
     if (item.type === "phase_start") {
       if (currentGroup.items.length > 0 || currentGroup.phaseName !== null) {
         groups.push(currentGroup);
       }
-      currentGroup = { phaseName: item.title, items: [] };
+      currentGroup = { phaseItem: item, phaseName: item.title, items: [] };
     } else {
       currentGroup.items.push(item);
     }
@@ -113,6 +116,7 @@ export function ChecklistSection(props: ChecklistSectionProps) {
     hoveredChecklistItemId,
     onHoverItem,
     onUnhoverItem,
+    addPhaseItem,
   } = props;
 
   const phaseGroups = useMemo(() => groupItemsByPhase(checklistItems), [checklistItems]);
@@ -123,7 +127,7 @@ export function ChecklistSection(props: ChecklistSectionProps) {
       return (
         <div ref={provided.innerRef} {...provided.draggableProps} className={cn("group", snapshot.isDragging && "z-50")}>
           <div className="flex items-center gap-2 py-3 group">
-            <div {...provided.dragHandleProps} className="text-muted-foreground"><GripVertical className="h-4 w-4" /></div>
+            <div {...provided.dragHandleProps} className="text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity"><GripVertical className="h-4 w-4" /></div>
             <div className="flex-1 border-t border-dashed border-border"></div>
             <Input value={item.title || 'Trenner'} onChange={(e) => updateChecklistItemTitle(item.id, e.target.value)} className="text-muted-foreground italic text-sm px-2 border-none bg-transparent text-center w-32" placeholder="Trenner-Text eingeben..." />
             <div className="flex-1 border-t border-dashed border-border"></div>
@@ -135,19 +139,11 @@ export function ChecklistSection(props: ChecklistSectionProps) {
       );
     }
 
+    // phase_start items are now rendered inline with the phase header — skip standalone rendering
     if (item.type === "phase_start") {
       return (
-        <div ref={provided.innerRef} {...provided.draggableProps} className={cn("group", snapshot.isDragging && "z-50")}>
-          <div className="flex items-center gap-2 py-2 group">
-            <div {...provided.dragHandleProps} className="text-muted-foreground"><GripVertical className="h-4 w-4" /></div>
-            <div className="flex items-center gap-2 flex-1">
-              <span className="text-xs font-semibold uppercase tracking-wider text-primary">Phase:</span>
-              <Input value={item.title} onChange={(e) => updateChecklistItemTitle(item.id, e.target.value)} className="text-sm font-semibold border-none bg-transparent text-primary" placeholder="Phasenname..." />
-            </div>
-            <Button variant="ghost" size="sm" onClick={() => deleteChecklistItem(item.id)} className="text-destructive hover:text-destructive opacity-0 group-hover:opacity-100 transition-opacity" title="Phase löschen">
-              <Trash2 className="h-3 w-3" />
-            </Button>
-          </div>
+        <div ref={provided.innerRef} {...provided.draggableProps} {...provided.dragHandleProps} className="hidden">
+          {/* Hidden: phase_start rendered as phase header */}
         </div>
       );
     }
@@ -159,19 +155,23 @@ export function ChecklistSection(props: ChecklistSectionProps) {
         <div className="space-y-2">
           <div
             className={cn(
-              "group/checklist-item flex items-center space-x-2 overflow-hidden p-3 border rounded-md bg-background transition-all",
+              "group/checklist-item flex items-start space-x-2 p-3 border rounded-md bg-background transition-all",
               isHovered ? "border-primary/50 ring-1 ring-primary/20 bg-primary/5" : "border-border hover:bg-muted/50",
             )}
             ref={(element) => registerChecklistItemRef?.(item.id, element)}
             onMouseEnter={() => onHoverItem?.(item.id)}
             onMouseLeave={() => onUnhoverItem?.()}
           >
-            <div {...provided.dragHandleProps} className="text-muted-foreground cursor-grab"><GripVertical className="h-4 w-4" /></div>
-            <Checkbox checked={item.is_completed} onCheckedChange={() => toggleChecklistItem(item.id, item.is_completed)} />
-            <Input value={item.title} onChange={(e) => updateChecklistItemTitle(item.id, e.target.value)} className={cn("min-w-0 flex-1 border-none bg-transparent focus:bg-background text-sm", item.is_completed && "line-through text-muted-foreground")} />
+            <div {...provided.dragHandleProps} className="text-muted-foreground cursor-grab opacity-0 group-hover:opacity-100 transition-opacity mt-0.5"><GripVertical className="h-4 w-4" /></div>
+            <div className="mt-0.5">
+              <Checkbox checked={item.is_completed} onCheckedChange={() => toggleChecklistItem(item.id, item.is_completed)} />
+            </div>
+            <div className="min-w-0 flex-1">
+              <Input value={item.title} onChange={(e) => updateChecklistItemTitle(item.id, e.target.value)} className={cn("w-full border-none bg-transparent focus:bg-background text-sm whitespace-normal", item.is_completed && "line-through text-muted-foreground")} />
+            </div>
 
-            {/* Action buttons - before deadline */}
-            <div className="flex items-center space-x-1 opacity-0 group-hover:opacity-100 transition-opacity">
+            {/* Action buttons */}
+            <div className="flex items-center space-x-1 opacity-0 group-hover:opacity-100 transition-opacity shrink-0">
               <Button
                 variant="ghost"
                 size="sm"
@@ -359,7 +359,7 @@ export function ChecklistSection(props: ChecklistSectionProps) {
               <div className="flex items-center space-x-2 text-sm font-medium text-muted-foreground"><Paperclip className="h-4 w-4" />Dokumente</div>
               {itemDocuments[item.id]?.map((doc) => (
                 <div key={doc.id} className="flex items-center justify-between p-2 border border-border rounded bg-muted/30">
-                  <div className="flex items-center space-x-2"><Paperclip className="h-3 w-3" /><span className="text-sm truncate">{doc.file_name}</span></div>
+                  <div className="flex items-center space-x-2"><Paperclip className="h-3 w-3" /><span className="text-sm break-words">{doc.file_name}</span></div>
                   <div className="flex space-x-1">
                     <Button variant="ghost" size="sm" onClick={() => downloadItemDocument(doc)}><Download className="h-3 w-3" /></Button>
                     <Button variant="ghost" size="sm" onClick={() => deleteItemDocument(doc)} className="text-destructive hover:text-destructive"><Trash2 className="h-3 w-3" /></Button>
@@ -387,6 +387,64 @@ export function ChecklistSection(props: ChecklistSectionProps) {
     );
   };
 
+  const renderPhaseHeader = (group: PhaseGroup) => {
+    if (!group.phaseItem) return null;
+    const phaseItem = group.phaseItem;
+    const itemCount = group.items.filter(i => i.type !== "separator").length;
+
+    return (
+      <div className="group mt-4 first:mt-0">
+        <div className="flex items-center gap-3 py-2">
+          <div className="flex items-center gap-2 min-w-0 flex-1">
+            <Layers className="h-4 w-4 text-primary shrink-0" />
+            <Input
+              value={phaseItem.title}
+              onChange={(e) => updateChecklistItemTitle(phaseItem.id, e.target.value)}
+              className="text-sm font-semibold border-none bg-transparent text-primary focus:bg-background"
+              placeholder="Phasenname..."
+            />
+            <Badge variant="secondary" className="shrink-0 text-[10px]">
+              {itemCount}
+            </Badge>
+          </div>
+          <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+            <Button
+              variant="ghost"
+              size="sm"
+              className="h-7 px-2 text-xs text-primary"
+              onClick={() => {
+                // Add a new item right after the last item in this phase
+                // We use addChecklistItem but need to set the title first
+                if (addPhaseItem) {
+                  // Use a prompt or inline add
+                  const title = window.prompt("Neue Aufgabe in Phase „" + group.phaseName + "":");
+                  if (title?.trim()) {
+                    // We'll use the existing addChecklistItem flow
+                    props.setNewChecklistItem(title.trim());
+                    setTimeout(() => props.addChecklistItem(), 0);
+                  }
+                }
+              }}
+            >
+              <Plus className="h-3 w-3 mr-1" />
+              Aufgabe
+            </Button>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => deleteChecklistItem(phaseItem.id)}
+              className="h-7 w-7 p-0 text-destructive hover:text-destructive"
+              title="Phase löschen"
+            >
+              <Trash2 className="h-3 w-3" />
+            </Button>
+          </div>
+        </div>
+        <div className="h-0.5 bg-primary/30 rounded-full" />
+      </div>
+    );
+  };
+
   return (
     <Card className="bg-card shadow-card border-border">
       <CardHeader>
@@ -400,43 +458,11 @@ export function ChecklistSection(props: ChecklistSectionProps) {
                 {hasPhases ? (
                   phaseGroups.map((group, groupIndex) => (
                     <div key={groupIndex}>
-                      {group.phaseName !== null && (
-                        <div className="relative flex">
-                          {/* Phase bracket */}
-                          {group.items.length > 0 && (
-                            <div className="relative mr-2 flex flex-col items-center" style={{ minWidth: 28 }}>
-                              <div className="absolute inset-y-0 left-1/2 w-px bg-primary/30" />
-                              <div className="absolute top-0 left-1/2 w-2 border-t border-primary/30" style={{ transform: "translateX(-100%)" }} />
-                              <div className="absolute bottom-0 left-1/2 w-2 border-b border-primary/30" style={{ transform: "translateX(-100%)" }} />
-                              <span
-                                className="absolute left-1/2 top-1/2 text-[10px] font-semibold uppercase tracking-widest text-primary/60 whitespace-nowrap"
-                                style={{
-                                  writingMode: "vertical-rl",
-                                  transform: "translate(-50%, -50%) rotate(180deg)",
-                                }}
-                              >
-                                {group.phaseName}
-                              </span>
-                            </div>
-                          )}
-                          {group.items.length === 0 && (
-                            <div className="py-2 text-xs text-muted-foreground italic pl-8">Keine Punkte in Phase „{group.phaseName}"</div>
-                          )}
-                          {group.items.length > 0 && (
-                            <div className="flex-1 space-y-2">
-                              {group.items.map((item, itemIndex) => {
-                                const globalIndex = checklistItems.indexOf(item);
-                                return (
-                                  <Draggable key={item.id} draggableId={item.id} index={globalIndex}>
-                                    {(dragProvided, dragSnapshot) => renderChecklistItem(item, globalIndex, dragProvided, dragSnapshot)}
-                                  </Draggable>
-                                );
-                              })}
-                            </div>
-                          )}
-                        </div>
+                      {group.phaseName !== null && renderPhaseHeader(group)}
+                      {group.phaseName !== null && group.items.length === 0 && (
+                        <div className="py-2 text-xs text-muted-foreground italic pl-4">Keine Punkte in dieser Phase</div>
                       )}
-                      {group.phaseName === null && group.items.map((item) => {
+                      {group.items.map((item) => {
                         const globalIndex = checklistItems.indexOf(item);
                         return (
                           <Draggable key={item.id} draggableId={item.id} index={globalIndex}>
@@ -444,6 +470,14 @@ export function ChecklistSection(props: ChecklistSectionProps) {
                           </Draggable>
                         );
                       })}
+                      {/* Hidden draggable for phase_start so DnD indices stay correct */}
+                      {group.phaseItem && (
+                        <Draggable key={group.phaseItem.id} draggableId={group.phaseItem.id} index={checklistItems.indexOf(group.phaseItem)}>
+                          {(dragProvided) => (
+                            <div ref={dragProvided.innerRef} {...dragProvided.draggableProps} {...dragProvided.dragHandleProps} className="hidden" />
+                          )}
+                        </Draggable>
+                      )}
                     </div>
                   ))
                 ) : (
@@ -453,15 +487,6 @@ export function ChecklistSection(props: ChecklistSectionProps) {
                     </Draggable>
                   ))
                 )}
-                {/* Render phase_start items as draggable so DnD still works */}
-                {hasPhases && checklistItems.filter(i => i.type === "phase_start").map((item) => {
-                  const globalIndex = checklistItems.indexOf(item);
-                  return (
-                    <Draggable key={item.id} draggableId={item.id} index={globalIndex}>
-                      {(dragProvided, dragSnapshot) => renderChecklistItem(item, globalIndex, dragProvided, dragSnapshot)}
-                    </Draggable>
-                  );
-                })}
                 {provided.placeholder}
               </div>
             )}
@@ -494,6 +519,16 @@ export function ChecklistSection(props: ChecklistSectionProps) {
               onKeyPress={(e) => e.key === "Enter" && addChecklistItem()}
             />
             <Button onClick={addChecklistItem}><Plus className="h-4 w-4" /></Button>
+            {addPhaseItem && (
+              <Button
+                variant="outline"
+                onClick={() => addPhaseItem("Neue Phase")}
+                className="text-primary border-primary/30"
+              >
+                <Layers className="h-4 w-4 mr-2" />
+                Phase
+              </Button>
+            )}
           </div>
         </div>
       </CardContent>
