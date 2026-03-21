@@ -831,6 +831,7 @@ export function EventPlanningDetailView(data: EventPlanningDataReturn) {
                 assignments={timelineAssignments}
                 onRemoveAssignment={handleRemoveTimelineAssignment}
                 checklistItemRefs={checklistItemRefs.current}
+                highlightedChecklistItemId={hoveredChecklistItemId}
               />
             </div>
           </DragDropContext>
