@@ -1,7 +1,7 @@
 import { useCallback, useMemo, useRef, type RefObject } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { CalendarClock, Flag, Trash2 } from "lucide-react";
+import { Trash2 } from "lucide-react";
 import { format } from "date-fns";
 import { de } from "date-fns/locale";
 import { Droppable } from "@hello-pangea/dnd";
@@ -31,6 +31,7 @@ type TimelineEntry = {
   isConfirmed?: boolean;
   isCompleted?: boolean;
   phase?: string | null;
+  phaseColor?: string | null;
 };
 
 type TimelineGroup = {
@@ -75,19 +76,21 @@ function groupByMonth(groups: TimelineGroup[]): MonthSection[] {
   return sections;
 }
 
-function getPhaseForEntry(entry: TimelineEntry, checklistItems: ChecklistItem[], assignments: EventPlanningTimelineAssignment[]): string | null {
-  if (entry.type !== "checklist" || !entry.checklistItemId) return null;
+function getPhaseMetaForEntry(entry: TimelineEntry, checklistItems: ChecklistItem[]): { phase: string | null; phaseColor: string | null } {
+  if (entry.type !== "checklist" || !entry.checklistItemId) return { phase: null, phaseColor: null };
   const sorted = [...checklistItems].sort((a, b) => a.order_index - b.order_index);
   let currentPhase: string | null = null;
+  let currentPhaseColor: string | null = null;
   for (const item of sorted) {
     if (item.type === "phase_start") {
       currentPhase = item.title;
+      currentPhaseColor = item.color || null;
     }
     if (item.id === entry.checklistItemId) {
-      return currentPhase;
+      return { phase: currentPhase, phaseColor: currentPhaseColor };
     }
   }
-  return null;
+  return { phase: null, phaseColor: null };
 }
 
 export function PlanningTimelineSection({
@@ -128,6 +131,10 @@ export function PlanningTimelineSection({
       .map((assignment) => {
         const checklistItem = checklistItems.find((item) => item.id === assignment.checklist_item_id);
         if (!checklistItem) return null;
+        const phaseMeta = getPhaseMetaForEntry(
+          { id: `item-${assignment.checklist_item_id}`, checklistItemId: assignment.checklist_item_id, date: new Date(assignment.due_date), title: checklistItem.title, type: "checklist" },
+          checklistItems,
+        );
 
         return {
           id: `item-${assignment.checklist_item_id}`,
@@ -136,11 +143,8 @@ export function PlanningTimelineSection({
           title: checklistItem.title,
           type: "checklist" as const,
           isCompleted: checklistItem.is_completed,
-          phase: getPhaseForEntry(
-            { id: `item-${assignment.checklist_item_id}`, checklistItemId: assignment.checklist_item_id, date: new Date(assignment.due_date), title: checklistItem.title, type: "checklist" },
-            checklistItems,
-            assignments,
-          ),
+          phase: phaseMeta.phase,
+          phaseColor: phaseMeta.phaseColor,
         };
       })
       .filter((entry): entry is NonNullable<typeof entry> => entry !== null) as TimelineEntry[];
@@ -318,10 +322,6 @@ export function PlanningTimelineSection({
 
                                 const dotSizeClass = isHighlighted ? "h-7 w-7" : "h-5 w-5";
                                 const dotLeftClass = isHighlighted ? "-left-[18px]" : "-left-[14px]";
-                                const iconSizeClass = isHighlighted ? "h-4 w-4" : "h-3 w-3";
-
-                                const Icon = entry.type === "known" ? CalendarClock : Flag;
-
                                 return (
                                   <div
                                     key={entry.id}
@@ -339,9 +339,7 @@ export function PlanningTimelineSection({
                                         dotColorClass,
                                       )}
                                       ref={(element) => setTimelinePointRef(entry.id, element)}
-                                    >
-                                      <Icon className={cn(iconSizeClass, "transition-all duration-200")} />
-                                    </span>
+                                    />
                                     <span className={cn(
                                       "text-sm font-mono tabular-nums w-6 text-right shrink-0",
                                       isPastEntry ? "text-muted-foreground" : "text-foreground",
@@ -358,7 +356,13 @@ export function PlanningTimelineSection({
                                       {entry.title}
                                     </span>
                                     {entry.phase && (
-                                      <span className="shrink-0 rounded bg-primary/10 px-1.5 py-0.5 text-[10px] font-medium text-primary/70">
+                                      <span
+                                        className="shrink-0 rounded px-1.5 py-0.5 text-[10px] font-medium"
+                                        style={{
+                                          backgroundColor: entry.phaseColor ? `${entry.phaseColor}22` : undefined,
+                                          color: entry.phaseColor || undefined,
+                                        }}
+                                      >
                                         {entry.phase}
                                       </span>
                                     )}
