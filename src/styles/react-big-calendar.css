@@ -166,7 +166,8 @@
 
 
 .social-planner-calendar .rbc-month-view {
-  margin-left: 2.5rem;
+  margin-left: 1.75rem;
+  width: calc(100% - 1.75rem);
 }
 
 .social-planner-calendar .rbc-month-header,
@@ -177,7 +178,7 @@
 .social-planner-calendar .rbc-month-header::before {
   content: "";
   position: absolute;
-  left: -2.35rem;
+  left: -1.65rem;
   top: 50%;
   transform: translateY(-50%);
   font-size: 0.65rem;
@@ -185,9 +186,12 @@
   color: hsl(var(--foreground) / 0.75);
 }
 
-.social-planner-calendar .rbc-month-row,
-.social-planner-calendar .rbc-row-content {
+.social-planner-calendar .rbc-month-row {
   overflow: visible;
+}
+
+.social-planner-calendar .rbc-row-content {
+  overflow: hidden;
 }
 
 .social-planner-calendar .rbc-date-cell {
@@ -199,13 +203,23 @@
   align-items: center;
 }
 
+.social-planner-calendar .rbc-row-segment,
+.social-planner-calendar .rbc-event-content,
+.social-planner-calendar .rbc-event-label {
+  min-width: 0;
+}
+
+.social-planner-calendar .rbc-month-row .rbc-event {
+  max-width: 100%;
+}
+
 .social-planner-day-label {
   font-weight: 500;
 }
 
 .social-planner-week-gutter {
   position: absolute;
-  left: -2.35rem;
+  left: -1.65rem;
   top: 0.45rem;
   font-size: 0.65rem;
   font-weight: 700;
