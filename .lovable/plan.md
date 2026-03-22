@@ -1,66 +1,39 @@
 
 
-## Briefing-Ansicht für Abgeordnete + Build-Fehler beheben
+## Zwei Themen: Auto-Save optimieren + Briefing im Dashboard
 
-### Konzept
+### Problem 1: Auto-Save refresht die ganze Seite
 
-Die Idee ist hervorragend. Die Terminvorbereitung (`appointment_preparations`) enthält bereits die relevanten Datenfelder — sie werden bisher nur in einer Editor-Ansicht für Mitarbeiter dargestellt. Die Briefing-Ansicht extrahiert die wichtigsten Informationen daraus in ein kompaktes, **read-only** Format, das der Abgeordnete schnell vor dem Termin scannen kann.
+**Ursache:** Die Kette ist: `handleFieldChange` → `debouncedSave` (500ms) → `onUpdate` → `updatePreparation` → `fetchPreparation()`. Nach jedem Save wird die gesamte Preparation neu vom Server geladen, was den lokalen State überschreibt und die UI "springt".
 
-### Daten-Mapping (vorhandene Felder → Briefing-Sektionen)
+**Lösung:**
 
-```text
-preparation_data Feld       → Briefing-Sektion
-──────────────────────────────────────────────────
-audience / facts_figures     → Organisation / Hintergrund
-position_statements          → Meine Position / Linie
-objectives                   → Was will ich erreichen?
-questions_answers            → Mögliche kritische Fragen
-key_topics (neu nutzen)      → Kernbotschaft
-checklist_items (incomplete) → ToDos vor Termin
-companions                   → Begleitpersonen (kompakt)
-program                      → Ablauf (kompakt)
-```
+1. **`useAppointmentPreparation.tsx`**: `updatePreparation` soll nach dem DB-Update **nicht** `fetchPreparation()` aufrufen, sondern den lokalen State optimistisch aktualisieren (`setPreparation(prev => ({ ...prev, ...updates }))`).
+2. **`AppointmentPreparationDataTab.tsx`**: Debounce von 500ms auf **2000ms** erhöhen. Toast bei Auto-Save entfernen (nur bei manuellem Save anzeigen). Der `useEffect` auf `[preparation]` (Zeile 132-149), der den lokalen State zurücksetzt, muss so angepasst werden, dass er nur bei echten externen Änderungen greift (z.B. per Ref-Vergleich), nicht nach eigenem Save.
 
-Kein neues DB-Schema nötig — die Felder existieren bereits in `preparation_data` (JSON).
+### Problem 2: Briefing im Dashboard
 
-### Umsetzung
+**Konzept:** In `TodaySchedule.tsx` wird für jeden Termin geprüft, ob eine `appointment_preparation` existiert. Falls ja:
+- Ein **Briefing-Icon-Button** (z.B. `FileText`) erscheint rechts am Termin
+- Ein **Chevron** zum Aufklappen der Briefing-Kurzfassung direkt unter dem Termin
+- Beim Klick auf den Briefing-Button wird ein **Briefing-PDF** generiert (via Edge Function oder clientseitig)
 
-**1. Neue Komponente `AppointmentBriefingView.tsx`** (read-only)
+**Umsetzung:**
 
-- Klare, scanbare Darstellung wie im Beispiel
-- Sektionen mit `→`-Pfeilen für Bullet-Points
-- ToDo-Checkliste (nur Anzeige, kein Toggle)
-- Termin-Header oben (Datum, Uhrzeit, Ort — aus `appointmentInfo`)
-- Kompakte Begleitpersonen- und Ablauf-Anzeige
-- Kein Edit-Modus, keine Buttons außer "Zurück"
+1. **`TodaySchedule.tsx`**: Erweitern um einen Join auf `appointment_preparations` (über `appointment_id`). Für Termine mit Vorbereitung:
+   - Chevron-Button → Toggle für inline `AppointmentBriefingView` (kompakt)
+   - PDF-Button → Generiert ein Briefing-PDF
 
-**2. Neuer Tab "Briefing" in `AppointmentPreparationDetail.tsx`**
+2. **Briefing-PDF**: Da keine Server-Side-Rendering möglich ist, clientseitig mit einer leichtgewichtigen Library (z.B. `jspdf` oder `html2canvas` + `jspdf`). Die `AppointmentBriefingView`-Daten werden als strukturiertes PDF gerendert.
 
-- Wird als erster Tab angezeigt wenn Rolle = `abgeordneter`
-- Für andere Rollen bleibt die bisherige Tab-Reihenfolge
-- Der Tab ist für alle Rollen sichtbar, aber für Abgeordnete vorausgewählt
-
-**3. Prominente Platzierung**
-
-- Auf dem Dashboard ("Meine Arbeit") könnte ein Briefing-Widget die nächsten anstehenden Termine mit Vorbereitung anzeigen — das wäre ein Folgeschritt
-- Zunächst: Briefing-Tab als Standard-Tab für Abgeordnete in der Terminvorbereitung
-
-### Build-Fehler beheben
-
-Zusätzlich werden drei Build-Fehler behoben:
-
-1. **`EventPlanningDetailView.tsx` (Zeile 85)**: `updateChecklistItemColor` wird destrukturiert, ist aber nicht im Return von `useEventPlanningData` enthalten → Hinzufügen in `useEventPlanningData.ts` (Zeile ~868): `updateChecklistItemColor: checklist.updateChecklistItemColor`
-
-2. **`AppointmentPreparationDataTab.tsx` (Zeile 78)**: `preparation_data` enthält `companions` (Array) und `program` (Array), kann daher nicht als `Record<string, string>` typisiert werden → State-Typ ändern zu `Record<string, unknown>` oder die komplexen Felder beim Spread ausschließen
-
-3. **Supabase Edge Function Fehler** (TS2589/TS2322 in `respond-public-event-invitation`): Diese sind vorexistent und nicht Teil dieser Änderung — werden separat behandelt falls gewünscht.
+3. **Neuer State** in TodaySchedule: `expandedAppointmentId` für das Auf-/Zuklappen, plus die geladenen Preparation-Daten.
 
 ### Dateien
 
-| Datei | Aktion |
+| Datei | Änderung |
 |---|---|
-| `src/components/appointment-preparations/AppointmentBriefingView.tsx` | Neu erstellen |
-| `src/pages/AppointmentPreparationDetail.tsx` | Briefing-Tab hinzufügen, rollenbasiert vorauswählen |
-| `src/components/event-planning/useEventPlanningData.ts` | `updateChecklistItemColor` im Return ergänzen |
-| `src/components/appointment-preparations/AppointmentPreparationDataTab.tsx` | Typ-Fehler bei `Record<string, string>` beheben |
+| `useAppointmentPreparation.tsx` | Optimistisches Update statt Refetch |
+| `AppointmentPreparationDataTab.tsx` | Debounce auf 2s, kein Toast bei Auto-Save, useEffect-Guard |
+| `TodaySchedule.tsx` | Briefing-Link, Chevron-Expand, Preparation-Daten laden |
+| Neue Utility / Edge Function | Briefing-PDF-Generierung |
 
