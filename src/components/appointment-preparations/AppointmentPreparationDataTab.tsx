@@ -17,7 +17,7 @@ import {
   MessageSquareIcon, SettingsIcon, CheckCircleIcon, CarIcon, MapIcon, ClipboardListIcon,
   TagIcon, TrashIcon
 } from "lucide-react";
-import { AppointmentPreparation } from "@/hooks/useAppointmentPreparation";
+import { AppointmentPreparation, AppointmentConversationPartner, getConversationPartnersFromPreparationData } from "@/hooks/useAppointmentPreparation";
 import { debounce } from "@/utils/debounce";
 import { toast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
@@ -26,6 +26,7 @@ import { format } from "date-fns";
 import { de } from "date-fns/locale";
 import { AppointmentDetailsSidebar } from "@/components/calendar/AppointmentDetailsSidebar";
 
+type ConversationPartner = AppointmentConversationPartner;
 type Companion = NonNullable<AppointmentPreparation['preparation_data']['companions']>[number];
 type ProgramRow = NonNullable<AppointmentPreparation['preparation_data']['program']>[number];
 
@@ -84,6 +85,7 @@ export function AppointmentPreparationDataTab({
   const [saving, setSaving] = useState(false);
   const [expandedSections, setExpandedSections] = useState({
     anlass: true,
+    gespraechspartner: true,
     begleitpersonen: true,
     logistik: true,
     programm: true,
@@ -95,6 +97,9 @@ export function AppointmentPreparationDataTab({
   });
 
   // Local state for complex fields
+  const [conversationPartners, setConversationPartners] = useState<ConversationPartner[]>(
+    getConversationPartnersFromPreparationData(preparation.preparation_data)
+  );
   const [companions, setCompanions] = useState<Companion[]>(
     preparation.preparation_data.companions ?? []
   );
@@ -141,6 +146,7 @@ export function AppointmentPreparationDataTab({
         contact_info: preparation.preparation_data.contact_info || "",
         notes: preparation.notes || ""
       } as Record<string, any>);
+      setConversationPartners(getConversationPartnersFromPreparationData(preparation.preparation_data));
       setCompanions(preparation.preparation_data.companions ?? []);
       setHasParking(preparation.preparation_data.has_parking ?? false);
       setProgramRows(preparation.preparation_data.program ?? []);
@@ -203,11 +209,12 @@ export function AppointmentPreparationDataTab({
 
   // Build full preparation_data for saving
   const buildPreparationData = (
-    base: Record<string, string>,
+    base: Record<string, any>,
     overrides?: Partial<AppointmentPreparation['preparation_data']>
   ): AppointmentPreparation['preparation_data'] => ({
     ...base,
     visit_reason: (overrides?.visit_reason ?? visitReason) as any,
+    conversation_partners: overrides?.conversation_partners ?? conversationPartners,
     companions: overrides?.companions ?? companions,
     has_parking: overrides?.has_parking ?? hasParking,
     program: overrides?.program ?? programRows,
@@ -227,7 +234,8 @@ export function AppointmentPreparationDataTab({
           : (selectedContactId
             ? `${contacts.find(c => c.id === selectedContactId)?.email || ""}${contacts.find(c => c.id === selectedContactId)?.phone ? ` | ${contacts.find(c => c.id === selectedContactId)?.phone}` : ""}`.trim().replace(/^\|/, '').trim() || undefined
             : undefined),
-        contact_id: showCustomContact ? undefined : selectedContactId || undefined
+        contact_id: showCustomContact ? undefined : selectedContactId || undefined,
+        contact_person: conversationPartners.length > 0 ? undefined : editData.contact_person
       } as any);
 
       await onUpdate({
@@ -353,6 +361,41 @@ export function AppointmentPreparationDataTab({
     debouncedSave(buildPreparationData(editData, { visit_reason: newReason as any }));
   };
 
+  // --- Conversation partner handlers ---
+  const addConversationPartner = () => {
+    const newPartner: ConversationPartner = {
+      id: crypto.randomUUID(),
+      name: '',
+      role: '',
+      organization: '',
+      note: ''
+    };
+    const updated = [...conversationPartners, newPartner];
+    setConversationPartners(updated);
+    debouncedSave(buildPreparationData(editData, {
+      conversation_partners: updated,
+      contact_person: undefined
+    }));
+  };
+
+  const updateConversationPartner = (idx: number, field: keyof ConversationPartner, value: string) => {
+    const updated = conversationPartners.map((partner, i) => i === idx ? { ...partner, [field]: value } : partner);
+    setConversationPartners(updated);
+    debouncedSave(buildPreparationData(editData, {
+      conversation_partners: updated,
+      contact_person: undefined
+    }));
+  };
+
+  const removeConversationPartner = (idx: number) => {
+    const updated = conversationPartners.filter((_, i) => i !== idx);
+    setConversationPartners(updated);
+    debouncedSave(buildPreparationData(editData, {
+      conversation_partners: updated,
+      contact_person: undefined
+    }));
+  };
+
   // --- Companion handlers ---
   const addCompanion = () => {
     const newCompanion: Companion = { id: crypto.randomUUID(), name: '', type: 'mitarbeiter', note: '' };
@@ -414,7 +457,6 @@ export function AppointmentPreparationDataTab({
       icon: UsersIcon,
       fields: [
         { key: "audience", label: "Zielgruppe", placeholder: "An wen richtet sich der Termin?" },
-        { key: "contact_person", label: "Ansprechpartner", placeholder: "Hauptansprechpartner vor Ort" },
       ]
     },
     materials: {
@@ -719,6 +761,88 @@ export function AppointmentPreparationDataTab({
                   </button>
                 ))}
               </div>
+            </CollapsibleContent>
+          </Collapsible>
+        </CardContent>
+      </Card>
+
+      {/* 2. Gesprächspartner */}
+      <Card>
+        <CardContent className="pt-6">
+          <Collapsible
+            open={expandedSections.gespraechspartner}
+            onOpenChange={() => toggleSection('gespraechspartner')}
+          >
+            <CollapsibleTrigger className="flex items-center justify-between w-full p-4 bg-muted/30 rounded-lg hover:bg-muted/50 transition-colors">
+              <div className="flex items-center gap-3">
+                <UsersIcon className="h-5 w-5 text-primary" />
+                <h3 className="font-medium">Gesprächspartner</h3>
+                {conversationPartners.length > 0 && (
+                  <span className="text-xs bg-primary/10 text-primary px-2 py-1 rounded-full">
+                    {conversationPartners.length}
+                  </span>
+                )}
+              </div>
+              {expandedSections.gespraechspartner ? (
+                <ChevronDownIcon className="h-4 w-4" />
+              ) : (
+                <ChevronRightIcon className="h-4 w-4" />
+              )}
+            </CollapsibleTrigger>
+            <CollapsibleContent className="pt-4 space-y-3">
+              {conversationPartners.length === 0 && (
+                <p className="text-sm text-muted-foreground px-1">Noch keine Gesprächspartner hinzugefügt.</p>
+              )}
+              {conversationPartners.map((partner, idx) => (
+                <div key={partner.id} className="grid grid-cols-1 md:grid-cols-[1.2fr_1fr_1fr_1fr_auto] gap-2 items-start p-3 border rounded-lg bg-muted/20">
+                  <div className="space-y-1">
+                    <label className="text-xs text-muted-foreground">Name</label>
+                    <Input
+                      value={partner.name}
+                      onChange={(e) => updateConversationPartner(idx, 'name', e.target.value)}
+                      placeholder="Name des Gesprächspartners"
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <label className="text-xs text-muted-foreground">Rolle</label>
+                    <Input
+                      value={partner.role ?? ''}
+                      onChange={(e) => updateConversationPartner(idx, 'role', e.target.value)}
+                      placeholder="z.B. Geschäftsführung"
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <label className="text-xs text-muted-foreground">Organisation</label>
+                    <Input
+                      value={partner.organization ?? ''}
+                      onChange={(e) => updateConversationPartner(idx, 'organization', e.target.value)}
+                      placeholder="z.B. Verband / Unternehmen"
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <label className="text-xs text-muted-foreground">Hinweis</label>
+                    <Input
+                      value={partner.note ?? ''}
+                      onChange={(e) => updateConversationPartner(idx, 'note', e.target.value)}
+                      placeholder="Zusätzlicher Kontext"
+                    />
+                  </div>
+                  <div className="pt-6">
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      onClick={() => removeConversationPartner(idx)}
+                      className="text-destructive hover:text-destructive"
+                    >
+                      <TrashIcon className="h-4 w-4" />
+                    </Button>
+                  </div>
+                </div>
+              ))}
+              <Button variant="outline" size="sm" onClick={addConversationPartner} className="mt-2">
+                <PlusIcon className="h-4 w-4 mr-2" />
+                Gesprächspartner hinzufügen
+              </Button>
             </CollapsibleContent>
           </Collapsible>
         </CardContent>
