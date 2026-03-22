@@ -29,7 +29,7 @@ export function MyWorkRedaktionTab() {
   const [, setContentRefreshToken] = useState(0);
 
   return (
-    <div className="p-4">
+    <div className="p-4 pb-8">
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-5">
         <div className="min-w-0 lg:col-span-3">
           <SocialMediaPlannerPanel specialDays={specialDays} />

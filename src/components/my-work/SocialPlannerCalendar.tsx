@@ -1,8 +1,8 @@
 import { useCallback, useMemo, useState } from "react";
-import { CalendarDays, AlertTriangle, Tag, icons, Clock3, Sparkles, Info } from "lucide-react";
+import { CalendarDays, AlertTriangle, icons, Clock3, Sparkles, Info, ChevronLeft, ChevronRight } from "lucide-react";
 import { Calendar, dateFnsLocalizer, Views, type View } from "react-big-calendar";
 import withDragAndDrop from "react-big-calendar/lib/addons/dragAndDrop";
-import { endOfMonth, endOfWeek, format, parse, startOfDay, startOfMonth, startOfWeek, getDay, getISOWeek, isSameDay, isWithinInterval } from "date-fns";
+import { addMonths, addWeeks, endOfMonth, endOfWeek, format, parse, startOfDay, startOfMonth, startOfWeek, getDay, getISOWeek, isSameDay, isWithinInterval } from "date-fns";
 import { de } from "date-fns/locale";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -305,8 +305,25 @@ export function SocialPlannerCalendar({ items, onUpdateSchedule, onEditItem, spe
   }), []);
 
   const rangeLabel = useMemo(() => {
-    return format(currentDate, view === Views.MONTH ? "MMMM yyyy" : "'Woche vom' dd. MMMM yyyy", { locale: de });
+    if (view === Views.MONTH) {
+      return format(currentDate, "MMMM yyyy", { locale: de });
+    }
+
+    const weekStart = startOfWeek(currentDate, { locale: de });
+    const weekEnd = endOfWeek(currentDate, { locale: de });
+    return `${format(weekStart, "d. MMM", { locale: de })} – ${format(weekEnd, "d. MMM yyyy", { locale: de })}`;
   }, [currentDate, view]);
+
+  const navigateCalendar = useCallback((direction: "prev" | "next" | "today") => {
+    if (direction === "today") {
+      setCurrentDate(new Date());
+      return;
+    }
+
+    setCurrentDate((prev) => (view === Views.MONTH
+      ? addMonths(prev, direction === "next" ? 1 : -1)
+      : addWeeks(prev, direction === "next" ? 1 : -1)));
+  }, [view]);
 
   const visibleOverloadedDays = useMemo(() => overloadedDays.filter(([day]) => {
     const date = new Date(`${day}T12:00:00`);
@@ -321,17 +338,29 @@ export function SocialPlannerCalendar({ items, onUpdateSchedule, onEditItem, spe
 
   return (
     <div className="space-y-3">
-      <div className="flex flex-col gap-3 xl:flex-row xl:items-center xl:justify-between">
-        <div>
-          <h4 className="text-sm font-semibold text-foreground">Planungskalender</h4>
-          <p className="text-xs text-muted-foreground">{rangeLabel}</p>
+      <div className="flex flex-col gap-3 rounded-lg border bg-card p-4 xl:flex-row xl:items-center xl:justify-between">
+        <div className="flex flex-wrap items-center gap-3">
+          <Button type="button" variant="outline" size="sm" className="h-9 px-4 text-sm font-medium" onClick={() => navigateCalendar("today")}>Heute</Button>
+          <div className="flex items-center gap-0.5">
+            <Button type="button" variant="ghost" size="icon" className="h-9 w-9" onClick={() => navigateCalendar("prev")}>
+              <ChevronLeft className="h-5 w-5" />
+              <span className="sr-only">Vorherigen Zeitraum anzeigen</span>
+            </Button>
+            <Button type="button" variant="ghost" size="icon" className="h-9 w-9" onClick={() => navigateCalendar("next")}>
+              <ChevronRight className="h-5 w-5" />
+              <span className="sr-only">Nächsten Zeitraum anzeigen</span>
+            </Button>
+          </div>
+          <div>
+            <h4 className="text-lg font-semibold capitalize text-foreground">{rangeLabel}</h4>
+            <p className="text-xs text-muted-foreground">Planungskalender</p>
+          </div>
         </div>
 
         <div className="flex flex-wrap items-center gap-2">
           <div className="flex items-center rounded-md border overflow-hidden">
-            <Button type="button" size="sm" variant="ghost" className="rounded-none h-8 px-2" onClick={() => setCurrentDate(new Date())}>Heute</Button>
-            <Button type="button" size="sm" variant={view === Views.WEEK ? "default" : "ghost"} className="rounded-none h-8 px-2" onClick={() => setView(Views.WEEK)}>Woche</Button>
-            <Button type="button" size="sm" variant={view === Views.MONTH ? "default" : "ghost"} className="rounded-none h-8 px-2" onClick={() => setView(Views.MONTH)}>Monat</Button>
+            <Button type="button" size="sm" variant={view === Views.WEEK ? "default" : "ghost"} className="rounded-none h-8 px-3" onClick={() => setView(Views.WEEK)}>Woche</Button>
+            <Button type="button" size="sm" variant={view === Views.MONTH ? "default" : "ghost"} className="rounded-none h-8 px-3" onClick={() => setView(Views.MONTH)}>Monat</Button>
           </div>
           <Select value={scheduleFilter} onValueChange={(value) => setScheduleFilter(value as typeof scheduleFilter)}>
             <SelectTrigger className="h-8 w-[180px]"><SelectValue placeholder="Planungsstatus" /></SelectTrigger>
