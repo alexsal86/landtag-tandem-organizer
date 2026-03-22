@@ -879,6 +879,7 @@ export function useEventPlanningData() {
     updateSubItemTitle: checklist.updateSubItemTitle,
     removeSubItem: checklist.removeSubItem,
     onDragEnd: checklist.onDragEnd,
+    updateChecklistItemColor: checklist.updateChecklistItemColor,
     addItemComment: itemDetails.addItemComment,
     addItemSubtask: itemDetails.addItemSubtask,
     addItemCommentForItem: itemDetails.addItemCommentForItem,
