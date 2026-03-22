@@ -257,10 +257,10 @@ export function EventPlanningDetailView(data: EventPlanningDataReturn) {
     <div className="min-h-screen bg-gradient-subtle p-6">
       <div className="space-y-6">
         <div className="flex flex-col gap-4 xl:flex-row xl:items-start xl:justify-between">
-          <div className="flex items-start gap-4">
-            <Button variant="ghost" onClick={() => setSelectedPlanning(null)}>← Zurück</Button>
-            <div className="space-y-4">
-              <div>
+          <div className="flex flex-1 flex-col gap-4 xl:flex-row xl:items-start xl:gap-6">
+            <div className="flex items-start gap-4 xl:min-w-0">
+              <Button variant="ghost" onClick={() => setSelectedPlanning(null)}>← Zurück</Button>
+              <div className="min-w-0">
                 <h1 className="text-3xl font-bold text-foreground">{selectedPlanning.title}</h1>
                 <div className="mt-2 flex flex-wrap items-center gap-3 text-sm text-muted-foreground">
                   <span className="inline-flex items-center gap-2">
@@ -273,32 +273,32 @@ export function EventPlanningDetailView(data: EventPlanningDataReturn) {
                   </span>
                 </div>
               </div>
-
-              <TooltipProvider>
-                <div className="flex flex-wrap gap-2">
-                  {participantStats.map(({ label, count, icon: Icon, tone }) => (
-                    <Tooltip key={label}>
-                      <TooltipTrigger asChild>
-                        <div
-                          className={cn(
-                            "flex h-12 w-12 cursor-default flex-col items-center justify-center rounded-full border text-center shadow-sm",
-                            tone,
-                          )}
-                        >
-                          <Icon className="h-3.5 w-3.5" />
-                          <span className="text-sm font-semibold leading-none">{count}</span>
-                        </div>
-                      </TooltipTrigger>
-                      <TooltipContent>
-                        <p>{label}</p>
-                      </TooltipContent>
-                    </Tooltip>
-                  ))}
-                </div>
-              </TooltipProvider>
             </div>
+
+            <TooltipProvider>
+              <div className="flex flex-wrap gap-2 xl:flex-1 xl:justify-center xl:self-center">
+                {participantStats.map(({ label, count, icon: Icon, tone }) => (
+                  <Tooltip key={label}>
+                    <TooltipTrigger asChild>
+                      <div
+                        className={cn(
+                          "flex h-12 w-12 cursor-default flex-col items-center justify-center rounded-full border text-center shadow-sm",
+                          tone,
+                        )}
+                      >
+                        <Icon className="h-3.5 w-3.5" />
+                        <span className="text-sm font-semibold leading-none">{count}</span>
+                      </div>
+                    </TooltipTrigger>
+                    <TooltipContent>
+                      <p>{label}</p>
+                    </TooltipContent>
+                  </Tooltip>
+                ))}
+              </div>
+            </TooltipProvider>
           </div>
-          <div className="flex flex-wrap items-center gap-3">
+          <div className="flex flex-wrap items-center gap-3 xl:justify-end">
             {/* Collaborator avatars */}
             {uniquePlanningCollaborators.length > 0 && (
               <Dialog open={isManageCollaboratorsOpen} onOpenChange={setIsManageCollaboratorsOpen}>
