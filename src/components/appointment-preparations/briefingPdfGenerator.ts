@@ -234,6 +234,10 @@ async function drawHeader(
     }
   }
   const effectiveLogoW = hasLogo ? logoW : 0;
+  const leftBlockX = logoX + effectiveLogoW + (hasLogo ? 6 : 0);
+  const rightBlockW = 48;
+  const rightBlockX = PAGE_W - MARGIN - rightBlockW;
+  const leftBlockW = Math.max(50, rightBlockX - leftBlockX - 8);
 
   doc.setFont(headerFont.family, headerFont.style);
   doc.setFontSize(12);
