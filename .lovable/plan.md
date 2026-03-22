@@ -1,53 +1,36 @@
 
 
-## Briefing-PDF Redesign
+## Briefing-PDF reparieren: Logo & Schriftart
 
-### Build-Fehler beheben
+### Problem
 
-**Zeile 399** in `briefingPdfGenerator.ts`: Der Cast `(doc.internal as { getCurrentPageInfo: ... })` funktioniert nicht mit dem jsPDF-Typ. Fix: `(doc.internal as unknown as { getCurrentPageInfo: ... })` — analog zu Zeile 507 wo bereits `as unknown as` verwendet wird.
+1. **Logo:** `svg2pdf.js` hängt bei dem komplexen Fraktions-SVG. Der Canvas-Fallback funktioniert ebenfalls nicht zuverlässig. Die PDF-Generierung bleibt komplett stehen.
+2. **Schriftart:** jsPDF unterstützt nur TTF — die GrueneTypeNeue liegt aber nur als WOFF/WOFF2 vor. Deshalb wird immer der Fallback (PTSans-Bold) verwendet.
 
-### Logo einbinden
+### Lösung
 
-Das hochgeladene `logo_fraktion.png` wird nach `public/assets/logo_fraktion.png` kopiert, damit es im PDF per `loadImageElement("/assets/logo_fraktion.png")` geladen werden kann.
+**1. GrueneTypeNeue.ttf einbinden**
+- Die hochgeladene `GrueneTypeNeue.ttf` nach `public/fonts/GrueneTypeNeue.ttf` kopieren
+- In `HEADER_FONT_SOURCES` die TTF-Datei als **erste** Quelle eintragen (vor WOFF/WOFF2, da jsPDF nur TTF kann)
+- WOFF/WOFF2-Einträge können bleiben (werden übersprungen, da TTF zuerst greift)
 
-### PDF-Layout-Redesign (orientiert am Screenshot)
-
-**Header (weiß, keine Hintergrundfarbe):**
-- Logo links oben (ca. 18mm)
-- Daneben: "GRÜNE Fraktion · Landtag Baden-Württemberg" (klein)
-- Grüne Trennlinie darunter
-- "BRIEFING" klein und zentriert unter der Linie
-- Termintitel groß und fett (16pt)
-- Datum · Uhrzeit · Ort darunter (11pt)
-
-**Zwei-Spalten-Layout mit Card-Design:**
-
-Jede Sektion bekommt einen leichten grünen Hintergrund (`GREEN_BG`) mit abgerundeten Ecken — wie Cards in der Grafik. Section-Labels in dunklem Grün, uppercase.
-
-**Reihenfolge und Spalten-Zuordnung:**
-
-| Links | Rechts |
-|---|---|
-| Gesprächspartner (1. Stelle) | Ziel des Termines (objectives) |
-| Kernbotschaft (hervorgehoben) | Begleitpersonen |
-| Hintergrund (audience + facts) | Anlass des Besuchs |
-| Gesprächspunkte (talking_points + key_topics) | Ablauf (program) |
-| Meine Position / Linie | Todos vor Termin (checklist) |
-| Kritische Fragen | Öffentlichkeitsarbeit (Social Media / Presse Badges) |
-| Weitere Notizen | Notizen-Bereich (leer, liniert) |
-
-**Neue Design-Elemente:**
-- Cards: `GREEN_BG` Hintergrund mit 2mm Radius, kein Rahmen
-- Kernbotschaft: eigene Card über volle Breite mit Magenta-Akzentlinie
-- Öffentlichkeitsarbeit: Social Media / Presse als Badges in einer Card
-- "Todos nach Termin": leere Checkboxen (wie im Screenshot) — statischer Block
-- Notizen-Bereich: linierter leerer Bereich für handschriftliche Notizen
-- Footer: "Vertraulich – Nur zur internen Verwendung" + Seitenzahl
+**2. SVG-Logo zuverlässig einbetten (svg2pdf.js entfernen, Canvas-Rasterisierung)**
+- `svg2pdf.js` komplett entfernen (hängt bei komplexen SVGs)
+- Stattdessen: SVG per `fetch` laden → als `Image` via Blob-URL rendern → auf Canvas bei 4× Skalierung zeichnen → als komprimiertes PNG per `doc.addImage()` einbetten
+- Das SVG bleibt als Quelldatei erhalten (`/assets/logo_fraktion.svg`), wird nur zur Laufzeit gerastert
+- Kein Timeout-Hack mehr nötig, da `img.onload` auf Canvas zuverlässig funktioniert
 
 ### Dateien
 
-| Datei | Aktion |
+| Datei | Änderung |
 |---|---|
-| `public/assets/logo_fraktion.png` | Logo kopieren |
-| `src/components/appointment-preparations/briefingPdfGenerator.ts` | Komplett überarbeiten |
+| `public/fonts/GrueneTypeNeue.ttf` | Neue Datei (vom User hochgeladen) |
+| `briefingPdfGenerator.ts` | TTF als erste Font-Quelle; `svg2pdf.js`-Import entfernen; `loadSvgElement` + `doc.svg()` durch Canvas-Rasterisierung ersetzen |
+| `package.json` | `svg2pdf.js` Dependency entfernen |
+
+### Erwartetes Ergebnis
+- PDF wird zuverlässig generiert (kein Hängen mehr)
+- GrueneTypeNeue wird als Header-Font verwendet
+- Logo erscheint scharf (4× Rasterisierung)
+- Dateigröße bleibt klein (~50-150 KB)
 
