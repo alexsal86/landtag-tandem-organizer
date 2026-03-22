@@ -94,69 +94,100 @@ function drawCardLabel(
 }
 
 // ─── Header (white, with logo + green line) ───────────────────────────────────
-async function drawHeader(
-  doc: jsPDF,
-  title: string | undefined,
-  startTime: string | undefined,
-  location: string | undefined
-): Promise<number> {
-  let y = 12;
+function getHeaderTitle(preparation: AppointmentPreparation, appointmentTitle?: string): string {
+  return appointmentTitle?.trim() || preparation.title?.trim() || "Terminvorbereitung";
+}
 
-  // Logo
-  const logoImg = await loadImageElement("/assets/logo_fraktion.png");
-  if (logoImg) {
-    try {
-      const logoH = 14;
-      const logoW = (logoImg.width / logoImg.height) * logoH;
-      doc.addImage(logoImg, "PNG", MARGIN, y - 4, logoW, logoH);
-    } catch { /* ignore */ }
-  }
+function getHeaderInfoLine(startTime: string | undefined, location: string | undefined): string {
+  const parts: string[] = [];
 
-  // Green separator line
-  y += 14;
-  rgb(doc, GREEN_LINE, "draw");
-  doc.setLineWidth(0.8);
-  doc.line(MARGIN, y, PAGE_W - MARGIN, y);
-
-  // "BRIEFING" label below line
-  y += 5;
-  doc.setFontSize(7);
-  doc.setFont("helvetica", "bold");
-  rgb(doc, TEXT_MUTED, "text");
-  doc.text("BRIEFING", PAGE_W / 2, y, { align: "center" });
-
-  // Title (large)
-  y += 6;
-  doc.setFontSize(16);
-  doc.setFont("helvetica", "bold");
-  rgb(doc, TEXT_DARK, "text");
-  const titleText = title || "Terminvorbereitung";
-  const titleLines = doc.splitTextToSize(titleText, CONTENT);
-  doc.text(titleLines, PAGE_W / 2, y, { align: "center" });
-  y += titleLines.length * 7;
-
-  // Date · Time · Location
-  let infoLine = "";
   if (startTime) {
     try {
       const d = new Date(startTime);
-      infoLine += format(d, "EEEE, dd. MMMM yyyy", { locale: de });
-      infoLine += "  ·  " + format(d, "HH:mm", { locale: de }) + " Uhr";
+      parts.push(format(d, "EEEE, dd. MMMM yyyy", { locale: de }));
+      parts.push(`${format(d, "HH:mm", { locale: de })} Uhr`);
     } catch { /* ignore */ }
   }
-  if (location) infoLine += (infoLine ? "  ·  " : "") + location;
 
-  if (infoLine) {
-    y += 1;
-    doc.setFontSize(10);
-    doc.setFont("helvetica", "normal");
-    rgb(doc, TEXT_MUTED, "text");
-    doc.text(infoLine, PAGE_W / 2, y, { align: "center" });
-    y += 5;
+  if (location?.trim()) {
+    parts.push(`Ort: ${location.trim()}`);
   }
 
-  y += 4;
-  return y;
+  return parts.join(" · ");
+}
+
+async function drawHeader(
+  doc: jsPDF,
+  preparation: AppointmentPreparation,
+  appointmentTitle: string | undefined,
+  startTime: string | undefined,
+  location: string | undefined
+): Promise<number> {
+  const headerTop = 12;
+  const headerBottomPadding = 6;
+  const titleText = getHeaderTitle(preparation, appointmentTitle);
+  const infoLine = getHeaderInfoLine(startTime, location);
+  const logoImg = await loadImageElement("/assets/logo_fraktion.png");
+
+  const logoH = 28;
+  const logoW = logoImg ? (logoImg.width / logoImg.height) * logoH : 0;
+  const logoX = MARGIN;
+  const logoY = headerTop;
+  const leftBlockX = logoX + logoW + 6;
+  const rightBlockW = 48;
+  const rightBlockX = PAGE_W - MARGIN - rightBlockW;
+  const leftBlockW = Math.max(50, rightBlockX - leftBlockX - 8);
+
+  if (logoImg) {
+    try {
+      doc.addImage(logoImg, "PNG", logoX, logoY, logoW, logoH);
+    } catch { /* ignore */ }
+  }
+
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(12);
+  rgb(doc, TEXT_DARK, "text");
+  const titleLines = doc.splitTextToSize(`Briefing: "${titleText}"`, leftBlockW);
+  doc.text(titleLines, leftBlockX, headerTop + 6);
+
+  let leftBlockBottom = headerTop + 6 + titleLines.length * 5;
+  if (infoLine) {
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(9);
+    rgb(doc, TEXT_MUTED, "text");
+    const infoLines = doc.splitTextToSize(infoLine, leftBlockW);
+    doc.text(infoLines, leftBlockX, leftBlockBottom + 5);
+    leftBlockBottom += infoLines.length * 4 + 1;
+  }
+
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(10);
+  rgb(doc, TEXT_DARK, "text");
+  doc.text("Öffentlichkeitsarbeit", rightBlockX, headerTop + 6);
+
+  const prItems: string[] = [];
+  if (preparation.preparation_data.social_media_planned) prItems.push("Social Media");
+  if (preparation.preparation_data.press_planned) prItems.push("Presse");
+
+  if (prItems.length > 0) {
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(9);
+    rgb(doc, TEXT_MUTED, "text");
+    doc.text(prItems, rightBlockX, headerTop + 12);
+  }
+
+  const headerContentBottom = Math.max(
+    logoY + logoH,
+    leftBlockBottom,
+    headerTop + (prItems.length > 0 ? 12 + prItems.length * 4 : 6)
+  );
+  const lineY = headerContentBottom + headerBottomPadding;
+
+  rgb(doc, GREEN_LINE, "draw");
+  doc.setLineWidth(0.8);
+  doc.line(MARGIN, lineY, PAGE_W - MARGIN, lineY);
+
+  return lineY + 6;
 }
 
 // ─── Footer ───────────────────────────────────────────────────────────────────
@@ -532,7 +563,7 @@ export async function generateBriefingPdf({
   const topY = 14; // Y for new pages
 
   // ── Header ──────────────────────────────────────────────────────────────────
-  const startY = await drawHeader(doc, appointmentTitle, appointmentStartTime, appointmentLocation);
+  const startY = await drawHeader(doc, preparation, appointmentTitle, appointmentStartTime, appointmentLocation);
 
   const leftY  = { y: startY };
   const rightY = { y: startY };
@@ -616,6 +647,6 @@ export async function generateBriefingPdf({
     drawFooter(doc, p, totalPages);
   }
 
-  const filename = `Briefing_${(appointmentTitle || preparation.title || "Termin").replace(/[^a-zA-Z0-9äöüÄÖÜß]/g, "_")}.pdf`;
+  const filename = `Briefing_${getHeaderTitle(preparation, appointmentTitle).replace(/[^a-zA-Z0-9äöüÄÖÜß]/g, "_")}.pdf`;
   doc.save(filename);
 }
