@@ -129,22 +129,28 @@ export function AppointmentPreparationDataTab({
     }
   }, [preparation.appointment_id, currentTenant]);
 
+  // Only sync from props on initial load or when the preparation ID changes
+  // (not after our own optimistic saves)
+  const lastSyncedId = useRef(preparation.id);
   useEffect(() => {
-    setEditData({
-      ...preparation.preparation_data,
-      contact_name: preparation.preparation_data.contact_name || "",
-      contact_info: preparation.preparation_data.contact_info || "",
-      notes: preparation.notes || ""
-    } as Record<string, any>);
-    setCompanions(preparation.preparation_data.companions ?? []);
-    setHasParking(preparation.preparation_data.has_parking ?? false);
-    setProgramRows(preparation.preparation_data.program ?? []);
-    setVisitReason(preparation.preparation_data.visit_reason ?? '');
+    if (preparation.id !== lastSyncedId.current) {
+      lastSyncedId.current = preparation.id;
+      setEditData({
+        ...preparation.preparation_data,
+        contact_name: preparation.preparation_data.contact_name || "",
+        contact_info: preparation.preparation_data.contact_info || "",
+        notes: preparation.notes || ""
+      } as Record<string, any>);
+      setCompanions(preparation.preparation_data.companions ?? []);
+      setHasParking(preparation.preparation_data.has_parking ?? false);
+      setProgramRows(preparation.preparation_data.program ?? []);
+      setVisitReason(preparation.preparation_data.visit_reason ?? '');
 
-    if (preparation.preparation_data.contact_name && preparation.preparation_data.contact_info) {
-      setShowCustomContact(true);
-    } else if (preparation.preparation_data.contact_id) {
-      setSelectedContactId(preparation.preparation_data.contact_id);
+      if (preparation.preparation_data.contact_name && preparation.preparation_data.contact_info) {
+        setShowCustomContact(true);
+      } else if (preparation.preparation_data.contact_id) {
+        setSelectedContactId(preparation.preparation_data.contact_id);
+      }
     }
   }, [preparation]);
 
