@@ -12,9 +12,10 @@ import { de } from "date-fns/locale";
 // ─── Corporate Design ─────────────────────────────────────────────────────────
 const GREEN         = [87, 171, 39]   as const;
 const GREEN_DARK    = [26, 94, 32]    as const;
-const GREEN_BG      = [237, 247, 232] as const; // card background
-const GREEN_BG2     = [225, 240, 218] as const; // slightly darker card variant
+const GREEN_BG      = [237, 247, 232] as const; // legacy card background
+const GREEN_BG2     = [225, 240, 218] as const; // legacy darker card variant
 const GREEN_LINE    = [55, 130, 30]   as const;
+const BORDER_SOFT   = [205, 220, 198] as const;
 const MAGENTA       = [230, 0, 126]   as const;
 const WHITE         = [255, 255, 255] as const;
 const TEXT_DARK     = [30, 30, 30]    as const;
@@ -65,6 +66,11 @@ function ensureFit(doc: jsPDF, yRef: { y: number }, needed: number, topY: number
   }
 }
 
+const SECTION_HEADER_H = 7;
+const SECTION_GAP_AFTER_HEADER = 3.5;
+const SECTION_BOTTOM_PAD = 4;
+const SECTION_OUTER_GAP = 4;
+
 // ─── Card drawing ─────────────────────────────────────────────────────────────
 function drawCard(
   doc: jsPDF,
@@ -72,25 +78,43 @@ function drawCard(
   y: number,
   w: number,
   h: number,
-  bg: readonly [number, number, number] = GREEN_BG
+  bg: readonly [number, number, number] = WHITE
 ) {
   rgb(doc, bg, "fill");
   doc.roundedRect(x, y, w, h, 2, 2, "F");
 }
 
-// ─── Section card with label ──────────────────────────────────────────────────
-function drawCardLabel(
+function drawSectionHeaderBar(
   doc: jsPDF,
   x: number,
   y: number,
+  w: number,
   label: string,
-  accent: readonly [number, number, number] = GREEN_DARK
+  accentColor: readonly [number, number, number] = GREEN_DARK
 ) {
+  rgb(doc, accentColor, "fill");
+  doc.roundedRect(x, y, w, SECTION_HEADER_H, 2, 2, "F");
+
   doc.setFontSize(7);
   doc.setFont("helvetica", "bold");
-  rgb(doc, accent, "text");
-  doc.text(label.toUpperCase(), x + 4, y + 4.5);
-  return y + 7;
+  rgb(doc, WHITE, "text");
+  doc.text(label.toUpperCase(), x + 4, y + 4.6);
+
+  return y + SECTION_HEADER_H + SECTION_GAP_AFTER_HEADER;
+}
+
+function drawSectionBody(
+  doc: jsPDF,
+  x: number,
+  y: number,
+  w: number,
+  h: number,
+  fill: readonly [number, number, number] = WHITE
+) {
+  rgb(doc, fill, "fill");
+  rgb(doc, BORDER_SOFT, "draw");
+  doc.setLineWidth(0.25);
+  doc.roundedRect(x, y, w, h, 2, 2, "FD");
 }
 
 // ─── Header (white, with logo + green line) ───────────────────────────────────
@@ -213,28 +237,28 @@ function addCardBulletSection(
   items: string[],
   yRef: { y: number },
   topY: number,
-  bg: readonly [number, number, number] = GREEN_BG
+  bodyFill: readonly [number, number, number] = WHITE,
+  headerAccent: readonly [number, number, number] = GREEN_DARK
 ) {
   if (items.length === 0) return;
 
   // Estimate height
   doc.setFontSize(9);
   doc.setFont("helvetica", "normal");
-  let estH = 10; // label + padding
+  let estH = SECTION_HEADER_H + SECTION_GAP_AFTER_HEADER + SECTION_BOTTOM_PAD;
   for (const item of items) {
     const lines = doc.splitTextToSize(item, maxW - 14);
     estH += lines.length * 4.5 + 1.5;
   }
-  estH += 3;
-
   ensureFit(doc, yRef, Math.min(estH, 40), topY);
 
   const cardY = yRef.y;
-  // Draw card bg
-  drawCard(doc, x, cardY, maxW, estH, bg);
+  const bodyY = cardY + SECTION_HEADER_H + SECTION_GAP_AFTER_HEADER;
+  const bodyH = Math.max(12, estH - SECTION_HEADER_H - SECTION_GAP_AFTER_HEADER);
+  drawSectionHeaderBar(doc, x, cardY, maxW, label, headerAccent);
+  drawSectionBody(doc, x, bodyY, maxW, bodyH, bodyFill);
 
-  // Label
-  let cy = drawCardLabel(doc, x, cardY, label);
+  let cy = bodyY + 4.5;
 
   // Items
   doc.setFontSize(9);
@@ -251,7 +275,7 @@ function addCardBulletSection(
     cy += lines.length * 4.5 + 1.5;
   }
 
-  yRef.y = cardY + estH + 4;
+  yRef.y = cardY + estH + SECTION_OUTER_GAP;
 }
 
 // ─── Card-based text section ──────────────────────────────────────────────────
@@ -263,11 +287,12 @@ function addCardTextSection(
   text: string | undefined | null,
   yRef: { y: number },
   topY: number,
-  bg: readonly [number, number, number] = GREEN_BG
+  bodyFill: readonly [number, number, number] = WHITE,
+  headerAccent: readonly [number, number, number] = GREEN_DARK
 ) {
   const lines = splitLines(text);
   if (lines.length === 0) return;
-  addCardBulletSection(doc, x, maxW, label, lines, yRef, topY, bg);
+  addCardBulletSection(doc, x, maxW, label, lines, yRef, topY, bodyFill, headerAccent);
 }
 
 // ─── Conversation partners card ───────────────────────────────────────────────
@@ -282,7 +307,7 @@ function addConversationPartnersCard(
   if (partners.length === 0) return;
 
   doc.setFontSize(9);
-  let estH = 10;
+  let estH = SECTION_HEADER_H + SECTION_GAP_AFTER_HEADER + SECTION_BOTTOM_PAD;
   for (const p of partners) {
     estH += 5;
     const secondary = [p.role, p.organization, p.note].filter(Boolean);
@@ -292,8 +317,11 @@ function addConversationPartnersCard(
 
   ensureFit(doc, yRef, Math.min(estH, 50), topY);
   const cardY = yRef.y;
-  drawCard(doc, x, cardY, maxW, estH, GREEN_BG);
-  let cy = drawCardLabel(doc, x, cardY, "Gesprächspartner");
+  const bodyY = cardY + SECTION_HEADER_H + SECTION_GAP_AFTER_HEADER;
+  const bodyH = Math.max(14, estH - SECTION_HEADER_H - SECTION_GAP_AFTER_HEADER);
+  drawSectionHeaderBar(doc, x, cardY, maxW, "Gesprächspartner");
+  drawSectionBody(doc, x, bodyY, maxW, bodyH);
+  let cy = bodyY + 4.5;
 
   for (const p of partners) {
     if (cy + 5 > cardY + estH) break;
@@ -313,7 +341,7 @@ function addConversationPartnersCard(
     }
   }
 
-  yRef.y = cardY + estH + 4;
+  yRef.y = cardY + estH + SECTION_OUTER_GAP;
 }
 
 // ─── Companions card (badges) ─────────────────────────────────────────────────
@@ -340,10 +368,13 @@ function addCompanionsCard(
     if (bx + tw > maxW - 4) { bx = 5; rows++; }
     bx += tw + 3;
   }
-  const estH = 10 + rows * 8 + 3;
+  const estH = SECTION_HEADER_H + SECTION_GAP_AFTER_HEADER + rows * 8 + 7;
+  const bodyY = cardY + SECTION_HEADER_H + SECTION_GAP_AFTER_HEADER;
+  const bodyH = Math.max(12, estH - SECTION_HEADER_H - SECTION_GAP_AFTER_HEADER);
 
-  drawCard(doc, x, cardY, maxW, estH, GREEN_BG2);
-  let cy = drawCardLabel(doc, x, cardY, "Begleitpersonen");
+  drawSectionHeaderBar(doc, x, cardY, maxW, "Begleitpersonen");
+  drawSectionBody(doc, x, bodyY, maxW, bodyH);
+  let cy = bodyY + 5;
 
   doc.setFontSize(8);
   bx = x + 5;
@@ -357,7 +388,7 @@ function addCompanionsCard(
       cy += 8;
     }
 
-    rgb(doc, WHITE, "fill");
+    rgb(doc, GREEN_BG, "fill");
     doc.roundedRect(bx, cy - 3.5, tw, 6.5, 1.5, 1.5, "F");
     doc.setFont("helvetica", "normal");
     rgb(doc, GREEN_DARK, "text");
@@ -365,7 +396,7 @@ function addCompanionsCard(
     bx += tw + 3;
   }
 
-  yRef.y = cardY + estH + 4;
+  yRef.y = cardY + estH + SECTION_OUTER_GAP;
 }
 
 // ─── Kernbotschaft (full-width, magenta accent) ───────────────────────────────
@@ -381,24 +412,25 @@ function addKernbotschaft(
 
   doc.setFontSize(10);
   const lines = doc.splitTextToSize(`„${text}"`, maxW - 14);
-  const estH = lines.length * 5 + 14;
+  const estH = lines.length * 5 + SECTION_HEADER_H + SECTION_GAP_AFTER_HEADER + 9;
 
   ensureFit(doc, yRef, estH, topY);
   const cardY = yRef.y;
 
-  drawCard(doc, x, cardY, maxW, estH, GREEN_BG);
-  // Magenta accent bar
-  rgb(doc, MAGENTA, "fill");
-  doc.roundedRect(x, cardY, 3, estH, 1, 1, "F");
+  const bodyY = cardY + SECTION_HEADER_H + SECTION_GAP_AFTER_HEADER;
+  const bodyH = Math.max(14, estH - SECTION_HEADER_H - SECTION_GAP_AFTER_HEADER);
 
-  drawCardLabel(doc, x + 2, cardY, "Kernbotschaft", MAGENTA);
+  drawSectionHeaderBar(doc, x, cardY, maxW, "Kernbotschaft", MAGENTA);
+  drawSectionBody(doc, x, bodyY, maxW, bodyH);
+  rgb(doc, MAGENTA, "fill");
+  doc.roundedRect(x, bodyY, 2, bodyH, 0.8, 0.8, "F");
 
   doc.setFontSize(10);
   doc.setFont("helvetica", "italic");
   rgb(doc, TEXT_DARK, "text");
-  doc.text(lines, x + 9, cardY + 10);
+  doc.text(lines, x + 8, bodyY + 6);
 
-  yRef.y = cardY + estH + 4;
+  yRef.y = cardY + estH + SECTION_OUTER_GAP;
 }
 
 // ─── Ablauf card ──────────────────────────────────────────────────────────────
@@ -413,7 +445,7 @@ function addAblaufCard(
   if (program.length === 0) return;
 
   doc.setFontSize(9);
-  let estH = 10;
+  let estH = SECTION_HEADER_H + SECTION_GAP_AFTER_HEADER + SECTION_BOTTOM_PAD;
   for (const p of program) {
     const lines = doc.splitTextToSize(p.item, maxW - 24);
     estH += lines.length * 4.5 + 2;
@@ -422,8 +454,11 @@ function addAblaufCard(
 
   ensureFit(doc, yRef, Math.min(estH, 50), topY);
   const cardY = yRef.y;
-  drawCard(doc, x, cardY, maxW, estH, GREEN_BG2);
-  let cy = drawCardLabel(doc, x, cardY, "Ablauf");
+  const bodyY = cardY + SECTION_HEADER_H + SECTION_GAP_AFTER_HEADER;
+  const bodyH = Math.max(14, estH - SECTION_HEADER_H - SECTION_GAP_AFTER_HEADER);
+  drawSectionHeaderBar(doc, x, cardY, maxW, "Ablauf");
+  drawSectionBody(doc, x, bodyY, maxW, bodyH);
+  let cy = bodyY + 4.5;
 
   for (const p of program) {
     if (cy + 5 > cardY + estH) break;
@@ -440,7 +475,7 @@ function addAblaufCard(
     cy += descLines.length * 4.5 + 2;
   }
 
-  yRef.y = cardY + estH + 4;
+  yRef.y = cardY + estH + SECTION_OUTER_GAP;
 }
 
 // ─── PR badges card ───────────────────────────────────────────────────────────
@@ -462,15 +497,17 @@ function addPRCard(
     badges.push("Keine Öffentlichkeitsarbeit geplant");
   }
 
-  const estH = 18;
+  const estH = 21;
   ensureFit(doc, yRef, estH, topY);
   const cardY = yRef.y;
-  drawCard(doc, x, cardY, maxW, estH, GREEN_BG);
-  drawCardLabel(doc, x, cardY, "Öffentlichkeitsarbeit");
+  const bodyY = cardY + SECTION_HEADER_H + SECTION_GAP_AFTER_HEADER;
+  const bodyH = Math.max(10, estH - SECTION_HEADER_H - SECTION_GAP_AFTER_HEADER);
+  drawSectionHeaderBar(doc, x, cardY, maxW, "Öffentlichkeitsarbeit");
+  drawSectionBody(doc, x, bodyY, maxW, bodyH);
 
   doc.setFontSize(8);
   let bx = x + 5;
-  const by = cardY + 12;
+  const by = bodyY + 5.5;
   for (const badge of badges) {
     const tw = doc.getTextWidth(badge) + 8;
     rgb(doc, GREEN_DARK, "fill");
@@ -481,7 +518,7 @@ function addPRCard(
     bx += tw + 3;
   }
 
-  yRef.y = cardY + estH + 4;
+  yRef.y = cardY + estH + SECTION_OUTER_GAP;
 }
 
 // ─── Checklist card ───────────────────────────────────────────────────────────
@@ -496,7 +533,7 @@ function addChecklistCard(
   const openItems = items.filter((i) => !i.completed);
   if (openItems.length === 0) return;
 
-  let estH = 10;
+  let estH = SECTION_HEADER_H + SECTION_GAP_AFTER_HEADER + SECTION_BOTTOM_PAD;
   for (const item of openItems) {
     doc.setFontSize(9);
     const lines = doc.splitTextToSize(item.label, maxW - 14);
@@ -506,8 +543,11 @@ function addChecklistCard(
 
   ensureFit(doc, yRef, Math.min(estH, 40), topY);
   const cardY = yRef.y;
-  drawCard(doc, x, cardY, maxW, estH, GREEN_BG);
-  let cy = drawCardLabel(doc, x, cardY, "Offene To-dos");
+  const bodyY = cardY + SECTION_HEADER_H + SECTION_GAP_AFTER_HEADER;
+  const bodyH = Math.max(12, estH - SECTION_HEADER_H - SECTION_GAP_AFTER_HEADER);
+  drawSectionHeaderBar(doc, x, cardY, maxW, "Offene To-dos");
+  drawSectionBody(doc, x, bodyY, maxW, bodyH);
+  let cy = bodyY + 4.5;
 
   doc.setFontSize(9);
   for (const item of openItems) {
@@ -524,7 +564,7 @@ function addChecklistCard(
     cy += lines.length * 4.5 + 2;
   }
 
-  yRef.y = cardY + estH + 4;
+  yRef.y = cardY + estH + SECTION_OUTER_GAP;
 }
 
 // ─── Lined notes area ─────────────────────────────────────────────────────────
@@ -535,20 +575,23 @@ function addNotesArea(
   yRef: { y: number },
   topY: number
 ) {
-  const estH = 40;
+  const availableH = FOOTER_Y - yRef.y - SECTION_OUTER_GAP;
+  const estH = Math.max(40, availableH);
   ensureFit(doc, yRef, estH, topY);
   const cardY = yRef.y;
-  drawCard(doc, x, cardY, maxW, estH, GREEN_BG);
-  drawCardLabel(doc, x, cardY, "Notizen");
+  const bodyY = cardY + SECTION_HEADER_H + SECTION_GAP_AFTER_HEADER;
+  const bodyH = Math.max(28, estH - SECTION_HEADER_H - SECTION_GAP_AFTER_HEADER);
+  drawSectionHeaderBar(doc, x, cardY, maxW, "Notizen");
+  drawSectionBody(doc, x, bodyY, maxW, bodyH);
 
   // Draw lines
   rgb(doc, [200, 215, 195], "draw");
   doc.setLineWidth(0.2);
-  for (let ly = cardY + 12; ly < cardY + estH - 3; ly += 6) {
+  for (let ly = bodyY + 6; ly < bodyY + bodyH - 3; ly += 6) {
     doc.line(x + 5, ly, x + maxW - 5, ly);
   }
 
-  yRef.y = cardY + estH + 4;
+  yRef.y = cardY + estH + SECTION_OUTER_GAP;
 }
 
 // ─── MAIN EXPORT ──────────────────────────────────────────────────────────────
@@ -582,7 +625,7 @@ export async function generateBriefingPdf({
   addCardBulletSection(doc, MARGIN, LEFT_W, "Gesprächspunkte", talkingLines, leftY, topY);
 
   // 3. Was will ich erreichen? (objectives)
-  addCardTextSection(doc, MARGIN, LEFT_W, "Was will ich erreichen?", d.objectives, leftY, topY, GREEN_BG2);
+  addCardTextSection(doc, MARGIN, LEFT_W, "Was will ich erreichen?", d.objectives, leftY, topY);
 
   // 4. Kernbotschaft
   const keyMessage = d.key_topics?.trim();
@@ -597,7 +640,7 @@ export async function generateBriefingPdf({
   const bgLines: string[] = [];
   if (d.audience) bgLines.push(d.audience);
   if (d.facts_figures) bgLines.push(...splitLines(d.facts_figures));
-  addCardBulletSection(doc, MARGIN, LEFT_W, "Hintergrund", bgLines, leftY, topY, GREEN_BG2);
+  addCardBulletSection(doc, MARGIN, LEFT_W, "Hintergrund", bgLines, leftY, topY);
 
   // 7. Kritische Fragen
   addCardTextSection(doc, MARGIN, LEFT_W, "Kritische Fragen & Antworten", d.questions_answers, leftY, topY);
@@ -605,24 +648,26 @@ export async function generateBriefingPdf({
   // 8. Weitere Notizen
   const briefingNotes = getBriefingNotes(preparation);
   if (briefingNotes) {
-    addCardBulletSection(doc, MARGIN, LEFT_W, "Weitere Notizen", splitLines(briefingNotes), leftY, topY, GREEN_BG);
+    addCardBulletSection(doc, MARGIN, LEFT_W, "Weitere Notizen", splitLines(briefingNotes), leftY, topY);
   }
 
   // ── RIGHT COLUMN ────────────────────────────────────────────────────────────
 
   // 1. Anlass des Besuchs
   if (preparation.title?.trim()) {
-    const estH = 16;
+    const titleLines = doc.splitTextToSize(preparation.title, RIGHT_W - 10);
+    const estH = Math.max(18, SECTION_HEADER_H + SECTION_GAP_AFTER_HEADER + titleLines.length * 4.5 + SECTION_BOTTOM_PAD + 2);
     ensureFit(doc, rightY, estH, topY);
     const cy = rightY.y;
-    drawCard(doc, RIGHT_X, cy, RIGHT_W, estH, GREEN_BG2);
-    drawCardLabel(doc, RIGHT_X, cy, "Anlass des Besuchs");
+    const bodyY = cy + SECTION_HEADER_H + SECTION_GAP_AFTER_HEADER;
+    const bodyH = Math.max(12, estH - SECTION_HEADER_H - SECTION_GAP_AFTER_HEADER);
+    drawSectionHeaderBar(doc, RIGHT_X, cy, RIGHT_W, "Anlass des Besuchs");
+    drawSectionBody(doc, RIGHT_X, bodyY, RIGHT_W, bodyH);
     doc.setFontSize(9);
     doc.setFont("helvetica", "bold");
     rgb(doc, TEXT_DARK, "text");
-    const titleLines = doc.splitTextToSize(preparation.title, RIGHT_W - 10);
-    doc.text(titleLines, RIGHT_X + 5, cy + 11);
-    rightY.y = cy + estH + 4;
+    doc.text(titleLines, RIGHT_X + 5, bodyY + 5.5);
+    rightY.y = cy + estH + SECTION_OUTER_GAP;
   }
 
   // 2. Begleitpersonen
