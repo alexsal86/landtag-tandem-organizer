@@ -5,7 +5,6 @@ import {
   getBriefingNotes,
   getConversationPartnersFromPreparationData,
   getImportantTopicLines,
-  splitPreparationTextToList,
 } from "@/hooks/useAppointmentPreparation";
 import { format } from "date-fns";
 import { de } from "date-fns/locale";
@@ -52,13 +51,13 @@ interface BriefingPdfOptions {
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
-async function registerBriefingFonts(doc: jsPDF): Promise<void> {
+async function registerBriefingFonts(doc: jsPDF): Promise<boolean> {
   for (const file of HEADER_FONT_FILES) {
     const cachedFont = fontDataCache.get(file);
     if (cachedFont) {
       doc.addFileToVFS(cachedFont.vfsName, cachedFont.base64);
       doc.addFont(cachedFont.vfsName, HEADER_FONT, HEADER_FONT_STYLE);
-      return;
+      return true;
     }
 
     const fontResponse = await fetch(file);
@@ -74,10 +73,10 @@ async function registerBriefingFonts(doc: jsPDF): Promise<void> {
     fontDataCache.set(file, { base64, vfsName });
     doc.addFileToVFS(vfsName, base64);
     doc.addFont(vfsName, HEADER_FONT, HEADER_FONT_STYLE);
-    return;
+    return true;
   }
 
-  throw new Error("GrueneType Neue font could not be loaded from /fonts/GrueneTypeNeue-Regular.woff2 or /fonts/GrueneTypeNeue-Regular.woff");
+  return false;
 }
 
 function splitLines(text: string | undefined | null): string[] {
@@ -191,7 +190,8 @@ async function drawHeader(
   preparation: AppointmentPreparation,
   appointmentTitle: string | undefined,
   startTime: string | undefined,
-  location: string | undefined
+  location: string | undefined,
+  useCustomHeaderFont: boolean
 ): Promise<number> {
   const headerTop = 12;
   const headerBottomPadding = 6;
@@ -215,7 +215,7 @@ async function drawHeader(
     } catch { /* ignore */ }
   }
 
-  doc.setFont(HEADER_FONT, HEADER_FONT_STYLE);
+  doc.setFont(useCustomHeaderFont ? HEADER_FONT : BODY_FONT, HEADER_FONT_STYLE);
   doc.setFontSize(12);
   rgb(doc, TEXT_DARK, "text");
   const titleLines = doc.splitTextToSize(titleText, leftBlockW);
@@ -649,12 +649,12 @@ export async function generateBriefingPdf({
   appointmentStartTime,
 }: BriefingPdfOptions): Promise<void> {
   const doc = new jsPDF({ unit: "mm", format: "a4" });
-  await registerBriefingFonts(doc);
+  const hasCustomHeaderFont = await registerBriefingFonts(doc);
   const d = preparation.preparation_data;
   const topY = 14; // Y for new pages
 
   // ── Header ──────────────────────────────────────────────────────────────────
-  const startY = await drawHeader(doc, preparation, appointmentTitle, appointmentStartTime, appointmentLocation);
+  const startY = await drawHeader(doc, preparation, appointmentTitle, appointmentStartTime, appointmentLocation, hasCustomHeaderFont);
 
   const leftY  = { y: startY };
   const rightY = { y: startY };

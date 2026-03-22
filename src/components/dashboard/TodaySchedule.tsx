@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { toast } from 'sonner';
 import { debugConsole } from '@/utils/debugConsole';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -51,6 +52,7 @@ export const TodaySchedule = ({ onCountChange }: TodayScheduleProps) => {
   const [preparations, setPreparations] = useState<Map<string, PreparationData>>(new Map());
   const [loading, setLoading] = useState(true);
   const [expandedId, setExpandedId] = useState<string | null>(null);
+  const [generatingPdfId, setGeneratingPdfId] = useState<string | null>(null);
   
   useEffect(() => {
     const fetchTodayAppointments = async () => {
@@ -174,15 +176,27 @@ export const TodaySchedule = ({ onCountChange }: TodayScheduleProps) => {
     fetchTodayAppointments();
   }, [user, currentTenant, onCountChange]);
 
-  const handleDownloadPdf = (apt: Appointment) => {
+  const handleDownloadPdf = async (apt: Appointment) => {
     const prep = preparations.get(apt.id);
-    if (!prep) return;
-    generateBriefingPdf({
-      preparation: prep as unknown as AppointmentPreparation,
-      appointmentTitle: apt.title,
-      appointmentLocation: apt.location ?? undefined,
-      appointmentStartTime: apt.start_time,
-    }).catch(console.error);
+    if (!prep) {
+      toast.error('Für diesen Termin liegt kein Briefing vor.');
+      return;
+    }
+
+    try {
+      setGeneratingPdfId(apt.id);
+      await generateBriefingPdf({
+        preparation: prep as unknown as AppointmentPreparation,
+        appointmentTitle: apt.title,
+        appointmentLocation: apt.location ?? undefined,
+        appointmentStartTime: apt.start_time,
+      });
+    } catch (error) {
+      debugConsole.error('Error generating briefing PDF:', error);
+      toast.error('Das Briefing-PDF konnte nicht erstellt werden.');
+    } finally {
+      setGeneratingPdfId((currentId) => currentId === apt.id ? null : currentId);
+    }
   };
 
   const toggleExpand = (id: string) => {
@@ -250,7 +264,8 @@ export const TodaySchedule = ({ onCountChange }: TodayScheduleProps) => {
                           size="icon"
                           className="h-7 w-7"
                           title="Briefing-PDF herunterladen"
-                          onClick={() => handleDownloadPdf(apt)}
+                          onClick={() => void handleDownloadPdf(apt)}
+                          disabled={generatingPdfId === apt.id}
                         >
                           <FileText className="h-4 w-4 text-primary" />
                         </Button>
