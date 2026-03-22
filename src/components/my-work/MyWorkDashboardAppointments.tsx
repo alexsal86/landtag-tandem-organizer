@@ -142,6 +142,8 @@ export const DashboardAppointments = ({ data }: Props) => {
   const [isQuickRequestOpen, setIsQuickRequestOpen] = useState(false);
   const [timelineItems, setTimelineItems] = useState<DayTimelineItem[]>([]);
   const [isTimelineLoading, setIsTimelineLoading] = useState(false);
+  const [preparations, setPreparations] = useState<Map<string, AppointmentPreparation>>(new Map());
+  const [expandedBriefingId, setExpandedBriefingId] = useState<string | null>(null);
   const {
     requestTitle,
     setRequestTitle,
