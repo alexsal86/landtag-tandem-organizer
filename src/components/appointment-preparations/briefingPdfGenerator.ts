@@ -99,28 +99,15 @@ function rgb(doc: jsPDF, c: readonly [number, number, number], type: "fill" | "t
   else doc.setDrawColor(c[0], c[1], c[2]);
 }
 
-/** Rasterize an SVG to a data-URL (PNG) via Canvas at the given scale factor. */
-async function rasterizeSvg(src: string, w: number, h: number, scale = 4): Promise<string | null> {
+/** Load SVG from URL, parse it, and return an SVGElement ready for svg2pdf.js */
+async function loadSvgElement(src: string): Promise<SVGElement | null> {
   try {
     const resp = await fetch(src);
     if (!resp.ok) return null;
     const svgText = await resp.text();
-    const blob = new Blob([svgText], { type: "image/svg+xml;charset=utf-8" });
-    const url = URL.createObjectURL(blob);
-    const img = new Image();
-    await new Promise<void>((resolve, reject) => {
-      img.onload = () => resolve();
-      img.onerror = reject;
-      img.src = url;
-    });
-    const canvas = document.createElement("canvas");
-    canvas.width = Math.round(w * scale);
-    canvas.height = Math.round(h * scale);
-    const ctx = canvas.getContext("2d");
-    if (!ctx) { URL.revokeObjectURL(url); return null; }
-    ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
-    URL.revokeObjectURL(url);
-    return canvas.toDataURL("image/png");
+    const parser = new DOMParser();
+    const svgDoc = parser.parseFromString(svgText, "image/svg+xml");
+    return svgDoc.documentElement as unknown as SVGElement;
   } catch {
     return null;
   }
