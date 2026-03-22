@@ -30,6 +30,8 @@ export interface AppointmentPreparation {
     technology_setup?: string;
     dress_code?: string;
     event_type?: string;
+    social_media_planned?: boolean;
+    press_planned?: boolean;
     // Contact information fields
     contact_name?: string;
     contact_info?: string;
@@ -80,6 +82,32 @@ export interface AppointmentConversationPartner {
   note?: string;
 }
 
+export function splitPreparationTextToList(text: string | undefined | null): string[] {
+  if (!text) return [];
+
+  return text
+    .split(/\r?\n|[•·●▪◦]|\s[-–—]\s|\s*;\s*/)
+    .map((line) => line.replace(/^[-•·●▪◦]\s*/, '').trim())
+    .filter(Boolean);
+}
+
+export function getImportantTopicLines(
+  preparationData: AppointmentPreparation['preparation_data']
+): string[] {
+  return [
+    ...splitPreparationTextToList(preparationData.key_topics),
+    ...splitPreparationTextToList(preparationData.talking_points),
+  ];
+}
+
+export function getBriefingNotes(
+  preparation: Pick<AppointmentPreparation, 'notes' | 'preparation_data'>
+): string {
+  return preparation.preparation_data.briefing_notes?.trim()
+    || preparation.notes?.trim()
+    || '';
+}
+
 export function getConversationPartnersFromPreparationData(
   preparationData: AppointmentPreparation['preparation_data']
 ): AppointmentConversationPartner[] {
@@ -125,6 +153,14 @@ export function useAppointmentPreparation(preparationId: string | undefined) {
   const [error, setError] = useState<string | null>(null);
   const { user } = useAuth();
 
+  const normalizePreparationData = (
+    preparationData: AppointmentPreparationData | null | undefined
+  ): AppointmentPreparationData => ({
+    ...(preparationData ?? {}),
+    social_media_planned: preparationData?.social_media_planned ?? false,
+    press_planned: preparationData?.press_planned ?? false,
+  });
+
   const fetchPreparation = async () => {
     if (!preparationId || !user) return;
 
@@ -155,7 +191,7 @@ export function useAppointmentPreparation(preparationId: string | undefined) {
           updated_at: row.updated_at,
           is_archived: row.is_archived,
           archived_at: row.archived_at,
-          preparation_data: row.preparation_data ?? {},
+          preparation_data: normalizePreparationData(row.preparation_data),
           checklist_items: row.checklist_items ?? []
         });
       }

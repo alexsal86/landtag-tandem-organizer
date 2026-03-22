@@ -1,12 +1,19 @@
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { AppointmentPreparation, getConversationPartnersFromPreparationData } from "@/hooks/useAppointmentPreparation";
+import {
+  AppointmentPreparation,
+  getBriefingNotes,
+  getConversationPartnersFromPreparationData,
+  getImportantTopicLines,
+  splitPreparationTextToList,
+} from "@/hooks/useAppointmentPreparation";
 import {
   UsersIcon,
   MessageCircleIcon,
   CheckSquareIcon,
   CompassIcon,
   ClockIcon,
+  MegaphoneIcon,
 } from "lucide-react";
 
 interface AppointmentBriefingViewProps {
@@ -54,6 +61,13 @@ function BulletList({ items }: { items: string[] }) {
   );
 }
 
+function getPublicRelationsBadges(preparationData: AppointmentPreparation["preparation_data"]) {
+  return [
+    preparationData.social_media_planned ? "Social Media geplant" : null,
+    preparationData.press_planned ? "Presse geplant" : null,
+  ].filter(Boolean) as string[];
+}
+
 function ConversationPartnerList({
   partners,
 }: {
@@ -79,17 +93,6 @@ function ConversationPartnerList({
   );
 }
 
-function splitLines(text: string | undefined): string[] {
-  if (!text) return [];
-  return text
-    .split(/\r?\n|[•·;]+/)
-    .map((line) => line.replace(/^[-*\u2022]\s*/, "").trim())
-    .filter(Boolean);
-}
-
-function getUniqueLines(...values: Array<string | undefined | null>): string[] {
-  return Array.from(new Set(values.flatMap((value) => splitLines(value ?? undefined))));
-}
 
 export function AppointmentBriefingView({ preparation, appointmentInfo }: AppointmentBriefingViewProps) {
   const d = preparation.preparation_data;
@@ -99,14 +102,21 @@ export function AppointmentBriefingView({ preparation, appointmentInfo }: Appoin
   const program = d.program ?? [];
 
   const peopleContextLines = [d.audience, d.facts_figures].filter(Boolean) as string[];
-  const keyTopicLines = getUniqueLines(d.key_topics, d.talking_points);
-  const additionalNotesLines = getUniqueLines(d.briefing_notes, preparation.notes, d.notes);
+  const importantTopicLines = getImportantTopicLines(d);
+  const additionalContextLines = [
+    ...splitPreparationTextToList(d.position_statements),
+    ...splitPreparationTextToList(d.objectives),
+    ...splitPreparationTextToList(d.questions_answers),
+  ];
+  const briefingNotes = getBriefingNotes(preparation);
+  const publicRelationsBadges = getPublicRelationsBadges(d);
 
   const hasContent =
     conversationPartners.length > 0 ||
     peopleContextLines.length > 0 ||
-    keyTopicLines.length > 0 ||
-    additionalNotesLines.length > 0 ||
+    importantTopicLines.length > 0 ||
+    additionalContextLines.length > 0 ||
+    Boolean(briefingNotes) ||
     incompleteTodos.length > 0 ||
     companions.length > 0 ||
     program.length > 0;
@@ -114,13 +124,33 @@ export function AppointmentBriefingView({ preparation, appointmentInfo }: Appoin
   return (
     <Card className="bg-card border-border shadow-card overflow-hidden">
       <div className="bg-primary/5 border-b border-border px-6 py-5">
-        <h2 className="text-xl font-bold tracking-tight text-foreground">BRIEFING</h2>
-        {appointmentInfo && (
-          <p className="text-sm text-muted-foreground mt-1">
-            {appointmentInfo.title}
-            {appointmentInfo.location && ` · ${appointmentInfo.location}`}
-          </p>
-        )}
+        <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
+          <div>
+            <h2 className="text-xl font-bold tracking-tight text-foreground">BRIEFING</h2>
+            {appointmentInfo && (
+              <p className="mt-1 text-sm text-muted-foreground">
+                {appointmentInfo.title}
+                {appointmentInfo.location && ` · ${appointmentInfo.location}`}
+              </p>
+            )}
+          </div>
+
+          {publicRelationsBadges.length > 0 && (
+            <div className="rounded-lg border border-border/60 bg-background/80 px-3 py-2 lg:max-w-xs">
+              <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                <MegaphoneIcon className="h-3.5 w-3.5" />
+                Öffentlichkeitsarbeit
+              </div>
+              <div className="mt-2 flex flex-wrap gap-2">
+                {publicRelationsBadges.map((label) => (
+                  <Badge key={label} variant="secondary" className="text-xs">
+                    {label}
+                  </Badge>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
       </div>
 
       <CardContent className="py-6">
@@ -167,22 +197,30 @@ export function AppointmentBriefingView({ preparation, appointmentInfo }: Appoin
               <BriefingSection
                 icon={<MessageCircleIcon className="h-4 w-4" />}
                 title="Wichtige Themen"
-                isEmpty={keyTopicLines.length === 0}
+                isEmpty={importantTopicLines.length === 0}
               >
-                <BulletList items={keyTopicLines} />
+                <BulletList items={importantTopicLines} />
+              </BriefingSection>
+
+              <BriefingSection
+                icon={<MessageCircleIcon className="h-4 w-4" />}
+                title="Zusätzliche Gesprächsgrundlage"
+                isEmpty={additionalContextLines.length === 0}
+              >
+                <BulletList items={additionalContextLines} />
               </BriefingSection>
 
               <BriefingSection
                 icon={<CheckSquareIcon className="h-4 w-4" />}
                 title="Weitere Notizen"
-                isEmpty={additionalNotesLines.length === 0}
+                isEmpty={!briefingNotes}
               >
-                <BulletList items={additionalNotesLines} />
+                <p className="whitespace-pre-wrap break-words">{briefingNotes}</p>
               </BriefingSection>
 
               <BriefingSection
                 icon={<CheckSquareIcon className="h-4 w-4" />}
-                title="Offene Punkte"
+                title="Offene To-dos"
                 isEmpty={incompleteTodos.length === 0}
               >
                 <div className="space-y-1.5">

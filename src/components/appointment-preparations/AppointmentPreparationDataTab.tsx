@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect, useRef } from "react";
+import { useState, useCallback, useEffect, useRef, useMemo } from "react";
 import { debugConsole } from "@/utils/debugConsole";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -30,28 +30,27 @@ type ConversationPartner = AppointmentConversationPartner;
 type Companion = NonNullable<AppointmentPreparation['preparation_data']['companions']>[number];
 type ProgramRow = NonNullable<AppointmentPreparation['preparation_data']['program']>[number];
 
-interface CalendarEvent {
-  id: string;
-  title: string;
-  start: string;
-  end: string;
-  description?: string;
-  location?: string;
-  category?: string;
-  priority?: string;
-  status?: string;
-  meeting_link?: string;
-  meeting_details?: string;
-}
-
 interface ExtendedAppointmentPreparation extends AppointmentPreparation {
   contact_name?: string;
   contact_info?: string;
   contact_id?: string;
 }
 
+interface AppointmentPreparationTabAppointmentDetails {
+  id: string;
+  title: string;
+  start_time: string;
+  end_time: string;
+  location?: string | null;
+  description?: string | null;
+  category?: string | null;
+  priority?: string | null;
+}
+
 interface AppointmentPreparationDataTabProps {
   preparation: AppointmentPreparation;
+  appointmentDetails: AppointmentPreparationTabAppointmentDetails | null;
+  onAppointmentUpdate: () => Promise<void>;
   onUpdate: (updates: Partial<AppointmentPreparation>) => Promise<void>;
 }
 
@@ -70,17 +69,28 @@ const COMPANION_TYPE_OPTIONS = [
   { value: 'sonstige', label: 'Sonstige' },
 ] as const;
 
+const getPreparationDataWithDefaults = (
+  preparationData: AppointmentPreparation['preparation_data']
+) => ({
+  ...preparationData,
+  social_media_planned: preparationData.social_media_planned ?? false,
+  press_planned: preparationData.press_planned ?? false,
+});
+
 export function AppointmentPreparationDataTab({
   preparation,
+  appointmentDetails,
+  onAppointmentUpdate,
   onUpdate
 }: AppointmentPreparationDataTabProps) {
   const extendedPreparation = preparation as ExtendedAppointmentPreparation;
+  const preparationDataWithDefaults = getPreparationDataWithDefaults(preparation.preparation_data);
 
   const [editData, setEditData] = useState<Record<string, any>>({
-    ...preparation.preparation_data,
+    ...preparationDataWithDefaults,
     contact_name: (extendedPreparation.contact_name || ""),
     contact_info: (extendedPreparation.contact_info || ""),
-    notes: (preparation.notes || "")
+    briefing_notes: (preparationDataWithDefaults.briefing_notes || preparation.notes || "")
   });
   const [saving, setSaving] = useState(false);
   const [expandedSections, setExpandedSections] = useState({
@@ -98,32 +108,34 @@ export function AppointmentPreparationDataTab({
 
   // Local state for complex fields
   const [conversationPartners, setConversationPartners] = useState<ConversationPartner[]>(
-    getConversationPartnersFromPreparationData(preparation.preparation_data)
+    getConversationPartnersFromPreparationData(preparationDataWithDefaults)
   );
   const [companions, setCompanions] = useState<Companion[]>(
-    preparation.preparation_data.companions ?? []
+    preparationDataWithDefaults.companions ?? []
   );
   const [hasParking, setHasParking] = useState<boolean>(
-    preparation.preparation_data.has_parking ?? false
+    preparationDataWithDefaults.has_parking ?? false
   );
   const [programRows, setProgramRows] = useState<ProgramRow[]>(
-    preparation.preparation_data.program ?? []
+    preparationDataWithDefaults.program ?? []
   );
   const [visitReason, setVisitReason] = useState<string>(
-    preparation.preparation_data.visit_reason ?? ''
+    preparationDataWithDefaults.visit_reason ?? ''
   );
 
   const [isEditing, setIsEditing] = useState(false);
   const [contacts, setContacts] = useState<any[]>([]);
   const [selectedContactId, setSelectedContactId] = useState("");
   const [showCustomContact, setShowCustomContact] = useState(false);
-  const [appointmentDetails, setAppointmentDetails] = useState<CalendarEvent | null>(null);
   const [showAppointmentSidebar, setShowAppointmentSidebar] = useState(false);
   const { currentTenant } = useTenant();
+  const contactsById = useMemo(
+    () => new Map(contacts.map(contact => [contact.id, contact])),
+    [contacts]
+  );
 
   useEffect(() => {
     if (preparation.appointment_id) {
-      fetchAppointmentDetails();
       fetchContacts();
 
       if (extendedPreparation.contact_name && extendedPreparation.contact_info) {
@@ -140,55 +152,26 @@ export function AppointmentPreparationDataTab({
   useEffect(() => {
     if (preparation.id !== lastSyncedId.current) {
       lastSyncedId.current = preparation.id;
+      const nextPreparationData = getPreparationDataWithDefaults(preparation.preparation_data);
       setEditData({
-        ...preparation.preparation_data,
-        contact_name: preparation.preparation_data.contact_name || "",
-        contact_info: preparation.preparation_data.contact_info || "",
-        notes: preparation.notes || ""
+        ...nextPreparationData,
+        contact_name: nextPreparationData.contact_name || "",
+        contact_info: nextPreparationData.contact_info || "",
+        briefing_notes: nextPreparationData.briefing_notes || preparation.notes || ""
       } as Record<string, any>);
-      setConversationPartners(getConversationPartnersFromPreparationData(preparation.preparation_data));
-      setCompanions(preparation.preparation_data.companions ?? []);
-      setHasParking(preparation.preparation_data.has_parking ?? false);
-      setProgramRows(preparation.preparation_data.program ?? []);
-      setVisitReason(preparation.preparation_data.visit_reason ?? '');
+      setConversationPartners(getConversationPartnersFromPreparationData(nextPreparationData));
+      setCompanions(nextPreparationData.companions ?? []);
+      setHasParking(nextPreparationData.has_parking ?? false);
+      setProgramRows(nextPreparationData.program ?? []);
+      setVisitReason(nextPreparationData.visit_reason ?? '');
 
-      if (preparation.preparation_data.contact_name && preparation.preparation_data.contact_info) {
+      if (nextPreparationData.contact_name && nextPreparationData.contact_info) {
         setShowCustomContact(true);
-      } else if (preparation.preparation_data.contact_id) {
-        setSelectedContactId(preparation.preparation_data.contact_id);
+      } else if (nextPreparationData.contact_id) {
+        setSelectedContactId(nextPreparationData.contact_id);
       }
     }
   }, [preparation]);
-
-  const fetchAppointmentDetails = async () => {
-    try {
-      const { data, error } = await supabase
-        .from('appointments')
-        .select('*')
-        .eq('id', preparation.appointment_id ?? '')
-        .single();
-
-      if (error) throw error;
-
-      if (data) {
-        setAppointmentDetails({
-          id: data.id,
-          title: data.title,
-          start: data.start_time,
-          end: data.end_time,
-          description: data.description ?? undefined,
-          location: data.location ?? undefined,
-          category: data.category ?? undefined,
-          priority: data.priority ?? undefined,
-          status: data.status ?? undefined,
-          meeting_link: data.meeting_link ?? undefined,
-          meeting_details: data.meeting_details ?? undefined
-        });
-      }
-    } catch (error) {
-      debugConsole.error("Error fetching appointment details:", error);
-    }
-  };
 
   const fetchContacts = async () => {
     if (!currentTenant) return;
@@ -213,6 +196,8 @@ export function AppointmentPreparationDataTab({
     overrides?: Partial<AppointmentPreparation['preparation_data']>
   ): AppointmentPreparation['preparation_data'] => ({
     ...base,
+    social_media_planned: overrides?.social_media_planned ?? base.social_media_planned ?? false,
+    press_planned: overrides?.press_planned ?? base.press_planned ?? false,
     visit_reason: (overrides?.visit_reason ?? visitReason) as any,
     conversation_partners: overrides?.conversation_partners ?? conversationPartners,
     companions: overrides?.companions ?? companions,
@@ -220,27 +205,52 @@ export function AppointmentPreparationDataTab({
     program: overrides?.program ?? programRows,
   });
 
+
+  const getContactDetails = (contact?: {
+    name?: string | null;
+    email?: string | null;
+    phone?: string | null;
+  }) => {
+    if (!contact) {
+      return {
+        contact_name: undefined,
+        contact_info: undefined,
+      };
+    }
+
+    const contactInfo = `${contact.email || ""}${contact.phone ? ` | ${contact.phone}` : ""}`
+      .trim()
+      .replace(/^\|/, '')
+      .trim();
+
+    return {
+      contact_name: contact.name || undefined,
+      contact_info: contactInfo || undefined,
+    };
+  };
+
   const handleSave = async () => {
     try {
       setSaving(true);
 
+      const selectedContact = contactsById.get(selectedContactId);
+      const resolvedContact = showCustomContact
+        ? {
+            contact_name: editData.contact_name || undefined,
+            contact_info: editData.contact_info || undefined,
+          }
+        : getContactDetails(selectedContact);
+
       const updatedPreparationData = buildPreparationData({
         ...editData,
-        contact_name: showCustomContact
-          ? editData.contact_name
-          : (selectedContactId ? contacts.find(c => c.id === selectedContactId)?.name : undefined),
-        contact_info: showCustomContact
-          ? editData.contact_info
-          : (selectedContactId
-            ? `${contacts.find(c => c.id === selectedContactId)?.email || ""}${contacts.find(c => c.id === selectedContactId)?.phone ? ` | ${contacts.find(c => c.id === selectedContactId)?.phone}` : ""}`.trim().replace(/^\|/, '').trim() || undefined
-            : undefined),
+        ...resolvedContact,
         contact_id: showCustomContact ? undefined : selectedContactId || undefined,
         contact_person: conversationPartners.length > 0 ? undefined : editData.contact_person
       } as any);
 
       await onUpdate({
         preparation_data: updatedPreparationData,
-        notes: editData.notes || "",
+        notes: editData.briefing_notes || "",
       });
       setIsEditing(false);
 
@@ -261,19 +271,20 @@ export function AppointmentPreparationDataTab({
   };
 
   const handleCancel = () => {
+    const nextPreparationData = getPreparationDataWithDefaults(preparation.preparation_data);
     setEditData({
-      ...preparation.preparation_data,
-      contact_name: preparation.preparation_data.contact_name || "",
-      contact_info: preparation.preparation_data.contact_info || "",
-      notes: preparation.notes || ""
+      ...nextPreparationData,
+      contact_name: nextPreparationData.contact_name || "",
+      contact_info: nextPreparationData.contact_info || "",
+      briefing_notes: nextPreparationData.briefing_notes || preparation.notes || ""
     } as Record<string, any>);
-    setCompanions(preparation.preparation_data.companions ?? []);
-    setHasParking(preparation.preparation_data.has_parking ?? false);
-    setProgramRows(preparation.preparation_data.program ?? []);
-    setVisitReason(preparation.preparation_data.visit_reason ?? '');
+    setCompanions(nextPreparationData.companions ?? []);
+    setHasParking(nextPreparationData.has_parking ?? false);
+    setProgramRows(nextPreparationData.program ?? []);
+    setVisitReason(nextPreparationData.visit_reason ?? '');
     setIsEditing(false);
-    setShowCustomContact(!!(preparation.preparation_data.contact_name && preparation.preparation_data.contact_info));
-    setSelectedContactId(preparation.preparation_data.contact_id || "");
+    setShowCustomContact(!!(nextPreparationData.contact_name && nextPreparationData.contact_info));
+    setSelectedContactId(nextPreparationData.contact_id || "");
   };
 
   const handleContactSelect = (contactId: string) => {
@@ -288,12 +299,13 @@ export function AppointmentPreparationDataTab({
     } else {
       setShowCustomContact(false);
       setSelectedContactId(contactId);
-      const selectedContact = contacts.find(c => c.id === contactId);
+      const selectedContact = contactsById.get(contactId);
       if (selectedContact) {
+        const { contact_name, contact_info } = getContactDetails(selectedContact);
         setEditData(prev => ({
           ...prev,
-          contact_name: selectedContact.name,
-          contact_info: `${selectedContact.email || ""}${selectedContact.phone ? ` | ${selectedContact.phone}` : ""}`.trim().replace(/^\|/, '').trim()
+          contact_name: contact_name || "",
+          contact_info: contact_info || ""
         }));
       }
     }
@@ -348,6 +360,15 @@ export function AppointmentPreparationDataTab({
     const newData = { ...editData, [field]: value };
     setEditData(newData);
     debouncedSave(buildPreparationData(newData));
+  };
+
+  const handleBooleanFieldChange = (
+    field: 'social_media_planned' | 'press_planned',
+    checked: boolean
+  ) => {
+    const newData = { ...editData, [field]: checked };
+    setEditData(newData);
+    debouncedSave(buildPreparationData(newData, { [field]: checked }));
   };
 
   const toggleSection = (section: keyof typeof expandedSections) => {
@@ -448,8 +469,8 @@ export function AppointmentPreparationDataTab({
       icon: FileTextIcon,
       fields: [
         { key: "objectives", label: "Ziele", placeholder: "Welche Ziele sollen erreicht werden?", multiline: true },
-        { key: "key_topics", label: "Wichtige Themen", placeholder: "Je Zeile ein wichtiges Thema für das Briefing", multiline: true },
-        { key: "talking_points", label: "Ergänzende Gesprächspunkte", placeholder: "Optional: zusätzliche Punkte für das Gespräch", multiline: true },
+        { key: "key_topics", label: "Wichtige Themen", placeholder: "Ein Thema pro Zeile oder als Liste", multiline: true },
+        { key: "talking_points", label: "Ergänzende Gesprächspunkte", placeholder: "Optionale Ergänzungen, ebenfalls gern zeilenweise", multiline: true },
       ]
     },
     people: {
@@ -512,7 +533,7 @@ export function AppointmentPreparationDataTab({
               <FileTextIcon className="h-6 w-6 text-primary" />
               <div>
                 <CardTitle className="text-xl">
-                  Vorbereitung: {appointmentDetails?.title || "Termin"}
+                  Vorbereitung: {appointmentDetails?.title || preparation.title || "Termin"}
                 </CardTitle>
                 <div className="flex items-center gap-2 mt-1">
                   {getStatusBadge(preparation.status)}
@@ -562,7 +583,7 @@ export function AppointmentPreparationDataTab({
                   <CalendarIcon className="h-4 w-4 text-muted-foreground" />
                   <span className="font-medium">Datum:</span>
                   <span>
-                    {format(new Date(appointmentDetails.start), 'dd.MM.yyyy', { locale: de })}
+                    {format(new Date(appointmentDetails.start_time), 'dd.MM.yyyy', { locale: de })}
                   </span>
                 </div>
 
@@ -570,7 +591,7 @@ export function AppointmentPreparationDataTab({
                   <ClockIcon className="h-4 w-4 text-muted-foreground" />
                   <span className="font-medium">Zeit:</span>
                   <span>
-                    {format(new Date(appointmentDetails.start), 'HH:mm', { locale: de })} - {format(new Date(appointmentDetails.end), 'HH:mm', { locale: de })}
+                    {format(new Date(appointmentDetails.start_time), 'HH:mm', { locale: de })} - {format(new Date(appointmentDetails.end_time), 'HH:mm', { locale: de })}
                   </span>
                 </div>
 
@@ -694,20 +715,20 @@ export function AppointmentPreparationDataTab({
 
           {/* Notes Section */}
           <div className="space-y-4">
-            <h3 className="font-semibold text-lg">Notizen</h3>
+            <h3 className="font-semibold text-lg">Weitere Notizen</h3>
 
             {isEditing ? (
               <Textarea
-                value={editData.notes}
-                onChange={(e) => setEditData(prev => ({ ...prev, notes: e.target.value }))}
-                placeholder="Weitere Notizen zum Terminbriefing..."
+                value={editData.briefing_notes}
+                onChange={(e) => handleFieldChange('briefing_notes', e.target.value)}
+                placeholder="Zusätzliche Briefing-Notizen, die separat im Briefing erscheinen sollen..."
                 rows={4}
               />
             ) : (
               <div>
-                {preparation.notes ? (
+                {(preparation.preparation_data.briefing_notes || preparation.notes) ? (
                   <div className="text-muted-foreground whitespace-pre-wrap">
-                    {preparation.notes}
+                    {preparation.preparation_data.briefing_notes || preparation.notes}
                   </div>
                 ) : (
                   <div className="text-muted-foreground text-sm">
@@ -1002,6 +1023,56 @@ export function AppointmentPreparationDataTab({
         </CardContent>
       </Card>
 
+      <Card>
+        <CardContent className="pt-6">
+          <div className="space-y-4">
+            <div className="flex items-center gap-3">
+              <MessageSquareIcon className="h-5 w-5 text-primary" />
+              <div>
+                <h3 className="font-medium">Öffentlichkeitsarbeit</h3>
+                <p className="text-sm text-muted-foreground">
+                  Planung für Social Media und Presse rund um den Termin.
+                </p>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="flex items-center justify-between rounded-lg border p-4 bg-muted/20">
+                <div className="space-y-1 pr-4">
+                  <Label htmlFor="social-media-planned" className="text-sm font-medium">
+                    Social Media geplant
+                  </Label>
+                  <p className="text-sm text-muted-foreground">
+                    Markiert, ob Beiträge oder Begleitung auf Social Media vorgesehen sind.
+                  </p>
+                </div>
+                <Switch
+                  id="social-media-planned"
+                  checked={editData.social_media_planned ?? false}
+                  onCheckedChange={(checked) => handleBooleanFieldChange('social_media_planned', checked)}
+                />
+              </div>
+
+              <div className="flex items-center justify-between rounded-lg border p-4 bg-muted/20">
+                <div className="space-y-1 pr-4">
+                  <Label htmlFor="press-planned" className="text-sm font-medium">
+                    Presse geplant
+                  </Label>
+                  <p className="text-sm text-muted-foreground">
+                    Markiert, ob Pressearbeit oder Pressebegleitung eingeplant ist.
+                  </p>
+                </div>
+                <Switch
+                  id="press-planned"
+                  checked={editData.press_planned ?? false}
+                  onCheckedChange={(checked) => handleBooleanFieldChange('press_planned', checked)}
+                />
+              </div>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
       {/* 4. Programm / Ablaufplan */}
       <Card>
         <CardContent className="pt-6">
@@ -1204,12 +1275,12 @@ export function AppointmentPreparationDataTab({
           appointment={{
             id: appointmentDetails.id,
             title: appointmentDetails.title,
-            description: appointmentDetails.description,
-            time: format(new Date(appointmentDetails.start), 'HH:mm', { locale: de }),
-            duration: Math.round((new Date(appointmentDetails.end).getTime() - new Date(appointmentDetails.start).getTime()) / (1000 * 60)).toString(),
-            date: new Date(appointmentDetails.start),
-            endTime: new Date(appointmentDetails.end),
-            location: appointmentDetails.location,
+            description: appointmentDetails.description ?? undefined,
+            time: format(new Date(appointmentDetails.start_time), 'HH:mm', { locale: de }),
+            duration: Math.round((new Date(appointmentDetails.end_time).getTime() - new Date(appointmentDetails.start_time).getTime()) / (1000 * 60)).toString(),
+            date: new Date(appointmentDetails.start_time),
+            endTime: new Date(appointmentDetails.end_time),
+            location: appointmentDetails.location ?? undefined,
             attendees: 0,
             type: (appointmentDetails.category || 'meeting') as 'deadline' | 'birthday' | 'vacation' | 'meeting' | 'appointment' | 'session' | 'blocked' | 'veranstaltung' | 'vacation_request',
             priority: (appointmentDetails.priority as 'high' | 'low' | 'medium') || 'medium',
@@ -1217,7 +1288,7 @@ export function AppointmentPreparationDataTab({
           }}
           open={showAppointmentSidebar}
           onClose={() => setShowAppointmentSidebar(false)}
-          onUpdate={() => fetchAppointmentDetails()}
+          onUpdate={onAppointmentUpdate}
         />
       )}
     </div>
