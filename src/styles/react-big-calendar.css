@@ -269,11 +269,18 @@
 
 .rbc-time-header .rbc-row.rbc-time-header-cell {
   min-height: 4.5rem;
+  border: none;
 }
 
 .rbc-time-view .rbc-allday-cell {
   position: relative;
   min-height: 0;
+  border: 1px solid hsl(var(--border));
+  border-top: none;
+}
+
+.rbc-time-view .rbc-time-content .rbc-row-bg {
+  right: 0;
 }
 
 /* Keep all-day events aligned with the day columns */
