@@ -80,7 +80,7 @@ export function AppointmentPreparationDataTab({
     ...preparation.preparation_data,
     contact_name: (extendedPreparation.contact_name || ""),
     contact_info: (extendedPreparation.contact_info || ""),
-    notes: (preparation.notes || "")
+    briefing_notes: (preparation.preparation_data.briefing_notes || preparation.notes || "")
   });
   const [saving, setSaving] = useState(false);
   const [expandedSections, setExpandedSections] = useState({
@@ -144,7 +144,7 @@ export function AppointmentPreparationDataTab({
         ...preparation.preparation_data,
         contact_name: preparation.preparation_data.contact_name || "",
         contact_info: preparation.preparation_data.contact_info || "",
-        notes: preparation.notes || ""
+        briefing_notes: preparation.preparation_data.briefing_notes || preparation.notes || ""
       } as Record<string, any>);
       setConversationPartners(getConversationPartnersFromPreparationData(preparation.preparation_data));
       setCompanions(preparation.preparation_data.companions ?? []);
@@ -240,7 +240,7 @@ export function AppointmentPreparationDataTab({
 
       await onUpdate({
         preparation_data: updatedPreparationData,
-        notes: editData.notes || "",
+        notes: editData.briefing_notes || "",
       });
       setIsEditing(false);
 
@@ -265,7 +265,7 @@ export function AppointmentPreparationDataTab({
       ...preparation.preparation_data,
       contact_name: preparation.preparation_data.contact_name || "",
       contact_info: preparation.preparation_data.contact_info || "",
-      notes: preparation.notes || ""
+      briefing_notes: preparation.preparation_data.briefing_notes || preparation.notes || ""
     } as Record<string, any>);
     setCompanions(preparation.preparation_data.companions ?? []);
     setHasParking(preparation.preparation_data.has_parking ?? false);
@@ -448,8 +448,8 @@ export function AppointmentPreparationDataTab({
       icon: FileTextIcon,
       fields: [
         { key: "objectives", label: "Ziele", placeholder: "Welche Ziele sollen erreicht werden?", multiline: true },
-        { key: "key_topics", label: "Wichtige Themen", placeholder: "Je Zeile ein wichtiges Thema für das Briefing", multiline: true },
-        { key: "talking_points", label: "Ergänzende Gesprächspunkte", placeholder: "Optional: zusätzliche Punkte für das Gespräch", multiline: true },
+        { key: "key_topics", label: "Wichtige Themen", placeholder: "Ein Thema pro Zeile oder als Liste", multiline: true },
+        { key: "talking_points", label: "Ergänzende Gesprächspunkte", placeholder: "Optionale Ergänzungen, ebenfalls gern zeilenweise", multiline: true },
       ]
     },
     people: {
@@ -694,20 +694,20 @@ export function AppointmentPreparationDataTab({
 
           {/* Notes Section */}
           <div className="space-y-4">
-            <h3 className="font-semibold text-lg">Notizen</h3>
+            <h3 className="font-semibold text-lg">Weitere Notizen</h3>
 
             {isEditing ? (
               <Textarea
-                value={editData.notes}
-                onChange={(e) => setEditData(prev => ({ ...prev, notes: e.target.value }))}
-                placeholder="Weitere Notizen zum Terminbriefing..."
+                value={editData.briefing_notes}
+                onChange={(e) => handleFieldChange('briefing_notes', e.target.value)}
+                placeholder="Zusätzliche Briefing-Notizen, die separat im Briefing erscheinen sollen..."
                 rows={4}
               />
             ) : (
               <div>
-                {preparation.notes ? (
+                {(preparation.preparation_data.briefing_notes || preparation.notes) ? (
                   <div className="text-muted-foreground whitespace-pre-wrap">
-                    {preparation.notes}
+                    {preparation.preparation_data.briefing_notes || preparation.notes}
                   </div>
                 ) : (
                   <div className="text-muted-foreground text-sm">
