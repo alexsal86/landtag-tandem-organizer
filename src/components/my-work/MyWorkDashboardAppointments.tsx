@@ -481,7 +481,7 @@ export const DashboardAppointments = ({ data }: Props) => {
                               preparation: prep,
                               appointmentTitle: apt.title,
                               appointmentStartTime: apt.start_time,
-                            });
+                            }).catch(console.error);
                           }}
                         >
                           <FileText className="h-3.5 w-3.5 text-primary" />

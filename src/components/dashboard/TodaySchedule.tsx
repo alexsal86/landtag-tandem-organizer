@@ -182,7 +182,7 @@ export const TodaySchedule = ({ onCountChange }: TodayScheduleProps) => {
       appointmentTitle: apt.title,
       appointmentLocation: apt.location ?? undefined,
       appointmentStartTime: apt.start_time,
-    });
+    }).catch(console.error);
   };
 
   const toggleExpand = (id: string) => {
