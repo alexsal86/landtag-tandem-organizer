@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useParams, useNavigate, useSearchParams } from "react-router-dom";
-import { ArrowLeft, Edit, FileText, Upload, Calendar, Clock, MapPin } from "lucide-react";
+import { ArrowLeft, Edit, FileText, Upload, Calendar, Clock, MapPin, Briefcase } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -11,6 +11,7 @@ import { AppointmentPreparationDataTab } from "@/components/appointment-preparat
 import { AppointmentPreparationChecklistTab } from "@/components/appointment-preparations/AppointmentPreparationChecklistTab";
 import { AppointmentPreparationDetailsTab } from "@/components/appointment-preparations/AppointmentPreparationDetailsTab";
 import { AppointmentPreparationFileUpload } from "@/components/appointments/AppointmentPreparationFileUpload";
+import { AppointmentBriefingView } from "@/components/appointment-preparations/AppointmentBriefingView";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { debugConsole } from "@/utils/debugConsole";
@@ -28,7 +29,6 @@ interface AppointmentInfo {
 }
 
 export default function AppointmentPreparationDetail() {
-  // Support both standalone route (:id) and Index.tsx catch-all route (:section/:subId)
   const { id, subId } = useParams();
   const preparationId = id ?? subId;
   const navigate = useNavigate();
@@ -39,8 +39,8 @@ export default function AppointmentPreparationDetail() {
   const [activeTab, setActiveTab] = useState("preparation");
   const [isCreating, setIsCreating] = useState(false);
   const [appointmentInfo, setAppointmentInfo] = useState<AppointmentInfo | null>(null);
+  const [userRole, setUserRole] = useState<string | null>(null);
 
-  // Check if we have URL parameters for creating a new preparation
   const appointmentId = searchParams.get('appointmentId');
   const title = searchParams.get('title');
   const date = searchParams.get('date');
@@ -55,7 +55,25 @@ export default function AppointmentPreparationDetail() {
     archivePreparation
   } = useAppointmentPreparation(preparationId);
 
-  // Fetch linked appointment details for the prominent header
+  // Fetch user role to determine default tab
+  useEffect(() => {
+    if (!user) return;
+    const fetchRole = async () => {
+      const { data } = await supabase
+        .from('user_roles')
+        .select('role')
+        .eq('user_id', user.id)
+        .maybeSingle();
+      const role = data?.role || null;
+      setUserRole(role);
+      if (role === 'abgeordneter') {
+        setActiveTab('briefing');
+      }
+    };
+    fetchRole();
+  }, [user]);
+
+  // Fetch linked appointment details
   useEffect(() => {
     const fetchAppointment = async () => {
       const apptId = preparation?.appointment_id;
@@ -107,7 +125,6 @@ export default function AppointmentPreparationDetail() {
             .single();
 
           if (error) throw error;
-
           navigate(`/appointment-preparation/${data.id}`, { replace: true });
         } catch (error) {
           debugConsole.error('Error creating preparation:', error);
@@ -121,7 +138,6 @@ export default function AppointmentPreparationDetail() {
         }
       }
     };
-
     createNewPreparation();
   }, [preparationId, appointmentId, title, date, time, location, isCreating, user, currentTenant, navigate, toast]);
 
@@ -142,11 +158,7 @@ export default function AppointmentPreparationDetail() {
     return (
       <div className="p-6">
         <div className="max-w-6xl mx-auto">
-          <Button
-            variant="outline"
-            onClick={() => navigate(-1)}
-            className="mb-6"
-          >
+          <Button variant="outline" onClick={() => navigate(-1)} className="mb-6">
             <ArrowLeft className="h-4 w-4 mr-2" />
             Zurück
           </Button>
@@ -174,32 +186,12 @@ export default function AppointmentPreparationDetail() {
     }
   };
 
-  const handleArchive = async () => {
-    try {
-      await archivePreparation();
-      toast({
-        title: "Archiviert",
-        description: "Terminplanung wurde erfolgreich archiviert.",
-      });
-      navigate("/calendar");
-    } catch (error) {
-      toast({
-        title: "Fehler",
-        description: "Terminplanung konnte nicht archiviert werden.",
-        variant: "destructive",
-      });
-    }
-  };
-
   return (
     <div className="p-6">
       <div className="max-w-6xl mx-auto">
         {/* Back Button */}
         <div className="mb-6">
-          <Button
-            variant="outline"
-            onClick={() => navigate("/calendar")}
-          >
+          <Button variant="outline" onClick={() => navigate("/calendar")}>
             <ArrowLeft className="h-4 w-4 mr-2" />
             Zurück zum Kalender
           </Button>
@@ -266,7 +258,11 @@ export default function AppointmentPreparationDetail() {
 
         {/* Tab Navigation */}
         <Tabs value={activeTab} onValueChange={setActiveTab}>
-          <TabsList className="grid w-full grid-cols-4">
+          <TabsList className="grid w-full grid-cols-5">
+            <TabsTrigger value="briefing" className="flex items-center gap-2">
+              <Briefcase className="h-4 w-4" />
+              Briefing
+            </TabsTrigger>
             <TabsTrigger value="preparation" className="flex items-center gap-2">
               <Edit className="h-4 w-4" />
               Vorbereitung
@@ -286,6 +282,13 @@ export default function AppointmentPreparationDetail() {
           </TabsList>
 
           <div className="mt-6">
+            <TabsContent value="briefing">
+              <AppointmentBriefingView
+                preparation={preparation}
+                appointmentInfo={appointmentInfo}
+              />
+            </TabsContent>
+
             <TabsContent value="preparation">
               <AppointmentPreparationDataTab
                 preparation={preparation}

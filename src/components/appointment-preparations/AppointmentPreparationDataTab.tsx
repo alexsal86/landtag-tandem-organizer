@@ -75,7 +75,7 @@ export function AppointmentPreparationDataTab({
 }: AppointmentPreparationDataTabProps) {
   const extendedPreparation = preparation as ExtendedAppointmentPreparation;
 
-  const [editData, setEditData] = useState<Record<string, string>>({
+  const [editData, setEditData] = useState<Record<string, any>>({
     ...preparation.preparation_data,
     contact_name: (extendedPreparation.contact_name || ""),
     contact_info: (extendedPreparation.contact_info || ""),
@@ -135,7 +135,7 @@ export function AppointmentPreparationDataTab({
       contact_name: preparation.preparation_data.contact_name || "",
       contact_info: preparation.preparation_data.contact_info || "",
       notes: preparation.notes || ""
-    });
+    } as Record<string, any>);
     setCompanions(preparation.preparation_data.companions ?? []);
     setHasParking(preparation.preparation_data.has_parking ?? false);
     setProgramRows(preparation.preparation_data.program ?? []);
@@ -252,7 +252,7 @@ export function AppointmentPreparationDataTab({
       contact_name: preparation.preparation_data.contact_name || "",
       contact_info: preparation.preparation_data.contact_info || "",
       notes: preparation.notes || ""
-    });
+    } as Record<string, any>);
     setCompanions(preparation.preparation_data.companions ?? []);
     setHasParking(preparation.preparation_data.has_parking ?? false);
     setProgramRows(preparation.preparation_data.program ?? []);
