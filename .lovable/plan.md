@@ -1,39 +1,53 @@
 
 
-## Zwei Themen: Auto-Save optimieren + Briefing im Dashboard
+## Briefing-PDF Redesign
 
-### Problem 1: Auto-Save refresht die ganze Seite
+### Build-Fehler beheben
 
-**Ursache:** Die Kette ist: `handleFieldChange` → `debouncedSave` (500ms) → `onUpdate` → `updatePreparation` → `fetchPreparation()`. Nach jedem Save wird die gesamte Preparation neu vom Server geladen, was den lokalen State überschreibt und die UI "springt".
+**Zeile 399** in `briefingPdfGenerator.ts`: Der Cast `(doc.internal as { getCurrentPageInfo: ... })` funktioniert nicht mit dem jsPDF-Typ. Fix: `(doc.internal as unknown as { getCurrentPageInfo: ... })` — analog zu Zeile 507 wo bereits `as unknown as` verwendet wird.
 
-**Lösung:**
+### Logo einbinden
 
-1. **`useAppointmentPreparation.tsx`**: `updatePreparation` soll nach dem DB-Update **nicht** `fetchPreparation()` aufrufen, sondern den lokalen State optimistisch aktualisieren (`setPreparation(prev => ({ ...prev, ...updates }))`).
-2. **`AppointmentPreparationDataTab.tsx`**: Debounce von 500ms auf **2000ms** erhöhen. Toast bei Auto-Save entfernen (nur bei manuellem Save anzeigen). Der `useEffect` auf `[preparation]` (Zeile 132-149), der den lokalen State zurücksetzt, muss so angepasst werden, dass er nur bei echten externen Änderungen greift (z.B. per Ref-Vergleich), nicht nach eigenem Save.
+Das hochgeladene `logo_fraktion.png` wird nach `public/assets/logo_fraktion.png` kopiert, damit es im PDF per `loadImageElement("/assets/logo_fraktion.png")` geladen werden kann.
 
-### Problem 2: Briefing im Dashboard
+### PDF-Layout-Redesign (orientiert am Screenshot)
 
-**Konzept:** In `TodaySchedule.tsx` wird für jeden Termin geprüft, ob eine `appointment_preparation` existiert. Falls ja:
-- Ein **Briefing-Icon-Button** (z.B. `FileText`) erscheint rechts am Termin
-- Ein **Chevron** zum Aufklappen der Briefing-Kurzfassung direkt unter dem Termin
-- Beim Klick auf den Briefing-Button wird ein **Briefing-PDF** generiert (via Edge Function oder clientseitig)
+**Header (weiß, keine Hintergrundfarbe):**
+- Logo links oben (ca. 18mm)
+- Daneben: "GRÜNE Fraktion · Landtag Baden-Württemberg" (klein)
+- Grüne Trennlinie darunter
+- "BRIEFING" klein und zentriert unter der Linie
+- Termintitel groß und fett (16pt)
+- Datum · Uhrzeit · Ort darunter (11pt)
 
-**Umsetzung:**
+**Zwei-Spalten-Layout mit Card-Design:**
 
-1. **`TodaySchedule.tsx`**: Erweitern um einen Join auf `appointment_preparations` (über `appointment_id`). Für Termine mit Vorbereitung:
-   - Chevron-Button → Toggle für inline `AppointmentBriefingView` (kompakt)
-   - PDF-Button → Generiert ein Briefing-PDF
+Jede Sektion bekommt einen leichten grünen Hintergrund (`GREEN_BG`) mit abgerundeten Ecken — wie Cards in der Grafik. Section-Labels in dunklem Grün, uppercase.
 
-2. **Briefing-PDF**: Da keine Server-Side-Rendering möglich ist, clientseitig mit einer leichtgewichtigen Library (z.B. `jspdf` oder `html2canvas` + `jspdf`). Die `AppointmentBriefingView`-Daten werden als strukturiertes PDF gerendert.
+**Reihenfolge und Spalten-Zuordnung:**
 
-3. **Neuer State** in TodaySchedule: `expandedAppointmentId` für das Auf-/Zuklappen, plus die geladenen Preparation-Daten.
+| Links | Rechts |
+|---|---|
+| Gesprächspartner (1. Stelle) | Ziel des Termines (objectives) |
+| Kernbotschaft (hervorgehoben) | Begleitpersonen |
+| Hintergrund (audience + facts) | Anlass des Besuchs |
+| Gesprächspunkte (talking_points + key_topics) | Ablauf (program) |
+| Meine Position / Linie | Todos vor Termin (checklist) |
+| Kritische Fragen | Öffentlichkeitsarbeit (Social Media / Presse Badges) |
+| Weitere Notizen | Notizen-Bereich (leer, liniert) |
+
+**Neue Design-Elemente:**
+- Cards: `GREEN_BG` Hintergrund mit 2mm Radius, kein Rahmen
+- Kernbotschaft: eigene Card über volle Breite mit Magenta-Akzentlinie
+- Öffentlichkeitsarbeit: Social Media / Presse als Badges in einer Card
+- "Todos nach Termin": leere Checkboxen (wie im Screenshot) — statischer Block
+- Notizen-Bereich: linierter leerer Bereich für handschriftliche Notizen
+- Footer: "Vertraulich – Nur zur internen Verwendung" + Seitenzahl
 
 ### Dateien
 
-| Datei | Änderung |
+| Datei | Aktion |
 |---|---|
-| `useAppointmentPreparation.tsx` | Optimistisches Update statt Refetch |
-| `AppointmentPreparationDataTab.tsx` | Debounce auf 2s, kein Toast bei Auto-Save, useEffect-Guard |
-| `TodaySchedule.tsx` | Briefing-Link, Chevron-Expand, Preparation-Daten laden |
-| Neue Utility / Edge Function | Briefing-PDF-Generierung |
+| `public/assets/logo_fraktion.png` | Logo kopieren |
+| `src/components/appointment-preparations/briefingPdfGenerator.ts` | Komplett überarbeiten |
 
