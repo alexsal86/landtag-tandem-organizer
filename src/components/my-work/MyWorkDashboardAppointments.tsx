@@ -174,6 +174,44 @@ export const DashboardAppointments = ({ data }: Props) => {
     }
   }, [isQuickRequestOpen, resetForm]);
 
+  // Fetch preparations for today's appointments
+  useEffect(() => {
+    const fetchPreparations = async () => {
+      if (!currentTenant?.id || appointments.length === 0) return;
+      const aptIds = appointments.map(a => a.id);
+      try {
+        const { data: preps } = await supabase
+          .from('appointment_preparations')
+          .select('*')
+          .in('appointment_id', aptIds)
+          .eq('is_archived', false);
+        if (preps && preps.length > 0) {
+          const prepMap = new Map<string, AppointmentPreparation>();
+          for (const p of preps) {
+            prepMap.set(p.appointment_id, {
+              id: p.id,
+              title: p.title,
+              status: p.status,
+              notes: p.notes,
+              appointment_id: p.appointment_id,
+              template_id: p.template_id,
+              tenant_id: p.tenant_id,
+              created_by: p.created_by,
+              created_at: p.created_at,
+              updated_at: p.updated_at,
+              is_archived: p.is_archived,
+              archived_at: p.archived_at,
+              preparation_data: (p.preparation_data ?? {}) as AppointmentPreparation['preparation_data'],
+              checklist_items: (p.checklist_items ?? []) as AppointmentPreparation['checklist_items'],
+            });
+          }
+          setPreparations(prepMap);
+        }
+      } catch { /* ignore */ }
+    };
+    fetchPreparations();
+  }, [currentTenant?.id, appointments]);
+
   const requestedStart = useMemo(() => {
     if (!requestDate || !requestTime) return null;
     const parsed = new Date(`${requestDate}T${requestTime}:00`);
