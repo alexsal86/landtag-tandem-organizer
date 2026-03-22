@@ -31,6 +31,13 @@ function splitLines(text: string | undefined): string[] {
   return text.split("\n").map((line) => line.trim()).filter(Boolean);
 }
 
+function getPublicRelationsLines(preparationData: AppointmentPreparation["preparation_data"]): string[] {
+  return [
+    preparationData.social_media_planned ? "Social Media geplant" : null,
+    preparationData.press_planned ? "Presse geplant" : null,
+  ].filter(Boolean) as string[];
+}
+
 function formatConversationPartnerLine(partner: ReturnType<typeof getConversationPartnersFromPreparationData>[number]) {
   const secondaryParts = [partner.role, partner.organization, partner.note].filter(Boolean);
   return secondaryParts.length > 0 ? `${partner.name} — ${secondaryParts.join(" • ")}` : partner.name;
@@ -362,6 +369,12 @@ export function generateBriefingPdf({
 
   // Sections
   const backgroundLines = [d.audience, d.facts_figures].filter(Boolean) as string[];
+  const publicRelationsLines = getPublicRelationsLines(d);
+
+  if (publicRelationsLines.length > 0) {
+    addSection(doc, "Öffentlichkeitsarbeit", publicRelationsLines, yRef, FOOTER_BOTTOM);
+    yRef.y = drawSeparator(doc, yRef.y);
+  }
 
   if (backgroundLines.length > 0) {
     addSection(doc, "Organisation / Hintergrund", backgroundLines, yRef, FOOTER_BOTTOM);

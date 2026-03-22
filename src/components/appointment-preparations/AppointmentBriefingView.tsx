@@ -13,6 +13,7 @@ import {
   CheckSquareIcon,
   CompassIcon,
   ClockIcon,
+  MegaphoneIcon,
 } from "lucide-react";
 
 interface AppointmentBriefingViewProps {
@@ -60,6 +61,13 @@ function BulletList({ items }: { items: string[] }) {
   );
 }
 
+function getPublicRelationsBadges(preparationData: AppointmentPreparation["preparation_data"]) {
+  return [
+    preparationData.social_media_planned ? "Social Media geplant" : null,
+    preparationData.press_planned ? "Presse geplant" : null,
+  ].filter(Boolean) as string[];
+}
+
 function ConversationPartnerList({
   partners,
 }: {
@@ -101,6 +109,7 @@ export function AppointmentBriefingView({ preparation, appointmentInfo }: Appoin
     ...splitPreparationTextToList(d.questions_answers),
   ];
   const briefingNotes = getBriefingNotes(preparation);
+  const publicRelationsBadges = getPublicRelationsBadges(d);
 
   const hasContent =
     conversationPartners.length > 0 ||
@@ -115,13 +124,33 @@ export function AppointmentBriefingView({ preparation, appointmentInfo }: Appoin
   return (
     <Card className="bg-card border-border shadow-card overflow-hidden">
       <div className="bg-primary/5 border-b border-border px-6 py-5">
-        <h2 className="text-xl font-bold tracking-tight text-foreground">BRIEFING</h2>
-        {appointmentInfo && (
-          <p className="text-sm text-muted-foreground mt-1">
-            {appointmentInfo.title}
-            {appointmentInfo.location && ` · ${appointmentInfo.location}`}
-          </p>
-        )}
+        <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
+          <div>
+            <h2 className="text-xl font-bold tracking-tight text-foreground">BRIEFING</h2>
+            {appointmentInfo && (
+              <p className="mt-1 text-sm text-muted-foreground">
+                {appointmentInfo.title}
+                {appointmentInfo.location && ` · ${appointmentInfo.location}`}
+              </p>
+            )}
+          </div>
+
+          {publicRelationsBadges.length > 0 && (
+            <div className="rounded-lg border border-border/60 bg-background/80 px-3 py-2 lg:max-w-xs">
+              <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                <MegaphoneIcon className="h-3.5 w-3.5" />
+                Öffentlichkeitsarbeit
+              </div>
+              <div className="mt-2 flex flex-wrap gap-2">
+                {publicRelationsBadges.map((label) => (
+                  <Badge key={label} variant="secondary" className="text-xs">
+                    {label}
+                  </Badge>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
       </div>
 
       <CardContent className="py-6">
