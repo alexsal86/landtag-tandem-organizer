@@ -57,7 +57,6 @@ interface ChecklistSectionProps {
   toggleSubItem: (itemId: string, subItemIndex: number, isCompleted: boolean) => void;
   updateSubItemTitle: (itemId: string, subItemIndex: number, title: string) => void;
   removeSubItem: (itemId: string, subItemIndex: number) => void;
-  onAssignToTimeline: (item: { id: string; title: string }) => void;
   timelineDueDates?: Record<string, string>;
   onSetTimelineDueDate?: (item: { id: string; title: string }, dueDate: string) => void;
   registerChecklistItemRef?: (itemId: string, element: HTMLDivElement | null) => void;
@@ -202,7 +201,6 @@ export function ChecklistSection(props: ChecklistSectionProps) {
     loadItemSubtasks, loadAllItemCounts,
     setEmailDialogOpen, setSelectedEmailItemId,
     toggleSubItem, updateSubItemTitle, removeSubItem,
-    onAssignToTimeline,
     timelineDueDates,
     onSetTimelineDueDate,
     registerChecklistItemRef,
@@ -267,9 +265,6 @@ export function ChecklistSection(props: ChecklistSectionProps) {
             </div>
 
             <div className="ml-auto flex shrink-0 items-center gap-1">
-              <Button variant="ghost" size="sm" className="h-7 rounded-md px-2 text-xs text-muted-foreground hover:text-foreground" title="Mit Frist auf Zeitstrahl setzen" onClick={() => onAssignToTimeline({ id: item.id, title: item.title })}>
-                Frist
-              </Button>
               <div className="flex items-center gap-1 opacity-0 transition-opacity group-hover/checklist-item:opacity-100">
               <Button variant="ghost" size="sm" className="h-7 w-7 p-0 relative" onClick={() => setShowItemSubtasks(prev => ({ ...prev, [item.id]: !prev[item.id] }))}>
                 <ListTodo className="h-3 w-3" />

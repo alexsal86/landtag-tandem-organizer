@@ -826,7 +826,6 @@ export function EventPlanningDetailView(data: EventPlanningDataReturn) {
                 toggleSubItem={toggleSubItem}
                 updateSubItemTitle={updateSubItemTitle}
                 removeSubItem={removeSubItem}
-                onAssignToTimeline={handleDropChecklistItemOnTimeline}
                 timelineDueDates={timelineDueDates}
                 onSetTimelineDueDate={handleSetTimelineDueDate}
                 registerChecklistItemRef={registerChecklistItemRef}
