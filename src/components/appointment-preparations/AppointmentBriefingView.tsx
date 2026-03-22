@@ -1,6 +1,6 @@
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { AppointmentPreparation } from "@/hooks/useAppointmentPreparation";
+import { AppointmentPreparation, getConversationPartnersFromPreparationData } from "@/hooks/useAppointmentPreparation";
 import {
   UsersIcon,
   MessageCircleIcon,
@@ -54,6 +54,31 @@ function BulletList({ items }: { items: string[] }) {
   );
 }
 
+function ConversationPartnerList({
+  partners,
+}: {
+  partners: ReturnType<typeof getConversationPartnersFromPreparationData>;
+}) {
+  return (
+    <div className="space-y-3">
+      {partners.map((partner) => {
+        const secondaryParts = [partner.role, partner.organization, partner.note].filter(Boolean);
+
+        return (
+          <div key={partner.id} className="space-y-1">
+            <p className="font-medium text-foreground break-words">{partner.name}</p>
+            {secondaryParts.length > 0 && (
+              <p className="text-muted-foreground break-words">
+                {secondaryParts.join(" • ")}
+              </p>
+            )}
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
 function splitLines(text: string | undefined): string[] {
   if (!text) return [];
   return text.split("\n").map((line) => line.trim()).filter(Boolean);
@@ -62,10 +87,11 @@ function splitLines(text: string | undefined): string[] {
 export function AppointmentBriefingView({ preparation, appointmentInfo }: AppointmentBriefingViewProps) {
   const d = preparation.preparation_data;
   const incompleteTodos = preparation.checklist_items?.filter((item) => !item.completed) ?? [];
+  const conversationPartners = getConversationPartnersFromPreparationData(d);
   const companions = d.companions ?? [];
   const program = d.program ?? [];
 
-  const contactLines = [d.audience, d.facts_figures].filter(Boolean) as string[];
+  const peopleContextLines = [d.audience, d.facts_figures].filter(Boolean) as string[];
   const keyTopicLines = [
     ...splitLines(d.position_statements),
     ...splitLines(d.objectives),
@@ -74,7 +100,8 @@ export function AppointmentBriefingView({ preparation, appointmentInfo }: Appoin
   ];
 
   const hasContent =
-    contactLines.length > 0 ||
+    conversationPartners.length > 0 ||
+    peopleContextLines.length > 0 ||
     keyTopicLines.length > 0 ||
     incompleteTodos.length > 0 ||
     companions.length > 0 ||
@@ -103,21 +130,34 @@ export function AppointmentBriefingView({ preparation, appointmentInfo }: Appoin
               <BriefingSection
                 icon={<UsersIcon className="h-4 w-4" />}
                 title="Gesprächspartner"
-                isEmpty={contactLines.length === 0 && companions.length === 0}
+                isEmpty={conversationPartners.length === 0}
               >
-                {contactLines.length > 0 && <BulletList items={contactLines} />}
-                {companions.length > 0 && (
-                  <div className="flex flex-wrap gap-2 pt-2">
-                    {companions.map((companion) => (
-                      <Badge key={companion.id} variant="secondary" className="text-xs">
-                        {companion.name}
-                        {companion.note && (
-                          <span className="text-muted-foreground ml-1">({companion.note})</span>
-                        )}
-                      </Badge>
-                    ))}
-                  </div>
-                )}
+                <ConversationPartnerList partners={conversationPartners} />
+              </BriefingSection>
+
+              <BriefingSection
+                icon={<UsersIcon className="h-4 w-4" />}
+                title="Begleitpersonen"
+                isEmpty={companions.length === 0}
+              >
+                <div className="flex flex-wrap gap-2 pt-1">
+                  {companions.map((companion) => (
+                    <Badge key={companion.id} variant="secondary" className="text-xs">
+                      {companion.name}
+                      {companion.note && (
+                        <span className="text-muted-foreground ml-1">({companion.note})</span>
+                      )}
+                    </Badge>
+                  ))}
+                </div>
+              </BriefingSection>
+
+              <BriefingSection
+                icon={<UsersIcon className="h-4 w-4" />}
+                title="Zusätzlicher Kontext"
+                isEmpty={peopleContextLines.length === 0}
+              >
+                <BulletList items={peopleContextLines} />
               </BriefingSection>
 
               <BriefingSection

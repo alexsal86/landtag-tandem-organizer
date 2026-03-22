@@ -1,5 +1,5 @@
 import jsPDF from "jspdf";
-import { AppointmentPreparation } from "@/hooks/useAppointmentPreparation";
+import { AppointmentPreparation, getConversationPartnersFromPreparationData } from "@/hooks/useAppointmentPreparation";
 import { format } from "date-fns";
 import { de } from "date-fns/locale";
 
@@ -13,6 +13,11 @@ interface BriefingPdfOptions {
 function splitLines(text: string | undefined): string[] {
   if (!text) return [];
   return text.split("\n").map((line) => line.trim()).filter(Boolean);
+}
+
+function formatConversationPartnerLine(partner: ReturnType<typeof getConversationPartnersFromPreparationData>[number]) {
+  const secondaryParts = [partner.role, partner.organization, partner.note].filter(Boolean);
+  return secondaryParts.length > 0 ? `${partner.name} — ${secondaryParts.join(" • ")}` : partner.name;
 }
 
 export function generateBriefingPdf({
@@ -87,12 +92,10 @@ export function generateBriefingPdf({
   doc.line(margin, y, pageWidth - margin, y);
   y += 8;
 
-  const contactLines = [d.audience, d.facts_figures].filter(Boolean) as string[];
+  const conversationPartners = getConversationPartnersFromPreparationData(d);
   const companions = d.companions ?? [];
-  const conversationPartnerLines = [
-    ...contactLines,
-    ...companions.map((companion) => `${companion.name}${companion.note ? ` (${companion.note})` : ""}`),
-  ];
+  const conversationPartnerLines = conversationPartners.map(formatConversationPartnerLine);
+  const peopleContextLines = [d.audience, d.facts_figures].filter(Boolean) as string[];
 
   const keyTopicLines = [
     ...splitLines(d.position_statements),
@@ -102,6 +105,8 @@ export function generateBriefingPdf({
   ];
 
   addSection("Gesprächspartner", conversationPartnerLines);
+  addSection("Begleitpersonen", companions.map((companion) => `${companion.name}${companion.note ? ` (${companion.note})` : ""}`));
+  addSection("Zusätzlicher Kontext", peopleContextLines);
   addSection("Wichtige Themen", keyTopicLines);
 
   const incompleteTodos = preparation.checklist_items?.filter((item) => !item.completed) ?? [];
