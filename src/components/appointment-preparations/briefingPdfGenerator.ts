@@ -157,11 +157,11 @@ async function drawHeader(
   const headerBottomPadding = 6;
   const titleText = getHeaderTitle(preparation, appointmentTitle);
   const infoLine = getHeaderInfoLine(startTime, location);
-  const logoDataUrl = await loadImageAsCompressedDataUrl("/assets/logo_fraktion.svg", 200);
+  const logoSvg = await loadSvgElement("/assets/logo_fraktion.svg");
 
   const logoH = 28;
-  // Estimate aspect ratio from SVG viewBox (793.7 x 724.5 ≈ 1.096:1)
-  const logoW = logoDataUrl ? logoH * 1.096 : 0;
+  // SVG viewBox: 793.7 x 724.5 → aspect ≈ 1.096
+  const logoW = logoSvg ? logoH * 1.096 : 0;
   const logoX = MARGIN;
   const logoY = headerTop;
   const leftBlockX = logoX + logoW + 6;
@@ -169,9 +169,9 @@ async function drawHeader(
   const rightBlockX = PAGE_W - MARGIN - rightBlockW;
   const leftBlockW = Math.max(50, rightBlockX - leftBlockX - 8);
 
-  if (logoDataUrl) {
+  if (logoSvg) {
     try {
-      doc.addImage(logoDataUrl, "JPEG", logoX, logoY, logoW, logoH);
+      await doc.svg(logoSvg, { x: logoX, y: logoY, width: logoW, height: logoH });
     } catch { /* ignore */ }
   }
 
