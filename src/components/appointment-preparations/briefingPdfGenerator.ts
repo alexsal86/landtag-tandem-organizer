@@ -13,6 +13,7 @@ import { de } from "date-fns/locale";
 const GREEN         = [87, 171, 39]   as const;
 const GREEN_DARK    = [26, 94, 32]    as const;
 const GREEN_BG      = [237, 247, 232] as const; // legacy card background
+const SECTION_HEADER_BG = [239, 244, 235] as const;
 const GREEN_BG2     = [225, 240, 218] as const; // legacy darker card variant
 const GREEN_LINE    = [55, 130, 30]   as const;
 const BORDER_SOFT   = [205, 220, 198] as const;
@@ -122,7 +123,7 @@ function ensureFit(doc: jsPDF, yRef: { y: number }, needed: number, topY: number
 }
 
 const SECTION_HEADER_H = 7;
-const SECTION_GAP_AFTER_HEADER = 3.5;
+const SECTION_GAP_AFTER_HEADER = 0;
 const SECTION_BOTTOM_PAD = 4;
 const SECTION_OUTER_GAP = 4;
 
@@ -145,14 +146,14 @@ function drawSectionHeaderBar(
   y: number,
   w: number,
   label: string,
-  accentColor: readonly [number, number, number] = GREEN_DARK
+  accentColor: readonly [number, number, number] = SECTION_HEADER_BG
 ) {
   rgb(doc, accentColor, "fill");
-  doc.roundedRect(x, y, w, SECTION_HEADER_H, 2, 2, "F");
+  doc.rect(x, y, w, SECTION_HEADER_H, "F");
 
   doc.setFontSize(7);
   doc.setFont(BODY_FONT, "bold");
-  rgb(doc, WHITE, "text");
+  rgb(doc, accentColor === SECTION_HEADER_BG ? GREEN_DARK : WHITE, "text");
   doc.text(label.toUpperCase(), x + 4, y + 4.6);
 
   return y + SECTION_HEADER_H + SECTION_GAP_AFTER_HEADER;
@@ -167,9 +168,13 @@ function drawSectionBody(
   fill: readonly [number, number, number] = WHITE
 ) {
   rgb(doc, fill, "fill");
+  doc.rect(x, y, w, h, "F");
+
   rgb(doc, BORDER_SOFT, "draw");
   doc.setLineWidth(0.25);
-  doc.roundedRect(x, y, w, h, 2, 2, "FD");
+  doc.line(x, y, x, y + h);
+  doc.line(x + w, y, x + w, y + h);
+  doc.line(x, y + h, x + w, y + h);
 }
 
 // ─── Header (white, with logo + green line) ───────────────────────────────────
@@ -295,7 +300,7 @@ function addCardBulletSection(
   yRef: { y: number },
   topY: number,
   bodyFill: readonly [number, number, number] = WHITE,
-  headerAccent: readonly [number, number, number] = GREEN_DARK
+  headerAccent: readonly [number, number, number] = SECTION_HEADER_BG
 ) {
   if (items.length === 0) return;
 
@@ -345,7 +350,7 @@ function addCardTextSection(
   yRef: { y: number },
   topY: number,
   bodyFill: readonly [number, number, number] = WHITE,
-  headerAccent: readonly [number, number, number] = GREEN_DARK
+  headerAccent: readonly [number, number, number] = SECTION_HEADER_BG
 ) {
   const lines = splitLines(text);
   if (lines.length === 0) return;
