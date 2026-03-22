@@ -1,10 +1,12 @@
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Separator } from "@/components/ui/separator";
-import { AppointmentPreparation } from "@/hooks/useAppointmentPreparation";
+import { AppointmentPreparation, getConversationPartnersFromPreparationData } from "@/hooks/useAppointmentPreparation";
 import {
-  Building2Icon, CompassIcon, TargetIcon, AlertTriangleIcon,
-  MessageCircleIcon, CheckSquareIcon, UsersIcon, ClockIcon
+  UsersIcon,
+  MessageCircleIcon,
+  CheckSquareIcon,
+  CompassIcon,
+  ClockIcon,
 } from "lucide-react";
 
 interface AppointmentBriefingViewProps {
@@ -27,7 +29,7 @@ interface BriefingSectionProps {
 function BriefingSection({ icon, title, children, isEmpty }: BriefingSectionProps) {
   if (isEmpty) return null;
   return (
-    <div className="space-y-2">
+    <div className="space-y-2 rounded-lg border border-border/60 bg-background/40 p-4">
       <div className="flex items-center gap-2 text-sm font-semibold text-muted-foreground uppercase tracking-wide">
         {icon}
         {title}
@@ -52,30 +54,65 @@ function BulletList({ items }: { items: string[] }) {
   );
 }
 
+function ConversationPartnerList({
+  partners,
+}: {
+  partners: ReturnType<typeof getConversationPartnersFromPreparationData>;
+}) {
+  return (
+    <div className="space-y-3">
+      {partners.map((partner) => {
+        const secondaryParts = [partner.role, partner.organization, partner.note].filter(Boolean);
+
+        return (
+          <div key={partner.id} className="space-y-1">
+            <p className="font-medium text-foreground break-words">{partner.name}</p>
+            {secondaryParts.length > 0 && (
+              <p className="text-muted-foreground break-words">
+                {secondaryParts.join(" • ")}
+              </p>
+            )}
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
 function splitLines(text: string | undefined): string[] {
   if (!text) return [];
-  return text.split('\n').map(l => l.trim()).filter(Boolean);
+  return text
+    .split(/\r?\n|[•·;]+/)
+    .map((line) => line.replace(/^[-*\u2022]\s*/, "").trim())
+    .filter(Boolean);
+}
+
+function getUniqueLines(...values: Array<string | undefined | null>): string[] {
+  return Array.from(new Set(values.flatMap((value) => splitLines(value ?? undefined))));
 }
 
 export function AppointmentBriefingView({ preparation, appointmentInfo }: AppointmentBriefingViewProps) {
   const d = preparation.preparation_data;
-  const incompleteTodos = preparation.checklist_items?.filter(i => !i.completed) ?? [];
+  const incompleteTodos = preparation.checklist_items?.filter((item) => !item.completed) ?? [];
+  const conversationPartners = getConversationPartnersFromPreparationData(d);
   const companions = d.companions ?? [];
   const program = d.program ?? [];
 
-  const backgroundLines = [d.audience, d.facts_figures].filter(Boolean) as string[];
-  const positionLines = splitLines(d.position_statements);
-  const objectiveLines = splitLines(d.objectives);
-  const questionLines = splitLines(d.questions_answers);
-  const keyMessage = d.key_topics?.trim();
+  const peopleContextLines = [d.audience, d.facts_figures].filter(Boolean) as string[];
+  const keyTopicLines = getUniqueLines(d.key_topics, d.talking_points);
+  const additionalNotesLines = getUniqueLines(d.briefing_notes, preparation.notes, d.notes);
 
-  const hasContent = backgroundLines.length > 0 || positionLines.length > 0 ||
-    objectiveLines.length > 0 || questionLines.length > 0 || keyMessage ||
-    incompleteTodos.length > 0 || companions.length > 0 || program.length > 0;
+  const hasContent =
+    conversationPartners.length > 0 ||
+    peopleContextLines.length > 0 ||
+    keyTopicLines.length > 0 ||
+    additionalNotesLines.length > 0 ||
+    incompleteTodos.length > 0 ||
+    companions.length > 0 ||
+    program.length > 0;
 
   return (
     <Card className="bg-card border-border shadow-card overflow-hidden">
-      {/* Header */}
       <div className="bg-primary/5 border-b border-border px-6 py-5">
         <h2 className="text-xl font-bold tracking-tight text-foreground">BRIEFING</h2>
         {appointmentInfo && (
@@ -92,125 +129,99 @@ export function AppointmentBriefingView({ preparation, appointmentInfo }: Appoin
             Noch keine Vorbereitungsdaten vorhanden. Mitarbeiter können die Vorbereitung befüllen.
           </p>
         ) : (
-          <div className="space-y-6">
-            {/* Organisation / Hintergrund */}
-            <BriefingSection
-              icon={<Building2Icon className="h-4 w-4" />}
-              title="Organisation / Hintergrund"
-              isEmpty={backgroundLines.length === 0}
-            >
-              <BulletList items={backgroundLines} />
-            </BriefingSection>
+          <div className="grid grid-cols-1 gap-6 lg:grid-cols-2 lg:gap-8">
+            <div className="space-y-6">
+              <BriefingSection
+                icon={<UsersIcon className="h-4 w-4" />}
+                title="Gesprächspartner"
+                isEmpty={conversationPartners.length === 0}
+              >
+                <ConversationPartnerList partners={conversationPartners} />
+              </BriefingSection>
 
-            {backgroundLines.length > 0 && (positionLines.length > 0 || objectiveLines.length > 0) && (
-              <Separator className="bg-border/50" />
-            )}
+              <BriefingSection
+                icon={<UsersIcon className="h-4 w-4" />}
+                title="Begleitpersonen"
+                isEmpty={companions.length === 0}
+              >
+                <div className="flex flex-wrap gap-2 pt-1">
+                  {companions.map((companion) => (
+                    <Badge key={companion.id} variant="secondary" className="text-xs">
+                      {companion.name}
+                      {companion.note && (
+                        <span className="text-muted-foreground ml-1">({companion.note})</span>
+                      )}
+                    </Badge>
+                  ))}
+                </div>
+              </BriefingSection>
 
-            {/* Meine Position / Linie */}
-            <BriefingSection
-              icon={<CompassIcon className="h-4 w-4" />}
-              title="Meine Position / Linie"
-              isEmpty={positionLines.length === 0}
-            >
-              <BulletList items={positionLines} />
-            </BriefingSection>
+              <BriefingSection
+                icon={<UsersIcon className="h-4 w-4" />}
+                title="Zusätzlicher Kontext"
+                isEmpty={peopleContextLines.length === 0}
+              >
+                <BulletList items={peopleContextLines} />
+              </BriefingSection>
 
-            {/* Was will ich erreichen? */}
-            <BriefingSection
-              icon={<TargetIcon className="h-4 w-4" />}
-              title="Was will ich erreichen?"
-              isEmpty={objectiveLines.length === 0}
-            >
-              <BulletList items={objectiveLines} />
-            </BriefingSection>
+              <BriefingSection
+                icon={<MessageCircleIcon className="h-4 w-4" />}
+                title="Wichtige Themen"
+                isEmpty={keyTopicLines.length === 0}
+              >
+                <BulletList items={keyTopicLines} />
+              </BriefingSection>
 
-            {(positionLines.length > 0 || objectiveLines.length > 0) && questionLines.length > 0 && (
-              <Separator className="bg-border/50" />
-            )}
+              <BriefingSection
+                icon={<CheckSquareIcon className="h-4 w-4" />}
+                title="Weitere Notizen"
+                isEmpty={additionalNotesLines.length === 0}
+              >
+                <BulletList items={additionalNotesLines} />
+              </BriefingSection>
 
-            {/* Mögliche kritische Fragen */}
-            <BriefingSection
-              icon={<AlertTriangleIcon className="h-4 w-4" />}
-              title="Mögliche kritische Fragen"
-              isEmpty={questionLines.length === 0}
-            >
-              <BulletList items={questionLines} />
-            </BriefingSection>
+              <BriefingSection
+                icon={<CheckSquareIcon className="h-4 w-4" />}
+                title="Offene Punkte"
+                isEmpty={incompleteTodos.length === 0}
+              >
+                <div className="space-y-1.5">
+                  {incompleteTodos.map((item) => (
+                    <p key={item.id} className="flex items-start gap-2">
+                      <span className="text-muted-foreground shrink-0">☐</span>
+                      <span className="break-words">{item.label}</span>
+                    </p>
+                  ))}
+                </div>
+              </BriefingSection>
+            </div>
 
-            {/* Kernbotschaft */}
-            {keyMessage && (
-              <>
-                <Separator className="bg-border/50" />
-                <BriefingSection
-                  icon={<MessageCircleIcon className="h-4 w-4" />}
-                  title="Kernbotschaft"
-                >
-                  <p className="italic text-foreground font-medium border-l-2 border-primary pl-3">
-                    „{keyMessage}"
-                  </p>
-                </BriefingSection>
-              </>
-            )}
+            <div className="space-y-6">
+              <BriefingSection
+                icon={<CompassIcon className="h-4 w-4" />}
+                title="Anlass des Besuchs"
+                isEmpty={!preparation.title?.trim()}
+              >
+                <p className="break-words font-medium text-foreground">{preparation.title}</p>
+              </BriefingSection>
 
-            {/* Begleitpersonen */}
-            {companions.length > 0 && (
-              <>
-                <Separator className="bg-border/50" />
-                <BriefingSection
-                  icon={<UsersIcon className="h-4 w-4" />}
-                  title="Begleitpersonen"
-                >
-                  <div className="flex flex-wrap gap-2">
-                    {companions.map(c => (
-                      <Badge key={c.id} variant="secondary" className="text-xs">
-                        {c.name}
-                        {c.note && <span className="text-muted-foreground ml-1">({c.note})</span>}
-                      </Badge>
-                    ))}
-                  </div>
-                </BriefingSection>
-              </>
-            )}
-
-            {/* Ablauf */}
-            {program.length > 0 && (
-              <>
-                <Separator className="bg-border/50" />
-                <BriefingSection
-                  icon={<ClockIcon className="h-4 w-4" />}
-                  title="Ablauf"
-                >
-                  <div className="space-y-1">
-                    {program.map(p => (
-                      <p key={p.id} className="flex gap-2">
-                        <span className="text-primary shrink-0 font-mono text-xs min-w-[3rem]">{p.time}</span>
-                        <span>{p.item}</span>
-                      </p>
-                    ))}
-                  </div>
-                </BriefingSection>
-              </>
-            )}
-
-            {/* ToDos vor Termin */}
-            {incompleteTodos.length > 0 && (
-              <>
-                <Separator className="bg-border/50" />
-                <BriefingSection
-                  icon={<CheckSquareIcon className="h-4 w-4" />}
-                  title="ToDos vor Termin"
-                >
-                  <div className="space-y-1.5">
-                    {incompleteTodos.map(item => (
-                      <p key={item.id} className="flex items-start gap-2">
-                        <span className="text-muted-foreground shrink-0">☐</span>
-                        <span className="break-words">{item.label}</span>
-                      </p>
-                    ))}
-                  </div>
-                </BriefingSection>
-              </>
-            )}
+              <BriefingSection
+                icon={<ClockIcon className="h-4 w-4" />}
+                title="Ablauf"
+                isEmpty={program.length === 0}
+              >
+                <div className="space-y-1">
+                  {program.map((programItem) => (
+                    <p key={programItem.id} className="flex gap-2">
+                      <span className="text-primary shrink-0 font-mono text-xs min-w-[3rem]">
+                        {programItem.time}
+                      </span>
+                      <span className="break-words">{programItem.item}</span>
+                    </p>
+                  ))}
+                </div>
+              </BriefingSection>
+            </div>
           </div>
         )}
       </CardContent>

@@ -20,6 +20,7 @@ export interface AppointmentPreparation {
     objectives?: string;
     key_topics?: string;
     talking_points?: string;
+    briefing_notes?: string;
     audience?: string;
     contact_person?: string;
     materials_needed?: string;
@@ -36,6 +37,14 @@ export interface AppointmentPreparation {
     notes?: string;
     // Anlass des Besuchs
     visit_reason?: 'einladung' | 'eigeninitiative' | 'fraktionsarbeit' | 'pressetermin';
+    // Gesprächspartner
+    conversation_partners?: Array<{
+      id: string;
+      name: string;
+      role?: string;
+      organization?: string;
+      note?: string;
+    }>;
     // Begleitpersonen
     companions?: Array<{
       id: string;
@@ -60,6 +69,34 @@ export interface AppointmentPreparation {
     label: string;
     completed: boolean;
   }>;
+}
+
+
+export interface AppointmentConversationPartner {
+  id: string;
+  name: string;
+  role?: string;
+  organization?: string;
+  note?: string;
+}
+
+export function getConversationPartnersFromPreparationData(
+  preparationData: AppointmentPreparation['preparation_data']
+): AppointmentConversationPartner[] {
+  const partners = preparationData.conversation_partners ?? [];
+
+  if (partners.length > 0) {
+    return partners;
+  }
+
+  if (preparationData.contact_person?.trim()) {
+    return [{
+      id: 'legacy-contact-person',
+      name: preparationData.contact_person.trim(),
+    }];
+  }
+
+  return [];
 }
 
 type AppointmentPreparationData = AppointmentPreparation['preparation_data'];
