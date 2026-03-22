@@ -32,6 +32,19 @@ const RIGHT_W = CONTENT - LEFT_W - GAP;
 const RIGHT_X = MARGIN + LEFT_W + GAP;
 const FOOTER_Y = PAGE_H - 12;
 
+const HEADER_FONT = "GrueneType Neue";
+const BODY_FONT = "PT Sans";
+
+const FONT_FILES = [
+  { family: BODY_FONT, style: "normal", file: "/fonts/PTSans-Regular.ttf" },
+  { family: BODY_FONT, style: "bold", file: "/fonts/PTSans-Bold.ttf" },
+  { family: BODY_FONT, style: "italic", file: "/fonts/PTSans-Italic.ttf" },
+  { family: HEADER_FONT, style: "normal", file: "/fonts/GrueneTypeNeue-Regular.ttf" },
+  { family: HEADER_FONT, style: "bold", file: "/fonts/GrueneTypeNeue-Bold.ttf" },
+] as const;
+
+const fontDataCache = new Map<string, string>();
+
 interface BriefingPdfOptions {
   preparation: AppointmentPreparation;
   appointmentTitle?: string;
@@ -40,6 +53,29 @@ interface BriefingPdfOptions {
 }
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
+
+async function registerBriefingFonts(doc: jsPDF): Promise<void> {
+  for (const font of FONT_FILES) {
+    const vfsName = font.file.split("/").pop() ?? `${font.family}-${font.style}.ttf`;
+    let base64 = fontDataCache.get(font.file);
+
+    if (!base64) {
+      const fontResponse = await fetch(font.file);
+      if (!fontResponse.ok) {
+        throw new Error(`Font could not be loaded: ${font.file}`);
+      }
+
+      const fontBytes = await fontResponse.arrayBuffer();
+      const binary = Array.from(new Uint8Array(fontBytes), (byte) => String.fromCharCode(byte)).join("");
+      base64 = btoa(binary);
+      fontDataCache.set(font.file, base64);
+    }
+
+    doc.addFileToVFS(vfsName, base64);
+    doc.addFont(vfsName, font.family, font.style);
+  }
+}
+
 function splitLines(text: string | undefined | null): string[] {
   if (!text) return [];
   return text.split("\n").map((l) => l.trim()).filter(Boolean);
@@ -102,7 +138,7 @@ function drawSectionHeaderBar(
   doc.roundedRect(x, y, w, SECTION_HEADER_H, 2, 2, "F");
 
   doc.setFontSize(7);
-  doc.setFont("helvetica", "bold");
+  doc.setFont(BODY_FONT, "bold");
   rgb(doc, WHITE, "text");
   doc.text(label.toUpperCase(), x + 4, y + 4.6);
 
@@ -159,7 +195,7 @@ async function drawHeader(
   const infoLine = getHeaderInfoLine(startTime, location);
   const logoSvg = await loadSvgElement("/assets/logo_fraktion.svg");
 
-  const logoH = 28;
+  const logoH = 24;
   // SVG viewBox: 793.7 x 724.5 → aspect ≈ 1.096
   const logoW = logoSvg ? logoH * 1.096 : 0;
   const logoX = MARGIN;
@@ -175,15 +211,15 @@ async function drawHeader(
     } catch { /* ignore */ }
   }
 
-  doc.setFont("helvetica", "bold");
+  doc.setFont(HEADER_FONT, "bold");
   doc.setFontSize(12);
   rgb(doc, TEXT_DARK, "text");
-  const titleLines = doc.splitTextToSize(`Briefing: "${titleText}"`, leftBlockW);
+  const titleLines = doc.splitTextToSize(titleText, leftBlockW);
   doc.text(titleLines, leftBlockX, headerTop + 6);
 
   let leftBlockBottom = headerTop + 6 + titleLines.length * 5;
   if (infoLine) {
-    doc.setFont("helvetica", "normal");
+    doc.setFont(BODY_FONT, "normal");
     doc.setFontSize(9);
     rgb(doc, TEXT_MUTED, "text");
     const infoLines = doc.splitTextToSize(infoLine, leftBlockW);
@@ -191,7 +227,7 @@ async function drawHeader(
     leftBlockBottom += infoLines.length * 4 + 1;
   }
 
-  doc.setFont("helvetica", "bold");
+  doc.setFont(BODY_FONT, "bold");
   doc.setFontSize(10);
   rgb(doc, TEXT_DARK, "text");
   doc.text("Öffentlichkeitsarbeit", rightBlockX, headerTop + 6);
@@ -201,7 +237,7 @@ async function drawHeader(
   if (preparation.preparation_data.press_planned) prItems.push("Presse");
 
   if (prItems.length > 0) {
-    doc.setFont("helvetica", "normal");
+    doc.setFont(BODY_FONT, "normal");
     doc.setFontSize(9);
     rgb(doc, TEXT_MUTED, "text");
     doc.text(prItems, rightBlockX, headerTop + 12);
@@ -229,7 +265,7 @@ function drawFooter(doc: jsPDF, pageNum: number, totalPages: number) {
   doc.line(MARGIN, y, PAGE_W - MARGIN, y);
 
   doc.setFontSize(6.5);
-  doc.setFont("helvetica", "normal");
+  doc.setFont(BODY_FONT, "normal");
   rgb(doc, TEXT_MUTED, "text");
   doc.text("Vertraulich – Nur zur internen Verwendung", MARGIN, y + 4);
   doc.text(`${pageNum} / ${totalPages}`, PAGE_W - MARGIN, y + 4, { align: "right" });
@@ -251,7 +287,7 @@ function addCardBulletSection(
 
   // Estimate height
   doc.setFontSize(9);
-  doc.setFont("helvetica", "normal");
+  doc.setFont(BODY_FONT, "normal");
   let estH = SECTION_HEADER_H + SECTION_GAP_AFTER_HEADER + SECTION_BOTTOM_PAD;
   for (const item of items) {
     const lines = doc.splitTextToSize(item, maxW - 14);
@@ -269,7 +305,7 @@ function addCardBulletSection(
 
   // Items
   doc.setFontSize(9);
-  doc.setFont("helvetica", "normal");
+  doc.setFont(BODY_FONT, "normal");
   rgb(doc, TEXT_DARK, "text");
 
   for (const item of items) {
@@ -333,7 +369,7 @@ function addConversationPartnersCard(
   for (const p of partners) {
     if (cy + 5 > cardY + estH) break;
     doc.setFontSize(9);
-    doc.setFont("helvetica", "bold");
+    doc.setFont(BODY_FONT, "bold");
     rgb(doc, TEXT_DARK, "text");
     doc.text(p.name, x + 5, cy + 1.5);
     cy += 4.5;
@@ -341,7 +377,7 @@ function addConversationPartnersCard(
     const secondary = [p.role, p.organization, p.note].filter(Boolean);
     if (secondary.length > 0) {
       doc.setFontSize(7.5);
-      doc.setFont("helvetica", "normal");
+      doc.setFont(BODY_FONT, "normal");
       rgb(doc, TEXT_MUTED, "text");
       doc.text(secondary.join(" · "), x + 5, cy + 0.5);
       cy += 4;
@@ -397,7 +433,7 @@ function addCompanionsCard(
 
     rgb(doc, GREEN_BG, "fill");
     doc.roundedRect(bx, cy - 3.5, tw, 6.5, 1.5, 1.5, "F");
-    doc.setFont("helvetica", "normal");
+    doc.setFont(BODY_FONT, "normal");
     rgb(doc, GREEN_DARK, "text");
     doc.text(label, bx + 4, cy + 0.5);
     bx += tw + 3;
@@ -433,7 +469,7 @@ function addKernbotschaft(
   doc.roundedRect(x, bodyY, 2, bodyH, 0.8, 0.8, "F");
 
   doc.setFontSize(10);
-  doc.setFont("helvetica", "italic");
+  doc.setFont(BODY_FONT, "italic");
   rgb(doc, TEXT_DARK, "text");
   doc.text(lines, x + 8, bodyY + 6);
 
@@ -470,12 +506,12 @@ function addAblaufCard(
   for (const p of program) {
     if (cy + 5 > cardY + estH) break;
     doc.setFontSize(8);
-    doc.setFont("helvetica", "bold");
+    doc.setFont(BODY_FONT, "bold");
     rgb(doc, GREEN_DARK, "text");
     doc.text(p.time || "", x + 5, cy + 1.5);
 
     doc.setFontSize(9);
-    doc.setFont("helvetica", "normal");
+    doc.setFont(BODY_FONT, "normal");
     rgb(doc, TEXT_DARK, "text");
     const descLines = doc.splitTextToSize(p.item, maxW - 24);
     doc.text(descLines, x + 20, cy + 1.5);
@@ -519,7 +555,7 @@ function addPRCard(
     const tw = doc.getTextWidth(badge) + 8;
     rgb(doc, GREEN_DARK, "fill");
     doc.roundedRect(bx, by - 3, tw, 6, 1.5, 1.5, "F");
-    doc.setFont("helvetica", "bold");
+    doc.setFont(BODY_FONT, "bold");
     rgb(doc, WHITE, "text");
     doc.text(badge, bx + 4, by + 1);
     bx += tw + 3;
@@ -564,7 +600,7 @@ function addChecklistCard(
     doc.setLineWidth(0.3);
     doc.rect(x + 5, cy - 1.5, 3.5, 3.5);
 
-    doc.setFont("helvetica", "normal");
+    doc.setFont(BODY_FONT, "normal");
     rgb(doc, TEXT_DARK, "text");
     const lines = doc.splitTextToSize(item.label, maxW - 16);
     doc.text(lines, x + 11, cy + 1);
@@ -609,6 +645,7 @@ export async function generateBriefingPdf({
   appointmentStartTime,
 }: BriefingPdfOptions): Promise<void> {
   const doc = new jsPDF({ unit: "mm", format: "a4" });
+  await registerBriefingFonts(doc);
   const d = preparation.preparation_data;
   const topY = 14; // Y for new pages
 
@@ -671,7 +708,7 @@ export async function generateBriefingPdf({
     drawSectionHeaderBar(doc, RIGHT_X, cy, RIGHT_W, "Anlass des Besuchs");
     drawSectionBody(doc, RIGHT_X, bodyY, RIGHT_W, bodyH);
     doc.setFontSize(9);
-    doc.setFont("helvetica", "bold");
+    doc.setFont(BODY_FONT, "bold");
     rgb(doc, TEXT_DARK, "text");
     doc.text(titleLines, RIGHT_X + 5, bodyY + 5.5);
     rightY.y = cy + estH + SECTION_OUTER_GAP;
