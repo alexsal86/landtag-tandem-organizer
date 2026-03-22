@@ -70,17 +70,26 @@ const COMPANION_TYPE_OPTIONS = [
   { value: 'sonstige', label: 'Sonstige' },
 ] as const;
 
+const getPreparationDataWithDefaults = (
+  preparationData: AppointmentPreparation['preparation_data']
+) => ({
+  ...preparationData,
+  social_media_planned: preparationData.social_media_planned ?? false,
+  press_planned: preparationData.press_planned ?? false,
+});
+
 export function AppointmentPreparationDataTab({
   preparation,
   onUpdate
 }: AppointmentPreparationDataTabProps) {
   const extendedPreparation = preparation as ExtendedAppointmentPreparation;
+  const preparationDataWithDefaults = getPreparationDataWithDefaults(preparation.preparation_data);
 
   const [editData, setEditData] = useState<Record<string, any>>({
-    ...preparation.preparation_data,
+    ...preparationDataWithDefaults,
     contact_name: (extendedPreparation.contact_name || ""),
     contact_info: (extendedPreparation.contact_info || ""),
-    briefing_notes: (preparation.preparation_data.briefing_notes || preparation.notes || "")
+    briefing_notes: (preparationDataWithDefaults.briefing_notes || preparation.notes || "")
   });
   const [saving, setSaving] = useState(false);
   const [expandedSections, setExpandedSections] = useState({
@@ -98,19 +107,19 @@ export function AppointmentPreparationDataTab({
 
   // Local state for complex fields
   const [conversationPartners, setConversationPartners] = useState<ConversationPartner[]>(
-    getConversationPartnersFromPreparationData(preparation.preparation_data)
+    getConversationPartnersFromPreparationData(preparationDataWithDefaults)
   );
   const [companions, setCompanions] = useState<Companion[]>(
-    preparation.preparation_data.companions ?? []
+    preparationDataWithDefaults.companions ?? []
   );
   const [hasParking, setHasParking] = useState<boolean>(
-    preparation.preparation_data.has_parking ?? false
+    preparationDataWithDefaults.has_parking ?? false
   );
   const [programRows, setProgramRows] = useState<ProgramRow[]>(
-    preparation.preparation_data.program ?? []
+    preparationDataWithDefaults.program ?? []
   );
   const [visitReason, setVisitReason] = useState<string>(
-    preparation.preparation_data.visit_reason ?? ''
+    preparationDataWithDefaults.visit_reason ?? ''
   );
 
   const [isEditing, setIsEditing] = useState(false);
@@ -140,22 +149,23 @@ export function AppointmentPreparationDataTab({
   useEffect(() => {
     if (preparation.id !== lastSyncedId.current) {
       lastSyncedId.current = preparation.id;
+      const nextPreparationData = getPreparationDataWithDefaults(preparation.preparation_data);
       setEditData({
-        ...preparation.preparation_data,
-        contact_name: preparation.preparation_data.contact_name || "",
-        contact_info: preparation.preparation_data.contact_info || "",
-        briefing_notes: preparation.preparation_data.briefing_notes || preparation.notes || ""
+        ...nextPreparationData,
+        contact_name: nextPreparationData.contact_name || "",
+        contact_info: nextPreparationData.contact_info || "",
+        briefing_notes: nextPreparationData.briefing_notes || preparation.notes || ""
       } as Record<string, any>);
-      setConversationPartners(getConversationPartnersFromPreparationData(preparation.preparation_data));
-      setCompanions(preparation.preparation_data.companions ?? []);
-      setHasParking(preparation.preparation_data.has_parking ?? false);
-      setProgramRows(preparation.preparation_data.program ?? []);
-      setVisitReason(preparation.preparation_data.visit_reason ?? '');
+      setConversationPartners(getConversationPartnersFromPreparationData(nextPreparationData));
+      setCompanions(nextPreparationData.companions ?? []);
+      setHasParking(nextPreparationData.has_parking ?? false);
+      setProgramRows(nextPreparationData.program ?? []);
+      setVisitReason(nextPreparationData.visit_reason ?? '');
 
-      if (preparation.preparation_data.contact_name && preparation.preparation_data.contact_info) {
+      if (nextPreparationData.contact_name && nextPreparationData.contact_info) {
         setShowCustomContact(true);
-      } else if (preparation.preparation_data.contact_id) {
-        setSelectedContactId(preparation.preparation_data.contact_id);
+      } else if (nextPreparationData.contact_id) {
+        setSelectedContactId(nextPreparationData.contact_id);
       }
     }
   }, [preparation]);
@@ -213,6 +223,8 @@ export function AppointmentPreparationDataTab({
     overrides?: Partial<AppointmentPreparation['preparation_data']>
   ): AppointmentPreparation['preparation_data'] => ({
     ...base,
+    social_media_planned: overrides?.social_media_planned ?? base.social_media_planned ?? false,
+    press_planned: overrides?.press_planned ?? base.press_planned ?? false,
     visit_reason: (overrides?.visit_reason ?? visitReason) as any,
     conversation_partners: overrides?.conversation_partners ?? conversationPartners,
     companions: overrides?.companions ?? companions,
@@ -261,19 +273,20 @@ export function AppointmentPreparationDataTab({
   };
 
   const handleCancel = () => {
+    const nextPreparationData = getPreparationDataWithDefaults(preparation.preparation_data);
     setEditData({
-      ...preparation.preparation_data,
-      contact_name: preparation.preparation_data.contact_name || "",
-      contact_info: preparation.preparation_data.contact_info || "",
-      briefing_notes: preparation.preparation_data.briefing_notes || preparation.notes || ""
+      ...nextPreparationData,
+      contact_name: nextPreparationData.contact_name || "",
+      contact_info: nextPreparationData.contact_info || "",
+      briefing_notes: nextPreparationData.briefing_notes || preparation.notes || ""
     } as Record<string, any>);
-    setCompanions(preparation.preparation_data.companions ?? []);
-    setHasParking(preparation.preparation_data.has_parking ?? false);
-    setProgramRows(preparation.preparation_data.program ?? []);
-    setVisitReason(preparation.preparation_data.visit_reason ?? '');
+    setCompanions(nextPreparationData.companions ?? []);
+    setHasParking(nextPreparationData.has_parking ?? false);
+    setProgramRows(nextPreparationData.program ?? []);
+    setVisitReason(nextPreparationData.visit_reason ?? '');
     setIsEditing(false);
-    setShowCustomContact(!!(preparation.preparation_data.contact_name && preparation.preparation_data.contact_info));
-    setSelectedContactId(preparation.preparation_data.contact_id || "");
+    setShowCustomContact(!!(nextPreparationData.contact_name && nextPreparationData.contact_info));
+    setSelectedContactId(nextPreparationData.contact_id || "");
   };
 
   const handleContactSelect = (contactId: string) => {
@@ -348,6 +361,15 @@ export function AppointmentPreparationDataTab({
     const newData = { ...editData, [field]: value };
     setEditData(newData);
     debouncedSave(buildPreparationData(newData));
+  };
+
+  const handleBooleanFieldChange = (
+    field: 'social_media_planned' | 'press_planned',
+    checked: boolean
+  ) => {
+    const newData = { ...editData, [field]: checked };
+    setEditData(newData);
+    debouncedSave(buildPreparationData(newData, { [field]: checked }));
   };
 
   const toggleSection = (section: keyof typeof expandedSections) => {
@@ -999,6 +1021,56 @@ export function AppointmentPreparationDataTab({
               </div>
             </CollapsibleContent>
           </Collapsible>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardContent className="pt-6">
+          <div className="space-y-4">
+            <div className="flex items-center gap-3">
+              <MessageSquareIcon className="h-5 w-5 text-primary" />
+              <div>
+                <h3 className="font-medium">Öffentlichkeitsarbeit</h3>
+                <p className="text-sm text-muted-foreground">
+                  Planung für Social Media und Presse rund um den Termin.
+                </p>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="flex items-center justify-between rounded-lg border p-4 bg-muted/20">
+                <div className="space-y-1 pr-4">
+                  <Label htmlFor="social-media-planned" className="text-sm font-medium">
+                    Social Media geplant
+                  </Label>
+                  <p className="text-sm text-muted-foreground">
+                    Markiert, ob Beiträge oder Begleitung auf Social Media vorgesehen sind.
+                  </p>
+                </div>
+                <Switch
+                  id="social-media-planned"
+                  checked={editData.social_media_planned ?? false}
+                  onCheckedChange={(checked) => handleBooleanFieldChange('social_media_planned', checked)}
+                />
+              </div>
+
+              <div className="flex items-center justify-between rounded-lg border p-4 bg-muted/20">
+                <div className="space-y-1 pr-4">
+                  <Label htmlFor="press-planned" className="text-sm font-medium">
+                    Presse geplant
+                  </Label>
+                  <p className="text-sm text-muted-foreground">
+                    Markiert, ob Pressearbeit oder Pressebegleitung eingeplant ist.
+                  </p>
+                </div>
+                <Switch
+                  id="press-planned"
+                  checked={editData.press_planned ?? false}
+                  onCheckedChange={(checked) => handleBooleanFieldChange('press_planned', checked)}
+                />
+              </div>
+            </div>
+          </div>
         </CardContent>
       </Card>
 
