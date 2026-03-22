@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useParams, useNavigate, useSearchParams } from "react-router-dom";
 import { ArrowLeft, Edit, FileText, Upload, Calendar, Clock, MapPin, Briefcase } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -19,13 +19,18 @@ import { useTenant } from "@/hooks/useTenant";
 import { format } from "date-fns";
 import { de } from "date-fns/locale";
 
-interface AppointmentInfo {
+export interface AppointmentPreparationAppointmentDetails {
   id: string;
   title: string;
   start_time: string;
   end_time: string;
   location?: string | null;
   description?: string | null;
+  category?: string | null;
+  priority?: string | null;
+  status?: string | null;
+  meeting_link?: string | null;
+  meeting_details?: string | null;
 }
 
 export default function AppointmentPreparationDetail() {
@@ -38,7 +43,7 @@ export default function AppointmentPreparationDetail() {
   const { currentTenant } = useTenant();
   const [activeTab, setActiveTab] = useState("preparation");
   const [isCreating, setIsCreating] = useState(false);
-  const [appointmentInfo, setAppointmentInfo] = useState<AppointmentInfo | null>(null);
+  const [appointmentInfo, setAppointmentInfo] = useState<AppointmentPreparationAppointmentDetails | null>(null);
   const [userRole, setUserRole] = useState<string | null>(null);
 
   const appointmentId = searchParams.get('appointmentId');
@@ -73,24 +78,32 @@ export default function AppointmentPreparationDetail() {
     fetchRole();
   }, [user]);
 
+  const fetchAppointmentInfo = useCallback(async (appointmentId: string) => {
+    try {
+      const { data, error } = await supabase
+        .from('appointments')
+        .select('id, title, start_time, end_time, location, description, category, priority, status, meeting_link, meeting_details')
+        .eq('id', appointmentId)
+        .single();
+
+      if (error) throw error;
+      setAppointmentInfo(data);
+    } catch (e) {
+      debugConsole.error('Error fetching appointment info:', e);
+    }
+  }, []);
+
   // Fetch linked appointment details
   useEffect(() => {
-    const fetchAppointment = async () => {
-      const apptId = preparation?.appointment_id;
-      if (!apptId) return;
-      try {
-        const { data } = await supabase
-          .from('appointments')
-          .select('id, title, start_time, end_time, location, description')
-          .eq('id', apptId)
-          .single();
-        if (data) setAppointmentInfo(data);
-      } catch (e) {
-        debugConsole.error('Error fetching appointment info:', e);
-      }
-    };
-    fetchAppointment();
-  }, [preparation?.appointment_id]);
+    const apptId = preparation?.appointment_id;
+
+    if (!apptId) {
+      setAppointmentInfo(null);
+      return;
+    }
+
+    fetchAppointmentInfo(apptId);
+  }, [fetchAppointmentInfo, preparation?.appointment_id]);
 
   // Create new preparation if we have URL parameters but no ID
   useEffect(() => {
@@ -292,6 +305,8 @@ export default function AppointmentPreparationDetail() {
             <TabsContent value="preparation">
               <AppointmentPreparationDataTab
                 preparation={preparation}
+                appointmentDetails={appointmentInfo}
+                onAppointmentUpdate={() => preparation.appointment_id ? fetchAppointmentInfo(preparation.appointment_id) : Promise.resolve()}
                 onUpdate={updatePreparation}
               />
             </TabsContent>

@@ -30,28 +30,27 @@ type ConversationPartner = AppointmentConversationPartner;
 type Companion = NonNullable<AppointmentPreparation['preparation_data']['companions']>[number];
 type ProgramRow = NonNullable<AppointmentPreparation['preparation_data']['program']>[number];
 
-interface CalendarEvent {
-  id: string;
-  title: string;
-  start: string;
-  end: string;
-  description?: string;
-  location?: string;
-  category?: string;
-  priority?: string;
-  status?: string;
-  meeting_link?: string;
-  meeting_details?: string;
-}
-
 interface ExtendedAppointmentPreparation extends AppointmentPreparation {
   contact_name?: string;
   contact_info?: string;
   contact_id?: string;
 }
 
+interface AppointmentPreparationTabAppointmentDetails {
+  id: string;
+  title: string;
+  start_time: string;
+  end_time: string;
+  location?: string | null;
+  description?: string | null;
+  category?: string | null;
+  priority?: string | null;
+}
+
 interface AppointmentPreparationDataTabProps {
   preparation: AppointmentPreparation;
+  appointmentDetails: AppointmentPreparationTabAppointmentDetails | null;
+  onAppointmentUpdate: () => Promise<void>;
   onUpdate: (updates: Partial<AppointmentPreparation>) => Promise<void>;
 }
 
@@ -80,6 +79,8 @@ const getPreparationDataWithDefaults = (
 
 export function AppointmentPreparationDataTab({
   preparation,
+  appointmentDetails,
+  onAppointmentUpdate,
   onUpdate
 }: AppointmentPreparationDataTabProps) {
   const extendedPreparation = preparation as ExtendedAppointmentPreparation;
@@ -126,13 +127,11 @@ export function AppointmentPreparationDataTab({
   const [contacts, setContacts] = useState<any[]>([]);
   const [selectedContactId, setSelectedContactId] = useState("");
   const [showCustomContact, setShowCustomContact] = useState(false);
-  const [appointmentDetails, setAppointmentDetails] = useState<CalendarEvent | null>(null);
   const [showAppointmentSidebar, setShowAppointmentSidebar] = useState(false);
   const { currentTenant } = useTenant();
 
   useEffect(() => {
     if (preparation.appointment_id) {
-      fetchAppointmentDetails();
       fetchContacts();
 
       if (extendedPreparation.contact_name && extendedPreparation.contact_info) {
@@ -169,36 +168,6 @@ export function AppointmentPreparationDataTab({
       }
     }
   }, [preparation]);
-
-  const fetchAppointmentDetails = async () => {
-    try {
-      const { data, error } = await supabase
-        .from('appointments')
-        .select('*')
-        .eq('id', preparation.appointment_id ?? '')
-        .single();
-
-      if (error) throw error;
-
-      if (data) {
-        setAppointmentDetails({
-          id: data.id,
-          title: data.title,
-          start: data.start_time,
-          end: data.end_time,
-          description: data.description ?? undefined,
-          location: data.location ?? undefined,
-          category: data.category ?? undefined,
-          priority: data.priority ?? undefined,
-          status: data.status ?? undefined,
-          meeting_link: data.meeting_link ?? undefined,
-          meeting_details: data.meeting_details ?? undefined
-        });
-      }
-    } catch (error) {
-      debugConsole.error("Error fetching appointment details:", error);
-    }
-  };
 
   const fetchContacts = async () => {
     if (!currentTenant) return;
@@ -534,7 +503,7 @@ export function AppointmentPreparationDataTab({
               <FileTextIcon className="h-6 w-6 text-primary" />
               <div>
                 <CardTitle className="text-xl">
-                  Vorbereitung: {appointmentDetails?.title || "Termin"}
+                  Vorbereitung: {appointmentDetails?.title || preparation.title || "Termin"}
                 </CardTitle>
                 <div className="flex items-center gap-2 mt-1">
                   {getStatusBadge(preparation.status)}
@@ -584,7 +553,7 @@ export function AppointmentPreparationDataTab({
                   <CalendarIcon className="h-4 w-4 text-muted-foreground" />
                   <span className="font-medium">Datum:</span>
                   <span>
-                    {format(new Date(appointmentDetails.start), 'dd.MM.yyyy', { locale: de })}
+                    {format(new Date(appointmentDetails.start_time), 'dd.MM.yyyy', { locale: de })}
                   </span>
                 </div>
 
@@ -592,7 +561,7 @@ export function AppointmentPreparationDataTab({
                   <ClockIcon className="h-4 w-4 text-muted-foreground" />
                   <span className="font-medium">Zeit:</span>
                   <span>
-                    {format(new Date(appointmentDetails.start), 'HH:mm', { locale: de })} - {format(new Date(appointmentDetails.end), 'HH:mm', { locale: de })}
+                    {format(new Date(appointmentDetails.start_time), 'HH:mm', { locale: de })} - {format(new Date(appointmentDetails.end_time), 'HH:mm', { locale: de })}
                   </span>
                 </div>
 
@@ -1276,12 +1245,12 @@ export function AppointmentPreparationDataTab({
           appointment={{
             id: appointmentDetails.id,
             title: appointmentDetails.title,
-            description: appointmentDetails.description,
-            time: format(new Date(appointmentDetails.start), 'HH:mm', { locale: de }),
-            duration: Math.round((new Date(appointmentDetails.end).getTime() - new Date(appointmentDetails.start).getTime()) / (1000 * 60)).toString(),
-            date: new Date(appointmentDetails.start),
-            endTime: new Date(appointmentDetails.end),
-            location: appointmentDetails.location,
+            description: appointmentDetails.description ?? undefined,
+            time: format(new Date(appointmentDetails.start_time), 'HH:mm', { locale: de }),
+            duration: Math.round((new Date(appointmentDetails.end_time).getTime() - new Date(appointmentDetails.start_time).getTime()) / (1000 * 60)).toString(),
+            date: new Date(appointmentDetails.start_time),
+            endTime: new Date(appointmentDetails.end_time),
+            location: appointmentDetails.location ?? undefined,
             attendees: 0,
             type: (appointmentDetails.category || 'meeting') as 'deadline' | 'birthday' | 'vacation' | 'meeting' | 'appointment' | 'session' | 'blocked' | 'veranstaltung' | 'vacation_request',
             priority: (appointmentDetails.priority as 'high' | 'low' | 'medium') || 'medium',
@@ -1289,7 +1258,7 @@ export function AppointmentPreparationDataTab({
           }}
           open={showAppointmentSidebar}
           onClose={() => setShowAppointmentSidebar(false)}
-          onUpdate={() => fetchAppointmentDetails()}
+          onUpdate={onAppointmentUpdate}
         />
       )}
     </div>
