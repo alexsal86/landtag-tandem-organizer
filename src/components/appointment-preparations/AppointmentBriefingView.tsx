@@ -1,6 +1,12 @@
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { AppointmentPreparation, getConversationPartnersFromPreparationData } from "@/hooks/useAppointmentPreparation";
+import {
+  AppointmentPreparation,
+  getBriefingNotes,
+  getConversationPartnersFromPreparationData,
+  getImportantTopicLines,
+  splitPreparationTextToList,
+} from "@/hooks/useAppointmentPreparation";
 import {
   UsersIcon,
   MessageCircleIcon,
@@ -79,10 +85,6 @@ function ConversationPartnerList({
   );
 }
 
-function splitLines(text: string | undefined): string[] {
-  if (!text) return [];
-  return text.split("\n").map((line) => line.trim()).filter(Boolean);
-}
 
 export function AppointmentBriefingView({ preparation, appointmentInfo }: AppointmentBriefingViewProps) {
   const d = preparation.preparation_data;
@@ -92,17 +94,20 @@ export function AppointmentBriefingView({ preparation, appointmentInfo }: Appoin
   const program = d.program ?? [];
 
   const peopleContextLines = [d.audience, d.facts_figures].filter(Boolean) as string[];
-  const keyTopicLines = [
-    ...splitLines(d.position_statements),
-    ...splitLines(d.objectives),
-    ...splitLines(d.questions_answers),
-    ...splitLines(d.key_topics),
+  const importantTopicLines = getImportantTopicLines(d);
+  const additionalContextLines = [
+    ...splitPreparationTextToList(d.position_statements),
+    ...splitPreparationTextToList(d.objectives),
+    ...splitPreparationTextToList(d.questions_answers),
   ];
+  const briefingNotes = getBriefingNotes(preparation);
 
   const hasContent =
     conversationPartners.length > 0 ||
     peopleContextLines.length > 0 ||
-    keyTopicLines.length > 0 ||
+    importantTopicLines.length > 0 ||
+    additionalContextLines.length > 0 ||
+    Boolean(briefingNotes) ||
     incompleteTodos.length > 0 ||
     companions.length > 0 ||
     program.length > 0;
@@ -163,14 +168,30 @@ export function AppointmentBriefingView({ preparation, appointmentInfo }: Appoin
               <BriefingSection
                 icon={<MessageCircleIcon className="h-4 w-4" />}
                 title="Wichtige Themen"
-                isEmpty={keyTopicLines.length === 0}
+                isEmpty={importantTopicLines.length === 0}
               >
-                <BulletList items={keyTopicLines} />
+                <BulletList items={importantTopicLines} />
+              </BriefingSection>
+
+              <BriefingSection
+                icon={<MessageCircleIcon className="h-4 w-4" />}
+                title="Zusätzliche Gesprächsgrundlage"
+                isEmpty={additionalContextLines.length === 0}
+              >
+                <BulletList items={additionalContextLines} />
               </BriefingSection>
 
               <BriefingSection
                 icon={<CheckSquareIcon className="h-4 w-4" />}
                 title="Weitere Notizen"
+                isEmpty={!briefingNotes}
+              >
+                <p className="whitespace-pre-wrap break-words">{briefingNotes}</p>
+              </BriefingSection>
+
+              <BriefingSection
+                icon={<CheckSquareIcon className="h-4 w-4" />}
+                title="Offene To-dos"
                 isEmpty={incompleteTodos.length === 0}
               >
                 <div className="space-y-1.5">

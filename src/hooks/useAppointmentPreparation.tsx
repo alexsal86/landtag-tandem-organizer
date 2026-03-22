@@ -20,6 +20,7 @@ export interface AppointmentPreparation {
     objectives?: string;
     key_topics?: string;
     talking_points?: string;
+    briefing_notes?: string;
     audience?: string;
     contact_person?: string;
     materials_needed?: string;
@@ -77,6 +78,32 @@ export interface AppointmentConversationPartner {
   role?: string;
   organization?: string;
   note?: string;
+}
+
+export function splitPreparationTextToList(text: string | undefined | null): string[] {
+  if (!text) return [];
+
+  return text
+    .split(/\r?\n|[•·●▪◦]|\s[-–—]\s|\s*;\s*/)
+    .map((line) => line.replace(/^[-•·●▪◦]\s*/, '').trim())
+    .filter(Boolean);
+}
+
+export function getImportantTopicLines(
+  preparationData: AppointmentPreparation['preparation_data']
+): string[] {
+  return [
+    ...splitPreparationTextToList(preparationData.key_topics),
+    ...splitPreparationTextToList(preparationData.talking_points),
+  ];
+}
+
+export function getBriefingNotes(
+  preparation: Pick<AppointmentPreparation, 'notes' | 'preparation_data'>
+): string {
+  return preparation.preparation_data.briefing_notes?.trim()
+    || preparation.notes?.trim()
+    || '';
 }
 
 export function getConversationPartnersFromPreparationData(
