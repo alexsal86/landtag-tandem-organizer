@@ -473,6 +473,7 @@ export function AppointmentPreparationDataTab({
       icon: MessageSquareIcon,
       fields: [
         { key: "questions_answers", label: "Fragen & Antworten", placeholder: "Mögliche Fragen und vorbereitete Antworten", multiline: true },
+        { key: "briefing_notes", label: "Weitere Notizen", placeholder: "Optionale ergänzende Briefing-Notizen", multiline: true },
       ]
     },
     framework: {
@@ -710,7 +711,7 @@ export function AppointmentPreparationDataTab({
                   </div>
                 ) : (
                   <div className="text-muted-foreground text-sm">
-                    Keine Notizen vorhanden
+                    Keine weiteren Notizen vorhanden
                   </div>
                 )}
               </div>
