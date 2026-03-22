@@ -38,10 +38,8 @@ const HEADER_FONT_FALLBACK_STYLE = "bold" as const;
 const BODY_FONT = "helvetica";
 
 const HEADER_FONT_SOURCES = [
-  // Vite serves everything inside public/ from the web root, so the browser path is /fonts/... (not /public/fonts/...).
-  { path: "/fonts/GrueneTypeNeue-Regular.woff2", family: HEADER_FONT, style: HEADER_FONT_STYLE },
-  { path: "/fonts/GrueneTypeNeue-Regular.woff", family: HEADER_FONT, style: HEADER_FONT_STYLE },
-  // jsPDF reliably embeds TTF fonts; use the bundled PT Sans as a file-based fallback when GrueneType cannot be registered.
+  // jsPDF only supports TTF — GrueneTypeNeue.ttf first, PT Sans as fallback
+  { path: "/fonts/GrueneTypeNeue.ttf", family: HEADER_FONT, style: HEADER_FONT_STYLE },
   { path: "/fonts/PTSans-Bold.ttf", family: HEADER_FONT_FALLBACK, style: HEADER_FONT_FALLBACK_STYLE },
 ] as const;
 
