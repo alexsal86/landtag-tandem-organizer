@@ -222,49 +222,23 @@ async function drawHeader(
   const headerBottomPadding = 6;
   const titleText = getHeaderTitle(preparation, appointmentTitle);
   const infoLine = getHeaderInfoLine(startTime, location);
-  const logoSvg = await loadSvgElement("/assets/logo_fraktion.svg");
-
   const logoH = 24;
   // SVG viewBox: 793.7 x 724.5 → aspect ≈ 1.096
-  const logoW = logoSvg ? logoH * 1.096 : 0;
+  const logoW = logoH * 1.096;
   const logoX = MARGIN;
   const logoY = headerTop;
-  const leftBlockX = logoX + logoW + 6;
+
+  // Rasterize SVG logo via Canvas (reliable, no svg2pdf.js dependency)
+  const logoDataUrl = await rasterizeSvg("/assets/logo_fraktion.svg", logoW, logoH, 4);
+  const hasLogo = !!logoDataUrl;
+  const effectiveLogoW = hasLogo ? logoW : 0;
+  const leftBlockX = logoX + effectiveLogoW + (hasLogo ? 6 : 0);
   const rightBlockW = 48;
   const rightBlockX = PAGE_W - MARGIN - rightBlockW;
   const leftBlockW = Math.max(50, rightBlockX - leftBlockX - 8);
 
-  if (logoSvg) {
-    try {
-      // Wrap in a timeout to prevent hanging on complex SVGs
-      await Promise.race([
-        doc.svg(logoSvg, { x: logoX, y: logoY, width: logoW, height: logoH }),
-        new Promise((_, reject) => setTimeout(() => reject(new Error('SVG render timeout')), 5000)),
-      ]);
-    } catch {
-      // Fallback: render SVG via canvas as JPEG
-      try {
-        const canvas = document.createElement('canvas');
-        const scale = 4; // high-res
-        canvas.width = Math.round(logoW * scale);
-        canvas.height = Math.round(logoH * scale);
-        const ctx = canvas.getContext('2d');
-        if (ctx) {
-          const img = new Image();
-          const svgBlob = new Blob([new XMLSerializer().serializeToString(logoSvg)], { type: 'image/svg+xml' });
-          const url = URL.createObjectURL(svgBlob);
-          await new Promise<void>((resolve, reject) => {
-            img.onload = () => { resolve(); };
-            img.onerror = reject;
-            img.src = url;
-          });
-          ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
-          URL.revokeObjectURL(url);
-          const dataUrl = canvas.toDataURL('image/png');
-          doc.addImage(dataUrl, 'PNG', logoX, logoY, logoW, logoH);
-        }
-      } catch { /* skip logo entirely */ }
-    }
+  if (logoDataUrl) {
+    doc.addImage(logoDataUrl, "PNG", logoX, logoY, logoW, logoH);
   }
 
   doc.setFont(headerFont.family, headerFont.style);
