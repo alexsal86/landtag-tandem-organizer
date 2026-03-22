@@ -1,32 +1,34 @@
 import jsPDF from "jspdf";
-import { AppointmentPreparation, getConversationPartnersFromPreparationData } from "@/hooks/useAppointmentPreparation";
+import {
+  AppointmentPreparation,
+  getBriefingNotes,
+  getConversationPartnersFromPreparationData,
+  getImportantTopicLines,
+  splitPreparationTextToList,
+} from "@/hooks/useAppointmentPreparation";
 import { format } from "date-fns";
 import { de } from "date-fns/locale";
 
-// ─── Corporate Design GRÜNE Fraktion BW ──────────────────────────────────────
-const GREEN        = [87, 171, 39]   as const; // #57ab27 – hell (Akzente/Hintergrund)
-const GREEN_DARK   = [26, 94, 32]    as const; // #1a5e20 – dunkel (Header-BG, Labels)
-const GREEN_BG     = [240, 250, 235] as const; // heller Grün-Tint
-const GREEN_MID    = [55, 130, 30]   as const; // mittleres Grün für Linien
-const MAGENTA      = [230, 0, 126]   as const; // #E6007E
-const WHITE        = [255, 255, 255] as const;
-const TEXT_DARK    = [20, 30, 20]    as const;
-const TEXT_MUTED   = [110, 120, 110] as const;
-const SEPARATOR    = [210, 225, 205] as const;
-const COLUMN_LINE  = [200, 220, 195] as const;
+// ─── Corporate Design ─────────────────────────────────────────────────────────
+const GREEN         = [87, 171, 39]   as const;
+const GREEN_DARK    = [26, 94, 32]    as const;
+const GREEN_BG      = [237, 247, 232] as const; // card background
+const GREEN_BG2     = [225, 240, 218] as const; // slightly darker card variant
+const GREEN_LINE    = [55, 130, 30]   as const;
+const MAGENTA       = [230, 0, 126]   as const;
+const WHITE         = [255, 255, 255] as const;
+const TEXT_DARK     = [30, 30, 30]    as const;
+const TEXT_MUTED    = [110, 120, 110] as const;
 
 const PAGE_W  = 210;
 const PAGE_H  = 297;
-const MARGIN  = 16;
-
-// Column layout
-const CONTENT    = PAGE_W - MARGIN * 2;
-const LEFT_RATIO = 0.56;
-const GAP        = 5;
-const LEFT_W     = Math.round(CONTENT * LEFT_RATIO) - GAP / 2;
-const RIGHT_W    = CONTENT - LEFT_W - GAP;
-const RIGHT_X    = MARGIN + LEFT_W + GAP;
-const FOOTER_BOTTOM = PAGE_H - 14;
+const MARGIN  = 14;
+const CONTENT = PAGE_W - MARGIN * 2;
+const GAP     = 6;
+const LEFT_W  = Math.round(CONTENT * 0.52);
+const RIGHT_W = CONTENT - LEFT_W - GAP;
+const RIGHT_X = MARGIN + LEFT_W + GAP;
+const FOOTER_Y = PAGE_H - 12;
 
 interface BriefingPdfOptions {
   preparation: AppointmentPreparation;
@@ -36,34 +38,17 @@ interface BriefingPdfOptions {
 }
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
-function splitLines(text: string | undefined): string[] {
+function splitLines(text: string | undefined | null): string[] {
   if (!text) return [];
- 
-  return text.split("\n").map((line) => line.trim()).filter(Boolean);
+  return text.split("\n").map((l) => l.trim()).filter(Boolean);
 }
 
-function getPublicRelationsLines(preparationData: AppointmentPreparation["preparation_data"]): string[] {
-  return [
-    preparationData.social_media_planned ? "Social Media geplant" : null,
-    preparationData.press_planned ? "Presse geplant" : null,
-  ].filter(Boolean) as string[];
+function rgb(doc: jsPDF, c: readonly [number, number, number], type: "fill" | "text" | "draw") {
+  if (type === "fill") doc.setFillColor(c[0], c[1], c[2]);
+  else if (type === "text") doc.setTextColor(c[0], c[1], c[2]);
+  else doc.setDrawColor(c[0], c[1], c[2]);
 }
 
-function formatConversationPartnerLine(partner: ReturnType<typeof getConversationPartnersFromPreparationData>[number]) {
-  const secondaryParts = [partner.role, partner.organization, partner.note].filter(Boolean);
-  return secondaryParts.length > 0 ? `${partner.name} — ${secondaryParts.join(" • ")}` : partner.name;
-}
-function setFill(doc: jsPDF, rgb: readonly [number, number, number]) {
-  doc.setFillColor(rgb[0], rgb[1], rgb[2]);
-}
-function setDraw(doc: jsPDF, rgb: readonly [number, number, number]) {
-  doc.setDrawColor(rgb[0], rgb[1], rgb[2]);
-}
-function setTextCol(doc: jsPDF, rgb: readonly [number, number, number]) {
-  doc.setTextColor(rgb[0], rgb[1], rgb[2]);
-}
-
-// ─── Load image (async) ───────────────────────────────────────────────────────
 async function loadImageElement(src: string): Promise<HTMLImageElement | null> {
   return new Promise((resolve) => {
     const img = new Image();
@@ -73,303 +58,466 @@ async function loadImageElement(src: string): Promise<HTMLImageElement | null> {
   });
 }
 
-// ─── Header ───────────────────────────────────────────────────────────────────
+function ensureFit(doc: jsPDF, yRef: { y: number }, needed: number, topY: number) {
+  if (yRef.y + needed > FOOTER_Y) {
+    doc.addPage();
+    yRef.y = topY;
+  }
+}
+
+// ─── Card drawing ─────────────────────────────────────────────────────────────
+function drawCard(
+  doc: jsPDF,
+  x: number,
+  y: number,
+  w: number,
+  h: number,
+  bg: readonly [number, number, number] = GREEN_BG
+) {
+  rgb(doc, bg, "fill");
+  doc.roundedRect(x, y, w, h, 2, 2, "F");
+}
+
+// ─── Section card with label ──────────────────────────────────────────────────
+function drawCardLabel(
+  doc: jsPDF,
+  x: number,
+  y: number,
+  label: string,
+  accent: readonly [number, number, number] = GREEN_DARK
+) {
+  doc.setFontSize(7);
+  doc.setFont("helvetica", "bold");
+  rgb(doc, accent, "text");
+  doc.text(label.toUpperCase(), x + 4, y + 4.5);
+  return y + 7;
+}
+
+// ─── Header (white, with logo + green line) ───────────────────────────────────
 async function drawHeader(
   doc: jsPDF,
   title: string | undefined,
   startTime: string | undefined,
   location: string | undefined
 ): Promise<number> {
-  const HEADER_H = 46;
+  let y = 12;
 
-  // Dark-green background
-  setFill(doc, GREEN_DARK);
-  doc.rect(0, 0, PAGE_W, HEADER_H, "F");
-
-  // Thin lighter-green accent strip at bottom of header
-  setFill(doc, GREEN_MID);
-  doc.rect(0, HEADER_H, PAGE_W, 1.8, "F");
-
-  // ── Logo (left) ─────────────────────────────────────────────────────────────
-  const LOGO_H = 28;
-  const LOGO_W = 28;  // SVG is roughly square-ish
-  const LOGO_X = MARGIN;
-  const LOGO_Y = (HEADER_H - LOGO_H) / 2;
-
-  const logoImg = await loadImageElement("/assets/gruene-bw-logo.svg");
+  // Logo
+  const logoImg = await loadImageElement("/assets/logo_fraktion.png");
   if (logoImg) {
     try {
-      doc.addImage(logoImg, "PNG", LOGO_X, LOGO_Y, LOGO_W, LOGO_H);
-    } catch {
-      // Fallback: draw a simple sunflower placeholder circle
-      setFill(doc, GREEN);
-      doc.circle(LOGO_X + LOGO_W / 2, LOGO_Y + LOGO_H / 2, LOGO_H / 2, "F");
-    }
-  }
-
-  // ── "BRIEFING" (next to logo) ────────────────────────────────────────────────
-  const TEXT_X = LOGO_X + LOGO_W + 5;
-
-  doc.setFontSize(28);
-  doc.setFont("helvetica", "bold");
-  setTextCol(doc, WHITE);
-  doc.text("BRIEFING", TEXT_X, 22);
-
-  // ── Termin-Info-Block (below BRIEFING) ──────────────────────────────────────
-  let infoLine = "";
-  if (title)     infoLine += title;
-  if (startTime) {
-    try {
-      const dateStr = format(new Date(startTime), "EEEE, dd. MMMM yyyy", { locale: de });
-      const timeStr = format(new Date(startTime), "HH:mm", { locale: de });
-      infoLine += (infoLine ? "  ·  " : "") + dateStr + "  ·  " + timeStr + " Uhr";
+      const logoH = 14;
+      const logoW = (logoImg.width / logoImg.height) * logoH;
+      doc.addImage(logoImg, "PNG", MARGIN, y - 4, logoW, logoH);
     } catch { /* ignore */ }
   }
-  if (location)  infoLine += (infoLine ? "  ·  " : "") + location;
+
+  // Green separator line
+  y += 14;
+  rgb(doc, GREEN_LINE, "draw");
+  doc.setLineWidth(0.8);
+  doc.line(MARGIN, y, PAGE_W - MARGIN, y);
+
+  // "BRIEFING" label below line
+  y += 5;
+  doc.setFontSize(7);
+  doc.setFont("helvetica", "bold");
+  rgb(doc, TEXT_MUTED, "text");
+  doc.text("BRIEFING", PAGE_W / 2, y, { align: "center" });
+
+  // Title (large)
+  y += 6;
+  doc.setFontSize(16);
+  doc.setFont("helvetica", "bold");
+  rgb(doc, TEXT_DARK, "text");
+  const titleText = title || "Terminvorbereitung";
+  const titleLines = doc.splitTextToSize(titleText, CONTENT);
+  doc.text(titleLines, PAGE_W / 2, y, { align: "center" });
+  y += titleLines.length * 7;
+
+  // Date · Time · Location
+  let infoLine = "";
+  if (startTime) {
+    try {
+      const d = new Date(startTime);
+      infoLine += format(d, "EEEE, dd. MMMM yyyy", { locale: de });
+      infoLine += "  ·  " + format(d, "HH:mm", { locale: de }) + " Uhr";
+    } catch { /* ignore */ }
+  }
+  if (location) infoLine += (infoLine ? "  ·  " : "") + location;
 
   if (infoLine) {
-    doc.setFontSize(8.5);
+    y += 1;
+    doc.setFontSize(10);
     doc.setFont("helvetica", "normal");
-    setTextCol(doc, [180, 225, 160]);
-    const infoLines = doc.splitTextToSize(infoLine, PAGE_W - TEXT_X - MARGIN - 2);
-    doc.text(infoLines, TEXT_X, 32);
+    rgb(doc, TEXT_MUTED, "text");
+    doc.text(infoLine, PAGE_W / 2, y, { align: "center" });
+    y += 5;
   }
 
-  return HEADER_H + 1.8;
+  y += 4;
+  return y;
 }
 
 // ─── Footer ───────────────────────────────────────────────────────────────────
 function drawFooter(doc: jsPDF, pageNum: number, totalPages: number) {
-  const y = PAGE_H - 9;
-  setDraw(doc, GREEN_MID);
-  doc.setLineWidth(0.35);
-  doc.line(MARGIN, y - 2, PAGE_W - MARGIN, y - 2);
+  const y = FOOTER_Y;
+  rgb(doc, GREEN_LINE, "draw");
+  doc.setLineWidth(0.3);
+  doc.line(MARGIN, y, PAGE_W - MARGIN, y);
 
   doc.setFontSize(6.5);
   doc.setFont("helvetica", "normal");
-  setTextCol(doc, TEXT_MUTED);
-  doc.text("Vertraulich – Nur zur internen Verwendung", MARGIN, y + 1);
-  doc.text(`${pageNum} / ${totalPages}`, PAGE_W - MARGIN, y + 1, { align: "right" });
+  rgb(doc, TEXT_MUTED, "text");
+  doc.text("Vertraulich – Nur zur internen Verwendung", MARGIN, y + 4);
+  doc.text(`${pageNum} / ${totalPages}`, PAGE_W - MARGIN, y + 4, { align: "right" });
 }
 
-// ─── Column divider line (drawn once per page) ────────────────────────────────
-function drawColumnDivider(doc: jsPDF, fromY: number) {
-  const divX = MARGIN + LEFT_W + GAP / 2;
-  setDraw(doc, COLUMN_LINE);
-  doc.setLineWidth(0.25);
-  doc.line(divX, fromY, divX, FOOTER_BOTTOM - 2);
-}
-
-// ─── Section label ────────────────────────────────────────────────────────────
-function drawSectionLabel(
-  doc: jsPDF,
-  x: number,
-  y: number,
-  label: string,
-  accent: readonly [number, number, number] = GREEN
-): number {
-  const BAR_H = 5;
-  setFill(doc, accent);
-  doc.rect(x, y, 2.5, BAR_H, "F");
-
-  doc.setFontSize(7.5);
-  doc.setFont("helvetica", "bold");
-  setTextCol(doc, GREEN_DARK);
-  doc.text(label.toUpperCase(), x + 4.5, y + 3.5);
-
-  return y + BAR_H + 2.5;
-}
-
-// ─── Separator line ───────────────────────────────────────────────────────────
-function drawSeparator(doc: jsPDF, x: number, y: number, width: number): number {
-  setDraw(doc, SEPARATOR);
-  doc.setLineWidth(0.25);
-  doc.line(x, y, x + width, y);
-  return y + 4;
-}
-
-// ─── addPage helper – returns new startY ─────────────────────────────────────
-function newPage(doc: jsPDF, headerH: number): number {
-  doc.addPage();
-  return headerH + 6;
-}
-
-// ─── COLUMN HELPERS ───────────────────────────────────────────────────────────
-// All section functions work within a given column (x, maxW)
-
-// Bullet list section
-function addBulletSection(
+// ─── Card-based bullet list ───────────────────────────────────────────────────
+function addCardBulletSection(
   doc: jsPDF,
   x: number,
   maxW: number,
   label: string,
   items: string[],
   yRef: { y: number },
-  headerH: number,
-  accent?: readonly [number, number, number]
-): boolean {
-  if (items.length === 0) return false;
+  topY: number,
+  bg: readonly [number, number, number] = GREEN_BG
+) {
+  if (items.length === 0) return;
 
-  if (yRef.y + 18 > FOOTER_BOTTOM) yRef.y = newPage(doc, headerH);
-  yRef.y = drawSectionLabel(doc, x, yRef.y, label, accent);
-
-  doc.setFontSize(9.5);
+  // Estimate height
+  doc.setFontSize(9);
   doc.setFont("helvetica", "normal");
-  setTextCol(doc, TEXT_DARK);
+  let estH = 10; // label + padding
+  for (const item of items) {
+    const lines = doc.splitTextToSize(item, maxW - 14);
+    estH += lines.length * 4.5 + 1.5;
+  }
+  estH += 3;
+
+  ensureFit(doc, yRef, Math.min(estH, 40), topY);
+
+  const cardY = yRef.y;
+  // Draw card bg
+  drawCard(doc, x, cardY, maxW, estH, bg);
+
+  // Label
+  let cy = drawCardLabel(doc, x, cardY, label);
+
+  // Items
+  doc.setFontSize(9);
+  doc.setFont("helvetica", "normal");
+  rgb(doc, TEXT_DARK, "text");
 
   for (const item of items) {
-    if (yRef.y + 6 > FOOTER_BOTTOM) yRef.y = newPage(doc, headerH);
-    const lines = doc.splitTextToSize(item, maxW - 8);
-    setFill(doc, GREEN);
-    doc.circle(x + 5.5, yRef.y - 1, 0.9, "F");
-    setTextCol(doc, TEXT_DARK);
-    doc.text(lines, x + 9, yRef.y);
-    yRef.y += lines.length * 5 + 1;
+    if (cy + 5 > cardY + estH) break; // safety
+    const lines = doc.splitTextToSize(item, maxW - 14);
+    rgb(doc, GREEN, "fill");
+    doc.circle(x + 6, cy + 0.5, 0.7, "F");
+    rgb(doc, TEXT_DARK, "text");
+    doc.text(lines, x + 9.5, cy + 1.5);
+    cy += lines.length * 4.5 + 1.5;
   }
 
-  yRef.y += 3;
-  return true;
+  yRef.y = cardY + estH + 4;
 }
 
-// Kernbotschaft box
+// ─── Card-based text section ──────────────────────────────────────────────────
+function addCardTextSection(
+  doc: jsPDF,
+  x: number,
+  maxW: number,
+  label: string,
+  text: string | undefined | null,
+  yRef: { y: number },
+  topY: number,
+  bg: readonly [number, number, number] = GREEN_BG
+) {
+  const lines = splitLines(text);
+  if (lines.length === 0) return;
+  addCardBulletSection(doc, x, maxW, label, lines, yRef, topY, bg);
+}
+
+// ─── Conversation partners card ───────────────────────────────────────────────
+function addConversationPartnersCard(
+  doc: jsPDF,
+  x: number,
+  maxW: number,
+  partners: ReturnType<typeof getConversationPartnersFromPreparationData>,
+  yRef: { y: number },
+  topY: number
+) {
+  if (partners.length === 0) return;
+
+  doc.setFontSize(9);
+  let estH = 10;
+  for (const p of partners) {
+    estH += 5;
+    const secondary = [p.role, p.organization, p.note].filter(Boolean);
+    if (secondary.length > 0) estH += 4;
+  }
+  estH += 3;
+
+  ensureFit(doc, yRef, Math.min(estH, 50), topY);
+  const cardY = yRef.y;
+  drawCard(doc, x, cardY, maxW, estH, GREEN_BG);
+  let cy = drawCardLabel(doc, x, cardY, "Gesprächspartner");
+
+  for (const p of partners) {
+    if (cy + 5 > cardY + estH) break;
+    doc.setFontSize(9);
+    doc.setFont("helvetica", "bold");
+    rgb(doc, TEXT_DARK, "text");
+    doc.text(p.name, x + 5, cy + 1.5);
+    cy += 4.5;
+
+    const secondary = [p.role, p.organization, p.note].filter(Boolean);
+    if (secondary.length > 0) {
+      doc.setFontSize(7.5);
+      doc.setFont("helvetica", "normal");
+      rgb(doc, TEXT_MUTED, "text");
+      doc.text(secondary.join(" · "), x + 5, cy + 0.5);
+      cy += 4;
+    }
+  }
+
+  yRef.y = cardY + estH + 4;
+}
+
+// ─── Companions card (badges) ─────────────────────────────────────────────────
+function addCompanionsCard(
+  doc: jsPDF,
+  x: number,
+  maxW: number,
+  companions: Array<{ id: string; name: string; note?: string }>,
+  yRef: { y: number },
+  topY: number
+) {
+  if (companions.length === 0) return;
+
+  ensureFit(doc, yRef, 22, topY);
+  const cardY = yRef.y;
+
+  // Estimate badge rows
+  doc.setFontSize(8);
+  let bx = 5;
+  let rows = 1;
+  for (const c of companions) {
+    const label = c.note ? `${c.name} (${c.note})` : c.name;
+    const tw = doc.getTextWidth(label) + 8;
+    if (bx + tw > maxW - 4) { bx = 5; rows++; }
+    bx += tw + 3;
+  }
+  const estH = 10 + rows * 8 + 3;
+
+  drawCard(doc, x, cardY, maxW, estH, GREEN_BG2);
+  let cy = drawCardLabel(doc, x, cardY, "Begleitpersonen");
+
+  doc.setFontSize(8);
+  bx = x + 5;
+
+  for (const c of companions) {
+    const label = c.note ? `${c.name} (${c.note})` : c.name;
+    const tw = doc.getTextWidth(label) + 8;
+
+    if (bx + tw > x + maxW - 4) {
+      bx = x + 5;
+      cy += 8;
+    }
+
+    rgb(doc, WHITE, "fill");
+    doc.roundedRect(bx, cy - 3.5, tw, 6.5, 1.5, 1.5, "F");
+    doc.setFont("helvetica", "normal");
+    rgb(doc, GREEN_DARK, "text");
+    doc.text(label, bx + 4, cy + 0.5);
+    bx += tw + 3;
+  }
+
+  yRef.y = cardY + estH + 4;
+}
+
+// ─── Kernbotschaft (full-width, magenta accent) ───────────────────────────────
 function addKernbotschaft(
   doc: jsPDF,
   x: number,
   maxW: number,
   text: string,
   yRef: { y: number },
-  headerH: number
+  topY: number
 ) {
   if (!text.trim()) return;
 
-  if (yRef.y + 22 > FOOTER_BOTTOM) yRef.y = newPage(doc, headerH);
-  yRef.y = drawSectionLabel(doc, x, yRef.y, "Kernbotschaft");
+  doc.setFontSize(10);
+  const lines = doc.splitTextToSize(`„${text}"`, maxW - 14);
+  const estH = lines.length * 5 + 14;
 
-  const lines = doc.splitTextToSize(`„${text}"`, maxW - 10);
-  const boxH = lines.length * 5.5 + 10;
+  ensureFit(doc, yRef, estH, topY);
+  const cardY = yRef.y;
 
-  if (yRef.y + boxH > FOOTER_BOTTOM) yRef.y = newPage(doc, headerH);
+  drawCard(doc, x, cardY, maxW, estH, GREEN_BG);
+  // Magenta accent bar
+  rgb(doc, MAGENTA, "fill");
+  doc.roundedRect(x, cardY, 3, estH, 1, 1, "F");
 
-  setFill(doc, GREEN_BG);
-  doc.roundedRect(x, yRef.y, maxW, boxH, 2, 2, "F");
-
-  setFill(doc, MAGENTA);
-  doc.roundedRect(x, yRef.y, 3, boxH, 1, 1, "F");
+  drawCardLabel(doc, x + 2, cardY, "Kernbotschaft", MAGENTA);
 
   doc.setFontSize(10);
   doc.setFont("helvetica", "italic");
-  setTextCol(doc, [35, 35, 35]);
-  doc.text(lines, x + 7, yRef.y + 6.5);
+  rgb(doc, TEXT_DARK, "text");
+  doc.text(lines, x + 9, cardY + 10);
 
-  yRef.y += boxH + 5;
+  yRef.y = cardY + estH + 4;
 }
 
-// Persons as badges (generic: for Begleitpersonen or Gesprächspartner)
-function addPersonBadges(
+// ─── Ablauf card ──────────────────────────────────────────────────────────────
+function addAblaufCard(
   doc: jsPDF,
   x: number,
   maxW: number,
-  label: string,
-  persons: Array<{ display: string }>,
+  program: Array<{ id: string; time: string; item: string; notes?: string }>,
   yRef: { y: number },
-  headerH: number,
-  accentColor: readonly [number, number, number] = GREEN
-) {
-  if (persons.length === 0) return;
-
-  if (yRef.y + 18 > FOOTER_BOTTOM) yRef.y = newPage(doc, headerH);
-  yRef.y = drawSectionLabel(doc, x, yRef.y, label, accentColor);
-
-  doc.setFontSize(9);
-  let bx = x + 1;
-
-  for (const p of persons) {
-    const tw = doc.getTextWidth(p.display) + 6;
-
-    if (bx + tw > x + maxW) {
-      bx = x + 1;
-      yRef.y += 8;
-    }
-    if (yRef.y + 8 > FOOTER_BOTTOM) yRef.y = newPage(doc, headerH);
-
-    setFill(doc, GREEN_BG);
-    setDraw(doc, SEPARATOR);
-    doc.setLineWidth(0.25);
-    doc.roundedRect(bx, yRef.y - 4, tw, 6, 1.5, 1.5, "FD");
-
-    doc.setFont("helvetica", "normal");
-    setTextCol(doc, GREEN_DARK);
-    doc.text(p.display, bx + 3, yRef.y);
-
-    bx += tw + 3;
-  }
-
-  yRef.y += 10;
-}
-
-// Ablauf section (right column)
-function addAblauf(
-  doc: jsPDF,
-  x: number,
-  maxW: number,
-  program: Array<{ time: string; item: string; notes?: string }>,
-  yRef: { y: number },
-  headerH: number
+  topY: number
 ) {
   if (program.length === 0) return;
 
-  if (yRef.y + 18 > FOOTER_BOTTOM) yRef.y = newPage(doc, headerH);
-  yRef.y = drawSectionLabel(doc, x, yRef.y, "Ablauf");
+  doc.setFontSize(9);
+  let estH = 10;
+  for (const p of program) {
+    const lines = doc.splitTextToSize(p.item, maxW - 24);
+    estH += lines.length * 4.5 + 2;
+  }
+  estH += 3;
+
+  ensureFit(doc, yRef, Math.min(estH, 50), topY);
+  const cardY = yRef.y;
+  drawCard(doc, x, cardY, maxW, estH, GREEN_BG2);
+  let cy = drawCardLabel(doc, x, cardY, "Ablauf");
 
   for (const p of program) {
-    if (yRef.y + 6 > FOOTER_BOTTOM) yRef.y = newPage(doc, headerH);
-
-    // Time
-    doc.setFontSize(9);
+    if (cy + 5 > cardY + estH) break;
+    doc.setFontSize(8);
     doc.setFont("helvetica", "bold");
-    setTextCol(doc, GREEN_DARK);
-    doc.text(p.time, x + 1, yRef.y);
+    rgb(doc, GREEN_DARK, "text");
+    doc.text(p.time || "", x + 5, cy + 1.5);
 
-    // Dot
-    setTextCol(doc, TEXT_MUTED);
+    doc.setFontSize(9);
     doc.setFont("helvetica", "normal");
-    doc.text("·", x + 15, yRef.y);
-
-    // Description
-    setTextCol(doc, TEXT_DARK);
-    const descW = maxW - 20;
-    const descLines = doc.splitTextToSize(p.item, descW);
-    doc.text(descLines, x + 19, yRef.y);
-    yRef.y += descLines.length * 4.8 + 1;
-
-    // Optional notes in muted style
-    if (p.notes && p.notes.trim()) {
-      if (yRef.y + 5 > FOOTER_BOTTOM) yRef.y = newPage(doc, headerH);
-      doc.setFontSize(8);
-      setTextCol(doc, TEXT_MUTED);
-      const noteLines = doc.splitTextToSize(p.notes, descW);
-      doc.text(noteLines, x + 19, yRef.y);
-      yRef.y += noteLines.length * 4.2 + 1;
-    }
+    rgb(doc, TEXT_DARK, "text");
+    const descLines = doc.splitTextToSize(p.item, maxW - 24);
+    doc.text(descLines, x + 20, cy + 1.5);
+    cy += descLines.length * 4.5 + 2;
   }
 
-  yRef.y += 3;
+  yRef.y = cardY + estH + 4;
 }
 
-// Simple text section (for Hintergrund, Fakten, etc.)
-function addTextSection(
+// ─── PR badges card ───────────────────────────────────────────────────────────
+function addPRCard(
   doc: jsPDF,
   x: number,
   maxW: number,
-  label: string,
-  text: string,
+  d: AppointmentPreparation["preparation_data"],
   yRef: { y: number },
-  headerH: number,
-  accent?: readonly [number, number, number]
-): boolean {
-  const lines = splitLines(text);
-  if (lines.length === 0) return false;
-  return addBulletSection(doc, x, maxW, label, lines, yRef, headerH, accent);
+  topY: number
+) {
+  const badges: string[] = [];
+  if (d.social_media_planned) badges.push("✓ Social Media");
+  if (d.press_planned) badges.push("✓ Presse");
+  if (badges.length === 0 && !d.social_media_planned && !d.press_planned) return;
+
+  // Show even if none planned
+  if (badges.length === 0) {
+    badges.push("Keine Öffentlichkeitsarbeit geplant");
+  }
+
+  const estH = 18;
+  ensureFit(doc, yRef, estH, topY);
+  const cardY = yRef.y;
+  drawCard(doc, x, cardY, maxW, estH, GREEN_BG);
+  drawCardLabel(doc, x, cardY, "Öffentlichkeitsarbeit");
+
+  doc.setFontSize(8);
+  let bx = x + 5;
+  const by = cardY + 12;
+  for (const badge of badges) {
+    const tw = doc.getTextWidth(badge) + 8;
+    rgb(doc, GREEN_DARK, "fill");
+    doc.roundedRect(bx, by - 3, tw, 6, 1.5, 1.5, "F");
+    doc.setFont("helvetica", "bold");
+    rgb(doc, WHITE, "text");
+    doc.text(badge, bx + 4, by + 1);
+    bx += tw + 3;
+  }
+
+  yRef.y = cardY + estH + 4;
+}
+
+// ─── Checklist card ───────────────────────────────────────────────────────────
+function addChecklistCard(
+  doc: jsPDF,
+  x: number,
+  maxW: number,
+  items: Array<{ id: string; label: string; completed: boolean }>,
+  yRef: { y: number },
+  topY: number
+) {
+  const openItems = items.filter((i) => !i.completed);
+  if (openItems.length === 0) return;
+
+  let estH = 10;
+  for (const item of openItems) {
+    doc.setFontSize(9);
+    const lines = doc.splitTextToSize(item.label, maxW - 14);
+    estH += lines.length * 4.5 + 2;
+  }
+  estH += 3;
+
+  ensureFit(doc, yRef, Math.min(estH, 40), topY);
+  const cardY = yRef.y;
+  drawCard(doc, x, cardY, maxW, estH, GREEN_BG);
+  let cy = drawCardLabel(doc, x, cardY, "Offene To-dos");
+
+  doc.setFontSize(9);
+  for (const item of openItems) {
+    if (cy + 5 > cardY + estH) break;
+    // Checkbox
+    rgb(doc, TEXT_MUTED, "draw");
+    doc.setLineWidth(0.3);
+    doc.rect(x + 5, cy - 1.5, 3.5, 3.5);
+
+    doc.setFont("helvetica", "normal");
+    rgb(doc, TEXT_DARK, "text");
+    const lines = doc.splitTextToSize(item.label, maxW - 16);
+    doc.text(lines, x + 11, cy + 1);
+    cy += lines.length * 4.5 + 2;
+  }
+
+  yRef.y = cardY + estH + 4;
+}
+
+// ─── Lined notes area ─────────────────────────────────────────────────────────
+function addNotesArea(
+  doc: jsPDF,
+  x: number,
+  maxW: number,
+  yRef: { y: number },
+  topY: number
+) {
+  const estH = 40;
+  ensureFit(doc, yRef, estH, topY);
+  const cardY = yRef.y;
+  drawCard(doc, x, cardY, maxW, estH, GREEN_BG);
+  drawCardLabel(doc, x, cardY, "Notizen");
+
+  // Draw lines
+  rgb(doc, [200, 215, 195], "draw");
+  doc.setLineWidth(0.2);
+  for (let ly = cardY + 12; ly < cardY + estH - 3; ly += 6) {
+    doc.line(x + 5, ly, x + maxW - 5, ly);
+  }
+
+  yRef.y = cardY + estH + 4;
 }
 
 // ─── MAIN EXPORT ──────────────────────────────────────────────────────────────
@@ -381,129 +529,87 @@ export async function generateBriefingPdf({
 }: BriefingPdfOptions): Promise<void> {
   const doc = new jsPDF({ unit: "mm", format: "a4" });
   const d = preparation.preparation_data;
+  const topY = 14; // Y for new pages
 
-  // ── Header ─────────────────────────────────────────────────────────────────
-  const headerEndY = await drawHeader(doc, appointmentTitle, appointmentStartTime, appointmentLocation);
-  const startY = headerEndY + 6;
+  // ── Header ──────────────────────────────────────────────────────────────────
+  const startY = await drawHeader(doc, appointmentTitle, appointmentStartTime, appointmentLocation);
 
-  // Column Y trackers
   const leftY  = { y: startY };
   const rightY = { y: startY };
 
-  // Draw the column divider on page 1 (we'll add it on new pages too)
-  drawColumnDivider(doc, startY - 2);
+  // ── LEFT COLUMN ─────────────────────────────────────────────────────────────
 
-  // Track which page each column is on to redraw divider when needed
-  let lastDividerPage = 1;
-  const ensureDivider = () => {
-    const currentPage = (doc.internal as { getCurrentPageInfo: () => { pageNumber: number } }).getCurrentPageInfo().pageNumber;
-    if (currentPage !== lastDividerPage) {
-      lastDividerPage = currentPage;
-      drawColumnDivider(doc, 12);
-    }
-  };
+  // 1. Gesprächspartner
+  const partners = getConversationPartnersFromPreparationData(d);
+  addConversationPartnersCard(doc, MARGIN, LEFT_W, partners, leftY, topY);
 
-  // ── RIGHT COLUMN: Hintergrund + Ablauf ────────────────────────────────────
+  // 2. Gesprächspunkte (talking_points + important topics)
+  const talkingLines = [
+    ...splitLines(d.talking_points),
+    ...getImportantTopicLines(d),
+  ];
+  addCardBulletSection(doc, MARGIN, LEFT_W, "Gesprächspunkte", talkingLines, leftY, topY);
 
-  // Hintergrund
-  const bgLines: string[] = [];
-  if (d.audience)       bgLines.push(d.audience);
-  if (d.facts_figures)  bgLines.push(...splitLines(d.facts_figures));
+  // 3. Was will ich erreichen? (objectives)
+  addCardTextSection(doc, MARGIN, LEFT_W, "Was will ich erreichen?", d.objectives, leftY, topY, GREEN_BG2);
 
-  if (bgLines.length > 0) {
-    addBulletSection(doc, RIGHT_X, RIGHT_W, "Hintergrund", bgLines, rightY, startY);
-    rightY.y = drawSeparator(doc, RIGHT_X, rightY.y, RIGHT_W);
-  }
-
-  // Ablauf
-  addAblauf(doc, RIGHT_X, RIGHT_W, d.program ?? [], rightY, startY);
-
-  // ── LEFT COLUMN: Ziele, Position, Kernbotschaft, Personen ─────────────────
-
-  // Ziele / Was will ich erreichen?
-  const objectiveLines = splitLines(d.objectives);
-  if (objectiveLines.length > 0) {
-    ensureDivider();
-    addBulletSection(doc, MARGIN, LEFT_W, "Was will ich erreichen?", objectiveLines, leftY, startY);
-    leftY.y = drawSeparator(doc, MARGIN, leftY.y, LEFT_W);
-  }
-
-  // Meine Position
-  const positionLines = splitLines(d.position_statements);
-  if (positionLines.length > 0) {
-    ensureDivider();
-    addBulletSection(doc, MARGIN, LEFT_W, "Meine Position / Linie", positionLines, leftY, startY);
-    leftY.y = drawSeparator(doc, MARGIN, leftY.y, LEFT_W);
-  }
-
-  // Mögliche kritische Fragen
-  const questionLines = splitLines(d.questions_answers);
-  if (questionLines.length > 0) {
-    ensureDivider();
-    addBulletSection(doc, MARGIN, LEFT_W, "Kritische Fragen & Antworten", questionLines, leftY, startY);
-    leftY.y = drawSeparator(doc, MARGIN, leftY.y, LEFT_W);
-  }
-
-  // Kernbotschaft
+  // 4. Kernbotschaft
   const keyMessage = d.key_topics?.trim();
   if (keyMessage) {
-    ensureDivider();
-    addKernbotschaft(doc, MARGIN, LEFT_W, keyMessage, leftY, startY);
-    leftY.y = drawSeparator(doc, MARGIN, leftY.y, LEFT_W);
+    addKernbotschaft(doc, MARGIN, LEFT_W, keyMessage, leftY, topY);
   }
 
-  // Gesprächspartner (conversation_partners array, with fallback to legacy fields)
-  const conversationPartners = getConversationPartnersFromPreparationData(d);
-  const gesprächspartnerList = conversationPartners.map((p) => ({
-    display: formatConversationPartnerLine(p),
-  }));
+  // 5. Meine Position / Linie
+  addCardTextSection(doc, MARGIN, LEFT_W, "Meine Position / Linie", d.position_statements, leftY, topY);
 
-  if (gesprächspartnerList.length > 0) {
-    ensureDivider();
-    addPersonBadges(
-      doc, MARGIN, LEFT_W,
-      "Gesprächspartner",
-      gesprächspartnerList,
-      leftY, startY,
-      [0, 120, 80]  // teal accent to visually distinguish from Begleitpersonen
-    );
-    leftY.y = drawSeparator(doc, MARGIN, leftY.y, LEFT_W);
+  // 6. Hintergrund (audience + facts)
+  const bgLines: string[] = [];
+  if (d.audience) bgLines.push(d.audience);
+  if (d.facts_figures) bgLines.push(...splitLines(d.facts_figures));
+  addCardBulletSection(doc, MARGIN, LEFT_W, "Hintergrund", bgLines, leftY, topY, GREEN_BG2);
+
+  // 7. Kritische Fragen
+  addCardTextSection(doc, MARGIN, LEFT_W, "Kritische Fragen & Antworten", d.questions_answers, leftY, topY);
+
+  // 8. Weitere Notizen
+  const briefingNotes = getBriefingNotes(preparation);
+  if (briefingNotes) {
+    addCardBulletSection(doc, MARGIN, LEFT_W, "Weitere Notizen", splitLines(briefingNotes), leftY, topY, GREEN_BG);
   }
 
-  // Begleitpersonen
-  const begleitList = (d.companions ?? []).map((c) => ({
-    display: c.note ? `${c.name} (${c.note})` : c.name,
-  }));
-  if (begleitList.length > 0) {
-    ensureDivider();
-    addPersonBadges(doc, MARGIN, LEFT_W, "Begleitpersonen", begleitList, leftY, startY);
+  // ── RIGHT COLUMN ────────────────────────────────────────────────────────────
+
+  // 1. Anlass des Besuchs
+  if (preparation.title?.trim()) {
+    const estH = 16;
+    ensureFit(doc, rightY, estH, topY);
+    const cy = rightY.y;
+    drawCard(doc, RIGHT_X, cy, RIGHT_W, estH, GREEN_BG2);
+    drawCardLabel(doc, RIGHT_X, cy, "Anlass des Besuchs");
+    doc.setFontSize(9);
+    doc.setFont("helvetica", "bold");
+    rgb(doc, TEXT_DARK, "text");
+    const titleLines = doc.splitTextToSize(preparation.title, RIGHT_W - 10);
+    doc.text(titleLines, RIGHT_X + 5, cy + 11);
+    rightY.y = cy + estH + 4;
   }
 
-  // Talking points & Materials (if present, add below in left col)
-  const talkingLines = splitLines(d.talking_points);
-  if (talkingLines.length > 0) {
-    leftY.y = drawSeparator(doc, MARGIN, leftY.y, LEFT_W);
-    addBulletSection(doc, MARGIN, LEFT_W, "Gesprächspunkte", talkingLines, leftY, startY);
-  }
+  // 2. Begleitpersonen
+  addCompanionsCard(doc, RIGHT_X, RIGHT_W, d.companions ?? [], rightY, topY);
 
-  const materialsLines = splitLines(d.materials_needed);
-  if (materialsLines.length > 0) {
-    leftY.y = drawSeparator(doc, MARGIN, leftY.y, LEFT_W);
-    addBulletSection(doc, MARGIN, LEFT_W, "Materialien", materialsLines, leftY, startY);
-  }
+  // 3. Ablauf
+  addAblaufCard(doc, RIGHT_X, RIGHT_W, d.program ?? [], rightY, topY);
 
-  // Logistik (travel_time, follow_up)
-  const logistikLines: string[] = [];
-  if (d.travel_time) logistikLines.push(`Fahrzeit: ${d.travel_time}`);
-  if (d.has_parking !== undefined) logistikLines.push(d.has_parking ? "Parkplatz vorhanden" : "Kein Parkplatz");
-  if (d.follow_up) logistikLines.push(...splitLines(d.follow_up));
+  // 4. Offene To-dos
+  addChecklistCard(doc, RIGHT_X, RIGHT_W, preparation.checklist_items ?? [], rightY, topY);
 
-  if (logistikLines.length > 0) {
-    leftY.y = drawSeparator(doc, MARGIN, leftY.y, LEFT_W);
-    addBulletSection(doc, MARGIN, LEFT_W, "Logistik", logistikLines, leftY, startY);
-  }
+  // 5. Öffentlichkeitsarbeit
+  addPRCard(doc, RIGHT_X, RIGHT_W, d, rightY, topY);
 
-  // ── Footers on all pages ──────────────────────────────────────────────────
+  // 6. Notizen-Bereich (liniert)
+  addNotesArea(doc, RIGHT_X, RIGHT_W, rightY, topY);
+
+  // ── Footers on all pages ────────────────────────────────────────────────────
   const totalPages = (doc.internal as unknown as { pages: unknown[] }).pages.length - 1;
   for (let p = 1; p <= totalPages; p++) {
     doc.setPage(p);
