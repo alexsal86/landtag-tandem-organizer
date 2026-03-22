@@ -50,11 +50,30 @@ function rgb(doc: jsPDF, c: readonly [number, number, number], type: "fill" | "t
   else doc.setDrawColor(c[0], c[1], c[2]);
 }
 
-async function loadImageElement(src: string): Promise<HTMLImageElement | null> {
+async function loadImageAsCompressedDataUrl(
+  src: string,
+  maxWidth = 200,
+): Promise<string | null> {
   return new Promise((resolve) => {
     const img = new Image();
-    img.onload = () => resolve(img);
+    img.onload = () => {
+      try {
+        const scale = Math.min(1, maxWidth / img.naturalWidth);
+        const w = Math.round(img.naturalWidth * scale);
+        const h = Math.round(img.naturalHeight * scale);
+        const canvas = document.createElement("canvas");
+        canvas.width = w;
+        canvas.height = h;
+        const ctx = canvas.getContext("2d");
+        if (!ctx) { resolve(null); return; }
+        ctx.drawImage(img, 0, 0, w, h);
+        resolve(canvas.toDataURL("image/jpeg", 0.75));
+      } catch {
+        resolve(null);
+      }
+    };
     img.onerror = () => resolve(null);
+    img.crossOrigin = "anonymous";
     img.src = src;
   });
 }
