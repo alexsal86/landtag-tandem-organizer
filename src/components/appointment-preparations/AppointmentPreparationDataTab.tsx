@@ -322,10 +322,6 @@ export function AppointmentPreparationDataTab({
       try {
         setSaving(true);
         await onUpdate({ preparation_data: data });
-        toast({
-          title: "Gespeichert",
-          description: "Änderungen wurden automatisch gespeichert.",
-        });
       } catch (error) {
         debugConsole.error("Error saving preparation data:", error);
         toast({
@@ -336,7 +332,7 @@ export function AppointmentPreparationDataTab({
       } finally {
         setSaving(false);
       }
-    }, 500),
+    }, 2000),
     [onUpdate]
   );
 
