@@ -81,7 +81,14 @@ function ConversationPartnerList({
 
 function splitLines(text: string | undefined): string[] {
   if (!text) return [];
-  return text.split("\n").map((line) => line.trim()).filter(Boolean);
+  return text
+    .split(/\r?\n|[•·;]+/)
+    .map((line) => line.replace(/^[-*\u2022]\s*/, "").trim())
+    .filter(Boolean);
+}
+
+function getUniqueLines(...values: Array<string | undefined | null>): string[] {
+  return Array.from(new Set(values.flatMap((value) => splitLines(value ?? undefined))));
 }
 
 export function AppointmentBriefingView({ preparation, appointmentInfo }: AppointmentBriefingViewProps) {
@@ -92,17 +99,14 @@ export function AppointmentBriefingView({ preparation, appointmentInfo }: Appoin
   const program = d.program ?? [];
 
   const peopleContextLines = [d.audience, d.facts_figures].filter(Boolean) as string[];
-  const keyTopicLines = [
-    ...splitLines(d.position_statements),
-    ...splitLines(d.objectives),
-    ...splitLines(d.questions_answers),
-    ...splitLines(d.key_topics),
-  ];
+  const keyTopicLines = getUniqueLines(d.key_topics, d.talking_points);
+  const additionalNotesLines = getUniqueLines(d.briefing_notes, preparation.notes, d.notes);
 
   const hasContent =
     conversationPartners.length > 0 ||
     peopleContextLines.length > 0 ||
     keyTopicLines.length > 0 ||
+    additionalNotesLines.length > 0 ||
     incompleteTodos.length > 0 ||
     companions.length > 0 ||
     program.length > 0;
@@ -171,6 +175,14 @@ export function AppointmentBriefingView({ preparation, appointmentInfo }: Appoin
               <BriefingSection
                 icon={<CheckSquareIcon className="h-4 w-4" />}
                 title="Weitere Notizen"
+                isEmpty={additionalNotesLines.length === 0}
+              >
+                <BulletList items={additionalNotesLines} />
+              </BriefingSection>
+
+              <BriefingSection
+                icon={<CheckSquareIcon className="h-4 w-4" />}
+                title="Offene Punkte"
                 isEmpty={incompleteTodos.length === 0}
               >
                 <div className="space-y-1.5">

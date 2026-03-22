@@ -20,6 +20,7 @@ export interface AppointmentPreparation {
     objectives?: string;
     key_topics?: string;
     talking_points?: string;
+    briefing_notes?: string;
     audience?: string;
     contact_person?: string;
     materials_needed?: string;

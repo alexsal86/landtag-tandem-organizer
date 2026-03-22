@@ -448,8 +448,8 @@ export function AppointmentPreparationDataTab({
       icon: FileTextIcon,
       fields: [
         { key: "objectives", label: "Ziele", placeholder: "Welche Ziele sollen erreicht werden?", multiline: true },
-        { key: "key_topics", label: "Hauptthemen", placeholder: "Wichtigste Gesprächsthemen" },
-        { key: "talking_points", label: "Gesprächspunkte", placeholder: "Konkrete Punkte für das Gespräch", multiline: true },
+        { key: "key_topics", label: "Wichtige Themen", placeholder: "Je Zeile ein wichtiges Thema für das Briefing", multiline: true },
+        { key: "talking_points", label: "Ergänzende Gesprächspunkte", placeholder: "Optional: zusätzliche Punkte für das Gespräch", multiline: true },
       ]
     },
     people: {
@@ -473,6 +473,7 @@ export function AppointmentPreparationDataTab({
       icon: MessageSquareIcon,
       fields: [
         { key: "questions_answers", label: "Fragen & Antworten", placeholder: "Mögliche Fragen und vorbereitete Antworten", multiline: true },
+        { key: "briefing_notes", label: "Weitere Notizen", placeholder: "Optionale ergänzende Briefing-Notizen", multiline: true },
       ]
     },
     framework: {
@@ -699,7 +700,7 @@ export function AppointmentPreparationDataTab({
               <Textarea
                 value={editData.notes}
                 onChange={(e) => setEditData(prev => ({ ...prev, notes: e.target.value }))}
-                placeholder="Allgemeine Notizen zur Terminvorbereitung..."
+                placeholder="Weitere Notizen zum Terminbriefing..."
                 rows={4}
               />
             ) : (
@@ -710,7 +711,7 @@ export function AppointmentPreparationDataTab({
                   </div>
                 ) : (
                   <div className="text-muted-foreground text-sm">
-                    Keine Notizen vorhanden
+                    Keine weiteren Notizen vorhanden
                   </div>
                 )}
               </div>
