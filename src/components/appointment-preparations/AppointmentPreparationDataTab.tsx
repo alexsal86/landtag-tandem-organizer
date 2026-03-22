@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect, useRef } from "react";
+import { useState, useCallback, useEffect, useRef, useMemo } from "react";
 import { debugConsole } from "@/utils/debugConsole";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -129,6 +129,10 @@ export function AppointmentPreparationDataTab({
   const [showCustomContact, setShowCustomContact] = useState(false);
   const [showAppointmentSidebar, setShowAppointmentSidebar] = useState(false);
   const { currentTenant } = useTenant();
+  const contactsById = useMemo(
+    () => new Map(contacts.map(contact => [contact.id, contact])),
+    [contacts]
+  );
 
   useEffect(() => {
     if (preparation.appointment_id) {
@@ -201,20 +205,45 @@ export function AppointmentPreparationDataTab({
     program: overrides?.program ?? programRows,
   });
 
+
+  const getContactDetails = (contact?: {
+    name?: string | null;
+    email?: string | null;
+    phone?: string | null;
+  }) => {
+    if (!contact) {
+      return {
+        contact_name: undefined,
+        contact_info: undefined,
+      };
+    }
+
+    const contactInfo = `${contact.email || ""}${contact.phone ? ` | ${contact.phone}` : ""}`
+      .trim()
+      .replace(/^\|/, '')
+      .trim();
+
+    return {
+      contact_name: contact.name || undefined,
+      contact_info: contactInfo || undefined,
+    };
+  };
+
   const handleSave = async () => {
     try {
       setSaving(true);
 
+      const selectedContact = contactsById.get(selectedContactId);
+      const resolvedContact = showCustomContact
+        ? {
+            contact_name: editData.contact_name || undefined,
+            contact_info: editData.contact_info || undefined,
+          }
+        : getContactDetails(selectedContact);
+
       const updatedPreparationData = buildPreparationData({
         ...editData,
-        contact_name: showCustomContact
-          ? editData.contact_name
-          : (selectedContactId ? contacts.find(c => c.id === selectedContactId)?.name : undefined),
-        contact_info: showCustomContact
-          ? editData.contact_info
-          : (selectedContactId
-            ? `${contacts.find(c => c.id === selectedContactId)?.email || ""}${contacts.find(c => c.id === selectedContactId)?.phone ? ` | ${contacts.find(c => c.id === selectedContactId)?.phone}` : ""}`.trim().replace(/^\|/, '').trim() || undefined
-            : undefined),
+        ...resolvedContact,
         contact_id: showCustomContact ? undefined : selectedContactId || undefined,
         contact_person: conversationPartners.length > 0 ? undefined : editData.contact_person
       } as any);
@@ -270,12 +299,13 @@ export function AppointmentPreparationDataTab({
     } else {
       setShowCustomContact(false);
       setSelectedContactId(contactId);
-      const selectedContact = contacts.find(c => c.id === contactId);
+      const selectedContact = contactsById.get(contactId);
       if (selectedContact) {
+        const { contact_name, contact_info } = getContactDetails(selectedContact);
         setEditData(prev => ({
           ...prev,
-          contact_name: selectedContact.name,
-          contact_info: `${selectedContact.email || ""}${selectedContact.phone ? ` | ${selectedContact.phone}` : ""}`.trim().replace(/^\|/, '').trim()
+          contact_name: contact_name || "",
+          contact_info: contact_info || ""
         }));
       }
     }
