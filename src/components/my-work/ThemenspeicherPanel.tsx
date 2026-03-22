@@ -9,6 +9,7 @@ import { useToast } from "@/hooks/use-toast";
 import { getErrorMessage } from "@/utils/errorHandler";
 import { TopicBacklogEntry, TopicEditorialStatus, useTopicBacklog } from "@/hooks/useTopicBacklog";
 import { Badge } from "@/components/ui/badge";
+import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -276,7 +277,7 @@ export function ThemenspeicherPanel({ onContentCreated }: Props) {
           {topics.map((topic) => {
             const statusMeta = STATUS_META[topic.status];
             return (
-              <div key={topic.id} className="rounded-md border p-3 space-y-3">
+              <div key={topic.id} className="group rounded-md border p-3 space-y-3">
                 <div className="flex items-start justify-between gap-2">
                   <div className="space-y-1">
                     <div className="flex flex-wrap items-center gap-2">
@@ -285,7 +286,10 @@ export function ThemenspeicherPanel({ onContentCreated }: Props) {
                     </div>
                     {topic.short_description && <p className="text-xs text-muted-foreground">{topic.short_description}</p>}
                   </div>
-                  <div className="flex flex-wrap items-center gap-2">
+                  <div className={cn(
+                    "flex flex-wrap items-center gap-2 transition-opacity duration-150",
+                    "opacity-100 sm:opacity-0 sm:group-hover:opacity-100 sm:group-focus-within:opacity-100",
+                  )}>
                     <Button size="sm" variant="outline" onClick={() => { setEditingTopic(topic); }}>
                       <Pencil className="h-3.5 w-3.5 mr-1" />
                       Bearbeiten
@@ -299,15 +303,6 @@ export function ThemenspeicherPanel({ onContentCreated }: Props) {
                     </Button>
                   </div>
                 </div>
-
-                <div className="flex flex-wrap gap-1">
-                  {(topic.tags ?? []).map((tag) => (
-                    <Badge key={`${topic.id}-${tag}`} variant="secondary" className="text-[10px]">
-                      #{tag}
-                    </Badge>
-                  ))}
-                </div>
-
               </div>
             );
           })}
