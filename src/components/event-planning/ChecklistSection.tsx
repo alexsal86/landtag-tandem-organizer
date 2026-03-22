@@ -5,7 +5,7 @@ import { Input } from "@/components/ui/input";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Plus, Trash2, GripVertical, MessageCircle, Paperclip, ListTodo, Mail, Download, Edit2, X, Milestone, ExternalLink, Bot, Users, CalendarClock, Palette } from "lucide-react";
+import { Plus, Trash2, GripVertical, MessageCircle, Paperclip, ListTodo, Mail, Download, Edit2, X, ExternalLink, Bot, Users, CalendarClock, Palette } from "lucide-react";
 import { Droppable, Draggable } from "@hello-pangea/dnd";
 import { cn } from "@/lib/utils";
 import { format } from "date-fns";
@@ -268,7 +268,6 @@ export function ChecklistSection(props: ChecklistSectionProps) {
 
             <div className="ml-auto flex shrink-0 items-center gap-1">
               <Button variant="ghost" size="sm" className="h-7 rounded-md px-2 text-xs text-muted-foreground hover:text-foreground" title="Mit Frist auf Zeitstrahl setzen" onClick={() => onAssignToTimeline({ id: item.id, title: item.title })}>
-                <Milestone className="mr-1 h-3 w-3" />
                 Frist
               </Button>
               <div className="flex items-center gap-1 opacity-0 transition-opacity group-hover/checklist-item:opacity-100">
