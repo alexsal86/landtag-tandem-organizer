@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect } from "react";
+import { useState, useCallback, useEffect, useRef } from "react";
 import { debugConsole } from "@/utils/debugConsole";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -129,22 +129,28 @@ export function AppointmentPreparationDataTab({
     }
   }, [preparation.appointment_id, currentTenant]);
 
+  // Only sync from props on initial load or when the preparation ID changes
+  // (not after our own optimistic saves)
+  const lastSyncedId = useRef(preparation.id);
   useEffect(() => {
-    setEditData({
-      ...preparation.preparation_data,
-      contact_name: preparation.preparation_data.contact_name || "",
-      contact_info: preparation.preparation_data.contact_info || "",
-      notes: preparation.notes || ""
-    } as Record<string, any>);
-    setCompanions(preparation.preparation_data.companions ?? []);
-    setHasParking(preparation.preparation_data.has_parking ?? false);
-    setProgramRows(preparation.preparation_data.program ?? []);
-    setVisitReason(preparation.preparation_data.visit_reason ?? '');
+    if (preparation.id !== lastSyncedId.current) {
+      lastSyncedId.current = preparation.id;
+      setEditData({
+        ...preparation.preparation_data,
+        contact_name: preparation.preparation_data.contact_name || "",
+        contact_info: preparation.preparation_data.contact_info || "",
+        notes: preparation.notes || ""
+      } as Record<string, any>);
+      setCompanions(preparation.preparation_data.companions ?? []);
+      setHasParking(preparation.preparation_data.has_parking ?? false);
+      setProgramRows(preparation.preparation_data.program ?? []);
+      setVisitReason(preparation.preparation_data.visit_reason ?? '');
 
-    if (preparation.preparation_data.contact_name && preparation.preparation_data.contact_info) {
-      setShowCustomContact(true);
-    } else if (preparation.preparation_data.contact_id) {
-      setSelectedContactId(preparation.preparation_data.contact_id);
+      if (preparation.preparation_data.contact_name && preparation.preparation_data.contact_info) {
+        setShowCustomContact(true);
+      } else if (preparation.preparation_data.contact_id) {
+        setSelectedContactId(preparation.preparation_data.contact_id);
+      }
     }
   }, [preparation]);
 
@@ -316,10 +322,6 @@ export function AppointmentPreparationDataTab({
       try {
         setSaving(true);
         await onUpdate({ preparation_data: data });
-        toast({
-          title: "Gespeichert",
-          description: "Änderungen wurden automatisch gespeichert.",
-        });
       } catch (error) {
         debugConsole.error("Error saving preparation data:", error);
         toast({
@@ -330,7 +332,7 @@ export function AppointmentPreparationDataTab({
       } finally {
         setSaving(false);
       }
-    }, 500),
+    }, 2000),
     [onUpdate]
   );
 

@@ -139,17 +139,19 @@ export function useAppointmentPreparation(preparationId: string | undefined) {
         updated_at: new Date().toISOString(),
       };
 
+      // Optimistic local update — no refetch
+      setPreparation(prev => prev ? { ...prev, ...updates, updated_at: new Date().toISOString() } : prev);
+
       const { error: updateError } = await supabase
         .from('appointment_preparations')
         .update(updatePayload)
         .eq('id', preparationId);
 
       if (updateError) throw updateError;
-
-      // Refresh data after update
-      await fetchPreparation();
     } catch (err) {
       debugConsole.error('Error updating preparation:', err);
+      // Rollback on error
+      await fetchPreparation();
       throw err;
     }
   };
