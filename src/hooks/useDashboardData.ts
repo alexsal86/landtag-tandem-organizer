@@ -17,6 +17,7 @@ export interface AppointmentData {
   start_time: string;
   end_time?: string;
   is_all_day: boolean;
+  location?: string;
 }
 
 
