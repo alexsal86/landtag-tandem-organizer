@@ -56,6 +56,7 @@ interface BriefingPdfOptions {
   appointmentTitle?: string;
   appointmentLocation?: string;
   appointmentStartTime?: string;
+  appointmentEndTime?: string;
 }
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -147,7 +148,7 @@ function drawSectionHeaderBar(
   accentColor: readonly [number, number, number] = SECTION_HEADER_BG
 ) {
   rgb(doc, accentColor, "fill");
-  doc.rect(x, y, w, SECTION_HEADER_H, "F");
+  doc.rect(x, y, w, SECTION_HEADER_H + 0.4, "F");
 
   doc.setFontSize(7);
   doc.setFont(BODY_FONT, "bold");
@@ -170,9 +171,7 @@ function drawSectionBody(
 
   rgb(doc, BORDER_SOFT, "draw");
   doc.setLineWidth(0.25);
-  doc.line(x, y, x, y + h);
-  doc.line(x + w, y, x + w, y + h);
-  doc.line(x, y + h, x + w, y + h);
+  doc.rect(x, y, w, h, "S");
 }
 
 // ─── Header (white, with logo + green line) ───────────────────────────────────
@@ -180,22 +179,113 @@ function getHeaderTitle(preparation: AppointmentPreparation, appointmentTitle?: 
   return appointmentTitle?.trim() || preparation.title?.trim() || "Terminvorbereitung";
 }
 
-function getHeaderInfoLine(startTime: string | undefined, location: string | undefined): string {
-  const parts: string[] = [];
+function formatHeaderSchedule(startTime: string | undefined, endTime: string | undefined): string | null {
+  if (!startTime) return null;
+
+  try {
+    const startDate = new Date(startTime);
+    if (Number.isNaN(startDate.getTime())) return null;
+
+    const endDate = endTime ? new Date(endTime) : null;
+    const hasValidEnd = endDate && !Number.isNaN(endDate.getTime()) && endDate.getTime() >= startDate.getTime();
+    const endLabel = hasValidEnd ? format(endDate, "HH:mm", { locale: de }) : null;
+    const durationMinutes = hasValidEnd ? Math.round((endDate.getTime() - startDate.getTime()) / 60000) : null;
+
+    let durationLabel: string | null = null;
+    if (durationMinutes !== null) {
+      const hours = Math.floor(durationMinutes / 60);
+      const minutes = durationMinutes % 60;
+      durationLabel = [hours > 0 ? `${hours} Std.` : null, minutes > 0 ? `${minutes} Min.` : null].filter(Boolean).join(" ");
+      if (!durationLabel) durationLabel = "0 Min.";
+    }
+
+    let schedule = `${format(startDate, "HH:mm", { locale: de })} Uhr`;
+    if (endLabel) {
+      schedule += ` – ${endLabel} Uhr`;
+    }
+    if (durationLabel) {
+      schedule += ` (${durationLabel})`;
+    }
+
+    return schedule;
+  } catch {
+    return null;
+  }
+}
+
+function getHeaderInfoLines(
+  startTime: string | undefined,
+  endTime: string | undefined,
+  location: string | undefined
+): Array<{ icon: "date" | "time" | "location"; text: string }> {
+  const lines: Array<{ icon: "date" | "time" | "location"; text: string }> = [];
 
   if (startTime) {
     try {
       const d = new Date(startTime);
-      parts.push(format(d, "EEEE, dd. MMMM yyyy", { locale: de }));
-      parts.push(`${format(d, "HH:mm", { locale: de })} Uhr`);
-    } catch { /* ignore */ }
+      if (!Number.isNaN(d.getTime())) {
+        lines.push({ icon: "date", text: format(d, "EEEE, dd. MMMM yyyy", { locale: de }) });
+      }
+    } catch {
+      // ignore invalid dates
+    }
+  }
+
+  const scheduleLine = formatHeaderSchedule(startTime, endTime);
+  if (scheduleLine) {
+    lines.push({ icon: "time", text: scheduleLine });
   }
 
   if (location?.trim()) {
-    parts.push(`Ort: ${location.trim()}`);
+    lines.push({ icon: "location", text: location.trim() });
   }
 
-  return parts.join(" · ");
+  return lines;
+}
+
+function drawHeaderIcon(
+  doc: jsPDF,
+  type: "date" | "time" | "location" | "pr",
+  x: number,
+  y: number
+) {
+  rgb(doc, GREEN_DARK, "draw");
+  doc.setLineWidth(0.35);
+
+  if (type === "date") {
+    doc.roundedRect(x, y - 3.2, 4.4, 4.2, 0.5, 0.5, "S");
+    doc.line(x + 1, y - 4.2, x + 1, y - 2.6);
+    doc.line(x + 3.4, y - 4.2, x + 3.4, y - 2.6);
+    doc.line(x, y - 1.8, x + 4.4, y - 1.8);
+    return;
+  }
+
+  if (type === "time") {
+    doc.circle(x + 2.2, y - 1.2, 2, "S");
+    doc.line(x + 2.2, y - 1.2, x + 2.2, y - 2.6);
+    doc.line(x + 2.2, y - 1.2, x + 3.2, y - 0.5);
+    return;
+  }
+
+  if (type === "location") {
+    doc.circle(x + 2.2, y - 2.1, 1.1, "S");
+    doc.line(x + 2.2, y - 1, x + 2.2, y + 0.8);
+    doc.line(x + 1.2, y - 0.1, x + 2.2, y + 0.8);
+    doc.line(x + 3.2, y - 0.1, x + 2.2, y + 0.8);
+    return;
+  }
+
+  doc.line(x, y - 3.4, x, y + 0.8);
+  doc.line(x, y - 3.4, x + 3.2, y - 2);
+  doc.line(x, y - 1.4, x + 3.2, y - 0.1);
+  doc.line(x, y + 0.6, x + 3.2, y + 1.9);
+}
+
+function getPublicRelationsStatus(preparationData: AppointmentPreparation["preparation_data"]): string[] {
+  return [
+    `Social Media: ${preparationData.social_media_planned ? "Ja" : "Nein"}`,
+    `Presse: ${preparationData.press_planned ? "Ja" : "Nein"}`,
+  ];
 }
 
 async function drawHeader(
@@ -203,13 +293,14 @@ async function drawHeader(
   preparation: AppointmentPreparation,
   appointmentTitle: string | undefined,
   startTime: string | undefined,
+  endTime: string | undefined,
   location: string | undefined,
   headerFont: RegisteredFont
 ): Promise<number> {
   const headerTop = 12;
   const headerBottomPadding = 6;
   const titleText = getHeaderTitle(preparation, appointmentTitle);
-  const infoLine = getHeaderInfoLine(startTime, location);
+  const infoLines = getHeaderInfoLines(startTime, endTime, location);
   const logoH = 24;
   // SVG viewBox: 793.7 x 724.5 → aspect ≈ 1.096
   const logoW = logoH * 1.096;
@@ -240,41 +331,43 @@ async function drawHeader(
   const leftBlockW = Math.max(50, rightBlockX - leftBlockX - 8);
 
   doc.setFont(headerFont.family, headerFont.style);
-  doc.setFontSize(12);
+  doc.setFontSize(24);
   rgb(doc, TEXT_DARK, "text");
   const titleLines = doc.splitTextToSize(titleText, leftBlockW);
-  doc.text(titleLines, leftBlockX, headerTop + 6);
+  doc.text(titleLines, leftBlockX, headerTop + 8);
 
-  let leftBlockBottom = headerTop + 6 + titleLines.length * 5;
-  if (infoLine) {
+  let leftBlockBottom = headerTop + 8 + titleLines.length * 8.6;
+  if (infoLines.length > 0) {
     doc.setFont(BODY_FONT, "normal");
-    doc.setFontSize(9);
+    doc.setFontSize(15);
     rgb(doc, TEXT_MUTED, "text");
-    const infoLines = doc.splitTextToSize(infoLine, leftBlockW);
-    doc.text(infoLines, leftBlockX, leftBlockBottom + 5);
-    leftBlockBottom += infoLines.length * 4 + 1;
+
+    let infoY = leftBlockBottom + 2.5;
+    for (const infoLine of infoLines) {
+      const wrapped = doc.splitTextToSize(infoLine.text, leftBlockW - 9);
+      drawHeaderIcon(doc, infoLine.icon, leftBlockX, infoY - 0.5);
+      doc.text(wrapped, leftBlockX + 6, infoY);
+      infoY += wrapped.length * 6 + 1.5;
+    }
+    leftBlockBottom = infoY - 1.5;
   }
 
   doc.setFont(BODY_FONT, "bold");
   doc.setFontSize(10);
   rgb(doc, TEXT_DARK, "text");
-  doc.text("Öffentlichkeitsarbeit", rightBlockX, headerTop + 6);
+  drawHeaderIcon(doc, "pr", rightBlockX, headerTop + 5.8);
+  doc.text("Öffentlichkeitsarbeit", rightBlockX + 6, headerTop + 6);
 
-  const prItems: string[] = [];
-  if (preparation.preparation_data.social_media_planned) prItems.push("Social Media");
-  if (preparation.preparation_data.press_planned) prItems.push("Presse");
-
-  if (prItems.length > 0) {
-    doc.setFont(BODY_FONT, "normal");
-    doc.setFontSize(9);
-    rgb(doc, TEXT_MUTED, "text");
-    doc.text(prItems, rightBlockX, headerTop + 12);
-  }
+  doc.setFont(BODY_FONT, "normal");
+  doc.setFontSize(9);
+  rgb(doc, TEXT_MUTED, "text");
+  const prItems = getPublicRelationsStatus(preparation.preparation_data);
+  doc.text(prItems, rightBlockX, headerTop + 12);
 
   const headerContentBottom = Math.max(
     logoY + logoH,
     leftBlockBottom,
-    headerTop + (prItems.length > 0 ? 12 + prItems.length * 4 : 6)
+    headerTop + 12 + prItems.length * 4
   );
   const lineY = headerContentBottom + headerBottomPadding;
 
@@ -435,7 +528,7 @@ function addCompanionsCard(
   let rows = 1;
   for (const c of companions) {
     const label = c.note ? `${c.name} (${c.note})` : c.name;
-    const tw = doc.getTextWidth(label) + 8;
+    const tw = doc.getTextWidth(label) + 4;
     if (bx + tw > maxW - 4) { bx = 5; rows++; }
     bx += tw + 3;
   }
@@ -452,19 +545,17 @@ function addCompanionsCard(
 
   for (const c of companions) {
     const label = c.note ? `${c.name} (${c.note})` : c.name;
-    const tw = doc.getTextWidth(label) + 8;
+    const tw = doc.getTextWidth(label) + 4;
 
     if (bx + tw > x + maxW - 4) {
       bx = x + 5;
       cy += 8;
     }
 
-    rgb(doc, GREEN_BG, "fill");
-    doc.roundedRect(bx, cy - 3.5, tw, 6.5, 1.5, 1.5, "F");
     doc.setFont(BODY_FONT, "normal");
-    rgb(doc, GREEN_DARK, "text");
-    doc.text(label, bx + 4, cy + 0.5);
-    bx += tw + 3;
+    rgb(doc, TEXT_DARK, "text");
+    doc.text(label, bx, cy + 0.5);
+    bx += tw;
   }
 
   yRef.y = cardY + estH + SECTION_OUTER_GAP;
@@ -493,13 +584,11 @@ function addKernbotschaft(
 
   drawSectionHeaderBar(doc, x, cardY, maxW, "Kernbotschaft", MAGENTA);
   drawSectionBody(doc, x, bodyY, maxW, bodyH);
-  rgb(doc, MAGENTA, "fill");
-  doc.roundedRect(x, bodyY, 2, bodyH, 0.8, 0.8, "F");
 
   doc.setFontSize(10);
   doc.setFont(BODY_FONT, "italic");
   rgb(doc, TEXT_DARK, "text");
-  doc.text(lines, x + 8, bodyY + 6);
+  doc.text(lines, x + 5, bodyY + 6);
 
   yRef.y = cardY + estH + SECTION_OUTER_GAP;
 }
@@ -544,49 +633,6 @@ function addAblaufCard(
     const descLines = doc.splitTextToSize(p.item, maxW - 24);
     doc.text(descLines, x + 20, cy + 1.5);
     cy += descLines.length * 4.5 + 2;
-  }
-
-  yRef.y = cardY + estH + SECTION_OUTER_GAP;
-}
-
-// ─── PR badges card ───────────────────────────────────────────────────────────
-function addPRCard(
-  doc: jsPDF,
-  x: number,
-  maxW: number,
-  d: AppointmentPreparation["preparation_data"],
-  yRef: { y: number },
-  topY: number
-) {
-  const badges: string[] = [];
-  if (d.social_media_planned) badges.push("✓ Social Media");
-  if (d.press_planned) badges.push("✓ Presse");
-  if (badges.length === 0 && !d.social_media_planned && !d.press_planned) return;
-
-  // Show even if none planned
-  if (badges.length === 0) {
-    badges.push("Keine Öffentlichkeitsarbeit geplant");
-  }
-
-  const estH = 21;
-  ensureFit(doc, yRef, estH, topY);
-  const cardY = yRef.y;
-  const bodyY = cardY + SECTION_HEADER_H + SECTION_GAP_AFTER_HEADER;
-  const bodyH = Math.max(10, estH - SECTION_HEADER_H - SECTION_GAP_AFTER_HEADER);
-  drawSectionHeaderBar(doc, x, cardY, maxW, "Öffentlichkeitsarbeit");
-  drawSectionBody(doc, x, bodyY, maxW, bodyH);
-
-  doc.setFontSize(8);
-  let bx = x + 5;
-  const by = bodyY + 5.5;
-  for (const badge of badges) {
-    const tw = doc.getTextWidth(badge) + 8;
-    rgb(doc, GREEN_DARK, "fill");
-    doc.roundedRect(bx, by - 3, tw, 6, 1.5, 1.5, "F");
-    doc.setFont(BODY_FONT, "bold");
-    rgb(doc, WHITE, "text");
-    doc.text(badge, bx + 4, by + 1);
-    bx += tw + 3;
   }
 
   yRef.y = cardY + estH + SECTION_OUTER_GAP;
@@ -671,6 +717,7 @@ export async function generateBriefingPdf({
   appointmentTitle,
   appointmentLocation,
   appointmentStartTime,
+  appointmentEndTime,
 }: BriefingPdfOptions): Promise<void> {
   const doc = new jsPDF({ unit: "mm", format: "a4" });
   const headerFont = await registerBriefingFonts(doc);
@@ -678,7 +725,7 @@ export async function generateBriefingPdf({
   const topY = 14; // Y for new pages
 
   // ── Header ──────────────────────────────────────────────────────────────────
-  const startY = await drawHeader(doc, preparation, appointmentTitle, appointmentStartTime, appointmentLocation, headerFont);
+  const startY = await drawHeader(doc, preparation, appointmentTitle, appointmentStartTime, appointmentEndTime, appointmentLocation, headerFont);
 
   const leftY  = { y: startY };
   const rightY = { y: startY };
@@ -751,10 +798,7 @@ export async function generateBriefingPdf({
   // 4. Offene To-dos
   addChecklistCard(doc, RIGHT_X, RIGHT_W, preparation.checklist_items ?? [], rightY, topY);
 
-  // 5. Öffentlichkeitsarbeit
-  addPRCard(doc, RIGHT_X, RIGHT_W, d, rightY, topY);
-
-  // 6. Notizen-Bereich (liniert)
+  // 5. Notizen-Bereich (liniert)
   addNotesArea(doc, RIGHT_X, RIGHT_W, rightY, topY);
 
   // ── Footers on all pages ────────────────────────────────────────────────────

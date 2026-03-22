@@ -190,6 +190,7 @@ export const TodaySchedule = ({ onCountChange }: TodayScheduleProps) => {
         appointmentTitle: apt.title,
         appointmentLocation: apt.location ?? undefined,
         appointmentStartTime: apt.start_time,
+        appointmentEndTime: apt.end_time ?? apt.start_time,
       });
     } catch (error) {
       debugConsole.error('Error generating briefing PDF:', error);
