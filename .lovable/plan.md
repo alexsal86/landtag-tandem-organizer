@@ -1,83 +1,66 @@
 
 
-## Checkliste & Zeitstrahl — UI-Verbesserungen
+## Briefing-Ansicht für Abgeordnete + Build-Fehler beheben
 
-### 1. Connector-Linien nur beim Hovern anzeigen
+### Konzept
 
-**Datei:** `PlanningTimelineSection.tsx`
+Die Idee ist hervorragend. Die Terminvorbereitung (`appointment_preparations`) enthält bereits die relevanten Datenfelder — sie werden bisher nur in einer Editor-Ansicht für Mitarbeiter dargestellt. Die Briefing-Ansicht extrahiert die wichtigsten Informationen daraus in ein kompaktes, **read-only** Format, das der Abgeordnete schnell vor dem Termin scannen kann.
 
-- Connector-SVG-Pfade: Standardmäßig `opacity-0` setzen
-- Nur wenn `highlightedChecklistItemId` gesetzt ist UND `line.assignmentId === highlightedChecklistItemId`, wird die Linie sichtbar (durchgehend, nicht gestrichelt)
-- Alle anderen Linien bleiben unsichtbar
-
-**Timeline-Dot beim Hover:** Statt den Dot nach links zu versetzen, wird er größer (z.B. `h-7 w-7` statt `h-5 w-5`) und bekommt seine Farbe intensiver. Das Icon wird ebenfalls größer (`h-4 w-4` statt `h-3 w-3`). Position bleibt zentriert auf der Achse. `DOT_LEFT_CLASS` wird dynamisch angepasst.
-
-### 2. Drag-Handle nur beim Hovern
-
-**Datei:** `ChecklistSection.tsx`
-
-- `GripVertical` bekommt `opacity-0 group-hover:opacity-100 transition-opacity` (analog zu den Action-Buttons)
-- Gilt für normale Items, Separator und Phase-Start
-
-### 3. Phasendarstellung wie im Screenshot
-
-**Datei:** `ChecklistSection.tsx`
-
-Statt der vertikalen Klammer mit gedrehtem Text wird die Phase als **horizontale Header-Zeile** dargestellt:
+### Daten-Mapping (vorhandene Felder → Briefing-Sektionen)
 
 ```text
-┌─────────────────────────────────────────────────┐
-│ Planung  (3)                        + Aufgabe   │
-│ ═══════════════════════════════════════════════  │ (farbige Linie)
-│ ☐ Einladung schreiben                    Frist   │
-│ ☐ Verteiler erstellen                    Frist   │
-│ ☐ Einladungen verschicken                Frist   │
-└─────────────────────────────────────────────────┘
+preparation_data Feld       → Briefing-Sektion
+──────────────────────────────────────────────────
+audience / facts_figures     → Organisation / Hintergrund
+position_statements          → Meine Position / Linie
+objectives                   → Was will ich erreichen?
+questions_answers            → Mögliche kritische Fragen
+key_topics (neu nutzen)      → Kernbotschaft
+checklist_items (incomplete) → ToDos vor Termin
+companions                   → Begleitpersonen (kompakt)
+program                      → Ablauf (kompakt)
 ```
 
-- Phasenname links, Anzahl Items als Badge, „+ Aufgabe"-Button rechts
-- Darunter eine farbige Trennlinie (primary color)
-- Items der Phase darunter aufgelistet
-- Der „+ Aufgabe"-Button fügt einen neuen Checklistenpunkt direkt in diese Phase ein (nach dem letzten Item der Phase, vor dem nächsten `phase_start`)
+Kein neues DB-Schema nötig — die Felder existieren bereits in `preparation_data` (JSON).
 
-**Items zu Phasen zuordnen/entfernen:**
-- Drag & Drop funktioniert bereits über `order_index` — ein Item in eine andere Phase ziehen ändert automatisch die Zuordnung
-- Zusätzlich: Im Kontext jeder Phase ein „+ Aufgabe"-Button, der ein neues Item mit dem richtigen `order_index` einfügt
+### Umsetzung
 
-### 4. Template-Editor anpassen
+**1. Neue Komponente `AppointmentBriefingView.tsx`** (read-only)
 
-**Datei:** `PlanningTemplateManager.tsx`
+- Klare, scanbare Darstellung wie im Beispiel
+- Sektionen mit `→`-Pfeilen für Bullet-Points
+- ToDo-Checkliste (nur Anzeige, kein Toggle)
+- Termin-Header oben (Datum, Uhrzeit, Ort — aus `appointmentInfo`)
+- Kompakte Begleitpersonen- und Ablauf-Anzeige
+- Kein Edit-Modus, keine Buttons außer "Zurück"
 
-- Phase-Start-Einträge werden wie im Screenshot als Header dargestellt (Phasenname + Anzahl + farbige Linie)
-- Items innerhalb einer Phase werden visuell gruppiert (eingerückt oder mit Border)
-- Der bestehende „Phase hinzufügen"-Button bleibt
+**2. Neuer Tab "Briefing" in `AppointmentPreparationDetail.tsx`**
 
-### 5. Text-Umbruch in der Checkliste
+- Wird als erster Tab angezeigt wenn Rolle = `abgeordneter`
+- Für andere Rollen bleibt die bisherige Tab-Reihenfolge
+- Der Tab ist für alle Rollen sichtbar, aber für Abgeordnete vorausgewählt
 
-**Datei:** `ChecklistSection.tsx`
+**3. Prominente Platzierung**
 
-- Zeile 171: `truncate` entfernen vom Input bzw. den Text-Container
-- Stattdessen `whitespace-normal break-words` oder einfach das `overflow-hidden` von der umgebenden `div` (Zeile 162) entfernen und `truncate` durch `break-words` ersetzen
+- Auf dem Dashboard ("Meine Arbeit") könnte ein Briefing-Widget die nächsten anstehenden Termine mit Vorbereitung anzeigen — das wäre ein Folgeschritt
+- Zunächst: Briefing-Tab als Standard-Tab für Abgeordnete in der Terminvorbereitung
 
-### 6. Phasen in der Checkliste hinzufügen
+### Build-Fehler beheben
 
-**Datei:** `ChecklistSection.tsx`
+Zusätzlich werden drei Build-Fehler behoben:
 
-- Neben dem bestehenden „Neuen Punkt hinzufügen"-Bereich (Zeile 470-497) einen Button „Phase hinzufügen" ergänzen
-- Dieser erstellt einen neuen Checklistenpunkt vom Typ `phase_start` am Ende der Liste
-- Nutzt die bestehende `addChecklistItem`-Funktion, aber mit angepasstem Typ — oder eine neue Prop `addPhaseItem` die direkt einen `phase_start` Eintrag anlegt
+1. **`EventPlanningDetailView.tsx` (Zeile 85)**: `updateChecklistItemColor` wird destrukturiert, ist aber nicht im Return von `useEventPlanningData` enthalten → Hinzufügen in `useEventPlanningData.ts` (Zeile ~868): `updateChecklistItemColor: checklist.updateChecklistItemColor`
 
-**Datei:** `EventPlanningDetailView.tsx` (oder zugehöriger Hook)
-- Neue Funktion `addPhaseItem(title: string)` die ein Item mit `type: 'phase_start'` erstellt
+2. **`AppointmentPreparationDataTab.tsx` (Zeile 78)**: `preparation_data` enthält `companions` (Array) und `program` (Array), kann daher nicht als `Record<string, string>` typisiert werden → State-Typ ändern zu `Record<string, unknown>` oder die komplexen Felder beim Spread ausschließen
 
----
+3. **Supabase Edge Function Fehler** (TS2589/TS2322 in `respond-public-event-invitation`): Diese sind vorexistent und nicht Teil dieser Änderung — werden separat behandelt falls gewünscht.
 
-### Zusammenfassung der Dateiänderungen
+### Dateien
 
-| Datei | Änderung |
+| Datei | Aktion |
 |---|---|
-| `ChecklistSection.tsx` | Phase-Header-UI, Drag-Handle hover, Text-Umbruch, Phase-hinzufügen-Button |
-| `PlanningTimelineSection.tsx` | Connector nur bei Hover, Dot-Vergrößerung statt Versatz |
-| `PlanningTemplateManager.tsx` | Phase-Header-Darstellung wie Checkliste |
-| `EventPlanningDetailView.tsx` | `addPhaseItem`-Funktion durchreichen |
+| `src/components/appointment-preparations/AppointmentBriefingView.tsx` | Neu erstellen |
+| `src/pages/AppointmentPreparationDetail.tsx` | Briefing-Tab hinzufügen, rollenbasiert vorauswählen |
+| `src/components/event-planning/useEventPlanningData.ts` | `updateChecklistItemColor` im Return ergänzen |
+| `src/components/appointment-preparations/AppointmentPreparationDataTab.tsx` | Typ-Fehler bei `Record<string, string>` beheben |
 
