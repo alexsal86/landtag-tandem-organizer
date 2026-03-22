@@ -226,8 +226,35 @@ async function drawHeader(
 
   if (logoSvg) {
     try {
-      await doc.svg(logoSvg, { x: logoX, y: logoY, width: logoW, height: logoH });
-    } catch { /* ignore */ }
+      // Wrap in a timeout to prevent hanging on complex SVGs
+      await Promise.race([
+        doc.svg(logoSvg, { x: logoX, y: logoY, width: logoW, height: logoH }),
+        new Promise((_, reject) => setTimeout(() => reject(new Error('SVG render timeout')), 5000)),
+      ]);
+    } catch {
+      // Fallback: render SVG via canvas as JPEG
+      try {
+        const canvas = document.createElement('canvas');
+        const scale = 4; // high-res
+        canvas.width = Math.round(logoW * scale);
+        canvas.height = Math.round(logoH * scale);
+        const ctx = canvas.getContext('2d');
+        if (ctx) {
+          const img = new Image();
+          const svgBlob = new Blob([new XMLSerializer().serializeToString(logoSvg)], { type: 'image/svg+xml' });
+          const url = URL.createObjectURL(svgBlob);
+          await new Promise<void>((resolve, reject) => {
+            img.onload = () => { resolve(); };
+            img.onerror = reject;
+            img.src = url;
+          });
+          ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+          URL.revokeObjectURL(url);
+          const dataUrl = canvas.toDataURL('image/png');
+          doc.addImage(dataUrl, 'PNG', logoX, logoY, logoW, logoH);
+        }
+      } catch { /* skip logo entirely */ }
+    }
   }
 
   doc.setFont(headerFont.family, headerFont.style);
