@@ -147,8 +147,10 @@ function drawSectionHeaderBar(
   label: string,
   accentColor: readonly [number, number, number] = SECTION_HEADER_BG
 ) {
+  const headerInset = 0.45;
+
   rgb(doc, accentColor, "fill");
-  doc.rect(x, y, w, SECTION_HEADER_H + 0.4, "F");
+  doc.rect(x - headerInset, y, w + headerInset * 2, SECTION_HEADER_H + 0.4, "F");
 
   doc.setFontSize(7);
   doc.setFont(BODY_FONT, "bold");
@@ -275,9 +277,8 @@ function drawHeaderIcon(
     return;
   }
 
-  doc.line(x, y - 3.4, x, y + 0.8);
-  doc.line(x, y - 3.4, x + 3.2, y - 2);
-  doc.line(x, y - 1.4, x + 3.2, y - 0.1);
+  doc.line(x, y - 3.6, x + 3.2, y - 2.2);
+  doc.line(x, y - 1.5, x + 3.2, y - 0.2);
   doc.line(x, y + 0.6, x + 3.2, y + 1.9);
 }
 
@@ -331,23 +332,24 @@ async function drawHeader(
   const leftBlockW = Math.max(50, rightBlockX - leftBlockX - 8);
 
   doc.setFont(headerFont.family, headerFont.style);
-  doc.setFontSize(24);
+  doc.setFontSize(22);
   rgb(doc, TEXT_DARK, "text");
   const titleLines = doc.splitTextToSize(titleText, leftBlockW);
   doc.text(titleLines, leftBlockX, headerTop + 8);
 
-  let leftBlockBottom = headerTop + 8 + titleLines.length * 8.6;
+  let leftBlockBottom = headerTop + 8 + titleLines.length * 7.8;
+  let infoStartY = leftBlockBottom + 2.5;
   if (infoLines.length > 0) {
     doc.setFont(BODY_FONT, "normal");
-    doc.setFontSize(15);
+    doc.setFontSize(13);
     rgb(doc, TEXT_MUTED, "text");
 
-    let infoY = leftBlockBottom + 2.5;
+    let infoY = infoStartY;
     for (const infoLine of infoLines) {
       const wrapped = doc.splitTextToSize(infoLine.text, leftBlockW - 9);
       drawHeaderIcon(doc, infoLine.icon, leftBlockX, infoY - 0.5);
       doc.text(wrapped, leftBlockX + 6, infoY);
-      infoY += wrapped.length * 6 + 1.5;
+      infoY += wrapped.length * 5.2 + 1.5;
     }
     leftBlockBottom = infoY - 1.5;
   }
@@ -355,19 +357,20 @@ async function drawHeader(
   doc.setFont(BODY_FONT, "bold");
   doc.setFontSize(10);
   rgb(doc, TEXT_DARK, "text");
-  drawHeaderIcon(doc, "pr", rightBlockX, headerTop + 5.8);
-  doc.text("Öffentlichkeitsarbeit", rightBlockX + 6, headerTop + 6);
+  drawHeaderIcon(doc, "pr", rightBlockX, infoStartY - 0.5);
+  doc.text("Öffentlichkeitsarbeit", rightBlockX + 6, infoStartY - 0.2);
 
   doc.setFont(BODY_FONT, "normal");
   doc.setFontSize(9);
   rgb(doc, TEXT_MUTED, "text");
   const prItems = getPublicRelationsStatus(preparation.preparation_data);
-  doc.text(prItems, rightBlockX, headerTop + 12);
+  const prItemsY = infoStartY + 5.8;
+  doc.text(prItems, rightBlockX, prItemsY);
 
   const headerContentBottom = Math.max(
     logoY + logoH,
     leftBlockBottom,
-    headerTop + 12 + prItems.length * 4
+    prItemsY + prItems.length * 4
   );
   const lineY = headerContentBottom + headerBottomPadding;
 
