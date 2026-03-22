@@ -442,28 +442,79 @@ export const DashboardAppointments = ({ data }: Props) => {
             {appointments.map((apt) => {
               const aptDate = format(new Date(apt.start_time), 'yyyy-MM-dd');
               const active = !isShowingTomorrow && isCurrentlyActive(apt);
+              const hasPrep = preparations.has(apt.id);
+              const prep = preparations.get(apt.id);
+              const isBriefingExpanded = expandedBriefingId === apt.id;
               return (
-                <div
-                  key={apt.id}
-                  className={`flex items-center gap-2 text-sm cursor-pointer rounded px-1 py-0.5 transition-colors ${
-                    active
-                      ? 'bg-primary/10 ring-1 ring-primary/30'
-                      : 'hover:bg-muted/40'
-                  }`}
-                  onClick={() => navigate(`/calendar?date=${aptDate}&event=${apt.id}`)}
-                >
-                  {active && (
-                    <span className="relative flex h-2 w-2 shrink-0">
-                      <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-primary opacity-75" />
-                      <span className="relative inline-flex h-2 w-2 rounded-full bg-primary" />
+                <div key={apt.id}>
+                  <div
+                    className={`flex items-center gap-2 text-sm rounded px-1 py-0.5 transition-colors ${
+                      active
+                        ? 'bg-primary/10 ring-1 ring-primary/30'
+                        : 'hover:bg-muted/40'
+                    }`}
+                  >
+                    {active && (
+                      <span className="relative flex h-2 w-2 shrink-0">
+                        <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-primary opacity-75" />
+                        <span className="relative inline-flex h-2 w-2 rounded-full bg-primary" />
+                      </span>
+                    )}
+                    <span className="text-muted-foreground font-mono text-xs w-12 shrink-0">
+                      {apt.is_all_day ? 'Ganzt.' : format(new Date(apt.start_time), 'HH:mm', { locale: de })}
                     </span>
+                    <span
+                      className={`truncate hover:underline cursor-pointer ${active ? 'text-foreground font-medium' : 'text-foreground'}`}
+                      onClick={() => navigate(`/calendar?date=${aptDate}&event=${apt.id}`)}
+                    >
+                      {apt.title}
+                    </span>
+                    {hasPrep && (
+                      <div className="flex items-center gap-0.5 ml-auto shrink-0">
+                        <button
+                          type="button"
+                          className="p-1 rounded hover:bg-muted/60 transition-colors"
+                          title="Briefing-PDF herunterladen"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            if (prep) generateBriefingPdf({
+                              preparation: prep,
+                              appointmentTitle: apt.title,
+                              appointmentStartTime: apt.start_time,
+                            });
+                          }}
+                        >
+                          <FileText className="h-3.5 w-3.5 text-primary" />
+                        </button>
+                        <button
+                          type="button"
+                          className="p-1 rounded hover:bg-muted/60 transition-colors"
+                          title="Briefing anzeigen"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setExpandedBriefingId(prev => prev === apt.id ? null : apt.id);
+                          }}
+                        >
+                          {isBriefingExpanded
+                            ? <ChevronDown className="h-3.5 w-3.5 text-muted-foreground" />
+                            : <ChevronRight className="h-3.5 w-3.5 text-muted-foreground" />
+                          }
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                  {isBriefingExpanded && prep && (
+                    <div className="mt-1 ml-4">
+                      <AppointmentBriefingView
+                        preparation={prep}
+                        appointmentInfo={{
+                          title: apt.title,
+                          start_time: apt.start_time,
+                          end_time: apt.end_time || apt.start_time,
+                        }}
+                      />
+                    </div>
                   )}
-                  <span className="text-muted-foreground font-mono text-xs w-12 shrink-0">
-                    {apt.is_all_day ? 'Ganzt.' : format(new Date(apt.start_time), 'HH:mm', { locale: de })}
-                  </span>
-                  <span className={`truncate hover:underline ${active ? 'text-foreground font-medium' : 'text-foreground'}`}>
-                    {apt.title}
-                  </span>
                 </div>
               );
             })}
