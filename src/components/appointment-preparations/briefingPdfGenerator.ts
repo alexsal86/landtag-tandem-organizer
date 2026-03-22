@@ -216,18 +216,24 @@ async function drawHeader(
   const logoX = MARGIN;
   const logoY = headerTop;
 
-  // Rasterize SVG logo via Canvas (reliable, no svg2pdf.js dependency)
-  const logoDataUrl = await rasterizeSvg("/assets/logo_fraktion.svg", logoW, logoH, 4);
-  const hasLogo = !!logoDataUrl;
-  const effectiveLogoW = hasLogo ? logoW : 0;
-  const leftBlockX = logoX + effectiveLogoW + (hasLogo ? 6 : 0);
-  const rightBlockW = 48;
-  const rightBlockX = PAGE_W - MARGIN - rightBlockW;
-  const leftBlockW = Math.max(50, rightBlockX - leftBlockX - 8);
-
-  if (logoDataUrl) {
-    doc.addImage(logoDataUrl, "PNG", logoX, logoY, logoW, logoH);
+  // Native SVG vector embedding via svg2pdf.js
+  let hasLogo = false;
+  const svgElement = await loadSvgElement("/assets/logo_fraktion.svg");
+  if (svgElement) {
+    svgElement.style.position = "absolute";
+    svgElement.style.left = "-9999px";
+    svgElement.style.top = "-9999px";
+    document.body.appendChild(svgElement);
+    try {
+      await doc.svg(svgElement, { x: logoX, y: logoY, width: logoW, height: logoH });
+      hasLogo = true;
+    } catch (e) {
+      console.warn("svg2pdf.js: Logo-Embedding fehlgeschlagen, wird übersprungen", e);
+    } finally {
+      document.body.removeChild(svgElement);
+    }
   }
+  const effectiveLogoW = hasLogo ? logoW : 0;
 
   doc.setFont(headerFont.family, headerFont.style);
   doc.setFontSize(12);
