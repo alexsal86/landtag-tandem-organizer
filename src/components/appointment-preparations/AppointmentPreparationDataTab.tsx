@@ -252,7 +252,7 @@ export function AppointmentPreparationDataTab({
       contact_name: preparation.preparation_data.contact_name || "",
       contact_info: preparation.preparation_data.contact_info || "",
       notes: preparation.notes || ""
-    });
+    } as Record<string, any>);
     setCompanions(preparation.preparation_data.companions ?? []);
     setHasParking(preparation.preparation_data.has_parking ?? false);
     setProgramRows(preparation.preparation_data.program ?? []);
