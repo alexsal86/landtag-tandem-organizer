@@ -5,7 +5,6 @@ import {
   getBriefingNotes,
   getConversationPartnersFromPreparationData,
   getImportantTopicLines,
-  splitPreparationTextToList,
 } from "@/hooks/useAppointmentPreparation";
 import { format } from "date-fns";
 import { de } from "date-fns/locale";
@@ -34,14 +33,24 @@ const FOOTER_Y = PAGE_H - 12;
 
 const HEADER_FONT = "GrueneType Neue";
 const HEADER_FONT_STYLE = "normal" as const;
+const HEADER_FONT_FALLBACK = "PT Sans";
+const HEADER_FONT_FALLBACK_STYLE = "bold" as const;
 const BODY_FONT = "helvetica";
 
-const HEADER_FONT_FILES = [
-  "/fonts/GrueneTypeNeue-Regular.woff2",
-  "/fonts/GrueneTypeNeue-Regular.woff",
+const HEADER_FONT_SOURCES = [
+  // Vite serves everything inside public/ from the web root, so the browser path is /fonts/... (not /public/fonts/...).
+  { path: "/fonts/GrueneTypeNeue-Regular.woff2", family: HEADER_FONT, style: HEADER_FONT_STYLE },
+  { path: "/fonts/GrueneTypeNeue-Regular.woff", family: HEADER_FONT, style: HEADER_FONT_STYLE },
+  // jsPDF reliably embeds TTF fonts; use the bundled PT Sans as a file-based fallback when GrueneType cannot be registered.
+  { path: "/fonts/PTSans-Bold.ttf", family: HEADER_FONT_FALLBACK, style: HEADER_FONT_FALLBACK_STYLE },
 ] as const;
 
-const fontDataCache = new Map<string, { base64: string; vfsName: string }>();
+type RegisteredFont = {
+  family: string;
+  style: "normal" | "bold";
+};
+
+const fontDataCache = new Map<string, { base64: string; vfsName: string; family: string; style: RegisteredFont["style"] }>();
 
 interface BriefingPdfOptions {
   preparation: AppointmentPreparation;
@@ -52,16 +61,16 @@ interface BriefingPdfOptions {
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
-async function registerBriefingFonts(doc: jsPDF): Promise<void> {
-  for (const file of HEADER_FONT_FILES) {
-    const cachedFont = fontDataCache.get(file);
+async function registerBriefingFonts(doc: jsPDF): Promise<RegisteredFont> {
+  for (const source of HEADER_FONT_SOURCES) {
+    const cachedFont = fontDataCache.get(source.path);
     if (cachedFont) {
       doc.addFileToVFS(cachedFont.vfsName, cachedFont.base64);
-      doc.addFont(cachedFont.vfsName, HEADER_FONT, HEADER_FONT_STYLE);
-      return;
+      doc.addFont(cachedFont.vfsName, cachedFont.family, cachedFont.style);
+      return { family: cachedFont.family, style: cachedFont.style };
     }
 
-    const fontResponse = await fetch(file);
+    const fontResponse = await fetch(source.path);
     if (!fontResponse.ok) {
       continue;
     }
@@ -69,15 +78,15 @@ async function registerBriefingFonts(doc: jsPDF): Promise<void> {
     const fontBytes = await fontResponse.arrayBuffer();
     const binary = Array.from(new Uint8Array(fontBytes), (byte) => String.fromCharCode(byte)).join("");
     const base64 = btoa(binary);
-    const vfsName = file.split("/").pop() ?? "GrueneTypeNeue-Regular.woff2";
+    const vfsName = source.path.split("/").pop() ?? "briefing-font.ttf";
 
-    fontDataCache.set(file, { base64, vfsName });
+    fontDataCache.set(source.path, { base64, vfsName, family: source.family, style: source.style });
     doc.addFileToVFS(vfsName, base64);
-    doc.addFont(vfsName, HEADER_FONT, HEADER_FONT_STYLE);
-    return;
+    doc.addFont(vfsName, source.family, source.style);
+    return { family: source.family, style: source.style };
   }
 
-  throw new Error("GrueneType Neue font could not be loaded from /fonts/GrueneTypeNeue-Regular.woff2 or /fonts/GrueneTypeNeue-Regular.woff");
+  return { family: BODY_FONT, style: HEADER_FONT_STYLE };
 }
 
 function splitLines(text: string | undefined | null): string[] {
@@ -191,7 +200,8 @@ async function drawHeader(
   preparation: AppointmentPreparation,
   appointmentTitle: string | undefined,
   startTime: string | undefined,
-  location: string | undefined
+  location: string | undefined,
+  headerFont: RegisteredFont
 ): Promise<number> {
   const headerTop = 12;
   const headerBottomPadding = 6;
@@ -215,7 +225,7 @@ async function drawHeader(
     } catch { /* ignore */ }
   }
 
-  doc.setFont(HEADER_FONT, HEADER_FONT_STYLE);
+  doc.setFont(headerFont.family, headerFont.style);
   doc.setFontSize(12);
   rgb(doc, TEXT_DARK, "text");
   const titleLines = doc.splitTextToSize(titleText, leftBlockW);
@@ -649,12 +659,12 @@ export async function generateBriefingPdf({
   appointmentStartTime,
 }: BriefingPdfOptions): Promise<void> {
   const doc = new jsPDF({ unit: "mm", format: "a4" });
-  await registerBriefingFonts(doc);
+  const headerFont = await registerBriefingFonts(doc);
   const d = preparation.preparation_data;
   const topY = 14; // Y for new pages
 
   // ── Header ──────────────────────────────────────────────────────────────────
-  const startY = await drawHeader(doc, preparation, appointmentTitle, appointmentStartTime, appointmentLocation);
+  const startY = await drawHeader(doc, preparation, appointmentTitle, appointmentStartTime, appointmentLocation, headerFont);
 
   const leftY  = { y: startY };
   const rightY = { y: startY };
