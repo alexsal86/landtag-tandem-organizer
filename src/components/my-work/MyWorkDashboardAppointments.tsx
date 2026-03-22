@@ -481,6 +481,7 @@ export const DashboardAppointments = ({ data }: Props) => {
                               preparation: prep,
                               appointmentTitle: apt.title,
                               appointmentStartTime: apt.start_time,
+                              appointmentEndTime: apt.end_time || apt.start_time,
                             }).catch(console.error);
                           }}
                         >
