@@ -1,5 +1,5 @@
 import { useCallback, useMemo, useState } from "react";
-import { CalendarDays, AlertTriangle, icons, Clock3, Sparkles, Info, ChevronLeft, ChevronRight } from "lucide-react";
+import { CalendarDays, AlertTriangle, icons, Clock3, Sparkles, Info, ChevronLeft, ChevronRight, Tag } from "lucide-react";
 import { Calendar, dateFnsLocalizer, Views, type View } from "react-big-calendar";
 import withDragAndDrop from "react-big-calendar/lib/addons/dragAndDrop";
 import { addMonths, addWeeks, endOfMonth, endOfWeek, format, parse, startOfDay, startOfMonth, startOfWeek, getDay, getISOWeek, isSameDay, isWithinInterval } from "date-fns";
