@@ -445,16 +445,11 @@ export async function generateBriefingPdf({
     leftY.y = drawSeparator(doc, MARGIN, leftY.y, LEFT_W);
   }
 
-  // Gesprächspartner (contact_name + contact_info, or contact_person)
-  const gesprächspartnerList: Array<{ display: string }> = [];
-  if (d.contact_name) {
-    const entry = d.contact_info
-      ? `${d.contact_name} (${d.contact_info})`
-      : d.contact_name;
-    gesprächspartnerList.push({ display: entry });
-  } else if (d.contact_person) {
-    gesprächspartnerList.push({ display: d.contact_person });
-  }
+  // Gesprächspartner (conversation_partners array, with fallback to legacy fields)
+  const conversationPartners = getConversationPartnersFromPreparationData(d);
+  const gesprächspartnerList = conversationPartners.map((p) => ({
+    display: formatConversationPartnerLine(p),
+  }));
 
   if (gesprächspartnerList.length > 0) {
     ensureDivider();
