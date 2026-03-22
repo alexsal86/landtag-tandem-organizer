@@ -1,5 +1,4 @@
 import jsPDF from "jspdf";
-import "svg2pdf.js";
 import {
   AppointmentPreparation,
   getBriefingNotes,
@@ -39,10 +38,8 @@ const HEADER_FONT_FALLBACK_STYLE = "bold" as const;
 const BODY_FONT = "helvetica";
 
 const HEADER_FONT_SOURCES = [
-  // Vite serves everything inside public/ from the web root, so the browser path is /fonts/... (not /public/fonts/...).
-  { path: "/fonts/GrueneTypeNeue-Regular.woff2", family: HEADER_FONT, style: HEADER_FONT_STYLE },
-  { path: "/fonts/GrueneTypeNeue-Regular.woff", family: HEADER_FONT, style: HEADER_FONT_STYLE },
-  // jsPDF reliably embeds TTF fonts; use the bundled PT Sans as a file-based fallback when GrueneType cannot be registered.
+  // jsPDF only supports TTF — GrueneTypeNeue.ttf first, PT Sans as fallback
+  { path: "/fonts/GrueneTypeNeue.ttf", family: HEADER_FONT, style: HEADER_FONT_STYLE },
   { path: "/fonts/PTSans-Bold.ttf", family: HEADER_FONT_FALLBACK, style: HEADER_FONT_FALLBACK_STYLE },
 ] as const;
 
@@ -101,15 +98,28 @@ function rgb(doc: jsPDF, c: readonly [number, number, number], type: "fill" | "t
   else doc.setDrawColor(c[0], c[1], c[2]);
 }
 
-async function loadSvgElement(src: string): Promise<SVGElement | null> {
+/** Rasterize an SVG to a data-URL (PNG) via Canvas at the given scale factor. */
+async function rasterizeSvg(src: string, w: number, h: number, scale = 4): Promise<string | null> {
   try {
     const resp = await fetch(src);
     if (!resp.ok) return null;
-    const text = await resp.text();
-    const parser = new DOMParser();
-    const svgDoc = parser.parseFromString(text, "image/svg+xml");
-    const svg = svgDoc.documentElement as unknown as SVGElement;
-    return svg;
+    const svgText = await resp.text();
+    const blob = new Blob([svgText], { type: "image/svg+xml;charset=utf-8" });
+    const url = URL.createObjectURL(blob);
+    const img = new Image();
+    await new Promise<void>((resolve, reject) => {
+      img.onload = () => resolve();
+      img.onerror = reject;
+      img.src = url;
+    });
+    const canvas = document.createElement("canvas");
+    canvas.width = Math.round(w * scale);
+    canvas.height = Math.round(h * scale);
+    const ctx = canvas.getContext("2d");
+    if (!ctx) { URL.revokeObjectURL(url); return null; }
+    ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+    URL.revokeObjectURL(url);
+    return canvas.toDataURL("image/png");
   } catch {
     return null;
   }
@@ -212,49 +222,23 @@ async function drawHeader(
   const headerBottomPadding = 6;
   const titleText = getHeaderTitle(preparation, appointmentTitle);
   const infoLine = getHeaderInfoLine(startTime, location);
-  const logoSvg = await loadSvgElement("/assets/logo_fraktion.svg");
-
   const logoH = 24;
   // SVG viewBox: 793.7 x 724.5 → aspect ≈ 1.096
-  const logoW = logoSvg ? logoH * 1.096 : 0;
+  const logoW = logoH * 1.096;
   const logoX = MARGIN;
   const logoY = headerTop;
-  const leftBlockX = logoX + logoW + 6;
+
+  // Rasterize SVG logo via Canvas (reliable, no svg2pdf.js dependency)
+  const logoDataUrl = await rasterizeSvg("/assets/logo_fraktion.svg", logoW, logoH, 4);
+  const hasLogo = !!logoDataUrl;
+  const effectiveLogoW = hasLogo ? logoW : 0;
+  const leftBlockX = logoX + effectiveLogoW + (hasLogo ? 6 : 0);
   const rightBlockW = 48;
   const rightBlockX = PAGE_W - MARGIN - rightBlockW;
   const leftBlockW = Math.max(50, rightBlockX - leftBlockX - 8);
 
-  if (logoSvg) {
-    try {
-      // Wrap in a timeout to prevent hanging on complex SVGs
-      await Promise.race([
-        doc.svg(logoSvg, { x: logoX, y: logoY, width: logoW, height: logoH }),
-        new Promise((_, reject) => setTimeout(() => reject(new Error('SVG render timeout')), 5000)),
-      ]);
-    } catch {
-      // Fallback: render SVG via canvas as JPEG
-      try {
-        const canvas = document.createElement('canvas');
-        const scale = 4; // high-res
-        canvas.width = Math.round(logoW * scale);
-        canvas.height = Math.round(logoH * scale);
-        const ctx = canvas.getContext('2d');
-        if (ctx) {
-          const img = new Image();
-          const svgBlob = new Blob([new XMLSerializer().serializeToString(logoSvg)], { type: 'image/svg+xml' });
-          const url = URL.createObjectURL(svgBlob);
-          await new Promise<void>((resolve, reject) => {
-            img.onload = () => { resolve(); };
-            img.onerror = reject;
-            img.src = url;
-          });
-          ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
-          URL.revokeObjectURL(url);
-          const dataUrl = canvas.toDataURL('image/png');
-          doc.addImage(dataUrl, 'PNG', logoX, logoY, logoW, logoH);
-        }
-      } catch { /* skip logo entirely */ }
-    }
+  if (logoDataUrl) {
+    doc.addImage(logoDataUrl, "PNG", logoX, logoY, logoW, logoH);
   }
 
   doc.setFont(headerFont.family, headerFont.style);
