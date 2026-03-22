@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from "react";
 import { useParams, useNavigate, useSearchParams } from "react-router-dom";
-import { ArrowLeft, Edit, FileText, Upload, Calendar, Clock, MapPin, Briefcase } from "lucide-react";
+import { ArrowLeft, Edit, FileText, Upload, Calendar, Clock, MapPin, Briefcase, ExternalLink } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -11,6 +11,7 @@ import { AppointmentPreparationDataTab } from "@/components/appointment-preparat
 import { AppointmentPreparationChecklistTab } from "@/components/appointment-preparations/AppointmentPreparationChecklistTab";
 import { AppointmentPreparationDetailsTab } from "@/components/appointment-preparations/AppointmentPreparationDetailsTab";
 import { AppointmentPreparationFileUpload } from "@/components/appointments/AppointmentPreparationFileUpload";
+import { AppointmentDetailsSidebar } from "@/components/calendar/AppointmentDetailsSidebar";
 import { AppointmentBriefingView } from "@/components/appointment-preparations/AppointmentBriefingView";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
@@ -45,6 +46,7 @@ export default function AppointmentPreparationDetail() {
   const [isCreating, setIsCreating] = useState(false);
   const [appointmentInfo, setAppointmentInfo] = useState<AppointmentPreparationAppointmentDetails | null>(null);
   const [userRole, setUserRole] = useState<string | null>(null);
+  const [showAppointmentSidebar, setShowAppointmentSidebar] = useState(false);
 
   const appointmentId = searchParams.get('appointmentId');
   const title = searchParams.get('title');
@@ -56,8 +58,7 @@ export default function AppointmentPreparationDetail() {
     preparation,
     loading,
     error,
-    updatePreparation,
-    archivePreparation
+    updatePreparation
   } = useAppointmentPreparation(preparationId);
 
   // Fetch user role to determine default tab
@@ -213,21 +214,41 @@ export default function AppointmentPreparationDetail() {
         {/* Prominent Appointment Info Header */}
         <Card className="bg-card shadow-elegant border-border mb-6 overflow-hidden">
           <div className="bg-primary/5 border-b border-border px-6 py-4">
-            <div className="flex items-start justify-between gap-4">
-              <div className="flex-1 min-w-0">
-                <div className="flex items-center gap-2 mb-2">
-                  {getStatusBadge(preparation.status)}
-                  <span className="text-xs text-muted-foreground">
-                    Erstellt {new Date(preparation.created_at).toLocaleDateString('de-DE')}
-                  </span>
+            <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+              <div className="flex min-w-0 flex-1 items-start gap-3">
+                <div className="mt-1 rounded-full bg-background/80 p-2 text-primary shadow-sm">
+                  <Calendar className="h-5 w-5" />
                 </div>
-                <h1 className="text-2xl font-bold leading-tight truncate">
-                  {appointmentInfo?.title ?? preparation.title}
-                </h1>
+                <div className="min-w-0 flex-1">
+                  <h1 className="text-3xl font-bold leading-tight truncate">
+                    {appointmentInfo?.title ?? preparation.title}
+                  </h1>
+                </div>
               </div>
-              <div className="text-right text-xs text-muted-foreground whitespace-nowrap shrink-0">
-                <p>Zuletzt bearbeitet</p>
-                <p className="font-medium">{new Date(preparation.updated_at).toLocaleString('de-DE')}</p>
+
+              <div className="flex flex-col items-start gap-3 sm:flex-row sm:items-center sm:justify-end lg:ml-auto">
+                {appointmentInfo && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setShowAppointmentSidebar(true)}
+                    className="flex items-center gap-2"
+                  >
+                    <ExternalLink className="h-4 w-4" />
+                    Termindetails öffnen
+                  </Button>
+                )}
+
+                <div className="flex flex-col items-start gap-2 text-xs text-muted-foreground sm:items-end">
+                  <div className="flex items-center gap-2 sm:justify-end">
+                    {getStatusBadge(preparation.status)}
+                    <span>Erstellt {new Date(preparation.created_at).toLocaleDateString('de-DE')}</span>
+                  </div>
+                  <div className="text-left whitespace-nowrap sm:text-right">
+                    <p>Zuletzt bearbeitet</p>
+                    <p className="font-medium">{new Date(preparation.updated_at).toLocaleString('de-DE')}</p>
+                  </div>
+                </div>
               </div>
             </div>
           </div>
@@ -306,8 +327,8 @@ export default function AppointmentPreparationDetail() {
               <AppointmentPreparationDataTab
                 preparation={preparation}
                 appointmentDetails={appointmentInfo}
-                onAppointmentUpdate={() => preparation.appointment_id ? fetchAppointmentInfo(preparation.appointment_id) : Promise.resolve()}
                 onUpdate={updatePreparation}
+                onOpenAppointmentDetails={() => setShowAppointmentSidebar(true)}
               />
             </TabsContent>
 
@@ -341,6 +362,27 @@ export default function AppointmentPreparationDetail() {
           </div>
         </Tabs>
       </div>
+        {appointmentInfo && (
+          <AppointmentDetailsSidebar
+            appointment={{
+              id: appointmentInfo.id,
+              title: appointmentInfo.title,
+              description: appointmentInfo.description ?? undefined,
+              time: format(new Date(appointmentInfo.start_time), 'HH:mm', { locale: de }),
+              duration: Math.round((new Date(appointmentInfo.end_time).getTime() - new Date(appointmentInfo.start_time).getTime()) / (1000 * 60)).toString(),
+              date: new Date(appointmentInfo.start_time),
+              endTime: new Date(appointmentInfo.end_time),
+              location: appointmentInfo.location ?? undefined,
+              attendees: 0,
+              type: (appointmentInfo.category || 'meeting') as 'deadline' | 'birthday' | 'vacation' | 'meeting' | 'appointment' | 'session' | 'blocked' | 'veranstaltung' | 'vacation_request',
+              priority: (appointmentInfo.priority as 'high' | 'low' | 'medium') || 'medium',
+              category: { color: '#3b82f6' }
+            }}
+            open={showAppointmentSidebar}
+            onClose={() => setShowAppointmentSidebar(false)}
+            onUpdate={() => preparation.appointment_id ? fetchAppointmentInfo(preparation.appointment_id) : Promise.resolve()}
+          />
+        )}
     </div>
   );
 }

@@ -7,7 +7,6 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Separator } from "@/components/ui/separator";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -24,7 +23,6 @@ import { supabase } from "@/integrations/supabase/client";
 import { useTenant } from "@/hooks/useTenant";
 import { format } from "date-fns";
 import { de } from "date-fns/locale";
-import { AppointmentDetailsSidebar } from "@/components/calendar/AppointmentDetailsSidebar";
 
 type ConversationPartner = AppointmentConversationPartner;
 type Companion = NonNullable<AppointmentPreparation['preparation_data']['companions']>[number];
@@ -50,8 +48,8 @@ interface AppointmentPreparationTabAppointmentDetails {
 interface AppointmentPreparationDataTabProps {
   preparation: AppointmentPreparation;
   appointmentDetails: AppointmentPreparationTabAppointmentDetails | null;
-  onAppointmentUpdate: () => Promise<void>;
   onUpdate: (updates: Partial<AppointmentPreparation>) => Promise<void>;
+  onOpenAppointmentDetails?: () => void;
 }
 
 const VISIT_REASON_OPTIONS = [
@@ -80,8 +78,8 @@ const getPreparationDataWithDefaults = (
 export function AppointmentPreparationDataTab({
   preparation,
   appointmentDetails,
-  onAppointmentUpdate,
-  onUpdate
+  onUpdate,
+  onOpenAppointmentDetails
 }: AppointmentPreparationDataTabProps) {
   const extendedPreparation = preparation as ExtendedAppointmentPreparation;
   const preparationDataWithDefaults = getPreparationDataWithDefaults(preparation.preparation_data);
@@ -127,7 +125,6 @@ export function AppointmentPreparationDataTab({
   const [contacts, setContacts] = useState<any[]>([]);
   const [selectedContactId, setSelectedContactId] = useState("");
   const [showCustomContact, setShowCustomContact] = useState(false);
-  const [showAppointmentSidebar, setShowAppointmentSidebar] = useState(false);
   const { currentTenant } = useTenant();
   const contactsById = useMemo(
     () => new Map(contacts.map(contact => [contact.id, contact])),
@@ -332,8 +329,8 @@ export function AppointmentPreparationDataTab({
   };
 
   const handleOpenAppointment = () => {
-    if (appointmentDetails) {
-      setShowAppointmentSidebar(true);
+    if (appointmentDetails && onOpenAppointmentDetails) {
+      onOpenAppointmentDetails();
     }
   };
 
@@ -525,221 +522,42 @@ export function AppointmentPreparationDataTab({
 
   return (
     <div className="space-y-4">
-      {/* Preparation Header Section */}
-      <Card>
-        <CardHeader>
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <FileTextIcon className="h-6 w-6 text-primary" />
-              <div>
-                <CardTitle className="text-xl">
-                  Vorbereitung: {appointmentDetails?.title || preparation.title || "Termin"}
-                </CardTitle>
-                <div className="flex items-center gap-2 mt-1">
-                  {getStatusBadge(preparation.status)}
-                  {saving && (
-                    <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                      <div className="animate-spin h-3 w-3 border border-primary border-t-transparent rounded-full" />
-                      Speichert...
-                    </div>
-                  )}
-                </div>
+      <div className="flex flex-col gap-3 rounded-xl border bg-card p-4 shadow-card sm:flex-row sm:items-center sm:justify-between">
+        <div>
+          <CardTitle className="text-xl">
+            Vorbereitung: {appointmentDetails?.title || preparation.title || "Termin"}
+          </CardTitle>
+          <div className="mt-1 flex items-center gap-2">
+            {getStatusBadge(preparation.status)}
+            {saving && (
+              <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                <div className="animate-spin h-3 w-3 border border-primary border-t-transparent rounded-full" />
+                Speichert...
               </div>
-            </div>
-
-            <div className="flex items-center gap-2">
-              {isEditing ? (
-                <>
-                  <Button variant="outline" size="sm" onClick={handleCancel}>
-                    <XIcon className="h-4 w-4 mr-2" />
-                    Abbrechen
-                  </Button>
-                  <Button size="sm" onClick={handleSave} disabled={saving}>
-                    <SaveIcon className="h-4 w-4 mr-2" />
-                    {saving ? 'Speichern...' : 'Speichern'}
-                  </Button>
-                </>
-              ) : (
-                <Button size="sm" onClick={() => setIsEditing(true)}>
-                  <EditIcon className="h-4 w-4 mr-2" />
-                  Bearbeiten
-                </Button>
-              )}
-            </div>
+            )}
           </div>
-        </CardHeader>
+        </div>
 
-        <CardContent className="space-y-6">
-          {/* Appointment Details Section */}
-          {appointmentDetails && (
-            <div className="space-y-4">
-              <h3 className="font-semibold text-lg flex items-center gap-2">
-                <CalendarIcon className="h-5 w-5" />
-                Termindetails
-              </h3>
-
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="flex items-center gap-2">
-                  <CalendarIcon className="h-4 w-4 text-muted-foreground" />
-                  <span className="font-medium">Datum:</span>
-                  <span>
-                    {format(new Date(appointmentDetails.start_time), 'dd.MM.yyyy', { locale: de })}
-                  </span>
-                </div>
-
-                <div className="flex items-center gap-2">
-                  <ClockIcon className="h-4 w-4 text-muted-foreground" />
-                  <span className="font-medium">Zeit:</span>
-                  <span>
-                    {format(new Date(appointmentDetails.start_time), 'HH:mm', { locale: de })} - {format(new Date(appointmentDetails.end_time), 'HH:mm', { locale: de })}
-                  </span>
-                </div>
-
-                {appointmentDetails.location && (
-                  <div className="flex items-center gap-2">
-                    <MapPinIcon className="h-4 w-4 text-muted-foreground" />
-                    <span className="font-medium">Ort:</span>
-                    <span>{appointmentDetails.location}</span>
-                  </div>
-                )}
-
-                {appointmentDetails.description && (
-                  <div className="flex items-start gap-2 md:col-span-2">
-                    <FileTextIcon className="h-4 w-4 text-muted-foreground mt-0.5" />
-                    <div>
-                      <span className="font-medium">Beschreibung:</span>
-                      <p className="text-muted-foreground mt-1">{appointmentDetails.description}</p>
-                    </div>
-                  </div>
-                )}
-              </div>
-
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={handleOpenAppointment}
-                className="flex items-center gap-2"
-              >
-                <ExternalLinkIcon className="h-4 w-4" />
-                Termindetails öffnen
+        <div className="flex items-center gap-2">
+          {isEditing ? (
+            <>
+              <Button variant="outline" size="sm" onClick={handleCancel}>
+                <XIcon className="h-4 w-4 mr-2" />
+                Abbrechen
               </Button>
-            </div>
+              <Button size="sm" onClick={handleSave} disabled={saving}>
+                <SaveIcon className="h-4 w-4 mr-2" />
+                {saving ? 'Speichern...' : 'Speichern'}
+              </Button>
+            </>
+          ) : (
+            <Button size="sm" onClick={() => setIsEditing(true)}>
+              <EditIcon className="h-4 w-4 mr-2" />
+              Bearbeiten
+            </Button>
           )}
-
-          <Separator />
-
-          {/* Contact Section */}
-          <div className="space-y-4">
-            <h3 className="font-semibold text-lg flex items-center gap-2">
-              <UsersIcon className="h-5 w-5" />
-              Kontaktinformationen
-            </h3>
-
-            {isEditing ? (
-              <div className="space-y-4">
-                <div>
-                  <label className="text-sm font-medium mb-2 block">Kontakt</label>
-                  <Select
-                    value={selectedContactId || (showCustomContact ? "custom" : "none")}
-                    onValueChange={handleContactSelect}
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Kontakt auswählen oder manuell eingeben" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="none">Kein Kontakt</SelectItem>
-                      <SelectItem value="custom">
-                        <div className="flex items-center gap-2">
-                          <PlusIcon className="h-4 w-4" />
-                          Kontakt manuell eingeben
-                        </div>
-                      </SelectItem>
-                      {contacts.map((contact) => (
-                        <SelectItem key={contact.id} value={contact.id}>
-                          <div>
-                            <div className="font-medium">{contact.name}</div>
-                            <div className="text-xs text-muted-foreground">
-                              {contact.organization && `${contact.organization} • `}
-                              {contact.role}
-                            </div>
-                          </div>
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                {showCustomContact && (
-                  <div className="space-y-4 p-4 border rounded-lg bg-muted/30">
-                    <div>
-                      <label className="text-sm font-medium mb-2 block">Kontaktname</label>
-                      <Input
-                        value={editData.contact_name}
-                        onChange={(e) => setEditData(prev => ({ ...prev, contact_name: e.target.value }))}
-                        placeholder="Name des Kontakts"
-                      />
-                    </div>
-                    <div>
-                      <label className="text-sm font-medium mb-2 block">Kontaktinformationen</label>
-                      <Textarea
-                        value={editData.contact_info}
-                        onChange={(e) => setEditData(prev => ({ ...prev, contact_info: e.target.value }))}
-                        placeholder="E-Mail, Telefon, weitere Informationen..."
-                        rows={3}
-                      />
-                    </div>
-                  </div>
-                )}
-              </div>
-            ) : (
-              <div>
-                {preparation.preparation_data.contact_name ? (
-                  <div className="space-y-2">
-                    <div className="font-medium">{preparation.preparation_data.contact_name}</div>
-                    {preparation.preparation_data.contact_info && (
-                      <div className="text-sm text-muted-foreground whitespace-pre-wrap">
-                        {preparation.preparation_data.contact_info}
-                      </div>
-                    )}
-                  </div>
-                ) : (
-                  <div className="text-muted-foreground text-sm">
-                    Kein Kontakt zugeordnet
-                  </div>
-                )}
-              </div>
-            )}
-          </div>
-
-          <Separator />
-
-          {/* Notes Section */}
-          <div className="space-y-4">
-            <h3 className="font-semibold text-lg">Weitere Notizen</h3>
-
-            {isEditing ? (
-              <Textarea
-                value={editData.briefing_notes}
-                onChange={(e) => handleFieldChange('briefing_notes', e.target.value)}
-                placeholder="Zusätzliche Briefing-Notizen, die separat im Briefing erscheinen sollen..."
-                rows={4}
-              />
-            ) : (
-              <div>
-                {(preparation.preparation_data.briefing_notes || preparation.notes) ? (
-                  <div className="text-muted-foreground whitespace-pre-wrap">
-                    {preparation.preparation_data.briefing_notes || preparation.notes}
-                  </div>
-                ) : (
-                  <div className="text-muted-foreground text-sm">
-                    Keine weiteren Notizen vorhanden
-                  </div>
-                )}
-              </div>
-            )}
-          </div>
-        </CardContent>
-      </Card>
+        </div>
+      </div>
 
       {/* ─── NEW SECTIONS ─── */}
 
@@ -812,6 +630,96 @@ export function AppointmentPreparationDataTab({
               )}
             </CollapsibleTrigger>
             <CollapsibleContent className="pt-4 space-y-3">
+              <div className="rounded-lg border bg-muted/20 p-4">
+                <div className="mb-3 flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                  <div>
+                    <h4 className="font-medium">Kontaktinformationen</h4>
+                    <p className="text-sm text-muted-foreground">
+                      Ansprechpartner und direkte Kontaktdaten für diesen Termin.
+                    </p>
+                  </div>
+                  {appointmentDetails && onOpenAppointmentDetails && (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={handleOpenAppointment}
+                      className="flex items-center gap-2"
+                    >
+                      <ExternalLinkIcon className="h-4 w-4" />
+                      Termindetails öffnen
+                    </Button>
+                  )}
+                </div>
+
+                {isEditing ? (
+                  <div className="space-y-4">
+                    <div>
+                      <label className="mb-2 block text-sm font-medium">Kontakt</label>
+                      <Select
+                        value={selectedContactId || (showCustomContact ? "custom" : "none")}
+                        onValueChange={handleContactSelect}
+                      >
+                        <SelectTrigger>
+                          <SelectValue placeholder="Kontakt auswählen oder manuell eingeben" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="none">Kein Kontakt</SelectItem>
+                          <SelectItem value="custom">
+                            <div className="flex items-center gap-2">
+                              <PlusIcon className="h-4 w-4" />
+                              Kontakt manuell eingeben
+                            </div>
+                          </SelectItem>
+                          {contacts.map((contact) => (
+                            <SelectItem key={contact.id} value={contact.id}>
+                              <div>
+                                <div className="font-medium">{contact.name}</div>
+                                <div className="text-xs text-muted-foreground">
+                                  {contact.organization && `${contact.organization} • `}
+                                  {contact.role}
+                                </div>
+                              </div>
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+
+                    {showCustomContact && (
+                      <div className="space-y-4 rounded-lg border bg-background p-4">
+                        <div>
+                          <label className="mb-2 block text-sm font-medium">Kontaktname</label>
+                          <Input
+                            value={editData.contact_name}
+                            onChange={(e) => setEditData(prev => ({ ...prev, contact_name: e.target.value }))}
+                            placeholder="Name des Kontakts"
+                          />
+                        </div>
+                        <div>
+                          <label className="mb-2 block text-sm font-medium">Kontaktinformationen</label>
+                          <Textarea
+                            value={editData.contact_info}
+                            onChange={(e) => setEditData(prev => ({ ...prev, contact_info: e.target.value }))}
+                            placeholder="E-Mail, Telefon, weitere Informationen..."
+                            rows={3}
+                          />
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                ) : preparation.preparation_data.contact_name ? (
+                  <div className="space-y-2">
+                    <div className="font-medium">{preparation.preparation_data.contact_name}</div>
+                    {preparation.preparation_data.contact_info && (
+                      <div className="text-sm text-muted-foreground whitespace-pre-wrap">
+                        {preparation.preparation_data.contact_info}
+                      </div>
+                    )}
+                  </div>
+                ) : (
+                  <div className="text-sm text-muted-foreground">Kein Kontakt zugeordnet</div>
+                )}
+              </div>
               {conversationPartners.length === 0 && (
                 <p className="text-sm text-muted-foreground px-1">Noch keine Gesprächspartner hinzugefügt.</p>
               )}
@@ -1269,28 +1177,6 @@ export function AppointmentPreparationDataTab({
         </CardContent>
       </Card>
 
-      {/* Appointment Details Sidebar */}
-      {appointmentDetails && (
-        <AppointmentDetailsSidebar
-          appointment={{
-            id: appointmentDetails.id,
-            title: appointmentDetails.title,
-            description: appointmentDetails.description ?? undefined,
-            time: format(new Date(appointmentDetails.start_time), 'HH:mm', { locale: de }),
-            duration: Math.round((new Date(appointmentDetails.end_time).getTime() - new Date(appointmentDetails.start_time).getTime()) / (1000 * 60)).toString(),
-            date: new Date(appointmentDetails.start_time),
-            endTime: new Date(appointmentDetails.end_time),
-            location: appointmentDetails.location ?? undefined,
-            attendees: 0,
-            type: (appointmentDetails.category || 'meeting') as 'deadline' | 'birthday' | 'vacation' | 'meeting' | 'appointment' | 'session' | 'blocked' | 'veranstaltung' | 'vacation_request',
-            priority: (appointmentDetails.priority as 'high' | 'low' | 'medium') || 'medium',
-            category: { color: '#3b82f6' }
-          }}
-          open={showAppointmentSidebar}
-          onClose={() => setShowAppointmentSidebar(false)}
-          onUpdate={onAppointmentUpdate}
-        />
-      )}
     </div>
   );
 }
