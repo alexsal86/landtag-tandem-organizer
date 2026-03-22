@@ -33,17 +33,15 @@ const RIGHT_X = MARGIN + LEFT_W + GAP;
 const FOOTER_Y = PAGE_H - 12;
 
 const HEADER_FONT = "GrueneType Neue";
-const BODY_FONT = "PT Sans";
+const HEADER_FONT_STYLE = "normal" as const;
+const BODY_FONT = "helvetica";
 
-const FONT_FILES = [
-  { family: BODY_FONT, style: "normal", file: "/fonts/PTSans-Regular.ttf" },
-  { family: BODY_FONT, style: "bold", file: "/fonts/PTSans-Bold.ttf" },
-  { family: BODY_FONT, style: "italic", file: "/fonts/PTSans-Italic.ttf" },
-  { family: HEADER_FONT, style: "normal", file: "/fonts/GrueneTypeNeue-Regular.ttf" },
-  { family: HEADER_FONT, style: "bold", file: "/fonts/GrueneTypeNeue-Bold.ttf" },
+const HEADER_FONT_FILES = [
+  "/fonts/GrueneTypeNeue-Regular.woff2",
+  "/fonts/GrueneTypeNeue-Regular.woff",
 ] as const;
 
-const fontDataCache = new Map<string, string>();
+const fontDataCache = new Map<string, { base64: string; vfsName: string }>();
 
 interface BriefingPdfOptions {
   preparation: AppointmentPreparation;
@@ -55,25 +53,31 @@ interface BriefingPdfOptions {
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
 async function registerBriefingFonts(doc: jsPDF): Promise<void> {
-  for (const font of FONT_FILES) {
-    const vfsName = font.file.split("/").pop() ?? `${font.family}-${font.style}.ttf`;
-    let base64 = fontDataCache.get(font.file);
-
-    if (!base64) {
-      const fontResponse = await fetch(font.file);
-      if (!fontResponse.ok) {
-        throw new Error(`Font could not be loaded: ${font.file}`);
-      }
-
-      const fontBytes = await fontResponse.arrayBuffer();
-      const binary = Array.from(new Uint8Array(fontBytes), (byte) => String.fromCharCode(byte)).join("");
-      base64 = btoa(binary);
-      fontDataCache.set(font.file, base64);
+  for (const file of HEADER_FONT_FILES) {
+    const cachedFont = fontDataCache.get(file);
+    if (cachedFont) {
+      doc.addFileToVFS(cachedFont.vfsName, cachedFont.base64);
+      doc.addFont(cachedFont.vfsName, HEADER_FONT, HEADER_FONT_STYLE);
+      return;
     }
 
+    const fontResponse = await fetch(file);
+    if (!fontResponse.ok) {
+      continue;
+    }
+
+    const fontBytes = await fontResponse.arrayBuffer();
+    const binary = Array.from(new Uint8Array(fontBytes), (byte) => String.fromCharCode(byte)).join("");
+    const base64 = btoa(binary);
+    const vfsName = file.split("/").pop() ?? "GrueneTypeNeue-Regular.woff2";
+
+    fontDataCache.set(file, { base64, vfsName });
     doc.addFileToVFS(vfsName, base64);
-    doc.addFont(vfsName, font.family, font.style);
+    doc.addFont(vfsName, HEADER_FONT, HEADER_FONT_STYLE);
+    return;
   }
+
+  throw new Error("GrueneType Neue font could not be loaded from /fonts/GrueneTypeNeue-Regular.woff2 or /fonts/GrueneTypeNeue-Regular.woff");
 }
 
 function splitLines(text: string | undefined | null): string[] {
@@ -211,7 +215,7 @@ async function drawHeader(
     } catch { /* ignore */ }
   }
 
-  doc.setFont(HEADER_FONT, "bold");
+  doc.setFont(HEADER_FONT, HEADER_FONT_STYLE);
   doc.setFontSize(12);
   rgb(doc, TEXT_DARK, "text");
   const titleLines = doc.splitTextToSize(titleText, leftBlockW);
