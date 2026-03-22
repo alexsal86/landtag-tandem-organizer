@@ -264,12 +264,21 @@
   flex-shrink: 0;
 }
 
+.rbc-time-header.rbc-overflowing {
+  border-right: 0;
+}
+
 /* Keep weekday header row and all-day row in normal flow (no overlap) */
 .rbc-time-header-content {
   display: flex;
   flex-direction: column;
   margin-left: 8px;
   border: 0;
+  border-left: 0;
+}
+
+.rbc-header + .rbc-header {
+  border: none;
 }
 
 .rbc-time-header .rbc-row.rbc-time-header-cell {
