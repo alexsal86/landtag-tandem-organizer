@@ -482,6 +482,7 @@ export const DashboardAppointments = ({ data }: Props) => {
                               appointmentTitle: apt.title,
                               appointmentStartTime: apt.start_time,
                               appointmentEndTime: apt.end_time || apt.start_time,
+                              appointmentLocation: apt.location || undefined,
                             }).catch(console.error);
                           }}
                         >
@@ -512,6 +513,7 @@ export const DashboardAppointments = ({ data }: Props) => {
                           title: apt.title,
                           start_time: apt.start_time,
                           end_time: apt.end_time || apt.start_time,
+                          location: apt.location || undefined,
                         }}
                       />
                     </div>
