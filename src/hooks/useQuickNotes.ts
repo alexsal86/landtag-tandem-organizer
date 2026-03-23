@@ -60,13 +60,13 @@ const normalizeMeetingLink = (note: QuickNote): QuickNote => {
   };
 };
 
-export function useQuickNotes(refreshTrigger?: number) {
+export function useQuickNotes(refreshTrigger?: number, controlledSearchQuery?: string) {
   const { user } = useAuth();
   const { currentTenant } = useTenant();
 
   const [notes, setNotes] = useState<QuickNote[]>([]);
   const [loading, setLoading] = useState(true);
-  const [searchQuery, setSearchQuery] = useState("");
+  const [internalSearchQuery, setInternalSearchQuery] = useState("");
   const [expandedNotes, setExpandedNotes] = useState<Set<string>>(new Set());
   const [expandedDetails, setExpandedDetails] = useState<Set<string>>(new Set());
   const [followUpExpanded, setFollowUpExpanded] = useState(true);
@@ -413,6 +413,8 @@ export function useQuickNotes(refreshTrigger?: number) {
 
     return { groups, followUpNotes, scheduledFollowUps };
   }, []);
+
+  const searchQuery = controlledSearchQuery ?? internalSearchQuery;
 
   const filteredNotes = useMemo(() => {
     if (!searchQuery.trim()) return notes;
@@ -948,7 +950,7 @@ export function useQuickNotes(refreshTrigger?: number) {
 
   return {
     // Data
-    user, notes, loading, searchQuery, setSearchQuery,
+    user, notes, loading, searchQuery, setSearchQuery: setInternalSearchQuery,
     filteredNotes, groups, followUpNotes, scheduledFollowUps,
     expandedNotes, expandedDetails, colorModeUpdating,
     followUpExpanded, setFollowUpExpanded,

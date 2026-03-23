@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -67,12 +67,9 @@ interface QuickNotesListProps {
   maxHeight?: string;
   onNoteClick?: (note: QuickNote) => void;
   searchPlacement?: "top" | "hidden";
-  onSearchApiReady?: (api: {
-    searchQuery: string;
-    setSearchQuery: (value: string) => void;
-    filteredCount: number;
-    totalCount: number;
-  }) => void;
+  searchQuery?: string;
+  onSearchQueryChange?: (value: string) => void;
+  onCountsChange?: (counts: { filteredCount: number; totalCount: number }) => void;
 }
 
 export function QuickNotesList({
@@ -81,21 +78,27 @@ export function QuickNotesList({
   maxHeight = "400px",
   onNoteClick,
   searchPlacement = "top",
-  onSearchApiReady
+  searchQuery,
+  onSearchQueryChange,
+  onCountsChange,
 }: QuickNotesListProps) {
-  const hook = useQuickNotes(refreshTrigger);
+  const hook = useQuickNotes(refreshTrigger, searchQuery);
   const { isHighlighted, highlightRef } = useNotificationHighlight();
   const { createTopic } = useTopicBacklog();
   const [topicActionNoteId, setTopicActionNoteId] = useState<string | null>(null);
 
+  const effectiveSearchQuery = searchQuery ?? hook.searchQuery;
+  const handleSearchQueryChange = useMemo(
+    () => onSearchQueryChange ?? hook.setSearchQuery,
+    [onSearchQueryChange, hook.setSearchQuery]
+  );
+
   useEffect(() => {
-    onSearchApiReady?.({
-      searchQuery: hook.searchQuery,
-      setSearchQuery: hook.setSearchQuery,
+    onCountsChange?.({
       filteredCount: hook.filteredNotes.length,
       totalCount: hook.notes.length,
     });
-  }, [hook.filteredNotes.length, hook.notes.length, hook.searchQuery, hook.setSearchQuery, onSearchApiReady]);
+  }, [hook.filteredNotes.length, hook.notes.length, onCountsChange]);
 
   if (hook.loading) {
     return (
@@ -265,17 +268,17 @@ export function QuickNotesList({
             <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
             <Input
               placeholder="Notizen durchsuchen..."
-              value={hook.searchQuery}
-              onChange={(e) => hook.setSearchQuery(e.target.value)}
+              value={effectiveSearchQuery}
+              onChange={(e) => handleSearchQueryChange(e.target.value)}
               className="h-8 pl-8 pr-8 text-sm"
             />
-            {hook.searchQuery && (
-              <Button variant="ghost" size="icon" className="absolute right-1 top-1/2 -translate-y-1/2 h-6 w-6" onClick={() => hook.setSearchQuery("")}>
+            {effectiveSearchQuery && (
+              <Button variant="ghost" size="icon" className="absolute right-1 top-1/2 -translate-y-1/2 h-6 w-6" onClick={() => handleSearchQueryChange("")}>
                 <X className="h-3 w-3" />
               </Button>
             )}
           </div>
-          {hook.searchQuery && (
+          {effectiveSearchQuery && (
             <p className="text-xs text-muted-foreground mt-1.5">
               {hook.filteredNotes.length} von {hook.notes.length} Notizen gefunden
             </p>

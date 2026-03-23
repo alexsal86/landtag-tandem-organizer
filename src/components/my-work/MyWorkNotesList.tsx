@@ -1,4 +1,4 @@
-import { useCallback, useState } from "react";
+import { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Globe, Archive, Search, X } from "lucide-react";
@@ -15,21 +15,8 @@ export function MyWorkNotesList({ refreshTrigger }: MyWorkNotesListProps) {
   const [globalShareOpen, setGlobalShareOpen] = useState(false);
   const [archiveOpen, setArchiveOpen] = useState(false);
   const [localRefreshTrigger, setLocalRefreshTrigger] = useState(0);
-  const [searchApi, setSearchApi] = useState<{
-    searchQuery: string;
-    setSearchQuery: (value: string) => void;
-    filteredCount: number;
-    totalCount: number;
-  } | null>(null);
-
-  const handleSearchApiReady = useCallback((api: {
-    searchQuery: string;
-    setSearchQuery: (value: string) => void;
-    filteredCount: number;
-    totalCount: number;
-  }) => {
-    setSearchApi(api);
-  }, []);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [counts, setCounts] = useState({ filteredCount: 0, totalCount: 0 });
 
   const handleArchiveRestore = () => {
     // Trigger refresh of the notes list when restoring from archive/trash
@@ -47,16 +34,16 @@ export function MyWorkNotesList({ refreshTrigger }: MyWorkNotesListProps) {
                 <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                 <Input
                   placeholder="Notizen durchsuchen..."
-                  value={searchApi?.searchQuery ?? ""}
-                  onChange={(e) => searchApi?.setSearchQuery(e.target.value)}
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
                   className="h-8 pl-8 pr-8 text-sm"
                 />
-                {searchApi?.searchQuery && (
+                {searchQuery && (
                   <Button
                     variant="ghost"
                     size="icon"
                     className="absolute right-1 top-1/2 -translate-y-1/2 h-6 w-6"
-                    onClick={() => searchApi.setSearchQuery("")}
+                    onClick={() => setSearchQuery("")}
                   >
                     <X className="h-3 w-3" />
                   </Button>
@@ -80,6 +67,11 @@ export function MyWorkNotesList({ refreshTrigger }: MyWorkNotesListProps) {
               </Button>
             </div>
           </div>
+          {searchQuery && (
+            <p className="text-xs text-muted-foreground mt-2">
+              {counts.filteredCount} von {counts.totalCount} Notizen gefunden
+            </p>
+          )}
         </CardHeader>
         <CardContent className="p-0">
           <QuickNotesList 
@@ -87,7 +79,9 @@ export function MyWorkNotesList({ refreshTrigger }: MyWorkNotesListProps) {
             showHeader={false}
             maxHeight="none"
             searchPlacement="hidden"
-            onSearchApiReady={handleSearchApiReady}
+            searchQuery={searchQuery}
+            onSearchQueryChange={setSearchQuery}
+            onCountsChange={setCounts}
           />
         </CardContent>
       </Card>
