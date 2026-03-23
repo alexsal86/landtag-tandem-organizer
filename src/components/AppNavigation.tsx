@@ -295,38 +295,31 @@ export function AppNavigation({
       <nav className={cn("flex flex-col bg-[hsl(var(--nav))] text-[hsl(var(--nav-foreground))] border-r border-[hsl(var(--nav-foreground)/0.1)] shrink-0 w-[72px]", isMobile ? "h-full" : "h-screen")}>
         {/* Logo Area */}
         <div className="h-14 flex items-center justify-center border-b border-[hsl(var(--nav-foreground)/0.1)]">
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <button 
-                onClick={handleLogoClick}
-                className="transition-transform hover:scale-105"
-              >
-                {appSettings.app_logo_url ? (
-                  <img 
-                    src={appSettings.app_logo_url} 
-                    alt="Logo" 
-                    crossOrigin="anonymous"
-                    className={cn(
-                      "h-8 w-8 object-contain",
-                      clickedItem === 'dashboard' && "animate-nav-bounce"
-                    )}
-                  />
-                ) : (
-                  <div 
-                    className={cn(
-                      "h-8 w-8 rounded-lg bg-[hsl(var(--nav-accent))] flex items-center justify-center",
-                      clickedItem === 'dashboard' && "animate-nav-bounce"
-                    )}
-                  >
-                    <Home className="h-4 w-4 text-white" />
-                  </div>
+          <button 
+            onClick={handleLogoClick}
+            className="transition-transform hover:scale-105"
+          >
+            {appSettings.app_logo_url ? (
+              <img 
+                src={appSettings.app_logo_url} 
+                alt="Logo" 
+                crossOrigin="anonymous"
+                className={cn(
+                  "h-8 w-8 object-contain",
+                  clickedItem === 'dashboard' && "animate-nav-bounce"
                 )}
-              </button>
-            </TooltipTrigger>
-            <TooltipContent side="right" className="bg-[hsl(var(--nav))] text-[hsl(var(--nav-foreground))] border-[hsl(var(--nav-foreground)/0.2)]">
-              Dashboard
-            </TooltipContent>
-          </Tooltip>
+              />
+            ) : (
+              <div 
+                className={cn(
+                  "h-8 w-8 rounded-lg bg-[hsl(var(--nav-accent))] flex items-center justify-center",
+                  clickedItem === 'dashboard' && "animate-nav-bounce"
+                )}
+              >
+                <Home className="h-4 w-4 text-white" />
+              </div>
+            )}
+          </button>
         </div>
 
         {/* Main Navigation */}
