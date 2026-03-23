@@ -1,4 +1,5 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo } from "react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { format, differenceInDays, isWeekend, startOfWeek } from "date-fns";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
@@ -84,13 +85,20 @@ export interface TeamOverviewMetrics {
   membersWithoutRecentEntries: number;
 }
 
-export interface UseMyWorkTeamDataResult {
-  loading: boolean;
+export interface UseMyWorkTeamDataModel {
   canViewTeam: boolean;
   userRole: TeamViewerRole;
   teamMembers: TeamMemberViewModel[];
   overview: TeamOverviewMetrics;
-  reload: () => void;
+}
+
+export interface UseMyWorkTeamDataResult extends UseMyWorkTeamDataModel {
+  data: UseMyWorkTeamDataModel;
+  isLoading: boolean;
+  loading: boolean;
+  error: Error | null;
+  refetch: () => Promise<unknown>;
+  reload: () => Promise<unknown>;
 }
 
 export const TEAM_TAB_ACCESS_RULES: TeamTabAccessRule[] = [
@@ -110,6 +118,12 @@ const TEAM_TAB_VISIBLE_ROLES = new Set<TeamViewerRole>(TEAM_TAB_ACCESS_RULES.map
 const TEAM_MEMBER_ROLES = new Set<TeamViewerRole>(["mitarbeiter", "praktikant", "bueroleitung"]);
 const NO_TIME_ENTRY_BUSINESS_DAYS = 999;
 const TIME_ENTRY_ATTENTION_THRESHOLD_DAYS = 3;
+const EMPTY_OVERVIEW: TeamOverviewMetrics = {
+  totalMembers: 0,
+  pendingMeetingRequests: 0,
+  overdueMeetings: 0,
+  membersWithoutRecentEntries: 0,
+};
 
 export function calculateBusinessDaysSince(lastDate: string | null, today = new Date()): number {
   if (!lastDate) return NO_TIME_ENTRY_BUSINESS_DAYS;
@@ -139,21 +153,11 @@ export function getMeetingStatus(nextDue: string | null): TeamMemberViewModel["m
 export function getWorkIndicatorMeta(worked: number, target: number) {
   const percentage = target > 0 ? (worked / target) * 100 : 0;
 
-  if (worked === 0) {
-    return { variant: "empty" as const, label: "Keine Einträge", percentage };
-  }
-  if (percentage < 25) {
-    return { variant: "critical" as const, label: "Wenig erfasst", percentage };
-  }
-  if (percentage < 50) {
-    return { variant: "warning" as const, label: "Untererfasst", percentage };
-  }
-  if (percentage < 80) {
-    return { variant: "progress" as const, label: "In Arbeit", percentage };
-  }
-  if (percentage <= 100) {
-    return { variant: "good" as const, label: "Gut erfasst", percentage };
-  }
+  if (worked === 0) return { variant: "empty" as const, label: "Keine Einträge", percentage };
+  if (percentage < 25) return { variant: "critical" as const, label: "Wenig erfasst", percentage };
+  if (percentage < 50) return { variant: "warning" as const, label: "Untererfasst", percentage };
+  if (percentage < 80) return { variant: "progress" as const, label: "In Arbeit", percentage };
+  if (percentage <= 100) return { variant: "good" as const, label: "Gut erfasst", percentage };
   return { variant: "overtime" as const, label: "Überstunden", percentage };
 }
 
@@ -161,6 +165,23 @@ function getInitials(name: string): string {
   const parts = name.trim().split(/\s+/).filter(Boolean);
   if (parts.length === 0) return "?";
   return parts.slice(0, 2).map((part) => part.charAt(0).toUpperCase()).join("");
+}
+
+async function resolveViewerRole(userId: string, tenantId: string): Promise<TeamViewerRole> {
+  const { data, error } = await supabase
+    .from("user_tenant_memberships")
+    .select("role")
+    .eq("tenant_id", tenantId)
+    .eq("user_id", userId)
+    .eq("is_active", true)
+    .maybeSingle();
+
+  if (error) {
+    debugConsole.error("Error resolving team viewer role:", error);
+    return "";
+  }
+
+  return ((data as { role?: TeamViewerRole } | null)?.role ?? "") as TeamViewerRole;
 }
 
 async function resolveVisibleEmployeeIds(userId: string, tenantId: string): Promise<string[]> {
@@ -300,111 +321,95 @@ function mapTeamMembers(
   return members;
 }
 
+function buildOverview(teamMembers: TeamMemberViewModel[]): TeamOverviewMetrics {
+  return {
+    totalMembers: teamMembers.length,
+    pendingMeetingRequests: teamMembers.reduce((sum, member) => sum + member.openMeetingRequests, 0),
+    overdueMeetings: teamMembers.filter((member) => member.meetingStatus?.label === "Überfällig").length,
+    membersWithoutRecentEntries: teamMembers.filter((member) => member.workStatus.needsAttention).length,
+  };
+}
+
+async function fetchMyWorkTeamData(userId: string, tenantId: string): Promise<UseMyWorkTeamDataModel> {
+  const userRole = await resolveViewerRole(userId, tenantId);
+  const canViewTeam = TEAM_TAB_VISIBLE_ROLES.has(userRole);
+
+  if (!canViewTeam) {
+    return { canViewTeam, userRole, teamMembers: [], overview: EMPTY_OVERVIEW };
+  }
+
+  const employeeIds = await resolveVisibleEmployeeIds(userId, tenantId);
+  if (employeeIds.length === 0) {
+    return { canViewTeam, userRole, teamMembers: [], overview: EMPTY_OVERVIEW };
+  }
+
+  const weekStart = format(startOfWeek(new Date(), { weekStartsOn: 1 }), "yyyy-MM-dd");
+  const today = format(new Date(), "yyyy-MM-dd");
+
+  const [profilesResult, settingsResult, requestsResult, timeEntriesResult, latestEntriesResult] = await Promise.all([
+    supabase.from("profiles").select("user_id, display_name, avatar_url").in("user_id", employeeIds),
+    supabase.from("employee_settings").select("user_id, hours_per_week, last_meeting_date, meeting_interval_months").in("user_id", employeeIds),
+    supabase.from("employee_meeting_requests").select("employee_id").eq("status", "pending").in("employee_id", employeeIds),
+    supabase.from("time_entries").select("user_id, minutes, work_date").in("user_id", employeeIds).gte("work_date", weekStart).lte("work_date", today),
+    (supabase.rpc as <T>(fn: string, args: Record<string, unknown>) => Promise<{ data: T | null; error: unknown }>)("get_latest_time_entry_dates", { p_user_ids: employeeIds }),
+  ]);
+
+  if (profilesResult.error) debugConsole.error("Error loading team profiles:", profilesResult.error);
+  if (settingsResult.error) debugConsole.error("Error loading team settings:", settingsResult.error);
+  if (requestsResult.error) debugConsole.error("Error loading team meeting requests:", requestsResult.error);
+  if (timeEntriesResult.error) debugConsole.error("Error loading team time entries:", timeEntriesResult.error);
+  if (latestEntriesResult.error) debugConsole.error("Error loading latest employee time entries:", latestEntriesResult.error);
+
+  const teamMembers = mapTeamMembers(
+    employeeIds,
+    (profilesResult.data as TeamProfileRow[] | null) ?? [],
+    (settingsResult.data as TeamSettingsRow[] | null) ?? [],
+    (requestsResult.data as TeamMeetingRequestRow[] | null) ?? [],
+    (timeEntriesResult.data as TeamTimeEntryRow[] | null) ?? [],
+    (latestEntriesResult.data as LatestTimeEntryRow[] | null) ?? [],
+  );
+
+  return {
+    canViewTeam,
+    userRole,
+    teamMembers,
+    overview: buildOverview(teamMembers),
+  };
+}
+
 export function useMyWorkTeamData(): UseMyWorkTeamDataResult {
   const { user } = useAuth();
   const { currentTenant } = useTenant();
-  const [loading, setLoading] = useState(true);
-  const { role, isAdmin } = useResolvedUserRole();
-  const userRole = (role ?? "") as TeamViewerRole;
-  const [teamMembers, setTeamMembers] = useState<TeamMemberViewModel[]>([]);
-  const [reloadToken, setReloadToken] = useState(0);
+  const queryClient = useQueryClient();
+  const { role } = useResolvedUserRole();
 
-  const reload = useCallback(() => {
-    setReloadToken((current) => current + 1);
-  }, []);
+  const queryKey = useMemo(() => ["my-work-team", currentTenant?.id, user?.id], [currentTenant?.id, user?.id]);
 
-  useEffect(() => {
-    const userId = user?.id;
-    const tenantId = currentTenant?.id;
+  const { data, isLoading, error, refetch } = useQuery({
+    queryKey,
+    queryFn: () => fetchMyWorkTeamData(user!.id, currentTenant!.id),
+    enabled: Boolean(user?.id && currentTenant?.id),
+    staleTime: 60_000,
+    gcTime: 5 * 60_000,
+    refetchOnWindowFocus: false,
+  });
 
-    if (!userId || !tenantId) {
-      setLoading(false);
-      setTeamMembers([]);
-      return;
-    }
-
-    let cancelled = false;
-    setLoading(true);
-
-    const load = async () => {
-      try {
-        const resolvedRole = await resolveViewerRole(userId, tenantId);
-        if (cancelled) return;
-
-        setUserRole(resolvedRole);
-
-        if (!TEAM_TAB_VISIBLE_ROLES.has(resolvedRole)) {
-          setTeamMembers([]);
-          return;
-        }
-
-        const employeeIds = await resolveVisibleEmployeeIds(userId, tenantId);
-        if (cancelled) return;
-
-        if (employeeIds.length === 0) {
-          setTeamMembers([]);
-          return;
-        }
-
-        const weekStart = format(startOfWeek(new Date(), { weekStartsOn: 1 }), "yyyy-MM-dd");
-        const today = format(new Date(), "yyyy-MM-dd");
-
-        const [profilesResult, settingsResult, requestsResult, timeEntriesResult, latestEntriesResult] = await Promise.all([
-          supabase.from("profiles").select("user_id, display_name, avatar_url").in("user_id", employeeIds),
-          supabase.from("employee_settings").select("user_id, hours_per_week, last_meeting_date, meeting_interval_months").in("user_id", employeeIds),
-          supabase.from("employee_meeting_requests").select("employee_id").eq("status", "pending").in("employee_id", employeeIds),
-          supabase.from("time_entries").select("user_id, minutes, work_date").in("user_id", employeeIds).gte("work_date", weekStart).lte("work_date", today),
-          (supabase.rpc as <T>(fn: string, args: Record<string, unknown>) => Promise<{ data: T | null; error: unknown }>)("get_latest_time_entry_dates", { p_user_ids: employeeIds }),
-        ]);
-
-        if (cancelled) return;
-
-        if (profilesResult.error) debugConsole.error("Error loading team profiles:", profilesResult.error);
-        if (settingsResult.error) debugConsole.error("Error loading team settings:", settingsResult.error);
-        if (requestsResult.error) debugConsole.error("Error loading team meeting requests:", requestsResult.error);
-        if (timeEntriesResult.error) debugConsole.error("Error loading team time entries:", timeEntriesResult.error);
-        if (latestEntriesResult.error) debugConsole.error("Error loading latest employee time entries:", latestEntriesResult.error);
-
-        const mappedMembers = mapTeamMembers(
-          employeeIds,
-          (profilesResult.data as TeamProfileRow[] | null) ?? [],
-          (settingsResult.data as TeamSettingsRow[] | null) ?? [],
-          (requestsResult.data as TeamMeetingRequestRow[] | null) ?? [],
-          (timeEntriesResult.data as TeamTimeEntryRow[] | null) ?? [],
-          (latestEntriesResult.data as LatestTimeEntryRow[] | null) ?? [],
-        );
-
-        setTeamMembers(mappedMembers);
-      } catch (error) {
-        debugConsole.error("Error loading team:", error);
-        if (!cancelled) {
-          setTeamMembers([]);
-        }
-      } finally {
-        if (!cancelled) {
-          setLoading(false);
-        }
-      }
-    };
-
-    void load();
-
-    return () => {
-      cancelled = true;
-    };
-  }, [currentTenant?.id, isAdmin, reloadToken, user?.id]);
-
-  const canViewTeam = TEAM_TAB_VISIBLE_ROLES.has(userRole);
+  const effectiveData = data ?? {
+    canViewTeam: TEAM_TAB_VISIBLE_ROLES.has((role ?? "") as TeamViewerRole),
+    userRole: ((role ?? "") as TeamViewerRole),
+    teamMembers: [],
+    overview: EMPTY_OVERVIEW,
+  };
 
   useEffect(() => {
-    if (!user?.id || !currentTenant?.id || !canViewTeam) return;
+    if (!user?.id || !currentTenant?.id || !effectiveData.canViewTeam) return;
 
     let timeout: ReturnType<typeof setTimeout> | null = null;
     const scheduleReload = () => {
       if (timeout) clearTimeout(timeout);
       timeout = setTimeout(() => {
         timeout = null;
-        reload();
+        queryClient.invalidateQueries({ queryKey });
       }, 250);
     };
 
@@ -418,21 +423,17 @@ export function useMyWorkTeamData(): UseMyWorkTeamDataResult {
       if (timeout) clearTimeout(timeout);
       supabase.removeChannel(channel);
     };
-  }, [canViewTeam, currentTenant?.id, reload, user?.id]);
+  }, [currentTenant?.id, effectiveData.canViewTeam, queryClient, queryKey, user?.id]);
 
-  const overview = useMemo<TeamOverviewMetrics>(() => ({
-    totalMembers: teamMembers.length,
-    pendingMeetingRequests: teamMembers.reduce((sum, member) => sum + member.openMeetingRequests, 0),
-    overdueMeetings: teamMembers.filter((member) => member.meetingStatus?.label === "Überfällig").length,
-    membersWithoutRecentEntries: teamMembers.filter((member) => member.workStatus.needsAttention).length,
-  }), [teamMembers]);
+  const reload = useCallback(() => refetch(), [refetch]);
 
   return {
-    loading,
-    canViewTeam,
-    userRole,
-    teamMembers,
-    overview,
+    data: effectiveData,
+    ...effectiveData,
+    isLoading,
+    loading: isLoading,
+    error: (error as Error | null) ?? null,
+    refetch: reload,
     reload,
   };
 }

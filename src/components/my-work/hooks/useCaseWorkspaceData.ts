@@ -1,5 +1,5 @@
-import { useCallback, useEffect, useMemo, type Dispatch, type SetStateAction } from "react";
-import { useInfiniteQuery, useQuery, useQueryClient, type InfiniteData } from "@tanstack/react-query";
+import { useCallback, useEffect, useMemo } from "react";
+import { useInfiniteQuery, useQuery, useQueryClient } from "@tanstack/react-query";
 
 import { supabase } from "@/integrations/supabase/client";
 import type { CaseItemIntakePayload } from "@/features/cases/items/types";
@@ -41,96 +41,134 @@ export type TeamUser = {
 };
 
 const PAGE_SIZE = 100;
-const EMPTY_ITEMS: CaseItem[] = [];
-const EMPTY_FILES: CaseFile[] = [];
-const EMPTY_TEAM_USERS: TeamUser[] = [];
 
-const caseWorkspaceKeys = {
-  root: (tenantId?: string) => ["case-workspace", tenantId ?? "no-tenant"] as const,
-  caseItems: (tenantId?: string) => [...caseWorkspaceKeys.root(tenantId), "case-items"] as const,
-  caseFiles: (tenantId?: string) => [...caseWorkspaceKeys.root(tenantId), "case-files"] as const,
-  teamUsers: (tenantId?: string) => [...caseWorkspaceKeys.root(tenantId), "team-users"] as const,
-};
+async function fetchTeamUsers(tenantId: string): Promise<TeamUser[]> {
+  const { data: membersRes, error: membersError } = await supabase
+    .from("user_tenant_memberships")
+    .select("user_id")
+    .eq("tenant_id", tenantId)
+    .eq("is_active", true);
 
-const flattenInfiniteData = <T,>(data?: InfiniteData<T[], number>): T[] => data?.pages.flat() ?? [];
+  if (membersError) throw membersError;
+  const memberIds = ((membersRes || []) as Array<{ user_id: string }>).map((row) => row.user_id);
+  if (memberIds.length === 0) return [];
 
-const paginate = <T,>(rows: T[]): T[][] => {
-  if (rows.length === 0) return [[]];
+  const { data: profileRows, error: profilesError } = await supabase
+    .from("profiles")
+    .select("user_id, display_name, avatar_url")
+    .in("user_id", memberIds);
+  if (profilesError) throw profilesError;
 
-  const pages: T[][] = [];
-  for (let i = 0; i < rows.length; i += PAGE_SIZE) {
-    pages.push(rows.slice(i, i + PAGE_SIZE));
-  }
-  return pages;
-};
+  const profileById = new Map(
+    (profileRows || []).map((row: { user_id: string; display_name: string | null; avatar_url: string | null }) => [
+      row.user_id,
+      { name: row.display_name || "Unbekannt", avatarUrl: row.avatar_url || null },
+    ]),
+  );
 
-const toInfiniteData = <T,>(rows: T[]): InfiniteData<T[], number> => {
-  const pages = paginate(rows);
-  return {
-    pages,
-    pageParams: pages.map((_, index) => index * PAGE_SIZE),
-  };
-};
+  return memberIds.map((id) => {
+    const profile = profileById.get(id);
+    return { id, name: profile?.name || "Unbekannt", avatarUrl: profile?.avatarUrl || null };
+  });
+}
+
+async function fetchItemsPage(tenantId: string, pageParam: number): Promise<{ items: CaseItem[]; nextOffset?: number }> {
+  const { data, error } = await supabase
+    .from("case_items")
+    .select("id, visible_to_all, subject, summary, resolution_summary, source_channel, source_received_at, status, completion_note, completed_at, priority, due_at, case_file_id, user_id, owner_user_id, intake_payload, updated_at")
+    .eq("tenant_id", tenantId)
+    .order("updated_at", { ascending: false, nullsFirst: false })
+    .range(pageParam, pageParam + PAGE_SIZE - 1);
+  if (error) throw error;
+  const items = (data || []) as unknown as CaseItem[];
+  return { items, nextOffset: items.length === PAGE_SIZE ? pageParam + PAGE_SIZE : undefined };
+}
+
+async function fetchFilesPage(tenantId: string, pageParam: number): Promise<{ files: CaseFile[]; nextOffset?: number }> {
+  const { data, error } = await supabase
+    .from("case_files")
+    .select("id, title, status, reference_number, current_status_note, case_type, updated_at")
+    .eq("tenant_id", tenantId)
+    .order("updated_at", { ascending: false })
+    .range(pageParam, pageParam + PAGE_SIZE - 1);
+  if (error) throw error;
+  const files = (data || []) as CaseFile[];
+  return { files, nextOffset: files.length === PAGE_SIZE ? pageParam + PAGE_SIZE : undefined };
+}
 
 export const useCaseWorkspaceData = ({ tenantId, userId }: { tenantId?: string; userId?: string }) => {
   const queryClient = useQueryClient();
   const enabled = Boolean(tenantId && userId);
 
-  const itemsQueryKey = caseWorkspaceKeys.caseItems(tenantId);
-  const filesQueryKey = caseWorkspaceKeys.caseFiles(tenantId);
-  const teamUsersQueryKey = caseWorkspaceKeys.teamUsers(tenantId);
+  const itemsQuery = useInfiniteQuery({
+    queryKey: ["case-workspace", tenantId, "items"],
+    queryFn: ({ pageParam = 0 }) => fetchItemsPage(tenantId!, pageParam),
+    enabled,
+    initialPageParam: 0,
+    getNextPageParam: (lastPage) => lastPage.nextOffset,
+    staleTime: 60_000,
+    gcTime: 5 * 60_000,
+    refetchOnWindowFocus: false,
+  });
 
-  const fetchTeamUsers = useCallback(async () => {
-    if (!tenantId) return [] as TeamUser[];
-    const { data: membersRes, error: membersError } = await supabase
-      .from("user_tenant_memberships")
-      .select("user_id")
-      .eq("tenant_id", tenantId)
-      .eq("is_active", true);
+  const filesQuery = useInfiniteQuery({
+    queryKey: ["case-workspace", tenantId, "files"],
+    queryFn: ({ pageParam = 0 }) => fetchFilesPage(tenantId!, pageParam),
+    enabled,
+    initialPageParam: 0,
+    getNextPageParam: (lastPage) => lastPage.nextOffset,
+    staleTime: 60_000,
+    gcTime: 5 * 60_000,
+    refetchOnWindowFocus: false,
+  });
 
-    if (membersError) throw membersError;
-    const memberIds = ((membersRes || []) as Array<{ user_id: string }>).map((row) => row.user_id);
-    if (memberIds.length === 0) return [];
+  const teamUsersQuery = useQuery({
+    queryKey: ["case-workspace", tenantId, "team-users"],
+    queryFn: () => fetchTeamUsers(tenantId!),
+    enabled,
+    staleTime: 60_000,
+    gcTime: 5 * 60_000,
+    refetchOnWindowFocus: false,
+  });
 
-    const { data: profileRows, error: profilesError } = await supabase
-      .from("profiles")
-      .select("user_id, display_name, avatar_url")
-      .in("user_id", memberIds);
-    if (profilesError) throw profilesError;
+  const caseItems = useMemo(
+    () => itemsQuery.data?.pages.flatMap((page) => page.items) ?? [],
+    [itemsQuery.data],
+  );
+  const caseFiles = useMemo(
+    () => filesQuery.data?.pages.flatMap((page) => page.files) ?? [],
+    [filesQuery.data],
+  );
+  const teamUsers = teamUsersQuery.data ?? [];
 
-    const profileById = new Map<string, { name: string; avatarUrl: string | null }>(
-      (profileRows || []).map((row: any) => [row.user_id, { name: row.display_name || "Unbekannt", avatarUrl: row.avatar_url || null }]),
-    );
+  const caseFilesById = useMemo(
+    () => Object.fromEntries(caseFiles.map((file) => [file.id, file])) as Record<string, CaseFile>,
+    [caseFiles],
+  );
 
-    return memberIds.map((id) => {
-      const profile = profileById.get(id);
-      return { id, name: profile?.name || "Unbekannt", avatarUrl: profile?.avatarUrl || null };
+  const setCaseItems = useCallback((updater: CaseItem[] | ((current: CaseItem[]) => CaseItem[])) => {
+    if (!tenantId) return;
+    queryClient.setQueryData(["case-workspace", tenantId, "items"], (current: any) => {
+      const currentItems = current?.pages?.flatMap((page: { items: CaseItem[] }) => page.items) ?? [];
+      const nextItems = typeof updater === "function" ? updater(currentItems) : updater;
+      return {
+        pageParams: [0],
+        pages: [{ items: nextItems, nextOffset: nextItems.length >= PAGE_SIZE ? nextItems.length : undefined }],
+      };
     });
-  }, [tenantId]);
+  }, [queryClient, tenantId]);
 
-  const fetchItemsPage = useCallback(async (offset: number) => {
-    if (!tenantId) return [] as CaseItem[];
-    const { data, error } = await supabase
-      .from("case_items")
-      .select("id, visible_to_all, subject, summary, resolution_summary, source_channel, source_received_at, status, completion_note, completed_at, priority, due_at, case_file_id, user_id, owner_user_id, intake_payload, updated_at")
-      .eq("tenant_id", tenantId)
-      .order("updated_at", { ascending: false, nullsFirst: false })
-      .range(offset, offset + PAGE_SIZE - 1);
-    if (error) throw error;
-    return (data || []) as unknown as CaseItem[];
-  }, [tenantId]);
-
-  const fetchFilesPage = useCallback(async (offset: number) => {
-    if (!tenantId) return [] as CaseFile[];
-    const { data, error } = await supabase
-      .from("case_files")
-      .select("id, title, status, reference_number, current_status_note, case_type, updated_at")
-      .eq("tenant_id", tenantId)
-      .order("updated_at", { ascending: false })
-      .range(offset, offset + PAGE_SIZE - 1);
-    if (error) throw error;
-    return (data || []) as CaseFile[];
-  }, [tenantId]);
+  const setCaseFiles = useCallback((updater: CaseFile[] | ((current: CaseFile[]) => CaseFile[])) => {
+    if (!tenantId) return;
+    queryClient.setQueryData(["case-workspace", tenantId, "files"], (current: any) => {
+      const currentFiles = current?.pages?.flatMap((page: { files: CaseFile[] }) => page.files) ?? [];
+      const nextFiles = typeof updater === "function" ? updater(currentFiles) : updater;
+      return {
+        pageParams: [0],
+        pages: [{ files: nextFiles, nextOffset: nextFiles.length >= PAGE_SIZE ? nextFiles.length : undefined }],
+      };
+    });
+  }, [queryClient, tenantId]);
 
   const caseItemsQuery = useInfiniteQuery({
     queryKey: itemsQueryKey,
@@ -174,137 +212,82 @@ export const useCaseWorkspaceData = ({ tenantId, userId }: { tenantId?: string; 
   }, [itemsQueryKey, setInfiniteRows]);
 
   const refreshAll = useCallback(async () => {
-    if (!enabled) return;
-
+    if (!tenantId) return;
     await Promise.all([
-      queryClient.invalidateQueries({ queryKey: itemsQueryKey }),
-      queryClient.invalidateQueries({ queryKey: filesQueryKey }),
-      queryClient.invalidateQueries({ queryKey: teamUsersQueryKey }),
+      queryClient.invalidateQueries({ queryKey: ["case-workspace", tenantId, "items"] }),
+      queryClient.invalidateQueries({ queryKey: ["case-workspace", tenantId, "files"] }),
+      queryClient.invalidateQueries({ queryKey: ["case-workspace", tenantId, "team-users"] }),
     ]);
-
-    await Promise.all([
-      caseItemsQuery.refetch(),
-      caseFilesQuery.refetch(),
-      teamUsersQuery.refetch(),
-    ]);
-  }, [enabled, queryClient, itemsQueryKey, filesQueryKey, teamUsersQueryKey, caseItemsQuery, caseFilesQuery, teamUsersQuery]);
+  }, [queryClient, tenantId]);
 
   const loadMoreItems = useCallback(async () => {
-    if (!caseItemsQuery.hasNextPage || caseItemsQuery.isFetchingNextPage) return;
-    await caseItemsQuery.fetchNextPage();
-  }, [caseItemsQuery]);
+    if (!itemsQuery.hasNextPage || itemsQuery.isFetchingNextPage) return;
+    await itemsQuery.fetchNextPage();
+  }, [itemsQuery]);
 
   const loadMoreFiles = useCallback(async () => {
-    if (!caseFilesQuery.hasNextPage || caseFilesQuery.isFetchingNextPage) return;
-    await caseFilesQuery.fetchNextPage();
-  }, [caseFilesQuery]);
+    if (!filesQuery.hasNextPage || filesQuery.isFetchingNextPage) return;
+    await filesQuery.fetchNextPage();
+  }, [filesQuery]);
 
   useEffect(() => {
-    if (!enabled) return;
+    if (!tenantId || !userId) return;
 
     let timeout: ReturnType<typeof setTimeout> | null = null;
     const scheduleRefresh = () => {
       if (timeout) clearTimeout(timeout);
       timeout = setTimeout(() => {
+        timeout = null;
         void refreshAll();
       }, 250);
     };
 
-    const handleCaseItemChange = (payload: any) => {
-      const eventType = payload.eventType as string;
-      const newRow = payload.new as CaseItem | undefined;
-      const oldRow = payload.old as { id?: string } | undefined;
-
-      if (eventType === "INSERT" && newRow) {
-        setCaseItems((prev) => {
-          if (prev.some((item) => item.id === newRow.id)) return prev;
-          return [newRow, ...prev];
-        });
-        return;
-      }
-
-      if (eventType === "UPDATE" && newRow) {
-        setCaseItems((prev) => {
-          const idx = prev.findIndex((item) => item.id === newRow.id);
-          if (idx === -1) return prev;
-          const updated = [...prev];
-          updated[idx] = newRow;
-          return updated;
-        });
-        return;
-      }
-
-      if (eventType === "DELETE" && oldRow?.id) {
-        setCaseItems((prev) => prev.filter((item) => item.id !== oldRow.id));
-        return;
-      }
-
-      scheduleRefresh();
-    };
-
-    const handleCaseFileChange = (payload: any) => {
-      const eventType = payload.eventType as string;
-      const newRow = payload.new as CaseFile | undefined;
-      const oldRow = payload.old as { id?: string } | undefined;
-
-      if (eventType === "INSERT" && newRow) {
-        setInfiniteRows(filesQueryKey, (prev: CaseFile[]) => {
-          if (prev.some((file) => file.id === newRow.id)) return prev;
-          return [newRow, ...prev];
-        });
-        return;
-      }
-
-      if (eventType === "UPDATE" && newRow) {
-        setInfiniteRows(filesQueryKey, (prev: CaseFile[]) => {
-          const idx = prev.findIndex((file) => file.id === newRow.id);
-          if (idx === -1) return prev;
-          const updated = [...prev];
-          updated[idx] = newRow;
-          return updated;
-        });
-        return;
-      }
-
-      if (eventType === "DELETE" && oldRow?.id) {
-        setInfiniteRows(filesQueryKey, (prev: CaseFile[]) => prev.filter((file) => file.id !== oldRow.id));
-        return;
-      }
-
-      scheduleRefresh();
-    };
-
     const channel = supabase
-      .channel(`case-workspace-${tenantId}`)
-      .on("postgres_changes", { event: "*", schema: "public", table: "case_items", filter: `tenant_id=eq.${tenantId}` }, handleCaseItemChange)
-      .on("postgres_changes", { event: "*", schema: "public", table: "case_files", filter: `tenant_id=eq.${tenantId}` }, handleCaseFileChange)
-      .on("postgres_changes", { event: "*", schema: "public", table: "task_decisions", filter: `tenant_id=eq.${tenantId}` }, scheduleRefresh)
+      .channel(`case-workspace-${tenantId}-${userId}`)
+      .on("postgres_changes", { event: "*", schema: "public", table: "case_items", filter: `tenant_id=eq.${tenantId}` }, scheduleRefresh)
+      .on("postgres_changes", { event: "*", schema: "public", table: "case_files", filter: `tenant_id=eq.${tenantId}` }, scheduleRefresh)
+      .on("postgres_changes", { event: "*", schema: "public", table: "user_tenant_memberships", filter: `tenant_id=eq.${tenantId}` }, scheduleRefresh)
+      .on("postgres_changes", { event: "*", schema: "public", table: "profiles" }, scheduleRefresh)
       .subscribe();
 
     return () => {
       if (timeout) clearTimeout(timeout);
       supabase.removeChannel(channel);
     };
-  }, [enabled, filesQueryKey, refreshAll, setCaseItems, setInfiniteRows, tenantId]);
+  }, [refreshAll, tenantId, userId]);
 
-  const caseFilesById = useMemo(() => caseFiles.reduce<Record<string, CaseFile>>((acc, row) => {
-    acc[row.id] = row;
-    return acc;
-  }, {}), [caseFiles]);
+  const isLoading = itemsQuery.isLoading || filesQuery.isLoading || teamUsersQuery.isLoading;
+  const error = (itemsQuery.error || filesQuery.error || teamUsersQuery.error) as Error | null;
+
+  if (error) {
+    debugConsole.error("Failed to load case workspace data:", error);
+  }
 
   return {
+    data: {
+      caseItems,
+      caseFiles,
+      caseFilesById,
+      teamUsers,
+      hasMoreItems: Boolean(itemsQuery.hasNextPage),
+      hasMoreFiles: Boolean(filesQuery.hasNextPage),
+    },
     caseItems,
     setCaseItems,
     caseFiles,
+    setCaseFiles,
     caseFilesById,
     teamUsers,
-    loading: enabled ? (caseItemsQuery.isLoading || caseFilesQuery.isLoading || teamUsersQuery.isLoading) : false,
+    isLoading,
+    loading: isLoading,
+    error,
+    refetch: refreshAll,
     refreshAll,
-    hasMoreItems: Boolean(caseItemsQuery.hasNextPage),
-    hasMoreFiles: Boolean(caseFilesQuery.hasNextPage),
+    hasMoreItems: Boolean(itemsQuery.hasNextPage),
+    hasMoreFiles: Boolean(filesQuery.hasNextPage),
     loadMoreItems,
     loadMoreFiles,
-    loadingMoreItems: caseItemsQuery.isFetchingNextPage,
-    loadingMoreFiles: caseFilesQuery.isFetchingNextPage,
+    loadingMoreItems: itemsQuery.isFetchingNextPage,
+    loadingMoreFiles: filesQuery.isFetchingNextPage,
   };
 };
