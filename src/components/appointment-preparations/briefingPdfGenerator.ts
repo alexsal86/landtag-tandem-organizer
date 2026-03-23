@@ -876,20 +876,50 @@ export async function generateBriefingPdf({
 
   // ── RIGHT COLUMN ────────────────────────────────────────────────────────────
 
-  // 1. Anlass des Besuchs
-  if (preparation.title?.trim()) {
-    const titleLines = doc.splitTextToSize(preparation.title, RIGHT_W - 10);
-    const estH = Math.max(18, SECTION_HEADER_H + SECTION_GAP_AFTER_HEADER + titleLines.length * 4.5 + SECTION_BOTTOM_PAD + 2);
+  // 1. Anlass des Besuchs (from visit_reason data)
+  const visitReasonLabel = d.visit_reason ? (({
+    einladung: "Einladung der Person/Einrichtung",
+    eigeninitiative: "Eigeninitiative",
+    fraktionsarbeit: "Fraktionsarbeit",
+    pressetermin: "Pressetermin",
+  } as Record<string, string>)[d.visit_reason] ?? d.visit_reason) : "";
+  const visitReasonDetails = d.visit_reason_details?.trim();
+  const visitReasonLines = [visitReasonLabel, visitReasonDetails].filter(Boolean) as string[];
+
+  if (visitReasonLines.length > 0) {
+    doc.setFontSize(9);
+    let estH = SECTION_HEADER_H + SECTION_GAP_AFTER_HEADER + SECTION_BOTTOM_PAD + 2;
+    if (visitReasonLabel) {
+      const labelLines = doc.splitTextToSize(visitReasonLabel, RIGHT_W - 10);
+      estH += labelLines.length * 4.5 + 1;
+    }
+    if (visitReasonDetails) {
+      const detailLines = doc.splitTextToSize(visitReasonDetails, RIGHT_W - 10);
+      estH += detailLines.length * 4 + 1;
+    }
     ensureFit(doc, rightY, estH, topY);
     const cy = rightY.y;
     const bodyY = cy + SECTION_HEADER_H + SECTION_GAP_AFTER_HEADER;
     const bodyH = Math.max(12, estH - SECTION_HEADER_H - SECTION_GAP_AFTER_HEADER);
     drawSectionHeaderBar(doc, RIGHT_X, cy, RIGHT_W, "Anlass des Besuchs");
     drawSectionBody(doc, RIGHT_X, bodyY, RIGHT_W, bodyH);
-    doc.setFontSize(9);
-    doc.setFont(BODY_FONT, "bold");
-    rgb(doc, TEXT_DARK, "text");
-    doc.text(titleLines, RIGHT_X + 5, bodyY + 5.5);
+
+    let textY = bodyY + 5.5;
+    if (visitReasonLabel) {
+      doc.setFontSize(9);
+      doc.setFont(BODY_FONT, "bold");
+      rgb(doc, TEXT_DARK, "text");
+      const labelLines = doc.splitTextToSize(visitReasonLabel, RIGHT_W - 10);
+      doc.text(labelLines, RIGHT_X + 5, textY);
+      textY += labelLines.length * 4.5 + 2;
+    }
+    if (visitReasonDetails) {
+      doc.setFontSize(8.5);
+      doc.setFont(BODY_FONT, "normal");
+      rgb(doc, TEXT_MUTED, "text");
+      const detailLines = doc.splitTextToSize(visitReasonDetails, RIGHT_W - 10);
+      doc.text(detailLines, RIGHT_X + 5, textY);
+    }
     rightY.y = cy + estH + SECTION_OUTER_GAP;
   }
 
