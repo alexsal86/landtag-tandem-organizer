@@ -268,25 +268,26 @@ function drawHeaderIcon(
   }
 
   if (type === "location") {
-    doc.circle(x + 1.9, y - 2, 0.9, "S");
-    doc.line(x + 1.9, y - 1.1, x + 1.9, y + 0.4);
-    doc.line(x + 1.1, y - 0.3, x + 1.9, y + 0.4);
-    doc.line(x + 2.7, y - 0.3, x + 1.9, y + 0.4);
+    doc.circle(x + 1.9, y - 2.25, 1.1, "S");
+    doc.circle(x + 1.9, y - 2.25, 0.35, "S");
+    doc.line(x + 1.05, y - 1.45, x + 1.9, y + 0.4);
+    doc.line(x + 2.75, y - 1.45, x + 1.9, y + 0.4);
     return;
   }
 
   doc.setLineWidth(0.28);
-  doc.line(x + 0.9, y - 1.1, x + 0.9, y + 1.4);
-  doc.line(x + 0.9, y - 1.1, x + 1.8, y - 1.7);
-  doc.line(x + 0.9, y + 1.4, x + 1.8, y + 2);
-  doc.line(x + 1.8, y - 1.7, x + 4.1, y - 2.3);
-  doc.line(x + 1.8, y + 2, x + 4.1, y + 1.1);
-  doc.line(x + 4.1, y - 2.3, x + 4.1, y + 1.1);
-  doc.line(x + 4.1, y - 2.3, x + 1.8, y - 0.8);
-  doc.line(x + 4.1, y + 1.1, x + 1.8, y + 0.5);
-  doc.line(x + 4.3, y - 1.7, x + 5.2, y - 2.5);
-  doc.line(x + 4.6, y - 0.6, x + 5.8, y - 0.6);
-  doc.line(x + 4.3, y + 0.6, x + 5.2, y + 1.4);
+  doc.line(x + 1.1, y - 0.6, x + 1.1, y + 1.7);
+  doc.line(x + 1.1, y - 0.1, x + 2.2, y - 1.2);
+  doc.line(x + 1.1, y + 1.2, x + 2.2, y + 2.1);
+  doc.line(x + 2.2, y - 1.2, x + 4.6, y - 2.1);
+  doc.line(x + 2.2, y + 2.1, x + 4.6, y + 1.1);
+  doc.line(x + 4.6, y - 2.1, x + 4.6, y + 1.1);
+  doc.line(x + 4.6, y - 2.1, x + 2.2, y - 0.8);
+  doc.line(x + 4.6, y + 1.1, x + 2.2, y + 0.2);
+  doc.line(x + 1.45, y + 1.7, x + 2.15, y + 2.75);
+  doc.line(x + 4.95, y - 1.6, x + 5.9, y - 2.45);
+  doc.line(x + 5.2, y - 0.45, x + 6.35, y - 0.45);
+  doc.line(x + 4.95, y + 0.7, x + 5.9, y + 1.55);
 }
 
 function getPublicRelationsStatus(preparationData: AppointmentPreparation["preparation_data"]): string[] {
