@@ -361,9 +361,13 @@ export function useMyWorkDecisionsData(userId?: string) {
   }, [userId, loadDecisions]);
 
   return {
+    data: decisions,
     decisions,
     setDecisions,
+    isLoading: loading,
     loading,
+    error: null,
+    refetch: loadDecisions,
     loadDecisions,
   };
 }

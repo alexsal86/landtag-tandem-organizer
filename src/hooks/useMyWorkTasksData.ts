@@ -219,7 +219,11 @@ export function useMyWorkTasksData(userId?: string) {
     setTaskSnoozes: (val: SetterArg<Record<string, string>>) => setLocalOverrides(prev => ({ ...prev, taskSnoozes: resolveArg(val, prev.taskSnoozes ?? taskSnoozes) })),
     taskCommentCounts: effectiveComments,
     setTaskCommentCounts: (val: SetterArg<Record<string, number>>) => setLocalOverrides(prev => ({ ...prev, taskCommentCounts: resolveArg(val, prev.taskCommentCounts ?? taskCommentCounts) })),
+    data: { assignedTasks: effectiveAssigned, createdTasks: effectiveCreated, subtasks: effectiveSubtasks, taskSnoozes: effectiveSnoozes, taskCommentCounts: effectiveComments },
+    isLoading,
     loading: isLoading,
+    error: null,
+    refetch: loadTasks,
     loadTasks,
   };
 }

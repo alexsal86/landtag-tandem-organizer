@@ -303,6 +303,10 @@ export function useMyWorkJourFixeMeetings(userId?: string) {
     upcomingMeetings,
     pastMeetings,
     meetingParticipants,
+    data: { upcomingMeetings, pastMeetings, meetingParticipants },
+    isLoading: meetingsLoading,
     loading: meetingsLoading,
+    error: null,
+    refetch: () => queryClient.invalidateQueries({ queryKey: ['my-work-jour-fixe-meetings', userId] }),
   };
 }
