@@ -18,6 +18,7 @@ import { Clock, Plus, ExternalLink, TrendingUp, Calendar, Play, Pause, Square, X
 import { useNavigate } from "react-router-dom";
 import { useTimeEntryReminder } from "@/hooks/useTimeEntryReminder";
 import { useVacationReminders } from "@/hooks/useVacationReminders";
+import { useResolvedUserRole } from "@/hooks/useResolvedUserRole";
 
 interface TimeEntryRow {
   id: string;
@@ -49,10 +50,10 @@ const CLOCK_STORAGE_TTL_MS = 18 * 60 * 60 * 1000;
 export function MyWorkTimeTrackingTab() {
   const { user } = useAuth();
   const navigate = useNavigate();
+  const { isEmployee } = useResolvedUserRole();
   const [loading, setLoading] = useState(true);
   const [entries, setEntries] = useState<TimeEntryRow[]>([]);
   const [employeeSettings, setEmployeeSettings] = useState<EmployeeSettingsRow | null>(null);
-  const [isEmployee, setIsEmployee] = useState(false);
 
   // Check for missing time entries and remind user
   useTimeEntryReminder(user?.id ?? null);
@@ -158,7 +159,7 @@ export function MyWorkTimeTrackingTab() {
     if (user) {
       checkRoleAndLoad();
     }
-  }, [user]);
+  }, [isEmployee, user]);
 
   // Realtime subscription
   useEffect(() => {
@@ -182,18 +183,9 @@ export function MyWorkTimeTrackingTab() {
     if (!user) return;
 
     try {
-      // Check if user is an employee
-      const { data: roleData } = await supabase
-        .from("user_roles")
-        .select("role")
-        .eq("user_id", user.id)
-        .single();
-
-      const employeeRoles = ["mitarbeiter", "praktikant", "bueroleitung"];
-      const userIsEmployee = roleData && employeeRoles.includes(roleData.role);
-      setIsEmployee(!!userIsEmployee);
-
-      if (!userIsEmployee) {
+      if (!isEmployee) {
+        setEmployeeSettings(null);
+        setEntries([]);
         setLoading(false);
         return;
       }

@@ -11299,6 +11299,10 @@ export type Database = {
         Args: { target_year: number }
         Returns: number
       }
+      archive_completed_task: {
+        Args: { p_task_id: string; p_user_id: string }
+        Returns: string
+      }
       assign_contact_to_organization: {
         Args: { contact_id: string; org_id: string }
         Returns: undefined
