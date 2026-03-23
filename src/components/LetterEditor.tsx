@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
-import { Save, X, Users, Eye, EyeOff, AlertTriangle, Edit3, FileText, MessageSquare, Ruler, Paperclip, Settings, Layout, Building, Info } from 'lucide-react';
+import { Save, X, Users, UserPlus, Eye, EyeOff, AlertTriangle, Edit3, FileText, MessageSquare, Ruler, Paperclip, Settings, Layout, Building, Info } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import EnhancedLexicalEditor from './EnhancedLexicalEditor';
@@ -8,6 +8,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { useTenant } from '@/hooks/useTenant';
 
 import ReviewAssignmentDialog from './ReviewAssignmentDialog';
+import UserAssignmentDialog from './UserAssignmentDialog';
 import { DIN5008LetterLayout } from './letters/DIN5008LetterLayout';
 import { LetterEditorCanvas } from './letters/LetterEditorCanvas';
 import { LetterEditorToolbar } from './letters/LetterEditorToolbar';
@@ -72,11 +73,15 @@ const LetterEditor: React.FC<LetterEditorProps> = ({ letter, isOpen, onClose, on
     fetchAttachments, fetchComments, fetchCollaborators, fetchWorkflowUserProfiles,
   } = useLetterData({ isOpen, tenantId: currentTenant?.id, letterId: letter?.id });
 
+  const [showWriterDialog, setShowWriterDialog] = useState(false);
+
   const isCreator = user?.id === letter?.created_by;
   const isReviewer = collaborators.some(c => c.user_id === user?.id);
+  const isWriter = collaborators.some(c => c.user_id === user?.id && c.role === 'writer');
   const currentStatus = editedLetter.status || 'draft';
   const canEdit = !letter || (currentStatus !== 'sent' && (
     (isCreator && (currentStatus === 'draft' || currentStatus === 'revision_requested')) ||
+    (isWriter && currentStatus === 'draft') ||
     (isReviewer && (currentStatus === 'review' || currentStatus === 'pending_approval'))
   ));
 
@@ -291,6 +296,15 @@ const LetterEditor: React.FC<LetterEditorProps> = ({ letter, isOpen, onClose, on
         </div>
       )}
 
+      {/* Co-Author button bar */}
+      {canEdit && currentStatus === 'draft' && letter?.id && (
+        <div className="flex items-center gap-2 px-4 py-1.5 border-b bg-muted/20">
+          <Button variant="ghost" size="sm" className="h-7 text-xs" onClick={() => setShowWriterDialog(true)}>
+            <UserPlus className="h-3.5 w-3.5 mr-1" />Mitbearbeiter
+          </Button>
+        </div>
+      )}
+
       {showBriefDetails && (
         <LetterBriefDetails editedLetter={editedLetter} setEditedLetter={setEditedLetter} canEdit={canEdit} isReviewer={isReviewer} userProfiles={userProfiles}
           onStatusTransition={handleStatusTransition} onReturnLetter={handleReturnLetter} broadcastContentChange={broadcastContentChange} />
@@ -403,12 +417,13 @@ const LetterEditor: React.FC<LetterEditorProps> = ({ letter, isOpen, onClose, on
           closingName: editedLetter.closing_name || '',
           subject: editedLetter.subject || '',
         }}
-        onReviewAssigned={async () => {
+        onReviewAssigned={async (mode) => {
           const now = new Date().toISOString();
           fetchCollaborators(); setShowAssignmentDialog(false);
-          setEditedLetter(prev => ({ ...prev, status: 'pending_approval', submitted_for_review_at: now, submitted_for_review_by: user?.id }));
+          const newStatus = mode === 'review' ? 'review' : 'pending_approval';
+          setEditedLetter(prev => ({ ...prev, status: newStatus, submitted_for_review_at: now, submitted_for_review_by: user?.id }));
           setIsProofreadingMode(true); setSaving(true);
-          try { const { error } = await supabase.from('letters').update({ status: 'pending_approval', submitted_for_review_at: now, submitted_for_review_by: user?.id, updated_at: now }).eq('id', letter!.id); if (error) throw error; } catch (error) { debugConsole.error('Error saving status:', error); } finally { setSaving(false); }
+          try { const { error } = await supabase.from('letters').update({ status: newStatus, submitted_for_review_at: now, submitted_for_review_by: user?.id, updated_at: now }).eq('id', letter!.id); if (error) throw error; } catch (error) { debugConsole.error('Error saving status:', error); } finally { setSaving(false); }
         }}
         onSkipReview={async () => {
           const now = new Date().toISOString();
@@ -416,6 +431,11 @@ const LetterEditor: React.FC<LetterEditorProps> = ({ letter, isOpen, onClose, on
           try { const { error } = await supabase.from('letters').update({ status: 'approved', approved_at: now, approved_by: user?.id, updated_at: now }).eq('id', letter!.id); if (error) throw error; } catch (error) { debugConsole.error('Error saving status:', error); } finally { setSaving(false); }
         }}
       />
+
+      {showWriterDialog && (
+        <UserAssignmentDialog isOpen={showWriterDialog} onClose={() => setShowWriterDialog(false)} letterId={letter?.id || ''} role="writer"
+          onAssignmentComplete={() => { fetchCollaborators(); setShowWriterDialog(false); }} />
+      )}
     </div>
   );
 };

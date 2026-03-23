@@ -19,6 +19,7 @@ interface UserAssignmentDialogProps {
   isOpen: boolean;
   onClose: () => void;
   letterId: string;
+  role?: 'reviewer' | 'writer';
   onAssignmentComplete: () => void;
 }
 
@@ -26,8 +27,14 @@ const UserAssignmentDialog: React.FC<UserAssignmentDialogProps> = ({
   isOpen,
   onClose,
   letterId,
+  role = 'reviewer',
   onAssignmentComplete
 }) => {
+  const isWriterMode = role === 'writer';
+  const dialogTitle = isWriterMode ? 'Mitbearbeiter zuweisen' : 'Prüfer zuweisen';
+  const dialogDescription = isWriterMode
+    ? 'Wählen Sie Benutzer aus, die diesen Brief mitbearbeiten dürfen.'
+    : 'Wählen Sie die Benutzer aus, die diesen Brief zur Korrektur erhalten sollen.';
   const { user } = useAuth();
   const { currentTenant } = useTenant();
   const { toast } = useToast();
@@ -143,7 +150,7 @@ const UserAssignmentDialog: React.FC<UserAssignmentDialogProps> = ({
               letter_id: letterId,
               user_id: userId,
               assigned_by: user.id,
-              role: 'reviewer'
+              role: role
             }))
           );
 
@@ -151,8 +158,8 @@ const UserAssignmentDialog: React.FC<UserAssignmentDialogProps> = ({
       }
 
       toast({
-        title: "Prüfer zugewiesen",
-        description: `${selectedUsers.length} Prüfer wurden erfolgreich zugewiesen.`,
+        title: isWriterMode ? "Mitbearbeiter zugewiesen" : "Prüfer zugewiesen",
+        description: `${selectedUsers.length} ${isWriterMode ? 'Mitbearbeiter' : 'Prüfer'} wurden erfolgreich zugewiesen.`,
       });
 
       onAssignmentComplete();
@@ -175,13 +182,13 @@ const UserAssignmentDialog: React.FC<UserAssignmentDialogProps> = ({
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <Users className="h-5 w-5" />
-            Prüfer zuweisen
+            {dialogTitle}
           </DialogTitle>
         </DialogHeader>
 
         <div className="space-y-4">
           <p className="text-sm text-muted-foreground">
-            Wählen Sie die Benutzer aus, die diesen Brief zur Korrektur erhalten sollen.
+            {dialogDescription}
           </p>
 
           {loading ? (

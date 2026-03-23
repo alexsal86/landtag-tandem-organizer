@@ -1,5 +1,5 @@
-import React from 'react';
-import { ArrowRight, CheckCircle, Clock, Edit3, FileText, RotateCcw, Send, Activity } from 'lucide-react';
+import React, { useEffect, useState } from 'react';
+import { ArrowRight, CheckCircle, Clock, Edit3, FileText, RotateCcw, Send, Activity, AlertTriangle, Users } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -7,11 +7,13 @@ import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { STATUS_LABELS, SENT_METHOD_LABELS, getNextStatus } from './types';
+import { supabase } from '@/integrations/supabase/client';
+import { debugConsole } from '@/utils/debugConsole';
 import type { Letter } from './types';
 
 const STATUS_ICONS: Record<string, any> = {
   draft: Edit3,
-  review: Clock,
+  review: Users,
   pending_approval: Clock,
   approved: CheckCircle,
   revision_requested: RotateCcw,
@@ -29,6 +31,37 @@ interface LetterBriefDetailsProps {
   broadcastContentChange: (field: string, value: string) => void;
 }
 
+const useRevisionComment = (letterId?: string, status?: string) => {
+  const [revisionComment, setRevisionComment] = useState<string | null>(null);
+  useEffect(() => {
+    if (status !== 'revision_requested' || !letterId) { setRevisionComment(null); return; }
+    const fetchComment = async () => {
+      try {
+        const { data } = await supabase
+          .from('tasks')
+          .select('description')
+          .ilike('title', `%Brief überarbeiten%`)
+          .order('created_at', { ascending: false })
+          .limit(5);
+        if (data) {
+          const match = data.find(t => t.description?.includes('Begründung der Zurückweisung'));
+          if (match?.description) {
+            const parts = match.description.split('Begründung der Zurückweisung:\n\n');
+            setRevisionComment(parts[1] || match.description);
+            return;
+          }
+        }
+        setRevisionComment(null);
+      } catch (e) {
+        debugConsole.error('Error fetching revision comment:', e);
+        setRevisionComment(null);
+      }
+    };
+    fetchComment();
+  }, [letterId, status]);
+  return revisionComment;
+};
+
 const LetterBriefDetails: React.FC<LetterBriefDetailsProps> = ({
   editedLetter,
   setEditedLetter,
@@ -40,6 +73,7 @@ const LetterBriefDetails: React.FC<LetterBriefDetailsProps> = ({
   broadcastContentChange,
 }) => {
   const status = editedLetter.status || 'draft';
+  const revisionComment = useRevisionComment((editedLetter as any).id, status);
 
   return (
     <div className="border-b bg-card/30 p-4 overflow-y-auto max-h-[45vh]">
@@ -51,6 +85,23 @@ const LetterBriefDetails: React.FC<LetterBriefDetailsProps> = ({
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-6">
+          {/* Revision Banner */}
+          {status === 'revision_requested' && (
+            <div className="p-4 border border-orange-200 rounded-lg bg-orange-50 dark:bg-orange-950/30 dark:border-orange-800">
+              <div className="flex items-start gap-2">
+                <AlertTriangle className="h-4 w-4 text-orange-600 mt-0.5 flex-shrink-0" />
+                <div>
+                  <p className="text-sm font-medium text-orange-800 dark:text-orange-200">Überarbeitung angefordert</p>
+                  {revisionComment ? (
+                    <p className="text-sm text-orange-700 dark:text-orange-300 mt-1 whitespace-pre-wrap">{revisionComment}</p>
+                  ) : (
+                    <p className="text-sm text-orange-600 dark:text-orange-400 mt-1">Keine Begründung angegeben.</p>
+                  )}
+                </div>
+              </div>
+            </div>
+          )}
+
           {/* Status */}
           <div className="p-4 border rounded-lg bg-card/50">
             <div className="flex items-center gap-2 mb-3">
@@ -67,6 +118,12 @@ const LetterBriefDetails: React.FC<LetterBriefDetailsProps> = ({
                     Zu &quot;{STATUS_LABELS[getNextStatus(status)!]}&quot;
                   </Button>
                 )}
+                {status === 'review' && (
+                  <div className="text-sm text-muted-foreground flex items-center gap-1.5 mt-1">
+                    <Users className="h-3.5 w-3.5" />
+                    Brief wird von Kollegen geprüft
+                  </div>
+                )}
                 {status === 'pending_approval' && (
                   <div className="text-sm text-muted-foreground flex items-center gap-1.5 mt-1">
                     <Clock className="h-3.5 w-3.5" />
@@ -81,7 +138,7 @@ const LetterBriefDetails: React.FC<LetterBriefDetailsProps> = ({
               </div>
             )}
 
-            {status === 'pending_approval' && isReviewer && (
+            {(status === 'review' || status === 'pending_approval') && isReviewer && (
               <Button size="sm" variant="outline" onClick={onReturnLetter} className="justify-start text-orange-600 hover:text-orange-700 mt-2">
                 <RotateCcw className="h-4 w-4 mr-2" />
                 Brief zurückgeben
