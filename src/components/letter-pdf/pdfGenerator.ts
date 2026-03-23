@@ -377,7 +377,7 @@ function renderBlockLinesToPdf(pdf: jsPDF, lines: BlockLine[], x: number, startY
 }
 
 export async function generatePDF(options: GeneratePDFOptions): Promise<{ blob: Blob; filename: string } | void> {
-  const { letter, template, senderInfo, informationBlock, attachments, showPagination, returnBlob = false, debugMode = false } = options;
+  const { letter, template, senderInfo, informationBlock, attachments, showPagination, returnBlob = false, debugMode = false, contact } = options;
   
   const pdf = new jsPDF('p', 'mm', 'a4');
   
