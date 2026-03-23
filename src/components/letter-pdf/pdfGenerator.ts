@@ -334,6 +334,7 @@ interface GeneratePDFOptions {
   attachments: any[];
   showPagination: boolean;
   returnBlob?: boolean;
+  debugMode?: boolean;
 }
 
 export async function generatePDF(options: GeneratePDFOptions): Promise<{ blob: Blob; filename: string } | void> {
