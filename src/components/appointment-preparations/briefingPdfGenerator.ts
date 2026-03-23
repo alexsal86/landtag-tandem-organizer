@@ -268,26 +268,36 @@ function drawHeaderIcon(
   }
 
   if (type === "location") {
-    doc.circle(x + 1.9, y - 2.25, 1.1, "S");
-    doc.circle(x + 1.9, y - 2.25, 0.35, "S");
-    doc.line(x + 1.05, y - 1.45, x + 1.9, y + 0.4);
-    doc.line(x + 2.75, y - 1.45, x + 1.9, y + 0.4);
+    // MapPin icon
+    const cx = x + 1.9;
+    const topCenter = y - 3.2;
+    const r = 1.5;
+    // Draw pin head (circle with dot)
+    doc.circle(cx, topCenter + r, r, "S");
+    doc.circle(cx, topCenter + r, 0.4, "F");
+    // Draw pin point
+    doc.line(cx - r * 0.65, topCenter + r + r * 0.7, cx, topCenter + r + r * 2.2);
+    doc.line(cx + r * 0.65, topCenter + r + r * 0.7, cx, topCenter + r + r * 2.2);
     return;
   }
 
-  doc.setLineWidth(0.28);
-  doc.line(x + 1.1, y - 0.6, x + 1.1, y + 1.7);
-  doc.line(x + 1.1, y - 0.1, x + 2.2, y - 1.2);
-  doc.line(x + 1.1, y + 1.2, x + 2.2, y + 2.1);
-  doc.line(x + 2.2, y - 1.2, x + 4.6, y - 2.1);
-  doc.line(x + 2.2, y + 2.1, x + 4.6, y + 1.1);
-  doc.line(x + 4.6, y - 2.1, x + 4.6, y + 1.1);
-  doc.line(x + 4.6, y - 2.1, x + 2.2, y - 0.8);
-  doc.line(x + 4.6, y + 1.1, x + 2.2, y + 0.2);
-  doc.line(x + 1.45, y + 1.7, x + 2.15, y + 2.75);
-  doc.line(x + 4.95, y - 1.6, x + 5.9, y - 2.45);
-  doc.line(x + 5.2, y - 0.45, x + 6.35, y - 0.45);
-  doc.line(x + 4.95, y + 0.7, x + 5.9, y + 1.55);
+  // Megaphone icon for "pr"
+  doc.setLineWidth(0.3);
+  const mx = x;
+  const my = y - 1.5;
+  // Speaker body (trapezoid shape)
+  doc.line(mx + 1.2, my - 1.0, mx + 2.8, my - 1.8);
+  doc.line(mx + 2.8, my - 1.8, mx + 2.8, my + 1.8);
+  doc.line(mx + 2.8, my + 1.8, mx + 1.2, my + 1.0);
+  doc.line(mx + 1.2, my + 1.0, mx + 1.2, my - 1.0);
+  // Bell/cone
+  doc.line(mx + 2.8, my - 1.8, mx + 5.0, my - 2.6);
+  doc.line(mx + 5.0, my - 2.6, mx + 5.0, my + 2.6);
+  doc.line(mx + 5.0, my + 2.6, mx + 2.8, my + 1.8);
+  // Handle
+  doc.line(mx + 0.6, my - 0.3, mx + 1.2, my - 0.3);
+  doc.line(mx + 0.6, my + 0.3, mx + 1.2, my + 0.3);
+  doc.line(mx + 0.6, my - 0.3, mx + 0.6, my + 0.3);
 }
 
 function getPublicRelationsStatus(preparationData: AppointmentPreparation["preparation_data"]): string[] {
