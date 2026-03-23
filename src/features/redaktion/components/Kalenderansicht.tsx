@@ -11,7 +11,7 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import type { SocialPlannerItem, PlannerWorkflowStatus } from "@/hooks/useSocialPlannerItems";
+import type { SocialPlannerItem, PlannerWorkflowStatus } from "@/features/redaktion/hooks/useSocialPlannerItems";
 import { type SpecialDay } from "@/utils/dashboard/specialDays";
 import "react-big-calendar/lib/css/react-big-calendar.css";
 import "react-big-calendar/lib/addons/dragAndDrop/styles.css";
@@ -137,7 +137,7 @@ function CalendarEventCard({ event }: { event: CalendarEvent }) {
   );
 }
 
-export function SocialPlannerCalendar({ items, onUpdateSchedule, onEditItem, specialDays }: Props) {
+export function Kalenderansicht({ items, onUpdateSchedule, onEditItem, specialDays }: Props) {
   const [currentDate, setCurrentDate] = useState(new Date());
   const [view, setView] = useState<View>(Views.WEEK);
   const [scheduleFilter, setScheduleFilter] = useState<"all" | "unscheduled" | "scheduled">("all");

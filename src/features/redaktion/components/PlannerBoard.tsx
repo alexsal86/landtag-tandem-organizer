@@ -4,7 +4,7 @@ import { ArrowLeft, ArrowRight, CalendarDays, CheckSquare, ClipboardList, GripVe
 import { format } from "date-fns";
 import { useSearchParams } from "react-router-dom";
 import { de } from "date-fns/locale";
-import { SocialPlannerCalendar } from "./SocialPlannerCalendar";
+import { Kalenderansicht } from "./Kalenderansicht";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -18,8 +18,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
 import { useTenantUsers } from "@/hooks/useTenantUsers";
-import { type SocialPlannerItem, PlannerWorkflowStatus, useSocialPlannerItems } from "@/hooks/useSocialPlannerItems";
-import { useTopicBacklog } from "@/hooks/useTopicBacklog";
+import { type SocialPlannerItem, PlannerWorkflowStatus, useSocialPlannerItems } from "@/features/redaktion/hooks/useSocialPlannerItems";
+import { useTopicBacklog } from "@/features/redaktion/hooks/useTopicBacklog";
 import { useToast } from "@/hooks/use-toast";
 import type { SpecialDay } from "@/utils/dashboard/specialDays";
 
@@ -489,11 +489,11 @@ function SocialPlannerEditDialog({ item, open, users, channels, onOpenChange, on
   );
 }
 
-interface MyWorkSocialPlannerBoardProps {
+interface PlannerBoardProps {
   specialDays?: SpecialDay[];
 }
 
-export function MyWorkSocialPlannerBoard({ specialDays = [] }: MyWorkSocialPlannerBoardProps) {
+export function PlannerBoard({ specialDays = [] }: PlannerBoardProps) {
   const { toast } = useToast();
   const [searchParams] = useSearchParams();
   const { users } = useTenantUsers();
@@ -852,7 +852,7 @@ export function MyWorkSocialPlannerBoard({ specialDays = [] }: MyWorkSocialPlann
 
       <CardContent>
         {viewMode === "calendar" ? (
-          <SocialPlannerCalendar items={filteredItems} onUpdateSchedule={handleCalendarScheduleUpdate} onEditItem={setEditingItemId} specialDays={specialDays} />
+          <Kalenderansicht items={filteredItems} onUpdateSchedule={handleCalendarScheduleUpdate} onEditItem={setEditingItemId} specialDays={specialDays} />
         ) : (
           <DragDropContext onDragEnd={onDragEnd}>
             <div className="grid grid-cols-1 gap-3 lg:grid-cols-2 2xl:grid-cols-3">
