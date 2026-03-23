@@ -48,13 +48,13 @@ export function DecisionCardResponses(props: DecisionCardResponsesProps) {
       )}
 
       {showInlineSummaryCounts && (
-        <div className="flex flex-wrap items-center gap-1 text-sm font-semibold">
-          {summaryItems.map((item, index) => (
-            <span key={item.key} className="inline-flex items-center gap-1">
-              {index > 0 && <span className="text-muted-foreground">•</span>}
+        <div className="flex flex-col items-start gap-1 text-sm font-semibold">
+          {summaryItems.map((item) => (
+            <div key={item.key} className="flex items-start gap-1">
+              <span className="text-muted-foreground">•</span>
               <span className={item.textClass}>{item.count}</span>
               <span className={item.textClass}>{item.label}</span>
-            </span>
+            </div>
           ))}
         </div>
       )}
