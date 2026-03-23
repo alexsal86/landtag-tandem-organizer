@@ -516,8 +516,9 @@ async function addConversationPartnersCard(
   drawSectionBody(doc, x, bodyY, maxW, bodyH);
   let cy = bodyY + 4.5;
 
-  // Pre-load avatar images
-  const avatarImages = new Map<string, HTMLImageElement>();
+  // Pre-load avatar images and pre-crop them to real circles,
+  // because jsPDF image clipping is unreliable across browsers.
+  const avatarImages = new Map<string, string>();
   await Promise.all(
     partners.map(async (p) => {
       if (!p.avatar_url) return;
@@ -529,7 +530,11 @@ async function addConversationPartnersCard(
           img.onerror = () => reject();
           img.src = p.avatar_url!;
         });
-        avatarImages.set(p.id, img);
+
+        const circularAvatar = renderCircularAvatar(img);
+        if (circularAvatar) {
+          avatarImages.set(p.id, circularAvatar);
+        }
       } catch {
         // skip failed avatar
       }
@@ -544,25 +549,20 @@ async function addConversationPartnersCard(
     const avatarImg = avatarImages.get(p.id);
 
     if (avatarImg) {
-      // Draw circular clipped avatar
-      doc.saveGraphicsState();
-      // Draw circular clip path
       const clipR = AVATAR_SIZE / 2;
       const clipCx = avatarX + clipR;
       const clipCy = avatarY + clipR;
-      // Use circle as clip (approximate with small rect for jsPDF compatibility)
       try {
-        doc.addImage(avatarImg, "JPEG", avatarX, avatarY, AVATAR_SIZE, AVATAR_SIZE);
+        doc.addImage(avatarImg, "PNG", avatarX, avatarY, AVATAR_SIZE, AVATAR_SIZE);
       } catch {
         // fallback: draw placeholder circle
         rgb(doc, GREEN_BG, "fill");
         doc.circle(clipCx, clipCy, clipR, "F");
       }
-      doc.restoreGraphicsState();
       // Draw circle border
       rgb(doc, BORDER_SOFT, "draw");
       doc.setLineWidth(0.25);
-      doc.circle(avatarX + clipR, avatarY + clipR, clipR, "S");
+      doc.circle(clipCx, clipCy, clipR, "S");
     } else {
       // Draw initials circle
       const clipR = AVATAR_SIZE / 2;
