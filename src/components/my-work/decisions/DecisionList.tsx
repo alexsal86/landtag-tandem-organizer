@@ -1,6 +1,7 @@
 import { DecisionContextMenu } from "./DecisionContextMenu";
 import { MyWorkDecisionCard } from "./MyWorkDecisionCard";
 import { MyWorkDecision } from "./types";
+import { TenantUser } from "@/hooks/useTenantUsers";
 
 interface DecisionListProps {
   archivingDecisionId: string | null;
