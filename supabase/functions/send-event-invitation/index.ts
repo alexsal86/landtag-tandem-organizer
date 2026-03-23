@@ -2,6 +2,7 @@ import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { Resend } from "https://esm.sh/resend@4.0.0";
 import { createServiceRoleClient } from "../_shared/supabase.ts";
 
+import { withSafeHandler } from "../_shared/security.ts";
 const resend = new Resend(Deno.env.get("RESEND_API_KEY"));
 const DEFAULT_PUBLIC_LINK_TTL_DAYS = 45;
 
@@ -268,4 +269,4 @@ const handler = async (req: Request): Promise<Response> => {
   }
 };
 
-serve(handler);
+serve(withSafeHandler("send-event-invitation", handler));

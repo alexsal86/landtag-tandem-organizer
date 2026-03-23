@@ -85,8 +85,8 @@ serve(withSafeHandler("auto-archive-decisions", async (req) => {
 
           const totalParticipants = participants.length;
           const uniqueResponses = new Set(responses.map((r: any) => r.participant_id)).size;
-          const openQuestions = responses.filter((r: any) => 
-            r.response_type === 'question' && 
+          const openQuestions = responses.filter((r: any) =>
+            r.response_type === 'question' &&
             (!r.creator_response || r.creator_response === '')
           ).length;
 
@@ -96,7 +96,7 @@ serve(withSafeHandler("auto-archive-decisions", async (req) => {
             const lastResponseDate = new Date(
               Math.max(...responses.map((r: any) => new Date(r.created_at).getTime()))
             );
-            
+
             const daysSinceLastResponse = Math.floor(
               (Date.now() - lastResponseDate.getTime()) / (1000 * 60 * 60 * 24)
             );

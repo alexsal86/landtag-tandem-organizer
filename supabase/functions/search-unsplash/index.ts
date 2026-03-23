@@ -1,18 +1,19 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 
+import { withSafeHandler } from "../_shared/security.ts";
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
-serve(async (req) => {
+serve(withSafeHandler("search-unsplash", async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
   }
 
   try {
     const { query } = await req.json();
-    
+
     if (!query || query.trim() === "") {
       return new Response(
         JSON.stringify({ error: "Query parameter is required" }),
@@ -21,7 +22,7 @@ serve(async (req) => {
     }
 
     const UNSPLASH_ACCESS_KEY = Deno.env.get("UNSPLASH_ACCESS_KEY");
-    
+
     if (!UNSPLASH_ACCESS_KEY) {
       return new Response(
         JSON.stringify({ error: "Unsplash API key not configured" }),
@@ -30,7 +31,7 @@ serve(async (req) => {
     }
 
     const unsplashUrl = `https://api.unsplash.com/search/photos?query=${encodeURIComponent(query)}&per_page=12&orientation=landscape`;
-    
+
     const response = await fetch(unsplashUrl, {
       headers: {
         Authorization: `Client-ID ${UNSPLASH_ACCESS_KEY}`,
@@ -59,4 +60,4 @@ serve(async (req) => {
       { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   }
-});
+}));

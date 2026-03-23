@@ -2,6 +2,7 @@ import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.7.1';
 import { PDFDocument, rgb, StandardFonts } from 'https://esm.sh/pdf-lib@1.17.1';
 
+import { withSafeHandler } from "../_shared/security.ts";
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
@@ -10,7 +11,7 @@ const corsHeaders = {
 const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
 const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
 
-serve(async (req) => {
+serve(withSafeHandler("archive-letter", async (req) => {
   // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
@@ -32,11 +33,11 @@ serve(async (req) => {
     if (letterError || !letter) {
       console.error('Error fetching letter:', letterError);
       return new Response(
-        JSON.stringify({ 
+        JSON.stringify({
           error: 'Letter not found',
           details: letterError?.message || 'Unknown error'
         }),
-        { 
+        {
           status: 404,
           headers: { ...corsHeaders, 'Content-Type': 'application/json' }
         }
@@ -88,11 +89,11 @@ serve(async (req) => {
 
     // Generate PDF using LetterPDFExport logic
     const pdfBuffer = await generateDIN5008PDF(letter, template, senderInfo, informationBlock, attachments || []);
-    
+
     // Create document file name
     const documentFileName = `letter_${letter.title.replace(/[^a-zA-Z0-9]/g, '_')}_${Date.now()}.pdf`;
     const filePath = `archived_letters/${documentFileName}`;
-    
+
     // Upload the PDF content to Supabase Storage
     const { data: uploadData, error: uploadError } = await supabase.storage
       .from('documents')
@@ -104,11 +105,11 @@ serve(async (req) => {
     if (uploadError) {
       console.error('Error uploading PDF:', uploadError);
       return new Response(
-        JSON.stringify({ 
+        JSON.stringify({
           error: 'Failed to upload PDF',
           details: uploadError.message
         }),
-        { 
+        {
           status: 500,
           headers: { ...corsHeaders, 'Content-Type': 'application/json' }
         }
@@ -116,7 +117,7 @@ serve(async (req) => {
     }
 
     console.log('PDF uploaded successfully:', uploadData.path);
-    
+
     // Create document record with PDF content
     const { data: document, error: documentError } = await supabase
       .from('documents')
@@ -147,7 +148,7 @@ serve(async (req) => {
 
     // Archive attachments as separate documents
     const archivedAttachmentIds = [];
-    
+
     if (letter.letter_attachments && letter.letter_attachments.length > 0) {
       for (const attachment of letter.letter_attachments) {
         const { data: attachmentDoc, error: attachmentError } = await supabase
@@ -196,7 +197,7 @@ serve(async (req) => {
     // Create follow-up task for letter response
     try {
       console.log('Creating follow-up task for letter:', letter.title);
-      
+
       // Calculate due date based on template response time
       const responseTimeDays = template?.response_time_days || 21; // Default 21 days
       const sentDate = new Date();
@@ -206,7 +207,7 @@ serve(async (req) => {
       // Format task title: "Abgeordnetenbrief "Betreff des Briefs" vom "Tag des Versands"
       const formattedSentDate = sentDate.toLocaleDateString('de-DE');
       const taskTitle = `Abgeordnetenbrief "${letter.subject || letter.title}" vom ${formattedSentDate}`;
-      
+
       // Create task description from first 300 characters of letter content
       let taskDescription = '';
       const contentText = letter.content_html ? convertHtmlToText(letter.content_html) : letter.content || '';
@@ -257,7 +258,7 @@ serve(async (req) => {
     console.error('Error in archive-letter function:', error);
     return new Response(
       JSON.stringify({ error: 'Internal server error' }),
-      { 
+      {
         status: 500,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' }
       }
@@ -288,7 +289,7 @@ function convertHtmlToText(html: string): string {
     .replace(/&quot;/g, '"')
     .replace(/\n{3,}/g, '\n\n') // Remove excessive line breaks
     .trim();
-  
+
   return text;
 }
 
@@ -296,11 +297,11 @@ function convertHtmlToText(html: string): string {
 async function generateDIN5008PDF(letter: any, template: any, senderInfo: any, informationBlock: any, attachments: any[]): Promise<Uint8Array> {
   // Create a new PDF document
   const pdfDoc = await PDFDocument.create();
-  
+
   // Get standard font (Helvetica is close to Arial)
   const helveticaFont = await pdfDoc.embedFont(StandardFonts.Helvetica);
   const helveticaBoldFont = await pdfDoc.embedFont(StandardFonts.HelveticaBold);
-  
+
   // Load layout settings from template or use defaults
   const DEFAULT_LAYOUT = {
     pageWidth: 210,
@@ -314,12 +315,12 @@ async function generateDIN5008PDF(letter: any, template: any, senderInfo: any, i
     footer: { top: 272 },
     attachments: { top: 230 }
   };
-  
+
   const layout = template?.layout_settings || DEFAULT_LAYOUT;
-  
+
   // DIN 5008 measurements (converting mm to points: 1mm = 2.834645669291339 points)
   const mmToPoints = (mm: number) => mm * 2.834645669291339;
-  
+
   const pageWidth = mmToPoints(layout.pageWidth);
   const pageHeight = mmToPoints(layout.pageHeight);
   const leftMargin = mmToPoints(layout.margins.left);
@@ -344,10 +345,10 @@ async function generateDIN5008PDF(letter: any, template: any, senderInfo: any, i
     ? paginationTopMm - paginationGapMm
     : Math.min(contentTopMm + 165, footerTopMm - paginationGapMm);
   const firstPageMinY = mmToPoints(layout.pageHeight - contentBottomMm);
-  
+
   // Add first page
   let page = pdfDoc.addPage([pageWidth, pageHeight]);
-  
+
   // Template letterhead (if available)
   if (template?.letterhead_html) {
     page.drawText(template.name || 'Briefkopf', {
@@ -358,7 +359,7 @@ async function generateDIN5008PDF(letter: any, template: any, senderInfo: any, i
       color: rgb(0, 0, 0),
     });
   }
-  
+
   // Return address line in address field
   let addressYPos = pageHeight - addressFieldTop - mmToPoints(17.7);
   if (senderInfo?.return_address_line) {
@@ -369,7 +370,7 @@ async function generateDIN5008PDF(letter: any, template: any, senderInfo: any, i
       font: helveticaFont,
       color: rgb(0, 0, 0),
     });
-    
+
     // Underline for return address
     const textWidth = helveticaFont.widthOfTextAtSize(senderInfo.return_address_line, 7);
     page.drawLine({
@@ -380,7 +381,7 @@ async function generateDIN5008PDF(letter: any, template: any, senderInfo: any, i
     });
     addressYPos -= mmToPoints(3);
   }
-  
+
   // Recipient address
   if (letter.recipient_name || letter.recipient_address) {
     if (letter.recipient_name) {
@@ -393,7 +394,7 @@ async function generateDIN5008PDF(letter: any, template: any, senderInfo: any, i
       });
       addressYPos -= mmToPoints(4);
     }
-    
+
     if (letter.recipient_address) {
       const addressLines = letter.recipient_address.split('\n').filter((line: string) => line.trim());
       for (const line of addressLines) {
@@ -410,7 +411,7 @@ async function generateDIN5008PDF(letter: any, template: any, senderInfo: any, i
       }
     }
   }
-  
+
   // Information block
   let infoYPos = pageHeight - infoBlockTop - mmToPoints(3);
   if (informationBlock) {
@@ -422,7 +423,7 @@ async function generateDIN5008PDF(letter: any, template: any, senderInfo: any, i
       color: rgb(0, 0, 0),
     });
     infoYPos -= mmToPoints(5);
-    
+
     switch (informationBlock.block_type) {
       case 'contact':
         if (informationBlock.block_data?.contact_name) {
@@ -518,7 +519,7 @@ async function generateDIN5008PDF(letter: any, template: any, senderInfo: any, i
         break;
     }
   }
-  
+
   // Letter date (ALWAYS show if available, regardless of information block)
   if (letter.letter_date) {
     const hasDateBlock = informationBlock?.block_type === 'date';
@@ -543,7 +544,7 @@ async function generateDIN5008PDF(letter: any, template: any, senderInfo: any, i
       }
     }
   }
-  
+
   // Subject line
   if (letter.subject || letter.title) {
     const subjectText = letter.subject || letter.title;
@@ -555,33 +556,33 @@ async function generateDIN5008PDF(letter: any, template: any, senderInfo: any, i
       color: rgb(0, 0, 0),
     });
   }
-  
+
   // Letter content
   const contentText = letter.content_html ? convertHtmlToText(letter.content_html) : letter.content;
   let currentY = pageHeight - contentTop - mmToPoints(10);
   const paragraphs = contentText.split('\n\n').filter((p: string) => p.trim());
-  
+
   // Split text into lines and handle pagination
   const maxWidth = pageWidth - leftMargin - rightMargin;
-  
+
   for (let paragIndex = 0; paragIndex < paragraphs.length; paragIndex++) {
     const paragraph = paragraphs[paragIndex].trim();
-    
+
     // Simple line breaking - split by max character count (approximation)
     const maxCharsPerLine = Math.floor(maxWidth / (helveticaFont.widthOfTextAtSize('M', 11)));
     const words = paragraph.split(' ');
     let currentLine = '';
-    
+
     for (const word of words) {
       const testLine = currentLine ? `${currentLine} ${word}` : word;
-      
+
       if (testLine.length > maxCharsPerLine && currentLine) {
         // Check if we need a new page
         if (currentY - lineHeight < firstPageMinY) {
           page = pdfDoc.addPage([pageWidth, pageHeight]);
           currentY = pageHeight - mmToPoints(30);
         }
-        
+
         // Draw current line
         page.drawText(currentLine, {
           x: leftMargin,
@@ -596,7 +597,7 @@ async function generateDIN5008PDF(letter: any, template: any, senderInfo: any, i
         currentLine = testLine;
       }
     }
-    
+
     // Draw remaining text in line
     if (currentLine) {
       // Check if we need a new page
@@ -604,7 +605,7 @@ async function generateDIN5008PDF(letter: any, template: any, senderInfo: any, i
         page = pdfDoc.addPage([pageWidth, pageHeight]);
         currentY = pageHeight - mmToPoints(30);
       }
-      
+
       page.drawText(currentLine, {
         x: leftMargin,
         y: currentY,
@@ -614,21 +615,21 @@ async function generateDIN5008PDF(letter: any, template: any, senderInfo: any, i
       });
       currentY -= lineHeight;
     }
-    
+
     // Add extra space between paragraphs
     if (paragIndex < paragraphs.length - 1) {
       currentY -= lineHeight / 2;
     }
   }
-  
+
   // Add footer content to all pages
   const pages = pdfDoc.getPages();
   const footerY = mmToPoints(272 + 3);
   const footerText = "Fraktion GRÜNE im Landtag von Baden-Württemberg • Alexander Salomon • Konrad-Adenauer-Str. 12 • 70197 Stuttgart";
-  
+
   for (let i = 0; i < pages.length; i++) {
     const currentPage = pages[i];
-    
+
     currentPage.drawText(footerText, {
       x: leftMargin + mmToPoints(2),
       y: footerY,
@@ -636,7 +637,7 @@ async function generateDIN5008PDF(letter: any, template: any, senderInfo: any, i
       font: helveticaFont,
       color: rgb(0, 0, 0),
     });
-    
+
     currentPage.drawText("Tel: 0711 / 2063620", {
       x: leftMargin + mmToPoints(2),
       y: footerY - mmToPoints(4),
@@ -644,7 +645,7 @@ async function generateDIN5008PDF(letter: any, template: any, senderInfo: any, i
       font: helveticaFont,
       color: rgb(0, 0, 0),
     });
-    
+
     currentPage.drawText("E-Mail: Alexander.Salomon@gruene.landtag-bw.de", {
       x: leftMargin + mmToPoints(2),
       y: footerY - mmToPoints(8),
@@ -652,7 +653,7 @@ async function generateDIN5008PDF(letter: any, template: any, senderInfo: any, i
       font: helveticaFont,
       color: rgb(0, 0, 0),
     });
-    
+
     currentPage.drawText("Web: https://www.alexander-salomon.de", {
       x: leftMargin + mmToPoints(2),
       y: footerY - mmToPoints(12),
@@ -660,14 +661,14 @@ async function generateDIN5008PDF(letter: any, template: any, senderInfo: any, i
       font: helveticaFont,
       color: rgb(0, 0, 0),
     });
-    
+
     // Add page numbers (only to letter pages, not attachments)
     if (hasPagination && i < pages.length) { // Assuming all pages are letter pages for now
       const pageText = `Seite ${i + 1} von ${pages.length}`;
       const textWidth = helveticaFont.widthOfTextAtSize(pageText, 10);
       const pageTextX = (pageWidth - textWidth) / 2;
       const paginationY = mmToPoints(paginationTopMm);
-      
+
       currentPage.drawText(pageText, {
         x: pageTextX,
         y: paginationY,
@@ -677,7 +678,7 @@ async function generateDIN5008PDF(letter: any, template: any, senderInfo: any, i
       });
     }
   }
-  
+
   // Serialize the PDF document to bytes
   const pdfBytes = await pdfDoc.save();
   return pdfBytes;

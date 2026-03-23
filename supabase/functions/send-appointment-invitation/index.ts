@@ -4,6 +4,7 @@ import { requireAppBaseUrl } from "../_shared/url.ts";
 import { createServiceRoleClient } from "../_shared/supabase.ts";
 import { encode } from "https://deno.land/std@0.190.0/encoding/base64.ts";
 
+import { withSafeHandler } from "../_shared/security.ts";
 console.log('🚀 send-appointment-invitation function starting...');
 
 // Initialize Resend with error handling
@@ -57,7 +58,7 @@ function generateICS(appointment: any, organizer: { name: string; email: string 
   const startTime = formatDateToICS(appointment.start_time);
   const endTime = formatDateToICS(appointment.end_time);
   const now = formatDateToICS(new Date().toISOString());
-  
+
   let icsContent = [
     'BEGIN:VCALENDAR',
     'VERSION:2.0',
@@ -137,7 +138,7 @@ const handler = async (req: Request): Promise<Response> => {
 
     // Get organizer email from auth.users using service role
     const { data: authUserData, error: authError } = await supabase.auth.admin.getUserById(appointment.user_id);
-    
+
     if (authError || !authUserData.user?.email) {
       console.error("Error getting organizer email:", authError);
       throw new Error('Organisator E-Mail nicht gefunden');
@@ -177,7 +178,7 @@ const handler = async (req: Request): Promise<Response> => {
         // Format dates
         const startDate = new Date(appointment.start_time);
         const endDate = new Date(appointment.end_time);
-        
+
         const dateOptions: Intl.DateTimeFormatOptions = {
           weekday: 'long',
           year: 'numeric',
@@ -185,7 +186,7 @@ const handler = async (req: Request): Promise<Response> => {
           day: 'numeric',
           timeZone: 'Europe/Berlin'
         };
-        
+
         const timeOptions: Intl.DateTimeFormatOptions = {
           hour: '2-digit',
           minute: '2-digit',
@@ -198,26 +199,26 @@ const handler = async (req: Request): Promise<Response> => {
 
         // Get current domain dynamically
         const domain = requireAppBaseUrl(req);
-        
+
         // Generate response URL with guest token
         const responseUrl = `${domain}/guest-response/${guest.invitation_token}`;
 
         console.log("About to send email to:", guest.email, "for guest:", guest.name);
 
         // Generate ICS calendar file
-        const icsContent = generateICS(appointment, { 
-          name: organizerName, 
-          email: organizerEmail 
+        const icsContent = generateICS(appointment, {
+          name: organizerName,
+          email: organizerEmail
         });
-        
+
         console.log("Generated ICS content:", icsContent.substring(0, 200) + "...");
         console.log("Generated ICS content length:", icsContent.length);
-        
+
         // Convert ICS content to base64 using Deno's built-in encoding
         const encoder = new TextEncoder();
         const data = encoder.encode(icsContent);
         const icsBase64 = encode(data.buffer);
-        
+
         console.log("Base64 encoded ICS length:", icsBase64.length);
 
         // Send appointment invitation email with ICS attachment
@@ -228,13 +229,13 @@ const handler = async (req: Request): Promise<Response> => {
           html: `
             <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
               <h1 style="color: #333; font-size: 24px; margin-bottom: 20px;">Termineinladung</h1>
-              
+
               <p style="color: #666; font-size: 16px; margin-bottom: 16px;">Hallo ${guest.name},</p>
-              
+
               <p style="color: #666; font-size: 16px; margin-bottom: 20px;">
                 ${organizerName} hat Sie zu folgendem Termin eingeladen:
               </p>
-              
+
               <div style="background: #f8f9fa; border-left: 4px solid #3b82f6; padding: 16px; margin: 20px 0; border-radius: 4px;">
                 <h3 style="margin: 0 0 8px 0; color: #333; font-size: 18px;">${appointment.title}</h3>
                 ${appointment.description ? `<p style="margin: 0 0 8px 0; color: #666; font-size: 14px;">${appointment.description}</p>` : ''}
@@ -243,37 +244,37 @@ const handler = async (req: Request): Promise<Response> => {
                 ${appointment.location ? `<p style="margin: 4px 0; color: #666; font-size: 14px;"><strong>Ort:</strong> ${appointment.location}</p>` : ''}
                 ${appointment.meeting_link ? `<p style="margin: 4px 0; color: #666; font-size: 14px;"><strong>Meeting-Link:</strong> <a href="${appointment.meeting_link}">${appointment.meeting_link}</a></p>` : ''}
               </div>
-              
+
               <div style="background: #fff3cd; border: 1px solid #ffeeba; border-radius: 4px; padding: 12px; margin: 20px 0;">
                 <p style="margin: 0; color: #856404; font-size: 14px;">
-                  📅 <strong>Kalender-Datei:</strong> Diese E-Mail enthält eine Kalender-Datei im Anhang. 
+                  📅 <strong>Kalender-Datei:</strong> Diese E-Mail enthält eine Kalender-Datei im Anhang.
                   Öffnen Sie die angehängte .ics-Datei, um den Termin zu Ihrem Kalender hinzuzufügen.
                 </p>
               </div>
-              
+
               <p style="color: #666; font-size: 16px; margin-bottom: 20px;">
                 Bitte bestätigen Sie Ihre Teilnahme:
               </p>
-              
+
               <div style="text-align: center; margin: 30px 0;">
-                <a href="${responseUrl}?response=accepted" 
+                <a href="${responseUrl}?response=accepted"
                    style="background: #22c55e; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; font-weight: bold; display: inline-block; margin: 0 5px; box-shadow: 0 2px 4px rgba(34, 197, 94, 0.2);">
                   ✓ Zusagen
                 </a>
-                <a href="${responseUrl}?response=declined" 
+                <a href="${responseUrl}?response=declined"
                    style="background: #ef4444; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; font-weight: bold; display: inline-block; margin: 0 5px; box-shadow: 0 2px 4px rgba(239, 68, 68, 0.2);">
                   ✗ Absagen
                 </a>
               </div>
-              
+
               <p style="color: #666; font-size: 16px; margin-bottom: 10px;">
                 Vielen Dank für Ihre Rückmeldung!
               </p>
-              
+
               <p style="color: #666; font-size: 16px; font-weight: 500;">
                 ${organizerName}
               </p>
-              
+
               <hr style="border: none; border-top: 1px solid #eee; margin: 30px 0;">
               <p style="color: #999; font-size: 12px;">
                 Diese E-Mail wurde automatisch generiert. Bitte antworten Sie nicht auf diese E-Mail.
@@ -292,15 +293,15 @@ const handler = async (req: Request): Promise<Response> => {
         if (emailResponse.error) {
           console.error("Email send error:", emailResponse.error);
           const errorMessage = emailResponse.error.toString();
-          const isTestModeError = errorMessage.includes('testing emails') || 
+          const isTestModeError = errorMessage.includes('testing emails') ||
                                  errorMessage.includes('verify a domain') ||
                                  errorMessage.includes('Domain not found');
-          
+
           if (isTestModeError) {
-            emailResults.push({ 
-              guestId: guest.id, 
-              success: false, 
-              error: "Domain nicht verifiziert - E-Mails können nur an verifizierte Adressen gesendet werden" 
+            emailResults.push({
+              guestId: guest.id,
+              success: false,
+              error: "Domain nicht verifiziert - E-Mails können nur an verifizierte Adressen gesendet werden"
             });
           } else {
             emailResults.push({ guestId: guest.id, success: false, error: errorMessage });
@@ -312,7 +313,7 @@ const handler = async (req: Request): Promise<Response> => {
           // Update guest status and invitation timestamp
           await supabase
             .from('appointment_guests')
-            .update({ 
+            .update({
               status: 'invited',
               invited_at: new Date().toISOString()
             })
@@ -340,8 +341,8 @@ const handler = async (req: Request): Promise<Response> => {
     console.log("=== END SUMMARY ===");
 
     return new Response(
-      JSON.stringify({ 
-        success: successCount > 0, 
+      JSON.stringify({
+        success: successCount > 0,
         message: `${successCount}/${emailResults.length} Einladungen erfolgreich versendet`,
         results: emailResults
       }),
@@ -357,9 +358,8 @@ const handler = async (req: Request): Promise<Response> => {
   } catch (error: any) {
     console.error("Error in send-appointment-invitation function:", error);
     return new Response(
-      JSON.stringify({ 
-        error: error.message,
-        stack: error.stack,
+      JSON.stringify({
+        error: { code: 'internal_error', message: 'Internal server error' },
         success: false,
         message: "Fehler beim Versenden der Einladungen"
       }),
@@ -371,4 +371,4 @@ const handler = async (req: Request): Promise<Response> => {
   }
 };
 
-serve(handler);
+serve(withSafeHandler("send-appointment-invitation", handler));

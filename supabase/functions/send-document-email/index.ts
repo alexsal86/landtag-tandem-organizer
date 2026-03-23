@@ -3,6 +3,7 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2.39.3";
 import { Resend } from "npm:resend@2.0.0";
 import { requireTenantAccess } from "../_shared/tenant-access.ts";
 
+import { withSafeHandler } from "../_shared/security.ts";
 const resend = new Resend(Deno.env.get("RESEND_API_KEY"));
 const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
 const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
@@ -33,7 +34,7 @@ interface FailedRecipient {
   error: string;
 }
 
-serve(async (req) => {
+serve(withSafeHandler("send-document-email", async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
   }
@@ -49,7 +50,7 @@ serve(async (req) => {
     }
 
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
-    
+
     const {
       subject,
       body_html,
@@ -161,7 +162,7 @@ serve(async (req) => {
     // Replace variables function
     const replaceVariables = (text: string, contactData?: any) => {
       if (!contactData) return text;
-      
+
       return text
         .replace(/\{\{name\}\}/g, contactData.name || "")
         .replace(/\{\{email\}\}/g, contactData.email || "")
@@ -200,7 +201,7 @@ serve(async (req) => {
         }
 
         sent++;
-        
+
         if (recipient.contact_data) {
           personalizationData[recipient.email] = {
             name: recipient.contact_data.name,
@@ -213,7 +214,7 @@ serve(async (req) => {
         failed++;
         failedRecipients.push({
           email: recipient.email,
-          error: error.message || "Unknown error",
+          error: "Delivery failed",
         });
         console.error(`✗ Failed ${recipient.email}:`, error.message);
       }
@@ -270,4 +271,4 @@ serve(async (req) => {
       }
     );
   }
-});
+}));

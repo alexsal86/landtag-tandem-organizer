@@ -1,11 +1,12 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
+import { withSafeHandler } from "../_shared/security.ts";
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
-Deno.serve(async (req) => {
+Deno.serve(withSafeHandler("global-logout", async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
   }
@@ -38,7 +39,7 @@ Deno.serve(async (req) => {
 
     // Use service role to sign out user globally
     const adminClient = createClient(supabaseUrl, supabaseServiceKey);
-    
+
     const { error: signOutError } = await adminClient.auth.admin.signOut(user.id, 'global');
     if (signOutError) {
       console.error('Sign out error:', signOutError);
@@ -60,4 +61,4 @@ Deno.serve(async (req) => {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });
   }
-});
+}));

@@ -2,6 +2,7 @@ import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2"
 import { getSyncExternalErrorResponse } from './sync-external-calendar.utils.ts'
 
+import { withSafeHandler } from "../_shared/security.ts";
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
@@ -38,14 +39,14 @@ function parseICSDate(dateStr: string): Date {
     const hour = parseInt(dateStr.substring(9, 11)) || 0;
     const minute = parseInt(dateStr.substring(11, 13)) || 0;
     const second = parseInt(dateStr.substring(13, 15)) || 0;
-    
+
     return new Date(year, month, day, hour, minute, second);
   } else {
     // DATE format: YYYYMMDD (all-day event)
     const year = parseInt(dateStr.substring(0, 4));
     const month = parseInt(dateStr.substring(4, 6)) - 1;
     const day = parseInt(dateStr.substring(6, 8));
-    
+
     return new Date(year, month, day);
   }
 }
@@ -54,19 +55,19 @@ function parseICS(icsContent: string, startDate: Date, endDate: Date, maxEvents:
   const events: ICSEvent[] = [];
   const lines = icsContent.split(/\r?\n/);
   let currentEvent: Partial<ICSEvent> | null = null;
-  
+
   console.log(`📅 Processing ICS with date range: ${startDate.toISOString()} to ${endDate.toISOString()}`);
   console.log(`🔢 Max events limit: ${maxEvents}`);
-  
+
   for (let i = 0; i < lines.length; i++) {
     let line = lines[i].trim();
-    
+
     // Handle line folding (lines starting with space or tab)
     while (i + 1 < lines.length && (lines[i + 1].startsWith(' ') || lines[i + 1].startsWith('\t'))) {
       i++;
       line += lines[i].trim();
     }
-    
+
     if (line === 'BEGIN:VEVENT') {
       currentEvent = {};
     } else if (line === 'END:VEVENT' && currentEvent) {
@@ -75,13 +76,13 @@ function parseICS(icsContent: string, startDate: Date, endDate: Date, maxEvents:
         try {
           // Improved filtering: check if event overlaps with our date range
           const eventStart = parseICSDate(currentEvent.dtstart);
-          const eventEnd = currentEvent.dtend ? parseICSDate(currentEvent.dtend) : 
+          const eventEnd = currentEvent.dtend ? parseICSDate(currentEvent.dtend) :
             // For all-day events or events without end time, assume 1 day duration
             new Date(eventStart.getTime() + 24 * 60 * 60 * 1000);
-          
+
           // Event overlaps if: event_start <= range_end AND event_end >= range_start
           const overlapsWithRange = eventStart <= endDate && eventEnd >= startDate;
-          
+
           if (overlapsWithRange) {
             events.push(currentEvent as ICSEvent);
           }
@@ -97,7 +98,7 @@ function parseICS(icsContent: string, startDate: Date, endDate: Date, maxEvents:
         console.warn(`⚠️ Skipping incomplete event - missing: ${missingFields.join(', ')}`);
       }
       currentEvent = null;
-      
+
       // Use configurable event limit
       if (events.length >= maxEvents) {
         console.log(`⚠️ Reached event limit of ${maxEvents} events, stopping parse`);
@@ -125,7 +126,7 @@ function parseICS(icsContent: string, startDate: Date, endDate: Date, maxEvents:
       }
     }
   }
-  
+
   return events;
 }
 
@@ -169,7 +170,7 @@ async function incrementalSync(supabase: any, calendarId: string, newEvents: ICS
   for (const event of newEvents) {
     const startTime = parseICSDate(event.dtstart);
     let endTime = startTime;
-    
+
     if (event.dtend) {
       endTime = parseICSDate(event.dtend);
     } else if (event.allDay) {
@@ -197,14 +198,14 @@ async function incrementalSync(supabase: any, calendarId: string, newEvents: ICS
 
     // Check if we need to process this event
     const existingLastModified = existingEventsMap.get(event.uid);
-    
+
     if (!existingLastModified) {
       // New event
       eventsToProcess.push({ ...eventData, action: 'new' });
     } else if (event.lastModified) {
       const newLastModified = parseICSDate(event.lastModified);
       const existingDate = new Date(existingLastModified);
-      
+
       if (newLastModified > existingDate) {
         // Event was modified
         eventsToProcess.push({ ...eventData, action: 'update' });
@@ -228,10 +229,10 @@ async function incrementalSync(supabase: any, calendarId: string, newEvents: ICS
       uniqueEventsMap.set(event.external_uid, event);
     }
   });
-  
+
   const dedupedEvents = Array.from(uniqueEventsMap.values());
   const duplicatesRemoved = eventsToProcess.length - dedupedEvents.length;
-  
+
   if (duplicatesRemoved > 0) {
     console.log(`🔄 Removed ${duplicatesRemoved} duplicate UIDs from processing batch`);
   }
@@ -241,26 +242,26 @@ async function incrementalSync(supabase: any, calendarId: string, newEvents: ICS
     const batch = dedupedEvents.slice(i, i + batchSize);
     const batchNumber = Math.floor(i / batchSize) + 1;
     const totalBatches = Math.ceil(dedupedEvents.length / batchSize);
-    
+
     try {
       console.log(`📦 Processing batch ${batchNumber}/${totalBatches} (${batch.length} events)`);
-      
+
       // UPSERT using ON CONFLICT - process each event individually to avoid batch conflicts
       let batchNewCount = 0;
       let batchUpdateCount = 0;
       let batchErrorCount = 0;
-      
+
       for (const eventItem of batch) {
         try {
           const { action, ...eventData } = eventItem;
-          
+
           const { error: upsertError } = await supabase
             .from('external_events')
             .upsert(
               [eventData],
-              { 
+              {
                 onConflict: 'external_calendar_id,external_uid',
-                ignoreDuplicates: false 
+                ignoreDuplicates: false
               }
             );
 
@@ -294,7 +295,7 @@ async function incrementalSync(supabase: any, calendarId: string, newEvents: ICS
       stats.errorEvents += batchErrorCount;
 
       console.log(`✅ Batch ${batchNumber} completed: ${batchNewCount} new, ${batchUpdateCount} updated, ${batchErrorCount} errors`);
-      
+
     } catch (error) {
       console.error(`❌ Batch ${batchNumber} failed completely:`, error);
       stats.errorEvents += batch.length;
@@ -304,7 +305,7 @@ async function incrementalSync(supabase: any, calendarId: string, newEvents: ICS
   // Identify and remove deleted events (events that exist in DB but not in new ICS)
   const newEventUids = new Set(newEvents.map(e => e.uid));
   const deletedUids = [];
-  
+
   for (const [uid, _] of existingEventsMap) {
     if (!newEventUids.has(uid)) {
       deletedUids.push(uid);
@@ -313,7 +314,7 @@ async function incrementalSync(supabase: any, calendarId: string, newEvents: ICS
 
   if (deletedUids.length > 0) {
     console.log(`🗑️ Removing ${deletedUids.length} deleted events`);
-    
+
     const { error: deleteError } = await supabase
       .from('external_events')
       .delete()
@@ -331,7 +332,7 @@ async function incrementalSync(supabase: any, calendarId: string, newEvents: ICS
   return stats;
 }
 
-serve(async (req) => {
+serve(withSafeHandler("sync-external-calendar", async (req) => {
   // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
@@ -379,11 +380,11 @@ serve(async (req) => {
 
     // Fetch the ICS content with conditional requests (ETag and Last-Modified)
     console.log('📥 Fetching ICS content...');
-    
+
     const headers: HeadersInit = {
       'User-Agent': 'CalendarSync/1.0',
     };
-    
+
     // Add conditional request headers if available
     if (calendar.last_etag) {
       headers['If-None-Match'] = calendar.last_etag;
@@ -393,28 +394,28 @@ serve(async (req) => {
       headers['If-Modified-Since'] = calendar.last_modified_http;
       console.log(`🔄 Using If-Modified-Since: ${calendar.last_modified_http}`);
     }
-    
+
     const icsResponse = await fetch(calendar.ics_url, { headers });
-    
+
     // Handle 304 Not Modified - calendar hasn't changed
     if (icsResponse.status === 304) {
       console.log('📌 Calendar unchanged (304 Not Modified), skipping download');
       console.log('💰 Egress saved: No ICS download needed');
-      
+
       // Update last_sync timestamp without downloading
       const { error: updateError } = await supabase
         .from('external_calendars')
-        .update({ 
+        .update({
           last_sync: new Date().toISOString(),
         })
         .eq('id', calendar_id);
-      
+
       if (updateError) {
         console.error('Error updating sync timestamp:', updateError);
       }
-      
+
       return new Response(
-        JSON.stringify({ 
+        JSON.stringify({
           message: 'Calendar unchanged, no download needed',
           skipped: true,
           egress_saved: true,
@@ -423,7 +424,7 @@ serve(async (req) => {
         { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
-    
+
     if (!icsResponse.ok) {
       throw new Error(`Failed to fetch ICS: ${icsResponse.status} ${icsResponse.statusText}`);
     }
@@ -433,7 +434,7 @@ serve(async (req) => {
       throw new Error('Invalid ICS content: missing VCALENDAR header');
     }
     console.log(`📄 ICS content length: ${icsContent.length} characters`);
-    
+
     // Extract ETag and Last-Modified headers for next sync
     const etag = icsResponse.headers.get('etag');
     const lastModified = icsResponse.headers.get('last-modified');
@@ -451,7 +452,7 @@ serve(async (req) => {
     // Update calendar sync timestamp with ETag and Last-Modified
     await supabase
       .from('external_calendars')
-      .update({ 
+      .update({
         last_sync: new Date().toISOString(),
         sync_errors_count: 0,
         last_sync_error: null,
@@ -466,7 +467,7 @@ serve(async (req) => {
     // Update successful sync timestamp and reset error count (ETag already set above)
     await supabase
       .from('external_calendars')
-      .update({ 
+      .update({
         last_successful_sync: new Date().toISOString(),
         sync_errors_count: 0,
         last_sync_error: null
@@ -482,7 +483,7 @@ serve(async (req) => {
       `${syncStats.errorEvents} errors`;
 
     return new Response(
-      JSON.stringify({ 
+      JSON.stringify({
         message,
         stats: syncStats,
         calendar_name: calendar.name
@@ -492,7 +493,7 @@ serve(async (req) => {
 
   } catch (error) {
     console.error('💥 Error syncing calendar:', error);
-    
+
     // Try to update error information in calendar
     try {
       const { calendar_id } = await req.json();
@@ -501,10 +502,10 @@ serve(async (req) => {
           Deno.env.get('SUPABASE_URL') ?? '',
           Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
         );
-        
+
         await supabase
           .from('external_calendars')
-          .update({ 
+          .update({
             sync_errors_count: 1, // Will be incremented by app logic if needed
             last_sync_error: error instanceof Error ? error.message : String(error),
             last_sync: new Date().toISOString()

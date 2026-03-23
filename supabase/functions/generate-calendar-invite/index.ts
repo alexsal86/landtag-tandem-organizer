@@ -2,6 +2,7 @@ import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.39.3';
 import { CalendarInviteRequest, generateICS, generateUID, validateInviteDates } from './generate-calendar-invite.utils.ts';
 
+import { withSafeHandler } from "../_shared/security.ts";
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
@@ -34,10 +35,10 @@ const handler = async (req: Request): Promise<Response> => {
         },
       });
     }
-    
+
     // Generate unique calendar UID and store it
     const calendarUID = generateUID();
-    
+
     // Update appointment with calendar UID for future reference
     const { error: updateError } = await supabaseClient
       .from('appointments')
@@ -50,7 +51,7 @@ const handler = async (req: Request): Promise<Response> => {
 
     // Generate ICS content
     const icsContent = generateICS(requestData);
-    
+
     return new Response(JSON.stringify({ icsContent, calendarUID }), {
       status: 200,
       headers: {
@@ -70,4 +71,4 @@ const handler = async (req: Request): Promise<Response> => {
   }
 };
 
-serve(handler);
+serve(withSafeHandler("generate-calendar-invite", handler));

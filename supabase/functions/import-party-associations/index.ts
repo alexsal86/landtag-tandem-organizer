@@ -1,5 +1,6 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 
+import { withSafeHandler } from "../_shared/security.ts";
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
@@ -18,7 +19,7 @@ interface PartyCsvRow {
   Rufnummer: string;
 }
 
-Deno.serve(async (req) => {
+Deno.serve(withSafeHandler("import-party-associations", async (req) => {
   // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
@@ -59,7 +60,7 @@ Deno.serve(async (req) => {
     // Parse CSV data from request body
     let csvData: string;
     const body = await req.text();
-    
+
     if (body) {
       csvData = body;
     } else {
@@ -104,14 +105,14 @@ Deno.serve(async (req) => {
     // Function to normalize phone numbers
     const normalizePhone = (phone: string, area: string): string => {
       if (!phone && !area) return '';
-      
+
       let fullPhone = phone || area || '';
       fullPhone = fullPhone.replace(/\s+/g, '');
-      
+
       if (fullPhone && !fullPhone.startsWith('+') && !fullPhone.startsWith('0')) {
         fullPhone = '0' + fullPhone;
       }
-      
+
       return fullPhone;
     };
 
@@ -132,14 +133,14 @@ Deno.serve(async (req) => {
       const website = row.Webseite || '';
       const email = row['E-Mail'] || '';
       const phone = normalizePhone(row.Telefon || '', row.Vorwahl || '');
-      
+
       // Build full address
       const addressParts = [
         street,
         row.Hausnummer,
         city
       ].filter(part => part && part.trim()).map(part => fixEncoding(part));
-      
+
       const fullAddress = addressParts.join(' ');
 
       // Try to map to administrative boundaries
@@ -201,23 +202,23 @@ Deno.serve(async (req) => {
         message: `Successfully imported ${insertData?.length || 0} party associations`,
         data: insertData
       }),
-      { 
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+      {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
       }
     );
 
   } catch (error) {
     console.error('Error in import-party-associations:', error);
-    
+
     return new Response(
-      JSON.stringify({ 
-        error: 'Import failed', 
-        details: error instanceof Error ? error.message : String(error) 
+      JSON.stringify({
+        error: 'Import failed',
+        details: 'Internal server error'
       }),
-      { 
+      {
         status: 500,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
       }
     );
   }
-});
+}));

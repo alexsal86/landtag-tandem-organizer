@@ -2,6 +2,7 @@ import { serve } from "https://deno.land/std@0.177.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { requireServiceRole, corsHeaders, forbiddenResponse } from "../_shared/security.ts";
 
+import { withSafeHandler } from "../_shared/security.ts";
 // Berechne deutsche Feiertage (bundesweit + Baden-Württemberg)
 function calculateGermanHolidays(year: number) {
   // Ostersonntag berechnen (Gauß-Algorithmus)
@@ -49,9 +50,9 @@ function calculateGermanHolidays(year: number) {
   ];
 }
 
-serve(async (req) => {
+serve(withSafeHandler("sync-holidays", async (req) => {
   console.log('sync-holidays function called');
-  
+
   if (req.method === 'OPTIONS') {
     return new Response('ok', { headers: corsHeaders });
   }
@@ -63,7 +64,7 @@ serve(async (req) => {
   try {
     const supabaseUrl = Deno.env.get('SUPABASE_URL');
     const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
-    
+
     if (!supabaseUrl || !supabaseServiceKey) {
       throw new Error('Missing Supabase environment variables');
     }
@@ -72,18 +73,18 @@ serve(async (req) => {
 
     const body = await req.json().catch(() => ({}));
     const year = body.year || new Date().getFullYear();
-    
+
     console.log(`Syncing holidays for year ${year}`);
-    
+
     const holidays = calculateGermanHolidays(year);
     console.log(`Calculated ${holidays.length} holidays`);
 
     // Upsert holidays - use ON CONFLICT to update existing or insert new
     const { data, error } = await supabase
       .from('public_holidays')
-      .upsert(holidays, { 
+      .upsert(holidays, {
         onConflict: 'holiday_date,name',
-        ignoreDuplicates: false 
+        ignoreDuplicates: false
       })
       .select();
 
@@ -95,25 +96,25 @@ serve(async (req) => {
     console.log(`Successfully synced ${holidays.length} holidays for ${year}`);
 
     return new Response(
-      JSON.stringify({ 
-        success: true, 
-        year, 
+      JSON.stringify({
+        success: true,
+        year,
         count: holidays.length,
         holidays: holidays.map(h => ({ date: h.holiday_date, name: h.name }))
       }),
-      { 
+      {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-        status: 200 
+        status: 200
       }
     );
   } catch (error) {
     console.error('Error in sync-holidays:', error);
     return new Response(
       JSON.stringify({ error: 'Internal server error' }),
-      { 
+      {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-        status: 500 
+        status: 500
       }
     );
   }
-});
+}));

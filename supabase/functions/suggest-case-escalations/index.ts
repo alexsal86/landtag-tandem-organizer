@@ -1,5 +1,6 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.56.1";
 
+import { withSafeHandler } from "../_shared/security.ts";
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-automation-secret",
@@ -28,7 +29,7 @@ const json = (data: unknown, status = 200) =>
 
 const getDaysOld = (createdAt: string) => Math.floor((Date.now() - new Date(createdAt).getTime()) / (1000 * 60 * 60 * 24));
 
-Deno.serve(async (req) => {
+Deno.serve(withSafeHandler("suggest-case-escalations", async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
 
   try {
@@ -233,7 +234,7 @@ Deno.serve(async (req) => {
 
     return json({ error: "Unknown action" }, 400);
   } catch (error) {
-    const message = error instanceof Error ? error.message : "Unknown error";
-    return json({ error: message }, 500);
+    console.error('suggest-case-escalations error:', error);
+    return json({ error: { code: 'internal_error', message: 'Internal server error' } }, 500);
   }
-});
+}));

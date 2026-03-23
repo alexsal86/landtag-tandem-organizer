@@ -2,12 +2,13 @@ import "https://deno.land/x/xhr@0.1.0/mod.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.52.0';
 
+import { withSafeHandler } from "../_shared/security.ts";
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
-serve(async (req) => {
+serve(withSafeHandler("create-admin-user", async (req) => {
   // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
@@ -126,7 +127,7 @@ serve(async (req) => {
     const standardDashboardLayout = [
       {
         id: "stats",
-        type: "stats", 
+        type: "stats",
         title: "Schnellstatistiken",
         position: {x: 0, y: 0},
         size: {width: 3, height: 1},
@@ -136,7 +137,7 @@ serve(async (req) => {
       {
         id: "pomodoro",
         type: "pomodoro",
-        title: "Pomodoro Timer", 
+        title: "Pomodoro Timer",
         position: {x: 3, y: 0},
         size: {width: 2, height: 1},
         widgetSize: "2x1",
@@ -147,7 +148,7 @@ serve(async (req) => {
         type: "messages",
         title: "Nachrichten",
         position: {x: 5, y: 0},
-        size: {width: 3, height: 1}, 
+        size: {width: 3, height: 1},
         widgetSize: "3x1",
         configuration: {theme: "default", notifications: true}
       },
@@ -157,7 +158,7 @@ serve(async (req) => {
         title: "Ausstehende Aufgaben",
         position: {x: 0, y: 1},
         size: {width: 3, height: 2},
-        widgetSize: "3x2", 
+        widgetSize: "3x2",
         configuration: {theme: "default", showHeader: true}
       },
       {
@@ -170,7 +171,7 @@ serve(async (req) => {
         configuration: {theme: "default", autoSave: true, compact: false}
       },
       {
-        id: "habits", 
+        id: "habits",
         type: "habits",
         title: "Habit Tracker",
         position: {x: 5, y: 1},
@@ -180,7 +181,7 @@ serve(async (req) => {
       },
       {
         id: "schedule",
-        type: "schedule", 
+        type: "schedule",
         title: "Heutiger Terminplan",
         position: {x: 0, y: 3},
         size: {width: 3, height: 2},
@@ -191,7 +192,7 @@ serve(async (req) => {
         id: "calllog",
         type: "calllog",
         title: "Call Log",
-        position: {x: 3, y: 3}, 
+        position: {x: 3, y: 3},
         size: {width: 3, height: 2},
         widgetSize: "3x2",
         configuration: {theme: "default", showFollowUps: true}
@@ -252,9 +253,9 @@ serve(async (req) => {
 
   } catch (error) {
     console.error('Error in create-admin-user function:', error);
-    return new Response(JSON.stringify({ 
+    return new Response(JSON.stringify({
       success: false,
-      error: error instanceof Error ? error.message : String(error) 
+      error: { code: 'bad_request', message: 'Bad request' }
     }), {
       status: 400,
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },

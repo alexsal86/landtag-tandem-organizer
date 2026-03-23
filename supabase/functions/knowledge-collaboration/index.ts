@@ -2,6 +2,7 @@ import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { corsHeaders } from "../_shared/security.ts";
 
+import { withSafeHandler } from "../_shared/security.ts";
 interface CollaborationMessage {
   type: 'ready' | 'connected' | 'ping' | 'pong' | 'error';
   documentId?: string;
@@ -14,7 +15,7 @@ interface CollaborationMessage {
 // Simple connection storage
 const activeConnections = new Map<string, { socket: WebSocket; userId: string; documentId: string; isReady: boolean }>();
 
-serve(async (req) => {
+serve(withSafeHandler("knowledge-collaboration", async (req) => {
   console.log(`[COLLABORATION] 🚀 New request received`);
 
   if (req.method === 'OPTIONS') {
@@ -59,10 +60,10 @@ serve(async (req) => {
   }
 
   console.log(`[COLLABORATION] 🔄 Upgrading to WebSocket...`);
-  
+
   const { socket, response } = Deno.upgradeWebSocket(req);
   const connectionId = `${documentId}_${userId}`;
-  
+
   console.log(`[COLLABORATION] ✅ WebSocket upgrade successful for ${userId}`);
 
   // Store connection
@@ -76,7 +77,7 @@ serve(async (req) => {
   socket.onopen = () => {
     console.log(`[COLLABORATION] 🔌 WebSocket connection opened for ${userId}`);
     console.log(`[COLLABORATION] 🎯 Sending immediate connected response to ${userId}`);
-    
+
     // Send connected message immediately on connection
     const response = {
       type: 'connected',
@@ -88,26 +89,26 @@ serve(async (req) => {
       },
       timestamp: Date.now()
     };
-    
+
     socket.send(JSON.stringify(response));
     console.log(`[COLLABORATION] 📤 Immediate connected message sent to ${userId}`);
   };
 
   socket.onmessage = (event) => {
     console.log(`[COLLABORATION] 📨 Message received from ${userId}: ${event.data}`);
-    
+
     try {
       const message = JSON.parse(event.data);
       console.log(`[COLLABORATION] 🎯 Message type: ${message.type}`);
 
       if (message.type === 'ready') {
         console.log(`[COLLABORATION] 🤝 Client ${userId} sent ready signal`);
-        
+
         const connection = activeConnections.get(connectionId);
         if (connection) {
           connection.isReady = true;
           console.log(`[COLLABORATION] ✅ Sending connected response to ${userId}`);
-          
+
           const response = {
             type: 'connected',
             data: {
@@ -146,4 +147,4 @@ serve(async (req) => {
   };
 
   return response;
-});
+}));

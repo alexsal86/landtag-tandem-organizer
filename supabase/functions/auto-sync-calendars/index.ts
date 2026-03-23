@@ -1,12 +1,13 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2"
 
+import { withSafeHandler } from "../_shared/security.ts";
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 }
 
-serve(async (req) => {
+serve(withSafeHandler("auto-sync-calendars", async (req) => {
   // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
@@ -19,7 +20,7 @@ serve(async (req) => {
     );
 
     console.log('Starting automatic calendar sync...');
-    
+
     const now = new Date();
     const currentHour = now.getHours();
     const currentMinutes = now.getMinutes();
@@ -41,18 +42,18 @@ serve(async (req) => {
     for (const setting of syncSettings || []) {
       // Parse the sync time (format: HH:MM:SS)
       const [syncHour, syncMinute] = setting.sync_time.split(':').map(Number);
-      
+
       // Calculate how many hours have passed since the sync time today
       let hoursSinceSync = currentHour - syncHour;
-      
+
       // If we're before the sync time today, calculate from yesterday
       if (hoursSinceSync < 0) {
         hoursSinceSync += 24;
       }
-      
+
       // Check if it's time to sync based on the interval
       const shouldSync = hoursSinceSync % setting.sync_interval_hours === 0 && currentMinutes < 5;
-      
+
       if (!shouldSync) {
         console.log(`Skipping tenant ${setting.tenant_id} - not time yet (next sync in ${setting.sync_interval_hours - (hoursSinceSync % setting.sync_interval_hours)} hours)`);
         continue;
@@ -115,7 +116,7 @@ serve(async (req) => {
             calendar_id: calendar.id,
             calendar_name: calendar.name,
             status: 'error',
-            error: error instanceof Error ? error.message : String(error)
+            error: "Sync failed"
           });
         }
       }
@@ -124,7 +125,7 @@ serve(async (req) => {
     console.log('Auto-sync completed:', results);
 
     return new Response(
-      JSON.stringify({ 
+      JSON.stringify({
         message: 'Auto-sync completed',
         results,
         processed_tenants: syncSettings?.length || 0,
@@ -141,4 +142,4 @@ serve(async (req) => {
       { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
   }
-});
+}));

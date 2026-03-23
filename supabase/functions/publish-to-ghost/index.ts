@@ -1,5 +1,6 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 
+import { withSafeHandler } from "../_shared/security.ts";
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version',
@@ -28,7 +29,7 @@ function stringToUint8Array(str: string): Uint8Array {
 // Generate Ghost Admin API JWT
 async function generateGhostJWT(adminApiKey: string): Promise<string> {
   const [keyId, keySecret] = adminApiKey.split(':');
-  
+
   if (!keyId || !keySecret) {
     throw new Error('Invalid GHOST_ADMIN_API_KEY format. Expected format: {id}:{secret}');
   }
@@ -62,7 +63,7 @@ async function generateGhostJWT(adminApiKey: string): Promise<string> {
   return `${signingInput}.${encodedSignature}`;
 }
 
-Deno.serve(async (req) => {
+Deno.serve(withSafeHandler("publish-to-ghost", async (req) => {
   // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
     return new Response('ok', { headers: corsHeaders });
@@ -72,8 +73,8 @@ Deno.serve(async (req) => {
     // Auth check
     const authHeader = req.headers.get('Authorization');
     if (!authHeader?.startsWith('Bearer ')) {
-      return new Response(JSON.stringify({ error: 'Unauthorized' }), { 
-        status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+      return new Response(JSON.stringify({ error: 'Unauthorized' }), {
+        status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' }
       });
     }
 
@@ -86,8 +87,8 @@ Deno.serve(async (req) => {
     const token = authHeader.replace('Bearer ', '');
     const { data: claimsData, error: claimsError } = await supabase.auth.getClaims(token);
     if (claimsError || !claimsData?.claims) {
-      return new Response(JSON.stringify({ error: 'Unauthorized' }), { 
-        status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+      return new Response(JSON.stringify({ error: 'Unauthorized' }), {
+        status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' }
       });
     }
 
@@ -97,8 +98,8 @@ Deno.serve(async (req) => {
     // Get request body
     const { pressReleaseId } = await req.json();
     if (!pressReleaseId) {
-      return new Response(JSON.stringify({ error: 'pressReleaseId is required' }), { 
-        status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+      return new Response(JSON.stringify({ error: 'pressReleaseId is required' }), {
+        status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' }
       });
     }
 
@@ -113,15 +114,15 @@ Deno.serve(async (req) => {
 
     if (prError || !pressRelease) {
       console.error('[publish-to-ghost] Press release not found:', prError);
-      return new Response(JSON.stringify({ error: 'Press release not found' }), { 
-        status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+      return new Response(JSON.stringify({ error: 'Press release not found' }), {
+        status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' }
       });
     }
 
     // Verify status is 'approved'
     if (pressRelease.status !== 'approved') {
-      return new Response(JSON.stringify({ error: 'Press release must be approved before publishing' }), { 
-        status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+      return new Response(JSON.stringify({ error: 'Press release must be approved before publishing' }), {
+        status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' }
       });
     }
 
@@ -131,8 +132,8 @@ Deno.serve(async (req) => {
 
     if (!ghostAdminApiKey || !ghostApiUrl) {
       console.error('[publish-to-ghost] Missing Ghost credentials');
-      return new Response(JSON.stringify({ error: 'Ghost API credentials not configured' }), { 
-        status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+      return new Response(JSON.stringify({ error: 'Ghost API credentials not configured' }), {
+        status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' }
       });
     }
 
@@ -176,11 +177,11 @@ Deno.serve(async (req) => {
 
     if (!ghostResponse.ok) {
       console.error('[publish-to-ghost] Ghost API error:', JSON.stringify(ghostResult));
-      return new Response(JSON.stringify({ 
-        error: 'Ghost API error', 
-        details: ghostResult.errors?.[0]?.message || 'Unknown error' 
-      }), { 
-        status: ghostResponse.status, headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+      return new Response(JSON.stringify({
+        error: 'Ghost API error',
+        details: ghostResult.errors?.[0]?.message || 'Unknown error'
+      }), {
+        status: ghostResponse.status, headers: { ...corsHeaders, 'Content-Type': 'application/json' }
       });
     }
 
@@ -211,18 +212,18 @@ Deno.serve(async (req) => {
 
     console.log('[publish-to-ghost] Successfully published press release');
 
-    return new Response(JSON.stringify({ 
-      success: true, 
+    return new Response(JSON.stringify({
+      success: true,
       ghostPostId: ghostPost?.id,
-      ghostPostUrl: ghostPost?.url 
-    }), { 
-      status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+      ghostPostUrl: ghostPost?.url
+    }), {
+      status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' }
     });
 
   } catch (error) {
     console.error('[publish-to-ghost] Error:', error);
-    return new Response(JSON.stringify({ error: 'Internal server error' }), { 
-      status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+    return new Response(JSON.stringify({ error: 'Internal server error' }), {
+      status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' }
     });
   }
-});
+}));

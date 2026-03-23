@@ -2,6 +2,7 @@ import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 import { corsHeaders } from "../_shared/security.ts";
 
+import { withSafeHandler } from "../_shared/security.ts";
 console.log("Matrix decision handler initialized");
 
 interface MatrixIncomingMessage {
@@ -21,9 +22,9 @@ interface DecisionCommand {
   message?: string;
 }
 
-serve(async (req) => {
+serve(withSafeHandler("matrix-decision-handler", async (req) => {
   console.log('🤖 Matrix decision handler called with method:', req.method);
-  
+
   // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
@@ -57,7 +58,7 @@ serve(async (req) => {
     // Handle Matrix webhook events from Matrix server
     if (body.type === 'matrix_webhook' && body.events) {
       console.log('🔄 Processing Matrix webhook events');
-      
+
       for (const event of body.events) {
         if (event.type === 'm.room.message' && event.content?.msgtype === 'm.text') {
           await handleMatrixMessage(event, supabaseAdmin, matrixToken, matrixHomeserver);
@@ -109,29 +110,29 @@ serve(async (req) => {
 });
 
 async function handleMatrixMessage(
-  message: MatrixIncomingMessage, 
-  supabase: any, 
-  matrixToken: string, 
+  message: MatrixIncomingMessage,
+  supabase: any,
+  matrixToken: string,
   matrixHomeserver: string
 ) {
   console.log(`📥 Processing Matrix message from ${message.sender} in room ${message.room_id}`);
   console.log(`💬 Message content: ${message.content.body}`);
 
   const body = message.content.body;
-  
+
   // Parse decision commands: /decision-yes <token>, /decision-no <token>, etc.
   const commandRegex = /^\/decision-(yes|no|question|status)\s+([a-zA-Z0-9]+)(?:\s+(.+))?$/;
   const match = body.match(commandRegex);
-  
+
   if (!match) {
     console.log('💭 Message is not a decision command, ignoring');
     return { success: true, message: 'Not a decision command' };
   }
 
   const [, command, token, messageText] = match;
-  
+
   console.log(`⚡ Decision command detected: ${command} with token ${token}`);
-  
+
   // Find the participant by token
   const { data: participant, error: participantError } = await supabase
     .from('task_decision_participants')
@@ -155,22 +156,22 @@ async function handleMatrixMessage(
 
   if (participantError || !participant) {
     console.error('❌ Participant not found for token:', token, participantError);
-    
-    await sendMatrixResponse(message.room_id, 
-      '❌ Ungültiger Token oder Entscheidung nicht gefunden.', 
+
+    await sendMatrixResponse(message.room_id,
+      '❌ Ungültiger Token oder Entscheidung nicht gefunden.',
       matrixToken, matrixHomeserver);
-    
+
     return { success: false, error: 'Invalid token' };
   }
 
   // Check if user has already responded
   if (participant.responded_at) {
     console.log('⚠️ User has already responded to this decision');
-    
-    await sendMatrixResponse(message.room_id, 
-      `ℹ️ Sie haben bereits geantwortet: ${participant.response_type}`, 
+
+    await sendMatrixResponse(message.room_id,
+      `ℹ️ Sie haben bereits geantwortet: ${participant.response_type}`,
       matrixToken, matrixHomeserver);
-    
+
     return { success: false, error: 'Already responded' };
   }
 
@@ -197,21 +198,21 @@ async function handleMatrixMessage(
         .from('task_decision_participants')
         .select('response_type, responded_at')
         .eq('decision_id', participant.decision_id);
-      
+
       const responded = allParticipants?.filter((p: any) => p.responded_at).length || 0;
       const total = allParticipants?.length || 0;
       const yesCount = allParticipants?.filter((p: any) => p.response_type === 'yes').length || 0;
       const noCount = allParticipants?.filter((p: any) => p.response_type === 'no').length || 0;
       const questionCount = allParticipants?.filter((p: any) => p.response_type === 'question').length || 0;
-      
-      await sendMatrixResponse(message.room_id, 
+
+      await sendMatrixResponse(message.room_id,
         `📊 Status für "${decision.title}":\n` +
         `✅ Ja: ${yesCount}\n` +
         `❌ Nein: ${noCount}\n` +
         `❓ Fragen: ${questionCount}\n` +
-        `📈 Geantwortet: ${responded}/${total}`, 
+        `📈 Geantwortet: ${responded}/${total}`,
         matrixToken, matrixHomeserver);
-      
+
       return { success: true, message: 'Status sent' };
     default:
       return { success: false, error: 'Unknown command' };
@@ -230,11 +231,11 @@ async function handleMatrixMessage(
 
   if (updateError) {
     console.error('❌ Error updating participant response:', updateError);
-    
-    await sendMatrixResponse(message.room_id, 
-      '❌ Fehler beim Speichern der Antwort.', 
+
+    await sendMatrixResponse(message.room_id,
+      '❌ Fehler beim Speichern der Antwort.',
       matrixToken, matrixHomeserver);
-    
+
     return { success: false, error: 'Database error' };
   }
 
@@ -274,10 +275,10 @@ async function handleMatrixMessage(
     .eq('decision_id', participant.decision_id);
 
   const allResponded = allParticipants?.every((p: any) => p.responded_at);
-  
+
   if (allResponded) {
     console.log('🎉 All participants have responded, notifying creator');
-    
+
     // Notify the decision creator
     await supabase.rpc('create_notification', {
       user_id_param: decision.created_by,
@@ -293,9 +294,9 @@ async function handleMatrixMessage(
   }
 
   console.log(`✅ Decision response processed successfully: ${responseType}`);
-  
-  return { 
-    success: true, 
+
+  return {
+    success: true,
     message: 'Response processed',
     response_type: responseType,
     decision_title: decision.title
@@ -303,28 +304,28 @@ async function handleMatrixMessage(
 }
 
 async function processDecisionCommand(
-  command: DecisionCommand, 
-  supabase: any, 
-  matrixToken: string, 
+  command: DecisionCommand,
+  supabase: any,
+  matrixToken: string,
   matrixHomeserver: string
 ) {
   // This function can be used for direct API testing or future enhancements
   console.log(`🎯 Processing direct decision command: ${command.command} for token ${command.token}`);
-  
+
   // Implementation similar to handleMatrixMessage but for direct API calls
   return { success: true, message: 'Direct command processed' };
 }
 
 async function sendMatrixResponse(
-  roomId: string, 
-  message: string, 
-  matrixToken: string, 
+  roomId: string,
+  message: string,
+  matrixToken: string,
   matrixHomeserver: string
 ) {
   try {
     const txnId = `response_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
     const matrixUrl = `${matrixHomeserver}/_matrix/client/r0/rooms/${roomId}/send/m.room.message/${txnId}`;
-    
+
     const response = await fetch(matrixUrl, {
       method: 'PUT',
       headers: {

@@ -2,6 +2,7 @@ import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.57.4'
 import { requireTenantAccess } from "../_shared/tenant-access.ts";
 
+import { withSafeHandler } from "../_shared/security.ts";
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
@@ -18,35 +19,35 @@ interface RSSSource {
 
 async function parseRSSFeed(url: string, source: string, category: string, articlesPerFeed: number = 10) {
   console.log(`Fetching RSS from: ${url}`);
-  
+
   try {
     const response = await fetch(url, {
       headers: {
         'User-Agent': 'RSS News Widget/1.0',
       },
     });
-    
+
     if (!response.ok) {
       throw new Error(`HTTP error! status: ${response.status}`);
     }
-    
+
     const xmlText = await response.text();
     console.log(`RSS content length: ${xmlText.length}`);
-    
+
     // Simple XML parsing for RSS
     const items = [];
     const itemRegex = /<item[^>]*>(.*?)<\/item>/gs;
     let match;
-    
+
     while ((match = itemRegex.exec(xmlText)) !== null) {
       const itemContent = match[1];
-      
+
       // Extract fields with regex
       const title = extractTag(itemContent, 'title');
       const description = extractTag(itemContent, 'description');
       const link = extractTag(itemContent, 'link');
       const pubDate = extractTag(itemContent, 'pubDate');
-      
+
       if (title && link) {
         items.push({
           id: `${source}-${Date.now()}-${Math.random()}`,
@@ -59,14 +60,14 @@ async function parseRSSFeed(url: string, source: string, category: string, artic
           image_url: extractTag(itemContent, 'enclosure url') || null
         });
       }
-      
+
       // Limit items per feed (dynamic)
       if (items.length >= articlesPerFeed) break;
     }
-    
+
     console.log(`Parsed ${items.length} items from ${source}`);
     return items;
-    
+
   } catch (error) {
     console.error(`Error parsing RSS from ${url}:`, error);
     return [];
@@ -94,7 +95,7 @@ function cleanText(text: string): string {
 
 function parsePubDate(dateStr: string): string {
   if (!dateStr) return new Date().toISOString();
-  
+
   try {
     // Handle various date formats
     const date = new Date(dateStr);
@@ -104,7 +105,7 @@ function parsePubDate(dateStr: string): string {
   }
 }
 
-serve(async (req) => {
+serve(withSafeHandler("fetch-rss-feeds", async (req) => {
   // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
@@ -132,14 +133,14 @@ serve(async (req) => {
     // Check cache first (5 minute TTL)
     const cacheKey = `rss_${tenant_id}_${category || 'all'}`;
     console.log(`🔍 Checking cache with key: ${cacheKey}`);
-    
+
     const { data: cachedData, error: cacheError } = await supabase
       .from('rss_cache')
       .select('*')
       .eq('cache_key', cacheKey)
       .gt('expires_at', new Date().toISOString())
       .maybeSingle();
-    
+
     if (cachedData && !cacheError) {
       console.log('✅ Cache hit! Returning cached RSS data');
       console.log('💰 Egress saved: No external RSS fetch needed');
@@ -149,16 +150,16 @@ serve(async (req) => {
           cached: true,
           cache_expires_at: cachedData.expires_at
         }),
-        { 
-          headers: { 
-            ...corsHeaders, 
+        {
+          headers: {
+            ...corsHeaders,
             'Content-Type': 'application/json',
             'X-Cache': 'HIT'
-          } 
+          }
         }
       );
     }
-    
+
     console.log('❌ Cache miss, fetching fresh RSS data');
 
 
@@ -187,7 +188,7 @@ serve(async (req) => {
 
     if (!sources || sources.length === 0) {
       return new Response(
-        JSON.stringify({ 
+        JSON.stringify({
           articles: [],
           total: 0,
           sources: 0,
@@ -206,23 +207,23 @@ serve(async (req) => {
     }
 
     console.log(`Fetching from ${filteredSources.length} sources for tenant ${tenant_id}, category: ${category || 'all'}`);
-    
+
     // Fetch from all sources in parallel
-    const fetchPromises = filteredSources.map((source: RSSSource) => 
+    const fetchPromises = filteredSources.map((source: RSSSource) =>
       parseRSSFeed(source.url, source.name, source.category, articlesPerFeed)
     );
-    
+
     const results = await Promise.allSettled(fetchPromises);
-    
+
     // Combine and sort articles
     const allArticles = results
       .filter(result => result.status === 'fulfilled')
       .flatMap(result => (result as PromiseFulfilledResult<any[]>).value)
       .sort((a, b) => new Date(b.pub_date).getTime() - new Date(a.pub_date).getTime())
       .slice(0, totalLimit);
-    
+
     console.log(`Returning ${allArticles.length} articles`);
-    
+
     // Prepare response data
     const responseData = {
       articles: allArticles,
@@ -230,11 +231,11 @@ serve(async (req) => {
       sources: filteredSources.length,
       cached: false
     };
-    
+
     // Store in cache (5 minute TTL)
     const expiresAt = new Date(Date.now() + 5 * 60 * 1000).toISOString();
     console.log(`💾 Storing RSS data in cache until ${expiresAt}`);
-    
+
     const { error: cacheInsertError } = await supabase
       .from('rss_cache')
       .upsert({
@@ -244,29 +245,29 @@ serve(async (req) => {
       }, {
         onConflict: 'cache_key'
       });
-    
+
     if (cacheInsertError) {
       console.error('⚠️ Failed to cache RSS data:', cacheInsertError);
       // Continue anyway - caching is not critical
     }
-    
+
     return new Response(
       JSON.stringify(responseData),
       {
-        headers: { 
-          ...corsHeaders, 
+        headers: {
+          ...corsHeaders,
           'Content-Type': 'application/json',
           'X-Cache': 'MISS'
         },
       }
     );
-    
+
   } catch (error) {
     console.error('Error in fetch-rss-feeds function:', error);
     return new Response(
-      JSON.stringify({ 
+      JSON.stringify({
         error: 'Failed to fetch RSS feeds',
-        details: error instanceof Error ? error.message : String(error) 
+        details: 'Internal server error'
       }),
       {
         status: 500,
@@ -274,4 +275,4 @@ serve(async (req) => {
       }
     );
   }
-});
+}));

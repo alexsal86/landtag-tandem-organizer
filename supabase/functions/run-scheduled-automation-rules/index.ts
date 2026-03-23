@@ -1,6 +1,7 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.56.1";
 import { requireServiceRole, corsHeaders as sharedCorsHeaders, forbiddenResponse } from "../_shared/security.ts";
 
+import { withSafeHandler } from "../_shared/security.ts";
 const corsHeaders = {
   ...sharedCorsHeaders,
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-automation-secret",
@@ -13,7 +14,7 @@ type Rule = {
   trigger_config: { minutes_interval?: number } | null;
 };
 
-Deno.serve(async (req) => {
+Deno.serve(withSafeHandler("run-scheduled-automation-rules", async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
   }
@@ -118,10 +119,10 @@ Deno.serve(async (req) => {
       { headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   } catch (error) {
-    const message = error instanceof Error ? error.message : "Unknown scheduler error";
-    return new Response(JSON.stringify({ error: message }), {
+    console.error("run-scheduled-automation-rules error:", error);
+    return new Response(JSON.stringify({ error: { code: "internal_error", message: "Internal server error" } }), {
       status: 500,
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   }
-});
+}));

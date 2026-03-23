@@ -2,6 +2,7 @@ import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { requireServiceRole, corsHeaders, forbiddenResponse } from "../_shared/security.ts";
 
+import { withSafeHandler } from "../_shared/security.ts";
 console.log("Matrix morning greeting function initialized");
 
 interface MorningSettings {
@@ -78,7 +79,7 @@ async function logMatrixSkip(
   }
 }
 
-serve(async (req) => {
+serve(withSafeHandler("send-matrix-morning-greeting", async (req) => {
   console.log("🌅 Morning greeting function called");
 
   if (req.method === "OPTIONS") {

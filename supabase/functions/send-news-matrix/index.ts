@@ -1,6 +1,7 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.39.3";
 
+import { withSafeHandler } from "../_shared/security.ts";
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers":
@@ -78,7 +79,7 @@ async function logMatrixSkip(
   }
 }
 
-serve(async (req: Request): Promise<Response> => {
+serve(withSafeHandler("send-news-matrix", async (req: Request): Promise<Response> => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
   }
@@ -275,7 +276,7 @@ Quelle: ${article.source}
             {
               room_id: "unknown",
               success: false,
-              error: error instanceof Error ? error.message : String(error),
+              error: 'Delivery failed',
             },
           ],
         });
@@ -312,4 +313,4 @@ Quelle: ${article.source}
       headers: { "Content-Type": "application/json", ...corsHeaders },
     });
   }
-});
+}));

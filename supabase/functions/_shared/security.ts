@@ -9,6 +9,34 @@ export const corsHeaders = {
     "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
 };
 
+export type SafeErrorCode =
+  | "bad_request"
+  | "unauthorized"
+  | "forbidden"
+  | "internal_error";
+
+export interface SafeErrorBody {
+  error: {
+    code: SafeErrorCode;
+    message: string;
+  };
+}
+
+export function jsonResponse(payload: unknown, status = 200): Response {
+  return new Response(JSON.stringify(payload), {
+    status,
+    headers: { ...corsHeaders, "Content-Type": "application/json" },
+  });
+}
+
+export function errorResponse(
+  status: 400 | 401 | 403 | 500,
+  code: SafeErrorCode,
+  message: string,
+): Response {
+  return jsonResponse({ error: { code, message } } satisfies SafeErrorBody, status);
+}
+
 // ─── Auth Guard ───────────────────────────────────────────────────────────────
 
 export interface AuthResult {
@@ -16,11 +44,6 @@ export interface AuthResult {
   email?: string;
 }
 
-/**
- * Validates the Authorization bearer token and returns the authenticated user.
- * Returns `null` when the token is missing or invalid – the caller should then
- * return `unauthorizedResponse()`.
- */
 export async function requireAuth(req: Request): Promise<AuthResult | null> {
   const authHeader = req.headers.get("Authorization");
   if (!authHeader?.startsWith("Bearer ")) return null;
@@ -41,9 +64,6 @@ export async function requireAuth(req: Request): Promise<AuthResult | null> {
 
 // ─── Role Guard ───────────────────────────────────────────────────────────────
 
-/**
- * Checks whether the user holds a specific role via the `has_role` RPC.
- */
 export async function requireRole(
   userId: string,
   role: string,
@@ -61,11 +81,6 @@ export async function requireRole(
 
 // ─── Cron / Internal Guard ────────────────────────────────────────────────────
 
-/**
- * Validates that a request originates from a Supabase cron/internal trigger
- * by checking the Authorization header against SUPABASE_SERVICE_ROLE_KEY.
- * Use this for scheduled functions that must not be callable by end-users.
- */
 export function requireServiceRole(req: Request): boolean {
   const authHeader = req.headers.get("Authorization");
   if (!authHeader?.startsWith("Bearer ")) return false;
@@ -76,59 +91,49 @@ export function requireServiceRole(req: Request): boolean {
 
 // ─── Safe Error Responses ─────────────────────────────────────────────────────
 
-/**
- * Returns a generic 401 response without leaking internal details.
- */
+export function badRequestResponse(message = "Bad request"): Response {
+  return errorResponse(400, "bad_request", message);
+}
+
 export function unauthorizedResponse(): Response {
-  return new Response(
-    JSON.stringify({ error: "Unauthorized" }),
-    { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } },
-  );
+  return errorResponse(401, "unauthorized", "Unauthorized");
 }
 
-/**
- * Returns a generic 403 response.
- */
 export function forbiddenResponse(message = "Forbidden"): Response {
-  return new Response(
-    JSON.stringify({ error: message }),
-    { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } },
-  );
+  return errorResponse(403, "forbidden", message);
 }
 
-/**
- * Returns a safe 500 response, logging the full error server-side but only
- * sending a generic message to the client. **Never** exposes stack traces.
- */
+export function internalServerErrorResponse(): Response {
+  return errorResponse(500, "internal_error", "Internal server error");
+}
+
 export function safeErrorResponse(
   error: unknown,
   context: string,
-  status = 500,
+  status: 500 = 500,
 ): Response {
-  // Log full details server-side for debugging
   console.error(`[${context}]`, error);
 
-  return new Response(
-    JSON.stringify({ error: "Internal server error" }),
-    { status, headers: { ...corsHeaders, "Content-Type": "application/json" } },
-  );
+  if (status === 400) {
+    return badRequestResponse();
+  }
+
+  if (status === 401) {
+    return unauthorizedResponse();
+  }
+
+  if (status === 403) {
+    return forbiddenResponse();
+  }
+
+  return internalServerErrorResponse();
 }
 
-/**
- * Wraps a handler with CORS preflight + global error catching that never leaks
- * stack traces. Usage:
- *
- * ```ts
- * import { withSafeHandler } from "../_shared/security.ts";
- * Deno.serve(withSafeHandler("my-function", async (req) => { ... }));
- * ```
- */
 export function withSafeHandler(
   functionName: string,
   handler: (req: Request) => Promise<Response>,
 ): (req: Request) => Promise<Response> {
   return async (req: Request): Promise<Response> => {
-    // CORS preflight
     if (req.method === "OPTIONS") {
       return new Response(null, { headers: corsHeaders });
     }

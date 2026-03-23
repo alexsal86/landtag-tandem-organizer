@@ -1,6 +1,7 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
+import { withSafeHandler } from "../_shared/security.ts";
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers":
@@ -26,11 +27,11 @@ const handler = async (req: Request): Promise<Response> => {
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? ""
     );
 
-    const { 
-      participantId, 
-      token, 
-      responseType, 
-      comment 
+    const {
+      participantId,
+      token,
+      responseType,
+      comment
     }: DecisionResponseRequest = await req.json();
 
     console.log("=== PROCESS DECISION RESPONSE DEBUG ===");
@@ -84,7 +85,7 @@ const handler = async (req: Request): Promise<Response> => {
     // Validate response type against allowed options
     const responseOptions = decision.response_options || [];
     const validOption = responseOptions.find((opt: any) => opt.key === responseType);
-    
+
     if (!validOption) {
       console.error("Invalid response type:", responseType, "Valid options:", responseOptions.map((o: any) => o.key));
       return new Response(
@@ -186,7 +187,7 @@ const handler = async (req: Request): Promise<Response> => {
 
       if (!allResponsesError && allParticipants && allResponses) {
         const allResponded = allParticipants.length === allResponses.length;
-        
+
         if (allResponded) {
           // Notify the decision creator that all participants have responded
           try {
@@ -219,7 +220,7 @@ const handler = async (req: Request): Promise<Response> => {
     const participantName = participantProfile?.display_name || 'Ein Teammitglied';
 
     return new Response(
-      JSON.stringify({ 
+      JSON.stringify({
         success: true,
         message: "Antwort erfolgreich gespeichert",
         participantName,
@@ -248,4 +249,4 @@ const handler = async (req: Request): Promise<Response> => {
   }
 };
 
-serve(handler);
+serve(withSafeHandler("process-decision-response", handler));
