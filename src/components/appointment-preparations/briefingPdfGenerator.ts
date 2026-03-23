@@ -483,7 +483,7 @@ function addCardTextSection(
 }
 
 // ─── Conversation partners card ───────────────────────────────────────────────
-function addConversationPartnersCard(
+async function addConversationPartnersCard(
   doc: jsPDF,
   x: number,
   maxW: number,
@@ -493,12 +493,16 @@ function addConversationPartnersCard(
 ) {
   if (partners.length === 0) return;
 
+  const AVATAR_SIZE = 8;
+  const AVATAR_PAD = 3;
+  const TEXT_X_OFFSET = AVATAR_SIZE + AVATAR_PAD + 5;
+
   doc.setFontSize(9);
   let estH = SECTION_HEADER_H + SECTION_GAP_AFTER_HEADER + SECTION_BOTTOM_PAD;
   for (const p of partners) {
-    estH += 5;
+    const lineH = AVATAR_SIZE + 2;
     const secondary = [p.role, p.organization, p.note].filter(Boolean);
-    if (secondary.length > 0) estH += 4;
+    estH += Math.max(lineH, 5 + (secondary.length > 0 ? 4 : 0));
   }
   estH += 3;
 
@@ -510,22 +514,85 @@ function addConversationPartnersCard(
   drawSectionBody(doc, x, bodyY, maxW, bodyH);
   let cy = bodyY + 4.5;
 
+  // Pre-load avatar images
+  const avatarImages = new Map<string, HTMLImageElement>();
+  await Promise.all(
+    partners.map(async (p) => {
+      if (!p.avatar_url) return;
+      try {
+        const img = new Image();
+        img.crossOrigin = "anonymous";
+        await new Promise<void>((resolve, reject) => {
+          img.onload = () => resolve();
+          img.onerror = () => reject();
+          img.src = p.avatar_url!;
+        });
+        avatarImages.set(p.id, img);
+      } catch {
+        // skip failed avatar
+      }
+    })
+  );
+
   for (const p of partners) {
     if (cy + 5 > cardY + estH) break;
+
+    const avatarY = cy - 1;
+    const avatarX = x + 5;
+    const avatarImg = avatarImages.get(p.id);
+
+    if (avatarImg) {
+      // Draw circular clipped avatar
+      doc.saveGraphicsState();
+      // Draw circular clip path
+      const clipR = AVATAR_SIZE / 2;
+      const clipCx = avatarX + clipR;
+      const clipCy = avatarY + clipR;
+      // Use circle as clip (approximate with small rect for jsPDF compatibility)
+      try {
+        doc.addImage(avatarImg, "JPEG", avatarX, avatarY, AVATAR_SIZE, AVATAR_SIZE);
+      } catch {
+        // fallback: draw placeholder circle
+        rgb(doc, GREEN_BG, "fill");
+        doc.circle(clipCx, clipCy, clipR, "F");
+      }
+      doc.restoreGraphicsState();
+      // Draw circle border
+      rgb(doc, BORDER_SOFT, "draw");
+      doc.setLineWidth(0.25);
+      doc.circle(avatarX + clipR, avatarY + clipR, clipR, "S");
+    } else {
+      // Draw initials circle
+      const clipR = AVATAR_SIZE / 2;
+      const clipCx = avatarX + clipR;
+      const clipCy = avatarY + clipR;
+      rgb(doc, GREEN_BG, "fill");
+      doc.circle(clipCx, clipCy, clipR, "F");
+      rgb(doc, BORDER_SOFT, "draw");
+      doc.setLineWidth(0.25);
+      doc.circle(clipCx, clipCy, clipR, "S");
+      // Draw initials
+      const initials = p.name.split(" ").filter(Boolean).slice(0, 2).map((s) => s.charAt(0).toUpperCase()).join("") || "?";
+      doc.setFontSize(7);
+      doc.setFont(BODY_FONT, "bold");
+      rgb(doc, GREEN_DARK, "text");
+      doc.text(initials, clipCx, clipCy + 1, { align: "center" });
+    }
+
     doc.setFontSize(9);
     doc.setFont(BODY_FONT, "bold");
     rgb(doc, TEXT_DARK, "text");
-    doc.text(p.name, x + 5, cy + 1.5);
-    cy += 4.5;
+    doc.text(p.name, x + TEXT_X_OFFSET, cy + 2);
 
     const secondary = [p.role, p.organization, p.note].filter(Boolean);
     if (secondary.length > 0) {
       doc.setFontSize(7.5);
       doc.setFont(BODY_FONT, "normal");
       rgb(doc, TEXT_MUTED, "text");
-      doc.text(secondary.join(" · "), x + 5, cy + 0.5);
-      cy += 4;
+      doc.text(secondary.join(" · "), x + TEXT_X_OFFSET, cy + 6);
     }
+
+    cy += AVATAR_SIZE + 2;
   }
 
   yRef.y = cardY + estH + SECTION_OUTER_GAP;
