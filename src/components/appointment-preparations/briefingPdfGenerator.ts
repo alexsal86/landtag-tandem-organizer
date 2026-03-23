@@ -268,26 +268,36 @@ function drawHeaderIcon(
   }
 
   if (type === "location") {
-    doc.circle(x + 1.9, y - 2.25, 1.1, "S");
-    doc.circle(x + 1.9, y - 2.25, 0.35, "S");
-    doc.line(x + 1.05, y - 1.45, x + 1.9, y + 0.4);
-    doc.line(x + 2.75, y - 1.45, x + 1.9, y + 0.4);
+    // MapPin icon
+    const cx = x + 1.9;
+    const topCenter = y - 3.2;
+    const r = 1.5;
+    // Draw pin head (circle with dot)
+    doc.circle(cx, topCenter + r, r, "S");
+    doc.circle(cx, topCenter + r, 0.4, "F");
+    // Draw pin point
+    doc.line(cx - r * 0.65, topCenter + r + r * 0.7, cx, topCenter + r + r * 2.2);
+    doc.line(cx + r * 0.65, topCenter + r + r * 0.7, cx, topCenter + r + r * 2.2);
     return;
   }
 
-  doc.setLineWidth(0.28);
-  doc.line(x + 1.1, y - 0.6, x + 1.1, y + 1.7);
-  doc.line(x + 1.1, y - 0.1, x + 2.2, y - 1.2);
-  doc.line(x + 1.1, y + 1.2, x + 2.2, y + 2.1);
-  doc.line(x + 2.2, y - 1.2, x + 4.6, y - 2.1);
-  doc.line(x + 2.2, y + 2.1, x + 4.6, y + 1.1);
-  doc.line(x + 4.6, y - 2.1, x + 4.6, y + 1.1);
-  doc.line(x + 4.6, y - 2.1, x + 2.2, y - 0.8);
-  doc.line(x + 4.6, y + 1.1, x + 2.2, y + 0.2);
-  doc.line(x + 1.45, y + 1.7, x + 2.15, y + 2.75);
-  doc.line(x + 4.95, y - 1.6, x + 5.9, y - 2.45);
-  doc.line(x + 5.2, y - 0.45, x + 6.35, y - 0.45);
-  doc.line(x + 4.95, y + 0.7, x + 5.9, y + 1.55);
+  // Megaphone icon for "pr"
+  doc.setLineWidth(0.3);
+  const mx = x;
+  const my = y - 1.5;
+  // Speaker body (trapezoid shape)
+  doc.line(mx + 1.2, my - 1.0, mx + 2.8, my - 1.8);
+  doc.line(mx + 2.8, my - 1.8, mx + 2.8, my + 1.8);
+  doc.line(mx + 2.8, my + 1.8, mx + 1.2, my + 1.0);
+  doc.line(mx + 1.2, my + 1.0, mx + 1.2, my - 1.0);
+  // Bell/cone
+  doc.line(mx + 2.8, my - 1.8, mx + 5.0, my - 2.6);
+  doc.line(mx + 5.0, my - 2.6, mx + 5.0, my + 2.6);
+  doc.line(mx + 5.0, my + 2.6, mx + 2.8, my + 1.8);
+  // Handle
+  doc.line(mx + 0.6, my - 0.3, mx + 1.2, my - 0.3);
+  doc.line(mx + 0.6, my + 0.3, mx + 1.2, my + 0.3);
+  doc.line(mx + 0.6, my - 0.3, mx + 0.6, my + 0.3);
 }
 
 function getPublicRelationsStatus(preparationData: AppointmentPreparation["preparation_data"]): string[] {
@@ -473,7 +483,7 @@ function addCardTextSection(
 }
 
 // ─── Conversation partners card ───────────────────────────────────────────────
-function addConversationPartnersCard(
+async function addConversationPartnersCard(
   doc: jsPDF,
   x: number,
   maxW: number,
@@ -483,12 +493,16 @@ function addConversationPartnersCard(
 ) {
   if (partners.length === 0) return;
 
+  const AVATAR_SIZE = 8;
+  const AVATAR_PAD = 3;
+  const TEXT_X_OFFSET = AVATAR_SIZE + AVATAR_PAD + 5;
+
   doc.setFontSize(9);
   let estH = SECTION_HEADER_H + SECTION_GAP_AFTER_HEADER + SECTION_BOTTOM_PAD;
   for (const p of partners) {
-    estH += 5;
+    const lineH = AVATAR_SIZE + 2;
     const secondary = [p.role, p.organization, p.note].filter(Boolean);
-    if (secondary.length > 0) estH += 4;
+    estH += Math.max(lineH, 5 + (secondary.length > 0 ? 4 : 0));
   }
   estH += 3;
 
@@ -500,22 +514,85 @@ function addConversationPartnersCard(
   drawSectionBody(doc, x, bodyY, maxW, bodyH);
   let cy = bodyY + 4.5;
 
+  // Pre-load avatar images
+  const avatarImages = new Map<string, HTMLImageElement>();
+  await Promise.all(
+    partners.map(async (p) => {
+      if (!p.avatar_url) return;
+      try {
+        const img = new Image();
+        img.crossOrigin = "anonymous";
+        await new Promise<void>((resolve, reject) => {
+          img.onload = () => resolve();
+          img.onerror = () => reject();
+          img.src = p.avatar_url!;
+        });
+        avatarImages.set(p.id, img);
+      } catch {
+        // skip failed avatar
+      }
+    })
+  );
+
   for (const p of partners) {
     if (cy + 5 > cardY + estH) break;
+
+    const avatarY = cy - 1;
+    const avatarX = x + 5;
+    const avatarImg = avatarImages.get(p.id);
+
+    if (avatarImg) {
+      // Draw circular clipped avatar
+      doc.saveGraphicsState();
+      // Draw circular clip path
+      const clipR = AVATAR_SIZE / 2;
+      const clipCx = avatarX + clipR;
+      const clipCy = avatarY + clipR;
+      // Use circle as clip (approximate with small rect for jsPDF compatibility)
+      try {
+        doc.addImage(avatarImg, "JPEG", avatarX, avatarY, AVATAR_SIZE, AVATAR_SIZE);
+      } catch {
+        // fallback: draw placeholder circle
+        rgb(doc, GREEN_BG, "fill");
+        doc.circle(clipCx, clipCy, clipR, "F");
+      }
+      doc.restoreGraphicsState();
+      // Draw circle border
+      rgb(doc, BORDER_SOFT, "draw");
+      doc.setLineWidth(0.25);
+      doc.circle(avatarX + clipR, avatarY + clipR, clipR, "S");
+    } else {
+      // Draw initials circle
+      const clipR = AVATAR_SIZE / 2;
+      const clipCx = avatarX + clipR;
+      const clipCy = avatarY + clipR;
+      rgb(doc, GREEN_BG, "fill");
+      doc.circle(clipCx, clipCy, clipR, "F");
+      rgb(doc, BORDER_SOFT, "draw");
+      doc.setLineWidth(0.25);
+      doc.circle(clipCx, clipCy, clipR, "S");
+      // Draw initials
+      const initials = p.name.split(" ").filter(Boolean).slice(0, 2).map((s) => s.charAt(0).toUpperCase()).join("") || "?";
+      doc.setFontSize(7);
+      doc.setFont(BODY_FONT, "bold");
+      rgb(doc, GREEN_DARK, "text");
+      doc.text(initials, clipCx, clipCy + 1, { align: "center" });
+    }
+
     doc.setFontSize(9);
     doc.setFont(BODY_FONT, "bold");
     rgb(doc, TEXT_DARK, "text");
-    doc.text(p.name, x + 5, cy + 1.5);
-    cy += 4.5;
+    doc.text(p.name, x + TEXT_X_OFFSET, cy + 2);
 
     const secondary = [p.role, p.organization, p.note].filter(Boolean);
     if (secondary.length > 0) {
       doc.setFontSize(7.5);
       doc.setFont(BODY_FONT, "normal");
       rgb(doc, TEXT_MUTED, "text");
-      doc.text(secondary.join(" · "), x + 5, cy + 0.5);
-      cy += 4;
+      doc.text(secondary.join(" · "), x + TEXT_X_OFFSET, cy + 6);
     }
+
+    cy += AVATAR_SIZE + 2;
   }
 
   yRef.y = cardY + estH + SECTION_OUTER_GAP;
@@ -622,6 +699,10 @@ function addAblaufCard(
   for (const p of program) {
     const lines = doc.splitTextToSize(p.item, maxW - 19);
     estH += lines.length * 4.5 + 2;
+    if (p.notes?.trim()) {
+      const noteLines = doc.splitTextToSize(p.notes.trim(), maxW - 19);
+      estH += noteLines.length * 3.8 + 1;
+    }
   }
   estH += 3;
 
@@ -646,6 +727,16 @@ function addAblaufCard(
     const descLines = doc.splitTextToSize(p.item, maxW - 19);
     doc.text(descLines, x + 15, cy + 1.5);
     cy += descLines.length * 4.5 + 2;
+
+    // Render notes below the item
+    if (p.notes?.trim()) {
+      doc.setFontSize(7.5);
+      doc.setFont(BODY_FONT, "italic");
+      rgb(doc, TEXT_MUTED, "text");
+      const noteLines = doc.splitTextToSize(p.notes.trim(), maxW - 19);
+      doc.text(noteLines, x + 15, cy);
+      cy += noteLines.length * 3.8 + 1;
+    }
   }
 
   yRef.y = cardY + estH + SECTION_OUTER_GAP;
@@ -747,7 +838,7 @@ export async function generateBriefingPdf({
 
   // 1. Gesprächspartner
   const partners = getConversationPartnersFromPreparationData(d);
-  addConversationPartnersCard(doc, MARGIN, LEFT_W, partners, leftY, topY);
+  await addConversationPartnersCard(doc, MARGIN, LEFT_W, partners, leftY, topY);
 
   // 2. Gesprächspunkte (talking_points + important topics)
   const talkingLines = [
@@ -785,20 +876,50 @@ export async function generateBriefingPdf({
 
   // ── RIGHT COLUMN ────────────────────────────────────────────────────────────
 
-  // 1. Anlass des Besuchs
-  if (preparation.title?.trim()) {
-    const titleLines = doc.splitTextToSize(preparation.title, RIGHT_W - 10);
-    const estH = Math.max(18, SECTION_HEADER_H + SECTION_GAP_AFTER_HEADER + titleLines.length * 4.5 + SECTION_BOTTOM_PAD + 2);
+  // 1. Anlass des Besuchs (from visit_reason data)
+  const visitReasonLabel = d.visit_reason ? (({
+    einladung: "Einladung der Person/Einrichtung",
+    eigeninitiative: "Eigeninitiative",
+    fraktionsarbeit: "Fraktionsarbeit",
+    pressetermin: "Pressetermin",
+  } as Record<string, string>)[d.visit_reason] ?? d.visit_reason) : "";
+  const visitReasonDetails = d.visit_reason_details?.trim();
+  const visitReasonLines = [visitReasonLabel, visitReasonDetails].filter(Boolean) as string[];
+
+  if (visitReasonLines.length > 0) {
+    doc.setFontSize(9);
+    let estH = SECTION_HEADER_H + SECTION_GAP_AFTER_HEADER + SECTION_BOTTOM_PAD + 2;
+    if (visitReasonLabel) {
+      const labelLines = doc.splitTextToSize(visitReasonLabel, RIGHT_W - 10);
+      estH += labelLines.length * 4.5 + 1;
+    }
+    if (visitReasonDetails) {
+      const detailLines = doc.splitTextToSize(visitReasonDetails, RIGHT_W - 10);
+      estH += detailLines.length * 4 + 1;
+    }
     ensureFit(doc, rightY, estH, topY);
     const cy = rightY.y;
     const bodyY = cy + SECTION_HEADER_H + SECTION_GAP_AFTER_HEADER;
     const bodyH = Math.max(12, estH - SECTION_HEADER_H - SECTION_GAP_AFTER_HEADER);
     drawSectionHeaderBar(doc, RIGHT_X, cy, RIGHT_W, "Anlass des Besuchs");
     drawSectionBody(doc, RIGHT_X, bodyY, RIGHT_W, bodyH);
-    doc.setFontSize(9);
-    doc.setFont(BODY_FONT, "bold");
-    rgb(doc, TEXT_DARK, "text");
-    doc.text(titleLines, RIGHT_X + 5, bodyY + 5.5);
+
+    let textY = bodyY + 5.5;
+    if (visitReasonLabel) {
+      doc.setFontSize(9);
+      doc.setFont(BODY_FONT, "bold");
+      rgb(doc, TEXT_DARK, "text");
+      const labelLines = doc.splitTextToSize(visitReasonLabel, RIGHT_W - 10);
+      doc.text(labelLines, RIGHT_X + 5, textY);
+      textY += labelLines.length * 4.5 + 2;
+    }
+    if (visitReasonDetails) {
+      doc.setFontSize(8.5);
+      doc.setFont(BODY_FONT, "normal");
+      rgb(doc, TEXT_MUTED, "text");
+      const detailLines = doc.splitTextToSize(visitReasonDetails, RIGHT_W - 10);
+      doc.text(detailLines, RIGHT_X + 5, textY);
+    }
     rightY.y = cy + estH + SECTION_OUTER_GAP;
   }
 
