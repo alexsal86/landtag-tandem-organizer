@@ -1,7 +1,8 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { debugConsole } from '@/utils/debugConsole';
+import { getTaskAssigneeIds } from "@/lib/taskAssignees";
 
 export interface MyWorkTask {
   id: string;
@@ -18,18 +19,11 @@ export interface MyWorkTask {
   pending_for_jour_fixe?: boolean | null;
   parent_task_id?: string | null;
   tenant_id?: string;
+  task_assignees?: Array<{ user_id: string }> | null;
 }
 
-const TASK_LIST_SELECT = "id, title, description, priority, status, due_date, assigned_to, user_id, created_at, category, meeting_id, pending_for_jour_fixe, parent_task_id, tenant_id";
-
-const normalizeAssignedTo = (assignedTo: string | null | undefined) => {
-  if (!assignedTo) return [];
-  return assignedTo
-    .replace(/[{}]/g, "")
-    .split(",")
-    .map((item) => item.trim())
-    .filter(Boolean);
-};
+const TASK_LIST_SELECT = "id, title, description, priority, status, due_date, assigned_to, user_id, created_at, category, meeting_id, pending_for_jour_fixe, parent_task_id, tenant_id, task_assignees!left(user_id)";
+const TASK_ASSIGNED_SELECT = "id, title, description, priority, status, due_date, assigned_to, user_id, created_at, category, meeting_id, pending_for_jour_fixe, parent_task_id, tenant_id, task_assignees!inner(user_id)";
 
 interface TasksQueryResult {
   assignedTasks: MyWorkTask[];
@@ -40,7 +34,14 @@ interface TasksQueryResult {
 }
 
 const fetchTasks = async (userId: string): Promise<TasksQueryResult> => {
-  const [assignedResult, createdResult] = await Promise.all([
+  const [assignedResult, legacyAssignedResult, createdResult] = await Promise.all([
+    supabase
+      .from("tasks")
+      .select(TASK_ASSIGNED_SELECT)
+      .eq("task_assignees.user_id", userId)
+      .neq("status", "completed")
+      .is("parent_task_id", null)
+      .order("due_date", { ascending: true, nullsFirst: false }),
     supabase
       .from("tasks")
       .select(TASK_LIST_SELECT)
@@ -58,17 +59,19 @@ const fetchTasks = async (userId: string): Promise<TasksQueryResult> => {
   ]);
 
   if (assignedResult.error) throw assignedResult.error;
+  if (legacyAssignedResult.error) throw legacyAssignedResult.error;
   if (createdResult.error) throw createdResult.error;
 
-  const allAssigned = assignedResult.data || [];
+  const allAssigned = [...(assignedResult.data || []), ...(legacyAssignedResult.data || [])]
+    .filter((task, index, arr) => arr.findIndex((candidate) => candidate.id === task.id) === index);
   const allCreated = createdResult.data || [];
 
   const createdByMe = allCreated.filter(
-    (task) => !(task.category === "meeting" && normalizeAssignedTo(task.assigned_to).includes(userId))
+    (task) => !(task.category === "meeting" && getTaskAssigneeIds(task).includes(userId))
   );
 
   const meetingTasksAssignedToMe = allCreated.filter(
-    (task) => task.category === "meeting" && normalizeAssignedTo(task.assigned_to).includes(userId)
+    (task) => task.category === "meeting" && getTaskAssigneeIds(task).includes(userId)
   );
 
   const assignedByOthers = [
@@ -198,6 +201,7 @@ export function useMyWorkTasksData(userId?: string) {
     const channel = supabase
       .channel(`my-work-tasks-${userId}`)
       .on("postgres_changes", { event: "*", schema: "public", table: "tasks" }, scheduleRefresh)
+      .on("postgres_changes", { event: "*", schema: "public", table: "task_assignees" }, scheduleRefresh)
       .on("postgres_changes", { event: "*", schema: "public", table: "task_snoozes", filter: `user_id=eq.${userId}` }, scheduleRefresh)
       .on("postgres_changes", { event: "*", schema: "public", table: "task_comments" }, scheduleRefresh)
       .subscribe();

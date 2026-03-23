@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { debugConsole } from '@/utils/debugConsole';
+import { normalizeTaskAssigneeIds, serializeLegacyTaskAssignees, syncTaskAssignees } from "@/lib/taskAssignees";
 import { useSearchParams } from "react-router-dom";
 import { useNotificationHighlight } from "@/hooks/useNotificationHighlight";
 import { Plus, Filter, Archive, AlarmClock, Calendar, User, ChevronDown, ChevronRight, ListTodo, Paperclip, StickyNote, MessageCircle, Edit2, Trash2, Check, X, Send, Download } from "lucide-react";
@@ -240,8 +241,9 @@ export function TasksView() {
                                     try {
                                       const tenantId = task.tenant_id || data.currentTenant?.id;
                                       if (!tenantId) throw new Error('Missing tenant_id');
-                                      const { data: authData } = await supabase.auth.getUser(); const userId = authData.user!.id; const { error } = await supabase.from('tasks').insert([{ title, description: null, status: 'todo', priority: task.priority || 'medium', category: task.category || 'personal', user_id: userId, tenant_id: tenantId, assigned_to: task.assignedTo || userId, parent_task_id: task.id }]);
+                                      const { data: authData } = await supabase.auth.getUser(); const userId = authData.user!.id; const assigneeIds = normalizeTaskAssigneeIds(task.assignedTo || userId); const { data: createdSubtask, error } = await supabase.from('tasks').insert([{ title, description: null, status: 'todo', priority: task.priority || 'medium', category: task.category || 'personal', user_id: userId, tenant_id: tenantId, assigned_to: serializeLegacyTaskAssignees(assigneeIds) || userId, parent_task_id: task.id }]).select('id').single();
                                       if (error) throw error;
+                                      await syncTaskAssignees({ taskId: createdSubtask.id, assigneeIds, assignedBy: userId });
                                       data.loadSubtasksForTask(task.id);
                                       data.loadSubtaskCounts();
                                       toast({ title: "Unteraufgabe hinzugefügt" });

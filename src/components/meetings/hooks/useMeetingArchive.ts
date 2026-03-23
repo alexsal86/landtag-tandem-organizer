@@ -4,6 +4,7 @@ import { format } from "date-fns";
 import { de } from "date-fns/locale";
 import type { AgendaItem, Meeting, Profile } from "@/components/meetings/types";
 import type { MeetingsDataReturn } from "./useMeetingsData";
+import { normalizeTaskAssigneeIds, serializeLegacyTaskAssignees, syncTaskAssignees } from "@/lib/taskAssignees";
 
 type ArchiveDeps = Pick<MeetingsDataReturn, 
   'user' | 'currentTenant' | 'toast' | 'profiles' | 'linkedQuickNotes' | 'meetingLinkedCaseItems' |
@@ -239,13 +240,15 @@ export function useMeetingArchive(deps: ArchiveDeps) {
             ? `\n\n**Zuständige:** ${assigneeNames}` : '';
 
           const taskDescription = `**Aus Besprechung:** ${meeting.title} vom ${format(new Date(meeting.meeting_date), 'dd.MM.yyyy', { locale: de })}${resultBlock}${detailsBlock}${notesBlock}${multiAssigneeNote}`;
+          const assigneeIds = normalizeTaskAssigneeIds(Array.isArray(item.assigned_to) ? item.assigned_to : assignedUserId);
 
-          await supabase.from('tasks').insert([{
+          const { data: createdTask } = await supabase.from('tasks').insert([{
             user_id: user.id, title: item.title, description: taskDescription,
             priority: 'medium', category: 'meeting', status: 'todo',
-            assigned_to: assignedUserId, tenant_id: currentTenant?.id || '',
+            assigned_to: serializeLegacyTaskAssignees(assigneeIds), tenant_id: currentTenant?.id || '',
             due_date: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString()
-          }]);
+          }]).select('id').single();
+          if (createdTask) await syncTaskAssignees({ taskId: createdTask.id, assigneeIds, assignedBy: user.id });
         } catch (e) { debugConsole.error('Error creating task for assigned item (non-fatal):', e); }
       }
 
@@ -269,20 +272,26 @@ export function useMeetingArchive(deps: ArchiveDeps) {
             if (!action) return null;
             const birthdayDate = contact.birthday ? format(new Date(contact.birthday), 'dd.MM.yyyy', { locale: de }) : 'unbekannt';
             const assignedUserIds = result.assigned_to && result.assigned_to.length > 0 ? result.assigned_to : profiles.map(p => p.user_id);
-            const assignedToValue = mapBirthdayAssignedToValue(result.assigned_to, profiles, user.id);
             const assigneeNames = assignedUserIds.map(id => { const p = profiles.find(pr => pr.user_id === id); return p?.display_name || 'Unbekannt'; }).join(', ');
             return {
               user_id: user.id,
               title: `Geburtstag: ${actionLabelMap[action]} für ${contact.name}`,
               description: `**Aus Besprechung:** ${meeting.title} vom ${format(new Date(meeting.meeting_date), 'dd.MM.yyyy', { locale: de })}\n\n**Aktion:** ${actionLabelMap[action]}\n**Kontakt:** ${contact.name}\n**Geburtstag:** ${birthdayDate}\n**Zuständig:** ${assigneeNames}`,
-              priority: 'medium', category: 'meeting', status: 'todo', assigned_to: assignedToValue,
+              priority: 'medium', category: 'meeting', status: 'todo', assigned_to: serializeLegacyTaskAssignees(normalizeTaskAssigneeIds(assignedUserIds)),
               tenant_id: currentTenant?.id || '',
               due_date: new Date(new Date(meeting.meeting_date).getTime() + 3 * 24 * 60 * 60 * 1000).toISOString(),
             };
           }).filter((t): t is NonNullable<typeof t> => t !== null);
 
           if (tasksToInsert.length > 0) {
-            await supabase.from('tasks').insert(tasksToInsert);
+            const { data: createdTasks } = await supabase.from('tasks').insert(tasksToInsert).select('id, assigned_to');
+            for (const createdTask of createdTasks || []) {
+              await syncTaskAssignees({
+                taskId: createdTask.id,
+                assigneeIds: normalizeTaskAssigneeIds(createdTask.assigned_to),
+                assignedBy: user.id,
+              });
+            }
           }
         } catch (e) { debugConsole.error('Error processing birthday tasks (non-fatal):', e); }
       }
@@ -299,6 +308,7 @@ export function useMeetingArchive(deps: ArchiveDeps) {
           due_date: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),
           assigned_to: user.id,
         }]).select().single();
+        if (createdTask?.id) await syncTaskAssignees({ taskId: createdTask.id, assigneeIds: [user.id], assignedBy: user.id });
         if (taskError) throw taskError;
         followUpTask = createdTask;
       } catch (e) { debugConsole.error('Error creating follow-up task (non-fatal):', e); }
@@ -409,6 +419,7 @@ export function useMeetingArchive(deps: ArchiveDeps) {
               }]).select().single();
 
               if (apptTask) {
+                await syncTaskAssignees({ taskId: apptTask.id, assigneeIds: allParticipantIds, assignedBy: user.id });
                 const childTasks = allAppointments.map(apt => {
                   const specificAssignment = starredAssignmentMap.get(apt.id);
                   const assignedTo = specificAssignment && specificAssignment.length > 0
@@ -419,7 +430,14 @@ export function useMeetingArchive(deps: ArchiveDeps) {
                     description: null, assigned_to: assignedTo, status: 'todo', priority: 'medium', category: 'meeting',
                   };
                 });
-                await supabase.from('tasks').insert(childTasks);
+                const { data: createdChildTasks } = await supabase.from('tasks').insert(childTasks).select('id, assigned_to');
+                for (const childTask of createdChildTasks || []) {
+                  await syncTaskAssignees({
+                    taskId: childTask.id,
+                    assigneeIds: normalizeTaskAssigneeIds(childTask.assigned_to),
+                    assignedBy: user.id,
+                  });
+                }
               }
             }
           }
