@@ -5,6 +5,10 @@ import { de } from 'date-fns/locale';
 import { HeaderRenderer } from '@/services/headerRenderer';
 import { buildFooterBlocksFromStored, resolveBlockWidthMm } from '@/components/letters/footerBlockUtils';
 import { supabase } from '@/integrations/supabase/client';
+import { buildVariableMap, substituteBlockLines, isLineMode } from '@/lib/letterVariables';
+import type { BlockLine } from '@/components/letters/BlockLineEditor';
+import { getBlockLineFontStack } from '@/components/letters/BlockLineEditor';
+import { getLetterAssetPublicUrl } from '@/components/letters/letterAssetUrls';
 import type { Letter, LetterTemplate } from './types';
 
 // DIN 5008 measurements in mm
