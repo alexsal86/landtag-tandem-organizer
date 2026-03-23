@@ -77,6 +77,10 @@ export function useMyWorkDecisionsSidebarData(decisions: MyWorkDecision[], userI
         const latest = rootResponses[0];
         if (!latest) return;
 
+        const latestFollowup = participant.responses
+          .filter((response) => response.parent_response_id === latest.id)
+          .sort((a, b) => new Date(b.updated_at || b.created_at).getTime() - new Date(a.updated_at || a.created_at).getTime())[0];
+
         if (decision.isCreator && latest.response_type === "question" && !latest.creator_response) {
           openQuestions.push({
             id: latest.id,
@@ -131,6 +135,7 @@ export function useMyWorkDecisionsSidebarData(decisions: MyWorkDecision[], userI
             responseType: latest.response_type,
             comment: latest.creator_response,
             createdAt: latest.updated_at || latest.created_at,
+            participantFollowupId: latestFollowup?.id || null,
           });
         }
       });
