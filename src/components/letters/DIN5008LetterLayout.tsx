@@ -677,6 +677,12 @@ export const DIN5008LetterLayout: React.FC<DIN5008LetterLayoutProps> = ({
         .din5008-content-text * {
           color: #000 !important;
         }
+        .din5008-content-text p {
+          margin: 0 0 4.5mm 0;
+        }
+        .din5008-content-text p:last-child {
+          margin-bottom: 0;
+        }
       `}</style>
 
       {/* Attachments in legacy mode */}

@@ -5,6 +5,9 @@ import { de } from 'date-fns/locale';
 import { HeaderRenderer } from '@/services/headerRenderer';
 import { buildFooterBlocksFromStored, resolveBlockWidthMm } from '@/components/letters/footerBlockUtils';
 import { supabase } from '@/integrations/supabase/client';
+import { buildVariableMap, substituteBlockLines, isLineMode } from '@/lib/letterVariables';
+import type { BlockLine } from '@/components/letters/BlockLineEditor';
+import { getLetterAssetPublicUrl } from '@/components/letters/letterAssetUrls';
 import type { Letter, LetterTemplate } from './types';
 
 // DIN 5008 measurements in mm
@@ -330,15 +333,69 @@ interface GeneratePDFOptions {
   attachments: any[];
   showPagination: boolean;
   returnBlob?: boolean;
+  debugMode?: boolean;
+}
+
+function renderBlockLinesToPdf(pdf: jsPDF, lines: BlockLine[], x: number, startY: number, maxWidth: number): void {
+  let y = startY;
+  for (const line of lines) {
+    if (line.type === 'spacer') {
+      y += line.spacerHeight || 2;
+      continue;
+    }
+    const fontSize = line.fontSize || 9;
+    pdf.setFontSize(fontSize);
+    const lineHeightMm = fontSize * 0.45;
+    
+    if (line.type === 'label-value') {
+      if (line.label) {
+        pdf.setFont('helvetica', line.labelBold !== false ? 'bold' : 'normal');
+        pdf.text(line.label, x, y);
+        const labelWidth = pdf.getTextWidth(line.label);
+        if (line.value) {
+          pdf.setFont('helvetica', line.valueBold ? 'bold' : 'normal');
+          pdf.text(line.value, x + labelWidth, y);
+        }
+      } else if (line.value) {
+        pdf.setFont('helvetica', line.valueBold ? 'bold' : 'normal');
+        pdf.text(line.value, x, y);
+      }
+    } else {
+      // text-only
+      pdf.setFont('helvetica', line.valueBold ? 'bold' : 'normal');
+      const wrappedLines = pdf.splitTextToSize(line.value || '', maxWidth);
+      wrappedLines.forEach((wl: string) => {
+        pdf.text(wl, x, y);
+        y += lineHeightMm;
+      });
+      continue; // already advanced y
+    }
+    y += lineHeightMm;
+  }
+  pdf.setFont('helvetica', 'normal');
 }
 
 export async function generatePDF(options: GeneratePDFOptions): Promise<{ blob: Blob; filename: string } | void> {
-  const { letter, template, senderInfo, informationBlock, attachments, showPagination, returnBlob = false } = options;
+  const { letter, template, senderInfo, informationBlock, attachments, showPagination, returnBlob = false, debugMode = false } = options;
   
   const pdf = new jsPDF('p', 'mm', 'a4');
   
-  // Debug guides page 1
-  drawDebugGuides(pdf, 1);
+  // Get layout settings from template - use 'any' to allow flexible access
+  const layout: any = template?.layout_settings || {
+    pageWidth: 210, pageHeight: 297,
+    margins: { left: 25, right: 20, top: 45, bottom: 25 },
+    header: { height: 45, marginBottom: 8.46 },
+    addressField: { top: 46, left: 25, width: 85, height: 40, returnAddressFontSize: 8, recipientFontSize: 10 },
+    infoBlock: { top: 50, left: 125, width: 75, height: 40 },
+    subject: { top: 98.46, marginBottom: 8, fontSize: 13 },
+    content: { top: 98.46, maxHeight: 165, lineHeight: 4.5, fontSize: 11 },
+    footer: { top: 272, height: 18 },
+  };
+  
+  // Debug guides only in debug mode
+  if (debugMode) {
+    drawDebugGuides(pdf, 1);
+  }
   renderFooterBlocks(pdf, template);
   
   pdf.setTextColor(0, 0, 0);
@@ -346,14 +403,15 @@ export async function generatePDF(options: GeneratePDFOptions): Promise<{ blob: 
   
   // Template header
   if (template) {
-    const headerRenderer = new HeaderRenderer(pdf, LEFT_MARGIN);
+    const headerRenderer = new HeaderRenderer(pdf, LEFT_MARGIN, undefined, debugMode);
     await headerRenderer.renderHeader(template as any);
   }
   
   // Return address line
+  const returnAddressFontSize = layout.addressField?.returnAddressFontSize || 8;
+  const recipientFontSize = layout.addressField?.recipientFontSize || 10;
   let addressYPos = ADDRESS_FIELD_TOP + 17.7;
   if (senderInfo?.return_address_line) {
-    const returnAddressFontSize = 7;
     const returnAddressMaxWidth = Math.max(10, ADDRESS_FIELD_WIDTH - 10);
     pdf.setFontSize(returnAddressFontSize);
     pdf.setFont('helvetica', 'normal');
@@ -371,26 +429,41 @@ export async function generatePDF(options: GeneratePDFOptions): Promise<{ blob: 
   
   // Recipient address
   if (letter.recipient_name || letter.recipient_address) {
-    pdf.setFontSize(9);
+    pdf.setFontSize(recipientFontSize);
     pdf.setFont('helvetica', 'normal');
+    const recipientLineHeight = recipientFontSize * 0.4;
     if (letter.recipient_name) {
       pdf.text(letter.recipient_name, ADDRESS_FIELD_LEFT, addressYPos);
-      addressYPos += 4;
+      addressYPos += recipientLineHeight;
     }
     if (letter.recipient_address) {
       const addressLines = letter.recipient_address.split('\n').filter(line => line.trim());
       addressLines.forEach(line => {
         if (addressYPos < ADDRESS_FIELD_TOP + ADDRESS_FIELD_HEIGHT - 2) {
           pdf.text(line.trim(), ADDRESS_FIELD_LEFT, addressYPos);
-          addressYPos += 4;
+          addressYPos += recipientLineHeight;
         }
       });
     }
   }
   
-  // Information block
+  // Information block - use BlockLine data from template if available
+  const blockContent = (layout as any).blockContent || {};
+  const infoBlockData = blockContent.infoBlock;
   let infoYPos = INFO_BLOCK_TOP + 3;
-  if (informationBlock) {
+  
+  if (infoBlockData && isLineMode(infoBlockData)) {
+    // Use line-mode data with variable substitution
+    const varMap = buildVariableMap(
+      { subject: letter.subject || '', letterDate: letter.letter_date || undefined, referenceNumber: letter.reference_number || undefined },
+      senderInfo ? { name: senderInfo.name, organization: senderInfo.organization, phone: senderInfo.phone, email: senderInfo.email } : null,
+      letter.recipient_name ? { name: letter.recipient_name } : null,
+      null, null
+    );
+    const substitutedLines = substituteBlockLines(infoBlockData.lines, varMap);
+    renderBlockLinesToPdf(pdf, substitutedLines, INFO_BLOCK_LEFT, infoYPos, INFO_BLOCK_WIDTH);
+  } else if (informationBlock) {
+    // Fallback to legacy info block rendering
     pdf.setFontSize(8);
     pdf.setFont('helvetica', 'bold');
     pdf.text(informationBlock.label || 'Information', INFO_BLOCK_LEFT, infoYPos);
@@ -458,23 +531,38 @@ export async function generatePDF(options: GeneratePDFOptions): Promise<{ blob: 
   }
   
   // Subject line
+  const subjectFontSize = layout.subject?.fontSize || 13;
+  const contentFontSize = layout.content?.fontSize || 11;
+  const lineHeight = layout.content?.lineHeight || 4.5;
+  let contentStartY = CONTENT_TOP + 3;
+  
   if (letter.subject || letter.title) {
-    pdf.setFontSize(11);
-    pdf.setFont('helvetica', 'bold');
-    pdf.text(letter.subject || letter.title, LEFT_MARGIN, CONTENT_TOP + 3);
+    pdf.setFontSize(subjectFontSize);
+    pdf.setFont('helvetica', layout.subject?.fontWeight || 'bold');
+    pdf.text(letter.subject || letter.title, LEFT_MARGIN, contentStartY);
+    contentStartY += 9; // 2 blank lines after subject (matching HTML: height 9mm)
+  }
+  
+  // Salutation
+  const salutationText = layout.salutation?.template || '';
+  if (salutationText) {
+    const salutationFontSize = layout.salutation?.fontSize || contentFontSize;
+    pdf.setFontSize(salutationFontSize);
+    pdf.setFont('helvetica', 'normal');
+    pdf.text(salutationText, LEFT_MARGIN, contentStartY);
+    contentStartY += lineHeight; // 1 blank line after salutation
   }
   
   // Letter content
-  pdf.setFontSize(11);
+  pdf.setFontSize(contentFontSize);
   pdf.setFont('helvetica', 'normal');
   const contentText = letter.content_html ? convertHtmlToText(letter.content_html) : letter.content;
-  const lineHeight = 4.5;
   
   let currentPage = 1;
   let letterPages = 1;
   const shouldShowPagination = showPagination || letter.show_pagination;
   
-  const renderContentText = (text: string, startY: number) => {
+  const renderContentText = (text: string, startY: number): number => {
     let currentY = startY;
     const paragraphs = text.split('\n\n').filter(p => p.trim());
     
@@ -492,10 +580,10 @@ export async function generatePDF(options: GeneratePDFOptions): Promise<{ blob: 
           pdf.addPage();
           letterPages++;
           currentPage++;
-          drawDebugGuides(pdf, currentPage);
+          if (debugMode) drawDebugGuides(pdf, currentPage);
           renderFooterBlocksSimple(pdf, template);
-          currentY = 30;
-          pdf.setFontSize(11);
+          currentY = layout.content?.page2TopMm || 30;
+          pdf.setFontSize(contentFontSize);
           pdf.setFont('helvetica', 'normal');
         }
         
@@ -505,9 +593,61 @@ export async function generatePDF(options: GeneratePDFOptions): Promise<{ blob: 
       
       if (paragIndex < paragraphs.length - 1) currentY += lineHeight / 2;
     });
+    return currentY;
   };
   
-  renderContentText(contentText, CONTENT_TOP + 10);
+  let endY = renderContentText(contentText, contentStartY);
+  
+  // Closing formula and signature
+  if (layout.closing?.formula) {
+    endY += lineHeight; // blank line before closing
+    pdf.setFontSize(layout.closing?.fontSize || contentFontSize);
+    pdf.setFont('helvetica', 'normal');
+    pdf.text(layout.closing.formula, LEFT_MARGIN, endY);
+    endY += lineHeight;
+    
+    // Signature image
+    const signatureImagePath = layout.closing?.signatureImagePath;
+    if (signatureImagePath) {
+      const signatureUrl = getLetterAssetPublicUrl(signatureImagePath);
+      if (signatureUrl) {
+        try {
+          const response = await fetch(signatureUrl);
+          if (response.ok) {
+            const blob = await response.blob();
+            const base64 = await new Promise<string>((resolve, reject) => {
+              const reader = new FileReader();
+              reader.onload = () => resolve(reader.result as string);
+              reader.onerror = reject;
+              reader.readAsDataURL(blob);
+            });
+            const sigHeight = 9; // ~9mm for signature
+            pdf.addImage(base64, 'PNG', LEFT_MARGIN, endY, 30, sigHeight);
+            endY += sigHeight + 1;
+          }
+        } catch (e) {
+          debugConsole.warn('Could not load signature image:', e);
+          endY += 13.5; // fallback gap for missing signature
+        }
+      } else {
+        endY += 13.5;
+      }
+    } else {
+      endY += 4.5; // gap before name when no signature image
+    }
+    
+    // Signature name
+    if (layout.closing?.signatureName) {
+      pdf.setFont('helvetica', 'normal');
+      pdf.text(layout.closing.signatureName, LEFT_MARGIN, endY);
+      endY += lineHeight;
+    }
+    if (layout.closing?.signatureTitle) {
+      pdf.setFont('helvetica', 'normal');
+      pdf.text(layout.closing.signatureTitle, LEFT_MARGIN, endY);
+      endY += lineHeight;
+    }
+  }
   
   // Attachments
   if (attachments && attachments.length > 0) {
@@ -522,17 +662,19 @@ export async function generatePDF(options: GeneratePDFOptions): Promise<{ blob: 
         const attachmentMargin = 20;
         
         // Debug guides for attachments
-        pdf.setLineWidth(0.2);
-        pdf.setDrawColor(255, 0, 255);
-        pdf.line(0, attachmentMargin, PAGE_WIDTH, attachmentMargin);
-        pdf.setFontSize(8);
-        pdf.setTextColor(255, 0, 255);
-        pdf.text("20mm - Anlage Oberrand", 5, attachmentMargin - 3);
-        pdf.line(0, PAGE_HEIGHT - attachmentMargin, PAGE_WIDTH, PAGE_HEIGHT - attachmentMargin);
-        pdf.line(attachmentMargin, 0, attachmentMargin, PAGE_HEIGHT);
-        pdf.line(PAGE_WIDTH - attachmentMargin, 0, PAGE_WIDTH - attachmentMargin, PAGE_HEIGHT);
-        pdf.setDrawColor(200, 0, 200);
-        pdf.rect(attachmentMargin, attachmentMargin, PAGE_WIDTH - 2 * attachmentMargin, PAGE_HEIGHT - 2 * attachmentMargin);
+        if (debugMode) {
+          pdf.setLineWidth(0.2);
+          pdf.setDrawColor(255, 0, 255);
+          pdf.line(0, attachmentMargin, PAGE_WIDTH, attachmentMargin);
+          pdf.setFontSize(8);
+          pdf.setTextColor(255, 0, 255);
+          pdf.text("20mm - Anlage Oberrand", 5, attachmentMargin - 3);
+          pdf.line(0, PAGE_HEIGHT - attachmentMargin, PAGE_WIDTH, PAGE_HEIGHT - attachmentMargin);
+          pdf.line(attachmentMargin, 0, attachmentMargin, PAGE_HEIGHT);
+          pdf.line(PAGE_WIDTH - attachmentMargin, 0, PAGE_WIDTH - attachmentMargin, PAGE_HEIGHT);
+          pdf.setDrawColor(200, 0, 200);
+          pdf.rect(attachmentMargin, attachmentMargin, PAGE_WIDTH - 2 * attachmentMargin, PAGE_HEIGHT - 2 * attachmentMargin);
+        }
         pdf.setTextColor(0, 0, 0);
         pdf.setDrawColor(0, 0, 0);
         
@@ -609,15 +751,17 @@ export async function generatePDF(options: GeneratePDFOptions): Promise<{ blob: 
       pdf.setPage(page);
       const paginationY = 263.77;
       
-      pdf.setDrawColor(255, 0, 255);
-      pdf.setLineWidth(0.1);
-      const pageText = `Seite ${page} von ${totalLetterPages}`;
-      const pageTextWidth = pdf.getTextWidth(pageText);
-      const pageTextX = (PAGE_WIDTH - pageTextWidth) / 2;
-      pdf.rect(pageTextX - 2, paginationY - 3, pageTextWidth + 4, 5);
-      pdf.setTextColor(255, 0, 255);
-      pdf.setFontSize(6);
-      pdf.text("Pagination: Unterkante 4.23mm über Fußzeile", pageTextX, paginationY - 4);
+      if (debugMode) {
+        pdf.setDrawColor(255, 0, 255);
+        pdf.setLineWidth(0.1);
+        const pageText = `Seite ${page} von ${totalLetterPages}`;
+        const pageTextWidth = pdf.getTextWidth(pageText);
+        const pageTextX = (PAGE_WIDTH - pageTextWidth) / 2;
+        pdf.rect(pageTextX - 2, paginationY - 3, pageTextWidth + 4, 5);
+        pdf.setTextColor(255, 0, 255);
+        pdf.setFontSize(6);
+        pdf.text("Pagination: Unterkante 4.23mm über Fußzeile", pageTextX, paginationY - 4);
+      }
       
       pdf.setFontSize(9);
       pdf.setFont('helvetica', 'normal');

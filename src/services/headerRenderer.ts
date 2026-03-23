@@ -35,10 +35,12 @@ export class HeaderRenderer {
   private pdf: jsPDF;
   private leftMargin: number;
   private layoutSettings: any;
+  private debugMode: boolean;
 
-  constructor(pdf: jsPDF, leftMargin: number = 25, layoutSettings?: any) {
+  constructor(pdf: jsPDF, leftMargin: number = 25, layoutSettings?: any, debugMode: boolean = false) {
     this.pdf = pdf;
     this.leftMargin = leftMargin;
+    this.debugMode = debugMode;
     this.layoutSettings = layoutSettings || {
       pageWidth: 210,
       pageHeight: 297,
@@ -176,7 +178,9 @@ export class HeaderRenderer {
       content: element.content 
     });
     
-    this.renderDebugBox(xInMm, yInMm, fontSize, element.content || '');
+    if (this.debugMode) {
+      this.renderDebugBox(xInMm, yInMm, fontSize, element.content || '');
+    }
     
     if (element.color && element.color.startsWith('#')) {
       const { r, g, b } = this.hexToRgb(element.color);
@@ -207,7 +211,9 @@ export class HeaderRenderer {
       
       debugConsole.log('Image position in mm:', { xInMm, yInMm, widthInMm, heightInMm });
       
-      this.renderDebugBox(xInMm, yInMm, widthInMm, heightInMm, true);
+      if (this.debugMode) {
+        this.renderDebugBox(xInMm, yInMm, widthInMm, heightInMm, true);
+      }
 
       if (imageUrl.toLowerCase().includes('.svg')) {
         debugConsole.log('SVG detected, using placeholder');
