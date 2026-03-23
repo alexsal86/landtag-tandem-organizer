@@ -289,8 +289,8 @@
 .rbc-time-view .rbc-allday-cell {
   position: relative;
   min-height: 0;
-  border: 1px solid hsl(var(--border));
-  border-top: none;
+  border: none;
+  border-bottom: 1px solid hsl(var(--border));
 }
 
 .rbc-time-view .rbc-time-content .rbc-row-bg {
