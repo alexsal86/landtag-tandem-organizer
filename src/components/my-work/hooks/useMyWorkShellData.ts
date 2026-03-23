@@ -1,9 +1,8 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
-import { useTenant } from "@/hooks/useTenant";
 import { debugConsole } from "@/utils/debugConsole";
-import { getRoleFlags, type UserRole } from "@/components/my-work/tabVisibility";
+import { useResolvedUserRole } from "@/hooks/useResolvedUserRole";
 import type { TabCounts } from "@/components/my-work/myWorkTabs";
 
 const EMPTY_COUNTS: TabCounts = {
@@ -18,10 +17,8 @@ const EMPTY_COUNTS: TabCounts = {
 
 export const useMyWorkShellData = () => {
   const { user } = useAuth();
-  const { currentTenant } = useTenant();
   const loadCountsRequestRef = useRef(0);
   const shouldIncludeTeamCountRef = useRef(false);
-  const [role, setRole] = useState<UserRole>(null);
   const [feedbackFeedCoreRolesOnly, setFeedbackFeedCoreRolesOnly] = useState(false);
   const [totalCounts, setTotalCounts] = useState<TabCounts>(EMPTY_COUNTS);
   const [countLoadError, setCountLoadError] = useState<string | null>(null);
@@ -67,58 +64,22 @@ export const useMyWorkShellData = () => {
     }
   }, [user]);
 
+  const { role, ...roleFlags } = useResolvedUserRole();
+
   const loadUserRoleAndCounts = useCallback(async () => {
     if (!user) return;
 
-    if (!currentTenant?.id) {
-      setRole(null);
-      shouldIncludeTeamCountRef.current = false;
-      await loadCounts(false);
-      return;
-    }
+    const { data: feedbackFeedVisibilitySetting } = await supabase
+      .from("app_settings")
+      .select("setting_value")
+      .eq("setting_key", "mywork_feedbackfeed_core_roles_only")
+      .maybeSingle();
 
-    const [membershipData, feedbackFeedVisibilitySetting] = await Promise.all([
-      supabase
-        .from("user_tenant_memberships")
-        .select("role")
-        .eq("tenant_id", currentTenant.id)
-        .eq("user_id", user.id)
-        .eq("is_active", true)
-        .maybeSingle(),
-      supabase
-        .from("app_settings")
-        .select("setting_value")
-        .eq("setting_key", "mywork_feedbackfeed_core_roles_only")
-        .maybeSingle(),
-    ]);
-
-    if (membershipData.error) {
-      debugConsole.error("Error loading tenant membership role:", membershipData.error);
-    }
-
-    let resolvedRole = (membershipData.data?.role || null) as UserRole;
-
-    if (!resolvedRole) {
-      const { data: fallbackRoleData, error: fallbackRoleError } = await supabase
-        .from("user_roles")
-        .select("role")
-        .eq("user_id", user.id)
-        .maybeSingle();
-
-      if (fallbackRoleError) {
-        debugConsole.error("Error loading fallback user role:", fallbackRoleError);
-      }
-
-      resolvedRole = (fallbackRoleData?.role || null) as UserRole;
-    }
-
-    const roleFlags = getRoleFlags(resolvedRole);
-    setRole(resolvedRole);
-    setFeedbackFeedCoreRolesOnly(Boolean(feedbackFeedVisibilitySetting.data?.setting_value));
+    setFeedbackFeedCoreRolesOnly(Boolean(feedbackFeedVisibilitySetting?.setting_value));
 
     shouldIncludeTeamCountRef.current = roleFlags.isAbgeordneter || roleFlags.isBueroleitung;
     await loadCounts(shouldIncludeTeamCountRef.current);
-  }, [currentTenant?.id, loadCounts, user]);
+  }, [loadCounts, roleFlags.isAbgeordneter, roleFlags.isBueroleitung, user]);
 
   useEffect(() => {
     void loadUserRoleAndCounts();
@@ -127,8 +88,6 @@ export const useMyWorkShellData = () => {
   useEffect(() => {
     setRealtimeStatus("connected");
   }, []);
-
-  const roleFlags = useMemo(() => getRoleFlags(role), [role]);
 
   return {
     countLoadError,

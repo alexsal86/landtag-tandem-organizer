@@ -1,18 +1,7 @@
-export type UserRole = "abgeordneter" | "bueroleitung" | "mitarbeiter" | "praktikant" | null;
+import type { ResolvedUserRole as UserRole } from "@/hooks/useResolvedUserRole";
+import type { TabValue } from "@/components/my-work/myWorkTabs";
 
-export type TabValue =
-  | "dashboard"
-  | "capture"
-  | "tasks"
-  | "decisions"
-  | "jourFixe"
-  | "caseitems"
-  | "casefiles"
-  | "plannings"
-  | "redaktion"
-  | "team"
-  | "time"
-  | "feedbackfeed";
+export type { UserRole, TabValue };
 
 export interface TabPermissionFlags {
   adminOnly?: boolean;

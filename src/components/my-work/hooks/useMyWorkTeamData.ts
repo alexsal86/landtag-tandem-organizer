@@ -3,9 +3,10 @@ import { format, differenceInDays, isWeekend, startOfWeek } from "date-fns";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { useTenant } from "@/hooks/useTenant";
+import { useResolvedUserRole, type ResolvedUserRole } from "@/hooks/useResolvedUserRole";
 import { debugConsole } from "@/utils/debugConsole";
 
-export type TeamViewerRole = "abgeordneter" | "bueroleitung" | "mitarbeiter" | "praktikant" | "";
+export type TeamViewerRole = NonNullable<ResolvedUserRole> | "";
 
 interface TeamProfileRow {
   user_id: string;
@@ -134,35 +135,6 @@ function getInitials(name: string): string {
   return parts.slice(0, 2).map((part) => part.charAt(0).toUpperCase()).join("");
 }
 
-async function resolveViewerRole(userId: string, tenantId: string): Promise<TeamViewerRole> {
-  const { data: membership, error: membershipError } = await supabase
-    .from("user_tenant_memberships")
-    .select("role")
-    .eq("tenant_id", tenantId)
-    .eq("user_id", userId)
-    .eq("is_active", true)
-    .maybeSingle();
-
-  if (membershipError) {
-    debugConsole.error("Error loading own tenant membership:", membershipError);
-  }
-
-  const membershipRole = (membership as { role?: TeamViewerRole } | null)?.role;
-  if (membershipRole) return membershipRole;
-
-  const { data: fallbackRole, error: fallbackRoleError } = await supabase
-    .from("user_roles")
-    .select("role")
-    .eq("user_id", userId)
-    .maybeSingle();
-
-  if (fallbackRoleError) {
-    debugConsole.error("Error loading fallback user role:", fallbackRoleError);
-  }
-
-  return ((fallbackRole as { role?: TeamViewerRole } | null)?.role ?? "") as TeamViewerRole;
-}
-
 async function resolveVisibleEmployeeIds(userId: string, tenantId: string): Promise<string[]> {
   const { data: memberships, error: membershipsError } = await supabase
     .from("user_tenant_memberships")
@@ -289,7 +261,8 @@ export function useMyWorkTeamData(): UseMyWorkTeamDataResult {
   const { user } = useAuth();
   const { currentTenant } = useTenant();
   const [loading, setLoading] = useState(true);
-  const [userRole, setUserRole] = useState<TeamViewerRole>("");
+  const { role, isAdmin } = useResolvedUserRole();
+  const userRole = (role ?? "") as TeamViewerRole;
   const [teamMembers, setTeamMembers] = useState<TeamMemberViewModel[]>([]);
   const [reloadToken, setReloadToken] = useState(0);
 
@@ -303,7 +276,6 @@ export function useMyWorkTeamData(): UseMyWorkTeamDataResult {
 
     if (!userId || !tenantId) {
       setLoading(false);
-      setUserRole("");
       setTeamMembers([]);
       return;
     }
@@ -313,12 +285,7 @@ export function useMyWorkTeamData(): UseMyWorkTeamDataResult {
 
     const load = async () => {
       try {
-        const resolvedRole = await resolveViewerRole(userId, tenantId);
-        if (cancelled) return;
-
-        setUserRole(resolvedRole);
-
-        if (!TEAM_ADMIN_ROLES.has(resolvedRole)) {
+        if (!isAdmin) {
           setTeamMembers([]);
           return;
         }
@@ -377,9 +344,9 @@ export function useMyWorkTeamData(): UseMyWorkTeamDataResult {
     return () => {
       cancelled = true;
     };
-  }, [currentTenant?.id, reloadToken, user?.id]);
+  }, [currentTenant?.id, isAdmin, reloadToken, user?.id]);
 
-  const canViewTeam = TEAM_ADMIN_ROLES.has(userRole);
+  const canViewTeam = isAdmin;
 
   useEffect(() => {
     if (!user?.id || !currentTenant?.id || !canViewTeam) return;
