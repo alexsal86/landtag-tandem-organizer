@@ -1,364 +1,31 @@
-import { useState, useEffect, useCallback } from "react";
-import { debugConsole } from '@/utils/debugConsole';
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
-import { Users, ExternalLink, Clock, Calendar, AlertTriangle } from "lucide-react";
-import { supabase } from "@/integrations/supabase/client";
-import { useAuth } from "@/hooks/useAuth";
-import { useTenant } from "@/hooks/useTenant";
-import { format, differenceInDays, startOfWeek, isWeekend } from "date-fns";
-import { de } from "date-fns/locale";
+import { Users } from "lucide-react";
 import { useNavigate } from "react-router-dom";
-import { cn } from "@/lib/utils";
 import { TeamAnnouncementsManager } from "@/components/announcements/TeamAnnouncementsManager";
 import { MyWorkExpenseWidget } from "@/components/my-work/MyWorkExpenseWidget";
-
-interface TeamMember {
-  user_id: string;
-  display_name: string | null;
-  avatar_url: string | null;
-  hours_per_week: number;
-  last_meeting_date: string | null;
-  next_meeting_due: string | null;
-  open_meeting_requests: number;
-  weekly_worked_minutes: number;
-  weekly_target_minutes: number;
-  last_time_entry_date: string | null;
-  days_without_entry: number;
-}
-
-// Calculate business days since a date
-function calculateBusinessDaysSince(lastDate: string | null): number {
-  if (!lastDate) return 999; // Never entered
-  
-  const last = new Date(lastDate);
-  const today = new Date();
-  let count = 0;
-  let current = new Date(last);
-  current.setDate(current.getDate() + 1);
-  
-  while (current <= today) {
-    if (!isWeekend(current)) count++;
-    current.setDate(current.getDate() + 1);
-  }
-  return count;
-}
-
-// Work time indicator component
-function WorkTimeIndicator({ worked, target, lastEntry }: { 
-  worked: number; 
-  target: number; 
-  lastEntry: string | null;
-}) {
-  const percentage = target > 0 ? (worked / target) * 100 : 0;
-  
-  const getColorClass = () => {
-    if (worked === 0) return "bg-muted-foreground/30";
-    if (percentage < 25) return "bg-destructive";
-    if (percentage < 50) return "bg-orange-500";
-    if (percentage < 80) return "bg-yellow-500";
-    if (percentage <= 100) return "bg-green-500";
-    return "bg-blue-500"; // Überstunden
-  };
-
-  const getLabel = () => {
-    if (worked === 0) return "Keine Einträge";
-    if (percentage < 25) return "Wenig erfasst";
-    if (percentage < 50) return "Untererfasst";
-    if (percentage < 80) return "In Arbeit";
-    if (percentage <= 100) return "Gut erfasst";
-    return "Überstunden";
-  };
-  
-  const workedHours = (worked / 60).toFixed(1).replace(".", ",");
-  const targetHours = (target / 60).toFixed(0);
-  const today = new Date();
-  const dayName = format(today, "EEEE", { locale: de });
-  
-  return (
-    <Tooltip>
-      <TooltipTrigger asChild>
-        <div className={cn("w-4 h-4 rounded-full flex-shrink-0 cursor-help", getColorClass())} />
-      </TooltipTrigger>
-      <TooltipContent side="top" className="text-xs">
-        <p className="font-medium">Diese Woche: {workedHours} von {targetHours}h</p>
-        <p className="text-muted-foreground">
-          {percentage.toFixed(0)}% – {getLabel()} (Stand: {dayName})
-        </p>
-        {lastEntry && (
-          <p className="text-muted-foreground">
-            Letzter Eintrag: {format(new Date(lastEntry), "dd.MM.yyyy", { locale: de })}
-          </p>
-        )}
-      </TooltipContent>
-    </Tooltip>
-  );
-}
+import { useMyWorkTeamData } from "@/components/my-work/hooks/useMyWorkTeamData";
+import { TeamMemberRow } from "@/components/my-work/team/TeamMemberRow";
+import { TeamOverviewHeader } from "@/components/my-work/team/TeamOverviewHeader";
 
 export function MyWorkTeamTab() {
-  const { user } = useAuth();
-  const { currentTenant } = useTenant();
   const navigate = useNavigate();
-  
-  const [isAdmin, setIsAdmin] = useState(false);
-  const [userRole, setUserRole] = useState("");
-  const [teamMembers, setTeamMembers] = useState<TeamMember[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [reloadTrigger, setReloadTrigger] = useState(0);
-
-  useEffect(() => {
-    const userId = user?.id;
-    const tenantId = currentTenant?.id;
-    if (!userId || !tenantId) {
-      setLoading(false);
-      setIsAdmin(false);
-      setUserRole("");
-      setTeamMembers([]);
-      return;
-    }
-
-    let cancelled = false;
-    setLoading(true);
-
-    const run = async () => {
-      try {
-        // Determine role from tenant membership first (source of truth), fallback to global role.
-        const { data: myMembership, error: myMembershipError } = await supabase
-          .from("user_tenant_memberships")
-          .select("role")
-          .eq("tenant_id", tenantId)
-          .eq("user_id", userId)
-          .eq("is_active", true)
-          .maybeSingle();
-
-        if (cancelled) return;
-
-        let myRole = myMembership?.role ?? "";
-
-        if (myMembershipError) {
-          debugConsole.error("Error loading own tenant membership:", myMembershipError);
-        }
-
-        if (!myRole) {
-          const { data: fallbackRole, error: fallbackRoleError } = await supabase
-            .from("user_roles")
-            .select("role")
-            .eq("user_id", userId)
-            .maybeSingle();
-
-          if (fallbackRoleError) {
-            debugConsole.error("Error loading fallback user role:", fallbackRoleError);
-          }
-
-          myRole = fallbackRole?.role ?? "";
-        }
-
-        const canViewTeam = myRole === "abgeordneter" || myRole === "bueroleitung";
-        setIsAdmin(canViewTeam);
-        setUserRole(myRole);
-
-        if (!canViewTeam) {
-          setTeamMembers([]);
-          return;
-        }
-
-        // Try tenant membership based team list first.
-        let employeeIds: string[] = [];
-
-        const { data: memberships, error: membershipsError } = await supabase
-          .from("user_tenant_memberships")
-          .select("user_id, role")
-          .eq("tenant_id", tenantId)
-          .eq("is_active", true);
-
-        if (cancelled) return;
-
-        if (membershipsError) {
-          debugConsole.error("Error loading tenant memberships for team:", membershipsError);
-        } else {
-          employeeIds = (memberships || [])
-            .filter((m) => ["mitarbeiter", "praktikant", "bueroleitung"].includes(m.role))
-            .map((m) => m.user_id);
-        }
-
-        // Fallback path for stricter RLS setups where full membership list isn't visible.
-        if (employeeIds.length === 0) {
-          const { data: managedEmployees, error: managedEmployeesError } = await supabase
-            .from("employee_settings")
-            .select("user_id")
-            .eq("admin_id", userId);
-
-          if (managedEmployeesError) {
-            debugConsole.error("Error loading fallback managed employees:", managedEmployeesError);
-          } else {
-            employeeIds = (managedEmployees || []).map((row) => row.user_id);
-          }
-        }
-
-        employeeIds = Array.from(new Set(employeeIds));
-
-        if (employeeIds.length === 0) {
-          setTeamMembers([]);
-          return;
-        }
-
-        // Calculate current week range (Monday to today)
-        const weekStart = startOfWeek(new Date(), { weekStartsOn: 1 });
-        const today = new Date();
-
-        const [profilesRes, settingsRes, requestsRes, timeEntriesRes] = await Promise.all([
-          supabase.from("profiles").select("user_id, display_name, avatar_url").in("user_id", employeeIds),
-          supabase.from("employee_settings").select("user_id, hours_per_week, last_meeting_date, meeting_interval_months").in("user_id", employeeIds),
-          supabase.from("employee_meeting_requests").select("employee_id").eq("status", "pending").in("employee_id", employeeIds),
-          supabase.from("time_entries").select("user_id, minutes, work_date").in("user_id", employeeIds)
-            .gte("work_date", format(weekStart, "yyyy-MM-dd"))
-            .lte("work_date", format(today, "yyyy-MM-dd")),
-        ]);
-
-        if (cancelled) return;
-
-        if (profilesRes.error) debugConsole.error("Error loading team profiles:", profilesRes.error);
-        if (settingsRes.error) debugConsole.error("Error loading team settings:", settingsRes.error);
-        if (requestsRes.error) debugConsole.error("Error loading team meeting requests:", requestsRes.error);
-        if (timeEntriesRes.error) debugConsole.error("Error loading team time entries:", timeEntriesRes.error);
-
-        // Avoid one network round-trip per employee (slow for larger teams).
-        const { data: lastEntriesData, error: lastEntriesError } = await (supabase
-          .rpc as any)("get_latest_time_entry_dates", { p_user_ids: employeeIds });
-
-        if (lastEntriesError) {
-          debugConsole.error("Error loading latest employee time entries:", lastEntriesError);
-        }
-
-        if (cancelled) return;
-
-        const profileMap = new Map<string, any>((profilesRes.data || []).map((p: any) => [p.user_id, p]));
-        const settingsMap = new Map<string, any>((settingsRes.data || []).map((s: any) => [s.user_id, s]));
-
-        // Count open requests per employee
-        const requestCounts: Record<string, number> = {};
-        (requestsRes.data || []).forEach((req: any) => {
-          requestCounts[req.employee_id] = (requestCounts[req.employee_id] || 0) + 1;
-        });
-
-        // Sum weekly minutes and find last entry per employee (this week)
-        const weeklyMinutes: Record<string, number> = {};
-        const lastTimeEntry: Record<string, string> = {};
-        (timeEntriesRes.data || []).forEach((entry: any) => {
-          weeklyMinutes[entry.user_id] = (weeklyMinutes[entry.user_id] || 0) + entry.minutes;
-          if (!lastTimeEntry[entry.user_id] || entry.work_date > lastTimeEntry[entry.user_id]) {
-            lastTimeEntry[entry.user_id] = entry.work_date;
-          }
-        });
-
-        // Find last global entry per employee (for warning calculation)
-        const lastGlobalEntry: Record<string, string> = {};
-        (lastEntriesData || []).forEach((entry: any) => {
-          lastGlobalEntry[entry.user_id] = entry.last_work_date;
-        });
-
-        // Calculate target minutes based on days passed in week
-        const dayOfWeek = today.getDay() === 0 ? 7 : today.getDay(); // 1=Mon, 7=Sun
-        const workDaysPassed = Math.min(dayOfWeek, 5); // Max 5 work days
-
-        const members: TeamMember[] = employeeIds.map(uid => {
-          const profile = profileMap.get(uid);
-          const settings = settingsMap.get(uid);
-          const hoursPerWeek = settings?.hours_per_week || 40;
-
-          let next_meeting_due: string | null = null;
-          if (settings?.last_meeting_date && settings?.meeting_interval_months) {
-            const lastMeeting = new Date(settings.last_meeting_date);
-            const nextDue = new Date(lastMeeting);
-            nextDue.setMonth(nextDue.getMonth() + settings.meeting_interval_months);
-            next_meeting_due = nextDue.toISOString();
-          }
-
-          // Calculate proportional target for days passed
-          const dailyMinutes = (hoursPerWeek * 60) / 5;
-          const targetMinutesSoFar = dailyMinutes * workDaysPassed;
-
-          return {
-            user_id: uid,
-            display_name: profile?.display_name || null,
-            avatar_url: profile?.avatar_url || null,
-            hours_per_week: hoursPerWeek,
-            last_meeting_date: settings?.last_meeting_date || null,
-            next_meeting_due,
-            open_meeting_requests: requestCounts[uid] || 0,
-            weekly_worked_minutes: weeklyMinutes[uid] || 0,
-            weekly_target_minutes: targetMinutesSoFar,
-            last_time_entry_date: lastTimeEntry[uid] || null,
-            days_without_entry: calculateBusinessDaysSince(lastGlobalEntry[uid] || null),
-          };
-        });
-
-        // Sort by next meeting due (urgent first)
-        members.sort((a, b) => {
-          if (a.open_meeting_requests > 0 && b.open_meeting_requests === 0) return -1;
-          if (a.open_meeting_requests === 0 && b.open_meeting_requests > 0) return 1;
-          if (a.next_meeting_due && b.next_meeting_due) {
-            return new Date(a.next_meeting_due).getTime() - new Date(b.next_meeting_due).getTime();
-          }
-          return 0;
-        });
-
-        setTeamMembers(members);
-      } catch (error) {
-        debugConsole.error("Error loading team:", error);
-      } finally {
-        if (!cancelled) setLoading(false);
-      }
-    };
-
-    void run();
-    return () => { cancelled = true; };
-  }, [user?.id, currentTenant?.id, reloadTrigger]);
-
-  // Realtime subscription for team data
-  useEffect(() => {
-    if (!user?.id || !currentTenant?.id || !isAdmin) return;
-    let timeout: ReturnType<typeof setTimeout> | null = null;
-    const scheduleRefresh = () => {
-      if (timeout) clearTimeout(timeout);
-      timeout = setTimeout(() => { timeout = null; setReloadTrigger(c => c + 1); }, 250);
-    };
-    const channel = supabase
-      .channel(`my-work-team-${user.id}`)
-      .on("postgres_changes", { event: "*", schema: "public", table: "time_entries", filter: `tenant_id=eq.${currentTenant.id}` }, scheduleRefresh)
-      .on("postgres_changes", { event: "*", schema: "public", table: "employee_meeting_requests", filter: `tenant_id=eq.${currentTenant.id}` }, scheduleRefresh)
-      .subscribe();
-    return () => {
-      if (timeout) clearTimeout(timeout);
-      supabase.removeChannel(channel);
-    };
-  }, [user?.id, currentTenant?.id, isAdmin]);
-
-  const getMeetingStatus = (nextDue: string | null) => {
-    if (!nextDue) return null;
-    const daysUntil = differenceInDays(new Date(nextDue), new Date());
-    if (daysUntil < 0) return { label: "Überfällig", variant: "destructive" as const };
-    if (daysUntil <= 14) return { label: "Bald fällig", variant: "secondary" as const };
-    return null;
-  };
+  const { loading, canViewTeam, userRole, teamMembers, overview, reload } = useMyWorkTeamData();
 
   if (loading) {
     return (
       <div className="space-y-2 p-4">
-        {[1, 2, 3].map((i) => (
-          <div key={i} className="h-16 bg-muted animate-pulse rounded-md" />
+        {[1, 2, 3].map((item) => (
+          <div key={item} className="h-16 animate-pulse rounded-md bg-muted" />
         ))}
       </div>
     );
   }
 
-  if (!isAdmin) {
+  if (!canViewTeam) {
     return (
-      <div className="text-center py-8 text-muted-foreground p-4">
-        <Users className="h-10 w-10 mx-auto mb-2 opacity-50" />
+      <div className="p-4 py-8 text-center text-muted-foreground">
+        <Users className="mx-auto mb-2 h-10 w-10 opacity-50" />
         <p>Mitarbeiterbereich</p>
         <p className="text-sm">Nur für Administratoren verfügbar</p>
       </div>
@@ -366,97 +33,46 @@ export function MyWorkTeamTab() {
   }
 
   return (
-      <div className="space-y-6 p-4">
-        {/* Team Announcements + Expense overview */}
-        {isAdmin && (
-          <div className="grid grid-cols-1 gap-6 lg:grid-cols-2 lg:items-start">
-            <div className="min-w-0">
-              <TeamAnnouncementsManager />
-            </div>
-            <div className="min-w-0">
-              <MyWorkExpenseWidget userRole={userRole} />
-            </div>
-          </div>
-        )}
+    <div className="space-y-6 p-4">
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-2 lg:items-start">
+        <div className="min-w-0">
+          <TeamAnnouncementsManager />
+        </div>
+        <div className="min-w-0 space-y-4">
+          <MyWorkExpenseWidget userRole={userRole} />
+          <Button variant="outline" size="sm" onClick={reload}>
+            Teamdaten aktualisieren
+          </Button>
+        </div>
+      </div>
 
-        {/* Team Members Section */}
-        <div className="space-y-2">
-          <h3 className="text-lg font-semibold mb-3">Teammitglieder</h3>
-          {teamMembers.length === 0 ? (
-            <div className="text-center py-8 text-muted-foreground">
-              <Users className="h-10 w-10 mx-auto mb-2 opacity-50" />
-              <p>Keine Mitarbeiter</p>
-            </div>
+      <div className="space-y-3">
+        <div className="space-y-1">
+          <h3 className="text-lg font-semibold">Teammitglieder</h3>
+          <p className="text-sm text-muted-foreground">
+            Überblick über Gesprächsbedarf, offene Meeting-Anfragen und aktuelle Zeiterfassung.
+          </p>
+        </div>
+
+        <TeamOverviewHeader overview={overview} />
+
+        {teamMembers.length === 0 ? (
+          <div className="py-8 text-center text-muted-foreground">
+            <Users className="mx-auto mb-2 h-10 w-10 opacity-50" />
+            <p>Keine Mitarbeiter</p>
+          </div>
         ) : (
-          teamMembers.map((member) => {
-            const meetingStatus = getMeetingStatus(member.next_meeting_due);
-            
-            return (
-              <div
-                key={member.user_id}
-                className="flex items-center gap-3 p-3 rounded-lg border bg-card hover:bg-muted/50 transition-colors"
-              >
-                <Avatar className="h-9 w-9">
-                  <AvatarImage src={member.avatar_url || undefined} />
-                  <AvatarFallback>
-                    {member.display_name?.charAt(0) || "?"}
-                  </AvatarFallback>
-                </Avatar>
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2 flex-wrap">
-                    <WorkTimeIndicator 
-                      worked={member.weekly_worked_minutes} 
-                      target={member.weekly_target_minutes}
-                      lastEntry={member.last_time_entry_date}
-                    />
-                    <span className="font-medium text-sm">
-                      {member.display_name || "Unbekannt"}
-                    </span>
-                    {member.days_without_entry > 3 && (
-                      <Tooltip>
-                        <TooltipTrigger asChild>
-                          <AlertTriangle className="h-4 w-4 text-amber-500 flex-shrink-0" />
-                        </TooltipTrigger>
-                        <TooltipContent side="top" className="text-xs">
-                          <p>Kein Zeiteintrag seit {member.days_without_entry} Werktagen</p>
-                        </TooltipContent>
-                      </Tooltip>
-                    )}
-                    {member.open_meeting_requests > 0 && (
-                      <Badge variant="destructive" className="text-xs">
-                        {member.open_meeting_requests} Anfrage{member.open_meeting_requests > 1 ? "n" : ""}
-                      </Badge>
-                    )}
-                    {meetingStatus && (
-                      <Badge variant={meetingStatus.variant} className="text-xs">
-                        {meetingStatus.label}
-                      </Badge>
-                    )}
-                  </div>
-                  <div className="flex items-center gap-3 mt-0.5 text-xs text-muted-foreground">
-                    <span className="flex items-center gap-1">
-                      <Clock className="h-3 w-3" />
-                      {member.hours_per_week}h/Woche
-                    </span>
-                    {member.last_meeting_date && (
-                      <span className="flex items-center gap-1">
-                        <Calendar className="h-3 w-3" />
-                        Letztes Gespräch: {format(new Date(member.last_meeting_date), "dd.MM.yyyy", { locale: de })}
-                      </span>
-                    )}
-                  </div>
-                </div>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="h-7 w-7 flex-shrink-0"
-                  onClick={() => navigate("/employee")}
-                >
-                  <ExternalLink className="h-3 w-3" />
-                </Button>
-              </div>
-            );
-          })
+          <ScrollArea className="max-h-[32rem] pr-3">
+            <div className="space-y-2">
+              {teamMembers.map((member) => (
+                <TeamMemberRow
+                  key={member.userId}
+                  member={member}
+                  onOpenEmployeeArea={() => navigate("/employee")}
+                />
+              ))}
+            </div>
+          </ScrollArea>
         )}
       </div>
     </div>
