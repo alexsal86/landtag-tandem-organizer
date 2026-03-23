@@ -32,7 +32,7 @@ export interface MyWorkTabConfig {
   icon: LucideIcon;
   countKey?: keyof TabCounts;
   badgeVariant?: "secondary" | "destructive";
-  adminOnly?: boolean;
+  teamLeadsOnly?: boolean;
   employeeOnly?: boolean;
   abgeordneterOrBueroOnly?: boolean;
   abgeordneterOnly?: boolean;
@@ -50,7 +50,8 @@ export const MY_WORK_TABS: MyWorkTabConfig[] = [
   { value: "redaktion", label: "Redaktion", icon: Lightbulb },
   { value: "time", label: "Meine Zeit", icon: Clock, employeeOnly: true },
   { value: "feedbackfeed", label: "Rückmeldungen", icon: MessageSquare, countKey: "feedbackFeed" },
-  { value: "team", label: "Team", icon: Users, countKey: "team", badgeVariant: "destructive", abgeordneterOrBueroOnly: true },
+  // Team-Tab: nur Rollen mit Führungs-/Koordinationsverantwortung sehen aggregierte Mitarbeiterdaten.
+  { value: "team", label: "Team", icon: Users, countKey: "team", badgeVariant: "destructive", teamLeadsOnly: true },
 ];
 
 export const LEGACY_TAB_MAP: Record<string, TabValue> = {

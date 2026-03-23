@@ -4,7 +4,7 @@ import { Users } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { TeamAnnouncementsManager } from "@/components/announcements/TeamAnnouncementsManager";
 import { MyWorkExpenseWidget } from "@/components/my-work/MyWorkExpenseWidget";
-import { useMyWorkTeamData } from "@/components/my-work/hooks/useMyWorkTeamData";
+import { TEAM_TAB_ACCESS_RULES, useMyWorkTeamData } from "@/components/my-work/hooks/useMyWorkTeamData";
 import { TeamMemberRow } from "@/components/my-work/team/TeamMemberRow";
 import { TeamOverviewHeader } from "@/components/my-work/team/TeamOverviewHeader";
 
@@ -27,7 +27,11 @@ export function MyWorkTeamTab() {
       <div className="p-4 py-8 text-center text-muted-foreground">
         <Users className="mx-auto mb-2 h-10 w-10 opacity-50" />
         <p>Mitarbeiterbereich</p>
-        <p className="text-sm">Nur für Administratoren verfügbar</p>
+        <p className="text-sm">Sichtbar nur für Abgeordnete und Büroleitung.</p>
+        <p className="mx-auto mt-2 max-w-xl text-xs">
+          Der Tab bündelt Mitarbeitergespräche, offene Anfragen und Hinweise zur Zeiterfassung und ist deshalb auf
+          Rollen mit Teamverantwortung begrenzt.
+        </p>
       </div>
     );
   }
@@ -51,6 +55,10 @@ export function MyWorkTeamTab() {
           <h3 className="text-lg font-semibold">Teammitglieder</h3>
           <p className="text-sm text-muted-foreground">
             Überblick über Gesprächsbedarf, offene Meeting-Anfragen und aktuelle Zeiterfassung.
+          </p>
+          <p className="text-xs text-muted-foreground">
+            Sichtbar für {TEAM_TAB_ACCESS_RULES.map((rule) => rule.label).join(" und ")}, da diese Rollen
+            Teamgespräche koordinieren und Statushinweise priorisieren müssen.
           </p>
         </div>
 

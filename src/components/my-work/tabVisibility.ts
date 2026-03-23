@@ -15,7 +15,7 @@ export type TabValue =
   | "feedbackfeed";
 
 export interface TabPermissionFlags {
-  adminOnly?: boolean;
+  teamLeadsOnly?: boolean;
   employeeOnly?: boolean;
   abgeordneterOrBueroOnly?: boolean;
   abgeordneterOnly?: boolean;
@@ -26,7 +26,7 @@ const employeeRoles = new Set(["mitarbeiter", "praktikant", "bueroleitung"]);
 const feedbackFeedCoreRoles = new Set<UserRole>(["mitarbeiter", "bueroleitung", "abgeordneter"]);
 
 export const getRoleFlags = (role: UserRole) => ({
-  isAdmin: role === "abgeordneter" || role === "bueroleitung",
+  canViewTeam: role === "abgeordneter" || role === "bueroleitung",
   isEmployee: role ? employeeRoles.has(role) : false,
   isAbgeordneter: role === "abgeordneter",
   isBueroleitung: role === "bueroleitung",
@@ -35,7 +35,7 @@ export const getRoleFlags = (role: UserRole) => ({
 export const canViewTab = (flags: TabPermissionFlags, role: UserRole) => {
   const roleFlags = getRoleFlags(role);
 
-  if (flags.adminOnly && !roleFlags.isAdmin) return false;
+  if (flags.teamLeadsOnly && !roleFlags.canViewTeam) return false;
   if (flags.employeeOnly && !roleFlags.isEmployee) return false;
   if (flags.abgeordneterOrBueroOnly && !roleFlags.isAbgeordneter && !roleFlags.isBueroleitung) return false;
   if (flags.abgeordneterOnly && !roleFlags.isAbgeordneter) return false;
