@@ -816,7 +816,7 @@ export function MyWorkCasesWorkspace() {
         statusValue: previousStatus,
       }],
     } : prev);
-    setCaseItems((prev) => prev.map((row) => row.id === detailItemId ? { ...row, status: "entscheidung_abwartend" } : row));
+    setCaseItems((prev) => prev.map((row) => row.id === detailItemId ? { ...row, status: "entscheidung_abwartend" as CaseItemsRow['status'] } : row));
     // Reload decisions for this item
     await loadLinkedDecisions(detailItemId);
   }, [detailItemId, editableCaseItem, getStatusMeta, loadLinkedDecisions, setCaseItems]);
