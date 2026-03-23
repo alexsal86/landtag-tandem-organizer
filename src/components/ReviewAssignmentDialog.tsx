@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Users, X, Check, ArrowRight } from 'lucide-react';
+import { Users, Check, ArrowRight } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Checkbox } from '@/components/ui/checkbox';
@@ -11,16 +11,27 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { useTenant } from '@/hooks/useTenant';
 import { debugConsole } from '@/utils/debugConsole';
+import { createLetterApprovalDecision } from '@/utils/letterWorkflowActions';
 
 interface User {
   user_id: string;
   display_name: string;
 }
 
+interface LetterData {
+  title: string;
+  contentHtml: string;
+  salutation: string;
+  closingFormula: string;
+  closingName: string;
+  subject: string;
+}
+
 interface ReviewAssignmentDialogProps {
   isOpen: boolean;
   onClose: () => void;
   letterId: string;
+  letterData?: LetterData;
   onReviewAssigned: () => void;
   onSkipReview: () => void;
 }
@@ -29,6 +40,7 @@ const ReviewAssignmentDialog: React.FC<ReviewAssignmentDialogProps> = ({
   isOpen,
   onClose,
   letterId,
+  letterData,
   onReviewAssigned,
   onSkipReview
 }) => {
@@ -128,11 +140,12 @@ const ReviewAssignmentDialog: React.FC<ReviewAssignmentDialogProps> = ({
       return;
     }
 
-    if (!user) return;
+    if (!user || !currentTenant) return;
 
     debugConsole.log('Starting assignment save with selectedUsers:', selectedUsers);
     setSaving(true);
     try {
+      // Save collaborators
       const { error: deleteError } = await supabase
         .from('letter_collaborators')
         .delete()
@@ -153,9 +166,27 @@ const ReviewAssignmentDialog: React.FC<ReviewAssignmentDialogProps> = ({
 
       if (insertError) throw insertError;
 
+      // Create a decision for each selected reviewer
+      for (const reviewerUserId of selectedUsers) {
+        await createLetterApprovalDecision(
+          letterId,
+          letterData?.title || 'Brief',
+          user.id,
+          reviewerUserId,
+          currentTenant.id,
+          letterData ? {
+            contentHtml: letterData.contentHtml,
+            salutation: letterData.salutation,
+            closingFormula: letterData.closingFormula,
+            closingName: letterData.closingName,
+            subject: letterData.subject,
+          } : undefined,
+        );
+      }
+
       toast({
         title: "Prüfer zugewiesen",
-        description: `${selectedUsers.length} Prüfer wurden erfolgreich zugewiesen.`,
+        description: `${selectedUsers.length} Prüfer wurden zugewiesen. Eine Entscheidungsanfrage wurde erstellt.`,
       });
 
       debugConsole.log('Assignment successful, calling onReviewAssigned');
@@ -190,13 +221,13 @@ const ReviewAssignmentDialog: React.FC<ReviewAssignmentDialogProps> = ({
               <RadioGroupItem value="skip" id="skip" />
               <Label htmlFor="skip" className="flex items-center gap-2 cursor-pointer">
                 <ArrowRight className="h-4 w-4" />
-                Prüfung überspringen (direkt zu "Genehmigt")
+                Prüfung überspringen (direkt zu &quot;Genehmigt&quot;)
               </Label>
             </div>
             <div className="flex items-center space-x-2">
               <RadioGroupItem value="assign" id="assign" />
               <Label htmlFor="assign" className="cursor-pointer">
-                Prüfer zuweisen
+                Prüfer zuweisen (Entscheidung erstellen)
               </Label>
             </div>
           </RadioGroup>
@@ -204,7 +235,7 @@ const ReviewAssignmentDialog: React.FC<ReviewAssignmentDialogProps> = ({
           {reviewOption === 'assign' && (
             <>
               <p className="text-sm text-muted-foreground">
-                Wählen Sie die Benutzer aus, die diesen Brief zur Korrektur erhalten sollen.
+                Wählen Sie die Benutzer aus, die diesen Brief prüfen und freigeben sollen. Eine Entscheidungsanfrage wird erstellt.
               </p>
 
               {loading ? (
@@ -265,7 +296,7 @@ const ReviewAssignmentDialog: React.FC<ReviewAssignmentDialogProps> = ({
               Abbrechen
             </Button>
             <Button onClick={handleSubmit} disabled={saving}>
-              {saving ? 'Speichern...' : reviewOption === 'skip' ? 'Überspringen' : 'Zuweisen'}
+              {saving ? 'Speichern...' : reviewOption === 'skip' ? 'Überspringen' : 'Zuweisen & Entscheidung erstellen'}
             </Button>
           </div>
         </div>

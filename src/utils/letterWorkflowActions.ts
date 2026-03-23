@@ -22,12 +22,50 @@ export async function createLetterApprovalDecision(
   createdByUserId: string,
   reviewerUserId: string,
   tenantId: string,
+  letterContent?: {
+    contentHtml?: string;
+    salutation?: string;
+    closingFormula?: string;
+    closingName?: string;
+    subject?: string;
+  },
 ): Promise<string | null> {
   try {
+    // Build a rich description with the full letter text
+    const descriptionParts: string[] = [];
+    descriptionParts.push(`Bitte prüfen und freigeben Sie den Brief "${letterTitle}".`);
+    descriptionParts.push('');
+
+    if (letterContent?.subject) {
+      descriptionParts.push(`**Betreff:** ${letterContent.subject}`);
+      descriptionParts.push('');
+    }
+
+    if (letterContent?.salutation) {
+      descriptionParts.push(letterContent.salutation);
+      descriptionParts.push('');
+    }
+
+    if (letterContent?.contentHtml) {
+      descriptionParts.push(letterContent.contentHtml);
+      descriptionParts.push('');
+    }
+
+    if (letterContent?.closingFormula) {
+      descriptionParts.push(letterContent.closingFormula);
+    }
+    if (letterContent?.closingName) {
+      descriptionParts.push(letterContent.closingName);
+    }
+
+    // Embed letter_id as a marker for auto-processing
+    descriptionParts.push('');
+    descriptionParts.push(`letter_approval_letter_id:${letterId}`);
+
     const decisionPayload: DecisionInsert = {
       created_by: createdByUserId,
       title: `Brief freigeben: ${letterTitle}`,
-      description: `Bitte prüfen und freigeben Sie den Brief "${letterTitle}".\n\nÖffnen Sie den Brief in der Dokumentenverwaltung, um ihn zu lesen.`,
+      description: descriptionParts.join('\n'),
       status: 'open',
       tenant_id: tenantId,
       response_options: LETTER_APPROVAL_OPTIONS,

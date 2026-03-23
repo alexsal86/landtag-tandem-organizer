@@ -239,7 +239,7 @@ export function useLetterOperations(opts: UseLetterOperationsOptions) {
       }
     }
 
-    if (newStatus === 'review') setIsProofreadingMode(true);
+    if (newStatus === 'review' || newStatus === 'pending_approval') setIsProofreadingMode(true);
     if (newStatus === 'approved' || newStatus === 'sent' || newStatus === 'draft') setIsProofreadingMode(false);
 
     toast({ title: 'Status geändert', description: `Status wurde zu "${STATUS_LABELS[newStatus]}" geändert.` });
