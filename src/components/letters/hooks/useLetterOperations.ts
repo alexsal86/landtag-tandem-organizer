@@ -185,7 +185,7 @@ export function useLetterOperations(opts: UseLetterOperationsOptions) {
     const now = new Date().toISOString();
     const workflowUpdates: Partial<Letter> = { status: newStatus as Letter['status'] };
 
-    if (newStatus === 'review' && !editedLetter.workflow_locked) {
+    if (newStatus === 'pending_approval' && !editedLetter.workflow_locked) {
       workflowUpdates.submitted_for_review_at = now;
       workflowUpdates.submitted_for_review_by = userId;
     }
@@ -203,7 +203,7 @@ export function useLetterOperations(opts: UseLetterOperationsOptions) {
     }
 
     const isCreator = userId === letter?.created_by;
-    if (newStatus === 'review' && isCreator) {
+    if (newStatus === 'pending_approval' && isCreator) {
       setShowAssignmentDialog(true);
       return;
     }
@@ -239,7 +239,7 @@ export function useLetterOperations(opts: UseLetterOperationsOptions) {
       }
     }
 
-    if (newStatus === 'review') setIsProofreadingMode(true);
+    if (newStatus === 'review' || newStatus === 'pending_approval') setIsProofreadingMode(true);
     if (newStatus === 'approved' || newStatus === 'sent' || newStatus === 'draft') setIsProofreadingMode(false);
 
     toast({ title: 'Status geändert', description: `Status wurde zu "${STATUS_LABELS[newStatus]}" geändert.` });

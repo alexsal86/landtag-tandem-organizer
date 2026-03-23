@@ -67,20 +67,21 @@ const LetterBriefDetails: React.FC<LetterBriefDetailsProps> = ({
                     Zu &quot;{STATUS_LABELS[getNextStatus(status)!]}&quot;
                   </Button>
                 )}
-                {status === 'review' && (
-                  <Button size="sm" variant="outline" onClick={() => onStatusTransition('draft')} className="justify-start text-muted-foreground">
-                    Zurück zu Entwurf
-                  </Button>
+                {status === 'pending_approval' && (
+                  <div className="text-sm text-muted-foreground flex items-center gap-1.5 mt-1">
+                    <Clock className="h-3.5 w-3.5" />
+                    Entscheidung beim Prüfer ausstehend
+                  </div>
                 )}
                 {status === 'approved' && (
-                  <Button size="sm" variant="outline" onClick={() => onStatusTransition('review')} className="justify-start text-muted-foreground">
+                  <Button size="sm" variant="outline" onClick={() => onStatusTransition('pending_approval')} className="justify-start text-muted-foreground">
                     Zurück zur Prüfung
                   </Button>
                 )}
               </div>
             )}
 
-            {status === 'review' && isReviewer && (
+            {status === 'pending_approval' && isReviewer && (
               <Button size="sm" variant="outline" onClick={onReturnLetter} className="justify-start text-orange-600 hover:text-orange-700 mt-2">
                 <RotateCcw className="h-4 w-4 mr-2" />
                 Brief zurückgeben

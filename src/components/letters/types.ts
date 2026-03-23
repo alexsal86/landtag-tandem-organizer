@@ -101,11 +101,13 @@ export const STATUS_FLOW: Record<string, string> = {
   pending_approval: 'approved',
   revision_requested: 'pending_approval',
   approved: 'sent',
+  // Legacy mapping
+  review: 'approved',
 };
 
 export const ALLOWED_TRANSITIONS: Record<string, string[]> = {
   draft: ['pending_approval'],
-  review: ['approved', 'revision_requested'],
+  review: ['approved', 'revision_requested'], // legacy
   pending_approval: ['approved', 'revision_requested'],
   revision_requested: ['pending_approval'],
   approved: ['sent'],

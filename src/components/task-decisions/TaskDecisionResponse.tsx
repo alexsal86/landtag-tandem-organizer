@@ -360,6 +360,64 @@ export const TaskDecisionResponse = ({
         }
       }
 
+      // Auto-update letter status when responding to a Brief freigeben decision
+      try {
+        const { data: decisionData } = await supabase
+          .from('task_decisions')
+          .select('title, description, created_by, tenant_id')
+          .eq('id', decisionId)
+          .single();
+
+        if (decisionData?.title?.startsWith('Brief freigeben:')) {
+          const desc = decisionData.description || '';
+          const letterIdLine = desc.split('\n').find((l: string) => l.startsWith('letter_approval_letter_id:'));
+          const letterId = letterIdLine ? letterIdLine.slice('letter_approval_letter_id:'.length).trim() : null;
+
+          if (letterId) {
+            const now = new Date().toISOString();
+            const currentUser = (await supabase.auth.getUser()).data.user;
+
+            if (responseType === 'approve') {
+              // Approve the letter
+              await supabase
+                .from('letters')
+                .update({
+                  status: 'approved',
+                  approved_at: now,
+                  approved_by: currentUser?.id,
+                  updated_at: now,
+                })
+                .eq('id', letterId);
+
+              // Create send task for the letter creator
+              if (decisionData.tenant_id) {
+                const { createLetterSendTask } = await import('@/utils/letterWorkflowActions');
+                const letterTitle = decisionData.title.replace(/^Brief freigeben:\s*/i, '');
+                await createLetterSendTask(letterTitle, decisionData.created_by, currentUser?.id || '', decisionData.tenant_id);
+              }
+            } else if (responseType === 'reject') {
+              // Reject the letter
+              await supabase
+                .from('letters')
+                .update({
+                  status: 'revision_requested',
+                  updated_at: now,
+                })
+                .eq('id', letterId);
+
+              // Create revision task
+              if (decisionData.tenant_id) {
+                const { createLetterRevisionTask } = await import('@/utils/letterWorkflowActions');
+                const letterTitle = decisionData.title.replace(/^Brief freigeben:\s*/i, '');
+                await createLetterRevisionTask(letterTitle, comment || '', decisionData.created_by, currentUser?.id || '', decisionData.tenant_id);
+              }
+            }
+          }
+        }
+      } catch (letterError) {
+        debugConsole.error('Error auto-updating letter status from decision:', letterError);
+      }
+
       toast({
         title: "Erfolgreich",
         description: "Ihre Antwort wurde gespeichert.",

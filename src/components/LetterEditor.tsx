@@ -127,7 +127,7 @@ const LetterEditor: React.FC<LetterEditorProps> = ({ letter, isOpen, onClose, on
       setDraftContent(letter.content || ''); setDraftContentNodes(letter.content_nodes || null); setDraftContentHtml(letter.content_html || null);
       latestContentRef.current = { content: letter.content || '', contentNodes: letter.content_nodes || null };
       draftInitializedRef.current = true;
-      setIsProofreadingMode(letter.status === 'review');
+      setIsProofreadingMode(letter.status === 'review' || letter.status === 'pending_approval');
       setShowPagination(letter.show_pagination || false);
     } else {
       const currentDate = new Date().toISOString().split('T')[0];
@@ -395,13 +395,25 @@ const LetterEditor: React.FC<LetterEditorProps> = ({ letter, isOpen, onClose, on
       {showCommentDialog && <LetterCommentDialog onSubmit={(content) => { void handleAddComment(content); setShowCommentDialog(false); }} onClose={() => setShowCommentDialog(false)} />}
 
       <ReviewAssignmentDialog isOpen={showAssignmentDialog} onClose={() => setShowAssignmentDialog(false)} letterId={letter?.id || ''}
+        letterData={{
+          title: editedLetter.title || '',
+          contentHtml: editedLetter.content_html || '',
+          salutation: editedLetter.salutation_override || '',
+          closingFormula: editedLetter.closing_formula || '',
+          closingName: editedLetter.closing_name || '',
+          subject: editedLetter.subject || '',
+        }}
         onReviewAssigned={async () => {
-          fetchCollaborators(); setShowAssignmentDialog(false); setEditedLetter(prev => ({ ...prev, status: 'review' })); setIsProofreadingMode(true); setSaving(true);
-          try { const { error } = await supabase.from('letters').update({ status: 'review', updated_at: new Date().toISOString() }).eq('id', letter!.id); if (error) throw error; } catch (error) { debugConsole.error('Error saving status:', error); } finally { setSaving(false); }
+          const now = new Date().toISOString();
+          fetchCollaborators(); setShowAssignmentDialog(false);
+          setEditedLetter(prev => ({ ...prev, status: 'pending_approval', submitted_for_review_at: now, submitted_for_review_by: user?.id }));
+          setIsProofreadingMode(true); setSaving(true);
+          try { const { error } = await supabase.from('letters').update({ status: 'pending_approval', submitted_for_review_at: now, submitted_for_review_by: user?.id, updated_at: now }).eq('id', letter!.id); if (error) throw error; } catch (error) { debugConsole.error('Error saving status:', error); } finally { setSaving(false); }
         }}
         onSkipReview={async () => {
-          setShowAssignmentDialog(false); setEditedLetter(prev => ({ ...prev, status: 'approved' })); setIsProofreadingMode(false); setSaving(true);
-          try { const { error } = await supabase.from('letters').update({ status: 'approved', updated_at: new Date().toISOString() }).eq('id', letter!.id); if (error) throw error; } catch (error) { debugConsole.error('Error saving status:', error); } finally { setSaving(false); }
+          const now = new Date().toISOString();
+          setShowAssignmentDialog(false); setEditedLetter(prev => ({ ...prev, status: 'approved', approved_at: now, approved_by: user?.id })); setIsProofreadingMode(false); setSaving(true);
+          try { const { error } = await supabase.from('letters').update({ status: 'approved', approved_at: now, approved_by: user?.id, updated_at: now }).eq('id', letter!.id); if (error) throw error; } catch (error) { debugConsole.error('Error saving status:', error); } finally { setSaving(false); }
         }}
       />
     </div>
