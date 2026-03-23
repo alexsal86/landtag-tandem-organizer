@@ -19,6 +19,7 @@ interface UserAssignmentDialogProps {
   isOpen: boolean;
   onClose: () => void;
   letterId: string;
+  role?: 'reviewer' | 'writer';
   onAssignmentComplete: () => void;
 }
 
