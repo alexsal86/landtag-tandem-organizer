@@ -34,20 +34,24 @@ if (typeof window === 'undefined') {
     if (isViteDevRequest) return;
 
     // ── Determine if we should skip COOP/COEP isolation ──
-
-    // 1) Explicit iframe sub-resource
-    const isIframeNavigation = r.headers.get("Sec-Fetch-Dest") === "iframe";
-
-    // 2) Embedded document navigation (iframe loads main doc as "document")
+    //
+    // Strategy: opt-in only — add headers exclusively when we are CERTAIN
+    // this is a user-initiated top-level navigation (typed URL / bookmark).
+    // Sec-Fetch-Site === "none" is only sent for those cases and is NEVER
+    // sent for iframe loads, cross-origin link clicks, or embedded contexts.
+    // This prevents COOP from breaking Lovable's preview postMessage channel.
+    //
+    // Belt-and-suspenders: also skip for explicit iframe/frame destinations.
+    const secFetchDest = r.headers.get("Sec-Fetch-Dest");
     const secFetchSite = r.headers.get("Sec-Fetch-Site");
-    const isEmbeddedDocNav = r.mode === "navigate"
-      && (r.destination === "document" || r.destination === "")
-      && secFetchSite !== null
-      && secFetchSite !== "none";
-    // secFetchSite === "none" means genuine top-level user navigation (standalone tab)
-    // anything else (cross-site, same-site, same-origin) means embedded or linked navigation
 
-    const skipIsolation = isIframeNavigation || isEmbeddedDocNav;
+    const isIframeNavigation = secFetchDest === "iframe" || secFetchDest === "frame";
+
+    const isTopLevelUserNav = r.mode === "navigate"
+      && secFetchDest === "document"
+      && secFetchSite === "none";
+
+    const skipIsolation = isIframeNavigation || !isTopLevelUserNav;
 
     const s = coepCredentialless && r.mode === "no-cors"
       ? new Request(r, { credentials: "omit" })
@@ -75,7 +79,8 @@ if (typeof window === 'undefined') {
           headers: headers,
         });
       }).catch(function (err) {
-        console.error(err);
+        console.error('[COI SW] fetch error:', err);
+        return Response.error();
       })
     );
   });

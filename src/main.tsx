@@ -50,6 +50,18 @@ async function setupCrossOriginIsolation(): Promise<void> {
       host: window.location.hostname,
       removedCoiServiceWorkerRegistrations,
     });
+
+    // If we just unregistered a stale COI service worker, do a one-time reload so
+    // the page is served without SW interception (the old SW may still control this
+    // load and could have added COOP headers that break Lovable's preview postMessage).
+    // sessionStorage prevents an infinite reload loop.
+    const reloadKey = 'coi-iframe-reload-done';
+    if (removedCoiServiceWorkerRegistrations > 0 && !sessionStorage.getItem(reloadKey)) {
+      sessionStorage.setItem(reloadKey, '1');
+      window.location.reload();
+      return;
+    }
+    sessionStorage.removeItem(reloadKey);
     sessionStorage.removeItem('coi-cleanup-state');
     return;
   }
@@ -59,7 +71,7 @@ async function setupCrossOriginIsolation(): Promise<void> {
       host: window.location.hostname,
       isPreviewHost: coiStatus.isPreviewHost,
     });
-    await navigator.serviceWorker.register('/coi-serviceworker.js?v=2026-03-04-v6');
+    await navigator.serviceWorker.register('/coi-serviceworker.js?v=2026-03-23-v7');
     return;
   }
 
