@@ -49,7 +49,17 @@ type RegisteredFont = {
   style: "normal" | "bold";
 };
 
+type HeaderIconType = "date" | "time" | "location" | "pr";
+
 const fontDataCache = new Map<string, { base64: string; vfsName: string; family: string; style: RegisteredFont["style"] }>();
+const inlineSvgCache = new Map<string, SVGElement>();
+
+const HEADER_ICON_SVGS: Record<HeaderIconType, string> = {
+  date: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="#1A5E20" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M8 2v4"/><path d="M16 2v4"/><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M3 10h18"/></svg>`,
+  time: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="#1A5E20" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>`,
+  location: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="#1A5E20" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M20 10c0 6-8 12-8 12S4 16 4 10a8 8 0 1 1 16 0Z"/><circle cx="12" cy="10" r="3"/></svg>`,
+  pr: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="#1A5E20" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="m3 11 12-5v12L3 13z"/><path d="M15 8a4.5 4.5 0 0 1 0 8"/><path d="M6 13v5a2 2 0 0 0 2 2h1"/></svg>`,
+};
 
 interface BriefingPdfOptions {
   preparation: AppointmentPreparation;
@@ -109,6 +119,26 @@ async function loadSvgElement(src: string): Promise<SVGElement | null> {
     const parser = new DOMParser();
     const svgDoc = parser.parseFromString(svgText, "image/svg+xml");
     return svgDoc.documentElement as unknown as SVGElement;
+  } catch {
+    return null;
+  }
+}
+
+function cloneInlineSvgElement(type: HeaderIconType): SVGElement | null {
+  const cached = inlineSvgCache.get(type);
+  if (cached) {
+    return cached.cloneNode(true) as SVGElement;
+  }
+
+  const svgMarkup = HEADER_ICON_SVGS[type];
+  if (!svgMarkup) return null;
+
+  try {
+    const parser = new DOMParser();
+    const svgDoc = parser.parseFromString(svgMarkup, "image/svg+xml");
+    const svgElement = svgDoc.documentElement as unknown as SVGElement;
+    inlineSvgCache.set(type, svgElement);
+    return svgElement.cloneNode(true) as SVGElement;
   } catch {
     return null;
   }
@@ -243,61 +273,33 @@ function getHeaderInfoLines(
   return lines;
 }
 
-function drawHeaderIcon(
+async function drawHeaderIcon(
   doc: jsPDF,
-  type: "date" | "time" | "location" | "pr",
+  type: HeaderIconType,
   x: number,
-  y: number
-) {
-  rgb(doc, GREEN_DARK, "draw");
-  doc.setLineWidth(0.3);
-
-  if (type === "date") {
-    doc.roundedRect(x, y - 3, 3.8, 3.6, 0.4, 0.4, "S");
-    doc.line(x + 0.9, y - 3.8, x + 0.9, y - 2.4);
-    doc.line(x + 2.9, y - 3.8, x + 2.9, y - 2.4);
-    doc.line(x, y - 1.5, x + 3.8, y - 1.5);
-    return;
+  y: number,
+  width = 5,
+  height = 5
+): Promise<boolean> {
+  const svgElement = cloneInlineSvgElement(type);
+  if (!svgElement) {
+    return false;
   }
 
-  if (type === "time") {
-    doc.circle(x + 1.9, y - 1.2, 1.7, "S");
-    doc.line(x + 1.9, y - 1.2, x + 1.9, y - 2.4);
-    doc.line(x + 1.9, y - 1.2, x + 2.8, y - 0.6);
-    return;
-  }
+  svgElement.style.position = "absolute";
+  svgElement.style.left = "-9999px";
+  svgElement.style.top = "-9999px";
+  document.body.appendChild(svgElement);
 
-  if (type === "location") {
-    // MapPin icon
-    const cx = x + 1.9;
-    const topCenter = y - 3.2;
-    const r = 1.5;
-    // Draw pin head (circle with dot)
-    doc.circle(cx, topCenter + r, r, "S");
-    doc.circle(cx, topCenter + r, 0.4, "F");
-    // Draw pin point
-    doc.line(cx - r * 0.65, topCenter + r + r * 0.7, cx, topCenter + r + r * 2.2);
-    doc.line(cx + r * 0.65, topCenter + r + r * 0.7, cx, topCenter + r + r * 2.2);
-    return;
+  try {
+    await doc.svg(svgElement, { x, y: y - height + 0.8, width, height });
+    return true;
+  } catch (error) {
+    console.warn(`svg2pdf.js: Icon ${type} konnte nicht eingebettet werden`, error);
+    return false;
+  } finally {
+    document.body.removeChild(svgElement);
   }
-
-  // Megaphone icon for "pr"
-  doc.setLineWidth(0.3);
-  const mx = x;
-  const my = y - 1.5;
-  // Speaker body (trapezoid shape)
-  doc.line(mx + 1.2, my - 1.0, mx + 2.8, my - 1.8);
-  doc.line(mx + 2.8, my - 1.8, mx + 2.8, my + 1.8);
-  doc.line(mx + 2.8, my + 1.8, mx + 1.2, my + 1.0);
-  doc.line(mx + 1.2, my + 1.0, mx + 1.2, my - 1.0);
-  // Bell/cone
-  doc.line(mx + 2.8, my - 1.8, mx + 5.0, my - 2.6);
-  doc.line(mx + 5.0, my - 2.6, mx + 5.0, my + 2.6);
-  doc.line(mx + 5.0, my + 2.6, mx + 2.8, my + 1.8);
-  // Handle
-  doc.line(mx + 0.6, my - 0.3, mx + 1.2, my - 0.3);
-  doc.line(mx + 0.6, my + 0.3, mx + 1.2, my + 0.3);
-  doc.line(mx + 0.6, my - 0.3, mx + 0.6, my + 0.3);
 }
 
 function getPublicRelationsStatus(preparationData: AppointmentPreparation["preparation_data"]): string[] {
@@ -365,7 +367,7 @@ async function drawHeader(
     let infoY = infoStartY;
     for (const infoLine of infoLines) {
       const wrapped = doc.splitTextToSize(infoLine.text, leftBlockW - 11);
-      drawHeaderIcon(doc, infoLine.icon, leftBlockX, infoY - 0.5);
+      await drawHeaderIcon(doc, infoLine.icon, leftBlockX, infoY - 0.5);
       doc.text(wrapped, leftBlockX + 7.8, infoY);
       infoY += wrapped.length * 5.2 + 1.5;
     }
@@ -375,7 +377,7 @@ async function drawHeader(
   doc.setFont(BODY_FONT, "bold");
   doc.setFontSize(10);
   rgb(doc, TEXT_DARK, "text");
-  drawHeaderIcon(doc, "pr", rightBlockX, infoStartY - 0.5);
+  await drawHeaderIcon(doc, "pr", rightBlockX, infoStartY - 0.5, 5.4, 5.4);
   doc.text("Öffentlichkeitsarbeit", rightBlockX + 6, infoStartY - 0.2);
 
   doc.setFont(BODY_FONT, "normal");
