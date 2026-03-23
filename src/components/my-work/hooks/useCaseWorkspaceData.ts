@@ -67,7 +67,7 @@ async function fetchTeamUsers(tenantId: string): Promise<TeamUser[]> {
   );
 
   return memberIds.map((id) => {
-    const profile = profileById.get(id);
+    const profile = profileById.get(id) as { name: string; avatarUrl: string | null } | undefined;
     return { id, name: profile?.name || "Unbekannt", avatarUrl: profile?.avatarUrl || null };
   });
 }
