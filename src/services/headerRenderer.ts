@@ -178,7 +178,9 @@ export class HeaderRenderer {
       content: element.content 
     });
     
-    this.renderDebugBox(xInMm, yInMm, fontSize, element.content || '');
+    if (this.debugMode) {
+      this.renderDebugBox(xInMm, yInMm, fontSize, element.content || '');
+    }
     
     if (element.color && element.color.startsWith('#')) {
       const { r, g, b } = this.hexToRgb(element.color);
