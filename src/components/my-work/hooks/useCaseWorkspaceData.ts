@@ -1,38 +1,57 @@
 import { useCallback, useEffect, useMemo } from "react";
+import type { InfiniteData } from "@tanstack/react-query";
 import { useInfiniteQuery, useQuery, useQueryClient } from "@tanstack/react-query";
 
-import { supabase } from "@/integrations/supabase/client";
 import type { CaseItemIntakePayload } from "@/features/cases/items/types";
+import { supabase } from "@/integrations/supabase/client";
+import type { Database } from "@/integrations/supabase/types";
+import { debugConsole } from "@/utils/debugConsole";
 
-export type CaseItem = {
-  id: string;
-  visible_to_all: boolean;
-  subject: string | null;
-  resolution_summary: string | null;
-  summary: string | null;
-  source_channel: string | null;
-  source_received_at: string | null;
-  status: string | null;
-  completion_note: string | null;
-  completed_at: string | null;
-  priority: string | null;
-  due_at: string | null;
-  case_file_id: string | null;
-  user_id: string | null;
-  owner_user_id: string | null;
+type CaseItemsRow = Pick<
+  Database["public"]["Tables"]["case_items"]["Row"],
+  | "id"
+  | "visible_to_all"
+  | "subject"
+  | "resolution_summary"
+  | "summary"
+  | "source_channel"
+  | "source_received_at"
+  | "status"
+  | "completion_note"
+  | "completed_at"
+  | "priority"
+  | "due_at"
+  | "case_file_id"
+  | "user_id"
+  | "owner_user_id"
+  | "updated_at"
+> & {
   intake_payload: CaseItemIntakePayload | null;
-  updated_at: string | null;
 };
 
-export type CaseFile = {
-  id: string;
-  title: string;
-  status: string;
-  reference_number: string | null;
-  current_status_note: string | null;
-  case_type: string | null;
-  updated_at: string;
-};
+type CaseFilesRow = Pick<
+  Database["public"]["Tables"]["case_files"]["Row"],
+  | "id"
+  | "title"
+  | "status"
+  | "reference_number"
+  | "current_status_note"
+  | "case_type"
+  | "updated_at"
+>;
+
+type TeamMembershipRow = Pick<
+  Database["public"]["Tables"]["user_tenant_memberships"]["Row"],
+  "user_id"
+>;
+
+type ProfileRow = Pick<
+  Database["public"]["Tables"]["profiles"]["Row"],
+  "user_id" | "display_name" | "avatar_url"
+>;
+
+export type CaseItem = CaseItemsRow;
+export type CaseFile = CaseFilesRow;
 
 export type TeamUser = {
   id: string;
@@ -40,67 +59,133 @@ export type TeamUser = {
   avatarUrl: string | null;
 };
 
+type ItemsPage = { items: CaseItem[]; nextOffset?: number };
+type FilesPage = { files: CaseFile[]; nextOffset?: number };
+type ItemsInfiniteData = InfiniteData<ItemsPage, number>;
+type FilesInfiniteData = InfiniteData<FilesPage, number>;
+
+type QueryDataErrorContext = {
+  scope: "team-users" | "items" | "files";
+  tenantId: string;
+  pageParam?: number;
+};
+
 const PAGE_SIZE = 100;
+const UNKNOWN_USER_LABEL = "Unbekannt";
+
+function logAndThrowQueryError(error: Error, context: QueryDataErrorContext): never {
+  debugConsole.error("[useCaseWorkspaceData] Failed to fetch workspace data", {
+    ...context,
+    message: error.message,
+  }, error);
+  throw error;
+}
+
+function buildNextOffset(currentOffset: number, loadedCount: number): number | undefined {
+  return loadedCount === PAGE_SIZE ? currentOffset + PAGE_SIZE : undefined;
+}
+
+function mapProfileToTeamUser(profile?: ProfileRow): Omit<TeamUser, "id"> {
+  return {
+    name: profile?.display_name || UNKNOWN_USER_LABEL,
+    avatarUrl: profile?.avatar_url || null,
+  };
+}
 
 async function fetchTeamUsers(tenantId: string): Promise<TeamUser[]> {
-  const { data: membersRes, error: membersError } = await supabase
+  const { data: membershipRows, error } = await supabase
     .from("user_tenant_memberships")
     .select("user_id")
     .eq("tenant_id", tenantId)
     .eq("is_active", true);
 
-  if (membersError) throw membersError;
-  const memberIds = ((membersRes || []) as Array<{ user_id: string }>).map((row) => row.user_id);
-  if (memberIds.length === 0) return [];
+  if (error) {
+    logAndThrowQueryError(error, { scope: "team-users", tenantId });
+  }
 
-  const { data: profileRows, error: profilesError } = await supabase
+  const membershipData: TeamMembershipRow[] = membershipRows ?? [];
+  const memberIds = membershipData.map((row) => row.user_id);
+
+  if (memberIds.length === 0) {
+    debugConsole.log("[useCaseWorkspaceData] No active team users found", { tenantId });
+    return [];
+  }
+
+  const { data: profileRows, error: profileError } = await supabase
     .from("profiles")
     .select("user_id, display_name, avatar_url")
     .in("user_id", memberIds);
-  if (profilesError) throw profilesError;
 
-  const profileById = new Map(
-    (profileRows || []).map((row: { user_id: string; display_name: string | null; avatar_url: string | null }) => [
-      row.user_id,
-      { name: row.display_name || "Unbekannt", avatarUrl: row.avatar_url || null },
-    ]),
+  if (profileError) {
+    logAndThrowQueryError(profileError, { scope: "team-users", tenantId });
+  }
+
+  const profiles: ProfileRow[] = profileRows ?? [];
+  const profileById = new Map<string, Omit<TeamUser, "id">>(
+    profiles.map((profile) => [profile.user_id, mapProfileToTeamUser(profile)]),
   );
 
-  return memberIds.map((id) => {
-    const profile = profileById.get(id);
-    return { id, name: profile?.name || "Unbekannt", avatarUrl: profile?.avatarUrl || null };
-  });
+  return memberIds.map((id) => ({
+    id,
+    ...(profileById.get(id) ?? mapProfileToTeamUser()),
+  }));
 }
 
-async function fetchItemsPage(tenantId: string, pageParam: number): Promise<{ items: CaseItem[]; nextOffset?: number }> {
+async function fetchItemsPage(tenantId: string, pageParam: number): Promise<ItemsPage> {
   const { data, error } = await supabase
     .from("case_items")
     .select("id, visible_to_all, subject, summary, resolution_summary, source_channel, source_received_at, status, completion_note, completed_at, priority, due_at, case_file_id, user_id, owner_user_id, intake_payload, updated_at")
     .eq("tenant_id", tenantId)
     .order("updated_at", { ascending: false, nullsFirst: false })
     .range(pageParam, pageParam + PAGE_SIZE - 1);
-  if (error) throw error;
-  const items = (data || []) as unknown as CaseItem[];
-  return { items, nextOffset: items.length === PAGE_SIZE ? pageParam + PAGE_SIZE : undefined };
+
+  if (error) {
+    logAndThrowQueryError(error, { scope: "items", tenantId, pageParam });
+  }
+
+  const items: CaseItem[] = data ?? [];
+
+  return {
+    items,
+    nextOffset: buildNextOffset(pageParam, items.length),
+  };
 }
 
-async function fetchFilesPage(tenantId: string, pageParam: number): Promise<{ files: CaseFile[]; nextOffset?: number }> {
+async function fetchFilesPage(tenantId: string, pageParam: number): Promise<FilesPage> {
   const { data, error } = await supabase
     .from("case_files")
     .select("id, title, status, reference_number, current_status_note, case_type, updated_at")
     .eq("tenant_id", tenantId)
     .order("updated_at", { ascending: false })
     .range(pageParam, pageParam + PAGE_SIZE - 1);
-  if (error) throw error;
-  const files = (data || []) as CaseFile[];
-  return { files, nextOffset: files.length === PAGE_SIZE ? pageParam + PAGE_SIZE : undefined };
+
+  if (error) {
+    logAndThrowQueryError(error, { scope: "files", tenantId, pageParam });
+  }
+
+  const files: CaseFile[] = data ?? [];
+
+  return {
+    files,
+    nextOffset: buildNextOffset(pageParam, files.length),
+  };
+}
+
+function setInfinitePageRows<TPage extends { nextOffset?: number }, TRow>(
+  rowsKey: keyof TPage,
+  rows: TRow[],
+): InfiniteData<TPage, number> {
+  return {
+    pageParams: [0],
+    pages: [{ [rowsKey]: rows, nextOffset: rows.length >= PAGE_SIZE ? rows.length : undefined } as TPage],
+  };
 }
 
 export const useCaseWorkspaceData = ({ tenantId, userId }: { tenantId?: string; userId?: string }) => {
   const queryClient = useQueryClient();
   const enabled = Boolean(tenantId && userId);
 
-  const itemsQuery = useInfiniteQuery({
+  const itemsQuery = useInfiniteQuery<ItemsPage, Error, ItemsInfiniteData, [string, string | undefined, string], number>({
     queryKey: ["case-workspace", tenantId, "items"],
     queryFn: ({ pageParam = 0 }) => fetchItemsPage(tenantId!, pageParam),
     enabled,
@@ -111,7 +196,7 @@ export const useCaseWorkspaceData = ({ tenantId, userId }: { tenantId?: string; 
     refetchOnWindowFocus: false,
   });
 
-  const filesQuery = useInfiniteQuery({
+  const filesQuery = useInfiniteQuery<FilesPage, Error, FilesInfiniteData, [string, string | undefined, string], number>({
     queryKey: ["case-workspace", tenantId, "files"],
     queryFn: ({ pageParam = 0 }) => fetchFilesPage(tenantId!, pageParam),
     enabled,
@@ -122,7 +207,7 @@ export const useCaseWorkspaceData = ({ tenantId, userId }: { tenantId?: string; 
     refetchOnWindowFocus: false,
   });
 
-  const teamUsersQuery = useQuery({
+  const teamUsersQuery = useQuery<TeamUser[], Error>({
     queryKey: ["case-workspace", tenantId, "team-users"],
     queryFn: () => fetchTeamUsers(tenantId!),
     enabled,
@@ -148,71 +233,27 @@ export const useCaseWorkspaceData = ({ tenantId, userId }: { tenantId?: string; 
 
   const setCaseItems = useCallback((updater: CaseItem[] | ((current: CaseItem[]) => CaseItem[])) => {
     if (!tenantId) return;
-    queryClient.setQueryData(["case-workspace", tenantId, "items"], (current: any) => {
-      const currentItems = current?.pages?.flatMap((page: { items: CaseItem[] }) => page.items) ?? [];
+
+    queryClient.setQueryData<ItemsInfiniteData>(["case-workspace", tenantId, "items"], (current) => {
+      const currentItems = current?.pages.flatMap((page) => page.items) ?? [];
       const nextItems = typeof updater === "function" ? updater(currentItems) : updater;
-      return {
-        pageParams: [0],
-        pages: [{ items: nextItems, nextOffset: nextItems.length >= PAGE_SIZE ? nextItems.length : undefined }],
-      };
+      return setInfinitePageRows<ItemsPage, CaseItem>("items", nextItems);
     });
   }, [queryClient, tenantId]);
 
   const setCaseFiles = useCallback((updater: CaseFile[] | ((current: CaseFile[]) => CaseFile[])) => {
     if (!tenantId) return;
-    queryClient.setQueryData(["case-workspace", tenantId, "files"], (current: any) => {
-      const currentFiles = current?.pages?.flatMap((page: { files: CaseFile[] }) => page.files) ?? [];
+
+    queryClient.setQueryData<FilesInfiniteData>(["case-workspace", tenantId, "files"], (current) => {
+      const currentFiles = current?.pages.flatMap((page) => page.files) ?? [];
       const nextFiles = typeof updater === "function" ? updater(currentFiles) : updater;
-      return {
-        pageParams: [0],
-        pages: [{ files: nextFiles, nextOffset: nextFiles.length >= PAGE_SIZE ? nextFiles.length : undefined }],
-      };
+      return setInfinitePageRows<FilesPage, CaseFile>("files", nextFiles);
     });
   }, [queryClient, tenantId]);
 
-  const caseItemsQuery = useInfiniteQuery({
-    queryKey: itemsQueryKey,
-    enabled,
-    initialPageParam: 0,
-    queryFn: ({ pageParam }) => fetchItemsPage(pageParam),
-    getNextPageParam: (lastPage, _allPages, lastPageParam) => lastPage.length === PAGE_SIZE ? lastPageParam + lastPage.length : undefined,
-  });
-
-  const caseFilesQuery = useInfiniteQuery({
-    queryKey: filesQueryKey,
-    enabled,
-    initialPageParam: 0,
-    queryFn: ({ pageParam }) => fetchFilesPage(pageParam),
-    getNextPageParam: (lastPage, _allPages, lastPageParam) => lastPage.length === PAGE_SIZE ? lastPageParam + lastPage.length : undefined,
-  });
-
-  const teamUsersQuery = useQuery({
-    queryKey: teamUsersQueryKey,
-    enabled,
-    queryFn: fetchTeamUsers,
-  });
-
-  const caseItems = useMemo(() => enabled ? flattenInfiniteData(caseItemsQuery.data) : EMPTY_ITEMS, [enabled, caseItemsQuery.data]);
-  const caseFiles = useMemo(() => enabled ? flattenInfiniteData(caseFilesQuery.data) : EMPTY_FILES, [enabled, caseFilesQuery.data]);
-  const teamUsers = teamUsersQuery.data ?? EMPTY_TEAM_USERS;
-
-  const setInfiniteRows = useCallback(<T,>(queryKey: readonly unknown[], updater: SetStateAction<T[]>) => {
-    queryClient.setQueryData<InfiniteData<T[], number>>(queryKey, (current) => {
-      const currentRows = flattenInfiniteData(current);
-      const nextRows = typeof updater === "function"
-        ? (updater as (prevState: T[]) => T[])(currentRows)
-        : updater;
-
-      return toInfiniteData(nextRows);
-    });
-  }, [queryClient]);
-
-  const setCaseItems: Dispatch<SetStateAction<CaseItem[]>> = useCallback((updater) => {
-    setInfiniteRows(itemsQueryKey, updater);
-  }, [itemsQueryKey, setInfiniteRows]);
-
   const refreshAll = useCallback(async () => {
     if (!tenantId) return;
+
     await Promise.all([
       queryClient.invalidateQueries({ queryKey: ["case-workspace", tenantId, "items"] }),
       queryClient.invalidateQueries({ queryKey: ["case-workspace", tenantId, "files"] }),
@@ -260,7 +301,11 @@ export const useCaseWorkspaceData = ({ tenantId, userId }: { tenantId?: string; 
   const error = (itemsQuery.error || filesQuery.error || teamUsersQuery.error) as Error | null;
 
   if (error) {
-    debugConsole.error("Failed to load case workspace data:", error);
+    debugConsole.error("[useCaseWorkspaceData] Failed to load case workspace data", {
+      tenantId,
+      userId,
+      message: error.message,
+    }, error);
   }
 
   return {
