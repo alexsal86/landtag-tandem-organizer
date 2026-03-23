@@ -27,6 +27,7 @@ import { Separator } from '@/components/ui/separator';
 import { useNotifications, type Notification } from '@/contexts/NotificationContext';
 import { cn } from '@/lib/utils';
 import { buildDeepLinkPath } from '@/utils/notificationDeepLinks';
+import { isLetterNotificationType } from '@/utils/letterNotificationTypes';
 
 interface NotificationCenterProps {
   onClose?: () => void;
@@ -35,6 +36,10 @@ interface NotificationCenterProps {
 type NotificationPriorityBadgeVariant = 'default' | 'secondary' | 'outline' | 'destructive';
 
 const getNotificationIcon = (type: string): LucideIcon => {
+  if (isLetterNotificationType(type)) {
+    return FileText;
+  }
+
   switch (type) {
     case 'task_created':
     case 'task_due':
@@ -73,9 +78,6 @@ const getNotificationIcon = (type: string): LucideIcon => {
     case 'document_created':
     case 'document_mention':
     case 'news_shared_internal':
-    case 'letter_review_requested':
-    case 'letter_review_completed':
-    case 'letter_sent':
       return FileText;
     case 'knowledge_document_created':
       return BookOpen;

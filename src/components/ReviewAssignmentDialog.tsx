@@ -12,6 +12,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { useTenant } from '@/hooks/useTenant';
 import { debugConsole } from '@/utils/debugConsole';
 import { createLetterApprovalDecision } from '@/utils/letterWorkflowActions';
+import { LETTER_NOTIFICATION_TYPES } from '@/utils/letterNotificationTypes';
 
 interface User {
   user_id: string;
@@ -144,12 +145,12 @@ const ReviewAssignmentDialog: React.FC<ReviewAssignmentDialogProps> = ({
           );
         }
         // Notify reviewers
-        await sendNotifications(selectedUsers, 'letter_review_assigned', 'Brief zur Freigabe', `Der Brief "${letterData?.title || 'Unbekannt'}" wurde Ihnen zur Freigabe vorgelegt.`);
+        await sendNotifications(selectedUsers, LETTER_NOTIFICATION_TYPES.REVIEW_REQUESTED, 'Brief zur Freigabe', `Der Brief "${letterData?.title || 'Unbekannt'}" wurde Ihnen zur Freigabe vorgelegt.`);
         toast({ title: "Zur Freigabe eingereicht", description: `${selectedUsers.length} Prüfer wurden zugewiesen. Eine Entscheidungsanfrage wurde erstellt.` });
         onReviewAssigned('approval');
       } else {
         // Peer review – no decision, just notify
-        await sendNotifications(selectedUsers, 'letter_review_assigned', 'Brief zur Kollegenprüfung', `Der Brief "${letterData?.title || 'Unbekannt'}" wurde Ihnen zur Kollegenprüfung zugewiesen.`);
+        await sendNotifications(selectedUsers, LETTER_NOTIFICATION_TYPES.REVIEW_REQUESTED, 'Brief zur Kollegenprüfung', `Der Brief "${letterData?.title || 'Unbekannt'}" wurde Ihnen zur Kollegenprüfung zugewiesen.`);
         toast({ title: "Kollegenprüfung zugewiesen", description: `${selectedUsers.length} Kollegen wurden zur Prüfung zugewiesen.` });
         onReviewAssigned('review');
       }

@@ -20,8 +20,8 @@ UPDATE public.notification_types SET category = 'system' WHERE name IN ('budget_
 -- Step 3: Insert new notification types that are missing
 INSERT INTO public.notification_types (name, label, description, is_active, category) VALUES
   ('employee_meeting_request_declined', 'Gesprächsanfrage abgelehnt', 'Benachrichtigung wenn eine Gesprächsanfrage abgelehnt wird', true, 'employee'),
-  ('letter_review_requested', 'Brief zur Prüfung', 'Benachrichtigung wenn ein Brief zur Prüfung zugewiesen wird', true, 'documents'),
-  ('letter_review_completed', 'Brief geprüft', 'Benachrichtigung wenn ein Brief genehmigt oder zurückgewiesen wird', true, 'documents'),
+  ('letter_review_requested', 'Brief zur Prüfung', 'Benachrichtigung wenn ein Brief zur Prüfung oder Freigabe zugewiesen wird', true, 'documents'),
+  ('letter_review_completed', 'Brief geprüft', 'Benachrichtigung wenn ein Brief freigegeben oder zur Überarbeitung zurückgegeben wird', true, 'documents'),
   ('letter_sent', 'Brief versendet', 'Benachrichtigung wenn ein Brief als versendet markiert wird', true, 'documents'),
   ('planning_collaborator_added', 'Zu Planung hinzugefügt', 'Benachrichtigung wenn Sie als Mitarbeiter zu einer Planung hinzugefügt werden', true, 'planning'),
   ('team_announcement_created', 'Neue Team-Mitteilung', 'Benachrichtigung bei neuen Team-Mitteilungen', true, 'system'),
