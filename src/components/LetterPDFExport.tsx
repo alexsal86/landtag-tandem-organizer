@@ -40,7 +40,7 @@ const LetterPDFExport: React.FC<LetterPDFExportProps> = ({
       if (onPDFGenerated) {
         const blobResult = await generatePDF({
           letter, template, senderInfo, informationBlock, attachments,
-          showPagination, returnBlob: true,
+          showPagination, returnBlob: true, contact,
         });
         if (blobResult) onPDFGenerated(blobResult.blob, blobResult.filename);
       }
