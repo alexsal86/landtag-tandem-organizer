@@ -699,6 +699,10 @@ function addAblaufCard(
   for (const p of program) {
     const lines = doc.splitTextToSize(p.item, maxW - 19);
     estH += lines.length * 4.5 + 2;
+    if (p.notes?.trim()) {
+      const noteLines = doc.splitTextToSize(p.notes.trim(), maxW - 19);
+      estH += noteLines.length * 3.8 + 1;
+    }
   }
   estH += 3;
 
@@ -723,6 +727,16 @@ function addAblaufCard(
     const descLines = doc.splitTextToSize(p.item, maxW - 19);
     doc.text(descLines, x + 15, cy + 1.5);
     cy += descLines.length * 4.5 + 2;
+
+    // Render notes below the item
+    if (p.notes?.trim()) {
+      doc.setFontSize(7.5);
+      doc.setFont(BODY_FONT, "italic");
+      rgb(doc, TEXT_MUTED, "text");
+      const noteLines = doc.splitTextToSize(p.notes.trim(), maxW - 19);
+      doc.text(noteLines, x + 15, cy);
+      cy += noteLines.length * 3.8 + 1;
+    }
   }
 
   yRef.y = cardY + estH + SECTION_OUTER_GAP;
