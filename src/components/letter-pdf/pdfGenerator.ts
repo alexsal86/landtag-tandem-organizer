@@ -663,17 +663,19 @@ export async function generatePDF(options: GeneratePDFOptions): Promise<{ blob: 
         const attachmentMargin = 20;
         
         // Debug guides for attachments
-        pdf.setLineWidth(0.2);
-        pdf.setDrawColor(255, 0, 255);
-        pdf.line(0, attachmentMargin, PAGE_WIDTH, attachmentMargin);
-        pdf.setFontSize(8);
-        pdf.setTextColor(255, 0, 255);
-        pdf.text("20mm - Anlage Oberrand", 5, attachmentMargin - 3);
-        pdf.line(0, PAGE_HEIGHT - attachmentMargin, PAGE_WIDTH, PAGE_HEIGHT - attachmentMargin);
-        pdf.line(attachmentMargin, 0, attachmentMargin, PAGE_HEIGHT);
-        pdf.line(PAGE_WIDTH - attachmentMargin, 0, PAGE_WIDTH - attachmentMargin, PAGE_HEIGHT);
-        pdf.setDrawColor(200, 0, 200);
-        pdf.rect(attachmentMargin, attachmentMargin, PAGE_WIDTH - 2 * attachmentMargin, PAGE_HEIGHT - 2 * attachmentMargin);
+        if (debugMode) {
+          pdf.setLineWidth(0.2);
+          pdf.setDrawColor(255, 0, 255);
+          pdf.line(0, attachmentMargin, PAGE_WIDTH, attachmentMargin);
+          pdf.setFontSize(8);
+          pdf.setTextColor(255, 0, 255);
+          pdf.text("20mm - Anlage Oberrand", 5, attachmentMargin - 3);
+          pdf.line(0, PAGE_HEIGHT - attachmentMargin, PAGE_WIDTH, PAGE_HEIGHT - attachmentMargin);
+          pdf.line(attachmentMargin, 0, attachmentMargin, PAGE_HEIGHT);
+          pdf.line(PAGE_WIDTH - attachmentMargin, 0, PAGE_WIDTH - attachmentMargin, PAGE_HEIGHT);
+          pdf.setDrawColor(200, 0, 200);
+          pdf.rect(attachmentMargin, attachmentMargin, PAGE_WIDTH - 2 * attachmentMargin, PAGE_HEIGHT - 2 * attachmentMargin);
+        }
         pdf.setTextColor(0, 0, 0);
         pdf.setDrawColor(0, 0, 0);
         
