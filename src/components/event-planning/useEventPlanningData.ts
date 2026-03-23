@@ -385,13 +385,34 @@ export function useEventPlanningData() {
 
   const updatePlanningField = async (field: string, value: any) => {
     if (!selectedPlanning) return;
+    const currentPlanningId = selectedPlanning.id;
+
     setSelectedPlanning((prev) => (prev ? { ...prev, [field]: value } : prev));
     setPlannings((prev) => prev.map((planning) => (
-      planning.id === selectedPlanning.id
+      planning.id === currentPlanningId
         ? { ...planning, [field]: value }
         : planning
     )));
-    debouncedUpdate(field, value, selectedPlanning.id);
+    debouncedUpdate(field, value, currentPlanningId);
+
+    if (field === "title") {
+      const confirmedAppointmentId = planningDates.find((date) => date.is_confirmed && date.appointment_id)?.appointment_id;
+
+      if (confirmedAppointmentId) {
+        const { error } = await supabase
+          .from("appointments")
+          .update({ title: value })
+          .eq("id", confirmedAppointmentId);
+
+        if (error) {
+          toast({
+            title: "Fehler",
+            description: "Der verknüpfte Termin konnte nicht umbenannt werden.",
+            variant: "destructive",
+          });
+        }
+      }
+    }
   };
 
   const syncRelativeTimelineAssignments = async (planningId: string, confirmedDate: string | null | undefined) => {
