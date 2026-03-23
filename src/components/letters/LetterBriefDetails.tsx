@@ -191,6 +191,50 @@ const LetterBriefDetails: React.FC<LetterBriefDetailsProps> = ({
             </div>
           )}
 
+          {/* Response Tracking */}
+          {editedLetter.expected_response_date && status === 'sent' && (() => {
+            const expectedDate = new Date(editedLetter.expected_response_date);
+            const today = new Date();
+            today.setHours(0, 0, 0, 0);
+            expectedDate.setHours(0, 0, 0, 0);
+            const daysUntil = Math.ceil((expectedDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
+            const isOverdue = daysUntil < 0;
+            const isUrgent = daysUntil >= 0 && daysUntil <= 3;
+
+            return (
+              <div className={`p-4 border rounded-lg ${
+                isOverdue ? 'border-destructive/50 bg-destructive/5' : isUrgent ? 'border-orange-300 bg-orange-50 dark:bg-orange-950/20' : 'bg-card/50'
+              }`}>
+                <div className="flex items-center gap-2 mb-2">
+                  <Clock className="h-4 w-4 text-primary" />
+                  <Label className="text-base font-medium">Antwortverfolgung</Label>
+                </div>
+                <div className="text-sm space-y-1">
+                  <div className="flex items-center justify-between">
+                    <span className="text-muted-foreground">Antwort erwartet bis:</span>
+                    <span className="font-medium">{new Date(editedLetter.expected_response_date).toLocaleDateString('de-DE')}</span>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span className="text-muted-foreground">Status:</span>
+                    {isOverdue ? (
+                      <Badge variant="destructive" className="text-xs">
+                        {Math.abs(daysUntil)} Tag{Math.abs(daysUntil) !== 1 ? 'e' : ''} überfällig
+                      </Badge>
+                    ) : isUrgent ? (
+                      <Badge className="text-xs bg-orange-500 text-white">
+                        Noch {daysUntil} Tag{daysUntil !== 1 ? 'e' : ''}
+                      </Badge>
+                    ) : (
+                      <Badge variant="secondary" className="text-xs">
+                        Noch {daysUntil} Tag{daysUntil !== 1 ? 'e' : ''}
+                      </Badge>
+                    )}
+                  </div>
+                </div>
+              </div>
+            );
+          })()}
+
           {/* Workflow History */}
           {(editedLetter.submitted_for_review_at || editedLetter.approved_at || editedLetter.sent_at) && (
             <div className="p-3 bg-muted/30 rounded-lg border">

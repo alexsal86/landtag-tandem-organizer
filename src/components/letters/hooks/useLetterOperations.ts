@@ -73,6 +73,7 @@ export function useLetterOperations(opts: UseLetterOperationsOptions) {
           sender_info_id: editedLetter.sender_info_id,
           information_block_ids: editedLetter.information_block_ids,
           letter_date: editedLetter.letter_date,
+          expected_response_date: editedLetter.expected_response_date || null,
           show_pagination: showPagination,
           salutation_override: editedLetter.salutation_override || null,
           closing_formula: editedLetter.closing_formula || null,

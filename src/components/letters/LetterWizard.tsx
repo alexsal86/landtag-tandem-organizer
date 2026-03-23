@@ -9,7 +9,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { 
   Users, Building2, PartyPopper, Heart, FileQuestion, 
   MessageSquare, FileText, Mail, Gavel, ArrowLeft, ArrowRight, Check,
-  Search, User, X
+  Search, User, X, Eye
 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
