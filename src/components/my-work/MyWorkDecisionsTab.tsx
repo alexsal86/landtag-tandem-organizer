@@ -174,7 +174,7 @@ export function MyWorkDecisionsTab() {
                   onTogglePriority={actions.togglePriority}
                   onTogglePublic={actions.togglePublic}
                   onUpdateDeadline={actions.updateDeadline}
-                  tenantUsers={tenantUsers as Array<{ id: string; display_name?: string | null }>}
+                  tenantUsers={tenantUsers as any}
                 />
               </TabsContent>
             </div>

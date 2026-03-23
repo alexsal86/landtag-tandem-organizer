@@ -21,7 +21,7 @@ interface MyWorkTasksBoardProps {
   onComplete: (taskId: string) => void;
   onSubtaskComplete: (taskId: string) => void;
   onUpdateTitle: (taskId: string, title: string) => void;
-  onUpdateDescription: (taskId: string, description: string) => void;
+  onUpdateDescription?: (taskId: string, description: string) => void;
   onUpdateDueDate: (taskId: string, date: Date | null) => void;
   onReminder: (taskId: string) => void;
   onAssign: (taskId: string) => void;
