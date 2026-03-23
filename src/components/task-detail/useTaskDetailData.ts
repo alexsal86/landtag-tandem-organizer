@@ -4,13 +4,13 @@ import { useToast } from "@/hooks/use-toast";
 import { debugConsole } from "@/utils/debugConsole";
 import { useAuth } from "@/hooks/useAuth";
 import type { Task, TaskComment, TaskDocument, Subtask } from "./types";
-import type { Tables, TablesInsert, TablesUpdate } from "@/integrations/supabase/types";
+import type { Tables, TablesUpdate } from "@/integrations/supabase/types";
+import { normalizeTaskAssigneeIds, serializeLegacyTaskAssignees, syncTaskAssignees } from "@/lib/taskAssignees";
 
 type TaskRow = Tables<"tasks">;
 type TaskDocumentRow = Tables<"task_documents">;
 type TaskCommentRow = Tables<"task_comments">;
 type ProfileRow = Pick<Tables<"profiles">, "user_id" | "display_name" | "avatar_url">;
-type TaskInsert = TablesInsert<"tasks">;
 type TaskUpdate = TablesUpdate<"tasks">;
 
 export function useTaskDetailData(task: Task | null) {
@@ -63,7 +63,7 @@ export function useTaskDetailData(task: Task | null) {
           user_id: s.user_id,
           title: s.title,
           description: s.title || s.description || "",
-          assigned_to: Array.isArray(s.assigned_to) ? s.assigned_to.join(",") : s.assigned_to || "",
+          assigned_to: normalizeTaskAssigneeIds(s.assigned_to),
           due_date: s.due_date,
           is_completed: s.status === "completed",
           order_index: i,
@@ -126,6 +126,7 @@ export function useTaskDetailData(task: Task | null) {
     if (!task) return;
     setSaving(true);
     try {
+      const assigneeIds = normalizeTaskAssigneeIds(editFormData.assignedTo);
       const { error } = await supabase
         .from("tasks")
         .update({
@@ -135,10 +136,14 @@ export function useTaskDetailData(task: Task | null) {
           status: editFormData.status,
           due_date: editFormData.dueDate,
           category: editFormData.category,
-          assigned_to: editFormData.assignedTo || "",
+          assigned_to: serializeLegacyTaskAssignees(assigneeIds) || "",
           progress: editFormData.progress,
         } as TaskUpdate)
         .eq("id", task.id);
+
+      if (!error) {
+        await syncTaskAssignees({ taskId: task.id, assigneeIds, assignedBy: user?.id });
+      }
 
       if (error) {
         const isNetwork = error.message?.includes("Failed to fetch") || error.message?.includes("NetworkError") || error.message?.includes("TypeError");
@@ -275,20 +280,22 @@ export function useTaskDetailData(task: Task | null) {
   const addSubtask = async () => {
     if (!newSubtask.description.trim() || !task || !user) return;
     try {
-      const { error } = await supabase.from("tasks").insert([{
+      const assigneeIds = normalizeTaskAssigneeIds(newSubtask.assigned_to || user.id);
+      const { data: createdSubtask, error } = await supabase.from("tasks").insert([{
         parent_task_id: task.id,
         user_id: user.id,
         tenant_id: task.tenant_id ?? null,
         title: newSubtask.description.trim(),
         description: "",
-        assigned_to: newSubtask.assigned_to || "",
+        assigned_to: serializeLegacyTaskAssignees(assigneeIds) || user.id,
         due_date: newSubtask.due_date || null,
         status: "todo",
         priority: task.priority || "medium",
         category: task.category || "personal",
         progress: 0,
-      }] as any);
+      }] as any).select("id").single();
       if (error) throw error;
+      await syncTaskAssignees({ taskId: createdSubtask.id, assigneeIds, assignedBy: user.id });
       setNewSubtask({ description: "", assigned_to: "", due_date: "" });
       loadSubtasks(task.id);
       toast({ title: "Unteraufgabe hinzugefügt" });
@@ -301,11 +308,15 @@ export function useTaskDetailData(task: Task | null) {
     try {
       const u: TaskUpdate = {};
       if (updates.description !== undefined) u.title = updates.description;
-      if (updates.assigned_to !== undefined) u.assigned_to = updates.assigned_to;
+      const nextAssigneeIds = updates.assigned_to !== undefined ? normalizeTaskAssigneeIds(updates.assigned_to) : undefined;
+      if (nextAssigneeIds !== undefined) u.assigned_to = serializeLegacyTaskAssignees(nextAssigneeIds);
       if (updates.due_date !== undefined) u.due_date = updates.due_date;
       if (updates.is_completed !== undefined) { u.status = updates.is_completed ? "completed" : "todo"; u.progress = updates.is_completed ? 100 : 0; }
       const { error } = await supabase.from("tasks").update(u).eq("id", subtaskId);
       if (error) throw error;
+      if (nextAssigneeIds !== undefined) {
+        await syncTaskAssignees({ taskId: subtaskId, assigneeIds: nextAssigneeIds, assignedBy: user?.id });
+      }
       loadSubtasks(task!.id);
       setEditingSubtask((p) => { const up = { ...p }; delete up[subtaskId]; return up; });
       toast({ title: "Unteraufgabe aktualisiert" });
