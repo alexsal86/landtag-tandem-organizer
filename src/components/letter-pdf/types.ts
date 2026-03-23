@@ -74,4 +74,23 @@ export interface PDFDataState {
   senderInfo: DbSenderInformation | null;
   informationBlock: DbInformationBlock | null;
   attachments: DbLetterAttachment[];
+  contact: DbContact | null;
 }
+
+export type DbContact = {
+  id: string;
+  name: string;
+  gender?: string | null;
+  last_name?: string | null;
+  private_street?: string | null;
+  private_house_number?: string | null;
+  private_postal_code?: string | null;
+  private_city?: string | null;
+  private_country?: string | null;
+  business_street?: string | null;
+  business_house_number?: string | null;
+  business_postal_code?: string | null;
+  business_city?: string | null;
+  business_country?: string | null;
+  title?: string | null;
+};
