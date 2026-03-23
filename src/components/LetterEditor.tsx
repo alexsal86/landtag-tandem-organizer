@@ -296,6 +296,15 @@ const LetterEditor: React.FC<LetterEditorProps> = ({ letter, isOpen, onClose, on
         </div>
       )}
 
+      {/* Co-Author button bar */}
+      {canEdit && currentStatus === 'draft' && letter?.id && (
+        <div className="flex items-center gap-2 px-4 py-1.5 border-b bg-muted/20">
+          <Button variant="ghost" size="sm" className="h-7 text-xs" onClick={() => setShowWriterDialog(true)}>
+            <UserPlus className="h-3.5 w-3.5 mr-1" />Mitbearbeiter
+          </Button>
+        </div>
+      )}
+
       {showBriefDetails && (
         <LetterBriefDetails editedLetter={editedLetter} setEditedLetter={setEditedLetter} canEdit={canEdit} isReviewer={isReviewer} userProfiles={userProfiles}
           onStatusTransition={handleStatusTransition} onReturnLetter={handleReturnLetter} broadcastContentChange={broadcastContentChange} />
