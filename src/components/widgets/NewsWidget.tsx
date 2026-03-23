@@ -119,58 +119,72 @@ export const NewsWidget: React.FC<NewsWidgetProps> = ({ widgetId, compact = fals
 
   if (compact) {
     return (
-      <div>
-        {loading && <div className="animate-pulse space-y-2">{[...Array(3)].map((_, i) => <div key={i} className="h-6 bg-muted rounded" />)}</div>}
-        {error && <p className="text-xs text-muted-foreground">{error}</p>}
-        {!loading && !error && (
-          <div className="space-y-2">
-            {filteredArticles.length === 0 ? (
-              <p className="text-xs text-muted-foreground">Keine Artikel gefunden</p>
-            ) : (
-              filteredArticles.slice(0, 8).map((article) => (
-                <div
-                  key={article.id}
-                  className="group cursor-pointer hover:bg-muted/40 rounded px-1 py-1 transition-colors"
-                  onClick={() => window.open(article.link, '_blank')}
-                >
-                  <div className="flex items-start justify-between gap-1">
-                    <span className="text-sm text-foreground line-clamp-1 flex-1">{decodeHtmlEntities(article.title)}</span>
-                    <div className="flex gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity shrink-0">
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        className="h-5 w-5 p-0"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          setSelectedArticle(article);
-                          setShareDialogOpen(true);
-                        }}
-                        title="News teilen"
-                      >
-                        <Share2 className="h-3 w-3" />
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        className="h-5 w-5 p-0"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          setSelectedArticle(article);
-                          setTaskDialogOpen(true);
-                        }}
-                        title="Aufgabe erstellen"
-                      >
-                        <CheckSquare className="h-3 w-3" />
-                      </Button>
+      <>
+        <div>
+          {loading && <div className="animate-pulse space-y-2">{[...Array(3)].map((_, i) => <div key={i} className="h-6 bg-muted rounded" />)}</div>}
+          {error && <p className="text-xs text-muted-foreground">{error}</p>}
+          {!loading && !error && (
+            <div className="space-y-2">
+              {filteredArticles.length === 0 ? (
+                <p className="text-xs text-muted-foreground">Keine Artikel gefunden</p>
+              ) : (
+                filteredArticles.slice(0, 8).map((article) => (
+                  <div
+                    key={article.id}
+                    className="group cursor-pointer hover:bg-muted/40 rounded px-1 py-1 transition-colors"
+                    onClick={() => window.open(article.link, '_blank')}
+                  >
+                    <div className="flex items-start justify-between gap-1">
+                      <span className="text-sm text-foreground line-clamp-1 flex-1">{decodeHtmlEntities(article.title)}</span>
+                      <div className="flex gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity shrink-0">
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="h-5 w-5 p-0"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setSelectedArticle(article);
+                            setShareDialogOpen(true);
+                          }}
+                          title="News teilen"
+                        >
+                          <Share2 className="h-3 w-3" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="h-5 w-5 p-0"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setSelectedArticle(article);
+                            setTaskDialogOpen(true);
+                          }}
+                          title="Aufgabe erstellen"
+                        >
+                          <CheckSquare className="h-3 w-3" />
+                        </Button>
+                      </div>
                     </div>
+                    <span className="text-[11px] text-primary block mt-0.5">{article.source}</span>
                   </div>
-                  <span className="text-[11px] text-primary block mt-0.5">{article.source}</span>
-                </div>
-              ))
-            )}
-          </div>
-        )}
-      </div>
+                ))
+              )}
+            </div>
+          )}
+        </div>
+
+        <NewsShareDialog
+          open={shareDialogOpen}
+          onOpenChange={setShareDialogOpen}
+          article={selectedArticle}
+        />
+
+        <NewsToTaskDialog
+          open={taskDialogOpen}
+          onOpenChange={setTaskDialogOpen}
+          article={selectedArticle}
+        />
+      </>
     );
   }
 
