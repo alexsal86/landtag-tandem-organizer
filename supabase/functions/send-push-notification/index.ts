@@ -2,6 +2,7 @@ import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.49.1'
 import { requireServiceRole, corsHeaders as sharedCorsHeaders } from "../_shared/security.ts";
 
+import { withSafeHandler } from "../_shared/security.ts";
 const corsHeaders = {
   ...sharedCorsHeaders,
 }
@@ -33,18 +34,18 @@ async function importVapidKeys(publicKeyB64: string, privateKeyB64: string) {
   const d = privateKeyB64; // Already base64url
 
   const privateJwk = { kty: 'EC', crv: 'P-256', x, y, d, ext: true };
-  
+
   const privateKey = await crypto.subtle.importKey(
     'jwk', privateJwk, { name: 'ECDSA', namedCurve: 'P-256' }, false, ['sign']
   );
-  
+
   return privateKey;
 }
 
 async function createVapidAuthHeader(
-  audience: string, 
-  subject: string, 
-  publicKeyB64: string, 
+  audience: string,
+  subject: string,
+  publicKeyB64: string,
   privateKey: CryptoKey
 ): Promise<{ authorization: string; cryptoKey: string }> {
   const header = { typ: 'JWT', alg: 'ES256' };
@@ -68,7 +69,7 @@ async function createVapidAuthHeader(
   // Convert DER signature to raw r||s format (if needed)
   const sigBytes = new Uint8Array(signature);
   let rawSig: Uint8Array;
-  
+
   if (sigBytes.length === 64) {
     rawSig = sigBytes;
   } else {
@@ -89,7 +90,7 @@ function derToRaw(der: Uint8Array): Uint8Array {
   // Parse DER SEQUENCE containing two INTEGERs
   const raw = new Uint8Array(64);
   let offset = 2; // skip SEQUENCE tag + length
-  
+
   // Parse r
   if (der[offset] !== 0x02) throw new Error('Expected INTEGER tag');
   offset++;
@@ -98,7 +99,7 @@ function derToRaw(der: Uint8Array): Uint8Array {
   const rDest = 32 - Math.min(rLen, 32);
   raw.set(der.slice(rStart, offset + rLen), rDest);
   offset += rLen;
-  
+
   // Parse s
   if (der[offset] !== 0x02) throw new Error('Expected INTEGER tag');
   offset++;
@@ -106,7 +107,7 @@ function derToRaw(der: Uint8Array): Uint8Array {
   const sStart = offset + (sLen > 32 ? sLen - 32 : 0);
   const sDest = 32 + 32 - Math.min(sLen, 32);
   raw.set(der.slice(sStart, offset + sLen), sDest);
-  
+
   return raw;
 }
 
@@ -117,19 +118,19 @@ async function encryptPayload(
   authSecret: string
 ): Promise<{ body: Uint8Array; salt: Uint8Array; localPublicKey: Uint8Array }> {
   const payloadBytes = new TextEncoder().encode(payload);
-  
+
   // Generate local ECDH key pair
   const localKeyPair = await crypto.subtle.generateKey(
     { name: 'ECDH', namedCurve: 'P-256' },
     true,
     ['deriveBits']
   );
-  
+
   // Export local public key as raw
   const localPublicKeyRaw = new Uint8Array(
     await crypto.subtle.exportKey('raw', localKeyPair.publicKey)
   );
-  
+
   // Import subscriber's p256dh key
   const subscriberPubBytes = base64ToUint8Array(p256dhKey);
   const subscriberPubKey = await crypto.subtle.importKey(
@@ -139,7 +140,7 @@ async function encryptPayload(
     false,
     []
   );
-  
+
   // ECDH shared secret
   const sharedSecret = new Uint8Array(
     await crypto.subtle.deriveBits(
@@ -148,24 +149,24 @@ async function encryptPayload(
       256
     )
   );
-  
+
   // Auth secret
   const authSecretBytes = base64ToUint8Array(authSecret);
-  
+
   // Generate 16-byte salt
   const salt = crypto.getRandomValues(new Uint8Array(16));
-  
+
   // HKDF for IKM (info = "WebPush: info\0" + recipient_pub + sender_pub)
   const infoIkm = new Uint8Array([
     ...new TextEncoder().encode('WebPush: info\0'),
     ...subscriberPubBytes,
     ...localPublicKeyRaw,
   ]);
-  
+
   const ikmKey = await crypto.subtle.importKey(
     'raw', sharedSecret, { name: 'HKDF' }, false, ['deriveBits']
   );
-  
+
   const ikm = new Uint8Array(
     await crypto.subtle.deriveBits(
       { name: 'HKDF', hash: 'SHA-256', salt: authSecretBytes.buffer as ArrayBuffer, info: infoIkm },
@@ -173,12 +174,12 @@ async function encryptPayload(
       256
     )
   );
-  
+
   // PRK from salt and IKM
   const prkKey = await crypto.subtle.importKey(
     'raw', ikm, { name: 'HKDF' }, false, ['deriveBits']
   );
-  
+
   // Content encryption key (CEK)
   const cekInfo = new TextEncoder().encode('Content-Encoding: aes128gcm\0');
   const cek = new Uint8Array(
@@ -188,7 +189,7 @@ async function encryptPayload(
       128
     )
   );
-  
+
   // Nonce
   const nonceInfo = new TextEncoder().encode('Content-Encoding: nonce\0');
   const nonce = new Uint8Array(
@@ -198,17 +199,17 @@ async function encryptPayload(
       96
     )
   );
-  
+
   // Pad payload (add delimiter byte 0x02 + no padding)
   const paddedPayload = new Uint8Array(payloadBytes.length + 1);
   paddedPayload.set(payloadBytes);
   paddedPayload[payloadBytes.length] = 2; // delimiter
-  
+
   // AES-128-GCM encrypt
   const aesKey = await crypto.subtle.importKey(
     'raw', cek, { name: 'AES-GCM' }, false, ['encrypt']
   );
-  
+
   const encrypted = new Uint8Array(
     await crypto.subtle.encrypt(
       { name: 'AES-GCM', iv: nonce },
@@ -216,11 +217,11 @@ async function encryptPayload(
       paddedPayload
     )
   );
-  
+
   // Build aes128gcm body: salt(16) + rs(4) + idlen(1) + keyid(65) + encrypted
   const recordSize = new Uint8Array(4);
   new DataView(recordSize.buffer).setUint32(0, 4096, false);
-  
+
   const body = new Uint8Array(
     16 + 4 + 1 + localPublicKeyRaw.length + encrypted.length
   );
@@ -230,7 +231,7 @@ async function encryptPayload(
   body[offset] = localPublicKeyRaw.length; offset += 1;
   body.set(localPublicKeyRaw, offset); offset += localPublicKeyRaw.length;
   body.set(encrypted, offset);
-  
+
   return { body, salt, localPublicKey: localPublicKeyRaw };
 }
 
@@ -255,17 +256,17 @@ async function sendWebPush(
     // Parse endpoint URL to get audience
     const endpointUrl = new URL(subscription.endpoint);
     const audience = `${endpointUrl.protocol}//${endpointUrl.host}`;
-    
+
     // Create VAPID auth header
     const vapidHeaders = await createVapidAuthHeader(
       audience, vapidSubject, vapidPublicKey, vapidPrivateKey
     );
-    
+
     // Encrypt payload
     const encrypted = await encryptPayload(
       payload, subscription.p256dh_key, subscription.auth_key
     );
-    
+
     // Send to push service
     const response = await fetch(subscription.endpoint, {
       method: 'POST',
@@ -278,7 +279,7 @@ async function sendWebPush(
       },
       body: encrypted.body as unknown as BodyInit,
     });
-    
+
     if (response.status === 201 || response.status === 200) {
       return { success: true, status: response.status };
     } else {
@@ -291,9 +292,9 @@ async function sendWebPush(
 }
 
 // ── Main handler ──────────────────────────────────────────────────────
-serve(async (req) => {
+serve(withSafeHandler("send-push-notification", async (req) => {
   console.log('🚀 Function called with method:', req.method);
-  
+
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
   }
@@ -320,9 +321,9 @@ serve(async (req) => {
 
   try {
     const body = await req.json();
-    console.log('📦 Request:', JSON.stringify({ 
-      user_id: body.user_id, title: body.title, 
-      from_trigger: body.from_trigger, test: body.test 
+    console.log('📦 Request:', JSON.stringify({
+      user_id: body.user_id, title: body.title,
+      from_trigger: body.from_trigger, test: body.test
     }));
 
     const supabaseAdmin = createClient(
@@ -337,7 +338,7 @@ serve(async (req) => {
     // ── TEST REQUEST ────────────────────────────────────────────────
     if (isTestRequest) {
       console.log('🧪 Processing TEST request...');
-      
+
       const { data: subscriptions, error } = await supabaseAdmin
         .from('push_subscriptions').select('*').eq('is_active', true);
 
@@ -374,22 +375,22 @@ serve(async (req) => {
     const vapidPublicKey = Deno.env.get('VAPID_PUBLIC_KEY');
     const vapidPrivateKeyB64 = Deno.env.get('VAPID_PRIVATE_KEY');
     let vapidSubject = Deno.env.get('VAPID_SUBJECT');
-    
+
     if (vapidSubject && !vapidSubject.startsWith('mailto:') && !vapidSubject.startsWith('http')) {
       vapidSubject = `mailto:${vapidSubject}`;
     }
-    
+
     if (!vapidPublicKey || !vapidPrivateKeyB64 || !vapidSubject) {
       console.error('❌ Missing VAPID configuration');
       return new Response(JSON.stringify({ success: false, error: 'VAPID configuration missing' }), {
         status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' }
       });
     }
-    
+
     // Import VAPID private key
     const vapidPrivateKey = await importVapidKeys(vapidPublicKey, vapidPrivateKeyB64);
     console.log('✅ VAPID keys imported via WebCrypto');
-    
+
     // Query subscriptions (filter by user if specified)
     let query = supabaseAdmin
       .from('push_subscriptions').select('*').eq('is_active', true);
@@ -416,7 +417,7 @@ serve(async (req) => {
     }
 
     console.log(`📋 Found ${subscriptions.length} subscriptions`);
-    
+
     const notificationPayload = JSON.stringify({
       title: body.title || 'Neue Benachrichtigung 🔔',
       body: body.message || 'Sie haben eine neue Benachrichtigung erhalten.',
@@ -427,21 +428,21 @@ serve(async (req) => {
       requireInteraction: false,
       silent: false
     });
-    
+
     let sentCount = 0;
     let failedCount = 0;
-    
+
     for (const sub of subscriptions) {
       console.log(`📤 Sending to user ${sub.user_id}...`);
-      
+
       const result = await sendWebPush(
         sub, notificationPayload, vapidPublicKey, vapidPrivateKey, vapidSubject
       );
-      
+
       if (result.success) {
         sentCount++;
         console.log(`✅ Push sent (status ${result.status})`);
-        
+
         // Only create DB notification if NOT from trigger (avoid loop)
         if (!isFromTrigger && sub.user_id) {
           await supabaseAdmin.from('notifications').insert({
@@ -456,7 +457,7 @@ serve(async (req) => {
       } else {
         failedCount++;
         console.error(`❌ Push failed (status ${result.status}): ${result.error}`);
-        
+
         // Deactivate invalid subscriptions
         if (result.status === 410 || result.status === 404) {
           console.log(`🗑️ Marking subscription inactive`);
@@ -467,9 +468,9 @@ serve(async (req) => {
         }
       }
     }
-    
+
     console.log(`📊 Results: ${sentCount} sent, ${failedCount} failed`);
-    
+
     return new Response(JSON.stringify({
       success: true, sent: sentCount, failed: failedCount,
       total_subscriptions: subscriptions.length,
@@ -488,4 +489,4 @@ serve(async (req) => {
       status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' }
     });
   }
-});
+}));

@@ -2,6 +2,7 @@ import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { Resend } from "https://esm.sh/resend@4.0.0";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.52.0";
 
+import { withSafeHandler } from "../_shared/security.ts";
 const resend = new Resend(Deno.env.get("RESEND_API_KEY"));
 
 const corsHeaders = {
@@ -60,7 +61,7 @@ const handler = async (req: Request): Promise<Response> => {
       throw creatorError;
     }
 
-    const creatorName = Array.isArray(creator.profiles) 
+    const creatorName = Array.isArray(creator.profiles)
       ? (creator.profiles[0] as any)?.display_name || 'Unbekannt'
       : (creator.profiles as any)?.display_name || 'Unbekannt';
 
@@ -77,7 +78,7 @@ const handler = async (req: Request): Promise<Response> => {
           <p>Mit freundlichen Grüßen,<br>${creatorName}</p>
         `;
         break;
-      
+
       case 'poll_updated':
         emailSubject = `Terminabstimmung aktualisiert: ${poll.title}`;
         emailHtml = `
@@ -88,7 +89,7 @@ const handler = async (req: Request): Promise<Response> => {
           <p>Mit freundlichen Grüßen,<br>${creatorName}</p>
         `;
         break;
-      
+
       case 'poll_deleted':
         emailSubject = `Terminabstimmung abgesagt: ${poll.title}`;
         emailHtml = `
@@ -98,7 +99,7 @@ const handler = async (req: Request): Promise<Response> => {
           <p>Mit freundlichen Grüßen,<br>${creatorName}</p>
         `;
         break;
-      
+
       case 'deadline_reminder':
         emailSubject = `Erinnerung: Terminabstimmung läuft ab - ${poll.title}`;
         emailHtml = `
@@ -112,7 +113,7 @@ const handler = async (req: Request): Promise<Response> => {
 
     // Send emails to specified participants or all external participants
     let targetEmails = participantEmails;
-    
+
     if (!targetEmails) {
       // Get all external participants
       const { data: participants, error: participantsError } = await supabase
@@ -120,12 +121,12 @@ const handler = async (req: Request): Promise<Response> => {
         .select('email')
         .eq('poll_id', pollId)
         .eq('is_external', true);
-      
+
       if (participantsError) {
         console.error('Error fetching participants:', participantsError);
         throw participantsError;
       }
-      
+
       targetEmails = participants.map(p => p.email);
     }
 
@@ -142,7 +143,7 @@ const handler = async (req: Request): Promise<Response> => {
         return { email, success: true, response: emailResponse };
       } catch (error) {
         console.error(`Error sending email to ${email}:`, error);
-        return { email, success: false, error: error instanceof Error ? error.message : String(error) };
+        return { email, success: false, error: 'Delivery failed' };
       }
     });
 
@@ -177,4 +178,4 @@ const handler = async (req: Request): Promise<Response> => {
   }
 };
 
-serve(handler);
+serve(withSafeHandler("send-poll-notifications", handler));

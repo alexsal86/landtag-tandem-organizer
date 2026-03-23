@@ -2,6 +2,7 @@ import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.39.3";
 import { Resend } from "npm:resend@2.0.0";
 
+import { withSafeHandler } from "../_shared/security.ts";
 const resend = new Resend(Deno.env.get("RESEND_API_KEY"));
 
 const corsHeaders = {
@@ -24,7 +25,7 @@ interface SendNewsEmailRequest {
   personalMessage?: string;
 }
 
-serve(async (req: Request): Promise<Response> => {
+serve(withSafeHandler("send-news-email", async (req: Request): Promise<Response> => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
   }
@@ -204,4 +205,4 @@ serve(async (req: Request): Promise<Response> => {
       }
     );
   }
-});
+}));

@@ -1,12 +1,13 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
+import { withSafeHandler } from "../_shared/security.ts";
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
-serve(async (req) => {
+serve(withSafeHandler("reset-user-mfa", async (req) => {
   // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
@@ -32,7 +33,7 @@ serve(async (req) => {
     // Verify the requesting user is an admin
     const token = authHeader.replace('Bearer ', '');
     const { data: { user: requestingUser }, error: authError } = await supabaseAdmin.auth.getUser(token);
-    
+
     if (authError || !requestingUser) {
       throw new Error('Unauthorized');
     }
@@ -56,7 +57,7 @@ serve(async (req) => {
 
     // Get user's MFA factors
     const { data: { user }, error: getUserError } = await supabaseAdmin.auth.admin.getUserById(userId);
-    
+
     if (getUserError || !user) {
       throw new Error('User not found');
     }
@@ -64,7 +65,7 @@ serve(async (req) => {
     // Note: Direct MFA reset via admin SDK is not available in current Supabase version
     // This would need to be implemented via direct database access or custom SQL
     // For now, we'll log the request and provide instructions
-    
+
     // Create an audit log entry
     const { error: auditError } = await supabaseAdmin.from('admin_audit_log').insert({
       admin_id: requestingUser.id,
@@ -118,4 +119,4 @@ serve(async (req) => {
       }
     );
   }
-});
+}));

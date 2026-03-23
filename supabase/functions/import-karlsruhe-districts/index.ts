@@ -1,6 +1,7 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.39.3";
 
+import { withSafeHandler } from "../_shared/security.ts";
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
@@ -40,7 +41,7 @@ function calculateCentroid(coordinates: number[][][]): { lat: number; lng: numbe
 
   // Use first polygon if MultiPolygon
   const polygon = coordinates[0];
-  
+
   for (const [lng, lat] of polygon) {
     sumLat += lat;
     sumLng += lng;
@@ -53,7 +54,7 @@ function calculateCentroid(coordinates: number[][][]): { lat: number; lng: numbe
   };
 }
 
-serve(async (req) => {
+serve(withSafeHandler("import-karlsruhe-districts", async (req) => {
   // Handle CORS
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
@@ -66,7 +67,7 @@ serve(async (req) => {
     );
 
     console.log('Fetching GeoJSON from GitHub raw content...');
-    
+
     // Fetch the GeoJSON file from GitHub raw content
     const geoJsonUrl = `https://raw.githubusercontent.com/alexsal86/landtagsos/main/public/data/karlsruhe-stadtteile.geojson`;
     const response = await fetch(geoJsonUrl, {
@@ -75,7 +76,7 @@ serve(async (req) => {
         'User-Agent': 'Supabase-Edge-Function'
       }
     });
-    
+
     if (!response.ok) {
       console.error('Failed to fetch GeoJSON:', response.status, response.statusText);
       throw new Error(`Failed to fetch GeoJSON: ${response.status} ${response.statusText}`);
@@ -178,4 +179,4 @@ serve(async (req) => {
       }
     );
   }
-});
+}));

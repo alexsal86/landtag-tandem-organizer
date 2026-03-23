@@ -2,6 +2,7 @@ import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 import { buildExternalFeedErrorMessage, parseICSForValidation } from './ics-validation.utils.ts'
 
+import { withSafeHandler } from "../_shared/security.ts";
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
@@ -120,19 +121,19 @@ export const handler = async (req: Request) => {
 
     // Generate recommendations
     const recommendations: string[] = [];
-    
+
     if (missingInDb > 0) {
       recommendations.push(`${missingInDb} events from ICS are missing in database - consider full re-sync`);
     }
-    
+
     if (extraInDb > 0) {
       recommendations.push(`${extraInDb} events in database not found in ICS - may be outdated`);
     }
-    
+
     if (icsEvents.length >= (calendarConfig.max_events || 5000)) {
       recommendations.push('Event limit may have been reached - increase max_events');
     }
-    
+
     if (Math.abs(icsEvents.length - dbEvents.length) / Math.max(icsEvents.length, 1) > 0.1) {
       recommendations.push('Significant discrepancy detected - manual investigation needed');
     }
@@ -163,14 +164,14 @@ export const handler = async (req: Request) => {
     console.error('❌ Validation error:', error);
     return new Response(
       JSON.stringify({ error: buildExternalFeedErrorMessage(error) }),
-      { 
+      {
         status: error instanceof Error && /timeout/i.test(error.message) ? 504 : 502,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
       }
     );
   }
 };
 
 if (import.meta.main) {
-  serve(handler);
+  serve(withSafeHandler("ics-validation", handler));
 }

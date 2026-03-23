@@ -1,12 +1,13 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 
+import { withSafeHandler } from "../_shared/security.ts";
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 }
 
-serve(async (req) => {
+serve(withSafeHandler("create-demo-users", async (req) => {
   // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
@@ -34,9 +35,9 @@ serve(async (req) => {
       console.error('Authentication error:', userError)
       return new Response(
         JSON.stringify({ error: 'Unauthorized' }),
-        { 
-          status: 401, 
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+        {
+          status: 401,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
         }
       )
     }
@@ -51,9 +52,9 @@ serve(async (req) => {
       console.error('Role check error:', roleError)
       return new Response(
         JSON.stringify({ error: 'Error checking user permissions' }),
-        { 
-          status: 500, 
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+        {
+          status: 500,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
         }
       )
     }
@@ -62,9 +63,9 @@ serve(async (req) => {
     if (!hasAdminRole) {
       return new Response(
         JSON.stringify({ error: 'Insufficient permissions' }),
-        { 
-          status: 403, 
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+        {
+          status: 403,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
         }
       )
     }
@@ -80,9 +81,9 @@ serve(async (req) => {
       console.error('Tenant error:', tenantError)
       return new Response(
         JSON.stringify({ error: 'Büro Erwin not found' }),
-        { 
-          status: 404, 
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+        {
+          status: 404,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
         }
       )
     }
@@ -97,13 +98,13 @@ serve(async (req) => {
         role: 'bueroleitung'
       },
       {
-        email: 'thomas.weber@buero-erwin.de', 
+        email: 'thomas.weber@buero-erwin.de',
         displayName: 'Thomas Weber',
         role: 'mitarbeiter'
       },
       {
         email: 'sarah.klein@buero-erwin.de',
-        displayName: 'Sarah Klein', 
+        displayName: 'Sarah Klein',
         role: 'mitarbeiter'
       },
       {
@@ -117,7 +118,7 @@ serve(async (req) => {
 
     for (const demoUser of demoUsers) {
       const password = generatePassword()
-      
+
       // Create user via Supabase Admin API
       const { data: newUser, error: createError } = await supabaseAdmin.auth.admin.createUser({
         email: demoUser.email,
@@ -194,13 +195,13 @@ serve(async (req) => {
     }
 
     return new Response(
-      JSON.stringify({ 
+      JSON.stringify({
         success: true,
         message: `${createdUsers.length} Demo-Benutzer erfolgreich erstellt`,
         users: createdUsers
       }),
-      { 
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+      {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
       }
     )
 
@@ -208,9 +209,9 @@ serve(async (req) => {
     console.error('Function error:', error)
     return new Response(
       JSON.stringify({ error: 'Internal server error' }),
-      { 
-        status: 500, 
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+      {
+        status: 500,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
       }
     )
   }

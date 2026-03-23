@@ -4,6 +4,7 @@ import { requireAppBaseUrl } from "../_shared/url.ts";
 import { createServiceRoleClient } from "../_shared/supabase.ts";
 import { requireTenantAccess } from "../_shared/tenant-access.ts";
 
+import { withSafeHandler } from "../_shared/security.ts";
 const resend = new Resend(Deno.env.get("RESEND_API_KEY"));
 
 const corsHeaders = {
@@ -40,11 +41,11 @@ const handler = async (req: Request): Promise<Response> => {
 
     const effectiveTenantId = tenantAccess.tenantId;
 
-    const { 
-      decisionId, 
+    const {
+      decisionId,
       taskId,
-      participantIds, 
-      decisionTitle, 
+      participantIds,
+      decisionTitle,
       decisionDescription
     }: DecisionEmailRequest = await req.json();
 
@@ -131,7 +132,7 @@ const handler = async (req: Request): Promise<Response> => {
         .select('display_name')
         .eq('user_id', creatorUserId)
         .maybeSingle();
-      
+
       creatorName = creatorProfile?.display_name || 'Ein Teammitglied';
     }
 
@@ -185,7 +186,7 @@ const handler = async (req: Request): Promise<Response> => {
 
         // Get user email from auth.users (we need service role for this)
         const { data: authUserData, error: authError } = await supabase.auth.admin.getUserById(participantId);
-        
+
         if (authError || !authUserData.user?.email) {
           console.error("Error getting user email:", authError);
           emailResults.push({ participantId, success: false, error: "E-Mail-Adresse nicht gefunden" });
@@ -198,7 +199,7 @@ const handler = async (req: Request): Promise<Response> => {
 
         // Get current domain dynamically
         const domain = requireAppBaseUrl(req);
-        
+
         // Generate response URLs
         const baseUrl = `${domain}/decision-response/${participant.id}?token=${participantToken}`;
         const yesUrl = `${baseUrl}&response=yes`;
@@ -240,7 +241,7 @@ const handler = async (req: Request): Promise<Response> => {
           emailTemplate.details_block_template || 'Aufgabe: {task_title}\nEntscheidung: {decision_title}'
         );
         const detailsBlockHtml = toHtmlWithLineBreaks(detailsBlockTemplate);
-        
+
         // Send decision email with customized template
         const emailResponse = await resend.emails.send({
           from: "Entscheidungsanfrage <noreply@alexander-salomon.de>",
@@ -249,45 +250,45 @@ const handler = async (req: Request): Promise<Response> => {
           html: `
             <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
               <h1 style="color: #333; font-size: 24px; margin-bottom: 20px;">${subject}</h1>
-              
+
               <p style="color: #666; font-size: 16px; margin-bottom: 16px;">${greeting}</p>
-              
+
               <p style="color: #666; font-size: 16px; margin-bottom: 20px;">
                 ${introduction}
               </p>
-              
+
               <div style="background: #f8f9fa; border-left: 4px solid #3b82f6; padding: 16px; margin: 20px 0; border-radius: 4px;">
                 <p style="margin: 0; color: #333; font-size: 15px; line-height: 1.5;">${detailsBlockHtml}</p>
               </div>
-              
+
               <p style="color: #666; font-size: 16px; margin-bottom: 20px;">
                 ${instruction}
               </p>
               <div style="text-align: center; margin: 30px 0;">
-                <a href="${yesUrl}" 
+                <a href="${yesUrl}"
                    style="background: #22c55e; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; font-weight: bold; display: inline-block; margin: 0 5px; box-shadow: 0 2px 4px rgba(34, 197, 94, 0.2);">
                   ✓ Ja
                 </a>
-                <a href="${questionUrl}" 
+                <a href="${questionUrl}"
                    style="background: #f59e0b; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; font-weight: bold; display: inline-block; margin: 0 5px; box-shadow: 0 2px 4px rgba(245, 158, 11, 0.2);">
                   ? Frage
                 </a>
-                <a href="${noUrl}" 
+                <a href="${noUrl}"
                    style="background: #ef4444; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; font-weight: bold; display: inline-block; margin: 0 5px; box-shadow: 0 2px 4px rgba(239, 68, 68, 0.2);">
                   ✗ Nein
                 </a>
               </div>
-              
+
               <div style="background: #fafafa; padding: 16px; border-radius: 4px; margin: 20px 0;">
                 <p style="color: #666; font-size: 14px; margin: 0; font-style: italic;">
                   ${questionPrompt}
                 </p>
               </div>
-              
+
               <p style="color: #666; font-size: 16px; margin-bottom: 10px;">
                 ${closing}
               </p>
-              
+
               <p style="color: #666; font-size: 16px; font-weight: 500;">
                 ${signature}
               </p>
@@ -302,15 +303,15 @@ const handler = async (req: Request): Promise<Response> => {
         if (emailResponse.error) {
           console.error("Email send error:", emailResponse.error);
           const errorMessage = emailResponse.error.toString();
-          const isTestModeError = errorMessage.includes('testing emails') || 
+          const isTestModeError = errorMessage.includes('testing emails') ||
                                  errorMessage.includes('verify a domain') ||
                                  errorMessage.includes('Domain not found');
-          
+
           if (isTestModeError) {
-            emailResults.push({ 
-              participantId, 
-              success: false, 
-              error: "Domain nicht verifiziert - E-Mails können nur an verifizierte Adressen gesendet werden" 
+            emailResults.push({
+              participantId,
+              success: false,
+              error: "Domain nicht verifiziert - E-Mails können nur an verifizierte Adressen gesendet werden"
             });
           } else {
             emailResults.push({ participantId, success: false, error: errorMessage });
@@ -333,8 +334,8 @@ const handler = async (req: Request): Promise<Response> => {
     console.log("=== END SUMMARY ===");
 
     return new Response(
-      JSON.stringify({ 
-        success: successCount > 0, 
+      JSON.stringify({
+        success: successCount > 0,
         message: `${successCount}/${emailResults.length} E-Mails erfolgreich versendet`,
         results: emailResults
       }),
@@ -350,9 +351,8 @@ const handler = async (req: Request): Promise<Response> => {
   } catch (error: any) {
     console.error("Error in send-decision-email function:", error);
     return new Response(
-      JSON.stringify({ 
-        error: error.message,
-        stack: error.stack,
+      JSON.stringify({
+        error: { code: 'internal_error', message: 'Internal server error' },
         success: false,
         message: "Fehler beim E-Mail-Versand"
       }),
@@ -364,4 +364,4 @@ const handler = async (req: Request): Promise<Response> => {
   }
 };
 
-serve(handler);
+serve(withSafeHandler("send-decision-email", handler));

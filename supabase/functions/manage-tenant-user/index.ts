@@ -1,6 +1,7 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.52.0';
 
+import { withSafeHandler } from "../_shared/security.ts";
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version',
@@ -73,7 +74,7 @@ async function logAdminAction(
   }
 }
 
-serve(async (req) => {
+serve(withSafeHandler("manage-tenant-user", async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response('ok', { headers: corsHeaders });
   }
@@ -92,7 +93,7 @@ serve(async (req) => {
 
     const token = authHeader.replace('Bearer ', '');
     const { data: { user }, error: authError } = await supabaseAdmin.auth.getUser(token);
-    
+
     if (authError || !user) {
       console.error('Auth error:', authError);
       throw new Error('Authentication failed');
@@ -167,7 +168,7 @@ serve(async (req) => {
         const users = authUsers.users.map(authUser => {
           const profile = profiles?.find(p => p.user_id === authUser.id);
           const userMemberships = memberships?.filter(m => m.user_id === authUser.id) || [];
-          
+
           return {
             id: authUser.id,
             email: authUser.email,
@@ -262,14 +263,14 @@ serve(async (req) => {
 
         return new Response(JSON.stringify({
           success: true,
-          user: { 
-            id: newUser.user.id, 
-            email, 
-            display_name: displayName, 
-            password 
+          user: {
+            id: newUser.user.id,
+            email,
+            display_name: displayName,
+            password
           }
-        }), { 
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+        }), {
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
         });
       }
 
@@ -341,7 +342,7 @@ serve(async (req) => {
           throw new Error('userId and tenantId are required');
         }
 
-        const canRemove = isPlatformAdmin || 
+        const canRemove = isPlatformAdmin ||
           (isAbgeordneter && callerMembership?.tenant_id === tenantId);
 
         if (!canRemove) {
@@ -431,7 +432,7 @@ serve(async (req) => {
           throw new Error('userId, tenantId, and role are required');
         }
 
-        const canUpdate = isPlatformAdmin || 
+        const canUpdate = isPlatformAdmin ||
           (isAbgeordneter && callerMembership?.tenant_id === tenantId);
 
         if (!canUpdate) {
@@ -528,7 +529,7 @@ serve(async (req) => {
     const safeMessage = error instanceof HttpError
       ? error.message
       : 'Internal server error';
-    return new Response(JSON.stringify({ 
+    return new Response(JSON.stringify({
       success: false,
       error: safeMessage,
     }), {
@@ -536,4 +537,4 @@ serve(async (req) => {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });
   }
-});
+}));

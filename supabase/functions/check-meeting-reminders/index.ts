@@ -208,28 +208,28 @@ serve(withSafeHandler("check-meeting-reminders", async (req: Request) => {
 
     // ============ 5. AUTOMATISCHE POLL-STATUS-UPDATES ============
     console.log("Running automatic poll status updates...");
-    
+
     const { error: pollUpdateError } = await supabase.rpc('auto_update_poll_status');
-    
+
     if (pollUpdateError) {
       console.error('Poll status update failed:', pollUpdateError);
     } else {
       console.log('Poll status updates completed successfully');
-      
+
       // Get polls that changed status in the last 24 hours
       const oneDayAgo = new Date(today);
       oneDayAgo.setDate(today.getDate() - 1);
-      
+
       const { data: statusChangedPolls } = await supabase
         .from('appointment_polls')
         .select('id, title, user_id, status')
         .in('status', ['completed', 'cancelled'])
         .gte('updated_at', oneDayAgo.toISOString());
-      
+
       // Send notifications for status changes
       if (statusChangedPolls && statusChangedPolls.length > 0) {
         console.log(`Found ${statusChangedPolls.length} polls with recent status changes`);
-        
+
         for (const poll of statusChangedPolls) {
           if (poll.status === 'completed') {
             await supabase.rpc('create_notification', {

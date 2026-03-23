@@ -17,7 +17,10 @@ const CONTROLLED_CORS_PATTERNS = [/ALLOWED_ORIGINS/, /allowedOrigins/, /req\.hea
 const UNSAFE_ERROR_PATTERNS = [
   /JSON\.stringify\(\s*\{[^}]*\b(error|details?)\s*:\s*(error|err)\.(message|stack)/s,
   /return\s+new\s+Response\([^)]*(error|err)\.(message|stack)/s,
+  /\b(error|details?|message)\s*:\s*error\s+instanceof\s+Error\s*\?\s*error\.message/s,
+  /\b(error|details?|message)\s*:\s*err\s+instanceof\s+Error\s*\?\s*err\.message/s,
 ];
+const SAFE_HANDLER_PATTERNS = [/withSafeHandler\s*\(/, /createSafeHandler\s*\(/, /safeHandler\s*\(/];
 
 function readText(filePath) {
   return fs.readFileSync(filePath, 'utf8');
@@ -58,7 +61,7 @@ function parseMatrix(matrixContent) {
     const cols = row.split('|').map((c) => c.trim());
     if (cols.length < 5) continue;
     const [name, verifyRaw, category, extra] = cols.slice(1, 5);
-    if (name === 'Function') continue;
+    if (name === 'Function' || /^-+$/.test(name)) continue;
     if (verifyRaw !== 'true' && verifyRaw !== 'false') {
       throw new Error(`Invalid verify_jwt value in matrix for ${name}: ${verifyRaw}`);
     }
@@ -171,6 +174,10 @@ export function auditSecurity({ repoRoot = process.cwd(), functionsRoot, configP
 
     if (hasPattern(content, UNSAFE_ERROR_PATTERNS)) {
       pushFinding(findings, whitelist, fnName, 'unsafe-error-response', `${fnName} appears to leak raw error details in response payload`);
+    }
+
+    if (!hasPattern(content, SAFE_HANDLER_PATTERNS)) {
+      pushFinding(findings, whitelist, fnName, 'missing-safe-handler', `${fnName} does not appear to use withSafeHandler or an equivalent safe wrapper`);
     }
 
     if (!matrix) continue;

@@ -1,6 +1,7 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 
+import { withSafeHandler } from "../_shared/security.ts";
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
@@ -40,7 +41,7 @@ interface SessionEvent {
   notes?: string;
 }
 
-serve(async (req) => {
+serve(withSafeHandler("analyze-parliament-protocol", async (req) => {
   // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
@@ -63,7 +64,7 @@ serve(async (req) => {
     // Update status to processing
     await supabaseClient
       .from('parliament_protocols')
-      .update({ 
+      .update({
         processing_status: 'processing',
         updated_at: new Date().toISOString()
       })
@@ -96,7 +97,7 @@ serve(async (req) => {
     } else {
       // Fallback: Server-side analysis (legacy approach)
       console.log('No structured data provided, performing server-side analysis...');
-      
+
       const { data: protocol, error: protocolError } = await supabaseClient
         .from('parliament_protocols')
         .select('*')
@@ -144,8 +145,8 @@ serve(async (req) => {
     console.log(`Analysis completed for protocol: ${protocolId}`);
 
     return new Response(
-      JSON.stringify({ 
-        success: true, 
+      JSON.stringify({
+        success: true,
         protocolId,
         stats: {
           agendaItems: finalStructuredData.agenda_items.length,
@@ -175,7 +176,7 @@ serve(async (req) => {
           Deno.env.get('SUPABASE_URL') ?? '',
           Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
         );
-        
+
         await supabaseClient
           .from('parliament_protocols')
           .update({
@@ -184,7 +185,7 @@ serve(async (req) => {
             updated_at: new Date().toISOString()
           })
           .eq('id', protocolIdFromError);
-          
+
         console.log(`Updated protocol ${protocolIdFromError} with error status`);
       } catch (updateError) {
         console.error('Failed to update error status:', updateError);
@@ -192,12 +193,12 @@ serve(async (req) => {
     }
 
     return new Response(
-      JSON.stringify({ 
-        error: error instanceof Error ? error.message : String(error),
+      JSON.stringify({
+        error: { code: 'internal_error', message: 'Internal server error' },
         protocolId: protocolIdFromError,
         timestamp: new Date().toISOString()
       }),
-      { 
+      {
         status: 500,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' }
       }
@@ -213,7 +214,7 @@ async function extractTextFromPDF(pdfData: Blob): Promise<string> {
     // Try to read as text if it's a simple PDF
     const arrayBuffer = await pdfData.arrayBuffer();
     const uint8Array = new Uint8Array(arrayBuffer);
-    
+
     // Basic text extraction attempt
     let text = '';
     for (let i = 0; i < uint8Array.length; i++) {
@@ -222,13 +223,13 @@ async function extractTextFromPDF(pdfData: Blob): Promise<string> {
         text += char;
       }
     }
-    
+
     // Clean up the text
     text = text
       .replace(/\s+/g, ' ')
       .replace(/(.)\1{3,}/g, '$1')  // Remove repeated characters
       .trim();
-    
+
     if (text.length > 100) {
       console.log(`Extracted ${text.length} characters using fallback method`);
       return text;
@@ -236,7 +237,7 @@ async function extractTextFromPDF(pdfData: Blob): Promise<string> {
   } catch (error) {
     console.warn('Fallback text extraction failed:', error);
   }
-  
+
   // Ultimate fallback - return empty text
   console.warn('PDF text extraction failed completely - frontend analysis should have provided the data');
   return '';
@@ -255,24 +256,24 @@ function parseParliamentProtocol(text: string): ProtocolStructure {
   const patterns = {
     // Agenda items: "1. Topic" or "1.1 Subtopic"
     agendaItem: /^(\d+(?:\.\d+)?)\.\s+(.+)$/,
-    
+
     // Speeches: "Abg. Name (PARTY):" or "Ministerpräsident Name:"
     speaker: /^(?:Abg\.|Ministerpräsident|Minister|Staatssekretär)\s+(.+?)\s*(?:\(([^)]+)\))?\s*:/,
-    
+
     // Times: "09:30 Uhr" or "9:30 Uhr"
     time: /(\d{1,2}):(\d{2})\s*Uhr/,
-    
+
     // Session events
     sessionStart: /Sitzungsbeginn|Eröffnung.*Sitzung/i,
     sessionEnd: /Ende.*Sitzung|Sitzungsende/i,
     sessionBreak: /Unterbrechung|Pause/i,
     sessionResume: /Fortsetzung|Wiederaufnahme/i,
-    
+
     // Interjections and reactions
     interjection: /\(([^)]+)\)/,
     applause: /\(Beifall/i,
     objection: /\(Zuruf/i,
-    
+
     // Page markers
     pageMarker: /^Seite\s+(\d+)$/
   };
@@ -298,7 +299,7 @@ function parseParliamentProtocol(text: string): ProtocolStructure {
     if (agendaMatch) {
       currentAgendaItem = agendaMatch[1];
       const title = agendaMatch[2];
-      
+
       // Get description from next lines
       let description = '';
       for (let j = i + 1; j < Math.min(i + 3, lines.length); j++) {
@@ -324,7 +325,7 @@ function parseParliamentProtocol(text: string): ProtocolStructure {
     const timeMatch = line.match(patterns.time);
     if (timeMatch) {
       lastTime = `${timeMatch[1].padStart(2, '0')}:${timeMatch[2]}`;
-      
+
       // Check for session events
       if (patterns.sessionStart.test(line)) {
         sessions.push({
@@ -387,7 +388,7 @@ function parseParliamentProtocol(text: string): ProtocolStructure {
       if (interjectionMatch) {
         const content = interjectionMatch[1];
         let speechType = 'interjection';
-        
+
         if (patterns.applause.test(content)) {
           speechType = 'applause';
         } else if (patterns.objection.test(content)) {
@@ -450,7 +451,7 @@ function mapItemType(type: string): string {
 function convertToTimestamp(time: string): string {
   if (!time) return new Date().toISOString();
   if (time.includes('T')) return time;
-  
+
   const currentDate = new Date().toISOString().split('T')[0];
   return `${currentDate}T${time}`;
 }
@@ -474,11 +475,11 @@ async function saveStructuredData(supabase: any, protocolId: string, data: Proto
       ...item,
       protocol_id: protocolId
     }));
-    
+
     const { error: agendaError } = await supabase
       .from('protocol_agenda_items')
       .insert(agendaItemsWithProtocolId);
-    
+
     if (agendaError) {
       console.error('Error inserting agenda items:', agendaError);
     }
@@ -490,11 +491,11 @@ async function saveStructuredData(supabase: any, protocolId: string, data: Proto
       ...speech,
       protocol_id: protocolId
     }));
-    
+
     const { error: speechesError } = await supabase
       .from('protocol_speeches')
       .insert(speechesWithProtocolId);
-    
+
     if (speechesError) {
       console.error('Error inserting speeches:', speechesError);
     }
@@ -506,11 +507,11 @@ async function saveStructuredData(supabase: any, protocolId: string, data: Proto
       ...session,
       protocol_id: protocolId
     }));
-    
+
     const { error: sessionsError } = await supabase
       .from('protocol_sessions')
       .insert(sessionsWithProtocolId);
-    
+
     if (sessionsError) {
       console.error('Error inserting sessions:', sessionsError);
     }

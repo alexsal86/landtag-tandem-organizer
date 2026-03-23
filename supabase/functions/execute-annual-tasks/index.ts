@@ -1,5 +1,6 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { requireServiceRole, corsHeaders, forbiddenResponse } from "../_shared/security.ts";
+import { withSafeHandler } from "../_shared/security.ts";
 interface AnnualTask {
   id: string;
   tenant_id: string;
@@ -9,7 +10,7 @@ interface AnnualTask {
   due_day: number | null;
 }
 
-Deno.serve(async (req) => {
+Deno.serve(withSafeHandler("execute-annual-tasks", async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
   }
@@ -55,8 +56,8 @@ Deno.serve(async (req) => {
 
     for (const task of tasks as AnnualTask[]) {
       // Check if task is due today (if specific day is set) or first day of month
-      const isDueToday = task.due_day 
-        ? task.due_day === currentDay 
+      const isDueToday = task.due_day
+        ? task.due_day === currentDay
         : currentDay === 1;
 
       if (!isDueToday) {
@@ -151,4 +152,4 @@ Deno.serve(async (req) => {
       { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
   }
-});
+}));

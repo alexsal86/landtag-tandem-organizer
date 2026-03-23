@@ -1,6 +1,7 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { requireServiceRole, corsHeaders, forbiddenResponse } from "../_shared/security.ts";
 
+import { withSafeHandler } from "../_shared/security.ts";
 interface OverpassElement {
   type: string;
   id: number;
@@ -77,7 +78,7 @@ function convertToGeoJSON(element: OverpassElement): any {
   };
 }
 
-Deno.serve(async (req) => {
+Deno.serve(withSafeHandler("fetch-karlsruhe-districts", async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
   }
@@ -126,7 +127,7 @@ Deno.serve(async (req) => {
 
     for (const element of elements) {
       const name = element.tags?.name || element.tags?.['name:de'];
-      
+
       if (!name || seenNames.has(name)) {
         continue;
       }
@@ -189,4 +190,4 @@ Deno.serve(async (req) => {
       { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
   }
-});
+}));

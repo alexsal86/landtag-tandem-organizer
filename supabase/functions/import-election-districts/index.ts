@@ -1,6 +1,7 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.57.4'
 import proj4 from 'https://esm.sh/proj4@2.10.0'
 
+import { withSafeHandler } from "../_shared/security.ts";
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
@@ -10,7 +11,7 @@ const corsHeaders = {
 const epsg31467 = '+proj=tmerc +lat_0=0 +lon_0=9 +k=1 +x_0=3500000 +y_0=0 +ellps=bessel +towgs84=598.1,73.7,418.2,0.202,0.045,-2.455,6.7 +units=m +no_defs'
 const wgs84 = '+proj=longlat +datum=WGS84 +no_defs'
 
-Deno.serve(async (req) => {
+Deno.serve(withSafeHandler("import-election-districts", async (req) => {
   // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders })
@@ -57,7 +58,7 @@ Deno.serve(async (req) => {
           '../../../public/data/LTWahlkreise2021-BW.geojson',
           'public/data/LTWahlkreise2021-BW.geojson',
         ]
-        
+
         for (const path of paths) {
           try {
             geoJsonData = await Deno.readTextFile(path)
@@ -79,12 +80,12 @@ Deno.serve(async (req) => {
 
     // Transform and insert districts
     const districts = []
-    
+
     for (const feature of geoJson.features) {
       const props = feature.properties
       const districtNumber = parseInt(props.Nummer)
       const districtName = props["WK Name"]
-      
+
       if (!districtNumber || !districtName) {
         console.warn(`Skipping feature with missing data:`, props)
         continue
@@ -94,10 +95,10 @@ Deno.serve(async (req) => {
 
       // Transform geometry from EPSG:31467 to WGS84
       const transformedGeometry = transformGeometry(feature.geometry)
-      
+
       // Calculate centroid
       const centroid = calculateCentroid(transformedGeometry)
-      
+
       districts.push({
         district_number: districtNumber,
         district_name: districtName,
@@ -135,16 +136,16 @@ Deno.serve(async (req) => {
     console.log('Successfully imported election districts!')
 
     return new Response(
-      JSON.stringify({ 
-        success: true, 
+      JSON.stringify({
+        success: true,
         imported: districts.length,
-        districts: districts.map(d => ({ 
-          number: d.district_number, 
-          name: d.district_name 
+        districts: districts.map(d => ({
+          number: d.district_number,
+          name: d.district_name
         }))
       }),
-      { 
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+      {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
       }
     )
 
@@ -152,9 +153,9 @@ Deno.serve(async (req) => {
     console.error('Import failed:', error)
     return new Response(
       JSON.stringify({ error: 'Internal server error' }),
-      { 
-        status: 500, 
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+      {
+        status: 500,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
       }
     )
   }
@@ -187,7 +188,7 @@ function transformGeometry(geometry: any): any {
       )
     }
   }
-  
+
   return geometry
 }
 
@@ -195,24 +196,24 @@ function calculateCentroid(geometry: any): [number, number] {
   let totalArea = 0
   let centroidLon = 0
   let centroidLat = 0
-  
-  const coordinates = geometry.type === 'MultiPolygon' 
+
+  const coordinates = geometry.type === 'MultiPolygon'
     ? geometry.coordinates[0][0] // First polygon, first ring
     : geometry.coordinates[0] // First ring
-    
+
   for (let i = 0; i < coordinates.length - 1; i++) {
     const [x0, y0] = coordinates[i]
     const [x1, y1] = coordinates[i + 1]
-    
+
     const a = x0 * y1 - x1 * y0
     totalArea += a
     centroidLon += (x0 + x1) * a
     centroidLat += (y0 + y1) * a
   }
-  
+
   totalArea *= 0.5
   centroidLon /= (6 * totalArea)
   centroidLat /= (6 * totalArea)
-  
+
   return [centroidLon, centroidLat]
 }

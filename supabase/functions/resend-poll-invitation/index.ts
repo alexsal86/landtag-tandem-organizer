@@ -3,6 +3,7 @@ import { Resend } from "https://esm.sh/resend@4.0.0";
 import { requireAppBaseUrl } from "../_shared/url.ts";
 import { createServiceRoleClient } from "../_shared/supabase.ts";
 
+import { withSafeHandler } from "../_shared/security.ts";
 const resend = new Resend(Deno.env.get("RESEND_API_KEY"));
 
 const corsHeaders = {
@@ -69,12 +70,12 @@ const handler = async (req: Request): Promise<Response> => {
 
     // Get current domain dynamically
     const domain = requireAppBaseUrl(req);
-    
+
     // Internal users (no token) get a link to the poll page; external users get a token-based link
     const pollUrl = participant.token
       ? `${domain}/poll-guest/${pollId}?token=${participant.token}`
       : `${domain}/calendar`;
-    
+
     console.log("Sending email to:", participantEmail, "with URL:", pollUrl);
 
     // Send invitation email
@@ -97,7 +98,7 @@ const handler = async (req: Request): Promise<Response> => {
             Falls Sie noch nicht geantwortet haben, klicken Sie bitte auf den folgenden Link:
           </p>
           <div style="text-align: center; margin: 30px 0;">
-            <a href="${pollUrl}" 
+            <a href="${pollUrl}"
                style="background: #3b82f6; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; font-weight: bold; display: inline-block;">
               Verfügbarkeit mitteilen
             </a>
@@ -116,12 +117,12 @@ const handler = async (req: Request): Promise<Response> => {
 
     if (emailResponse.error || !emailResponse.data) {
       console.error("Email send error:", emailResponse.error);
-      
+
       // Check if it's a domain verification issue
-      const isTestModeError = emailResponse.error && 
-        (emailResponse.error.toString().includes('testing emails') || 
+      const isTestModeError = emailResponse.error &&
+        (emailResponse.error.toString().includes('testing emails') ||
          emailResponse.error.toString().includes('verify a domain'));
-      
+
       if (isTestModeError) {
         throw new Error('Domain nicht verifiziert - E-Mails können nur an verifizierte Adressen gesendet werden. Bitte verifizieren Sie Ihre Domain bei Resend.');
       } else {
@@ -132,8 +133,8 @@ const handler = async (req: Request): Promise<Response> => {
     console.log("Reminder email sent successfully to:", participantEmail, "ID:", emailResponse.data?.id);
 
     return new Response(
-      JSON.stringify({ 
-        success: true, 
+      JSON.stringify({
+        success: true,
         message: "Reminder invitation sent successfully",
         messageId: emailResponse.data?.id
       }),
@@ -158,4 +159,4 @@ const handler = async (req: Request): Promise<Response> => {
   }
 };
 
-serve(handler);
+serve(withSafeHandler("resend-poll-invitation", handler));

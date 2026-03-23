@@ -1,12 +1,13 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.57.4';
 import { requireServiceRole, corsHeaders, forbiddenResponse } from "../_shared/security.ts";
+import { withSafeHandler } from "../_shared/security.ts";
 interface AppointmentFeedbackSettings {
   user_id: string;
   priority_categories: string[];
   auto_skip_internal: boolean;
 }
 
-Deno.serve(async (req) => {
+Deno.serve(withSafeHandler("create-daily-appointment-feedback", async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
   }
@@ -79,8 +80,8 @@ Deno.serve(async (req) => {
 
     if ((!appointments || appointments.length === 0) && (!externalEvents || externalEvents.length === 0)) {
       return new Response(
-        JSON.stringify({ 
-          success: true, 
+        JSON.stringify({
+          success: true,
           message: 'No events to process',
           processed: 0,
           skipped: 0
@@ -162,9 +163,9 @@ Deno.serve(async (req) => {
         }
       } catch (error) {
         console.error(`Error processing appointment ${appointment.id}:`, error);
-        errors.push({ 
-          appointment_id: appointment.id, 
-          error: error instanceof Error ? error.message : 'Unknown error' 
+        errors.push({
+          appointment_id: appointment.id,
+          error: 'Processing failed'
         });
       }
     }
@@ -213,9 +214,9 @@ Deno.serve(async (req) => {
         }
       } catch (error) {
         console.error(`Error processing external event ${externalEvent.id}:`, error);
-        errors.push({ 
-          event_id: externalEvent.id, 
-          error: error instanceof Error ? error.message : 'Unknown error' 
+        errors.push({
+          event_id: externalEvent.id,
+          error: 'Processing failed'
         });
       }
     }
@@ -237,10 +238,10 @@ Deno.serve(async (req) => {
     console.error('Fatal error:', error);
     return new Response(
       JSON.stringify({ error: 'Internal server error' }),
-      { 
+      {
         status: 500,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
       }
     );
   }
-});
+}));

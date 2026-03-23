@@ -1,6 +1,7 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient, type SupabaseClient } from "https://esm.sh/@supabase/supabase-js@2";
 
+import { withSafeHandler } from "../_shared/security.ts";
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers":
@@ -196,7 +197,7 @@ async function resolveTargetedSubscriptions(
   };
 }
 
-serve(async (req) => {
+serve(withSafeHandler("matrix-bot-handler", async (req) => {
   console.log("🤖 Matrix function called with method:", req.method);
 
   // Handle CORS preflight requests
