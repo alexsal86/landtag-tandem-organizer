@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from "react";
 import { useParams, useNavigate, useSearchParams } from "react-router-dom";
-import { ArrowLeft, Edit, FileText, Upload, Calendar, Clock, MapPin, Briefcase, ExternalLink } from "lucide-react";
+import { ArrowLeft, Edit, FileText, Upload, Calendar, Clock, MapPin, Briefcase, ExternalLink, Notebook } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -217,37 +217,36 @@ export default function AppointmentPreparationDetail() {
             <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
               <div className="flex min-w-0 flex-1 items-start gap-3">
                 <div className="mt-1 rounded-full bg-background/80 p-2 text-primary shadow-sm">
-                  <Calendar className="h-5 w-5" />
+                  <Notebook className="h-5 w-5" />
                 </div>
                 <div className="min-w-0 flex-1">
-                  <h1 className="text-3xl font-bold leading-tight truncate">
-                    {appointmentInfo?.title ?? preparation.title}
-                  </h1>
+                  <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
+                    <h1 className="text-3xl font-bold leading-tight">
+                      {appointmentInfo?.title ?? preparation.title}
+                    </h1>
+                    {appointmentInfo && (
+                      <button
+                        type="button"
+                        onClick={() => setShowAppointmentSidebar(true)}
+                        className="inline-flex items-center gap-1 text-sm font-medium text-primary transition-colors hover:text-primary/80"
+                      >
+                        <ExternalLink className="h-4 w-4" />
+                        Termindetails öffnen
+                      </button>
+                    )}
+                  </div>
                 </div>
               </div>
 
-              <div className="flex flex-col items-start gap-3 sm:flex-row sm:items-center sm:justify-end lg:ml-auto">
-                {appointmentInfo && (
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => setShowAppointmentSidebar(true)}
-                    className="flex items-center gap-2"
-                  >
-                    <ExternalLink className="h-4 w-4" />
-                    Termindetails öffnen
-                  </Button>
-                )}
-
-                <div className="flex flex-col items-start gap-2 text-xs text-muted-foreground sm:items-end">
-                  <div className="flex items-center gap-2 sm:justify-end">
-                    {getStatusBadge(preparation.status)}
-                    <span>Erstellt {new Date(preparation.created_at).toLocaleDateString('de-DE')}</span>
-                  </div>
-                  <div className="text-left whitespace-nowrap sm:text-right">
-                    <p>Zuletzt bearbeitet</p>
-                    <p className="font-medium">{new Date(preparation.updated_at).toLocaleString('de-DE')}</p>
-                  </div>
+              <div className="flex flex-col items-start gap-2 text-xs text-muted-foreground lg:ml-auto lg:items-end">
+                <div>{getStatusBadge(preparation.status)}</div>
+                <div className="text-left lg:text-right">
+                  <p>Erstellt:</p>
+                  <p className="font-medium">{new Date(preparation.created_at).toLocaleDateString('de-DE')}</p>
+                </div>
+                <div className="text-left whitespace-nowrap lg:text-right">
+                  <p>Zuletzt bearbeitet</p>
+                  <p className="font-medium">{new Date(preparation.updated_at).toLocaleString('de-DE')}</p>
                 </div>
               </div>
             </div>

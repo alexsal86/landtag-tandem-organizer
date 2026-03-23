@@ -1,5 +1,6 @@
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import {
   AppointmentPreparation,
   getBriefingNotes,
@@ -15,6 +16,13 @@ import {
   ClockIcon,
   MegaphoneIcon,
 } from "lucide-react";
+
+const VISIT_REASON_LABELS: Record<string, string> = {
+  einladung: "Einladung der Person/Einrichtung",
+  eigeninitiative: "Eigeninitiative",
+  fraktionsarbeit: "Fraktionsarbeit",
+  pressetermin: "Pressetermin",
+};
 
 interface AppointmentBriefingViewProps {
   preparation: AppointmentPreparation;
@@ -77,15 +85,27 @@ function ConversationPartnerList({
     <div className="space-y-3">
       {partners.map((partner) => {
         const secondaryParts = [partner.role, partner.organization, partner.note].filter(Boolean);
+        const initials = partner.name
+          .split(" ")
+          .filter(Boolean)
+          .slice(0, 2)
+          .map((part) => part.charAt(0).toUpperCase())
+          .join("") || "?";
 
         return (
-          <div key={partner.id} className="space-y-1">
-            <p className="font-medium text-foreground break-words">{partner.name}</p>
-            {secondaryParts.length > 0 && (
-              <p className="text-muted-foreground break-words">
-                {secondaryParts.join(" • ")}
-              </p>
-            )}
+          <div key={partner.id} className="flex items-start gap-3">
+            <Avatar className="h-10 w-10 border">
+              <AvatarImage src={partner.avatar_url || undefined} alt={partner.name} />
+              <AvatarFallback>{initials}</AvatarFallback>
+            </Avatar>
+            <div className="space-y-1 pt-0.5">
+              <p className="font-medium text-foreground break-words">{partner.name}</p>
+              {secondaryParts.length > 0 && (
+                <p className="text-muted-foreground break-words">
+                  {secondaryParts.join(" • ")}
+                </p>
+              )}
+            </div>
           </div>
         );
       })}
@@ -110,6 +130,9 @@ export function AppointmentBriefingView({ preparation, appointmentInfo }: Appoin
   ];
   const briefingNotes = getBriefingNotes(preparation);
   const publicRelationsBadges = getPublicRelationsBadges(d);
+  const visitReasonLabel = d.visit_reason ? VISIT_REASON_LABELS[d.visit_reason] ?? d.visit_reason : "";
+  const visitReasonDetails = d.visit_reason_details?.trim();
+  const visitReasonLines = [visitReasonLabel, visitReasonDetails].filter(Boolean) as string[];
 
   const hasContent =
     conversationPartners.length > 0 ||
@@ -174,14 +197,14 @@ export function AppointmentBriefingView({ preparation, appointmentInfo }: Appoin
                 title="Begleitpersonen"
                 isEmpty={companions.length === 0}
               >
-                <div className="flex flex-wrap gap-2 pt-1">
+                <div className="space-y-2 pt-1">
                   {companions.map((companion) => (
-                    <Badge key={companion.id} variant="secondary" className="text-xs">
-                      {companion.name}
-                      {companion.note && (
-                        <span className="text-muted-foreground ml-1">({companion.note})</span>
-                      )}
-                    </Badge>
+                    <div key={companion.id} className="rounded-md border border-border/60 bg-background/70 px-3 py-2 text-sm">
+                      <p className="font-medium">{companion.name}</p>
+                      <p className="text-muted-foreground">
+                        {[companion.type, companion.note].filter(Boolean).join(" • ")}
+                      </p>
+                    </div>
                   ))}
                 </div>
               </BriefingSection>
@@ -238,9 +261,16 @@ export function AppointmentBriefingView({ preparation, appointmentInfo }: Appoin
               <BriefingSection
                 icon={<CompassIcon className="h-4 w-4" />}
                 title="Anlass des Besuchs"
-                isEmpty={!preparation.title?.trim()}
+                isEmpty={visitReasonLines.length === 0}
               >
-                <p className="break-words font-medium text-foreground">{preparation.title}</p>
+                <div className="space-y-2">
+                  {visitReasonLabel && (
+                    <p className="break-words font-medium text-foreground">{visitReasonLabel}</p>
+                  )}
+                  {visitReasonDetails && (
+                    <p className="break-words whitespace-pre-wrap text-muted-foreground">{visitReasonDetails}</p>
+                  )}
+                </div>
               </BriefingSection>
 
               <BriefingSection
@@ -248,14 +278,19 @@ export function AppointmentBriefingView({ preparation, appointmentInfo }: Appoin
                 title="Ablauf"
                 isEmpty={program.length === 0}
               >
-                <div className="space-y-1">
+                <div className="space-y-2">
                   {program.map((programItem) => (
-                    <p key={programItem.id} className="flex gap-2">
-                      <span className="text-primary shrink-0 font-mono text-xs min-w-[3rem]">
+                    <div key={programItem.id} className="grid grid-cols-[4.5rem_minmax(0,1fr)] items-start gap-3">
+                      <span className="pt-0.5 text-primary shrink-0 font-mono text-xs">
                         {programItem.time}
                       </span>
-                      <span className="break-words">{programItem.item}</span>
-                    </p>
+                      <div className="space-y-1">
+                        <p className="break-words">{programItem.item}</p>
+                        {programItem.notes && (
+                          <p className="break-words text-xs text-muted-foreground">{programItem.notes}</p>
+                        )}
+                      </div>
+                    </div>
                   ))}
                 </div>
               </BriefingSection>

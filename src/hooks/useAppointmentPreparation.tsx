@@ -39,10 +39,12 @@ export interface AppointmentPreparation {
     notes?: string;
     // Anlass des Besuchs
     visit_reason?: 'einladung' | 'eigeninitiative' | 'fraktionsarbeit' | 'pressetermin';
+    visit_reason_details?: string;
     // Gesprächspartner
     conversation_partners?: Array<{
       id: string;
       name: string;
+      avatar_url?: string;
       role?: string;
       organization?: string;
       note?: string;
@@ -77,6 +79,7 @@ export interface AppointmentPreparation {
 export interface AppointmentConversationPartner {
   id: string;
   name: string;
+  avatar_url?: string;
   role?: string;
   organization?: string;
   note?: string;
