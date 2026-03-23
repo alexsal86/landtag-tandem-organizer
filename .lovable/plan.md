@@ -1,51 +1,56 @@
 
 
-## PDF-Ausgabe an Briefansicht angleichen
+## PDF-Ausgabe grundlegend an die Briefansicht angleichen
 
-### Problem-Analyse
+### Kernproblem
 
-Nach Vergleich der PDF-Ausgabe (`pdfGenerator.ts` + `headerRenderer.ts`) mit der HTML-Briefansicht (`DIN5008LetterLayout.tsx`) gibt es folgende Diskrepanzen:
+Die PDF-Erzeugung (`pdfGenerator.ts`) baut ihre eigene, **unvollständige** Variable-Map und ignoriert große Teile der Template-Block-Daten. Im Vergleich dazu baut `LetterEditor.tsx` eine vollständige Variable-Map mit allen Sender-, Empfänger-, Kontakt- und Anlagendaten und substituiert **alle** Block-Bereiche (Adressfeld, Rücksendezeile, Info-Block) über `substituteBlockLines`/`substituteVariables`.
 
-**PDF-Probleme (Header & Struktur):**
-1. **Debug-Guides immer aktiv**: `drawDebugGuides()` wird auf jeder Seite aufgerufen (rote/blaue/grüne Linien, DIN-A4-Info-Box). `HeaderRenderer.renderDebugBox()` zeichnet rote Kästchen um jedes Element. Das verfälscht die Ausgabe komplett.
-2. **Info-Block hardcoded**: PDF rendert den Info-Block mit eigener Logik (Zeile 392-458) statt die gespeicherten BlockLine-Daten zu verwenden. Die HTML-Ansicht nutzt `renderBlockLines()` mit den line-mode Daten aus dem Template.
-3. **Return-Address/Address-Field**: PDF rendert diese Bereiche mit hardcodierten Schriftgrößen (7pt/9pt) statt den Template-Einstellungen zu folgen.
-4. **Kein Salutation/Closing im PDF**: Die PDF-Ausgabe rendert weder Anrede noch Schlussformel/Unterschrift — die HTML-Ansicht schon.
-5. **Footer-Rendering**: PDF hat eine eigene `renderFooterBlocks()`-Implementierung, die anders arbeitet als `TemplateFooterBlocks` in der HTML-Ansicht.
+### Konkrete Diskrepanzen
 
-**HTML-Problem (Absatzabstände):**
-6. **Keine `<p>`-Margin-Styles in DIN5008LetterLayout**: Im `LetterEditorCanvas` gibt es `margin: 0 0 4.5mm 0` für `.din5008-content-text p`, aber in `DIN5008LetterLayout.tsx` fehlt diese Regel — Absätze fallen mit Browser-Default-Margins zusammen. Im PDF werden Absätze korrekt mit `lineHeight / 2` (2.25mm) getrennt.
-
----
+| Bereich | HTML-Vorschau | PDF |
+|---|---|---|
+| **Variable-Map** | Volle Sender-Daten (Straße, PLZ, Ort, Wahlkreis, Landtag), Empfänger mit Geschlecht/Nachname, Info-Block-Daten, Anlagen | Nur `name`, `organization`, `phone`, `email` vom Sender; nur `name` vom Empfänger; keine Anlagen |
+| **Rücksendezeile** | Aus Template-BlockLines (`returnAddress` in `blockContent`) mit Variablen-Substitution | Direkt `senderInfo.return_address_line` als Rohtext |
+| **Adressfeld** | Aus Template-BlockLines (`addressField` in `blockContent`) mit Variablen-Substitution | Direkt `letter.recipient_name` + `letter.recipient_address` |
+| **Info-Block** | BlockLines mit vollständiger Variable-Map | BlockLines mit unvollständiger Variable-Map |
+| **Anrede** | Dynamisch aus Template-Salutation mit `{{anrede}}`-Substitution | Statisch aus `layout.salutation.template` ohne Substitution |
+| **Schriftfamilie** | `Calibri, Carlito, "Segoe UI", Arial, sans-serif` | `helvetica` (jsPDF built-in) |
+| **Faltmarken** | Gerendert via `FoldHoleMarks` | Fehlen komplett im PDF |
 
 ### Plan
 
-#### Schritt 1: Debug-Ausgaben nur bei explizitem Debug-Modus
+#### 1. Vollständige Variable-Map im PDF aufbauen
 
-- **`pdfGenerator.ts`**: `drawDebugGuides()` nur aufrufen wenn ein `debugMode`-Flag gesetzt ist (analog zum HTML `debugMode`-Prop)
-- **`headerRenderer.ts`**: `renderDebugBox()` nur bei Debug-Modus aufrufen. Dazu `debugMode`-Parameter im Constructor übergeben.
+Die `generatePDF`-Funktion erhält die Variable-Map entweder als neuen Parameter (bevorzugt) oder baut sie intern identisch wie `LetterEditor.tsx` auf — mit vollen Sender-Feldern (Straße, Wahlkreis, Landtag), Empfänger-Geschlecht/Nachname, Info-Block-Daten und Anlagen.
 
-#### Schritt 2: Absatzabstände in der HTML-Briefansicht korrigieren
+#### 2. Alle Block-Bereiche aus Template-Daten rendern
 
-- **`DIN5008LetterLayout.tsx`**: Im `<style>`-Block die fehlende `<p>`-Margin-Regel hinzufügen (gleich wie im Editor-Canvas):
-```css
-.din5008-content-text p {
-  margin: 0 0 4.5mm 0;
-}
-.din5008-content-text p:last-child {
-  margin-bottom: 0;
-}
-```
+Wie im Editor alle `blockContent`-Bereiche durchgehen:
+- `returnAddress` → `renderBlockLinesToPdf` (statt roher `return_address_line`)
+- `addressField` → `renderBlockLinesToPdf` (statt roher `recipient_name`/`recipient_address`)
+- `infoBlock` → bereits vorhanden, aber mit vollständiger Variable-Map
+- Fallback auf die bestehende Rohtext-Logik nur wenn kein `blockContent` im Template definiert ist
 
-#### Schritt 3: Info-Block im PDF mit BlockLine-Daten rendern
+#### 3. Anrede-Substitution
 
-- **`pdfGenerator.ts`**: Neue Funktion `renderInfoBlockLines()` die die gespeicherten `BlockLine[]`-Daten aus dem Template (`layout_settings.blockContent.infoBlock`) rendert, mit korrekten Schriftgrößen, Label/Value-Paaren und Spacern — analog zur HTML-Ansicht.
-- Variable-Substitution mit `buildVariableMap` + `substituteBlockLines` einbinden.
+Die Anrede `{{anrede}}` aus der Variable-Map ersetzen (wie im Editor), statt den Template-String wörtlich zu rendern.
 
-#### Schritt 4: Anrede und Schlussformel im PDF rendern
+#### 4. Faltmarken im PDF rendern
 
-- **`pdfGenerator.ts`**: Vor dem Content-Text die Anrede (`salutation` aus Layout-Settings) rendern, danach eine Leerzeile. Nach dem Content die Schlussformel, Unterschriftenbild und Unterschriftsname rendern.
+Aus `layout.foldHoleMarks` die drei Linien (oben, Lochmarke, unten) zeichnen — auf jeder Seite, analog zur HTML-Komponente `FoldHoleMarks`.
 
-#### Schritt 5: Return-Address und Adressfeld aus Template-Einstellungen
+#### 5. Font-Konsistenz (Hinweis)
 
-- **`pdfGenerator.ts`**: Schriftgrößen für Rücksendezeile und Empfängeradresse aus `layout.addressField.returnAddressFontSize
+jsPDF hat kein Calibri. Das ist eine bekannte Einschränkung — Helvetica bleibt der beste verfügbare Ersatz. Kein Handlungsbedarf, aber erwähnenswert.
+
+---
+
+### Dateien
+
+| Datei | Änderung |
+|---|---|
+| `src/components/letter-pdf/pdfGenerator.ts` | Variable-Map vollständig aufbauen; alle blockContent-Bereiche rendern; Anrede substituieren; Faltmarken zeichnen |
+| `src/components/letter-pdf/types.ts` | `GeneratePDFOptions` um optionale `contacts`-Daten erweitern |
+| `src/components/LetterPDFExport.tsx` | Kontakt-Daten an `generatePDF` durchreichen (falls nötig) |
+
