@@ -27,8 +27,14 @@ const UserAssignmentDialog: React.FC<UserAssignmentDialogProps> = ({
   isOpen,
   onClose,
   letterId,
+  role = 'reviewer',
   onAssignmentComplete
 }) => {
+  const isWriterMode = role === 'writer';
+  const dialogTitle = isWriterMode ? 'Mitbearbeiter zuweisen' : 'Prüfer zuweisen';
+  const dialogDescription = isWriterMode
+    ? 'Wählen Sie Benutzer aus, die diesen Brief mitbearbeiten dürfen.'
+    : 'Wählen Sie die Benutzer aus, die diesen Brief zur Korrektur erhalten sollen.';
   const { user } = useAuth();
   const { currentTenant } = useTenant();
   const { toast } = useToast();
