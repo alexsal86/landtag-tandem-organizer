@@ -222,8 +222,9 @@ export const useTemplateFormTabs = ({
                 <SelectItem key={sender.id} value={sender.id}>{sender.name} - {sender.organization}{sender.is_default && " (Standard)"}</SelectItem>
               ))}
             </SelectContent>
-          </Select>
+        </Select>
         </div>
+        <div className="border-t pt-4"><SenderInformationManager /></div>
         <div>
           <Label>Standard-Informationsblöcke</Label>
           <div className="space-y-2 max-h-40 overflow-y-auto">
@@ -266,7 +267,6 @@ export const useTemplateFormTabs = ({
             onChange={(newLines) => setBlockItems('addressField', { mode: 'lines', lines: newLines } as any)}
           />
         </div>
-        <div className="border-t pt-4"><SenderInformationManager /></div>
       </TabsContent>
 
       <TabsContent value="block-info">
