@@ -30,7 +30,7 @@ interface DecisionDialogsProps {
   onUpdated: () => void;
   selectedDecisionId: string | null;
   setEditingDecisionId: (decisionId: string | null) => void;
-  updateDecisionTabSettings: (value: { order: DecisionTabId[]; hiddenTabs: DecisionTabId[] }) => void;
+  updateDecisionTabSettings: (value: { order: DecisionTabId[]; hiddenTabs: DecisionTabId[] }) => Promise<boolean>;
 }
 
 export function DecisionDialogs({ commentsDecisionId, commentsDecisionTitle, decisionTabOrder, defaultParticipantsOpen, deletingDecisionId, editingDecisionId, hiddenDecisionTabs, highlightCommentId, highlightResponseId, isDetailsOpen, meetingSelectorOpen, onCloseComments, onCloseDetails, onCommentsAdded, onDeleteConfirm, onDeleteDialogOpenChange, onMeetingOpenChange, onMeetingSelected, onOpenChangeDefaultParticipants, onSelectNextJourFixe, onUpdated, selectedDecisionId, setEditingDecisionId, updateDecisionTabSettings }: DecisionDialogsProps) {

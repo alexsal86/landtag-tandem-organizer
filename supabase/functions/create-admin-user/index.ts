@@ -261,7 +261,7 @@ serve(withSafeHandler("create-admin-user", async (req) => {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });
   }
-});
+}));
 
 function generatePassword(): string {
   const chars = 'ABCDEFGHJKMNPQRSTUVWXYZabcdefghijkmnpqrstuvwxyz23456789';

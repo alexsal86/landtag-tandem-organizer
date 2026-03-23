@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { format, subDays } from 'date-fns';
 import { de } from 'date-fns/locale';
@@ -12,8 +12,6 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { Button } from '@/components/ui/button';
-import { supabase } from '@/integrations/supabase/client';
-import { useAuth } from '@/hooks/useAuth';
 import { TransferToThemenspeicherDialog } from '@/features/redaktion/components/TransferToThemenspeicherDialog';
 import type { TeamFeedbackEntry } from '@/hooks/useTeamFeedbackFeed';
 
@@ -25,7 +23,6 @@ const PERIOD_PRESETS = {
 
 export function MyWorkFeedbackFeedTab() {
   const navigate = useNavigate();
-  const { user } = useAuth();
   const {
     filters: {
       scope,
@@ -57,24 +54,6 @@ export function MyWorkFeedbackFeedTab() {
     onlyWithAttachments,
     onlyWithTasks,
   });
-
-  // Realtime subscription
-  useEffect(() => {
-    if (!user?.id) return;
-    let timeout: ReturnType<typeof setTimeout> | null = null;
-    const scheduleRefresh = () => {
-      if (timeout) clearTimeout(timeout);
-      timeout = setTimeout(() => { timeout = null; void refetch(); }, 250);
-    };
-    const channel = supabase
-      .channel(`my-work-feedback-${user.id}`)
-      .on("postgres_changes", { event: "*", schema: "public", table: "appointment_feedback", filter: `user_id=eq.${user.id}` }, scheduleRefresh)
-      .subscribe();
-    return () => {
-      if (timeout) clearTimeout(timeout);
-      supabase.removeChannel(channel);
-    };
-  }, [user?.id, refetch]);
 
   const getFeedbackTarget = (entry: TeamFeedbackEntry) => {
     if (entry.feedback_context.target.type === 'task') {

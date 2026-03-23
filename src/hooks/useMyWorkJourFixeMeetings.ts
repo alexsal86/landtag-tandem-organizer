@@ -148,7 +148,7 @@ const fetchParticipants = async (meetingIds: string[]) => {
     (profiles ?? []).map(profile => [profile.user_id, profile])
   );
 
-  return participants.reduce<Record<string, MeetingParticipant[]>>((participantsByMeeting, participant) => {
+  return (participants as any[]).reduce<Record<string, MeetingParticipant[]>>((participantsByMeeting, participant) => {
     const profile = profilesByUserId.get(participant.user_id);
     const meetingParticipants = participantsByMeeting[participant.meeting_id] ?? [];
 

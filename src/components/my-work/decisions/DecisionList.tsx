@@ -1,6 +1,7 @@
 import { DecisionContextMenu } from "./DecisionContextMenu";
 import { MyWorkDecisionCard } from "./MyWorkDecisionCard";
 import { MyWorkDecision } from "./types";
+import { TenantUser } from "@/hooks/useTenantUsers";
 
 interface DecisionListProps {
   archivingDecisionId: string | null;
@@ -30,7 +31,7 @@ interface DecisionListProps {
   onTogglePriority: (decisionId: string, currentPriority: number) => Promise<void>;
   onTogglePublic: (decisionId: string, currentValue: boolean) => Promise<void>;
   onUpdateDeadline: (decisionId: string, date: string | null) => Promise<void>;
-  tenantUsers: Array<{ id: string; display_name?: string | null }>;
+  tenantUsers: TenantUser[];
 }
 
 export function DecisionList({
