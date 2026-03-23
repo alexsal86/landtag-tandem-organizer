@@ -182,7 +182,7 @@ const UserAssignmentDialog: React.FC<UserAssignmentDialogProps> = ({
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <Users className="h-5 w-5" />
-            Prüfer zuweisen
+            {dialogTitle}
           </DialogTitle>
         </DialogHeader>
 
