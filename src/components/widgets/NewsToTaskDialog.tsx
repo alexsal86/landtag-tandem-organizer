@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -48,7 +48,8 @@ export const NewsToTaskDialog: React.FC<NewsToTaskDialogProps> = ({
 }) => {
   const { currentTenant } = useTenant();
   const [loading, setLoading] = useState(false);
-  const [dataLoading, setDataLoading] = useState(false);
+  const [categoriesLoading, setCategoriesLoading] = useState(false);
+  const [usersLoading, setUsersLoading] = useState(false);
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
   const [categories, setCategories] = useState<TaskCategory[]>([]);
@@ -57,37 +58,34 @@ export const NewsToTaskDialog: React.FC<NewsToTaskDialogProps> = ({
   const [assignedTo, setAssignedTo] = useState<string[]>([]);
   const [dueDate, setDueDate] = useState<Date>();
   const [priority, setPriority] = useState<'low' | 'medium' | 'high'>('medium');
+  const categoriesTenantRef = useRef<string | null>(null);
+  const usersTenantRef = useRef<string | null>(null);
 
-  const loadData = useCallback(async () => {
+  const loadCategories = useCallback(async () => {
     if (!currentTenant?.id) {
       setCategories([]);
-      setUsers([]);
       setSelectedCategory('');
       return;
     }
 
-    setDataLoading(true);
+    if (categoriesTenantRef.current === currentTenant.id && categories.length > 0) {
+      return;
+    }
+
+    setCategoriesLoading(true);
 
     try {
-      const [categoriesRes, profilesRes] = await Promise.all([
-        supabase
-          .from('task_categories')
-          .select('name, label')
-          .eq('tenant_id', currentTenant.id)
-          .eq('is_active', true)
-          .order('order_index'),
-        supabase
-          .from('profiles')
-          .select('user_id, display_name')
-          .eq('tenant_id', currentTenant.id)
-          .order('display_name')
-      ]);
-
+      const categoriesRes = await supabase
+        .from('task_categories')
+        .select('name, label')
+        .eq('tenant_id', currentTenant.id)
+        .eq('is_active', true)
+        .order('order_index');
       if (categoriesRes.error) throw categoriesRes.error;
-      if (profilesRes.error) throw profilesRes.error;
 
       const nextCategories = categoriesRes.data || [];
       setCategories(nextCategories);
+      categoriesTenantRef.current = currentTenant.id;
       setSelectedCategory((currentValue) => {
         if (currentValue && nextCategories.some((category) => category.name === currentValue)) {
           return currentValue;
@@ -95,16 +93,48 @@ export const NewsToTaskDialog: React.FC<NewsToTaskDialogProps> = ({
 
         return nextCategories[0]?.name || '';
       });
+    } catch (error) {
+      categoriesTenantRef.current = null;
+      debugConsole.error('Error loading task categories:', error);
+      toast.error('Kategorien konnten nicht geladen werden.');
+    } finally {
+      setCategoriesLoading(false);
+    }
+  }, [categories.length, currentTenant?.id]);
+
+  const loadUsers = useCallback(async () => {
+    if (!currentTenant?.id) {
+      setUsers([]);
+      setAssignedTo([]);
+      return;
+    }
+
+    if (usersTenantRef.current === currentTenant.id && users.length > 0) {
+      return;
+    }
+
+    setUsersLoading(true);
+
+    try {
+      const profilesRes = await supabase
+        .from('profiles')
+        .select('user_id, display_name')
+        .eq('tenant_id', currentTenant.id)
+        .order('display_name');
+      if (profilesRes.error) throw profilesRes.error;
+
       const nextUsers = profilesRes.data || [];
       setUsers(nextUsers);
+      usersTenantRef.current = currentTenant.id;
       setAssignedTo((currentValue) => currentValue.filter((userId) => nextUsers.some((profile) => profile.user_id === userId)));
     } catch (error) {
-      debugConsole.error('Error loading data:', error);
-      toast.error('Kategorien und Benutzer konnten nicht geladen werden.');
+      usersTenantRef.current = null;
+      debugConsole.error('Error loading task assignees:', error);
+      toast.error('Benutzer konnten nicht geladen werden.');
     } finally {
-      setDataLoading(false);
+      setUsersLoading(false);
     }
-  }, [currentTenant?.id]);
+  }, [currentTenant?.id, users.length]);
 
   useEffect(() => {
     if (!open || !article) return;
@@ -113,8 +143,18 @@ export const NewsToTaskDialog: React.FC<NewsToTaskDialogProps> = ({
     setDescription(
       `${article.description}\n\nQuelle: ${article.link}\nVon: ${article.source}`
     );
-    void loadData();
-  }, [open, article, loadData]);
+    void loadCategories();
+    void loadUsers();
+  }, [open, article, loadCategories, loadUsers]);
+
+  useEffect(() => {
+    categoriesTenantRef.current = null;
+    usersTenantRef.current = null;
+    setCategories([]);
+    setUsers([]);
+    setSelectedCategory('');
+    setAssignedTo([]);
+  }, [currentTenant?.id]);
 
   const handleCreate = async () => {
     if (!title.trim()) {
@@ -173,7 +213,7 @@ export const NewsToTaskDialog: React.FC<NewsToTaskDialogProps> = ({
     }
   };
 
-  const isCreateDisabled = loading || dataLoading || !currentTenant?.id || categories.length === 0;
+  const isCreateDisabled = loading || categoriesLoading || !currentTenant?.id || categories.length === 0;
 
   const userOptions = users.map(u => ({
     value: u.user_id,
@@ -218,7 +258,7 @@ export const NewsToTaskDialog: React.FC<NewsToTaskDialogProps> = ({
             <select
               value={selectedCategory}
               onChange={(e) => setSelectedCategory(e.target.value)}
-              disabled={dataLoading || categories.length === 0}
+              disabled={categoriesLoading || categories.length === 0}
               className="w-full px-3 py-2 border rounded-md bg-background disabled:cursor-not-allowed disabled:opacity-70"
             >
               <option value="">Kategorie auswählen</option>
@@ -229,7 +269,7 @@ export const NewsToTaskDialog: React.FC<NewsToTaskDialogProps> = ({
               ))}
             </select>
             <p className="text-sm text-muted-foreground">
-              {dataLoading
+              {categoriesLoading
                 ? 'Kategorien werden geladen – das kann einen Moment dauern.'
                 : 'Es werden nur Kategorien des aktuell gewählten Mandanten angezeigt.'}
             </p>
@@ -242,7 +282,7 @@ export const NewsToTaskDialog: React.FC<NewsToTaskDialogProps> = ({
               options={userOptions}
               selected={assignedTo}
               onChange={setAssignedTo}
-              placeholder={dataLoading ? 'Benutzer werden geladen...' : 'Benutzer auswählen...'}
+              placeholder={usersLoading ? 'Benutzer werden geladen...' : 'Benutzer auswählen...'}
             />
             <p className="text-sm text-muted-foreground">
               Die Auswahl ist auf Benutzer des aktuell gewählten Mandanten begrenzt.
