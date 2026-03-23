@@ -570,8 +570,8 @@ export async function generatePDF(options: GeneratePDFOptions): Promise<{ blob: 
     }
   }
   
-  // Letter date
-  if (letter.letter_date) {
+  // Letter date (only if not already in info block lines)
+  if (letter.letter_date && !substitutedLineBlocks['infoBlock']?.length) {
     const hasDateBlock = informationBlock?.block_type === 'date';
     if (!hasDateBlock && infoYPos < INFO_BLOCK_TOP + INFO_BLOCK_WIDTH - 10) {
       pdf.setFontSize(8);
@@ -597,8 +597,15 @@ export async function generatePDF(options: GeneratePDFOptions): Promise<{ blob: 
     contentStartY += 9; // 2 blank lines after subject (matching HTML: height 9mm)
   }
   
-  // Salutation
-  const salutationText = layout.salutation?.template || '';
+  // ── Salutation (with {{anrede}} substitution) ──
+  let salutationText = layout.salutation?.template || '';
+  if (salutationText === '{{anrede}}') {
+    salutationText = varMap['{{anrede}}'] || 'Sehr geehrte Damen und Herren,';
+  } else if (salutationText.includes('{{')) {
+    for (const [placeholder, value] of Object.entries(varMap)) {
+      salutationText = salutationText.split(placeholder).join(value);
+    }
+  }
   if (salutationText) {
     const salutationFontSize = layout.salutation?.fontSize || contentFontSize;
     pdf.setFontSize(salutationFontSize);
