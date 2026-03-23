@@ -215,7 +215,7 @@ serve(withSafeHandler("create-demo-users", async (req) => {
       }
     )
   }
-})
+}));
 
 function generatePassword(): string {
   const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789!@#$%^&*'

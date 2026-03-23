@@ -264,7 +264,7 @@ serve(withSafeHandler("archive-letter", async (req) => {
       }
     );
   }
-});
+}));
 
 // Convert HTML to text (adapted from LetterPDFExport)
 function convertHtmlToText(html: string): string {
