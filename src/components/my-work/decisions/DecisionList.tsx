@@ -21,7 +21,11 @@ interface DecisionListProps {
   onOpenComments: (decisionId: string, title: string) => void;
   onOpenDetails: (decisionId: string) => void;
   onRemoveParticipant: (decisionId: string, userId: string) => Promise<void>;
-  onReply?: (payload: { responseId: string; text: string; mode: "creator_response" | "participant_followup" }) => Promise<void>;
+  onReply?: (payload: {
+    responseId: string;
+    text: string;
+    mode: "creator_response" | "participant_followup";
+  }) => Promise<void>;
   onResponseSubmitted: () => void;
   onTogglePriority: (decisionId: string, currentPriority: number) => Promise<void>;
   onTogglePublic: (decisionId: string, currentValue: boolean) => Promise<void>;
@@ -29,9 +33,34 @@ interface DecisionListProps {
   tenantUsers: Array<{ id: string; display_name?: string | null }>;
 }
 
-export function DecisionList({ archivingDecisionId, creatingTaskId, currentUserId, decisions, deletingDecisionId, emptyMessage, getCommentCount, getHighlightRef, isHighlighted, onAddParticipants, onAddToJourFixe, onArchive, onCreateTask, onDelete, onEdit, onOpenComments, onOpenDetails, onRemoveParticipant, onReply, onResponseSubmitted, onTogglePriority, onTogglePublic, onUpdateDeadline, tenantUsers }: DecisionListProps) {
+export function DecisionList({
+  archivingDecisionId,
+  creatingTaskId,
+  currentUserId,
+  decisions,
+  deletingDecisionId,
+  emptyMessage,
+  getCommentCount,
+  getHighlightRef,
+  isHighlighted,
+  onAddParticipants,
+  onAddToJourFixe,
+  onArchive,
+  onCreateTask,
+  onDelete,
+  onEdit,
+  onOpenComments,
+  onOpenDetails,
+  onRemoveParticipant,
+  onReply,
+  onResponseSubmitted,
+  onTogglePriority,
+  onTogglePublic,
+  onUpdateDeadline,
+  tenantUsers,
+}: DecisionListProps) {
   if (decisions.length === 0) {
-    return <div className="text-center py-8 text-xs text-muted-foreground">{emptyMessage}</div>;
+    return <div className="py-8 text-center text-xs text-muted-foreground">{emptyMessage}</div>;
   }
 
   return (
@@ -41,9 +70,10 @@ export function DecisionList({ archivingDecisionId, creatingTaskId, currentUserI
           <DecisionContextMenu
             decision={decision}
             isCreator={decision.isCreator}
-            currentUserId={currentUserId}
             tenantUsers={tenantUsers}
-            existingParticipantIds={(decision.participants || []).map((participant) => participant.user_id)}
+            existingParticipantIds={(decision.participants || []).map(
+              (participant) => participant.user_id,
+            )}
             onUpdateDeadline={onUpdateDeadline}
             onTogglePublic={onTogglePublic}
             onAddParticipants={onAddParticipants}
