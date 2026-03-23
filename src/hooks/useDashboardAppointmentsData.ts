@@ -29,7 +29,8 @@ type DashboardRpcResult = {
   appointments: AppointmentData[] | null;
 };
 
-type ExternalEventRow = Pick<Database['public']['Tables']['external_events']['Row'], 'id' | 'title' | 'start_time' | 'end_time' | 'all_day'>;
+type ExternalEventRow = Pick<Database['public']['Tables']['external_events']['Row'], 'id' | 'title' | 'start_time' | 'end_time' | 'all_day' | 'location'>;
+type AppointmentLocationRow = Pick<Database['public']['Tables']['appointments']['Row'], 'id' | 'location'>;
 
 const isDashboardRpcResult = (value: unknown): value is DashboardRpcResult => {
   if (!value || typeof value !== 'object') return false;
@@ -104,7 +105,7 @@ export const fetchDashboardRpc = async (userId: string, userEmail: string | unde
     let externalAppointments: AppointmentData[] = [];
     try {
       const externalResult = await supabase.from('external_events')
-        .select('id, title, start_time, end_time, all_day, external_calendars!inner(tenant_id)')
+        .select('id, title, start_time, end_time, all_day, location, external_calendars!inner(tenant_id)')
         .eq('external_calendars.tenant_id', tenantId)
         .gte('start_time', new Date(today.getTime() - 86400000).toISOString())
         .lt('start_time', new Date(today.getTime() + 3 * 86400000).toISOString())
@@ -116,12 +117,38 @@ export const fetchDashboardRpc = async (userId: string, userEmail: string | unde
         start_time: event.start_time,
         end_time: event.end_time,
         is_all_day: event.all_day ?? false,
+        location: event.location ?? undefined,
       }));
     } catch {
       // external events are optional
     }
 
-    const all = [...(rpcResult.appointments ?? []), ...externalAppointments];
+    const rpcAppointments = rpcResult.appointments ?? [];
+    const appointmentIdsWithoutLocation = rpcAppointments
+      .filter((appointment) => !appointment.location?.trim())
+      .map((appointment) => appointment.id);
+
+    let locationByAppointmentId = new Map<string, string>();
+    if (appointmentIdsWithoutLocation.length > 0) {
+      const { data: appointmentLocations } = await supabase
+        .from('appointments')
+        .select('id, location')
+        .in('id', appointmentIdsWithoutLocation)
+        .eq('tenant_id', tenantId);
+
+      locationByAppointmentId = new Map(
+        ((appointmentLocations as AppointmentLocationRow[] | null) ?? [])
+          .filter((appointment) => appointment.location?.trim())
+          .map((appointment) => [appointment.id, appointment.location!.trim()])
+      );
+    }
+
+    const normalizedAppointments = rpcAppointments.map((appointment) => ({
+      ...appointment,
+      location: appointment.location?.trim() || locationByAppointmentId.get(appointment.id),
+    }));
+
+    const all = [...normalizedAppointments, ...externalAppointments];
 
     const todayUpcoming = all.filter(event => {
       const localDate = new Date(new Date(event.start_time).toLocaleString('en-US', { timeZone: 'Europe/Berlin' }));
