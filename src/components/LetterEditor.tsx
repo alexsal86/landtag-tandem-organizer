@@ -8,6 +8,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { useTenant } from '@/hooks/useTenant';
 
 import ReviewAssignmentDialog from './ReviewAssignmentDialog';
+import UserAssignmentDialog from './UserAssignmentDialog';
 import { DIN5008LetterLayout } from './letters/DIN5008LetterLayout';
 import { LetterEditorCanvas } from './letters/LetterEditorCanvas';
 import { LetterEditorToolbar } from './letters/LetterEditorToolbar';
