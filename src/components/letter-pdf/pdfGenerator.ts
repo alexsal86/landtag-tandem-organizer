@@ -7,7 +7,6 @@ import { buildFooterBlocksFromStored, resolveBlockWidthMm } from '@/components/l
 import { supabase } from '@/integrations/supabase/client';
 import { buildVariableMap, substituteBlockLines, isLineMode } from '@/lib/letterVariables';
 import type { BlockLine } from '@/components/letters/BlockLineEditor';
-import { getBlockLineFontStack } from '@/components/letters/BlockLineEditor';
 import { getLetterAssetPublicUrl } from '@/components/letters/letterAssetUrls';
 import type { Letter, LetterTemplate } from './types';
 
