@@ -218,37 +218,47 @@ export function useLetterOperations(opts: UseLetterOperationsOptions) {
 
     if (letter?.id) {
       try {
-        const { error } = await supabase
-          .from('letters')
-          .update({ ...workflowUpdates, updated_at: now })
-          .eq('id', letter.id);
-        if (error) throw error;
-
         if (newStatus === 'sent') {
-          try {
-            const { archiveLetter } = await import('@/utils/letterArchiving');
-            const archiveResult = await archiveLetter(letter as any, userId!);
-            toast({
-              title: archiveResult ? 'Brief versendet und archiviert' : 'Brief versendet',
-              description: archiveResult
-                ? 'Brief wurde versendet und automatisch in die Dokumentenverwaltung übernommen.'
-                : 'Brief wurde als versendet markiert. Archivierung wird im Hintergrund verarbeitet.',
-            });
-          } catch (archiveError) {
-            debugConsole.error('Archive process error:', archiveError);
-            toast({ title: 'Archivierungsfehler', description: 'Der Brief wurde versendet, aber die Archivierung ist fehlgeschlagen.', variant: 'destructive' });
+          const { archiveLetter } = await import('@/utils/letterArchiving');
+          const archiveResult = await archiveLetter(letter.id, userId!);
+
+          if (!archiveResult.success) {
+            throw new Error(archiveResult.error || 'Die Archivierung konnte nicht abgeschlossen werden.');
           }
+
+          setEditedLetter(prev => ({
+            ...prev,
+            ...workflowUpdates,
+            archived_document_id: archiveResult.documentId,
+            archived_at: archiveResult.archivedAt,
+            archived_by: archiveResult.archivedBy,
+          }));
+
+          toast({
+            title: 'Brief versendet und archiviert',
+            description: archiveResult.followUpTaskId
+              ? 'Brief wurde versendet, archiviert und mit Wiedervorlage versehen.'
+              : 'Brief wurde versendet und automatisch in die Dokumentenverwaltung übernommen.',
+          });
+        } else {
+          const { error } = await supabase
+            .from('letters')
+            .update({ ...workflowUpdates, updated_at: now })
+            .eq('id', letter.id);
+          if (error) throw error;
         }
       } catch (error) {
         debugConsole.error('Error updating workflow tracking:', error);
-        toast({ title: 'Fehler beim Workflow-Update', description: 'Die Workflow-Daten konnten nicht gespeichert werden.', variant: 'destructive' });
+        toast({ title: 'Fehler beim Workflow-Update', description: newStatus === 'sent' ? 'Der Brief konnte nicht versendet und archiviert werden.' : 'Die Workflow-Daten konnten nicht gespeichert werden.', variant: 'destructive' });
       }
     }
 
     if (newStatus === 'review' || newStatus === 'pending_approval') setIsProofreadingMode(true);
     if (newStatus === 'approved' || newStatus === 'sent' || newStatus === 'draft') setIsProofreadingMode(false);
 
-    toast({ title: 'Status geändert', description: `Status wurde zu "${STATUS_LABELS[newStatus]}" geändert.` });
+    if (newStatus !== 'sent') {
+      toast({ title: 'Status geändert', description: `Status wurde zu "${STATUS_LABELS[newStatus]}" geändert.` });
+    }
   }, [editedLetter, letter, userId, canEdit, setEditedLetter, setIsProofreadingMode, setShowAssignmentDialog, toast]);
 
   const handleAddComment = useCallback(async (content: string) => {

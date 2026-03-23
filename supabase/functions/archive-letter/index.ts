@@ -18,8 +18,8 @@ serve(withSafeHandler("archive-letter", async (req) => {
   }
 
   try {
-    const { letterId } = await req.json();
-    console.log('Processing letter archive for ID:', letterId);
+    const { letterId, userId } = await req.json();
+    console.log('Processing letter archive for ID:', letterId, 'requested by:', userId);
 
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
@@ -119,10 +119,13 @@ serve(withSafeHandler("archive-letter", async (req) => {
     console.log('PDF uploaded successfully:', uploadData.path);
 
     // Create document record with PDF content
+    const archivalUserId = userId || letter.created_by;
+    const archiveTimestamp = new Date().toISOString();
+
     const { data: document, error: documentError } = await supabase
       .from('documents')
       .insert({
-        user_id: letter.created_by,
+        user_id: archivalUserId,
         tenant_id: letter.tenant_id,
         title: `Brief: ${letter.title}`,
         description: `Archivierte Version des Briefes "${letter.title}"`,
@@ -154,7 +157,7 @@ serve(withSafeHandler("archive-letter", async (req) => {
         const { data: attachmentDoc, error: attachmentError } = await supabase
           .from('documents')
           .insert({
-            user_id: letter.created_by,
+            user_id: archivalUserId,
             tenant_id: letter.tenant_id,
             title: `Anlage: ${attachment.display_name || attachment.file_name}`,
             description: `Anlage zum archivierten Brief "${letter.title}"`,
@@ -177,13 +180,19 @@ serve(withSafeHandler("archive-letter", async (req) => {
       }
     }
 
-    // Update letter with archived document reference but keep status as 'sent'
+    // Update letter with sent and archive metadata in one canonical path
+    const sentDate = archiveTimestamp.split('T')[0];
     const { error: updateError } = await supabase
       .from('letters')
       .update({
+        status: 'sent',
+        sent_at: archiveTimestamp,
+        sent_by: archivalUserId,
+        sent_date: sentDate,
+        workflow_locked: true,
         archived_document_id: document.id,
-        archived_at: new Date().toISOString(),
-        archived_by: letter.created_by
+        archived_at: archiveTimestamp,
+        archived_by: archivalUserId
       })
       .eq('id', letterId);
 
@@ -195,14 +204,18 @@ serve(withSafeHandler("archive-letter", async (req) => {
     console.log('Letter archived successfully');
 
     // Create follow-up task for letter response
+    let followUpTaskId: string | null = null;
+
     try {
       console.log('Creating follow-up task for letter:', letter.title);
 
       // Calculate due date based on template response time
       const responseTimeDays = template?.response_time_days || 21; // Default 21 days
-      const sentDate = new Date();
-      const dueDate = new Date(sentDate);
-      dueDate.setDate(sentDate.getDate() + responseTimeDays);
+      const sentDate = new Date(archiveTimestamp);
+      const dueDate = letter.expected_response_date ? new Date(letter.expected_response_date) : new Date(sentDate);
+      if (!letter.expected_response_date) {
+        dueDate.setDate(sentDate.getDate() + responseTimeDays);
+      }
 
       // Format task title: "Abgeordnetenbrief "Betreff des Briefs" vom "Tag des Versands"
       const formattedSentDate = sentDate.toLocaleDateString('de-DE');
@@ -221,7 +234,7 @@ serve(withSafeHandler("archive-letter", async (req) => {
       const { data: taskData, error: taskError } = await supabase
         .from('tasks')
         .insert({
-          user_id: letter.created_by,
+          user_id: archivalUserId,
           tenant_id: letter.tenant_id,
           title: taskTitle,
           description: taskDescription,
@@ -239,6 +252,7 @@ serve(withSafeHandler("archive-letter", async (req) => {
         // Don't fail the entire process if task creation fails
       } else {
         console.log('Follow-up task created successfully:', taskData.id);
+        followUpTaskId = taskData.id;
       }
     } catch (error) {
       console.error('Error in task creation process:', error);
@@ -249,6 +263,9 @@ serve(withSafeHandler("archive-letter", async (req) => {
       JSON.stringify({
         success: true,
         documentId: document.id,
+        archivedAt: archiveTimestamp,
+        archivedBy: archivalUserId,
+        followUpTaskId,
         archivedAttachments: archivedAttachmentIds.length
       }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }

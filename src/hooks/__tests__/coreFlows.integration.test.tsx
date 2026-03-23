@@ -23,13 +23,6 @@ vi.mock("@/hooks/use-toast", () => ({
   useToast: () => ({ toast: toastSpy }),
 }));
 
-vi.mock("@/utils/letterPDFGenerator", () => ({
-  generateLetterPDF: vi.fn(async () => ({
-    blob: new Blob(["pdf"], { type: "application/pdf" }),
-    filename: "letter.pdf",
-  })),
-}));
-
 import { AuthProvider, useAuth } from "@/hooks/useAuth";
 import { TenantProvider, useTenant } from "@/hooks/useTenant";
 import { useNotifications } from "@/hooks/useNotifications";
@@ -98,9 +91,10 @@ describe("Core flows integration", () => {
       ],
       error: null,
     });
-    mockSupabaseClient.setTableResult("letter_attachments", { data: [], error: null });
-    mockSupabaseClient.setTableResult("documents", { data: { id: "doc-1" }, error: null });
-    mockSupabaseClient.setTableResult("letters", { data: [], error: null });
+    mockSupabaseClient.setFunctionResult('archive-letter', {
+      data: { success: true, documentId: 'doc-1', archivedAt: '2024-01-02T10:00:00.000Z', archivedBy: 'user-1', followUpTaskId: 'task-1' },
+      error: null,
+    });
   });
 
   it("authenticates user and persists tenant switch per user", async () => {
@@ -130,7 +124,7 @@ describe("Core flows integration", () => {
     expect(mockSupabaseClient.supabase.from).toHaveBeenCalledWith("notifications");
   });
 
-  it("archives letter and updates brief status to sent", async () => {
+  it("archives letter through the unified edge-function path", async () => {
     const { result } = renderHook(() => useLetterArchiving(), { wrapper });
 
     let archived = false;
