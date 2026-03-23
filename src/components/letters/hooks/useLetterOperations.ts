@@ -189,6 +189,10 @@ export function useLetterOperations(opts: UseLetterOperationsOptions) {
       workflowUpdates.submitted_for_review_at = now;
       workflowUpdates.submitted_for_review_by = userId;
     }
+    if (newStatus === 'review' && !editedLetter.workflow_locked) {
+      workflowUpdates.submitted_for_review_at = now;
+      workflowUpdates.submitted_for_review_by = userId;
+    }
     if (newStatus === 'approved' && !editedLetter.workflow_locked) {
       workflowUpdates.approved_at = now;
       workflowUpdates.approved_by = userId;
@@ -203,7 +207,8 @@ export function useLetterOperations(opts: UseLetterOperationsOptions) {
     }
 
     const isCreator = userId === letter?.created_by;
-    if (newStatus === 'pending_approval' && isCreator) {
+    // Open assignment dialog for review or approval
+    if ((newStatus === 'pending_approval' || newStatus === 'review') && isCreator) {
       setShowAssignmentDialog(true);
       return;
     }
