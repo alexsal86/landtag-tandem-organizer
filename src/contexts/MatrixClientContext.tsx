@@ -1582,12 +1582,23 @@ export function MatrixClientProvider({ children }: { children: ReactNode }) {
     connectCalledRef.current = false;
   }, [user, currentTenant?.id, disconnect]);
 
-  // ─── Auto-connect (guarded by connectCalledRef) ─────────────────────────
+  // ─── Auto-connect (guarded by connectCalledRef, deferred to let UI render first) ──
 
   useEffect(() => {
     if (credentials && !connectCalledRef.current && !isConnectingRef.current) {
-      connectCalledRef.current = true;
-      connect(credentials);
+      const start = () => {
+        if (!connectCalledRef.current && !isConnectingRef.current) {
+          connectCalledRef.current = true;
+          connect(credentials);
+        }
+      };
+      if ('requestIdleCallback' in window) {
+        const id = requestIdleCallback(start, { timeout: 1500 });
+        return () => cancelIdleCallback(id);
+      } else {
+        const id = setTimeout(start, 500);
+        return () => clearTimeout(id);
+      }
     }
   }, [credentials, connect]);
 
