@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -15,6 +15,7 @@ import { CalendarIcon } from 'lucide-react';
 import { format } from 'date-fns';
 import { de } from 'date-fns/locale';
 import { cn } from '@/lib/utils';
+import { useTenant } from '@/hooks/useTenant';
 
 interface NewsArticle {
   id: string;
@@ -45,7 +46,9 @@ export const NewsToTaskDialog: React.FC<NewsToTaskDialogProps> = ({
   onOpenChange,
   article
 }) => {
+  const { currentTenant } = useTenant();
   const [loading, setLoading] = useState(false);
+  const [dataLoading, setDataLoading] = useState(false);
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
   const [categories, setCategories] = useState<TaskCategory[]>([]);
@@ -55,41 +58,63 @@ export const NewsToTaskDialog: React.FC<NewsToTaskDialogProps> = ({
   const [dueDate, setDueDate] = useState<Date>();
   const [priority, setPriority] = useState<'low' | 'medium' | 'high'>('medium');
 
-  useEffect(() => {
-    if (open && article) {
-      setTitle(article.title);
-      setDescription(
-        `${article.description}\n\nQuelle: ${article.link}\nVon: ${article.source}`
-      );
-      loadData();
+  const loadData = useCallback(async () => {
+    if (!currentTenant?.id) {
+      setCategories([]);
+      setUsers([]);
+      setSelectedCategory('');
+      return;
     }
-  }, [open, article]);
 
-  const loadData = async () => {
+    setDataLoading(true);
+
     try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return;
+      const [categoriesRes, profilesRes] = await Promise.all([
+        supabase
+          .from('task_categories')
+          .select('name, label')
+          .eq('tenant_id', currentTenant.id)
+          .eq('is_active', true)
+          .order('order_index'),
+        supabase
+          .from('profiles')
+          .select('user_id, display_name')
+          .eq('tenant_id', currentTenant.id)
+          .order('display_name')
+      ]);
 
-      // Load categories from task_categories (not todo_categories)
-      const { data: categoriesData } = await supabase
-        .from('task_categories')
-        .select('name, label')
-        .eq('is_active', true)
-        .order('order_index');
+      if (categoriesRes.error) throw categoriesRes.error;
+      if (profilesRes.error) throw profilesRes.error;
 
-      setCategories(categoriesData || []);
+      const nextCategories = categoriesRes.data || [];
+      setCategories(nextCategories);
+      setSelectedCategory((currentValue) => {
+        if (currentValue && nextCategories.some((category) => category.name === currentValue)) {
+          return currentValue;
+        }
 
-      // Load users for assignment
-      const { data: profiles } = await supabase
-        .from('profiles')
-        .select('user_id, display_name')
-        .order('display_name');
-
-      setUsers(profiles || []);
+        return nextCategories[0]?.name || '';
+      });
+      const nextUsers = profilesRes.data || [];
+      setUsers(nextUsers);
+      setAssignedTo((currentValue) => currentValue.filter((userId) => nextUsers.some((profile) => profile.user_id === userId)));
     } catch (error) {
       debugConsole.error('Error loading data:', error);
+      toast.error('Kategorien und Benutzer konnten nicht geladen werden.');
+    } finally {
+      setDataLoading(false);
     }
-  };
+  }, [currentTenant?.id]);
+
+  useEffect(() => {
+    if (!open || !article) return;
+
+    setTitle(article.title);
+    setDescription(
+      `${article.description}\n\nQuelle: ${article.link}\nVon: ${article.source}`
+    );
+    void loadData();
+  }, [open, article, loadData]);
 
   const handleCreate = async () => {
     if (!title.trim()) {
@@ -102,26 +127,21 @@ export const NewsToTaskDialog: React.FC<NewsToTaskDialogProps> = ({
       return;
     }
 
+    if (!currentTenant?.id) {
+      toast.error('Bitte wählen Sie zuerst einen Mandanten aus');
+      return;
+    }
+
     setLoading(true);
 
     try {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error('Not authenticated');
 
-      const { data: memberships } = await supabase
-        .from('user_tenant_memberships')
-        .select('tenant_id')
-        .eq('user_id', user.id)
-        .eq('is_active', true)
-        .limit(1)
-        .single();
-
-      if (!memberships?.tenant_id) throw new Error('No tenant found');
-
       const normalizedDescription = description.trim();
       const { error } = await supabase.from('tasks').insert([{
         user_id: user.id,
-        tenant_id: memberships.tenant_id,
+        tenant_id: currentTenant.id,
         title: title.trim(),
         description: normalizedDescription || null,
         category: selectedCategory,
@@ -152,6 +172,8 @@ export const NewsToTaskDialog: React.FC<NewsToTaskDialogProps> = ({
       setLoading(false);
     }
   };
+
+  const isCreateDisabled = loading || dataLoading || !currentTenant?.id || categories.length === 0;
 
   const userOptions = users.map(u => ({
     value: u.user_id,
@@ -196,7 +218,8 @@ export const NewsToTaskDialog: React.FC<NewsToTaskDialogProps> = ({
             <select
               value={selectedCategory}
               onChange={(e) => setSelectedCategory(e.target.value)}
-              className="w-full px-3 py-2 border rounded-md bg-background"
+              disabled={dataLoading || categories.length === 0}
+              className="w-full px-3 py-2 border rounded-md bg-background disabled:cursor-not-allowed disabled:opacity-70"
             >
               <option value="">Kategorie auswählen</option>
               {categories.map(cat => (
@@ -205,6 +228,11 @@ export const NewsToTaskDialog: React.FC<NewsToTaskDialogProps> = ({
                 </option>
               ))}
             </select>
+            <p className="text-sm text-muted-foreground">
+              {dataLoading
+                ? 'Kategorien werden geladen – das kann einen Moment dauern.'
+                : 'Es werden nur Kategorien des aktuell gewählten Mandanten angezeigt.'}
+            </p>
           </div>
 
           {/* Assignment */}
@@ -214,8 +242,11 @@ export const NewsToTaskDialog: React.FC<NewsToTaskDialogProps> = ({
               options={userOptions}
               selected={assignedTo}
               onChange={setAssignedTo}
-              placeholder="Benutzer auswählen..."
+              placeholder={dataLoading ? 'Benutzer werden geladen...' : 'Benutzer auswählen...'}
             />
+            <p className="text-sm text-muted-foreground">
+              Die Auswahl ist auf Benutzer des aktuell gewählten Mandanten begrenzt.
+            </p>
           </div>
 
           <div className="grid grid-cols-2 gap-4">
@@ -267,7 +298,7 @@ export const NewsToTaskDialog: React.FC<NewsToTaskDialogProps> = ({
           <Button variant="outline" onClick={() => onOpenChange(false)} disabled={loading}>
             Abbrechen
           </Button>
-          <Button onClick={handleCreate} disabled={loading}>
+          <Button onClick={handleCreate} disabled={isCreateDisabled}>
             {loading ? (
               <>
                 <Loader2 className="mr-2 h-4 w-4 animate-spin" />
