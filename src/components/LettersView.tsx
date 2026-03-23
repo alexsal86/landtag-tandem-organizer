@@ -1,4 +1,4 @@
-import React, { useState, useEffect, type ChangeEvent } from 'react';
+import React, { useState, useEffect, type ChangeEvent, useMemo } from 'react';
 import { Search, Plus, FileText, Filter, Calendar, User, Edit3, Trash2, Grid, List, ListTodo, ListTree, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
