@@ -36,6 +36,7 @@ import { toast } from "sonner";
 import { useCaseWorkspaceData, type CaseFile, type CaseItem, type TeamUser } from "@/components/my-work/hooks/useCaseWorkspaceData";
 import { useCaseItemEdit, type CaseItemInteractionDocument, type EditableCaseItem, type TimelineEvent, type TimelineInteractionType, type TimelineDocumentAttachment } from "@/components/my-work/hooks/useCaseItemEdit";
 import { DEFAULT_CASE_ITEM_CATEGORIES, useCaseItemCategories } from "@/hooks/useCaseItemCategories";
+import { toEditorHtml } from "@/components/my-work/utils/editorContent";
 
 
 
@@ -81,15 +82,6 @@ const interactionTypeOptions: Array<{ value: TimelineInteractionType; label: str
   { value: "dokument", label: "Dokument", icon: FileText },
   { value: "notiz", label: "Notiz", icon: MessageSquare },
 ];
-
-const toEditorHtml = (value: string | null | undefined) => {
-  if (!value) return "";
-  if (/<[^>]+>/.test(value)) return value;
-  return `<p>${value
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;")}</p>`;
-};
 
 const normalizeRichTextValue = (value: string): string | null => {
   const trimmed = value.trim();

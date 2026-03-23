@@ -25,6 +25,7 @@ import { TaskDocumentDialog } from "@/components/tasks/TaskDocumentDialog";
 import { TaskMeetingSelector } from "@/components/tasks/TaskMeetingSelector";
 import { CelebrationAnimationSystem } from "@/components/celebrations";
 import SimpleRichTextEditor from "@/components/ui/SimpleRichTextEditor";
+import { toEditorHtml } from "@/components/my-work/utils/editorContent";
 import { MultiSelect } from "@/components/ui/multi-select-simple";
 import { Input } from "@/components/ui/input";
 import { addDays, isAfter, isBefore, startOfDay } from "date-fns";
@@ -623,15 +624,6 @@ export function MyWorkTasksTab() {
   };
 
   const getChildTasks = (parentId: string) => subtasks[parentId] || [];
-
-  const toEditorHtml = (value: string | null | undefined) => {
-    if (!value) return "";
-    if (/<[^>]+>/.test(value)) return value;
-    return `<p>${value
-      .replace(/&/g, "&amp;")
-      .replace(/</g, "&lt;")
-      .replace(/>/g, "&gt;")}</p>`;
-  };
 
   const openTaskEditDialog = (taskId: string) => {
     const task = [...assignedTasks, ...createdTasks, ...Object.values(subtasks).flat()].find((t) => t.id === taskId);
