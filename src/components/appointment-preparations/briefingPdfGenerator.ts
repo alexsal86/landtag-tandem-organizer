@@ -121,7 +121,7 @@ function ensureFit(doc: jsPDF, yRef: { y: number }, needed: number, topY: number
   }
 }
 
-const SECTION_HEADER_H = 7;
+const SECTION_HEADER_H = 8.2;
 const SECTION_GAP_AFTER_HEADER = 0;
 const SECTION_BOTTOM_PAD = 4;
 const SECTION_OUTER_GAP = 4;
@@ -148,12 +148,12 @@ function drawSectionHeaderBar(
   accentColor: readonly [number, number, number] = SECTION_HEADER_BG
 ) {
   rgb(doc, accentColor, "fill");
-  doc.rect(x, y, w, SECTION_HEADER_H + 0.4, "F");
+  doc.rect(x, y, w, SECTION_HEADER_H + 0.6, "F");
 
   doc.setFontSize(7);
   doc.setFont(BODY_FONT, "bold");
   rgb(doc, accentColor === SECTION_HEADER_BG ? GREEN_DARK : WHITE, "text");
-  doc.text(label.toUpperCase(), x + 4, y + 4.6);
+  doc.text(label.toUpperCase(), x + 4, y + 5.2);
 
   return y + SECTION_HEADER_H + SECTION_GAP_AFTER_HEADER;
 }
@@ -250,43 +250,43 @@ function drawHeaderIcon(
   y: number
 ) {
   rgb(doc, GREEN_DARK, "draw");
-  doc.setLineWidth(0.35);
+  doc.setLineWidth(0.3);
 
   if (type === "date") {
-    doc.roundedRect(x, y - 3.2, 4.4, 4.2, 0.5, 0.5, "S");
-    doc.line(x + 1, y - 4.2, x + 1, y - 2.6);
-    doc.line(x + 3.4, y - 4.2, x + 3.4, y - 2.6);
-    doc.line(x, y - 1.8, x + 4.4, y - 1.8);
+    doc.roundedRect(x, y - 3, 3.8, 3.6, 0.4, 0.4, "S");
+    doc.line(x + 0.9, y - 3.8, x + 0.9, y - 2.4);
+    doc.line(x + 2.9, y - 3.8, x + 2.9, y - 2.4);
+    doc.line(x, y - 1.5, x + 3.8, y - 1.5);
     return;
   }
 
   if (type === "time") {
-    doc.circle(x + 2.2, y - 1.2, 2, "S");
-    doc.line(x + 2.2, y - 1.2, x + 2.2, y - 2.6);
-    doc.line(x + 2.2, y - 1.2, x + 3.2, y - 0.5);
+    doc.circle(x + 1.9, y - 1.2, 1.7, "S");
+    doc.line(x + 1.9, y - 1.2, x + 1.9, y - 2.4);
+    doc.line(x + 1.9, y - 1.2, x + 2.8, y - 0.6);
     return;
   }
 
   if (type === "location") {
-    doc.circle(x + 2.2, y - 2.1, 1.1, "S");
-    doc.line(x + 2.2, y - 1, x + 2.2, y + 0.8);
-    doc.line(x + 1.2, y - 0.1, x + 2.2, y + 0.8);
-    doc.line(x + 3.2, y - 0.1, x + 2.2, y + 0.8);
+    doc.circle(x + 1.9, y - 2, 0.9, "S");
+    doc.line(x + 1.9, y - 1.1, x + 1.9, y + 0.4);
+    doc.line(x + 1.1, y - 0.3, x + 1.9, y + 0.4);
+    doc.line(x + 2.7, y - 0.3, x + 1.9, y + 0.4);
     return;
   }
 
-  doc.setLineWidth(0.3);
-  doc.line(x + 0.8, y - 1.1, x + 0.8, y + 1.8);
-  doc.line(x + 0.8, y - 1.1, x + 1.7, y - 1.8);
-  doc.line(x + 0.8, y + 1.8, x + 1.7, y + 2.5);
-  doc.line(x + 1.7, y - 1.8, x + 4.1, y - 2.5);
-  doc.line(x + 1.7, y + 2.5, x + 4.1, y + 1.3);
-  doc.line(x + 4.1, y - 2.5, x + 4.1, y + 1.3);
-  doc.line(x + 4.1, y - 2.5, x + 1.7, y - 0.9);
-  doc.line(x + 4.1, y + 1.3, x + 1.7, y + 0.7);
-  doc.line(x + 4.4, y - 1.8, x + 5.4, y - 2.8);
-  doc.line(x + 4.7, y - 0.6, x + 6.1, y - 0.6);
-  doc.line(x + 4.4, y + 0.9, x + 5.4, y + 1.9);
+  doc.setLineWidth(0.28);
+  doc.line(x + 0.9, y - 1.1, x + 0.9, y + 1.4);
+  doc.line(x + 0.9, y - 1.1, x + 1.8, y - 1.7);
+  doc.line(x + 0.9, y + 1.4, x + 1.8, y + 2);
+  doc.line(x + 1.8, y - 1.7, x + 4.1, y - 2.3);
+  doc.line(x + 1.8, y + 2, x + 4.1, y + 1.1);
+  doc.line(x + 4.1, y - 2.3, x + 4.1, y + 1.1);
+  doc.line(x + 4.1, y - 2.3, x + 1.8, y - 0.8);
+  doc.line(x + 4.1, y + 1.1, x + 1.8, y + 0.5);
+  doc.line(x + 4.3, y - 1.7, x + 5.2, y - 2.5);
+  doc.line(x + 4.6, y - 0.6, x + 5.8, y - 0.6);
+  doc.line(x + 4.3, y + 0.6, x + 5.2, y + 1.4);
 }
 
 function getPublicRelationsStatus(preparationData: AppointmentPreparation["preparation_data"]): string[] {
@@ -349,13 +349,13 @@ async function drawHeader(
   if (infoLines.length > 0) {
     doc.setFont(BODY_FONT, "normal");
     doc.setFontSize(12);
-    rgb(doc, TEXT_MUTED, "text");
+    rgb(doc, TEXT_DARK, "text");
 
     let infoY = infoStartY;
     for (const infoLine of infoLines) {
-      const wrapped = doc.splitTextToSize(infoLine.text, leftBlockW - 9);
+      const wrapped = doc.splitTextToSize(infoLine.text, leftBlockW - 11);
       drawHeaderIcon(doc, infoLine.icon, leftBlockX, infoY - 0.5);
-      doc.text(wrapped, leftBlockX + 6, infoY);
+      doc.text(wrapped, leftBlockX + 7.8, infoY);
       infoY += wrapped.length * 5.2 + 1.5;
     }
     leftBlockBottom = infoY - 1.5;
@@ -605,48 +605,6 @@ function addKernbotschaft(
   yRef.y = cardY + estH + SECTION_OUTER_GAP;
 }
 
-function addAppointmentMetaCard(
-  doc: jsPDF,
-  x: number,
-  maxW: number,
-  startTime: string | undefined,
-  endTime: string | undefined,
-  location: string | undefined,
-  yRef: { y: number },
-  topY: number
-) {
-  const lines = getHeaderInfoLines(startTime, endTime, location);
-  if (lines.length === 0) return;
-
-  doc.setFontSize(9);
-  let estH = SECTION_HEADER_H + SECTION_GAP_AFTER_HEADER + SECTION_BOTTOM_PAD + 2;
-  for (const line of lines) {
-    const wrapped = doc.splitTextToSize(line.text, maxW - 16);
-    estH += wrapped.length * 4.5 + 2;
-  }
-
-  ensureFit(doc, yRef, estH, topY);
-  const cardY = yRef.y;
-  const bodyY = cardY + SECTION_HEADER_H + SECTION_GAP_AFTER_HEADER;
-  const bodyH = Math.max(14, estH - SECTION_HEADER_H - SECTION_GAP_AFTER_HEADER);
-  drawSectionHeaderBar(doc, x, cardY, maxW, "Zeit");
-  drawSectionBody(doc, x, bodyY, maxW, bodyH);
-
-  let cy = bodyY + 5;
-  doc.setFont(BODY_FONT, "normal");
-  doc.setFontSize(9);
-  rgb(doc, TEXT_DARK, "text");
-
-  for (const line of lines) {
-    const wrapped = doc.splitTextToSize(line.text, maxW - 16);
-    drawHeaderIcon(doc, line.icon, x + 5, cy - 0.2);
-    doc.text(wrapped, x + 11, cy + 1.2);
-    cy += wrapped.length * 4.5 + 2;
-  }
-
-  yRef.y = cardY + estH + SECTION_OUTER_GAP;
-}
-
 // ─── Ablauf card ──────────────────────────────────────────────────────────────
 function addAblaufCard(
   doc: jsPDF,
@@ -661,7 +619,7 @@ function addAblaufCard(
   doc.setFontSize(9);
   let estH = SECTION_HEADER_H + SECTION_GAP_AFTER_HEADER + SECTION_BOTTOM_PAD;
   for (const p of program) {
-    const lines = doc.splitTextToSize(p.item, maxW - 24);
+    const lines = doc.splitTextToSize(p.item, maxW - 19);
     estH += lines.length * 4.5 + 2;
   }
   estH += 3;
@@ -684,8 +642,8 @@ function addAblaufCard(
     doc.setFontSize(9);
     doc.setFont(BODY_FONT, "normal");
     rgb(doc, TEXT_DARK, "text");
-    const descLines = doc.splitTextToSize(p.item, maxW - 24);
-    doc.text(descLines, x + 20, cy + 1.5);
+    const descLines = doc.splitTextToSize(p.item, maxW - 19);
+    doc.text(descLines, x + 15, cy + 1.5);
     cy += descLines.length * 4.5 + 2;
   }
 
@@ -826,10 +784,7 @@ export async function generateBriefingPdf({
 
   // ── RIGHT COLUMN ────────────────────────────────────────────────────────────
 
-  // 1. Zeit
-  addAppointmentMetaCard(doc, RIGHT_X, RIGHT_W, appointmentStartTime, appointmentEndTime, appointmentLocation, rightY, topY);
-
-  // 2. Anlass des Besuchs
+  // 1. Anlass des Besuchs
   if (preparation.title?.trim()) {
     const titleLines = doc.splitTextToSize(preparation.title, RIGHT_W - 10);
     const estH = Math.max(18, SECTION_HEADER_H + SECTION_GAP_AFTER_HEADER + titleLines.length * 4.5 + SECTION_BOTTOM_PAD + 2);
@@ -846,16 +801,16 @@ export async function generateBriefingPdf({
     rightY.y = cy + estH + SECTION_OUTER_GAP;
   }
 
-  // 3. Begleitpersonen
+  // 2. Begleitpersonen
   addCompanionsCard(doc, RIGHT_X, RIGHT_W, d.companions ?? [], rightY, topY);
 
-  // 4. Ablauf
+  // 3. Ablauf
   addAblaufCard(doc, RIGHT_X, RIGHT_W, d.program ?? [], rightY, topY);
 
-  // 5. Offene To-dos
+  // 4. Offene To-dos
   addChecklistCard(doc, RIGHT_X, RIGHT_W, preparation.checklist_items ?? [], rightY, topY);
 
-  // 6. Notizen-Bereich (liniert)
+  // 5. Notizen-Bereich (liniert)
   addNotesArea(doc, RIGHT_X, RIGHT_W, rightY, topY);
 
   // ── Footers on all pages ────────────────────────────────────────────────────
