@@ -12,14 +12,27 @@ interface Profile {
 
 interface UseMyWorkTaskActionsParams {
   userId?: string;
+  invalidateTasks: () => void;
   assignedTasks: MyWorkTask[];
-  setAssignedTasks: (value: MyWorkTask[] | ((prev: MyWorkTask[]) => MyWorkTask[])) => void;
+  setAssignedTasks: (
+    value: MyWorkTask[] | ((prev: MyWorkTask[]) => MyWorkTask[]),
+  ) => void;
   createdTasks: MyWorkTask[];
-  setCreatedTasks: (value: MyWorkTask[] | ((prev: MyWorkTask[]) => MyWorkTask[])) => void;
+  setCreatedTasks: (
+    value: MyWorkTask[] | ((prev: MyWorkTask[]) => MyWorkTask[]),
+  ) => void;
   subtasks: Record<string, MyWorkTask[]>;
-  setSubtasks: (value: Record<string, MyWorkTask[]> | ((prev: Record<string, MyWorkTask[]>) => Record<string, MyWorkTask[]>)) => void;
+  setSubtasks: (
+    value:
+      | Record<string, MyWorkTask[]>
+      | ((prev: Record<string, MyWorkTask[]>) => Record<string, MyWorkTask[]>),
+  ) => void;
   taskSnoozes: Record<string, string>;
-  setTaskSnoozes: (value: Record<string, string> | ((prev: Record<string, string>) => Record<string, string>)) => void;
+  setTaskSnoozes: (
+    value:
+      | Record<string, string>
+      | ((prev: Record<string, string>) => Record<string, string>),
+  ) => void;
   profiles: Profile[];
   taskStatuses: { name: string; label: string }[];
   taskCategories: { name: string; label: string }[];
@@ -51,6 +64,7 @@ export const normalizeAssignedTo = (assignedTo: string | null | undefined) => {
 
 export function useMyWorkTaskActions({
   userId,
+  invalidateTasks,
   assignedTasks,
   setAssignedTasks,
   createdTasks,
@@ -70,7 +84,9 @@ export function useMyWorkTaskActions({
   const [snoozeTaskId, setSnoozeTaskId] = useState<string | null>(null);
   const [assignDialogOpen, setAssignDialogOpen] = useState(false);
   const [assignTaskId, setAssignTaskId] = useState<string | null>(null);
-  const [assignSelectedUserIds, setAssignSelectedUserIds] = useState<string[]>([]);
+  const [assignSelectedUserIds, setAssignSelectedUserIds] = useState<string[]>(
+    [],
+  );
   const [commentSidebarOpen, setCommentSidebarOpen] = useState(false);
   const [commentTaskId, setCommentTaskId] = useState<string | null>(null);
   const [decisionDialogOpen, setDecisionDialogOpen] = useState(false);
@@ -83,79 +99,141 @@ export function useMyWorkTaskActions({
   const [editingTaskId, setEditingTaskId] = useState<string | null>(null);
   const [editTaskTitle, setEditTaskTitle] = useState("");
   const [editTaskDescription, setEditTaskDescription] = useState("");
-  const [editTaskPriority, setEditTaskPriority] = useState(DEFAULT_EDIT_PRIORITY);
+  const [editTaskPriority, setEditTaskPriority] = useState(
+    DEFAULT_EDIT_PRIORITY,
+  );
   const [editTaskStatus, setEditTaskStatus] = useState(DEFAULT_EDIT_STATUS);
-  const [editTaskCategory, setEditTaskCategory] = useState(DEFAULT_EDIT_CATEGORY);
-
-  const allTasks = useMemo(
-    () => [...assignedTasks, ...createdTasks, ...Object.values(subtasks).flat()],
-    [assignedTasks, createdTasks, subtasks]
+  const [editTaskCategory, setEditTaskCategory] = useState(
+    DEFAULT_EDIT_CATEGORY,
   );
 
-  const availableTaskStatuses = taskStatuses.length > 0 ? taskStatuses : [{ name: "todo", label: "Offen" }, { name: "in-progress", label: "In Bearbeitung" }, { name: "completed", label: "Erledigt" }];
-  const availableTaskCategories = taskCategories.length > 0 ? taskCategories : [{ name: "legislation", label: "Gesetzgebung" }, { name: "committee", label: "Ausschuss" }, { name: "constituency", label: "Wahlkreis" }, { name: "personal", label: "Persönlich" }];
+  const allTasks = useMemo(
+    () => [
+      ...assignedTasks,
+      ...createdTasks,
+      ...Object.values(subtasks).flat(),
+    ],
+    [assignedTasks, createdTasks, subtasks],
+  );
 
-  const getTaskById = (taskId: string | null) => (taskId ? allTasks.find((task) => task.id === taskId) : undefined);
+  const availableTaskStatuses =
+    taskStatuses.length > 0
+      ? taskStatuses
+      : [
+          { name: "todo", label: "Offen" },
+          { name: "in-progress", label: "In Bearbeitung" },
+          { name: "completed", label: "Erledigt" },
+        ];
+  const availableTaskCategories =
+    taskCategories.length > 0
+      ? taskCategories
+      : [
+          { name: "legislation", label: "Gesetzgebung" },
+          { name: "committee", label: "Ausschuss" },
+          { name: "constituency", label: "Wahlkreis" },
+          { name: "personal", label: "Persönlich" },
+        ];
+
+  const getTaskById = (taskId: string | null) =>
+    taskId ? allTasks.find((task) => task.id === taskId) : undefined;
 
   const getTaskTitle = (taskId: string | null) => getTaskById(taskId)?.title;
 
-  const updateTaskInCollections = (taskId: string, updater: (task: MyWorkTask) => MyWorkTask) => {
-    setAssignedTasks((prev) => prev.map((task) => (task.id === taskId ? updater(task) : task)));
-    setCreatedTasks((prev) => prev.map((task) => (task.id === taskId ? updater(task) : task)));
+  const updateTaskInCollections = (
+    taskId: string,
+    updater: (task: MyWorkTask) => MyWorkTask,
+  ) => {
+    setAssignedTasks((prev) =>
+      prev.map((task) => (task.id === taskId ? updater(task) : task)),
+    );
+    setCreatedTasks((prev) =>
+      prev.map((task) => (task.id === taskId ? updater(task) : task)),
+    );
     setSubtasks((prev) => {
       const next: Record<string, MyWorkTask[]> = {};
       Object.entries(prev).forEach(([parentId, list]) => {
-        next[parentId] = list.map((task) => (task.id === taskId ? updater(task) : task));
+        next[parentId] = list.map((task) =>
+          task.id === taskId ? updater(task) : task,
+        );
       });
       return next;
     });
   };
 
+  const collectTaskTreeIds = (rootTaskId: string) => {
+    const collected = new Set<string>();
+
+    const visit = (taskId: string) => {
+      if (collected.has(taskId)) return;
+      collected.add(taskId);
+      (subtasks[taskId] || []).forEach((childTask) => visit(childTask.id));
+    };
+
+    visit(rootTaskId);
+    return collected;
+  };
+
+  const removeTaskTreeFromCollections = (taskIds: Set<string>) => {
+    setAssignedTasks((prev) =>
+      prev.filter((taskItem) => !taskIds.has(taskItem.id)),
+    );
+    setCreatedTasks((prev) =>
+      prev.filter((taskItem) => !taskIds.has(taskItem.id)),
+    );
+    setSubtasks((prev) => {
+      const next: Record<string, MyWorkTask[]> = {};
+      Object.entries(prev).forEach(([parentId, list]) => {
+        if (taskIds.has(parentId)) return;
+        const filtered = list.filter((taskItem) => !taskIds.has(taskItem.id));
+        if (filtered.length > 0) next[parentId] = filtered;
+      });
+      return next;
+    });
+    setTaskSnoozes((prev) => {
+      const next = { ...prev };
+      taskIds.forEach((id) => delete next[id]);
+      return next;
+    });
+  };
+
   const handleToggleComplete = async (taskId: string) => {
+    if (!userId) return;
+
     const task = getTaskById(taskId);
-    if (!task || !userId) return;
+    if (!task) return;
+
+    const taskTreeIds = collectTaskTreeIds(taskId);
+    const previousAssignedTasks = assignedTasks;
+    const previousCreatedTasks = createdTasks;
+    const previousSubtasks = subtasks;
+    const previousTaskSnoozes = taskSnoozes;
+
+    removeTaskTreeFromCollections(taskTreeIds);
 
     try {
-      const { error: updateError } = await supabase
-        .from("tasks")
-        .update({ status: "completed", progress: 100 })
-        .eq("id", taskId)
-        .select();
-
-      if (updateError) throw updateError;
-
-      await supabase.from("archived_tasks").insert([{
-        task_id: taskId,
-        user_id: userId,
-        title: task.title,
-        description: task.description,
-        priority: task.priority,
-        category: "personal",
-        assigned_to: task.assigned_to || "",
-        progress: 100,
-        due_date: task.due_date,
-        completed_at: new Date().toISOString(),
-        auto_delete_after_days: null,
-      }]);
-
-      await supabase.from("tasks").delete().eq("id", taskId);
-
-      setAssignedTasks((prev) => prev.filter((taskItem) => taskItem.id !== taskId));
-      setCreatedTasks((prev) => prev.filter((taskItem) => taskItem.id !== taskId));
-      setSubtasks((prev) => {
-        const next = { ...prev };
-        delete next[taskId];
-        Object.keys(next).forEach((parentId) => {
-          next[parentId] = next[parentId].filter((taskItem) => taskItem.id !== taskId);
-        });
-        return next;
+      const { error } = await supabase.rpc("archive_completed_task", {
+        p_task_id: taskId,
+        p_user_id: userId,
       });
 
+      if (error) throw error;
+
+      invalidateTasks();
       onCelebrate();
       toast({ title: "Aufgabe erledigt und archiviert" });
     } catch (error: unknown) {
+      setAssignedTasks(previousAssignedTasks);
+      setCreatedTasks(previousCreatedTasks);
+      setSubtasks(previousSubtasks);
+      setTaskSnoozes(previousTaskSnoozes);
+      invalidateTasks();
       debugConsole.error("Error completing task:", error);
-      toast({ title: "Fehler", variant: "destructive" });
+      toast({
+        title: "Archivierung fehlgeschlagen",
+        description:
+          "Die Aufgabe blieb unverändert. Es wurde nichts teilweise archiviert.",
+        variant: "destructive",
+      });
     }
   };
 
@@ -188,7 +266,11 @@ export function useMyWorkTaskActions({
 
   const handleUpdateTitle = async (taskId: string, title: string) => {
     try {
-      const { error } = await supabase.from("tasks").update({ title }).eq("id", taskId).select();
+      const { error } = await supabase
+        .from("tasks")
+        .update({ title })
+        .eq("id", taskId)
+        .select();
       if (error) throw error;
       updateTaskInCollections(taskId, (task) => ({ ...task, title }));
       toast({ title: "Titel aktualisiert" });
@@ -198,9 +280,16 @@ export function useMyWorkTaskActions({
     }
   };
 
-  const handleUpdateDescription = async (taskId: string, description: string) => {
+  const handleUpdateDescription = async (
+    taskId: string,
+    description: string,
+  ) => {
     try {
-      const { error } = await supabase.from("tasks").update({ description }).eq("id", taskId).select();
+      const { error } = await supabase
+        .from("tasks")
+        .update({ description })
+        .eq("id", taskId)
+        .select();
       if (error) throw error;
       updateTaskInCollections(taskId, (task) => ({ ...task, description }));
       toast({ title: "Beschreibung aktualisiert" });
@@ -213,9 +302,16 @@ export function useMyWorkTaskActions({
   const handleUpdateDueDate = async (taskId: string, date: Date | null) => {
     try {
       const dueDate = date?.toISOString() || null;
-      const { error } = await supabase.from("tasks").update({ due_date: dueDate }).eq("id", taskId).select();
+      const { error } = await supabase
+        .from("tasks")
+        .update({ due_date: dueDate })
+        .eq("id", taskId)
+        .select();
       if (error) throw error;
-      updateTaskInCollections(taskId, (task) => ({ ...task, due_date: dueDate }));
+      updateTaskInCollections(taskId, (task) => ({
+        ...task,
+        due_date: dueDate,
+      }));
       toast({ title: "Frist aktualisiert" });
     } catch (error) {
       debugConsole.error("Error updating due date:", error);
@@ -230,7 +326,11 @@ export function useMyWorkTaskActions({
 
   const clearSnoozeForTask = async (taskId: string) => {
     if (!userId) return;
-    const { error } = await supabase.from("task_snoozes").delete().eq("task_id", taskId).eq("user_id", userId);
+    const { error } = await supabase
+      .from("task_snoozes")
+      .delete()
+      .eq("task_id", taskId)
+      .eq("user_id", userId);
     if (error) throw error;
   };
 
@@ -253,14 +353,21 @@ export function useMyWorkTaskActions({
           .eq("id", existingSnooze.id);
         if (error) throw error;
       } else {
-        const { error } = await supabase
-          .from("task_snoozes")
-          .insert([{ user_id: userId, task_id: snoozeTaskId, snoozed_until: date.toISOString() }]);
+        const { error } = await supabase.from("task_snoozes").insert([
+          {
+            user_id: userId,
+            task_id: snoozeTaskId,
+            snoozed_until: date.toISOString(),
+          },
+        ]);
         if (error) throw error;
       }
 
       toast({ title: "Wiedervorlage gesetzt" });
-      setTaskSnoozes((prev) => ({ ...prev, [targetTaskId]: date.toISOString() }));
+      setTaskSnoozes((prev) => ({
+        ...prev,
+        [targetTaskId]: date.toISOString(),
+      }));
       setSnoozeDialogOpen(false);
       setSnoozeTaskId(null);
     } catch (error) {
@@ -314,14 +421,23 @@ export function useMyWorkTaskActions({
   const handleUpdateAssignee = async (userIds: string[]) => {
     if (!assignTaskId || !userId) return;
     const normalizedAssignees = userIds.map((id) => id.trim()).filter(Boolean);
-    const assignedToValue = normalizedAssignees.length > 0 ? normalizedAssignees.join(",") : null;
+    const assignedToValue =
+      normalizedAssignees.length > 0 ? normalizedAssignees.join(",") : null;
 
     const existingTask = getTaskById(assignTaskId);
-    const previousAssignees = normalizeAssignedTo(existingTask?.assigned_to ?? null);
-    const newlyAssignedUserIds = normalizedAssignees.filter((id) => id !== userId && !previousAssignees.includes(id));
+    const previousAssignees = normalizeAssignedTo(
+      existingTask?.assigned_to ?? null,
+    );
+    const newlyAssignedUserIds = normalizedAssignees.filter(
+      (id) => id !== userId && !previousAssignees.includes(id),
+    );
 
     try {
-      const { error } = await supabase.from("tasks").update({ assigned_to: assignedToValue }).eq("id", assignTaskId).select();
+      const { error } = await supabase
+        .from("tasks")
+        .update({ assigned_to: assignedToValue })
+        .eq("id", assignTaskId)
+        .select();
       if (error) throw error;
 
       const { data: senderProfile } = await supabase
@@ -337,11 +453,14 @@ export function useMyWorkTaskActions({
             senderName: senderProfile?.display_name,
             itemTitle: existingTask?.title,
             itemId: assignTaskId,
-          })
-        )
+          }),
+        ),
       );
 
-      updateTaskInCollections(assignTaskId, (task) => ({ ...task, assigned_to: assignedToValue }));
+      updateTaskInCollections(assignTaskId, (task) => ({
+        ...task,
+        assigned_to: assignedToValue,
+      }));
       toast({ title: "Zuweisung aktualisiert" });
       setAssignDialogOpen(false);
       setAssignTaskId(null);
@@ -372,7 +491,10 @@ export function useMyWorkTaskActions({
     setMeetingSelectorOpen(true);
   };
 
-  const handleSelectMeeting = async (meetingId: string, meetingTitle: string) => {
+  const handleSelectMeeting = async (
+    meetingId: string,
+    meetingTitle: string,
+  ) => {
     if (!meetingTaskId || !userId) return;
 
     try {
@@ -384,20 +506,38 @@ export function useMyWorkTaskActions({
 
       if (error) {
         debugConsole.error("Error adding task to meeting:", error);
-        toast({ title: "Fehler", description: error.message || "Aufgabe konnte nicht zugeordnet werden.", variant: "destructive" });
+        toast({
+          title: "Fehler",
+          description:
+            error.message || "Aufgabe konnte nicht zugeordnet werden.",
+          variant: "destructive",
+        });
         return;
       }
 
       if (!data || data.length === 0) {
-        toast({ title: "Warnung", description: "Keine Aufgabe aktualisiert.", variant: "destructive" });
+        toast({
+          title: "Warnung",
+          description: "Keine Aufgabe aktualisiert.",
+          variant: "destructive",
+        });
         return;
       }
 
-      updateTaskInCollections(meetingTaskId, (task) => ({ ...task, meeting_id: meetingId, pending_for_jour_fixe: false }));
+      updateTaskInCollections(meetingTaskId, (task) => ({
+        ...task,
+        meeting_id: meetingId,
+        pending_for_jour_fixe: false,
+      }));
       toast({ title: `Aufgabe zu "${meetingTitle}" hinzugefügt` });
     } catch (error: unknown) {
       debugConsole.error("Error adding task to meeting:", error);
-      toast({ title: "Fehler", description: error instanceof Error ? error.message : "Unbekannter Fehler", variant: "destructive" });
+      toast({
+        title: "Fehler",
+        description:
+          error instanceof Error ? error.message : "Unbekannter Fehler",
+        variant: "destructive",
+      });
     } finally {
       setMeetingTaskId(null);
       setMeetingSelectorOpen(false);
@@ -416,15 +556,29 @@ export function useMyWorkTaskActions({
 
       if (error) {
         debugConsole.error("Error marking task:", error);
-        toast({ title: "Fehler", description: error.message || "Aufgabe konnte nicht vorgemerkt werden.", variant: "destructive" });
+        toast({
+          title: "Fehler",
+          description:
+            error.message || "Aufgabe konnte nicht vorgemerkt werden.",
+          variant: "destructive",
+        });
         return;
       }
 
-      updateTaskInCollections(meetingTaskId, (task) => ({ ...task, pending_for_jour_fixe: true, meeting_id: null }));
+      updateTaskInCollections(meetingTaskId, (task) => ({
+        ...task,
+        pending_for_jour_fixe: true,
+        meeting_id: null,
+      }));
       toast({ title: "Aufgabe für nächsten Jour Fixe vorgemerkt" });
     } catch (error: unknown) {
       debugConsole.error("Error marking task for next jour fixe:", error);
-      toast({ title: "Fehler", description: error instanceof Error ? error.message : "Unbekannter Fehler", variant: "destructive" });
+      toast({
+        title: "Fehler",
+        description:
+          error instanceof Error ? error.message : "Unbekannter Fehler",
+        variant: "destructive",
+      });
     } finally {
       setMeetingTaskId(null);
       setMeetingSelectorOpen(false);
@@ -436,25 +590,33 @@ export function useMyWorkTaskActions({
 
     const parentTask = getTaskById(parentTaskId);
     if (!parentTask?.tenant_id) {
-      toast({ title: "Fehler", description: "Übergeordnete Aufgabe nicht gefunden.", variant: "destructive" });
+      toast({
+        title: "Fehler",
+        description: "Übergeordnete Aufgabe nicht gefunden.",
+        variant: "destructive",
+      });
       return;
     }
 
     try {
       const { data, error } = await supabase
         .from("tasks")
-        .insert([{
-          user_id: userId,
-          tenant_id: parentTask.tenant_id,
-          parent_task_id: parentTaskId,
-          title: "Neue Unteraufgabe",
-          description: null,
-          status: "todo",
-          priority: DEFAULT_EDIT_PRIORITY,
-          category: parentTask.category || DEFAULT_EDIT_CATEGORY,
-          assigned_to: userId,
-        }])
-        .select("id, title, description, priority, status, due_date, assigned_to, user_id, created_at, category, meeting_id, pending_for_jour_fixe, parent_task_id, tenant_id")
+        .insert([
+          {
+            user_id: userId,
+            tenant_id: parentTask.tenant_id,
+            parent_task_id: parentTaskId,
+            title: "Neue Unteraufgabe",
+            description: null,
+            status: "todo",
+            priority: DEFAULT_EDIT_PRIORITY,
+            category: parentTask.category || DEFAULT_EDIT_CATEGORY,
+            assigned_to: userId,
+          },
+        ])
+        .select(
+          "id, title, description, priority, status, due_date, assigned_to, user_id, created_at, category, meeting_id, pending_for_jour_fixe, parent_task_id, tenant_id",
+        )
         .single();
 
       if (error) throw error;
@@ -466,7 +628,11 @@ export function useMyWorkTaskActions({
       }));
     } catch (error) {
       debugConsole.error("Error creating child task:", error);
-      toast({ title: "Fehler", description: "Unteraufgabe konnte nicht erstellt werden.", variant: "destructive" });
+      toast({
+        title: "Fehler",
+        description: "Unteraufgabe konnte nicht erstellt werden.",
+        variant: "destructive",
+      });
     }
   };
 
@@ -495,9 +661,16 @@ export function useMyWorkTaskActions({
     };
 
     try {
-      const { error } = await supabase.from("tasks").update(updates).eq("id", editingTaskId).select();
+      const { error } = await supabase
+        .from("tasks")
+        .update(updates)
+        .eq("id", editingTaskId)
+        .select();
       if (error) throw error;
-      updateTaskInCollections(editingTaskId, (task) => ({ ...task, ...updates }));
+      updateTaskInCollections(editingTaskId, (task) => ({
+        ...task,
+        ...updates,
+      }));
       toast({ title: "Aufgabe aktualisiert" });
       setTaskEditDialogOpen(false);
       setEditingTaskId(null);
@@ -510,11 +683,15 @@ export function useMyWorkTaskActions({
   const getChildTasks = (parentId: string) => subtasks[parentId] || [];
 
   const profileNameMap = useMemo(
-    () => profiles.reduce((acc, profile) => {
-      acc[profile.user_id] = profile.display_name || profile.user_id;
-      return acc;
-    }, {} as Record<string, string>),
-    [profiles]
+    () =>
+      profiles.reduce(
+        (acc, profile) => {
+          acc[profile.user_id] = profile.display_name || profile.user_id;
+          return acc;
+        },
+        {} as Record<string, string>,
+      ),
+    [profiles],
   );
 
   const resolveAssigneeName = (assignedTo: string | null | undefined) => {
