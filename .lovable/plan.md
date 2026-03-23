@@ -1,53 +1,45 @@
 
 
-## SVG-Logo nativ einbinden (svg2pdf.js reaktivieren)
+## Build Error Fix + Sender Settings Restructuring
 
-### Aktueller Zustand
-- `svg2pdf.js` ist in `package.json` vorhanden, wird aber **nicht verwendet**
-- Stattdessen wird das SVG per Canvas gerastert (`rasterizeSvg`) und als PNG eingebettet
-- Das erzeugt ein unscharfes/pixeliges Logo
+### 1. Fix Build Error in MyWorkCasesWorkspace.tsx
 
-### Änderung
+**Problem**: Lines 819 and 842 set `status` to values (`"entscheidung_abwartend"` and a generic `string`) that don't match the `CaseItemsRow` type's allowed status enum (`"antwort_ausstehend" | "archiviert" | "erledigt" | "in_klaerung" | "neu"`).
 
-In `briefingPdfGenerator.ts`:
+**Fix**: Cast the mapped result with `as CaseItemsRow[]` or cast the status value with `as CaseItemsRow['status']` on both lines.
 
-1. **`svg2pdf.js` importieren** und `doc.svg()` wieder nutzen
-2. **`rasterizeSvg`-Funktion entfernen** (wird nicht mehr gebraucht)
-3. **`drawHeader` anpassen**: SVG per `fetch` laden, mit `DOMParser` als `SVGElement` parsen, dann `await doc.svg(svgElement, { x, y, width, height })` aufrufen
-4. **Fallback beibehalten**: Falls `doc.svg()` fehlschlägt, Logo überspringen statt PDF-Generierung zu blockieren
+### 2. Move SenderInformationManager from "Adressfeld" Tab to "Allgemein" Tab
 
-### Technisches Detail
+**Current state**: The `<SenderInformationManager />` component is rendered at the bottom of the "Adressfeld" (block-address) tab in `TemplateFormTabs.tsx` (line 269).
 
-```typescript
-import { svg2pdf } from 'svg2pdf.js';
+**Change**: Move it into the "Allgemein" (general) tab, below the existing sender dropdown, so all sender-related settings are in one place.
 
-// In drawHeader:
-const resp = await fetch("/assets/logo_fraktion.svg");
-const svgText = await resp.text();
-const parser = new DOMParser();
-const svgDoc = parser.parseFromString(svgText, "image/svg+xml");
-const svgElement = svgDoc.documentElement as unknown as SVGElement;
+### 3. Expand SenderInformationManager to Show All Editable Fields
 
-// Wichtig: SVG muss im DOM sein für svg2pdf.js
-document.body.appendChild(svgElement);
-svgElement.style.position = 'absolute';
-svgElement.style.left = '-9999px';
+**Current state**: The `SenderInformationManager` dialog only allows editing `name`, `email`, and `is_default`. But the `sender_information` table has many more fields:
 
-try {
-  await doc.svg(svgElement, { x: logoX, y: logoY, width: logoW, height: logoH });
-} finally {
-  document.body.removeChild(svgElement);
-}
-```
+- `organization` (currently just copied from name)
+- `landtag_street`, `landtag_house_number`, `landtag_postal_code`, `landtag_city`
+- `wahlkreis_street`, `wahlkreis_house_number`, `wahlkreis_postal_code`, `wahlkreis_city`, `wahlkreis_email`
+- `phone`, `fax`
+- `website`, `facebook_profile`, `instagram_profile`
+- `return_address_line`
 
-### Dateien
+**Change**: Expand the create/edit dialog in `SenderInformationManager.tsx` to include all these fields, grouped logically:
 
-| Datei | Änderung |
+- **Allgemein**: Name, Organisation, Rücksendezeile
+- **Landtag-Adresse**: Straße, Hausnummer, PLZ, Stadt, E-Mail
+- **Wahlkreis-Adresse**: Straße, Hausnummer, PLZ, Stadt, E-Mail
+- **Kontakt**: Telefon, Fax, Website
+- **Social Media**: Facebook, Instagram
+
+The card list view will also show more info (organization, address summary).
+
+### Files to Edit
+
+| File | Change |
 |---|---|
-| `briefingPdfGenerator.ts` | `svg2pdf.js` Import hinzufügen, `rasterizeSvg` entfernen, `drawHeader` auf `doc.svg()` umstellen |
-
-### Ergebnis
-- Logo als Vektorgrafik im PDF (perfekt scharf bei jeder Zoomstufe)
-- `svg2pdf.js` Dependency wird tatsächlich genutzt
-- Minimale Dateigröße
+| `src/components/my-work/MyWorkCasesWorkspace.tsx` | Cast status values to fix build errors |
+| `src/components/letter-templates/TemplateFormTabs.tsx` | Remove `<SenderInformationManager />` from block-address tab, add it to general tab |
+| `src/components/administration/SenderInformationManager.tsx` | Expand form to include all `sender_information` fields |
 
