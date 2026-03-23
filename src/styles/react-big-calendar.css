@@ -256,7 +256,7 @@
 
 /* Sticky day header */
 .rbc-time-header {
-  border-bottom: 1px solid hsl(var(--border));
+  border-bottom: none;
   position: sticky;
   top: 0;
   z-index: 20;
