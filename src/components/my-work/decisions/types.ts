@@ -58,6 +58,7 @@ export interface SidebarOpenQuestion {
   participantAvatarUrl: string | null;
   comment: string | null;
   createdAt: string;
+  creatorResponse?: string | null;
 }
 
 export interface SidebarNewComment {
@@ -70,6 +71,8 @@ export interface SidebarNewComment {
   responseType: string;
   comment: string | null;
   createdAt: string;
+  creatorResponse?: string | null;
+  participantFollowupId?: string | null;
 }
 
 export interface SidebarDiscussionComment {

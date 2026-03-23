@@ -243,27 +243,36 @@ export function useDecisionActions({
 
         if (error) throw error;
       } else {
-        const { data: parentResponse, error: parentError } = await supabase
+        const { data: currentResponse, error: responseError } = await supabase
           .from("task_decision_responses")
-          .select("decision_id, participant_id")
+          .select("id, decision_id, participant_id, parent_response_id")
           .eq("id", responseId)
           .maybeSingle();
 
-        if (parentError || !parentResponse) {
-          throw parentError || new Error("Ausgangsnachricht nicht gefunden.");
+        if (responseError || !currentResponse) {
+          throw responseError || new Error("Ausgangsnachricht nicht gefunden.");
         }
 
-        const { error } = await supabase.from("task_decision_responses").insert([
-          {
-            decision_id: parentResponse.decision_id,
-            participant_id: parentResponse.participant_id,
-            response_type: "question",
-            comment: text.trim(),
-            parent_response_id: responseId,
-          },
-        ]);
+        if (currentResponse.parent_response_id) {
+          const { error } = await supabase
+            .from("task_decision_responses")
+            .update({ comment: text.trim(), updated_at: new Date().toISOString() })
+            .eq("id", currentResponse.id);
 
-        if (error) throw error;
+          if (error) throw error;
+        } else {
+          const { error } = await supabase.from("task_decision_responses").insert([
+            {
+              decision_id: currentResponse.decision_id,
+              participant_id: currentResponse.participant_id,
+              response_type: "question",
+              comment: text.trim(),
+              parent_response_id: responseId,
+            },
+          ]);
+
+          if (error) throw error;
+        }
       }
 
       toast({

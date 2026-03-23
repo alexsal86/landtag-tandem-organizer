@@ -66,6 +66,7 @@ export function DecisionCardActivity({ participants = [], maxItems = 2, isCreato
     participantFollowup: string | null;
     createdAt: string;
     userId: string;
+    latestFollowupId: string | null;
   }> = [];
 
   participants.forEach(p => {
@@ -88,6 +89,7 @@ export function DecisionCardActivity({ participants = [], maxItems = 2, isCreato
         participantFollowup: latestFollowup?.comment || null,
         createdAt: latest.updated_at || latest.created_at,
         userId: p.user_id,
+        latestFollowupId: latestFollowup?.id || null,
       });
     } else if (latest.comment) {
       activityItems.push({
@@ -101,6 +103,7 @@ export function DecisionCardActivity({ participants = [], maxItems = 2, isCreato
         participantFollowup: latestFollowup?.comment || null,
         createdAt: latest.updated_at || latest.created_at,
         userId: p.user_id,
+        latestFollowupId: latestFollowup?.id || null,
       });
     }
   });
@@ -221,15 +224,15 @@ export function DecisionCardActivity({ participants = [], maxItems = 2, isCreato
                 </div>
               )}
               {/* Reply button for unanswered questions (creator only) */}
-              {isCreator && !item.creatorResponse && onReply && replyingTo !== item.id && (
+              {isCreator && onReply && replyingTo !== item.id && (
                 <Button
                   variant="ghost"
                   size="sm"
                   className="h-5 px-1.5 text-[10px] text-orange-600 hover:text-orange-700 mt-0.5 -ml-1.5"
-                  onClick={(e) => { e.stopPropagation(); setReplyingTo(item.id); }}
+                  onClick={(e) => { e.stopPropagation(); setReplyText(item.creatorResponse || ""); setReplyingTo(item.id); }}
                 >
                   <Reply className="h-2.5 w-2.5 mr-0.5" />
-                  Antworten
+                  {item.creatorResponse ? 'Bearbeiten' : 'Antworten'}
                 </Button>
               )}
 
@@ -238,10 +241,10 @@ export function DecisionCardActivity({ participants = [], maxItems = 2, isCreato
                   variant="ghost"
                   size="sm"
                   className="h-5 px-1.5 text-[10px] text-primary hover:text-primary mt-0.5 -ml-1.5"
-                  onClick={(e) => { e.stopPropagation(); setReplyingTo(item.id); }}
+                  onClick={(e) => { e.stopPropagation(); setReplyText(item.participantFollowup || ""); setReplyingTo(item.id); }}
                 >
                   <ArrowRight className="h-2.5 w-2.5 mr-0.5" />
-                  Antworten
+                  {item.participantFollowup ? 'Bearbeiten' : 'Antworten'}
                 </Button>
               )}
             </div>
@@ -261,7 +264,7 @@ export function DecisionCardActivity({ participants = [], maxItems = 2, isCreato
                 <Button
                   size="sm"
                   className="h-6 text-[10px] px-2"
-                  onClick={(e) => { e.stopPropagation(); handleSendReply(item.id, getReplyMode()); }}
+                  onClick={(e) => { e.stopPropagation(); handleSendReply(item.latestFollowupId || item.id, getReplyMode()); }}
                   disabled={isSending || !replyText.trim()}
                 >
                   {isSending ? (

@@ -23,6 +23,7 @@ interface OpenQuestion {
   participantBadgeColor: string | null;
   participantAvatarUrl: string | null;
   comment: string | null;
+  creatorResponse?: string | null;
 }
 
 interface NewComment {
@@ -34,6 +35,8 @@ interface NewComment {
   participantAvatarUrl: string | null;
   responseType: string;
   comment: string | null;
+  creatorResponse?: string | null;
+  participantFollowupId?: string | null;
 }
 
 interface MyWorkDecisionSidebarProps {
@@ -106,27 +109,36 @@ export function MyWorkDecisionSidebar({
 
         if (error) throw error;
       } else {
-        const { data: parentResponse, error: parentError } = await supabase
+        const { data: currentResponse, error: responseError } = await supabase
           .from('task_decision_responses')
-          .select('decision_id, participant_id')
+          .select('id, decision_id, participant_id, parent_response_id')
           .eq('id', responseId)
           .maybeSingle();
 
-        if (parentError || !parentResponse) {
-          throw parentError || new Error('Ausgangsnachricht nicht gefunden.');
+        if (responseError || !currentResponse) {
+          throw responseError || new Error('Ausgangsnachricht nicht gefunden.');
         }
 
-        const { error } = await supabase
-          .from('task_decision_responses')
-          .insert([{
-            decision_id: parentResponse.decision_id,
-            participant_id: parentResponse.participant_id,
-            response_type: 'question',
-            comment: responseText.trim(),
-            parent_response_id: responseId,
-          }]);
+        if (currentResponse.parent_response_id) {
+          const { error } = await supabase
+            .from('task_decision_responses')
+            .update({ comment: responseText.trim(), updated_at: new Date().toISOString() })
+            .eq('id', currentResponse.id);
 
-        if (error) throw error;
+          if (error) throw error;
+        } else {
+          const { error } = await supabase
+            .from('task_decision_responses')
+            .insert([{
+              decision_id: currentResponse.decision_id,
+              participant_id: currentResponse.participant_id,
+              response_type: 'question',
+              comment: responseText.trim(),
+              parent_response_id: responseId,
+            }]);
+
+          if (error) throw error;
+        }
       }
       
       toast.success("Antwort gesendet");
@@ -228,9 +240,9 @@ export function MyWorkDecisionSidebar({
                           <Button
                             size="sm" variant="outline"
                             className="mt-1.5 text-[10px] w-full h-6"
-                            onClick={(e) => { e.stopPropagation(); setRespondingTo(q.id); }}
+                            onClick={(e) => { e.stopPropagation(); setResponseText(q.creatorResponse || ''); setRespondingTo(q.id); }}
                           >
-                            Antworten
+                            {q.creatorResponse ? "Bearbeiten" : "Antworten"}
                           </Button>
                         )}
                       </div>
@@ -285,7 +297,7 @@ export function MyWorkDecisionSidebar({
                             <div className="flex gap-1.5">
                               <Button
                                 size="sm"
-                                onClick={() => handleSendResponse(reply.id, 'participant_followup')}
+                                onClick={() => handleSendResponse(reply.participantFollowupId || reply.id, 'participant_followup')}
                                 disabled={isLoading || !responseText.trim()}
                                 className="text-[10px] h-6"
                               >
@@ -306,9 +318,9 @@ export function MyWorkDecisionSidebar({
                             size="sm"
                             variant="outline"
                             className="mt-1.5 text-[10px] w-full h-6"
-                            onClick={() => setRespondingTo(reply.id)}
+                            onClick={() => { setResponseText(reply.comment || ''); setRespondingTo(reply.id); }}
                           >
-                            Antwort
+                            {reply.participantFollowupId ? "Bearbeiten" : "Antworten"}
                           </Button>
                         )}
                       </div>
@@ -399,9 +411,9 @@ export function MyWorkDecisionSidebar({
                             size="sm"
                             variant="outline"
                             className="mt-1.5 text-[10px] w-full h-6"
-                            onClick={() => setRespondingTo(c.id)}
+                            onClick={() => { setResponseText(c.creatorResponse || ''); setRespondingTo(c.id); }}
                           >
-                            Antwort
+                            {c.creatorResponse ? "Bearbeiten" : "Antworten"}
                           </Button>
                         )}
                       </div>
