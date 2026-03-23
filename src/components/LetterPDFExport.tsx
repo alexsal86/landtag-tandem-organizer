@@ -29,6 +29,7 @@ const LetterPDFExport: React.FC<LetterPDFExportProps> = ({
         attachments,
         showPagination,
         returnBlob: false,
+        contact,
       });
 
       toast({
