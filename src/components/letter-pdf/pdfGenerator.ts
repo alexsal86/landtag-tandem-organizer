@@ -337,13 +337,52 @@ interface GeneratePDFOptions {
   debugMode?: boolean;
 }
 
+function renderBlockLinesToPdf(pdf: jsPDF, lines: BlockLine[], x: number, startY: number, maxWidth: number): void {
+  let y = startY;
+  for (const line of lines) {
+    if (line.type === 'spacer') {
+      y += line.spacerHeight || 2;
+      continue;
+    }
+    const fontSize = line.fontSize || 9;
+    pdf.setFontSize(fontSize);
+    const lineHeightMm = fontSize * 0.45;
+    
+    if (line.type === 'label-value') {
+      if (line.label) {
+        pdf.setFont('helvetica', line.labelBold !== false ? 'bold' : 'normal');
+        pdf.text(line.label, x, y);
+        const labelWidth = pdf.getTextWidth(line.label);
+        if (line.value) {
+          pdf.setFont('helvetica', line.valueBold ? 'bold' : 'normal');
+          pdf.text(line.value, x + labelWidth, y);
+        }
+      } else if (line.value) {
+        pdf.setFont('helvetica', line.valueBold ? 'bold' : 'normal');
+        pdf.text(line.value, x, y);
+      }
+    } else {
+      // text-only
+      pdf.setFont('helvetica', line.valueBold ? 'bold' : 'normal');
+      const wrappedLines = pdf.splitTextToSize(line.value || '', maxWidth);
+      wrappedLines.forEach((wl: string) => {
+        pdf.text(wl, x, y);
+        y += lineHeightMm;
+      });
+      continue; // already advanced y
+    }
+    y += lineHeightMm;
+  }
+  pdf.setFont('helvetica', 'normal');
+}
+
 export async function generatePDF(options: GeneratePDFOptions): Promise<{ blob: Blob; filename: string } | void> {
   const { letter, template, senderInfo, informationBlock, attachments, showPagination, returnBlob = false, debugMode = false } = options;
   
   const pdf = new jsPDF('p', 'mm', 'a4');
   
-  // Get layout settings from template
-  const layout = template?.layout_settings || {
+  // Get layout settings from template - use 'any' to allow flexible access
+  const layout: any = template?.layout_settings || {
     pageWidth: 210, pageHeight: 297,
     margins: { left: 25, right: 20, top: 45, bottom: 25 },
     header: { height: 45, marginBottom: 8.46 },
