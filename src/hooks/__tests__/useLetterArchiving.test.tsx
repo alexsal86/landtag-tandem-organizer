@@ -3,74 +3,18 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const toastSpy = vi.fn();
 const useAuthMock = vi.fn();
-const useTenantMock = vi.fn();
-const generateLetterPDFMock = vi.fn();
-
-const state = vi.hoisted(() => ({
-  attachmentResult: { data: [], error: null as unknown },
-  documentInsertResult: { data: { id: 'doc-1' }, error: null as unknown },
-  letterUpdateResult: { data: [], error: null as unknown },
-  uploadResult: { data: null as unknown, error: null as unknown },
-}));
-
-class QueryBuilder {
-  private table: string;
-  private mode: 'select' | 'insert' | 'update' | null = null;
-
-  constructor(table: string) {
-    this.table = table;
-  }
-
-  select = vi.fn(() => {
-    this.mode = 'select';
-    return this;
-  });
-
-  insert = vi.fn(() => {
-    this.mode = 'insert';
-    return this;
-  });
-
-  update = vi.fn(() => {
-    this.mode = 'update';
-    return this;
-  });
-
-  eq = vi.fn(() => this);
-  order = vi.fn(async () => state.attachmentResult);
-  single = vi.fn(async () => state.documentInsertResult);
-  then = (onfulfilled?: (value: { data: unknown; error: unknown }) => unknown, onrejected?: (reason: unknown) => unknown) => {
-    const value = this.mode === 'update' ? state.letterUpdateResult : state.attachmentResult;
-    return Promise.resolve(value).then(onfulfilled, onrejected);
-  };
-}
-
-const fromMock = vi.fn((table: string) => new QueryBuilder(table));
-const uploadMock = vi.fn(async () => state.uploadResult);
-
-vi.mock('@/integrations/supabase/client', () => ({
-  supabase: {
-    from: fromMock,
-    storage: {
-      from: vi.fn(() => ({ upload: uploadMock })),
-    },
-  },
-}));
+const archiveLetterMock = vi.fn();
 
 vi.mock('@/hooks/useAuth', () => ({
   useAuth: () => useAuthMock(),
-}));
-
-vi.mock('@/hooks/useTenant', () => ({
-  useTenant: () => useTenantMock(),
 }));
 
 vi.mock('@/hooks/use-toast', () => ({
   useToast: () => ({ toast: toastSpy }),
 }));
 
-vi.mock('@/utils/letterPDFGenerator', () => ({
-  generateLetterPDF: (...args: unknown[]) => generateLetterPDFMock(...args),
+vi.mock('@/utils/letterArchiving', () => ({
+  archiveLetter: (...args: unknown[]) => archiveLetterMock(...args),
 }));
 
 vi.mock('@/utils/debugConsole', () => ({
@@ -93,18 +37,16 @@ describe('useLetterArchiving', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     useAuthMock.mockReturnValue({ user: { id: 'user-1' } });
-    useTenantMock.mockReturnValue({ currentTenant: { id: 'tenant-1' } });
-    generateLetterPDFMock.mockResolvedValue({
-      blob: new Blob(['pdf'], { type: 'application/pdf' }),
-      filename: 'letter.pdf',
+    archiveLetterMock.mockResolvedValue({
+      success: true,
+      documentId: 'doc-1',
+      archivedAt: '2024-01-02T10:00:00.000Z',
+      archivedBy: 'user-1',
+      followUpTaskId: 'task-1',
     });
-    state.attachmentResult = { data: [{ id: 'attachment-1' }], error: null };
-    state.documentInsertResult = { data: { id: 'doc-1' }, error: null };
-    state.letterUpdateResult = { data: [], error: null };
-    state.uploadResult = { data: null, error: null };
   });
 
-  it('archives a letter, stores metadata and marks the letter as sent', async () => {
+  it('archives a letter through the edge function path', async () => {
     const { result } = renderHook(() => useLetterArchiving());
 
     let archived = false;
@@ -117,15 +59,13 @@ describe('useLetterArchiving', () => {
     });
 
     expect(archived).toBe(true);
-    expect(uploadMock).toHaveBeenCalled();
-    expect(fromMock).toHaveBeenCalledWith('documents');
-    expect(fromMock).toHaveBeenCalledWith('letters');
+    expect(archiveLetterMock).toHaveBeenCalledWith('letter-1', 'user-1');
     expect(toastSpy).toHaveBeenCalledWith(
       expect.objectContaining({ title: 'Brief archiviert' }),
     );
   });
 
-  it('fails fast with a destructive toast when user or tenant context is missing', async () => {
+  it('fails fast with a destructive toast when user context is missing', async () => {
     useAuthMock.mockReturnValue({ user: null });
 
     const { result } = renderHook(() => useLetterArchiving());
@@ -136,8 +76,7 @@ describe('useLetterArchiving', () => {
     });
 
     expect(archived).toBe(false);
-    expect(generateLetterPDFMock).not.toHaveBeenCalled();
-    expect(uploadMock).not.toHaveBeenCalled();
+    expect(archiveLetterMock).not.toHaveBeenCalled();
     expect(toastSpy).toHaveBeenCalledWith(
       expect.objectContaining({
         title: 'Fehler',
@@ -146,8 +85,8 @@ describe('useLetterArchiving', () => {
     );
   });
 
-  it('surfaces upload failures with a destructive archiving toast and resets the loading state', async () => {
-    state.uploadResult = { data: null, error: new Error('upload failed') };
+  it('surfaces edge-function failures with a destructive archiving toast and resets the loading state', async () => {
+    archiveLetterMock.mockResolvedValue({ success: false, error: 'upload failed' });
 
     const { result } = renderHook(() => useLetterArchiving());
 
@@ -161,7 +100,6 @@ describe('useLetterArchiving', () => {
     });
 
     expect(archived).toBe(false);
-    expect(generateLetterPDFMock).toHaveBeenCalledWith(letterFixture);
     expect(toastSpy).toHaveBeenCalledWith(
       expect.objectContaining({
         title: 'Archivierungsfehler',
