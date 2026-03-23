@@ -370,9 +370,10 @@ export async function generatePDF(options: GeneratePDFOptions): Promise<{ blob: 
   }
   
   // Return address line
+  const returnAddressFontSize = layout.addressField?.returnAddressFontSize || 8;
+  const recipientFontSize = layout.addressField?.recipientFontSize || 10;
   let addressYPos = ADDRESS_FIELD_TOP + 17.7;
   if (senderInfo?.return_address_line) {
-    const returnAddressFontSize = 7;
     const returnAddressMaxWidth = Math.max(10, ADDRESS_FIELD_WIDTH - 10);
     pdf.setFontSize(returnAddressFontSize);
     pdf.setFont('helvetica', 'normal');
@@ -390,26 +391,41 @@ export async function generatePDF(options: GeneratePDFOptions): Promise<{ blob: 
   
   // Recipient address
   if (letter.recipient_name || letter.recipient_address) {
-    pdf.setFontSize(9);
+    pdf.setFontSize(recipientFontSize);
     pdf.setFont('helvetica', 'normal');
+    const recipientLineHeight = recipientFontSize * 0.4;
     if (letter.recipient_name) {
       pdf.text(letter.recipient_name, ADDRESS_FIELD_LEFT, addressYPos);
-      addressYPos += 4;
+      addressYPos += recipientLineHeight;
     }
     if (letter.recipient_address) {
       const addressLines = letter.recipient_address.split('\n').filter(line => line.trim());
       addressLines.forEach(line => {
         if (addressYPos < ADDRESS_FIELD_TOP + ADDRESS_FIELD_HEIGHT - 2) {
           pdf.text(line.trim(), ADDRESS_FIELD_LEFT, addressYPos);
-          addressYPos += 4;
+          addressYPos += recipientLineHeight;
         }
       });
     }
   }
   
-  // Information block
+  // Information block - use BlockLine data from template if available
+  const blockContent = (layout as any).blockContent || {};
+  const infoBlockData = blockContent.infoBlock;
   let infoYPos = INFO_BLOCK_TOP + 3;
-  if (informationBlock) {
+  
+  if (infoBlockData && isLineMode(infoBlockData)) {
+    // Use line-mode data with variable substitution
+    const varMap = buildVariableMap(
+      { subject: letter.subject || '', letterDate: letter.letter_date || undefined, referenceNumber: letter.reference_number || undefined },
+      senderInfo ? { name: senderInfo.name, organization: senderInfo.organization, phone: senderInfo.phone, email: senderInfo.email } : null,
+      letter.recipient_name ? { name: letter.recipient_name } : null,
+      null, null
+    );
+    const substitutedLines = substituteBlockLines(infoBlockData.lines, varMap);
+    renderBlockLinesToPdf(pdf, substitutedLines, INFO_BLOCK_LEFT, infoYPos, INFO_BLOCK_WIDTH);
+  } else if (informationBlock) {
+    // Fallback to legacy info block rendering
     pdf.setFontSize(8);
     pdf.setFont('helvetica', 'bold');
     pdf.text(informationBlock.label || 'Information', INFO_BLOCK_LEFT, infoYPos);
@@ -477,23 +493,38 @@ export async function generatePDF(options: GeneratePDFOptions): Promise<{ blob: 
   }
   
   // Subject line
+  const subjectFontSize = layout.subject?.fontSize || 13;
+  const contentFontSize = layout.content?.fontSize || 11;
+  const lineHeight = layout.content?.lineHeight || 4.5;
+  let contentStartY = CONTENT_TOP + 3;
+  
   if (letter.subject || letter.title) {
-    pdf.setFontSize(11);
-    pdf.setFont('helvetica', 'bold');
-    pdf.text(letter.subject || letter.title, LEFT_MARGIN, CONTENT_TOP + 3);
+    pdf.setFontSize(subjectFontSize);
+    pdf.setFont('helvetica', layout.subject?.fontWeight || 'bold');
+    pdf.text(letter.subject || letter.title, LEFT_MARGIN, contentStartY);
+    contentStartY += 9; // 2 blank lines after subject (matching HTML: height 9mm)
+  }
+  
+  // Salutation
+  const salutationText = layout.salutation?.template || '';
+  if (salutationText) {
+    const salutationFontSize = layout.salutation?.fontSize || contentFontSize;
+    pdf.setFontSize(salutationFontSize);
+    pdf.setFont('helvetica', 'normal');
+    pdf.text(salutationText, LEFT_MARGIN, contentStartY);
+    contentStartY += lineHeight; // 1 blank line after salutation
   }
   
   // Letter content
-  pdf.setFontSize(11);
+  pdf.setFontSize(contentFontSize);
   pdf.setFont('helvetica', 'normal');
   const contentText = letter.content_html ? convertHtmlToText(letter.content_html) : letter.content;
-  const lineHeight = 4.5;
   
   let currentPage = 1;
   let letterPages = 1;
   const shouldShowPagination = showPagination || letter.show_pagination;
   
-  const renderContentText = (text: string, startY: number) => {
+  const renderContentText = (text: string, startY: number): number => {
     let currentY = startY;
     const paragraphs = text.split('\n\n').filter(p => p.trim());
     
@@ -511,10 +542,10 @@ export async function generatePDF(options: GeneratePDFOptions): Promise<{ blob: 
           pdf.addPage();
           letterPages++;
           currentPage++;
-          drawDebugGuides(pdf, currentPage);
+          if (debugMode) drawDebugGuides(pdf, currentPage);
           renderFooterBlocksSimple(pdf, template);
-          currentY = 30;
-          pdf.setFontSize(11);
+          currentY = layout.content?.page2TopMm || 30;
+          pdf.setFontSize(contentFontSize);
           pdf.setFont('helvetica', 'normal');
         }
         
@@ -524,9 +555,61 @@ export async function generatePDF(options: GeneratePDFOptions): Promise<{ blob: 
       
       if (paragIndex < paragraphs.length - 1) currentY += lineHeight / 2;
     });
+    return currentY;
   };
   
-  renderContentText(contentText, CONTENT_TOP + 10);
+  let endY = renderContentText(contentText, contentStartY);
+  
+  // Closing formula and signature
+  if (layout.closing?.formula) {
+    endY += lineHeight; // blank line before closing
+    pdf.setFontSize(layout.closing?.fontSize || contentFontSize);
+    pdf.setFont('helvetica', 'normal');
+    pdf.text(layout.closing.formula, LEFT_MARGIN, endY);
+    endY += lineHeight;
+    
+    // Signature image
+    const signatureImagePath = layout.closing?.signatureImagePath;
+    if (signatureImagePath) {
+      const signatureUrl = getLetterAssetPublicUrl(signatureImagePath);
+      if (signatureUrl) {
+        try {
+          const response = await fetch(signatureUrl);
+          if (response.ok) {
+            const blob = await response.blob();
+            const base64 = await new Promise<string>((resolve, reject) => {
+              const reader = new FileReader();
+              reader.onload = () => resolve(reader.result as string);
+              reader.onerror = reject;
+              reader.readAsDataURL(blob);
+            });
+            const sigHeight = 9; // ~9mm for signature
+            pdf.addImage(base64, 'PNG', LEFT_MARGIN, endY, 30, sigHeight);
+            endY += sigHeight + 1;
+          }
+        } catch (e) {
+          debugConsole.warn('Could not load signature image:', e);
+          endY += 13.5; // fallback gap for missing signature
+        }
+      } else {
+        endY += 13.5;
+      }
+    } else {
+      endY += 4.5; // gap before name when no signature image
+    }
+    
+    // Signature name
+    if (layout.closing?.signatureName) {
+      pdf.setFont('helvetica', 'normal');
+      pdf.text(layout.closing.signatureName, LEFT_MARGIN, endY);
+      endY += lineHeight;
+    }
+    if (layout.closing?.signatureTitle) {
+      pdf.setFont('helvetica', 'normal');
+      pdf.text(layout.closing.signatureTitle, LEFT_MARGIN, endY);
+      endY += lineHeight;
+    }
+  }
   
   // Attachments
   if (attachments && attachments.length > 0) {
