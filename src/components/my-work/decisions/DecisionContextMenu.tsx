@@ -4,9 +4,6 @@ import {
   ContextMenuContent,
   ContextMenuItem,
   ContextMenuSeparator,
-  ContextMenuSub,
-  ContextMenuSubContent,
-  ContextMenuSubTrigger,
   ContextMenuTrigger,
 } from "@/components/ui/context-menu";
 import {
@@ -40,7 +37,6 @@ interface DecisionContextMenuProps {
   children: ReactNode;
   decision: MyWorkDecision;
   isCreator: boolean;
-  currentUserId: string;
   tenantUsers: TenantUser[];
   existingParticipantIds: string[];
   onUpdateDeadline: (decisionId: string, date: string | null) => void;
@@ -57,7 +53,6 @@ export function DecisionContextMenu({
   children,
   decision,
   isCreator,
-  currentUserId,
   tenantUsers,
   existingParticipantIds,
   onUpdateDeadline,
