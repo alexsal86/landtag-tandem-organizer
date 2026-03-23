@@ -385,7 +385,12 @@ export function useEventPlanningData() {
 
   const updatePlanningField = async (field: string, value: any) => {
     if (!selectedPlanning) return;
-    setSelectedPlanning({ ...selectedPlanning, [field]: value });
+    setSelectedPlanning((prev) => (prev ? { ...prev, [field]: value } : prev));
+    setPlannings((prev) => prev.map((planning) => (
+      planning.id === selectedPlanning.id
+        ? { ...planning, [field]: value }
+        : planning
+    )));
     debouncedUpdate(field, value, selectedPlanning.id);
   };
 

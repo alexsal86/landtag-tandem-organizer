@@ -1,28 +1,15 @@
-import { useState, useEffect, useMemo } from "react";
-import { useSearchParams, useNavigate } from "react-router-dom";
-import { useNotificationHighlight } from "@/hooks/useNotificationHighlight";
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
-import { ScrollArea } from "@/components/ui/scroll-area";
-import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Calendar } from "@/components/ui/calendar";
-import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
-import { Separator } from "@/components/ui/separator";
-import { ChevronDown, Clock, Hourglass, LayoutGrid, List } from "lucide-react";
-import { supabase } from "@/integrations/supabase/client";
+import { useEffect, useMemo, useState } from "react";
+import { useNavigate, useSearchParams } from "react-router-dom";
+import { addDays, isAfter, isBefore, startOfDay } from "date-fns";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
-import { useViewPreference, ViewType } from "@/hooks/useViewPreference";
+import { useNotificationHighlight } from "@/hooks/useNotificationHighlight";
 import { usePersistentState } from "@/hooks/usePersistentState";
-import { useMyWorkTasksData, MyWorkTask } from "@/hooks/useMyWorkTasksData";
-import { TaskCard } from "@/components/tasks/TaskCard";
-import { TaskListRow } from "@/components/tasks/TaskListRow";
-import { TaskDecisionCreator } from "@/components/task-decisions/TaskDecisionCreator";
-import { TaskCommentSidebar } from "@/components/tasks/TaskCommentSidebar";
-import { TaskDocumentDialog } from "@/components/tasks/TaskDocumentDialog";
-import { TaskMeetingSelector } from "@/components/tasks/TaskMeetingSelector";
+import { useViewPreference } from "@/hooks/useViewPreference";
+import { useMyWorkTasksData } from "@/hooks/useMyWorkTasksData";
+import { supabase } from "@/integrations/supabase/client";
+import { Separator } from "@/components/ui/separator";
+import { Collapsible, CollapsibleContent } from "@/components/ui/collapsible";
 import { CelebrationAnimationSystem } from "@/components/celebrations";
 import SimpleRichTextEditor from "@/components/ui/SimpleRichTextEditor";
 import { toEditorHtml } from "@/components/my-work/utils/editorContent";
@@ -31,18 +18,16 @@ import { Input } from "@/components/ui/input";
 import { addDays, isAfter, isBefore, startOfDay } from "date-fns";
 import { cn } from "@/lib/utils";
 import { debugConsole } from "@/utils/debugConsole";
-import { notifyTaskShared } from "@/utils/shareNotifications";
+import { MyWorkTasksToolbar } from "./MyWorkTasksToolbar";
+import { MyWorkTasksBoard } from "./MyWorkTasksBoard";
+import { MyWorkTasksList } from "./MyWorkTasksList";
+import { MyWorkTaskDialogs } from "./MyWorkTaskDialogs";
+import { useMyWorkTaskActions } from "./useMyWorkTaskActions";
 
 interface Profile {
   user_id: string;
   display_name: string | null;
 }
-
-const DEFAULT_TASK_PRIORITIES = [
-  { value: "high", label: "Hoch" },
-  { value: "medium", label: "Mittel" },
-  { value: "low", label: "Niedrig" },
-];
 
 const DEFAULT_TASK_STATUSES = [
   { name: "todo", label: "Offen" },
@@ -50,21 +35,14 @@ const DEFAULT_TASK_STATUSES = [
   { name: "completed", label: "Erledigt" },
 ];
 
-const DEFAULT_TASK_CATEGORIES = [
-  { name: "legislation", label: "Gesetzgebung" },
-  { name: "committee", label: "Ausschuss" },
-  { name: "constituency", label: "Wahlkreis" },
-  { name: "personal", label: "Persönlich" },
-];
-
 export function MyWorkTasksTab() {
   const { user } = useAuth();
-  const { toast } = useToast();
   const navigate = useNavigate();
+  const { toast } = useToast();
   const [searchParams, setSearchParams] = useSearchParams();
   const { viewType, setViewType } = useViewPreference({ key: "mywork-tasks", defaultView: "card" });
   const { isHighlighted, highlightRef } = useNotificationHighlight();
-  
+
   const {
     assignedTasks,
     setAssignedTasks,
@@ -76,500 +54,53 @@ export function MyWorkTasksTab() {
     setTaskSnoozes,
     taskCommentCounts,
     loading,
-    loadTasks,
   } = useMyWorkTasksData(user?.id);
-  const [statusFilter, setStatusFilter] = usePersistentState<string>('mywork-tasks-status-filter', 'all');
-  const [taskStatuses, setTaskStatuses] = useState<{name: string, label: string}[]>([]);
-  const [taskCategories, setTaskCategories] = useState<{name: string, label: string}[]>([]);
+
+  const [statusFilter, setStatusFilter] = usePersistentState<string>("mywork-tasks-status-filter", "all");
+  const [taskStatuses, setTaskStatuses] = useState<{ name: string; label: string }[]>([]);
+  const [taskCategories, setTaskCategories] = useState<{ name: string; label: string }[]>([]);
+  const [profiles, setProfiles] = useState<Profile[]>([]);
   const [dueFollowUpsExpanded, setDueFollowUpsExpanded] = useState(true);
   const [scheduledFollowUpsExpanded, setScheduledFollowUpsExpanded] = useState(false);
-
-  // Dialog states
-  const [snoozeDialogOpen, setSnoozeDialogOpen] = useState(false);
-  const [snoozeTaskId, setSnoozeTaskId] = useState<string | null>(null);
-  
-  const [assignDialogOpen, setAssignDialogOpen] = useState(false);
-  const [assignTaskId, setAssignTaskId] = useState<string | null>(null);
-  const [assignSelectedUserIds, setAssignSelectedUserIds] = useState<string[]>([]);
-  const [profiles, setProfiles] = useState<Profile[]>([]);
-  
-  const [commentSidebarOpen, setCommentSidebarOpen] = useState(false);
-  const [commentTaskId, setCommentTaskId] = useState<string | null>(null);
-  
-  const [decisionTaskId, setDecisionTaskId] = useState<string | null>(null);
-  const [decisionDialogOpen, setDecisionDialogOpen] = useState(false);
-  
-  const [documentDialogOpen, setDocumentDialogOpen] = useState(false);
-  const [documentTaskId, setDocumentTaskId] = useState<string | null>(null);
-  
-  // Meeting selector states
-  const [meetingSelectorOpen, setMeetingSelectorOpen] = useState(false);
-  const [meetingTaskId, setMeetingTaskId] = useState<string | null>(null);
-  
-  // Unicorn animation state
   const [showCelebration, setShowCelebration] = useState(false);
 
-  const [taskEditDialogOpen, setTaskEditDialogOpen] = useState(false);
-  const [editingTaskId, setEditingTaskId] = useState<string | null>(null);
-  const [editTaskTitle, setEditTaskTitle] = useState('');
-  const [editTaskDescription, setEditTaskDescription] = useState('');
-  const [editTaskPriority, setEditTaskPriority] = useState('medium');
-  const [editTaskStatus, setEditTaskStatus] = useState('todo');
-  const [editTaskCategory, setEditTaskCategory] = useState('personal');
-
-  const availableTaskStatuses = taskStatuses.length > 0 ? taskStatuses : DEFAULT_TASK_STATUSES;
-  const availableTaskCategories = taskCategories.length > 0 ? taskCategories : DEFAULT_TASK_CATEGORIES;
-
-
-  // Handle action parameter from URL
   useEffect(() => {
-    const action = searchParams.get('action');
-    if (action === 'create-task') {
-      searchParams.delete('action');
+    const action = searchParams.get("action");
+    if (action === "create-task") {
+      searchParams.delete("action");
       setSearchParams(searchParams, { replace: true });
-      navigate('/tasks?action=create');
+      navigate("/tasks?action=create");
     }
-  }, [searchParams, setSearchParams, navigate]);
+  }, [navigate, searchParams, setSearchParams]);
 
   useEffect(() => {
-    if (user) {
-      loadProfiles();
-      loadTaskStatuses();
-      loadTaskCategories();
-    }
-  }, [user]);
-
-  const loadTaskStatuses = async () => {
-    try {
-      const { data: statuses } = await supabase
-        .from('task_statuses')
-        .select('name, label')
-        .eq('is_active', true)
-        .order('order_index');
-      setTaskStatuses(statuses || []);
-    } catch (error) {
-      debugConsole.error('Error loading task statuses:', error);
-    }
-  };
-
-  const loadTaskCategories = async () => {
-    try {
-      const { data: categories } = await supabase
-        .from('task_categories')
-        .select('name, label')
-        .eq('is_active', true)
-        .order('order_index');
-      setTaskCategories(categories || []);
-    } catch (error) {
-      debugConsole.error('Error loading task categories:', error);
-    }
-  };
-
-  const loadProfiles = async () => {
-    try {
-      const { data, error } = await supabase
-        .from('profiles')
-        .select('user_id, display_name')
-        .order('display_name');
-      
-      if (error) throw error;
-      setProfiles(data || []);
-    } catch (error) {
-      debugConsole.error('Error loading profiles:', error);
-    }
-  };
-
-  const handleToggleComplete = async (taskId: string) => {
-    const task = [...assignedTasks, ...createdTasks, ...Object.values(subtasks).flat()].find(t => t.id === taskId);
-    if (!task || !user) return;
-    
-    try {
-      const { error: updateError } = await supabase
-        .from("tasks")
-        .update({ status: "completed", progress: 100 })
-        .eq("id", taskId)
-        .select();
-
-      if (updateError) throw updateError;
-
-      await supabase
-        .from('archived_tasks')
-        .insert([{
-          task_id: taskId,
-          user_id: user.id,
-          title: task.title,
-          description: task.description,
-          priority: task.priority,
-          category: 'personal',
-          assigned_to: task.assigned_to || '',
-          progress: 100,
-          due_date: task.due_date,
-          completed_at: new Date().toISOString(),
-          auto_delete_after_days: null,
-        }]);
-
-      await supabase.from('tasks').delete().eq('id', taskId);
-      
-      setAssignedTasks(prev => prev.filter(t => t.id !== taskId));
-      setCreatedTasks(prev => prev.filter(t => t.id !== taskId));
-      setSubtasks(prev => {
-        const next = { ...prev };
-        delete next[taskId];
-        Object.keys(next).forEach((parentId) => {
-          next[parentId] = next[parentId].filter((t) => t.id !== taskId);
-        });
-        return next;
-      });
-
-      setShowCelebration(true);
-      toast({ title: "Aufgabe erledigt und archiviert" });
-    } catch (error: unknown) {
-      debugConsole.error("Error completing task:", error);
-      toast({ title: "Fehler", variant: "destructive" });
-    }
-  };
-
-  const handleToggleSubtaskComplete = async (subtaskId: string) => {
-    const previousSubtasks = subtasks;
-    setSubtasks(prev => {
-      const next: Record<string, MyWorkTask[]> = {};
-      Object.entries(prev).forEach(([parentId, list]) => {
-        next[parentId] = list.filter((subtask) => subtask.id !== subtaskId);
-      });
-      return next;
-    });
-
-    try {
-      const { error } = await supabase
-        .from("tasks")
-        .update({ status: 'completed', progress: 100 })
-        .eq("id", subtaskId)
-        .select();
-
-      if (error) throw error;
-      setShowCelebration(true);
-      toast({ title: "Unteraufgabe erledigt" });
-    } catch (error) {
-      setSubtasks(previousSubtasks);
-      debugConsole.error("Error completing subtask:", error);
-      toast({ title: "Fehler", variant: "destructive" });
-    }
-  };
-
-  const handleUpdateTitle = async (taskId: string, title: string) => {
-    try {
-      const { error } = await supabase
-        .from("tasks")
-        .update({ title })
-        .eq("id", taskId)
-        .select();
-
-      if (error) throw error;
-      
-      setAssignedTasks(prev => prev.map(t => t.id === taskId ? { ...t, title } : t));
-      setCreatedTasks(prev => prev.map(t => t.id === taskId ? { ...t, title } : t));
-      setSubtasks(prev => {
-        const next: Record<string, MyWorkTask[]> = {};
-        Object.entries(prev).forEach(([parentId, list]) => {
-          next[parentId] = list.map((task) => (task.id === taskId ? { ...task, title } : task));
-        });
-        return next;
-      });
-      toast({ title: "Titel aktualisiert" });
-    } catch (error) {
-      debugConsole.error("Error updating title:", error);
-      toast({ title: "Fehler beim Speichern", variant: "destructive" });
-    }
-  };
-
-  const handleUpdateDescription = async (taskId: string, description: string) => {
-    try {
-      const { error } = await supabase
-        .from("tasks")
-        .update({ description })
-        .eq("id", taskId)
-        .select();
-
-      if (error) throw error;
-      
-      setAssignedTasks(prev => prev.map(t => t.id === taskId ? { ...t, description } : t));
-      setCreatedTasks(prev => prev.map(t => t.id === taskId ? { ...t, description } : t));
-      setSubtasks(prev => {
-        const next: Record<string, MyWorkTask[]> = {};
-        Object.entries(prev).forEach(([parentId, list]) => {
-          next[parentId] = list.map((task) => (task.id === taskId ? { ...task, description } : task));
-        });
-        return next;
-      });
-      toast({ title: "Beschreibung aktualisiert" });
-    } catch (error) {
-      debugConsole.error("Error updating description:", error);
-      toast({ title: "Fehler beim Speichern", variant: "destructive" });
-    }
-  };
-
-  const handleUpdateDueDate = async (taskId: string, date: Date | null) => {
-    try {
-      const { error } = await supabase
-        .from("tasks")
-        .update({ due_date: date?.toISOString() || null })
-        .eq("id", taskId)
-        .select();
-
-      if (error) throw error;
-      
-      const newDueDate = date?.toISOString() || null;
-      setAssignedTasks(prev => prev.map(t => t.id === taskId ? { ...t, due_date: newDueDate } : t));
-      setCreatedTasks(prev => prev.map(t => t.id === taskId ? { ...t, due_date: newDueDate } : t));
-      setSubtasks(prev => {
-        const next: Record<string, MyWorkTask[]> = {};
-        Object.entries(prev).forEach(([parentId, list]) => {
-          next[parentId] = list.map((task) => (task.id === taskId ? { ...task, due_date: newDueDate } : task));
-        });
-        return next;
-      });
-      toast({ title: "Frist aktualisiert" });
-    } catch (error) {
-      debugConsole.error("Error updating due date:", error);
-      toast({ title: "Fehler beim Speichern", variant: "destructive" });
-    }
-  };
-
-  // Action handlers - open dialogs instead of navigating
-  const handleReminder = (taskId: string) => {
-    setSnoozeTaskId(taskId);
-    setSnoozeDialogOpen(true);
-  };
-
-  const handleSetSnooze = async (date: Date) => {
-    if (!snoozeTaskId || !user) return;
-    const targetTaskId = snoozeTaskId;
-    
-    try {
-      // Check if there's already a snooze for this task
-      const { data: existingSnooze } = await supabase
-        .from('task_snoozes')
-        .select('id')
-        .eq('task_id', snoozeTaskId)
-        .eq('user_id', user.id)
-        .single();
-
-      if (existingSnooze) {
-        // Update existing snooze
-        const { error } = await supabase
-          .from('task_snoozes')
-          .update({ snoozed_until: date.toISOString() })
-          .eq('id', existingSnooze.id);
-        if (error) throw error;
-      } else {
-        // Create new snooze
-        const { error } = await supabase
-          .from('task_snoozes')
-          .insert([{
-            user_id: user.id,
-            task_id: snoozeTaskId,
-            snoozed_until: date.toISOString()
-          }]);
-        if (error) throw error;
-      }
-      
-      toast({ title: "Wiedervorlage gesetzt" });
-      setTaskSnoozes(prev => ({ ...prev, [targetTaskId]: date.toISOString() }));
-      setSnoozeDialogOpen(false);
-      setSnoozeTaskId(null);
-    } catch (error) {
-      debugConsole.error("Error setting snooze:", error);
-      toast({ title: "Fehler", variant: "destructive" });
-    }
-  };
-
-  const clearSnoozeForTask = async (taskId: string) => {
     if (!user) return;
 
-    const { error } = await supabase
-      .from('task_snoozes')
-      .delete()
-      .eq('task_id', taskId)
-      .eq('user_id', user.id);
-
-    if (error) throw error;
-  };
-
-  const handleClearSnooze = async () => {
-    if (!snoozeTaskId || !user) return;
-    const targetTaskId = snoozeTaskId;
-
-    try {
-      await clearSnoozeForTask(snoozeTaskId);
-
-      toast({ title: "Wiedervorlage entfernt" });
-      setTaskSnoozes(prev => {
-        const next = { ...prev };
-        delete next[targetTaskId];
-        return next;
-      });
-      setSnoozeDialogOpen(false);
-      setSnoozeTaskId(null);
-    } catch (error) {
-      debugConsole.error("Error clearing snooze:", error);
-      toast({ title: "Fehler", variant: "destructive" });
-    }
-  };
-
-  const handleQuickClearSnooze = async (taskId: string) => {
-    try {
-      await clearSnoozeForTask(taskId);
-      toast({ title: "Wiedervorlage entfernt" });
-      setTaskSnoozes(prev => {
-        const next = { ...prev };
-        delete next[taskId];
-        return next;
-      });
-    } catch (error) {
-      debugConsole.error("Error clearing snooze:", error);
-      toast({ title: "Fehler", variant: "destructive" });
-    }
-  };
-
-  const handleAssign = (taskId: string) => {
-    const task = [...assignedTasks, ...createdTasks, ...Object.values(subtasks).flat()].find((t) => t.id === taskId);
-    setAssignSelectedUserIds(normalizeAssignedTo(task?.assigned_to ?? null));
-    setAssignTaskId(taskId);
-    setAssignDialogOpen(true);
-  };
-
-  const handleUpdateAssignee = async (userIds: string[]) => {
-    if (!assignTaskId || !user) return;
-    const normalizedAssignees = userIds.map((id) => id.trim()).filter(Boolean);
-    const assignedToValue = normalizedAssignees.length > 0 ? normalizedAssignees.join(',') : null;
-
-    const existingTask = [...assignedTasks, ...createdTasks, ...Object.values(subtasks).flat()].find((t) => t.id === assignTaskId);
-    const previousAssignees = normalizeAssignedTo(existingTask?.assigned_to ?? null);
-    const newlyAssignedUserIds = normalizedAssignees.filter((id) => id !== user.id && !previousAssignees.includes(id));
-
-    try {
-      const { error } = await supabase
-        .from("tasks")
-        .update({ assigned_to: assignedToValue })
-        .eq("id", assignTaskId)
-        .select();
-
-      if (error) throw error;
-
-      const { data: senderProfile } = await supabase
-        .from("profiles")
-        .select("display_name")
-        .eq("user_id", user.id)
-        .maybeSingle();
-
-      await Promise.all(
-        newlyAssignedUserIds.map((recipientUserId) =>
-          notifyTaskShared({
-            recipientUserId,
-            senderName: senderProfile?.display_name,
-            itemTitle: existingTask?.title,
-            itemId: assignTaskId,
-          })
-        )
-      );
-      
-      setAssignedTasks(prev => prev.map(t => 
-        t.id === assignTaskId ? { ...t, assigned_to: assignedToValue } : t
-      ));
-      setCreatedTasks(prev => prev.map(t => 
-        t.id === assignTaskId ? { ...t, assigned_to: assignedToValue } : t
-      ));
-      
-      toast({ title: "Zuweisung aktualisiert" });
-      setAssignDialogOpen(false);
-      setAssignTaskId(null);
-      setAssignSelectedUserIds([]);
-    } catch (error) {
-      debugConsole.error("Error updating assignee:", error);
-      toast({ title: "Fehler", variant: "destructive" });
-    }
-  };
-
-  const handleComment = (taskId: string) => {
-    setCommentTaskId(taskId);
-    setCommentSidebarOpen(true);
-  };
-
-  const handleDecision = (taskId: string) => {
-    setDecisionTaskId(taskId);
-    setDecisionDialogOpen(true);
-  };
-
-  const handleDocuments = (taskId: string) => {
-    setDocumentTaskId(taskId);
-    setDocumentDialogOpen(true);
-  };
-
-  const handleAddToMeeting = (taskId: string) => {
-    setMeetingTaskId(taskId);
-    setMeetingSelectorOpen(true);
-  };
-
-  const handleSelectMeeting = async (meetingId: string, meetingTitle: string) => {
-    if (!meetingTaskId || !user) return;
-    
-    try {
-      debugConsole.log('Adding task to meeting:', { taskId: meetingTaskId, meetingId });
-      
-      const { data, error } = await supabase
-        .from('tasks')
-        .update({ meeting_id: meetingId, pending_for_jour_fixe: false })
-        .eq('id', meetingTaskId)
-        .select();
-
-      if (error) {
-        debugConsole.error('Error adding task to meeting:', error);
-        toast({ 
-          title: "Fehler", 
-          description: error.message || "Aufgabe konnte nicht zugeordnet werden.",
-          variant: "destructive" 
-        });
-        return;
+    const loadProfiles = async () => {
+      try {
+        const { data, error } = await supabase.from("profiles").select("user_id, display_name").order("display_name");
+        if (error) throw error;
+        setProfiles(data || []);
+      } catch (error) {
+        debugConsole.error("Error loading profiles:", error);
       }
-      
-      if (!data || data.length === 0) {
-        toast({ 
-          title: "Warnung", 
-          description: "Keine Aufgabe aktualisiert.",
-          variant: "destructive" 
-        });
-        return;
+    };
+
+    const loadTaskStatuses = async () => {
+      try {
+        const { data } = await supabase.from("task_statuses").select("name, label").eq("is_active", true).order("order_index");
+        setTaskStatuses(data || []);
+      } catch (error) {
+        debugConsole.error("Error loading task statuses:", error);
       }
-      
-      toast({ title: `Aufgabe zu "${meetingTitle}" hinzugefügt` });
-    } catch (error: unknown) {
-      debugConsole.error('Error adding task to meeting:', error);
-      toast({ title: "Fehler", description: error instanceof Error ? error.message : "Unbekannter Fehler", variant: "destructive" });
-    } finally {
-      setMeetingTaskId(null);
-    }
-  };
+    };
 
-  const handleMarkForNextJourFixe = async () => {
-    if (!meetingTaskId || !user) return;
-    
-    try {
-      debugConsole.log('Marking task for next jour fixe:', meetingTaskId);
-      
-      const { data, error } = await supabase
-        .from('tasks')
-        .update({ pending_for_jour_fixe: true, meeting_id: null })
-        .eq('id', meetingTaskId)
-        .select();
-
-      if (error) {
-        debugConsole.error('Error marking task:', error);
-        toast({ 
-          title: "Fehler", 
-          description: error.message || "Aufgabe konnte nicht vorgemerkt werden.",
-          variant: "destructive" 
-        });
-        return;
+    const loadTaskCategories = async () => {
+      try {
+        const { data } = await supabase.from("task_categories").select("name, label").eq("is_active", true).order("order_index");
+        setTaskCategories(data || []);
+      } catch (error) {
+        debugConsole.error("Error loading task categories:", error);
       }
       
       toast({ title: "Aufgabe für nächsten Jour Fixe vorgemerkt" });
@@ -730,23 +261,29 @@ export function MyWorkTasksTab() {
     }, {} as Record<string, string>);
   }, [profiles]);
 
-  const resolveAssigneeName = (assignedTo: string | null | undefined) => {
-    const assigneeIds = normalizeAssignedTo(assignedTo);
-    if (assigneeIds.length === 0) return undefined;
+    void Promise.all([loadProfiles(), loadTaskStatuses(), loadTaskCategories()]);
+  }, [user]);
 
-    return assigneeIds
-      .map((id) => profileNameMap[id] || id)
-      .join(', ');
-  };
+  const { availableTaskStatuses, availableTaskCategories, dialogState, helpers, actions } = useMyWorkTaskActions({
+    userId: user?.id,
+    assignedTasks,
+    setAssignedTasks,
+    createdTasks,
+    setCreatedTasks,
+    subtasks,
+    setSubtasks,
+    taskSnoozes,
+    setTaskSnoozes,
+    profiles,
+    taskStatuses,
+    taskCategories,
+    onCelebrate: () => setShowCelebration(true),
+  });
 
   const splitTasksBySnooze = useMemo(() => {
     const now = startOfDay(new Date());
 
-    const split = (tasks: MyWorkTask[]) => {
-      // Analog zu Quick Notes:
-      // - fällige Wiedervorlagen separat anzeigen
-      // - geplante Wiedervorlagen bis zum Datum ausblenden
-      // - normale Hauptliste enthält nur Aufgaben OHNE Wiedervorlage
+    const split = <T extends { id: string }>(tasks: T[]) => {
       const dueFollowUps = tasks.filter((task) => {
         const snoozedUntil = taskSnoozes[task.id];
         return snoozedUntil && isBefore(startOfDay(new Date(snoozedUntil)), addDays(now, 1));
@@ -758,232 +295,112 @@ export function MyWorkTasksTab() {
       });
 
       const visibleTasks = tasks.filter((task) => !taskSnoozes[task.id]);
-
-      return { dueFollowUps, visibleTasks, scheduledFollowUps };
+      return { dueFollowUps, scheduledFollowUps, visibleTasks };
     };
 
     return {
       created: split(createdTasks),
       assigned: split(assignedTasks),
     };
-  }, [createdTasks, assignedTasks, taskSnoozes]);
-
-  const renderTaskList = (
-    tasks: MyWorkTask[],
-    title: string,
-    emptyMessage: string,
-    options?: { scrollable?: boolean; compact?: boolean; allowQuickUnsnooze?: boolean; showFollowUpDateBadge?: boolean }
-  ) => {
-    const { scrollable = true, compact = false, allowQuickUnsnooze = false, showFollowUpDateBadge = false } = options || {};
-
-    const listContent = tasks.length === 0 ? (
-      <p className="text-sm text-muted-foreground px-2 py-4">{emptyMessage}</p>
-    ) : viewType === "card" ? (
-      <div className="space-y-2 pr-2 pb-6">
-        {tasks.map((task) => (
-          <TaskCard
-            key={task.id}
-            task={task}
-            isHighlighted={isHighlighted}
-            getHighlightRef={highlightRef}
-            className={isHighlighted(task.id) ? 'notification-highlight' : undefined}
-            highlightRef={highlightRef(task.id)}
-            subtasks={subtasks[task.id]}
-            resolveAssigneeName={resolveAssigneeName}
-            hasMeetingLink={!!(task.meeting_id || task.pending_for_jour_fixe)}
-            hasReminder={!!taskSnoozes[task.id]}
-            followUpDate={showFollowUpDateBadge ? taskSnoozes[task.id] : undefined}
-            onComplete={handleToggleComplete}
-            onSubtaskComplete={handleToggleSubtaskComplete}
-            onNavigate={(id) => navigate(`/tasks?id=${id}`)}
-            onUpdateTitle={handleUpdateTitle}
-            onUpdateDescription={handleUpdateDescription}
-            onUpdateDueDate={handleUpdateDueDate}
-            onReminder={(taskId) => {
-              if (allowQuickUnsnooze && taskSnoozes[taskId]) {
-                void handleQuickClearSnooze(taskId);
-                return;
-              }
-              handleReminder(taskId);
-            }}
-            onAssign={handleAssign}
-            onComment={handleComment}
-            onDecision={handleDecision}
-            onDocuments={handleDocuments}
-            onAddToMeeting={handleAddToMeeting}
-            onCreateChildTask={handleCreateChildTask}
-            onEdit={openTaskEditDialog}
-            getChildTasks={getChildTasks}
-            getCommentCount={(taskId) => taskCommentCounts[taskId] || 0}
-            showPersistentCommentIndicator
-          />
-        ))}
-      </div>
-    ) : (
-      <div className="border rounded-lg overflow-hidden pb-6">
-        {tasks.map((task) => (
-          <TaskListRow
-            key={task.id}
-            task={task}
-            isHighlighted={isHighlighted}
-            getHighlightRef={highlightRef}
-            className={isHighlighted(task.id) ? 'notification-highlight' : undefined}
-            highlightRef={highlightRef(task.id)}
-            subtasks={subtasks[task.id]}
-            resolveAssigneeName={resolveAssigneeName}
-            hasMeetingLink={!!(task.meeting_id || task.pending_for_jour_fixe)}
-            hasReminder={!!taskSnoozes[task.id]}
-            followUpDate={showFollowUpDateBadge ? taskSnoozes[task.id] : undefined}
-            onComplete={handleToggleComplete}
-            onSubtaskComplete={handleToggleSubtaskComplete}
-            onNavigate={(id) => navigate(`/tasks?id=${id}`)}
-            onUpdateTitle={handleUpdateTitle}
-            onUpdateDueDate={handleUpdateDueDate}
-            onReminder={(taskId) => {
-              if (allowQuickUnsnooze && taskSnoozes[taskId]) {
-                void handleQuickClearSnooze(taskId);
-                return;
-              }
-              handleReminder(taskId);
-            }}
-            onAssign={handleAssign}
-            onComment={handleComment}
-            onDecision={handleDecision}
-            onDocuments={handleDocuments}
-            onAddToMeeting={handleAddToMeeting}
-            onCreateChildTask={handleCreateChildTask}
-            onEdit={openTaskEditDialog}
-            getChildTasks={getChildTasks}
-            getCommentCount={(taskId) => taskCommentCounts[taskId] || 0}
-            showPersistentCommentIndicator
-          />
-        ))}
-      </div>
-    );
-
-    return (
-      <div className={`flex flex-col ${scrollable ? 'h-full' : ''}`}>
-        <div className="flex items-center justify-between mb-3 px-1">
-          <div className="flex items-center gap-2">
-            <h3 className={`font-medium ${compact ? 'text-xs' : 'text-sm'}`}>{title}</h3>
-            <Badge variant="secondary" className="text-xs">{tasks.length}</Badge>
-          </div>
-        </div>
-        
-        {scrollable ? (
-          <ScrollArea className="flex-1">{listContent}</ScrollArea>
-        ) : (
-          listContent
-        )}
-      </div>
-    );
-  };
+  }, [assignedTasks, createdTasks, taskSnoozes]);
 
   if (loading) {
     return (
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 p-4">
-        <div className="space-y-2">
-          {[1, 2, 3].map((i) => (
-            <div key={i} className="h-16 bg-muted animate-pulse rounded-md" />
-          ))}
-        </div>
-        <div className="space-y-2">
-          {[1, 2, 3].map((i) => (
-            <div key={i} className="h-16 bg-muted animate-pulse rounded-md" />
-          ))}
-        </div>
+        <div className="space-y-2">{[1, 2, 3].map((i) => <div key={i} className="h-16 bg-muted animate-pulse rounded-md" />)}</div>
+        <div className="space-y-2">{[1, 2, 3].map((i) => <div key={i} className="h-16 bg-muted animate-pulse rounded-md" />)}</div>
       </div>
     );
   }
 
-  // Apply status filter
-  const filteredCreatedTasks = statusFilter === 'all' 
-    ? splitTasksBySnooze.created.visibleTasks 
-    : splitTasksBySnooze.created.visibleTasks.filter(t => t.status === statusFilter);
-  const filteredAssignedTasks = statusFilter === 'all' 
-    ? splitTasksBySnooze.assigned.visibleTasks 
-    : splitTasksBySnooze.assigned.visibleTasks.filter(t => t.status === statusFilter);
+  const filterTasks = <T extends { status: string }>(tasks: T[]) => statusFilter === "all" ? tasks : tasks.filter((task) => task.status === statusFilter);
 
-  const filteredDueCreatedTasks = statusFilter === 'all'
-    ? splitTasksBySnooze.created.dueFollowUps
-    : splitTasksBySnooze.created.dueFollowUps.filter(t => t.status === statusFilter);
-  const filteredDueAssignedTasks = statusFilter === 'all'
-    ? splitTasksBySnooze.assigned.dueFollowUps
-    : splitTasksBySnooze.assigned.dueFollowUps.filter(t => t.status === statusFilter);
-
-  const filteredScheduledCreatedTasks = statusFilter === 'all'
-    ? splitTasksBySnooze.created.scheduledFollowUps
-    : splitTasksBySnooze.created.scheduledFollowUps.filter(t => t.status === statusFilter);
-  const filteredScheduledAssignedTasks = statusFilter === 'all'
-    ? splitTasksBySnooze.assigned.scheduledFollowUps
-    : splitTasksBySnooze.assigned.scheduledFollowUps.filter(t => t.status === statusFilter);
+  const filteredCreatedTasks = filterTasks(splitTasksBySnooze.created.visibleTasks);
+  const filteredAssignedTasks = filterTasks(splitTasksBySnooze.assigned.visibleTasks);
+  const filteredDueCreatedTasks = filterTasks(splitTasksBySnooze.created.dueFollowUps);
+  const filteredDueAssignedTasks = filterTasks(splitTasksBySnooze.assigned.dueFollowUps);
+  const filteredScheduledCreatedTasks = filterTasks(splitTasksBySnooze.created.scheduledFollowUps);
+  const filteredScheduledAssignedTasks = filterTasks(splitTasksBySnooze.assigned.scheduledFollowUps);
 
   const filteredScheduledTasks = Array.from(
-    new Map(
-      [...filteredScheduledCreatedTasks, ...filteredScheduledAssignedTasks].map((task) => [task.id, task])
-    ).values()
+    new Map([...filteredScheduledCreatedTasks, ...filteredScheduledAssignedTasks].map((task) => [task.id, task])).values()
   );
 
   const hiddenScheduledCount = filteredScheduledTasks.length;
   const dueFollowUpCount = filteredDueCreatedTasks.length + filteredDueAssignedTasks.length;
   const totalTasks = filteredAssignedTasks.length + filteredCreatedTasks.length;
   const keepMainListsScrollable = hiddenScheduledCount === 0;
+  const availableStatusesForToolbar = availableTaskStatuses.length > 0 ? availableTaskStatuses : DEFAULT_TASK_STATUSES;
+  const allTasks = [...assignedTasks, ...createdTasks, ...Object.values(subtasks).flat()];
+
+  const TaskCollectionView = viewType === "card" ? MyWorkTasksBoard : MyWorkTasksList;
+  const sharedTaskListProps = {
+    isHighlighted,
+    highlightRef,
+    subtasks,
+    taskSnoozes,
+    taskCommentCounts,
+    resolveAssigneeName: helpers.resolveAssigneeName,
+    onNavigate: (taskId: string) => navigate(`/tasks?id=${taskId}`),
+    onComplete: actions.handleToggleComplete,
+    onSubtaskComplete: actions.handleToggleSubtaskComplete,
+    onUpdateTitle: actions.handleUpdateTitle,
+    onUpdateDueDate: actions.handleUpdateDueDate,
+    onReminder: actions.handleReminder,
+    onAssign: actions.handleAssign,
+    onComment: actions.handleComment,
+    onDecision: actions.handleDecision,
+    onDocuments: actions.handleDocuments,
+    onAddToMeeting: actions.handleAddToMeeting,
+    onCreateChildTask: actions.handleCreateChildTask,
+    onEdit: actions.openTaskEditDialog,
+    getChildTasks: helpers.getChildTasks,
+    onQuickClearSnooze: (taskId: string) => void actions.handleQuickClearSnooze(taskId),
+  };
 
   return (
     <div className="h-[calc(100vh-20rem)] flex flex-col">
-      {/* Header with view toggle and status filter */}
-      <div className="flex items-center justify-between px-4 py-2 border-b">
-        <div className="flex items-center gap-2">
-          <span className="text-sm font-medium">Aufgaben</span>
-          <Badge variant="outline">{totalTasks}</Badge>
-        </div>
-        <div className="flex items-center gap-2">
-              <Select value={statusFilter} onValueChange={setStatusFilter}>
-            <SelectTrigger className="h-8 w-[140px] text-xs">
-              <SelectValue placeholder="Status" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">Alle Status</SelectItem>
-              {availableTaskStatuses.map(status => (
-                <SelectItem key={status.name} value={status.name}>
-                  {status.label}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-          <ToggleGroup 
-            type="single" 
-            value={viewType} 
-            onValueChange={(value) => value && setViewType(value as ViewType)}
-            className="bg-muted rounded-md p-0.5"
-          >
-            <ToggleGroupItem value="card" aria-label="Kartenansicht" className="h-7 w-7 p-0">
-              <LayoutGrid className="h-4 w-4" />
-            </ToggleGroupItem>
-            <ToggleGroupItem value="list" aria-label="Listenansicht" className="h-7 w-7 p-0">
-              <List className="h-4 w-4" />
-            </ToggleGroupItem>
-          </ToggleGroup>
-        </div>
-      </div>
+      <MyWorkTasksToolbar
+        totalTasks={totalTasks}
+        statusFilter={statusFilter}
+        onStatusFilterChange={setStatusFilter}
+        taskStatuses={availableStatusesForToolbar}
+        viewType={viewType}
+        onViewTypeChange={setViewType}
+        dueFollowUpCount={dueFollowUpCount}
+        dueFollowUpsExpanded={dueFollowUpsExpanded}
+        onDueFollowUpsExpandedChange={setDueFollowUpsExpanded}
+        hiddenScheduledCount={hiddenScheduledCount}
+        scheduledFollowUpsExpanded={scheduledFollowUpsExpanded}
+        onScheduledFollowUpsExpandedChange={setScheduledFollowUpsExpanded}
+      />
 
       {dueFollowUpCount > 0 && (
         <div className="px-4 pt-2">
           <Collapsible open={dueFollowUpsExpanded} onOpenChange={setDueFollowUpsExpanded}>
-            <CollapsibleTrigger className="flex items-center justify-between w-full px-2 py-1.5 rounded hover:bg-muted/50 transition-colors">
-              <div className="flex items-center gap-2">
-                <ChevronDown className={cn("h-4 w-4 transition-transform", !dueFollowUpsExpanded && "-rotate-90")} />
-                <Clock className="h-4 w-4 text-amber-600" />
-                <span className="text-xs font-medium text-amber-700">Fällige Wiedervorlagen</span>
-                <Badge variant="secondary" className="bg-amber-100 text-amber-800 hover:bg-amber-100">{dueFollowUpCount}</Badge>
-              </div>
-            </CollapsibleTrigger>
-
             <CollapsibleContent className="pt-2">
               <div className="rounded-lg border border-amber-200 bg-amber-50/40 p-3">
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
-                  {renderTaskList(filteredDueCreatedTasks, "Von mir erstellt", "Keine fälligen Wiedervorlagen", { scrollable: false, compact: true, allowQuickUnsnooze: true })}
-                  {renderTaskList(filteredDueAssignedTasks, "Mir zugewiesen", "Keine fälligen Wiedervorlagen", { scrollable: false, compact: true, allowQuickUnsnooze: true })}
+                  <TaskCollectionView
+                    {...sharedTaskListProps}
+                    {...(viewType === "card" ? { onUpdateDescription: actions.handleUpdateDescription } : {})}
+                    tasks={filteredDueCreatedTasks}
+                    title="Von mir erstellt"
+                    emptyMessage="Keine fälligen Wiedervorlagen"
+                    scrollable={false}
+                    compact
+                    allowQuickUnsnooze
+                  />
+                  <TaskCollectionView
+                    {...sharedTaskListProps}
+                    {...(viewType === "card" ? { onUpdateDescription: actions.handleUpdateDescription } : {})}
+                    tasks={filteredDueAssignedTasks}
+                    title="Mir zugewiesen"
+                    emptyMessage="Keine fälligen Wiedervorlagen"
+                    scrollable={false}
+                    compact
+                    allowQuickUnsnooze
+                  />
                 </div>
               </div>
             </CollapsibleContent>
@@ -991,20 +408,28 @@ export function MyWorkTasksTab() {
         </div>
       )}
 
-      {/* Main content - 50/50 split */}
       {totalTasks === 0 ? (
         <div className="flex-1 flex items-center justify-center">
           <p className="text-muted-foreground">Keine offenen Aufgaben</p>
         </div>
       ) : (
-        <div
-          className={cn(
-            "grid grid-cols-1 lg:grid-cols-2 gap-4 p-4",
-            keepMainListsScrollable && "flex-1 min-h-0"
-          )}
-        >
-          {renderTaskList(filteredCreatedTasks, "Von mir erstellt", "Keine eigenen Aufgaben", { scrollable: keepMainListsScrollable })}
-          {renderTaskList(filteredAssignedTasks, "Mir zugewiesen", "Keine Aufgaben zugewiesen", { scrollable: keepMainListsScrollable })}
+        <div className={cn("grid grid-cols-1 lg:grid-cols-2 gap-4 p-4", keepMainListsScrollable && "flex-1 min-h-0")}>
+          <TaskCollectionView
+            {...sharedTaskListProps}
+            {...(viewType === "card" ? { onUpdateDescription: actions.handleUpdateDescription } : {})}
+            tasks={filteredCreatedTasks}
+            title="Von mir erstellt"
+            emptyMessage="Keine eigenen Aufgaben"
+            scrollable={keepMainListsScrollable}
+          />
+          <TaskCollectionView
+            {...sharedTaskListProps}
+            {...(viewType === "card" ? { onUpdateDescription: actions.handleUpdateDescription } : {})}
+            tasks={filteredAssignedTasks}
+            title="Mir zugewiesen"
+            emptyMessage="Keine Aufgaben zugewiesen"
+            scrollable={keepMainListsScrollable}
+          />
         </div>
       )}
 
@@ -1012,202 +437,42 @@ export function MyWorkTasksTab() {
         <div className="px-4 pb-3">
           <Separator className="mb-3" />
           <Collapsible open={scheduledFollowUpsExpanded} onOpenChange={setScheduledFollowUpsExpanded}>
-            <CollapsibleTrigger className="flex items-center justify-between w-full px-2 py-1.5 rounded hover:bg-muted/50 transition-colors">
-              <div className="flex items-center gap-2">
-                <ChevronDown className={cn("h-4 w-4 transition-transform", !scheduledFollowUpsExpanded && "-rotate-90")} />
-                <Hourglass className="h-4 w-4 text-muted-foreground" />
-                <span className="text-xs font-medium text-muted-foreground">Geplant (bis zum Datum ausgeblendet)</span>
-                <Badge variant="secondary" className="text-xs">{hiddenScheduledCount}</Badge>
-              </div>
-            </CollapsibleTrigger>
-
             <CollapsibleContent className="pt-2">
-              {renderTaskList(
-                filteredScheduledTasks,
-                "Geplante Wiedervorlagen",
-                "Keine geplanten Wiedervorlagen",
-                { scrollable: false, compact: true, allowQuickUnsnooze: false, showFollowUpDateBadge: true }
-              )}
+              <TaskCollectionView
+                {...sharedTaskListProps}
+                {...(viewType === "card" ? { onUpdateDescription: actions.handleUpdateDescription } : {})}
+                tasks={filteredScheduledTasks}
+                title="Geplante Wiedervorlagen"
+                emptyMessage="Keine geplanten Wiedervorlagen"
+                scrollable={false}
+                compact
+                showFollowUpDateBadge
+              />
             </CollapsibleContent>
           </Collapsible>
         </div>
       )}
 
-      {/* Snooze/Wiedervorlage Dialog */}
-      <Dialog open={snoozeDialogOpen} onOpenChange={setSnoozeDialogOpen}>
-        <DialogContent className="sm:max-w-[350px]">
-          <DialogHeader>
-            <DialogTitle>Wiedervorlage setzen</DialogTitle>
-          </DialogHeader>
-          <Calendar
-            mode="single"
-            selected={snoozeTaskId && taskSnoozes[snoozeTaskId] ? new Date(taskSnoozes[snoozeTaskId]) : undefined}
-            onSelect={(date) => date && handleSetSnooze(date)}
-            disabled={(date) => date < new Date()}
-            initialFocus
-          />
-          {snoozeTaskId && taskSnoozes[snoozeTaskId] && (
-            <Button variant="outline" size="sm" className="mt-3 w-full" onClick={handleClearSnooze}>
-              Wiedervorlage entfernen
-            </Button>
-          )}
-        </DialogContent>
-      </Dialog>
-
-      {/* Assign Dialog */}
-      <Dialog open={assignDialogOpen} onOpenChange={setAssignDialogOpen}>
-        <DialogContent className="sm:max-w-[400px]">
-          <DialogHeader>
-            <DialogTitle>Aufgabe zuweisen</DialogTitle>
-          </DialogHeader>
-          <div className="py-4">
-            <div className="space-y-3">
-              <MultiSelect
-                options={profiles.map((profile) => ({
-                  value: profile.user_id,
-                  label: profile.display_name || 'Unbekannter Benutzer',
-                }))}
-                selected={assignSelectedUserIds}
-                onChange={setAssignSelectedUserIds}
-                placeholder="Personen auswählen"
-              />
-              <div className="flex justify-end">
-                <Button onClick={() => handleUpdateAssignee(assignSelectedUserIds)}>
-                  Zuweisung speichern
-                </Button>
-              </div>
-            </div>
-          </div>
-        </DialogContent>
-      </Dialog>
-
-      <Dialog open={taskEditDialogOpen} onOpenChange={setTaskEditDialogOpen}>
-        <DialogContent className="sm:max-w-[700px]">
-          <DialogHeader>
-            <DialogTitle>Aufgabe bearbeiten</DialogTitle>
-          </DialogHeader>
-          <div className="space-y-4">
-            <div className="space-y-2">
-              <div className="text-sm font-medium">Titel</div>
-              <Input value={editTaskTitle} onChange={(e) => setEditTaskTitle(e.target.value)} placeholder="Titel" />
-            </div>
-            <div className="space-y-2">
-              <div className="text-sm font-medium">Beschreibung</div>
-              <SimpleRichTextEditor
-                initialContent={editTaskDescription}
-                onChange={setEditTaskDescription}
-                placeholder="Beschreibung eingeben..."
-                minHeight="180px"
-              />
-            </div>
-            <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
-              <div className="space-y-2">
-                <div className="text-sm font-medium">Priorität</div>
-                <Select value={editTaskPriority} onValueChange={setEditTaskPriority}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Priorität wählen" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {DEFAULT_TASK_PRIORITIES.map((priority) => (
-                      <SelectItem key={priority.value} value={priority.value}>
-                        {priority.label}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="space-y-2">
-                <div className="text-sm font-medium">Status</div>
-                <Select value={editTaskStatus} onValueChange={setEditTaskStatus}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Status wählen" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {availableTaskStatuses.map((status) => (
-                      <SelectItem key={status.name} value={status.name}>
-                        {status.label}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="space-y-2">
-                <div className="text-sm font-medium">Kategorie</div>
-                <Select value={editTaskCategory} onValueChange={setEditTaskCategory}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Kategorie wählen" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {availableTaskCategories.map((category) => (
-                      <SelectItem key={category.name} value={category.name}>
-                        {category.label}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-            </div>
-            <div className="flex justify-end">
-              <Button onClick={handleSaveTaskEdit}>Speichern</Button>
-            </div>
-          </div>
-        </DialogContent>
-      </Dialog>
-
-      {/* Comment Sidebar */}
-      <TaskCommentSidebar
-        taskId={commentTaskId}
-        taskTitle={getTaskTitle(commentTaskId)}
-        isOpen={commentSidebarOpen}
-        onOpenChange={setCommentSidebarOpen}
+      <MyWorkTaskDialogs
+        profiles={profiles}
+        tasks={allTasks}
+        taskSnoozes={taskSnoozes}
+        availableTaskStatuses={availableTaskStatuses}
+        availableTaskCategories={availableTaskCategories}
+        dialogState={dialogState}
+        getTaskTitle={helpers.getTaskTitle}
+        onSetSnooze={actions.handleSetSnooze}
+        onClearSnooze={actions.handleClearSnooze}
+        onUpdateAssignee={actions.handleUpdateAssignee}
+        onSelectMeeting={actions.handleSelectMeeting}
+        onMarkForNextJourFixe={actions.handleMarkForNextJourFixe}
+        onSaveTaskEdit={actions.handleSaveTaskEdit}
+        onDecisionCreated={() => {
+          toast({ title: "Entscheidungsanfrage erstellt" });
+        }}
       />
 
-      {/* Decision Creator - controlled dialog with pre-filled values */}
-      {decisionTaskId && (
-        <TaskDecisionCreator 
-          taskId={decisionTaskId}
-          isOpen={decisionDialogOpen}
-          onOpenChange={(open) => {
-            setDecisionDialogOpen(open);
-            if (!open) setDecisionTaskId(null);
-          }}
-          initialTitle={(() => {
-            const task = [...assignedTasks, ...createdTasks].find(t => t.id === decisionTaskId);
-            return task?.title;
-          })()}
-          initialDescription={(() => {
-            const task = [...assignedTasks, ...createdTasks].find(t => t.id === decisionTaskId);
-            return task?.description || undefined;
-          })()}
-          onDecisionCreated={() => {
-            setDecisionDialogOpen(false);
-            setDecisionTaskId(null);
-            toast({ title: "Entscheidungsanfrage erstellt" });
-          }}
-        />
-      )}
-
-      {/* Document Dialog */}
-      <TaskDocumentDialog
-        taskId={documentTaskId}
-        taskTitle={getTaskTitle(documentTaskId)}
-        isOpen={documentDialogOpen}
-        onOpenChange={setDocumentDialogOpen}
-      />
-
-      {/* Meeting Selector Dialog */}
-      <TaskMeetingSelector
-        open={meetingSelectorOpen}
-        onOpenChange={setMeetingSelectorOpen}
-        onSelect={handleSelectMeeting}
-        onMarkForNextJourFixe={handleMarkForNextJourFixe}
-      />
-
-      {/* Celebration Animation on task completion */}
-      <CelebrationAnimationSystem 
-        isVisible={showCelebration} 
-        onAnimationComplete={() => setShowCelebration(false)} 
-      />
+      <CelebrationAnimationSystem isVisible={showCelebration} onAnimationComplete={() => setShowCelebration(false)} />
     </div>
   );
 }

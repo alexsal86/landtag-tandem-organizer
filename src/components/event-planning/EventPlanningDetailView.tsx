@@ -486,28 +486,6 @@ export function EventPlanningDetailView(data: EventPlanningDataReturn) {
 
                 <div className="grid gap-6 lg:grid-cols-2 lg:items-start">
                   <div className="space-y-2">
-                    <Label htmlFor="location" className={fieldLabelClassName}>Veranstaltungsort</Label>
-                    <Input id="location" value={selectedPlanning.location || ""} onChange={(e) => updatePlanningField("location", e.target.value)} placeholder="Veranstaltungsort..." />
-                    {!selectedPlanning.is_digital && (
-                      <Button variant="outline" size="sm" onClick={() => { setDigitalEvent({ platform: selectedPlanning.digital_platform || "", link: selectedPlanning.digital_link || "", access_info: selectedPlanning.digital_access_info || "" }); setIsDigitalDialogOpen(true); }} className="mt-2"><Plus className="w-4 h-4 mr-2" />Digital</Button>
-                    )}
-                    {selectedPlanning.is_digital && (
-                      <div className="mt-2 rounded-md bg-muted p-2">
-                        <div className="flex items-center justify-between">
-                          <div>
-                            <p className="text-sm font-medium">Digital: {selectedPlanning.digital_platform}</p>
-                            {selectedPlanning.digital_link && <p className="text-xs text-muted-foreground">{selectedPlanning.digital_link}</p>}
-                          </div>
-                          <div className="flex gap-1">
-                            <Button variant="ghost" size="sm" onClick={() => { setDigitalEvent({ platform: selectedPlanning.digital_platform || "", link: selectedPlanning.digital_link || "", access_info: selectedPlanning.digital_access_info || "" }); setIsDigitalDialogOpen(true); }}><Edit2 className="w-3 h-3" /></Button>
-                            <Button variant="ghost" size="sm" onClick={removeDigitalEventSettings}><X className="w-3 h-3" /></Button>
-                          </div>
-                        </div>
-                      </div>
-                    )}
-                  </div>
-
-                  <div className="space-y-2">
                     <Label htmlFor="background" className={fieldLabelClassName}>Hintergründe</Label>
                     <Textarea
                       id="background"
@@ -527,6 +505,28 @@ export function EventPlanningDetailView(data: EventPlanningDataReturn) {
                         }
                       }}
                     />
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="location" className={fieldLabelClassName}>Veranstaltungsort</Label>
+                    <Input id="location" value={selectedPlanning.location || ""} onChange={(e) => updatePlanningField("location", e.target.value)} placeholder="Veranstaltungsort..." />
+                    {!selectedPlanning.is_digital && (
+                      <Button variant="outline" size="sm" onClick={() => { setDigitalEvent({ platform: selectedPlanning.digital_platform || "", link: selectedPlanning.digital_link || "", access_info: selectedPlanning.digital_access_info || "" }); setIsDigitalDialogOpen(true); }} className="mt-2"><Plus className="w-4 h-4 mr-2" />Digital</Button>
+                    )}
+                    {selectedPlanning.is_digital && (
+                      <div className="mt-2 rounded-md bg-muted p-2">
+                        <div className="flex items-center justify-between">
+                          <div>
+                            <p className="text-sm font-medium">Digital: {selectedPlanning.digital_platform}</p>
+                            {selectedPlanning.digital_link && <p className="text-xs text-muted-foreground">{selectedPlanning.digital_link}</p>}
+                          </div>
+                          <div className="flex gap-1">
+                            <Button variant="ghost" size="sm" onClick={() => { setDigitalEvent({ platform: selectedPlanning.digital_platform || "", link: selectedPlanning.digital_link || "", access_info: selectedPlanning.digital_access_info || "" }); setIsDigitalDialogOpen(true); }}><Edit2 className="w-3 h-3" /></Button>
+                            <Button variant="ghost" size="sm" onClick={removeDigitalEventSettings}><X className="w-3 h-3" /></Button>
+                          </div>
+                        </div>
+                      </div>
+                    )}
                   </div>
                 </div>
               </CardContent>
