@@ -1,14 +1,8 @@
-import { useState, useEffect, useMemo, useRef } from "react";
-import { debugConsole } from "@/utils/debugConsole";
+import { useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "react-router-dom";
-import { useNotificationHighlight } from "@/hooks/useNotificationHighlight";
-import { Badge } from "@/components/ui/badge";
-import { Input } from "@/components/ui/input";
-import { ScrollArea } from "@/components/ui/scroll-area";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Search, Settings2 } from "lucide-react";
-import { Button } from "@/components/ui/button";
+import { debugConsole } from "@/utils/debugConsole";
 import { supabase } from "@/integrations/supabase/client";
+import { useNotificationHighlight } from "@/hooks/useNotificationHighlight";
 import { useAuth } from "@/hooks/useAuth";
 import { useTenant } from "@/hooks/useTenant";
 import { useToast } from "@/hooks/use-toast";
@@ -17,121 +11,56 @@ import { usePersistentState } from "@/hooks/usePersistentState";
 import { useDecisionRefreshScheduler } from "@/hooks/useDecisionRefreshScheduler";
 import { useMyWorkDecisionsData } from "@/hooks/useMyWorkDecisionsData";
 import { useMyWorkDecisionsSidebarData } from "@/hooks/useMyWorkDecisionsSidebarData";
-import { useMyWorkSettings, DecisionTabId } from "@/hooks/useMyWorkSettings";
+import { DecisionTabId, useMyWorkSettings } from "@/hooks/useMyWorkSettings";
 import { useTenantUsers } from "@/hooks/useTenantUsers";
-import { TaskDecisionDetails } from "@/components/task-decisions/TaskDecisionDetails";
-import { StandaloneDecisionCreator } from "@/components/task-decisions/StandaloneDecisionCreator";
-import { DecisionEditDialog } from "@/components/task-decisions/DecisionEditDialog";
-import { DecisionComments } from "@/components/task-decisions/DecisionComments";
-import { DefaultParticipantsDialog } from "@/components/task-decisions/DefaultParticipantsDialog";
-import { CaseItemMeetingSelector } from "@/components/my-work/CaseItemMeetingSelector";
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from "@/components/ui/alert-dialog";
-import { MyWorkDecisionCard } from "./decisions/MyWorkDecisionCard";
-import { DecisionContextMenu } from "./decisions/DecisionContextMenu";
-import { MyWorkDecisionSidebar } from "./decisions/MyWorkDecisionSidebar";
-import { MyWorkDecision, getResponseSummary } from "./decisions/types";
+import { Tabs, TabsContent } from "@/components/ui/tabs";
+import { MyWorkDecision } from "./decisions/types";
+import { DecisionListToolbar } from "./decisions/DecisionListToolbar";
+import { DecisionList } from "./decisions/DecisionList";
+import { DecisionDialogs } from "./decisions/DecisionDialogs";
+import { DecisionSidebarContainer } from "./decisions/DecisionSidebarContainer";
+import { filterDecisionsByQuery, filterDecisionsByTab, getDecisionTabCounts, getVisibleDecisionTab } from "./decisions/utils";
 
 export function MyWorkDecisionsTab() {
   const { user } = useAuth();
   const { currentTenant } = useTenant();
   const { toast } = useToast();
   const [searchParams, setSearchParams] = useSearchParams();
-
-  const [activeTab, setActiveTab] = usePersistentState<DecisionTabId>(
-    "mywork-decisions-active-tab",
-    "for-me",
-  );
+  const [activeTab, setActiveTab] = usePersistentState<DecisionTabId>("mywork-decisions-active-tab", "for-me");
   const [searchQuery, setSearchQuery] = useState("");
-  const { decisionTabOrder, hiddenDecisionTabs, updateDecisionTabSettings } =
-    useMyWorkSettings();
-
-  // Dialog states
-  const [selectedDecisionId, setSelectedDecisionId] = useState<string | null>(
-    null,
-  );
+  const { decisionTabOrder, hiddenDecisionTabs, updateDecisionTabSettings } = useMyWorkSettings();
+  const [selectedDecisionId, setSelectedDecisionId] = useState<string | null>(null);
   const [isDetailsOpen, setIsDetailsOpen] = useState(false);
-  const [highlightCommentId, setHighlightCommentId] = useState<string | null>(
-    null,
-  );
-  const [highlightResponseId, setHighlightResponseId] = useState<string | null>(
-    null,
-  );
+  const [highlightCommentId, setHighlightCommentId] = useState<string | null>(null);
+  const [highlightResponseId, setHighlightResponseId] = useState<string | null>(null);
   const [isCreateOpen, setIsCreateOpen] = useState(false);
-  const [editingDecisionId, setEditingDecisionId] = useState<string | null>(
-    null,
-  );
-  const [deletingDecisionId, setDeletingDecisionId] = useState<string | null>(
-    null,
-  );
-  const [archivingDecisionId, setArchivingDecisionId] = useState<string | null>(
-    null,
-  );
+  const [editingDecisionId, setEditingDecisionId] = useState<string | null>(null);
+  const [deletingDecisionId, setDeletingDecisionId] = useState<string | null>(null);
+  const [archivingDecisionId, setArchivingDecisionId] = useState<string | null>(null);
   const [creatingTaskId, setCreatingTaskId] = useState<string | null>(null);
-  const [commentsDecisionId, setCommentsDecisionId] = useState<string | null>(
-    null,
-  );
+  const [commentsDecisionId, setCommentsDecisionId] = useState<string | null>(null);
   const [commentsDecisionTitle, setCommentsDecisionTitle] = useState("");
   const [defaultParticipantsOpen, setDefaultParticipantsOpen] = useState(false);
-  const latestLoadRequestRef = useRef(0);
   const [meetingSelectorOpen, setMeetingSelectorOpen] = useState(false);
-  const [meetingSelectorDecisionId, setMeetingSelectorDecisionId] = useState<
-    string | null
-  >(null);
-
+  const [meetingSelectorDecisionId, setMeetingSelectorDecisionId] = useState<string | null>(null);
   const { users: tenantUsers } = useTenantUsers();
-
-  const { decisions, setDecisions, loading, loadDecisions } =
-    useMyWorkDecisionsData(user?.id);
+  const { decisions, setDecisions, loading, loadDecisions } = useMyWorkDecisionsData(user?.id);
   const { isHighlighted, highlightRef } = useNotificationHighlight();
+  const { scheduleRefresh: scheduleDecisionsRefresh } = useDecisionRefreshScheduler(() => loadDecisions({ silent: true }));
+  const sidebarData = useMyWorkDecisionsSidebarData(decisions, user?.id);
 
-  // Auto-switch tab when highlight param points to a decision in a different tab
   useEffect(() => {
     const highlightId = searchParams.get("highlight");
     if (!highlightId || decisions.length === 0 || !user?.id) return;
-
-    const decision = decisions.find((d) => d.id === highlightId);
+    const decision = decisions.find((entry) => entry.id === highlightId);
     if (!decision) return;
+    const targetTab = getVisibleDecisionTab(decision);
+    if (targetTab && targetTab !== activeTab) setActiveTab(targetTab);
+  }, [activeTab, decisions, searchParams, setActiveTab, user?.id]);
 
-    let targetTab: typeof activeTab = activeTab;
-    if (
-      decision.isParticipant &&
-      !decision.hasResponded &&
-      !decision.isCreator
-    ) {
-      targetTab = "for-me";
-    } else if (decision.isCreator) {
-      const s = getResponseSummary(decision.participants);
-      if (s.questionCount > 0 || (s.total > 0 && s.pending < s.total)) {
-        targetTab = "for-me";
-      } else {
-        targetTab = "my-decisions";
-      }
-    } else if (decision.isParticipant && decision.hasResponded) {
-      targetTab = "answered";
-    } else if (decision.visible_to_all) {
-      targetTab = "public";
-    }
+  const decisionIds = useMemo(() => decisions.map((decision) => decision.id), [decisions]);
+  const { getCommentCount, refresh: refreshCommentCounts } = useDecisionComments(decisionIds);
 
-    if (targetTab !== activeTab) {
-      setActiveTab(targetTab);
-    }
-  }, [decisions, searchParams]);
-
-  // Comment counts
-  const decisionIds = useMemo(() => decisions.map((d) => d.id), [decisions]);
-  const { getCommentCount, refresh: refreshCommentCounts } =
-    useDecisionComments(decisionIds);
-
-  // Handle URL action param
   useEffect(() => {
     const action = searchParams.get("action");
     if (action === "create-decision") {
@@ -141,205 +70,49 @@ export function MyWorkDecisionsTab() {
     }
   }, [searchParams, setSearchParams]);
 
-  const { scheduleRefresh: scheduleDecisionsRefresh } =
-    useDecisionRefreshScheduler(() => loadDecisions({ silent: true }));
+  const tabCounts = useMemo(() => getDecisionTabCounts(decisions), [decisions]);
+  const filteredDecisions = useMemo(() => filterDecisionsByTab(filterDecisionsByQuery(decisions, searchQuery), activeTab), [decisions, searchQuery, activeTab]);
 
-  // Tab counts
-  const tabCounts = useMemo(() => {
-    const forMeParticipant = decisions.filter(
-      (d) => d.isParticipant && !d.hasResponded && !d.isCreator,
-    );
-    const forMeCreatorActivity = decisions.filter((d) => {
-      if (!d.isCreator) return false;
-      const s = getResponseSummary(d.participants);
-      return s.questionCount > 0 || (s.total > 0 && s.pending < s.total);
-    });
-    const forMeIds = new Set([
-      ...forMeParticipant.map((d) => d.id),
-      ...forMeCreatorActivity.map((d) => d.id),
-    ]);
-    return {
-      forMe: forMeIds.size,
-      answered: decisions.filter(
-        (d) => d.isParticipant && d.hasResponded && !d.isCreator,
-      ).length,
-      myDecisions: decisions.filter((d) => d.isCreator).length,
-      public: decisions.filter(
-        (d) => d.visible_to_all && !d.isCreator && !d.isParticipant,
-      ).length,
-    };
-  }, [decisions]);
-
-  // Filtered decisions
-  const filteredDecisions = useMemo(() => {
-    let filtered = decisions;
-
-    if (searchQuery.trim()) {
-      const q = searchQuery.toLowerCase();
-      filtered = filtered.filter(
-        (d) =>
-          d.title.toLowerCase().includes(q) ||
-          (d.description && d.description.toLowerCase().includes(q)),
-      );
-    }
-
-    switch (activeTab) {
-      case "for-me": {
-        const forMeParticipant = filtered.filter(
-          (d) => d.isParticipant && !d.hasResponded && !d.isCreator,
-        );
-        const forMeCreatorActivity = filtered.filter((d) => {
-          if (!d.isCreator) return false;
-          const s = getResponseSummary(d.participants);
-          return s.questionCount > 0 || (s.total > 0 && s.pending < s.total);
-        });
-        const seen = new Set(forMeParticipant.map((d) => d.id));
-        return [
-          ...forMeParticipant,
-          ...forMeCreatorActivity.filter((d) => !seen.has(d.id)),
-        ];
-      }
-      case "answered":
-        return filtered.filter(
-          (d) => d.isParticipant && d.hasResponded && !d.isCreator,
-        );
-      case "my-decisions":
-        return filtered.filter((d) => d.isCreator);
-      case "public":
-        return filtered.filter(
-          (d) => d.visible_to_all && !d.isCreator && !d.isParticipant,
-        );
-      default:
-        return filtered;
-    }
-  }, [decisions, activeTab, searchQuery]);
-
-  const sidebarData = useMyWorkDecisionsSidebarData(decisions, user?.id);
-
-  // Inline reply to activity from card
-  const sendActivityReply = async ({
-    responseId,
-    text,
-    mode,
-  }: {
-    responseId: string;
-    text: string;
-    mode: "creator_response" | "participant_followup";
-  }) => {
+  const sendActivityReply = async ({ responseId, text, mode }: { responseId: string; text: string; mode: "creator_response" | "participant_followup" }) => {
     if (!text?.trim()) return;
-
     if (mode === "creator_response") {
-      const { error } = await supabase
-        .from("task_decision_responses")
-        .update({ creator_response: text.trim() })
-        .eq("id", responseId);
-
+      const { error } = await supabase.from("task_decision_responses").update({ creator_response: text.trim() }).eq("id", responseId);
       if (error) {
-        toast({
-          title: "Fehler",
-          description: "Antwort konnte nicht gesendet werden.",
-          variant: "destructive",
-        });
+        toast({ title: "Fehler", description: "Antwort konnte nicht gesendet werden.", variant: "destructive" });
         throw error;
       }
     } else {
-      const { data: parentResponse, error: parentError } = await supabase
-        .from("task_decision_responses")
-        .select("decision_id, participant_id")
-        .eq("id", responseId)
-        .maybeSingle();
-
+      const { data: parentResponse, error: parentError } = await supabase.from("task_decision_responses").select("decision_id, participant_id").eq("id", responseId).maybeSingle();
       if (parentError || !parentResponse) {
-        toast({
-          title: "Fehler",
-          description: "Antwort konnte nicht gesendet werden.",
-          variant: "destructive",
-        });
+        toast({ title: "Fehler", description: "Antwort konnte nicht gesendet werden.", variant: "destructive" });
         throw parentError || new Error("Ausgangsnachricht nicht gefunden.");
       }
-
-      const { error } = await supabase.from("task_decision_responses").insert([
-        {
-          decision_id: parentResponse.decision_id,
-          participant_id: parentResponse.participant_id,
-          response_type: "question",
-          comment: text.trim(),
-          parent_response_id: responseId,
-        },
-      ]);
-
+      const { error } = await supabase.from("task_decision_responses").insert([{ decision_id: parentResponse.decision_id, participant_id: parentResponse.participant_id, response_type: "question", comment: text.trim(), parent_response_id: responseId }]);
       if (error) {
-        toast({
-          title: "Fehler",
-          description: "Antwort konnte nicht gesendet werden.",
-          variant: "destructive",
-        });
+        toast({ title: "Fehler", description: "Antwort konnte nicht gesendet werden.", variant: "destructive" });
         throw error;
       }
     }
-
-    toast({
-      title: "Erfolgreich",
-      description:
-        mode === "creator_response"
-          ? "Antwort wurde gesendet."
-          : "Deine Rückfrage wurde gesendet.",
-    });
+    toast({ title: "Erfolgreich", description: mode === "creator_response" ? "Antwort wurde gesendet." : "Deine Rückfrage wurde gesendet." });
     scheduleDecisionsRefresh();
   };
 
-  // Actions
-  const handleOpenDetails = (decisionId: string) => {
-    setSelectedDecisionId(decisionId);
-    setHighlightCommentId(null);
-    setHighlightResponseId(null);
-    setIsDetailsOpen(true);
-  };
-
-  const handleActivityOpen = (activity: {
-    decisionId: string;
-    type: "comment" | "response" | "decision";
-    targetId: string;
-  }) => {
-    setSelectedDecisionId(activity.decisionId);
-    setHighlightCommentId(
-      activity.type === "comment" ? activity.targetId : null,
-    );
-    setHighlightResponseId(
-      activity.type === "response" ? activity.targetId : null,
-    );
-    setIsDetailsOpen(true);
-  };
+  const handleOpenDetails = (decisionId: string) => { setSelectedDecisionId(decisionId); setHighlightCommentId(null); setHighlightResponseId(null); setIsDetailsOpen(true); };
+  const handleActivityOpen = (activity: { decisionId: string; type: "comment" | "response" | "decision"; targetId: string }) => { setSelectedDecisionId(activity.decisionId); setHighlightCommentId(activity.type === "comment" ? activity.targetId : null); setHighlightResponseId(activity.type === "response" ? activity.targetId : null); setIsDetailsOpen(true); };
 
   const archiveDecision = async (decisionId: string) => {
     if (!user) return;
     setArchivingDecisionId(decisionId);
     const previousDecisions = decisions;
-    setDecisions((prev) =>
-      prev.filter((decision) => decision.id !== decisionId),
-    );
+    setDecisions((current) => current.filter((decision) => decision.id !== decisionId));
     try {
-      const { error } = await supabase
-        .from("task_decisions")
-        .update({
-          status: "archived",
-          archived_at: new Date().toISOString(),
-          archived_by: user.id,
-        })
-        .eq("id", decisionId);
+      const { error } = await supabase.from("task_decisions").update({ status: "archived", archived_at: new Date().toISOString(), archived_by: user.id }).eq("id", decisionId);
       if (error) throw error;
-      toast({
-        title: "Archiviert",
-        description: "Entscheidung wurde archiviert.",
-      });
+      toast({ title: "Archiviert", description: "Entscheidung wurde archiviert." });
     } catch (error) {
       setDecisions(previousDecisions);
       debugConsole.error("Error archiving:", error);
-      toast({
-        title: "Fehler",
-        description: "Archivierung fehlgeschlagen.",
-        variant: "destructive",
-      });
+      toast({ title: "Fehler", description: "Archivierung fehlgeschlagen.", variant: "destructive" });
     } finally {
       setArchivingDecisionId(null);
     }
@@ -349,273 +122,130 @@ export function MyWorkDecisionsTab() {
     if (!deletingDecisionId) return;
     const decisionId = deletingDecisionId;
     const previousDecisions = decisions;
-    setDecisions((prev) =>
-      prev.filter((decision) => decision.id !== decisionId),
-    );
+    setDecisions((current) => current.filter((decision) => decision.id !== decisionId));
     try {
-      const { error } = await supabase
-        .from("task_decisions")
-        .delete()
-        .eq("id", decisionId);
+      const { error } = await supabase.from("task_decisions").delete().eq("id", decisionId);
       if (error) throw error;
       toast({ title: "Gelöscht", description: "Entscheidung wurde gelöscht." });
       setDeletingDecisionId(null);
     } catch (error) {
       setDecisions(previousDecisions);
       debugConsole.error("Error deleting:", error);
-      toast({
-        title: "Fehler",
-        description: "Löschen fehlgeschlagen.",
-        variant: "destructive",
-      });
+      toast({ title: "Fehler", description: "Löschen fehlgeschlagen.", variant: "destructive" });
     }
   };
 
   const createTaskFromDecision = async (decision: MyWorkDecision) => {
     if (!user?.id || !currentTenant?.id) return;
     setCreatingTaskId(decision.id);
-    const summary = getResponseSummary(decision.participants);
-
+    const summary = decision.participants ? { yesCount: decision.participants.filter((p) => p.responses[0]?.response_type === "yes").length, noCount: decision.participants.filter((p) => p.responses[0]?.response_type === "no").length } : { yesCount: 0, noCount: 0 };
     let resultText = "Ergebnis: ";
     if (summary.yesCount > summary.noCount) resultText += "Angenommen";
     else if (summary.noCount > summary.yesCount) resultText += "Abgelehnt";
     else resultText += "Unentschieden";
-
     try {
-      const { error } = await supabase.from("tasks").insert([
-        {
-          user_id: user.id,
-          title: `[Entscheidung] ${decision.title}`,
-          description: `<h3>Aus Entscheidung: ${decision.title}</h3><p><strong>${resultText}</strong> (Ja: ${summary.yesCount}, Nein: ${summary.noCount})</p>${decision.description ? `<div>${decision.description}</div>` : ""}`,
-          assigned_to: user.id,
-          tenant_id: currentTenant.id,
-          status: "todo",
-          priority: "medium",
-          category: "personal",
-        },
-      ]);
+      const { error } = await supabase.from("tasks").insert([{ user_id: user.id, title: `[Entscheidung] ${decision.title}`, description: `<h3>Aus Entscheidung: ${decision.title}</h3><p><strong>${resultText}</strong> (Ja: ${summary.yesCount}, Nein: ${summary.noCount})</p>${decision.description ? `<div>${decision.description}</div>` : ""}`, assigned_to: user.id, tenant_id: currentTenant.id, status: "todo", priority: "medium", category: "personal" }]);
       if (error) throw error;
-      toast({
-        title: "Aufgabe erstellt",
-        description: "Aufgabe wurde aus der Entscheidung erstellt.",
-      });
+      toast({ title: "Aufgabe erstellt", description: "Aufgabe wurde aus der Entscheidung erstellt." });
     } catch (error) {
       debugConsole.error("Error creating task:", error);
-      toast({
-        title: "Fehler",
-        description: "Aufgabe konnte nicht erstellt werden.",
-        variant: "destructive",
-      });
+      toast({ title: "Fehler", description: "Aufgabe konnte nicht erstellt werden.", variant: "destructive" });
     } finally {
       setCreatingTaskId(null);
     }
   };
 
-  // Context menu handlers
-  const handleUpdateDeadline = async (
-    decisionId: string,
-    date: string | null,
-  ) => {
+  const handleUpdateDeadline = async (decisionId: string, date: string | null) => {
     try {
-      const { error } = await supabase
-        .from("task_decisions")
-        .update({ response_deadline: date } as any)
-        .eq("id", decisionId);
+      const { error } = await supabase.from("task_decisions").update({ response_deadline: date } as never).eq("id", decisionId);
       if (error) throw error;
-      setDecisions((prev) =>
-        prev.map((d) =>
-          d.id === decisionId ? { ...d, response_deadline: date } : d,
-        ),
-      );
-      toast({
-        title: "Gespeichert",
-        description: date
-          ? "Antwortfrist wurde geändert."
-          : "Antwortfrist wurde entfernt.",
-      });
+      setDecisions((current) => current.map((decision) => decision.id === decisionId ? { ...decision, response_deadline: date } : decision));
+      toast({ title: "Gespeichert", description: date ? "Antwortfrist wurde geändert." : "Antwortfrist wurde entfernt." });
     } catch (error) {
       debugConsole.error("Error updating deadline:", error);
-      toast({
-        title: "Fehler",
-        description: "Frist konnte nicht geändert werden.",
-        variant: "destructive",
-      });
+      toast({ title: "Fehler", description: "Frist konnte nicht geändert werden.", variant: "destructive" });
     }
   };
 
-  const handleTogglePublic = async (
-    decisionId: string,
-    currentValue: boolean,
-  ) => {
+  const handleTogglePublic = async (decisionId: string, currentValue: boolean) => {
     const newValue = !currentValue;
     try {
-      const { error } = await supabase
-        .from("task_decisions")
-        .update({ visible_to_all: newValue } as any)
-        .eq("id", decisionId);
+      const { error } = await supabase.from("task_decisions").update({ visible_to_all: newValue } as never).eq("id", decisionId);
       if (error) throw error;
-      setDecisions((prev) =>
-        prev.map((d) =>
-          d.id === decisionId ? { ...d, visible_to_all: newValue } : d,
-        ),
-      );
-      toast({
-        title: newValue ? "Öffentlich" : "Nicht öffentlich",
-        description: newValue
-          ? "Entscheidung ist jetzt öffentlich."
-          : "Entscheidung ist jetzt nicht mehr öffentlich.",
-      });
+      setDecisions((current) => current.map((decision) => decision.id === decisionId ? { ...decision, visible_to_all: newValue } : decision));
+      toast({ title: newValue ? "Öffentlich" : "Nicht öffentlich", description: newValue ? "Entscheidung ist jetzt öffentlich." : "Entscheidung ist jetzt nicht mehr öffentlich." });
     } catch (error) {
       debugConsole.error("Error toggling public:", error);
-      toast({
-        title: "Fehler",
-        description: "Sichtbarkeit konnte nicht geändert werden.",
-        variant: "destructive",
-      });
+      toast({ title: "Fehler", description: "Sichtbarkeit konnte nicht geändert werden.", variant: "destructive" });
     }
   };
 
-  const handleAddParticipants = async (
-    decisionId: string,
-    userIds: string[],
-  ) => {
+  const handleAddParticipants = async (decisionId: string, userIds: string[]) => {
     if (userIds.length === 0) return;
     try {
-      const rows = userIds.map((uid) => ({
-        decision_id: decisionId,
-        user_id: uid,
-      }));
-      const { error } = await supabase
-        .from("task_decision_participants")
-        .insert(rows);
+      const { error } = await supabase.from("task_decision_participants").insert(userIds.map((userId) => ({ decision_id: decisionId, user_id: userId })));
       if (error) throw error;
-      toast({
-        title: "Hinzugefügt",
-        description: `${userIds.length} Teilnehmer hinzugefügt.`,
-      });
+      toast({ title: "Hinzugefügt", description: `${userIds.length} Teilnehmer hinzugefügt.` });
       scheduleDecisionsRefresh(0);
     } catch (error) {
       debugConsole.error("Error adding participants:", error);
-      toast({
-        title: "Fehler",
-        description: "Teilnehmer konnten nicht hinzugefügt werden.",
-        variant: "destructive",
-      });
+      toast({ title: "Fehler", description: "Teilnehmer konnten nicht hinzugefügt werden.", variant: "destructive" });
     }
   };
 
-  const handleRemoveParticipant = async (
-    decisionId: string,
-    userId: string,
-  ) => {
+  const handleRemoveParticipant = async (decisionId: string, userId: string) => {
     try {
-      const { error } = await supabase
-        .from("task_decision_participants")
-        .delete()
-        .eq("decision_id", decisionId)
-        .eq("user_id", userId);
+      const { error } = await supabase.from("task_decision_participants").delete().eq("decision_id", decisionId).eq("user_id", userId);
       if (error) throw error;
       toast({ title: "Entfernt", description: "Teilnehmer wurde entfernt." });
       scheduleDecisionsRefresh(0);
     } catch (error) {
       debugConsole.error("Error removing participant:", error);
-      toast({
-        title: "Fehler",
-        description: "Teilnehmer konnte nicht entfernt werden.",
-        variant: "destructive",
-      });
+      toast({ title: "Fehler", description: "Teilnehmer konnte nicht entfernt werden.", variant: "destructive" });
     }
   };
 
-  const handleTogglePriority = async (
-    decisionId: string,
-    currentPriority: number,
-  ) => {
+  const handleTogglePriority = async (decisionId: string, currentPriority: number) => {
     const newPriority = currentPriority > 0 ? 0 : 1;
     try {
-      const { error } = await supabase
-        .from("task_decisions")
-        .update({ priority: newPriority } as any)
-        .eq("id", decisionId);
+      const { error } = await supabase.from("task_decisions").update({ priority: newPriority } as never).eq("id", decisionId);
       if (error) throw error;
-      setDecisions((prev) =>
-        prev.map((d) =>
-          d.id === decisionId ? { ...d, priority: newPriority } : d,
-        ),
-      );
+      setDecisions((current) => current.map((decision) => decision.id === decisionId ? { ...decision, priority: newPriority } : decision));
       toast({ title: newPriority > 0 ? "Prioritär" : "Priorität entfernt" });
     } catch (error) {
       debugConsole.error("Error toggling priority:", error);
-      toast({
-        title: "Fehler",
-        description: "Priorität konnte nicht geändert werden.",
-        variant: "destructive",
-      });
+      toast({ title: "Fehler", description: "Priorität konnte nicht geändert werden.", variant: "destructive" });
     }
   };
 
-  const handleAddToJourFixe = (decisionId: string) => {
-    setMeetingSelectorDecisionId(decisionId);
-    setMeetingSelectorOpen(true);
-  };
-
+  const handleAddToJourFixe = (decisionId: string) => { setMeetingSelectorDecisionId(decisionId); setMeetingSelectorOpen(true); };
   const handleMeetingSelected = async (meetingId: string) => {
     if (!meetingSelectorDecisionId) return;
     try {
-      const { error } = await supabase
-        .from("task_decisions")
-        .update({ meeting_id: meetingId, pending_for_jour_fixe: false } as any)
-        .eq("id", meetingSelectorDecisionId);
+      const { error } = await supabase.from("task_decisions").update({ meeting_id: meetingId, pending_for_jour_fixe: false } as never).eq("id", meetingSelectorDecisionId);
       if (error) throw error;
-      toast({
-        title: "Zugeordnet",
-        description: "Entscheidung wurde dem Jour Fixe zugeordnet.",
-      });
+      toast({ title: "Zugeordnet", description: "Entscheidung wurde dem Jour Fixe zugeordnet." });
     } catch (error) {
       debugConsole.error("Error assigning to meeting:", error);
-      toast({
-        title: "Fehler",
-        description: "Zuordnung fehlgeschlagen.",
-        variant: "destructive",
-      });
+      toast({ title: "Fehler", description: "Zuordnung fehlgeschlagen.", variant: "destructive" });
     }
     setMeetingSelectorDecisionId(null);
   };
-
   const handleMarkForNextJourFixe = async () => {
     if (!meetingSelectorDecisionId) return;
     try {
-      const { error } = await supabase
-        .from("task_decisions")
-        .update({ pending_for_jour_fixe: true, meeting_id: null } as any)
-        .eq("id", meetingSelectorDecisionId);
+      const { error } = await supabase.from("task_decisions").update({ pending_for_jour_fixe: true, meeting_id: null } as never).eq("id", meetingSelectorDecisionId);
       if (error) throw error;
-      toast({
-        title: "Vorgemerkt",
-        description:
-          "Entscheidung wurde für den nächsten Jour Fixe vorgemerkt.",
-      });
+      toast({ title: "Vorgemerkt", description: "Entscheidung wurde für den nächsten Jour Fixe vorgemerkt." });
     } catch (error) {
       debugConsole.error("Error marking for jour fixe:", error);
-      toast({
-        title: "Fehler",
-        description: "Vormerkung fehlgeschlagen.",
-        variant: "destructive",
-      });
+      toast({ title: "Fehler", description: "Vormerkung fehlgeschlagen.", variant: "destructive" });
     }
     setMeetingSelectorDecisionId(null);
   };
 
-  const visibleDecisionTabs = decisionTabOrder.filter(
-    (tab) => !hiddenDecisionTabs.includes(tab),
-  );
-
-  useEffect(() => {
-    if (visibleDecisionTabs.length === 0) return;
-    if (!visibleDecisionTabs.includes(activeTab)) {
-      setActiveTab(visibleDecisionTabs[0]);
-    }
-  }, [activeTab, setActiveTab, visibleDecisionTabs]);
+  const visibleDecisionTabs = decisionTabOrder.filter((tab) => !hiddenDecisionTabs.includes(tab));
+  useEffect(() => { if (visibleDecisionTabs.length > 0 && !visibleDecisionTabs.includes(activeTab)) setActiveTab(visibleDecisionTabs[0]); }, [activeTab, setActiveTab, visibleDecisionTabs]);
 
   const tabConfig: Record<DecisionTabId, { label: string; count: number }> = {
     "for-me": { label: "Für mich", count: tabCounts.forMe },
@@ -623,8 +253,7 @@ export function MyWorkDecisionsTab() {
     "my-decisions": { label: "Von mir", count: tabCounts.myDecisions },
     public: { label: "Öffentlich", count: tabCounts.public },
   };
-
-  const emptyMessages: Record<string, string> = {
+  const emptyMessages: Record<DecisionTabId, string> = {
     "for-me": "Keine offenen Entscheidungen für Sie.",
     answered: "Keine beantworteten Entscheidungen.",
     "my-decisions": "Noch keine eigenen Entscheidungen erstellt.",
@@ -632,235 +261,98 @@ export function MyWorkDecisionsTab() {
   };
 
   if (loading) {
-    return (
-      <div className="space-y-2 p-4">
-        {[1, 2, 3].map((i) => (
-          <div key={i} className="h-20 bg-muted animate-pulse rounded-md" />
-        ))}
-      </div>
-    );
+    return <div className="space-y-2 p-4">{[1, 2, 3].map((item) => <div key={item} className="h-20 bg-muted animate-pulse rounded-md" />)}</div>;
   }
 
   return (
     <>
       <div className="space-y-3 p-4">
-        <Tabs
-          value={activeTab}
-          onValueChange={(v) => setActiveTab(v as typeof activeTab)}
-        >
+        <Tabs value={activeTab} onValueChange={(value) => setActiveTab(value as DecisionTabId)}>
           <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_340px] gap-4 items-start">
             <div>
-              <TabsList
-                className={`grid w-full h-8`}
-                style={{
-                  gridTemplateColumns: `repeat(${Math.max(visibleDecisionTabs.length, 1)}, minmax(0, 1fr))`,
+              <DecisionListToolbar
+                isCreateOpen={isCreateOpen}
+                onCreateOpenChange={setIsCreateOpen}
+                onDecisionCreated={() => {
+                  setIsCreateOpen(false);
+                  scheduleDecisionsRefresh(0);
                 }}
-              >
-                {visibleDecisionTabs.map((tab) => (
-                  <TabsTrigger
-                    key={tab}
-                    value={tab}
-                    className="text-[10px] px-1"
-                  >
-                    {tabConfig[tab].label}
-                    {tab === "for-me" && tabConfig[tab].count > 0 ? (
-                      <Badge
-                        variant="destructive"
-                        className="ml-1 text-[9px] px-1 py-0 h-4"
-                      >
-                        {tabConfig[tab].count}
-                      </Badge>
-                    ) : tab !== "for-me" ? (
-                      ` (${tabConfig[tab].count})`
-                    ) : null}
-                  </TabsTrigger>
-                ))}
-              </TabsList>
-
+                onOpenDefaultParticipants={() => setDefaultParticipantsOpen(true)}
+                onSearchChange={setSearchQuery}
+                searchQuery={searchQuery}
+                tabConfig={tabConfig}
+                visibleDecisionTabs={visibleDecisionTabs}
+              />
               <TabsContent value={activeTab} className="mt-3">
-                {filteredDecisions.length === 0 ? (
-                  <div className="text-center py-8 text-xs text-muted-foreground">
-                    {emptyMessages[activeTab] || "Keine Entscheidungen."}
-                  </div>
-                ) : (
-                  <div className="flex flex-col gap-4">
-                    {filteredDecisions.map((decision) => (
-                      <div key={decision.id} className="w-full">
-                        <DecisionContextMenu
-                          decision={decision}
-                          isCreator={decision.isCreator}
-                          currentUserId={user?.id || ""}
-                          tenantUsers={tenantUsers}
-                          existingParticipantIds={(
-                            decision.participants || []
-                          ).map((p) => p.user_id)}
-                          onUpdateDeadline={handleUpdateDeadline}
-                          onTogglePublic={handleTogglePublic}
-                          onAddParticipants={handleAddParticipants}
-                          onRemoveParticipant={handleRemoveParticipant}
-                          onArchive={archiveDecision}
-                          onDelete={setDeletingDecisionId}
-                          onAddToJourFixe={handleAddToJourFixe}
-                          onTogglePriority={handleTogglePriority}
-                        >
-                          <MyWorkDecisionCard
-                            decision={decision}
-                            isHighlighted={isHighlighted(decision.id)}
-                            highlightRef={highlightRef(decision.id)}
-                            onOpenDetails={handleOpenDetails}
-                            onEdit={setEditingDecisionId}
-                            onArchive={archiveDecision}
-                            onDelete={setDeletingDecisionId}
-                            onCreateTask={createTaskFromDecision}
-                            onResponseSubmitted={() =>
-                              scheduleDecisionsRefresh(0)
-                            }
-                            onOpenComments={(id, title) => {
-                              setCommentsDecisionId(id);
-                              setCommentsDecisionTitle(title);
-                            }}
-                            onReply={sendActivityReply}
-                            commentCount={getCommentCount(decision.id)}
-                            creatingTaskId={creatingTaskId}
-                            archivingDecisionId={archivingDecisionId}
-                            deletingDecisionId={deletingDecisionId}
-                            currentUserId={user?.id || ""}
-                          />
-                        </DecisionContextMenu>
-                      </div>
-                    ))}
-                  </div>
-                )}
+                <DecisionList
+                  archivingDecisionId={archivingDecisionId}
+                  creatingTaskId={creatingTaskId}
+                  currentUserId={user?.id || ""}
+                  decisions={filteredDecisions}
+                  deletingDecisionId={deletingDecisionId}
+                  emptyMessage={emptyMessages[activeTab]}
+                  getCommentCount={getCommentCount}
+                  getHighlightRef={highlightRef}
+                  isHighlighted={isHighlighted}
+                  onAddParticipants={handleAddParticipants}
+                  onAddToJourFixe={handleAddToJourFixe}
+                  onArchive={archiveDecision}
+                  onCreateTask={createTaskFromDecision}
+                  onDelete={setDeletingDecisionId}
+                  onEdit={setEditingDecisionId}
+                  onOpenComments={(decisionId, title) => { setCommentsDecisionId(decisionId); setCommentsDecisionTitle(title); }}
+                  onOpenDetails={handleOpenDetails}
+                  onRemoveParticipant={handleRemoveParticipant}
+                  onReply={sendActivityReply}
+                  onResponseSubmitted={() => scheduleDecisionsRefresh(0)}
+                  onTogglePriority={handleTogglePriority}
+                  onTogglePublic={handleTogglePublic}
+                  onUpdateDeadline={handleUpdateDeadline}
+                  tenantUsers={tenantUsers as Array<{ id: string; display_name?: string | null }>}
+                />
               </TabsContent>
             </div>
 
-            <div className="space-y-3">
-              <div className="flex items-center gap-2">
-                <div className="relative flex-1">
-                  <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
-                  <Input
-                    placeholder="Suchen..."
-                    value={searchQuery}
-                    onChange={(e) => setSearchQuery(e.target.value)}
-                    className="pl-8 h-8 text-xs"
-                  />
-                </div>
-                <StandaloneDecisionCreator
-                  isOpen={isCreateOpen}
-                  onOpenChange={setIsCreateOpen}
-                  onDecisionCreated={() => scheduleDecisionsRefresh(0)}
-                />
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="h-8 w-8 shrink-0"
-                  onClick={() => setDefaultParticipantsOpen(true)}
-                  title="Standard-Teilnehmer"
-                >
-                  <Settings2 className="h-3.5 w-3.5" />
-                </Button>
-              </div>
-
-              <MyWorkDecisionSidebar
-                openQuestions={sidebarData.openQuestions}
-                newComments={sidebarData.newComments}
-                pendingDirectReplies={sidebarData.pendingDirectReplies}
-                discussionComments={sidebarData.discussionComments}
-                recentActivities={sidebarData.recentActivities}
-                onQuestionClick={handleOpenDetails}
-                onCommentClick={handleOpenDetails}
-                onActivityClick={handleActivityOpen}
-                onResponseSent={() => scheduleDecisionsRefresh(0)}
-              />
-            </div>
+            <DecisionSidebarContainer
+              openQuestions={sidebarData.openQuestions}
+              newComments={sidebarData.newComments}
+              pendingDirectReplies={sidebarData.pendingDirectReplies}
+              discussionComments={sidebarData.discussionComments}
+              recentActivities={sidebarData.recentActivities}
+              onQuestionClick={handleOpenDetails}
+              onCommentClick={handleOpenDetails}
+              onActivityClick={handleActivityOpen}
+              onResponseSent={() => scheduleDecisionsRefresh(0)}
+            />
           </div>
         </Tabs>
       </div>
 
-      {/* Dialogs */}
-      {selectedDecisionId && (
-        <TaskDecisionDetails
-          decisionId={selectedDecisionId}
-          isOpen={isDetailsOpen}
-          onClose={() => {
-            setIsDetailsOpen(false);
-            setSelectedDecisionId(null);
-            setHighlightCommentId(null);
-            setHighlightResponseId(null);
-          }}
-          onArchived={() => scheduleDecisionsRefresh(0)}
-          highlightCommentId={highlightCommentId}
-          highlightResponseId={highlightResponseId}
-        />
-      )}
-
-      {editingDecisionId && (
-        <DecisionEditDialog
-          decisionId={editingDecisionId}
-          isOpen={true}
-          onClose={() => setEditingDecisionId(null)}
-          onUpdated={() => {
-            setEditingDecisionId(null);
-            scheduleDecisionsRefresh(0);
-          }}
-        />
-      )}
-
-      {commentsDecisionId && (
-        <DecisionComments
-          decisionId={commentsDecisionId}
-          decisionTitle={commentsDecisionTitle}
-          isOpen={!!commentsDecisionId}
-          onClose={() => setCommentsDecisionId(null)}
-          onCommentAdded={() => {
-            refreshCommentCounts();
-            scheduleDecisionsRefresh(0);
-          }}
-        />
-      )}
-
-      <DefaultParticipantsDialog
-        open={defaultParticipantsOpen}
-        onOpenChange={setDefaultParticipantsOpen}
-        decisionTabSettings={{
-          order: decisionTabOrder,
-          hiddenTabs: hiddenDecisionTabs,
-          onSave: updateDecisionTabSettings,
-        }}
-      />
-
-      <AlertDialog
-        open={!!deletingDecisionId}
-        onOpenChange={() => setDeletingDecisionId(null)}
-      >
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Entscheidung löschen?</AlertDialogTitle>
-            <AlertDialogDescription>
-              Diese Aktion löscht die Entscheidung unwiderruflich mit allen
-              Antworten und Kommentaren.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Abbrechen</AlertDialogCancel>
-            <AlertDialogAction
-              onClick={handleDelete}
-              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-            >
-              Löschen
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
-
-      <CaseItemMeetingSelector
-        open={meetingSelectorOpen}
-        onOpenChange={(open) => {
-          setMeetingSelectorOpen(open);
-          if (!open) setMeetingSelectorDecisionId(null);
-        }}
-        onSelect={handleMeetingSelected}
-        onMarkForNextJourFixe={handleMarkForNextJourFixe}
+      <DecisionDialogs
+        commentsDecisionId={commentsDecisionId}
+        commentsDecisionTitle={commentsDecisionTitle}
+        decisionTabOrder={decisionTabOrder}
+        defaultParticipantsOpen={defaultParticipantsOpen}
+        deletingDecisionId={deletingDecisionId}
+        editingDecisionId={editingDecisionId}
+        hiddenDecisionTabs={hiddenDecisionTabs}
+        highlightCommentId={highlightCommentId}
+        highlightResponseId={highlightResponseId}
+        isDetailsOpen={isDetailsOpen}
+        meetingSelectorOpen={meetingSelectorOpen}
+        onCloseComments={() => setCommentsDecisionId(null)}
+        onCloseDetails={() => { setIsDetailsOpen(false); setSelectedDecisionId(null); setHighlightCommentId(null); setHighlightResponseId(null); }}
+        onCommentsAdded={() => { refreshCommentCounts(); scheduleDecisionsRefresh(0); }}
+        onDeleteConfirm={() => void handleDelete()}
+        onDeleteDialogOpenChange={(open) => { if (!open) setDeletingDecisionId(null); }}
+        onMeetingOpenChange={(open) => { setMeetingSelectorOpen(open); if (!open) setMeetingSelectorDecisionId(null); }}
+        onMeetingSelected={handleMeetingSelected}
+        onOpenChangeDefaultParticipants={setDefaultParticipantsOpen}
+        onSelectNextJourFixe={handleMarkForNextJourFixe}
+        onUpdated={() => { setEditingDecisionId(null); scheduleDecisionsRefresh(0); }}
+        selectedDecisionId={selectedDecisionId}
+        setEditingDecisionId={setEditingDecisionId}
+        updateDecisionTabSettings={updateDecisionTabSettings}
       />
     </>
   );
