@@ -127,7 +127,7 @@ const LetterEditor: React.FC<LetterEditorProps> = ({ letter, isOpen, onClose, on
       setDraftContent(letter.content || ''); setDraftContentNodes(letter.content_nodes || null); setDraftContentHtml(letter.content_html || null);
       latestContentRef.current = { content: letter.content || '', contentNodes: letter.content_nodes || null };
       draftInitializedRef.current = true;
-      setIsProofreadingMode(letter.status === 'review');
+      setIsProofreadingMode(letter.status === 'review' || letter.status === 'pending_approval');
       setShowPagination(letter.show_pagination || false);
     } else {
       const currentDate = new Date().toISOString().split('T')[0];
