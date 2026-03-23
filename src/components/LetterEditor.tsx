@@ -408,12 +408,13 @@ const LetterEditor: React.FC<LetterEditorProps> = ({ letter, isOpen, onClose, on
           closingName: editedLetter.closing_name || '',
           subject: editedLetter.subject || '',
         }}
-        onReviewAssigned={async () => {
+        onReviewAssigned={async (mode) => {
           const now = new Date().toISOString();
           fetchCollaborators(); setShowAssignmentDialog(false);
-          setEditedLetter(prev => ({ ...prev, status: 'pending_approval', submitted_for_review_at: now, submitted_for_review_by: user?.id }));
+          const newStatus = mode === 'review' ? 'review' : 'pending_approval';
+          setEditedLetter(prev => ({ ...prev, status: newStatus, submitted_for_review_at: now, submitted_for_review_by: user?.id }));
           setIsProofreadingMode(true); setSaving(true);
-          try { const { error } = await supabase.from('letters').update({ status: 'pending_approval', submitted_for_review_at: now, submitted_for_review_by: user?.id, updated_at: now }).eq('id', letter!.id); if (error) throw error; } catch (error) { debugConsole.error('Error saving status:', error); } finally { setSaving(false); }
+          try { const { error } = await supabase.from('letters').update({ status: newStatus, submitted_for_review_at: now, submitted_for_review_by: user?.id, updated_at: now }).eq('id', letter!.id); if (error) throw error; } catch (error) { debugConsole.error('Error saving status:', error); } finally { setSaving(false); }
         }}
         onSkipReview={async () => {
           const now = new Date().toISOString();
@@ -421,6 +422,11 @@ const LetterEditor: React.FC<LetterEditorProps> = ({ letter, isOpen, onClose, on
           try { const { error } = await supabase.from('letters').update({ status: 'approved', approved_at: now, approved_by: user?.id, updated_at: now }).eq('id', letter!.id); if (error) throw error; } catch (error) { debugConsole.error('Error saving status:', error); } finally { setSaving(false); }
         }}
       />
+
+      {showWriterDialog && (
+        <UserAssignmentDialog isOpen={showWriterDialog} onClose={() => setShowWriterDialog(false)} letterId={letter?.id || ''} role="writer"
+          onAssignmentComplete={() => { fetchCollaborators(); setShowWriterDialog(false); }} />
+      )}
     </div>
   );
 };
