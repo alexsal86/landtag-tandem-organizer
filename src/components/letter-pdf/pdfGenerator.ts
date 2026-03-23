@@ -5,10 +5,10 @@ import { de } from 'date-fns/locale';
 import { HeaderRenderer } from '@/services/headerRenderer';
 import { buildFooterBlocksFromStored, resolveBlockWidthMm } from '@/components/letters/footerBlockUtils';
 import { supabase } from '@/integrations/supabase/client';
-import { buildVariableMap, substituteBlockLines, isLineMode } from '@/lib/letterVariables';
+import { buildVariableMap, substituteBlockLines, substituteVariables, isLineMode } from '@/lib/letterVariables';
 import type { BlockLine } from '@/components/letters/BlockLineEditor';
 import { getLetterAssetPublicUrl } from '@/components/letters/letterAssetUrls';
-import type { Letter, LetterTemplate } from './types';
+import type { Letter, LetterTemplate, DbContact } from './types';
 
 // DIN 5008 measurements in mm
 const PAGE_WIDTH = 210;
@@ -334,6 +334,7 @@ interface GeneratePDFOptions {
   showPagination: boolean;
   returnBlob?: boolean;
   debugMode?: boolean;
+  contact?: DbContact | null;
 }
 
 function renderBlockLinesToPdf(pdf: jsPDF, lines: BlockLine[], x: number, startY: number, maxWidth: number): void {
@@ -374,9 +375,21 @@ function renderBlockLinesToPdf(pdf: jsPDF, lines: BlockLine[], x: number, startY
   }
   pdf.setFont('helvetica', 'normal');
 }
+function renderFoldHoleMarks(pdf: jsPDF, marks: any): void {
+  pdf.setDrawColor(200, 200, 200);
+  pdf.setLineWidth(marks.strokeWidthPt ? marks.strokeWidthPt * 0.3528 : 0.3);
+  const left = marks.left || 3;
+  const foldWidth = marks.foldMarkWidth || 5;
+  const holeWidth = marks.holeMarkWidth || 8;
+  if (marks.topMarkY) pdf.line(left, marks.topMarkY, left + foldWidth, marks.topMarkY);
+  if (marks.holeMarkY) pdf.line(left, marks.holeMarkY, left + holeWidth, marks.holeMarkY);
+  if (marks.bottomMarkY) pdf.line(left, marks.bottomMarkY, left + foldWidth, marks.bottomMarkY);
+  pdf.setDrawColor(0, 0, 0);
+  pdf.setLineWidth(0.2);
+}
 
-export async function generatePDF(options: GeneratePDFOptions): Promise<{ blob: Blob; filename: string } | void> {
-  const { letter, template, senderInfo, informationBlock, attachments, showPagination, returnBlob = false, debugMode = false } = options;
+
+  const { letter, template, senderInfo, informationBlock, attachments, showPagination, returnBlob = false, debugMode = false, contact } = options;
   
   const pdf = new jsPDF('p', 'mm', 'a4');
   
@@ -392,12 +405,70 @@ export async function generatePDF(options: GeneratePDFOptions): Promise<{ blob: 
     footer: { top: 272, height: 18 },
   };
   
+  // ── Build FULL variable map identical to LetterEditor ──
+  const recipientVarData = contact ? {
+    name: contact.name,
+    street: [contact.private_street, contact.private_house_number].filter(Boolean).join(' ') || [contact.business_street, contact.business_house_number].filter(Boolean).join(' '),
+    postal_code: contact.private_postal_code || contact.business_postal_code || '',
+    city: contact.private_city || contact.business_city || '',
+    country: contact.private_country || contact.business_country || '',
+    gender: contact.gender || '',
+    title: contact.title || '',
+    last_name: contact.last_name || contact.name?.split(' ').pop() || '',
+  } : letter.recipient_name ? { name: letter.recipient_name, street: '', postal_code: '', city: '', country: '' } : null;
+
+  const senderVarData = senderInfo ? {
+    name: senderInfo.name, organization: senderInfo.organization,
+    street: senderInfo.street, house_number: senderInfo.house_number,
+    postal_code: senderInfo.postal_code, city: senderInfo.city,
+    wahlkreis_street: senderInfo.wahlkreis_street ?? undefined,
+    wahlkreis_house_number: senderInfo.wahlkreis_house_number ?? undefined,
+    wahlkreis_postal_code: senderInfo.wahlkreis_postal_code ?? undefined,
+    wahlkreis_city: senderInfo.wahlkreis_city ?? undefined,
+    landtag_street: senderInfo.landtag_street ?? undefined,
+    landtag_house_number: senderInfo.landtag_house_number ?? undefined,
+    landtag_postal_code: senderInfo.landtag_postal_code ?? undefined,
+    landtag_city: senderInfo.landtag_city ?? undefined,
+    phone: senderInfo.phone ?? undefined,
+    email: senderInfo.email,
+    wahlkreis_email: senderInfo.wahlkreis_email ?? undefined,
+    landtag_email: senderInfo.landtag_email ?? undefined,
+    return_address_line: senderInfo.return_address_line ?? undefined,
+    website: senderInfo.website ?? undefined,
+  } : null;
+
+  const infoBlockVarData = informationBlock ? {
+    reference: (informationBlock.block_data as any)?.reference_pattern,
+    handler: (informationBlock.block_data as any)?.contact_name,
+    our_reference: '',
+  } : null;
+
+  const varMap = buildVariableMap(
+    { subject: letter.subject || '', letterDate: letter.letter_date || undefined, referenceNumber: letter.reference_number || undefined },
+    senderVarData, recipientVarData, infoBlockVarData, attachments
+  );
+
+  // ── Substitute ALL blockContent areas from template ──
+  const blockContent = (layout as any).blockContent || {};
+  const substitutedLineBlocks: Record<string, BlockLine[]> = {};
+  for (const [key, data] of Object.entries(blockContent)) {
+    if (isLineMode(data)) {
+      substitutedLineBlocks[key] = substituteBlockLines((data as any).lines, varMap);
+    }
+  }
+
   // Debug guides only in debug mode
   if (debugMode) {
     drawDebugGuides(pdf, 1);
   }
   renderFooterBlocks(pdf, template);
   
+  // ── Fold & hole marks ──
+  const foldMarks = layout.foldHoleMarks;
+  if (foldMarks?.enabled) {
+    renderFoldHoleMarks(pdf, foldMarks);
+  }
+
   pdf.setTextColor(0, 0, 0);
   pdf.setDrawColor(0, 0, 0);
   
@@ -407,11 +478,14 @@ export async function generatePDF(options: GeneratePDFOptions): Promise<{ blob: 
     await headerRenderer.renderHeader(template as any);
   }
   
-  // Return address line
+  // ── Return address ──
   const returnAddressFontSize = layout.addressField?.returnAddressFontSize || 8;
   const recipientFontSize = layout.addressField?.recipientFontSize || 10;
   let addressYPos = ADDRESS_FIELD_TOP + 17.7;
-  if (senderInfo?.return_address_line) {
+
+  if (substitutedLineBlocks['returnAddress']?.length) {
+    renderBlockLinesToPdf(pdf, substitutedLineBlocks['returnAddress'], ADDRESS_FIELD_LEFT, ADDRESS_FIELD_TOP + 2, ADDRESS_FIELD_WIDTH);
+  } else if (senderInfo?.return_address_line) {
     const returnAddressMaxWidth = Math.max(10, ADDRESS_FIELD_WIDTH - 10);
     pdf.setFontSize(returnAddressFontSize);
     pdf.setFont('helvetica', 'normal');
@@ -427,8 +501,10 @@ export async function generatePDF(options: GeneratePDFOptions): Promise<{ blob: 
     addressYPos = underlineY + 2.2;
   }
   
-  // Recipient address
-  if (letter.recipient_name || letter.recipient_address) {
+  // ── Recipient address ──
+  if (substitutedLineBlocks['addressField']?.length) {
+    renderBlockLinesToPdf(pdf, substitutedLineBlocks['addressField'], ADDRESS_FIELD_LEFT, addressYPos, ADDRESS_FIELD_WIDTH);
+  } else if (letter.recipient_name || letter.recipient_address) {
     pdf.setFontSize(recipientFontSize);
     pdf.setFont('helvetica', 'normal');
     const recipientLineHeight = recipientFontSize * 0.4;
@@ -447,21 +523,11 @@ export async function generatePDF(options: GeneratePDFOptions): Promise<{ blob: 
     }
   }
   
-  // Information block - use BlockLine data from template if available
-  const blockContent = (layout as any).blockContent || {};
-  const infoBlockData = blockContent.infoBlock;
+  // ── Information block ──
   let infoYPos = INFO_BLOCK_TOP + 3;
-  
-  if (infoBlockData && isLineMode(infoBlockData)) {
-    // Use line-mode data with variable substitution
-    const varMap = buildVariableMap(
-      { subject: letter.subject || '', letterDate: letter.letter_date || undefined, referenceNumber: letter.reference_number || undefined },
-      senderInfo ? { name: senderInfo.name, organization: senderInfo.organization, phone: senderInfo.phone, email: senderInfo.email } : null,
-      letter.recipient_name ? { name: letter.recipient_name } : null,
-      null, null
-    );
-    const substitutedLines = substituteBlockLines(infoBlockData.lines, varMap);
-    renderBlockLinesToPdf(pdf, substitutedLines, INFO_BLOCK_LEFT, infoYPos, INFO_BLOCK_WIDTH);
+
+  if (substitutedLineBlocks['infoBlock']?.length) {
+    renderBlockLinesToPdf(pdf, substitutedLineBlocks['infoBlock'], INFO_BLOCK_LEFT, infoYPos, INFO_BLOCK_WIDTH);
   } else if (informationBlock) {
     // Fallback to legacy info block rendering
     pdf.setFontSize(8);
@@ -516,8 +582,8 @@ export async function generatePDF(options: GeneratePDFOptions): Promise<{ blob: 
     }
   }
   
-  // Letter date
-  if (letter.letter_date) {
+  // Letter date (only if not already in info block lines)
+  if (letter.letter_date && !substitutedLineBlocks['infoBlock']?.length) {
     const hasDateBlock = informationBlock?.block_type === 'date';
     if (!hasDateBlock && infoYPos < INFO_BLOCK_TOP + INFO_BLOCK_WIDTH - 10) {
       pdf.setFontSize(8);
@@ -543,8 +609,15 @@ export async function generatePDF(options: GeneratePDFOptions): Promise<{ blob: 
     contentStartY += 9; // 2 blank lines after subject (matching HTML: height 9mm)
   }
   
-  // Salutation
-  const salutationText = layout.salutation?.template || '';
+  // ── Salutation (with {{anrede}} substitution) ──
+  let salutationText = layout.salutation?.template || '';
+  if (salutationText === '{{anrede}}') {
+    salutationText = varMap['{{anrede}}'] || 'Sehr geehrte Damen und Herren,';
+  } else if (salutationText.includes('{{')) {
+    for (const [placeholder, value] of Object.entries(varMap)) {
+      salutationText = salutationText.split(placeholder).join(value);
+    }
+  }
   if (salutationText) {
     const salutationFontSize = layout.salutation?.fontSize || contentFontSize;
     pdf.setFontSize(salutationFontSize);
