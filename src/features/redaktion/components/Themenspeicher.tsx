@@ -7,7 +7,7 @@ import { useTenant } from "@/hooks/useTenant";
 import { useCurrentProfileId } from "@/hooks/useCurrentProfileId";
 import { useToast } from "@/hooks/use-toast";
 import { getErrorMessage } from "@/utils/errorHandler";
-import { TopicBacklogEntry, TopicEditorialStatus, useTopicBacklog } from "@/hooks/useTopicBacklog";
+import { TopicBacklogEntry, TopicEditorialStatus, useTopicBacklog } from "@/features/redaktion/hooks/useTopicBacklog";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -45,7 +45,7 @@ interface Props {
   onContentCreated?: () => void;
 }
 
-export function ThemenspeicherPanel({ onContentCreated }: Props) {
+export function Themenspeicher({ onContentCreated }: Props) {
   const { user } = useAuth();
   const { currentTenant } = useTenant();
   const { toast } = useToast();

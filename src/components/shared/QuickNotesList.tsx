@@ -14,7 +14,7 @@ import { stripHtml, useQuickNotes } from "@/hooks/useQuickNotes";
 import { useNotificationHighlight } from "@/hooks/useNotificationHighlight";
 import { NoteCard } from "@/components/shared/NoteCard";
 import { NoteDialogs } from "@/components/shared/NoteDialogs";
-import { useTopicBacklog } from "@/hooks/useTopicBacklog";
+import { useTopicBacklog } from "@/features/redaktion/hooks/useTopicBacklog";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 

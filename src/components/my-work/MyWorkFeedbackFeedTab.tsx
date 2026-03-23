@@ -13,7 +13,7 @@ import { Switch } from '@/components/ui/switch';
 import { Button } from '@/components/ui/button';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
-import { TransferToThemenspeicherDialog } from '@/components/shared/TransferToThemenspeicherDialog';
+import { TransferToThemenspeicherDialog } from '@/features/redaktion/components/TransferToThemenspeicherDialog';
 import type { TeamFeedbackEntry } from '@/hooks/useTeamFeedbackFeed';
 
 const PERIOD_PRESETS = {
