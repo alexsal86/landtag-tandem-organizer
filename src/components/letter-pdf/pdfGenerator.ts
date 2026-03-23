@@ -393,12 +393,70 @@ export async function generatePDF(options: GeneratePDFOptions): Promise<{ blob: 
     footer: { top: 272, height: 18 },
   };
   
+  // ── Build FULL variable map identical to LetterEditor ──
+  const recipientVarData = contact ? {
+    name: contact.name,
+    street: [contact.private_street, contact.private_house_number].filter(Boolean).join(' ') || [contact.business_street, contact.business_house_number].filter(Boolean).join(' '),
+    postal_code: contact.private_postal_code || contact.business_postal_code || '',
+    city: contact.private_city || contact.business_city || '',
+    country: contact.private_country || contact.business_country || '',
+    gender: contact.gender || '',
+    title: contact.title || '',
+    last_name: contact.last_name || contact.name?.split(' ').pop() || '',
+  } : letter.recipient_name ? { name: letter.recipient_name, street: '', postal_code: '', city: '', country: '' } : null;
+
+  const senderVarData = senderInfo ? {
+    name: senderInfo.name, organization: senderInfo.organization,
+    street: senderInfo.street, house_number: senderInfo.house_number,
+    postal_code: senderInfo.postal_code, city: senderInfo.city,
+    wahlkreis_street: senderInfo.wahlkreis_street ?? undefined,
+    wahlkreis_house_number: senderInfo.wahlkreis_house_number ?? undefined,
+    wahlkreis_postal_code: senderInfo.wahlkreis_postal_code ?? undefined,
+    wahlkreis_city: senderInfo.wahlkreis_city ?? undefined,
+    landtag_street: senderInfo.landtag_street ?? undefined,
+    landtag_house_number: senderInfo.landtag_house_number ?? undefined,
+    landtag_postal_code: senderInfo.landtag_postal_code ?? undefined,
+    landtag_city: senderInfo.landtag_city ?? undefined,
+    phone: senderInfo.phone ?? undefined,
+    email: senderInfo.email,
+    wahlkreis_email: senderInfo.wahlkreis_email ?? undefined,
+    landtag_email: senderInfo.landtag_email ?? undefined,
+    return_address_line: senderInfo.return_address_line ?? undefined,
+    website: senderInfo.website ?? undefined,
+  } : null;
+
+  const infoBlockVarData = informationBlock ? {
+    reference: (informationBlock.block_data as any)?.reference_pattern,
+    handler: (informationBlock.block_data as any)?.contact_name,
+    our_reference: '',
+  } : null;
+
+  const varMap = buildVariableMap(
+    { subject: letter.subject || '', letterDate: letter.letter_date || undefined, referenceNumber: letter.reference_number || undefined },
+    senderVarData, recipientVarData, infoBlockVarData, attachments
+  );
+
+  // ── Substitute ALL blockContent areas from template ──
+  const blockContent = (layout as any).blockContent || {};
+  const substitutedLineBlocks: Record<string, BlockLine[]> = {};
+  for (const [key, data] of Object.entries(blockContent)) {
+    if (isLineMode(data)) {
+      substitutedLineBlocks[key] = substituteBlockLines((data as any).lines, varMap);
+    }
+  }
+
   // Debug guides only in debug mode
   if (debugMode) {
     drawDebugGuides(pdf, 1);
   }
   renderFooterBlocks(pdf, template);
   
+  // ── Fold & hole marks ──
+  const foldMarks = layout.foldHoleMarks;
+  if (foldMarks?.enabled) {
+    renderFoldHoleMarks(pdf, foldMarks);
+  }
+
   pdf.setTextColor(0, 0, 0);
   pdf.setDrawColor(0, 0, 0);
   
@@ -408,11 +466,14 @@ export async function generatePDF(options: GeneratePDFOptions): Promise<{ blob: 
     await headerRenderer.renderHeader(template as any);
   }
   
-  // Return address line
+  // ── Return address ──
   const returnAddressFontSize = layout.addressField?.returnAddressFontSize || 8;
   const recipientFontSize = layout.addressField?.recipientFontSize || 10;
   let addressYPos = ADDRESS_FIELD_TOP + 17.7;
-  if (senderInfo?.return_address_line) {
+
+  if (substitutedLineBlocks['returnAddress']?.length) {
+    renderBlockLinesToPdf(pdf, substitutedLineBlocks['returnAddress'], ADDRESS_FIELD_LEFT, ADDRESS_FIELD_TOP + 2, ADDRESS_FIELD_WIDTH);
+  } else if (senderInfo?.return_address_line) {
     const returnAddressMaxWidth = Math.max(10, ADDRESS_FIELD_WIDTH - 10);
     pdf.setFontSize(returnAddressFontSize);
     pdf.setFont('helvetica', 'normal');
@@ -428,8 +489,10 @@ export async function generatePDF(options: GeneratePDFOptions): Promise<{ blob: 
     addressYPos = underlineY + 2.2;
   }
   
-  // Recipient address
-  if (letter.recipient_name || letter.recipient_address) {
+  // ── Recipient address ──
+  if (substitutedLineBlocks['addressField']?.length) {
+    renderBlockLinesToPdf(pdf, substitutedLineBlocks['addressField'], ADDRESS_FIELD_LEFT, addressYPos, ADDRESS_FIELD_WIDTH);
+  } else if (letter.recipient_name || letter.recipient_address) {
     pdf.setFontSize(recipientFontSize);
     pdf.setFont('helvetica', 'normal');
     const recipientLineHeight = recipientFontSize * 0.4;
@@ -448,21 +511,11 @@ export async function generatePDF(options: GeneratePDFOptions): Promise<{ blob: 
     }
   }
   
-  // Information block - use BlockLine data from template if available
-  const blockContent = (layout as any).blockContent || {};
-  const infoBlockData = blockContent.infoBlock;
+  // ── Information block ──
   let infoYPos = INFO_BLOCK_TOP + 3;
-  
-  if (infoBlockData && isLineMode(infoBlockData)) {
-    // Use line-mode data with variable substitution
-    const varMap = buildVariableMap(
-      { subject: letter.subject || '', letterDate: letter.letter_date || undefined, referenceNumber: letter.reference_number || undefined },
-      senderInfo ? { name: senderInfo.name, organization: senderInfo.organization, phone: senderInfo.phone, email: senderInfo.email } : null,
-      letter.recipient_name ? { name: letter.recipient_name } : null,
-      null, null
-    );
-    const substitutedLines = substituteBlockLines(infoBlockData.lines, varMap);
-    renderBlockLinesToPdf(pdf, substitutedLines, INFO_BLOCK_LEFT, infoYPos, INFO_BLOCK_WIDTH);
+
+  if (substitutedLineBlocks['infoBlock']?.length) {
+    renderBlockLinesToPdf(pdf, substitutedLineBlocks['infoBlock'], INFO_BLOCK_LEFT, infoYPos, INFO_BLOCK_WIDTH);
   } else if (informationBlock) {
     // Fallback to legacy info block rendering
     pdf.setFontSize(8);
