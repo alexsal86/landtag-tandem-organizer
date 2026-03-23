@@ -334,6 +334,7 @@ interface GeneratePDFOptions {
   showPagination: boolean;
   returnBlob?: boolean;
   debugMode?: boolean;
+  contact?: DbContact | null;
 }
 
 function renderBlockLinesToPdf(pdf: jsPDF, lines: BlockLine[], x: number, startY: number, maxWidth: number): void {
