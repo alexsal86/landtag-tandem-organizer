@@ -158,8 +158,8 @@ const UserAssignmentDialog: React.FC<UserAssignmentDialogProps> = ({
       }
 
       toast({
-        title: "Prüfer zugewiesen",
-        description: `${selectedUsers.length} Prüfer wurden erfolgreich zugewiesen.`,
+        title: isWriterMode ? "Mitbearbeiter zugewiesen" : "Prüfer zugewiesen",
+        description: `${selectedUsers.length} ${isWriterMode ? 'Mitbearbeiter' : 'Prüfer'} wurden erfolgreich zugewiesen.`,
       });
 
       onAssignmentComplete();

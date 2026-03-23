@@ -376,41 +376,50 @@ export const TaskDecisionResponse = ({
           if (letterId) {
             const now = new Date().toISOString();
             const currentUser = (await supabase.auth.getUser()).data.user;
+            const letterTitle = decisionData.title.replace(/^Brief freigeben:\s*/i, '');
 
             if (responseType === 'approve') {
-              // Approve the letter
               await supabase
                 .from('letters')
-                .update({
-                  status: 'approved',
-                  approved_at: now,
-                  approved_by: currentUser?.id,
-                  updated_at: now,
-                })
+                .update({ status: 'approved', approved_at: now, approved_by: currentUser?.id, updated_at: now })
                 .eq('id', letterId);
 
-              // Create send task for the letter creator
               if (decisionData.tenant_id) {
                 const { createLetterSendTask } = await import('@/utils/letterWorkflowActions');
-                const letterTitle = decisionData.title.replace(/^Brief freigeben:\s*/i, '');
                 await createLetterSendTask(letterTitle, decisionData.created_by, currentUser?.id || '', decisionData.tenant_id);
               }
+
+              // Notify letter creator about approval
+              await supabase.rpc('create_notification', {
+                user_id_param: decisionData.created_by,
+                type_name: 'letter_approved',
+                title_param: 'Brief freigegeben',
+                message_param: `Der Brief "${letterTitle}" wurde freigegeben.`,
+                data_param: JSON.stringify({ letter_id: letterId, letter_title: letterTitle }),
+                priority_param: 'high',
+              });
             } else if (responseType === 'reject') {
-              // Reject the letter
               await supabase
                 .from('letters')
-                .update({
-                  status: 'revision_requested',
-                  updated_at: now,
-                })
+                .update({ status: 'revision_requested', updated_at: now })
                 .eq('id', letterId);
 
-              // Create revision task
               if (decisionData.tenant_id) {
                 const { createLetterRevisionTask } = await import('@/utils/letterWorkflowActions');
-                const letterTitle = decisionData.title.replace(/^Brief freigeben:\s*/i, '');
                 await createLetterRevisionTask(letterTitle, comment || '', decisionData.created_by, currentUser?.id || '', decisionData.tenant_id);
               }
+
+              // Notify letter creator about rejection with reason
+              await supabase.rpc('create_notification', {
+                user_id_param: decisionData.created_by,
+                type_name: 'letter_revision_requested',
+                title_param: 'Brief zur Überarbeitung zurückgewiesen',
+                message_param: comment
+                  ? `Der Brief "${letterTitle}" wurde zurückgewiesen. Begründung: ${comment}`
+                  : `Der Brief "${letterTitle}" wurde zur Überarbeitung zurückgewiesen.`,
+                data_param: JSON.stringify({ letter_id: letterId, letter_title: letterTitle }),
+                priority_param: 'high',
+              });
             }
           }
         }

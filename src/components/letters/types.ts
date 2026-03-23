@@ -83,7 +83,7 @@ export const DEFAULT_LETTER_FONT_STACK = 'Calibri, Carlito, "Segoe UI", Arial, s
 
 export const STATUS_LABELS: Record<string, string> = {
   draft: 'Entwurf',
-  review: 'Zur Freigabe',
+  review: 'Kollegenprüfung',
   pending_approval: 'Zur Freigabe',
   approved: 'Freigegeben',
   revision_requested: 'Überarbeitung',
@@ -97,20 +97,19 @@ export const SENT_METHOD_LABELS: Record<string, string> = {
 };
 
 export const STATUS_FLOW: Record<string, string> = {
-  draft: 'pending_approval',
+  draft: 'review',
+  review: 'pending_approval',
   pending_approval: 'approved',
-  revision_requested: 'pending_approval',
+  revision_requested: 'draft',
   approved: 'sent',
-  // Legacy mapping
-  review: 'approved',
 };
 
 export const ALLOWED_TRANSITIONS: Record<string, string[]> = {
-  draft: ['pending_approval'],
-  review: ['approved', 'revision_requested'], // legacy
+  draft: ['review', 'pending_approval'],
+  review: ['pending_approval', 'draft'],
   pending_approval: ['approved', 'revision_requested'],
-  revision_requested: ['pending_approval'],
-  approved: ['sent'],
+  revision_requested: ['draft'],
+  approved: ['sent', 'pending_approval'],
   sent: [],
 };
 
