@@ -421,7 +421,7 @@ export function ChecklistSection(props: ChecklistSectionProps) {
     const phaseColor = getPhaseColor(phaseItem);
 
     return (
-      <div className="group/phase mt-4 first:mt-0 pl-6">
+      <div className="group/phase mt-4 first:mt-0 pl-2">
           <div className="relative py-2">
             <button
             {...dragHandleProps}
@@ -432,11 +432,11 @@ export function ChecklistSection(props: ChecklistSectionProps) {
           </button>
           <div className="absolute inset-x-0 bottom-0 h-px" style={{ backgroundColor: hexToRgba(phaseColor, 0.45) }} />
           <div className="flex items-center gap-2">
-            <div className="flex min-w-0 flex-1 items-center gap-1">
-              <EditableTitleInput itemId={phaseItem.id} value={phaseItem.title} onCommit={updateChecklistItemTitle} className="h-7 border-none bg-transparent px-0 text-sm font-semibold focus:bg-transparent" placeholder="Phasenname..." style={{ color: phaseColor }} />
+            <div className="flex min-w-0 items-center gap-1.5">
+              <EditableTitleInput itemId={phaseItem.id} value={phaseItem.title} onCommit={updateChecklistItemTitle} className="h-7 min-w-0 border-none bg-transparent px-0 text-sm font-semibold focus:bg-transparent" placeholder="Phasenname..." style={{ color: phaseColor }} />
               <Badge className="border-0 px-1.5 text-[10px]" style={{ backgroundColor: hexToRgba(phaseColor, 0.14), color: phaseColor }}>{itemCount}</Badge>
             </div>
-            <div className="flex items-center gap-1 opacity-0 transition-opacity group-hover/phase:opacity-100">
+            <div className="ml-auto flex items-center gap-1 opacity-0 transition-opacity group-hover/phase:opacity-100">
             <label className="flex cursor-pointer items-center gap-1 rounded-md border px-2 py-1 text-xs text-muted-foreground hover:text-foreground">
               <Palette className="h-3 w-3" />
               <span>Farbe</span>
@@ -455,7 +455,7 @@ export function ChecklistSection(props: ChecklistSectionProps) {
       <CardHeader>
         <CardTitle>Checkliste</CardTitle>
       </CardHeader>
-      <CardContent className="pl-0 pr-6">
+      <CardContent className="p-6 pt-0 pl-5 pr-6">
         <div className="space-y-2">
           <Droppable droppableId="checklist">
             {(provided) => (
