@@ -5,7 +5,7 @@ import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip
 import { AlertTriangle, Calendar, Clock, ExternalLink } from "lucide-react";
 import { format } from "date-fns";
 import { de } from "date-fns/locale";
-import { TeamIndicators } from "@/components/my-work/team/TeamIndicators";
+import { WorkStatusIndicator } from "@/components/my-work/team/WorkStatusIndicator";
 import type { TeamMemberViewModel } from "@/components/my-work/hooks/useMyWorkTeamData";
 
 interface TeamMemberRowProps {
@@ -23,16 +23,16 @@ export function TeamMemberRow({ member, onOpenEmployeeArea }: TeamMemberRowProps
 
       <div className="min-w-0 flex-1">
         <div className="flex flex-wrap items-center gap-2">
-          <TeamIndicators member={member} />
+          <WorkStatusIndicator workStatus={member.workStatus} />
           <span className="text-sm font-medium">{member.displayName}</span>
 
-          {member.needsTimeEntryAttention && (
+          {member.workStatus.needsAttention && (
             <Tooltip>
               <TooltipTrigger asChild>
                 <AlertTriangle className="h-4 w-4 flex-shrink-0 text-amber-500" />
               </TooltipTrigger>
               <TooltipContent side="top" className="text-xs">
-                <p>Kein Zeiteintrag seit {member.daysWithoutEntry} Werktagen</p>
+                <p>Kein Zeiteintrag seit {member.workStatus.daysWithoutEntry} Werktagen</p>
               </TooltipContent>
             </Tooltip>
           )}

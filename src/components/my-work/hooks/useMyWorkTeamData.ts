@@ -50,17 +50,31 @@ interface RawTeamMember {
   daysWithoutEntry: number;
 }
 
-export interface TeamMemberViewModel extends RawTeamMember {
-  initials: string;
+export interface TeamTabAccessRule {
+  role: TeamViewerRole;
+  label: string;
+  reason: string;
+}
+
+export type WorkIndicatorVariant = "empty" | "critical" | "warning" | "progress" | "good" | "overtime";
+
+export interface TeamWorkStatusViewModel {
   workedHoursLabel: string;
   targetHoursLabel: string;
-  workIndicatorVariant: "empty" | "critical" | "warning" | "progress" | "good" | "overtime";
-  workIndicatorLabel: string;
+  indicatorVariant: WorkIndicatorVariant;
+  indicatorLabel: string;
+  lastTimeEntryDate: string | null;
+  daysWithoutEntry: number;
+  needsAttention: boolean;
+}
+
+export interface TeamMemberViewModel extends RawTeamMember {
+  initials: string;
+  workStatus: TeamWorkStatusViewModel;
   meetingStatus: {
     label: string;
     variant: "destructive" | "secondary";
   } | null;
-  needsTimeEntryAttention: boolean;
 }
 
 export interface TeamOverviewMetrics {
@@ -79,14 +93,28 @@ export interface UseMyWorkTeamDataResult {
   reload: () => void;
 }
 
-const TEAM_ADMIN_ROLES = new Set<TeamViewerRole>(["abgeordneter", "bueroleitung"]);
-const VISIBLE_EMPLOYEE_ROLES = new Set<TeamViewerRole>(["mitarbeiter", "praktikant", "bueroleitung"]);
+export const TEAM_TAB_ACCESS_RULES: TeamTabAccessRule[] = [
+  {
+    role: "abgeordneter",
+    label: "Abgeordnete",
+    reason: "sehen den Team-Tab, weil sie Mitarbeitergespräche, Meeting-Anfragen und Zeiterfassung verantworten.",
+  },
+  {
+    role: "bueroleitung",
+    label: "Büroleitung",
+    reason: "sehen den Team-Tab, weil sie den operativen Überblick über Mitarbeiterinnen und Mitarbeiter benötigen.",
+  },
+];
 
-export function calculateBusinessDaysSince(lastDate: string | null): number {
-  if (!lastDate) return 999;
+const TEAM_TAB_VISIBLE_ROLES = new Set<TeamViewerRole>(TEAM_TAB_ACCESS_RULES.map(({ role }) => role));
+const TEAM_MEMBER_ROLES = new Set<TeamViewerRole>(["mitarbeiter", "praktikant", "bueroleitung"]);
+const NO_TIME_ENTRY_BUSINESS_DAYS = 999;
+const TIME_ENTRY_ATTENTION_THRESHOLD_DAYS = 3;
+
+export function calculateBusinessDaysSince(lastDate: string | null, today = new Date()): number {
+  if (!lastDate) return NO_TIME_ENTRY_BUSINESS_DAYS;
 
   const last = new Date(lastDate);
-  const today = new Date();
   let count = 0;
   const current = new Date(last);
   current.setDate(current.getDate() + 1);
@@ -147,7 +175,7 @@ async function resolveVisibleEmployeeIds(userId: string, tenantId: string): Prom
   }
 
   const membershipIds = ((memberships as { user_id: string; role: TeamViewerRole }[] | null) ?? [])
-    .filter((membership) => VISIBLE_EMPLOYEE_ROLES.has(membership.role))
+    .filter((membership) => TEAM_MEMBER_ROLES.has(membership.role))
     .map((membership) => membership.user_id);
 
   if (membershipIds.length > 0) {
@@ -164,6 +192,21 @@ async function resolveVisibleEmployeeIds(userId: string, tenantId: string): Prom
   }
 
   return Array.from(new Set(((managedEmployees as { user_id: string }[] | null) ?? []).map((row) => row.user_id)));
+}
+
+function buildTeamWorkStatus(workedMinutes: number, targetMinutes: number, lastTimeEntryDate: string | null, today: Date): TeamWorkStatusViewModel {
+  const indicator = getWorkIndicatorMeta(workedMinutes, targetMinutes);
+  const daysWithoutEntry = calculateBusinessDaysSince(lastTimeEntryDate, today);
+
+  return {
+    workedHoursLabel: (workedMinutes / 60).toFixed(1).replace(".", ","),
+    targetHoursLabel: (targetMinutes / 60).toFixed(0),
+    indicatorVariant: indicator.variant,
+    indicatorLabel: indicator.label,
+    lastTimeEntryDate,
+    daysWithoutEntry,
+    needsAttention: daysWithoutEntry > TIME_ENTRY_ATTENTION_THRESHOLD_DAYS,
+  };
 }
 
 function mapTeamMembers(
@@ -218,7 +261,8 @@ function mapTeamMembers(
 
     const weeklyWorkedMinutes = weeklyMinutes[userId] ?? 0;
     const weeklyTargetMinutes = ((hoursPerWeek * 60) / 5) * workDaysPassed;
-    const indicator = getWorkIndicatorMeta(weeklyWorkedMinutes, weeklyTargetMinutes);
+    const latestTimeEntryDate = lastGlobalEntry[userId] ?? null;
+    const workStatus = buildTeamWorkStatus(weeklyWorkedMinutes, weeklyTargetMinutes, latestTimeEntryDate, today);
     const displayName = profile?.display_name?.trim() || "Unbekannt";
 
     return {
@@ -232,14 +276,13 @@ function mapTeamMembers(
       weeklyWorkedMinutes,
       weeklyTargetMinutes,
       lastTimeEntryDate: lastTimeEntryThisWeek[userId] ?? null,
-      daysWithoutEntry: calculateBusinessDaysSince(lastGlobalEntry[userId] ?? null),
+      daysWithoutEntry: workStatus.daysWithoutEntry,
       initials: getInitials(displayName),
-      workedHoursLabel: (weeklyWorkedMinutes / 60).toFixed(1).replace(".", ","),
-      targetHoursLabel: (weeklyTargetMinutes / 60).toFixed(0),
-      workIndicatorVariant: indicator.variant,
-      workIndicatorLabel: indicator.label,
+      workStatus: {
+        ...workStatus,
+        lastTimeEntryDate: lastTimeEntryThisWeek[userId] ?? latestTimeEntryDate,
+      },
       meetingStatus: getMeetingStatus(nextMeetingDue),
-      needsTimeEntryAttention: calculateBusinessDaysSince(lastGlobalEntry[userId] ?? null) > 3,
     };
   });
 
@@ -285,7 +328,12 @@ export function useMyWorkTeamData(): UseMyWorkTeamDataResult {
 
     const load = async () => {
       try {
-        if (!isAdmin) {
+        const resolvedRole = await resolveViewerRole(userId, tenantId);
+        if (cancelled) return;
+
+        setUserRole(resolvedRole);
+
+        if (!TEAM_TAB_VISIBLE_ROLES.has(resolvedRole)) {
           setTeamMembers([]);
           return;
         }
@@ -346,7 +394,7 @@ export function useMyWorkTeamData(): UseMyWorkTeamDataResult {
     };
   }, [currentTenant?.id, isAdmin, reloadToken, user?.id]);
 
-  const canViewTeam = isAdmin;
+  const canViewTeam = TEAM_TAB_VISIBLE_ROLES.has(userRole);
 
   useEffect(() => {
     if (!user?.id || !currentTenant?.id || !canViewTeam) return;
@@ -376,7 +424,7 @@ export function useMyWorkTeamData(): UseMyWorkTeamDataResult {
     totalMembers: teamMembers.length,
     pendingMeetingRequests: teamMembers.reduce((sum, member) => sum + member.openMeetingRequests, 0),
     overdueMeetings: teamMembers.filter((member) => member.meetingStatus?.label === "Überfällig").length,
-    membersWithoutRecentEntries: teamMembers.filter((member) => member.needsTimeEntryAttention).length,
+    membersWithoutRecentEntries: teamMembers.filter((member) => member.workStatus.needsAttention).length,
   }), [teamMembers]);
 
   return {
