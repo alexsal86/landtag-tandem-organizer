@@ -211,7 +211,9 @@ export class HeaderRenderer {
       
       debugConsole.log('Image position in mm:', { xInMm, yInMm, widthInMm, heightInMm });
       
-      this.renderDebugBox(xInMm, yInMm, widthInMm, heightInMm, true);
+      if (this.debugMode) {
+        this.renderDebugBox(xInMm, yInMm, widthInMm, heightInMm, true);
+      }
 
       if (imageUrl.toLowerCase().includes('.svg')) {
         debugConsole.log('SVG detected, using placeholder');
