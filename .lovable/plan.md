@@ -1,58 +1,54 @@
 
 
-## Analyse & Plan: Brief-Freigabe-Workflow mit Entscheidungssystem
+## Analyse & Priorisierung der Brief-Verbesserungen
 
-### Aktuelle Situation (2 parallele, inkonsistente Implementierungen)
+### Bewertung aller 10 Punkte
 
-**Aktiv genutzt** (`LetterEditor.tsx` + `ReviewAssignmentDialog.tsx` + `useLetterOperations.ts`):
-- Mitarbeiter klickt "Zur Prüfung" → `ReviewAssignmentDialog` öffnet sich
-- Man kann Prüfer zuweisen ODER Prüfung überspringen
-- Status wird auf `review` gesetzt, Prüfer werden als `letter_collaborators` gespeichert
-- **Es wird KEINE Entscheidung erstellt** — der Abgeordnete bekommt also nichts in seinem Entscheidungseingang
-- Freigabe/Zurückweisung passiert nur über `LetterBriefDetails` mit einfachen Status-Buttons
-- Kein Brieftext in der Entscheidung, keine strukturierte Antwort
-
-**Nicht genutzt** (`LetterStatusWorkflow.tsx` + `letterWorkflowActions.ts`):
-- Erstellt eine Entscheidung mit "Freigeben"/"Zurückweisen"-Optionen
-- Erstellt Versand-Aufgabe bei Freigabe, Revisions-Aufgabe bei Zurückweisung
-- Hat `pending_approval` und `revision_requested` Status
-- **Wird nirgendwo importiert/gerendert** — komplett verwaist
-
-### Probleme
-1. Der Abgeordnete bekommt derzeit keine Entscheidung/Benachrichtigung
-2. Brieftext (Anrede, Inhalt, Schlussformel) wird nicht in die Entscheidung übernommen
-3. Zwei Workflow-Varianten existieren parallel
-4. Status `review` vs. `pending_approval` sind inkonsistent
+| # | Thema | Bewertung | Empfehlung |
+|---|---|---|---|
+| 1 | `review`-Status wiedereinbinden | Sinnvoll, klarer Mehrwert | **Jetzt umsetzen** |
+| 2 | Benachrichtigungen bei Freigabe | Kritisch – Prüfer erfährt nichts | **Jetzt umsetzen** |
+| 3 | "Versendet" nur Flag | Korrekt so – manuelles Markieren ist Standard für Post. E-Mail-Versand existiert bereits via `send-document-email` | **Kein Handlungsbedarf** |
+| 4 | Antwortverfolgung / Fristtracking | `expected_response_date` existiert, wird in der Toolbar angezeigt, aber kein aktives Tracking | **Später** (eigenes Feature) |
+| 5 | Revisions-Benachrichtigung an Ersteller | Fehlt komplett – Ersteller sieht nur Statusänderung | **Jetzt umsetzen** |
+| 6 | Versionsverlauf | Großes Feature, DB-Erweiterung nötig | **Später** |
+| 7 | Wizard-Vorschau | Nice-to-have, Wizard funktioniert | **Später** |
+| 8 | Empfängeradresse statisch | Gewollt (historische Korrektheit), kein Bug | **Kein Handlungsbedarf** |
+| 9 | Betreff/Aktenzeichen optional | Kann je nach Anlass validiert werden | **Später** |
+| 10 | Co-Autoren während Bearbeitung | `letter_collaborators` unterstützt es, UI fehlt | **Jetzt umsetzen** |
 
 ---
 
-### Plan: Unified Workflow
+### Plan: 4 Änderungen jetzt umsetzen
 
-#### Schritt 1: `ReviewAssignmentDialog` erweitern
-- Bei "Prüfer zuweisen" wird jetzt eine **Entscheidung** (`task_decisions`) erstellt
-- Die Entscheidung enthält den **vollständigen Brieftext**: Anrede, HTML-Inhalt und Schlussformel
-- Briefdaten werden als Props an den Dialog übergeben (Titel, Content-HTML, Anrede, Schlussformel)
-- Status wird auf `pending_approval` statt `review` gesetzt (Vereinheitlichung)
-- Die Entscheidung nutzt die vorhandenen `response_options` (Freigeben/Zurückweisen)
+#### 1. `review`-Status als Kollegenprüfung einbinden
 
-#### Schritt 2: `letterWorkflowActions.ts` anpassen
-- `createLetterApprovalDecision` erhält zusätzliche Parameter: `contentHtml`, `salutation`, `closingFormula`, `closingName`
-- Die Beschreibung der Entscheidung wird als formatierter HTML-Text aufgebaut mit Anrede, Brieftext und Schlussformel
-- Die `letter_id` wird in der Entscheidung verknüpft (falls DB-Feld vorhanden, sonst im Titel/Description)
+Neuer Workflow: `draft` → `review` (Kollegin) → `pending_approval` (Abgeordneter) → `approved` → `sent`
 
-#### Schritt 3: Entscheidungs-Reaktion → Brief-Status-Update
-- Wenn der Abgeordnete in seiner Entscheidungsübersicht "Freigeben" wählt → Brief-Status wird automatisch auf `approved` gesetzt + Versand-Aufgabe wird erstellt
-- Wenn "Zurückweisen" → Status wird auf `revision_requested` gesetzt + Revisions-Aufgabe wird erstellt
-- Dafür: In `useDecisionActions.ts` (oder separater Hook) einen Listener/Handler einbauen, der bei Brief-Entscheidungen den Letter-Status synchronisiert
+- **`types.ts`**: `STATUS_FLOW` anpassen: `draft → review`, `review → pending_approval`; `STATUS_LABELS.review = 'Kollegenprüfung'`
+- **`ReviewAssignmentDialog.tsx`**: Dritte Option hinzufügen: "Kollegenprüfung" (setzt Status auf `review`, erstellt **keine** Entscheidung, nur Collaborator-Zuweisung)
+- **`LetterBriefDetails.tsx`**: `review`-Status darstellen mit Button "Weiter zur Freigabe" (→ `pending_approval`)
+- **`LetterEditor.tsx`**: `canEdit`-Logik: Reviewer kann bei `review` bearbeiten; Workflow-Button-Label anpassen
 
-#### Schritt 4: `LetterBriefDetails.tsx` anpassen
-- Status `pending_approval` korrekt darstellen (Entscheidung läuft)
-- Status `revision_requested` mit Zurückweisungsgrund anzeigen
-- Workflow-Buttons anpassen: aus `review` wird `pending_approval`
+#### 2. Benachrichtigungen für Freigabe-Workflow
 
-#### Schritt 5: Aufräumen
-- `LetterStatusWorkflow.tsx` entfernen (verwaist, Logik wird in den aktiven Flow integriert)
-- `STATUS_FLOW` und `ALLOWED_TRANSITIONS` in `types.ts` bereinigen (`review` als Legacy behalten aber auf `pending_approval` mappen)
+Bei jedem Workflow-Schritt eine In-App-Notification via `create_notification` RPC:
+
+- **`ReviewAssignmentDialog.tsx`**: Nach Zuweisung → Notification an Prüfer ("Brief zur Prüfung erhalten")
+- **`TaskDecisionResponse.tsx`**: Bei Freigabe → Notification an Ersteller ("Brief freigegeben"); bei Zurückweisung → Notification an Ersteller ("Brief zurückgewiesen")
+- Notification-Typ: `letter_review_assigned`, `letter_approved`, `letter_revision_requested`
+- Deep-Link auf den Brief (`/letters/{id}`)
+
+#### 3. Revisions-Benachrichtigung mit Begründung
+
+- **`TaskDecisionResponse.tsx`**: Bei Zurückweisung wird bereits `createLetterRevisionTask` aufgerufen – hier zusätzlich `create_notification` mit dem `revision_comment` im Body
+- **`LetterBriefDetails.tsx`**: Bei Status `revision_requested` → Banner mit Revisionsbegründung anzeigen (aus dem letzten Kommentar/Task holen)
+
+#### 4. Co-Autoren während der Bearbeitung
+
+- **`LetterEditor.tsx`**: Neuen Button "Mitbearbeiter" im Toolbar (neben dem Prüfer-Button), der `UserAssignmentDialog` öffnet – aber mit Rolle `writer` statt `reviewer`
+- **`UserAssignmentDialog.tsx`**: Prop `role` hinzufügen (default: `reviewer`), Dialog-Titel und -Text anpassen je nach Rolle
+- **`canEdit`-Logik**: Collaborators mit `role === 'writer'` dürfen im `draft`-Status mitbearbeiten
 
 ---
 
@@ -60,11 +56,11 @@
 
 | Datei | Änderung |
 |---|---|
-| `src/components/ReviewAssignmentDialog.tsx` | Brief-Daten als Props, Entscheidung erstellen, Status `pending_approval` |
-| `src/utils/letterWorkflowActions.ts` | Brieftext (HTML, Anrede, Schlussformel) in Entscheidungs-Beschreibung |
-| `src/components/LetterEditor.tsx` | Brief-Daten an ReviewAssignmentDialog durchreichen, `onReviewAssigned` setzt `pending_approval` |
-| `src/components/letters/LetterBriefDetails.tsx` | `pending_approval` und `revision_requested` Status korrekt darstellen |
-| `src/components/letters/hooks/useLetterOperations.ts` | Status `review` → `pending_approval` umstellen |
-| `src/components/letters/types.ts` | `review` als Legacy-Mapping behalten |
-| `src/components/letters/LetterStatusWorkflow.tsx` | Entfernen (verwaist) |
+| `src/components/letters/types.ts` | `STATUS_FLOW`, `STATUS_LABELS`, `ALLOWED_TRANSITIONS` für `review` anpassen |
+| `src/components/ReviewAssignmentDialog.tsx` | 3 Optionen (Überspringen / Kollegenprüfung / Freigabe-Entscheidung) + Notification |
+| `src/components/letters/LetterBriefDetails.tsx` | `review`-Status mit Weiter-Button, Revisions-Banner |
+| `src/components/LetterEditor.tsx` | `canEdit`-Logik für `review` + `writer`-Rolle, Co-Autoren-Button, Toolbar anpassen |
+| `src/components/UserAssignmentDialog.tsx` | `role`-Prop, Titel/Text dynamisch |
+| `src/components/task-decisions/TaskDecisionResponse.tsx` | `create_notification` bei Freigabe/Zurückweisung |
+| `src/components/letters/hooks/useLetterOperations.ts` | `review`-Status in Transitions unterstützen |
 
