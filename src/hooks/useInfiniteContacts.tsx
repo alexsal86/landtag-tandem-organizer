@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { useTenant } from "@/hooks/useTenant";
@@ -33,9 +33,12 @@ export const useInfiniteContacts = ({
   const [loading, setLoading] = useState(true);
   const [loadingMore, setLoadingMore] = useState(false);
   const [hasMore, setHasMore] = useState(true);
-  const [currentPage, setCurrentPage] = useState(0);
   const [totalCount, setTotalCount] = useState(0);
-  
+
+  // Refs for pagination offset and stale-request cancellation
+  const pageRef = useRef(0);            // current loaded page count (for offset calc)
+  const fetchGenerationRef = useRef(0); // monotonic counter; stale fetches check this
+
   const { user } = useAuth();
   const { currentTenant } = useTenant();
   const { toast } = useToast();
@@ -127,9 +130,8 @@ export const useInfiniteContacts = ({
     }
   }, [user, toast]);
 
-  const fetchContacts = useCallback(async (isLoadMore = false) => {
+  const fetchContacts = useCallback(async (isLoadMore: boolean, generation: number) => {
     if (!user || !currentTenant) {
-      
       setLoading(false);
       setLoadingMore(false);
       return;
@@ -142,11 +144,13 @@ export const useInfiniteContacts = ({
         setLoading(true);
       }
 
-      const offset = isLoadMore ? currentPage * ITEMS_PER_PAGE : 0;
+      const offset = isLoadMore ? pageRef.current * ITEMS_PER_PAGE : 0;
       const query = buildQuery(offset, ITEMS_PER_PAGE);
-      
-      
+
       const { data, error, count } = await query;
+
+      // Discard results if a newer fetch has been started
+      if (generation !== fetchGenerationRef.current) return;
 
       if (error) {
         debugConsole.error('Supabase query error:', error);
@@ -184,18 +188,17 @@ export const useInfiniteContacts = ({
 
       if (isLoadMore) {
         setContacts(prev => [...prev, ...formattedContacts]);
-        setCurrentPage(prev => prev + 1);
+        pageRef.current += 1;
       } else {
         setContacts(formattedContacts);
-        setCurrentPage(1);
-        
+        pageRef.current = 1;
+
         // Insert sample data if no contacts exist and no filters are applied
         if (formattedContacts.length === 0 && !searchTerm && selectedCategory === "all" && selectedType === "all" && activeTab === "contacts") {
           const sampleInserted = await insertSampleContacts();
-          if (sampleInserted) {
-            // Refetch after inserting samples
+          if (sampleInserted && generation === fetchGenerationRef.current) {
             const { data: newData, error: newError, count: newCount } = await buildQuery(0, ITEMS_PER_PAGE);
-            if (!newError && newData) {
+            if (!newError && newData && generation === fetchGenerationRef.current) {
               const newFormattedContacts = newData.map(contact => ({
                 id: contact.id,
                 contact_type: (contact.contact_type as "person" | "organization" | "archive") || "person",
@@ -229,8 +232,10 @@ export const useInfiniteContacts = ({
               setHasMore(newFormattedContacts.length === ITEMS_PER_PAGE);
             }
           }
-          setLoading(false);
-          setLoadingMore(false);
+          if (generation === fetchGenerationRef.current) {
+            setLoading(false);
+            setLoadingMore(false);
+          }
           return;
         }
       }
@@ -239,6 +244,7 @@ export const useInfiniteContacts = ({
       setHasMore(formattedContacts.length === ITEMS_PER_PAGE);
 
     } catch (error) {
+      if (generation !== fetchGenerationRef.current) return;
       debugConsole.error('Error fetching contacts:', error);
       toast({
         title: "Fehler",
@@ -246,14 +252,16 @@ export const useInfiniteContacts = ({
         variant: "destructive",
       });
     } finally {
-      setLoading(false);
-      setLoadingMore(false);
+      if (generation === fetchGenerationRef.current) {
+        setLoading(false);
+        setLoadingMore(false);
+      }
     }
-  }, [user, currentTenant, currentPage, buildQuery, searchTerm, selectedCategory, selectedType, selectedTagFilter, activeTab, insertSampleContacts, toast]);
+  }, [user, currentTenant, buildQuery, searchTerm, selectedCategory, selectedType, selectedTagFilter, activeTab, insertSampleContacts, toast]);
 
   const loadMore = useCallback(() => {
     if (!loadingMore && hasMore) {
-      fetchContacts(true);
+      fetchContacts(true, fetchGenerationRef.current);
     }
   }, [fetchContacts, loadingMore, hasMore]);
 
@@ -267,16 +275,16 @@ export const useInfiniteContacts = ({
       if (error) throw error;
 
       // Update local state
-      setContacts(prev => prev.map(contact => 
-        contact.id === contactId 
+      setContacts(prev => prev.map(contact =>
+        contact.id === contactId
           ? { ...contact, is_favorite: isFavorite }
           : contact
       ));
 
       toast({
         title: "Erfolg",
-        description: isFavorite 
-          ? "Kontakt zu Favoriten hinzugefügt" 
+        description: isFavorite
+          ? "Kontakt zu Favoriten hinzugefügt"
           : "Kontakt aus Favoriten entfernt",
       });
     } catch (error) {
@@ -289,30 +297,35 @@ export const useInfiniteContacts = ({
     }
   }, [toast]);
 
-  // Reset pagination when filters change
+  // Single consolidated effect: resets state AND fetches when filters/auth change.
+  // fetchContacts is in deps so it always uses the current closure (no stale-closure bug).
+  // The generation counter ensures any in-flight request from a previous filter set
+  // is discarded before it can overwrite state.
   useEffect(() => {
+    fetchGenerationRef.current += 1;
+    const generation = fetchGenerationRef.current;
+
+    pageRef.current = 0;
     setContacts([]);
-    setCurrentPage(0);
     setHasMore(true);
     setTotalCount(0);
-  }, [searchTerm, selectedCategory, selectedType, selectedTagFilter, activeTab, sortColumn, sortDirection]);
 
-  // Fetch contacts when page is reset to 0 or when initial load
-  useEffect(() => {
-    if (user && currentTenant && currentPage === 0) {
-      fetchContacts(false);
+    if (user && currentTenant) {
+      fetchContacts(false, generation);
     }
-  }, [user, currentTenant, currentPage, searchTerm, selectedCategory, selectedType, selectedTagFilter, activeTab, sortColumn, sortDirection]);
+  }, [user, currentTenant, searchTerm, selectedCategory, selectedType, selectedTagFilter, activeTab, sortColumn, sortDirection, fetchContacts]);
 
   const refreshContacts = useCallback(() => {
+    if (!user || !currentTenant) return;
+
+    fetchGenerationRef.current += 1;
+    const generation = fetchGenerationRef.current;
+
+    pageRef.current = 0;
     setContacts([]);
-    setCurrentPage(0);
     setHasMore(true);
     setTotalCount(0);
-    // Trigger actual refetch after state reset
-    if (user && currentTenant) {
-      fetchContacts(false);
-    }
+    fetchContacts(false, generation);
   }, [user, currentTenant, fetchContacts]);
 
   return {
