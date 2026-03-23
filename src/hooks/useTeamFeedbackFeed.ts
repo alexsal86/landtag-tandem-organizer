@@ -1,5 +1,5 @@
-import { useMemo } from 'react';
-import { useQuery } from '@tanstack/react-query';
+import { useEffect, useMemo } from 'react';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { subDays } from 'date-fns';
 import { supabase } from '@/integrations/supabase/client';
 import { useTenant } from './useTenant';
@@ -48,11 +48,51 @@ const DEFAULT_FILTERS: Required<TeamFeedbackFeedFilters> = {
 export const useTeamFeedbackFeed = (filters?: TeamFeedbackFeedFilters) => {
   const { currentTenant } = useTenant();
   const { user } = useAuth();
+  const queryClient = useQueryClient();
 
   const resolvedFilters = useMemo(
     () => ({ ...DEFAULT_FILTERS, ...(filters || {}) }),
     [filters],
   );
+
+  useEffect(() => {
+    if (!currentTenant?.id || !user?.id) return;
+
+    let timeout: ReturnType<typeof setTimeout> | null = null;
+    const scheduleInvalidation = () => {
+      if (timeout) clearTimeout(timeout);
+      timeout = setTimeout(() => {
+        timeout = null;
+        void queryClient.invalidateQueries({
+          queryKey: ['team-feedback-feed', currentTenant.id, user.id],
+        });
+      }, 250);
+    };
+
+    const channel = supabase
+      .channel(`team-feedback-feed-${currentTenant.id}-${user.id}`)
+      // Der Feed basiert nicht nur auf appointment_feedback. Sichtbarkeit und Darstellung hängen auch an
+      // appointments, external_events + external_calendars, meeting_participants, tasks und profiles.
+      // Ein enger Filter wie appointment_feedback.user_id = current user wäre deshalb zu schmal:
+      // Im Team-Feed fehlen sonst Rückmeldungen anderer Nutzer, Teilnehmerwechsel an Meetings sowie
+      // nachträgliche Titel-/Zeit-/Aufgaben-/Namensänderungen im bereits geladenen Kontext.
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'appointment_feedback', filter: `tenant_id=eq.${currentTenant.id}` }, scheduleInvalidation)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'appointments', filter: `tenant_id=eq.${currentTenant.id}` }, scheduleInvalidation)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'tasks', filter: `tenant_id=eq.${currentTenant.id}` }, scheduleInvalidation)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'profiles', filter: `tenant_id=eq.${currentTenant.id}` }, scheduleInvalidation)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'external_calendars', filter: `tenant_id=eq.${currentTenant.id}` }, scheduleInvalidation)
+      // external_events und meeting_participants haben keinen tenant_id-Filter. Wir abonnieren sie daher
+      // bewusst breit und kombinieren das mit geplantem Refetching als Backstop, damit Relevanzwechsel
+      // (z. B. Meeting-Teilnahme, verschobene externe Termine) nicht dauerhaft stale bleiben.
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'external_events' }, scheduleInvalidation)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'meeting_participants' }, scheduleInvalidation)
+      .subscribe();
+
+    return () => {
+      if (timeout) clearTimeout(timeout);
+      supabase.removeChannel(channel);
+    };
+  }, [currentTenant?.id, queryClient, user?.id]);
 
   return useQuery({
     queryKey: ['team-feedback-feed', currentTenant?.id, user?.id, resolvedFilters],
@@ -192,5 +232,9 @@ export const useTeamFeedbackFeed = (filters?: TeamFeedbackFeedFilters) => {
       return mappedEntries as TeamFeedbackEntry[];
     },
     enabled: !!currentTenant?.id && !!user?.id,
+    // Geplantes Refetching als Sicherheitsnetz für Kontextänderungen, die zwischen Subscribe/Unsubscribe
+    // oder durch breit abonnierte Fremd-Events sonst kurzzeitig liegen bleiben könnten.
+    refetchInterval: 60_000,
+    refetchOnWindowFocus: true,
   });
 };
