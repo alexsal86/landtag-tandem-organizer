@@ -150,7 +150,7 @@ const UserAssignmentDialog: React.FC<UserAssignmentDialogProps> = ({
               letter_id: letterId,
               user_id: userId,
               assigned_by: user.id,
-              role: 'reviewer'
+              role: role
             }))
           );
 
