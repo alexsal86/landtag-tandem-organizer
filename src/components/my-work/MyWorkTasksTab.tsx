@@ -11,6 +11,11 @@ import { supabase } from "@/integrations/supabase/client";
 import { Separator } from "@/components/ui/separator";
 import { Collapsible, CollapsibleContent } from "@/components/ui/collapsible";
 import { CelebrationAnimationSystem } from "@/components/celebrations";
+import SimpleRichTextEditor from "@/components/ui/SimpleRichTextEditor";
+import { toEditorHtml } from "@/components/my-work/utils/editorContent";
+import { MultiSelect } from "@/components/ui/multi-select-simple";
+import { Input } from "@/components/ui/input";
+import { addDays, isAfter, isBefore, startOfDay } from "date-fns";
 import { cn } from "@/lib/utils";
 import { debugConsole } from "@/utils/debugConsole";
 import { MyWorkTasksToolbar } from "./MyWorkTasksToolbar";
@@ -97,7 +102,164 @@ export function MyWorkTasksTab() {
       } catch (error) {
         debugConsole.error("Error loading task categories:", error);
       }
-    };
+      
+      toast({ title: "Aufgabe für nächsten Jour Fixe vorgemerkt" });
+    } catch (error: unknown) {
+      debugConsole.error('Error marking task for next jour fixe:', error);
+      toast({ title: "Fehler", description: error instanceof Error ? error.message : "Unbekannter Fehler", variant: "destructive" });
+    } finally {
+      setMeetingTaskId(null);
+    }
+  };
+
+  const handleCreateChildTask = async (parentTaskId: string) => {
+    if (!user) return;
+
+    const parentTask = [...createdTasks, ...assignedTasks, ...Object.values(subtasks).flat()].find((task) => task.id === parentTaskId);
+    if (!parentTask?.tenant_id) {
+      toast({ title: "Fehler", description: "Übergeordnete Aufgabe nicht gefunden.", variant: "destructive" });
+      return;
+    }
+
+    try {
+      const { data, error } = await supabase
+        .from("tasks")
+        .insert([{
+          user_id: user.id,
+          tenant_id: parentTask.tenant_id,
+          parent_task_id: parentTaskId,
+          title: "Neue Unteraufgabe",
+          description: null,
+          status: "todo",
+          priority: "medium",
+          category: parentTask.category || "personal",
+          assigned_to: user.id,
+        }])
+        .select("id, title, description, priority, status, due_date, assigned_to, user_id, created_at, category, meeting_id, pending_for_jour_fixe, parent_task_id, tenant_id")
+        .single();
+
+      if (error) throw error;
+      toast({ title: "Unteraufgabe erstellt" });
+      if (!data) return;
+      setSubtasks(prev => ({
+        ...prev,
+        [parentTaskId]: [
+          ...(prev[parentTaskId] || []),
+          data,
+        ],
+      }));
+    } catch (error) {
+      debugConsole.error("Error creating child task:", error);
+      toast({ title: "Fehler", description: "Unteraufgabe konnte nicht erstellt werden.", variant: "destructive" });
+    }
+  };
+
+  const getChildTasks = (parentId: string) => subtasks[parentId] || [];
+
+  const openTaskEditDialog = (taskId: string) => {
+    const task = [...assignedTasks, ...createdTasks, ...Object.values(subtasks).flat()].find((t) => t.id === taskId);
+    if (!task) return;
+
+    setEditingTaskId(taskId);
+    setEditTaskTitle(task.title || '');
+    setEditTaskDescription(toEditorHtml(task.description));
+    setEditTaskPriority(task.priority || 'medium');
+    setEditTaskStatus(task.status || 'todo');
+    setEditTaskCategory(task.category || 'personal');
+    setTaskEditDialogOpen(true);
+  };
+
+  const handleSaveTaskEdit = async () => {
+    if (!editingTaskId) return;
+
+    try {
+      const { error } = await supabase
+        .from("tasks")
+        .update({
+          title: editTaskTitle.trim() || 'Ohne Titel',
+          description: editTaskDescription || null,
+          priority: editTaskPriority,
+          status: editTaskStatus,
+          category: editTaskCategory,
+        })
+        .eq("id", editingTaskId)
+        .select();
+
+      if (error) throw error;
+
+      toast({ title: "Aufgabe aktualisiert" });
+      setTaskEditDialogOpen(false);
+      setEditingTaskId(null);
+      setAssignedTasks(prev => prev.map((task) =>
+        task.id === editingTaskId
+          ? {
+              ...task,
+              title: editTaskTitle.trim() || 'Ohne Titel',
+              description: editTaskDescription || null,
+              priority: editTaskPriority,
+              status: editTaskStatus,
+              category: editTaskCategory,
+            }
+          : task
+      ));
+      setCreatedTasks(prev => prev.map((task) =>
+        task.id === editingTaskId
+          ? {
+              ...task,
+              title: editTaskTitle.trim() || 'Ohne Titel',
+              description: editTaskDescription || null,
+              priority: editTaskPriority,
+              status: editTaskStatus,
+              category: editTaskCategory,
+            }
+          : task
+      ));
+      setSubtasks(prev => {
+        const next: Record<string, MyWorkTask[]> = {};
+        Object.entries(prev).forEach(([parentId, list]) => {
+          next[parentId] = list.map((task) =>
+            task.id === editingTaskId
+              ? {
+                  ...task,
+                  title: editTaskTitle.trim() || 'Ohne Titel',
+                  description: editTaskDescription || null,
+                  priority: editTaskPriority,
+                  status: editTaskStatus,
+                  category: editTaskCategory,
+                }
+              : task
+          );
+        });
+        return next;
+      });
+    } catch (error) {
+      debugConsole.error("Error updating task:", error);
+      toast({ title: "Fehler beim Speichern", variant: "destructive" });
+    }
+  };
+
+  const getTaskTitle = (taskId: string | null) => {
+    if (!taskId) return undefined;
+    const task = [...assignedTasks, ...createdTasks, ...Object.values(subtasks).flat()].find(t => t.id === taskId);
+    return task?.title;
+  };
+
+  const normalizeAssignedTo = (assignedTo: string | null | undefined) => {
+    if (!assignedTo) return [];
+
+    return assignedTo
+      .replace(/[{}]/g, '')
+      .split(',')
+      .map((item) => item.trim())
+      .filter(Boolean);
+  };
+
+  const profileNameMap = useMemo(() => {
+    return profiles.reduce((acc, profile) => {
+      acc[profile.user_id] = profile.display_name || profile.user_id;
+      return acc;
+    }, {} as Record<string, string>);
+  }, [profiles]);
 
     void Promise.all([loadProfiles(), loadTaskStatuses(), loadTaskCategories()]);
   }, [user]);
