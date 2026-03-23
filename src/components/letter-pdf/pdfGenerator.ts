@@ -752,15 +752,17 @@ export async function generatePDF(options: GeneratePDFOptions): Promise<{ blob: 
       pdf.setPage(page);
       const paginationY = 263.77;
       
-      pdf.setDrawColor(255, 0, 255);
-      pdf.setLineWidth(0.1);
-      const pageText = `Seite ${page} von ${totalLetterPages}`;
-      const pageTextWidth = pdf.getTextWidth(pageText);
-      const pageTextX = (PAGE_WIDTH - pageTextWidth) / 2;
-      pdf.rect(pageTextX - 2, paginationY - 3, pageTextWidth + 4, 5);
-      pdf.setTextColor(255, 0, 255);
-      pdf.setFontSize(6);
-      pdf.text("Pagination: Unterkante 4.23mm über Fußzeile", pageTextX, paginationY - 4);
+      if (debugMode) {
+        pdf.setDrawColor(255, 0, 255);
+        pdf.setLineWidth(0.1);
+        const pageText = `Seite ${page} von ${totalLetterPages}`;
+        const pageTextWidth = pdf.getTextWidth(pageText);
+        const pageTextX = (PAGE_WIDTH - pageTextWidth) / 2;
+        pdf.rect(pageTextX - 2, paginationY - 3, pageTextWidth + 4, 5);
+        pdf.setTextColor(255, 0, 255);
+        pdf.setFontSize(6);
+        pdf.text("Pagination: Unterkante 4.23mm über Fußzeile", pageTextX, paginationY - 4);
+      }
       
       pdf.setFontSize(9);
       pdf.setFont('helvetica', 'normal');
