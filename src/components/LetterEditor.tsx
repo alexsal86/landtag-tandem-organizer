@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
-import { Save, X, Users, Eye, EyeOff, AlertTriangle, Edit3, FileText, MessageSquare, Ruler, Paperclip, Settings, Layout, Building, Info } from 'lucide-react';
+import { Save, X, Users, UserPlus, Eye, EyeOff, AlertTriangle, Edit3, FileText, MessageSquare, Ruler, Paperclip, Settings, Layout, Building, Info } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import EnhancedLexicalEditor from './EnhancedLexicalEditor';
