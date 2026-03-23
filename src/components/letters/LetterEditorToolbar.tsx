@@ -1,4 +1,5 @@
 import React from 'react';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { Save, Users, Eye, AlertTriangle, FileText, MessageSquare, Paperclip, Settings, Layout, Building, Info } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -134,7 +135,21 @@ export const LetterEditorToolbar: React.FC<LetterEditorToolbarProps> = React.mem
                   <Input id="recipient-name" value={editedLetter.recipient_name || ''} onChange={(e) => setEditedLetter(prev => ({ ...prev, recipient_name: e.target.value }))} disabled={!canEdit} placeholder="Name des Empfängers" />
                 </div>
                 <div>
-                  <Label htmlFor="recipient-address">Empfängeradresse</Label>
+                  <div className="flex items-center gap-1.5">
+                    <Label htmlFor="recipient-address">Empfängeradresse</Label>
+                    {editedLetter.contact_id && (
+                      <TooltipProvider>
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <span className="text-amber-500 cursor-help text-xs">⚠</span>
+                          </TooltipTrigger>
+                          <TooltipContent side="top" className="max-w-[240px] text-xs">
+                            Die Adresse wurde beim Erstellen des Briefs kopiert. Wenn sich die Kontaktdaten seitdem geändert haben, ist diese Adresse möglicherweise veraltet.
+                          </TooltipContent>
+                        </Tooltip>
+                      </TooltipProvider>
+                    )}
+                  </div>
                   <Textarea id="recipient-address" value={editedLetter.recipient_address || ''} onChange={(e) => setEditedLetter(prev => ({ ...prev, recipient_address: e.target.value }))} disabled={!canEdit} placeholder="Adresse des Empfängers" rows={3} />
                 </div>
               </div>

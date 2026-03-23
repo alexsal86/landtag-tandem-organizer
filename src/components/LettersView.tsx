@@ -1,5 +1,5 @@
-import React, { useState, useEffect, type ChangeEvent } from 'react';
-import { Search, Plus, FileText, Filter, Calendar, User, Edit3, Trash2, Grid, List, ListTodo, ListTree, Loader2 } from 'lucide-react';
+import React, { useState, useEffect, type ChangeEvent, useMemo } from 'react';
+import { Search, Plus, FileText, Filter, Calendar, User, Edit3, Trash2, Grid, List, ListTodo, ListTree, Loader2, Clock, AlertTriangle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -422,6 +422,24 @@ const LettersView: React.FC = () => {
                       {new Date(letter.updated_at).toLocaleDateString('de-DE')}
                     </span>
                   </div>
+
+                  {/* Response tracking */}
+                  {letter.status === 'sent' && letter.expected_response_date && (() => {
+                    const expectedDate = new Date(letter.expected_response_date);
+                    const today = new Date();
+                    today.setHours(0, 0, 0, 0);
+                    expectedDate.setHours(0, 0, 0, 0);
+                    const daysUntil = Math.ceil((expectedDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
+                    const isOverdue = daysUntil < 0;
+                    const isUrgent = daysUntil >= 0 && daysUntil <= 3;
+                    if (!isOverdue && !isUrgent) return null;
+                    return (
+                      <div className={`flex items-center gap-1.5 text-xs ${isOverdue ? 'text-destructive' : 'text-orange-600'}`}>
+                        {isOverdue ? <AlertTriangle className="h-3 w-3" /> : <Clock className="h-3 w-3" />}
+                        <span>{isOverdue ? `Antwort ${Math.abs(daysUntil)} Tag${Math.abs(daysUntil) !== 1 ? 'e' : ''} überfällig` : `Antwortfrist in ${daysUntil} Tag${daysUntil !== 1 ? 'en' : ''}`}</span>
+                      </div>
+                    );
+                  })()}
                   
                   {/* Content Preview */}
                   <p className="text-sm text-muted-foreground line-clamp-3">

@@ -9,7 +9,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { 
   Users, Building2, PartyPopper, Heart, FileQuestion, 
   MessageSquare, FileText, Mail, Gavel, ArrowLeft, ArrowRight, Check,
-  Search, User, X
+  Search, User, X, Eye
 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
@@ -375,7 +375,7 @@ export const LetterWizard: React.FC<LetterWizardProps> = ({ onComplete, onCancel
             </div>
           )}
 
-          {/* Step 3: Template & Sender */}
+          {/* Step 3: Template & Sender + Preview */}
           {step === 3 && (
             <div className="space-y-5">
               <h3 className="font-semibold text-lg">Vorlage und Absender</h3>
@@ -423,11 +423,47 @@ export const LetterWizard: React.FC<LetterWizardProps> = ({ onComplete, onCancel
                 </div>
               )}
 
-              {/* Summary */}
+              {/* Preview / Summary */}
               <Card>
-                <CardContent className="p-4 space-y-2 text-sm">
-                  <h4 className="font-medium">Zusammenfassung</h4>
-                  <div className="grid grid-cols-2 gap-y-1">
+                <CardContent className="p-4 space-y-3">
+                  <h4 className="font-medium flex items-center gap-2">
+                    <Eye className="h-4 w-4 text-primary" />
+                    Vorschau & Zusammenfassung
+                  </h4>
+                  <div className="border rounded-lg p-4 bg-white dark:bg-card text-sm space-y-3" style={{ fontFamily: 'Calibri, Carlito, "Segoe UI", Arial, sans-serif' }}>
+                    {/* Sender preview */}
+                    {selectedSenderId && (() => {
+                      const sender = senders.find(s => s.id === selectedSenderId);
+                      return sender ? (
+                        <div className="text-xs text-muted-foreground border-b pb-2">
+                          <span className="font-medium">{sender.name}</span>
+                        </div>
+                      ) : null;
+                    })()}
+                    
+                    {/* Recipient */}
+                    <div className="pt-1">
+                      <p className="font-medium">
+                        {recipientMode === 'contact' ? selectedContact?.name : manualName}
+                      </p>
+                      <p className="text-muted-foreground text-xs">
+                        {recipientMode === 'contact' ? (selectedContact?.address || 'Keine Adresse') : (manualAddress || 'Keine Adresse')}
+                      </p>
+                    </div>
+
+                    {/* Subject line */}
+                    <div className="pt-2 border-t">
+                      <p className="text-xs text-muted-foreground">Betreff wird im Editor festgelegt</p>
+                    </div>
+
+                    {/* Template indicator */}
+                    <div className="flex items-center gap-2 pt-2 border-t text-xs text-muted-foreground">
+                      <FileText className="h-3 w-3" />
+                      <span>Vorlage: {templates.find(t => t.id === selectedTemplateId)?.name || 'Keine'}</span>
+                    </div>
+                  </div>
+                  
+                  <div className="grid grid-cols-2 gap-y-1 text-sm">
                     <span className="text-muted-foreground">Anlass:</span>
                     <span>{occasions.find(o => o.key === selectedOccasion)?.label}</span>
                     <span className="text-muted-foreground">Empfänger:</span>
