@@ -188,7 +188,7 @@ const UserAssignmentDialog: React.FC<UserAssignmentDialogProps> = ({
 
         <div className="space-y-4">
           <p className="text-sm text-muted-foreground">
-            Wählen Sie die Benutzer aus, die diesen Brief zur Korrektur erhalten sollen.
+            {dialogDescription}
           </p>
 
           {loading ? (
