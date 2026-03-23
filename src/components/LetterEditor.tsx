@@ -80,9 +80,9 @@ const LetterEditor: React.FC<LetterEditorProps> = ({ letter, isOpen, onClose, on
   const isWriter = collaborators.some(c => c.user_id === user?.id && c.role === 'writer');
   const currentStatus = editedLetter.status || 'draft';
   const canEdit = !letter || (currentStatus !== 'sent' && (
-    (isCreator && (currentStatus === 'draft' || currentStatus === 'revision_requested')) ||
+    (isCreator && (currentStatus === 'draft' || currentStatus === 'revision_requested' || currentStatus === 'approved')) ||
     (isWriter && currentStatus === 'draft') ||
-    (isReviewer && (currentStatus === 'review' || currentStatus === 'pending_approval'))
+    (isReviewer && (currentStatus === 'review' || currentStatus === 'pending_approval' || currentStatus === 'approved'))
   ));
 
   const ops = useLetterOperations({
