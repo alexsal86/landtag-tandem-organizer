@@ -118,18 +118,19 @@ export const NewsToTaskDialog: React.FC<NewsToTaskDialogProps> = ({
 
       if (!memberships?.tenant_id) throw new Error('No tenant found');
 
-      // Create task with news-import tag
+      const normalizedDescription = description.trim();
       const { error } = await supabase.from('tasks').insert([{
         user_id: user.id,
         tenant_id: memberships.tenant_id,
         title: title.trim(),
-        description: description.trim(),
+        description: normalizedDescription || null,
         category: selectedCategory,
         assigned_to: assignedTo.join(','),
         due_date: dueDate?.toISOString(),
         priority,
         status: 'todo',
-        tags: ['news-import']
+        source_type: 'news',
+        source_id: article?.id ?? null
       }]);
 
       if (error) throw error;
