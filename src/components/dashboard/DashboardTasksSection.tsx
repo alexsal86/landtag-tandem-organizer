@@ -1,4 +1,5 @@
-import { GripVertical, CheckSquare, StickyNote, Briefcase, Vote, CalendarPlus } from 'lucide-react';
+import { useEffect, useMemo, useState } from 'react';
+import { GripVertical, CheckSquare, StickyNote, Briefcase, Vote, CalendarPlus, ChevronDown, ChevronRight } from 'lucide-react';
 import { format } from 'date-fns';
 import { de } from 'date-fns/locale';
 import { useNavigate } from 'react-router-dom';
@@ -19,6 +20,15 @@ interface DashboardTasksSectionProps {
 
 export const DashboardTasksSection = ({ items, grouped }: DashboardTasksSectionProps) => {
   const navigate = useNavigate();
+  const shouldCollapseLaterByDefault = useMemo(
+    () => items.length > 5 && grouped.later.length > 0,
+    [items.length, grouped.later.length],
+  );
+  const [isLaterExpanded, setIsLaterExpanded] = useState(!shouldCollapseLaterByDefault);
+
+  useEffect(() => {
+    setIsLaterExpanded(!shouldCollapseLaterByDefault);
+  }, [shouldCollapseLaterByDefault]);
 
   const handleDragStart = (event: React.DragEvent<HTMLElement>, title: string, id?: string, type?: string) => {
     event.dataTransfer.effectAllowed = 'copy';
@@ -61,12 +71,37 @@ export const DashboardTasksSection = ({ items, grouped }: DashboardTasksSectionP
     );
   };
 
-  const renderGroup = (label: string, groupItems: DeadlineItem[], headerClass?: string) => {
+  const renderGroup = (
+    label: string,
+    groupItems: DeadlineItem[],
+    headerClass?: string,
+    options?: { collapsible?: boolean; expanded?: boolean; onToggle?: () => void },
+  ) => {
     if (groupItems.length === 0) return null;
+
+    const isCollapsible = options?.collapsible ?? false;
+    const isExpanded = options?.expanded ?? true;
+    const ChevronIcon = isExpanded ? ChevronDown : ChevronRight;
+
     return (
       <div key={label}>
-        <h4 className={`text-xs font-bold uppercase tracking-wide mb-1 ${headerClass || 'text-muted-foreground'}`}>{label}</h4>
-        <div className="space-y-0.5">{groupItems.map(renderItem)}</div>
+        {isCollapsible ? (
+          <button
+            type="button"
+            onClick={options?.onToggle}
+            className="mb-1 flex w-full items-center gap-1 text-left"
+            aria-expanded={isExpanded}
+            aria-controls={`deadline-group-${label.toLowerCase()}`}
+          >
+            <ChevronIcon className={`h-3.5 w-3.5 shrink-0 ${headerClass || 'text-muted-foreground'}`} />
+            <h4 className={`text-xs font-bold uppercase tracking-wide ${headerClass || 'text-muted-foreground'}`}>
+              {label}
+            </h4>
+          </button>
+        ) : (
+          <h4 className={`mb-1 text-xs font-bold uppercase tracking-wide ${headerClass || 'text-muted-foreground'}`}>{label}</h4>
+        )}
+        {isExpanded ? <div id={`deadline-group-${label.toLowerCase()}`} className="space-y-0.5">{groupItems.map(renderItem)}</div> : null}
       </div>
     );
   };
@@ -80,7 +115,11 @@ export const DashboardTasksSection = ({ items, grouped }: DashboardTasksSectionP
           {renderGroup('Überfällig', grouped.overdue, 'text-destructive')}
           {renderGroup('Heute', grouped.today)}
           {renderGroup('Nächste 7 Tage', grouped.thisWeek)}
-          {renderGroup('Später', grouped.later)}
+          {renderGroup('Später', grouped.later, undefined, {
+            collapsible: shouldCollapseLaterByDefault,
+            expanded: isLaterExpanded,
+            onToggle: () => setIsLaterExpanded((current) => !current),
+          })}
         </div>
       )}
     </div>
