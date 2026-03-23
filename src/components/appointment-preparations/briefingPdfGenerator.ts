@@ -838,7 +838,7 @@ export async function generateBriefingPdf({
 
   // 1. Gesprächspartner
   const partners = getConversationPartnersFromPreparationData(d);
-  addConversationPartnersCard(doc, MARGIN, LEFT_W, partners, leftY, topY);
+  await addConversationPartnersCard(doc, MARGIN, LEFT_W, partners, leftY, topY);
 
   // 2. Gesprächspunkte (talking_points + important topics)
   const talkingLines = [
