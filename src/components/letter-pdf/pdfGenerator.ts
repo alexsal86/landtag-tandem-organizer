@@ -375,8 +375,20 @@ function renderBlockLinesToPdf(pdf: jsPDF, lines: BlockLine[], x: number, startY
   }
   pdf.setFont('helvetica', 'normal');
 }
+function renderFoldHoleMarks(pdf: jsPDF, marks: any): void {
+  pdf.setDrawColor(200, 200, 200);
+  pdf.setLineWidth(marks.strokeWidthPt ? marks.strokeWidthPt * 0.3528 : 0.3);
+  const left = marks.left || 3;
+  const foldWidth = marks.foldMarkWidth || 5;
+  const holeWidth = marks.holeMarkWidth || 8;
+  if (marks.topMarkY) pdf.line(left, marks.topMarkY, left + foldWidth, marks.topMarkY);
+  if (marks.holeMarkY) pdf.line(left, marks.holeMarkY, left + holeWidth, marks.holeMarkY);
+  if (marks.bottomMarkY) pdf.line(left, marks.bottomMarkY, left + foldWidth, marks.bottomMarkY);
+  pdf.setDrawColor(0, 0, 0);
+  pdf.setLineWidth(0.2);
+}
 
-export async function generatePDF(options: GeneratePDFOptions): Promise<{ blob: Blob; filename: string } | void> {
+
   const { letter, template, senderInfo, informationBlock, attachments, showPagination, returnBlob = false, debugMode = false, contact } = options;
   
   const pdf = new jsPDF('p', 'mm', 'a4');

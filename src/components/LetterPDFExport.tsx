@@ -17,7 +17,7 @@ const LetterPDFExport: React.FC<LetterPDFExportProps> = ({
   onPDFGenerated
 }) => {
   const { toast } = useToast();
-  const { template, senderInfo, informationBlock, attachments } = usePDFData(letter);
+  const { template, senderInfo, informationBlock, attachments, contact } = usePDFData(letter);
 
   const exportToPDF = async () => {
     try {
