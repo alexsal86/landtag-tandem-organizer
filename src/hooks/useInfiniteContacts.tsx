@@ -302,7 +302,7 @@ export const useInfiniteContacts = ({
     if (user && currentTenant && currentPage === 0) {
       fetchContacts(false);
     }
-  }, [user, currentTenant, searchTerm, selectedCategory, selectedType, selectedTagFilter, activeTab, sortColumn, sortDirection]);
+  }, [user, currentTenant, currentPage, searchTerm, selectedCategory, selectedType, selectedTagFilter, activeTab, sortColumn, sortDirection]);
 
   const refreshContacts = useCallback(() => {
     setContacts([]);
