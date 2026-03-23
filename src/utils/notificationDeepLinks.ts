@@ -1,4 +1,5 @@
 import type { Notification, NotificationData } from '@/hooks/useNotifications';
+import { isLetterNotificationType } from '@/utils/letterNotificationTypes';
 
 const getNotificationDataId = (
   data: NotificationData,
@@ -25,6 +26,10 @@ const buildHighlightPath = (basePath: string, id: string | null): string => {
 export const buildDeepLinkPath = (notification: Notification): string => {
   const data: NotificationData = notification.data ?? {};
   const typeName = notification.notification_types?.name ?? data.type ?? '';
+
+  if (isLetterNotificationType(typeName)) {
+    return data.letter_id ? `/letters/${data.letter_id}` : '/documents?tab=letters';
+  }
 
   switch (typeName) {
     case 'task_created':
@@ -64,11 +69,6 @@ export const buildDeepLinkPath = (notification: Notification): string => {
         ? buildHighlightPath('/documents?tab=press', documentId)
         : buildHighlightPath('/documents?tab=letters', documentId);
     }
-    case 'letter_review_requested':
-    case 'letter_review_completed':
-    case 'letter_sent':
-      return data.letter_id ? `/letters/${data.letter_id}` : '/documents?tab=letters';
-
     case 'knowledge_document_created':
       return buildHighlightPath('/knowledge', getNotificationDataId(data, 'document_id'));
 

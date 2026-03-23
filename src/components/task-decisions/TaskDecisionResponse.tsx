@@ -13,6 +13,7 @@ import { DecisionFileUpload } from "./DecisionFileUpload";
 import SimpleRichTextEditor from "@/components/ui/SimpleRichTextEditor";
 import { RichTextDisplay } from "@/components/ui/RichTextDisplay";
 import { ResponseOption, getColorClasses, getDefaultOptions } from "@/lib/decisionTemplates";
+import { LETTER_NOTIFICATION_TYPES } from '@/utils/letterNotificationTypes';
 
 interface ResponseSubmitMeta {
   responseType: string;
@@ -392,7 +393,7 @@ export const TaskDecisionResponse = ({
               // Notify letter creator about approval
               await supabase.rpc('create_notification', {
                 user_id_param: decisionData.created_by,
-                type_name: 'letter_approved',
+                type_name: LETTER_NOTIFICATION_TYPES.REVIEW_COMPLETED,
                 title_param: 'Brief freigegeben',
                 message_param: `Der Brief "${letterTitle}" wurde freigegeben.`,
                 data_param: JSON.stringify({ letter_id: letterId, letter_title: letterTitle }),
@@ -412,7 +413,7 @@ export const TaskDecisionResponse = ({
               // Notify letter creator about rejection with reason
               await supabase.rpc('create_notification', {
                 user_id_param: decisionData.created_by,
-                type_name: 'letter_revision_requested',
+                type_name: LETTER_NOTIFICATION_TYPES.REVIEW_COMPLETED,
                 title_param: 'Brief zur Überarbeitung zurückgewiesen',
                 message_param: comment
                   ? `Der Brief "${letterTitle}" wurde zurückgewiesen. Begründung: ${comment}`

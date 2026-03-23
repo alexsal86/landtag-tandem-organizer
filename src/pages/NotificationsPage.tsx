@@ -27,6 +27,7 @@ import { useNotificationDisplayPreferences } from '@/hooks/useNotificationDispla
 import { NOTIFICATION_SOUNDS, playNotificationSound, hasCustomSound, saveCustomSound, removeCustomSound } from '@/utils/notificationSounds';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
+import { isLetterNotificationType } from '@/utils/letterNotificationTypes';
 
 
 type NotificationPosition = NotificationDisplayPreferences['position'];
@@ -47,6 +48,8 @@ const isNotificationFilterStatus = (value: string): value is NotificationFilterS
   value === 'all' || value === 'unread' || value === 'read';
 
 const getNotificationIcon = (type: string) => {
+  if (isLetterNotificationType(type)) return FileText;
+
   switch (type) {
     case 'task_created': case 'task_due': case 'task_assigned': case 'task_updated': return CheckCheck;
     case 'appointment_reminder': return Calendar;
@@ -60,8 +63,7 @@ const getNotificationIcon = (type: string) => {
     case 'task_decision_request': case 'task_decision_completed': case 'task_decision_complete':
     case 'task_decision_comment_received': case 'task_decision_creator_response':
     case 'task_decision_comment_reaction_received': return MessageSquare;
-    case 'document_created': case 'document_mention': case 'news_shared_internal': case 'letter_review_requested':
-    case 'letter_review_completed': case 'letter_sent': return FileText;
+    case 'document_created': case 'document_mention': case 'news_shared_internal': return FileText;
     case 'knowledge_document_created': return BookOpen;
     case 'meeting_created': return Calendar;
     case 'note_follow_up': return StickyNote;
