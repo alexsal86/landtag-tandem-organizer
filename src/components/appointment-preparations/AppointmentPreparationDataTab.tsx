@@ -430,15 +430,18 @@ export function AppointmentPreparationDataTab({
     try {
       setSaving(true);
       const partner = conversationPartners[idx];
-      const fileExtension = file.name.split('.').pop() || 'jpg';
-      const filePath = `${user.id}/appointment-partners/${preparation.id}/${partner.id}_${Date.now()}.${fileExtension}`;
+
+      // Compress image before upload (max 400×400, WebP ~80%)
+      const compressedBlob = await compressImageForAvatar(file);
+      const extension = compressedBlob.type === 'image/webp' ? 'webp' : 'jpg';
+      const filePath = `${user.id}/appointment-partners/${preparation.id}/${partner.id}_${Date.now()}.${extension}`;
 
       const { error: uploadError } = await supabase.storage
         .from('avatars')
-        .upload(filePath, file, {
+        .upload(filePath, compressedBlob, {
           cacheControl: '3600',
           upsert: true,
-          contentType: file.type,
+          contentType: compressedBlob.type,
         });
 
       if (uploadError) throw uploadError;
