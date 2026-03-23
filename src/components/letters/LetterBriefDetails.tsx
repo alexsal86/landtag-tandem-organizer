@@ -31,6 +31,37 @@ interface LetterBriefDetailsProps {
   broadcastContentChange: (field: string, value: string) => void;
 }
 
+const useRevisionComment = (letterId?: string, status?: string) => {
+  const [revisionComment, setRevisionComment] = useState<string | null>(null);
+  useEffect(() => {
+    if (status !== 'revision_requested' || !letterId) { setRevisionComment(null); return; }
+    const fetchComment = async () => {
+      try {
+        const { data } = await supabase
+          .from('tasks')
+          .select('description')
+          .ilike('title', `%Brief überarbeiten%`)
+          .order('created_at', { ascending: false })
+          .limit(5);
+        if (data) {
+          const match = data.find(t => t.description?.includes('Begründung der Zurückweisung'));
+          if (match?.description) {
+            const parts = match.description.split('Begründung der Zurückweisung:\n\n');
+            setRevisionComment(parts[1] || match.description);
+            return;
+          }
+        }
+        setRevisionComment(null);
+      } catch (e) {
+        debugConsole.error('Error fetching revision comment:', e);
+        setRevisionComment(null);
+      }
+    };
+    fetchComment();
+  }, [letterId, status]);
+  return revisionComment;
+};
+
 const LetterBriefDetails: React.FC<LetterBriefDetailsProps> = ({
   editedLetter,
   setEditedLetter,
