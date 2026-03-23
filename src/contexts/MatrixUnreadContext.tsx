@@ -32,9 +32,22 @@ export function MatrixUnreadProvider({ children }: { children: ReactNode }) {
   const liveOverrideRef = useRef(false);
   const pollTimerRef = useRef<ReturnType<typeof setInterval>>(undefined);
 
-  // Load credentials from profile
+  // Defer all Matrix network activity until the browser is idle / app has settled
+  const [appSettled, setAppSettled] = useState(false);
+
   useEffect(() => {
-    if (!user || !currentTenant?.id) {
+    if ('requestIdleCallback' in window) {
+      const id = requestIdleCallback(() => setAppSettled(true), { timeout: 3000 });
+      return () => cancelIdleCallback(id);
+    } else {
+      const id = setTimeout(() => setAppSettled(true), 2000);
+      return () => clearTimeout(id);
+    }
+  }, []);
+
+  // Load credentials from profile (deferred until app has settled)
+  useEffect(() => {
+    if (!appSettled || !user || !currentTenant?.id) {
       setHasCredentials(false);
       setCredentials(null);
       return;
@@ -61,7 +74,7 @@ export function MatrixUnreadProvider({ children }: { children: ReactNode }) {
     };
 
     load();
-  }, [user, currentTenant?.id]);
+  }, [appSettled, user, currentTenant?.id]);
 
   // Lightweight unread count polling via Matrix /sync with minimal filter
   const fetchUnreadCount = useCallback(async () => {
