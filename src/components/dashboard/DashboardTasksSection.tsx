@@ -1,19 +1,8 @@
-import { useEffect, useState, useMemo } from 'react';
 import { GripVertical, CheckSquare, StickyNote, Briefcase, Vote, CalendarPlus } from 'lucide-react';
-import { format, isToday, isAfter, isBefore, startOfDay, addDays } from 'date-fns';
+import { format } from 'date-fns';
 import { de } from 'date-fns/locale';
-import { supabase } from '@/integrations/supabase/client';
-import { useAuth } from '@/hooks/useAuth';
-import { useTenant } from '@/hooks/useTenant';
 import { useNavigate } from 'react-router-dom';
-
-interface DeadlineItem {
-  id: string;
-  title: string;
-  dueDate: string;
-  type: 'task' | 'note' | 'case' | 'decision' | 'eventPlanning';
-  planningId?: string;
-}
+import type { DeadlineItem, GroupedDeadlineItems } from '@/hooks/useDashboardDeadlines';
 
 const TYPE_CONFIG = {
   task: { icon: CheckSquare, label: 'Aufgabe', tabBase: '/mywork?tab=tasks', color: 'text-blue-500' },
@@ -23,14 +12,13 @@ const TYPE_CONFIG = {
   eventPlanning: { icon: CalendarPlus, label: 'Veranstaltungsplanung', tabBase: '/eventplanning', color: 'text-rose-500' },
 };
 
-export const DashboardTasksSection = () => {
-  const { user } = useAuth();
-  const { currentTenant } = useTenant();
+interface DashboardTasksSectionProps {
+  items: DeadlineItem[];
+  grouped: GroupedDeadlineItems;
+}
+
+export const DashboardTasksSection = ({ items, grouped }: DashboardTasksSectionProps) => {
   const navigate = useNavigate();
-  const userId = user?.id;
-  const tenantId = currentTenant?.id;
-  const [items, setItems] = useState<DeadlineItem[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
 
   const handleDragStart = (event: React.DragEvent<HTMLElement>, title: string, id?: string, type?: string) => {
     event.dataTransfer.effectAllowed = 'copy';
@@ -45,109 +33,6 @@ export const DashboardTasksSection = () => {
     event.dataTransfer.setDragImage(ghost, 12, 12);
     requestAnimationFrame(() => ghost.remove());
   };
-
-  useEffect(() => {
-    if (!userId) return;
-    const load = async () => {
-      setIsLoading(true);
-
-      const [tasksRes, notesRes, casesRes, decisionsRes, planningDeadlinesRes] = await Promise.all([
-        supabase.from('tasks').select('id, title, due_date')
-          .or(`assigned_to.eq.${userId},assigned_to.ilike.%${userId}%,user_id.eq.${userId}`)
-          .neq('status', 'completed')
-          .not('due_date', 'is', null),
-        supabase.from('quick_notes').select('id, title, content, follow_up_date')
-          .eq('user_id', userId)
-          .is('deleted_at', null)
-          .or('is_archived.is.null,is_archived.eq.false')
-          .not('follow_up_date', 'is', null),
-        tenantId
-          ? supabase.from('case_items').select('id, subject, due_at')
-              .eq('tenant_id', tenantId)
-              .not('due_at', 'is', null)
-              .neq('status', 'erledigt')
-          : Promise.resolve({ data: [] }),
-        supabase.from('task_decisions').select('id, title, response_deadline')
-          .neq('status', 'resolved')
-          .is('archived_at', null)
-          .not('response_deadline', 'is', null),
-        supabase
-          .from('event_planning_timeline_assignments')
-          .select(`
-            id,
-            due_date,
-            event_planning_id,
-            event_plannings (id, title, user_id, is_archived, is_completed),
-            event_planning_checklist_items (id, title, is_completed)
-          `),
-      ]);
-
-      const all: DeadlineItem[] = [
-        ...(tasksRes.data || []).filter((t: any) => t.due_date && t.title?.trim()).map((t: any) => ({
-          id: t.id, title: t.title.trim(), dueDate: t.due_date, type: 'task' as const,
-        })),
-        ...(notesRes.data || []).filter((n: any) => n.follow_up_date).map((n: any) => ({
-          id: n.id, title: (n.title || n.content || '').trim().substring(0, 80), dueDate: n.follow_up_date, type: 'note' as const,
-        })),
-        ...(casesRes.data || []).filter((c: any) => c.due_at).map((c: any) => ({
-          id: c.id, title: (c.subject || 'Vorgang').trim(), dueDate: c.due_at, type: 'case' as const,
-        })),
-        ...(decisionsRes.data || []).filter((d: any) => d.response_deadline && d.title?.trim()).map((d: any) => ({
-          id: d.id, title: d.title.trim(), dueDate: d.response_deadline, type: 'decision' as const,
-        })),
-        ...((planningDeadlinesRes.data || [])
-          .filter((assignment: any) => {
-            const planning = Array.isArray(assignment.event_plannings) ? assignment.event_plannings[0] : assignment.event_plannings;
-            const checklistItem = Array.isArray(assignment.event_planning_checklist_items) ? assignment.event_planning_checklist_items[0] : assignment.event_planning_checklist_items;
-            return Boolean(
-              assignment.due_date &&
-              planning?.id &&
-              !planning.is_archived &&
-              !planning.is_completed &&
-              checklistItem?.title?.trim() &&
-              !checklistItem.is_completed
-            );
-          })
-          .map((assignment: any) => {
-            const planning = Array.isArray(assignment.event_plannings) ? assignment.event_plannings[0] : assignment.event_plannings;
-            const checklistItem = Array.isArray(assignment.event_planning_checklist_items) ? assignment.event_planning_checklist_items[0] : assignment.event_planning_checklist_items;
-            const checklistTitle = checklistItem?.title?.trim();
-            const planningTitle = planning?.title?.trim();
-            return {
-              id: assignment.id,
-              title: planningTitle ? `${checklistTitle} · ${planningTitle}` : checklistTitle,
-              dueDate: assignment.due_date,
-              type: 'eventPlanning' as const,
-              planningId: planning?.id ?? assignment.event_planning_id,
-            };
-          })),
-      ];
-
-      all.sort((a, b) => new Date(a.dueDate).getTime() - new Date(b.dueDate).getTime());
-      setItems(all);
-      setIsLoading(false);
-    };
-    load();
-  }, [userId, tenantId]);
-
-  const grouped = useMemo(() => {
-    const overdue: DeadlineItem[] = [];
-    const today: DeadlineItem[] = [];
-    const thisWeek: DeadlineItem[] = [];
-    const later: DeadlineItem[] = [];
-    const now = new Date();
-    const todayStart = startOfDay(now);
-    const sevenDaysOut = addDays(todayStart, 7);
-
-    for (const item of items) {
-      const d = new Date(item.dueDate);
-      if (isBefore(d, todayStart)) overdue.push(item);
-      else if (isToday(d)) today.push(item);
-      else if (!isAfter(d, sevenDaysOut)) thisWeek.push(item);
-      else later.push(item);
-    }
-    return { overdue, today, thisWeek, later };
-  }, [items]);
 
   const renderItem = (item: DeadlineItem) => {
     const cfg = TYPE_CONFIG[item.type];
@@ -185,8 +70,6 @@ export const DashboardTasksSection = () => {
       </div>
     );
   };
-
-  if (isLoading) return <div className="animate-pulse h-32 bg-muted rounded-lg" />;
 
   return (
     <div>
