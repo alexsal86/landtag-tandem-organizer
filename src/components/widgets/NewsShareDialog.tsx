@@ -112,6 +112,7 @@ export const NewsShareDialog: React.FC<NewsShareDialogProps> = ({
 
     try {
       let deliveredEmailRecipients = 0;
+      let emailDeliveryFailed = false;
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error('Not authenticated');
 
@@ -123,7 +124,7 @@ export const NewsShareDialog: React.FC<NewsShareDialogProps> = ({
 
       const senderName = profile?.display_name || 'Ein Kollege';
 
-      // Send emails
+      // Send emails when possible, but do not block internal in-app sharing if email delivery fails.
       if (selectedUserIds.length > 0 || emails.length > 0) {
         const { data: emailData, error: emailError } = await supabase.functions.invoke('send-news-email', {
           body: {
@@ -135,12 +136,20 @@ export const NewsShareDialog: React.FC<NewsShareDialogProps> = ({
           }
         });
 
-        if (emailError) throw emailError;
+        if (emailError) {
+          emailDeliveryFailed = true;
 
-        deliveredEmailRecipients = emailData?.recipients ?? 0;
+          if (emails.length > 0) {
+            throw emailError;
+          }
 
-        if (emailData?.partialFailure?.message) {
-          toast.warning(emailData.partialFailure.message);
+          debugConsole.warn('Email delivery for internal news sharing failed, continuing with in-app notifications only', emailError);
+        } else {
+          deliveredEmailRecipients = emailData?.recipients ?? 0;
+
+          if (emailData?.partialFailure?.message) {
+            toast.warning(emailData.partialFailure.message);
+          }
         }
       }
 
@@ -196,8 +205,19 @@ export const NewsShareDialog: React.FC<NewsShareDialogProps> = ({
         }
       }
 
-      const totalRecipients = Math.max(deliveredEmailRecipients, 0);
-      toast.success(`News erfolgreich an ${totalRecipients} Empfänger per E-Mail gesendet`);
+      const internalRecipients = selectedUserIds.length;
+      const externalRecipients = emails.length;
+      const totalRecipients = internalRecipients + externalRecipients;
+
+      if (totalRecipients === 0) {
+        toast.success('News erfolgreich geteilt');
+      } else if (emailDeliveryFailed && internalRecipients > 0 && externalRecipients === 0) {
+        toast.success(`News erfolgreich mit ${internalRecipients} internen Empfänger${internalRecipients === 1 ? '' : 'n'} geteilt`);
+      } else if (deliveredEmailRecipients > 0) {
+        toast.success(`News erfolgreich an ${deliveredEmailRecipients} Empfänger per E-Mail gesendet`);
+      } else {
+        toast.success(`News erfolgreich mit ${totalRecipients} Empfänger${totalRecipients === 1 ? '' : 'n'} geteilt`);
+      }
       
       // Reset form
       setSelectedUserIds([]);
