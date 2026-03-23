@@ -338,12 +338,26 @@ interface GeneratePDFOptions {
 }
 
 export async function generatePDF(options: GeneratePDFOptions): Promise<{ blob: Blob; filename: string } | void> {
-  const { letter, template, senderInfo, informationBlock, attachments, showPagination, returnBlob = false } = options;
+  const { letter, template, senderInfo, informationBlock, attachments, showPagination, returnBlob = false, debugMode = false } = options;
   
   const pdf = new jsPDF('p', 'mm', 'a4');
   
-  // Debug guides page 1
-  drawDebugGuides(pdf, 1);
+  // Get layout settings from template
+  const layout = template?.layout_settings || {
+    pageWidth: 210, pageHeight: 297,
+    margins: { left: 25, right: 20, top: 45, bottom: 25 },
+    header: { height: 45, marginBottom: 8.46 },
+    addressField: { top: 46, left: 25, width: 85, height: 40, returnAddressFontSize: 8, recipientFontSize: 10 },
+    infoBlock: { top: 50, left: 125, width: 75, height: 40 },
+    subject: { top: 98.46, marginBottom: 8, fontSize: 13 },
+    content: { top: 98.46, maxHeight: 165, lineHeight: 4.5, fontSize: 11 },
+    footer: { top: 272, height: 18 },
+  };
+  
+  // Debug guides only in debug mode
+  if (debugMode) {
+    drawDebugGuides(pdf, 1);
+  }
   renderFooterBlocks(pdf, template);
   
   pdf.setTextColor(0, 0, 0);
@@ -351,7 +365,7 @@ export async function generatePDF(options: GeneratePDFOptions): Promise<{ blob: 
   
   // Template header
   if (template) {
-    const headerRenderer = new HeaderRenderer(pdf, LEFT_MARGIN);
+    const headerRenderer = new HeaderRenderer(pdf, LEFT_MARGIN, undefined, debugMode);
     await headerRenderer.renderHeader(template as any);
   }
   
