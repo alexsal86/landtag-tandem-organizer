@@ -1,45 +1,70 @@
 
 
-## Build Error Fix + Sender Settings Restructuring
+## Analyse & Plan: Brief-Freigabe-Workflow mit Entscheidungssystem
 
-### 1. Fix Build Error in MyWorkCasesWorkspace.tsx
+### Aktuelle Situation (2 parallele, inkonsistente Implementierungen)
 
-**Problem**: Lines 819 and 842 set `status` to values (`"entscheidung_abwartend"` and a generic `string`) that don't match the `CaseItemsRow` type's allowed status enum (`"antwort_ausstehend" | "archiviert" | "erledigt" | "in_klaerung" | "neu"`).
+**Aktiv genutzt** (`LetterEditor.tsx` + `ReviewAssignmentDialog.tsx` + `useLetterOperations.ts`):
+- Mitarbeiter klickt "Zur Prüfung" → `ReviewAssignmentDialog` öffnet sich
+- Man kann Prüfer zuweisen ODER Prüfung überspringen
+- Status wird auf `review` gesetzt, Prüfer werden als `letter_collaborators` gespeichert
+- **Es wird KEINE Entscheidung erstellt** — der Abgeordnete bekommt also nichts in seinem Entscheidungseingang
+- Freigabe/Zurückweisung passiert nur über `LetterBriefDetails` mit einfachen Status-Buttons
+- Kein Brieftext in der Entscheidung, keine strukturierte Antwort
 
-**Fix**: Cast the mapped result with `as CaseItemsRow[]` or cast the status value with `as CaseItemsRow['status']` on both lines.
+**Nicht genutzt** (`LetterStatusWorkflow.tsx` + `letterWorkflowActions.ts`):
+- Erstellt eine Entscheidung mit "Freigeben"/"Zurückweisen"-Optionen
+- Erstellt Versand-Aufgabe bei Freigabe, Revisions-Aufgabe bei Zurückweisung
+- Hat `pending_approval` und `revision_requested` Status
+- **Wird nirgendwo importiert/gerendert** — komplett verwaist
 
-### 2. Move SenderInformationManager from "Adressfeld" Tab to "Allgemein" Tab
+### Probleme
+1. Der Abgeordnete bekommt derzeit keine Entscheidung/Benachrichtigung
+2. Brieftext (Anrede, Inhalt, Schlussformel) wird nicht in die Entscheidung übernommen
+3. Zwei Workflow-Varianten existieren parallel
+4. Status `review` vs. `pending_approval` sind inkonsistent
 
-**Current state**: The `<SenderInformationManager />` component is rendered at the bottom of the "Adressfeld" (block-address) tab in `TemplateFormTabs.tsx` (line 269).
+---
 
-**Change**: Move it into the "Allgemein" (general) tab, below the existing sender dropdown, so all sender-related settings are in one place.
+### Plan: Unified Workflow
 
-### 3. Expand SenderInformationManager to Show All Editable Fields
+#### Schritt 1: `ReviewAssignmentDialog` erweitern
+- Bei "Prüfer zuweisen" wird jetzt eine **Entscheidung** (`task_decisions`) erstellt
+- Die Entscheidung enthält den **vollständigen Brieftext**: Anrede, HTML-Inhalt und Schlussformel
+- Briefdaten werden als Props an den Dialog übergeben (Titel, Content-HTML, Anrede, Schlussformel)
+- Status wird auf `pending_approval` statt `review` gesetzt (Vereinheitlichung)
+- Die Entscheidung nutzt die vorhandenen `response_options` (Freigeben/Zurückweisen)
 
-**Current state**: The `SenderInformationManager` dialog only allows editing `name`, `email`, and `is_default`. But the `sender_information` table has many more fields:
+#### Schritt 2: `letterWorkflowActions.ts` anpassen
+- `createLetterApprovalDecision` erhält zusätzliche Parameter: `contentHtml`, `salutation`, `closingFormula`, `closingName`
+- Die Beschreibung der Entscheidung wird als formatierter HTML-Text aufgebaut mit Anrede, Brieftext und Schlussformel
+- Die `letter_id` wird in der Entscheidung verknüpft (falls DB-Feld vorhanden, sonst im Titel/Description)
 
-- `organization` (currently just copied from name)
-- `landtag_street`, `landtag_house_number`, `landtag_postal_code`, `landtag_city`
-- `wahlkreis_street`, `wahlkreis_house_number`, `wahlkreis_postal_code`, `wahlkreis_city`, `wahlkreis_email`
-- `phone`, `fax`
-- `website`, `facebook_profile`, `instagram_profile`
-- `return_address_line`
+#### Schritt 3: Entscheidungs-Reaktion → Brief-Status-Update
+- Wenn der Abgeordnete in seiner Entscheidungsübersicht "Freigeben" wählt → Brief-Status wird automatisch auf `approved` gesetzt + Versand-Aufgabe wird erstellt
+- Wenn "Zurückweisen" → Status wird auf `revision_requested` gesetzt + Revisions-Aufgabe wird erstellt
+- Dafür: In `useDecisionActions.ts` (oder separater Hook) einen Listener/Handler einbauen, der bei Brief-Entscheidungen den Letter-Status synchronisiert
 
-**Change**: Expand the create/edit dialog in `SenderInformationManager.tsx` to include all these fields, grouped logically:
+#### Schritt 4: `LetterBriefDetails.tsx` anpassen
+- Status `pending_approval` korrekt darstellen (Entscheidung läuft)
+- Status `revision_requested` mit Zurückweisungsgrund anzeigen
+- Workflow-Buttons anpassen: aus `review` wird `pending_approval`
 
-- **Allgemein**: Name, Organisation, Rücksendezeile
-- **Landtag-Adresse**: Straße, Hausnummer, PLZ, Stadt, E-Mail
-- **Wahlkreis-Adresse**: Straße, Hausnummer, PLZ, Stadt, E-Mail
-- **Kontakt**: Telefon, Fax, Website
-- **Social Media**: Facebook, Instagram
+#### Schritt 5: Aufräumen
+- `LetterStatusWorkflow.tsx` entfernen (verwaist, Logik wird in den aktiven Flow integriert)
+- `STATUS_FLOW` und `ALLOWED_TRANSITIONS` in `types.ts` bereinigen (`review` als Legacy behalten aber auf `pending_approval` mappen)
 
-The card list view will also show more info (organization, address summary).
+---
 
-### Files to Edit
+### Dateien
 
-| File | Change |
+| Datei | Änderung |
 |---|---|
-| `src/components/my-work/MyWorkCasesWorkspace.tsx` | Cast status values to fix build errors |
-| `src/components/letter-templates/TemplateFormTabs.tsx` | Remove `<SenderInformationManager />` from block-address tab, add it to general tab |
-| `src/components/administration/SenderInformationManager.tsx` | Expand form to include all `sender_information` fields |
+| `src/components/ReviewAssignmentDialog.tsx` | Brief-Daten als Props, Entscheidung erstellen, Status `pending_approval` |
+| `src/utils/letterWorkflowActions.ts` | Brieftext (HTML, Anrede, Schlussformel) in Entscheidungs-Beschreibung |
+| `src/components/LetterEditor.tsx` | Brief-Daten an ReviewAssignmentDialog durchreichen, `onReviewAssigned` setzt `pending_approval` |
+| `src/components/letters/LetterBriefDetails.tsx` | `pending_approval` und `revision_requested` Status korrekt darstellen |
+| `src/components/letters/hooks/useLetterOperations.ts` | Status `review` → `pending_approval` umstellen |
+| `src/components/letters/types.ts` | `review` als Legacy-Mapping behalten |
+| `src/components/letters/LetterStatusWorkflow.tsx` | Entfernen (verwaist) |
 
