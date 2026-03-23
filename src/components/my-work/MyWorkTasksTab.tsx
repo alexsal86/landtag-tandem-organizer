@@ -6,29 +6,19 @@ import { useNotificationHighlight } from "@/hooks/useNotificationHighlight";
 import { usePersistentState } from "@/hooks/usePersistentState";
 import { useViewPreference } from "@/hooks/useViewPreference";
 import { useMyWorkTasksData } from "@/hooks/useMyWorkTasksData";
-import { supabase } from "@/integrations/supabase/client";
+import { DEFAULT_TASK_STATUSES, useTaskStatuses } from "@/hooks/useTaskStatuses";
+import { useTaskCategories } from "@/hooks/useTaskCategories";
+import { useTenantProfiles } from "@/hooks/useTenantProfiles";
 import { Separator } from "@/components/ui/separator";
 import { Collapsible, CollapsibleContent } from "@/components/ui/collapsible";
 import { CelebrationAnimationSystem } from "@/components/celebrations";
 import { addDays, isAfter, isBefore, startOfDay } from "date-fns";
 import { cn } from "@/lib/utils";
-import { debugConsole } from "@/utils/debugConsole";
 import { MyWorkTasksToolbar } from "./MyWorkTasksToolbar";
 import { MyWorkTasksBoard } from "./MyWorkTasksBoard";
 import { MyWorkTasksList } from "./MyWorkTasksList";
 import { MyWorkTaskDialogs } from "./MyWorkTaskDialogs";
 import { useMyWorkTaskActions } from "./useMyWorkTaskActions";
-
-interface Profile {
-  user_id: string;
-  display_name: string | null;
-}
-
-const DEFAULT_TASK_STATUSES = [
-  { name: "todo", label: "Offen" },
-  { name: "in-progress", label: "In Bearbeitung" },
-  { name: "completed", label: "Erledigt" },
-];
 
 export function MyWorkTasksTab() {
   const { user } = useAuth();
@@ -59,13 +49,15 @@ export function MyWorkTasksTab() {
     "mywork-tasks-status-filter",
     "all",
   );
-  const [taskStatuses, setTaskStatuses] = useState<
-    { name: string; label: string }[]
-  >([]);
-  const [taskCategories, setTaskCategories] = useState<
-    { name: string; label: string }[]
-  >([]);
-  const [profiles, setProfiles] = useState<Profile[]>([]);
+  const {
+    data: taskStatuses,
+  } = useTaskStatuses();
+  const {
+    data: taskCategories,
+  } = useTaskCategories();
+  const {
+    data: profiles,
+  } = useTenantProfiles();
   const [dueFollowUpsExpanded, setDueFollowUpsExpanded] = useState(true);
   const [scheduledFollowUpsExpanded, setScheduledFollowUpsExpanded] =
     useState(false);
@@ -79,55 +71,6 @@ export function MyWorkTasksTab() {
       navigate("/tasks?action=create");
     }
   }, [navigate, searchParams, setSearchParams]);
-
-  useEffect(() => {
-    if (!user) return;
-
-    const loadProfiles = async () => {
-      try {
-        const { data, error } = await supabase
-          .from("profiles")
-          .select("user_id, display_name")
-          .order("display_name");
-        if (error) throw error;
-        setProfiles(data || []);
-      } catch (error) {
-        debugConsole.error("Error loading profiles:", error);
-      }
-    };
-
-    const loadTaskStatuses = async () => {
-      try {
-        const { data } = await supabase
-          .from("task_statuses")
-          .select("name, label")
-          .eq("is_active", true)
-          .order("order_index");
-        setTaskStatuses(data || []);
-      } catch (error) {
-        debugConsole.error("Error loading task statuses:", error);
-      }
-    };
-
-    const loadTaskCategories = async () => {
-      try {
-        const { data } = await supabase
-          .from("task_categories")
-          .select("name, label")
-          .eq("is_active", true)
-          .order("order_index");
-        setTaskCategories(data || []);
-      } catch (error) {
-        debugConsole.error("Error loading task categories:", error);
-      }
-    };
-
-    void Promise.all([
-      loadProfiles(),
-      loadTaskStatuses(),
-      loadTaskCategories(),
-    ]);
-  }, [user]);
 
   const {
     availableTaskStatuses,
