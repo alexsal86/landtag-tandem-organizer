@@ -1,4 +1,5 @@
 import React from 'react';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { Save, Users, Eye, AlertTriangle, FileText, MessageSquare, Paperclip, Settings, Layout, Building, Info } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
