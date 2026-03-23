@@ -110,7 +110,7 @@ export function internalServerErrorResponse(): Response {
 export function safeErrorResponse(
   error: unknown,
   context: string,
-  status: 500 = 500,
+  status: 400 | 401 | 403 | 500 = 500,
 ): Response {
   console.error(`[${context}]`, error);
 

@@ -9443,6 +9443,49 @@ export type Database = {
         }
         Relationships: []
       }
+      task_assignees: {
+        Row: {
+          assigned_by: string | null
+          created_at: string
+          task_id: string
+          user_id: string
+        }
+        Insert: {
+          assigned_by?: string | null
+          created_at?: string
+          task_id: string
+          user_id: string
+        }
+        Update: {
+          assigned_by?: string | null
+          created_at?: string
+          task_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "task_assignees_assigned_by_fkey"
+            columns: ["assigned_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["user_id"]
+          },
+          {
+            foreignKeyName: "task_assignees_task_id_fkey"
+            columns: ["task_id"]
+            isOneToOne: false
+            referencedRelation: "tasks"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "task_assignees_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["user_id"]
+          },
+        ]
+      }
       task_categories: {
         Row: {
           color: string | null
@@ -9932,49 +9975,6 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "tenants"
             referencedColumns: ["id"]
-          },
-        ]
-      }
-      task_assignees: {
-        Row: {
-          assigned_by: string | null
-          created_at: string
-          task_id: string
-          user_id: string
-        }
-        Insert: {
-          assigned_by?: string | null
-          created_at?: string
-          task_id: string
-          user_id: string
-        }
-        Update: {
-          assigned_by?: string | null
-          created_at?: string
-          task_id?: string
-          user_id?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "task_assignees_assigned_by_fkey"
-            columns: ["assigned_by"]
-            isOneToOne: false
-            referencedRelation: "profiles"
-            referencedColumns: ["user_id"]
-          },
-          {
-            foreignKeyName: "task_assignees_task_id_fkey"
-            columns: ["task_id"]
-            isOneToOne: false
-            referencedRelation: "tasks"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "task_assignees_user_id_fkey"
-            columns: ["user_id"]
-            isOneToOne: false
-            referencedRelation: "profiles"
-            referencedColumns: ["user_id"]
           },
         ]
       }
@@ -11338,13 +11338,13 @@ export type Database = {
     Functions: {
       _meeting_default_end: { Args: { _date: string }; Returns: string }
       _meeting_default_start: { Args: { _date: string }; Returns: string }
-      archive_employee_year_stats: {
-        Args: { target_year: number }
-        Returns: number
-      }
       archive_completed_task: {
         Args: { p_task_id: string; p_user_id: string }
         Returns: string
+      }
+      archive_employee_year_stats: {
+        Args: { target_year: number }
+        Returns: number
       }
       assign_contact_to_organization: {
         Args: { contact_id: string; org_id: string }
@@ -11647,6 +11647,10 @@ export type Database = {
           user_id_param: string
         }
         Returns: undefined
+      }
+      parse_task_assignee_ids: {
+        Args: { p_assigned_to: string }
+        Returns: string[]
       }
       reconcile_employee_meeting_requests: {
         Args: {
