@@ -240,10 +240,6 @@ export default function AppointmentPreparationDetail() {
 
               <div className="flex flex-col items-start gap-2 text-xs text-muted-foreground lg:ml-auto lg:items-end">
                 <div>{getStatusBadge(preparation.status)}</div>
-                <div className="text-left lg:text-right">
-                  <p>Erstellt:</p>
-                  <p className="font-medium">{new Date(preparation.created_at).toLocaleDateString('de-DE')}</p>
-                </div>
                 <div className="text-left whitespace-nowrap lg:text-right">
                   <p>Zuletzt bearbeitet</p>
                   <p className="font-medium">{new Date(preparation.updated_at).toLocaleString('de-DE')}</p>
