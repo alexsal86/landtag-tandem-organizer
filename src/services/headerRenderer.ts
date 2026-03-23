@@ -40,6 +40,7 @@ export class HeaderRenderer {
   constructor(pdf: jsPDF, leftMargin: number = 25, layoutSettings?: any, debugMode: boolean = false) {
     this.pdf = pdf;
     this.leftMargin = leftMargin;
+    this.debugMode = debugMode;
     this.layoutSettings = layoutSettings || {
       pageWidth: 210,
       pageHeight: 297,
