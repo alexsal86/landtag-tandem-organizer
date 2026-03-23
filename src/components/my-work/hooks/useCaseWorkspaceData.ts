@@ -219,7 +219,7 @@ export const useCaseWorkspaceData = ({ tenantId, userId }: { tenantId?: string; 
   const error = (itemsQuery.error || filesQuery.error || teamUsersQuery.error) as Error | null;
 
   if (error) {
-    debugConsole.error("Failed to load case workspace data:", error);
+    console.error("Failed to load case workspace data:", error);
   }
 
   return {

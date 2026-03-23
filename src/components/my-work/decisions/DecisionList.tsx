@@ -30,7 +30,7 @@ interface DecisionListProps {
   onTogglePriority: (decisionId: string, currentPriority: number) => Promise<void>;
   onTogglePublic: (decisionId: string, currentValue: boolean) => Promise<void>;
   onUpdateDeadline: (decisionId: string, date: string | null) => Promise<void>;
-  tenantUsers: Array<{ id: string; display_name?: string | null }>;
+  tenantUsers: Array<{ id: string; display_name?: string | null; avatar_url?: string | null }>;
 }
 
 export function DecisionList({
