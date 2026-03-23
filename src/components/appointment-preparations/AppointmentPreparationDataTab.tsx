@@ -9,20 +9,20 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import {
-  CalendarIcon, ClockIcon, MapPinIcon, UsersIcon, PlusIcon, EditIcon, SaveIcon, XIcon,
+  CalendarIcon, ClockIcon, UsersIcon, PlusIcon, EditIcon, SaveIcon, XIcon,
   ExternalLinkIcon, FileTextIcon, ChevronDownIcon, ChevronRightIcon, FolderIcon,
   MessageSquareIcon, SettingsIcon, CheckCircleIcon, CarIcon, MapIcon, ClipboardListIcon,
-  TagIcon, TrashIcon
+  TagIcon, TrashIcon, UploadIcon
 } from "lucide-react";
 import { AppointmentPreparation, AppointmentConversationPartner, getConversationPartnersFromPreparationData } from "@/hooks/useAppointmentPreparation";
 import { debounce } from "@/utils/debounce";
 import { toast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { useTenant } from "@/hooks/useTenant";
-import { format } from "date-fns";
-import { de } from "date-fns/locale";
+import { useAuth } from "@/hooks/useAuth";
 
 type ConversationPartner = AppointmentConversationPartner;
 type Companion = NonNullable<AppointmentPreparation['preparation_data']['companions']>[number];
@@ -126,6 +126,7 @@ export function AppointmentPreparationDataTab({
   const [selectedContactId, setSelectedContactId] = useState("");
   const [showCustomContact, setShowCustomContact] = useState(false);
   const { currentTenant } = useTenant();
+  const { user } = useAuth();
   const contactsById = useMemo(
     () => new Map(contacts.map(contact => [contact.id, contact])),
     [contacts]
@@ -384,6 +385,7 @@ export function AppointmentPreparationDataTab({
     const newPartner: ConversationPartner = {
       id: crypto.randomUUID(),
       name: '',
+      avatar_url: '',
       role: '',
       organization: '',
       note: ''
@@ -412,6 +414,63 @@ export function AppointmentPreparationDataTab({
       conversation_partners: updated,
       contact_person: undefined
     }));
+  };
+
+  const getPartnerInitials = (name: string) =>
+    name
+      .split(' ')
+      .filter(Boolean)
+      .slice(0, 2)
+      .map((part) => part.charAt(0).toUpperCase())
+      .join('') || '?';
+
+  const handleConversationPartnerPhotoUpload = async (idx: number, file: File | null) => {
+    if (!file || !user) return;
+
+    try {
+      setSaving(true);
+      const partner = conversationPartners[idx];
+      const fileExtension = file.name.split('.').pop() || 'jpg';
+      const filePath = `${user.id}/appointment-partners/${preparation.id}/${partner.id}_${Date.now()}.${fileExtension}`;
+
+      const { error: uploadError } = await supabase.storage
+        .from('avatars')
+        .upload(filePath, file, {
+          cacheControl: '3600',
+          upsert: true,
+          contentType: file.type,
+        });
+
+      if (uploadError) throw uploadError;
+
+      const { data } = supabase.storage.from('avatars').getPublicUrl(filePath);
+      const avatarUrl = `${data.publicUrl}?t=${Date.now()}`;
+      const updated = conversationPartners.map((entry, entryIdx) =>
+        entryIdx === idx ? { ...entry, avatar_url: avatarUrl } : entry
+      );
+
+      setConversationPartners(updated);
+      await onUpdate({
+        preparation_data: buildPreparationData(editData, {
+          conversation_partners: updated,
+          contact_person: undefined,
+        }),
+      });
+
+      toast({
+        title: "Foto hochgeladen",
+        description: "Das Foto wurde dem Gesprächspartner zugeordnet.",
+      });
+    } catch (error) {
+      debugConsole.error("Error uploading conversation partner photo:", error);
+      toast({
+        title: "Fehler",
+        description: "Das Foto konnte nicht hochgeladen werden.",
+        variant: "destructive",
+      });
+    } finally {
+      setSaving(false);
+    }
   };
 
   // --- Companion handlers ---
@@ -585,21 +644,34 @@ export function AppointmentPreparationDataTab({
               )}
             </CollapsibleTrigger>
             <CollapsibleContent className="pt-4">
-              <div className="flex flex-wrap gap-3 px-1">
-                {VISIT_REASON_OPTIONS.map(option => (
-                  <button
-                    key={option.value}
-                    type="button"
-                    onClick={() => handleVisitReasonChange(option.value)}
-                    className={`px-4 py-2 rounded-full border text-sm font-medium transition-colors ${
-                      visitReason === option.value
-                        ? 'bg-primary text-primary-foreground border-primary'
-                        : 'bg-background border-border hover:bg-muted'
-                    }`}
-                  >
-                    {option.label}
-                  </button>
-                ))}
+              <div className="space-y-4 px-1">
+                <div className="flex flex-wrap gap-3">
+                  {VISIT_REASON_OPTIONS.map(option => (
+                    <button
+                      key={option.value}
+                      type="button"
+                      onClick={() => handleVisitReasonChange(option.value)}
+                      className={`px-4 py-2 rounded-full border text-sm font-medium transition-colors ${
+                        visitReason === option.value
+                          ? 'bg-primary text-primary-foreground border-primary'
+                          : 'bg-background border-border hover:bg-muted'
+                      }`}
+                    >
+                      {option.label}
+                    </button>
+                  ))}
+                </div>
+
+                <div className="space-y-2">
+                  <label className="text-sm font-medium">Freifeld zum Anlass</label>
+                  <Textarea
+                    value={editData.visit_reason_details ?? ''}
+                    onChange={(e) => handleFieldChange('visit_reason_details', e.target.value)}
+                    placeholder="Weitere Details zum Anlass des Besuchs"
+                    rows={3}
+                    className="resize-none"
+                  />
+                </div>
               </div>
             </CollapsibleContent>
           </Collapsible>
@@ -724,7 +796,33 @@ export function AppointmentPreparationDataTab({
                 <p className="text-sm text-muted-foreground px-1">Noch keine Gesprächspartner hinzugefügt.</p>
               )}
               {conversationPartners.map((partner, idx) => (
-                <div key={partner.id} className="grid grid-cols-1 md:grid-cols-[1.2fr_1fr_1fr_1fr_auto] gap-2 items-start p-3 border rounded-lg bg-muted/20">
+                <div key={partner.id} className="grid grid-cols-1 gap-3 items-start rounded-lg border bg-muted/20 p-3 md:grid-cols-[auto_1.2fr_1fr_1fr_1fr_auto]">
+                  <div className="space-y-2">
+                    <label className="text-xs text-muted-foreground">Foto</label>
+                    <div className="space-y-2">
+                      <Avatar className="h-14 w-14 border">
+                        <AvatarImage src={partner.avatar_url || undefined} alt={partner.name || "Gesprächspartner"} />
+                        <AvatarFallback>{getPartnerInitials(partner.name)}</AvatarFallback>
+                      </Avatar>
+                      <Label
+                        htmlFor={`partner-photo-${partner.id}`}
+                        className="inline-flex cursor-pointer items-center gap-1 rounded-md border px-2 py-1 text-xs hover:bg-background"
+                      >
+                        <UploadIcon className="h-3.5 w-3.5" />
+                        Foto hochladen
+                      </Label>
+                      <Input
+                        id={`partner-photo-${partner.id}`}
+                        type="file"
+                        accept="image/*"
+                        className="hidden"
+                        onChange={(e) => {
+                          void handleConversationPartnerPhotoUpload(idx, e.target.files?.[0] ?? null);
+                          e.target.value = '';
+                        }}
+                      />
+                    </div>
+                  </div>
                   <div className="space-y-1">
                     <label className="text-xs text-muted-foreground">Name</label>
                     <Input
@@ -806,7 +904,7 @@ export function AppointmentPreparationDataTab({
                 <p className="text-sm text-muted-foreground px-1">Noch keine Begleitpersonen hinzugefügt.</p>
               )}
               {companions.map((companion, idx) => (
-                <div key={companion.id} className="grid grid-cols-[1fr_auto_1fr_auto] gap-2 items-start p-3 border rounded-lg bg-muted/20">
+                <div key={companion.id} className="grid grid-cols-1 gap-2 items-start rounded-lg border bg-muted/20 p-3 md:grid-cols-[1fr_auto_1fr_auto]">
                   <div className="space-y-1">
                     <label className="text-xs text-muted-foreground">Name</label>
                     <Input
