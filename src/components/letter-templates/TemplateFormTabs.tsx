@@ -267,7 +267,6 @@ export const useTemplateFormTabs = ({
             onChange={(newLines) => setBlockItems('addressField', { mode: 'lines', lines: newLines } as any)}
           />
         </div>
-        <div className="border-t pt-4"><SenderInformationManager /></div>
       </TabsContent>
 
       <TabsContent value="block-info">

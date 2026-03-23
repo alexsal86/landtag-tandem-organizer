@@ -839,7 +839,7 @@ export function MyWorkCasesWorkspace() {
       }],
     } : prev);
     if (detailItemId) {
-      setCaseItems((prev) => prev.map((row) => row.id === detailItemId ? { ...row, status: restoredStatus } : row));
+      setCaseItems((prev) => prev.map((row) => row.id === detailItemId ? { ...row, status: restoredStatus as CaseItemsRow['status'] } : row));
     }
   }, [detailItemId, editableCaseItem, getStatusMeta, setCaseItems]);
 
