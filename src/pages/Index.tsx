@@ -34,6 +34,7 @@ const NotificationsPage = lazyWithRetry(() => import("@/pages/NotificationsPage"
 const LetterDetail = lazyWithRetry(() => import("@/pages/LetterDetail"));
 const EmployeeMeetingDetail = lazyWithRetry(() => import("@/pages/EmployeeMeetingDetail"));
 const AppointmentPreparationDetail = lazyWithRetry(() => import("@/pages/AppointmentPreparationDetail"));
+const BriefingLivePage = lazyWithRetry(() => import("@/pages/BriefingLivePage"));
 const CreateAppointmentDialog = lazyWithRetry(() => import("@/components/CreateAppointmentDialog").then(m => ({ default: m.CreateAppointmentDialog })));
 const GlobalQuickActionHandler = lazyWithRetry(() => import("@/components/layout/GlobalQuickActionHandler").then(m => ({ default: m.GlobalQuickActionHandler })));
 const GlobalAnnouncementBanner = lazyWithRetry(() => import("@/components/announcements/GlobalAnnouncementBanner").then(m => ({ default: m.GlobalAnnouncementBanner })));
