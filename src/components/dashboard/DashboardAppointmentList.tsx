@@ -308,10 +308,9 @@ export function DashboardAppointmentList({ appointments, isShowingTomorrow }: Pr
                           </DialogHeader>
                           <div className="space-y-3">
                             <SimpleRichTextEditor
-                              value={noteText}
+                              initialContent={noteText}
                               onChange={setNoteText}
                               placeholder="Ihre Notiz / Rückmeldung …"
-                              minHeight="120px"
                             />
                             <Button onClick={handleSaveNote} disabled={saving} className="w-full">
                               {saving && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
