@@ -12,7 +12,7 @@ import { Label } from "@/components/ui/label";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import {
-  CalendarIcon, ClockIcon, UsersIcon, PlusIcon, EditIcon, SaveIcon, XIcon,
+  CalendarIcon, ClockIcon, UsersIcon, PlusIcon,
   ExternalLinkIcon, FileTextIcon, ChevronDownIcon, ChevronRightIcon, FolderIcon,
   MessageSquareIcon, SettingsIcon, CheckCircleIcon, CarIcon, MapIcon, ClipboardListIcon,
   TagIcon, TrashIcon, UploadIcon
@@ -122,7 +122,6 @@ export function AppointmentPreparationDataTab({
     preparationDataWithDefaults.visit_reason ?? ''
   );
 
-  const [isEditing, setIsEditing] = useState(false);
   const [contacts, setContacts] = useState<any[]>([]);
   const [selectedContactId, setSelectedContactId] = useState("");
   const [showCustomContact, setShowCustomContact] = useState(false);
@@ -228,89 +227,42 @@ export function AppointmentPreparationDataTab({
     };
   };
 
-  const handleSave = async () => {
-    try {
-      setSaving(true);
-
-      const selectedContact = contactsById.get(selectedContactId);
-      const resolvedContact = showCustomContact
-        ? {
-            contact_name: editData.contact_name || undefined,
-            contact_info: editData.contact_info || undefined,
-          }
-        : getContactDetails(selectedContact);
-
-      const updatedPreparationData = buildPreparationData({
-        ...editData,
-        ...resolvedContact,
-        contact_id: showCustomContact ? undefined : selectedContactId || undefined,
-        contact_person: conversationPartners.length > 0 ? undefined : editData.contact_person
-      } as any);
-
-      await onUpdate({
-        preparation_data: updatedPreparationData,
-        notes: editData.briefing_notes || "",
-      });
-      setIsEditing(false);
-
-      toast({
-        title: "Gespeichert",
-        description: "Terminvorbereitung wurde erfolgreich gespeichert.",
-      });
-    } catch (error) {
-      debugConsole.error("Error saving preparation:", error);
-      toast({
-        title: "Fehler",
-        description: "Fehler beim Speichern der Terminvorbereitung.",
-        variant: "destructive",
-      });
-    } finally {
-      setSaving(false);
-    }
-  };
-
-  const handleCancel = () => {
-    const nextPreparationData = getPreparationDataWithDefaults(preparation.preparation_data);
-    setEditData({
-      ...nextPreparationData,
-      contact_name: nextPreparationData.contact_name || "",
-      contact_info: nextPreparationData.contact_info || "",
-      briefing_notes: nextPreparationData.briefing_notes || preparation.notes || ""
-    } as Record<string, any>);
-    setCompanions(nextPreparationData.companions ?? []);
-    setHasParking(nextPreparationData.has_parking ?? false);
-    setProgramRows(nextPreparationData.program ?? []);
-    setVisitReason(nextPreparationData.visit_reason ?? '');
-    setIsEditing(false);
-    setShowCustomContact(!!(nextPreparationData.contact_name && nextPreparationData.contact_info));
-    setSelectedContactId(nextPreparationData.contact_id || "");
-  };
-
   const handleContactSelect = (contactId: string) => {
     if (contactId === "custom") {
       setShowCustomContact(true);
       setSelectedContactId("");
-      setEditData(prev => ({ ...prev, contact_name: "", contact_info: "" }));
+      const newData = { ...editData, contact_name: "", contact_info: "", contact_id: undefined };
+      setEditData(newData);
+      debouncedSave(buildPreparationData(newData));
     } else if (contactId === "none") {
       setShowCustomContact(false);
       setSelectedContactId("");
-      setEditData(prev => ({ ...prev, contact_name: "", contact_info: "" }));
+      const newData = { ...editData, contact_name: "", contact_info: "", contact_id: undefined };
+      setEditData(newData);
+      debouncedSave(buildPreparationData(newData));
     } else {
       setShowCustomContact(false);
       setSelectedContactId(contactId);
       const selectedContact = contactsById.get(contactId);
       if (selectedContact) {
         const { contact_name, contact_info } = getContactDetails(selectedContact);
-        setEditData(prev => ({
-          ...prev,
+        const newData = {
+          ...editData,
           contact_name: contact_name || "",
-          contact_info: contact_info || ""
-        }));
+          contact_info: contact_info || "",
+          contact_id: contactId
+        };
+        setEditData(newData);
+        debouncedSave(buildPreparationData(newData));
       }
     }
   };
 
   const getStatusBadge = (status: string) => {
+    if (status === "draft") {
+      return null;
+    }
+
     const statusColors = {
       draft: "secondary",
       in_progress: "default",
@@ -583,6 +535,95 @@ export function AppointmentPreparationDataTab({
     return `${filledCount}/${section.fields.length}`;
   };
 
+  const renderPreparationSection = (sectionKey: keyof typeof fieldSections) => {
+    const section = fieldSections[sectionKey];
+    const SectionIcon = section.icon;
+    const isExpanded = expandedSections[sectionKey];
+    const filledCount = getFilledFieldsCount(sectionKey);
+
+    return (
+      <Collapsible
+        key={sectionKey}
+        open={isExpanded}
+        onOpenChange={() => toggleSection(sectionKey)}
+      >
+        <CollapsibleTrigger className="flex items-center justify-between w-full p-4 bg-muted/30 rounded-lg hover:bg-muted/50 transition-colors">
+          <div className="flex items-center gap-3">
+            <SectionIcon className="h-5 w-5 text-primary" />
+            <h3 className="font-medium">{section.title}</h3>
+            <span className="text-xs bg-primary/10 text-primary px-2 py-1 rounded-full">
+              {filledCount}
+            </span>
+          </div>
+          {isExpanded ? (
+            <ChevronDownIcon className="h-4 w-4" />
+          ) : (
+            <ChevronRightIcon className="h-4 w-4" />
+          )}
+        </CollapsibleTrigger>
+
+        <CollapsibleContent className="pt-4">
+          <div className="grid gap-4 md:grid-cols-2">
+            {section.fields.map((field) => (
+              <div key={field.key} className="space-y-2">
+                <label className="text-sm font-medium">{field.label}</label>
+
+                {(field as any).type === "select" ? (
+                  <div className="space-y-2">
+                    <Select
+                      value={editData[field.key] || ""}
+                      onValueChange={(value) => handleFieldChange(field.key, value)}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder={field.placeholder} />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {dressCodeOptions.map((option) => (
+                          <SelectItem key={option.value} value={option.value}>
+                            {option.label}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+
+                    {editData[field.key] === "custom" && (
+                      <Input
+                        value={editData[`${field.key}_custom`] || ""}
+                        onChange={(e) => handleFieldChange(`${field.key}_custom`, e.target.value)}
+                        placeholder="Benutzerdefinierte Kleiderordnung eingeben..."
+                      />
+                    )}
+                  </div>
+                ) : (field as any).multiline ? (
+                  <Textarea
+                    value={editData[field.key] || ""}
+                    onChange={(e) => handleFieldChange(field.key, e.target.value)}
+                    placeholder={field.placeholder}
+                    rows={3}
+                    className="resize-none"
+                  />
+                ) : (
+                  <Input
+                    value={editData[field.key] || ""}
+                    onChange={(e) => handleFieldChange(field.key, e.target.value)}
+                    placeholder={field.placeholder}
+                  />
+                )}
+
+                {editData[field.key] && (
+                  <div className="flex items-center gap-1 text-xs text-green-600">
+                    <CheckCircleIcon className="h-3 w-3" />
+                    Ausgefüllt
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+        </CollapsibleContent>
+      </Collapsible>
+    );
+  };
+
   return (
     <div className="space-y-4">
       <div className="flex flex-col gap-3 rounded-xl border bg-card p-4 shadow-card sm:flex-row sm:items-center sm:justify-between">
@@ -600,32 +641,14 @@ export function AppointmentPreparationDataTab({
             )}
           </div>
         </div>
-
-        <div className="flex items-center gap-2">
-          {isEditing ? (
-            <>
-              <Button variant="outline" size="sm" onClick={handleCancel}>
-                <XIcon className="h-4 w-4 mr-2" />
-                Abbrechen
-              </Button>
-              <Button size="sm" onClick={handleSave} disabled={saving}>
-                <SaveIcon className="h-4 w-4 mr-2" />
-                {saving ? 'Speichern...' : 'Speichern'}
-              </Button>
-            </>
-          ) : (
-            <Button size="sm" onClick={() => setIsEditing(true)}>
-              <EditIcon className="h-4 w-4 mr-2" />
-              Bearbeiten
-            </Button>
-          )}
-        </div>
       </div>
 
       {/* ─── NEW SECTIONS ─── */}
 
+      <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+
       {/* 1. Anlass des Besuchs */}
-      <Card>
+      <Card className="lg:order-2">
         <CardContent className="pt-6">
           <Collapsible
             open={expandedSections.anlass}
@@ -683,7 +706,7 @@ export function AppointmentPreparationDataTab({
       </Card>
 
       {/* 2. Gesprächspartner */}
-      <Card>
+      <Card className="lg:order-1">
         <CardContent className="pt-6">
           <Collapsible
             open={expandedSections.gespraechspartner}
@@ -727,74 +750,61 @@ export function AppointmentPreparationDataTab({
                   )}
                 </div>
 
-                {isEditing ? (
-                  <div className="space-y-4">
-                    <div>
-                      <label className="mb-2 block text-sm font-medium">Kontakt</label>
-                      <Select
-                        value={selectedContactId || (showCustomContact ? "custom" : "none")}
-                        onValueChange={handleContactSelect}
-                      >
-                        <SelectTrigger>
-                          <SelectValue placeholder="Kontakt auswählen oder manuell eingeben" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="none">Kein Kontakt</SelectItem>
-                          <SelectItem value="custom">
-                            <div className="flex items-center gap-2">
-                              <PlusIcon className="h-4 w-4" />
-                              Kontakt manuell eingeben
+                <div className="space-y-4">
+                  <div>
+                    <label className="mb-2 block text-sm font-medium">Kontakt</label>
+                    <Select
+                      value={selectedContactId || (showCustomContact ? "custom" : "none")}
+                      onValueChange={handleContactSelect}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Kontakt auswählen oder manuell eingeben" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="none">Kein Kontakt</SelectItem>
+                        <SelectItem value="custom">
+                          <div className="flex items-center gap-2">
+                            <PlusIcon className="h-4 w-4" />
+                            Kontakt manuell eingeben
+                          </div>
+                        </SelectItem>
+                        {contacts.map((contact) => (
+                          <SelectItem key={contact.id} value={contact.id}>
+                            <div>
+                              <div className="font-medium">{contact.name}</div>
+                              <div className="text-xs text-muted-foreground">
+                                {contact.organization && `${contact.organization} • `}
+                                {contact.role}
+                              </div>
                             </div>
                           </SelectItem>
-                          {contacts.map((contact) => (
-                            <SelectItem key={contact.id} value={contact.id}>
-                              <div>
-                                <div className="font-medium">{contact.name}</div>
-                                <div className="text-xs text-muted-foreground">
-                                  {contact.organization && `${contact.organization} • `}
-                                  {contact.role}
-                                </div>
-                              </div>
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </div>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
 
-                    {showCustomContact && (
-                      <div className="space-y-4 rounded-lg border bg-background p-4">
-                        <div>
-                          <label className="mb-2 block text-sm font-medium">Kontaktname</label>
-                          <Input
-                            value={editData.contact_name}
-                            onChange={(e) => setEditData(prev => ({ ...prev, contact_name: e.target.value }))}
-                            placeholder="Name des Kontakts"
-                          />
-                        </div>
-                        <div>
-                          <label className="mb-2 block text-sm font-medium">Kontaktinformationen</label>
-                          <Textarea
-                            value={editData.contact_info}
-                            onChange={(e) => setEditData(prev => ({ ...prev, contact_info: e.target.value }))}
-                            placeholder="E-Mail, Telefon, weitere Informationen..."
-                            rows={3}
-                          />
-                        </div>
+                  {showCustomContact && (
+                    <div className="space-y-4 rounded-lg border bg-background p-4">
+                      <div>
+                        <label className="mb-2 block text-sm font-medium">Kontaktname</label>
+                        <Input
+                          value={editData.contact_name}
+                          onChange={(e) => handleFieldChange("contact_name", e.target.value)}
+                          placeholder="Name des Kontakts"
+                        />
                       </div>
-                    )}
-                  </div>
-                ) : preparation.preparation_data.contact_name ? (
-                  <div className="space-y-2">
-                    <div className="font-medium">{preparation.preparation_data.contact_name}</div>
-                    {preparation.preparation_data.contact_info && (
-                      <div className="text-sm text-muted-foreground whitespace-pre-wrap">
-                        {preparation.preparation_data.contact_info}
+                      <div>
+                        <label className="mb-2 block text-sm font-medium">Kontaktinformationen</label>
+                        <Textarea
+                          value={editData.contact_info}
+                          onChange={(e) => handleFieldChange("contact_info", e.target.value)}
+                          placeholder="E-Mail, Telefon, weitere Informationen..."
+                          rows={3}
+                        />
                       </div>
-                    )}
-                  </div>
-                ) : (
-                  <div className="text-sm text-muted-foreground">Kein Kontakt zugeordnet</div>
-                )}
+                    </div>
+                  )}
+                </div>
               </div>
               {conversationPartners.length === 0 && (
                 <p className="text-sm text-muted-foreground px-1">Noch keine Gesprächspartner hinzugefügt.</p>
@@ -1170,103 +1180,29 @@ export function AppointmentPreparationDataTab({
         </CardContent>
       </Card>
 
-      {/* ─── EXISTING PREPARATION DATA SECTIONS ─── */}
+      {/* Vorbereitungsdaten links */}
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <FileTextIcon className="h-5 w-5" />
-            Vorbereitungsdaten
+            Vorbereitungsdaten · Inhalte & Kommunikation
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
-          {Object.entries(fieldSections).map(([sectionKey, section]) => {
-            const SectionIcon = section.icon;
-            const isExpanded = expandedSections[sectionKey as keyof typeof expandedSections];
-            const filledCount = getFilledFieldsCount(sectionKey);
+          {(["basics", "communication"] as const).map(renderPreparationSection)}
+        </CardContent>
+      </Card>
 
-            return (
-              <Collapsible
-                key={sectionKey}
-                open={isExpanded}
-                onOpenChange={() => toggleSection(sectionKey as keyof typeof expandedSections)}
-              >
-                <CollapsibleTrigger className="flex items-center justify-between w-full p-4 bg-muted/30 rounded-lg hover:bg-muted/50 transition-colors">
-                  <div className="flex items-center gap-3">
-                    <SectionIcon className="h-5 w-5 text-primary" />
-                    <h3 className="font-medium">{section.title}</h3>
-                    <span className="text-xs bg-primary/10 text-primary px-2 py-1 rounded-full">
-                      {filledCount}
-                    </span>
-                  </div>
-                  {isExpanded ? (
-                    <ChevronDownIcon className="h-4 w-4" />
-                  ) : (
-                    <ChevronRightIcon className="h-4 w-4" />
-                  )}
-                </CollapsibleTrigger>
-
-                <CollapsibleContent className="pt-4">
-                  <div className="grid gap-4 md:grid-cols-2">
-                    {section.fields.map((field) => (
-                      <div key={field.key} className="space-y-2">
-                        <label className="text-sm font-medium">{field.label}</label>
-
-                        {(field as any).type === "select" ? (
-                          <div className="space-y-2">
-                            <Select
-                              value={editData[field.key] || ""}
-                              onValueChange={(value) => handleFieldChange(field.key, value)}
-                            >
-                              <SelectTrigger>
-                                <SelectValue placeholder={field.placeholder} />
-                              </SelectTrigger>
-                              <SelectContent>
-                                {dressCodeOptions.map((option) => (
-                                  <SelectItem key={option.value} value={option.value}>
-                                    {option.label}
-                                  </SelectItem>
-                                ))}
-                              </SelectContent>
-                            </Select>
-
-                            {editData[field.key] === "custom" && (
-                              <Input
-                                value={editData[`${field.key}_custom`] || ""}
-                                onChange={(e) => handleFieldChange(`${field.key}_custom`, e.target.value)}
-                                placeholder="Benutzerdefinierte Kleiderordnung eingeben..."
-                              />
-                            )}
-                          </div>
-                        ) : (field as any).multiline ? (
-                          <Textarea
-                            value={editData[field.key] || ""}
-                            onChange={(e) => handleFieldChange(field.key, e.target.value)}
-                            placeholder={field.placeholder}
-                            rows={3}
-                            className="resize-none"
-                          />
-                        ) : (
-                          <Input
-                            value={editData[field.key] || ""}
-                            onChange={(e) => handleFieldChange(field.key, e.target.value)}
-                            placeholder={field.placeholder}
-                          />
-                        )}
-
-                        {editData[field.key] && (
-                          <div className="flex items-center gap-1 text-xs text-green-600">
-                            <CheckCircleIcon className="h-3 w-3" />
-                            Ausgefüllt
-                          </div>
-                        )}
-                      </div>
-                    ))}
-                  </div>
-                </CollapsibleContent>
-              </Collapsible>
-            );
-          })}
-
+      {/* Vorbereitungsdaten rechts */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <FileTextIcon className="h-5 w-5" />
+            Vorbereitungsdaten · Personen, Unterlagen & Rahmen
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          {(["people", "materials", "framework"] as const).map(renderPreparationSection)}
           {Object.values(fieldSections).every(section =>
             section.fields.every(field => !editData[field.key])
           ) && (
@@ -1278,7 +1214,7 @@ export function AppointmentPreparationDataTab({
           )}
         </CardContent>
       </Card>
-
+      </div>
     </div>
   );
 }

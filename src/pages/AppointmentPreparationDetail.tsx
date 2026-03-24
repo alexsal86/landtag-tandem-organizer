@@ -171,7 +171,7 @@ export default function AppointmentPreparationDetail() {
   if (error || !preparation) {
     return (
       <div className="p-6">
-        <div className="max-w-6xl mx-auto">
+        <div className="w-full">
           <Button variant="outline" onClick={() => navigate(-1)} className="mb-6">
             <ArrowLeft className="h-4 w-4 mr-2" />
             Zurück
@@ -188,6 +188,10 @@ export default function AppointmentPreparationDetail() {
   }
 
   const getStatusBadge = (status: string) => {
+    if (activeTab === "preparation" && status === "draft") {
+      return null;
+    }
+
     switch (status) {
       case "completed":
         return <Badge variant="default">Abgeschlossen</Badge>;
@@ -202,12 +206,12 @@ export default function AppointmentPreparationDetail() {
 
   return (
     <div className="p-6">
-      <div className="max-w-6xl mx-auto">
+      <div className="w-full">
         {/* Back Button */}
         <div className="mb-6">
-          <Button variant="outline" onClick={() => navigate("/calendar")}>
+          <Button variant="outline" onClick={() => navigate("/eventplanning")}>
             <ArrowLeft className="h-4 w-4 mr-2" />
-            Zurück zum Kalender
+            Zurück zu Planungen
           </Button>
         </div>
 
