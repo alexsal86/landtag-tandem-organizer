@@ -268,7 +268,7 @@ export function DashboardAppointmentList({ appointments, isShowingTomorrow }: Pr
                   </button>
                 )}
                 {isCompleted && (
-                  <CheckCircle2 className="h-3.5 w-3.5 text-green-600 dark:text-green-400 shrink-0" />
+                  <CheckCircle2 className="h-3.5 w-3.5 text-primary shrink-0" />
                 )}
               </div>
 
