@@ -1,5 +1,4 @@
 import { Card, CardContent } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import {
   AppointmentPreparation,
@@ -15,6 +14,8 @@ import {
   CompassIcon,
   ClockIcon,
   MegaphoneIcon,
+  CheckIcon,
+  XIcon,
 } from "lucide-react";
 
 const VISIT_REASON_LABELS: Record<string, string> = {
@@ -70,11 +71,22 @@ function BulletList({ items }: { items: string[] }) {
   );
 }
 
-function getPublicRelationsBadges(preparationData: AppointmentPreparation["preparation_data"]) {
+function getPublicRelationsStatus(preparationData: AppointmentPreparation["preparation_data"]) {
   return [
-    preparationData.social_media_planned ? "Social Media geplant" : null,
-    preparationData.press_planned ? "Presse geplant" : null,
-  ].filter(Boolean) as string[];
+    { key: "social", label: "Social Media", active: Boolean(preparationData.social_media_planned) },
+    { key: "press", label: "Presse", active: Boolean(preparationData.press_planned) },
+  ] as const;
+}
+
+function formatLastMeetingDate(value: string | undefined): string | null {
+  if (!value?.trim()) return null;
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return null;
+  return new Intl.DateTimeFormat("de-DE", {
+    day: "2-digit",
+    month: "2-digit",
+    year: "numeric",
+  }).format(date);
 }
 
 function ConversationPartnerList({
@@ -83,9 +95,9 @@ function ConversationPartnerList({
   partners: ReturnType<typeof getConversationPartnersFromPreparationData>;
 }) {
   return (
-    <div className="space-y-3">
+    <div className="space-y-5">
       {partners.map((partner) => {
-        const secondaryParts = [partner.role, partner.organization, partner.note].filter(Boolean);
+        const roleAndOrganization = [partner.role, partner.organization].filter(Boolean);
         const initials = partner.name
           .split(" ")
           .filter(Boolean)
@@ -94,16 +106,21 @@ function ConversationPartnerList({
           .join("") || "?";
 
         return (
-          <div key={partner.id} className="flex items-start gap-3">
-            <Avatar className="h-10 w-10 border">
+          <div key={partner.id} className="flex items-start gap-4">
+            <Avatar className="h-[60px] w-[60px] border">
               <AvatarImage src={partner.avatar_url || undefined} alt={partner.name} />
               <AvatarFallback>{initials}</AvatarFallback>
             </Avatar>
             <div className="space-y-1 pt-0.5">
               <p className="font-medium text-foreground break-words">{partner.name}</p>
-              {secondaryParts.length > 0 && (
+              {roleAndOrganization.length > 0 && (
                 <p className="text-muted-foreground break-words">
-                  {secondaryParts.join(" • ")}
+                  {roleAndOrganization.join(" • ")}
+                </p>
+              )}
+              {partner.note && (
+                <p className="text-muted-foreground break-words">
+                  Hinweis: {partner.note}
                 </p>
               )}
             </div>
@@ -117,7 +134,6 @@ function ConversationPartnerList({
 
 export function AppointmentBriefingView({ preparation, appointmentInfo, compact }: AppointmentBriefingViewProps) {
   const d = preparation.preparation_data;
-  const incompleteTodos = preparation.checklist_items?.filter((item) => !item.completed) ?? [];
   const conversationPartners = getConversationPartnersFromPreparationData(d);
   const companions = d.companions ?? [];
   const program = d.program ?? [];
@@ -130,7 +146,8 @@ export function AppointmentBriefingView({ preparation, appointmentInfo, compact 
     ...splitPreparationTextToList(d.questions_answers),
   ];
   const briefingNotes = getBriefingNotes(preparation);
-  const publicRelationsBadges = getPublicRelationsBadges(d);
+  const publicRelationsStatus = getPublicRelationsStatus(d);
+  const lastMeetingDate = formatLastMeetingDate(d.last_meeting_date);
   const visitReasonLabel = d.visit_reason ? VISIT_REASON_LABELS[d.visit_reason] ?? d.visit_reason : "";
   const visitReasonDetails = d.visit_reason_details?.trim();
   const visitReasonLines = [visitReasonLabel, visitReasonDetails].filter(Boolean) as string[];
@@ -141,9 +158,9 @@ export function AppointmentBriefingView({ preparation, appointmentInfo, compact 
     importantTopicLines.length > 0 ||
     additionalContextLines.length > 0 ||
     Boolean(briefingNotes) ||
-    incompleteTodos.length > 0 ||
     companions.length > 0 ||
-    program.length > 0;
+    program.length > 0 ||
+    Boolean(lastMeetingDate);
 
   if (compact) {
     return (
@@ -190,16 +207,9 @@ export function AppointmentBriefingView({ preparation, appointmentInfo, compact 
                 <p className="whitespace-pre-wrap break-words text-xs">{briefingNotes}</p>
               </BriefingSection>
             )}
-            {incompleteTodos.length > 0 && (
-              <BriefingSection icon={<CheckSquareIcon className="h-3.5 w-3.5" />} title="Offene To-dos">
-                <div className="space-y-1">
-                  {incompleteTodos.map((item) => (
-                    <p key={item.id} className="flex items-start gap-1.5 text-xs">
-                      <span className="text-muted-foreground shrink-0">☐</span>
-                      <span>{item.label}</span>
-                    </p>
-                  ))}
-                </div>
+            {lastMeetingDate && (
+              <BriefingSection icon={<ClockIcon className="h-3.5 w-3.5" />} title="Letztes Treffen">
+                <p>{lastMeetingDate}</p>
               </BriefingSection>
             )}
           </div>
@@ -222,21 +232,23 @@ export function AppointmentBriefingView({ preparation, appointmentInfo, compact 
             )}
           </div>
 
-          {publicRelationsBadges.length > 0 && (
-            <div className="rounded-lg border border-border/60 bg-background/80 px-3 py-2 lg:max-w-xs">
+          <div className="rounded-lg border border-border/60 bg-background/80 px-3 py-2 lg:max-w-xs">
               <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
                 <MegaphoneIcon className="h-3.5 w-3.5" />
                 Öffentlichkeitsarbeit
               </div>
-              <div className="mt-2 flex flex-wrap gap-2">
-                {publicRelationsBadges.map((label) => (
-                  <Badge key={label} variant="secondary" className="text-xs">
-                    {label}
-                  </Badge>
+              <div className="mt-2 space-y-1.5">
+                {publicRelationsStatus.map((status) => (
+                  <p
+                    key={status.key}
+                    className={`flex items-center gap-2 text-sm ${status.active ? "text-green-700" : "text-red-700"}`}
+                  >
+                    {status.active ? <CheckIcon className="h-4 w-4" /> : <XIcon className="h-4 w-4" />}
+                    <span>{status.label}</span>
+                  </p>
                 ))}
               </div>
             </div>
-          )}
         </div>
       </div>
 
@@ -306,18 +318,11 @@ export function AppointmentBriefingView({ preparation, appointmentInfo, compact 
               </BriefingSection>
 
               <BriefingSection
-                icon={<CheckSquareIcon className="h-4 w-4" />}
-                title="Offene To-dos"
-                isEmpty={incompleteTodos.length === 0}
+                icon={<ClockIcon className="h-4 w-4" />}
+                title="Letztes Treffen"
+                isEmpty={!lastMeetingDate}
               >
-                <div className="space-y-1.5">
-                  {incompleteTodos.map((item) => (
-                    <p key={item.id} className="flex items-start gap-2">
-                      <span className="text-muted-foreground shrink-0">☐</span>
-                      <span className="break-words">{item.label}</span>
-                    </p>
-                  ))}
-                </div>
+                <p className="break-words">{lastMeetingDate}</p>
               </BriefingSection>
             </div>
 

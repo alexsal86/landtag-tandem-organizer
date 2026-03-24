@@ -30,6 +30,7 @@ export interface AppointmentPreparation {
     technology_setup?: string;
     dress_code?: string;
     event_type?: string;
+    last_meeting_date?: string;
     social_media_planned?: boolean;
     press_planned?: boolean;
     // Contact information fields
