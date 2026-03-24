@@ -4,7 +4,6 @@ import {
   AppointmentPreparation,
   getBriefingNotes,
   getConversationPartnersFromPreparationData,
-  getImportantTopicLines,
 } from "@/hooks/useAppointmentPreparation";
 import { format } from "date-fns";
 import { de } from "date-fns/locale";
@@ -304,9 +303,9 @@ async function drawHeaderIcon(
 
 function getPublicRelationsStatus(preparationData: AppointmentPreparation["preparation_data"]): string[] {
   return [
-    preparationData.social_media_planned ? "Social Media geplant" : null,
-    preparationData.press_planned ? "Presse geplant" : null,
-  ].filter(Boolean) as string[];
+    `${preparationData.social_media_planned ? "✓" : "x"} Social Media`,
+    `${preparationData.press_planned ? "✓" : "x"} Presse`,
+  ];
 }
 
 async function drawHeader(
@@ -382,12 +381,13 @@ async function drawHeader(
 
   doc.setFont(BODY_FONT, "normal");
   doc.setFontSize(9);
-  rgb(doc, TEXT_MUTED, "text");
   const prItems = getPublicRelationsStatus(preparation.preparation_data);
   const prItemsY = infoStartY + 5.8;
-  if (prItems.length > 0) {
-    doc.text(prItems, rightBlockX, prItemsY);
-  }
+  prItems.forEach((item, index) => {
+    const isPlanned = item.startsWith("✓");
+    rgb(doc, isPlanned ? GREEN_DARK : [210, 45, 45], "text");
+    doc.text(item, rightBlockX, prItemsY + index * 4.2);
+  });
 
   const headerContentBottom = Math.max(
     logoY + logoH,
@@ -495,7 +495,7 @@ async function addConversationPartnersCard(
 ) {
   if (partners.length === 0) return;
 
-  const AVATAR_SIZE = 8;
+  const AVATAR_SIZE = 12;
   const AVATAR_PAD = 3;
   const TEXT_X_OFFSET = AVATAR_SIZE + AVATAR_PAD + 5;
 
@@ -503,10 +503,11 @@ async function addConversationPartnersCard(
   let estH = SECTION_HEADER_H + SECTION_GAP_AFTER_HEADER + SECTION_BOTTOM_PAD;
   for (const p of partners) {
     const lineH = AVATAR_SIZE + 2;
-    const secondary = [p.role, p.organization, p.note].filter(Boolean);
-    estH += Math.max(lineH, 5 + (secondary.length > 0 ? 4 : 0));
+    const roleAndOrganization = [p.role, p.organization].filter(Boolean);
+    const hasNote = Boolean(p.note?.trim());
+    estH += Math.max(lineH, 5 + (roleAndOrganization.length > 0 ? 4 : 0) + (hasNote ? 4 : 0));
   }
-  estH += 3;
+  estH += Math.max(0, partners.length - 1) * 2 + 3;
 
   ensureFit(doc, yRef, Math.min(estH, 50), topY);
   const cardY = yRef.y;
@@ -607,15 +608,22 @@ async function addConversationPartnersCard(
     rgb(doc, TEXT_DARK, "text");
     doc.text(p.name, x + TEXT_X_OFFSET, cy + 2);
 
-    const secondary = [p.role, p.organization, p.note].filter(Boolean);
-    if (secondary.length > 0) {
+    const roleAndOrganization = [p.role, p.organization].filter(Boolean);
+    if (roleAndOrganization.length > 0) {
       doc.setFontSize(7.5);
       doc.setFont(BODY_FONT, "normal");
       rgb(doc, TEXT_MUTED, "text");
-      doc.text(secondary.join(" · "), x + TEXT_X_OFFSET, cy + 6);
+      doc.text(roleAndOrganization.join(" · "), x + TEXT_X_OFFSET, cy + 6);
     }
 
-    cy += AVATAR_SIZE + 2;
+    if (p.note?.trim()) {
+      doc.setFontSize(7.5);
+      doc.setFont(BODY_FONT, "normal");
+      rgb(doc, TEXT_MUTED, "text");
+      doc.text(`Hinweis: ${p.note.trim()}`, x + TEXT_X_OFFSET, cy + 10);
+    }
+
+    cy += AVATAR_SIZE + 4;
   }
 
   yRef.y = cardY + estH + SECTION_OUTER_GAP;
@@ -766,47 +774,34 @@ function addAblaufCard(
 }
 
 // ─── Checklist card ───────────────────────────────────────────────────────────
-function addChecklistCard(
+function addLastMeetingCard(
   doc: jsPDF,
   x: number,
   maxW: number,
-  items: Array<{ id: string; label: string; completed: boolean }>,
+  lastMeetingDate: string | undefined,
   yRef: { y: number },
   topY: number
 ) {
-  const openItems = items.filter((i) => !i.completed);
-  if (openItems.length === 0) return;
+  const normalizedDate = lastMeetingDate?.trim();
+  if (!normalizedDate) return;
 
-  let estH = SECTION_HEADER_H + SECTION_GAP_AFTER_HEADER + SECTION_BOTTOM_PAD;
-  for (const item of openItems) {
-    doc.setFontSize(9);
-    const lines = doc.splitTextToSize(item.label, maxW - 14);
-    estH += lines.length * 4.5 + 2;
-  }
-  estH += 3;
+  const parsed = new Date(normalizedDate);
+  const dateLabel = Number.isNaN(parsed.getTime())
+    ? normalizedDate
+    : format(parsed, "dd.MM.yyyy", { locale: de });
+  const estH = SECTION_HEADER_H + SECTION_GAP_AFTER_HEADER + SECTION_BOTTOM_PAD + 8;
 
-  ensureFit(doc, yRef, Math.min(estH, 40), topY);
+  ensureFit(doc, yRef, estH, topY);
   const cardY = yRef.y;
   const bodyY = cardY + SECTION_HEADER_H + SECTION_GAP_AFTER_HEADER;
   const bodyH = Math.max(12, estH - SECTION_HEADER_H - SECTION_GAP_AFTER_HEADER);
-  drawSectionHeaderBar(doc, x, cardY, maxW, "Offene To-dos");
+  drawSectionHeaderBar(doc, x, cardY, maxW, "Letztes Treffen");
   drawSectionBody(doc, x, bodyY, maxW, bodyH);
-  let cy = bodyY + 4.5;
 
   doc.setFontSize(9);
-  for (const item of openItems) {
-    if (cy + 5 > cardY + estH) break;
-    // Checkbox
-    rgb(doc, TEXT_MUTED, "draw");
-    doc.setLineWidth(0.3);
-    doc.rect(x + 5, cy - 1.5, 3.5, 3.5);
-
-    doc.setFont(BODY_FONT, "normal");
-    rgb(doc, TEXT_DARK, "text");
-    const lines = doc.splitTextToSize(item.label, maxW - 16);
-    doc.text(lines, x + 11, cy + 1);
-    cy += lines.length * 4.5 + 2;
-  }
+  doc.setFont(BODY_FONT, "normal");
+  rgb(doc, TEXT_DARK, "text");
+  doc.text(dateLabel, x + 5, bodyY + 6);
 
   yRef.y = cardY + estH + SECTION_OUTER_GAP;
 }
@@ -863,11 +858,8 @@ export async function generateBriefingPdf({
   const partners = getConversationPartnersFromPreparationData(d);
   await addConversationPartnersCard(doc, MARGIN, LEFT_W, partners, leftY, topY);
 
-  // 2. Gesprächspunkte (talking_points + important topics)
-  const talkingLines = [
-    ...splitLines(d.talking_points),
-    ...getImportantTopicLines(d),
-  ];
+  // 2. Gesprächspunkte (talking_points)
+  const talkingLines = splitLines(d.talking_points);
   addCardBulletSection(doc, MARGIN, LEFT_W, "Gesprächspunkte", talkingLines, leftY, topY);
 
   // 3. Was will ich erreichen? (objectives)
@@ -952,8 +944,8 @@ export async function generateBriefingPdf({
   // 3. Ablauf
   addAblaufCard(doc, RIGHT_X, RIGHT_W, d.program ?? [], rightY, topY);
 
-  // 4. Offene To-dos
-  addChecklistCard(doc, RIGHT_X, RIGHT_W, preparation.checklist_items ?? [], rightY, topY);
+  // 4. Letztes Treffen
+  addLastMeetingCard(doc, RIGHT_X, RIGHT_W, d.last_meeting_date, rightY, topY);
 
   // 5. Notizen-Bereich (liniert)
   addNotesArea(doc, RIGHT_X, RIGHT_W, rightY, topY);

@@ -480,6 +480,7 @@ export function AppointmentPreparationDataTab({
       title: "Grundlagen",
       icon: FileTextIcon,
       fields: [
+        { key: "last_meeting_date", label: "Letztes Treffen", placeholder: "Datum des letzten Treffens", type: "date" },
         { key: "objectives", label: "Ziele", placeholder: "Welche Ziele sollen erreicht werden?", multiline: true },
         { key: "key_topics", label: "Wichtige Themen", placeholder: "Ein Thema pro Zeile oder als Liste", multiline: true },
         { key: "talking_points", label: "Ergänzende Gesprächspunkte", placeholder: "Optionale Ergänzungen, ebenfalls gern zeilenweise", multiline: true },
@@ -594,6 +595,12 @@ export function AppointmentPreparationDataTab({
                       />
                     )}
                   </div>
+                ) : (field as any).type === "date" ? (
+                  <Input
+                    type="date"
+                    value={editData[field.key] || ""}
+                    onChange={(e) => handleFieldChange(field.key, e.target.value)}
+                  />
                 ) : (field as any).multiline ? (
                   <Textarea
                     value={editData[field.key] || ""}
