@@ -37,6 +37,7 @@ export function DashboardAppointmentList({ appointments, isShowingTomorrow }: Pr
   const { user } = useAuth();
   const { currentTenant } = useTenant();
   const queryClient = useQueryClient();
+  const navigate = useNavigate();
 
   const [openBriefings, setOpenBriefings] = useState<Set<string>>(new Set());
   const [noteDialogAppointment, setNoteDialogAppointment] = useState<AppointmentData | null>(null);
