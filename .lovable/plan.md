@@ -1,56 +1,58 @@
 
 
-## PDF-Ausgabe grundlegend an die Briefansicht angleichen
+## Briefing + Rückmeldung verzahnen
 
-### Kernproblem
+### Konzept
 
-Die PDF-Erzeugung (`pdfGenerator.ts`) baut ihre eigene, **unvollständige** Variable-Map und ignoriert große Teile der Template-Block-Daten. Im Vergleich dazu baut `LetterEditor.tsx` eine vollständige Variable-Map mit allen Sender-, Empfänger-, Kontakt- und Anlagendaten und substituiert **alle** Block-Bereiche (Adressfeld, Rücksendezeile, Info-Block) über `substituteBlockLines`/`substituteVariables`.
+Das Briefing (schreibgeschützte Terminvorbereitung) wird direkt in den Feedback-Workflow integriert. Wenn ein Termin eine Vorbereitung hat, wird das Briefing prominent oberhalb der Feedback-Aktionen angezeigt. Der Nutzer kann direkt im Briefing-Kontext Notizen hinterlassen, Aufgaben erstellen und den Termin als erledigt markieren — alles in einem Fluss.
 
-### Konkrete Diskrepanzen
+### Architektur
 
-| Bereich | HTML-Vorschau | PDF |
-|---|---|---|
-| **Variable-Map** | Volle Sender-Daten (Straße, PLZ, Ort, Wahlkreis, Landtag), Empfänger mit Geschlecht/Nachname, Info-Block-Daten, Anlagen | Nur `name`, `organization`, `phone`, `email` vom Sender; nur `name` vom Empfänger; keine Anlagen |
-| **Rücksendezeile** | Aus Template-BlockLines (`returnAddress` in `blockContent`) mit Variablen-Substitution | Direkt `senderInfo.return_address_line` als Rohtext |
-| **Adressfeld** | Aus Template-BlockLines (`addressField` in `blockContent`) mit Variablen-Substitution | Direkt `letter.recipient_name` + `letter.recipient_address` |
-| **Info-Block** | BlockLines mit vollständiger Variable-Map | BlockLines mit unvollständiger Variable-Map |
-| **Anrede** | Dynamisch aus Template-Salutation mit `{{anrede}}`-Substitution | Statisch aus `layout.salutation.template` ohne Substitution |
-| **Schriftfamilie** | `Calibri, Carlito, "Segoe UI", Arial, sans-serif` | `helvetica` (jsPDF built-in) |
-| **Faltmarken** | Gerendert via `FoldHoleMarks` | Fehlen komplett im PDF |
+```text
+┌──────────────────────────────────────────┐
+│  AppointmentFeedbackWidget               │
+│  ┌────────────────────────────────────┐  │
+│  │ Termin-Karte (bestehend)           │  │
+│  │  Titel · Zeit · Ort · Kategorie   │  │
+│  │                                    │  │
+│  │  ┌──────────────────────────────┐  │  │
+│  │  │ 📋 BRIEFING (aufklappbar)    │  │  │
+│  │  │  Gesprächspartner, Themen,   │  │  │
+│  │  │  Ablauf, Notizen etc.        │  │  │
+│  │  │  (AppointmentBriefingView)   │  │  │
+│  │  └──────────────────────────────┘  │  │
+│  │                                    │  │
+│  │  [Erledigt] | [Notiz] [Aufgabe]   │  │
+│  │  [Anhang]                          │  │
+│  └────────────────────────────────────┘  │
+└──────────────────────────────────────────┘
+```
 
-### Plan
+### Umsetzung
 
-#### 1. Vollständige Variable-Map im PDF aufbauen
+**1. Build-Fehler beheben** (`briefingPdfGenerator.ts`)
+- Die Funktion `renderCircularAvatar` wird referenziert aber existiert nicht. Entweder als lokale Hilfsfunktion implementieren (Canvas → circular crop → data URL) oder den Variablennamen korrigieren.
 
-Die `generatePDF`-Funktion erhält die Variable-Map entweder als neuen Parameter (bevorzugt) oder baut sie intern identisch wie `LetterEditor.tsx` auf — mit vollen Sender-Feldern (Straße, Wahlkreis, Landtag), Empfänger-Geschlecht/Nachname, Info-Block-Daten und Anlagen.
+**2. Briefing in Feedback-Widget einbetten** (`AppointmentFeedbackWidget.tsx`)
+- Für jeden Termin mit `feedback_status === 'pending'` prüfen, ob eine `appointment_preparation` existiert (via `appointment_id`).
+- Neuer Query in `useAppointmentFeedback` oder direkt im Widget: Lade `appointment_preparations` für die angezeigten Termin-IDs.
+- Im Termin-Block einen aufklappbaren Bereich mit `AppointmentBriefingView` einfügen, zwischen Header und Aktions-Buttons.
+- Toggle-Button „Briefing anzeigen/ausblenden" mit Chevron-Icon.
 
-#### 2. Alle Block-Bereiche aus Template-Daten rendern
+**3. Feedback als "erledigt" markieren bei Briefing-Nutzung**
+- Wenn der Nutzer über das Briefing eine Notiz hinterlässt oder eine Aufgabe erstellt, wird `feedback_status` automatisch auf `completed` gesetzt (wie bisher).
+- Neuer Button „Briefing gelesen & erledigt" als Alternative zu „Erledigt", der signalisiert, dass das Briefing bewusst zur Kenntnis genommen wurde.
 
-Wie im Editor alle `blockContent`-Bereiche durchgehen:
-- `returnAddress` → `renderBlockLinesToPdf` (statt roher `return_address_line`)
-- `addressField` → `renderBlockLinesToPdf` (statt roher `recipient_name`/`recipient_address`)
-- `infoBlock` → bereits vorhanden, aber mit vollständiger Variable-Map
-- Fallback auf die bestehende Rohtext-Logik nur wenn kein `blockContent` im Template definiert ist
-
-#### 3. Anrede-Substitution
-
-Die Anrede `{{anrede}}` aus der Variable-Map ersetzen (wie im Editor), statt den Template-String wörtlich zu rendern.
-
-#### 4. Faltmarken im PDF rendern
-
-Aus `layout.foldHoleMarks` die drei Linien (oben, Lochmarke, unten) zeichnen — auf jeder Seite, analog zur HTML-Komponente `FoldHoleMarks`.
-
-#### 5. Font-Konsistenz (Hinweis)
-
-jsPDF hat kein Calibri. Das ist eine bekannte Einschränkung — Helvetica bleibt der beste verfügbare Ersatz. Kein Handlungsbedarf, aber erwähnenswert.
-
----
+**4. Daten-Verknüpfung** (`useAppointmentFeedback.tsx`)
+- Nach dem Laden der Termine: Batch-Query auf `appointment_preparations` mit `.in('appointment_id', appointmentIds)`.
+- Die Preparation-Daten als Map bereitstellen und im Widget nutzen.
 
 ### Dateien
 
 | Datei | Änderung |
 |---|---|
-| `src/components/letter-pdf/pdfGenerator.ts` | Variable-Map vollständig aufbauen; alle blockContent-Bereiche rendern; Anrede substituieren; Faltmarken zeichnen |
-| `src/components/letter-pdf/types.ts` | `GeneratePDFOptions` um optionale `contacts`-Daten erweitern |
-| `src/components/LetterPDFExport.tsx` | Kontakt-Daten an `generatePDF` durchreichen (falls nötig) |
+| `briefingPdfGenerator.ts` | Build-Fehler: `renderCircularAvatar` Funktion implementieren |
+| `useAppointmentFeedback.tsx` | Preparations für angezeigte Termine mitladen |
+| `AppointmentFeedbackWidget.tsx` | Briefing-View aufklappbar einbetten, oberhalb der Aktions-Buttons |
+| `AppointmentBriefingView.tsx` | Evtl. kompaktere Variante für Inline-Darstellung (optional prop `compact`) |
 
