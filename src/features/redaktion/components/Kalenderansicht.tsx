@@ -6,7 +6,6 @@ import { addMonths, addWeeks, endOfMonth, endOfWeek, format, parse, startOfDay, 
 import { de } from "date-fns/locale";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -72,6 +71,7 @@ interface Props {
   items: SocialPlannerItem[];
   onUpdateSchedule: (id: string, date: string) => Promise<void> | void;
   onEditItem: (id: string) => void;
+  onCreateAtSlot?: (date: Date) => void;
   specialDays: SpecialDay[];
 }
 
@@ -122,26 +122,14 @@ function CalendarEventCard({ event }: { event: CalendarEvent }) {
   return (
     <div className="flex h-full flex-col gap-1 overflow-hidden">
       <span className="truncate font-medium">{event.title}</span>
-      <div className="flex flex-wrap items-center gap-1">
-        <Badge variant="secondary" className="bg-white/15 px-1 py-0 text-[9px] text-white hover:bg-white/15">
-          {STATUS_LABELS[event.item.workflow_status]}
-        </Badge>
-        {event.sameChannelCount > 1 && (
-          <Badge variant="secondary" className="bg-amber-100 px-1 py-0 text-[9px] text-amber-950 hover:bg-amber-100">
-            Kanal-Konflikt ×{event.sameChannelCount}
-          </Badge>
-        )}
-      </div>
     </div>
   );
 }
 
-export function Kalenderansicht({ items, onUpdateSchedule, onEditItem, specialDays }: Props) {
+export function Kalenderansicht({ items, onUpdateSchedule, onEditItem, onCreateAtSlot, specialDays }: Props) {
   const [currentDate, setCurrentDate] = useState(new Date());
   const [view, setView] = useState<View>(Views.WEEK);
   const [formatFilter, setFormatFilter] = useState<"all" | "story" | "feed">("all");
-  const [slotSelection, setSlotSelection] = useState<Date | null>(null);
-  const [slotSelectedItemId, setSlotSelectedItemId] = useState<string>("none");
   const [inlineScheduleDates, setInlineScheduleDates] = useState<Record<string, string>>({});
   const [isScheduling, setIsScheduling] = useState(false);
 
@@ -273,9 +261,10 @@ export function Kalenderansicht({ items, onUpdateSchedule, onEditItem, specialDa
   }, [persistSchedule]);
 
   const handleSelectSlot = useCallback(({ start }: { start: Date }) => {
-    setSlotSelection(start);
-    setSlotSelectedItemId("none");
-  }, []);
+    if (onCreateAtSlot) {
+      onCreateAtSlot(start);
+    }
+  }, [onCreateAtSlot]);
 
   const handleDayPropGetter = useCallback((date: Date) => {
     const key = format(date, "yyyy-MM-dd");
@@ -385,7 +374,7 @@ export function Kalenderansicht({ items, onUpdateSchedule, onEditItem, specialDa
 
       <div className="min-h-[500px]">
         <div className="mb-2 rounded-md border border-muted-foreground/20 bg-muted/20 px-3 py-2 text-xs text-muted-foreground">
-          Beiträge können direkt im Kalender per Drag-and-Drop neu terminiert werden. Klick auf einen freien Slot öffnet die Terminierung für ungeplante Beiträge.
+          Beiträge können direkt im Kalender per Drag-and-Drop neu terminiert werden. Klick auf einen freien Slot erstellt einen neuen Beitrag.
         </div>
         <DragAndDropCalendar
           localizer={localizer}
@@ -485,44 +474,6 @@ export function Kalenderansicht({ items, onUpdateSchedule, onEditItem, specialDa
         </aside>
       </div>
 
-      <Dialog open={slotSelection !== null} onOpenChange={(open) => !open && setSlotSelection(null)}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Beitrag in freien Slot einplanen</DialogTitle>
-            <DialogDescription>
-              {slotSelection ? `Ausgewählter Slot: ${format(slotSelection, "dd.MM.yyyy HH:mm", { locale: de })}` : "Wähle einen ungeplanten Beitrag aus."}
-            </DialogDescription>
-          </DialogHeader>
-
-          <div className="space-y-3">
-            <div>
-              <Label>Ungeplanten Beitrag auswählen</Label>
-              <Select value={slotSelectedItemId} onValueChange={setSlotSelectedItemId}>
-                <SelectTrigger><SelectValue placeholder="Beitrag wählen" /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="none">Bitte wählen</SelectItem>
-                  {unscheduled.map((item) => (
-                    <SelectItem key={item.id} value={item.id}>{item.topic}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-          </div>
-
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setSlotSelection(null)}>Abbrechen</Button>
-            <Button
-              disabled={!slotSelection || slotSelectedItemId === "none" || isScheduling}
-              onClick={() => {
-                if (!slotSelection || slotSelectedItemId === "none") return;
-                void persistSchedule(slotSelectedItemId, slotSelection).then(() => setSlotSelection(null));
-              }}
-            >
-              Termin speichern
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
     </div>
   );
 }
