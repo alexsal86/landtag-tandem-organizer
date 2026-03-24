@@ -78,7 +78,8 @@ const MyWorkDecisionCardInner = ({ decision, isHighlighted, highlightRef, onOpen
   const { appointmentLink, appointmentRequestNarrative, displayDescription, isAppointmentRequest, isRequestedStartValid, plainDescription, requestedStart, requestedTitle, summary, summaryItems, targetDeputy, winningResponse } = useDecisionCardDerivedData(decision);
 
   const shouldShowTimeline = isAppointmentRequest && isRequestedStartValid && (isSchedulePinnedOpen || isScheduleHoverOpen);
-  const timelineWindowMinutes = 6 * 60;
+  const shouldLoadTimeline = isAppointmentRequest && isRequestedStartValid;
+  const timelineWindowMinutes = 6 * 60 + APPOINTMENT_REQUEST_DEFAULT_DURATION_MINUTES;
   const timelineHeight = 264;
   const pixelsPerMinute = timelineHeight / timelineWindowMinutes;
   const previewCharacterLimit = 1240;
@@ -90,14 +91,20 @@ const MyWorkDecisionCardInner = ({ decision, isHighlighted, highlightRef, onOpen
     if (!requestedStart) return [];
     const windowStart = new Date(requestedStart.getTime() - 3 * 60 * 60 * 1000);
     windowStart.setMinutes(0, 0, 0);
-    const windowEnd = new Date(windowStart.getTime() + timelineWindowMinutes * 60 * 1000);
+    const requestedEnd = new Date(requestedStart.getTime() + APPOINTMENT_REQUEST_DEFAULT_DURATION_MINUTES * 60 * 1000);
+    const windowEnd = new Date(requestedEnd.getTime() + 3 * 60 * 60 * 1000);
+    windowEnd.setMinutes(0, 0, 0);
+    if (windowEnd.getTime() <= requestedEnd.getTime() + 3 * 60 * 60 * 1000 - 1) {
+      windowEnd.setHours(windowEnd.getHours() + 1);
+    }
     return [windowStart, windowEnd] as const;
   }, [requestedStart]);
 
   const timelineHourSlots = useMemo(() => {
     if (!timelineBounds.length) return [];
-    const [windowStart] = timelineBounds;
-    return Array.from({ length: 7 }, (_, index) => { const slot = new Date(windowStart); slot.setHours(windowStart.getHours() + index); return slot; });
+    const [windowStart, windowEnd] = timelineBounds;
+    const hourCount = Math.ceil((windowEnd.getTime() - windowStart.getTime()) / (60 * 60 * 1000)) + 1;
+    return Array.from({ length: hourCount }, (_, index) => { const slot = new Date(windowStart); slot.setHours(windowStart.getHours() + index); return slot; });
   }, [timelineBounds]);
 
   const timelineLayoutItems = useMemo(() => {
@@ -215,11 +222,12 @@ const MyWorkDecisionCardInner = ({ decision, isHighlighted, highlightRef, onOpen
   useEffect(() => () => clearResponseRefreshTimeout(), []);
   useEffect(() => {
     const loadDayTimeline = async () => {
-      if (!shouldShowTimeline || !currentTenant?.id || !requestedStart) return;
+      if (!shouldLoadTimeline || !currentTenant?.id || !requestedStart) return;
       setIsTimelineLoading(true);
       try {
         const contextStartIso = new Date(requestedStart.getTime() - 3 * 60 * 60 * 1000).toISOString();
-        const contextEndIso = new Date(requestedStart.getTime() + 3 * 60 * 60 * 1000).toISOString();
+        const requestedEndTime = new Date(requestedStart.getTime() + APPOINTMENT_REQUEST_DEFAULT_DURATION_MINUTES * 60 * 1000);
+        const contextEndIso = new Date(requestedEndTime.getTime() + 3 * 60 * 60 * 1000).toISOString();
         const { data, error } = await supabase.from("appointments").select("id, title, start_time, end_time").eq("tenant_id", currentTenant.id).lt("start_time", contextEndIso).gt("end_time", contextStartIso).order("start_time", { ascending: true });
         if (error) throw error;
         const existingItems: DayTimelineItem[] = (data || []).map((item) => ({ id: item.id, title: item.title, start: item.start_time, end: item.end_time }));
@@ -235,7 +243,7 @@ const MyWorkDecisionCardInner = ({ decision, isHighlighted, highlightRef, onOpen
       }
     };
     void loadDayTimeline();
-  }, [shouldShowTimeline, currentTenant?.id, requestedStart, requestedTitle, decision.id]);
+  }, [shouldLoadTimeline, currentTenant?.id, requestedStart, requestedTitle, decision.id]);
 
   const openMailLink = (mailtoUrl: string) => { window.location.href = mailtoUrl; };
   const copyMailTemplate = async (text: string, type: "Zusage" | "Absage") => {

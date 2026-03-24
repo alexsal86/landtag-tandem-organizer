@@ -704,6 +704,21 @@ export const useNotifications = () => {
           : null;
         const currentEndpoint = currentSubscription?.endpoint ?? null;
 
+        // Detect legacy FCM endpoint and force re-subscribe
+        const isLegacyEndpoint = currentEndpoint?.includes('fcm.googleapis.com/fcm/send/');
+        if (isLegacyEndpoint && currentSubscription) {
+          debugConsole.log('🔄 Legacy FCM endpoint detected, forcing re-subscription...', { endpoint: currentEndpoint });
+          await currentSubscription.unsubscribe();
+          // Also deactivate the old DB record
+          await supabase
+            .from('push_subscriptions')
+            .update({ is_active: false })
+            .eq('user_id', user.id)
+            .eq('endpoint', currentEndpoint);
+          await subscribeToPush();
+          return;
+        }
+
         const { data } = await supabase
           .from('push_subscriptions')
           .select('id, endpoint')
@@ -713,11 +728,25 @@ export const useNotifications = () => {
 
         const dbEndpoint = data?.[0]?.endpoint ?? null;
 
-        if (!data || data.length === 0 || (currentEndpoint && dbEndpoint && currentEndpoint !== dbEndpoint)) {
-          debugConsole.log('🔄 Push subscription mismatch or missing, auto-renewing...', {
+        // Also check if DB endpoint is legacy
+        const isDbLegacy = dbEndpoint?.includes('fcm.googleapis.com/fcm/send/');
+
+        if (!data || data.length === 0 || isDbLegacy || (currentEndpoint && dbEndpoint && currentEndpoint !== dbEndpoint)) {
+          debugConsole.log('🔄 Push subscription mismatch, missing, or legacy endpoint — auto-renewing...', {
             hasDbRecord: Boolean(data?.length),
             endpointMatch: currentEndpoint === dbEndpoint,
+            isDbLegacy,
           });
+          if (currentSubscription) {
+            await currentSubscription.unsubscribe();
+          }
+          if (isDbLegacy && dbEndpoint) {
+            await supabase
+              .from('push_subscriptions')
+              .update({ is_active: false })
+              .eq('user_id', user.id)
+              .eq('endpoint', dbEndpoint);
+          }
           await subscribeToPush();
         }
       } catch (error: unknown) {

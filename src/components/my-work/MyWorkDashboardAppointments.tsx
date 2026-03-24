@@ -219,7 +219,7 @@ export const DashboardAppointments = ({ data }: Props) => {
   }, [requestDate, requestTime]);
 
   const shouldShowTimeline = Boolean(isQuickRequestOpen && requestedStart && currentTenant?.id);
-  const timelineWindowMinutes = 6 * 60;
+  const timelineWindowMinutes = 6 * 60 + APPOINTMENT_REQUEST_DEFAULT_DURATION_MINUTES;
   const timelineHeight = 220;
   const pixelsPerMinute = timelineHeight / timelineWindowMinutes;
 
@@ -228,7 +228,12 @@ export const DashboardAppointments = ({ data }: Props) => {
 
     const windowStart = new Date(requestedStart.getTime() - 3 * 60 * 60 * 1000);
     windowStart.setMinutes(0, 0, 0);
-    const windowEnd = new Date(windowStart.getTime() + timelineWindowMinutes * 60 * 1000);
+    const requestedEnd = new Date(requestedStart.getTime() + APPOINTMENT_REQUEST_DEFAULT_DURATION_MINUTES * 60 * 1000);
+    const windowEnd = new Date(requestedEnd.getTime() + 3 * 60 * 60 * 1000);
+    windowEnd.setMinutes(0, 0, 0);
+    if (windowEnd.getTime() <= requestedEnd.getTime() + 3 * 60 * 60 * 1000 - 1) {
+      windowEnd.setHours(windowEnd.getHours() + 1);
+    }
 
     return [windowStart, windowEnd] as const;
   }, [requestedStart]);
@@ -237,7 +242,9 @@ export const DashboardAppointments = ({ data }: Props) => {
     if (!timelineBounds.length) return [];
     const [windowStart] = timelineBounds;
 
-    return Array.from({ length: 7 }, (_, index) => {
+    const [, windowEnd] = timelineBounds;
+    const hourCount = Math.ceil((windowEnd.getTime() - windowStart.getTime()) / (60 * 60 * 1000)) + 1;
+    return Array.from({ length: hourCount }, (_, index) => {
       const slot = new Date(windowStart);
       slot.setHours(windowStart.getHours() + index);
       return slot;
@@ -308,7 +315,8 @@ export const DashboardAppointments = ({ data }: Props) => {
       setIsTimelineLoading(true);
       try {
         const contextStart = new Date(requestedStart.getTime() - 3 * 60 * 60 * 1000);
-        const contextEnd = new Date(requestedStart.getTime() + 3 * 60 * 60 * 1000);
+        const requestedEndTime = new Date(requestedStart.getTime() + APPOINTMENT_REQUEST_DEFAULT_DURATION_MINUTES * 60 * 1000);
+        const contextEnd = new Date(requestedEndTime.getTime() + 3 * 60 * 60 * 1000);
 
         const { data: timelineData, error } = await supabase
           .from('appointments')
