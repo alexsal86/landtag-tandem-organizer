@@ -102,9 +102,8 @@ const MyWorkDecisionCardInner = ({ decision, isHighlighted, highlightRef, onOpen
 
   const timelineHourSlots = useMemo(() => {
     if (!timelineBounds.length) return [];
-    const [windowStart] = timelineBounds;
+    const [windowStart, windowEnd] = timelineBounds;
     const hourCount = Math.ceil((windowEnd.getTime() - windowStart.getTime()) / (60 * 60 * 1000)) + 1;
-    const [, windowEnd] = timelineBounds;
     return Array.from({ length: hourCount }, (_, index) => { const slot = new Date(windowStart); slot.setHours(windowStart.getHours() + index); return slot; });
   }, [timelineBounds]);
 
