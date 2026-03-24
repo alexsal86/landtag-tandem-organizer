@@ -225,6 +225,8 @@ const Index = (): React.JSX.Element => {
         return withSectionBoundary('Profil bearbeiten', <EditProfile />);
       case "appointment-preparation":
         return withSectionBoundary('Terminvorbereitung', <AppointmentPreparationDetail />);
+      case "briefing-live":
+        return withSectionBoundary('Live Briefing', <BriefingLivePage />);
       default:
         return <NotFound />;
     }
