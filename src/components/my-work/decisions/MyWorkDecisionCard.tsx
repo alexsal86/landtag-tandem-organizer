@@ -223,11 +223,12 @@ const MyWorkDecisionCardInner = ({ decision, isHighlighted, highlightRef, onOpen
   useEffect(() => () => clearResponseRefreshTimeout(), []);
   useEffect(() => {
     const loadDayTimeline = async () => {
-      if (!shouldShowTimeline || !currentTenant?.id || !requestedStart) return;
+      if (!shouldLoadTimeline || !currentTenant?.id || !requestedStart) return;
       setIsTimelineLoading(true);
       try {
         const contextStartIso = new Date(requestedStart.getTime() - 3 * 60 * 60 * 1000).toISOString();
-        const contextEndIso = new Date(requestedStart.getTime() + 3 * 60 * 60 * 1000).toISOString();
+        const requestedEndTime = new Date(requestedStart.getTime() + APPOINTMENT_REQUEST_DEFAULT_DURATION_MINUTES * 60 * 1000);
+        const contextEndIso = new Date(requestedEndTime.getTime() + 3 * 60 * 60 * 1000).toISOString();
         const { data, error } = await supabase.from("appointments").select("id, title, start_time, end_time").eq("tenant_id", currentTenant.id).lt("start_time", contextEndIso).gt("end_time", contextStartIso).order("start_time", { ascending: true });
         if (error) throw error;
         const existingItems: DayTimelineItem[] = (data || []).map((item) => ({ id: item.id, title: item.title, start: item.start_time, end: item.end_time }));
