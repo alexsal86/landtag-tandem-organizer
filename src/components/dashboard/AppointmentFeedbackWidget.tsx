@@ -9,6 +9,7 @@ import { Label } from '@/components/ui/label';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Separator } from '@/components/ui/separator';
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { useAppointmentFeedback } from '@/hooks/useAppointmentFeedback';
 import { useAppointmentCategories } from '@/hooks/useAppointmentCategories';
 import { useAuth } from '@/hooks/useAuth';
@@ -25,11 +26,14 @@ import {
   Clock,
   MapPin,
   Loader2,
-  Users
+  Users,
+  ChevronDown,
+  ClipboardList,
 } from 'lucide-react';
 import SimpleRichTextEditor from '@/components/ui/SimpleRichTextEditor';
 import { AppointmentFeedbackSettings } from './AppointmentFeedbackSettings';
 import { createFeedbackContext } from '@/types/feedbackContext';
+import { AppointmentBriefingView } from '@/components/appointment-preparations/AppointmentBriefingView';
 
 interface AppointmentFeedbackWidgetProps {
   widgetSize?: string;
@@ -48,8 +52,9 @@ export const AppointmentFeedbackWidget = ({
 }: AppointmentFeedbackWidgetProps) => {
   const { user } = useAuth();
   const { currentTenant } = useTenant();
-  const { appointments, settings, updateFeedback, refetch } = useAppointmentFeedback();
+  const { appointments, preparationsMap, settings, updateFeedback, refetch } = useAppointmentFeedback();
   const { data: categories } = useAppointmentCategories();
+  const [openBriefings, setOpenBriefings] = useState<Set<string>>(new Set());
 
   const [noteText, setNoteText] = useState('');
   const [noteDialogOpen, setNoteDialogOpen] = useState<string | null>(null);
@@ -425,6 +430,47 @@ export const AppointmentFeedbackWidget = ({
                       </Badge>
                     )}
                   </div>
+
+                  {/* Briefing Section (collapsible) */}
+                  {appointment.event_type === 'appointment' && preparationsMap.get(appointment.id) && (
+                    <Collapsible
+                      open={openBriefings.has(appointment.id)}
+                      onOpenChange={(open) => {
+                        setOpenBriefings(prev => {
+                          const next = new Set(prev);
+                          if (open) next.add(appointment.id);
+                          else next.delete(appointment.id);
+                          return next;
+                        });
+                      }}
+                    >
+                      <CollapsibleTrigger asChild>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="w-full justify-between h-8 mb-2 text-xs font-medium text-muted-foreground hover:text-foreground"
+                        >
+                          <span className="flex items-center gap-1.5">
+                            <ClipboardList className="w-3.5 h-3.5" />
+                            Briefing anzeigen
+                          </span>
+                          <ChevronDown className={`w-3.5 h-3.5 transition-transform ${openBriefings.has(appointment.id) ? 'rotate-180' : ''}`} />
+                        </Button>
+                      </CollapsibleTrigger>
+                      <CollapsibleContent className="mb-3">
+                        <AppointmentBriefingView
+                          preparation={preparationsMap.get(appointment.id)!}
+                          appointmentInfo={{
+                            title: appointment.title,
+                            start_time: appointment.start_time,
+                            end_time: appointment.end_time,
+                            location: appointment.location,
+                          }}
+                          compact
+                        />
+                      </CollapsibleContent>
+                    </Collapsible>
+                  )}
 
                   {isCompleted ? (
                     <div className="flex items-center gap-2 text-xs text-muted-foreground">

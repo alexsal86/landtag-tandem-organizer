@@ -32,6 +32,7 @@ interface AppointmentBriefingViewProps {
     end_time: string;
     location?: string | null;
   } | null;
+  compact?: boolean;
 }
 
 interface BriefingSectionProps {
@@ -114,7 +115,7 @@ function ConversationPartnerList({
 }
 
 
-export function AppointmentBriefingView({ preparation, appointmentInfo }: AppointmentBriefingViewProps) {
+export function AppointmentBriefingView({ preparation, appointmentInfo, compact }: AppointmentBriefingViewProps) {
   const d = preparation.preparation_data;
   const incompleteTodos = preparation.checklist_items?.filter((item) => !item.completed) ?? [];
   const conversationPartners = getConversationPartnersFromPreparationData(d);
@@ -143,6 +144,69 @@ export function AppointmentBriefingView({ preparation, appointmentInfo }: Appoin
     incompleteTodos.length > 0 ||
     companions.length > 0 ||
     program.length > 0;
+
+  if (compact) {
+    return (
+      <div className="rounded-lg border border-border bg-muted/30 p-3 space-y-3 text-sm">
+        {!hasContent ? (
+          <p className="text-center text-muted-foreground py-2 text-xs">Keine Vorbereitungsdaten vorhanden.</p>
+        ) : (
+          <div className="space-y-3">
+            {conversationPartners.length > 0 && (
+              <BriefingSection icon={<UsersIcon className="h-3.5 w-3.5" />} title="Gesprächspartner">
+                <ConversationPartnerList partners={conversationPartners} />
+              </BriefingSection>
+            )}
+            {importantTopicLines.length > 0 && (
+              <BriefingSection icon={<MessageCircleIcon className="h-3.5 w-3.5" />} title="Wichtige Themen">
+                <BulletList items={importantTopicLines} />
+              </BriefingSection>
+            )}
+            {program.length > 0 && (
+              <BriefingSection icon={<ClockIcon className="h-3.5 w-3.5" />} title="Ablauf">
+                <div className="space-y-1.5">
+                  {program.map((programItem) => (
+                    <div key={programItem.id} className="grid grid-cols-[4rem_minmax(0,1fr)] items-start gap-2">
+                      <span className="text-primary font-mono text-xs">{programItem.time}</span>
+                      <div>
+                        <p className="break-words">{programItem.item}</p>
+                        {programItem.notes && (
+                          <p className="text-xs text-muted-foreground italic">{programItem.notes}</p>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </BriefingSection>
+            )}
+            {visitReasonLines.length > 0 && (
+              <BriefingSection icon={<CompassIcon className="h-3.5 w-3.5" />} title="Anlass">
+                {visitReasonLabel && <p className="font-medium text-foreground">{visitReasonLabel}</p>}
+                {visitReasonDetails && <p className="text-muted-foreground text-xs">{visitReasonDetails}</p>}
+              </BriefingSection>
+            )}
+            {briefingNotes && (
+              <BriefingSection icon={<CheckSquareIcon className="h-3.5 w-3.5" />} title="Notizen">
+                <p className="whitespace-pre-wrap break-words text-xs">{briefingNotes}</p>
+              </BriefingSection>
+            )}
+            {incompleteTodos.length > 0 && (
+              <BriefingSection icon={<CheckSquareIcon className="h-3.5 w-3.5" />} title="Offene To-dos">
+                <div className="space-y-1">
+                  {incompleteTodos.map((item) => (
+                    <p key={item.id} className="flex items-start gap-1.5 text-xs">
+                      <span className="text-muted-foreground shrink-0">☐</span>
+                      <span>{item.label}</span>
+                    </p>
+                  ))}
+                </div>
+              </BriefingSection>
+            )}
+          </div>
+        )}
+      </div>
+    );
+  }
 
   return (
     <Card className="bg-card border-border shadow-card overflow-hidden">

@@ -7,6 +7,7 @@ import { format } from 'date-fns';
 import { toast } from './use-toast';
 import { debugConsole } from '@/utils/debugConsole';
 import type { ExternalCalendarSummary } from '@/components/meetings/types';
+import type { AppointmentPreparation } from './useAppointmentPreparation';
 
 export interface AppointmentWithFeedback {
   id: string;
@@ -263,6 +264,55 @@ export const useAppointmentFeedback = () => {
     );
   }, [appointments, externalEvents]);
 
+  // Lade Preparations für interne Termine
+  const appointmentIds = React.useMemo(() => {
+    return (appointments || []).map(a => a.id);
+  }, [appointments]);
+
+  const { data: preparationsMap } = useQuery({
+    queryKey: ['appointment-feedback-preparations', appointmentIds],
+    queryFn: async () => {
+      if (appointmentIds.length === 0) return new Map<string, AppointmentPreparation>();
+
+      const { data, error } = await supabase
+        .from('appointment_preparations')
+        .select('*')
+        .in('appointment_id', appointmentIds)
+        .eq('is_archived', false);
+
+      if (error) {
+        debugConsole.error('Error fetching preparations for feedback:', error);
+        return new Map<string, AppointmentPreparation>();
+      }
+
+      const map = new Map<string, AppointmentPreparation>();
+      for (const row of data || []) {
+        const prep: AppointmentPreparation = {
+          id: row.id,
+          title: row.title,
+          status: row.status,
+          notes: row.notes,
+          appointment_id: row.appointment_id,
+          template_id: row.template_id,
+          tenant_id: row.tenant_id,
+          created_by: row.created_by,
+          created_at: row.created_at,
+          updated_at: row.updated_at,
+          is_archived: row.is_archived,
+          archived_at: row.archived_at,
+          preparation_data: (row.preparation_data as AppointmentPreparation['preparation_data']) ?? {},
+          checklist_items: (row.checklist_items as AppointmentPreparation['checklist_items']) ?? [],
+        };
+        map.set(row.appointment_id, prep);
+      }
+      return map;
+    },
+    enabled: appointmentIds.length > 0,
+    staleTime: 2 * 60_000,
+    gcTime: 5 * 60_000,
+    refetchOnWindowFocus: false,
+  });
+
   const isLoading = appointmentsLoading || externalEventsLoading;
 
   // Lade Settings
@@ -418,6 +468,7 @@ export const useAppointmentFeedback = () => {
 
   return {
     appointments: allEvents,
+    preparationsMap: preparationsMap ?? new Map<string, AppointmentPreparation>(),
     settings,
     isLoading,
     updateFeedback: updateFeedbackMutation.mutateAsync,
