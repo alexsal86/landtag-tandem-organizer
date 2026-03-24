@@ -52,8 +52,9 @@ export const AppointmentFeedbackWidget = ({
 }: AppointmentFeedbackWidgetProps) => {
   const { user } = useAuth();
   const { currentTenant } = useTenant();
-  const { appointments, settings, updateFeedback, refetch } = useAppointmentFeedback();
+  const { appointments, preparationsMap, settings, updateFeedback, refetch } = useAppointmentFeedback();
   const { data: categories } = useAppointmentCategories();
+  const [openBriefings, setOpenBriefings] = useState<Set<string>>(new Set());
 
   const [noteText, setNoteText] = useState('');
   const [noteDialogOpen, setNoteDialogOpen] = useState<string | null>(null);
