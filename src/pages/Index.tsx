@@ -204,7 +204,7 @@ const Index = (): React.JSX.Element => {
       case "knowledge":
         return withSectionBoundary('Wissensdatenbank', <KnowledgeBaseView />);
       case "settings":
-        return withSectionBoundary('Einstellungen', <Suspense fallback={null}><MatrixClientProvider><SettingsView /></MatrixClientProvider></Suspense>);
+        return withSectionBoundary('Einstellungen', <SettingsView />);
       case "employee":
         return withSectionBoundary('Mitarbeiter', <EmployeesView />);
       case "employee-meeting":
@@ -216,7 +216,7 @@ const Index = (): React.JSX.Element => {
       case "casefiles":
         return withSectionBoundary('Vorgänge', <CaseFilesView />);
       case "chat":
-        return withSectionBoundary('Chat', <Suspense fallback={null}><MatrixClientProvider><MatrixChatView /></MatrixClientProvider></Suspense>);
+        return withSectionBoundary('Chat', <MatrixChatView />);
       case "daten":
         return withSectionBoundary('Daten', <DataView />);
       case "notifications":
@@ -283,7 +283,9 @@ const Index = (): React.JSX.Element => {
                   <Loader2 className="h-8 w-8 animate-spin text-primary" />
                 </div>
               }>
-                {renderActiveSection()}
+                <MatrixClientProvider>
+                  {renderActiveSection()}
+                </MatrixClientProvider>
               </Suspense>
             </ErrorBoundary>
           </main>
