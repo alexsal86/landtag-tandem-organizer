@@ -127,7 +127,7 @@ function CalendarEventCard({ event }: { event: CalendarEvent }) {
   );
 }
 
-export function Kalenderansicht({ items, onUpdateSchedule, onEditItem, specialDays }: Props) {
+export function Kalenderansicht({ items, onUpdateSchedule, onEditItem, onCreateAtSlot, specialDays }: Props) {
   const [currentDate, setCurrentDate] = useState(new Date());
   const [view, setView] = useState<View>(Views.WEEK);
   const [formatFilter, setFormatFilter] = useState<"all" | "story" | "feed">("all");
