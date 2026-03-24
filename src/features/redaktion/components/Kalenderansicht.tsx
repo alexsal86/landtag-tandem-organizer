@@ -122,16 +122,6 @@ function CalendarEventCard({ event }: { event: CalendarEvent }) {
   return (
     <div className="flex h-full flex-col gap-1 overflow-hidden">
       <span className="truncate font-medium">{event.title}</span>
-      <div className="flex flex-wrap items-center gap-1">
-        <Badge variant="secondary" className="bg-white/15 px-1 py-0 text-[9px] text-white hover:bg-white/15">
-          {STATUS_LABELS[event.item.workflow_status]}
-        </Badge>
-        {event.sameChannelCount > 1 && (
-          <Badge variant="secondary" className="bg-amber-100 px-1 py-0 text-[9px] text-amber-950 hover:bg-amber-100">
-            Kanal-Konflikt ×{event.sameChannelCount}
-          </Badge>
-        )}
-      </div>
     </div>
   );
 }
