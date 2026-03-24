@@ -7,6 +7,7 @@ import { format } from 'date-fns';
 import { toast } from './use-toast';
 import { debugConsole } from '@/utils/debugConsole';
 import type { ExternalCalendarSummary } from '@/components/meetings/types';
+import type { AppointmentPreparation } from './useAppointmentPreparation';
 
 export interface AppointmentWithFeedback {
   id: string;
