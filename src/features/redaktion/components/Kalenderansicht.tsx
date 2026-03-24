@@ -1,12 +1,11 @@
 import { useCallback, useMemo, useState } from "react";
-import { CalendarDays, AlertTriangle, icons, Clock3, Sparkles, Info, ChevronLeft, ChevronRight, Tag } from "lucide-react";
+import { CalendarDays, AlertTriangle, icons, Clock3, Sparkles, ChevronLeft, ChevronRight, Tag } from "lucide-react";
 import { Calendar, dateFnsLocalizer, Views, type View } from "react-big-calendar";
 import withDragAndDrop from "react-big-calendar/lib/addons/dragAndDrop";
 import { addMonths, addWeeks, endOfMonth, endOfWeek, format, parse, startOfDay, startOfMonth, startOfWeek, getDay, getISOWeek, isSameDay, isWithinInterval } from "date-fns";
 import { de } from "date-fns/locale";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -140,7 +139,6 @@ function CalendarEventCard({ event }: { event: CalendarEvent }) {
 export function Kalenderansicht({ items, onUpdateSchedule, onEditItem, specialDays }: Props) {
   const [currentDate, setCurrentDate] = useState(new Date());
   const [view, setView] = useState<View>(Views.WEEK);
-  const [scheduleFilter, setScheduleFilter] = useState<"all" | "unscheduled" | "scheduled">("all");
   const [formatFilter, setFormatFilter] = useState<"all" | "story" | "feed">("all");
   const [slotSelection, setSlotSelection] = useState<Date | null>(null);
   const [slotSelectedItemId, setSlotSelectedItemId] = useState<string>("none");
@@ -150,12 +148,10 @@ export function Kalenderansicht({ items, onUpdateSchedule, onEditItem, specialDa
   const filteredItems = useMemo(() => {
     return items.filter((item) => {
       const formatType = inferFormatType(item);
-      if (scheduleFilter === "unscheduled" && item.scheduled_for) return false;
-      if (scheduleFilter === "scheduled" && !item.scheduled_for) return false;
       if (formatFilter !== "all" && formatType !== formatFilter) return false;
       return true;
     });
-  }, [formatFilter, items, scheduleFilter]);
+  }, [formatFilter, items]);
 
   const calendarRange = useMemo(() => {
     if (view === Views.MONTH) {
@@ -362,14 +358,6 @@ export function Kalenderansicht({ items, onUpdateSchedule, onEditItem, specialDa
             <Button type="button" size="sm" variant={view === Views.WEEK ? "default" : "ghost"} className="rounded-none h-8 px-3" onClick={() => setView(Views.WEEK)}>Woche</Button>
             <Button type="button" size="sm" variant={view === Views.MONTH ? "default" : "ghost"} className="rounded-none h-8 px-3" onClick={() => setView(Views.MONTH)}>Monat</Button>
           </div>
-          <Select value={scheduleFilter} onValueChange={(value) => setScheduleFilter(value as typeof scheduleFilter)}>
-            <SelectTrigger className="h-8 w-[180px]"><SelectValue placeholder="Planungsstatus" /></SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">Alle Beiträge</SelectItem>
-              <SelectItem value="unscheduled">Nur ungeplante Beiträge</SelectItem>
-              <SelectItem value="scheduled">Nur eingeplante Beiträge</SelectItem>
-            </SelectContent>
-          </Select>
           <Select value={formatFilter} onValueChange={(value) => setFormatFilter(value as typeof formatFilter)}>
             <SelectTrigger className="h-8 w-[150px]"><SelectValue placeholder="Format" /></SelectTrigger>
             <SelectContent>
@@ -396,6 +384,9 @@ export function Kalenderansicht({ items, onUpdateSchedule, onEditItem, specialDa
       )}
 
       <div className="min-h-[500px]">
+        <div className="mb-2 rounded-md border border-muted-foreground/20 bg-muted/20 px-3 py-2 text-xs text-muted-foreground">
+          Beiträge können direkt im Kalender per Drag-and-Drop neu terminiert werden. Klick auf einen freien Slot öffnet die Terminierung für ungeplante Beiträge.
+        </div>
         <DragAndDropCalendar
           localizer={localizer}
           events={events}
@@ -436,42 +427,11 @@ export function Kalenderansicht({ items, onUpdateSchedule, onEditItem, specialDa
         />
       </div>
 
-      <div className="grid gap-3 xl:grid-cols-[minmax(0,1.8fr)_minmax(280px,1fr)]">
-        <section className="rounded-lg border bg-muted/20 p-3">
-          <div className="mb-2 flex items-center justify-between gap-2">
-            <div className="flex items-center gap-2">
-              <h4 className="text-xs font-semibold text-foreground flex items-center gap-1.5">
-                <CalendarDays className="h-3.5 w-3.5" />
-                Kalenderübersicht
-              </h4>
-              <TooltipProvider delayDuration={150}>
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <Button type="button" variant="ghost" size="icon" className="h-6 w-6 rounded-full text-muted-foreground">
-                      <Info className="h-3.5 w-3.5" />
-                      <span className="sr-only">Planungshinweise anzeigen</span>
-                    </Button>
-                  </TooltipTrigger>
-                  <TooltipContent side="top" align="start" className="max-w-sm space-y-1 text-xs">
-                    <p>Beiträge können direkt im Kalender per Drag-and-Drop neu terminiert werden.</p>
-                    <p>Klick auf einen freien Slot öffnet die Terminierung für ungeplante Beiträge.</p>
-                    <p>Klick auf einen Beitrag öffnet den Bearbeitungsdialog für Status, Datum und Inhalte.</p>
-                    <p>Gelb umrandete Termine markieren mehrere Beiträge im selben Kanal am selben Tag.</p>
-                  </TooltipContent>
-                </Tooltip>
-              </TooltipProvider>
-            </div>
-            <Badge variant="outline">{events.length} Termine</Badge>
-          </div>
-          <p className="text-xs text-muted-foreground">
-            Plane Beiträge direkt im Kalender und nutze das Info-Symbol für kurze Hinweise.
-          </p>
-        </section>
-
+      <div>
         <aside className="space-y-2 rounded-lg border bg-muted/30 p-3">
           <h4 className="text-xs font-semibold text-foreground flex items-center gap-1.5">
             <CalendarDays className="h-3.5 w-3.5" />
-            Ungeplant ({unscheduled.length})
+            Ungeplant ({unscheduled.length}) · Gesamttermine {events.length}
           </h4>
           {unscheduled.length === 0 ? (
             <p className="text-xs text-muted-foreground">Keine ungeplanten Beiträge im aktuellen Filter.</p>
