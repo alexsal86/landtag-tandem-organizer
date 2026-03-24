@@ -9,6 +9,7 @@ import { Label } from '@/components/ui/label';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Separator } from '@/components/ui/separator';
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { useAppointmentFeedback } from '@/hooks/useAppointmentFeedback';
 import { useAppointmentCategories } from '@/hooks/useAppointmentCategories';
 import { useAuth } from '@/hooks/useAuth';
@@ -25,11 +26,14 @@ import {
   Clock,
   MapPin,
   Loader2,
-  Users
+  Users,
+  ChevronDown,
+  ClipboardList,
 } from 'lucide-react';
 import SimpleRichTextEditor from '@/components/ui/SimpleRichTextEditor';
 import { AppointmentFeedbackSettings } from './AppointmentFeedbackSettings';
 import { createFeedbackContext } from '@/types/feedbackContext';
+import { AppointmentBriefingView } from '@/components/appointment-preparations/AppointmentBriefingView';
 
 interface AppointmentFeedbackWidgetProps {
   widgetSize?: string;
