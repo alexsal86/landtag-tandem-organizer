@@ -13,6 +13,7 @@ import {
   ListTodo,
   CheckCircle2,
   Loader2,
+  ExternalLink,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
