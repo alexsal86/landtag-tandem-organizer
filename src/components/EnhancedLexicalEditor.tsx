@@ -253,19 +253,19 @@ export default function EnhancedLexicalEditor({
   const toolbarElement = showToolbar ? <EnhancedLexicalToolbar documentId={documentId} defaultFontSize={defaultFontSize} defaultFontFamily={defaultFontFamily || pageTypography} /> : null;
 
   return (
-    <div className="relative min-h-[200px] border rounded-md overflow-hidden">
+    <div className="relative min-h-[200px] h-full border rounded-md overflow-hidden flex flex-col">
       <LexicalComposer initialConfig={initialConfig}>
         {/* Portal toolbar to external container if provided */}
         {renderToolbarPortal && toolbarElement ? (
           <ToolbarPortalRenderer target={renderToolbarPortal}>{toolbarElement}</ToolbarPortalRenderer>
         ) : null}
-        <div className="editor-inner relative">
+        <div className="editor-inner relative h-full flex flex-col min-h-0">
           {!renderToolbarPortal && toolbarElement}
 
           {/* Track Changes banner / accept-reject bar */}
           <TrackChangesToolbar isReviewMode={isReviewMode} showAcceptReject={showAcceptReject} />
 
-          <div className={matchLetterPreview ? 'relative bg-muted/50 overflow-auto p-6' : 'relative'}>
+          <div className={matchLetterPreview ? 'relative bg-muted/50 overflow-auto p-6 flex-1 min-h-0' : 'relative flex-1 min-h-0 overflow-y-auto'}>
             <RichTextPlugin
               contentEditable={
                 <ContentEditable
