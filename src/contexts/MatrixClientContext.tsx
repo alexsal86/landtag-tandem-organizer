@@ -773,6 +773,11 @@ export function MatrixClientProvider({ children }: { children: ReactNode }) {
           setIsConnecting(false);
           setCryptoEnabled(Boolean(matrixClient.getCrypto()));
           updateRoomList(matrixClient);
+          // Re-activate key backup downloader so missing session keys are fetched from backup
+          const cryptoApi = matrixClient.getCrypto();
+          if (cryptoApi) {
+            cryptoApi.checkKeyBackupAndEnable().catch(() => {});
+          }
         } else if (state === 'ERROR') {
           isConnectedRef.current = false;
           setConnectionError('Sync-Fehler aufgetreten');
@@ -1159,14 +1164,29 @@ export function MatrixClientProvider({ children }: { children: ReactNode }) {
       return !id || !cachedEventIds.has(id);
     });
 
-    // Trigger decryption only for the visible/new timeline delta
+    // Trigger decryption for visible/new timeline events
     visibleOrNewEvents.forEach(event => {
-      if (event.isEncrypted() && !event.isDecryptionFailure()) {
+      if (event.isEncrypted()) {
         try {
           event.attemptDecryption(mc.getCrypto() as any).catch(() => {});
         } catch {}
       }
     });
+
+    // Also retry decryption for events already in cache that still failed (m.bad.encrypted)
+    const cachedFailedIds = new Set(
+      cached.filter(m => m.type === 'm.bad.encrypted').map(m => m.eventId)
+    );
+    if (cachedFailedIds.size > 0) {
+      timelineWindow.forEach(event => {
+        const id = event.getId();
+        if (id && cachedFailedIds.has(id) && event.isEncrypted()) {
+          try {
+            event.attemptDecryption(mc.getCrypto() as any).catch(() => {});
+          } catch {}
+        }
+      });
+    }
 
     const timelineMessages: MatrixMessage[] = timelineWindow
       .map(event => mapMatrixEventToMessage(room, event))
