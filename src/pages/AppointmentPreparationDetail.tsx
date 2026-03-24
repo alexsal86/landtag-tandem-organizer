@@ -316,10 +316,21 @@ export default function AppointmentPreparationDetail() {
 
           <div className="mt-6">
             <TabsContent value="briefing">
-              <AppointmentBriefingView
-                preparation={preparation}
-                appointmentInfo={appointmentInfo}
-              />
+              <div className="space-y-4">
+                <div className="flex justify-end">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => navigate(`/briefing-live?preparationId=${preparation.id}${preparation.appointment_id ? `&appointmentId=${preparation.appointment_id}` : ''}`)}
+                  >
+                    Live-Briefing öffnen
+                  </Button>
+                </div>
+                <AppointmentBriefingView
+                  preparation={preparation}
+                  appointmentInfo={appointmentInfo}
+                />
+              </div>
             </TabsContent>
 
             <TabsContent value="preparation">

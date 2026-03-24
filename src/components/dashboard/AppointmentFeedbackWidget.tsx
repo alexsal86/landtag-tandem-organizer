@@ -1,4 +1,5 @@
 import { useState, useMemo, useRef, useEffect, useCallback } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { debugConsole } from '@/utils/debugConsole';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -52,6 +53,7 @@ export const AppointmentFeedbackWidget = ({
 }: AppointmentFeedbackWidgetProps) => {
   const { user } = useAuth();
   const { currentTenant } = useTenant();
+  const navigate = useNavigate();
   const { appointments, preparationsMap, settings, updateFeedback, refetch } = useAppointmentFeedback();
   const { data: categories } = useAppointmentCategories();
   const [openBriefings, setOpenBriefings] = useState<Set<string>>(new Set());
@@ -457,7 +459,7 @@ export const AppointmentFeedbackWidget = ({
                           <ChevronDown className={`w-3.5 h-3.5 transition-transform ${openBriefings.has(appointment.id) ? 'rotate-180' : ''}`} />
                         </Button>
                       </CollapsibleTrigger>
-                      <CollapsibleContent className="mb-3">
+                      <CollapsibleContent className="mb-3 space-y-2">
                         <AppointmentBriefingView
                           preparation={preparationsMap.get(appointment.id)!}
                           appointmentInfo={{
@@ -468,6 +470,14 @@ export const AppointmentFeedbackWidget = ({
                           }}
                           compact
                         />
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="w-full h-8 text-xs"
+                          onClick={() => navigate(`/briefing-live?preparationId=${preparationsMap.get(appointment.id)!.id}&appointmentId=${appointment.id}`)}
+                        >
+                          Live-Briefing öffnen
+                        </Button>
                       </CollapsibleContent>
                     </Collapsible>
                   )}

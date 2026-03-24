@@ -1,5 +1,6 @@
 import { useState, useMemo, useCallback, useRef } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { useTenant } from '@/hooks/useTenant';
@@ -12,6 +13,7 @@ import {
   ListTodo,
   CheckCircle2,
   Loader2,
+  ExternalLink,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
@@ -35,6 +37,7 @@ export function DashboardAppointmentList({ appointments, isShowingTomorrow }: Pr
   const { user } = useAuth();
   const { currentTenant } = useTenant();
   const queryClient = useQueryClient();
+  const navigate = useNavigate();
 
   const [openBriefings, setOpenBriefings] = useState<Set<string>>(new Set());
   const [noteDialogAppointment, setNoteDialogAppointment] = useState<AppointmentData | null>(null);
@@ -250,22 +253,32 @@ export function DashboardAppointmentList({ appointments, isShowingTomorrow }: Pr
               <div className="flex items-center gap-2 py-0.5">
                 <span className="text-foreground/90">{time} - {apt.title}</span>
                 {hasBriefing && (
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setOpenBriefings(prev => {
-                        const next = new Set(prev);
-                        if (next.has(apt.id)) next.delete(apt.id);
-                        else next.add(apt.id);
-                        return next;
-                      });
-                    }}
-                    className="inline-flex items-center gap-1 text-xs text-primary hover:text-primary/80 transition-colors font-medium"
-                    title="Briefing anzeigen"
-                  >
-                    <ClipboardList className="h-3.5 w-3.5" />
-                    <ChevronDown className={`h-3 w-3 transition-transform ${openBriefings.has(apt.id) ? 'rotate-180' : ''}`} />
-                  </button>
+                  <>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setOpenBriefings(prev => {
+                          const next = new Set(prev);
+                          if (next.has(apt.id)) next.delete(apt.id);
+                          else next.add(apt.id);
+                          return next;
+                        });
+                      }}
+                      className="inline-flex items-center gap-1 text-xs text-primary hover:text-primary/80 transition-colors font-medium"
+                      title="Briefing anzeigen"
+                    >
+                      <ClipboardList className="h-3.5 w-3.5" />
+                      <ChevronDown className={`h-3 w-3 transition-transform ${openBriefings.has(apt.id) ? 'rotate-180' : ''}`} />
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => navigate(`/briefing-live?preparationId=${preparation!.id}&appointmentId=${apt.id}`)}
+                      className="inline-flex items-center gap-1 text-xs text-primary hover:text-primary/80 transition-colors font-medium"
+                      title="Live-Briefing öffnen"
+                    >
+                      <ExternalLink className="h-3.5 w-3.5" />
+                    </button>
+                  </>
                 )}
                 {isCompleted && (
                   <CheckCircle2 className="h-3.5 w-3.5 text-primary shrink-0" />
