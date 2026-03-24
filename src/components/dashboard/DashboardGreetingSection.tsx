@@ -115,7 +115,12 @@ export const DashboardGreetingSection = ({ data }: Props) => {
     const sections = combinedAfter.split('{{TASK_LIST_PLACEHOLDER}}\n');
 
     const beforeTasks = sections[0] || '';
-    const afterTasks = sections.length > 1 ? sections[1] : combinedAfter.replace('{{TASK_LIST_PLACEHOLDER}}\n', '');
+    const afterTasksRaw = sections.length > 1 ? sections[1] : combinedAfter.replace('{{TASK_LIST_PLACEHOLDER}}\n', '');
+
+    // Split around appointments placeholder
+    const appointmentParts = afterTasksRaw.split('{{APPOINTMENTS_PLACEHOLDER}}\n');
+    const beforeAppointments = appointmentParts[0] || '';
+    const afterAppointments = appointmentParts.length > 1 ? appointmentParts[1] : '';
 
     return (
       <>
@@ -134,10 +139,12 @@ export const DashboardGreetingSection = ({ data }: Props) => {
             ))}
           </span>
         )}
-        {parseTextSection(afterTasks)}
+        {parseTextSection(beforeAppointments)}
+        <DashboardAppointmentList appointments={appointments} isShowingTomorrow={isShowingTomorrow} />
+        {afterAppointments && parseTextSection(afterAppointments)}
       </>
     );
-  }, [fullText, openTaskTitles, navigate, specialDayHint]);
+  }, [fullText, openTaskTitles, navigate, specialDayHint, appointments, isShowingTomorrow]);
 
   if (tenantLoading) return <div className="animate-pulse h-32 bg-muted rounded-lg mb-6" />;
   if (!hasTenant) return null;
