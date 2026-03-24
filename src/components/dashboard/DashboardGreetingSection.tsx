@@ -1,8 +1,6 @@
 import { useMemo } from 'react';
 import { GripVertical, icons } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
-import { format } from 'date-fns';
-import { de } from 'date-fns/locale';
 
 import { getCurrentTimeSlot, getCurrentDayOfWeek, getGreeting } from '@/utils/dashboard/timeUtils';
 import { selectMessage } from '@/utils/dashboard/messageGenerator';
@@ -10,6 +8,7 @@ import { getWeatherHint, WeatherToggle } from '@/components/dashboard/DashboardW
 import { getSpecialDayHint, type SpecialDayHint } from '@/utils/dashboard/specialDays';
 import { type DashboardData } from '@/hooks/useDashboardData';
 import { Separator } from '@/components/ui/separator';
+import { DashboardAppointmentList } from '@/components/dashboard/DashboardAppointmentList';
 
 interface Props {
   data: DashboardData;
@@ -74,14 +73,7 @@ export const DashboardGreetingSection = ({ data }: Props) => {
     text += '{{TASK_LIST_PLACEHOLDER}}\n';
 
     text += isShowingTomorrow ? '\n📅 **Deine Termine morgen:**\n' : '\n📅 **Deine Termine heute:**\n';
-    if (appointments.length === 0) {
-      text += isShowingTomorrow ? 'Keine Termine morgen.\n' : 'Keine Termine heute.\n';
-    } else {
-      appointments.forEach(apt => {
-        const time = apt.is_all_day ? 'Ganztägig' : format(new Date(apt.start_time), 'HH:mm', { locale: de });
-        text += `${time} - ${apt.title}\n`;
-      });
-    }
+    text += '{{APPOINTMENTS_PLACEHOLDER}}\n';
     return text;
   }, [isLoading, userName, userRole, appointments, isShowingTomorrow, openTasksCount, completedTasksToday, specialDayHint]);
 
@@ -123,7 +115,12 @@ export const DashboardGreetingSection = ({ data }: Props) => {
     const sections = combinedAfter.split('{{TASK_LIST_PLACEHOLDER}}\n');
 
     const beforeTasks = sections[0] || '';
-    const afterTasks = sections.length > 1 ? sections[1] : combinedAfter.replace('{{TASK_LIST_PLACEHOLDER}}\n', '');
+    const afterTasksRaw = sections.length > 1 ? sections[1] : combinedAfter.replace('{{TASK_LIST_PLACEHOLDER}}\n', '');
+
+    // Split around appointments placeholder
+    const appointmentParts = afterTasksRaw.split('{{APPOINTMENTS_PLACEHOLDER}}\n');
+    const beforeAppointments = appointmentParts[0] || '';
+    const afterAppointments = appointmentParts.length > 1 ? appointmentParts[1] : '';
 
     return (
       <>
@@ -142,10 +139,12 @@ export const DashboardGreetingSection = ({ data }: Props) => {
             ))}
           </span>
         )}
-        {parseTextSection(afterTasks)}
+        {parseTextSection(beforeAppointments)}
+        <DashboardAppointmentList appointments={appointments} isShowingTomorrow={isShowingTomorrow} />
+        {afterAppointments && parseTextSection(afterAppointments)}
       </>
     );
-  }, [fullText, openTaskTitles, navigate, specialDayHint]);
+  }, [fullText, openTaskTitles, navigate, specialDayHint, appointments, isShowingTomorrow]);
 
   if (tenantLoading) return <div className="animate-pulse h-32 bg-muted rounded-lg mb-6" />;
   if (!hasTenant) return null;
