@@ -53,6 +53,7 @@ export const AppointmentFeedbackWidget = ({
 }: AppointmentFeedbackWidgetProps) => {
   const { user } = useAuth();
   const { currentTenant } = useTenant();
+  const navigate = useNavigate();
   const { appointments, preparationsMap, settings, updateFeedback, refetch } = useAppointmentFeedback();
   const { data: categories } = useAppointmentCategories();
   const [openBriefings, setOpenBriefings] = useState<Set<string>>(new Set());
