@@ -477,44 +477,6 @@ export function Kalenderansicht({ items, onUpdateSchedule, onEditItem, onCreateA
         </aside>
       </div>
 
-      <Dialog open={slotSelection !== null} onOpenChange={(open) => !open && setSlotSelection(null)}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Beitrag in freien Slot einplanen</DialogTitle>
-            <DialogDescription>
-              {slotSelection ? `Ausgewählter Slot: ${format(slotSelection, "dd.MM.yyyy HH:mm", { locale: de })}` : "Wähle einen ungeplanten Beitrag aus."}
-            </DialogDescription>
-          </DialogHeader>
-
-          <div className="space-y-3">
-            <div>
-              <Label>Ungeplanten Beitrag auswählen</Label>
-              <Select value={slotSelectedItemId} onValueChange={setSlotSelectedItemId}>
-                <SelectTrigger><SelectValue placeholder="Beitrag wählen" /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="none">Bitte wählen</SelectItem>
-                  {unscheduled.map((item) => (
-                    <SelectItem key={item.id} value={item.id}>{item.topic}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-          </div>
-
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setSlotSelection(null)}>Abbrechen</Button>
-            <Button
-              disabled={!slotSelection || slotSelectedItemId === "none" || isScheduling}
-              onClick={() => {
-                if (!slotSelection || slotSelectedItemId === "none") return;
-                void persistSchedule(slotSelectedItemId, slotSelection).then(() => setSlotSelection(null));
-              }}
-            >
-              Termin speichern
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
     </div>
   );
 }
