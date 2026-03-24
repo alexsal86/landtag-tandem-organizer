@@ -1,42 +1,53 @@
 
 
-## Briefing direkt im Dashboard anzeigen — vor Terminbeginn
+## Plan: Tagessimulation-Flicker, Zeitfenster-Korrektur und Push-Diagnose
 
-### Problem
-Aktuell erscheinen Termine im Feedback-Widget erst **nach** Terminende (`.lte('end_time', now)`). Das Briefing ist damit erst nach dem Termin zugänglich. Der Abgeordnete sitzt aber **vor** dem Termin im Dashboard und will das Briefing dort sehen und ggf. schon Notizen hinterlassen.
+### 1. Flicker in der Tagessimulation beheben (`MyWorkDecisionCard.tsx`)
 
-### Lösung
-Die Terminliste im Dashboard-Greeting zeigt bereits heutige/morgige Termine an. Wir machen jeden Termin, der eine Vorbereitung hat, direkt klickbar — mit einem aufklappbaren Briefing-Bereich inline im Dashboard.
+**Ursache**: `shouldShowTimeline` hängt von `isScheduleHoverOpen` ab (Zeile 80). Jede Mausbewegung über den Info-Button toggled den State, was den `useEffect` (Zeile 216) neu triggert und die Daten neu lädt → Flicker.
 
-### Umsetzung
+**Fix**:
+- Daten-Loading von Sichtbarkeit trennen: Neuer State `hasLoadedTimeline` + separate Bedingung `shouldLoadTimeline` (nur `isAppointmentRequest && isRequestedStartValid && (isSchedulePinnedOpen || isScheduleHoverOpen)` beim ersten Mal, danach gecached)
+- `useEffect` Dependency auf ein stabileres Signal umstellen: Daten nur laden wenn `isAppointmentRequest && isRequestedStartValid` und noch nicht geladen. Sichtbarkeit (`shouldShowTimeline`) nur für das Rendering nutzen, nicht für das Laden.
+- Alternativ einfacher: Daten laden sobald die Karte gemountet wird (wenn `isAppointmentRequest && isRequestedStartValid`), unabhängig von der Toggle-Sichtbarkeit. Dann kein Re-Fetch bei Hover.
 
-**1. Neue Komponente: `DashboardAppointmentList`**
-- Ersetzt die reine Text-Auflistung der Termine in `DashboardGreetingSection` (Zeilen 76-84)
-- Jeder Termin wird als kompakte Zeile dargestellt (Zeit + Titel)
-- Termine mit Vorbereitung erhalten ein 📋-Icon/Button
-- Klick öffnet ein aufklappbares `AppointmentBriefingView` (compact-Modus) direkt darunter
-- Zusätzlich: Quick-Action-Buttons für „Notiz" und „Aufgabe erstellen" unterhalb des Briefings
+### 2. Zeitfenster: 3h vor Start, 3h nach Ende
 
-**2. Daten laden: Preparations für Dashboard-Termine**
-- In `DashboardGreetingSection` (oder der neuen Komponente): Query auf `appointment_preparations` für die IDs der angezeigten Termine
-- Die Dashboard-Appointments haben eine `id` — damit Batch-Query `.in('appointment_id', ids)`
-- Nur laden wenn Termine vorhanden sind
+**Aktuell** (beide Dateien): `requestedStart - 3h` bis `requestedStart + 3h` (6h Fenster).
 
-**3. Feedback vor Terminbeginn ermöglichen**
-- `useAppointmentFeedback` Zeitfilter erweitern: Neben vergangenen Terminen (letzte 7 Tage) auch heutige/morgige Termine einbeziehen, die eine Vorbereitung haben
-- Alternativ: Eigener leichtgewichtiger Hook für Dashboard-Briefing-Aktionen (Notiz speichern, Aufgabe erstellen), der unabhängig vom Feedback-Widget arbeitet
-- Wenn eine Notiz/Aufgabe aus dem Dashboard-Briefing erstellt wird, wird automatisch ein `appointment_feedback`-Eintrag angelegt (Status: `completed`), sodass der Termin nach dem Ende nicht mehr als offene Rückmeldung erscheint
+**Gewünscht**: `requestedStart - 3h` bis `requestedEnd + 3h`. Da `requestedEnd = requestedStart + APPOINTMENT_REQUEST_DEFAULT_DURATION_MINUTES`, ist das Fenster jetzt `6h + Dauer`.
 
-**4. Anpassungen `DashboardGreetingSection`**
-- Termin-Platzhalter `{{APPOINTMENTS_PLACEHOLDER}}` statt inline Text
-- Neue Komponente dort rendern mit Collapsible-Briefings
+**Änderungen**:
+- `MyWorkDecisionCard.tsx` Zeile 81: `timelineWindowMinutes` dynamisch berechnen: `6 * 60 + APPOINTMENT_REQUEST_DEFAULT_DURATION_MINUTES`
+- Zeile 89-94 (`timelineBounds`): `windowEnd = requestedStart + APPOINTMENT_REQUEST_DEFAULT_DURATION_MINUTES + 3h`, aufgerundet auf volle Stunde
+- Zeile 221-222 (Query): `contextEndIso` auf `requestedEnd + 3h` setzen
+- Zeile 100 (Stunden-Slots): Anzahl dynamisch basierend auf neuem Fenster
+- `MyWorkDashboardAppointments.tsx` Zeile 222/229-231/310-311: Identische Anpassung
+
+### 3. Web Push Diagnose und Verbesserung
+
+**Befund**: Die Push-Infrastruktur funktioniert technisch:
+- Trigger `trigger_push_on_notification` ist aktiv
+- Edge Function `send-push-notification` läuft und sendet erfolgreich (`sent: 1`)
+- FCM akzeptiert die Anfrage (Status 200/201)
+- Vault-Secrets (`supabase_url`, `service_role_key`) sind vorhanden
+- VAPID-Key wird korrekt zurückgegeben
+
+**Mögliche Client-Ursachen**:
+- Die aktive Subscription nutzt den Legacy-FCM-Endpoint (`fcm.googleapis.com/fcm/send/`). Dieser wurde von Google deprecated zugunsten von `fcm.googleapis.com/wp/`. Die Push-Nachricht wird zwar vom Server akzeptiert, aber möglicherweise nicht mehr an den Browser zugestellt.
+- Browser-Notification-Permission könnte im Browser-Level blockiert sein (OS-Einstellungen)
+
+**Fix**: 
+- In `useNotifications.tsx` die Auto-Renewal-Logik (Zeile 694-729) erweitern: Wenn der Endpoint den Legacy-Prefix `fcm.googleapis.com/fcm/send/` enthält, automatisch die alte Subscription unsubscriben und eine neue erstellen
+- Besseres Logging wenn die Subscription erneuert wird
+- In `coi-serviceworker.js` Push-Handler: Debug-Log hinzufügen, ob `self.registration.showNotification` tatsächlich aufgerufen wird
 
 ### Dateien
 
 | Datei | Änderung |
 |---|---|
-| `src/components/dashboard/DashboardAppointmentList.tsx` | **Neu**: Termin-Liste mit klickbaren Briefings, Notiz-/Aufgaben-Buttons |
-| `src/components/dashboard/DashboardGreetingSection.tsx` | Termine über neue Komponente rendern statt als reinen Text |
-| `src/hooks/useAppointmentFeedback.tsx` | Zeitfilter erweitern: auch zukünftige Termine mit Preparation einbeziehen |
-| `src/components/appointment-preparations/AppointmentBriefingView.tsx` | Ggf. kleinere Anpassungen für Dashboard-Kontext |
+| `src/components/my-work/decisions/MyWorkDecisionCard.tsx` | Flicker fix: Daten unabhängig von Hover laden; Zeitfenster auf Start-3h bis Ende+3h |
+| `src/components/my-work/MyWorkDashboardAppointments.tsx` | Zeitfenster auf Start-3h bis Ende+3h |
+| `src/hooks/useNotifications.tsx` | Legacy-FCM-Endpoint erkennen und Subscription auto-erneuern |
+| `public/coi-serviceworker.js` | Debug-Logging im Push-Handler |
 
