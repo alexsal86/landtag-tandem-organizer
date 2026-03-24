@@ -73,14 +73,7 @@ export const DashboardGreetingSection = ({ data }: Props) => {
     text += '{{TASK_LIST_PLACEHOLDER}}\n';
 
     text += isShowingTomorrow ? '\n📅 **Deine Termine morgen:**\n' : '\n📅 **Deine Termine heute:**\n';
-    if (appointments.length === 0) {
-      text += isShowingTomorrow ? 'Keine Termine morgen.\n' : 'Keine Termine heute.\n';
-    } else {
-      appointments.forEach(apt => {
-        const time = apt.is_all_day ? 'Ganztägig' : format(new Date(apt.start_time), 'HH:mm', { locale: de });
-        text += `${time} - ${apt.title}\n`;
-      });
-    }
+    text += '{{APPOINTMENTS_PLACEHOLDER}}\n';
     return text;
   }, [isLoading, userName, userRole, appointments, isShowingTomorrow, openTasksCount, completedTasksToday, specialDayHint]);
 
