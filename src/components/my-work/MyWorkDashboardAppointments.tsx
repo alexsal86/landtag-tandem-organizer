@@ -219,7 +219,7 @@ export const DashboardAppointments = ({ data }: Props) => {
   }, [requestDate, requestTime]);
 
   const shouldShowTimeline = Boolean(isQuickRequestOpen && requestedStart && currentTenant?.id);
-  const timelineWindowMinutes = 6 * 60;
+  const timelineWindowMinutes = 6 * 60 + APPOINTMENT_REQUEST_DEFAULT_DURATION_MINUTES;
   const timelineHeight = 220;
   const pixelsPerMinute = timelineHeight / timelineWindowMinutes;
 
