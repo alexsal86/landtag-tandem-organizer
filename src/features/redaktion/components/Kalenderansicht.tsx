@@ -264,9 +264,10 @@ export function Kalenderansicht({ items, onUpdateSchedule, onEditItem, onCreateA
   }, [persistSchedule]);
 
   const handleSelectSlot = useCallback(({ start }: { start: Date }) => {
-    setSlotSelection(start);
-    setSlotSelectedItemId("none");
-  }, []);
+    if (onCreateAtSlot) {
+      onCreateAtSlot(start);
+    }
+  }, [onCreateAtSlot]);
 
   const handleDayPropGetter = useCallback((date: Date) => {
     const key = format(date, "yyyy-MM-dd");
