@@ -228,7 +228,12 @@ export const DashboardAppointments = ({ data }: Props) => {
 
     const windowStart = new Date(requestedStart.getTime() - 3 * 60 * 60 * 1000);
     windowStart.setMinutes(0, 0, 0);
-    const windowEnd = new Date(windowStart.getTime() + timelineWindowMinutes * 60 * 1000);
+    const requestedEnd = new Date(requestedStart.getTime() + APPOINTMENT_REQUEST_DEFAULT_DURATION_MINUTES * 60 * 1000);
+    const windowEnd = new Date(requestedEnd.getTime() + 3 * 60 * 60 * 1000);
+    windowEnd.setMinutes(0, 0, 0);
+    if (windowEnd.getTime() <= requestedEnd.getTime() + 3 * 60 * 60 * 1000 - 1) {
+      windowEnd.setHours(windowEnd.getHours() + 1);
+    }
 
     return [windowStart, windowEnd] as const;
   }, [requestedStart]);
