@@ -269,6 +269,14 @@ export function DashboardAppointmentList({ appointments, isShowingTomorrow }: Pr
                     <ClipboardList className="h-3.5 w-3.5" />
                     <ChevronDown className={`h-3 w-3 transition-transform ${openBriefings.has(apt.id) ? 'rotate-180' : ''}`} />
                   </button>
+                  <button
+                    type="button"
+                    onClick={() => navigate(`/briefing-live?preparationId=${preparation!.id}&appointmentId=${apt.id}`)}
+                    className="inline-flex items-center gap-1 text-xs text-primary hover:text-primary/80 transition-colors font-medium"
+                    title="Live-Briefing öffnen"
+                  >
+                    <ExternalLink className="h-3.5 w-3.5" />
+                  </button>
                 )}
                 {isCompleted && (
                   <CheckCircle2 className="h-3.5 w-3.5 text-primary shrink-0" />
