@@ -1,8 +1,6 @@
 import { useMemo } from 'react';
 import { GripVertical, icons } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
-import { format } from 'date-fns';
-import { de } from 'date-fns/locale';
 
 import { getCurrentTimeSlot, getCurrentDayOfWeek, getGreeting } from '@/utils/dashboard/timeUtils';
 import { selectMessage } from '@/utils/dashboard/messageGenerator';
@@ -10,6 +8,7 @@ import { getWeatherHint, WeatherToggle } from '@/components/dashboard/DashboardW
 import { getSpecialDayHint, type SpecialDayHint } from '@/utils/dashboard/specialDays';
 import { type DashboardData } from '@/hooks/useDashboardData';
 import { Separator } from '@/components/ui/separator';
+import { DashboardAppointmentList } from '@/components/dashboard/DashboardAppointmentList';
 
 interface Props {
   data: DashboardData;
