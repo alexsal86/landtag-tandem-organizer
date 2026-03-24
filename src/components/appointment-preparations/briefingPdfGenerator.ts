@@ -518,6 +518,27 @@ async function addConversationPartnersCard(
 
   // Pre-load avatar images and pre-crop them to real circles,
   // because jsPDF image clipping is unreliable across browsers.
+  function renderCircularAvatar(img: HTMLImageElement, size = 128): string | null {
+    try {
+      const canvas = document.createElement("canvas");
+      canvas.width = size;
+      canvas.height = size;
+      const ctx = canvas.getContext("2d");
+      if (!ctx) return null;
+      ctx.beginPath();
+      ctx.arc(size / 2, size / 2, size / 2, 0, Math.PI * 2);
+      ctx.closePath();
+      ctx.clip();
+      const min = Math.min(img.naturalWidth, img.naturalHeight);
+      const sx = (img.naturalWidth - min) / 2;
+      const sy = (img.naturalHeight - min) / 2;
+      ctx.drawImage(img, sx, sy, min, min, 0, 0, size, size);
+      return canvas.toDataURL("image/png");
+    } catch {
+      return null;
+    }
+  }
+
   const avatarImages = new Map<string, string>();
   await Promise.all(
     partners.map(async (p) => {
