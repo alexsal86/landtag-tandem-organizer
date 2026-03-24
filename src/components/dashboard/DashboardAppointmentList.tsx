@@ -22,7 +22,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { toast } from '@/hooks/use-toast';
 import { AppointmentBriefingView } from '@/components/appointment-preparations/AppointmentBriefingView';
 import SimpleRichTextEditor from '@/components/ui/SimpleRichTextEditor';
-import { createFeedbackContext } from '@/types/feedbackContext';
+
 import type { AppointmentPreparation } from '@/hooks/useAppointmentPreparation';
 import type { AppointmentData } from '@/hooks/useDashboardAppointmentsData';
 
