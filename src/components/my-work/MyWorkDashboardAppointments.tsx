@@ -315,7 +315,8 @@ export const DashboardAppointments = ({ data }: Props) => {
       setIsTimelineLoading(true);
       try {
         const contextStart = new Date(requestedStart.getTime() - 3 * 60 * 60 * 1000);
-        const contextEnd = new Date(requestedStart.getTime() + 3 * 60 * 60 * 1000);
+        const requestedEndTime = new Date(requestedStart.getTime() + APPOINTMENT_REQUEST_DEFAULT_DURATION_MINUTES * 60 * 1000);
+        const contextEnd = new Date(requestedEndTime.getTime() + 3 * 60 * 60 * 1000);
 
         const { data: timelineData, error } = await supabase
           .from('appointments')

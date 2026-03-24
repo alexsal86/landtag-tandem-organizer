@@ -244,7 +244,7 @@ const MyWorkDecisionCardInner = ({ decision, isHighlighted, highlightRef, onOpen
       }
     };
     void loadDayTimeline();
-  }, [shouldShowTimeline, currentTenant?.id, requestedStart, requestedTitle, decision.id]);
+  }, [shouldLoadTimeline, currentTenant?.id, requestedStart, requestedTitle, decision.id]);
 
   const openMailLink = (mailtoUrl: string) => { window.location.href = mailtoUrl; };
   const copyMailTemplate = async (text: string, type: "Zusage" | "Absage") => {
