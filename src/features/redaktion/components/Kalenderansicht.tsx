@@ -130,8 +130,6 @@ export function Kalenderansicht({ items, onUpdateSchedule, onEditItem, onCreateA
   const [currentDate, setCurrentDate] = useState(new Date());
   const [view, setView] = useState<View>(Views.WEEK);
   const [formatFilter, setFormatFilter] = useState<"all" | "story" | "feed">("all");
-  const [slotSelection, setSlotSelection] = useState<Date | null>(null);
-  const [slotSelectedItemId, setSlotSelectedItemId] = useState<string>("none");
   const [inlineScheduleDates, setInlineScheduleDates] = useState<Record<string, string>>({});
   const [isScheduling, setIsScheduling] = useState(false);
 
