@@ -373,6 +373,57 @@ export function useSocialPlannerItems() {
     await loadItems();
   }, [currentTenant?.id, loadItems]);
 
+  const duplicateItem = useCallback(async (sourceId: string) => {
+    if (!user?.id || !currentTenant?.id || !profileId) return null;
+
+    const source = items.find((item) => item.id === sourceId);
+    if (!source) return null;
+
+    const newId = crypto.randomUUID();
+    const { error } = await supabase
+      .from("social_content_items")
+      .insert({
+        id: newId,
+        tenant_id: currentTenant.id,
+        created_by: profileId,
+        topic_backlog_id: source.topic_backlog_id,
+        workflow_status: "idea",
+        approval_state: "draft",
+        format: source.format,
+        content_goal: source.content_goal,
+        format_variant: source.format_variant,
+        asset_requirements: source.asset_requirements,
+        approval_required: source.approval_required,
+        publish_link: null,
+        performance_notes: null,
+        hook: source.hook,
+        core_message: source.core_message,
+        draft_text: source.draft_text,
+        cta: source.cta,
+        notes: source.notes,
+        responsible_user_id: null,
+        scheduled_for: null,
+      });
+
+    if (error) throw new Error(getErrorMessage(error));
+
+    if (source.channel_ids.length > 0) {
+      const { error: channelError } = await supabase.from("social_content_item_channels").insert(
+        source.channel_ids.map((channelId, index) => ({
+          content_item_id: newId,
+          channel_id: channelId,
+          created_by: profileId,
+          tenant_id: currentTenant.id,
+          is_primary: index === 0,
+        })),
+      );
+      if (channelError) throw new Error(getErrorMessage(channelError));
+    }
+
+    await loadItems();
+    return { id: newId };
+  }, [currentTenant?.id, items, loadItems, profileId, user?.id]);
+
   useEffect(() => {
     void loadItems();
   }, [loadItems]);
@@ -413,7 +464,8 @@ export function useSocialPlannerItems() {
       updateItem,
       updateItemChannels,
       deleteItem,
+      duplicateItem,
     }),
-    [items, channels, loading, loadItems, createItem, updateItem, updateItemChannels, deleteItem],
+    [items, channels, loading, loadItems, createItem, updateItem, updateItemChannels, deleteItem, duplicateItem],
   );
 }

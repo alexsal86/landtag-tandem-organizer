@@ -13,6 +13,7 @@ const EMPTY_COUNTS: TabCounts = {
   team: 0,
   jourFixe: 0,
   feedbackFeed: 0,
+  redaktion: 0,
 };
 
 export const useMyWorkShellData = () => {
@@ -33,14 +34,33 @@ export const useMyWorkShellData = () => {
     setCountLoadError(null);
 
     try {
-      const { data, error } = await supabase.rpc("get_my_work_counts", {
-        p_user_id: user.id,
-        p_include_team: includeTeamCount,
-      });
+      const [{ data, error }, { data: profileData }] = await Promise.all([
+        supabase.rpc("get_my_work_counts", {
+          p_user_id: user.id,
+          p_include_team: includeTeamCount,
+        }),
+        supabase
+          .from("profiles")
+          .select("id")
+          .eq("user_id", user.id)
+          .maybeSingle(),
+      ]);
 
       if (error) throw error;
 
       const counts = (data || {}) as Record<string, number>;
+      if (requestId !== loadCountsRequestRef.current) return;
+
+      let redaktionCount = 0;
+      if (profileData?.id) {
+        const { count } = await supabase
+          .from("social_content_items")
+          .select("id", { count: "exact", head: true })
+          .eq("responsible_user_id", profileData.id)
+          .not("workflow_status", "eq", "published");
+        redaktionCount = count ?? 0;
+      }
+
       if (requestId !== loadCountsRequestRef.current) return;
 
       setTotalCounts({
@@ -51,6 +71,7 @@ export const useMyWorkShellData = () => {
         team: Number(counts.team || 0),
         jourFixe: Number(counts.jourFixe || 0),
         feedbackFeed: Number(counts.feedbackFeed || 0),
+        redaktion: redaktionCount,
       });
       setRealtimeStatus("connected");
     } catch (error) {

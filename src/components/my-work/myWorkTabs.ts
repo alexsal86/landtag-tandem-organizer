@@ -11,6 +11,7 @@ export interface TabCounts {
   team: number;
   jourFixe: number;
   feedbackFeed: number;
+  redaktion: number;
 }
 
 export type TabValue =
@@ -47,7 +48,7 @@ export const MY_WORK_TABS: MyWorkTabConfig[] = [
   { value: "tasks", label: "Aufgaben", icon: CheckSquare, countKey: "tasks" },
   { value: "decisions", label: "Entscheidungen", icon: Vote, countKey: "decisions" },
   { value: "jourFixe", label: "Jour fixe & Planungen", icon: Calendar, countKey: "jourFixe" },
-  { value: "redaktion", label: "Redaktion", icon: Lightbulb },
+  { value: "redaktion", label: "Redaktion", icon: Lightbulb, countKey: "redaktion" },
   { value: "time", label: "Meine Zeit", icon: Clock, employeeOnly: true },
   { value: "feedbackfeed", label: "Rückmeldungen", icon: MessageSquare, countKey: "feedbackFeed" },
   // Team-Tab: nur Rollen mit Führungs-/Koordinationsverantwortung sehen aggregierte Mitarbeiterdaten.

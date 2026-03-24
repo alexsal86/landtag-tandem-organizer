@@ -1,6 +1,6 @@
 import { type ReactNode, useCallback, useEffect, useMemo, useState } from "react";
 import { DragDropContext, Draggable, Droppable, type DropResult } from "@hello-pangea/dnd";
-import { ArrowLeft, ArrowRight, CalendarDays, CheckSquare, ClipboardList, GripVertical, Kanban, Pencil, Plus, Tag, Trash2, type LucideIcon } from "lucide-react";
+import { ArrowLeft, ArrowRight, CalendarDays, CheckSquare, ClipboardList, Copy, GripVertical, Kanban, MessageSquare, Pencil, Plus, Send, Tag, Trash2, type LucideIcon } from "lucide-react";
 import { format } from "date-fns";
 import { useSearchParams } from "react-router-dom";
 import { de } from "date-fns/locale";
@@ -19,6 +19,7 @@ import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
 import { useTenantUsers } from "@/hooks/useTenantUsers";
 import { type SocialPlannerItem, PlannerWorkflowStatus, useSocialPlannerItems } from "@/features/redaktion/hooks/useSocialPlannerItems";
+import { useSocialContentComments } from "@/features/redaktion/hooks/useSocialContentComments";
 import { useTopicBacklog } from "@/features/redaktion/hooks/useTopicBacklog";
 import { useToast } from "@/hooks/use-toast";
 import type { SpecialDay } from "@/utils/dashboard/specialDays";
@@ -196,6 +197,9 @@ interface SocialPlannerEditDialogProps {
 
 function SocialPlannerEditDialog({ item, open, users, channels, onOpenChange, onSave }: SocialPlannerEditDialogProps) {
   const { toast } = useToast();
+  const { comments, profileId: currentProfileId, addComment, deleteComment } = useSocialContentComments(open ? (item?.id ?? null) : null);
+  const [newComment, setNewComment] = useState("");
+  const [isSendingComment, setIsSendingComment] = useState(false);
   const [selectedTemplate, setSelectedTemplate] = useState<string>("none");
   const [topic, setTopic] = useState("");
   const [selectedChannels, setSelectedChannels] = useState<string[]>([]);
@@ -258,6 +262,19 @@ function SocialPlannerEditDialog({ item, open, users, channels, onOpenChange, on
       setCta: setCtaValue,
       setAssetRequirements,
     });
+  };
+
+  const handleSendComment = async () => {
+    if (!newComment.trim()) return;
+    try {
+      setIsSendingComment(true);
+      await addComment(newComment);
+      setNewComment("");
+    } catch {
+      toast({ title: "Kommentar konnte nicht gesendet werden", variant: "destructive" });
+    } finally {
+      setIsSendingComment(false);
+    }
   };
 
   const handleSave = async () => {
@@ -480,6 +497,71 @@ function SocialPlannerEditDialog({ item, open, users, channels, onOpenChange, on
           </BriefingGroup>
         </div>
 
+        <Card className="border-dashed">
+          <CardHeader className="pb-3">
+            <div className="flex items-start gap-3">
+              <div className="rounded-md bg-primary/10 p-2 text-primary">
+                <MessageSquare className="h-4 w-4" />
+              </div>
+              <div>
+                <CardTitle className="text-sm">Kommentare</CardTitle>
+                <CardDescription>Internes Team-Feedback und Freigabehinweise</CardDescription>
+              </div>
+            </div>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            {comments.length > 0 && (
+              <div className="space-y-2 max-h-48 overflow-y-auto pr-1">
+                {comments.map((comment) => (
+                  <div key={comment.id} className="rounded-md border bg-muted/40 p-3 text-sm">
+                    <div className="flex items-center justify-between gap-2 mb-1">
+                      <span className="font-medium text-xs">{comment.author_name}</span>
+                      <div className="flex items-center gap-2">
+                        <span className="text-xs text-muted-foreground">
+                          {new Date(comment.created_at).toLocaleString("de-DE", { day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit" })}
+                        </span>
+                        {comment.profile_id === currentProfileId && (
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-5 w-5 text-destructive hover:text-destructive"
+                            onClick={() => void deleteComment(comment.id)}
+                          >
+                            <Trash2 className="h-3 w-3" />
+                          </Button>
+                        )}
+                      </div>
+                    </div>
+                    <p className="text-sm whitespace-pre-wrap">{comment.body}</p>
+                  </div>
+                ))}
+              </div>
+            )}
+            <div className="flex gap-2">
+              <Textarea
+                rows={2}
+                value={newComment}
+                onChange={(event) => setNewComment(event.target.value)}
+                placeholder="Kommentar schreiben…"
+                className="flex-1 resize-none"
+                onKeyDown={(event) => {
+                  if (event.key === "Enter" && (event.ctrlKey || event.metaKey)) {
+                    void handleSendComment();
+                  }
+                }}
+              />
+              <Button
+                size="sm"
+                className="self-end"
+                disabled={!newComment.trim() || isSendingComment}
+                onClick={() => void handleSendComment()}
+              >
+                <Send className="h-3.5 w-3.5" />
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+
         <DialogFooter>
           <Button variant="outline" onClick={() => onOpenChange(false)} disabled={isSaving}>Abbrechen</Button>
           <Button onClick={() => void handleSave()} disabled={isSaving}>Speichern</Button>
@@ -493,19 +575,48 @@ interface PlannerBoardProps {
   specialDays?: SpecialDay[];
 }
 
+const FILTER_STORAGE_KEY = "social-planner-filters";
+
+function loadStoredFilters() {
+  try {
+    const raw = localStorage.getItem(FILTER_STORAGE_KEY);
+    if (!raw) return null;
+    return JSON.parse(raw) as {
+      channelFilter: string;
+      ownerFilter: string;
+      statusFilter: string;
+      tagSearch: string;
+      sortBy: (typeof SORT_OPTIONS)[number]["value"];
+      viewMode: "calendar" | "kanban";
+    };
+  } catch {
+    return null;
+  }
+}
+
 export function PlannerBoard({ specialDays = [] }: PlannerBoardProps) {
   const { toast } = useToast();
   const [searchParams] = useSearchParams();
   const { users } = useTenantUsers();
   const { topics, createTopic } = useTopicBacklog();
-  const { items, channels, loading, updateItem, createItem, deleteItem } = useSocialPlannerItems();
+  const { items, channels, loading, updateItem, createItem, deleteItem, duplicateItem } = useSocialPlannerItems();
 
-  const [viewMode, setViewMode] = useState<"calendar" | "kanban">("calendar");
-  const [channelFilter, setChannelFilter] = useState<string>("all");
-  const [ownerFilter, setOwnerFilter] = useState<string>("all");
-  const [statusFilter, setStatusFilter] = useState<string>("all");
-  const [tagSearch, setTagSearch] = useState("");
-  const [sortBy, setSortBy] = useState<(typeof SORT_OPTIONS)[number]["value"]>("scheduled");
+  const stored = useMemo(() => loadStoredFilters(), []);
+
+  const [viewMode, setViewMode] = useState<"calendar" | "kanban">(stored?.viewMode ?? "calendar");
+  const [channelFilter, setChannelFilter] = useState<string>(stored?.channelFilter ?? "all");
+  const [ownerFilter, setOwnerFilter] = useState<string>(stored?.ownerFilter ?? "all");
+  const [statusFilter, setStatusFilter] = useState<string>(stored?.statusFilter ?? "all");
+  const [tagSearch, setTagSearch] = useState(stored?.tagSearch ?? "");
+  const [sortBy, setSortBy] = useState<(typeof SORT_OPTIONS)[number]["value"]>(stored?.sortBy ?? "scheduled");
+
+  useEffect(() => {
+    try {
+      localStorage.setItem(FILTER_STORAGE_KEY, JSON.stringify({ channelFilter, ownerFilter, statusFilter, tagSearch, sortBy, viewMode }));
+    } catch {
+      // localStorage may be unavailable
+    }
+  }, [channelFilter, ownerFilter, statusFilter, tagSearch, sortBy, viewMode]);
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
   const [editingItemId, setEditingItemId] = useState<string | null>(null);
   const [deleteItemId, setDeleteItemId] = useState<string | null>(null);
@@ -700,6 +811,15 @@ export function PlannerBoard({ specialDays = [] }: PlannerBoardProps) {
     }
   };
 
+
+  const handleDuplicateItem = useCallback(async (itemId: string) => {
+    try {
+      await duplicateItem(itemId);
+      toast({ title: "Beitrag dupliziert", description: "Eine Kopie wurde in der Spalte „Ideen" angelegt." });
+    } catch {
+      toast({ title: "Duplizieren fehlgeschlagen", variant: "destructive" });
+    }
+  }, [duplicateItem, toast]);
 
   const handleDeleteItem = useCallback(async () => {
     if (!deleteItemId) return;
@@ -913,6 +1033,9 @@ export function PlannerBoard({ specialDays = [] }: PlannerBoardProps) {
                                       <Button variant="outline" size="sm" className="h-7" onClick={() => setEditingItemId(item.id)}>
                                         <Pencil className="mr-1 h-3 w-3" />
                                         Bearbeiten
+                                      </Button>
+                                      <Button variant="ghost" size="icon" className="h-7 w-7 text-muted-foreground" title="Duplizieren" onClick={() => void handleDuplicateItem(item.id)}>
+                                        <Copy className="h-3.5 w-3.5" />
                                       </Button>
                                       <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive hover:text-destructive" onClick={() => setDeleteItemId(item.id)}>
                                         <Trash2 className="h-3.5 w-3.5" />
