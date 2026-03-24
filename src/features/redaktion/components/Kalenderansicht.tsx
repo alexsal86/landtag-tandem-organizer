@@ -72,6 +72,7 @@ interface Props {
   items: SocialPlannerItem[];
   onUpdateSchedule: (id: string, date: string) => Promise<void> | void;
   onEditItem: (id: string) => void;
+  onCreateAtSlot?: (date: Date) => void;
   specialDays: SpecialDay[];
 }
 
