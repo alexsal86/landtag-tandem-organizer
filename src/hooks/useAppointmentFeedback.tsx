@@ -468,6 +468,7 @@ export const useAppointmentFeedback = () => {
 
   return {
     appointments: allEvents,
+    preparationsMap: preparationsMap ?? new Map<string, AppointmentPreparation>(),
     settings,
     isLoading,
     updateFeedback: updateFeedbackMutation.mutateAsync,
