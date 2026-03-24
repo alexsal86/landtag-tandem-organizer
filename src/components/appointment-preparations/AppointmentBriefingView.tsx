@@ -32,6 +32,7 @@ interface AppointmentBriefingViewProps {
     end_time: string;
     location?: string | null;
   } | null;
+  compact?: boolean;
 }
 
 interface BriefingSectionProps {
