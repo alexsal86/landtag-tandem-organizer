@@ -242,7 +242,9 @@ export const DashboardAppointments = ({ data }: Props) => {
     if (!timelineBounds.length) return [];
     const [windowStart] = timelineBounds;
 
-    return Array.from({ length: 7 }, (_, index) => {
+    const [, windowEnd] = timelineBounds;
+    const hourCount = Math.ceil((windowEnd.getTime() - windowStart.getTime()) / (60 * 60 * 1000)) + 1;
+    return Array.from({ length: hourCount }, (_, index) => {
       const slot = new Date(windowStart);
       slot.setHours(windowStart.getHours() + index);
       return slot;
