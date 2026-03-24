@@ -277,30 +277,46 @@ export function Themenspeicher({ onContentCreated }: Props) {
           {topics.map((topic) => {
             const statusMeta = STATUS_META[topic.status];
             return (
-              <div key={topic.id} className="group rounded-md border p-3 space-y-3">
+              <div key={topic.id} className="group rounded-md border p-3 pr-14 space-y-3 relative">
                 <div className="flex items-start justify-between gap-2">
-                  <div className="space-y-1">
+                  <div className="space-y-1 min-w-0">
                     <div className="flex flex-wrap items-center gap-2">
                       <p className="text-sm font-medium">{topic.topic}</p>
                       <Badge variant={statusMeta.variant}>{statusMeta.label}</Badge>
                     </div>
                     {topic.short_description && <p className="text-xs text-muted-foreground">{topic.short_description}</p>}
                   </div>
-                  <div className={cn(
-                    "flex flex-wrap items-center gap-2 transition-opacity duration-150",
-                    "opacity-100 sm:opacity-0 sm:group-hover:opacity-100 sm:group-focus-within:opacity-100",
-                  )}>
-                    <Button size="sm" variant="outline" onClick={() => { setEditingTopic(topic); }}>
-                      <Pencil className="h-3.5 w-3.5 mr-1" />
+                </div>
+                <div className={cn(
+                  "absolute right-2 top-1/2 -translate-y-1/2 flex flex-col items-center gap-1 transition-opacity duration-150",
+                  "opacity-0 pointer-events-none group-hover:opacity-100 group-focus-within:opacity-100 group-hover:pointer-events-auto group-focus-within:pointer-events-auto",
+                )}>
+                  <div className="relative group/icon">
+                    <Button size="icon" variant="ghost" className="h-8 w-8" onClick={() => { setEditingTopic(topic); }}>
+                      <Pencil className="h-4 w-4" />
+                      <span className="sr-only">Bearbeiten</span>
+                    </Button>
+                    <span className="pointer-events-none absolute right-full top-1/2 mr-2 -translate-y-1/2 whitespace-nowrap rounded bg-popover px-2 py-1 text-[11px] text-popover-foreground shadow opacity-0 transition-opacity group-hover/icon:opacity-100">
                       Bearbeiten
+                    </span>
+                  </div>
+                  <div className="relative group/icon">
+                    <Button size="icon" variant="ghost" className="h-8 w-8" onClick={() => setSelectedTopic(topic)}>
+                      <PlusCircle className="h-4 w-4" />
+                      <span className="sr-only">In Planner</span>
                     </Button>
-                    <Button size="sm" variant="outline" onClick={() => setSelectedTopic(topic)}>
-                      <PlusCircle className="h-3.5 w-3.5 mr-1" />
+                    <span className="pointer-events-none absolute right-full top-1/2 mr-2 -translate-y-1/2 whitespace-nowrap rounded bg-popover px-2 py-1 text-[11px] text-popover-foreground shadow opacity-0 transition-opacity group-hover/icon:opacity-100">
                       In Planner
-                    </Button>
+                    </span>
+                  </div>
+                  <div className="relative group/icon">
                     <Button size="icon" variant="ghost" className="h-8 w-8 text-destructive hover:text-destructive" onClick={() => setDeleteTopicCandidate(topic)}>
                       <Trash2 className="h-4 w-4" />
+                      <span className="sr-only">Löschen</span>
                     </Button>
+                    <span className="pointer-events-none absolute right-full top-1/2 mr-2 -translate-y-1/2 whitespace-nowrap rounded bg-popover px-2 py-1 text-[11px] text-popover-foreground shadow opacity-0 transition-opacity group-hover/icon:opacity-100">
+                      Löschen
+                    </span>
                   </div>
                 </div>
               </div>

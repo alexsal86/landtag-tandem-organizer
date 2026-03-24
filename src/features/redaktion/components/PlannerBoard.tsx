@@ -497,7 +497,7 @@ export function PlannerBoard({ specialDays = [] }: PlannerBoardProps) {
   const { toast } = useToast();
   const [searchParams] = useSearchParams();
   const { users } = useTenantUsers();
-  const { topics, loading: topicBacklogLoading, createTopic } = useTopicBacklog();
+  const { topics, createTopic } = useTopicBacklog();
   const { items, channels, loading, updateItem, createItem, deleteItem } = useSocialPlannerItems();
 
   const [viewMode, setViewMode] = useState<"calendar" | "kanban">("calendar");
@@ -606,23 +606,6 @@ export function PlannerBoard({ specialDays = [] }: PlannerBoardProps) {
     const nextStatus = result.destination.droppableId as PlannerWorkflowStatus;
     if (nextStatus === result.source.droppableId) return;
     await handleMove(result.draggableId, nextStatus);
-  };
-
-  const createFromBacklog = async () => {
-    const existingTopicIds = new Set(items.map((entry) => entry.topic_backlog_id));
-    const candidate = topics.find((topic) => !existingTopicIds.has(topic.id));
-
-    if (!candidate) {
-      toast({ title: "Alle Themen sind bereits im Planer" });
-      return;
-    }
-
-    try {
-      await createItem({ topic_backlog_id: candidate.id, workflow_status: "ideas" });
-      toast({ title: `Beitrag für '${candidate.topic}' angelegt` });
-    } catch {
-      toast({ title: "Beitrag konnte nicht angelegt werden", variant: "destructive" });
-    }
   };
 
   const resetCreateDialog = () => {
@@ -807,10 +790,6 @@ export function PlannerBoard({ specialDays = [] }: PlannerBoardProps) {
                 Filter zurücksetzen
               </Button>
             )}
-            <Button size="sm" onClick={createFromBacklog} disabled={topicBacklogLoading}>
-              <Plus className="mr-1 h-4 w-4" />
-              Aus Themenspeicher anlegen
-            </Button>
           </div>
         </div>
 
