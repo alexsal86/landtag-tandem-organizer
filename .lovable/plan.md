@@ -1,53 +1,78 @@
 
 
-## Plan: Tagessimulation-Flicker, Zeitfenster-Korrektur und Push-Diagnose
+## Briefing Live-Ansicht für Tablet
 
-### 1. Flicker in der Tagessimulation beheben (`MyWorkDecisionCard.tsx`)
+### Konzept
 
-**Ursache**: `shouldShowTimeline` hängt von `isScheduleHoverOpen` ab (Zeile 80). Jede Mausbewegung über den Info-Button toggled den State, was den `useEffect` (Zeile 216) neu triggert und die Daten neu lädt → Flicker.
+Eine neue, eigenständige Fullscreen-Seite `/briefing-live/:preparationId` — optimiert für Tablet-Nutzung während eines Termins. Sie zeigt das vollständige Briefing (read-only) und darunter direkt editierbare Bereiche für Notizen und Aufgaben. Kein Dialog, kein Overlay — alles auf einer Seite, scrollbar.
 
-**Fix**:
-- Daten-Loading von Sichtbarkeit trennen: Neuer State `hasLoadedTimeline` + separate Bedingung `shouldLoadTimeline` (nur `isAppointmentRequest && isRequestedStartValid && (isSchedulePinnedOpen || isScheduleHoverOpen)` beim ersten Mal, danach gecached)
-- `useEffect` Dependency auf ein stabileres Signal umstellen: Daten nur laden wenn `isAppointmentRequest && isRequestedStartValid` und noch nicht geladen. Sichtbarkeit (`shouldShowTimeline`) nur für das Rendering nutzen, nicht für das Laden.
-- Alternativ einfacher: Daten laden sobald die Karte gemountet wird (wenn `isAppointmentRequest && isRequestedStartValid`), unabhängig von der Toggle-Sichtbarkeit. Dann kein Re-Fetch bei Hover.
+### Aufbau
 
-### 2. Zeitfenster: 3h vor Start, 3h nach Ende
+```text
+┌─────────────────────────────────────────────┐
+│ ← Zurück          LIVE BRIEFING    [PDF] ↗ │
+│ Termintitel · 14:00–15:30 · Rathaus        │
+├─────────────────────────────────────────────┤
+│                                             │
+│  ┌─ Briefing (vollständig, read-only) ───┐ │
+│  │  Gesprächspartner · Themen · Ablauf   │ │
+│  │  Anlass · Notizen · Checkliste        │ │
+│  └───────────────────────────────────────┘ │
+│                                             │
+│  ┌─ Meine Notizen (inline editierbar) ──┐ │
+│  │  [SimpleRichTextEditor]               │ │
+│  │  [Speichern]                          │ │
+│  └───────────────────────────────────────┘ │
+│                                             │
+│  ┌─ Aufgabe erstellen (inline) ─────────┐ │
+│  │  Titel:    [_______________]          │ │
+│  │  Priorität: [Medium ▾]  Fällig: [__] │ │
+│  │  [Aufgabe erstellen]                  │ │
+│  │  ── Erstellte Aufgaben ──             │ │
+│  │  ✓ Aufgabe 1 · hoch · 01.04.         │ │
+│  └───────────────────────────────────────┘ │
+│                                             │
+│  [✓ Termin als erledigt markieren]         │
+│                                             │
+└─────────────────────────────────────────────┘
+```
 
-**Aktuell** (beide Dateien): `requestedStart - 3h` bis `requestedStart + 3h` (6h Fenster).
+### Zugang
 
-**Gewünscht**: `requestedStart - 3h` bis `requestedEnd + 3h`. Da `requestedEnd = requestedStart + APPOINTMENT_REQUEST_DEFAULT_DURATION_MINUTES`, ist das Fenster jetzt `6h + Dauer`.
+Von überall, wo ein Briefing-Icon erscheint, wird ein Link/Button hinzugefügt:
+- **Dashboard** (`DashboardAppointmentList`): Neuer Button "Live-Briefing öffnen" neben dem bestehenden 📋-Toggle
+- **Rückmeldungen** (`AppointmentFeedbackWidget`): Link "Briefing öffnen" bei Terminen mit Preparation
+- **Terminvorbereitung** (`AppointmentPreparationDetail`): Button im Briefing-Tab
 
-**Änderungen**:
-- `MyWorkDecisionCard.tsx` Zeile 81: `timelineWindowMinutes` dynamisch berechnen: `6 * 60 + APPOINTMENT_REQUEST_DEFAULT_DURATION_MINUTES`
-- Zeile 89-94 (`timelineBounds`): `windowEnd = requestedStart + APPOINTMENT_REQUEST_DEFAULT_DURATION_MINUTES + 3h`, aufgerundet auf volle Stunde
-- Zeile 221-222 (Query): `contextEndIso` auf `requestedEnd + 3h` setzen
-- Zeile 100 (Stunden-Slots): Anzahl dynamisch basierend auf neuem Fenster
-- `MyWorkDashboardAppointments.tsx` Zeile 222/229-231/310-311: Identische Anpassung
+### Umsetzung
 
-### 3. Web Push Diagnose und Verbesserung
+**1. Neue Seite: `BriefingLivePage.tsx`**
+- Route: `briefing-live` als neuer section-Case in `Index.tsx`
+- URL-Parameter: `preparationId` (und optional `appointmentId`)
+- Lädt Preparation via `useAppointmentPreparation` und Appointment-Info via Query
+- Rendert `AppointmentBriefingView` (volle Variante, nicht compact)
+- Darunter: Inline-Notizfeld mit `SimpleRichTextEditor` + Speichern-Button
+- Darunter: Inline-Aufgabenformular (Titel, Beschreibung, Priorität, Fälligkeitsdatum) + Button
+- Liste bereits erstellter Aufgaben aus dieser Session
+- "Termin erledigt"-Button → erstellt/aktualisiert `appointment_feedback` mit Status `completed`
+- Tablet-optimiert: große Touch-Targets, `max-w-3xl mx-auto`, großzügige Abstände
 
-**Befund**: Die Push-Infrastruktur funktioniert technisch:
-- Trigger `trigger_push_on_notification` ist aktiv
-- Edge Function `send-push-notification` läuft und sendet erfolgreich (`sent: 1`)
-- FCM akzeptiert die Anfrage (Status 200/201)
-- Vault-Secrets (`supabase_url`, `service_role_key`) sind vorhanden
-- VAPID-Key wird korrekt zurückgegeben
+**2. Einstiegspunkte verknüpfen**
+- `DashboardAppointmentList.tsx`: Bei Terminen mit Preparation einen "Live öffnen"-Button hinzufügen → navigiert zu `/?section=briefing-live&preparationId=X&appointmentId=Y`
+- `AppointmentFeedbackWidget.tsx`: "Briefing öffnen"-Link bei Terminen mit Preparation
+- `AppointmentPreparationDetail.tsx`: Button im Briefing-Tab-Header
 
-**Mögliche Client-Ursachen**:
-- Die aktive Subscription nutzt den Legacy-FCM-Endpoint (`fcm.googleapis.com/fcm/send/`). Dieser wurde von Google deprecated zugunsten von `fcm.googleapis.com/wp/`. Die Push-Nachricht wird zwar vom Server akzeptiert, aber möglicherweise nicht mehr an den Browser zugestellt.
-- Browser-Notification-Permission könnte im Browser-Level blockiert sein (OS-Einstellungen)
-
-**Fix**: 
-- In `useNotifications.tsx` die Auto-Renewal-Logik (Zeile 694-729) erweitern: Wenn der Endpoint den Legacy-Prefix `fcm.googleapis.com/fcm/send/` enthält, automatisch die alte Subscription unsubscriben und eine neue erstellen
-- Besseres Logging wenn die Subscription erneuert wird
-- In `coi-serviceworker.js` Push-Handler: Debug-Log hinzufügen, ob `self.registration.showNotification` tatsächlich aufgerufen wird
+**3. Feedback-Logik**
+- `ensureFeedbackCompleted`-Logik wird in die neue Seite übernommen (upsert auf `appointment_feedback`)
+- Beim Speichern einer Notiz oder Aufgabe wird automatisch der Feedback-Status auf `completed` gesetzt
 
 ### Dateien
 
 | Datei | Änderung |
 |---|---|
-| `src/components/my-work/decisions/MyWorkDecisionCard.tsx` | Flicker fix: Daten unabhängig von Hover laden; Zeitfenster auf Start-3h bis Ende+3h |
-| `src/components/my-work/MyWorkDashboardAppointments.tsx` | Zeitfenster auf Start-3h bis Ende+3h |
-| `src/hooks/useNotifications.tsx` | Legacy-FCM-Endpoint erkennen und Subscription auto-erneuern |
-| `public/coi-serviceworker.js` | Debug-Logging im Push-Handler |
+| `src/pages/BriefingLivePage.tsx` | **Neu**: Fullscreen-Briefing mit Inline-Notizen und Aufgaben |
+| `src/pages/Index.tsx` | Neuer Case `briefing-live` → `BriefingLivePage` |
+| `src/components/dashboard/DashboardAppointmentList.tsx` | "Live öffnen"-Button bei Terminen mit Preparation |
+| `src/components/dashboard/AppointmentFeedbackWidget.tsx` | "Briefing öffnen"-Link |
+| `src/pages/AppointmentPreparationDetail.tsx` | Button im Briefing-Tab |
 
