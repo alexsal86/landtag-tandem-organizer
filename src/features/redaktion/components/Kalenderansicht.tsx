@@ -377,7 +377,7 @@ export function Kalenderansicht({ items, onUpdateSchedule, onEditItem, onCreateA
 
       <div className="min-h-[500px]">
         <div className="mb-2 rounded-md border border-muted-foreground/20 bg-muted/20 px-3 py-2 text-xs text-muted-foreground">
-          Beiträge können direkt im Kalender per Drag-and-Drop neu terminiert werden. Klick auf einen freien Slot öffnet die Terminierung für ungeplante Beiträge.
+          Beiträge können direkt im Kalender per Drag-and-Drop neu terminiert werden. Klick auf einen freien Slot erstellt einen neuen Beitrag.
         </div>
         <DragAndDropCalendar
           localizer={localizer}
