@@ -1,58 +1,42 @@
 
 
-## Briefing + Rückmeldung verzahnen
+## Briefing direkt im Dashboard anzeigen — vor Terminbeginn
 
-### Konzept
+### Problem
+Aktuell erscheinen Termine im Feedback-Widget erst **nach** Terminende (`.lte('end_time', now)`). Das Briefing ist damit erst nach dem Termin zugänglich. Der Abgeordnete sitzt aber **vor** dem Termin im Dashboard und will das Briefing dort sehen und ggf. schon Notizen hinterlassen.
 
-Das Briefing (schreibgeschützte Terminvorbereitung) wird direkt in den Feedback-Workflow integriert. Wenn ein Termin eine Vorbereitung hat, wird das Briefing prominent oberhalb der Feedback-Aktionen angezeigt. Der Nutzer kann direkt im Briefing-Kontext Notizen hinterlassen, Aufgaben erstellen und den Termin als erledigt markieren — alles in einem Fluss.
-
-### Architektur
-
-```text
-┌──────────────────────────────────────────┐
-│  AppointmentFeedbackWidget               │
-│  ┌────────────────────────────────────┐  │
-│  │ Termin-Karte (bestehend)           │  │
-│  │  Titel · Zeit · Ort · Kategorie   │  │
-│  │                                    │  │
-│  │  ┌──────────────────────────────┐  │  │
-│  │  │ 📋 BRIEFING (aufklappbar)    │  │  │
-│  │  │  Gesprächspartner, Themen,   │  │  │
-│  │  │  Ablauf, Notizen etc.        │  │  │
-│  │  │  (AppointmentBriefingView)   │  │  │
-│  │  └──────────────────────────────┘  │  │
-│  │                                    │  │
-│  │  [Erledigt] | [Notiz] [Aufgabe]   │  │
-│  │  [Anhang]                          │  │
-│  └────────────────────────────────────┘  │
-└──────────────────────────────────────────┘
-```
+### Lösung
+Die Terminliste im Dashboard-Greeting zeigt bereits heutige/morgige Termine an. Wir machen jeden Termin, der eine Vorbereitung hat, direkt klickbar — mit einem aufklappbaren Briefing-Bereich inline im Dashboard.
 
 ### Umsetzung
 
-**1. Build-Fehler beheben** (`briefingPdfGenerator.ts`)
-- Die Funktion `renderCircularAvatar` wird referenziert aber existiert nicht. Entweder als lokale Hilfsfunktion implementieren (Canvas → circular crop → data URL) oder den Variablennamen korrigieren.
+**1. Neue Komponente: `DashboardAppointmentList`**
+- Ersetzt die reine Text-Auflistung der Termine in `DashboardGreetingSection` (Zeilen 76-84)
+- Jeder Termin wird als kompakte Zeile dargestellt (Zeit + Titel)
+- Termine mit Vorbereitung erhalten ein 📋-Icon/Button
+- Klick öffnet ein aufklappbares `AppointmentBriefingView` (compact-Modus) direkt darunter
+- Zusätzlich: Quick-Action-Buttons für „Notiz" und „Aufgabe erstellen" unterhalb des Briefings
 
-**2. Briefing in Feedback-Widget einbetten** (`AppointmentFeedbackWidget.tsx`)
-- Für jeden Termin mit `feedback_status === 'pending'` prüfen, ob eine `appointment_preparation` existiert (via `appointment_id`).
-- Neuer Query in `useAppointmentFeedback` oder direkt im Widget: Lade `appointment_preparations` für die angezeigten Termin-IDs.
-- Im Termin-Block einen aufklappbaren Bereich mit `AppointmentBriefingView` einfügen, zwischen Header und Aktions-Buttons.
-- Toggle-Button „Briefing anzeigen/ausblenden" mit Chevron-Icon.
+**2. Daten laden: Preparations für Dashboard-Termine**
+- In `DashboardGreetingSection` (oder der neuen Komponente): Query auf `appointment_preparations` für die IDs der angezeigten Termine
+- Die Dashboard-Appointments haben eine `id` — damit Batch-Query `.in('appointment_id', ids)`
+- Nur laden wenn Termine vorhanden sind
 
-**3. Feedback als "erledigt" markieren bei Briefing-Nutzung**
-- Wenn der Nutzer über das Briefing eine Notiz hinterlässt oder eine Aufgabe erstellt, wird `feedback_status` automatisch auf `completed` gesetzt (wie bisher).
-- Neuer Button „Briefing gelesen & erledigt" als Alternative zu „Erledigt", der signalisiert, dass das Briefing bewusst zur Kenntnis genommen wurde.
+**3. Feedback vor Terminbeginn ermöglichen**
+- `useAppointmentFeedback` Zeitfilter erweitern: Neben vergangenen Terminen (letzte 7 Tage) auch heutige/morgige Termine einbeziehen, die eine Vorbereitung haben
+- Alternativ: Eigener leichtgewichtiger Hook für Dashboard-Briefing-Aktionen (Notiz speichern, Aufgabe erstellen), der unabhängig vom Feedback-Widget arbeitet
+- Wenn eine Notiz/Aufgabe aus dem Dashboard-Briefing erstellt wird, wird automatisch ein `appointment_feedback`-Eintrag angelegt (Status: `completed`), sodass der Termin nach dem Ende nicht mehr als offene Rückmeldung erscheint
 
-**4. Daten-Verknüpfung** (`useAppointmentFeedback.tsx`)
-- Nach dem Laden der Termine: Batch-Query auf `appointment_preparations` mit `.in('appointment_id', appointmentIds)`.
-- Die Preparation-Daten als Map bereitstellen und im Widget nutzen.
+**4. Anpassungen `DashboardGreetingSection`**
+- Termin-Platzhalter `{{APPOINTMENTS_PLACEHOLDER}}` statt inline Text
+- Neue Komponente dort rendern mit Collapsible-Briefings
 
 ### Dateien
 
 | Datei | Änderung |
 |---|---|
-| `briefingPdfGenerator.ts` | Build-Fehler: `renderCircularAvatar` Funktion implementieren |
-| `useAppointmentFeedback.tsx` | Preparations für angezeigte Termine mitladen |
-| `AppointmentFeedbackWidget.tsx` | Briefing-View aufklappbar einbetten, oberhalb der Aktions-Buttons |
-| `AppointmentBriefingView.tsx` | Evtl. kompaktere Variante für Inline-Darstellung (optional prop `compact`) |
+| `src/components/dashboard/DashboardAppointmentList.tsx` | **Neu**: Termin-Liste mit klickbaren Briefings, Notiz-/Aufgaben-Buttons |
+| `src/components/dashboard/DashboardGreetingSection.tsx` | Termine über neue Komponente rendern statt als reinen Text |
+| `src/hooks/useAppointmentFeedback.tsx` | Zeitfilter erweitern: auch zukünftige Termine mit Preparation einbeziehen |
+| `src/components/appointment-preparations/AppointmentBriefingView.tsx` | Ggf. kleinere Anpassungen für Dashboard-Kontext |
 
