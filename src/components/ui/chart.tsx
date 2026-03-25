@@ -117,15 +117,19 @@ const ChartTooltip = RechartsPrimitive.Tooltip
 
 const ChartTooltipContent = React.forwardRef<
   HTMLDivElement,
-  React.ComponentProps<typeof RechartsPrimitive.Tooltip> &
-    React.ComponentProps<"div"> & {
+  React.ComponentProps<"div"> & {
+      active?: boolean
       hideLabel?: boolean
       hideIndicator?: boolean
       indicator?: "line" | "dot" | "dashed"
       nameKey?: string
       labelKey?: string
+      labelFormatter?: (label: unknown, payload: RechartsPayloadItem[]) => React.ReactNode
+      labelClassName?: string
       payload?: RechartsPayloadItem[]
       label?: unknown
+      formatter?: (value: unknown, name: string, entry: RechartsPayloadItem, index: number, payload: RechartsPayloadItem[]) => React.ReactNode
+      color?: string
     }
 >(
   (
@@ -215,7 +219,7 @@ const ChartTooltipContent = React.forwardRef<
                 )}
               >
                 {formatter && item?.value !== undefined && item.name ? (
-                  formatter(item.value, item.name, item, index, item.payload)
+                  formatter(item.value, String(item.name), item, index, item.payload as unknown as RechartsPayloadItem[])
                 ) : (
                   <>
                     {itemConfig?.icon ? (

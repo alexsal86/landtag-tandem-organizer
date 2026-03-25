@@ -52,9 +52,9 @@ export function EntryCard({ entry, showAssign = false }: EntryCardProps) {
       {/* Email metadata */}
       {emailMeta && (
         <div className="text-xs text-muted-foreground space-y-0.5 pl-6">
-          {emailMeta.from && <p>Von: {String(emailMeta.from)}</p>}
-          {emailMeta.to && <p>An: {String(emailMeta.to)}</p>}
-          {emailMeta.date && <p>Datum: {String(emailMeta.date)}</p>}
+          {emailMeta.from ? <p>Von: {String(emailMeta.from)}</p> : null}
+          {emailMeta.to ? <p>An: {String(emailMeta.to)}</p> : null}
+          {emailMeta.date ? <p>Datum: {String(emailMeta.date)}</p> : null}
         </div>
       )}
 

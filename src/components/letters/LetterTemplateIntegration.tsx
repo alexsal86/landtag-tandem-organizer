@@ -70,6 +70,7 @@ export const LetterTemplateIntegration: React.FC<LetterTemplateIntegrationProps>
 
     return {
       ...template,
+      layout_settings: template.layout_settings as unknown as LetterTemplate['layout_settings'],
       header_text_elements: headerElements as Json[],
     };
   };
@@ -125,8 +126,8 @@ export const LetterTemplateIntegration: React.FC<LetterTemplateIntegrationProps>
       letterhead_html: template.letterhead_html,
       letterhead_css: template.letterhead_css,
       response_time_days: template.response_time_days,
-      is_default: template.is_default,
-      is_active: template.is_active
+      is_default: template.is_default ?? false,
+      is_active: template.is_active ?? true
     });
     setIsDialogOpen(true);
   };

@@ -33,8 +33,8 @@ export function TrackChangesToolbar({ isReviewMode, showAcceptReject }: TrackCha
         if ($isTrackInsertNode(node) || $isTrackDeleteNode(node)) {
           count++;
         }
-        if (typeof (node as { getChildren?: () => LexicalNode[] }).getChildren === 'function') {
-          (node as { getChildren: () => LexicalNode[] }).getChildren().forEach(iterate);
+        if ('getChildren' in node && typeof (node as unknown as { getChildren: () => LexicalNode[] }).getChildren === 'function') {
+          (node as unknown as { getChildren: () => LexicalNode[] }).getChildren().forEach(iterate);
         }
       };
       iterate(root);
@@ -52,8 +52,8 @@ export function TrackChangesToolbar({ isReviewMode, showAcceptReject }: TrackCha
       const root = $getRoot();
       const processNode = (node: LexicalNode) => {
         // Process children first (depth-first)
-        if (typeof (node as { getChildren?: () => LexicalNode[] }).getChildren === 'function') {
-          [...(node as { getChildren: () => LexicalNode[] }).getChildren()].forEach(processNode);
+        if ('getChildren' in node && typeof (node as unknown as { getChildren: () => LexicalNode[] }).getChildren === 'function') {
+          [...(node as unknown as { getChildren: () => LexicalNode[] }).getChildren()].forEach(processNode);
         }
 
         if ($isTrackInsertNode(node)) {
@@ -76,8 +76,8 @@ export function TrackChangesToolbar({ isReviewMode, showAcceptReject }: TrackCha
     editor.update(() => {
       const root = $getRoot();
       const processNode = (node: LexicalNode) => {
-        if (typeof (node as { getChildren?: () => LexicalNode[] }).getChildren === 'function') {
-          [...(node as { getChildren: () => LexicalNode[] }).getChildren()].forEach(processNode);
+        if ('getChildren' in node && typeof (node as unknown as { getChildren: () => LexicalNode[] }).getChildren === 'function') {
+          [...(node as unknown as { getChildren: () => LexicalNode[] }).getChildren()].forEach(processNode);
         }
 
         if ($isTrackInsertNode(node)) {

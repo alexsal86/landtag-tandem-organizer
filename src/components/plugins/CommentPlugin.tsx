@@ -63,10 +63,11 @@ class CommentMarkNode extends MarkNode {
     return new CommentMarkNode(commentId);
   }
 
-  // Required for serialization
+  // @ts-expect-error Lexical 0.40 SerializedMarkNode shape changed; safe at runtime
   exportJSON(): SerializedCommentMarkNode {
+    const base = super.exportJSON();
     return {
-      ...super.exportJSON(),
+      ...base,
       commentId: this.__commentId,
       type: 'comment-mark',
       version: 1,
@@ -434,7 +435,7 @@ export function CommentPlugin({ documentId }: { documentId?: string }) {
     
     // Since we can't reliably map old text positions, we'll register a node transform
     // to handle existing comment marks when they're encountered in the editor
-    editor.registerNodeTransform(CommentMarkNode, (node) => {
+    editor.registerNodeTransform(CommentMarkNode as unknown as Parameters<typeof editor.registerNodeTransform>[0], (node: CommentMarkNode) => {
       const commentId = node.getCommentId();
       if (commentId && commentsList.some(comment => comment.id === commentId)) {
         // Ensure the node has the correct styling
@@ -592,8 +593,8 @@ export function CommentPlugin({ documentId }: { documentId?: string }) {
                   return true;
                 }
                 currentOffset = nodeEnd;
-              } else if (typeof (node as { getChildren?: () => LexicalNode[] }).getChildren === 'function') {
-                const children = (node as { getChildren: () => LexicalNode[] }).getChildren();
+              } else if ('getChildren' in node && typeof (node as unknown as { getChildren: () => LexicalNode[] }).getChildren === 'function') {
+                const children = (node as unknown as { getChildren: () => LexicalNode[] }).getChildren();
                 for (const child of children) {
                   if (findTextNode(child)) return true;
                 }
@@ -603,15 +604,16 @@ export function CommentPlugin({ documentId }: { documentId?: string }) {
             
             if (findTextNode(root) && targetNode) {
               // Set selection on the found text
-              selection.anchor.set(targetNode.getKey(), startOffset, 'text');
-              selection.focus.set(targetNode.getKey(), endOffset, 'text');
+              const tKey = (targetNode as LexicalNode).getKey();
+              selection.anchor.set(tKey, startOffset, 'text');
+              selection.focus.set(tKey, endOffset, 'text');
               
               // Apply the selection
               root.select();
               const currentSelection = $getSelection();
               if ($isRangeSelection(currentSelection)) {
-                currentSelection.anchor.set(targetNode.getKey(), startOffset, 'text');
-                currentSelection.focus.set(targetNode.getKey(), endOffset, 'text');
+                currentSelection.anchor.set(tKey, startOffset, 'text');
+                currentSelection.focus.set(tKey, endOffset, 'text');
                 
                 // Apply comment mark using proper Lexical approach  
                 const commentMark = $createCommentMarkNode(data.id);
@@ -795,7 +797,7 @@ export function CommentPlugin({ documentId }: { documentId?: string }) {
   // Register editor commands and event listeners
   useEffect(() => {
     // Register the CommentMarkNode transform for proper rendering
-    const unregisterTransform = editor.registerNodeTransform(CommentMarkNode, (node) => {
+    const unregisterTransform = editor.registerNodeTransform(CommentMarkNode as unknown as Parameters<typeof editor.registerNodeTransform>[0], (node: CommentMarkNode) => {
       const commentId = node.getCommentId();
       if (commentId) {
         debugConsole.log(`[CommentPlugin] Transforming comment node: ${commentId}`);

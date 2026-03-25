@@ -97,7 +97,7 @@ export interface MatrixClientState {
   roomHistoryState: MatrixRoomHistoryMap;
 }
 
-interface MatrixEventWithStatus extends sdk.MatrixEvent {
+interface MatrixEventWithStatus extends Omit<sdk.MatrixEvent, 'status'> {
   status?: unknown;
 }
 
@@ -166,7 +166,7 @@ interface MatrixVerificationRequest {
   off?: (event: 'change', handler: () => void) => void;
 }
 
-interface MatrixReadMarkersClient extends sdk.MatrixClient {
+interface MatrixReadMarkersClient extends Omit<sdk.MatrixClient, 'setRoomReadMarkers'> {
   setRoomReadMarkers: (roomId: string, eventId: string, rrEventId: string) => Promise<unknown>;
 }
 
@@ -323,7 +323,7 @@ const mapMatrixEventToMessage = (room: sdk.Room, event: sdk.MatrixEvent): Matrix
       msgtype: content.msgtype || 'm.file',
       body: content.body || '',
       url: content.url,
-      info: content.info,
+      info: content.info as MatrixMediaContent['info'],
     } : undefined,
   };
 };

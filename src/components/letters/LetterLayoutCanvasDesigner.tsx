@@ -337,7 +337,7 @@ export function LetterLayoutCanvasDesigner({ layoutSettings, onLayoutChange, onJ
   };
 
   const getRect = (key: LayoutBlockKey): Rect => {
-    const pag = localLayout.pagination || { enabled: true, top: 263.77, align: 'right', fontSize: 8 };
+    const pag = localLayout.pagination || { enabled: true, top: 263.77, align: 'right' as const, fontSize: 8 };
     switch (key) {
       case 'header':
         return { x: 0, y: 0, w: localLayout.pageWidth, h: localLayout.header.height };
@@ -352,7 +352,6 @@ export function LetterLayoutCanvasDesigner({ layoutSettings, onLayoutChange, onJ
       case 'footer':
         return { x: localLayout.margins.left, y: localLayout.footer.top, w: contentWidth, h: localLayout.footer.height };
       case 'attachments':
-        // Attachments are now integrated into the content block
         return { x: localLayout.margins.left, y: localLayout.content.top + getEffectiveContentHeight() - 8, w: contentWidth, h: 8 };
       case 'pagination': {
         const x = pag.align === 'left'
@@ -360,6 +359,10 @@ export function LetterLayoutCanvasDesigner({ layoutSettings, onLayoutChange, onJ
           : localLayout.pageWidth - localLayout.margins.right - PAGINATION_PREVIEW_WIDTH_MM;
         return { x, y: pag.top, w: PAGINATION_PREVIEW_WIDTH_MM, h: 4 };
       }
+      case 'returnAddress':
+        return { x: localLayout.returnAddress?.left ?? localLayout.addressField.left, y: localLayout.returnAddress?.top ?? localLayout.addressField.top, w: localLayout.returnAddress?.width ?? localLayout.addressField.width, h: localLayout.returnAddress?.height ?? 17.7 };
+      default:
+        return { x: 0, y: 0, w: 0, h: 0 };
     }
   };
 

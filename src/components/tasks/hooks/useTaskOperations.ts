@@ -314,7 +314,7 @@ export function useTaskOperations({
       .from("call_logs")
       .select("id, contact_id, caller_phone, caller_name, call_date, call_type, priority, notes")
       .eq("id", callLogId)
-      .single<CallLogRecord>();
+      .single();
     if (callLogError || !callLog) throw callLogError;
 
     if (callLog.contact_id) {
@@ -323,7 +323,7 @@ export function useTaskOperations({
       await createArchiveContact(callLog, resultText);
     }
 
-    const { data: appointment } = await supabase.from("appointments").select("title").eq("call_log_id", callLogId).single<{ title: string }>();
+    const { data: appointment } = await supabase.from("appointments").select("title").eq("call_log_id", callLogId).single();
     if (appointment && !appointment.title.startsWith("Erledigt:")) {
       await supabase.from("appointments").update({ title: `Erledigt: ${appointment.title}`, status: "completed" }).eq("call_log_id", callLogId);
     }
@@ -342,7 +342,7 @@ export function useTaskOperations({
         .eq("phone", phone)
         .eq("contact_type", "archive")
         .eq("user_id", user.id)
-        .single<ContactRecord>();
+        .single();
       archiveContact = data;
     }
 

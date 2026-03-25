@@ -421,7 +421,11 @@ export const LetterEditorCanvas: React.FC<LetterEditorCanvasProps> = ({
     );
   };
 
-  const editableAttachmentList: EditableAttachment[] = (attachments ?? []).filter(isEditableAttachment);
+  const editableAttachmentList: EditableAttachment[] = (attachments ?? []).map(a => ({
+    id: a.id,
+    file_name: a.file_name,
+    display_name: a.display_name ?? undefined,
+  })).filter(isEditableAttachment);
 
   // ── The complete content flow (used for both measurement and rendering) ──
   const renderContentFlow = () => (
@@ -493,7 +497,7 @@ export const LetterEditorCanvas: React.FC<LetterEditorCanvasProps> = ({
 
         {/* ── Fold/hole marks on all pages ── */}
         {!isFirst && layout.foldHoleMarks?.enabled !== false && (() => {
-          const marks = layout.foldHoleMarks || {};
+          const marks = layout.foldHoleMarks ?? { enabled: true, left: 3, strokeWidthPt: 1, foldMarkWidth: 5, holeMarkWidth: 8, topMarkY: 105, holeMarkY: 148.5, bottomMarkY: 210 };
           const markLeft = marks.left ?? 3;
           const foldW = marks.foldMarkWidth ?? 5;
           const holeW = marks.holeMarkWidth ?? 8;

@@ -16,7 +16,7 @@ interface TopicSelectorProps {
 }
 
 const getIconComponent = (iconName: string, className?: string) => {
-  const iconMap = LucideIcons as Record<string, LucideIcon>;
+  const iconMap = LucideIcons as unknown as Record<string, LucideIcon>;
   const Icon = iconMap[iconName];
   return Icon ? <Icon className={className || "h-3 w-3"} /> : <Tag className={className || "h-3 w-3"} />;
 };

@@ -105,13 +105,14 @@ export const DIN5008LetterLayout: React.FC<DIN5008LetterLayoutProps> = ({
   } as const;
 
   // Load layout settings from prop, template, or use defaults
-  const DEFAULT_LAYOUT = {
+  const DEFAULT_LAYOUT: LetterLayoutSettings = {
     pageWidth: 210,
     pageHeight: 297,
     margins: { left: 25, right: 20, top: 45, bottom: 25 },
     header: { height: 45, marginBottom: 8.46 },
     addressField: { top: 46, left: 25, width: 85, height: 40, returnAddressFontSize: 8, recipientFontSize: 10 },
     infoBlock: { top: 50, left: 125, width: 75, height: 40 },
+    returnAddress: { top: 46, left: 25, width: 85, height: 17.7 },
     subject: { top: 98.46, marginBottom: 8, fontSize: 13 },
     content: { top: 98.46, maxHeight: 165, lineHeight: 4.5, fontSize: 11 },
     footer: { top: 272, height: 18 },
@@ -212,67 +213,77 @@ export const DIN5008LetterLayout: React.FC<DIN5008LetterLayoutProps> = ({
     const parts: string[] = [];
     if (sender.organization) parts.push(sender.organization);
     if (sender.name) parts.push(sender.name);
-    if (sender.street && sender.house_number) {
-      parts.push(`${sender.street} ${sender.house_number}`);
+    const street = sender.wahlkreis_street || sender.landtag_street;
+    const houseNumber = sender.wahlkreis_house_number || sender.landtag_house_number;
+    if (street && houseNumber) {
+      parts.push(`${street} ${houseNumber}`);
+    } else if (street) {
+      parts.push(street);
     }
-    if (sender.postal_code && sender.city) {
-      parts.push(`${sender.postal_code} ${sender.city}`);
+    const postalCode = sender.wahlkreis_postal_code || sender.landtag_postal_code;
+    const city = sender.wahlkreis_city || sender.landtag_city;
+    if (postalCode && city) {
+      parts.push(`${postalCode} ${city}`);
     }
     return parts.join('\n');
   };
 
   const renderInformationBlock = (info: InformationBlockRecord) => {
     if (!info) return null;
+    const bd = (info.block_data && typeof info.block_data === 'object' && !Array.isArray(info.block_data))
+      ? info.block_data as Record<string, unknown>
+      : {} as Record<string, unknown>;
 
     switch (info.block_type) {
       case 'contact':
         return (
           <div className="space-y-1">
             <div className="font-medium">{info.label}</div>
-            {info.block_data.contact_name && (
-              <div>{info.block_data.contact_name}</div>
-            )}
-            {info.block_data.contact_title && (
-              <div className="text-sm text-muted-foreground">{info.block_data.contact_title}</div>
-            )}
-            {info.block_data.contact_phone && (
-              <div className="text-sm">Tel: {info.block_data.contact_phone}</div>
-            )}
-            {info.block_data.contact_email && (
-              <div className="text-sm">{info.block_data.contact_email}</div>
-            )}
+            {bd.contact_name ? (
+              <div>{String(bd.contact_name)}</div>
+            ) : null}
+            {bd.contact_title ? (
+              <div className="text-sm text-muted-foreground">{String(bd.contact_title)}</div>
+            ) : null}
+            {bd.contact_phone ? (
+              <div className="text-sm">Tel: {String(bd.contact_phone)}</div>
+            ) : null}
+            {bd.contact_email ? (
+              <div className="text-sm">{String(bd.contact_email)}</div>
+            ) : null}
           </div>
         );
-      case 'date':
+      case 'date': {
         const date = new Date();
-        const formatDate = (date: Date, format: string) => {
-          switch (format) {
+        const formatDate = (d: Date, fmt: string) => {
+          switch (fmt) {
             case 'dd.mm.yyyy':
-              return date.toLocaleDateString('de-DE');
+              return d.toLocaleDateString('de-DE');
             case 'dd.mm.yy':
-              return date.toLocaleDateString('de-DE', { year: '2-digit', month: '2-digit', day: '2-digit' });
+              return d.toLocaleDateString('de-DE', { year: '2-digit', month: '2-digit', day: '2-digit' });
             case 'yyyy-mm-dd':
-              return date.toISOString().split('T')[0];
+              return d.toISOString().split('T')[0];
             default:
-              return date.toLocaleDateString('de-DE');
+              return d.toLocaleDateString('de-DE');
           }
         };
         return (
           <div className="space-y-1">
             <div className="font-medium">{info.label}</div>
-            <div>{formatDate(date, info.block_data.date_format || 'dd.mm.yyyy')}</div>
-            {info.block_data.show_time && (
+            <div>{formatDate(date, String(bd.date_format || 'dd.mm.yyyy'))}</div>
+            {bd.show_time ? (
               <div className="text-sm">{date.toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' })} Uhr</div>
-            )}
+            ) : null}
           </div>
         );
+      }
       case 'reference':
         return (
           <div className="space-y-1">
             <div className="font-medium">{info.label}</div>
             <div>
-              {info.block_data.reference_prefix && `${info.block_data.reference_prefix} `}
-              {referenceNumber || info.block_data.reference_pattern}
+              {bd.reference_prefix ? `${String(bd.reference_prefix)} ` : null}
+              {referenceNumber || String(bd.reference_pattern || '')}
             </div>
           </div>
         );
@@ -280,7 +291,7 @@ export const DIN5008LetterLayout: React.FC<DIN5008LetterLayoutProps> = ({
         return (
           <div className="space-y-1">
             <div className="font-medium">{info.label}</div>
-            <div style={{ whiteSpace: 'pre-line' }}>{info.block_data.custom_content}</div>
+            <div style={{ whiteSpace: 'pre-line' }}>{String(bd.custom_content || '')}</div>
           </div>
         );
       default:
@@ -480,7 +491,7 @@ export const DIN5008LetterLayout: React.FC<DIN5008LetterLayoutProps> = ({
                         whiteSpace: 'pre-wrap'
                       }}
                     >
-                      {element.content || element.text}
+                      {element.content}
                     </div>
                   )}
                   {element.type === 'image' && element.imageUrl && (
@@ -725,7 +736,7 @@ export const DIN5008LetterLayout: React.FC<DIN5008LetterLayoutProps> = ({
         }}>
           {formatSenderAddress(senderInfo)}
           {senderInfo.phone && <div>Tel: {senderInfo.phone}</div>}
-          {senderInfo.email && <div>E-Mail: {senderInfo.email}</div>}
+          {(senderInfo.wahlkreis_email || senderInfo.landtag_email) && <div>E-Mail: {senderInfo.wahlkreis_email || senderInfo.landtag_email}</div>}
           {senderInfo.website && <div>Web: {senderInfo.website}</div>}
         </div>
       )}

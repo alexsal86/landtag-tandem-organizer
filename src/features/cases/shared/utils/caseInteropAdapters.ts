@@ -1,6 +1,8 @@
-import type { PostgrestError } from "@supabase/supabase-js";
 import type { CaseItemFormData } from "@/features/cases/items/hooks/useCaseItems";
-import type { CaseFile, CaseFileTask } from "@/features/cases/files/hooks/useCaseFileDetails";
+
+type PostgrestError = { message: string; details?: string; hint?: string; code?: string };
+type CaseFile = Record<string, unknown>;
+type CaseFileTask = Record<string, unknown>;
 
 export type CaseItemUpdatePayload = Partial<CaseItemFormData> & {
   intake_payload: CaseItemFormData["intake_payload"] | null;
