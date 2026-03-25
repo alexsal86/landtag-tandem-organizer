@@ -23,9 +23,11 @@ import LetterBriefDetails from './letters/LetterBriefDetails';
 import LetterCommentDialog from './letters/LetterCommentDialog';
 import {
   type Letter, type LetterTemplate, type Contact,
+  type LetterContentNodes,
   DEFAULT_LETTER_FONT_STACK, STATUS_LABELS, extractFontFamilyFromContentNodes,
   formatContactAddress, getNextStatus,
 } from './letters/types';
+import type { LetterLayoutSettings } from '@/types/letterLayout';
 
 interface LetterEditorProps {
   letter?: Letter;
@@ -57,12 +59,12 @@ const LetterEditor: React.FC<LetterEditorProps> = ({ letter, isOpen, onClose, on
   const [showLayoutDebug, setShowLayoutDebug] = useState(false);
   const [showTextSplitEditor, setShowTextSplitEditor] = useState(true);
   const [draftContent, setDraftContent] = useState('');
-  const [draftContentNodes, setDraftContentNodes] = useState<any>(null);
+  const [draftContentNodes, setDraftContentNodes] = useState<LetterContentNodes>(null);
   const [draftContentHtml, setDraftContentHtml] = useState<string | null>(null);
 
   const saveTimeoutRef = useRef<NodeJS.Timeout>(null);
   const isUpdatingFromRemoteRef = useRef(false);
-  const latestContentRef = useRef<{ content: string; contentNodes?: any }>({ content: '' });
+  const latestContentRef = useRef<{ content: string; contentNodes?: LetterContentNodes }>({ content: '' });
   const pendingMentionsRef = useRef<Set<string>>(new Set());
   const draftInitializedRef = useRef(false);
   const liveSyncTimerRef = useRef<NodeJS.Timeout>(null);
@@ -199,8 +201,8 @@ const LetterEditor: React.FC<LetterEditorProps> = ({ letter, isOpen, onClose, on
 
   const substitutedBlocks = useMemo(() => {
     if (!currentTemplate) return { canvasBlocks: {}, lineBlocks: {} };
-    const blockContent = currentTemplate?.layout_settings?.blockContent as Record<string, any> | undefined;
-    if (!blockContent) return { canvasBlocks: {}, lineBlocks: {} };
+    const blockContent = currentTemplate?.layout_settings?.blockContent;
+    if (!blockContent || typeof blockContent !== 'object') return { canvasBlocks: {}, lineBlocks: {} };
     const sender = senderInfos.find(s => s.id === editedLetter.sender_info_id);
     const contact = contacts.find(c => c.name === editedLetter.recipient_name);
     const infoBlock = informationBlocks.find(b => editedLetter.information_block_ids?.includes(b.id));
@@ -211,11 +213,19 @@ const LetterEditor: React.FC<LetterEditorProps> = ({ letter, isOpen, onClose, on
     } : editedLetter.recipient_name ? { name: editedLetter.recipient_name, street: '', postal_code: '', city: '', country: '' } : null;
     const varMap = buildVariableMap(
       { subject: editedLetter.subject, letterDate: editedLetter.letter_date, referenceNumber: editedLetter.reference_number },
-      sender ? { name: sender.name, organization: sender.organization, street: (sender as any).street, house_number: (sender as any).house_number, postal_code: (sender as any).postal_code, city: (sender as any).city,
+      sender ? { name: sender.name, organization: sender.organization,
         wahlkreis_street: sender.wahlkreis_street ?? undefined, wahlkreis_house_number: sender.wahlkreis_house_number ?? undefined, wahlkreis_postal_code: sender.wahlkreis_postal_code ?? undefined, wahlkreis_city: sender.wahlkreis_city ?? undefined,
         landtag_street: sender.landtag_street ?? undefined, landtag_house_number: sender.landtag_house_number ?? undefined, landtag_postal_code: sender.landtag_postal_code ?? undefined, landtag_city: sender.landtag_city ?? undefined,
-        phone: sender.phone ?? undefined, email: (sender as any).email, wahlkreis_email: sender.wahlkreis_email ?? undefined, landtag_email: sender.landtag_email ?? undefined } : null,
-      recipientData, infoBlock ? { reference: (infoBlock.block_data as any)?.reference_pattern, handler: (infoBlock.block_data as any)?.contact_name, our_reference: '' } : null, attachments
+        phone: sender.phone ?? undefined, wahlkreis_email: sender.wahlkreis_email ?? undefined, landtag_email: sender.landtag_email ?? undefined } : null,
+      recipientData, infoBlock ? {
+        reference: (infoBlock.block_data && typeof infoBlock.block_data === 'object' && !Array.isArray(infoBlock.block_data))
+          ? String((infoBlock.block_data as Record<string, unknown>).reference_pattern ?? '')
+          : '',
+        handler: (infoBlock.block_data && typeof infoBlock.block_data === 'object' && !Array.isArray(infoBlock.block_data))
+          ? String((infoBlock.block_data as Record<string, unknown>).contact_name ?? '')
+          : '',
+        our_reference: ''
+      } : null, attachments
     );
     const canvasBlocks: Record<string, HeaderElement[]> = {};
     const lineBlocks: Record<string, BlockLine[]> = {};
@@ -248,13 +258,18 @@ const LetterEditor: React.FC<LetterEditorProps> = ({ letter, isOpen, onClose, on
     return salutationTemplate;
   }, [currentTemplate, editedLetter.recipient_name, contacts]);
 
-  const getLayoutSettings = () => {
+  const getLayoutSettings = (): LetterLayoutSettings | undefined => {
     const ls = currentTemplate?.layout_settings;
     if (!ls) return undefined;
     const closingFormula = editedLetter.closing_formula || ls.closing?.formula;
     const closingName = editedLetter.closing_name || ls.closing?.signatureName;
     if (closingFormula || closingName) return { ...ls, closing: { ...(ls.closing || {}), formula: closingFormula || '', signatureName: closingName || '' } };
     return ls;
+  };
+
+  const toSerializedContentNodes = (nodes: LetterContentNodes | undefined): string | undefined => {
+    if (!nodes) return undefined;
+    return typeof nodes === 'string' ? nodes : JSON.stringify(nodes);
   };
 
   if (!isOpen) return null;
@@ -359,7 +374,7 @@ const LetterEditor: React.FC<LetterEditorProps> = ({ letter, isOpen, onClose, on
                     <Button size="sm" variant="ghost" className="h-7 px-2" onClick={() => setShowTextSplitEditor(false)}><X className="h-3.5 w-3.5" /></Button>
                   </div>
                   <div className="flex-1 overflow-auto p-3">
-                    <EnhancedLexicalEditor key={letter?.id || 'new'} content={draftContent || letter?.content || ''} contentNodes={draftContentNodes ?? letter?.content_nodes ?? undefined}
+                    <EnhancedLexicalEditor key={letter?.id || 'new'} content={draftContent || letter?.content || ''} contentNodes={toSerializedContentNodes(draftContentNodes ?? letter?.content_nodes)}
                       onChange={({ plainText, nodesJson, html }) => { setDraftContent(plainText || ''); setDraftContentNodes(nodesJson && nodesJson.trim() !== '' ? nodesJson : null); setDraftContentHtml(html || null); }}
                       placeholder="Brieftext hier eingeben..." documentId={letter?.id} showToolbar={canEdit} editable={canEdit}
                       onMentionInsert={(userId) => pendingMentionsRef.current.add(userId)} defaultFontFamily={templateDefaultFontFamily} />

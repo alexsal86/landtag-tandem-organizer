@@ -5,7 +5,7 @@ import { de } from 'date-fns/locale';
 import { debugConsole } from '@/utils/debugConsole';
 import type { DbInformationBlock, DbSenderInformation } from '@/components/letter-pdf/types';
 import type { LetterPdfGenerationResult, LetterRecord, LetterTemplate } from '@/components/letter-pdf/types';
-import type { LetterLayoutSettings } from '@/types/letterLayout';
+import { DEFAULT_DIN5008_LAYOUT, isLetterLayoutSettings, type LetterLayoutSettings } from '@/types/letterLayout';
 
 // Convert HTML content to plain text for DOCX
 function htmlToText(html: string): string {
@@ -66,20 +66,8 @@ function parseContentToParagraphs(content: string, fontSizeHalfPt = 22): Paragra
 export async function generateLetterDOCX(letter: LetterRecord): Promise<LetterPdfGenerationResult | null> {
   try {
     // Default layout settings
-    const DEFAULT_LAYOUT = {
-      pageWidth: 210,
-      pageHeight: 297,
-      margins: { left: 25, right: 20, top: 45, bottom: 25 },
-      header: { height: 45, marginBottom: 8.46 },
-      addressField: { top: 46, left: 25, width: 85, height: 40, returnAddressFontSize: 8, recipientFontSize: 10 },
-      infoBlock: { top: 50, left: 125, width: 75, height: 40 },
-      subject: { top: 101.46, marginBottom: 8, fontSize: 13 },
-      content: { top: 109.46, maxHeight: 161, lineHeight: 4.5, fontSize: 11 },
-      footer: { top: 272, height: 18 },
-      attachments: { top: 230 }
-    };
-    
-    let layoutSettings: LetterLayoutSettings | typeof DEFAULT_LAYOUT = DEFAULT_LAYOUT;
+    const DEFAULT_LAYOUT: LetterLayoutSettings = { ...DEFAULT_DIN5008_LAYOUT };
+    let layoutSettings: LetterLayoutSettings = DEFAULT_LAYOUT;
 
     
     // Fetch template data
@@ -94,8 +82,8 @@ export async function generateLetterDOCX(letter: LetterRecord): Promise<LetterPd
       if (templateData) {
         template = templateData as LetterTemplate;
         // Parse layout_settings from jsonb
-        if (templateData.layout_settings && typeof templateData.layout_settings === 'object') {
-          layoutSettings = templateData.layout_settings as typeof DEFAULT_LAYOUT;
+        if (isLetterLayoutSettings(templateData.layout_settings)) {
+          layoutSettings = templateData.layout_settings;
         }
       }
     }
@@ -179,7 +167,7 @@ export async function generateLetterDOCX(letter: LetterRecord): Promise<LetterPd
     if (letter.recipient_name || letter.recipient_address) {
       documentChildren.push(
         new Paragraph({
-          children: [new TextRun({ text: "An:", bold: true, size: Math.round(((layoutSettings as any).addressField?.recipientFontSize || 10) * 2) })],
+          children: [new TextRun({ text: "An:", bold: true, size: Math.round((layoutSettings.addressField?.recipientFontSize || 10) * 2) })],
           spacing: { after: 100 }
         })
       );
@@ -187,7 +175,7 @@ export async function generateLetterDOCX(letter: LetterRecord): Promise<LetterPd
       if (letter.recipient_name) {
         documentChildren.push(
           new Paragraph({
-            children: [new TextRun({ text: letter.recipient_name, size: Math.round(((layoutSettings as any).addressField?.recipientFontSize || 10) * 2) })],
+            children: [new TextRun({ text: letter.recipient_name, size: Math.round((layoutSettings.addressField?.recipientFontSize || 10) * 2) })],
             spacing: { after: 50 }
           })
         );
@@ -199,7 +187,7 @@ export async function generateLetterDOCX(letter: LetterRecord): Promise<LetterPd
           if (line.trim()) {
             documentChildren.push(
               new Paragraph({
-                children: [new TextRun({ text: line.trim(), size: Math.round(((layoutSettings as any).addressField?.recipientFontSize || 10) * 2) })],
+                children: [new TextRun({ text: line.trim(), size: Math.round((layoutSettings.addressField?.recipientFontSize || 10) * 2) })],
                 spacing: { after: 50 }
               })
             );
@@ -209,7 +197,7 @@ export async function generateLetterDOCX(letter: LetterRecord): Promise<LetterPd
 
       documentChildren.push(
         new Paragraph({
-          children: [new TextRun({ text: "", size: Math.round(((layoutSettings as any).addressField?.recipientFontSize || 10) * 2) })],
+          children: [new TextRun({ text: "", size: Math.round((layoutSettings.addressField?.recipientFontSize || 10) * 2) })],
           spacing: { after: 300 }
         })
       );
@@ -223,7 +211,7 @@ export async function generateLetterDOCX(letter: LetterRecord): Promise<LetterPd
         
         documentChildren.push(
           new Paragraph({
-            children: [new TextRun({ text: formattedDate, size: Math.round(((layoutSettings as any).addressField?.recipientFontSize || 10) * 2) })],
+            children: [new TextRun({ text: formattedDate, size: Math.round((layoutSettings.addressField?.recipientFontSize || 10) * 2) })],
             alignment: AlignmentType.RIGHT,
             spacing: { after: 100 }
           })
@@ -245,7 +233,7 @@ export async function generateLetterDOCX(letter: LetterRecord): Promise<LetterPd
     // Add spacing before subject
     documentChildren.push(
       new Paragraph({
-        children: [new TextRun({ text: "", size: Math.round(((layoutSettings as any).addressField?.recipientFontSize || 10) * 2) })],
+        children: [new TextRun({ text: "", size: Math.round((layoutSettings.addressField?.recipientFontSize || 10) * 2) })],
         spacing: { after: 200 }
       })
     );
@@ -255,8 +243,8 @@ export async function generateLetterDOCX(letter: LetterRecord): Promise<LetterPd
       documentChildren.push(
         new Paragraph({
           children: [
-            new TextRun({ text: "Betreff: ", bold: true, size: Math.round(((layoutSettings as any).subject?.fontSize || 13) * 2) }),
-            new TextRun({ text: letter.subject, bold: true, size: Math.round(((layoutSettings as any).subject?.fontSize || 13) * 2) })
+            new TextRun({ text: "Betreff: ", bold: true, size: Math.round((layoutSettings.subject?.fontSize || 13) * 2) }),
+            new TextRun({ text: letter.subject, bold: true, size: Math.round((layoutSettings.subject?.fontSize || 13) * 2) })
           ],
           spacing: { after: 300 }
         })
@@ -264,28 +252,28 @@ export async function generateLetterDOCX(letter: LetterRecord): Promise<LetterPd
     }
 
     // Letter content
-    const contentParagraphs = parseContentToParagraphs(letter.content || letter.content_html || '', Math.round(((layoutSettings as any).content?.fontSize || 11) * 2));
+    const contentParagraphs = parseContentToParagraphs(letter.content || letter.content_html || '', Math.round((layoutSettings.content?.fontSize || 11) * 2));
     documentChildren.push(...contentParagraphs);
 
     // Footer with sender information
     if (senderInfo) {
       documentChildren.push(
         new Paragraph({
-          children: [new TextRun({ text: "", size: Math.round(((layoutSettings as any).addressField?.recipientFontSize || 10) * 2) })],
+          children: [new TextRun({ text: "", size: Math.round((layoutSettings.addressField?.recipientFontSize || 10) * 2) })],
           spacing: { after: 400 }
         })
       );
 
       documentChildren.push(
         new Paragraph({
-          children: [new TextRun({ text: "Mit freundlichen Grüßen", size: Math.round(((layoutSettings as any).addressField?.recipientFontSize || 10) * 2) })],
+          children: [new TextRun({ text: "Mit freundlichen Grüßen", size: Math.round((layoutSettings.addressField?.recipientFontSize || 10) * 2) })],
           spacing: { after: 300 }
         })
       );
 
       documentChildren.push(
         new Paragraph({
-          children: [new TextRun({ text: senderInfo.name, bold: true, size: Math.round(((layoutSettings as any).addressField?.recipientFontSize || 10) * 2) })],
+          children: [new TextRun({ text: senderInfo.name, bold: true, size: Math.round((layoutSettings.addressField?.recipientFontSize || 10) * 2) })],
           spacing: { after: 200 }
         })
       );

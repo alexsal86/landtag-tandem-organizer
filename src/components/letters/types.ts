@@ -1,11 +1,15 @@
 import { supabase } from '@/integrations/supabase/client';
+import type { Database } from '@/integrations/supabase/types';
+import type { LetterLayoutSettings, LetterTemplateDataModel } from '@/types/letterLayout';
+
+export type LetterContentNodes = string | Database['public']['Tables']['letters']['Row']['content_nodes'] | null;
 
 export interface Letter {
   id: string;
   title: string;
   content: string;
   content_html?: string;
-  content_nodes?: any;
+  content_nodes?: LetterContentNodes;
   recipient_name?: string;
   recipient_address?: string;
   contact_id?: string;
@@ -38,17 +42,8 @@ export interface Letter {
   closing_name?: string;
 }
 
-export interface LetterTemplate {
-  id: string;
-  name: string;
-  letterhead_html: string;
-  letterhead_css: string;
-  response_time_days: number;
-  is_default: boolean | null;
-  is_active: boolean | null;
-  default_sender_id?: string | null;
-  default_info_blocks?: string[] | null;
-  layout_settings?: any;
+export interface LetterTemplate extends LetterTemplateDataModel {
+  layout_settings?: LetterLayoutSettings | null;
 }
 
 export interface Contact {

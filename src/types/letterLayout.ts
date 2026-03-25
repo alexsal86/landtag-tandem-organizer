@@ -1,3 +1,8 @@
+import type { Database } from '@/integrations/supabase/types';
+
+export type LetterAttachmentRecord = Database['public']['Tables']['letter_attachments']['Row'];
+export type LetterTemplateRecord = Database['public']['Tables']['letter_templates']['Row'];
+
 export interface LetterLayoutSettings {
   pageWidth: number;
   pageHeight: number;
@@ -83,10 +88,32 @@ export interface LetterLayoutSettings {
     signatureImagePath?: string;
     fontSize?: number;
   };
-  blockContent?: Record<string, any>;
+  blockContent?: Record<string, unknown>;
   disabledBlocks?: Array<'header' | 'addressField' | 'infoBlock' | 'subject' | 'content' | 'footer' | 'attachments'>;
   lockedBlocks?: Array<'header' | 'addressField' | 'infoBlock' | 'subject' | 'content' | 'footer' | 'attachments'>;
 }
+
+export interface LetterTemplateDataModel extends Omit<LetterTemplateRecord, 'layout_settings' | 'default_info_blocks'> {
+  default_info_blocks?: string[] | null;
+  layout_settings?: LetterLayoutSettings | null;
+}
+
+export const isLetterLayoutSettings = (value: unknown): value is LetterLayoutSettings => {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return false;
+  const candidate = value as Partial<LetterLayoutSettings>;
+  return Boolean(
+    candidate.pageWidth &&
+    candidate.pageHeight &&
+    candidate.margins &&
+    candidate.header &&
+    candidate.addressField &&
+    candidate.infoBlock &&
+    candidate.subject &&
+    candidate.content &&
+    candidate.footer &&
+    candidate.attachments
+  );
+};
 
 export const DEFAULT_DIN5008_LAYOUT: LetterLayoutSettings = {
   pageWidth: 210,
