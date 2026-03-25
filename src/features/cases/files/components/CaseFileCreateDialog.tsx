@@ -62,6 +62,11 @@ export function CaseFileCreateDialog({ open, onOpenChange, onSuccess, defaultCas
   }, [defaultCaseType]);
 
   useEffect(() => {
+    if (!defaultCaseType) return;
+    setFormData((prev) => ({ ...prev, case_type: defaultCaseType }));
+  }, [defaultCaseType]);
+
+  useEffect(() => {
     if (open && !profilesLoaded) {
       loadProfiles();
     }
