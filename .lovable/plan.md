@@ -1,42 +1,148 @@
 
 
-## Plan: Heutige Fristen automatisch in den Tageszettel injizieren + bei Erledigung entfernen
+## Konzept: Einheitlicher Informationsraum — Wissen + Dossier verschmelzen
 
-### Kontext
-Der Tageszettel nutzt bereits ein Injektionsmuster: Recurring Items und Wochenplan-Einträge werden per `useEffect` einmalig pro Tag eingefügt (mit Flags wie `recurringInjected`, `weekPlanInjected`). Dasselbe Muster wird für heutige Fristen angewandt.
+### Problemanalyse
 
-Zusätzlich gibt es einen Build-Fehler in `RealTimeSync.tsx` (TypeScript-Generics in TSX-Datei), der zuerst behoben werden muss.
+**Ist-Zustand:**
+- **Wissen (Knowledge):** Artikel-basiert, kuratiert, Rich-Text-Editor, Themen-Zuordnung. Gut für fertige Inhalte, aber kein schneller Einwurf möglich.
+- **Dossier:** Aktuell nur eine gefilterte Ansicht der Fallakten (`CaseFilesView mode="dossiers"`). Nutzt dieselbe Struktur, dasselbe UI, dasselbe Datenmodell. Zu nah an der Fallakte.
 
-### Änderungen
+**Soll-Zustand:**
+Ein einheitlicher Bereich, der zwei Phasen unterstützt:
+1. **Schnell erfassen** — Roh-Informationen aus beliebigen Quellen reinwerfen (Notiz, Datei, Link, E-Mail-Import)
+2. **Später kuratieren** — Strukturieren, verschlagworten, verknüpfen, aufbereiten
 
-**1. Build-Fehler in `RealTimeSync.tsx` beheben**
-- Die generische Funktion `isBroadcastPayloadEnvelope<TPayload>` wird vom TSX-Parser als JSX-Tag interpretiert. Lösung: Die Funktion ohne Inline-Generics umschreiben (Type Assertion statt generischem Parameter) oder in eine `.ts`-Datei auslagern.
+### Architektur-Vorschlag
 
-**2. `DaySlipDayData` um Flag erweitern** (`dayslipTypes.ts`)
-- Neues optionales Feld `deadlinesInjected?: boolean` hinzufügen, analog zu `recurringInjected` und `weekPlanInjected`.
+```text
+┌─────────────────────────────────────────────┐
+│              WISSENSBEREICH                  │
+│  (ersetzt sowohl "Wissen" als auch "Dossier")│
+├─────────────────────────────────────────────┤
+│                                             │
+│  ┌─────────────┐    ┌────────────────────┐  │
+│  │  EINGANG     │    │   DOSSIERS         │  │
+│  │  (Inbox)     │───>│   (thematische     │  │
+│  │              │    │    Sammlungen)      │  │
+│  │ Schnellnot.  │    │                    │  │
+│  │ Datei-Drop   │    │  Notizen           │  │
+│  │ Link einfüg. │    │  Dokumente/Dateien │  │
+│  │ E-Mail paste │    │  Links/Quellen     │  │
+│  │              │    │  Verknüpfungen     │  │
+│  └─────────────┘    │  (Kontakte, Aufg.)  │  │
+│                      └────────────────────┘  │
+│                                             │
+│  ┌──────────────────────────────────────┐   │
+│  │  ARTIKEL (kuratiert)                  │   │
+│  │  = bisherige Wissens-Dokumente        │   │
+│  │  Rich-Text, versioniert, publizierbar │   │
+│  └──────────────────────────────────────┘   │
+└─────────────────────────────────────────────┘
+```
 
-**3. Deadline-Injection in `useDaySlipStore.ts`**
-- Neuer `useEffect` (analog zum Recurring/Week-Plan-Pattern):
-  - Prüft `todayData.deadlinesInjected` – wenn `true`, nichts tun.
-  - Lädt heutige Fristen via Supabase (Tasks mit `due_date = today` + `status != completed`, Quick Notes mit `follow_up_date = today`, Case Items mit `due_at = today` + `status != erledigt`, Decisions mit `response_deadline = today` + `status != resolved`, Planning-Assignments mit `due_date = today`).
-  - Formatiert sie als Textzeilen (z.B. `📋 Aufgabentitel` / `📝 Notiztitel` / `📁 Vorgangsbetreff` / `⚖️ Entscheidungstitel` / `📅 Planungstitel`).
-  - Ruft `appendLinesToToday(lines)` auf und setzt `deadlinesInjected: true`.
+### Neues Datenmodell
 
-**4. Auto-Entfernung erledigter Elemente**
-- Realtime-Subscription im `useDaySlipStore` auf relevante Tabellen (`tasks`, `case_items`, `task_decisions`) für Status-Änderungen.
-- Wenn ein Element als erledigt markiert wird (`status = completed/erledigt/resolved`), wird die zugehörige Zeile im Tageszettel per `toggleStrike` durchgestrichen (oder per `deleteLine` entfernt).
-- Matching erfolgt über den Zeilentext (Titel-Vergleich) oder über ein neues optionales Feld `sourceId` in den `lineTimestamps`, das bei der Injection gespeichert wird.
+**Neue Tabelle: `dossiers`** (eigenständig, NICHT auf case_files basierend)
+
+| Spalte | Typ | Beschreibung |
+|--------|-----|-------------|
+| id | uuid | PK |
+| title | text | Dossier-Titel |
+| summary | text | Kurzbeschreibung |
+| status | text | beobachten, aktiv, ruhend, archiviert |
+| priority | text | hoch, mittel, niedrig |
+| owner_id | uuid | Verantwortliche Person (→ profiles) |
+| topic_id | uuid | Themen-Zuordnung (optional) |
+| tenant_id | uuid | Mandant |
+| created_by | uuid | Ersteller (→ profiles) |
+| created_at | timestamptz | |
+| updated_at | timestamptz | |
+
+**Neue Tabelle: `dossier_entries`** (der zentrale Baustein)
+
+| Spalte | Typ | Beschreibung |
+|--------|-----|-------------|
+| id | uuid | PK |
+| dossier_id | uuid | FK → dossiers (nullable für Eingangskorb) |
+| entry_type | text | notiz, datei, link, email, zitat |
+| title | text | Kurztitel |
+| content | text | Freitext/HTML |
+| source_url | text | Link/Quelle |
+| file_path | text | Storage-Pfad (für Uploads) |
+| file_name | text | Dateiname |
+| metadata | jsonb | E-Mail-Header, Extraktionsdaten etc. |
+| is_curated | boolean | false = roh, true = aufbereitet |
+| created_by | uuid | |
+| tenant_id | uuid | |
+| created_at | timestamptz | |
+| updated_at | timestamptz | |
+
+**Verknüpfungstabelle: `dossier_links`**
+
+| Spalte | Typ | Beschreibung |
+|--------|-----|-------------|
+| id | uuid | PK |
+| dossier_id | uuid | FK → dossiers |
+| linked_type | text | contact, task, appointment, case_file, document |
+| linked_id | uuid | ID des verknüpften Objekts |
+
+### UX-Konzept
+
+**Navigation:** Ein Bereich "Wissen" mit drei Unter-Tabs:
+- **Eingang** — Alle Einträge ohne Dossier-Zuordnung (dossier_id IS NULL). Schnellerfassung prominent.
+- **Dossiers** — Thematische Sammlungen. Klick öffnet Detail mit allen Einträgen, Verknüpfungen, Quellen.
+- **Artikel** — Bisherige Knowledge-Dokumente (kuratiert, publizierbar).
+
+**Schnellerfassung (Eingang + direkt in Dossier):**
+- Textarea + Drag-and-Drop-Zone + Link-Eingabe
+- Paste von E-Mails (bestehende Outlook-Integration nutzen)
+- Optional: Dossier direkt auswählen oder "Eingang" lassen
+- Minimaler Aufwand: Titel wird aus Inhalt/Dateiname auto-generiert
+
+**Dossier-Detail:**
+- Übersicht (Titel, Status, Verantwortliche, Zusammenfassung)
+- Chronologische Einträge (Notizen, Dateien, Links, E-Mails)
+- Verknüpfungen (Kontakte, Aufgaben, Termine, Fallakten)
+- Filter nach Eintragstyp und Kurationsstatus
+
+### Umsetzungsplan (3 Phasen)
+
+**Phase 1 — Fundament (dieser Sprint)**
+- DB-Migration: `dossiers`, `dossier_entries`, `dossier_links` + RLS
+- Dossier-Liste + Erstellen/Bearbeiten
+- Schnellerfassung (Notiz + Datei-Upload) im Eingangskorb
+- Bestehende Wissen-Artikel bleiben parallel bestehen
+
+**Phase 2 — Zusammenführung**
+- Dossier-Detailansicht mit allen Eintragstypen
+- Verknüpfungen zu Kontakten, Aufgaben, Terminen
+- E-Mail-Import in Dossier (bestehende EML-Parser nutzen)
+- Drag-and-Drop von Eingang → Dossier
+- Navigation vereinheitlichen (alter "Dossiers"-Link unter Fallakten entfernen)
+
+**Phase 3 — Migration + Polish**
+- Bestehende Knowledge-Dokumente als Artikel-Typ in neues System überführen
+- Alten Knowledge-Bereich als Tab "Artikel" integrieren
+- Link-Previews, Volltext-Suche über Einträge
+- "Stale Content"-Hinweise, Review-Zyklen
 
 ### Technische Details
 
-- **Injection-Mapping**: Beim Injizieren wird eine Map `{sourceType}:{sourceId} → lineId` in `lineTimestamps` oder einem neuen Feld `deadlineLineMap` auf `DaySlipDayData` gespeichert, damit erledigte Elemente sicher der richtigen Zeile zugeordnet werden können.
-- **Realtime-Listener**: Drei Subscriptions (tasks, case_items, task_decisions) mit `postgres_changes` auf UPDATE-Events, gefiltert auf den aktuellen User/Tenant. Bei Statuswechsel zu "erledigt" wird `deleteLine` für die gemappte `lineId` aufgerufen.
-- **Idempotenz**: Das `deadlinesInjected`-Flag verhindert doppeltes Einfügen. Bei neuen Fristen, die nach dem ersten Laden hinzukommen, werden diese nicht automatisch nachinjiziert (konsistent mit dem bestehenden Verhalten bei Recurring Items).
+- `dossier_entries` mit `dossier_id = NULL` bilden den Eingangskorb
+- Bestehende `knowledge_documents` bleiben zunächst erhalten und werden in Phase 3 migriert
+- `CaseFilesView mode="dossiers"` wird in Phase 2 durch die neue Dossier-Ansicht ersetzt
+- Storage nutzt den bestehenden `documents`-Bucket
+- RLS: tenant-basiert, analog zu Fallakten
+- Build-Fehler (CalendarSyncDebug, ContactSelector etc.) sind vorbestehend und werden separat behoben
 
-### Dateien
-| Datei | Änderung |
-|---|---|
-| `src/components/dashboard/RealTimeSync.tsx` | Generics-Syntax-Fix |
-| `src/components/dayslip/dayslipTypes.ts` | `deadlinesInjected` + `deadlineLineMap` Felder |
-| `src/components/dayslip/hooks/useDaySlipStore.ts` | Deadline-Injection-Effect + Realtime-Subscription für Auto-Entfernung |
+### Dateien (Phase 1)
+
+| Datei | Aktion |
+|-------|--------|
+| `supabase/migrations/xxx.sql` | Neue Tabellen + RLS |
+| `src/features/dossiers/` | Neues Feature-Verzeichnis (hooks, types, components) |
+| `src/components/DossiersView.tsx` | Neue Hauptansicht mit Tabs (Eingang/Dossiers/Artikel) |
+| `src/components/Navigation.tsx` | Dossier-Link von Fallakten-Gruppe lösen, in Wissen integrieren |
+| `src/pages/Index.tsx` | Neue Route für vereinheitlichten Wissensbereich |
 
