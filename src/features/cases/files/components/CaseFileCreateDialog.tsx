@@ -54,6 +54,12 @@ export function CaseFileCreateDialog({ open, onOpenChange, onSuccess, defaultCas
   const [participantRoles, setParticipantRoles] = useState<Record<string, 'viewer' | 'editor'>>({});
   const [profiles, setProfiles] = useState<Profile[]>([]);
   const [profilesLoaded, setProfilesLoaded] = useState(false);
+  const lockCaseType = entityLabel === "Dossier" && !!defaultCaseType;
+
+  useEffect(() => {
+    if (!defaultCaseType) return;
+    setFormData((prev) => ({ ...prev, case_type: defaultCaseType }));
+  }, [defaultCaseType]);
 
   useEffect(() => {
     if (!defaultCaseType) return;
@@ -180,12 +186,16 @@ export function CaseFileCreateDialog({ open, onOpenChange, onSuccess, defaultCas
                 <Select
                   value={formData.case_type}
                   onValueChange={(value) => setFormData({ ...formData, case_type: value })}
+                  disabled={lockCaseType}
                 >
                   <SelectTrigger>
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    {caseFileTypes.map((type) => {
+                    {(lockCaseType
+                      ? caseFileTypes.filter((type) => type.name === defaultCaseType)
+                      : caseFileTypes
+                    ).map((type) => {
                       const TypeIcon = getIconComponent(type.icon);
                       return (
                         <SelectItem key={type.id} value={type.name}>

@@ -36,12 +36,12 @@ interface CaseFilesViewProps {
   mode?: "casefiles" | "dossiers";
 }
 
-const DOSSIER_TYPE_PATTERN = /dossier|themen?dossier/i;
+const DOSSIER_TYPE_NAME = "dossier";
 
 export function CaseFilesView({ mode = "casefiles" }: CaseFilesViewProps) {
   const [searchParams, setSearchParams] = useSearchParams();
   const { caseFiles, loading } = useCaseFiles();
-  const { caseFileTypes, loading: typesLoading } = useCaseFileTypes();
+  const { caseFileTypes, loading: typesLoading, createCaseFileType } = useCaseFileTypes();
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [typeFilter, setTypeFilter] = useState<string>("all");
@@ -53,12 +53,26 @@ export function CaseFilesView({ mode = "casefiles" }: CaseFilesViewProps) {
   const [expandedGroups, setExpandedGroups] = useState<Set<string>>(new Set());
   const hasInitializedGroups = useRef(false);
   const isDossierMode = mode === "dossiers";
+  const [isCreatingDossierType, setIsCreatingDossierType] = useState(false);
 
   const dossierTypeNames = useMemo(() => {
     return caseFileTypes
-      .filter((type) => DOSSIER_TYPE_PATTERN.test(type.name) || DOSSIER_TYPE_PATTERN.test(type.label))
+      .filter((type) => type.name === DOSSIER_TYPE_NAME)
       .map((type) => type.name);
   }, [caseFileTypes]);
+
+  const ensureDossierType = async () => {
+    setIsCreatingDossierType(true);
+    try {
+      await createCaseFileType({
+        label: "Dossier",
+        icon: "BookOpen",
+        color: "#0ea5e9",
+      });
+    } finally {
+      setIsCreatingDossierType(false);
+    }
+  };
 
   const visibleCaseFiles = useMemo(() => {
     if (!isDossierMode) return caseFiles;
@@ -249,8 +263,13 @@ classifyCaseScale({ explicitScale: cf.case_scale, caseType: cf.case_type }) === 
 
       {isDossierMode && !typesLoading && dossierTypeNames.length === 0 && (
         <Card className="border-dashed">
-          <CardContent className="p-4 text-sm text-muted-foreground">
-            Kein Dossier-Typ konfiguriert. Bitte in der Administration unter „Fallakten-Typen“ einen Typ mit Namen oder Label „Dossier“ anlegen.
+          <CardContent className="p-4 flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+            <p className="text-sm text-muted-foreground">
+              Kein Dossier-Typ konfiguriert. Legen Sie zuerst den Typ „dossier“ an.
+            </p>
+            <Button type="button" variant="outline" size="sm" onClick={ensureDossierType} disabled={isCreatingDossierType}>
+              {isCreatingDossierType ? "Lege Dossier-Typ an…" : "Dossier-Typ anlegen"}
+            </Button>
           </CardContent>
         </Card>
       )}
