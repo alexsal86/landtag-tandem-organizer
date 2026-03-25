@@ -133,7 +133,7 @@ export const useTemplateFormTabs = ({
     const initialElements = getBlockItems(blockKey);
     return (
       <StructuredHeaderEditor
-        initialElements={Array.isArray(initialElements) ? (initialElements as LetterCanvasElement[]) : []}
+        initialElements={Array.isArray(initialElements) ? (initialElements as HeaderElement[]) : []}
         onElementsChange={(elements) => setBlockItems(blockKey, elements)}
         layoutSettings={formData.layout_settings}
         canvasWidthMm={canvasWidthMm}
