@@ -11525,10 +11525,7 @@ export type Database = {
           visibility: string
         }[]
       }
-      get_contact_counts: {
-        Args: { p_tenant_id: string }
-        Returns: Json
-      }
+      get_contact_counts: { Args: { p_tenant_id: string }; Returns: Json }
       get_daily_hours: { Args: { _user_id: string }; Returns: number }
       get_dashboard_data: {
         Args: { p_tenant_id: string; p_user_id: string }
