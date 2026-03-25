@@ -180,8 +180,8 @@ export function useEventPlanningData() {
     selectedPlanningConfirmedDate: selectedPlanning?.confirmed_date,
     toast,
     onRefreshDetails: fetchPlanningDetails,
-    onSocialPlannerActionCreated: (itemId, action) => {
-      setItemSocialPlannerActions((prev) => ({ ...prev, [itemId]: action }));
+    onSocialPlannerActionCreated: (itemId: string, action: ItemActionDto) => {
+      setItemSocialPlannerActions((prev) => ({ ...prev, [itemId]: action } as Record<string, ItemActionDto>));
     },
   });
 
