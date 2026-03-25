@@ -1594,7 +1594,7 @@ export function MatrixClientProvider({ children }: MatrixClientProviderProps): R
     };
 
     const trimmedDeviceId = otherDeviceId?.trim();
-    let verificationRequest: MatrixVerificationRequest = trimmedDeviceId
+    let verificationRequest = trimmedDeviceId
       ? await crypto.requestDeviceVerification(userId, trimmedDeviceId)
       : await crypto.requestOwnUserVerification();
 
