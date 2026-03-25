@@ -207,8 +207,8 @@ export function MeetingTemplateManager() {
     if (fromMain && fromChildIndex === null) {
       [movedItem] = newItems.splice(fromIndex, 1);
     } else if (!fromMain && fromChildIndex !== null) {
-      movedItem = newItems[fromIndex].children.splice(fromChildIndex, 1)[0];
-      if (newItems[fromIndex].children.length === 0) delete newItems[fromIndex].children;
+      movedItem = newItems[fromIndex].children!.splice(fromChildIndex, 1)[0];
+      if (newItems[fromIndex].children!.length === 0) delete newItems[fromIndex].children;
     } else return;
     if (toParentIndex !== null) {
       if (!newItems[toParentIndex].children) newItems[toParentIndex].children = [];
