@@ -459,7 +459,7 @@ export function DocumentsView() {
         {showWizard && <LetterWizard onComplete={handleWizardComplete} onCancel={() => setShowWizard(false)} />}
 
         {/* Letter Editor (only for new unsaved letters) */}
-        <LetterEditor letter={selectedLetter} isOpen={showLetterEditor && !selectedLetter?.id} onClose={() => { setShowLetterEditor(false); setSelectedLetter(undefined); data.fetchLetters(); }} onSave={() => data.fetchLetters()} />
+        <LetterEditor letter={selectedLetter as any} isOpen={showLetterEditor && !selectedLetter?.id} onClose={() => { setShowLetterEditor(false); setSelectedLetter(undefined); data.fetchLetters(); }} onSave={() => data.fetchLetters()} />
 
         <DocumentDialogs
           showEditDialog={dialogState.showEditDialog} setShowEditDialog={setShowEditDialog}
