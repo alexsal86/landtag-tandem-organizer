@@ -8,7 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { DragDropContext, Droppable, Draggable } from "@hello-pangea/dnd";
+import { DragDropContext, Droppable, Draggable, type DropResult, type DraggableProvided } from "@hello-pangea/dnd";
 import { Plus, X, Check, GripVertical, Minus, Edit, Trash2, Layers } from "lucide-react";
 
 type TemplateItemType = "item" | "separator" | "system_social_media" | "system_rsvp" | "phase_start";
@@ -33,6 +33,12 @@ type PhaseGroup = {
   phaseIndex: number | null;
   phaseName: string | null;
   items: { item: TemplateItem; index: number }[];
+};
+
+type PlanningTemplate = {
+  id: string;
+  name: string;
+  template_items: TemplateItem[] | null;
 };
 
 const SYSTEM_POINT_OPTIONS: Array<{ value: TemplateItemType; label: string }> = [
@@ -101,8 +107,8 @@ function groupTemplateItemsByPhase(items: TemplateItem[]): PhaseGroup[] {
 export function PlanningTemplateManager() {
   const { toast } = useToast();
 
-  const [planningTemplates, setPlanningTemplates] = useState<any[]>([]);
-  const [selectedTemplate, setSelectedTemplate] = useState<any>(null);
+  const [planningTemplates, setPlanningTemplates] = useState<PlanningTemplate[]>([]);
+  const [selectedTemplate, setSelectedTemplate] = useState<PlanningTemplate | null>(null);
   const [templateItems, setTemplateItems] = useState<TemplateItem[]>([]);
   const [editingTemplate, setEditingTemplate] = useState<{ id: string; field: "title"; value: string } | null>(null);
   const [editingTemplateName, setEditingTemplateName] = useState<{ id: string; value: string } | null>(null);
@@ -127,7 +133,7 @@ export function PlanningTemplateManager() {
     setPlanningTemplates(data || []);
   };
 
-  const loadTemplate = (template: any) => {
+  const loadTemplate = (template: PlanningTemplate) => {
     setSelectedTemplate(template);
     const items = Array.isArray(template.template_items) ? template.template_items : [];
     setTemplateItems(items);
@@ -142,7 +148,7 @@ export function PlanningTemplateManager() {
       if (error) throw error;
 
       setPlanningTemplates((prev) => prev.map((template) => template.id === selectedTemplate.id ? { ...template, template_items: items } : template));
-      setSelectedTemplate((prev: any) => prev ? { ...prev, template_items: items } : prev);
+      setSelectedTemplate((prev) => (prev ? { ...prev, template_items: items } : prev));
 
       if (items === templateItems) {
         toast({ title: "Gespeichert", description: "Template erfolgreich aktualisiert." });
@@ -153,7 +159,7 @@ export function PlanningTemplateManager() {
     }
   };
 
-  const handleDragEnd = (result: any) => {
+  const handleDragEnd = (result: DropResult) => {
     if (!result.destination) return;
     const items = Array.from(templateItems);
     const [reorderedItem] = items.splice(result.source.index, 1);
@@ -209,7 +215,7 @@ export function PlanningTemplateManager() {
     void saveTemplateItems(newItems);
   };
 
-  const renderTemplateItem = (item: TemplateItem, index: number, dragProvided: any) => {
+  const renderTemplateItem = (item: TemplateItem, index: number, dragProvided: DraggableProvided) => {
     if (item.type === "separator") {
       return (
         <div ref={dragProvided.innerRef} {...dragProvided.draggableProps} className="group rounded border bg-card p-2">

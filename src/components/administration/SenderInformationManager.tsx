@@ -36,6 +36,29 @@ interface SenderFormData {
   is_default: boolean;
 }
 
+interface SenderInformationRecord {
+  id: string;
+  name?: string | null;
+  organization?: string | null;
+  return_address_line?: string | null;
+  landtag_street?: string | null;
+  landtag_house_number?: string | null;
+  landtag_postal_code?: string | null;
+  landtag_city?: string | null;
+  landtag_email?: string | null;
+  wahlkreis_street?: string | null;
+  wahlkreis_house_number?: string | null;
+  wahlkreis_postal_code?: string | null;
+  wahlkreis_city?: string | null;
+  wahlkreis_email?: string | null;
+  phone?: string | null;
+  fax?: string | null;
+  website?: string | null;
+  facebook_profile?: string | null;
+  instagram_profile?: string | null;
+  is_default?: boolean | null;
+}
+
 const EMPTY_FORM: SenderFormData = {
   name: "", organization: "", return_address_line: "",
   landtag_street: "", landtag_house_number: "", landtag_postal_code: "", landtag_city: "", landtag_email: "",
@@ -58,10 +81,10 @@ function SenderFormField({ label, value, onChange, type = "text", placeholder }:
 export function SenderInformationManager() {
   const { currentTenant } = useTenant();
   const { toast } = useToast();
-  const [senderInfos, setSenderInfos] = useState<any[]>([]);
+  const [senderInfos, setSenderInfos] = useState<SenderInformationRecord[]>([]);
   const [loading, setLoading] = useState(false);
   const [showDialog, setShowDialog] = useState(false);
-  const [editingInfo, setEditingInfo] = useState<any>(null);
+  const [editingInfo, setEditingInfo] = useState<SenderInformationRecord | null>(null);
   const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
   const [formData, setFormData] = useState<SenderFormData>(EMPTY_FORM);
 
@@ -87,7 +110,7 @@ export function SenderInformationManager() {
     }
   };
 
-  const openEditDialog = (info: any) => {
+  const openEditDialog = (info: SenderInformationRecord) => {
     setEditingInfo(info);
     setFormData({
       name: info.name || "",
