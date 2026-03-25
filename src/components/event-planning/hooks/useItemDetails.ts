@@ -1,23 +1,71 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, type Dispatch, type SetStateAction } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { handleAppError } from "@/utils/errorHandler";
+import type { AppUserRef } from "@/components/shared/featureDomainTypes";
 import type { PlanningComment, PlanningSubtask, PlanningDocument, ChecklistItem } from "../types";
 
 interface UseItemDetailsParams {
-  user: { id: string } | null;
+  user: AppUserRef | null;
   currentTenantId: string | undefined;
   selectedPlanningId: string | undefined;
   checklistItems: ChecklistItem[];
   toast: (opts: { title: string; description?: string; variant?: "default" | "destructive" }) => void;
 }
 
+
+
+interface NewSubtaskDraft {
+  description: string;
+  assigned_to: string;
+  due_date: string;
+}
+
+export interface UseItemDetailsReturn {
+  selectedItemId: string | null;
+  setSelectedItemId: Dispatch<SetStateAction<string | null>>;
+  itemComments: Record<string, PlanningComment[]>;
+  itemSubtasks: Record<string, PlanningSubtask[]>;
+  itemDocuments: Record<string, PlanningDocument[]>;
+  newComment: string;
+  setNewComment: Dispatch<SetStateAction<string>>;
+  newSubtask: NewSubtaskDraft;
+  setNewSubtask: Dispatch<SetStateAction<NewSubtaskDraft>>;
+  uploading: boolean;
+  editingComment: Record<string, string>;
+  setEditingComment: Dispatch<SetStateAction<Record<string, string>>>;
+  editingSubtask: Record<string, Partial<PlanningSubtask>>;
+  setEditingSubtask: Dispatch<SetStateAction<Record<string, Partial<PlanningSubtask>>>>;
+  expandedItems: Record<string, { subtasks: boolean; comments: boolean; documents: boolean }>;
+  setExpandedItems: Dispatch<SetStateAction<Record<string, { subtasks: boolean; comments: boolean; documents: boolean }>>>;
+  showItemSubtasks: Record<string, boolean>;
+  setShowItemSubtasks: Dispatch<SetStateAction<Record<string, boolean>>>;
+  showItemComments: Record<string, boolean>;
+  setShowItemComments: Dispatch<SetStateAction<Record<string, boolean>>>;
+  showItemDocuments: Record<string, boolean>;
+  setShowItemDocuments: Dispatch<SetStateAction<Record<string, boolean>>>;
+  completingSubtask: string | null;
+  setCompletingSubtask: Dispatch<SetStateAction<string | null>>;
+  completionResult: string;
+  setCompletionResult: Dispatch<SetStateAction<string>>;
+  addItemComment: () => Promise<void>;
+  addItemSubtask: (description?: string, assignedTo?: string, dueDate?: string, itemId?: string) => Promise<void>;
+  addItemCommentForItem: (itemId: string, comment: string) => Promise<void>;
+  handleItemFileUpload: (event: React.ChangeEvent<HTMLInputElement>, itemId: string) => Promise<void>;
+  deleteItemDocument: (doc: PlanningDocument) => Promise<void>;
+  downloadItemDocument: (doc: PlanningDocument) => Promise<void>;
+  deleteItemComment: (comment: PlanningComment) => Promise<void>;
+  handleSubtaskComplete: (subtaskId: string, isCompleted: boolean, result: string, itemId: string) => Promise<void>;
+  updateItemComment: (commentId: string, newContent: string) => Promise<void>;
+  loadItemSubtasks: (itemId: string) => Promise<void>;
+  loadAllItemCounts: (items?: ChecklistItem[]) => Promise<void>;
+}
 export function useItemDetails({
   user,
   currentTenantId,
   selectedPlanningId,
   checklistItems,
   toast,
-}: UseItemDetailsParams) {
+}: UseItemDetailsParams): UseItemDetailsReturn {
   const [selectedItemId, setSelectedItemId] = useState<string | null>(null);
   const [itemComments, setItemComments] = useState<{ [itemId: string]: PlanningComment[] }>({});
   const [itemSubtasks, setItemSubtasks] = useState<{ [itemId: string]: PlanningSubtask[] }>({});
