@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
+import type { Dispatch, SetStateAction } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
@@ -7,7 +8,13 @@ import { useToast } from "@/hooks/use-toast";
 import { debugConsole } from '@/utils/debugConsole';
 import { startOfYear, endOfYear } from "date-fns";
 import {
-  Employee, EmployeeSettingsRow, Profile, LeaveAgg, LeaveType, PendingLeaveRequest,
+  Employee,
+  EmployeeRow,
+  EmployeeSettingsRow,
+  Profile,
+  LeaveAgg,
+  LeaveType,
+  PendingLeaveRequest,
   calculateWorkingDays, initLeaveAgg,
 } from "../types";
 
@@ -16,11 +23,38 @@ type AdminOverviewResponse = {
   pending_leaves: PendingLeaveRequest[];
   pending_requests_count: number;
 };
+type LatestEmployeeMeetingRpcRow = {
+  meeting_id: string | null;
+};
+
+type EmployeesDataError = {
+  message: string;
+  cause: unknown;
+} | null;
+
+export type UseEmployeesDataResult = {
+  isAdmin: boolean;
+  loading: boolean;
+  error: EmployeesDataError;
+  employees: EmployeeRow[];
+  setEmployees: Dispatch<SetStateAction<EmployeeRow[]>>;
+  leaves: Record<string, LeaveAgg>;
+  pendingLeaves: PendingLeaveRequest[];
+  setPendingLeaves: Dispatch<SetStateAction<PendingLeaveRequest[]>>;
+  sickDays: Record<string, number>;
+  pendingRequestsCount: number;
+  setPendingRequestsCount: Dispatch<SetStateAction<number>>;
+  reloadPendingRequestsCount: () => Promise<void>;
+  selfSettings: EmployeeSettingsRow | null;
+  selfLeaveAgg: LeaveAgg | null;
+  selfProfile: Profile | null;
+  selfLastMeetingId: string | null;
+};
 
 const ADMIN_OVERVIEW_STALE_TIME_MS = 60 * 1000;
 const ADMIN_OVERVIEW_GC_TIME_MS = 10 * 60 * 1000;
 
-export function useEmployeesData() {
+export function useEmployeesData(): UseEmployeesDataResult {
   const { user } = useAuth();
   const { currentTenant } = useTenant();
   const { toast } = useToast();
@@ -34,6 +68,7 @@ export function useEmployeesData() {
   const [pendingLeaves, setPendingLeaves] = useState<PendingLeaveRequest[]>([]);
   const [sickDays, setSickDays] = useState<Record<string, number>>({});
   const [pendingRequestsCount, setPendingRequestsCount] = useState(0);
+  const [error, setError] = useState<EmployeesDataError>(null);
 
   // Self-view state
   const [selfSettings, setSelfSettings] = useState<EmployeeSettingsRow | null>(null);
@@ -71,6 +106,7 @@ export function useEmployeesData() {
       setIsAdmin(false);
       setRoleResolved(true);
       setLoading(false);
+      setError(null);
       return;
     }
 
@@ -112,6 +148,7 @@ export function useEmployeesData() {
 
     if (adminOverviewQuery.error) {
       debugConsole.error(adminOverviewQuery.error);
+      setError({ message: "Admin-Daten konnten nicht geladen werden.", cause: adminOverviewQuery.error });
       toast({ title: "Fehler beim Laden", description: "Daten konnten nicht geladen werden.", variant: "destructive" });
       setLoading(false);
       return;
@@ -122,6 +159,7 @@ export function useEmployeesData() {
       return;
     }
 
+    setError(null);
     const overview = adminOverviewQuery.data;
     const normalizedEmployees = (overview.employees || []).map((employee) => {
       let next_meeting_due: string | null = null;
@@ -245,7 +283,7 @@ export function useEmployeesData() {
           supabase.from("profiles").select("user_id, display_name, avatar_url").eq("user_id", user.id).single(),
           supabase.from("leave_requests").select("id, type, status, start_date, end_date").eq("user_id", user.id)
             .gte("start_date", startOfYear(new Date()).toISOString()).lte("start_date", endOfYear(new Date()).toISOString()),
-          (supabase.rpc as any)("get_latest_employee_meetings", { p_employee_ids: [user.id] }).maybeSingle(),
+          supabase.rpc("get_latest_employee_meetings", { p_employee_ids: [user.id] }).maybeSingle<LatestEmployeeMeetingRpcRow>(),
         ]);
 
         if (settingsRes.error) { debugConsole.error(settingsRes.error); toast({ title: "Fehler", description: "Fehler beim Laden der Mitarbeitereinstellungen", variant: "destructive" }); return; }
@@ -261,7 +299,7 @@ export function useEmployeesData() {
         setSelfLastMeetingId(lastMeetingRes.data?.meeting_id || null);
 
         const agg = initLeaveAgg();
-        (leavesRes.data || []).forEach((lr: any) => {
+        (leavesRes.data || []).forEach((lr) => {
           const leaveType = lr.type as LeaveType;
           const workingDays = lr.end_date ? calculateWorkingDays(lr.start_date, lr.end_date) : 1;
           if (lr.status === "approved") agg.approved[leaveType] += workingDays;
@@ -271,9 +309,11 @@ export function useEmployeesData() {
           if (!curr || new Date(lr.start_date) > new Date(curr)) agg.lastDates[leaveType] = lr.start_date;
         });
         setSelfLeaveAgg(agg);
-      } catch (e: any) {
+      } catch (e: unknown) {
         debugConsole.error(e);
-        toast({ title: "Fehler beim Laden", description: e?.message ?? "Eigene Daten konnten nicht geladen werden.", variant: "destructive" });
+        const message = e instanceof Error ? e.message : "Eigene Daten konnten nicht geladen werden.";
+        setError({ message, cause: e });
+        toast({ title: "Fehler beim Laden", description: message, variant: "destructive" });
       } finally {
         setLoading(false);
       }
@@ -285,6 +325,7 @@ export function useEmployeesData() {
   return {
     isAdmin,
     loading: roleResolved && isAdmin ? (loading || adminOverviewQuery.isFetching) : loading,
+    error,
     employees,
     setEmployees,
     leaves,

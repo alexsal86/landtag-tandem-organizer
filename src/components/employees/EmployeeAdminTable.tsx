@@ -1,4 +1,5 @@
 import { useState } from "react";
+import type { Dispatch, ReactNode, SetStateAction } from "react";
 import { debugConsole } from '@/utils/debugConsole';
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
@@ -14,11 +15,25 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/comp
 import { formatDistanceToNow, differenceInDays, format } from "date-fns";
 import { de } from "date-fns/locale";
 import { Calendar, AlertCircle, History, Check, X, Undo2 } from "lucide-react";
-import { Employee, LeaveAgg, PendingLeaveRequest, calculateWorkingDays } from "./types";
+import { EmployeeRow, LeaveAgg, PendingLeaveRequest, calculateWorkingDays } from "./types";
+
+type ColumnDef<TData> = {
+  id: string;
+  header: ReactNode;
+  cell: (row: TData) => ReactNode;
+};
 
 // --- EmployeeHistoryPopover ---
 function EmployeeHistoryPopover({ userId }: { userId: string }) {
-  const [history, setHistory] = useState<any[]>([]);
+  type EmployeeHistoryRow = {
+    id: string;
+    hours_per_week: number;
+    valid_from: string;
+    valid_until: string | null;
+    change_reason: string | null;
+  };
+
+  const [history, setHistory] = useState<EmployeeHistoryRow[]>([]);
   const [isOpen, setIsOpen] = useState(false);
   const [loading, setLoading] = useState(false);
 
@@ -151,15 +166,15 @@ export function PendingLeavesTable({ pendingLeaves, onLeaveAction, onCancelAppro
 // --- Employee List Table ---
 interface EmployeeListTableProps {
   loading: boolean;
-  employees: Employee[];
+  employees: EmployeeRow[];
   leaves: Record<string, LeaveAgg>;
   sickDays: Record<string, number>;
-  setEmployees: React.Dispatch<React.SetStateAction<Employee[]>>;
-  updateHours: (userId: string, val: number) => void;
-  updateDaysPerWeek: (userId: string, val: number) => void;
-  updateVacationDays: (userId: string, val: number) => void;
-  updateStartDate: (userId: string, val: string) => void;
-  onScheduleMeeting: (employee: { id: string; name: string }) => void;
+  setEmployees: Dispatch<SetStateAction<EmployeeRow[]>>;
+  updateHours: (userId: string, val: number) => Promise<unknown> | void;
+  updateDaysPerWeek: (userId: string, val: number) => Promise<unknown> | void;
+  updateVacationDays: (userId: string, val: number) => Promise<unknown> | void;
+  updateStartDate: (userId: string, val: string) => Promise<unknown> | void;
+  onScheduleMeeting: (employee: { id: string; name: string }) => Promise<unknown> | void;
 }
 
 export function EmployeeListTable({
@@ -167,6 +182,18 @@ export function EmployeeListTable({
   updateHours, updateDaysPerWeek, updateVacationDays, updateStartDate, onScheduleMeeting,
 }: EmployeeListTableProps) {
   const navigate = useNavigate();
+  const employeeColumns: Array<ColumnDef<EmployeeRow>> = [
+    { id: "employee", header: "Mitarbeiter", cell: () => null },
+    { id: "hours_per_week", header: <div className="flex flex-col"><span>Stunden/Woche</span><span className="text-xs text-muted-foreground font-normal">(max. 39,5h)</span></div>, cell: () => null },
+    { id: "days_per_week", header: <div className="flex flex-col"><span>Tage/Woche</span><span className="text-xs text-muted-foreground font-normal">(max. 5)</span></div>, cell: () => null },
+    { id: "annual_vacation_days", header: "Urlaubstage/Jahr", cell: () => null },
+    { id: "employment_start_date", header: "Beginn Arbeitsverhältnis", cell: () => null },
+    { id: "sick_days", header: "Krankentage", cell: () => null },
+    { id: "vacation", header: "Urlaub", cell: () => null },
+    { id: "last_meeting", header: "Letztes Gespräch", cell: () => null },
+    { id: "next_meeting", header: "Nächstes Gespräch", cell: () => null },
+    { id: "action", header: "Aktion", cell: () => null },
+  ];
 
   return (
     <section>
@@ -181,16 +208,9 @@ export function EmployeeListTable({
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>Mitarbeiter</TableHead>
-                  <TableHead><div className="flex flex-col"><span>Stunden/Woche</span><span className="text-xs text-muted-foreground font-normal">(max. 39,5h)</span></div></TableHead>
-                  <TableHead><div className="flex flex-col"><span>Tage/Woche</span><span className="text-xs text-muted-foreground font-normal">(max. 5)</span></div></TableHead>
-                  <TableHead>Urlaubstage/Jahr</TableHead>
-                  <TableHead>Beginn Arbeitsverhältnis</TableHead>
-                  <TableHead>Krankentage</TableHead>
-                  <TableHead>Urlaub</TableHead>
-                  <TableHead>Letztes Gespräch</TableHead>
-                  <TableHead>Nächstes Gespräch</TableHead>
-                  <TableHead>Aktion</TableHead>
+                  {employeeColumns.map((column) => (
+                    <TableHead key={column.id}>{column.header}</TableHead>
+                  ))}
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -242,17 +262,17 @@ export function EmployeeListTable({
                       </TableCell>
                       <TableCell>
                         <div className="space-y-1">
-                          <Badge variant="secondary">{vacApproved} von {e.annual_vacation_days + ((e as any).carry_over_days || 0)} Tagen</Badge>
-                          {((e as any).carry_over_days || 0) > 0 && (
+                          <Badge variant="secondary">{vacApproved} von {e.annual_vacation_days + (e.carry_over_days || 0)} Tagen</Badge>
+                          {(e.carry_over_days || 0) > 0 && (
                             <div className="text-xs text-amber-600 flex items-center gap-1">
-                              <span>+{(e as any).carry_over_days} Resturlaub</span>
+                              <span>+{e.carry_over_days} Resturlaub</span>
                               <TooltipProvider><Tooltip><TooltipTrigger asChild><AlertCircle className="h-3 w-3 cursor-help" /></TooltipTrigger>
                                 <TooltipContent><p>Resturlaub aus {new Date().getFullYear() - 1}</p><p className="text-xs text-muted-foreground">Verfällt am 31.03.{new Date().getFullYear()}</p></TooltipContent>
                               </Tooltip></TooltipProvider>
                             </div>
                           )}
-                          {remainingVacationDays + ((e as any).carry_over_days || 0) > 0 && (
-                            <div className="text-xs text-muted-foreground">{remainingVacationDays + ((e as any).carry_over_days || 0)} verbleibend</div>
+                          {remainingVacationDays + (e.carry_over_days || 0) > 0 && (
+                            <div className="text-xs text-muted-foreground">{remainingVacationDays + (e.carry_over_days || 0)} verbleibend</div>
                           )}
                           {(a?.pending?.vacation || 0) > 0 && <Badge variant="outline" className="text-xs bg-yellow-50 text-yellow-700 border-yellow-300">⏳ {a?.pending.vacation} ausstehend</Badge>}
                         </div>

@@ -18,7 +18,6 @@ import { PendingLeavesTable, EmployeeListTable } from "./employees/EmployeeAdmin
 export function EmployeesView() {
   const data = useEmployeesData();
   const ops = useEmployeeOperations({
-    employees: data.employees,
     setEmployees: data.setEmployees,
     pendingLeaves: data.pendingLeaves,
     setPendingLeaves: data.setPendingLeaves,
