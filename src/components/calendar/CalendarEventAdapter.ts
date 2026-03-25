@@ -7,7 +7,7 @@ export interface RBCEvent {
   title: string;
   start: Date;
   end: Date;
-  resource?: any;
+  resource?: unknown;
   allDay?: boolean;
   desc?: string;
 }
@@ -16,6 +16,55 @@ export interface RBCEvent {
  * Adapter class to convert between our CalendarEvent format and React Big Calendar format
  */
 export class CalendarEventAdapter {
+  private static isObjectRecord(value: unknown): value is Record<string, unknown> {
+    return typeof value === 'object' && value !== null;
+  }
+
+  private static isCalendarEventResource(value: unknown): value is CalendarEvent {
+    if (!this.isObjectRecord(value)) {
+      return false;
+    }
+
+    return (
+      typeof value.id === 'string' &&
+      typeof value.title === 'string' &&
+      typeof value.duration === 'string' &&
+      typeof value.type === 'string' &&
+      typeof value.priority === 'string'
+    );
+  }
+
+  private static isNestedDateValue(value: unknown): value is { iso?: string; value?: string | number } {
+    if (!this.isObjectRecord(value)) {
+      return false;
+    }
+
+    const iso = value.iso;
+    const innerValue = value.value;
+    const isoValid = typeof iso === 'string' || typeof iso === 'undefined';
+    const valueValid = typeof innerValue === 'string' || typeof innerValue === 'number' || typeof innerValue === 'undefined';
+
+    return isoValid && valueValid;
+  }
+
+  private static isDateWrapper(value: unknown): value is { _type: 'Date'; value: { iso?: string; value?: string | number } } {
+    if (!this.isObjectRecord(value) || value._type !== 'Date') {
+      return false;
+    }
+
+    return this.isNestedDateValue(value.value);
+  }
+
+  private static getRecordString(value: Record<string, unknown>, key: string): string | undefined {
+    const entry = value[key];
+    return typeof entry === 'string' ? entry : undefined;
+  }
+
+  private static getRecordBoolean(value: Record<string, unknown>, key: string): boolean | undefined {
+    const entry = value[key];
+    return typeof entry === 'boolean' ? entry : undefined;
+  }
+
   /**
    * Convert our CalendarEvent to RBC Event format
    */
@@ -80,13 +129,14 @@ export class CalendarEventAdapter {
    */
   static fromRBCEvent(rbcEvent: RBCEvent): CalendarEvent {
     // If resource is the full CalendarEvent, use it directly with updates
-    if (rbcEvent.resource && typeof rbcEvent.resource === 'object' && 'id' in rbcEvent.resource) {
+    if (this.isCalendarEventResource(rbcEvent.resource)) {
+      const resource = rbcEvent.resource;
       return {
-        ...rbcEvent.resource,
+        ...resource,
         date: rbcEvent.start,
         endTime: rbcEvent.end,
         title: rbcEvent.title,
-        description: rbcEvent.desc || rbcEvent.resource.description,
+        description: rbcEvent.desc || resource.description || "",
         is_all_day: rbcEvent.allDay,
         time: rbcEvent.start.toTimeString().slice(0, 5) // Extract HH:MM format
       };
@@ -158,7 +208,7 @@ export class CalendarEventAdapter {
   /**
    * Extract Date object from various formats (including nested Supabase objects)
    */
-  private static extractDateFromObject(dateObj: any): Date {
+  private static extractDateFromObject(dateObj: unknown): Date {
     if (!dateObj) {
       return new Date();
     }
@@ -169,11 +219,11 @@ export class CalendarEventAdapter {
     }
 
     // Handle nested Supabase date objects: {_type: "Date", value: {iso: "...", ...}}
-    if (dateObj._type === "Date" && dateObj.value) {
-      if (dateObj.value.iso) {
+    if (this.isDateWrapper(dateObj)) {
+      if (typeof dateObj.value.iso === 'string') {
         return new Date(dateObj.value.iso);
       }
-      if (dateObj.value.value) {
+      if (typeof dateObj.value.value === 'string' || typeof dateObj.value.value === 'number') {
         return new Date(dateObj.value.value);
       }
     }
@@ -204,18 +254,21 @@ export class CalendarEventAdapter {
    * All-day events often have end_time set to midnight of the next day,
    * but should be displayed as single-day events ending at 23:59:59
    */
-  private static normalizeAllDayEnd(startTime: Date, endTime: Date, eventInfo: any = {}): Date {
-    const isExternal = eventInfo._isExternal || false;
-    const eventType = eventInfo.type;
+  private static normalizeAllDayEnd(startTime: Date, endTime: Date, eventInfo: unknown = {}): Date {
+    const info = this.isObjectRecord(eventInfo) ? eventInfo : {};
+    const isExternal = this.getRecordBoolean(info, '_isExternal') || false;
+    const eventType = this.getRecordString(info, 'type');
+    const category = this.getRecordString(info, 'category');
+    const title = this.getRecordString(info, 'title') || 'Unknown event';
     
     // Special handling for birthdays and other recurring all-day events
-    if (eventType === 'birthday' || eventInfo.category === 'birthday') {
+    if (eventType === 'birthday' || category === 'birthday') {
       // Always normalize birthdays to single-day events
       const normalizedEnd = new Date(startTime);
       normalizedEnd.setHours(23, 59, 59, 999);
       
       debugConsole.log('🎂 CalendarEventAdapter: Normalized birthday end time:', {
-        title: eventInfo.title,
+        title,
         original: endTime.toISOString(),
         normalized: normalizedEnd.toISOString(),
         startDay: startTime.toDateString(),
