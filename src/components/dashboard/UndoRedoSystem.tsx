@@ -4,7 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Undo2, Redo2, RotateCcw } from 'lucide-react';
 import { toast } from 'sonner';
-import { DashboardLayout } from '@/hooks/useDashboardLayout';
+import { DashboardLayout } from '@/types/dashboardWidgets';
 
 interface UndoRedoAction {
   id: string;

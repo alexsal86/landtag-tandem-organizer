@@ -16,9 +16,11 @@ import {
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { useTenant } from '@/hooks/useTenant';
-import { DashboardLayout } from '@/hooks/useDashboardLayout';
+import type { DashboardLayout } from '@/types/dashboardWidgets';
 import type {
+  BroadcastPayloadEnvelope,
   DashboardPresenceUser,
+  DashboardPresenceState,
   CursorUpdatePayload,
   DatabaseLayoutUpdatePayload,
   LayoutUpdatePayload,
@@ -51,6 +53,15 @@ const hasOwnProperty = <TKey extends PropertyKey>(
 const isLayoutUpdatePayload = (value: unknown): value is LayoutUpdatePayload => {
   if (!isRecord(value)) return false;
   return hasOwnProperty(value, 'layout') && isRecord(value.layout);
+};
+
+const isBroadcastPayloadEnvelope = <TPayload>(
+  value: unknown,
+  payloadGuard: (payload: unknown) => payload is TPayload,
+): value is BroadcastPayloadEnvelope<TPayload> => {
+  if (!isRecord(value)) return false;
+  if (!hasOwnProperty(value, 'payload')) return false;
+  return payloadGuard(value.payload);
 };
 
 const isCursorUpdatePayload = (value: unknown): value is CursorUpdatePayload => {
@@ -106,9 +117,11 @@ export function RealTimeSync({ currentLayout, onLayoutUpdate }: RealTimeSyncProp
       // Track user presence
       channel
         .on('presence', { event: 'sync' }, () => {
-          const presenceState = channel.presenceState();
+          const presenceState = channel.presenceState() as DashboardPresenceState;
           const users = Object.values(presenceState).flat().map((presence): ConnectedUser => {
-            const presenceUser = (isRecord(presence) ? presence : {}) as DashboardPresenceUser;
+            const presenceUser: DashboardPresenceUser = isRecord(presence)
+              ? (presence as DashboardPresenceUser)
+              : { user_id: 'unknown' };
             return {
             id: presenceUser.user_id || 'unknown',
             email: presenceUser.email || 'Unknown User',
@@ -203,15 +216,15 @@ export function RealTimeSync({ currentLayout, onLayoutUpdate }: RealTimeSyncProp
   };
 
   const handleRemoteLayoutUpdate = (payload: unknown) => {
-    if (!isLayoutUpdatePayload(payload)) return;
-    if (payload.user_id === user?.id) return; // Ignore own updates
+    if (!isBroadcastPayloadEnvelope(payload, isLayoutUpdatePayload)) return;
+    if (payload.payload.user_id === user?.id) return; // Ignore own updates
     
     setIsSyncing(true);
     
     try {
-      onLayoutUpdate(payload.layout);
+      onLayoutUpdate(payload.payload.layout);
       setLastSyncTime(new Date());
-      toast.info(`Layout updated by ${payload.user_email}`);
+      toast.info(`Layout updated by ${payload.payload.user_email}`);
     } catch (error) {
       debugConsole.error('Failed to apply remote layout update:', error);
       setSyncErrors(prev => [...prev, 'Failed to apply layout update']);
@@ -221,18 +234,18 @@ export function RealTimeSync({ currentLayout, onLayoutUpdate }: RealTimeSyncProp
   };
 
   const handleRemoteWidgetUpdate = (payload: unknown) => {
-    if (!isWidgetUpdatePayload(payload)) return;
-    if (payload.user_id === user?.id) return;
+    if (!isBroadcastPayloadEnvelope(payload, isWidgetUpdatePayload)) return;
+    if (payload.payload.user_id === user?.id) return;
     
     // Handle individual widget updates for better performance
   };
 
   const handleCursorUpdate = (payload: unknown) => {
-    if (!isCursorUpdatePayload(payload)) return;
+    if (!isBroadcastPayloadEnvelope(payload, isCursorUpdatePayload)) return;
     // Update cursor positions for collaborative editing
     setConnectedUsers(prev => prev.map(user => 
-      user.id === payload.user_id 
-        ? { ...user, cursor_position: payload.position }
+      user.id === payload.payload.user_id 
+        ? { ...user, cursor_position: payload.payload.position }
         : user
     ));
   };
