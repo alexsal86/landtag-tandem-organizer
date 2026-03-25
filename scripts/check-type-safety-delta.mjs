@@ -6,6 +6,22 @@ const ANY_EXCEPTION_PATTERN = /(?:any-exception|any-allow|eslint-disable-next-li
 const TS_COMMENT_PATTERN = /@ts-(ignore|expect-error)/;
 const EXPLICIT_ANY_PATTERN = /\bany\b/;
 const CODE_FILE_PATTERN = /\.(?:[cm]?[jt]sx?)$/;
+const DUE_DATE_PATTERN = /\b(?:due|zieltermin)\s*[:=]\s*(\d{4}-\d{2}-\d{2})\b/i;
+const WRAPPER_PATTERN = /\bwrapper\s*[:=]\s*([A-Za-z_$][\w$]*)\b/i;
+
+const UI_HOOKS_DENY_PATHS = [
+  /^src\/components\//,
+  /^src\/pages\//,
+  /^src\/hooks\//,
+];
+
+const ADAPTER_ALLOW_PATHS = [
+  /\/adapters\//,
+  /\/interop\//i,
+  /InteropAdapter\.[cm]?[jt]sx?$/,
+  /Adapters?\.[cm]?[jt]sx?$/,
+  /^src\/services\/.*adapter/i,
+];
 
 function run(command) {
   return execSync(command, { encoding: 'utf8' }).trim();
@@ -34,6 +50,14 @@ function getDiff(base, head) {
   }
 
   return run(`git diff --unified=0 --no-color ${base}...${head}`);
+}
+
+function isUiOrHooksPath(filePath) {
+  return UI_HOOKS_DENY_PATHS.some((pattern) => pattern.test(filePath));
+}
+
+function isAdapterPath(filePath) {
+  return ADAPTER_ALLOW_PATHS.some((pattern) => pattern.test(filePath));
 }
 
 function parseDiff(diffText) {
@@ -66,7 +90,7 @@ function parseDiff(diffText) {
       currentAddedLine += 1;
 
       recentAddedLines.push({ lineNumber, content });
-      if (recentAddedLines.length > 3) {
+      if (recentAddedLines.length > 4) {
         recentAddedLines.shift();
       }
 
@@ -95,13 +119,40 @@ function parseDiff(diffText) {
           /\bany\s*\[\s*\]/.test(content) ||
           /\bMap\s*<\s*string\s*,\s*any\s*>/.test(content);
 
-        if (likelyTypeAny && (!ANY_EXCEPTION_PATTERN.test(contextText) || !TICKET_PATTERN.test(contextText))) {
+        if (likelyTypeAny && isUiOrHooksPath(currentFile)) {
+          issues.push({
+            file: currentFile,
+            line: lineNumber,
+            type: 'explicit-any-ui-hooks',
+            message:
+              'Explizites any ist in UI/Hooks verboten. Nutze stattdessen präzise Typen oder verschiebe den Interop-Fall in eine Adapterdatei.',
+          });
+          continue;
+        }
+
+        if (likelyTypeAny && !isAdapterPath(currentFile)) {
+          issues.push({
+            file: currentFile,
+            line: lineNumber,
+            type: 'explicit-any-non-adapter',
+            message:
+              'Explizites any ist nur in Adapter-/Interop-Dateien erlaubt. Verschiebe die Stelle in einen typed Adapter/Wrapper.',
+          });
+          continue;
+        }
+
+        const hasException = ANY_EXCEPTION_PATTERN.test(contextText);
+        const hasTicket = TICKET_PATTERN.test(contextText);
+        const hasDueDate = DUE_DATE_PATTERN.test(contextText);
+        const hasWrapper = WRAPPER_PATTERN.test(contextText);
+
+        if (likelyTypeAny && (!hasException || !hasTicket || !hasDueDate || !hasWrapper)) {
           issues.push({
             file: currentFile,
             line: lineNumber,
             type: 'explicit-any',
             message:
-              'Neues explicit any ist nur mit maschinenlesbarer Ausnahme erlaubt (Kommentar mit any-exception + Ticket-ID).',
+              'Neues explicit any benötigt Ausnahme-Kontext mit any-exception + Ticket-ID + due:YYYY-MM-DD + wrapper:<typedFn> + kurzer Begründung.',
           });
         }
       }
