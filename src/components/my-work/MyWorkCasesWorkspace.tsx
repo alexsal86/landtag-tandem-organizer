@@ -993,7 +993,7 @@ export function MyWorkCasesWorkspace() {
       subject: editableCaseItem.subject.trim() || null,
       summary: normalizeRichTextValue(editableCaseItem.summary),
       resolution_summary: normalizeRichTextValue(editableCaseItem.summary),
-      status: editableCaseItem.status,
+      status: editableCaseItem.status as TablesUpdate<"case_items">["status"],
       completion_note: editableCaseItem.completionNote.trim() || null,
       completed_at: editableCaseItem.completedAt ? new Date(`${editableCaseItem.completedAt}T12:00:00`).toISOString() : null,
       source_received_at: editableCaseItem.sourceReceivedAt ? new Date(`${editableCaseItem.sourceReceivedAt}T12:00:00`).toISOString() : null,
