@@ -3603,6 +3603,182 @@ export type Database = {
           },
         ]
       }
+      dossier_entries: {
+        Row: {
+          content: string | null
+          created_at: string
+          created_by: string
+          dossier_id: string | null
+          entry_type: string
+          file_name: string | null
+          file_path: string | null
+          id: string
+          is_curated: boolean
+          metadata: Json | null
+          source_url: string | null
+          tenant_id: string
+          title: string | null
+          updated_at: string
+        }
+        Insert: {
+          content?: string | null
+          created_at?: string
+          created_by: string
+          dossier_id?: string | null
+          entry_type?: string
+          file_name?: string | null
+          file_path?: string | null
+          id?: string
+          is_curated?: boolean
+          metadata?: Json | null
+          source_url?: string | null
+          tenant_id: string
+          title?: string | null
+          updated_at?: string
+        }
+        Update: {
+          content?: string | null
+          created_at?: string
+          created_by?: string
+          dossier_id?: string | null
+          entry_type?: string
+          file_name?: string | null
+          file_path?: string | null
+          id?: string
+          is_curated?: boolean
+          metadata?: Json | null
+          source_url?: string | null
+          tenant_id?: string
+          title?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "dossier_entries_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "dossier_entries_dossier_id_fkey"
+            columns: ["dossier_id"]
+            isOneToOne: false
+            referencedRelation: "dossiers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "dossier_entries_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      dossier_links: {
+        Row: {
+          created_at: string
+          dossier_id: string
+          id: string
+          linked_id: string
+          linked_type: string
+        }
+        Insert: {
+          created_at?: string
+          dossier_id: string
+          id?: string
+          linked_id: string
+          linked_type: string
+        }
+        Update: {
+          created_at?: string
+          dossier_id?: string
+          id?: string
+          linked_id?: string
+          linked_type?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "dossier_links_dossier_id_fkey"
+            columns: ["dossier_id"]
+            isOneToOne: false
+            referencedRelation: "dossiers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      dossiers: {
+        Row: {
+          created_at: string
+          created_by: string
+          id: string
+          owner_id: string | null
+          priority: string
+          status: string
+          summary: string | null
+          tenant_id: string
+          title: string
+          topic_id: string | null
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          created_by: string
+          id?: string
+          owner_id?: string | null
+          priority?: string
+          status?: string
+          summary?: string | null
+          tenant_id: string
+          title: string
+          topic_id?: string | null
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string
+          id?: string
+          owner_id?: string | null
+          priority?: string
+          status?: string
+          summary?: string | null
+          tenant_id?: string
+          title?: string
+          topic_id?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "dossiers_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "dossiers_owner_id_fkey"
+            columns: ["owner_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "dossiers_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "dossiers_topic_id_fkey"
+            columns: ["topic_id"]
+            isOneToOne: false
+            referencedRelation: "topics"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       election_district_municipalities: {
         Row: {
           county: string | null
