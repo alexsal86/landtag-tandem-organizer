@@ -226,3 +226,53 @@ Jeder PR, der die Strict-Migration erweitert, dokumentiert explizit:
 - und **welcher Kernflow als Nächstes** freigegeben ist.
 
 Damit bleibt die Migration fachlich wirksam, klein genug für Review und entlang echter Nutzer- bzw. Systemflüsse nachvollziehbar.
+
+## ESLint-Regelstufen pro Flow (Any/Unsafe-Migration)
+
+Stand: **2026-03-25**
+
+### Globaler Default (alle `*.ts` / `*.tsx`)
+
+- `@typescript-eslint/no-explicit-any`: **warn**
+- `@typescript-eslint/no-unsafe-assignment`: **off** (nur in strikten Flow-Slices aktiv)
+- `@typescript-eslint/no-unsafe-member-access`: **off** (nur in strikten Flow-Slices aktiv)
+- `@typescript-eslint/no-unsafe-call`: **off** (nur in strikten Flow-Slices aktiv)
+
+### Strikte Flow-Slices (bereits hochgezogen)
+
+#### Auth / Tenant-Wechsel
+
+- Scope analog `tsconfig.flow-auth-tenant-strict.json`
+- `@typescript-eslint/no-explicit-any`: **error**
+- `@typescript-eslint/no-unsafe-assignment`: **warn**
+- `@typescript-eslint/no-unsafe-member-access`: **warn**
+- `@typescript-eslint/no-unsafe-call`: **warn**
+
+#### Benachrichtigungen
+
+- Scope analog `tsconfig.flow-notifications-strict.json`
+- `@typescript-eslint/no-explicit-any`: **error**
+- `@typescript-eslint/no-unsafe-assignment`: **warn**
+- `@typescript-eslint/no-unsafe-member-access`: **warn**
+- `@typescript-eslint/no-unsafe-call`: **warn**
+
+### Übrige Kernflows (noch auf globalem Default)
+
+- Kalender-Sync
+- Briefstatus-Workflow
+- Edge-Auth/Role/Tenant-nahe Frontend-Logik
+
+Für diese Flows gilt derzeit noch die globale Stufe (`no-explicit-any: warn`) bis die jeweiligen Slices als stabil migriert markiert sind.
+
+## Ramp-up nach 2–3 grünen Wellen
+
+Nach **2–3 aufeinanderfolgenden grünen Wellen** (Lint + Typecheck ohne neue Any/Unsafe-Rückfälle) wird in zwei Schritten angehoben:
+
+1. Global `@typescript-eslint/no-explicit-any` von **warn** auf **error**.
+2. Danach globale Aktivierung von
+   - `@typescript-eslint/no-unsafe-assignment`,
+   - `@typescript-eslint/no-unsafe-member-access`,
+   - `@typescript-eslint/no-unsafe-call`
+   zunächst auf **warn**, anschließend ggf. auf **error**.
+
+Damit bleibt die Migration inkrementell, aber mit klarer Zielrichtung auf einen strikten Projektstandard.

@@ -5,6 +5,36 @@ import reactRefresh from 'eslint-plugin-react-refresh';
 import tsParser from '@typescript-eslint/parser';
 import tsPlugin from '@typescript-eslint/eslint-plugin';
 
+const strictAuthFlowFiles = [
+  'src/hooks/useAuth.tsx',
+  'src/hooks/useTenant.tsx',
+  'src/components/layout/AppHeader.tsx',
+  'src/components/SettingsView.tsx',
+  'src/components/account/ActiveSessionsCard.tsx',
+  'src/components/administration/SuperadminTenantManagement.tsx',
+  'src/pages/Administration.tsx',
+  'src/pages/Index.tsx',
+];
+
+const strictNotificationsFlowFiles = [
+  'src/hooks/useNotifications.tsx',
+  'src/hooks/useNavigationNotifications.tsx',
+  'src/components/NotificationBell.tsx',
+  'src/components/NotificationCenter.tsx',
+  'src/components/NotificationSettings.tsx',
+  'src/components/Navigation.tsx',
+  'src/components/MessageComposer.tsx',
+  'src/pages/NotificationsPage.tsx',
+  'src/pages/Index.tsx',
+];
+
+const strictFlowRules = {
+  '@typescript-eslint/no-explicit-any': 'error',
+  '@typescript-eslint/no-unsafe-assignment': 'warn',
+  '@typescript-eslint/no-unsafe-member-access': 'warn',
+  '@typescript-eslint/no-unsafe-call': 'warn',
+};
+
 export default [
   { ignores: ['dist'] },
   {
@@ -26,8 +56,26 @@ export default [
       ...reactHooks.configs.recommended.rules,
       'react-refresh/only-export-components': ['warn', { allowConstantExport: true }],
       '@typescript-eslint/no-unused-vars': ['warn', { argsIgnorePattern: '^_', varsIgnorePattern: '^_', caughtErrorsIgnorePattern: '^_' }],
-      '@typescript-eslint/no-explicit-any': 'off',
+      '@typescript-eslint/no-explicit-any': 'warn',
       'no-undef': 'off',
     },
+  },
+  {
+    files: strictAuthFlowFiles,
+    languageOptions: {
+      parserOptions: {
+        project: ['./tsconfig.flow-auth-tenant-strict.json'],
+      },
+    },
+    rules: strictFlowRules,
+  },
+  {
+    files: strictNotificationsFlowFiles,
+    languageOptions: {
+      parserOptions: {
+        project: ['./tsconfig.flow-notifications-strict.json'],
+      },
+    },
+    rules: strictFlowRules,
   },
 ];
