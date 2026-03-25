@@ -314,7 +314,7 @@ export function useTaskOperations({
       .from("call_logs")
       .select("id, contact_id, caller_phone, caller_name, call_date, call_type, priority, notes")
       .eq("id", callLogId)
-      .single<CallLogRecord>();
+      .single();
     if (callLogError || !callLog) throw callLogError;
 
     if (callLog.contact_id) {
