@@ -184,6 +184,7 @@ export const KarlsruheDistrictsMap = ({
 
       // Add stakeholder markers
       data.forEach((stakeholder) => {
+        if (!stakeholder.coordinates) return;
         const lat = stakeholder.coordinates.lat;
         const lng = stakeholder.coordinates.lng;
 
