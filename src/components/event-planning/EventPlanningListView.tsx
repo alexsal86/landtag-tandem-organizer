@@ -20,8 +20,26 @@ import { PlanningDefaultCollaboratorsDialog } from "./PlanningDefaultCollaborato
 import { EventPlanningTable } from "./EventPlanningTable";
 import { AppointmentPreparationTable } from "./AppointmentPreparationTable";
 import type { useEventPlanningData } from "./useEventPlanningData";
+import type { Collaborator, EventPlanning } from "./types";
+import type { EventPlanningListRowModel, ProfileBadgeModel } from "@/components/planning/sharedTypes";
 
 type EventPlanningDataReturn = ReturnType<typeof useEventPlanningData>;
+
+function mapPlanningToListRowModel(
+  planning: EventPlanning,
+  collaborators: ReadonlyArray<Collaborator>,
+  allProfiles: ReadonlyArray<ProfileBadgeModel>,
+): EventPlanningListRowModel {
+  const planningCollaborators = collaborators.filter((collaborator) => collaborator.event_planning_id === planning.id);
+  const creatorProfile = allProfiles.find((profile) => profile.user_id === planning.user_id);
+
+  return {
+    planning,
+    isCompleted: planning.is_completed ?? false,
+    creatorBadgeColor: creatorProfile?.badge_color ?? null,
+    collaborators: planningCollaborators,
+  };
+}
 
 export function EventPlanningListView(data: EventPlanningDataReturn) {
   const {
@@ -127,23 +145,23 @@ export function EventPlanningListView(data: EventPlanningDataReturn) {
             {eventPlanningView === 'card' ? (
               <div className="grid gap-4 md:grid-cols-2 2xl:grid-cols-3">
                 {plannings.map((planning) => {
-                  const planningCollaborators = collaborators.filter(c => c.event_planning_id === planning.id);
-                  const creatorProfile = allProfiles.find(p => p.user_id === planning.user_id);
+                  const row = mapPlanningToListRowModel(planning, collaborators, allProfiles as ReadonlyArray<ProfileBadgeModel>);
+                  const creatorProfile = allProfiles.find((profile) => profile.user_id === planning.user_id) as ProfileBadgeModel | undefined;
                   
                   return (
-                    <Card key={planning.id} ref={highlightRef(planning.id)} className={cn("cursor-pointer hover:shadow-lg transition-shadow flex flex-col relative", (planning as any).is_completed && "opacity-60", isHighlighted(planning.id) && "notification-highlight")} onClick={() => setSelectedPlanning(planning)}>
+                    <Card key={planning.id} ref={highlightRef(planning.id)} className={cn("cursor-pointer hover:shadow-lg transition-shadow flex flex-col relative", row.isCompleted && "opacity-60", isHighlighted(planning.id) && "notification-highlight")} onClick={() => setSelectedPlanning(planning)}>
                       <NewItemIndicator isVisible={isItemNew(planning.id, planning.created_at)} />
                       <CardHeader>
                         <CardTitle className="flex items-center justify-between gap-2">
-                          <span className={cn("truncate cursor-pointer", (planning as any).is_completed && "line-through text-muted-foreground")}>{planning.title}</span>
+                          <span className={cn("truncate cursor-pointer", row.isCompleted && "line-through text-muted-foreground")}>{planning.title}</span>
                           <div className="flex items-center gap-1">
-                            {(planning.user_id === user?.id || collaborators.some(c => c.event_planning_id === planning.id && c.user_id === user?.id && c.can_edit)) && (
+                            {(planning.user_id === user?.id || row.collaborators.some(c => c.user_id === user?.id && c.can_edit)) && (
                               <TooltipProvider><Tooltip><TooltipTrigger asChild>
-                                <Button variant="ghost" size="icon" className={cn("h-7 w-7", (planning as any).is_completed && "text-green-600")}
-                                  onClick={(e) => { e.stopPropagation(); togglePlanningCompleted(planning.id, !(planning as any).is_completed); }}>
+                                <Button variant="ghost" size="icon" className={cn("h-7 w-7", row.isCompleted && "text-green-600")}
+                                  onClick={(e) => { e.stopPropagation(); togglePlanningCompleted(planning.id, !row.isCompleted); }}>
                                   <CheckCircle className="h-4 w-4" />
                                 </Button>
-                              </TooltipTrigger><TooltipContent>{(planning as any).is_completed ? "Als unerledigt markieren" : "Als erledigt markieren"}</TooltipContent></Tooltip></TooltipProvider>
+                              </TooltipTrigger><TooltipContent>{row.isCompleted ? "Als unerledigt markieren" : "Als erledigt markieren"}</TooltipContent></Tooltip></TooltipProvider>
                             )}
                             {planning.user_id === user?.id && (
                               <TooltipProvider><Tooltip><TooltipTrigger asChild>
@@ -178,26 +196,26 @@ export function EventPlanningListView(data: EventPlanningDataReturn) {
                               </>
                             ) : (<span className="italic">Termin offen</span>)}
                           </div>
-                          {planningCollaborators.length > 0 && (
+                          {row.collaborators.length > 0 && (
                             <div className="flex flex-col items-center gap-0.5">
                               <span className="text-[10px] text-muted-foreground">Mitarbeit</span>
                               <div className="flex flex-wrap gap-1 justify-center">
-                                {planningCollaborators.slice(0, 3).map((collab) => {
+                                {row.collaborators.slice(0, 3).map((collab) => {
                                   const profile = allProfiles.find(p => p.user_id === collab.user_id);
-                                  const color = (profile as any)?.badge_color || getHashedColor(collab.user_id);
+                                  const color = (profile as ProfileBadgeModel | undefined)?.badge_color || getHashedColor(collab.user_id);
                                   return (
                                     <TooltipProvider key={collab.id}><Tooltip><TooltipTrigger asChild>
                                       <span className={cn("text-xs px-2 py-0.5 rounded-full text-white", color)}>{(profile?.display_name || "?")[0]}</span>
                                     </TooltipTrigger><TooltipContent>{profile?.display_name || "Unbekannt"}</TooltipContent></Tooltip></TooltipProvider>
                                   );
                                 })}
-                                {planningCollaborators.length > 3 && <span className="text-xs text-muted-foreground">+{planningCollaborators.length - 3}</span>}
+                                {row.collaborators.length > 3 && <span className="text-xs text-muted-foreground">+{row.collaborators.length - 3}</span>}
                               </div>
                             </div>
                           )}
                           <div className="flex flex-col items-end">
                             <span className="text-[10px] text-muted-foreground mb-0.5">Verantwortlich</span>
-                            <UserBadge userId={planning.user_id} displayName={creatorProfile?.display_name || null} badgeColor={(creatorProfile as any)?.badge_color} size="sm" />
+                            <UserBadge userId={planning.user_id} displayName={creatorProfile?.display_name || null} badgeColor={row.creatorBadgeColor} size="sm" />
                           </div>
                         </div>
                       </div>
