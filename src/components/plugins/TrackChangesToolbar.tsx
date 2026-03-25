@@ -33,8 +33,8 @@ export function TrackChangesToolbar({ isReviewMode, showAcceptReject }: TrackCha
         if ($isTrackInsertNode(node) || $isTrackDeleteNode(node)) {
           count++;
         }
-        if (typeof (node as { getChildren?: () => LexicalNode[] }).getChildren === 'function') {
-          (node as { getChildren: () => LexicalNode[] }).getChildren().forEach(iterate);
+        if ('getChildren' in node && typeof (node as unknown as { getChildren: () => LexicalNode[] }).getChildren === 'function') {
+          (node as unknown as { getChildren: () => LexicalNode[] }).getChildren().forEach(iterate);
         }
       };
       iterate(root);
