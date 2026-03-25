@@ -52,6 +52,38 @@ export type Employee = EmployeeSettingsRow & Profile & {
   last_meeting_id?: string | null;
 };
 
+export type EmployeeRow = Employee;
+
+export type EmployeeStatus = "active" | "inactive" | "unknown";
+
+export type EmployeeFilter = {
+  query?: string;
+  status?: EmployeeStatus;
+  hasPendingLeaves?: boolean;
+  hasOverdueMeetings?: boolean;
+};
+
+export type EmployeeTableAction =
+  | "update_hours"
+  | "update_days_per_week"
+  | "update_days_per_month"
+  | "update_vacation_days"
+  | "update_start_date"
+  | "schedule_meeting";
+
+export type EmployeeMutationDTO<TData> = {
+  ok: boolean;
+  action: EmployeeTableAction | "leave_action" | "cancel_approval";
+  data: TData | null;
+  errorMessage: string | null;
+};
+
+export type EmployeeMutationActionResult = {
+  userId: string;
+  field: "hours_per_week" | "days_per_week" | "days_per_month" | "annual_vacation_days" | "employment_start_date" | "leave_status";
+  value: number | string;
+};
+
 export type LeaveAgg = {
   counts: Record<LeaveType, number>;
   lastDates: Partial<Record<LeaveType, string>>;
