@@ -37,6 +37,27 @@ Workflow: `.github/workflows/github_workflows_ci_Version3.yml`
    - `npm run check:edge-function-security` (verpflichtend, inkl. Drift-Check + Whitelist-Ausnahmen)
    - `npm run check:diagram-drift`
    - Typecheck / Lint / Build
+
+### Any-Metrik (`any`-Delta)
+
+Im Job **`node-quality-gates`** wird für Pull Requests ein Delta zwischen Basis-Branch und PR-Head berechnet:
+
+- Basis: `npm run --silent report:any-usage:total -- --ref="origin/<base-branch>"`
+- Head: `npm run --silent report:any-usage:total`
+- Delta: `Head - Basis`
+
+Zusätzlich landen im Job Summary:
+
+- Delta-Block mit Base/Head/Differenz
+- Cluster-Tabelle (`npm run --silent report:any-usage:clusters`)
+- Top-Dateien-Tabelle (`npm run --silent report:any-usage:files`)
+
+**Merge-Regel:**
+
+- `Delta <= 0`: Gate erfüllt.
+- `Delta > 0`: Gate blockiert den PR **außer** es existiert im PR-Body eine begründete Ausnahme mit Marker
+  `ANY-INCREASE-EXCEPTION: <Begründung>`.
+
 6. **`fast-unit-integration`**
    - `npm run test:unit-integration:ci` (schneller Vitest-Run)
 7. **`coverage-thresholds`**

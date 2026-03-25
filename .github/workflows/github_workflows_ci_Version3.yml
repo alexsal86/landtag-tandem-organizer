@@ -141,8 +141,8 @@ jobs:
           set -euo pipefail
           git fetch --no-tags --depth=1 origin "${{ github.base_ref }}"
 
-          BASE_TOTAL=$(node scripts/report-any-usage.mjs --ref="origin/${{ github.base_ref }}" --total-only)
-          HEAD_TOTAL=$(node scripts/report-any-usage.mjs --total-only)
+          BASE_TOTAL=$(npm run --silent report:any-usage:total -- --ref="origin/${{ github.base_ref }}")
+          HEAD_TOTAL=$(npm run --silent report:any-usage:total)
           DELTA=$((HEAD_TOTAL - BASE_TOTAL))
           HAS_EXCEPTION=0
 
@@ -162,7 +162,10 @@ jobs:
             fi
             echo ""
             echo "### Any-Cluster (Head)"
-            node scripts/report-any-usage.mjs --cluster-summary | sed '1d'
+            npm run --silent report:any-usage:clusters | sed '1d'
+            echo ""
+            echo "### Any-Dateien (Head, Top 15)"
+            npm run --silent report:any-usage:files | sed '1d'
           } >> "$GITHUB_STEP_SUMMARY"
 
           if [ "$DELTA" -gt 0 ]; then

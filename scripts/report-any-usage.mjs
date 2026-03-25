@@ -1,5 +1,6 @@
 #!/usr/bin/env node
 import { execSync } from 'node:child_process';
+import fs from 'node:fs';
 import path from 'node:path';
 
 const DEFAULT_DIRS = ['src', 'supabase/functions'];
@@ -30,6 +31,8 @@ function parseArgs(argv) {
     json: false,
     totalOnly: false,
     clusterSummary: false,
+    fileSummary: false,
+    topFiles: 15,
   };
 
   for (const arg of argv) {
@@ -47,6 +50,13 @@ function parseArgs(argv) {
       args.totalOnly = true;
     } else if (arg === '--cluster-summary') {
       args.clusterSummary = true;
+    } else if (arg === '--file-summary') {
+      args.fileSummary = true;
+    } else if (arg.startsWith('--top-files=')) {
+      const parsed = Number.parseInt(arg.slice('--top-files='.length), 10);
+      if (!Number.isNaN(parsed) && parsed > 0) {
+        args.topFiles = parsed;
+      }
     }
   }
 
@@ -79,7 +89,7 @@ function listFilesFromGitRef(ref, dirs) {
 
 function readContent(file, ref) {
   if (!ref) {
-    return run(`cat ${escapePath(file)}`);
+    return fs.readFileSync(file, 'utf8');
   }
 
   return run(`git show ${escapePath(`${ref}:${file}`)}`);
@@ -121,6 +131,7 @@ function addCounts(counter, counts) {
 function summarize(files, ref) {
   const byDirectory = new Map();
   const byCluster = new Map();
+  const byFile = new Map();
 
   for (const file of files) {
     let content = '';
@@ -139,6 +150,10 @@ function summarize(files, ref) {
     };
     counts.total = counts.colonAny + counts.asAny + counts.anyArray + counts.mapStringAny;
 
+    if (counts.total === 0) {
+      continue;
+    }
+
     const directory = path.dirname(file);
     const directoryCounter = byDirectory.get(directory) || { directory, ...emptyCounter() };
     addCounts(directoryCounter, counts);
@@ -148,6 +163,8 @@ function summarize(files, ref) {
     const clusterCounter = byCluster.get(cluster) || { cluster, ...emptyCounter() };
     addCounts(clusterCounter, counts);
     byCluster.set(cluster, clusterCounter);
+
+    byFile.set(file, { file, ...counts });
   }
 
   const rows = [...byDirectory.values()].sort((a, b) => {
@@ -162,20 +179,29 @@ function summarize(files, ref) {
     return a.cluster.localeCompare(b.cluster);
   });
 
+  const fileRows = [...byFile.values()].sort((a, b) => {
+    if (b.total !== a.total) return b.total - a.total;
+    return a.file.localeCompare(b.file);
+  });
+
   const totals = rows.reduce((acc, row) => {
     addCounts(acc, row);
     return acc;
   }, emptyCounter());
 
-  return { rows, clusterRows, totals };
+  return { rows, clusterRows, fileRows, totals };
 }
 
-function printTable(summary, ref) {
+function printDirectoryTable(summary, ref) {
   const scopeLabel = ref ? `Git-Ref: ${ref}` : 'Working Tree';
   console.log(`# Any Usage Report (${scopeLabel})`);
   console.log('');
-  console.log('| Verzeichnis | `: any` | `as any` | `any[]` | `Map<string, any>` | Summe |');
+  console.log('| Ordner | `: any` | `as any` | `any[]` | `Map<string, any>` | Summe |');
   console.log('|---|---:|---:|---:|---:|---:|');
+
+  if (summary.rows.length === 0) {
+    console.log('| _Keine Treffer_ | 0 | 0 | 0 | 0 | 0 |');
+  }
 
   for (const row of summary.rows) {
     console.log(`| ${row.directory} | ${row.colonAny} | ${row.asAny} | ${row.anyArray} | ${row.mapStringAny} | ${row.total} |`);
@@ -186,12 +212,37 @@ function printTable(summary, ref) {
   );
 }
 
+function printFileTable(summary, ref, topFiles) {
+  const scopeLabel = ref ? `Git-Ref: ${ref}` : 'Working Tree';
+  console.log(`# Any Usage File Report (${scopeLabel})`);
+  console.log('');
+  console.log(`Top ${topFiles} Dateien nach Trefferanzahl.`);
+  console.log('');
+  console.log('| Datei | `: any` | `as any` | `any[]` | `Map<string, any>` | Summe |');
+  console.log('|---|---:|---:|---:|---:|---:|');
+
+  const selectedRows = summary.fileRows.slice(0, topFiles);
+
+  if (selectedRows.length === 0) {
+    console.log('| _Keine Treffer_ | 0 | 0 | 0 | 0 | 0 |');
+    return;
+  }
+
+  for (const row of selectedRows) {
+    console.log(`| ${row.file} | ${row.colonAny} | ${row.asAny} | ${row.anyArray} | ${row.mapStringAny} | ${row.total} |`);
+  }
+}
+
 function printClusterTable(summary, ref) {
   const scopeLabel = ref ? `Git-Ref: ${ref}` : 'Working Tree';
   console.log(`# Any Usage Cluster Report (${scopeLabel})`);
   console.log('');
   console.log('| Cluster | `: any` | `as any` | `any[]` | `Map<string, any>` | Summe |');
   console.log('|---|---:|---:|---:|---:|---:|');
+
+  if (summary.clusterRows.length === 0) {
+    console.log('| _Keine Treffer_ | 0 | 0 | 0 | 0 | 0 |');
+  }
 
   for (const row of summary.clusterRows) {
     console.log(`| ${row.cluster} | ${row.colonAny} | ${row.asAny} | ${row.anyArray} | ${row.mapStringAny} | ${row.total} |`);
@@ -212,6 +263,8 @@ if (args.totalOnly) {
   console.log(JSON.stringify(summary, null, 2));
 } else if (args.clusterSummary) {
   printClusterTable(summary, args.ref);
+} else if (args.fileSummary) {
+  printFileTable(summary, args.ref, args.topFiles);
 } else {
-  printTable(summary, args.ref);
+  printDirectoryTable(summary, args.ref);
 }
