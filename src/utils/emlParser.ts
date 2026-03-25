@@ -37,11 +37,11 @@ interface MsgAttachment {
   contentLength?: number;
 }
 
-interface MsgData {
+interface MsgPayload {
   subject?: string;
   senderEmail?: string;
   senderName?: string;
-  recipients?: MsgRecipient[];
+  recipients?: ReadonlyArray<MsgRecipient>;
   messageDeliveryTime?: string;
   clientSubmitTime?: string;
   creationTime?: string;
@@ -49,12 +49,27 @@ interface MsgData {
   body?: string;
   compressedRtf?: string;
   rtfBody?: string;
-  attachments?: MsgAttachment[];
+  attachments?: ReadonlyArray<MsgAttachment>;
 }
 
-function parseMsgData(input: unknown): MsgData {
-  if (!isRecord(input)) return {};
-  return input as MsgData;
+export function isAttachment(value: unknown): value is MsgAttachment {
+  if (!isRecord(value)) return false;
+  return Boolean(
+    (hasOwnProperty(value, 'fileName') && typeof value.fileName === 'string') ||
+    (hasOwnProperty(value, 'name') && typeof value.name === 'string'),
+  );
+}
+
+function isMsgPayload(value: unknown): value is MsgPayload {
+  if (!isRecord(value)) return false;
+
+  if (hasOwnProperty(value, 'recipients') && value.recipients !== undefined && value.recipients !== null && !Array.isArray(value.recipients)) {
+    return false;
+  }
+  if (hasOwnProperty(value, 'attachments') && value.attachments !== undefined && value.attachments !== null && !Array.isArray(value.attachments)) {
+    return false;
+  }
+  return true;
 }
 
 export function isEmlFile(file: File): boolean {
@@ -120,7 +135,10 @@ export async function parseEmlFile(file: File): Promise<ParsedEmail> {
   return parseEmlFromArrayBuffer(arrayBuffer);
 }
 
-export async function parseEmlFromArrayBuffer(buffer: ArrayBuffer): Promise<ParsedEmail> {
+export async function parseEmlFromArrayBuffer(buffer: unknown): Promise<ParsedEmail> {
+  if (!(buffer instanceof ArrayBuffer)) {
+    throw new Error('Ungültiger EML-Buffer.');
+  }
   const parser = new PostalMime();
   const email = await parser.parse(buffer);
 
@@ -163,7 +181,11 @@ export async function parseMsgFile(file: File): Promise<ParsedEmail> {
  * Build a synthetic .eml File from Outlook HTML clipboard content.
  * Returns null if the HTML doesn't look like an Outlook email.
  */
-export function buildEmlFromOutlookHtml(html: string): File | null {
+export function buildEmlFromOutlookHtml(html: unknown): File | null {
+  if (typeof html !== 'string') {
+    return null;
+  }
+
   try {
     const parser = new DOMParser();
     const doc = parser.parseFromString(html, 'text/html');
@@ -236,15 +258,22 @@ export function buildEmlFromOutlookHtml(html: string): File | null {
   }
 }
 
-export async function parseMsgFromArrayBuffer(buffer: ArrayBuffer): Promise<ParsedEmail> {
+export async function parseMsgFromArrayBuffer(buffer: unknown): Promise<ParsedEmail> {
+  if (!(buffer instanceof ArrayBuffer)) {
+    throw new Error('Ungültiger MSG-Buffer.');
+  }
   const { default: MsgReader } = await import('@kenjiuno/msgreader');
   const msgReader = new MsgReader(buffer);
-  const msgData = parseMsgData(msgReader.getFileData() as unknown);
+  const rawMsgData: unknown = msgReader.getFileData();
+  if (!isMsgPayload(rawMsgData)) {
+    throw new Error('Ungültiges MSG-Format.');
+  }
+  const msgData = rawMsgData;
 
   const subject = msgData.subject || '(Kein Betreff)';
   const from = msgData.senderEmail || msgData.senderName || 'Unbekannt';
   const toRaw = msgData.recipients || [];
-  const toAddresses: string[] = toRaw.map((r) => r.email || r.name || '');
+  const toAddresses: string[] = toRaw.map((recipient) => recipient.email || recipient.name || '');
   const dateStr = msgData.messageDeliveryTime || msgData.clientSubmitTime || msgData.creationTime || '';
   const parsedDate = dateStr ? new Date(dateStr) : null;
   const date = parsedDate && !Number.isNaN(parsedDate.getTime())
@@ -269,13 +298,13 @@ export async function parseMsgFromArrayBuffer(buffer: ArrayBuffer): Promise<Pars
   // Attachments
   const rawAttachments = msgData.attachments || [];
   const attachments: EmailAttachment[] = rawAttachments
-    .filter((att) => att.fileName || att.name)
+    .filter(isAttachment)
     .map((att) => {
       let content = new Uint8Array(0);
       try {
         const attData = msgReader.getAttachment(att);
         if (isRecord(attData) && hasOwnProperty(attData, 'content') && attData.content instanceof Uint8Array) {
-          content = new Uint8Array(attData.content);
+          content = attData.content;
         } else if (isRecord(attData) && hasOwnProperty(attData, 'content') && attData.content instanceof ArrayBuffer) {
           content = new Uint8Array(attData.content);
         }

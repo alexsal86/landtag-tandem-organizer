@@ -1,29 +1,16 @@
 import { hasOwnProperty, isRecord } from '@/utils/typeSafety';
 
-export interface ProtocolEvent {
-  label?: string;
-  type?: string;
-  [key: string]: unknown;
-}
-
-export interface ProtocolSpeakerRef {
-  name: string;
-  role?: string;
-  party?: string;
-  pages?: number[];
-}
-
-export interface AgendaProtocolItem {
+export interface ProtocolAgendaItem {
   number: string | number;
   title: string;
   description?: string;
   page_number?: number;
   item_type?: string;
-  kind?: string;
-  speakers?: ProtocolSpeakerRef[];
-  drucksachen?: string[];
-  subentries?: string[];
+  speakers?: ReadonlyArray<unknown>;
+  drucksachen?: ReadonlyArray<unknown>;
+  subentries?: ReadonlyArray<unknown>;
   agenda_number?: string;
+  kind?: string;
 }
 
 interface JSONProtocolStructure {
@@ -45,12 +32,12 @@ interface JSONProtocolStructure {
     speech_type?: string;
     timestamp?: string;
     agenda_item_number?: number;
-    events?: ProtocolEvent[];
-    events_flat?: ProtocolEvent[];
+    events?: ReadonlyArray<unknown>;
+    events_flat?: ReadonlyArray<unknown>;
   }>;
-  agenda?: AgendaProtocolItem[];
+  agenda?: ReadonlyArray<ProtocolAgendaItem>;
   toc?: {
-    items: Array<{
+    items: ReadonlyArray<{
       number: number;
       title: string;
       kind?: string;
@@ -75,12 +62,7 @@ export interface ParsedJSONProtocol {
     legislature_period: string;
     protocol_date: string;
     source_pdf_url?: string | null;
-    statistics?: {
-      total_speeches: number;
-      total_pages: number;
-      parties_represented: string[];
-      session_duration?: string;
-    };
+    statistics?: unknown;
   };
   structured_data: {
     agendaItems: Array<{
@@ -89,9 +71,9 @@ export interface ParsedJSONProtocol {
       description?: string;
       page_number?: number;
       item_type: string;
-      speakers: ProtocolSpeakerRef[];
-      drucksachen: string[];
-      subentries: string[];
+      speakers?: ReadonlyArray<unknown>;
+      drucksachen?: ReadonlyArray<unknown>;
+      subentries?: ReadonlyArray<unknown>;
     }>;
     speeches: Array<{
       speaker_name: string;
@@ -103,8 +85,8 @@ export interface ParsedJSONProtocol {
       timestamp?: string;
       index: number;
       agenda_item_number?: number;
-      events: ProtocolEvent[];
-      events_flat: ProtocolEvent[];
+      events?: ReadonlyArray<unknown>;
+      events_flat?: ReadonlyArray<unknown>;
     }>;
     sessions: Array<{
       session_type: string;
@@ -115,51 +97,66 @@ export interface ParsedJSONProtocol {
   };
 }
 
-function isValidSpeaker(value: unknown): boolean {
-  return typeof value === 'string' || (isRecord(value) && typeof value.name === 'string');
+export function isProtocolAgendaItem(value: unknown): value is ProtocolAgendaItem {
+  if (!isRecord(value)) {
+    return false;
+  }
+
+  if (!hasOwnProperty(value, 'title') || typeof value.title !== 'string') {
+    return false;
+  }
+
+  if (!hasOwnProperty(value, 'number') && !hasOwnProperty(value, 'agenda_number')) {
+    return false;
+  }
+
+  const numberValue = hasOwnProperty(value, 'number') ? value.number : value.agenda_number;
+  return typeof numberValue === 'string' || typeof numberValue === 'number';
 }
 
-function isValidSession(session: unknown): session is JSONProtocolStructure['session'] {
-  return (
-    isRecord(session)
-    && hasOwnProperty(session, 'extracted_at')
-    && typeof session.extracted_at === 'string'
-    && hasOwnProperty(session, 'date')
-    && (typeof session.date === 'string' || session.date === null)
-    && hasOwnProperty(session, 'number')
-    && (typeof session.number === 'number' || session.number === null)
-    && hasOwnProperty(session, 'legislative_period')
-    && (typeof session.legislative_period === 'number' || session.legislative_period === null)
-  );
+function isJSONProtocolStructure(value: unknown): value is JSONProtocolStructure {
+  if (!isRecord(value)) return false;
+  if (!hasOwnProperty(value, 'session') || !isRecord(value.session)) return false;
+  if (!hasOwnProperty(value, 'speeches') || !Array.isArray(value.speeches)) return false;
+
+  if (!hasOwnProperty(value.session, 'date') || !hasOwnProperty(value.session, 'extracted_at')) return false;
+  if (value.session.date !== null && typeof value.session.date !== 'string') return false;
+  if (typeof value.session.extracted_at !== 'string') return false;
+
+  for (const speech of value.speeches) {
+    if (!isRecord(speech)) return false;
+    if (!hasOwnProperty(speech, 'text') || typeof speech.text !== 'string') return false;
+    if (!hasOwnProperty(speech, 'index') || typeof speech.index !== 'number') return false;
+    if (!hasOwnProperty(speech, 'speaker')) return false;
+    if (isRecord(speech.speaker) && (!hasOwnProperty(speech.speaker, 'name') || typeof speech.speaker.name !== 'string')) {
+      return false;
+    }
+    if (typeof speech.speaker !== 'string' && !isRecord(speech.speaker)) return false;
+  }
+
+  if (hasOwnProperty(value, 'agenda') && value.agenda !== undefined && value.agenda !== null) {
+    if (!Array.isArray(value.agenda) || !value.agenda.every(isProtocolAgendaItem)) {
+      return false;
+    }
+  }
+
+  return true;
 }
 
-function isValidSpeech(speech: unknown): speech is JSONProtocolStructure['speeches'][number] {
-  return (
-    isRecord(speech)
-    && hasOwnProperty(speech, 'text')
-    && typeof speech.text === 'string'
-    && hasOwnProperty(speech, 'index')
-    && typeof speech.index === 'number'
-    && hasOwnProperty(speech, 'speaker')
-    && isValidSpeaker(speech.speaker)
-  );
+export function validateJSONProtocol(data: unknown): boolean {
+  try {
+    return isJSONProtocolStructure(data);
+  } catch (error) {
+    // JSON validation error - silently return false
+    return false;
+  }
 }
 
-export function validateJSONProtocol(data: unknown): data is JSONProtocolStructure {
-  if (!isRecord(data)) return false;
-  if (!hasOwnProperty(data, 'session') || !isValidSession(data.session)) return false;
-  if (!hasOwnProperty(data, 'speeches') || !Array.isArray(data.speeches)) return false;
-
-  return data.speeches.every(isValidSpeech);
-}
-
-type TocItem = NonNullable<JSONProtocolStructure['toc']>['items'][number];
-
-function toAgendaProtocolItem(item: TocItem | AgendaProtocolItem): AgendaProtocolItem {
-  return item;
-}
-
-export function parseJSONProtocol(jsonData: JSONProtocolStructure): ParsedJSONProtocol {
+export function parseJSONProtocol(jsonData: unknown): ParsedJSONProtocol {
+  if (!isJSONProtocolStructure(jsonData)) {
+    throw new Error('Ungültiges JSON-Protokollformat.');
+  }
+  // Extract metadata
   const metadata = {
     session_number: jsonData.session.number?.toString() || '0',
     legislature_period: jsonData.session.legislative_period?.toString() || '17',
@@ -177,19 +174,26 @@ export function parseJSONProtocol(jsonData: JSONProtocolStructure): ParsedJSONPr
     } : undefined
   };
 
-  const agendaItems = (jsonData.agenda || jsonData.toc?.items || [])
-    .map(toAgendaProtocolItem)
-    .map((item) => ({
-      agenda_number: item.number?.toString() || item.agenda_number || '',
-      title: item.title,
-      description: item.description || item.kind,
-      page_number: item.page_number || item.speakers?.[0]?.pages?.[0],
-      item_type: item.item_type || item.kind || 'regular',
-      speakers: item.speakers || [],
-      drucksachen: item.drucksachen || [],
-      subentries: item.subentries || []
-    }));
+  // Parse agenda items from either agenda or toc.items
+  const agendaItems = (jsonData.agenda ?? jsonData.toc?.items ?? []).map(item => {
+    const agendaItem = item as ProtocolAgendaItem;
+    const speakerPages = Array.isArray(agendaItem.speakers)
+      ? (agendaItem.speakers[0] as { pages?: number[] } | undefined)?.pages
+      : undefined;
 
+    return {
+      agenda_number: String(agendaItem.number ?? agendaItem.agenda_number ?? ''),
+      title: agendaItem.title,
+      description: agendaItem.description || agendaItem.kind,
+      page_number: agendaItem.page_number || speakerPages?.[0],
+      item_type: agendaItem.item_type || agendaItem.kind || 'regular',
+      speakers: agendaItem.speakers || [],
+      drucksachen: agendaItem.drucksachen || [],
+      subentries: agendaItem.subentries || [],
+    };
+  });
+
+  // Parse speeches - speaker, role, party are on same level in JSON
   const speeches = jsonData.speeches.map(speech => {
     const speakerObj = typeof speech.speaker === 'object' ? speech.speaker : null;
     return {
@@ -247,13 +251,17 @@ export function parseJSONProtocol(jsonData: JSONProtocolStructure): ParsedJSONPr
   };
 }
 
-export function getJSONProtocolPreview(jsonData: JSONProtocolStructure): {
+export function getJSONProtocolPreview(jsonData: unknown): {
   sessionInfo: string;
   speechCount: number;
   agendaCount: number;
   parties: string[];
   dateInfo: string;
 } {
+  if (!isJSONProtocolStructure(jsonData)) {
+    throw new Error('Ungültiges JSON-Protokollformat.');
+  }
+
   const parties = Array.from(new Set(
     jsonData.speeches
       .map(s => s.party)

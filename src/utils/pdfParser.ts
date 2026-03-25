@@ -26,32 +26,32 @@ export interface ProtocolMetadata {
   extractedAt: string;
 }
 
-export interface ParsedAgendaItem {
+interface PdfTextItem {
+  str: string;
+}
+
+export interface ProtocolAnalysisAgendaItem {
   agenda_number: string;
   title: string;
   description?: string;
   item_type: string;
 }
 
-export interface ParsedSpeech {
+export interface ProtocolAnalysisSpeech {
   speaker_name: string;
   speaker_party?: string;
   speech_content: string;
   start_time?: string;
-  speech_type: 'main' | 'interjection' | 'applause' | 'interruption';
+  speech_type: string;
 }
 
-export interface SessionEvent {
-  session_type: 'start' | 'end' | 'break_start' | 'break_end';
+export interface ProtocolSessionEvent {
+  session_type: string;
   timestamp: string;
   notes: string;
 }
 
-interface TextContentItemWithString {
-  str: string;
-}
-
-function isTextContentItemWithString(item: unknown): item is TextContentItemWithString {
+function isPdfTextItem(item: unknown): item is PdfTextItem {
   return typeof item === 'object' && item !== null && 'str' in item && typeof (item as { str?: unknown }).str === 'string';
 }
 
@@ -69,7 +69,7 @@ export async function parsePDFFile(file: File): Promise<ParsedProtocol> {
         const textContent = await page.getTextContent();
         
         const pageText = textContent.items
-          .map((item: unknown) => (isTextContentItemWithString(item) ? item.str : ''))
+          .map((item: unknown) => (isPdfTextItem(item) ? item.str : ''))
           .join(' ')
           .replace(/\s+/g, ' ')
           .trim();
@@ -190,21 +190,21 @@ function extractMetadata(filename: string, text: string, pageCount: number): Pro
 }
 
 // Advanced rule-based text analysis with enhanced preprocessing
-export function analyzeProtocolStructure(input: unknown): {
-  agendaItems: ParsedAgendaItem[];
-  speeches: ParsedSpeech[];
-  sessions: SessionEvent[];
+export function analyzeProtocolStructure(text: unknown): {
+  agendaItems: ReadonlyArray<ProtocolAnalysisAgendaItem>;
+  speeches: ReadonlyArray<ProtocolAnalysisSpeech>;
+  sessions: ReadonlyArray<ProtocolSessionEvent>;
 } {
-  if (typeof input !== 'string') {
-    throw new Error('Protocol text must be a string.');
+  if (typeof text !== 'string') {
+    throw new Error('Ungültiger Protokolltext.');
   }
-  const text = input;
+
   const preprocessedText = preprocessProtocolText(text);
   const lines = smartLineSplit(preprocessedText);
   
-  const agendaItems: ParsedAgendaItem[] = [];
-  const speeches: ParsedSpeech[] = [];
-  const sessions: SessionEvent[] = [];
+  const agendaItems: ProtocolAnalysisAgendaItem[] = [];
+  const speeches: ProtocolAnalysisSpeech[] = [];
+  const sessions: ProtocolSessionEvent[] = [];
   
   const patterns = {
     agendaItem: [

@@ -1,21 +1,48 @@
 import { describe, expect, it } from 'vitest';
-
-import { buildEmlFromOutlookHtml } from '@/utils/emlParser';
+import {
+  isProtocolAgendaItem,
+  parseJSONProtocol,
+  validateJSONProtocol,
+} from '@/utils/jsonProtocolParser';
 import { analyzeProtocolStructure } from '@/utils/pdfParser';
-import { validateJSONProtocol } from '@/utils/jsonProtocolParser';
+import {
+  buildEmlFromOutlookHtml,
+  isAttachment,
+  parseEmlFromArrayBuffer,
+  parseMsgFromArrayBuffer,
+} from '@/utils/emlParser';
 
 describe('parser boundaries', () => {
-  it('rejects invalid JSON protocol payloads with missing required fields', () => {
-    expect(validateJSONProtocol({ session: { extracted_at: '2026-01-01T00:00:00Z' }, speeches: [] })).toBe(false);
-    expect(validateJSONProtocol({ session: {}, speeches: [{ index: 1, text: 'x' }] })).toBe(false);
+  it('rejects JSON protocol payloads with missing mandatory fields', () => {
+    const invalidPayload = {
+      session: {
+        date: '2026-03-24',
+      },
+      speeches: [],
+    };
+
+    expect(validateJSONProtocol(invalidPayload)).toBe(false);
+    expect(() => parseJSONProtocol(invalidPayload)).toThrowError('Ungültiges JSON-Protokollformat.');
   });
 
-  it('rejects non-string PDF protocol input', () => {
-    expect(() => analyzeProtocolStructure({ text: 'invalid' })).toThrow('Protocol text must be a string.');
+  it('rejects malformed agenda item payload types', () => {
+    expect(isProtocolAgendaItem({ number: '1', title: 'TOP 1' })).toBe(true);
+    expect(isProtocolAgendaItem({ number: '1' })).toBe(false);
+    expect(isProtocolAgendaItem({ number: { nested: true }, title: 'TOP 2' })).toBe(false);
   });
 
-  it('returns null for non-email outlook html payload', () => {
-    const html = '<html><body><div>Hi</div></body></html>';
-    expect(buildEmlFromOutlookHtml(html)).toBeNull();
+  it('rejects unknown text input for protocol text analysis', () => {
+    expect(() => analyzeProtocolStructure({ text: 'not-a-string' })).toThrowError('Ungültiger Protokolltext.');
+  });
+
+  it('rejects unknown email parser buffers', async () => {
+    await expect(parseEmlFromArrayBuffer('not-a-buffer')).rejects.toThrowError('Ungültiger EML-Buffer.');
+    await expect(parseMsgFromArrayBuffer(123)).rejects.toThrowError('Ungültiger MSG-Buffer.');
+  });
+
+  it('guards external attachment payload and html boundary', () => {
+    expect(isAttachment({ fileName: 'test.pdf' })).toBe(true);
+    expect(isAttachment({ fileName: 42 })).toBe(false);
+    expect(buildEmlFromOutlookHtml({ raw: '<html></html>' })).toBeNull();
   });
 });
