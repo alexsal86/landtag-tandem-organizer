@@ -37,6 +37,8 @@ export type LayoutBlockKey =
   | 'attachments'
   | 'pagination';
 
+export type BlockEditorKey = 'addressField' | 'returnAddress' | 'infoBlock' | 'subject' | 'attachments' | 'footer';
+
 export type LayoutEditorTab =
   | 'canvas-designer'
   | 'header-designer'
@@ -48,6 +50,22 @@ export type LayoutEditorTab =
   | 'block-subject'
   | 'block-content'
   | 'block-attachments';
+
+export type HeaderLayoutType = 'html' | 'structured';
+
+export interface SenderInformation {
+  id: string;
+  name: string;
+  organization: string;
+  is_default: boolean | null;
+}
+
+export interface InformationBlock {
+  id: string;
+  name: string;
+  label: string;
+  is_default: boolean | null;
+}
 
 export interface LetterBlockLine {
   id: string;
@@ -99,6 +117,9 @@ export interface LetterCanvasElement {
   strokeWidth?: number;
   borderRadius?: number;
 }
+
+export type BlockContentEntry = LetterCanvasElement[] | LineModeBlockData;
+export type LetterBlockContentMap = Record<string, BlockContentEntry>;
 
 export interface LetterLayoutBlockConfig {
   key: LayoutBlockKey;
@@ -207,7 +228,7 @@ export interface LetterLayoutSettings {
     signatureImagePath?: string;
     fontSize?: number;
   };
-  blockContent?: Record<string, LetterCanvasElement[] | LineModeBlockData>;
+  blockContent?: LetterBlockContentMap;
   disabledBlocks?: Array<'header' | 'addressField' | 'infoBlock' | 'subject' | 'content' | 'footer' | 'attachments'>;
   lockedBlocks?: Array<'header' | 'addressField' | 'infoBlock' | 'subject' | 'content' | 'footer' | 'attachments'>;
 }
@@ -215,6 +236,22 @@ export interface LetterLayoutSettings {
 export interface LetterTemplateDataModel extends Omit<LetterTemplateRecord, 'layout_settings' | 'default_info_blocks'> {
   default_info_blocks?: string[] | null;
   layout_settings?: LetterLayoutSettings | null;
+}
+
+export interface LetterTemplate extends Omit<LetterTemplateDataModel, 'layout_settings'> {
+  layout_settings?: LetterLayoutSettings | null;
+}
+
+export interface TemplateFormData {
+  name: string;
+  response_time_days: number;
+  default_sender_id?: string;
+  default_info_blocks: string[];
+  letterhead_html: string;
+  letterhead_css: string;
+  layout_settings: LetterLayoutSettings;
+  header_elements: LetterCanvasElement[];
+  footer_blocks?: unknown;
 }
 
 export type LetterLayoutTemplateLike = {
@@ -245,6 +282,18 @@ export const isLineModeBlockData = (value: unknown): value is LineModeBlockData 
   const candidate = value as Partial<LineModeBlockData>;
   return candidate.mode === 'lines' && Array.isArray(candidate.lines);
 };
+
+export const isLetterCanvasElement = (value: unknown): value is LetterCanvasElement => {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return false;
+  const candidate = value as Partial<LetterCanvasElement>;
+  return typeof candidate.id === 'string' &&
+    typeof candidate.type === 'string' &&
+    typeof candidate.x === 'number' &&
+    typeof candidate.y === 'number';
+};
+
+export const isLetterCanvasElementArray = (value: unknown): value is LetterCanvasElement[] =>
+  Array.isArray(value) && value.every(isLetterCanvasElement);
 
 export const DEFAULT_DIN5008_LAYOUT: LetterLayoutSettings = {
   pageWidth: 210,
