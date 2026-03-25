@@ -44,6 +44,12 @@ import { useDocumentOperations } from "./documents/hooks/useDocumentOperations";
 import { DocumentDialogs } from "./documents/DocumentDialogs";
 import { STATUS_LABELS, getStatusColor, formatFileSize } from "./documents/types";
 import type { Document, Letter, DocumentFolder } from "./documents/types";
+import {
+  isDocumentCategoryOption,
+  isDocumentTagOption,
+  isDocumentFolderWithCount,
+  type DocumentDialogState,
+} from "./documents/operationsContract";
 
 export function DocumentsView() {
   const navigate = useNavigate();
@@ -124,6 +130,18 @@ export function DocumentsView() {
     fetchLetters: data.fetchLetters, activeTab, letters: data.letters,
   });
 
+  const safeCategories = documentCategories.filter(isDocumentCategoryOption);
+  const safeTags = tags.filter(isDocumentTagOption);
+  const safeFolders = data.folders.filter(isDocumentFolderWithCount);
+
+  const dialogState: DocumentDialogState = {
+    showEditDialog,
+    showMoveFolderDialog,
+    showArchiveSettings,
+    showArchivedLetterDetails,
+    taskDialogMode: ops.taskDialogMode,
+  };
+
   // URL syncing
   useEffect(() => {
     const action = searchParams.get('action');
@@ -151,7 +169,7 @@ export function DocumentsView() {
     setSearchParams(nextParams, { replace: true });
   }, [searchParams, setSearchParams, activeTab, navigate]);
 
-  const getCategoryLabel = (name: string) => documentCategories.find(c => c.name === name)?.label || name;
+  const getCategoryLabel = (name: string) => safeCategories.find(c => c.name === name)?.label || name;
 
   const filteredDocuments = data.documents.filter(doc => {
     const matchesSearch = doc.title.toLowerCase().includes(searchTerm.toLowerCase()) || doc.description?.toLowerCase().includes(searchTerm.toLowerCase()) || doc.file_name.toLowerCase().includes(searchTerm.toLowerCase());
@@ -227,7 +245,7 @@ export function DocumentsView() {
                           <div><Label>Farbe</Label><Input type="color" value={folderColor} onChange={e => setFolderColor(e.target.value)} /></div>
                           <div className="flex justify-end gap-2">
                             <Button variant="outline" onClick={() => setShowCreateFolderDialog(false)}>Abbrechen</Button>
-                            <Button onClick={() => ops.handleCreateFolder(folderName, folderDescription, folderColor, currentFolder, () => { setFolderName(""); setFolderDescription(""); setFolderColor("#3b82f6"); setShowCreateFolderDialog(false); })} disabled={!folderName}><FolderPlus className="h-4 w-4 mr-2" />Erstellen</Button>
+                            <Button onClick={() => ops.handleCreateFolder({ mutation: { type: "create-folder", name: folderName, description: folderDescription, color: folderColor, parentFolderId: currentFolder }, onSuccess: () => { setFolderName(""); setFolderDescription(""); setFolderColor("#3b82f6"); setShowCreateFolderDialog(false); } })} disabled={!folderName}><FolderPlus className="h-4 w-4 mr-2" />Erstellen</Button>
                           </div>
                         </div>
                       </DialogContent>
@@ -241,10 +259,10 @@ export function DocumentsView() {
                           <div><Label className="flex items-center gap-2">Titel <span className="text-destructive">*</span></Label><Input value={uploadTitle} onChange={e => setUploadTitle(e.target.value)} placeholder="Dokumententitel" /></div>
                           <div><Label>Beschreibung</Label><Textarea value={uploadDescription} onChange={e => setUploadDescription(e.target.value)} placeholder="Optionale Beschreibung" /></div>
                           <div className="grid grid-cols-2 gap-4">
-                            <div><Label>Kategorie</Label><Select value={uploadCategory} onValueChange={setUploadCategory}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent>{documentCategories.map(c => <SelectItem key={c.id} value={c.name}>{c.label}</SelectItem>)}</SelectContent></Select></div>
+                            <div><Label>Kategorie</Label><Select value={uploadCategory} onValueChange={setUploadCategory}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent>{safeCategories.map(c => <SelectItem key={c.id} value={c.name}>{c.label}</SelectItem>)}</SelectContent></Select></div>
                             <div><Label>Status</Label><Select value={uploadStatus} onValueChange={setUploadStatus}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent>{Object.entries(STATUS_LABELS).map(([v, l]) => <SelectItem key={v} value={v}>{l}</SelectItem>)}</SelectContent></Select></div>
                           </div>
-                          <div><Label>Tags</Label><MultiSelect options={tags.map(t => ({ value: t.label, label: t.label }))} selected={uploadTags} onChange={setUploadTags} placeholder="Tags auswählen..." /></div>
+                          <div><Label>Tags</Label><MultiSelect options={safeTags.map(t => ({ value: t.label, label: t.label }))} selected={uploadTags} onChange={setUploadTags} placeholder="Tags auswählen..." /></div>
                           <div><Label>Ordner (optional)</Label><Select value={uploadFolderId || undefined} onValueChange={v => setUploadFolderId(v || "")}><SelectTrigger><SelectValue placeholder="Kein Ordner" /></SelectTrigger><SelectContent>{data.folders.filter(f => f.parent_folder_id === currentFolder).map(f => <SelectItem key={f.id} value={f.id}>{f.name}</SelectItem>)}</SelectContent></Select></div>
                           <div>
                             <Label>Kontakte & Stakeholder (optional)</Label>
@@ -263,7 +281,7 @@ export function DocumentsView() {
                           </div>
                           <div className="flex justify-end gap-2">
                             <Button variant="outline" onClick={resetUploadForm}>Abbrechen</Button>
-                            <Button onClick={() => ops.handleUpload(uploadFile, uploadTitle, uploadDescription, uploadCategory, uploadTags, uploadStatus, uploadFolderId, uploadContacts, uploadContactType, data.setLoading, resetUploadForm)} disabled={!uploadFile || !uploadTitle || data.loading}><Upload className="h-4 w-4 mr-2" />{data.loading ? "Wird hochgeladen..." : "Hochladen"}</Button>
+                            <Button onClick={() => ops.handleUpload({ uploadFile, mutation: { type: "upload", title: uploadTitle, description: uploadDescription, category: uploadCategory, tags: uploadTags, status: uploadStatus, folderId: uploadFolderId, contacts: uploadContacts, contactType: uploadContactType }, setLoading: data.setLoading, onSuccess: resetUploadForm })} disabled={!uploadFile || !uploadTitle || data.loading}><Upload className="h-4 w-4 mr-2" />{data.loading ? "Wird hochgeladen..." : "Hochladen"}</Button>
                           </div>
                         </div>
                       </DialogContent>
@@ -307,7 +325,7 @@ export function DocumentsView() {
               <div className="flex flex-wrap gap-4 items-center justify-between">
                 <div className="flex flex-wrap gap-4 items-center flex-1">
                   <div className="flex items-center gap-2 min-w-[200px]"><Search className="h-4 w-4 text-muted-foreground" /><Input placeholder={activeTab === 'documents' ? "Dokumente durchsuchen..." : "Briefe durchsuchen..."} value={searchTerm} onChange={e => setSearchTerm(e.target.value)} /></div>
-                  {activeTab === 'documents' && (<div className="flex items-center gap-2"><Filter className="h-4 w-4 text-muted-foreground" /><Select value={filterCategory} onValueChange={setFilterCategory}><SelectTrigger className="w-[160px]"><SelectValue /></SelectTrigger><SelectContent><SelectItem value="all">Alle Kategorien</SelectItem>{documentCategories.map(c => <SelectItem key={c.id} value={c.name}>{c.label}</SelectItem>)}</SelectContent></Select></div>)}
+                  {activeTab === 'documents' && (<div className="flex items-center gap-2"><Filter className="h-4 w-4 text-muted-foreground" /><Select value={filterCategory} onValueChange={setFilterCategory}><SelectTrigger className="w-[160px]"><SelectValue /></SelectTrigger><SelectContent><SelectItem value="all">Alle Kategorien</SelectItem>{safeCategories.map(c => <SelectItem key={c.id} value={c.name}>{c.label}</SelectItem>)}</SelectContent></Select></div>)}
                   <Select value={filterStatus} onValueChange={setFilterStatus}><SelectTrigger className="w-[140px]"><SelectValue /></SelectTrigger><SelectContent><SelectItem value="all">Alle Status</SelectItem>{activeTab === 'documents' ? Object.entries(STATUS_LABELS).map(([v, l]) => <SelectItem key={v} value={v}>{l}</SelectItem>) : letterSubTab === 'active' ? ['draft', 'review', 'approved'].map(s => <SelectItem key={s} value={s}>{s === 'draft' ? 'Entwurf' : s === 'review' ? 'Zur Prüfung' : 'Genehmigt'}</SelectItem>) : ['sent', 'archived'].map(s => <SelectItem key={s} value={s}>{s === 'sent' ? 'Versendet' : 'Archiviert'}</SelectItem>)}</SelectContent></Select>
                 </div>
                 <div className="flex items-center gap-1 bg-muted p-1 rounded-md">
@@ -356,7 +374,7 @@ export function DocumentsView() {
                     <CardContent className="p-4"><div className="flex items-center gap-3 min-w-0">
                       <Folder className="h-8 w-8 flex-shrink-0" style={{ color: folder.color ?? undefined }} />
                       <div className="flex-1 min-w-0 overflow-hidden"><h3 className="font-semibold truncate">{folder.name}</h3><p className="text-xs text-muted-foreground">{folder.documentCount || 0} Dokument{folder.documentCount !== 1 ? 'e' : ''}</p></div>
-                      <DropdownMenu><DropdownMenuTrigger asChild onClick={e => e.stopPropagation()}><Button variant="ghost" size="sm" className="h-8 w-8 p-0"><MoreVertical className="h-4 w-4" /></Button></DropdownMenuTrigger><DropdownMenuContent onClick={e => e.stopPropagation()}><DropdownMenuItem onClick={e => { e.stopPropagation(); ops.handleDeleteFolder(folder.id, data.folders); }}><Trash2 className="h-4 w-4 mr-2" />Löschen</DropdownMenuItem></DropdownMenuContent></DropdownMenu>
+                      <DropdownMenu><DropdownMenuTrigger asChild onClick={e => e.stopPropagation()}><Button variant="ghost" size="sm" className="h-8 w-8 p-0"><MoreVertical className="h-4 w-4" /></Button></DropdownMenuTrigger><DropdownMenuContent onClick={e => e.stopPropagation()}><DropdownMenuItem onClick={e => { e.stopPropagation(); ops.handleDeleteFolder(folder.id, safeFolders); }}><Trash2 className="h-4 w-4 mr-2" />Löschen</DropdownMenuItem></DropdownMenuContent></DropdownMenu>
                     </div>{folder.description && <p className="text-xs text-muted-foreground mt-2 line-clamp-2">{folder.description}</p>}</CardContent>
                   </Card>
                 ))}
@@ -444,7 +462,7 @@ export function DocumentsView() {
         <LetterEditor letter={selectedLetter} isOpen={showLetterEditor && !selectedLetter?.id} onClose={() => { setShowLetterEditor(false); setSelectedLetter(undefined); data.fetchLetters(); }} onSave={() => data.fetchLetters()} />
 
         <DocumentDialogs
-          showEditDialog={showEditDialog} setShowEditDialog={setShowEditDialog}
+          showEditDialog={dialogState.showEditDialog} setShowEditDialog={setShowEditDialog}
           editingDocument={editingDocument}
           editTitle={editTitle} setEditTitle={setEditTitle}
           editDescription={editDescription} setEditDescription={setEditDescription}
@@ -452,23 +470,23 @@ export function DocumentsView() {
           editTags={editTags} setEditTags={setEditTags}
           editStatus={editStatus} setEditStatus={setEditStatus}
           editFolderId={editFolderId} setEditFolderId={setEditFolderId}
-          documentCategories={documentCategories} tags={tags} folders={data.folders}
+          documentCategories={safeCategories} tags={safeTags} folders={safeFolders}
           loading={data.loading}
-          onUpdateDocument={() => ops.handleUpdateDocument(editingDocument, editTitle, editDescription, editCategory, editTags, editStatus, editFolderId, () => { setShowEditDialog(false); setEditingDocument(null); })}
-          showMoveFolderDialog={showMoveFolderDialog} setShowMoveFolderDialog={setShowMoveFolderDialog}
+          onUpdateDocument={() => ops.handleUpdateDocument({ editingDocument, mutation: { type: "update", documentId: editingDocument?.id || "", title: editTitle, description: editDescription, category: editCategory, tags: editTags, status: editStatus, folderId: editFolderId }, onSuccess: () => { setShowEditDialog(false); setEditingDocument(null); } })}
+          showMoveFolderDialog={dialogState.showMoveFolderDialog} setShowMoveFolderDialog={setShowMoveFolderDialog}
           selectedDocument={selectedDocument} setSelectedDocument={setSelectedDocument}
           moveToFolderId={moveToFolderId} setMoveToFolderId={setMoveToFolderId}
-          onMoveDocument={() => ops.handleMoveDocument(selectedDocument, moveToFolderId, () => { setShowMoveFolderDialog(false); setSelectedDocument(null); setMoveToFolderId(""); })}
-          taskDialogMode={ops.taskDialogMode} taskTitle={ops.taskTitle} setTaskTitle={ops.setTaskTitle}
+          onMoveDocument={() => ops.handleMoveDocument(selectedDocument, { type: "move-document", documentId: selectedDocument?.id || "", folderId: moveToFolderId }, () => { setShowMoveFolderDialog(false); setSelectedDocument(null); setMoveToFolderId(""); })}
+          taskDialogMode={dialogState.taskDialogMode} taskTitle={ops.taskTitle} setTaskTitle={ops.setTaskTitle}
           taskDescription={ops.taskDescription} setTaskDescription={ops.setTaskDescription}
           parentTaskId={ops.parentTaskId} setParentTaskId={ops.setParentTaskId}
           availableParentTasks={ops.availableParentTasks} isCreatingTask={ops.isCreatingTask}
           onCloseTaskDialog={ops.closeTaskDialog} onCreateTaskFromLetter={ops.createTaskFromLetter}
-          showArchiveSettings={showArchiveSettings} setShowArchiveSettings={setShowArchiveSettings}
+          showArchiveSettings={dialogState.showArchiveSettings} setShowArchiveSettings={setShowArchiveSettings}
           autoArchiveDays={autoArchiveDays} setAutoArchiveDays={setAutoArchiveDays}
           onSaveArchiveSettings={saveArchiveSettings}
           selectedArchivedDocument={selectedArchivedDocument}
-          showArchivedLetterDetails={showArchivedLetterDetails}
+          showArchivedLetterDetails={dialogState.showArchivedLetterDetails}
           setShowArchivedLetterDetails={setShowArchivedLetterDetails}
           setSelectedArchivedDocument={setSelectedArchivedDocument}
         />
