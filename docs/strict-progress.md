@@ -143,6 +143,20 @@ Nicht Bestandteil dieser Phase sind Arbeiten zu `noUnusedLocals` und `noUnusedPa
 | Komponenten (`src/components`)                         | Frontend Produktteams          | n. a. (nach Batch-Zuschnitten gesteuert) |                                            5 Batch-Slices + Top-Level in Planung |                                             0 dedizierte `noImplicitAny`-Batches | Zuerst `typecheck:components-batch2` für Kalender-nahe Flows und `typecheck:components-batch3` für Letters sichtbar steuern                       | Noch kein Komponenten-Batch als real abgeschlossen dokumentiert                                             | Großer Scope, unterschiedliche Domänen, teils fehlende feingranulare Fortschrittsmessung            | 2026-03-18     |
 | Pages (`src/pages`)                                    | Frontend Plattform / App Shell |                                       22 |                                                                      22 (100.0%) |                                                                        3 (13.6%) | `typecheck:pages-batch2` abschließen, insbesondere `NotificationsPage.tsx` entlang des Kernflows Benachrichtigungen                             | `strictNullChecks` im Verzeichnis real erreicht; Folge-Batches offen                                        | Seitenspezifische Abhängigkeiten zu Hooks, Contexts und Router-Daten                                | 2026-03-18     |
 
+## Metrik: Any-Delta pro Batch
+
+Zur operativen Steuerung von `noImplicitAny` wird zusätzlich eine Delta-Metrik geführt, die pro Migrations-Batch die Veränderung der `any`-/`as any`-Vorkommen ausweist.
+
+| Metrik | Definition | Zielwert | CI-Gate |
+| --- | --- | --- | --- |
+| **Any-Delta pro Batch** | `Any-Total(Head)` minus `Any-Total(Base)` auf PR-Ebene (ermittelt durch `scripts/report-any-usage.mjs`) | `<= 0` | PRs mit positivem Delta schlagen fehl |
+
+Pflegehinweis pro Batch:
+
+1. Vor dem Merge den aktuellen Report mit `npm run report:any-usage` erzeugen und die betroffenen Verzeichnisse im Batch-Doc festhalten.
+2. Im PR-Summary den Delta-Wert aus dem CI-Job „Any-Delta PR-Gate (nicht steigend)“ dokumentieren.
+3. Bei Delta `0` ist Stagnation akzeptabel; bei negativem Delta ist die Reduktion als Fortschritt im Batch-Abschnitt zu notieren.
+
 ## Spätere Anschlussphase: Unused-Bereinigung
 
 Arbeiten zu `noUnusedLocals` und `noUnusedParameters` werden erst nach Erreichen des oben definierten Zielzustands geplant. Für diese Anschlussphase gelten vorab folgende Leitplanken:
