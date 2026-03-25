@@ -60,7 +60,10 @@
     "report:any-usage:clusters": "node scripts/report-any-usage.mjs --cluster-summary",
     "report:any-usage:files": "node scripts/report-any-usage.mjs --file-summary",
     "report:any-usage:json": "node scripts/report-any-usage.mjs --json",
-    "report:any-delta:pr": "node scripts/report-any-usage.mjs --total-only"
+    "report:any-delta:pr": "node scripts/report-any-usage.mjs --total-only",
+    "lint:cached": "eslint . --cache --cache-location .eslintcache --report-unused-disable-directives",
+    "typecheck:batch-governed:parallel": "node scripts/run-typecheck-batches.mjs",
+    "typecheck:strict-all:parallel": "npm run typecheck:baseline-global && npm run typecheck:batch-governed:parallel && npm run typecheck:legacy-exceptions"
   },
   "dependencies": {
     "@eslint/js": "^10.0.1",
