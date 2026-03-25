@@ -5,6 +5,27 @@ export type LetterTemplateRecord = Database['public']['Tables']['letter_template
 export type SenderInformationRecord = Database['public']['Tables']['sender_information']['Row'];
 export type InformationBlockRecord = Database['public']['Tables']['information_blocks']['Row'];
 
+export type MarginKey = 'top' | 'right' | 'bottom' | 'left';
+
+export type TabRect = {
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+};
+
+export interface RecipientAddress {
+  name?: string;
+  address?: string;
+  recipient_name?: string;
+  recipient_address?: string;
+  company?: string;
+  street?: string;
+  postal_code?: string;
+  city?: string;
+  country?: string;
+}
+
 export type LayoutBlockKey =
   | 'header'
   | 'addressField'
@@ -195,6 +216,12 @@ export interface LetterTemplateDataModel extends Omit<LetterTemplateRecord, 'lay
   default_info_blocks?: string[] | null;
   layout_settings?: LetterLayoutSettings | null;
 }
+
+export type LetterLayoutTemplateLike = {
+  layout_settings?: LetterLayoutSettings;
+  header_layout_type?: string | null;
+  header_text_elements?: LetterCanvasElement[];
+};
 
 export const isLetterLayoutSettings = (value: unknown): value is LetterLayoutSettings => {
   if (!value || typeof value !== 'object' || Array.isArray(value)) return false;

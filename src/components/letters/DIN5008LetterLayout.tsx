@@ -11,31 +11,14 @@ import { getLetterAssetPublicUrl } from './letterAssetUrls';
 import type {
   InformationBlockRecord,
   LetterAttachmentRecord,
-  LetterCanvasElement,
+  LetterLayoutTemplateLike,
   LetterLayoutSettings,
+  RecipientAddress,
   SenderInformationRecord,
 } from '@/types/letterLayout';
 
-type RecipientAddress = {
-  name?: string;
-  address?: string;
-  recipient_name?: string;
-  recipient_address?: string;
-  company?: string;
-  street?: string;
-  postal_code?: string;
-  city?: string;
-  country?: string;
-};
-
-type TemplateLike = {
-  layout_settings?: LetterLayoutSettings;
-  header_layout_type?: string | null;
-  header_text_elements?: LetterCanvasElement[];
-};
-
 interface DIN5008LetterLayoutProps {
-  template?: TemplateLike;
+  template?: LetterLayoutTemplateLike;
   senderInfo?: SenderInformationRecord | null;
   informationBlock?: InformationBlockRecord[] | null;
   recipientAddress?: RecipientAddress | string;

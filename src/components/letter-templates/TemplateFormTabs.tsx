@@ -22,8 +22,10 @@ import {
   type LayoutEditorTab,
   type LetterCanvasElement,
   type LetterLayoutSettings,
+  type MarginKey,
+  type TabRect,
 } from '@/types/letterLayout';
-import { MarginKey, TabRect, SenderInformation, InformationBlock } from './types';
+import { SenderInformation, InformationBlock } from './types';
 
 interface TemplateFormData {
   name: string;

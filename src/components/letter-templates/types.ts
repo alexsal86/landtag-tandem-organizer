@@ -35,14 +35,7 @@ export interface InformationBlock {
   is_default: boolean | null;
 }
 
-export type MarginKey = 'top' | 'right' | 'bottom' | 'left';
-
-export type TabRect = {
-  x: number;
-  y: number;
-  width: number;
-  height: number;
-};
+export type { MarginKey, TabRect } from '@/types/letterLayout';
 
 export interface GalleryImage {
   name: string;
