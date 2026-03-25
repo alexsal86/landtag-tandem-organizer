@@ -219,7 +219,7 @@ const ChartTooltipContent = React.forwardRef<
                 )}
               >
                 {formatter && item?.value !== undefined && item.name ? (
-                  formatter(item.value, String(item.name), item, index, item.payload)
+                  formatter(item.value, String(item.name), item, index, item.payload as unknown as RechartsPayloadItem[])
                 ) : (
                   <>
                     {itemConfig?.icon ? (
