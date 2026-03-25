@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, type Dispatch, type MutableRefObject, type SetStateAction } from "react";
 import { $createTextNode, $getRoot, type EditorState, type LexicalEditor } from "lexical";
 import { $generateHtmlFromNodes } from "@lexical/html";
 import { $createHorizontalRuleNode, HorizontalRuleNode } from "@lexical/react/LexicalHorizontalRuleNode";
@@ -19,7 +19,80 @@ import {
 
 const DB_SAVE_DEBOUNCE_MS = 1000;
 
-export function useDaySlipStore(userId?: string, tenantId?: string) {
+export type DaySlipStoreEvent =
+  | { type: "local-storage-migration-failed"; error: unknown }
+  | { type: "db-load-error"; error: unknown }
+  | { type: "resolve-export-sync-failed"; error: unknown }
+  | { type: "resolved-item-persist-failed"; target: ResolveTarget; error: unknown }
+  | { type: "preference-migration-failed"; dbKey: string; localKey: string; error: unknown };
+
+export interface UseDaySlipStoreReturn {
+  store: DaySlipStore;
+  setStore: Dispatch<SetStateAction<DaySlipStore>>;
+  resolveMode: boolean;
+  setResolveMode: Dispatch<SetStateAction<boolean>>;
+  recurringItems: RecurringTemplate[];
+  setRecurringItems: Dispatch<SetStateAction<RecurringTemplate[]>>;
+  dayTemplates: DayTemplate[];
+  setDayTemplates: Dispatch<SetStateAction<DayTemplate[]>>;
+  editorRef: MutableRefObject<LexicalEditor | null>;
+  editorReadyVersion: number;
+  saveTimeoutRef: MutableRefObject<ReturnType<typeof setTimeout>>;
+  todayKey: string;
+  todayData: DaySlipDayData;
+  yesterdayKey: string;
+  yesterdayCarryLines: DaySlipLineEntry[];
+  allLineEntries: DaySlipLineEntry[];
+  struckLineIds: string[];
+  resolvedItems: ResolvedItem[];
+  resolvedByLineId: Map<string, ResolveTarget>;
+  openLines: DaySlipLineEntry[];
+  unresolvedCount: number;
+  triageEntries: DaySlipLineEntry[];
+  archiveDays: string[];
+  toggleStrike: (lineId: string) => void;
+  appendLinesToToday: (lines: string[]) => void;
+  insertStructuredLines: (lines: string[]) => void;
+  deleteLine: (lineId: string) => void;
+  toggleResolveLine: (lineId: string, line: string, target: ResolveTarget) => void;
+  createFromLine: (lineText: string, target: "note" | "task") => Promise<void>;
+  persistResolvedItems: () => Promise<void>;
+  onEditorChange: (editorState: EditorState, editor: LexicalEditor) => void;
+  handleEditorReady: (editor: LexicalEditor) => void;
+  handleApplyWeekPlan: (days: Record<string, string[]>) => void;
+  editorConfig: {
+    namespace: string;
+    theme: {
+      paragraph: string;
+      text: { bold: string; italic: string; underline: string; strikethrough: string };
+      horizontalRule: string;
+    };
+    nodes: unknown[];
+    onError: (error: Error) => void;
+  };
+}
+
+function logStoreEvent(event: DaySlipStoreEvent): void {
+  switch (event.type) {
+    case "local-storage-migration-failed":
+      debugConsole.warn("useDaySlipStore: localStorage migration to DB failed", event.error);
+      break;
+    case "db-load-error":
+      debugConsole.error("useDaySlipStore: DB load error", event.error);
+      break;
+    case "resolve-export-sync-failed":
+      debugConsole.warn("useDaySlipStore: syncResolveExport failed", event.error);
+      break;
+    case "resolved-item-persist-failed":
+      debugConsole.error(`Failed to persist resolved item (${event.target}):`, event.error);
+      break;
+    case "preference-migration-failed":
+      debugConsole.warn("useDaySlipStore: preference migration failed", { dbKey: event.dbKey, localKey: event.localKey, error: event.error });
+      break;
+  }
+}
+
+export function useDaySlipStore(userId?: string, tenantId?: string): UseDaySlipStoreReturn {
   const [store, setStore] = useState<DaySlipStore>(() => {
     try { const raw = localStorage.getItem(STORAGE_KEY); return raw ? JSON.parse(raw) : {}; } catch { return {}; }
   });
@@ -93,7 +166,7 @@ export function useDaySlipStore(userId?: string, tenantId?: string) {
                   await supabase.from("day_slips").upsert(batch as any, { onConflict: "user_id,day_key" });
                 }
               }
-            } catch (e) { debugConsole.warn("useDaySlipStore: localStorage migration to DB failed", e); }
+            } catch (error: unknown) { logStoreEvent({ type: "local-storage-migration-failed", error }); }
           }
         }
 
@@ -124,8 +197,8 @@ export function useDaySlipStore(userId?: string, tenantId?: string) {
         }
 
         dbLoadedRef.current = true;
-      } catch (e) {
-        debugConsole.error("useDaySlipStore: DB load error", e);
+      } catch (error: unknown) {
+        logStoreEvent({ type: "db-load-error", error });
       }
     };
 
@@ -345,7 +418,7 @@ export function useDaySlipStore(userId?: string, tenantId?: string) {
           { onConflict: "user_id,tenant_id,key" }
         ).then();
       }
-    } catch (e) { debugConsole.warn("useDaySlipStore: syncResolveExport failed", e); }
+    } catch (error: unknown) { logStoreEvent({ type: "resolve-export-sync-failed", error }); }
   }, [todayKey, userId, tenantId]);
 
   const toggleResolveLine = useCallback((lineId: string, line: string, target: ResolveTarget) => {
@@ -383,7 +456,7 @@ export function useDaySlipStore(userId?: string, tenantId?: string) {
         if (item.target === "note") await supabase.from("quick_notes").insert([{ user_id: userId, title: item.text, content: `Aus Tageszettel (${todayKey})` }]);
         else if (item.target === "task" && tenantId) await supabase.from("tasks").insert([{ user_id: userId, tenant_id: tenantId, title: item.text, description: `Aus Tageszettel (${todayKey})`, status: "open", priority: "medium", category: "allgemein" }]);
         else if (item.target === "decision") await supabase.from("task_decisions").insert([{ created_by: userId, title: item.text, description: `Aus Tageszettel (${todayKey})`, status: "open" }]);
-      } catch (err) { debugConsole.error(`Failed to persist resolved item (${item.target}):`, err); }
+      } catch (error: unknown) { logStoreEvent({ type: "resolved-item-persist-failed", target: item.target, error }); }
     }
   }, [userId, tenantId, store, todayKey]);
 
@@ -505,8 +578,8 @@ async function migratePreference(userId: string, tenantId: string | undefined, d
     }
 
     return true;
-  } catch (error) {
-    debugConsole.warn("useDaySlipStore: preference migration failed", { dbKey, localKey, error });
+  } catch (error: unknown) {
+    logStoreEvent({ type: "preference-migration-failed", dbKey, localKey, error });
     return false;
   }
 }
