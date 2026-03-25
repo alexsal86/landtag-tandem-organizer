@@ -226,16 +226,17 @@ export const EventRSVPManager = ({ eventPlanningId, eventTitle }: EventRSVPManag
     }
   };
 
-  const addFromContact = (contact: RSVPParticipant) => {
+  const addFromContact = (contact: { name: string; email?: string | null }) => {
     if (!contact.email) {
       toast({ title: 'Keine E-Mail', description: 'Kontakt hat keine E-Mail-Adresse.', variant: 'destructive' });
       return;
     }
-    if (pendingInvites.find((p) => p.email === contact.email) || rsvps.find((r) => r.email === contact.email)) {
+    const email = contact.email;
+    if (pendingInvites.find((p) => p.email === email) || rsvps.find((r) => r.email === email)) {
       toast({ title: 'Bereits vorhanden', variant: 'destructive' });
       return;
     }
-    setPendingInvites((prev) => [...prev, { name: contact.name, email: contact.email }]);
+    setPendingInvites((prev) => [...prev, { name: contact.name, email }]);
   };
 
   const addFromDistributionList = async (listId: string) => {
