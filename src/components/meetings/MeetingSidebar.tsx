@@ -202,7 +202,7 @@ export function MeetingSidebar({
                         <label className="text-xs font-medium text-muted-foreground">Datum</label>
                         <Popover>
                           <PopoverTrigger asChild>
-                            <Button variant="outline" size="sm" className="w-full justify-start text-left font-normal text-xs">
+                            <Button type="button" variant="outline" size="sm" className="w-full justify-start text-left font-normal text-xs">
                               {format(new Date(editingMeeting!.meeting_date), "dd.MM.yy", { locale: de })}
                             </Button>
                           </PopoverTrigger>

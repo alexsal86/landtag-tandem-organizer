@@ -245,7 +245,7 @@ export function EmailComposer() {
                 <div className="mt-4">
                   <Popover>
                     <PopoverTrigger asChild>
-                      <Button variant="outline" className="gap-2 w-full">
+                      <Button type="button" variant="outline" className="gap-2 w-full">
                         <CalendarIcon className="h-4 w-4" />
                         {hook.scheduledFor ? format(hook.scheduledFor, "dd.MM.yyyy HH:mm", { locale: de }) : "Zeitpunkt wählen"}
                       </Button>

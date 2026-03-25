@@ -303,7 +303,7 @@ export const AppointmentPollCreator = ({ onClose }: { onClose: () => void }) => 
             <Label>Antwortfrist</Label>
             <Popover>
               <PopoverTrigger asChild>
-                <Button variant="outline" className="w-full justify-start text-left font-normal">
+                <Button type="button" variant="outline" className="w-full justify-start text-left font-normal">
                   <CalendarIcon className="mr-2 h-4 w-4" />
                   {deadline ? format(deadline, 'dd. MMMM yyyy', { locale: de }) : 'Antwortfrist wählen'}
                 </Button>
@@ -329,7 +329,7 @@ export const AppointmentPollCreator = ({ onClose }: { onClose: () => void }) => 
               <Label className="text-sm">Datum</Label>
               <Popover>
                 <PopoverTrigger asChild>
-                  <Button variant="outline" className="w-full justify-start text-left font-normal">
+                  <Button type="button" variant="outline" className="w-full justify-start text-left font-normal">
                     <CalendarIcon className="mr-2 h-4 w-4" />
                     {selectedDate ? format(selectedDate, 'dd. MMMM yyyy', { locale: de }) : 'Datum wählen'}
                   </Button>
