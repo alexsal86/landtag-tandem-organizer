@@ -271,9 +271,9 @@ export const DIN5008LetterLayout: React.FC<DIN5008LetterLayoutProps> = ({
           <div className="space-y-1">
             <div className="font-medium">{info.label}</div>
             <div>{formatDate(date, String(bd.date_format || 'dd.mm.yyyy'))}</div>
-            {bd.show_time && (
+            {bd.show_time ? (
               <div className="text-sm">{date.toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' })} Uhr</div>
-            )}
+            ) : null}
           </div>
         );
       }
