@@ -1,5 +1,6 @@
 import PostalMime from 'postal-mime';
 import { debugConsole } from '@/utils/debugConsole';
+import { hasOwnProperty, isRecord } from '@/utils/typeSafety';
 
 export interface EmailMetadata {
   subject: string;
@@ -22,6 +23,53 @@ export interface EmailAttachment {
   mimeType: string;
   content: Uint8Array;
   size: number;
+}
+
+interface MsgRecipient {
+  email?: string;
+  name?: string;
+}
+
+interface MsgAttachment {
+  fileName?: string;
+  name?: string;
+  mimeType?: string;
+  contentLength?: number;
+}
+
+interface MsgPayload {
+  subject?: string;
+  senderEmail?: string;
+  senderName?: string;
+  recipients?: ReadonlyArray<MsgRecipient>;
+  messageDeliveryTime?: string;
+  clientSubmitTime?: string;
+  creationTime?: string;
+  htmlBody?: string;
+  body?: string;
+  compressedRtf?: string;
+  rtfBody?: string;
+  attachments?: ReadonlyArray<MsgAttachment>;
+}
+
+export function isAttachment(value: unknown): value is MsgAttachment {
+  if (!isRecord(value)) return false;
+  return Boolean(
+    (hasOwnProperty(value, 'fileName') && typeof value.fileName === 'string') ||
+    (hasOwnProperty(value, 'name') && typeof value.name === 'string'),
+  );
+}
+
+function isMsgPayload(value: unknown): value is MsgPayload {
+  if (!isRecord(value)) return false;
+
+  if (hasOwnProperty(value, 'recipients') && value.recipients !== undefined && value.recipients !== null && !Array.isArray(value.recipients)) {
+    return false;
+  }
+  if (hasOwnProperty(value, 'attachments') && value.attachments !== undefined && value.attachments !== null && !Array.isArray(value.attachments)) {
+    return false;
+  }
+  return true;
 }
 
 export function isEmlFile(file: File): boolean {
@@ -87,7 +135,10 @@ export async function parseEmlFile(file: File): Promise<ParsedEmail> {
   return parseEmlFromArrayBuffer(arrayBuffer);
 }
 
-export async function parseEmlFromArrayBuffer(buffer: ArrayBuffer): Promise<ParsedEmail> {
+export async function parseEmlFromArrayBuffer(buffer: unknown): Promise<ParsedEmail> {
+  if (!(buffer instanceof ArrayBuffer)) {
+    throw new Error('Ungültiger EML-Buffer.');
+  }
   const parser = new PostalMime();
   const email = await parser.parse(buffer);
 
@@ -130,7 +181,11 @@ export async function parseMsgFile(file: File): Promise<ParsedEmail> {
  * Build a synthetic .eml File from Outlook HTML clipboard content.
  * Returns null if the HTML doesn't look like an Outlook email.
  */
-export function buildEmlFromOutlookHtml(html: string): File | null {
+export function buildEmlFromOutlookHtml(html: unknown): File | null {
+  if (typeof html !== 'string') {
+    return null;
+  }
+
   try {
     const parser = new DOMParser();
     const doc = parser.parseFromString(html, 'text/html');
@@ -203,16 +258,23 @@ export function buildEmlFromOutlookHtml(html: string): File | null {
   }
 }
 
-export async function parseMsgFromArrayBuffer(buffer: ArrayBuffer): Promise<ParsedEmail> {
+export async function parseMsgFromArrayBuffer(buffer: unknown): Promise<ParsedEmail> {
+  if (!(buffer instanceof ArrayBuffer)) {
+    throw new Error('Ungültiger MSG-Buffer.');
+  }
   const { default: MsgReader } = await import('@kenjiuno/msgreader');
   const msgReader = new MsgReader(buffer);
-  const msgData = msgReader.getFileData();
+  const rawMsgData: unknown = msgReader.getFileData();
+  if (!isMsgPayload(rawMsgData)) {
+    throw new Error('Ungültiges MSG-Format.');
+  }
+  const msgData = rawMsgData;
 
-  const subject = (msgData as any).subject || '(Kein Betreff)';
-  const from = (msgData as any).senderEmail || (msgData as any).senderName || 'Unbekannt';
-  const toRaw = (msgData as any).recipients || [];
-  const toAddresses: string[] = toRaw.map((r: any) => r.email || r.name || '');
-  const dateStr = (msgData as any).messageDeliveryTime || (msgData as any).clientSubmitTime || (msgData as any).creationTime || '';
+  const subject = msgData.subject || '(Kein Betreff)';
+  const from = msgData.senderEmail || msgData.senderName || 'Unbekannt';
+  const toRaw = msgData.recipients || [];
+  const toAddresses: string[] = toRaw.map((recipient) => recipient.email || recipient.name || '');
+  const dateStr = msgData.messageDeliveryTime || msgData.clientSubmitTime || msgData.creationTime || '';
   const parsedDate = dateStr ? new Date(dateStr) : null;
   const date = parsedDate && !Number.isNaN(parsedDate.getTime())
     ? parsedDate.toISOString()
@@ -222,27 +284,29 @@ export async function parseMsgFromArrayBuffer(buffer: ArrayBuffer): Promise<Pars
   let bodyHtml: string | null = null;
   let bodyText: string | null = null;
 
-  if ((msgData as any).htmlBody) {
-    bodyHtml = (msgData as any).htmlBody;
-  } else if ((msgData as any).body) {
-    bodyText = (msgData as any).body;
-  } else if ((msgData as any).compressedRtf || (msgData as any).rtfBody) {
-    const rtf = (msgData as any).rtfBody || (msgData as any).compressedRtf || '';
+  if (msgData.htmlBody) {
+    bodyHtml = msgData.htmlBody;
+  } else if (msgData.body) {
+    bodyText = msgData.body;
+  } else if (msgData.compressedRtf || msgData.rtfBody) {
+    const rtf = msgData.rtfBody || msgData.compressedRtf || '';
     if (typeof rtf === 'string') {
       bodyText = stripRtf(rtf);
     }
   }
 
   // Attachments
-  const rawAttachments = (msgData as any).attachments || [];
+  const rawAttachments = msgData.attachments || [];
   const attachments: EmailAttachment[] = rawAttachments
-    .filter((att: any) => att.fileName || att.name)
-    .map((att: any) => {
+    .filter(isAttachment)
+    .map((att) => {
       let content = new Uint8Array(0);
       try {
         const attData = msgReader.getAttachment(att);
-        if (attData && (attData as any).content) {
-          content = new Uint8Array((attData as any).content);
+        if (isRecord(attData) && hasOwnProperty(attData, 'content') && attData.content instanceof Uint8Array) {
+          content = attData.content;
+        } else if (isRecord(attData) && hasOwnProperty(attData, 'content') && attData.content instanceof ArrayBuffer) {
+          content = new Uint8Array(attData.content);
         }
       } catch {
         // Attachment extraction may fail for some files

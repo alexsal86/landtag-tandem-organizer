@@ -1,6 +1,10 @@
 import { supabase } from '@/integrations/supabase/client';
 import { debugConsole } from '@/utils/debugConsole';
 import {
+  normalizeSupabaseResult,
+  requireSupabaseData,
+} from '@/utils/typeSafety';
+import {
   getUploadContentType,
   getUploadContentTypeCandidates,
   isEmlFile,
@@ -83,12 +87,13 @@ async function uploadToStorageWithCandidates(filePath: string, file: File, maxAt
       const result = await supabase.storage
         .from('decision-attachments')
         .upload(filePath, file, { contentType });
+      const normalizedResult = normalizeSupabaseResult(result);
 
-      if (!result.error && result.data) {
-        return { uploadData: result.data, candidateErrors };
+      if (!normalizedResult.error && normalizedResult.data) {
+        return { uploadData: normalizedResult.data, candidateErrors };
       }
 
-      candidateErrors.push(`[${contentType}] Versuch ${attempt}/${maxAttempts}: ${normalizeError(result.error)}`);
+      candidateErrors.push(`[${contentType}] Versuch ${attempt}/${maxAttempts}: ${normalizeError(normalizedResult.error)}`);
     }
   }
 
@@ -102,7 +107,10 @@ async function uploadOneFile(
   metadataByIdentity?: Record<string, EmailMetadata | null>,
 ) {
   // Always fetch the real user ID from the session to avoid Tenant-ID being passed as userId
-  const { data: { user } } = await supabase.auth.getUser();
+  const userResponse = await supabase.auth.getUser();
+  const userResult = normalizeSupabaseResult(userResponse);
+  const authPayload = requireSupabaseData(userResult, 'Benutzer konnte nicht geladen werden.');
+  const user = authPayload.user;
   if (!user) throw new Error('Nicht angemeldet');
 
   const uniqueSuffix = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
@@ -141,9 +149,11 @@ async function uploadOneFile(
     insertData.email_metadata = emailMeta;
   }
 
-  const { error: dbError } = await supabase
+  const insertResponse = await supabase
     .from('task_decision_attachments')
     .insert(insertData as never);
+  const normalizedInsert = normalizeSupabaseResult(insertResponse);
+  const dbError = normalizedInsert.error;
 
   if (dbError) {
     await supabase.storage.from('decision-attachments').remove([uploadData.path]);
@@ -188,10 +198,13 @@ export function useDecisionAttachmentUpload() {
 
     try {
       // 3) Max files limit: check existing count
-      const { count: existingCount, error: countError } = await supabase
+      const countResponse = await supabase
         .from('task_decision_attachments')
         .select('id', { count: 'exact', head: true })
         .eq('decision_id', decisionId);
+      const countResult = normalizeSupabaseResult(countResponse);
+      const existingCount = countResponse.count;
+      const countError = countResult.error;
 
       if (countError) {
         return { uploadedCount: 0, failed: [{ fileName: '*', reason: normalizeError(countError), candidateErrors: [] }] };
@@ -208,10 +221,11 @@ export function useDecisionAttachmentUpload() {
       }
 
       // 2) Deduplizierung: fetch existing file names + sizes
-      const { data: existingFiles } = await supabase
+      const existingFilesResponse = await supabase
         .from('task_decision_attachments')
         .select('file_name, file_size')
         .eq('decision_id', decisionId);
+      const existingFiles = requireSupabaseData(existingFilesResponse, 'Bestehende Anhänge konnten nicht geladen werden.');
 
       const existingSet = new Set(
         (existingFiles ?? []).map(f => `${f.file_name}::${f.file_size}`)
