@@ -194,8 +194,13 @@ export interface BlockLineData {
 }
 
 /** Check whether stored data is line-mode or legacy canvas */
-export function isLineMode(data: any): data is BlockLineData {
-  return data && typeof data === 'object' && data.mode === 'lines' && Array.isArray(data.lines);
+export function isLineMode(data: unknown): data is BlockLineData {
+  return !!data
+    && typeof data === 'object'
+    && 'mode' in data
+    && 'lines' in data
+    && data.mode === 'lines'
+    && Array.isArray(data.lines);
 }
 
 /**

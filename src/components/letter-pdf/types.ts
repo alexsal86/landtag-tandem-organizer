@@ -94,3 +94,41 @@ export type DbContact = {
   business_country?: string | null;
   title?: string | null;
 };
+
+
+export interface SenderInfoContract {
+  name?: string | null;
+  organization?: string | null;
+  street?: string | null;
+  house_number?: string | null;
+  postal_code?: string | null;
+  city?: string | null;
+  wahlkreis_street?: string | null;
+  wahlkreis_house_number?: string | null;
+  wahlkreis_postal_code?: string | null;
+  wahlkreis_city?: string | null;
+  landtag_street?: string | null;
+  landtag_house_number?: string | null;
+  landtag_postal_code?: string | null;
+  landtag_city?: string | null;
+  phone?: string | null;
+  email?: string | null;
+  wahlkreis_email?: string | null;
+  landtag_email?: string | null;
+  return_address_line?: string | null;
+  website?: string | null;
+}
+
+export interface InformationBlockContract {
+  label?: string | null;
+  block_type?: 'contact' | 'date' | 'reference' | 'custom' | string;
+  block_data?: Record<string, unknown> | null;
+}
+
+export interface AttachmentContract {
+  file_path: string;
+  title?: string | null;
+  file_name?: string | null;
+  file_type?: string | null;
+  file_size?: number | null;
+}
