@@ -23,6 +23,26 @@ interface ValidationResult {
   recommendations: string[];
 }
 
+interface SyncSuccessResponse {
+  status: 'success';
+  message?: string;
+  started?: boolean;
+}
+
+interface SyncPartialResponse {
+  status: 'partial';
+  message?: string;
+  warnings?: string[];
+}
+
+interface SyncErrorResponse {
+  status: 'error';
+  message: string;
+  details?: string;
+}
+
+type ForceResyncResponse = SyncSuccessResponse | SyncPartialResponse | SyncErrorResponse;
+
 export function CalendarSyncDebug() {
   const [loading, setLoading] = useState(false);
   const [validationResult, setValidationResult] = useState<ValidationResult | null>(null);
@@ -33,7 +53,7 @@ export function CalendarSyncDebug() {
   const validateCalendar = async () => {
     setLoading(true);
     try {
-      const { data, error } = await supabase.functions.invoke('ics-validation', {
+      const { data, error } = await supabase.functions.invoke<ValidationResult>('ics-validation', {
         body: { calendar_id: calendarId }
       });
 
@@ -52,7 +72,7 @@ export function CalendarSyncDebug() {
   const forceResync = async () => {
     setSyncLoading(true);
     try {
-      const { data, error } = await supabase.functions.invoke('force-resync-calendar', {
+      const { data, error } = await supabase.functions.invoke<ForceResyncResponse>('force-resync-calendar', {
         body: { 
           calendar_id: calendarId,
           clear_existing: true 
@@ -61,7 +81,13 @@ export function CalendarSyncDebug() {
 
       if (error) throw error;
 
-      toast.success('Kalender-Neuaufbau erfolgreich gestartet');
+      if (!data || data.status === 'error') {
+        toast.error(data?.message ?? 'Fehler beim Neuaufbau');
+        return;
+      }
+
+      const method = data.status === 'partial' ? toast.warning : toast.success;
+      method(data.message ?? 'Kalender-Neuaufbau erfolgreich gestartet');
       
       // Re-validate after sync
       setTimeout(() => {
@@ -186,7 +212,7 @@ export function CalendarSyncDebug() {
               {validationResult.recommendations.length > 0 && (
                 <div className="space-y-2">
                   <h4 className="font-medium">Empfehlungen</h4>
-                  {validationResult.recommendations.map((rec, index) => (
+                  {validationResult.recommendations.map((rec: string, index: number) => (
                     <Alert key={index}>
                       <AlertTriangle className="h-4 w-4" />
                       <AlertDescription>{rec}</AlertDescription>
@@ -198,7 +224,7 @@ export function CalendarSyncDebug() {
               <div className="space-y-2">
                 <h4 className="font-medium">Stichprobe ICS Events</h4>
                 <div className="text-sm space-y-1">
-                  {validationResult.sampleComparison.icsEvents.map((event, index) => (
+                  {validationResult.sampleComparison.icsEvents.map((event: { uid: string; summary: string; dtstart: string }, index: number) => (
                     <div key={index} className="p-2 bg-muted rounded text-xs">
                       <strong>{event.summary}</strong><br />
                       UID: {event.uid}<br />
@@ -211,7 +237,7 @@ export function CalendarSyncDebug() {
               <div className="space-y-2">
                 <h4 className="font-medium">Stichprobe DB Events</h4>
                 <div className="text-sm space-y-1">
-                  {validationResult.sampleComparison.dbEvents.map((event, index) => (
+                  {validationResult.sampleComparison.dbEvents.map((event: { external_uid: string; title: string; start_time: string }, index: number) => (
                     <div key={index} className="p-2 bg-muted rounded text-xs">
                       <strong>{event.title}</strong><br />
                       UID: {event.external_uid}<br />

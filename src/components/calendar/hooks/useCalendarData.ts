@@ -76,6 +76,19 @@ interface LeaveRequestRow {
   profiles: { display_name: string | null } | { display_name: string | null }[] | null;
 }
 
+interface ContactBirthdayRow {
+  id: string;
+  birthday: string | null;
+}
+
+interface ExternalCalendarJoinRow {
+  id: string;
+  name: string;
+  color: string | null;
+  user_id: string | null;
+  tenant_id: string;
+}
+
 const extractSingle = <T,>(value: T | T[] | null | undefined): T | null => {
   if (!value) return null;
   return Array.isArray(value) ? value[0] ?? null : value;
@@ -209,7 +222,9 @@ async function fetchCalendarData(currentDate: Date, view: string, tenantId: stri
 
   if (e1 || e2) { debugConsole.error("Error fetching appointments:", e1 || e2); return []; }
 
-  const appointmentsData = [...(regular || []), ...(recurring || [])];
+  const regularAppointments: AppointmentRow[] = (regular as AppointmentRow[] | null) ?? [];
+  const recurringAppointments: AppointmentRow[] = (recurring as AppointmentRow[] | null) ?? [];
+  const appointmentsData: AppointmentRow[] = [...regularAppointments, ...recurringAppointments];
 
   // Process appointments
   const [
@@ -241,10 +256,10 @@ async function fetchCalendarData(currentDate: Date, view: string, tenantId: stri
 
   const { data: birthdayContacts } = birthdayContactIds.length > 0
     ? await supabase.from("contacts").select("id, birthday").in("id", birthdayContactIds)
-    : { data: [] as Array<{ id: string; birthday: string | null }> };
+    : { data: [] as ContactBirthdayRow[] };
 
   const birthdayByContactId = new Map<string, string>();
-  for (const contact of birthdayContacts || []) {
+  for (const contact of (birthdayContacts as ContactBirthdayRow[] | null) ?? []) {
     if (contact.birthday) {
       birthdayByContactId.set(contact.id, contact.birthday);
     }
@@ -318,7 +333,7 @@ async function fetchCalendarData(currentDate: Date, view: string, tenantId: stri
       const isAllDay = ext.all_day || isExternalAllDayEvent(st, et);
       if (isAllDay) { et = new Date(et); et.setDate(et.getDate() - 1); et.setHours(23, 59, 59, 999); }
       const dur = ((et.getTime() - st.getTime()) / (1000 * 60 * 60)).toFixed(1);
-      const externalCalendar = extractSingle(ext.external_calendars);
+      const externalCalendar = extractSingle<ExternalCalendarJoinRow>(ext.external_calendars as ExternalCalendarJoinRow | ExternalCalendarJoinRow[] | null);
       formattedEvents.push({
         id: `external-${ext.id}`, title: `📅 ${ext.title}`,
         description: ext.description || undefined,
