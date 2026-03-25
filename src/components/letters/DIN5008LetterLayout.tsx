@@ -491,7 +491,7 @@ export const DIN5008LetterLayout: React.FC<DIN5008LetterLayoutProps> = ({
                         whiteSpace: 'pre-wrap'
                       }}
                     >
-                      {element.content || element.text}
+                      {element.content}
                     </div>
                   )}
                   {element.type === 'image' && element.imageUrl && (
