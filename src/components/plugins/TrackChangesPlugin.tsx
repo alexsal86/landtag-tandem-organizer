@@ -6,6 +6,7 @@
 import { useEffect } from 'react';
 import {
   $getSelection,
+  $isElementNode,
   $isRangeSelection,
   $isTextNode,
   $createTextNode,
@@ -17,6 +18,7 @@ import {
   $getRoot,
   type NodeKey,
   type LexicalNode,
+  type ElementNode,
 } from 'lexical';
 import { useLexicalComposerContext } from '@lexical/react/LexicalComposerContext';
 import {
@@ -52,8 +54,8 @@ export function TrackChangesPlugin({ isReviewMode, authorId, authorName }: Track
           return;
         }
 
-        if (typeof (node as { getChildren?: () => LexicalNode[] }).getChildren === 'function') {
-          (node as { getChildren: () => LexicalNode[] }).getChildren().forEach(walk);
+        if (isElementNode(node)) {
+          node.getChildren().forEach(walk);
         }
       };
 
@@ -166,4 +168,8 @@ export function TrackChangesPlugin({ isReviewMode, authorId, authorName }: Track
   }, [editor, isReviewMode, authorId, authorName]);
 
   return null;
+}
+
+export function isElementNode(node: LexicalNode): node is ElementNode {
+  return $isElementNode(node);
 }

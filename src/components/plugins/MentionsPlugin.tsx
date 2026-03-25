@@ -58,7 +58,7 @@ class MentionTypeaheadOption extends MenuOption {
 /**
  * Resolve a Tailwind badge_color class like 'bg-blue-500' to its hex value.
  */
-function resolveBadgeColor(badgeColor: string | null, userId: string): string {
+export function resolveBadgeColor(badgeColor: string | null, userId: string): string {
   if (!badgeColor) {
     const fallbackClass = getHashedColor(userId);
     const found = AVAILABLE_COLORS.find(c => c.value === fallbackClass);
@@ -71,6 +71,28 @@ function resolveBadgeColor(badgeColor: string | null, userId: string): string {
   // Try to resolve from AVAILABLE_COLORS
   const found = AVAILABLE_COLORS.find(c => c.value === badgeColor);
   return found?.hex || '#3b82f6';
+}
+
+interface TypeaheadMenuState {
+  selectedIndex: number | null;
+  selectOptionAndCleanUp: (option: MentionTypeaheadOption) => void;
+  setHighlightedIndex: (index: number) => void;
+}
+
+interface MentionTypeaheadMenuPluginProps {
+  onQueryChange: (query: string | null) => void;
+  onSelectOption: (
+    selectedOption: MentionTypeaheadOption,
+    nodeToReplace: TextNode | null,
+    closeMenu: () => void,
+    matchingString: string,
+  ) => void;
+  triggerFn: (text: string, editor: unknown) => unknown;
+  options: MentionTypeaheadOption[];
+  menuRenderFn: (
+    anchorElementRef: React.RefObject<HTMLElement | null>,
+    itemProps: TypeaheadMenuState,
+  ) => React.ReactNode;
 }
 
 function MentionsTypeaheadMenuItem({
@@ -124,7 +146,7 @@ function MentionsTypeaheadMenuItem({
 }
 
 // Cast to avoid JSX generic syntax which breaks the build tooling
-const TypeaheadMenuPlugin = LexicalTypeaheadMenuPlugin as React.ComponentType<Record<string, unknown>>;
+const TypeaheadMenuPlugin = LexicalTypeaheadMenuPlugin as React.ComponentType<MentionTypeaheadMenuPluginProps>;
 
 export function MentionsPlugin({ onMentionInsert }: MentionsPluginProps = {}): React.JSX.Element | null {
   const [editor] = useLexicalComposerContext();
@@ -214,12 +236,8 @@ export function MentionsPlugin({ onMentionInsert }: MentionsPluginProps = {}): R
       triggerFn={checkForTriggerMatch}
       options={options}
       menuRenderFn={(
-        anchorElementRef: React.MutableRefObject<HTMLElement | null>,
-        { selectedIndex, selectOptionAndCleanUp, setHighlightedIndex }: {
-          selectedIndex: number | null;
-          selectOptionAndCleanUp: (option: MentionTypeaheadOption) => void;
-          setHighlightedIndex: (index: number) => void;
-        },
+        anchorElementRef: React.RefObject<HTMLElement | null>,
+        { selectedIndex, selectOptionAndCleanUp, setHighlightedIndex }: TypeaheadMenuState,
       ) => {
         if (!anchorElementRef.current || !options.length) return null;
 
