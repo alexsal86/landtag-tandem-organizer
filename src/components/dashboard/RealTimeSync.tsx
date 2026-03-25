@@ -55,14 +55,14 @@ const isLayoutUpdatePayload = (value: unknown): value is LayoutUpdatePayload => 
   return hasOwnProperty(value, 'layout') && isRecord(value.layout);
 };
 
-const isBroadcastPayloadEnvelope = <TPayload>(
+function isBroadcastPayloadEnvelope<TPayload>(
   value: unknown,
   payloadGuard: (payload: unknown) => payload is TPayload,
-): value is BroadcastPayloadEnvelope<TPayload> => {
+): value is BroadcastPayloadEnvelope<TPayload> {
   if (!isRecord(value)) return false;
   if (!hasOwnProperty(value, 'payload')) return false;
   return payloadGuard(value.payload);
-};
+}
 
 const isCursorUpdatePayload = (value: unknown): value is CursorUpdatePayload => {
   if (!isRecord(value)) return false;

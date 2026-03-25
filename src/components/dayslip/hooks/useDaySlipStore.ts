@@ -497,6 +497,132 @@ export function useDaySlipStore(userId?: string, tenantId?: string): UseDaySlipS
     }, todayKey);
   }, [todayData.html, todayData.recurringInjected, recurringItems, todayKey, setStoreAndTrack]);
 
+  // Deadline injection – inject today's deadlines from Supabase
+  useEffect(() => {
+    if (!userId || todayData.deadlinesInjected) return;
+    let cancelled = false;
+
+    const injectDeadlines = async () => {
+      const todayStr = todayKey;
+      const tomorrowDate = new Date();
+      tomorrowDate.setDate(tomorrowDate.getDate() + 1);
+      const tomorrowStr = toDayKey(tomorrowDate);
+
+      const [tasksRes, notesRes, casesRes, decisionsRes] = await Promise.all([
+        supabase.from("tasks").select("id, title, due_date")
+          .or(`assigned_to.eq.${userId},assigned_to.ilike.%${userId}%,user_id.eq.${userId}`)
+          .neq("status", "completed")
+          .gte("due_date", todayStr)
+          .lt("due_date", tomorrowStr),
+        supabase.from("quick_notes").select("id, title, content, follow_up_date")
+          .eq("user_id", userId)
+          .is("deleted_at", null)
+          .or("is_archived.is.null,is_archived.eq.false")
+          .gte("follow_up_date", todayStr)
+          .lt("follow_up_date", tomorrowStr),
+        tenantId
+          ? supabase.from("case_items").select("id, subject, due_at")
+              .eq("tenant_id", tenantId)
+              .neq("status", "erledigt")
+              .gte("due_at", `${todayStr}T00:00:00`)
+              .lt("due_at", `${tomorrowStr}T00:00:00`)
+          : Promise.resolve({ data: [] as { id: string; subject: string | null; due_at: string | null }[] }),
+        supabase.from("task_decisions").select("id, title, response_deadline")
+          .neq("status", "resolved")
+          .is("archived_at", null)
+          .gte("response_deadline", `${todayStr}T00:00:00`)
+          .lt("response_deadline", `${tomorrowStr}T00:00:00`),
+      ]);
+
+      if (cancelled) return;
+
+      type DeadlineEntry = { id: string; text: string; sourceKey: string };
+      const entries: DeadlineEntry[] = [];
+
+      (tasksRes.data || []).forEach(t => {
+        if (t.title?.trim()) entries.push({ id: t.id, text: `📋 ${t.title.trim()}`, sourceKey: `task:${t.id}` });
+      });
+      (notesRes.data || []).forEach(n => {
+        const title = (n.title || n.content || "").trim().substring(0, 80);
+        if (title) entries.push({ id: n.id, text: `📝 ${title}`, sourceKey: `note:${n.id}` });
+      });
+      (casesRes.data || []).forEach(c => {
+        const subject = (c.subject || "Vorgang").trim();
+        entries.push({ id: c.id, text: `📁 ${subject}`, sourceKey: `case:${c.id}` });
+      });
+      (decisionsRes.data || []).forEach(d => {
+        if (d.title?.trim()) entries.push({ id: d.id, text: `⚖️ ${d.title.trim()}`, sourceKey: `decision:${d.id}` });
+      });
+
+      if (entries.length === 0) {
+        // Mark as injected even with no entries
+        setStoreAndTrack(prev => {
+          const day = prev[todayKey] ?? { html: "", plainText: "" };
+          if (day.deadlinesInjected) return prev;
+          return { ...prev, [todayKey]: { ...day, deadlinesInjected: true } };
+        }, todayKey);
+        return;
+      }
+
+      // Build line map: sourceKey → lineId
+      const lineMap: Record<string, string> = {};
+      const lines = entries.map(entry => {
+        const lineId = crypto.randomUUID();
+        lineMap[entry.sourceKey] = lineId;
+        return entry.text;
+      });
+
+      // Set flag + map first, then append lines
+      setStoreAndTrack(prev => {
+        const day = prev[todayKey] ?? { html: "", plainText: "" };
+        if (day.deadlinesInjected) return prev;
+        return { ...prev, [todayKey]: { ...day, deadlinesInjected: true, deadlineLineMap: lineMap } };
+      }, todayKey);
+
+      appendLinesToToday(["--- 📅 Heutige Fristen ---", ...lines]);
+    };
+
+    injectDeadlines();
+    return () => { cancelled = true; };
+  }, [userId, tenantId, todayData.deadlinesInjected, todayKey, appendLinesToToday, setStoreAndTrack]);
+
+  // Realtime: auto-strike deadlines when completed
+  useEffect(() => {
+    if (!userId) return;
+
+    const channel = supabase.channel(`dayslip-deadline-sync-${userId}`)
+      .on("postgres_changes", { event: "UPDATE", schema: "public", table: "tasks" }, (payload) => {
+        const newRow = payload.new as { id?: string; status?: string };
+        if (newRow.status === "completed" && newRow.id) {
+          const sourceKey = `task:${newRow.id}`;
+          const map = storeRef.current[todayKey]?.deadlineLineMap;
+          const lineId = map?.[sourceKey];
+          if (lineId) toggleStrike(lineId);
+        }
+      })
+      .on("postgres_changes", { event: "UPDATE", schema: "public", table: "case_items" }, (payload) => {
+        const newRow = payload.new as { id?: string; status?: string };
+        if (newRow.status === "erledigt" && newRow.id) {
+          const sourceKey = `case:${newRow.id}`;
+          const map = storeRef.current[todayKey]?.deadlineLineMap;
+          const lineId = map?.[sourceKey];
+          if (lineId) toggleStrike(lineId);
+        }
+      })
+      .on("postgres_changes", { event: "UPDATE", schema: "public", table: "task_decisions" }, (payload) => {
+        const newRow = payload.new as { id?: string; status?: string };
+        if (newRow.status === "resolved" && newRow.id) {
+          const sourceKey = `decision:${newRow.id}`;
+          const map = storeRef.current[todayKey]?.deadlineLineMap;
+          const lineId = map?.[sourceKey];
+          if (lineId) toggleStrike(lineId);
+        }
+      })
+      .subscribe();
+
+    return () => { supabase.removeChannel(channel); };
+  }, [userId, todayKey, toggleStrike]);
+
   // Week plan injection
   useEffect(() => {
     if (todayData.weekPlanInjected) return;
