@@ -162,8 +162,8 @@ interface MatrixVerificationRequest {
   accept: () => Promise<void>;
   startVerification: (method: 'm.sas.v1') => Promise<Verifier>;
   cancel: () => Promise<void>;
-  on?: (event: 'change', handler: () => void) => void;
-  off?: (event: 'change', handler: () => void) => void;
+  on?: (event: string, handler: (...args: unknown[]) => void) => void;
+  off?: (event: string, handler: (...args: unknown[]) => void) => void;
 }
 
 interface MatrixReadMarkersClient extends Omit<sdk.MatrixClient, 'setRoomReadMarkers'> {
