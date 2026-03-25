@@ -24,11 +24,13 @@ export interface Document {
   category: string | null;
   tags?: string[] | null;
   status: string;
+  user_id: string;
+  tenant_id: string;
   created_at: string;
   updated_at: string;
   document_type?: string | null;
   source_letter_id?: string | null;
-  archived_attachments?: any[];
+  archived_attachments?: unknown[];
   folder_id?: string | null;
 }
 
