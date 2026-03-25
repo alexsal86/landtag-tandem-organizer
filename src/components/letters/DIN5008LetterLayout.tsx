@@ -213,11 +213,17 @@ export const DIN5008LetterLayout: React.FC<DIN5008LetterLayoutProps> = ({
     const parts: string[] = [];
     if (sender.organization) parts.push(sender.organization);
     if (sender.name) parts.push(sender.name);
-    if (sender.street && sender.house_number) {
-      parts.push(`${sender.street} ${sender.house_number}`);
+    const street = sender.wahlkreis_street || sender.landtag_street;
+    const houseNumber = sender.wahlkreis_house_number || sender.landtag_house_number;
+    if (street && houseNumber) {
+      parts.push(`${street} ${houseNumber}`);
+    } else if (street) {
+      parts.push(street);
     }
-    if (sender.postal_code && sender.city) {
-      parts.push(`${sender.postal_code} ${sender.city}`);
+    const postalCode = sender.wahlkreis_postal_code || sender.landtag_postal_code;
+    const city = sender.wahlkreis_city || sender.landtag_city;
+    if (postalCode && city) {
+      parts.push(`${postalCode} ${city}`);
     }
     return parts.join('\n');
   };
