@@ -418,7 +418,7 @@ export function MeetingTemplateManager() {
                             <Draggable key={index} draggableId={index.toString()} index={index}>
                               {(provided) => (
                                 <div ref={provided.innerRef} {...provided.draggableProps} className="space-y-1">
-                                  <div className={`flex items-center gap-2 p-2 bg-card rounded border ${item.type === 'system' ? getSystemItemClass(item.system_type) : ''}`}>
+                                  <div className={`flex items-center gap-2 p-2 bg-card rounded border ${item.type === 'system' ? getSystemItemClass(item.system_type!) : ''}`}>
                                     <div {...provided.dragHandleProps} className="cursor-grab"><GripVertical className="h-4 w-4 text-muted-foreground" /></div>
                                     {item.type === 'separator' ? (
                                       <div className="flex-1 h-px bg-border" />
