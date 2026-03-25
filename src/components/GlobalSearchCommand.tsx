@@ -438,6 +438,7 @@ export function GlobalSearchCommand() {
     { label: "Kontakte", icon: Users, path: "/?section=contacts" },
     { label: "Aufgaben", icon: CheckSquare, path: "/?section=tasks" },
     { label: "Fallakten", icon: Briefcase, path: "/?section=casefiles" },
+    { label: "Dossiers", icon: Briefcase, path: "/?section=dossiers" },
     { label: "Entscheidungen", icon: Vote, path: "/?section=decisions" },
     { label: "Jour fixe", icon: MessageSquare, path: "/?section=meetings" },
     { label: "Planungen", icon: CalendarPlus, path: "/?section=eventplanning" },

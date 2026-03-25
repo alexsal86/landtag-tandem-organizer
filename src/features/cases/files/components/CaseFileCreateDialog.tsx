@@ -26,6 +26,8 @@ interface CaseFileCreateDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onSuccess?: (caseFile: CaseFile) => void;
+  defaultCaseType?: string;
+  entityLabel?: "Fallakte" | "Dossier";
 }
 
 interface Profile {
@@ -34,14 +36,14 @@ interface Profile {
 }
 
 
-export function CaseFileCreateDialog({ open, onOpenChange, onSuccess }: CaseFileCreateDialogProps) {
+export function CaseFileCreateDialog({ open, onOpenChange, onSuccess, defaultCaseType, entityLabel = "Fallakte" }: CaseFileCreateDialogProps) {
   const { createCaseFile } = useCaseFiles();
   const { caseFileTypes } = useCaseFileTypes();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [formData, setFormData] = useState<CaseFileFormData>({
     title: "",
     description: "",
-    case_type: "general",
+    case_type: defaultCaseType ?? "general",
     status: "active",
     priority: "medium",
     reference_number: "",
@@ -52,6 +54,11 @@ export function CaseFileCreateDialog({ open, onOpenChange, onSuccess }: CaseFile
   const [participantRoles, setParticipantRoles] = useState<Record<string, 'viewer' | 'editor'>>({});
   const [profiles, setProfiles] = useState<Profile[]>([]);
   const [profilesLoaded, setProfilesLoaded] = useState(false);
+
+  useEffect(() => {
+    if (!defaultCaseType) return;
+    setFormData((prev) => ({ ...prev, case_type: defaultCaseType }));
+  }, [defaultCaseType]);
 
   useEffect(() => {
     if (open && !profilesLoaded) {
@@ -115,7 +122,7 @@ export function CaseFileCreateDialog({ open, onOpenChange, onSuccess }: CaseFile
       setFormData({
         title: "",
         description: "",
-        case_type: "general",
+        case_type: defaultCaseType ?? "general",
         status: "active",
         priority: "medium",
         reference_number: "",
@@ -136,9 +143,11 @@ export function CaseFileCreateDialog({ open, onOpenChange, onSuccess }: CaseFile
       <DialogContent className="sm:max-w-[500px] max-h-[90vh] overflow-y-auto">
         <form onSubmit={handleSubmit}>
           <DialogHeader>
-            <DialogTitle>Neue Fallakte erstellen</DialogTitle>
+            <DialogTitle>Neue {entityLabel} erstellen</DialogTitle>
             <DialogDescription>
-              Erstellen Sie eine neue Fallakte, um Dokumente, Kontakte und Aufgaben zu einem Sachverhalt zu bündeln.
+              {entityLabel === "Dossier"
+                ? "Erstellen Sie ein neues Dossier, um themenbezogene Informationen strukturiert zu sammeln."
+                : "Erstellen Sie eine neue Fallakte, um Dokumente, Kontakte und Aufgaben zu einem Sachverhalt zu bündeln."}
             </DialogDescription>
           </DialogHeader>
 
