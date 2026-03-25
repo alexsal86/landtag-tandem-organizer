@@ -5,6 +5,15 @@ import { Button } from "@/components/ui/button";
 import { Loader2, FileText, Map, Users, Globe } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/components/ui/use-toast";
+import { isFeatureCollection } from "@/types/geoDomain";
+
+const getErrorMessage = (error: unknown): string => {
+  if (error instanceof Error && error.message) {
+    return error.message;
+  }
+
+  return 'Bitte erneut versuchen.';
+};
 
 export function GeoDataImport() {
   const { toast } = useToast();
@@ -23,9 +32,9 @@ export function GeoDataImport() {
       });
       if (error) throw error;
       toast({ title: 'Import erfolgreich', description: `${data?.imported ?? 0} Wahlkreise importiert.` });
-    } catch (e: any) {
-      debugConsole.error(e);
-      toast({ title: 'Import fehlgeschlagen', description: e.message ?? 'Bitte erneut versuchen.', variant: 'destructive' });
+    } catch (error: unknown) {
+      debugConsole.error(error);
+      toast({ title: 'Import fehlgeschlagen', description: getErrorMessage(error), variant: 'destructive' });
     } finally {
       setImporting(false);
     }
@@ -36,15 +45,18 @@ export function GeoDataImport() {
       setImportingBoundaries(true);
       const response = await fetch('/data/kreise_bw.json');
       if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
-      const geoJsonData = await response.json();
+      const geoJsonData: unknown = await response.json();
+      if (!isFeatureCollection(geoJsonData)) {
+        throw new Error('Ungültiges GeoJSON: Erwartet wurde eine FeatureCollection.');
+      }
       const { data, error } = await supabase.functions.invoke('import-administrative-boundaries', {
         body: { geoJsonData }
       });
       if (error) throw error;
       toast({ title: 'Import erfolgreich', description: `${data?.data?.length || 0} Verwaltungsgrenzen importiert.` });
-    } catch (e: any) {
-      debugConsole.error(e);
-      toast({ title: 'Import fehlgeschlagen', description: e.message ?? 'Bitte erneut versuchen.', variant: 'destructive' });
+    } catch (error: unknown) {
+      debugConsole.error(error);
+      toast({ title: 'Import fehlgeschlagen', description: getErrorMessage(error), variant: 'destructive' });
     } finally {
       setImportingBoundaries(false);
     }
@@ -56,9 +68,9 @@ export function GeoDataImport() {
       const { data, error } = await supabase.functions.invoke('import-representatives');
       if (error) throw error;
       toast({ title: 'Import erfolgreich', description: data?.message || 'Abgeordnete erfolgreich importiert' });
-    } catch (e: any) {
-      debugConsole.error(e);
-      toast({ title: 'Import fehlgeschlagen', description: e.message ?? 'Bitte erneut versuchen.', variant: 'destructive' });
+    } catch (error: unknown) {
+      debugConsole.error(error);
+      toast({ title: 'Import fehlgeschlagen', description: getErrorMessage(error), variant: 'destructive' });
     } finally {
       setImporting(false);
     }
@@ -71,9 +83,9 @@ export function GeoDataImport() {
       const { error } = await supabase.functions.invoke('import-party-associations');
       if (error) throw error;
       toast({ title: 'Import erfolgreich', description: 'Kreisverbände erfolgreich importiert.' });
-    } catch (e: any) {
-      debugConsole.error(e);
-      toast({ title: 'Import fehlgeschlagen', description: e.message ?? 'Bitte erneut versuchen.', variant: 'destructive' });
+    } catch (error: unknown) {
+      debugConsole.error(error);
+      toast({ title: 'Import fehlgeschlagen', description: getErrorMessage(error), variant: 'destructive' });
     } finally {
       setImportingPartyAssociations(false);
     }
@@ -85,9 +97,9 @@ export function GeoDataImport() {
       const { error } = await supabase.functions.invoke('import-karlsruhe-districts');
       if (error) throw error;
       toast({ title: 'Import erfolgreich', description: 'Karlsruher Stadtteile erfolgreich importiert.' });
-    } catch (e: any) {
-      debugConsole.error(e);
-      toast({ title: 'Import fehlgeschlagen', description: e.message ?? 'Bitte erneut versuchen.', variant: 'destructive' });
+    } catch (error: unknown) {
+      debugConsole.error(error);
+      toast({ title: 'Import fehlgeschlagen', description: getErrorMessage(error), variant: 'destructive' });
     } finally {
       setImportingKarlsruhe(false);
     }

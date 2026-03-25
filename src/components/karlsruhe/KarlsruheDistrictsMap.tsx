@@ -9,7 +9,7 @@ import { useMapFlagStakeholders } from '@/hooks/useMapFlagStakeholders';
 import { supabase } from '@/integrations/supabase/client';
 import { lucideIconToSvg, isLucideIcon } from '@/utils/lucideIconToSvg';
 import { debugConsole } from '@/utils/debugConsole';
-import { RoutingMachine } from './RoutingMachine';
+import { Feature, LayerConfig, hasProperties, isFeatureCollection } from '@/types/geoDomain';
 import 'leaflet.heat';
 // @ts-ignore
 import 'leaflet-routing-machine';
@@ -76,6 +76,15 @@ interface KarlsruheDistrictsMapProps {
   heatmapPoints?: [number, number, number][];
 }
 
+interface DistrictGeoProperties {
+  GEN?: string;
+  [key: string]: unknown;
+}
+
+interface DistrictLayerConfig extends LayerConfig<Feature<DistrictGeoProperties>> {
+  district: KarlsruheDistrict;
+}
+
 export const KarlsruheDistrictsMap = ({
   districts,
   onDistrictClick,
@@ -104,6 +113,24 @@ export const KarlsruheDistrictsMap = ({
   const stakeholderMarkersRef = useRef<Map<string, L.Marker>>(new Map());
   const tileLayerRef = useRef<L.TileLayer | null>(null);
   const [mapReady, setMapReady] = useState(false);
+  const districtLayerConfigs = useMemo<DistrictLayerConfig[]>(() => {
+    if (!showDistrictBoundaries) return [];
+
+    return districts
+      .map((district) => {
+        if (!isFeatureCollection<DistrictGeoProperties>(district.boundaries)) return null;
+        return {
+          id: district.id,
+          label: district.name,
+          visible: true,
+          district,
+          features: district.boundaries.features.filter((feature): feature is Feature<DistrictGeoProperties> =>
+            hasProperties<DistrictGeoProperties>(feature),
+          ),
+        };
+      })
+      .filter((layer): layer is DistrictLayerConfig => layer !== null);
+  }, [districts, showDistrictBoundaries]);
 
   const visibleStakeholderTypes = useMemo(
     () => flagTypes.filter((type) => visibleFlagTypes.has(type.id) && type.tag_filter),
@@ -280,17 +307,13 @@ export const KarlsruheDistrictsMap = ({
     layersRef.current.forEach(layer => layer.remove());
     layersRef.current.clear();
 
-    // Skip rendering if boundaries are hidden
-    if (!showDistrictBoundaries) return;
-
     // Add district layers
-    districts.forEach(district => {
-      if (!district.boundaries) return;
+    districtLayerConfigs.forEach(({ district, features }) => {
 
       // Special styling for city boundary
       const isCityBoundary = district.is_city_boundary || district.name.includes('Stadtgrenze');
       
-      const layer = L.geoJSON(district.boundaries, {
+      const layer = L.geoJSON({ type: 'FeatureCollection', features }, {
         style: isCityBoundary ? {
           color: '#000000',
           weight: 3,
@@ -331,7 +354,7 @@ export const KarlsruheDistrictsMap = ({
             }).addTo(map);
             
             // Store label reference
-            (layer as any).label = label;
+            (layer as L.Layer & { label?: L.Marker }).label = label;
           }
 
           // Add hover effect
@@ -370,15 +393,15 @@ export const KarlsruheDistrictsMap = ({
 
     // Fit bounds to show all districts
     const bounds = L.latLngBounds(
-      districts
-        .filter(d => d.center_coordinates)
-        .map(d => [d.center_coordinates.lat, d.center_coordinates.lng])
+      districtLayerConfigs
+        .filter((layer) => layer.district.center_coordinates)
+        .map((layer) => [layer.district.center_coordinates.lat, layer.district.center_coordinates.lng])
     );
     
     if (bounds.isValid()) {
       map.fitBounds(bounds, { padding: [50, 50] });
     }
-  }, [mapReady, districts, selectedDistrict, onDistrictClick, showDistrictBoundaries]);
+  }, [mapReady, districtLayerConfigs, selectedDistrict, onDistrictClick]);
 
   // Update selected district style
   useEffect(() => {
@@ -405,10 +428,10 @@ export const KarlsruheDistrictsMap = ({
         table: 'contacts',
         filter: `contact_type=eq.organization`
       }, (payload) => {
-        const updated = payload.new as any;
+        const updated = payload.new;
         debugConsole.log('Contact updated via realtime:', updated);
         
-        if (updated.coordinates || updated.tags) {
+        if (updated && typeof updated === 'object' && ('coordinates' in updated || 'tags' in updated)) {
           debugConsole.log('Relevant stakeholder change found, reloading stakeholders...');
           void loadStakeholders();
         }
@@ -510,14 +533,16 @@ export const KarlsruheDistrictsMap = ({
     });
 
     // Event listeners for edit/delete from popup
-    const handleEditFlag = (e: any) => {
-      const flagId = e.detail;
+    const handleEditFlag = (event: Event) => {
+      const customEvent = event as CustomEvent<string>;
+      const flagId = customEvent.detail;
       const flag = flags.find(f => f.id === flagId);
       if (flag && onFlagEdit) onFlagEdit(flag);
     };
 
-    const handleDeleteFlag = (e: any) => {
-      const flagId = e.detail;
+    const handleDeleteFlag = (event: Event) => {
+      const customEvent = event as CustomEvent<string>;
+      const flagId = customEvent.detail;
       if (onFlagDelete) onFlagDelete(flagId);
     };
 
@@ -625,8 +650,8 @@ export const KarlsruheDistrictsMap = ({
       createMarker: () => null,
     });
 
-    routingControl.on('routesfound', (e: any) => {
-      const routes = e.routes;
+    routingControl.on('routesfound', (event: { routes?: Array<{ summary: { totalDistance: number; totalTime: number } }> }) => {
+      const routes = event.routes;
       if (routes && routes.length > 0 && onRouteFound) {
         const route = routes[0];
         onRouteFound({
