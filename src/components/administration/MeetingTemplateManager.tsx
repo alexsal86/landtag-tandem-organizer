@@ -531,7 +531,7 @@ export function MeetingTemplateManager() {
                                     <div className="ml-8 mt-1 space-y-1">
                                       {item.children.map((child, childIndex: number) => {
                                         if (child.is_available === true) return null;
-                                        const activeChildren = item.children.filter((c) => c.is_available !== true);
+                                        const activeChildren = item.children!.filter((c) => c.is_available !== true);
                                         const activeDisplayIndex = activeChildren.findIndex((c) => c === child);
                                         return (
                                           <div key={childIndex} className={`flex items-center gap-2 p-2 rounded-md border ${child.system_type ? getChildSystemClass(child.system_type) : 'bg-muted/30 border-border'}`}>

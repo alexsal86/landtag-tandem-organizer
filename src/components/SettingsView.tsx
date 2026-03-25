@@ -252,7 +252,7 @@ export function SettingsView(): React.JSX.Element {
                 <Label>Benutzerprofil</Label>
                 <div className="flex items-center gap-3 p-3 bg-muted/30 rounded-lg">
                   <Avatar className="h-10 w-10">
-                    <AvatarImage src={userProfile?.avatar_url} />
+                    <AvatarImage src={userProfile?.avatar_url ?? undefined} />
                     <AvatarFallback>
                       {userProfile?.display_name?.[0]?.toUpperCase() || user?.email?.[0]?.toUpperCase() || 'U'}
                     </AvatarFallback>

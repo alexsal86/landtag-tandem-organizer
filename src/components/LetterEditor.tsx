@@ -389,7 +389,7 @@ const LetterEditor: React.FC<LetterEditorProps> = ({ letter, isOpen, onClose, on
                     }}><Edit3 className="h-4 w-4 mr-2" />Editor öffnen</Button>
                   </div>
                 )}
-                <LetterEditorCanvas template={currentTemplate ?? undefined} subject={editedLetter.subject} salutation={editedLetter.salutation_override || computedSalutation}
+                <LetterEditorCanvas template={currentTemplate as any ?? undefined} subject={editedLetter.subject} salutation={editedLetter.salutation_override || computedSalutation}
                   content={editedLetter.content_html || editedLetter.content || ''} contentNodes={editedLetter.content_nodes as any}
                   recipientAddress={editedLetter.recipient_address ? { name: editedLetter.recipient_name, address: editedLetter.recipient_address } : undefined}
                   letterDate={editedLetter.letter_date} referenceNumber={editedLetter.reference_number} attachments={attachments}
