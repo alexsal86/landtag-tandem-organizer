@@ -206,6 +206,10 @@ Für die laufende Welle ist der Scope bis zum Abschluss der drei nächsten PRs e
 - **PRs werden sequenziell abgearbeitet (A → B → C)**, damit das Any-Delta pro Merge eindeutig messbar bleibt.
 - **Neue `any` ohne Interop-Begründung (`INTEROP-ANY` + Ticket) sind blockierend**.
 
+Die **verbindliche Trefferliste**, inklusive Clusterung A/B/C, Owner, ETA und Daily-Tracking, wird ab sofort ausschließlich hier gepflegt:
+
+- `docs/tech-debt/any-trefferliste-scope-2026-03-25.md`
+
 ### Nächste 3 PRs (sofort aufgesetzt)
 
 Baseline vor Start der Serie: **`Any-Total = 572`** (gemessen am 2026-03-25 via `npm run --silent report:any-usage:total`).
