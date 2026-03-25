@@ -796,7 +796,7 @@ export function CommentPlugin({ documentId }: { documentId?: string }) {
   // Register editor commands and event listeners
   useEffect(() => {
     // Register the CommentMarkNode transform for proper rendering
-    const unregisterTransform = editor.registerNodeTransform(CommentMarkNode, (node) => {
+    const unregisterTransform = editor.registerNodeTransform(CommentMarkNode as unknown as Parameters<typeof editor.registerNodeTransform>[0], (node: CommentMarkNode) => {
       const commentId = node.getCommentId();
       if (commentId) {
         debugConsole.log(`[CommentPlugin] Transforming comment node: ${commentId}`);
