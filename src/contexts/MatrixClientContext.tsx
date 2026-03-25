@@ -1505,6 +1505,7 @@ export function MatrixClientProvider({ children }: MatrixClientProviderProps): R
   const addReaction = useCallback(async (roomId: string, eventId: string, emoji: string) => {
     const mc = clientRef.current;
     if (!mc) return;
+    // @ts-expect-error matrix-js-sdk m.reaction not in keyof TimelineEvents
     await mc.sendEvent(roomId, 'm.reaction', {
       'm.relates_to': { rel_type: 'm.annotation', event_id: eventId, key: emoji },
     });
