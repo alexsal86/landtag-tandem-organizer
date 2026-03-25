@@ -39,7 +39,7 @@ export const CreateAppointmentDialog = ({ open, onOpenChange }: CreateAppointmen
             <div className="flex justify-end"><Button variant="outline" onClick={() => hook.setShowPollCreator(true)} className="flex items-center gap-2"><Users className="h-4 w-4" />Terminabstimmung</Button></div>
 
             <Form {...hook.form}>
-              <form onSubmit={hook.form.handleSubmit(hook.onSubmit)} className="space-y-6">
+              <form onSubmit={hook.form.handleSubmit(hook.onSubmit as any)} className="space-y-6">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   <FormField control={hook.form.control} name="title" render={({ field }) => (<FormItem className="md:col-span-2"><FormLabel>Titel *</FormLabel><FormControl><Input placeholder="Titel des Termins" {...field} /></FormControl><FormMessage /></FormItem>)} />
                   <FormField control={hook.form.control} name="description" render={({ field }) => (<FormItem className="md:col-span-2"><FormLabel>Beschreibung</FormLabel><FormControl><Textarea placeholder="Beschreibung des Termins" rows={3} {...field} /></FormControl><FormMessage /></FormItem>)} />
