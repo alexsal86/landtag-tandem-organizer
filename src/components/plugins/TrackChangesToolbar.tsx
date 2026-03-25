@@ -4,7 +4,7 @@
 
 import { useState, useCallback, useEffect } from 'react';
 import { useLexicalComposerContext } from '@lexical/react/LexicalComposerContext';
-import { $getRoot } from 'lexical';
+import { $getRoot, type LexicalNode } from 'lexical';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { CheckCircle, XCircle, Eye } from 'lucide-react';
@@ -29,12 +29,12 @@ export function TrackChangesToolbar({ isReviewMode, showAcceptReject }: TrackCha
     editor.getEditorState().read(() => {
       let count = 0;
       const root = $getRoot();
-      const iterate = (node: any) => {
+      const iterate = (node: LexicalNode) => {
         if ($isTrackInsertNode(node) || $isTrackDeleteNode(node)) {
           count++;
         }
-        if ('getChildren' in node) {
-          node.getChildren().forEach(iterate);
+        if (typeof (node as { getChildren?: () => LexicalNode[] }).getChildren === 'function') {
+          (node as { getChildren: () => LexicalNode[] }).getChildren().forEach(iterate);
         }
       };
       iterate(root);
@@ -50,10 +50,10 @@ export function TrackChangesToolbar({ isReviewMode, showAcceptReject }: TrackCha
   const acceptAll = useCallback(() => {
     editor.update(() => {
       const root = $getRoot();
-      const processNode = (node: any) => {
+      const processNode = (node: LexicalNode) => {
         // Process children first (depth-first)
-        if ('getChildren' in node) {
-          [...node.getChildren()].forEach(processNode);
+        if (typeof (node as { getChildren?: () => LexicalNode[] }).getChildren === 'function') {
+          [...(node as { getChildren: () => LexicalNode[] }).getChildren()].forEach(processNode);
         }
 
         if ($isTrackInsertNode(node)) {
@@ -75,9 +75,9 @@ export function TrackChangesToolbar({ isReviewMode, showAcceptReject }: TrackCha
   const rejectAll = useCallback(() => {
     editor.update(() => {
       const root = $getRoot();
-      const processNode = (node: any) => {
-        if ('getChildren' in node) {
-          [...node.getChildren()].forEach(processNode);
+      const processNode = (node: LexicalNode) => {
+        if (typeof (node as { getChildren?: () => LexicalNode[] }).getChildren === 'function') {
+          [...(node as { getChildren: () => LexicalNode[] }).getChildren()].forEach(processNode);
         }
 
         if ($isTrackInsertNode(node)) {

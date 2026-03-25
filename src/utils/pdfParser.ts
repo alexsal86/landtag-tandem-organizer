@@ -26,6 +26,35 @@ export interface ProtocolMetadata {
   extractedAt: string;
 }
 
+export interface ParsedAgendaItem {
+  agenda_number: string;
+  title: string;
+  description?: string;
+  item_type: string;
+}
+
+export interface ParsedSpeech {
+  speaker_name: string;
+  speaker_party?: string;
+  speech_content: string;
+  start_time?: string;
+  speech_type: 'main' | 'interjection' | 'applause' | 'interruption';
+}
+
+export interface SessionEvent {
+  session_type: 'start' | 'end' | 'break_start' | 'break_end';
+  timestamp: string;
+  notes: string;
+}
+
+interface TextContentItemWithString {
+  str: string;
+}
+
+function isTextContentItemWithString(item: unknown): item is TextContentItemWithString {
+  return typeof item === 'object' && item !== null && 'str' in item && typeof (item as { str?: unknown }).str === 'string';
+}
+
 export async function parsePDFFile(file: File): Promise<ParsedProtocol> {
   try {
     const arrayBuffer = await file.arrayBuffer();
@@ -40,12 +69,7 @@ export async function parsePDFFile(file: File): Promise<ParsedProtocol> {
         const textContent = await page.getTextContent();
         
         const pageText = textContent.items
-          .map((item: any) => {
-            if ('str' in item) {
-              return item.str;
-            }
-            return '';
-          })
+          .map((item: unknown) => (isTextContentItemWithString(item) ? item.str : ''))
           .join(' ')
           .replace(/\s+/g, ' ')
           .trim();
@@ -166,17 +190,21 @@ function extractMetadata(filename: string, text: string, pageCount: number): Pro
 }
 
 // Advanced rule-based text analysis with enhanced preprocessing
-export function analyzeProtocolStructure(text: string): {
-  agendaItems: any[];
-  speeches: any[];
-  sessions: any[];
+export function analyzeProtocolStructure(input: unknown): {
+  agendaItems: ParsedAgendaItem[];
+  speeches: ParsedSpeech[];
+  sessions: SessionEvent[];
 } {
+  if (typeof input !== 'string') {
+    throw new Error('Protocol text must be a string.');
+  }
+  const text = input;
   const preprocessedText = preprocessProtocolText(text);
   const lines = smartLineSplit(preprocessedText);
   
-  const agendaItems: any[] = [];
-  const speeches: any[] = [];
-  const sessions: any[] = [];
+  const agendaItems: ParsedAgendaItem[] = [];
+  const speeches: ParsedSpeech[] = [];
+  const sessions: SessionEvent[] = [];
   
   const patterns = {
     agendaItem: [
@@ -252,7 +280,7 @@ export function analyzeProtocolStructure(text: string): {
       if (sessionMatches.length > 0) {
         const sessionMatch = sessionMatches[0];
         const eventType = sessionMatch[1].toLowerCase();
-        let sessionType = 'start';
+        let sessionType: SessionEvent['session_type'] = 'start';
         
         if (eventType.includes('ende') || eventType.includes('schluss')) {
           sessionType = 'end';
@@ -300,7 +328,7 @@ export function analyzeProtocolStructure(text: string): {
     const interjectionMatch = line.match(patterns.interjection);
     if (interjectionMatch) {
       const content = interjectionMatch[1];
-      let speechType = 'interjection';
+      let speechType: ParsedSpeech['speech_type'] = 'interjection';
       
       if (patterns.applause.test(content)) speechType = 'applause';
       else if (patterns.objection.test(content)) speechType = 'interruption';

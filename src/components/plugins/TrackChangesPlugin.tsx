@@ -16,6 +16,7 @@ import {
   $getNodeByKey,
   $getRoot,
   type NodeKey,
+  type LexicalNode,
 } from 'lexical';
 import { useLexicalComposerContext } from '@lexical/react/LexicalComposerContext';
 import {
@@ -42,7 +43,7 @@ export function TrackChangesPlugin({ isReviewMode, authorId, authorName }: Track
     // ── 1. Wrap newly typed text inside a TrackInsertNode ──
     const collectUntrackedTextKeys = (): Set<NodeKey> => {
       const keys = new Set<NodeKey>();
-      const walk = (node: any) => {
+      const walk = (node: LexicalNode) => {
         if ($isTextNode(node) && node.getTextContentSize() > 0) {
           const parent = node.getParent();
           if (!$isTrackInsertNode(parent) && !$isTrackDeleteNode(parent)) {
@@ -51,8 +52,8 @@ export function TrackChangesPlugin({ isReviewMode, authorId, authorName }: Track
           return;
         }
 
-        if (typeof node.getChildren === 'function') {
-          node.getChildren().forEach(walk);
+        if (typeof (node as { getChildren?: () => LexicalNode[] }).getChildren === 'function') {
+          (node as { getChildren: () => LexicalNode[] }).getChildren().forEach(walk);
         }
       };
 

@@ -9,6 +9,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { debugConsole } from '@/utils/debugConsole';
+import { normalizeSupabaseResult } from '@/utils/typeSafety';
 
 interface DocumentVersion {
   id: string;
@@ -20,6 +21,21 @@ interface DocumentVersion {
   authorName: string;
   changes: string;
   snapshotType: 'auto' | 'manual';
+}
+
+interface SnapshotProfile {
+  display_name: string | null;
+}
+
+interface SnapshotRow {
+  id: string;
+  document_id: string;
+  document_version: number;
+  yjs_state: string | null;
+  created_at: string;
+  created_by: string;
+  snapshot_type: 'auto' | 'manual';
+  profiles?: SnapshotProfile | null;
 }
 
 interface VersionHistoryPluginProps {
@@ -187,7 +203,7 @@ export function VersionHistoryPlugin({
 
   const loadVersions = async () => {
     try {
-      const { data, error } = await supabase
+      const response = await supabase
         .from('knowledge_document_snapshots')
         .select(`
           *,
@@ -195,10 +211,10 @@ export function VersionHistoryPlugin({
         `)
         .eq('document_id', documentId)
         .order('created_at', { ascending: false });
+      const normalized = normalizeSupabaseResult(response);
+      if (normalized.error) throw normalized.error;
 
-      if (error) throw error;
-
-      const versionsData = data?.map((snapshot: any) => ({
+      const versionsData = (normalized.data as SnapshotRow[] | null)?.map((snapshot) => ({
         id: snapshot.id,
         documentId: snapshot.document_id,
         version: snapshot.document_version,
@@ -207,7 +223,7 @@ export function VersionHistoryPlugin({
         createdBy: snapshot.created_by,
         authorName: snapshot.profiles?.display_name || 'Unknown User',
         changes: 'Content changes', // Could be enhanced with diff
-        snapshotType: snapshot.snapshot_type as 'auto' | 'manual'
+        snapshotType: snapshot.snapshot_type
       })) || [];
 
       setVersions(versionsData);

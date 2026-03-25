@@ -9,7 +9,9 @@ import {
   NodeKey,
   $getRoot,
   $createRangeSelection,
-  $createTextNode
+  $createTextNode,
+  type LexicalNode,
+  type SerializedLexicalNode
 } from 'lexical';
 import { useLexicalComposerContext } from '@lexical/react/LexicalComposerContext';
 import { $createMarkNode, $isMarkNode, MarkNode } from '@lexical/mark';
@@ -55,13 +57,13 @@ class CommentMarkNode extends MarkNode {
   }
 
   // Required for serialization
-  static importJSON(serializedNode: any): CommentMarkNode {
+  static importJSON(serializedNode: SerializedLexicalNode & { commentId?: string }): CommentMarkNode {
     const { commentId } = serializedNode;
     return new CommentMarkNode(commentId);
   }
 
   // Required for serialization
-  exportJSON(): any {
+  exportJSON(): SerializedLexicalNode & { commentId: string } {
     return {
       ...super.exportJSON(),
       commentId: this.__commentId,
@@ -105,8 +107,26 @@ function $createCommentMarkNode(commentId: string): CommentMarkNode {
   return new CommentMarkNode(commentId);
 }
 
-function $isCommentMarkNode(node: any): node is CommentMarkNode {
+function $isCommentMarkNode(node: unknown): node is CommentMarkNode {
   return node instanceof CommentMarkNode;
+}
+
+interface LetterCommentRow {
+  id: string;
+  user_id: string;
+  content: string;
+  created_at: string;
+  parent_comment_id: string | null;
+  text_position: number | null;
+  text_length: number | null;
+  resolved: boolean | null;
+}
+
+interface SavedSelection {
+  anchorKey: NodeKey;
+  focusKey: NodeKey;
+  anchorOffset: number;
+  focusOffset: number;
 }
 
 interface CommentDialogProps {
@@ -310,7 +330,7 @@ export function CommentPlugin({ documentId }: { documentId?: string }) {
   const [textLength, setTextLength] = useState(0);
   const [showSidebar, setShowSidebar] = useState(false);
   const [highlightedComment, setHighlightedComment] = useState<string | null>(null);
-  const [savedSelection, setSavedSelection] = useState<any>(null);
+  const [savedSelection, setSavedSelection] = useState<SavedSelection | null>(null);
   const { toast } = useToast();
 
   const loadComments = async () => {
@@ -344,15 +364,16 @@ export function CommentPlugin({ documentId }: { documentId?: string }) {
       }
 
       // Separate main comments from replies
-      const mainComments = commentsData?.filter(comment => !comment.parent_comment_id) || [];
-      const replies = commentsData?.filter(comment => comment.parent_comment_id) || [];
+      const allComments = (commentsData || []) as LetterCommentRow[];
+      const mainComments = allComments.filter(comment => !comment.parent_comment_id);
+      const replies = allComments.filter(comment => comment.parent_comment_id);
 
       // Combine comments with profile data and replies
-      const commentsWithProfiles = mainComments.map((comment: any) => {
+      const commentsWithProfiles = mainComments.map((comment) => {
         const profile = profilesData.find(p => p.user_id === comment.user_id);
         const commentReplies = replies
           .filter(reply => reply.parent_comment_id === comment.id)
-          .map((reply: any) => {
+          .map((reply) => {
             const replyProfile = profilesData.find(p => p.user_id === reply.user_id);
             return {
               id: reply.id,
@@ -490,8 +511,6 @@ export function CommentPlugin({ documentId }: { documentId?: string }) {
         
         // Save the selection before opening dialog
         setSavedSelection({
-          anchor: selection.anchor,
-          focus: selection.focus,
           anchorKey: selection.anchor.key,
           focusKey: selection.focus.key,
           anchorOffset: selection.anchor.offset,
@@ -546,11 +565,11 @@ export function CommentPlugin({ documentId }: { documentId?: string }) {
             
             // Find the text node that contains our text
             let currentOffset = 0;
-            let targetNode: any = null;
+            let targetNode: LexicalNode | null = null;
             let startOffset = 0;
             let endOffset = 0;
             
-            function findTextNode(node: any): boolean {
+            function findTextNode(node: LexicalNode): boolean {
               if (node.getType && node.getType() === 'text') {
                 const nodeText = node.getTextContent();
                 const nodeStart = currentOffset;
@@ -563,8 +582,8 @@ export function CommentPlugin({ documentId }: { documentId?: string }) {
                   return true;
                 }
                 currentOffset = nodeEnd;
-              } else if (node.getChildren) {
-                const children = node.getChildren();
+              } else if (typeof (node as { getChildren?: () => LexicalNode[] }).getChildren === 'function') {
+                const children = (node as { getChildren: () => LexicalNode[] }).getChildren();
                 for (const child of children) {
                   if (findTextNode(child)) return true;
                 }
