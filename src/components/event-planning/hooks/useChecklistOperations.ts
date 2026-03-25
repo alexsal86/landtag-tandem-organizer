@@ -1,4 +1,4 @@
-import { useState, useCallback } from "react";
+import { useState, useCallback, type Dispatch, type SetStateAction } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { debugConsole } from "@/utils/debugConsole";
 import type { DropResult } from "@hello-pangea/dnd";
@@ -27,6 +27,62 @@ interface UseChecklistOperationsParams {
   onSocialPlannerActionCreated?: (itemId: string, action: any) => void;
 }
 
+export type ChecklistOperationEvent =
+  | { type: "network-interruption"; context: "toggle-checklist-item" | "fetch-checklist-state"; error: unknown }
+  | { type: "system-point-create-failed"; systemPoint: "social_media" | "rsvp"; error: unknown }
+  | { type: "checklist-refresh-failed"; error: unknown }
+  | { type: "delete-checklist-item-failed"; error: unknown }
+  | { type: "reorder-checklist-item-failed"; error: unknown };
+
+export interface UseChecklistOperationsReturn {
+  checklistItems: ChecklistItem[];
+  setChecklistItems: Dispatch<SetStateAction<ChecklistItem[]>>;
+  newChecklistItem: string;
+  setNewChecklistItem: Dispatch<SetStateAction<string>>;
+  newChecklistItemType: SystemPointKey;
+  setNewChecklistItemType: Dispatch<SetStateAction<SystemPointKey>>;
+  toggleChecklistItem: (itemId: string, isCompleted: boolean) => Promise<void>;
+  updateChecklistItemTitle: (itemId: string, title: string) => Promise<void>;
+  updateChecklistItemColor: (itemId: string, color: string) => Promise<void>;
+  addChecklistItem: () => Promise<void>;
+  deleteChecklistItem: (itemId: string) => Promise<void>;
+  addSubItem: (itemId: string) => Promise<void>;
+  toggleSubItem: (itemId: string, subItemIndex: number, isCompleted: boolean) => Promise<void>;
+  updateSubItemTitle: (itemId: string, subItemIndex: number, title: string) => Promise<void>;
+  removeSubItem: (itemId: string, subItemIndex: number) => Promise<void>;
+  onDragEnd: (result: DropResult) => Promise<void>;
+}
+
+const getErrorMessage = (error: unknown): string => {
+  if (error instanceof Error) return error.message;
+  if (typeof error === "object" && error !== null) {
+    const record = error as Record<string, unknown>;
+    const message = record.message ?? record.details;
+    if (typeof message === "string" && message.trim().length > 0) return message;
+  }
+  return "Unbekannter Fehler";
+};
+
+const logChecklistOperationEvent = (event: ChecklistOperationEvent): void => {
+  switch (event.type) {
+    case "network-interruption":
+      debugConsole.warn(`Checklist ${event.context}:`, event.error);
+      break;
+    case "system-point-create-failed":
+      debugConsole.error(`Error creating ${event.systemPoint} system point:`, event.error);
+      break;
+    case "checklist-refresh-failed":
+      debugConsole.warn("Checklist refresh after item creation failed; keeping optimistic system point.", event.error);
+      break;
+    case "delete-checklist-item-failed":
+      debugConsole.error("Error deleting checklist item:", event.error);
+      break;
+    case "reorder-checklist-item-failed":
+      debugConsole.error("Error updating item order:", event.error);
+      break;
+  }
+};
+
 export function useChecklistOperations({
   user,
   selectedPlanningId,
@@ -40,7 +96,7 @@ export function useChecklistOperations({
   toast,
   onRefreshDetails,
   onSocialPlannerActionCreated,
-}: UseChecklistOperationsParams) {
+}: UseChecklistOperationsParams): UseChecklistOperationsReturn {
   const [checklistItems, setChecklistItems] = useState<ChecklistItem[]>([]);
   const [newChecklistItem, setNewChecklistItem] = useState("");
   const [newChecklistItemType, setNewChecklistItemType] = useState<SystemPointKey>("none");
@@ -206,15 +262,15 @@ export function useChecklistOperations({
 
           onSocialPlannerActionCreated?.(itemId, createdAction);
           toast({ title: "Systempunkt angelegt", description: "Social-Media-Punkt wurde erstellt und mit dem Social Planner verknüpft." });
-        } catch (systemPointError: any) {
-          debugConsole.error("Error creating social media system point:", systemPointError);
+        } catch (systemPointError: unknown) {
+          logChecklistOperationEvent({ type: "system-point-create-failed", systemPoint: "social_media", error: systemPointError });
           // Rollback all created resources using pre-generated IDs
           await Promise.allSettled([
             supabase.from("event_planning_checklist_items").delete().eq("id", itemId),
             supabase.from("social_content_items").delete().eq("id", plannerItemId),
             supabase.from("topic_backlog").delete().eq("id", topicId),
           ]);
-          const errMsg = systemPointError?.message || systemPointError?.details || "Unbekannter Fehler";
+          const errMsg = getErrorMessage(systemPointError);
           toast({ title: "Fehler", description: `Social-Media-Systempunkt konnte nicht angelegt werden: ${errMsg}`, variant: "destructive" });
           return;
         }
@@ -276,10 +332,10 @@ export function useChecklistOperations({
               ? `RSVP-Punkt erstellt (${guestCount} Gäste, ${sentCount} eingeladen).`
               : "RSVP-Punkt erstellt. Fügen Sie Gäste im RSVP-Manager hinzu.",
           });
-        } catch (rsvpError: any) {
-          debugConsole.error("Error creating RSVP system point:", rsvpError);
+        } catch (rsvpError: unknown) {
+          logChecklistOperationEvent({ type: "system-point-create-failed", systemPoint: "rsvp", error: rsvpError });
           await supabase.from("event_planning_checklist_items").delete().eq("id", itemId);
-          const errMsg = rsvpError?.message || rsvpError?.details || "Unbekannter Fehler";
+          const errMsg = getErrorMessage(rsvpError);
           toast({ title: "Fehler", description: `RSVP-Systempunkt konnte nicht angelegt werden: ${errMsg}`, variant: "destructive" });
           return;
         }
@@ -296,8 +352,8 @@ export function useChecklistOperations({
 
     try {
       await onRefreshDetails(selectedPlanningId);
-    } catch (refreshError) {
-      debugConsole.warn("Checklist refresh after item creation failed; keeping optimistic system point.", refreshError);
+    } catch (refreshError: unknown) {
+      logChecklistOperationEvent({ type: "checklist-refresh-failed", error: refreshError });
     }
   };
 
@@ -307,8 +363,8 @@ export function useChecklistOperations({
       if (error) throw error;
       setChecklistItems(items => items.filter(item => item.id !== itemId));
       toast({ title: "Erfolg", description: "Checklisten-Punkt wurde gelöscht." });
-    } catch (error) {
-      debugConsole.error('Error deleting checklist item:', error);
+    } catch (error: unknown) {
+      logChecklistOperationEvent({ type: "delete-checklist-item-failed", error });
       toast({ title: "Fehler", description: "Checklisten-Punkt konnte nicht gelöscht werden.", variant: "destructive" });
     }
   };
@@ -361,8 +417,8 @@ export function useChecklistOperations({
       for (const update of updates) {
         await supabase.from("event_planning_checklist_items").update({ order_index: update.order_index }).eq("id", update.id);
       }
-    } catch (error) {
-      debugConsole.error('Error updating item order:', error);
+    } catch (error: unknown) {
+      logChecklistOperationEvent({ type: "reorder-checklist-item-failed", error });
       toast({ title: "Fehler", description: "Reihenfolge konnte nicht gespeichert werden.", variant: "destructive" });
       if (selectedPlanningId) onRefreshDetails(selectedPlanningId);
     }
