@@ -5,6 +5,7 @@ import { useTenant } from "@/hooks/useTenant";
 import { debugConsole } from '@/utils/debugConsole';
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/components/ui/use-toast";
+import { extractErrorMessage, extractLinkErrorCode, isPostgrestError } from "@/features/cases/shared/utils/caseInteropAdapters";
 import {
   Dialog,
   DialogContent,
@@ -80,8 +81,7 @@ export function CaseFileSelector({
       if (!user) throw new Error('No user');
       
       // Insert the link based on item type
-      // INTEROP-ANY(TS-4825, Cases-Files, 2026-04-22): mixed RPC/link-response error payloads are still loosely typed.
-      let linkError: any = null;
+      let linkError: unknown = null;
       
       switch (itemType) {
         case 'document': {
@@ -128,10 +128,11 @@ export function CaseFileSelector({
       }
       
       if (linkError) {
-        if (linkError.code === '23505') {
+        if (extractLinkErrorCode(linkError) === '23505') {
           throw new Error('already_linked');
         }
-        throw linkError;
+        if (isPostgrestError(linkError)) throw linkError;
+        throw new Error('link_failed');
       }
       
       // Create timeline entry
@@ -176,9 +177,9 @@ export function CaseFileSelector({
       onSelect(caseFileId);
       onOpenChange(false);
     },
-    // INTEROP-ANY(TS-4825, Cases-Files, 2026-04-22): query library onError receives unknown external error shapes.
-    onError: (error: any) => {
-      if (error.message === 'already_linked') {
+    onError: (error: unknown) => {
+      const errorMessage = extractErrorMessage(error);
+      if (errorMessage === 'already_linked') {
         toast({ title: "Bereits mit dieser Fallakte verknüpft", variant: "destructive" });
       } else {
         toast({ title: "Fehler beim Hinzufügen", variant: "destructive" });

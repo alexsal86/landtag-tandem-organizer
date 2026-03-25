@@ -246,6 +246,17 @@ Zentrale Liste für bewusst verbleibende `any`-/`as any`-Stellen in den aktiven 
 | 2026-03-25 | `tsconfig.components-batch2-strict.json` | `src/components/calendar/ProperReactBigCalendar.tsx` | Temporär belassen (begründete Ausnahme) | `react-big-calendar` + DnD-Addon liefert aktuell keine ausreichend präzisen generischen Typen für `view`, `onEventDrop`, `onEventResize` und `eventPropGetter`; Ersetzung durch `unknown` erfordert vorgelagerte Wrapper-Typen. Geplanter Abbau: eigene typed Adapter-Props im nächsten Kalender-Strict-Teilbatch einführen. |
 | 2026-03-25 | `tsconfig.contexts-strict.json`, `tsconfig.services-features-batch2-strict.json` | `src/contexts/MatrixClientContext.tsx`, `src/features/redaktion/components/Kalenderansicht.tsx`, `src/features/redaktion/hooks/useTopicBacklog.ts`, `src/features/cases/**` (markierte Einzelstellen) | Temporär belassen (begründete Ausnahme) | Alle verbliebenen Stellen sind als `INTEROP-ANY(TS-4821..TS-4829)` markiert; Gründe: Matrix-SDK-Emitter/UIA, `react-big-calendar` DnD-Payloads, heterogene Supabase-Join/JSONB-Payloads. Nächste verbindliche Frist: **2026-04-22** (Kalender-Interop bis 2026-04-29). |
 
+### Ausnahme-Register Cases (`INTEROP-ANY`)
+
+| Ticket | Wrapper (typed boundary) | Reststelle (`any`) | Kurzbegründung | Ablöse-Aufgabe | Termin |
+| --- | --- | --- | --- | --- | --- |
+| TS-4824 | `buildCaseItemUpdatePayload` | `src/features/cases/shared/utils/caseInteropAdapters.ts` | Polymorphes `intake_payload` (JSONB) wird im Supabase-Update noch nicht präzise inferiert. | Supabase-`TablesUpdate<\"case_items\">` via Schema-Validator + discriminated union ableiten und Wrapper ohne `any` migrieren. | 2026-04-22 |
+| TS-4825 | `extractLinkErrorCode` | `src/features/cases/shared/utils/caseInteropAdapters.ts` | Heterogene Fehlerobjekte aus Query-Library/Supabase bei Link-Mutationen. | Einheitlichen `CaseLinkError`-Adapter einführen und Mutations-`onError` auf typed union umstellen. | 2026-04-22 |
+| TS-4826 | `getCaseTaskDescription` | `src/features/cases/shared/utils/caseInteropAdapters.ts` | Join-Payload `task` ist in Legacy-Selects noch nicht vollständig typisiert. | Join-Select auf explizites Projection-DTO umstellen und Task-Detail ohne Cast aus DB-Typen lesen. | 2026-04-22 |
+| TS-4827 | `isMatchingCaseParentTaskLink` | `src/features/cases/shared/utils/caseInteropAdapters.ts` | `case_file_tasks`-Join liefert teilweise untypisierte nested rows. | Typed Query-Mapper für `case_file_tasks` + `tasks` bauen und Parent-Link-Ermittlung ohne Interop-Cast migrieren. | 2026-04-22 |
+| TS-4828 | `getCaseFileProcessingStatuses` | `src/features/cases/shared/utils/caseInteropAdapters.ts` | Legacy-Mix aus `processing_status` (String) und `processing_statuses` (Array/JSONB). | DB-Schema auf einheitliches `processing_statuses text[]` finalisieren und Altfeld entfernen. | 2026-04-22 |
+| TS-4829 | `buildCaseItemInteractionInsertPayload` | `src/features/cases/shared/utils/caseInteropAdapters.ts` | Polymorphe Interaktionsquellen (`source_type`) in Insert-Payload noch ohne saubere Insert-DTO-Typen. | Interaktions-Insert-DTO mit `TablesInsert<\"case_item_interactions\">` und source-Discriminant einführen. | 2026-04-22 |
+
 ## Verbindliche Sprint-Abbauquote (`any`)
 
 Ab sofort gilt für **jeden Sprint und jeden Bereich** aus „Fortschritt nach Bereich“ eine verbindliche Abbauquote von **mindestens 15% und Zielkorridor 20%** der zu Sprintstart verbleibenden `any`-Vorkommen.
