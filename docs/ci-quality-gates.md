@@ -2,6 +2,13 @@
 
 Diese Regeln definieren die verpflichtenden und optionalen Qualitäts- und Security-Prüfungen in GitHub Actions.
 
+## PR-Arbeitsmodus (verbindlich)
+
+- Kleine PRs statt Big-Bang-Änderungen: Richtwert **max. 10–20 Dateien** pro PR.
+- Pro PR genau **ein Themencluster** (z. B. ausschließlich Letter **oder** Matrix/Context).
+- Reviewer starten mit der Pflichtfrage: **„Wurden neue `any` eingeführt?“**.
+- Nach jedem **3. Merge** wird ein kurzer Stabilisierungs-PR für Typduplikate eingeplant.
+
 ## Priorisierte Kernflows (Top 5)
 
 1. **Auth / Tenant-Wechsel**
@@ -55,8 +62,7 @@ Zusätzlich landen im Job Summary:
 **Merge-Regel:**
 
 - `Delta <= 0`: Gate erfüllt.
-- `Delta > 0`: Gate blockiert den PR **außer** es existiert im PR-Body eine begründete Ausnahme mit Marker
-  `ANY-INCREASE-EXCEPTION: <Begründung>`.
+- `Delta > 0`: Gate blockiert den PR (keine Ausnahme über PR-Body-Marker).
 
 6. **`fast-unit-integration`**
    - `npm run test:unit-integration:ci` (schneller Vitest-Run)
