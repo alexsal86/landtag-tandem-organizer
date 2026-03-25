@@ -497,7 +497,7 @@ export const LetterEditorCanvas: React.FC<LetterEditorCanvasProps> = ({
 
         {/* ── Fold/hole marks on all pages ── */}
         {!isFirst && layout.foldHoleMarks?.enabled !== false && (() => {
-          const marks = layout.foldHoleMarks || {};
+          const marks = layout.foldHoleMarks ?? { enabled: true, left: 3, strokeWidthPt: 1, foldMarkWidth: 5, holeMarkWidth: 8, topMarkY: 105, holeMarkY: 148.5, bottomMarkY: 210 };
           const markLeft = marks.left ?? 3;
           const foldW = marks.foldMarkWidth ?? 5;
           const holeW = marks.holeMarkWidth ?? 8;

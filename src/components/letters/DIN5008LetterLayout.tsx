@@ -736,7 +736,7 @@ export const DIN5008LetterLayout: React.FC<DIN5008LetterLayoutProps> = ({
         }}>
           {formatSenderAddress(senderInfo)}
           {senderInfo.phone && <div>Tel: {senderInfo.phone}</div>}
-          {senderInfo.email && <div>E-Mail: {senderInfo.email}</div>}
+          {(senderInfo.wahlkreis_email || senderInfo.landtag_email) && <div>E-Mail: {senderInfo.wahlkreis_email || senderInfo.landtag_email}</div>}
           {senderInfo.website && <div>Web: {senderInfo.website}</div>}
         </div>
       )}

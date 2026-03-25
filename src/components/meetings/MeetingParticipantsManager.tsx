@@ -112,7 +112,7 @@ export function MeetingParticipantsManager({
                 className="flex items-center gap-3 p-2 rounded-md border bg-card"
               >
                 <Avatar className="h-8 w-8">
-                  <AvatarImage src={participant.user?.avatar_url} />
+                  <AvatarImage src={participant.user?.avatar_url ?? undefined} />
                   <AvatarFallback className="text-xs">
                     {getInitials(participant.user?.display_name || '?')}
                   </AvatarFallback>

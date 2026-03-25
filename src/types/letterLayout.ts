@@ -259,6 +259,9 @@ export type LetterLayoutTemplateLike = {
   layout_settings?: LetterLayoutSettings;
   header_layout_type?: string | null;
   header_text_elements?: LetterCanvasElement[];
+  letterhead_html?: string | null;
+  letterhead_css?: string | null;
+  footer_blocks?: unknown;
 };
 
 export const isLetterLayoutSettings = (value: unknown): value is LetterLayoutSettings => {

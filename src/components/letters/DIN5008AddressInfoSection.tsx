@@ -4,19 +4,19 @@ import type { LetterBlockLine, LetterCanvasElement, InformationBlockRecord, Lett
 interface DIN5008AddressInfoSectionProps {
   layout: LetterLayoutSettings;
   debugMode: boolean;
-  returnAddressLines?: BlockLine[];
-  returnAddressElements?: HeaderElement[];
+  returnAddressLines?: LetterBlockLine[];
+  returnAddressElements?: LetterCanvasElement[];
   senderInfo?: SenderInformationRecord | null;
   returnAddressFontSizePt: number;
-  renderBlockLines: (lines: BlockLine[], options?: { underlineLastContentLine?: boolean }) => React.ReactNode;
-  renderCanvasBlockElements: (elements: HeaderElement[]) => React.ReactNode;
-  addressFieldLines?: BlockLine[];
-  addressFieldElements?: HeaderElement[];
+  renderBlockLines: (lines: LetterBlockLine[], options?: { underlineLastContentLine?: boolean }) => React.ReactNode;
+  renderCanvasBlockElements: (elements: LetterCanvasElement[]) => React.ReactNode;
+  addressFieldLines?: LetterBlockLine[];
+  addressFieldElements?: LetterCanvasElement[];
   recipientFontSizePt: number;
   formatAddress: (address?: RecipientAddress | string) => string;
   recipientAddress?: RecipientAddress | string;
-  infoBlockLines?: BlockLine[];
-  infoBlockElements?: HeaderElement[];
+  infoBlockLines?: LetterBlockLine[];
+  infoBlockElements?: LetterCanvasElement[];
   renderInformationBlock: (informationBlock?: InformationBlockRecord) => React.ReactNode;
   informationBlock?: InformationBlockRecord[] | null;
   letterDate?: string;
