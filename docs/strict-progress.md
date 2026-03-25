@@ -302,6 +302,48 @@ Freigegebener Interop-Randfall bedeutet:
 
 Nicht kommentierte oder nicht freigegebene `any` zählen als Rückfall und blockieren die Fertigmeldung des Batches.
 
+
+## Finaler Report der aktuellen `any`-Welle (Abschluss: 2026-03-25)
+
+**Endstatus:** ✅ Abgeschlossen (Welle beendet, Restbestand nur noch als dokumentierte Interop-/Boundary-Ausnahmen geführt).
+
+| Kennzahl | Startwert | Endwert (2026-03-25) | Delta |
+| --- | ---: | ---: | ---: |
+| Gesamtanzahl `any` (global) | 572 | 493 | -79 |
+| Dokumentierte Ausnahmen (`INTEROP-ANY`) | 0 (vor Scope-Freeze nicht zentral gezählt) | 11 | +11 |
+
+Messbasis Endwert:
+
+1. `npm run --silent report:any-usage:total` → `493`
+2. `rg -n "INTEROP-ANY" src supabase | wc -l` → `11`
+
+Kurzprotokoll zur Abschlussbewertung: `docs/strict-review-protokoll-2026-03-25.md`.
+
+## Stabilisierungslauf (letzte Runde) – Typduplikate & API-Grenzen
+
+Der finale Stabilisierungslauf wird als eigener, kurzer Hardening-Block unmittelbar nach Abschluss der aktuellen Welle eingeplant.
+
+| Arbeitspaket | Scope | Ziel | Termin |
+| --- | --- | --- | --- |
+| Typduplikate konsolidieren | `src/types/**`, `src/features/**/types*`, gemeinsam genutzte DTOs | Doppelte/inkonsistente Typen auf einen kanonischen Typpfad reduzieren; Cast-Ketten in Consumern abbauen. | Start: 2026-03-26, Ende: 2026-03-28 |
+| API-Grenzen härten | Supabase-/Edge-/SDK-Adapter (`src/services/**`, `src/features/**/api*`, `supabase/functions/**`) | Boundary-Typen mit Runtime-Guards und klaren Request/Response-DTOs fixieren, um neue `any`-Einschlüsse zu verhindern. | Start: 2026-03-29, Ende: 2026-04-02 |
+| Abschluss-Gate | `typecheck:strict-all`, `report:any-usage:*`, Delta-Check | Nachweis: kein positives Any-Delta, keine neuen unkommentierten Interop-Ausnahmen. | 2026-04-02 |
+
+## Phase 2 (verbindlich): `noUnusedLocals` & `noUnusedParameters`
+
+Phase 2 startet erst nach dem Stabilisierungslauf mit klarer Terminierung und Batch-Reihenfolge.
+
+| Phase-2-Ziel | Scope | Start | Zielabschluss |
+| --- | --- | --- | --- |
+| `noUnusedLocals` schrittweise aktivieren | zuerst flow-auth/tenant + flow-notifications, danach restliche `typecheck:*`-Batches in bestehender Reihenfolge | 2026-04-03 | 2026-04-24 |
+| `noUnusedParameters` nachgezogen aktivieren | gleiches Batch-Schema; Fokus auf API-/Hook-Signaturen und ungenutzte Callback-Parameter | 2026-04-27 | 2026-05-15 |
+
+Definition „done“ für Phase 2:
+
+1. Flags sind pro Batch aktiv und in den zugehörigen `tsconfig.*-strict.json` dokumentiert.
+2. Keine Deaktivierung über globale Relaxed-Config außerhalb explizit dokumentierter Alt-Batches.
+3. CI- und Dokumentations-Gates in `docs/strict-progress.md` und Batch-Docs auf realen Merge-Stand aktualisiert.
+
 ## Review- und CI-Hinweis
 
 - Wenn ein Pull Request Strict-Migrationsdateien, `tsconfig.*-strict.json`, `package.json`-Typecheck-Skripte oder Batch-Scope-Dateien verändert, muss im Review geprüft werden, ob auch `docs/strict-progress.md` oder ein zugehöriges Batch-Dokument aktualisiert wurde.
