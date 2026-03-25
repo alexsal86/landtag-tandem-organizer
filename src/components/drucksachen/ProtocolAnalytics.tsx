@@ -62,6 +62,19 @@ interface ProtocolAnalyticsProps {
 
 const COLORS = ['#8884d8', '#82ca9d', '#ffc658', '#ff7c7c', '#8dd1e1', '#d084d0'];
 
+interface PartyPieLabelInput {
+  party?: string;
+  percentage?: number;
+}
+
+const renderPartyPieLabel = (input: unknown): string => {
+  if (!input || typeof input !== 'object') return '';
+  const candidate = input as PartyPieLabelInput;
+  const party = typeof candidate.party === 'string' ? candidate.party : '';
+  const percentage = typeof candidate.percentage === 'number' ? candidate.percentage : undefined;
+  return party && typeof percentage === 'number' ? `${party} (${percentage}%)` : party;
+};
+
 export function ProtocolAnalytics({ protocolId, tenantId }: ProtocolAnalyticsProps) {
   const [analytics, setAnalytics] = useState<AnalyticsData | null>(null);
   const [loading, setLoading] = useState(true);
@@ -285,7 +298,7 @@ export function ProtocolAnalytics({ protocolId, tenantId }: ProtocolAnalyticsPro
                   cx="50%"
                   cy="50%"
                   labelLine={false}
-                  label={(entry: any) => `${entry.party} (${entry.percentage}%)`}
+                  label={renderPartyPieLabel}
                   outerRadius={80}
                   fill="#8884d8"
                   dataKey="speeches"

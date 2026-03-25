@@ -169,7 +169,11 @@ export const ExpenseManagement = () => {
                   <Pie data={data.getCategoryExpenses().map(({ name, total, color }) => ({ name, value: total, fill: color }))} cx="50%" cy="50%" labelLine={false} label={renderCategoryPieLabel} outerRadius={80} fill="#8884d8" dataKey="value">
                     {data.getCategoryExpenses().map(({ color }, i) => <Cell key={`cell-${i}`} fill={color} />)}
                   </Pie>
-                  <Tooltip formatter={(value: number) => [`${value.toFixed(2)} €`, 'Betrag']} /><Legend />
+                  <Tooltip formatter={(value: unknown) => {
+                    const amount = typeof value === 'number' ? value : Number(value);
+                    const safeAmount = Number.isFinite(amount) ? amount : 0;
+                    return [`${safeAmount.toFixed(2)} €`, 'Betrag'];
+                  }} /><Legend />
                 </RechartsPieChart></ResponsiveContainer></div>
               ) : <div className="text-center text-muted-foreground py-12">Keine Ausgaben für diesen Monat</div>}
             </CardContent></Card>
