@@ -6,6 +6,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Plus, Trash2, GripVertical, MessageCircle, Paperclip, ListTodo, Mail, Download, Edit2, X, ExternalLink, Bot, Users, CalendarClock, Palette } from "lucide-react";
+import type { DraggableProvided, DraggableProvidedDragHandleProps, DraggableStateSnapshot } from "@hello-pangea/dnd";
 import { Droppable, Draggable } from "@hello-pangea/dnd";
 import { cn } from "@/lib/utils";
 import { format } from "date-fns";
@@ -13,9 +14,10 @@ import { de } from "date-fns/locale";
 import { supabase } from "@/integrations/supabase/client";
 import { debounce } from "@/utils/debounce";
 import type { ChecklistItem, PlanningSubtask, PlanningComment, PlanningDocument, Profile } from "./types";
+import type { ChecklistAutomationAction } from "@/components/planning/sharedTypes";
 
 interface ChecklistSectionProps {
-  checklistItems: ChecklistItem[];
+  checklistItems: ReadonlyArray<ChecklistItem>;
   newChecklistItem: string;
   setNewChecklistItem: (value: string) => void;
   newChecklistItemType: "none" | "social_media" | "rsvp";
@@ -34,13 +36,13 @@ interface ChecklistSectionProps {
   setShowItemComments: (value: { [itemId: string]: boolean } | ((prev: { [itemId: string]: boolean }) => { [itemId: string]: boolean })) => void;
   showItemDocuments: { [itemId: string]: boolean };
   setShowItemDocuments: (value: { [itemId: string]: boolean } | ((prev: { [itemId: string]: boolean }) => { [itemId: string]: boolean })) => void;
-  allProfiles: Profile[];
-  user: any;
+  allProfiles: ReadonlyArray<Profile>;
+  user: { id: string } | null;
   uploading: boolean;
-  itemEmailActions: Record<string, any>;
-  itemSocialPlannerActions: Record<string, any>;
+  itemEmailActions: Record<string, ChecklistAutomationAction | undefined>;
+  itemSocialPlannerActions: Record<string, ChecklistAutomationAction | undefined>;
   editingComment: { [commentId: string]: string };
-  setEditingComment: (value: any) => void;
+  setEditingComment: React.Dispatch<React.SetStateAction<Record<string, string>>>;
   addItemSubtask: (description?: string, assignedTo?: string, dueDate?: string, itemId?: string) => void;
   addItemCommentForItem: (itemId: string, comment: string) => void;
   handleItemFileUpload: (event: React.ChangeEvent<HTMLInputElement>, itemId: string) => void;
@@ -94,7 +96,7 @@ function getPhaseColor(item: ChecklistItem | null | undefined) {
   return item?.color || DEFAULT_PHASE_COLOR;
 }
 
-function groupItemsByPhase(items: ChecklistItem[]): PhaseGroup[] {
+function groupItemsByPhase(items: ReadonlyArray<ChecklistItem>): ReadonlyArray<PhaseGroup> {
   const groups: PhaseGroup[] = [];
   let currentGroup: PhaseGroup = { phaseItem: null, phaseName: null, items: [] };
 
@@ -213,7 +215,7 @@ export function ChecklistSection(props: ChecklistSectionProps) {
   const phaseGroups = useMemo(() => groupItemsByPhase(checklistItems), [checklistItems]);
   const hasPhases = phaseGroups.some((g) => g.phaseName !== null);
 
-  const renderChecklistItem = (item: ChecklistItem, _index: number, provided: any, snapshot: any) => {
+  const renderChecklistItem = (item: ChecklistItem, _index: number, provided: DraggableProvided, snapshot: DraggableStateSnapshot) => {
     if (item.type === "separator") {
       return (
         <div ref={provided.innerRef} {...provided.draggableProps} className={cn("group", snapshot.isDragging && "z-50")}>
@@ -362,17 +364,17 @@ export function ChecklistSection(props: ChecklistSectionProps) {
                     </div>
                     {comment.user_id === user?.id && (
                       <div className="flex space-x-1">
-                        <Button variant="ghost" size="sm" onClick={() => setEditingComment((prev: any) => ({ ...prev, [comment.id]: comment.content }))} className="h-6 w-6 p-0"><Edit2 className="h-3 w-3" /></Button>
+                        <Button variant="ghost" size="sm" onClick={() => setEditingComment((prev) => ({ ...prev, [comment.id]: comment.content }))} className="h-6 w-6 p-0"><Edit2 className="h-3 w-3" /></Button>
                         <Button variant="ghost" size="sm" onClick={() => deleteItemComment(comment)} className="h-6 w-6 p-0 text-destructive hover:text-destructive"><Trash2 className="h-3 w-3" /></Button>
                       </div>
                     )}
                   </div>
                   {editingComment[comment.id] !== undefined ? (
                     <div className="space-y-2">
-                      <Input value={editingComment[comment.id]} onChange={(e) => setEditingComment((prev: any) => ({ ...prev, [comment.id]: e.target.value }))} className="text-sm" onKeyPress={(e) => { if (e.key === 'Enter') updateItemComment(comment.id, editingComment[comment.id]); if (e.key === 'Escape') setEditingComment((prev: any) => { const ns = { ...prev }; delete ns[comment.id]; return ns; }); }} />
+                      <Input value={editingComment[comment.id]} onChange={(e) => setEditingComment((prev) => ({ ...prev, [comment.id]: e.target.value }))} className="text-sm" onKeyPress={(e) => { if (e.key === 'Enter') updateItemComment(comment.id, editingComment[comment.id]); if (e.key === 'Escape') setEditingComment((prev) => { const ns = { ...prev }; delete ns[comment.id]; return ns; }); }} />
                       <div className="flex space-x-2">
                         <Button size="sm" onClick={() => updateItemComment(comment.id, editingComment[comment.id])} className="h-6 text-xs">Speichern</Button>
-                        <Button size="sm" variant="outline" onClick={() => setEditingComment((prev: any) => { const ns = { ...prev }; delete ns[comment.id]; return ns; })} className="h-6 text-xs">Abbrechen</Button>
+                        <Button size="sm" variant="outline" onClick={() => setEditingComment((prev) => { const ns = { ...prev }; delete ns[comment.id]; return ns; })} className="h-6 text-xs">Abbrechen</Button>
                       </div>
                     </div>
                   ) : <p className="text-sm">{comment.content}</p>}
@@ -400,7 +402,7 @@ export function ChecklistSection(props: ChecklistSectionProps) {
 
           {item.sub_items && Array.isArray(item.sub_items) && item.sub_items.length > 0 && (
             <div className="ml-12 space-y-1">
-              {item.sub_items.map((subItem: any, subIndex: number) => (
+              {item.sub_items.map((subItem, subIndex: number) => (
                 <div key={subIndex} className="flex items-center space-x-2">
                   <Checkbox checked={subItem.is_completed || false} onCheckedChange={() => toggleSubItem(item.id, subIndex, subItem.is_completed || false)} />
                   <Input value={subItem.title || ''} onChange={(e) => updateSubItemTitle(item.id, subIndex, e.target.value)} className={cn("flex-1 text-sm", subItem.is_completed && "line-through text-muted-foreground")} placeholder="Unterpunkt..." />
@@ -414,7 +416,7 @@ export function ChecklistSection(props: ChecklistSectionProps) {
     );
   };
 
-  const renderPhaseHeader = (group: PhaseGroup, dragHandleProps?: any) => {
+  const renderPhaseHeader = (group: PhaseGroup, dragHandleProps?: DraggableProvidedDragHandleProps | null) => {
     if (!group.phaseItem) return null;
     const phaseItem = group.phaseItem;
     const itemCount = group.items.filter((i) => i.type !== "separator").length;

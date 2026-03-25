@@ -11,6 +11,7 @@ import { useTenant } from '@/hooks/useTenant';
 import { useToast } from '@/components/ui/use-toast';
 import { useDistrictDetection } from '@/hooks/useDistrictDetection';
 import { saveAppointmentTopics } from '@/hooks/useAppointmentTopics';
+import type { AppointmentContactRef, AppointmentGuestInput, CreateAppointmentPayload } from '@/components/planning/sharedTypes';
 
 const getDefaultStartTime = () => {
   const now = new Date();
@@ -42,6 +43,49 @@ const appointmentSchema = z.object({
   return new Date(`${data.end_date || data.start_date}T${data.end_time || '00:00'}`) > new Date(`${data.start_date}T${data.start_time || '00:00'}`);
 }, { message: "Endzeit muss nach der Startzeit liegen", path: ["end_time"] });
 
+type AppointmentFormValues = z.infer<typeof appointmentSchema>;
+type AppointmentCategoryOption = { name: string; label: string };
+type AppointmentLocationOption = { id: string; name: string; address?: string };
+
+function parseUnknownError(error: unknown): string {
+  if (error instanceof Error) {
+    return error.message;
+  }
+  if (typeof error === "string") {
+    return error;
+  }
+  if (typeof error === "object" && error !== null && "message" in error && typeof (error as { message?: unknown }).message === "string") {
+    return (error as { message: string }).message;
+  }
+  return "Ein Fehler ist aufgetreten.";
+}
+
+function mapCreateAppointmentPayload(
+  values: AppointmentFormValues,
+  userId: string,
+  tenantId: string,
+  hasExternalGuests: boolean,
+): CreateAppointmentPayload {
+  const startTime = values.is_all_day ? `${values.start_date}T00:00:00` : `${values.start_date}T${values.start_time || "09:00"}:00`;
+  const endTime = values.is_all_day ? `${values.end_date || values.start_date}T23:59:59` : `${values.end_date || values.start_date}T${values.end_time || "10:00"}:00`;
+
+  return {
+    title: values.title,
+    description: values.description,
+    start_time: new Date(startTime).toISOString(),
+    end_time: new Date(endTime).toISOString(),
+    location: values.location,
+    priority: values.priority,
+    category: values.category,
+    status: values.status,
+    reminder_minutes: values.reminder_minutes,
+    user_id: userId,
+    tenant_id: tenantId,
+    is_all_day: values.is_all_day,
+    has_external_guests: hasExternalGuests,
+  };
+}
+
 export function useCreateAppointment(open: boolean, onOpenChange: (open: boolean) => void) {
   const navigate = useNavigate();
   const location = useLocation();
@@ -50,21 +94,21 @@ export function useCreateAppointment(open: boolean, onOpenChange: (open: boolean
   const { currentTenant } = useTenant();
   const { toast } = useToast();
   const [loading, setLoading] = useState(false);
-  const [selectedContacts, setSelectedContacts] = useState<any[]>([]);
-  const [appointmentCategories, setAppointmentCategories] = useState<Array<{ name: string; label: string }>>([]);
-  const [appointmentStatuses, setAppointmentStatuses] = useState<Array<{ name: string; label: string }>>([]);
-  const [appointmentLocations, setAppointmentLocations] = useState<Array<{ id: string; name: string; address?: string }>>([]);
+  const [selectedContacts, setSelectedContacts] = useState<ReadonlyArray<AppointmentContactRef>>([]);
+  const [appointmentCategories, setAppointmentCategories] = useState<ReadonlyArray<AppointmentCategoryOption>>([]);
+  const [appointmentStatuses, setAppointmentStatuses] = useState<ReadonlyArray<AppointmentCategoryOption>>([]);
+  const [appointmentLocations, setAppointmentLocations] = useState<ReadonlyArray<AppointmentLocationOption>>([]);
   const [showPollCreator, setShowPollCreator] = useState(false);
   const [isAllDay, setIsAllDay] = useState(false);
   const [showAdvancedOptions, setShowAdvancedOptions] = useState(false);
-  const [uploadedFiles, setUploadedFiles] = useState<any[]>([]);
-  const [appointmentGuests, setAppointmentGuests] = useState<Array<{ name: string; email: string }>>([]);
+  const [uploadedFiles, setUploadedFiles] = useState<ReadonlyArray<unknown>>([]);
+  const [appointmentGuests, setAppointmentGuests] = useState<AppointmentGuestInput[]>([]);
   const [selectedTopicIds, setSelectedTopicIds] = useState<string[]>([]);
   const { detectDistrict, clearResult } = useDistrictDetection();
 
   const defaultStart = getDefaultStartTime();
-  const form = useForm({
-    resolver: zodResolver(appointmentSchema) as any,
+  const form = useForm<AppointmentFormValues>({
+    resolver: zodResolver(appointmentSchema),
     mode: "onSubmit" as const,
     defaultValues: {
       title: "", description: "",
@@ -93,9 +137,9 @@ export function useCreateAppointment(open: boolean, onOpenChange: (open: boolean
     ]).then(([cats, stats, locs]) => {
       setAppointmentCategories(cats.data || []);
       setAppointmentStatuses(stats.data || []);
-      setAppointmentLocations((locs.data || []).map(l => ({ ...l, address: l.address ?? undefined })));
-      if (cats.data?.length) form.setValue('category', cats.data[0].name as any);
-      if (stats.data?.length) form.setValue('status', stats.data[0].name as any);
+      setAppointmentLocations((locs.data || []).map((location): AppointmentLocationOption => ({ ...location, address: location.address ?? undefined })));
+      if (cats.data?.length) form.setValue('category', cats.data[0].name);
+      if (stats.data?.length) form.setValue('status', stats.data[0].name);
     });
   }, [user, form, open]);
 
@@ -119,42 +163,38 @@ export function useCreateAppointment(open: boolean, onOpenChange: (open: boolean
     if (!isAllDay && timeValue) form.setValue("end_time", formatTimeForInput(addHours(new Date(`2000-01-01T${timeValue}`), 1)));
   };
 
-  const onSubmit = async (values: any) => {
+  const onSubmit = async (values: AppointmentFormValues) => {
     if (!user || !currentTenant) {
       if (!currentTenant) toast({ title: "Fehler", description: "Kein Tenant ausgewählt.", variant: "destructive" });
       return;
     }
     setLoading(true);
     try {
-      const startTime = values.is_all_day ? values.start_date + "T00:00:00" : values.start_date + "T" + (values.start_time || "09:00") + ":00";
-      const endTime = values.is_all_day ? (values.end_date || values.start_date) + "T23:59:59" : (values.end_date || values.start_date) + "T" + (values.end_time || "10:00") + ":00";
+      const payload = mapCreateAppointmentPayload(values, user.id, currentTenant.id, appointmentGuests.length > 0);
 
-      const { data: appointment, error } = await supabase.from('appointments').insert([{
-        title: values.title, description: values.description, start_time: new Date(startTime).toISOString(), end_time: new Date(endTime).toISOString(),
-        location: values.location, priority: values.priority, category: values.category, status: values.status,
-        reminder_minutes: values.reminder_minutes, user_id: user.id, tenant_id: currentTenant.id,
-        is_all_day: values.is_all_day, has_external_guests: appointmentGuests.length > 0,
-      }]).select().single();
+      const { data: appointment, error } = await supabase.from('appointments').insert([payload]).select().single();
       if (error) throw error;
 
       if (selectedTopicIds.length > 0 && appointment) await saveAppointmentTopics(appointment.id, selectedTopicIds);
       if (selectedContacts.length > 0 && appointment) {
-        await supabase.from('appointment_contacts').insert(selectedContacts.map(c => ({ appointment_id: appointment.id, contact_id: c.id, role: 'participant' })));
+        await supabase.from('appointment_contacts').insert(selectedContacts.map((contact) => ({ appointment_id: appointment.id, contact_id: contact.id, role: 'participant' })));
       }
       if (appointmentGuests.length > 0 && appointment) {
-        await supabase.from('appointment_guests').insert(appointmentGuests.map(g => ({ appointment_id: appointment.id, tenant_id: currentTenant.id, name: g.name, email: g.email, status: 'invited' as const, invitation_token: crypto.randomUUID() + '-' + Date.now() })));
+        await supabase.from('appointment_guests').insert(appointmentGuests.map((guest) => ({ appointment_id: appointment.id, tenant_id: currentTenant.id, name: guest.name, email: guest.email, status: 'invited' as const, invitation_token: crypto.randomUUID() + '-' + Date.now() })));
         try {
           const { error: invErr } = await supabase.functions.invoke('send-appointment-invitation', { body: { appointmentId: appointment.id, sendToAll: true } });
           if (invErr) toast({ title: "Warnung", description: "Einladungen konnten nicht versendet werden.", variant: "destructive" });
           else toast({ title: "Einladungen versendet", description: `Einladungen wurden an ${appointmentGuests.length} Gäste versendet.` });
-        } catch { toast({ title: "Warnung", description: "Einladungen konnten nicht versendet werden.", variant: "destructive" }); }
+        } catch (invitationError: unknown) {
+          toast({ title: "Warnung", description: parseUnknownError(invitationError), variant: "destructive" });
+        }
       }
       toast({ title: "Termin erstellt", description: "Der Termin wurde erfolgreich gespeichert." });
       await queryClient.invalidateQueries({ queryKey: ["calendar-data"] });
       onOpenChange(false);
       navigate("/calendar");
     } catch (error: unknown) {
-      toast({ title: "Fehler beim Erstellen", description: error instanceof Error ? error.message : "Ein Fehler ist aufgetreten.", variant: "destructive" });
+      toast({ title: "Fehler beim Erstellen", description: parseUnknownError(error), variant: "destructive" });
     } finally { setLoading(false); }
   };
 
@@ -165,7 +205,7 @@ export function useCreateAppointment(open: boolean, onOpenChange: (open: boolean
     setShowPollCreator, setShowAdvancedOptions, setUploadedFiles, setAppointmentGuests, setSelectedTopicIds,
     setSelectedContacts,
     handleAllDayChange, handleStartTimeChange, handleLocationDetection, onSubmit,
-    addContact: (c: any) => { if (!selectedContacts.find(x => x.id === c.id)) setSelectedContacts([...selectedContacts, c]); },
+    addContact: (contact: AppointmentContactRef) => { if (!selectedContacts.find((selectedContact) => selectedContact.id === contact.id)) setSelectedContacts([...selectedContacts, contact]); },
     removeContact: (id: string) => setSelectedContacts(selectedContacts.filter(c => c.id !== id)),
     priorityLabels: { low: "Niedrig", medium: "Mittel", high: "Hoch", urgent: "Dringend" } as Record<string, string>,
   };
