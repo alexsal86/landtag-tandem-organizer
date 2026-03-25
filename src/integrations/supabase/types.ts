@@ -3713,8 +3713,13 @@ export type Database = {
           created_at: string
           created_by: string
           id: string
+          next_review_at: string | null
+          open_questions: string | null
           owner_id: string | null
+          positions: string | null
           priority: string
+          review_interval_days: number | null
+          risks_opportunities: string | null
           status: string
           summary: string | null
           tenant_id: string
@@ -3726,8 +3731,13 @@ export type Database = {
           created_at?: string
           created_by: string
           id?: string
+          next_review_at?: string | null
+          open_questions?: string | null
           owner_id?: string | null
+          positions?: string | null
           priority?: string
+          review_interval_days?: number | null
+          risks_opportunities?: string | null
           status?: string
           summary?: string | null
           tenant_id: string
@@ -3739,8 +3749,13 @@ export type Database = {
           created_at?: string
           created_by?: string
           id?: string
+          next_review_at?: string | null
+          open_questions?: string | null
           owner_id?: string | null
+          positions?: string | null
           priority?: string
+          review_interval_days?: number | null
+          risks_opportunities?: string | null
           status?: string
           summary?: string | null
           tenant_id?: string
