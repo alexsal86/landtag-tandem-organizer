@@ -1228,6 +1228,7 @@ export function MatrixClientProvider({ children }: MatrixClientProviderProps): R
     if (mc) {
       // Remove all registered listeners
       for (const { event, handler } of listenersRef.current) {
+        // @ts-expect-error matrix-js-sdk event union type mismatch
         try { mc.removeListener(event, handler); } catch {}
       }
       listenersRef.current = [];
