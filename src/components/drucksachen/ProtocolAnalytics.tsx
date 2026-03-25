@@ -351,7 +351,7 @@ export function ProtocolAnalytics({ protocolId, tenantId }: ProtocolAnalyticsPro
           <CardContent>
             <ResponsiveContainer width="100%" height={300}>
               <LineChart data={analytics.timelineData}>
-                <CartesianGrid strokeDasharray="3 3" />
+                <CartesianGrid strokeDasharray={"3 3" as any} />
                 <XAxis dataKey="date" />
                 <YAxis />
                 <Tooltip />
