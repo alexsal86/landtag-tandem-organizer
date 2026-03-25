@@ -5,25 +5,20 @@ import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Separator } from '@/components/ui/separator';
 import { Download, FileText } from 'lucide-react';
-
-interface Protocol {
-  id: string;
-  protocol_date: string;
-  session_number: string;
-  legislature_period: string;
-  structured_data?: any;
-}
+import type { PlenaryItem, ProtocolEvent, ProtocolRecord, ProtocolStructuredData } from './types';
+import { isPlenaryItem, isProtocolAttachment, isProtocolStructuredData } from './types';
 
 interface ProtocolPlenaryViewProps {
-  protocol: Protocol;
-  structuredData: any;
+  protocol: ProtocolRecord;
+  structuredData: unknown;
 }
 
 export function ProtocolPlenaryView({ protocol, structuredData }: ProtocolPlenaryViewProps) {
-  const sessionData = structuredData?.session || {};
-  const sittingData = structuredData?.sitting || {};
-  const speeches = structuredData?.speeches || [];
-  const tocAgenda = structuredData?.toc?.items || [];
+  const normalizedData: ProtocolStructuredData = isProtocolStructuredData(structuredData) ? structuredData : {};
+  const sessionData = normalizedData.session ?? {};
+  const sittingData = normalizedData.sitting ?? {};
+  const speeches: PlenaryItem[] = (normalizedData.speeches ?? []).filter(isPlenaryItem);
+  const tocAgenda = (normalizedData.toc?.items ?? []).filter(isProtocolAttachment);
 
   const formatDate = (dateStr: string) => {
     if (!dateStr) return 'Datum unbekannt';
@@ -79,16 +74,17 @@ export function ProtocolPlenaryView({ protocol, structuredData }: ProtocolPlenar
     return 'event-default';
   };
 
-  const renderSpeechContent = (text: string, events_flat: any[] = []) => {
+  const renderSpeechContent = (text: string, eventsFlat: ProtocolEvent[] = []) => {
     if (!text) return null;
     
     // Text in Zeilen aufteilen
     const lines = text.split('\n').filter(l => l.trim());
     
     // Events nach line_index gruppieren
-    const eventsByLine = new Map<number, any[]>();
-    events_flat.forEach(event => {
+    const eventsByLine = new Map<number, ProtocolEvent[]>();
+    eventsFlat.forEach(event => {
       const lineIdx = event.line_index;
+      if (typeof lineIdx !== 'number') return;
       if (!eventsByLine.has(lineIdx)) {
         eventsByLine.set(lineIdx, []);
       }
@@ -171,7 +167,7 @@ export function ProtocolPlenaryView({ protocol, structuredData }: ProtocolPlenar
             <CardContent>
               <ScrollArea className="h-[600px]">
                 <div className="space-y-2">
-                  {tocAgenda.map((item: any, idx: number) => (
+                  {tocAgenda.map((item, idx: number) => (
                     <div
                       key={idx}
                       className="protocol-agenda-item cursor-pointer"
@@ -221,9 +217,9 @@ export function ProtocolPlenaryView({ protocol, structuredData }: ProtocolPlenar
                   </div>
                 ) : (
                   <div className="space-y-6">
-                    {speeches.map((speech: any, idx: number) => {
+                    {speeches.map((speech, idx: number) => {
                       // Find corresponding agenda item
-                      const agendaItem = tocAgenda.find((item: any) => 
+                      const agendaItem = tocAgenda.find((item) =>
                         item.number === speech.agenda_item_number
                       );
 

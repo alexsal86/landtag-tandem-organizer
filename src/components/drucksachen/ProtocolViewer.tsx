@@ -32,18 +32,15 @@ import { ProtocolOverview } from './ProtocolOverview';
 import { ProtocolAgenda } from './ProtocolAgenda';
 import { ProtocolRawData } from './ProtocolRawData';
 import { ProtocolPlenaryView } from './ProtocolPlenaryView';
+import type { ProtocolRecord, ProtocolStructuredData } from './types';
 import '@/styles/protocol-viewer.css';
 
-interface Protocol {
-  id: string;
-  protocol_date: string;
-  session_number: string;
-  legislature_period: string;
+type Protocol = ProtocolRecord & {
   original_filename: string;
   processing_status: string;
-  structured_data?: any;
+  structured_data?: ProtocolStructuredData;
   raw_text?: string;
-}
+};
 
 interface TOCAgendaItem {
   number?: number;

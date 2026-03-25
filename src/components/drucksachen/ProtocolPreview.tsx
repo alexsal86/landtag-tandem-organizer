@@ -1,6 +1,7 @@
 import React from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
+import type { BadgeProps } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Separator } from '@/components/ui/separator';
 import { 
@@ -55,7 +56,7 @@ export function ProtocolPreview({ data, onViewDetails }: ProtocolPreviewProps) {
   };
 
   const getItemTypeBadge = (type: string) => {
-    const variants: Record<string, { label: string; variant: any }> = {
+    const variants: Record<string, { label: string; variant: BadgeProps['variant'] }> = {
       regular: { label: 'Regulär', variant: 'default' },
       question: { label: 'Anfrage', variant: 'secondary' },
       motion: { label: 'Antrag', variant: 'outline' },

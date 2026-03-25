@@ -13,9 +13,12 @@ import { Upload, FileText, X, CheckCircle, AlertCircle, Zap, FileJson } from 'lu
 import { toast } from 'sonner';
 import { parsePDFFile, analyzeProtocolStructure } from '@/utils/pdfParser';
 import { validateJSONProtocol, parseJSONProtocol, getJSONProtocolPreview } from '@/utils/jsonProtocolParser';
+import type { ParsedProtocol } from '@/utils/pdfParser';
+import type { JSONProtocolPreview, UploadResult } from './types';
+import { isUploadResult } from './types';
 
 interface DrucksachenUploadProps {
-  onUploadSuccess: (protocol: any) => void;
+  onUploadSuccess: (protocol: UploadResult) => void;
   onProtocolsRefresh: () => void;
 }
 
@@ -26,7 +29,7 @@ interface UploadFile {
   error?: string;
   protocolId?: string;
   fileType: 'pdf' | 'json';
-  preview?: any;
+  preview?: JSONProtocolPreview;
 }
 
 export function DrucksachenUpload({ onUploadSuccess, onProtocolsRefresh }: DrucksachenUploadProps) {
@@ -179,8 +182,13 @@ export function DrucksachenUpload({ onUploadSuccess, onProtocolsRefresh }: Druck
         i === index ? { ...f, status: 'processing', progress: 50 } : f
       ));
       
-      let parsedData: { raw_text: string; agendaItems: any[]; speeches: any[]; sessions: any[] } | null = null;
-      let pdfMetadata: any = null;
+      let parsedData: {
+        raw_text: string;
+        agendaItems: ReturnType<typeof analyzeProtocolStructure>['agendaItems'];
+        speeches: ReturnType<typeof analyzeProtocolStructure>['speeches'];
+        sessions: ReturnType<typeof analyzeProtocolStructure>['sessions'];
+      } | null = null;
+      let pdfMetadata: ParsedProtocol['metadata'] | null = null;
       try {
         debugConsole.log('Starting local PDF analysis...');
         const pdfData = await parsePDFFile(fileData.file);
@@ -283,6 +291,9 @@ export function DrucksachenUpload({ onUploadSuccess, onProtocolsRefresh }: Druck
         i === index ? { ...f, status: 'completed', protocolId: protocolData.id, progress: 100 } : f
       ));
 
+      if (!isUploadResult(protocolData)) {
+        throw new Error('Ungültige Upload-Response vom Server');
+      }
       onUploadSuccess(protocolData);
       onProtocolsRefresh(); // Refresh the list
       
@@ -325,7 +336,7 @@ export function DrucksachenUpload({ onUploadSuccess, onProtocolsRefresh }: Druck
 
       // Parse JSON file
       const text = await fileData.file.text();
-      const jsonData = JSON.parse(text);
+      const jsonData: unknown = JSON.parse(text);
       
       // Validate again (safety check)
       if (!validateJSONProtocol(jsonData)) {
@@ -407,6 +418,9 @@ export function DrucksachenUpload({ onUploadSuccess, onProtocolsRefresh }: Druck
       ));
 
       toast.success(`JSON-Protokoll erfolgreich importiert: ${parsedProtocol.structured_data.speeches.length} Reden`);
+      if (!isUploadResult(protocolData)) {
+        throw new Error('Ungültige Upload-Response vom Server');
+      }
       onUploadSuccess(protocolData);
       onProtocolsRefresh();
       
