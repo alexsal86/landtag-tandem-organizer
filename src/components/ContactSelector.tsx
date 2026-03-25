@@ -58,7 +58,7 @@ const mergeWithUsageStats = (contacts: Contact[], usageData: ContactUsageStat[] 
     ...c,
     contact_type: c.contact_type as 'person' | 'organization',
     usage_count: usageData?.find(u => u.contact_id === c.id)?.usage_count || 0,
-    last_used_at: usageData?.find(u => u.contact_id === c.id)?.last_used_at,
+    last_used_at: usageData?.find(u => u.contact_id === c.id)?.last_used_at ?? undefined,
   }));
 };
 

@@ -106,15 +106,15 @@ export function CalendarView() {
 
       if (!active || error || !data) { handledHighlightRef.current = highlightId; return; }
 
-      const startDate = new Date(data.start_time);
-      const endDate = data.end_time ? new Date(data.end_time) : startDate;
+      const startDate = new Date(data.start_time as string);
+      const endDate = data.end_time ? new Date(data.end_time as string) : startDate;
       const allDay = data.all_day || data.is_all_day || false;
 
       handledHighlightRef.current = highlightId;
       setCurrentDate(startDate);
       setSelectedAppointment({
         id: isExt ? `external-${data.id}` : data.id,
-        title: isExt ? `📅 ${data.title}` : data.title,
+        title: isExt ? `📅 ${data.title}` : (data.title as string),
         time: allDay ? "Ganztägig" : startDate.toLocaleTimeString("de-DE", { hour: "2-digit", minute: "2-digit" }),
         duration: "",
         date: startDate,
