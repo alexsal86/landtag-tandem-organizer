@@ -13,18 +13,18 @@ import type { MatrixCreateRoomOptions, MatrixMessage, MatrixReplyPreview } from 
 
 // ─── Interfaces ──────────────────────────────────────────────────────────────
 
-interface MatrixCredentials {
+export interface MatrixCredentials {
   userId: string;
   accessToken: string;
   homeserverUrl: string;
   deviceId?: string;
 }
 
-interface ConnectOptions {
+export interface ConnectOptions {
   uiaPassword?: string; // Nicht persistent gespeichert, aber temporär im Speicher/Request für UIA verwendet.
 }
 
-interface MatrixRoom {
+export interface MatrixRoom {
   roomId: string;
   name: string;
   lastMessage?: string;
@@ -35,7 +35,7 @@ interface MatrixRoom {
   isEncrypted: boolean;
 }
 
-interface MatrixE2EEDiagnostics {
+export interface MatrixE2EEDiagnostics {
   secureContext: boolean;
   crossOriginIsolated: boolean;
   sharedArrayBuffer: boolean;
@@ -47,7 +47,7 @@ interface MatrixE2EEDiagnostics {
   coiBlockedReason: 'iframe' | 'preview-host' | 'iframe-preview' | null;
 }
 
-interface MatrixSasVerificationState {
+export interface MatrixSasVerificationState {
   transactionId?: string;
   otherDeviceId?: string;
   emojis: Array<{ symbol: string; description: string }>;
@@ -58,6 +58,27 @@ interface MatrixSasVerificationState {
 }
 
 // ─── Constants ───────────────────────────────────────────────────────────────
+
+export type MatrixRoomId = string;
+
+export interface MatrixRoomHistoryState {
+  isLoadingMore: boolean;
+  hasMoreHistory: boolean;
+}
+
+export type MatrixRoomMessagesMap = Map<MatrixRoomId, MatrixMessage[]>;
+export type MatrixRoomHistoryMap = Map<MatrixRoomId, MatrixRoomHistoryState>;
+export type MatrixTypingUsersMap = Map<MatrixRoomId, string[]>;
+
+export type MatrixConnectionState = 'disconnected' | 'connecting' | 'connected' | 'error';
+
+export interface MatrixClientSessionState {
+  credentials: MatrixCredentials | null;
+  connectionState: MatrixConnectionState;
+  connectionError: string | null;
+  cryptoEnabled: boolean;
+  e2eeDiagnostics: MatrixE2EEDiagnostics;
+}
 
 const MAX_CACHED_MESSAGES = 200;
 const MAX_CACHED_ROOMS = 60;
@@ -267,7 +288,7 @@ function setupVerifierListeners(
 
 // ─── Context type ────────────────────────────────────────────────────────────
 
-interface MatrixClientContextType {
+export interface MatrixClientContextType {
   client: sdk.MatrixClient | null;
   isConnected: boolean;
   isConnecting: boolean;
@@ -282,9 +303,9 @@ interface MatrixClientContextType {
   refreshMessages: (roomId: string, limit?: number) => void;
   loadOlderMessages: (roomId: string, pages?: number) => Promise<void>;
   totalUnreadCount: number;
-  roomMessages: Map<string, MatrixMessage[]>;
-  roomHistoryState: Map<string, { isLoadingMore: boolean; hasMoreHistory: boolean }>;
-  typingUsers: Map<string, string[]>;
+  roomMessages: MatrixRoomMessagesMap;
+  roomHistoryState: MatrixRoomHistoryMap;
+  typingUsers: MatrixTypingUsersMap;
   sendTypingNotification: (roomId: string, isTyping: boolean) => void;
   sendReadReceiptForLatestVisibleEvent: (roomId: string) => Promise<void>;
   addReaction: (roomId: string, eventId: string, emoji: string) => Promise<void>;
@@ -366,7 +387,7 @@ const MatrixClientContext = createContext<MatrixClientContextType>(defaultMatrix
 
 // ─── Provider ────────────────────────────────────────────────────────────────
 
-export function MatrixClientProvider({ children }: { children: ReactNode }) {
+export function MatrixClientProvider({ children }: { children: ReactNode }): React.JSX.Element {
   const { user } = useAuth();
   const { currentTenant } = useTenant();
   const { setLiveUnreadCount } = useMatrixUnread();
@@ -379,11 +400,11 @@ export function MatrixClientProvider({ children }: { children: ReactNode }) {
   const [cryptoEnabled, setCryptoEnabled] = useState(false);
   const [rooms, setRooms] = useState<MatrixRoom[]>([]);
   const [credentials, setCredentials] = useState<MatrixCredentials | null>(null);
-  const [messages, setMessages] = useState<Map<string, MatrixMessage[]>>(new Map());
+  const [messages, setMessages] = useState<MatrixRoomMessagesMap>(new Map());
   const messagesRef = useRef(messages);
   messagesRef.current = messages;
-  const [typingUsers, setTypingUsers] = useState<Map<string, string[]>>(new Map());
-  const [roomHistoryState, setRoomHistoryState] = useState<Map<string, { isLoadingMore: boolean; hasMoreHistory: boolean }>>(new Map());
+  const [typingUsers, setTypingUsers] = useState<MatrixTypingUsersMap>(new Map());
+  const [roomHistoryState, setRoomHistoryState] = useState<MatrixRoomHistoryMap>(new Map());
   const [activeSasVerification, setActiveSasVerification] = useState<MatrixSasVerificationState | null>(null);
   const [lastVerificationError, setLastVerificationError] = useState<string | null>(null);
   const [e2eeDiagnostics, setE2eeDiagnostics] = useState<MatrixE2EEDiagnostics>({
@@ -419,7 +440,7 @@ export function MatrixClientProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const upsertRoomMessages = useCallback((
-    prev: Map<string, MatrixMessage[]>,
+    prev: MatrixRoomMessagesMap,
     roomId: string,
     updater: (current: MatrixMessage[]) => MatrixMessage[],
   ) => {
@@ -1675,6 +1696,6 @@ export function MatrixClientProvider({ children }: { children: ReactNode }) {
   );
 }
 
-export function useMatrixClient() {
+export function useMatrixClient(): MatrixClientContextType {
   return useContext(MatrixClientContext);
 }
