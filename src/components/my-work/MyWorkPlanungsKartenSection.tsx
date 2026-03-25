@@ -15,20 +15,7 @@ import { useToast } from "@/hooks/use-toast";
 import { format } from "date-fns";
 import { de } from "date-fns/locale";
 import { cn } from "@/lib/utils";
-
-interface Planning {
-  id: string;
-  title: string;
-  description: string | null;
-  location: string | null;
-  confirmed_date: string | null;
-  created_at: string;
-  user_id: string;
-  isCollaborator: boolean;
-  is_completed?: boolean;
-  checklistProgress: { completed: number; total: number };
-  checklistItems: { id: string; title: string; is_completed: boolean; order_index: number }[];
-}
+import type { EventPlanningCollaborationRow, EventPlanningRow, PlanningCard } from "@/components/my-work/types";
 
 export function MyWorkPlanungsKartenSection() {
   const { user } = useAuth();
@@ -36,7 +23,7 @@ export function MyWorkPlanungsKartenSection() {
   const { toast } = useToast();
   const navigate = useNavigate();
 
-  const [plannings, setPlannings] = useState<Planning[]>([]);
+  const [plannings, setPlannings] = useState<PlanningCard[]>([]);
   const [loading, setLoading] = useState(true);
   const [expandedPlanningIds, setExpandedPlanningIds] = useState<Set<string>>(new Set());
   const [newChecklistTitles, setNewChecklistTitles] = useState<Record<string, string>>({});
@@ -63,6 +50,34 @@ export function MyWorkPlanungsKartenSection() {
     };
   }, [user?.id, currentTenant?.id]);
 
+  const normalizePlanningCard = (planning: EventPlanningRow, isCollaborator: boolean): PlanningCard => {
+    const checklistItems = (planning.event_planning_checklist_items ?? [])
+      .map((item) => ({
+        id: item.id,
+        title: item.title,
+        is_completed: Boolean(item.is_completed),
+        order_index: item.order_index ?? 0,
+      }))
+      .sort((a, b) => a.order_index - b.order_index);
+
+    return {
+      id: planning.id,
+      title: planning.title,
+      description: planning.description,
+      location: planning.location,
+      confirmed_date: planning.confirmed_date,
+      created_at: planning.created_at,
+      user_id: planning.user_id,
+      isCollaborator,
+      is_completed: Boolean(planning.is_completed),
+      checklistProgress: {
+        completed: checklistItems.filter((item) => item.is_completed).length,
+        total: checklistItems.length,
+      },
+      checklistItems,
+    };
+  };
+
   const loadPlannings = async () => {
     if (!user) return;
     try {
@@ -83,24 +98,22 @@ export function MyWorkPlanungsKartenSection() {
         .eq("user_id", user.id);
       if (collabError) throw collabError;
 
-      const formatPlanning = (p: any, isCollab: boolean): Planning => ({
-        id: p.id, title: p.title, description: p.description, location: p.location,
-        confirmed_date: p.confirmed_date, created_at: p.created_at, user_id: p.user_id,
-        isCollaborator: isCollab, is_completed: p.is_completed ?? false,
-        checklistProgress: {
-          completed: (p.event_planning_checklist_items || []).filter((i: any) => i.is_completed).length,
-          total: (p.event_planning_checklist_items || []).length,
-        },
-        checklistItems: (p.event_planning_checklist_items || [])
-          .sort((a: any, b: any) => (a.order_index ?? 0) - (b.order_index ?? 0))
-          .map((item: any) => ({ id: item.id, title: item.title, is_completed: item.is_completed, order_index: item.order_index ?? 0 })),
-      });
+      const ownPlanningRows = (ownPlannings ?? []) as EventPlanningRow[];
+      const collaborationRows = (collaborations ?? []) as EventPlanningCollaborationRow[];
 
-      const allPlannings = new Map<string, Planning>();
-      (ownPlannings || []).forEach(p => allPlannings.set(p.id, formatPlanning(p, false)));
-      (collaborations || [])
-        .filter((c: any) => c.event_plannings && c.event_plannings.user_id !== user.id && !c.event_plannings.is_archived)
-        .forEach((c: any) => { if (!allPlannings.has(c.event_plannings.id)) allPlannings.set(c.event_plannings.id, formatPlanning(c.event_plannings, true)); });
+      const allPlannings = new Map<string, PlanningCard>();
+      ownPlanningRows.forEach((planning) => allPlannings.set(planning.id, normalizePlanningCard(planning, false)));
+      collaborationRows
+        .filter((collaboration) =>
+          collaboration.event_plannings &&
+          collaboration.event_plannings.user_id !== user.id &&
+          !collaboration.event_plannings.is_archived,
+        )
+        .forEach((collaboration) => {
+          const planning = collaboration.event_plannings;
+          if (!planning || allPlannings.has(planning.id)) return;
+          allPlannings.set(planning.id, normalizePlanningCard(planning, true));
+        });
 
       const sorted = Array.from(allPlannings.values()).sort((a, b) => {
         if ((a.is_completed || false) !== (b.is_completed || false)) return a.is_completed ? 1 : -1;
@@ -122,7 +135,7 @@ export function MyWorkPlanungsKartenSection() {
     });
   };
 
-  const addChecklistItem = async (planning: Planning) => {
+  const addChecklistItem = async (planning: PlanningCard) => {
     const title = (newChecklistTitles[planning.id] || "").trim();
     if (!title) return;
     try {

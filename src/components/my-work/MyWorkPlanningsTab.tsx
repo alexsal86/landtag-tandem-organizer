@@ -15,28 +15,7 @@ import { useToast } from "@/hooks/use-toast";
 import { format } from "date-fns";
 import { de } from "date-fns/locale";
 import { cn } from "@/lib/utils";
-
-interface Planning {
-  id: string;
-  title: string;
-  description: string | null;
-  location: string | null;
-  confirmed_date: string | null;
-  created_at: string;
-  user_id: string;
-  isCollaborator: boolean;
-  is_completed?: boolean;
-  checklistProgress: {
-    completed: number;
-    total: number;
-  };
-  checklistItems: {
-    id: string;
-    title: string;
-    is_completed: boolean;
-    order_index: number;
-  }[];
-}
+import type { EventPlanningCollaborationRow, EventPlanningRow, PlanningCard } from "@/components/my-work/types";
 
 export function MyWorkPlanningsTab() {
   const { user } = useAuth();
@@ -45,7 +24,7 @@ export function MyWorkPlanningsTab() {
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
   
-  const [plannings, setPlannings] = useState<Planning[]>([]);
+  const [plannings, setPlannings] = useState<PlanningCard[]>([]);
   const [loading, setLoading] = useState(true);
   const [expandedPlanningIds, setExpandedPlanningIds] = useState<Set<string>>(new Set());
   const [newChecklistTitles, setNewChecklistTitles] = useState<Record<string, string>>({});
@@ -85,6 +64,34 @@ export function MyWorkPlanningsTab() {
       supabase.removeChannel(channel);
     };
   }, [user?.id, currentTenant?.id]);
+
+  const normalizePlanningCard = (planning: EventPlanningRow, isCollaborator: boolean): PlanningCard => {
+    const checklistItems = (planning.event_planning_checklist_items ?? [])
+      .map((item) => ({
+        id: item.id,
+        title: item.title,
+        is_completed: Boolean(item.is_completed),
+        order_index: item.order_index ?? 0,
+      }))
+      .sort((a, b) => a.order_index - b.order_index);
+
+    return {
+      id: planning.id,
+      title: planning.title,
+      description: planning.description,
+      location: planning.location,
+      confirmed_date: planning.confirmed_date,
+      created_at: planning.created_at,
+      user_id: planning.user_id,
+      isCollaborator,
+      is_completed: Boolean(planning.is_completed),
+      checklistProgress: {
+        completed: checklistItems.filter((item) => item.is_completed).length,
+        total: checklistItems.length,
+      },
+      checklistItems,
+    };
+  };
 
   const loadPlannings = async () => {
     if (!user) return;
@@ -144,59 +151,19 @@ export function MyWorkPlanningsTab() {
       if (collabError) throw collabError;
 
       // Format own plannings
-      const formattedOwn: Planning[] = (ownPlannings || []).map((p: any) => ({
-        id: p.id,
-        title: p.title,
-        description: p.description,
-        location: p.location,
-        confirmed_date: p.confirmed_date,
-        created_at: p.created_at,
-        user_id: p.user_id,
-        isCollaborator: false,
-        is_completed: p.is_completed ?? false,
-        checklistProgress: {
-          completed: (p.event_planning_checklist_items || []).filter((i: any) => i.is_completed).length,
-          total: (p.event_planning_checklist_items || []).length,
-        },
-        checklistItems: (p.event_planning_checklist_items || [])
-          .sort((a: any, b: any) => (a.order_index ?? 0) - (b.order_index ?? 0))
-          .map((item: any) => ({
-            id: item.id,
-            title: item.title,
-            is_completed: item.is_completed,
-            order_index: item.order_index ?? 0,
-          })),
-      }));
+      const ownPlanningRows = (ownPlannings ?? []) as EventPlanningRow[];
+      const collaborationRows = (collaborations ?? []) as EventPlanningCollaborationRow[];
+      const formattedOwn: PlanningCard[] = ownPlanningRows.map((planning) => normalizePlanningCard(planning, false));
 
       // Format collaboration plannings (filter out archived)
-      const formattedCollab: Planning[] = (collaborations || [])
-        .filter((c: any) => c.event_plannings && c.event_plannings.user_id !== user.id && !c.event_plannings.is_archived)
-        .map((c: any) => ({
-          id: c.event_plannings.id,
-          title: c.event_plannings.title,
-          description: c.event_plannings.description,
-          location: c.event_plannings.location,
-          confirmed_date: c.event_plannings.confirmed_date,
-          created_at: c.event_plannings.created_at,
-          user_id: c.event_plannings.user_id,
-          isCollaborator: true,
-          is_completed: c.event_plannings.is_completed ?? false,
-          checklistProgress: {
-            completed: (c.event_plannings.event_planning_checklist_items || []).filter((i: any) => i.is_completed).length,
-            total: (c.event_plannings.event_planning_checklist_items || []).length,
-          },
-          checklistItems: (c.event_plannings.event_planning_checklist_items || [])
-            .sort((a: any, b: any) => (a.order_index ?? 0) - (b.order_index ?? 0))
-            .map((item: any) => ({
-              id: item.id,
-              title: item.title,
-              is_completed: item.is_completed,
-              order_index: item.order_index ?? 0,
-            })),
-        }));
+      const formattedCollab: PlanningCard[] = collaborationRows.flatMap((collaboration) => {
+        const planning = collaboration.event_plannings;
+        if (!planning || planning.user_id === user.id || planning.is_archived) return [];
+        return [normalizePlanningCard(planning, true)];
+      });
 
       // Merge and deduplicate
-      const allPlannings = new Map<string, Planning>();
+      const allPlannings = new Map<string, PlanningCard>();
       formattedOwn.forEach(p => allPlannings.set(p.id, p));
       formattedCollab.forEach(p => {
         if (!allPlannings.has(p.id)) {
@@ -230,7 +197,7 @@ export function MyWorkPlanningsTab() {
     });
   };
 
-  const addChecklistItem = async (planning: Planning) => {
+  const addChecklistItem = async (planning: PlanningCard) => {
     const title = (newChecklistTitles[planning.id] || "").trim();
     if (!title) return;
 
