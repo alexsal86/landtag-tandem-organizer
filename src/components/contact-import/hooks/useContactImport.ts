@@ -128,8 +128,8 @@ export function useContactImport() {
                 }
               });
             }
-            if (vcard.url) d["Website"] = vcard.url.valueOf();
-            if (vcard.note) d["Notizen"] = vcard.note.valueOf();
+            if ((vcard as any).url) d["Website"] = String((vcard as any).url.valueOf());
+            if ((vcard as any).note) d["Notizen"] = String((vcard as any).note.valueOf());
             return d;
           });
           setData(parsed); autoMapFields(Object.keys(parsed[0] || {})); setStep("mapping");
