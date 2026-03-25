@@ -53,7 +53,7 @@ export function CalendarSyncDebug() {
   const validateCalendar = async () => {
     setLoading(true);
     try {
-      const { data, error } = await supabase.functions.invoke<ValidationResult>('ics-validation', {
+      const { data, error } = await (supabase.functions as any).invoke('ics-validation', {
         body: { calendar_id: calendarId }
       });
 
