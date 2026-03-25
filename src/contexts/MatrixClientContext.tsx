@@ -166,7 +166,7 @@ interface MatrixVerificationRequest {
   off?: (event: 'change', handler: () => void) => void;
 }
 
-interface MatrixReadMarkersClient extends sdk.MatrixClient {
+interface MatrixReadMarkersClient extends Omit<sdk.MatrixClient, 'setRoomReadMarkers'> {
   setRoomReadMarkers: (roomId: string, eventId: string, rrEventId: string) => Promise<unknown>;
 }
 
