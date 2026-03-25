@@ -90,3 +90,10 @@ Verwende bevorzugt die zentralen Helfer aus `src/utils/typeSafety.ts`:
 - Global ist `@typescript-eslint/no-explicit-any` aktuell auf **`warn`** gesetzt, damit die Migration inkrementell erfolgen kann.
 - Für spätere Verschärfung sind Datei-Scopes für `error` bereits im Lint-Setup vorbereitet, aber standardmäßig deaktiviert.
 - Aktivierung erfolgt erst, wenn Any-Delta, CI-Stabilität und Team-Kapazität für den jeweiligen Scope dokumentiert sind.
+
+## Abschlusskriterium für `any`
+
+- Zielbild: **keine unbegründeten `any`** im produktiven Scope.
+- Zulässig sind ausschließlich dokumentierte Interop-Ausnahmen mit Inline-Marker `INTEROP-ANY: <Grund> | <Ticket> | <Sunset-Termin>`.
+- Jeder PR muss ein Pflichtfeld **„Any-Delta vorher/nachher“** ausfüllen (Base, Head, Delta).
+- Nach jedem Merge wird die Baseline neu gemessen (`report:any-usage:total`, `report:any-usage:clusters`, `report:any-usage:files`) und in `docs/strict-progress.md` nachgeführt.
