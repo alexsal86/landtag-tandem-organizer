@@ -347,7 +347,7 @@ export function GlobalDaySlipPanel() {
                 initialNodes={ds.todayData.nodes}
                 dayKey={ds.todayKey}
                 resolveMode={ds.resolveMode}
-                editorConfig={ds.editorConfig}
+                editorConfig={ds.editorConfig as any}
                 onEditorChange={ds.onEditorChange}
                 onEditorReady={ds.handleEditorReady}
                 onEditorClick={handleEditorClick}

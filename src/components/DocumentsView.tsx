@@ -476,7 +476,7 @@ export function DocumentsView() {
           showMoveFolderDialog={dialogState.showMoveFolderDialog} setShowMoveFolderDialog={setShowMoveFolderDialog}
           selectedDocument={selectedDocument} setSelectedDocument={setSelectedDocument}
           moveToFolderId={moveToFolderId} setMoveToFolderId={setMoveToFolderId}
-          onMoveDocument={() => ops.handleMoveDocument(selectedDocument, { type: "move-document", documentId: selectedDocument?.id || "", folderId: moveToFolderId }, () => { setShowMoveFolderDialog(false); setSelectedDocument(null); setMoveToFolderId(""); })}
+          onMoveDocument={() => ops.handleMoveDocument(selectedDocument, { type: "move-document", documentId: selectedDocument?.id || "", folderId: moveToFolderId }, () => { setShowMoveFolderDialog(false); setSelectedDocument(null); setMoveToFolderId(""); }) as any}
           taskDialogMode={dialogState.taskDialogMode} taskTitle={ops.taskTitle} setTaskTitle={ops.setTaskTitle}
           taskDescription={ops.taskDescription} setTaskDescription={ops.setTaskDescription}
           parentTaskId={ops.parentTaskId} setParentTaskId={ops.setParentTaskId}

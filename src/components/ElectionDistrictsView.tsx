@@ -115,7 +115,7 @@ export const ElectionDistrictsView = () => {
               <SimpleLeafletMap
                 districts={displayedDistricts}
                 onDistrictClick={handleDistrictClick}
-                selectedDistrict={selectedDistrict}
+                selectedDistrict={selectedDistrict ?? undefined}
                 showPartyAssociations={showPartyAssociations}
               />
             </ErrorBoundary>
