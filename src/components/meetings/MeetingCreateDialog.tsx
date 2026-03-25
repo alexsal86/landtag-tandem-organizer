@@ -141,7 +141,7 @@ export function MeetingCreateDialog({
               <label className="text-sm font-medium">Datum</label>
               <Popover>
                 <PopoverTrigger asChild>
-                  <Button variant="outline" className="w-full justify-start text-left font-normal">
+                  <Button type="button" variant="outline" className="w-full justify-start text-left font-normal">
                     <CalendarIcon className="mr-2 h-4 w-4" />
                     {format(meeting.meeting_date, "PPP", { locale: de })}
                   </Button>

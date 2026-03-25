@@ -554,7 +554,7 @@ export function EventPlanningDetailView(data: EventPlanningDataReturn) {
                             <Label>Datum</Label>
                             <Popover>
                               <PopoverTrigger asChild>
-                                <Button variant="outline" className={cn("w-full justify-start text-left font-normal", !selectedDate && "text-muted-foreground")}>
+                                <Button type="button" variant="outline" className={cn("w-full justify-start text-left font-normal", !selectedDate && "text-muted-foreground")}>
                                   <CalendarIcon className="mr-2 h-4 w-4" />{selectedDate ? format(selectedDate, "dd.MM.yyyy", { locale: de }) : "Datum wählen"}
                                 </Button>
                               </PopoverTrigger>
