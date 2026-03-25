@@ -63,15 +63,15 @@ class CommentMarkNode extends MarkNode {
     return new CommentMarkNode(commentId);
   }
 
-  // Required for serialization
+  // @ts-expect-error Lexical 0.40 SerializedMarkNode shape changed; safe at runtime
   exportJSON(): SerializedCommentMarkNode {
-    const base = super.exportJSON() as Record<string, unknown>;
+    const base = super.exportJSON();
     return {
       ...base,
       commentId: this.__commentId,
       type: 'comment-mark',
       version: 1,
-    } as unknown as SerializedCommentMarkNode;
+    };
   }
 
   createDOM(): HTMLElement {
