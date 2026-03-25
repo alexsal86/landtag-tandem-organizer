@@ -9,10 +9,9 @@ import {
 } from "lucide-react";
 import { useMatrixUnread } from "@/contexts/MatrixUnreadContext";
 import { useNavigationNotifications } from "@/hooks/useNavigationNotifications";
-import { useAuth } from "@/hooks/useAuth";
+import { useResolvedUserRole } from "@/hooks/useResolvedUserRole";
 import { useAppSettings } from "@/hooks/useAppSettings";
 import { useFavicon } from "@/hooks/useFavicon";
-import { supabase } from "@/integrations/supabase/client";
 import { cn } from "@/lib/utils";
 import {
   Tooltip,
@@ -37,15 +36,11 @@ export function AppNavigation({
   onSectionChange, 
   isMobile
 }: NavigationProps) {
-  const { user } = useAuth();
   const { navigationCounts, markNavigationAsVisited } = useNavigationNotifications();
   const { totalUnreadCount: matrixUnreadCount } = useMatrixUnread();
+  const { role: userRole, hasAdminAccess, loading: isRoleLoading } = useResolvedUserRole();
   const appSettings = useAppSettings();
   useFavicon(appSettings.app_logo_url);
-  
-  const [hasAdminAccess, setHasAdminAccess] = useState(false);
-  const [userRole, setUserRole] = useState<string | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
   
   // Animation states
   const [clickedItem, setClickedItem] = useState<string | null>(null);
@@ -53,35 +48,6 @@ export function AppNavigation({
   const [previousBadges, setPreviousBadges] = useState<Record<string, number>>({});
   const [newBadgeItems, setNewBadgeItems] = useState<Set<string>>(new Set());
   const [helpDialogOpen, setHelpDialogOpen] = useState(false);
-
-  // Check admin role and user role
-  useEffect(() => {
-    if (!user) {
-      setIsLoading(false);
-      return;
-    }
-    
-    const checkRoles = async () => {
-      setIsLoading(true);
-      const { data: roleData } = await supabase
-        .from('user_roles')
-        .select('role')
-        .eq('user_id', user.id)
-        .maybeSingle();
-      
-      setUserRole(roleData?.role || null);
-      
-      const [{ data: isSuperAdmin }, { data: isBueroleitung }] = await Promise.all([
-        supabase.rpc('is_admin', { _user_id: user.id }),
-        supabase.rpc('has_role', { _user_id: user.id, _role: 'bueroleitung' })
-      ]);
-      
-      setHasAdminAccess(!!(isSuperAdmin || isBueroleitung));
-      setIsLoading(false);
-    };
-    
-    checkRoles();
-  }, [user]);
 
   // Track badge changes for animations
   useEffect(() => {
@@ -177,7 +143,7 @@ export function AppNavigation({
   };
 
   // Skeleton loader
-  if (isLoading) {
+  if (isRoleLoading) {
     return (
       <TooltipProvider delayDuration={300}>
         <nav className="flex flex-col h-screen bg-[hsl(var(--nav))] text-[hsl(var(--nav-foreground))] border-r border-[hsl(var(--nav-foreground)/0.1)] shrink-0 w-[72px]">

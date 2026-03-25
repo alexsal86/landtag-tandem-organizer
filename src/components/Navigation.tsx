@@ -4,13 +4,10 @@ import { NavigationBadge } from "./NavigationBadge";
 import { useNavigationNotifications } from "@/hooks/useNavigationNotifications";
 import { useNotifications } from "@/contexts/NotificationContext";
 import { HoverCard, HoverCardContent, HoverCardTrigger } from "@/components/ui/hover-card";
-import { useState, useEffect } from "react";
 import { useFavicon } from "@/hooks/useFavicon";
 import { cn } from "@/lib/utils";
-import { useAuth } from "@/hooks/useAuth";
+import { useResolvedUserRole } from "@/hooks/useResolvedUserRole";
 import { useAppSettings } from "@/hooks/useAppSettings";
-import { useToast } from "@/components/ui/use-toast";
-import { supabase } from "@/integrations/supabase/client";
 import { Badge } from "@/components/ui/badge";
 import {
   Sidebar,
@@ -32,15 +29,11 @@ interface NavigationProps {
 }
 
 export function Navigation({ activeSection, onSectionChange }: NavigationProps) {
-  const { user } = useAuth();
-  const { toast } = useToast();
   const { navigationCounts, hasNewSinceLastVisit, markNavigationAsVisited } = useNavigationNotifications();
   const { notifications } = useNotifications();
   const { totalUnreadCount: matrixUnreadCount } = useMatrixUnread();
   const appSettings = useAppSettings();
-  
-  const [isAdmin, setIsAdmin] = useState(false);
-  const [hasAdminAccess, setHasAdminAccess] = useState(false);
+  const { isAdminClaim, hasAdminAccess } = useResolvedUserRole();
   
   const handleNavigationClick = async (sectionId: string) => {
     await markNavigationAsVisited(sectionId);
@@ -68,30 +61,13 @@ export function Navigation({ activeSection, onSectionChange }: NavigationProps) 
     { id: "eventplanning", label: "Planungen", icon: CalendarPlus },
     { id: "karten", label: "Karten", icon: MapPin },
     { id: "documents", label: "Dokumente", icon: FileText },
-    ...(isAdmin ? [{ id: "drucksachen", label: "Drucksachen", icon: Archive }] : []),
+    ...(isAdminClaim ? [{ id: "drucksachen", label: "Drucksachen", icon: Archive }] : []),
     { id: "time", label: "Zeiterfassung", icon: Clock, adminOnly: false },
     { id: "employee", label: "Mitarbeiter", icon: Users },
     { id: "chat", label: "Chat", icon: MessageSquareText },
   ];
 
   useFavicon(appSettings.app_logo_url);
-
-  // Check admin role
-  useEffect(() => {
-    if (!user) return;
-    
-    const checkAdminAccess = async () => {
-      const [{ data: isSuperAdmin }, { data: isBueroleitung }] = await Promise.all([
-        supabase.rpc('is_admin', { _user_id: user.id }),
-        supabase.rpc('has_role', { _user_id: user.id, _role: 'bueroleitung' })
-      ]);
-      
-      setIsAdmin(!!isSuperAdmin);
-      setHasAdminAccess(!!(isSuperAdmin || isBueroleitung));
-    };
-    
-    checkAdminAccess();
-  }, [user]);
 
   // Real-time presence tracking is now handled in useUserStatus hook
 
@@ -162,7 +138,7 @@ export function Navigation({ activeSection, onSectionChange }: NavigationProps) 
           <SidebarGroupContent>
             <SidebarMenu>
               {navigationItems.filter(item => 
-                item.id !== "time" || !isAdmin
+                item.id !== "time" || !isAdminClaim
               ).map((item) => {
                 return (
                 <SidebarMenuItem key={item.id}>

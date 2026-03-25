@@ -21,18 +21,19 @@ import { Input } from "@/components/ui/input";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from "@/components/ui/dialog";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
+import { useResolvedUserRole } from "@/hooks/useResolvedUserRole";
 import { supabase } from "@/integrations/supabase/client";
 import type { Database } from "@/integrations/supabase/types";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 
 type ProfileRow = Database["public"]["Tables"]["profiles"]["Row"];
-type UserRoleRow = Pick<Database["public"]["Tables"]["user_roles"]["Row"], "role">;
 
 export function SettingsView(): React.JSX.Element {
   const { theme, setTheme } = useTheme();
   const { toast } = useToast();
   const navigate = useNavigate();
   const { user } = useAuth();
+  const { isAdminClaim, role } = useResolvedUserRole();
   
   const [notifications, setNotifications] = useState<boolean>(true);
   const [emailAlerts, setEmailAlerts] = useState<boolean>(false);
@@ -40,7 +41,6 @@ export function SettingsView(): React.JSX.Element {
   const [autoSave, setAutoSave] = useState<boolean>(true);
   const [language, setLanguage] = useState<string>("de");
   const [timezone, setTimezone] = useState<string>("Europe/Berlin");
-  const [isAdmin, setIsAdmin] = useState<boolean>(false);
   const [userProfile, setUserProfile] = useState<ProfileRow | null>(null);
   
   // Password change state
@@ -53,38 +53,27 @@ export function SettingsView(): React.JSX.Element {
   // My Work Settings
   const { badgeDisplayMode, updateBadgeDisplayMode, isLoading: myWorkSettingsLoading } = useMyWorkSettings();
 
-  const [userRole, setUserRole] = useState<string>('Benutzer');
+  const roleLabels: Record<string, string> = {
+    super_admin: "Super-Admin",
+    admin: "Administrator",
+    abgeordneter: "Abgeordneter",
+    moderator: "Moderator",
+    user: "Benutzer",
+    mitarbeiter: "Mitarbeiter",
+    praktikant: "Praktikant",
+    bueroleitung: "Büroleitung",
+  };
+  const userRole = role ? roleLabels[role] || role : "Benutzer";
 
   useEffect((): void => {
     if (!user?.id) return;
     const loadUserData = async (): Promise<void> => {
-      const { data: adminData } = await supabase.rpc("is_admin", { _user_id: user.id });
-      setIsAdmin(!!adminData);
-      
       const { data: profile } = await supabase
         .from("profiles")
         .select("*")
         .eq("user_id", user.id)
         .maybeSingle();
       setUserProfile(profile);
-
-      // Load role from user_roles table
-      const { data: roleData } = await supabase
-        .from("user_roles")
-        .select("role")
-        .eq("user_id", user.id)
-        .maybeSingle();
-      
-      if (roleData?.role) {
-        const roleLabels: Record<string, string> = {
-          'super_admin': 'Super-Admin',
-          'admin': 'Administrator',
-          'abgeordneter': 'Abgeordneter',
-          'moderator': 'Moderator',
-          'user': 'Benutzer',
-        };
-        setUserRole(roleLabels[roleData.role] || roleData.role);
-      }
     };
     void loadUserData();
   }, [user]);
@@ -497,7 +486,7 @@ export function SettingsView(): React.JSX.Element {
         </div>
         
         {/* Sender Information Settings - Admin Only */}
-        {isAdmin && (
+                  {isAdminClaim && (
           <div className="mt-6">
             <Card className="bg-card shadow-card border-border">
               <CardHeader>
