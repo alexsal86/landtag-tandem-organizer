@@ -237,7 +237,7 @@ const LetterEditor: React.FC<LetterEditorProps> = ({ letter, isOpen, onClose, on
   }, [currentTemplate, editedLetter, senderInfos, contacts, informationBlocks, attachments]);
 
   const templateDefaultFontFamily = useMemo(() => {
-    const layoutFontFamily = currentTemplate?.layout_settings?.content?.fontFamily;
+    const layoutFontFamily = (currentTemplate?.layout_settings?.content as any)?.fontFamily;
     if (typeof layoutFontFamily === 'string' && layoutFontFamily.trim() !== '') return layoutFontFamily.trim();
     const draftNodesFontFamily = extractFontFamilyFromContentNodes(draftContentNodes);
     if (draftNodesFontFamily) return draftNodesFontFamily;
