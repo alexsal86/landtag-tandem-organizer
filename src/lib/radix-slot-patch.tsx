@@ -130,7 +130,7 @@ SlotClone.displayName = "SlotClone";
 // Slot
 const Slot = React.forwardRef<unknown, SlotLikeProps>((props, forwardedRef) => {
   const { children, ...slotProps } = props;
-  const childrenArray = React.Children.toArray(children);
+  const childrenArray = React.Children.toArray(children as React.ReactNode);
   const slottable = childrenArray.find(isSlottable);
 
   if (slottable && React.isValidElement<SlotLikeProps>(slottable)) {

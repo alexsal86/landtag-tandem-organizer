@@ -1,6 +1,5 @@
 import React, { useState, useEffect, createContext, useContext } from "react";
 import type {
-  AuthChangeEvent,
   Session,
   User,
 } from "@supabase/supabase-js";

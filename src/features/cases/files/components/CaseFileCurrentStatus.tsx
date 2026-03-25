@@ -37,7 +37,7 @@ export function CaseFileCurrentStatus({ caseFile, onUpdate, onUpdateProcessingSt
   const [history, setHistory] = useState<StatusHistoryEntry[]>([]);
   const { statuses: processingStatuses } = useCaseFileProcessingStatuses();
 
-  const currentProcessingStatuses: string[] = getCaseFileProcessingStatuses(caseFile);
+  const currentProcessingStatuses: string[] = getCaseFileProcessingStatuses(caseFile as Record<string, unknown>);
 
   const getIconComponent = (iconName?: string | null): LucideIcon | null => {
     if (!iconName) return null;

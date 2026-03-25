@@ -255,7 +255,7 @@ export function CreateContact() {
         priority: formData.priority || null,
         gender: formData.gender || null,
         notes: formData.notes || null,
-        tags: formData.tags.length > 0 ? formData.tags : null,
+        tags: (formData.tags ?? []).length > 0 ? formData.tags : null,
         industry: formData.industry || null,
         main_contact_person: formData.main_contact_person || null,
         added_reason: formData.added_reason || null,
