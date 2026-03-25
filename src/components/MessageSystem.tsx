@@ -11,20 +11,67 @@ import { MessageComposer } from "./MessageComposer";
 import { toast } from "@/hooks/use-toast";
 import { debugConsole } from "@/utils/debugConsole";
 import { ReceivedMessageCard, SentMessageCard, ArchivedMessageCard, PaginationControls } from "./messages/MessageCard";
+import type { MessageItem, ParticipantSummary, PreparationSection } from "./messages/dto";
 
-interface Message {
-  id: string; title: string; content: string; author_id: string; is_for_all_users: boolean;
-  status: 'active' | 'archived'; created_at: string; has_read?: boolean;
-  author?: { display_name: string; avatar_url?: string };
-  recipients?: Array<{ recipient_id: string; has_read: boolean; read_at?: string; profile?: { display_name: string; avatar_url?: string } }>;
-  confirmations?: Array<{ user_id: string; confirmed_at: string }>;
+type MessageStatus = "active" | "archived";
+
+interface RpcMessageRow {
+  id: string;
+  title: string;
+  content: string;
+  author_id: string;
+  is_for_all_users: boolean;
+  status: MessageStatus;
+  created_at: string;
+  has_read?: boolean;
+  author_name?: string | null;
+  author_avatar?: string | null;
 }
+
+interface ProfileRow {
+  display_name: string | null;
+  avatar_url: string | null;
+}
+
+interface RecipientRow {
+  recipient_id: string;
+  has_read: boolean;
+  read_at: string | null;
+}
+
+interface ConfirmationRow {
+  user_id: string;
+  confirmed_at: string;
+}
+
+const emptyParticipant = (userId: string): ParticipantSummary => ({
+  userId,
+  displayName: "Unbekannt",
+  avatarUrl: null,
+});
+
+const normalizeMessage = (row: RpcMessageRow): MessageItem => ({
+  id: row.id,
+  title: row.title,
+  content: row.content,
+  authorId: row.author_id,
+  status: row.status,
+  createdAt: row.created_at,
+  isForAllUsers: row.is_for_all_users,
+  hasRead: Boolean(row.has_read),
+  author: row.author_name
+    ? { userId: row.author_id, displayName: row.author_name, avatarUrl: row.author_avatar ?? null }
+    : null,
+  recipients: [],
+  confirmations: [],
+  threadMeta: { totalRecipients: 0, acknowledgedRecipients: 0, isBroadcast: row.is_for_all_users },
+});
 
 export function MessageSystem() {
   const { user } = useAuth();
-  const [activeMessages, setActiveMessages] = useState<Message[]>([]);
-  const [archivedMessages, setArchivedMessages] = useState<Message[]>([]);
-  const [sentMessages, setSentMessages] = useState<Message[]>([]);
+  const [activeMessages, setActiveMessages] = useState<ReadonlyArray<MessageItem>>([]);
+  const [archivedMessages, setArchivedMessages] = useState<ReadonlyArray<MessageItem>>([]);
+  const [sentMessages, setSentMessages] = useState<ReadonlyArray<MessageItem>>([]);
   const [showComposer, setShowComposer] = useState(false);
   const [loading, setLoading] = useState(true);
   const [receivedPage, setReceivedPage] = useState(0);
@@ -32,127 +79,293 @@ export function MessageSystem() {
   const [archivePage, setArchivePage] = useState(0);
   const messagesPerPage = 3;
 
-  const fetchMessages = async () => {
+  const fetchMessages = async (): Promise<void> => {
     if (!user) return;
+
     try {
-      const { data: receivedMessages, error: receivedError } = await (supabase as any).rpc('get_user_messages', { user_id_param: user.id });
-      if (receivedError) { debugConsole.error('Error fetching received messages:', receivedError); return; }
+      const { data: receivedMessagesRaw, error: receivedError } = await supabase.rpc("get_user_messages", {
+        user_id_param: user.id,
+      });
+      if (receivedError) {
+        debugConsole.error("Error fetching received messages:", receivedError);
+        return;
+      }
 
-      const { data: authoredMessages, error: authoredError } = await (supabase as any).rpc('get_authored_messages', { author_id_param: user.id });
-      if (authoredError) { debugConsole.error('Error fetching authored messages:', authoredError); return; }
+      const { data: authoredMessagesRaw, error: authoredError } = await supabase.rpc("get_authored_messages", {
+        author_id_param: user.id,
+      });
+      if (authoredError) {
+        debugConsole.error("Error fetching authored messages:", authoredError);
+        return;
+      }
 
-      const convertedReceivedMessages: Message[] = (receivedMessages || [])
-        .filter((msg: any) => msg.author_id !== user.id)
-        .map((msg: any) => ({ id: msg.id, title: msg.title, content: msg.content, author_id: msg.author_id, is_for_all_users: msg.is_for_all_users, status: msg.status as 'active' | 'archived', created_at: msg.created_at, has_read: msg.has_read, author: { display_name: msg.author_name, avatar_url: msg.author_avatar }, recipients: [], confirmations: [] }));
+      const receivedMessages = ((receivedMessagesRaw ?? []) as ReadonlyArray<RpcMessageRow>)
+        .filter((msg: RpcMessageRow) => msg.author_id !== user.id)
+        .map(normalizeMessage);
 
-      setActiveMessages(convertedReceivedMessages.filter((msg: any) => !msg.has_read));
-      const readMessages = convertedReceivedMessages.filter((msg: any) => msg.has_read);
+      setActiveMessages(receivedMessages.filter((msg: MessageItem) => !msg.hasRead));
+      const readMessages = receivedMessages.filter((msg: MessageItem) => msg.hasRead);
 
+      const authoredMessages = (authoredMessagesRaw ?? []) as ReadonlyArray<RpcMessageRow>;
       const sentMessagesWithDetails = await Promise.all(
-        (authoredMessages || []).map(async (msg: any) => {
-          let recipients: any[] = [];
-          let confirmations: any[] = [];
+        authoredMessages.map(async (msg: RpcMessageRow): Promise<MessageItem> => {
+          const normalized = normalizeMessage(msg);
+
           if (msg.is_for_all_users) {
-            const { data: confirmData } = await (supabase as any).from('message_confirmations').select('user_id, confirmed_at').eq('message_id', msg.id);
-            if (confirmData) {
-              confirmations = await Promise.all(confirmData.map(async (conf: any) => {
-                const { data: profile } = await (supabase as any).from('profiles').select('display_name, avatar_url').eq('user_id', conf.user_id).maybeSingle();
-                return { ...conf, profiles: profile };
-              }));
-            }
-          } else {
-            const { data: recipientData } = await (supabase as any).from('message_recipients').select('recipient_id, has_read, read_at').eq('message_id', msg.id);
-            if (recipientData) {
-              recipients = await Promise.all(recipientData.map(async (rec: any) => {
-                const { data: profile } = await (supabase as any).from('profiles').select('display_name, avatar_url').eq('user_id', rec.recipient_id).maybeSingle();
-                return { ...rec, profile };
-              }));
-            }
+            const { data: confirmationsRaw } = await supabase
+              .from("message_confirmations")
+              .select("user_id, confirmed_at")
+              .eq("message_id", msg.id);
+
+            const confirmations = await Promise.all(
+              ((confirmationsRaw ?? []) as ReadonlyArray<ConfirmationRow>).map(
+                async (entry: ConfirmationRow) => {
+                  const { data: profileRaw } = await supabase
+                    .from("profiles")
+                    .select("display_name, avatar_url")
+                    .eq("user_id", entry.user_id)
+                    .maybeSingle();
+
+                  const profile = profileRaw as ProfileRow | null;
+                  return {
+                    userId: entry.user_id,
+                    confirmedAt: entry.confirmed_at,
+                    profile: profile
+                      ? {
+                          userId: entry.user_id,
+                          displayName: profile.display_name ?? "Unbekannt",
+                          avatarUrl: profile.avatar_url,
+                        }
+                      : emptyParticipant(entry.user_id),
+                  };
+                },
+              ),
+            );
+
+            return {
+              ...normalized,
+              confirmations,
+              threadMeta: {
+                totalRecipients: 0,
+                acknowledgedRecipients: confirmations.length,
+                isBroadcast: true,
+              },
+            };
           }
-          return { id: msg.id, title: msg.title, content: msg.content, author_id: msg.author_id, is_for_all_users: msg.is_for_all_users, status: msg.status as 'active' | 'archived', created_at: msg.created_at, recipients, confirmations };
-        })
+
+          const { data: recipientRowsRaw } = await supabase
+            .from("message_recipients")
+            .select("recipient_id, has_read, read_at")
+            .eq("message_id", msg.id);
+
+          const recipients = await Promise.all(
+            ((recipientRowsRaw ?? []) as ReadonlyArray<RecipientRow>).map(
+              async (entry: RecipientRow) => {
+                const { data: profileRaw } = await supabase
+                  .from("profiles")
+                  .select("display_name, avatar_url")
+                  .eq("user_id", entry.recipient_id)
+                  .maybeSingle();
+
+                const profile = profileRaw as ProfileRow | null;
+                return {
+                  recipientId: entry.recipient_id,
+                  hasRead: entry.has_read,
+                  readAt: entry.read_at,
+                  profile: profile
+                    ? {
+                        userId: entry.recipient_id,
+                        displayName: profile.display_name ?? "Unbekannt",
+                        avatarUrl: profile.avatar_url,
+                      }
+                    : emptyParticipant(entry.recipient_id),
+                };
+              },
+            ),
+          );
+
+          const acknowledged = recipients.filter((entry) => entry.hasRead).length;
+
+          return {
+            ...normalized,
+            recipients,
+            threadMeta: {
+              totalRecipients: recipients.length,
+              acknowledgedRecipients: acknowledged,
+              isBroadcast: false,
+            },
+          };
+        }),
       );
 
-      setSentMessages(sentMessagesWithDetails.filter(m => m.status === 'active'));
-      setArchivedMessages([...sentMessagesWithDetails.filter(m => m.status === 'archived'), ...readMessages]);
-    } catch (error) { debugConsole.error('Error fetching messages:', error); } finally { setLoading(false); }
+      setSentMessages(sentMessagesWithDetails.filter((message: MessageItem) => message.status === "active"));
+      setArchivedMessages([
+        ...sentMessagesWithDetails.filter((message: MessageItem) => message.status === "archived"),
+        ...readMessages,
+      ]);
+    } catch (error) {
+      debugConsole.error("Error fetching messages:", error);
+    } finally {
+      setLoading(false);
+    }
   };
 
-  useEffect(() => { fetchMessages(); }, [user]);
-  useMessagesRealtime(() => { fetchMessages(); });
+  useEffect(() => {
+    void fetchMessages();
+  }, [user]);
 
-  const markAsRead = async (messageId: string, isForAllUsers: boolean) => {
+  useMessagesRealtime(() => {
+    void fetchMessages();
+  });
+
+  const markAsRead = async (messageId: string, isForAllUsers: boolean): Promise<void> => {
     if (!user) return;
+
     try {
-      await (supabase as any).rpc('mark_message_read', { message_id_param: messageId, user_id_param: user.id, is_for_all_param: isForAllUsers });
+      await supabase.rpc("mark_message_read", {
+        message_id_param: messageId,
+        user_id_param: user.id,
+        is_for_all_param: isForAllUsers,
+      });
       toast({ title: "Nachricht als gelesen markiert", description: "Die Nachricht wurde bestätigt." });
-      fetchMessages();
-    } catch (error) { debugConsole.error('Error marking message as read:', error); toast({ title: "Fehler", description: "Die Nachricht konnte nicht als gelesen markiert werden.", variant: "destructive" }); }
+      await fetchMessages();
+    } catch (error) {
+      debugConsole.error("Error marking message as read:", error);
+      toast({
+        title: "Fehler",
+        description: "Die Nachricht konnte nicht als gelesen markiert werden.",
+        variant: "destructive",
+      });
+    }
   };
 
-  const isMessageRead = (message: Message) => {
+  const isMessageRead = (message: MessageItem): boolean => {
     if (!user) return false;
-    if (message.is_for_all_users) return message.confirmations?.some(c => c.user_id === user.id) || false;
-    return message.recipients?.some(r => r.recipient_id === user.id && r.has_read) || false;
+    if (message.isForAllUsers) {
+      return message.confirmations.some((confirmation) => confirmation.userId === user.id);
+    }
+
+    return message.recipients.some((recipient) => recipient.recipientId === user.id && recipient.hasRead);
   };
 
-  const getPaginatedMessages = (messages: Message[], page: number) => messages.slice(page * messagesPerPage, (page + 1) * messagesPerPage);
+  const getPaginatedMessages = (messages: ReadonlyArray<MessageItem>, page: number): ReadonlyArray<MessageItem> =>
+    messages.slice(page * messagesPerPage, (page + 1) * messagesPerPage);
 
-  if (loading) return <Card><CardContent className="p-6"><div className="flex items-center justify-center"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div></div></CardContent></Card>;
+  const sections: ReadonlyArray<PreparationSection> = [
+    { key: "received", title: "Empfangen", count: activeMessages.length },
+    { key: "sent", title: "Gesendet", count: sentMessages.length },
+    { key: "archived", title: "Archiv", count: archivedMessages.length },
+  ];
+
+  if (loading) {
+    return (
+      <Card>
+        <CardContent className="p-6">
+          <div className="flex items-center justify-center">
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary" />
+          </div>
+        </CardContent>
+      </Card>
+    );
+  }
 
   return (
     <Card>
       <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-        <CardTitle className="text-lg font-semibold flex items-center gap-2"><MessageCircle className="h-5 w-5" />Nachrichten</CardTitle>
-        <Button onClick={() => setShowComposer(true)} size="sm" className="flex items-center gap-2"><Send className="h-4 w-4" />Neue Nachricht</Button>
+        <CardTitle className="text-lg font-semibold flex items-center gap-2">
+          <MessageCircle className="h-5 w-5" />
+          Nachrichten
+        </CardTitle>
+        <Button onClick={() => setShowComposer(true)} size="sm" className="flex items-center gap-2">
+          <Send className="h-4 w-4" />
+          Neue Nachricht
+        </Button>
       </CardHeader>
       <CardContent>
-        {showComposer && <div className="mb-4"><MessageComposer onClose={() => setShowComposer(false)} onSent={() => { setShowComposer(false); fetchMessages(); }} /></div>}
+        {showComposer && (
+          <div className="mb-4">
+            <MessageComposer
+              onClose={() => setShowComposer(false)}
+              onSent={() => {
+                setShowComposer(false);
+                void fetchMessages();
+              }}
+            />
+          </div>
+        )}
 
         <Tabs defaultValue="received" className="w-full">
           <TabsList className="grid w-full grid-cols-3">
-            <TabsTrigger value="received">Empfangen ({activeMessages.length})</TabsTrigger>
-            <TabsTrigger value="sent">Gesendet ({sentMessages.length})</TabsTrigger>
-            <TabsTrigger value="archived">Archiv ({archivedMessages.length})</TabsTrigger>
+            {sections.map((section) => (
+              <TabsTrigger key={section.key} value={section.key}>
+                {section.title} ({section.count})
+              </TabsTrigger>
+            ))}
           </TabsList>
 
           <TabsContent value="received" className="mt-4">
             <ScrollArea className="h-96">
-              {activeMessages.length === 0 ? <p className="text-center text-muted-foreground py-8">Keine neuen Nachrichten</p> : (
+              {activeMessages.length === 0 ? (
+                <p className="text-center text-muted-foreground py-8">Keine neuen Nachrichten</p>
+              ) : (
                 <div className="space-y-3">
-                  {getPaginatedMessages(activeMessages, receivedPage).map((message) => (
-                    <ReceivedMessageCard key={message.id} message={message} isRead={isMessageRead(message)} onMarkRead={markAsRead} />
+                  {getPaginatedMessages(activeMessages, receivedPage).map((message: MessageItem) => (
+                    <ReceivedMessageCard
+                      key={message.id}
+                      message={message}
+                      isRead={isMessageRead(message)}
+                      onMarkRead={markAsRead}
+                    />
                   ))}
                 </div>
               )}
             </ScrollArea>
-            <PaginationControls currentPage={receivedPage} totalMessages={activeMessages.length} messagesPerPage={messagesPerPage} onPageChange={setReceivedPage} />
+            <PaginationControls
+              currentPage={receivedPage}
+              totalMessages={activeMessages.length}
+              messagesPerPage={messagesPerPage}
+              onPageChange={setReceivedPage}
+            />
           </TabsContent>
 
           <TabsContent value="sent" className="mt-4">
             <ScrollArea className="h-96">
-              {sentMessages.length === 0 ? <p className="text-center text-muted-foreground py-8">Keine gesendeten Nachrichten</p> : (
+              {sentMessages.length === 0 ? (
+                <p className="text-center text-muted-foreground py-8">Keine gesendeten Nachrichten</p>
+              ) : (
                 <div className="space-y-3">
-                  {getPaginatedMessages(sentMessages, sentPage).map((message) => (
+                  {getPaginatedMessages(sentMessages, sentPage).map((message: MessageItem) => (
                     <SentMessageCard key={message.id} message={message} userId={user?.id} />
                   ))}
                 </div>
               )}
             </ScrollArea>
-            <PaginationControls currentPage={sentPage} totalMessages={sentMessages.length} messagesPerPage={messagesPerPage} onPageChange={setSentPage} />
+            <PaginationControls
+              currentPage={sentPage}
+              totalMessages={sentMessages.length}
+              messagesPerPage={messagesPerPage}
+              onPageChange={setSentPage}
+            />
           </TabsContent>
 
           <TabsContent value="archived" className="mt-4">
             <ScrollArea className="h-96">
-              {archivedMessages.length === 0 ? <p className="text-center text-muted-foreground py-8">Keine archivierten Nachrichten</p> : (
+              {archivedMessages.length === 0 ? (
+                <p className="text-center text-muted-foreground py-8">Keine archivierten Nachrichten</p>
+              ) : (
                 <div className="space-y-3">
-                  {getPaginatedMessages(archivedMessages, archivePage).map((message) => (
+                  {getPaginatedMessages(archivedMessages, archivePage).map((message: MessageItem) => (
                     <ArchivedMessageCard key={message.id} message={message} userId={user?.id} />
                   ))}
                 </div>
               )}
             </ScrollArea>
-            <PaginationControls currentPage={archivePage} totalMessages={archivedMessages.length} messagesPerPage={messagesPerPage} onPageChange={setArchivePage} />
+            <PaginationControls
+              currentPage={archivePage}
+              totalMessages={archivedMessages.length}
+              messagesPerPage={messagesPerPage}
+              onPageChange={setArchivePage}
+            />
           </TabsContent>
         </Tabs>
       </CardContent>
