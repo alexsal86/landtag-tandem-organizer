@@ -1,6 +1,7 @@
 import proj4 from 'proj4';
 import JSZip from 'jszip';
 import { debugConsole } from '@/utils/debugConsole';
+import { hasOwnProperty, isRecord } from '@/utils/typeSafety';
 
 export interface GeoJsonFeature {
   type: 'Feature';
@@ -25,11 +26,39 @@ export interface GeoJsonData {
   features: GeoJsonFeature[];
 }
 
+type GeoJsonFeatureInput = {
+  type: unknown;
+  properties: unknown;
+  geometry: unknown;
+};
+
+interface GeoJsonFeatureCollectionInput {
+  type: unknown;
+  features: unknown;
+  crs?: unknown;
+}
+
+export function isGeoJsonFeatureCollection(value: unknown): value is GeoJsonData {
+  if (!isRecord(value)) return false;
+  if (!hasOwnProperty(value, 'type') || value.type !== 'FeatureCollection') return false;
+  if (!hasOwnProperty(value, 'features') || !Array.isArray(value.features)) return false;
+
+  return value.features.every((feature: unknown): feature is GeoJsonFeature => {
+    if (!isRecord(feature)) return false;
+    const candidate = feature as GeoJsonFeatureInput;
+    if (candidate.type !== 'Feature') return false;
+    if (!isRecord(candidate.properties)) return false;
+    if (!isRecord(candidate.geometry)) return false;
+    if (!hasOwnProperty(candidate.geometry, 'type')) return false;
+    if (candidate.geometry.type !== 'Polygon' && candidate.geometry.type !== 'MultiPolygon') return false;
+    if (!hasOwnProperty(candidate.geometry, 'coordinates') || !Array.isArray(candidate.geometry.coordinates)) return false;
+    return true;
+  });
+}
+
 // Reprojection helpers for German datasets (ETRS89 / UTM32 -> WGS84)
 const etrs89Utm32 = '+proj=utm +zone=32 +ellps=GRS80 +units=m +no_defs';
 const wgs84 = 'WGS84';
-
-type AnyCoords = any;
 
 function sampleFirstCoord(geometry: GeoJsonFeature['geometry']): [number, number] | null {
   try {
@@ -41,7 +70,9 @@ function sampleFirstCoord(geometry: GeoJsonFeature['geometry']): [number, number
       const ring = poly && poly[0];
       if (ring && ring[0]) return [ring[0][0] as number, ring[0][1] as number];
     }
-  } catch {}
+  } catch {
+    return null;
+  }
   return null;
 }
 
@@ -65,8 +96,8 @@ function reprojectGeometry(geometry: GeoJsonFeature['geometry'], sourceDef: stri
         debugConsole.warn('Failed to transform coordinate:', [x, y], e);
         return [0, 0]; // fallback
       }
-    })) as AnyCoords;
-    return { type: 'Polygon', coordinates: newRings } as any;
+    }));
+    return { type: 'Polygon', coordinates: newRings };
   }
   if (geometry.type === 'MultiPolygon') {
     const polys = geometry.coordinates as number[][][][];
@@ -80,8 +111,8 @@ function reprojectGeometry(geometry: GeoJsonFeature['geometry'], sourceDef: stri
         debugConsole.warn('Failed to transform coordinate:', [x, y], e);
         return [0, 0]; // fallback
       }
-    }))) as AnyCoords;
-    return { type: 'MultiPolygon', coordinates: newPolys } as any;
+    })));
+    return { type: 'MultiPolygon', coordinates: newPolys };
   }
   return geometry;
 }
@@ -97,8 +128,11 @@ const projDefs: Record<string, string> = {
   'EPSG:31469': '+proj=tmerc +lat_0=0 +lon_0=15 +k=1 +x_0=5500000 +y_0=0 +ellps=bessel +towgs84=598.1,73.7,418.2,0.202,0.045,-2.455,6.7 +units=m +no_defs',
 };
 
-function getCrsEpsg(fc: any): string | null {
-  const name: string | undefined = fc?.crs?.properties?.name;
+function getCrsEpsg(fc: GeoJsonFeatureCollectionInput): string | null {
+  if (!isRecord(fc.crs)) return null;
+  if (!hasOwnProperty(fc.crs, 'properties') || !isRecord(fc.crs.properties)) return null;
+  const name = hasOwnProperty(fc.crs.properties, 'name') ? fc.crs.properties.name : undefined;
+  if (typeof name !== 'string') return null;
   if (!name) return null;
   const m = name.match(/EPSG::(\d+)/i) || name.match(/EPSG:(\d+)/i);
   return m ? `EPSG:${m[1]}` : null;
@@ -120,7 +154,7 @@ function guessGaussKruegerFromX(x: number): string | null {
 
 function reprojectIfNeeded(fc: GeoJsonData): GeoJsonData {
   // 1) Try to get CRS from metadata
-  const epsg = getCrsEpsg(fc as any);
+  const epsg = getCrsEpsg(fc);
   let sourceDef = getProjDefForEpsg(epsg);
 
   // 2) Sample first coordinate to detect projection
@@ -163,11 +197,11 @@ function reprojectIfNeeded(fc: GeoJsonData): GeoJsonData {
     geometry: reprojectGeometry(f.geometry, sourceDef as string)
   }));
   
-  return { ...(fc as any), features: newFeatures } as GeoJsonData;
+  return { ...fc, features: newFeatures };
 }
 
 // Try multiple property keys to find the district number
-const getDistrictNumberFromProps = (props: Record<string, any>): number | undefined => {
+const getDistrictNumberFromProps = (props: Record<string, unknown>): number | undefined => {
   const candidates = [
     'WKR_NR', 'WKRNR', 'WK_NR', 'NR', 'WKR', 'WKR_NR_2021', 'WKR_NR21', 'WKRNR21', 'Wahlkreis_Nr'
   ];
@@ -194,7 +228,7 @@ export const loadElectoralDistrictsGeoJson = async (): Promise<GeoJsonData> => {
     '/data/sample-wahlkreise.geojson',
   ];
 
-  let lastError: any = null;
+  let lastError: unknown = null;
 
   for (const path of candidates) {
     try {
@@ -207,22 +241,23 @@ export const loadElectoralDistrictsGeoJson = async (): Promise<GeoJsonData> => {
 
       const contentType = res.headers.get('content-type') || '';
 
-      let fc: GeoJsonData | null = null;
+      let parsedData: unknown = null;
 
       if (path.endsWith('.zip') || contentType.includes('zip')) {
         const buf = await res.arrayBuffer();
         try {
           const zip = await JSZip.loadAsync(buf);
-          const entry = Object.values(zip.files).find(f => f.name.endsWith('.geojson') || f.name.endsWith('.json'));
+          const entries = Object.values(zip.files) as Array<{ name: string; async: (type: 'text') => Promise<string> }>;
+          const entry = entries.find(f => f.name.endsWith('.geojson') || f.name.endsWith('.json'));
           if (!entry) throw new Error('No .geojson in ZIP');
           const text = await entry.async('text');
-          fc = JSON.parse(text);
+          parsedData = JSON.parse(text);
         } catch (e) {
           debugConsole.warn('ZIP parsing failed for', path, e);
           continue;
         }
       } else if (contentType.includes('application/json') || path.endsWith('.geojson') || path.endsWith('.json')) {
-        fc = await res.json();
+        parsedData = await res.json();
       } else if (contentType.includes('text/html')) {
         debugConsole.warn('Received HTML for', path, 'skipping');
         continue;
@@ -230,20 +265,20 @@ export const loadElectoralDistrictsGeoJson = async (): Promise<GeoJsonData> => {
         // Try as text then JSON
         try {
           const txt = await res.text();
-          fc = JSON.parse(txt);
+          parsedData = JSON.parse(txt);
         } catch {
           debugConsole.warn('Unknown content-type for', path, 'skipping');
           continue;
         }
       }
 
-      if (!fc || fc.type !== 'FeatureCollection' || !Array.isArray(fc.features)) {
+      if (!isGeoJsonFeatureCollection(parsedData)) {
         debugConsole.warn('Invalid GeoJSON structure from', path);
         continue;
       }
 
       
-      const data = reprojectIfNeeded(fc as GeoJsonData);
+      const data = reprojectIfNeeded(parsedData);
       return data;
     } catch (e) {
       lastError = e;
