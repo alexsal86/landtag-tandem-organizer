@@ -1165,7 +1165,6 @@ export function MatrixClientProvider({ children }: MatrixClientProviderProps): R
         matrixClient.on(sdk.RoomEvent.Timeline, onTimeline as (...args: unknown[]) => void);
         matrixClient.on(sdk.RoomMemberEvent.Typing, onTyping as (...args: unknown[]) => void);
         matrixClient.on(sdk.MatrixEventEvent.Decrypted, onDecrypted);
-        // @ts-expect-error matrix-js-sdk VerificationRequest type mismatch
         matrixClient.on(CryptoEvent.VerificationRequestReceived, onVerificationRequestReceived);
         registeredListeners.push(
           { event: sdk.ClientEvent.Sync, handler: onSync },
