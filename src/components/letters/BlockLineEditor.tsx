@@ -21,6 +21,10 @@ export interface BlockLine {
   widthValue?: number;
   color?: string;
   prefixShape?: 'none' | 'line' | 'circle' | 'rectangle' | 'sunflower' | 'lion' | 'wappen';
+  titleHighlight?: boolean;
+  titleFontSize?: number;
+  titleFontWeight?: 'normal' | 'bold';
+  titleColor?: string;
 }
 
 export type BlockLineFontFamily = 'Calibri' | 'Cambria';
@@ -31,8 +35,13 @@ export interface BlockLineData {
 }
 
 /** Check whether stored data is line-mode or legacy canvas */
-export function isLineMode(data: any): data is BlockLineData {
-  return data && typeof data === 'object' && data.mode === 'lines' && Array.isArray(data.lines);
+export function isLineMode(data: unknown): data is BlockLineData {
+  return !!data
+    && typeof data === 'object'
+    && 'mode' in data
+    && 'lines' in data
+    && data.mode === 'lines'
+    && Array.isArray(data.lines);
 }
 
 interface AvailableVariable {
@@ -324,8 +333,8 @@ export const BlockLineEditor: React.FC<BlockLineEditorProps> = ({ blockType, lin
                             <Badge variant="secondary" className="shrink-0 text-[10px]">Text</Badge>
                             {blockType === 'subject' && (
                               <Select
-                                value={(line as any).prefixShape || 'none'}
-                                onValueChange={(value: 'none' | 'line' | 'circle' | 'rectangle' | 'sunflower' | 'lion' | 'wappen') => updateLine(line.id, { prefixShape: value } as any)}
+                                value={line.prefixShape || 'none'}
+                                onValueChange={(value: 'none' | 'line' | 'circle' | 'rectangle' | 'sunflower' | 'lion' | 'wappen') => updateLine(line.id, { prefixShape: value })}
                               >
                                 <SelectTrigger className="h-6 w-36 text-xs">
                                   <SelectValue placeholder="Form" />
