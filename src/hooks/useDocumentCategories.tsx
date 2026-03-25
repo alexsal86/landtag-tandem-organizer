@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { debugConsole } from '@/utils/debugConsole';
 
-interface DocumentCategory {
+export interface DocumentCategory {
   id: string;
   name: string;
   label: string;
