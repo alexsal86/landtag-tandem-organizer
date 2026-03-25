@@ -529,9 +529,9 @@ export async function generatePDF(options: GeneratePDFOptions): Promise<{ blob: 
   } : letter.recipient_name ? { name: letter.recipient_name, street: '', postal_code: '', city: '', country: '' } : null;
 
   const senderVarData = senderInfo ? {
-    name: senderInfo.name, organization: senderInfo.organization,
-    street: senderInfo.street, house_number: senderInfo.house_number,
-    postal_code: senderInfo.postal_code, city: senderInfo.city,
+    name: senderInfo.name ?? undefined, organization: senderInfo.organization ?? undefined,
+    street: senderInfo.street ?? undefined, house_number: senderInfo.house_number ?? undefined,
+    postal_code: senderInfo.postal_code ?? undefined, city: senderInfo.city ?? undefined,
     wahlkreis_street: senderInfo.wahlkreis_street ?? undefined,
     wahlkreis_house_number: senderInfo.wahlkreis_house_number ?? undefined,
     wahlkreis_postal_code: senderInfo.wahlkreis_postal_code ?? undefined,
@@ -541,7 +541,7 @@ export async function generatePDF(options: GeneratePDFOptions): Promise<{ blob: 
     landtag_postal_code: senderInfo.landtag_postal_code ?? undefined,
     landtag_city: senderInfo.landtag_city ?? undefined,
     phone: senderInfo.phone ?? undefined,
-    email: senderInfo.email,
+    email: senderInfo.email ?? undefined,
     wahlkreis_email: senderInfo.wahlkreis_email ?? undefined,
     landtag_email: senderInfo.landtag_email ?? undefined,
     return_address_line: senderInfo.return_address_line ?? undefined,
