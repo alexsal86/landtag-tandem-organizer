@@ -239,18 +239,18 @@ export const DIN5008LetterLayout: React.FC<DIN5008LetterLayoutProps> = ({
         return (
           <div className="space-y-1">
             <div className="font-medium">{info.label}</div>
-            {bd.contact_name && (
+            {bd.contact_name ? (
               <div>{String(bd.contact_name)}</div>
-            )}
-            {bd.contact_title && (
+            ) : null}
+            {bd.contact_title ? (
               <div className="text-sm text-muted-foreground">{String(bd.contact_title)}</div>
-            )}
-            {bd.contact_phone && (
+            ) : null}
+            {bd.contact_phone ? (
               <div className="text-sm">Tel: {String(bd.contact_phone)}</div>
-            )}
-            {bd.contact_email && (
+            ) : null}
+            {bd.contact_email ? (
               <div className="text-sm">{String(bd.contact_email)}</div>
-            )}
+            ) : null}
           </div>
         );
       case 'date': {
