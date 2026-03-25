@@ -6,6 +6,7 @@ import { useNotificationHighlight } from "@/hooks/useNotificationHighlight";
 import { usePersistentState } from "@/hooks/usePersistentState";
 import { useViewPreference } from "@/hooks/useViewPreference";
 import { useMyWorkTasksData } from "@/hooks/useMyWorkTasksData";
+import { useTenant } from "@/hooks/useTenant";
 import { DEFAULT_TASK_STATUSES, useTaskStatuses } from "@/hooks/useTaskStatuses";
 import { useTaskCategories } from "@/hooks/useTaskCategories";
 import { useTenantProfiles } from "@/hooks/useTenantProfiles";
@@ -22,6 +23,7 @@ import { useMyWorkTaskActions } from "./useMyWorkTaskActions";
 
 export function MyWorkTasksTab() {
   const { user } = useAuth();
+  const { currentTenant } = useTenant();
   const navigate = useNavigate();
   const { toast } = useToast();
   const [searchParams, setSearchParams] = useSearchParams();
@@ -43,7 +45,7 @@ export function MyWorkTasksTab() {
     taskCommentCounts,
     loading,
     loadTasks,
-  } = useMyWorkTasksData(user?.id);
+  } = useMyWorkTasksData(user?.id, currentTenant?.id);
 
   const [statusFilter, setStatusFilter] = usePersistentState<string>(
     "mywork-tasks-status-filter",
