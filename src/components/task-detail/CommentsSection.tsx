@@ -30,7 +30,13 @@ export function CommentsSection({
       </div>
 
       <div className="space-y-2">
-        <SimpleRichTextEditor key={newCommentEditorKey} initialContent="" onChange={setNewComment} placeholder="Kommentar hinzufügen..." minHeight="72px" />
+        <SimpleRichTextEditor
+          initialContent=""
+          contentVersion={newCommentEditorKey}
+          onChange={setNewComment}
+          placeholder="Kommentar hinzufügen..."
+          minHeight="72px"
+        />
         <Button onClick={onAdd} size="sm" disabled={!newComment.trim()}>
           <Send className="h-4 w-4 mr-2" />Senden
         </Button>
