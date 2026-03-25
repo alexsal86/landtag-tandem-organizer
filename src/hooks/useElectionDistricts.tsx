@@ -5,6 +5,16 @@ import { useAuth } from "./useAuth";
 import { useTenant } from "./useTenant";
 import { useToast } from "@/components/ui/use-toast";
 import { debugConsole } from "@/utils/debugConsole";
+import { hasOwnProperty, isRecord } from "@/utils/typeSafety";
+import {
+  type ElectionDistrictFeature,
+  type GeoContactInfo,
+  type GeoPoint,
+  normalizeContactInfo,
+  normalizeGeoJsonGeometry,
+  normalizeGeoPoint,
+  normalizeStringArray,
+} from "./geoContracts";
 
 interface ElectionRepresentative {
   id: string;
@@ -23,11 +33,11 @@ export interface ElectionDistrict {
   district_number: number;
   district_name: string;
   region: string;
-  boundaries?: any;
-  center_coordinates?: any;
+  boundaries?: ElectionDistrictFeature["geometry"] | null;
+  center_coordinates?: GeoPoint | null;
   population?: number | null;
   area_km2?: number | null;
-  contact_info?: any;
+  contact_info?: GeoContactInfo | null;
   website_url?: string | null;
   district_type?: string | null;
   major_cities?: string[] | null;
@@ -57,6 +67,83 @@ export function useElectionDistricts() {
   const { user } = useAuth();
   const { toast } = useToast();
 
+  const normalizeRepresentative = (value: unknown): ElectionRepresentative | null => {
+    if (!isRecord(value)) {
+      return null;
+    }
+
+    const { id, name, party, mandate_type, order_index } = value;
+    if (
+      typeof id !== "string" ||
+      typeof name !== "string" ||
+      typeof party !== "string" ||
+      (mandate_type !== "direct" && mandate_type !== "list") ||
+      typeof order_index !== "number"
+    ) {
+      return null;
+    }
+
+    return {
+      id,
+      name,
+      party,
+      mandate_type,
+      order_index,
+      email: typeof value.email === "string" ? value.email : undefined,
+      phone: typeof value.phone === "string" ? value.phone : undefined,
+      office_address: typeof value.office_address === "string" ? value.office_address : undefined,
+      bio: typeof value.bio === "string" ? value.bio : undefined,
+    };
+  };
+
+  const normalizeDistrict = (value: unknown): ElectionDistrict | null => {
+    if (!isRecord(value)) {
+      return null;
+    }
+
+    const { id, district_number, district_name, region, created_at, updated_at } = value;
+    if (
+      typeof id !== "string" ||
+      typeof district_number !== "number" ||
+      typeof district_name !== "string" ||
+      typeof region !== "string" ||
+      typeof created_at !== "string" ||
+      typeof updated_at !== "string"
+    ) {
+      return null;
+    }
+
+    const representatives = Array.isArray(value.representatives)
+      ? value.representatives
+          .map((entry) => normalizeRepresentative(entry))
+          .filter((entry): entry is ElectionRepresentative => entry !== null)
+          .sort((a, b) => {
+            if (a.mandate_type === "direct" && b.mandate_type !== "direct") return -1;
+            if (a.mandate_type !== "direct" && b.mandate_type === "direct") return 1;
+            return a.order_index - b.order_index;
+          })
+      : [];
+
+    return {
+      id,
+      district_number,
+      district_name,
+      region,
+      boundaries: normalizeGeoJsonGeometry(value.boundaries),
+      center_coordinates: normalizeGeoPoint(value.center_coordinates),
+      population: typeof value.population === "number" ? value.population : null,
+      area_km2: typeof value.area_km2 === "number" ? value.area_km2 : null,
+      contact_info: normalizeContactInfo(value.contact_info),
+      website_url: typeof value.website_url === "string" ? value.website_url : null,
+      district_type: typeof value.district_type === "string" ? value.district_type : null,
+      major_cities: hasOwnProperty(value, "major_cities") ? normalizeStringArray(value.major_cities) : null,
+      rural_percentage: typeof value.rural_percentage === "number" ? value.rural_percentage : null,
+      representatives,
+      created_at,
+      updated_at,
+    };
+  };
+
   const fetchDistricts = async (): Promise<ElectionDistrict[]> => {
     const { data, error } = await supabase
       .from("election_districts")
@@ -70,19 +157,9 @@ export function useElectionDistricts() {
 
     if (error) throw error;
 
-    return (data || []).map((district) => ({
-      ...district,
-      representatives: district.representatives
-        ?.map((rep: any) => ({
-          ...rep,
-          mandate_type: rep.mandate_type as "direct" | "list",
-        }))
-        .sort((a: ElectionRepresentative, b: ElectionRepresentative) => {
-          if (a.mandate_type === "direct" && b.mandate_type !== "direct") return -1;
-          if (a.mandate_type !== "direct" && b.mandate_type === "direct") return 1;
-          return a.order_index - b.order_index;
-        }) || [],
-    }));
+    return (data ?? [])
+      .map((district) => normalizeDistrict(district as unknown))
+      .filter((district): district is ElectionDistrict => district !== null);
   };
 
   const {
