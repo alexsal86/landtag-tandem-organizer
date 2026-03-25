@@ -7,8 +7,8 @@ import { useElectionDistricts } from "@/hooks/useElectionDistricts";
 import { DistrictDetailDialog } from "./DistrictDetailDialog";
 import SimpleLeafletMap from "./SimpleLeafletMap";
 import LeafletMapFallback from "./LeafletMapFallback";
-import { useToast } from "@/components/ui/use-toast";
 import { debugConsole } from '@/utils/debugConsole';
+import { ElectionDistrict } from "@/hooks/useElectionDistricts";
 
 const getPartyColor = (party?: string): string => {
   switch (party?.toLowerCase()) {
@@ -58,16 +58,15 @@ class ErrorBoundary extends React.Component<
 }
 
 export const ElectionDistrictsView = () => {
-  const { districts, loading, refetch } = useElectionDistricts();
-  const { toast } = useToast();
-  const [selectedDistrict, setSelectedDistrict] = useState<any>(null);
+  const { districts, loading } = useElectionDistricts();
+  const [selectedDistrict, setSelectedDistrict] = useState<ElectionDistrict | null>(null);
   const [showDistrictDialog, setShowDistrictDialog] = useState(false);
   const [useMapFallback, setUseMapFallback] = useState(false);
   const [showElectionDistricts, setShowElectionDistricts] = useState(true);
   const [showAdministrativeBoundaries, setShowAdministrativeBoundaries] = useState(false);
   const [showPartyAssociations, setShowPartyAssociations] = useState(false);
 
-  const handleDistrictClick = (district: any) => {
+  const handleDistrictClick = (district: ElectionDistrict) => {
     setSelectedDistrict(district);
     setShowDistrictDialog(true);
   };
@@ -193,7 +192,7 @@ export const ElectionDistrictsView = () => {
                         <Crown className="h-4 w-4" />
                         Abgeordnete
                       </h4>
-                      {selectedDistrict.representatives.map((rep: any) => (
+                      {selectedDistrict.representatives.map((rep) => (
                         <div key={rep.id} className="flex items-center gap-2 text-sm">
                           {rep.mandate_type === 'direct' && <Award className="h-3 w-3 text-yellow-600" />}
                           <span className="font-medium">{rep.name}</span>
@@ -258,13 +257,13 @@ export const ElectionDistrictsView = () => {
                   <div className="flex justify-between items-center">
                     <span className="text-sm text-muted-foreground">Gesamtbevölkerung:</span>
                     <Badge variant="secondary">
-                      {electionDistricts.reduce((sum: number, d: any) => sum + (d.population || 0), 0).toLocaleString()}
+                      {electionDistricts.reduce((sum, d) => sum + (d.population || 0), 0).toLocaleString()}
                     </Badge>
                   </div>
                   <div className="flex justify-between items-center">
                     <span className="text-sm text-muted-foreground">Gesamtfläche:</span>
                     <Badge variant="secondary">
-                      ca. {electionDistricts.reduce((sum: number, d: any) => sum + (d.area_km2 || 0), 0)} km²
+                      ca. {electionDistricts.reduce((sum, d) => sum + (d.area_km2 || 0), 0)} km²
                     </Badge>
                   </div>
                 </>
