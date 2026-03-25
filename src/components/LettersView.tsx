@@ -474,7 +474,7 @@ const LettersView: React.FC = () => {
                         <ListTree className="h-4 w-4" />
                       </Button>
                       <LetterPDFExport 
-                        letter={letter as any} 
+                        letter={letter} 
                         variant="icon-only"
                         size="sm"
                       />
@@ -558,7 +558,7 @@ const LettersView: React.FC = () => {
                           <ListTree className="h-4 w-4" />
                         </Button>
                         <LetterPDFExport 
-                          letter={letter as any} 
+                          letter={letter} 
                           variant="icon-only"
                           size="sm"
                         />
@@ -590,7 +590,7 @@ const LettersView: React.FC = () => {
 
       {/* Letter Editor */}
       <LetterEditor
-        letter={selectedLetter as any}
+        letter={selectedLetter ?? undefined}
         isOpen={isEditorOpen}
         onClose={() => {
           setIsEditorOpen(false);

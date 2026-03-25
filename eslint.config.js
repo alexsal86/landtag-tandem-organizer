@@ -60,6 +60,13 @@ const hardenedExplicitAnyErrorFiles = [
   'src/features/cases/files/components/tabs/CaseFileDocumentsTab.tsx',
   'src/features/cases/files/components/tabs/CaseFileAppointmentsTab.tsx',
   'src/features/cases/files/components/tabs/CaseFileTasksTab.tsx',
+  'src/components/CalendarView.tsx',
+  'src/components/widgets/QuickNotesWidget.tsx',
+  'src/components/letters/types.ts',
+  'src/components/LettersView.tsx',
+  'src/contexts/MatrixClientContext.tsx',
+  'src/components/karlsruhe/RoutingMachine.tsx',
+  'src/components/karlsruhe/KarlsruheDistrictsMap.tsx',
 ];
 
 const explicitAnyErrorPaths = [

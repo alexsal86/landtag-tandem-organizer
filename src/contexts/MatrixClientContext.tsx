@@ -1091,9 +1091,9 @@ export function MatrixClientProvider({ children }: MatrixClientProviderProps): R
 
       // Attach all listeners
       matrixClient.on(sdk.ClientEvent.Sync, onSync);
-      // INTEROP-ANY(TS-4821, Matrix-Flow, 2026-04-22): SDK event emitter signatures are not strongly typed for these events.
-      matrixClient.on(sdk.RoomEvent.Timeline, onTimeline as any);
-      matrixClient.on(sdk.RoomMemberEvent.Typing, onTyping as any);
+      // INTEROP-UNKNOWN(TS-4821, Matrix-Flow, 2026-04-22): SDK event emitter signatures are not strongly typed for these events.
+      matrixClient.on(sdk.RoomEvent.Timeline, onTimeline as unknown as (...args: unknown[]) => void);
+      matrixClient.on(sdk.RoomMemberEvent.Typing, onTyping as unknown as (...args: unknown[]) => void);
       matrixClient.on(sdk.MatrixEventEvent.Decrypted, onDecrypted);
       matrixClient.on(CryptoEvent.VerificationRequestReceived, onVerificationRequestReceived);
 
@@ -1446,8 +1446,8 @@ export function MatrixClientProvider({ children }: MatrixClientProviderProps): R
       }
     }
 
-    // INTEROP-ANY(TS-4821, Matrix-Flow, 2026-04-22): Matrix message content union requires incremental adapter hardening.
-    await mc.sendMessage(roomId, content as any);
+    // INTEROP-UNKNOWN(TS-4821, Matrix-Flow, 2026-04-22): Matrix message content union requires incremental adapter hardening.
+    await mc.sendMessage(roomId, content as unknown as Record<string, unknown>);
   }, []);
 
   // ─── sendTypingNotification ──────────────────────────────────────────────

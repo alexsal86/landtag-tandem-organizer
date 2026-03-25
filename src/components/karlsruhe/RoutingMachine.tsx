@@ -5,52 +5,10 @@ import { Waypoint } from './RoutePlannerPanel';
 import type { GeoPoint } from '@/hooks/geoContracts';
 
 // Import leaflet-routing-machine after L is available
-// @ts-ignore
 import 'leaflet-routing-machine';
 
-interface RouteSummaryContract {
-  totalDistance: number;
-  totalTime: number;
-}
-
-interface RouteContract {
-  summary: RouteSummaryContract;
-}
-
-interface RoutesFoundEventContract {
-  routes: RouteContract[];
-}
-
-interface RoutingControlContract {
-  on(event: 'routesfound', handler: (event: RoutesFoundEventContract) => void): void;
-  addTo(map: L.Map): void;
-}
-
-interface RoutingFactoryContract {
-  osrmv1(config: { serviceUrl: string; profile: 'driving' }): unknown;
-  control(config: {
-    waypoints: L.LatLng[];
-    routeWhileDragging: boolean;
-    showAlternatives: boolean;
-    fitSelectedRoutes: boolean;
-    addWaypoints: boolean;
-    show: boolean;
-    lineOptions: {
-      styles: Array<{ color: string; weight: number; opacity: number }>;
-      extendToWaypoints: boolean;
-      missingRouteTolerance: number;
-    };
-    router: unknown;
-    createMarker: () => null;
-  }): RoutingControlContract;
-}
-
-type LeafletWithRouting = typeof L & { Routing?: RoutingFactoryContract };
-
-const getRoutingFactory = (): RoutingFactoryContract | null => {
-  const routing = (L as LeafletWithRouting).Routing;
-  return routing ?? null;
-};
+// Access Routing from the global L object after import
+const LRouting = L.Routing;
 
 interface RoutingMachineProps {
   map: L.Map | null;
@@ -59,7 +17,7 @@ interface RoutingMachineProps {
 }
 
 export const RoutingMachine = ({ map, waypoints, onRouteFound }: RoutingMachineProps) => {
-  const routingControlRef = useRef<RoutingControlContract | null>(null);
+  const routingControlRef = useRef<L.RoutingControl | null>(null);
 
   useEffect(() => {
     if (!map) return;
@@ -106,8 +64,8 @@ export const RoutingMachine = ({ map, waypoints, onRouteFound }: RoutingMachineP
       createMarker: () => null, // Don't create default markers
     });
 
-    routingControl.on('routesfound', (e) => {
-      const routes = e.routes;
+    routingControl.on('routesfound', (event) => {
+      const routes = event.routes;
       if (routes && routes.length > 0 && onRouteFound) {
         const route = routes[0];
         onRouteFound({
