@@ -117,7 +117,7 @@ async function uploadOneFile(
   const sanitizedFileName = sanitizeFileNameForStorage(file.name);
   const filePath = `${user.id}/decisions/${decisionId}/${uniqueSuffix}-${sanitizedFileName}`;
 
-  const { uploadData } = await uploadToStorageWithCandidates(filePath, file);
+  const { uploadData } = await uploadToStorageWithCandidates(filePath, file) as { uploadData: { path: string }; candidateErrors: string[] };
 
   const cachedMetadata = metadataByIdentity?.[getFileIdentity(file)] ?? null;
 
