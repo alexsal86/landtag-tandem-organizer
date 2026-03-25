@@ -11,11 +11,15 @@ import { de } from "date-fns/locale";
 import { cn } from "@/lib/utils";
 import type { EventPlanning, Collaborator, Profile } from "./types";
 
+interface CurrentUser {
+  id: string;
+}
+
 interface EventPlanningTableProps {
-  plannings: EventPlanning[];
-  allProfiles: Profile[];
-  collaborators: Collaborator[];
-  user: any;
+  plannings: ReadonlyArray<EventPlanning>;
+  allProfiles: ReadonlyArray<Profile>;
+  collaborators: ReadonlyArray<Collaborator>;
+  user: CurrentUser | null;
   isItemNew: (id: string, createdAt: string) => boolean;
   setSelectedPlanning: (planning: EventPlanning) => void;
   togglePlanningCompleted: (id: string, completed: boolean) => void;
@@ -65,14 +69,14 @@ export function EventPlanningTable({
                 {planning.title}
               </TableCell>
               <TableCell>
-                <UserBadge userId={planning.user_id} displayName={creatorProfile?.display_name || null} badgeColor={(creatorProfile as any)?.badge_color} size="sm" />
+                <UserBadge userId={planning.user_id} displayName={creatorProfile?.display_name || null} badgeColor={creatorProfile?.badge_color} size="sm" />
               </TableCell>
               <TableCell>
                 {planningCollabs.length > 0 ? (
                   <div className="flex gap-1">
                     {planningCollabs.slice(0, 3).map(collab => {
                       const profile = allProfiles.find(p => p.user_id === collab.user_id);
-                      const color = (profile as any)?.badge_color || getHashedColor(collab.user_id);
+                      const color = profile?.badge_color || getHashedColor(collab.user_id);
                       return (
                         <TooltipProvider key={collab.id}>
                           <Tooltip>

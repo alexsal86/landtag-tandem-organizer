@@ -5,6 +5,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { useTenant } from "@/hooks/useTenant";
 import { useToast } from "@/hooks/use-toast";
 import { debugConsole } from '@/utils/debugConsole';
+import { getErrorMessage } from '@/utils/errorHandler';
 import { startOfYear, endOfYear } from "date-fns";
 import {
   Employee, EmployeeSettingsRow, Profile, LeaveAgg, LeaveType, PendingLeaveRequest,
@@ -271,9 +272,9 @@ export function useEmployeesData() {
           if (!curr || new Date(lr.start_date) > new Date(curr)) agg.lastDates[leaveType] = lr.start_date;
         });
         setSelfLeaveAgg(agg);
-      } catch (e: any) {
-        debugConsole.error(e);
-        toast({ title: "Fehler beim Laden", description: e?.message ?? "Eigene Daten konnten nicht geladen werden.", variant: "destructive" });
+      } catch (error: unknown) {
+        debugConsole.error(error);
+        toast({ title: "Fehler beim Laden", description: getErrorMessage(error) || "Eigene Daten konnten nicht geladen werden.", variant: "destructive" });
       } finally {
         setLoading(false);
       }
