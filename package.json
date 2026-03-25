@@ -51,7 +51,9 @@
     "test:e2e-smoke": "npm run test:role-smoke && npm run test:e2e:smoke-extended",
     "test:e2e:flows-smoke": "node scripts/e2e-smoke-flows.mjs",
     "test:e2e:smoke-required": "E2E_SMOKE_SUITE=required node scripts/e2e-smoke-flows.mjs",
-    "test:e2e:smoke-extended": "E2E_SMOKE_SUITE=extended node scripts/e2e-smoke-flows.mjs"
+    "test:e2e:smoke-extended": "E2E_SMOKE_SUITE=extended node scripts/e2e-smoke-flows.mjs",
+    "report:any-usage": "node scripts/report-any-usage.mjs",
+    "report:any-usage:total": "node scripts/report-any-usage.mjs --total-only"
   },
   "dependencies": {
     "@eslint/js": "^10.0.1",
