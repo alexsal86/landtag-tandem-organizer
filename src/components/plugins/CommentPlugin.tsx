@@ -11,7 +11,8 @@ import {
   $createRangeSelection,
   $createTextNode,
   type LexicalNode,
-  type SerializedLexicalNode
+  type SerializedLexicalNode,
+  type Spread
 } from 'lexical';
 import { useLexicalComposerContext } from '@lexical/react/LexicalComposerContext';
 import { $createMarkNode, $isMarkNode, MarkNode } from '@lexical/mark';
@@ -57,13 +58,13 @@ class CommentMarkNode extends MarkNode {
   }
 
   // Required for serialization
-  static importJSON(serializedNode: SerializedLexicalNode & { commentId?: string }): CommentMarkNode {
+  static importJSON(serializedNode: SerializedCommentMarkNode): CommentMarkNode {
     const { commentId } = serializedNode;
     return new CommentMarkNode(commentId);
   }
 
   // Required for serialization
-  exportJSON(): SerializedLexicalNode & { commentId: string } {
+  exportJSON(): SerializedCommentMarkNode {
     return {
       ...super.exportJSON(),
       commentId: this.__commentId,
@@ -102,6 +103,15 @@ class CommentMarkNode extends MarkNode {
     writable.__commentId = commentId;
   }
 }
+
+type SerializedCommentMarkNode = Spread<
+  {
+    commentId: string;
+    type: 'comment-mark';
+    version: 1;
+  },
+  SerializedLexicalNode
+>;
 
 function $createCommentMarkNode(commentId: string): CommentMarkNode {
   return new CommentMarkNode(commentId);
