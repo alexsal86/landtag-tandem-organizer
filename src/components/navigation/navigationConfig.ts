@@ -71,10 +71,9 @@ export const navigationGroups: NavGroup[] = [
     icon: Briefcase,
     subItems: [
       { id: "casefiles", label: "Fallakten", icon: Briefcase },
-      { id: "dossiers", label: "Dossiers", icon: Briefcase },
       { id: "documents", label: "Dokumente", icon: FileText },
       { id: "drucksachen", label: "Drucksachen", icon: Archive },
-      { id: "knowledge", label: "Wissen", icon: Database },
+      { id: "dossiers", label: "Wissen", icon: Database },
     ]
   },
   {

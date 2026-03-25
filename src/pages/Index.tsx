@@ -25,6 +25,7 @@ const Administration = lazyWithRetry(() => import("@/pages/Administration"));
 const DecisionOverview = lazyWithRetry(() => import("@/components/task-decisions/DecisionOverview").then(m => ({ default: m.DecisionOverview })));
 const DrucksachenView = lazyWithRetry(() => import("@/components/DrucksachenView").then(m => ({ default: m.DrucksachenView })));
 const CaseFilesView = lazyWithRetry(() => import("@/components/CaseFilesView").then(m => ({ default: m.CaseFilesView })));
+const DossiersMainView = lazyWithRetry(() => import("@/features/dossiers/components/DossiersMainView").then(m => ({ default: m.DossiersMainView })));
 const MatrixChatView = lazyWithRetry(() => import("@/components/chat/MatrixChatView").then(m => ({ default: m.MatrixChatView })));
 const MatrixClientProvider = lazyWithRetry(() => import("@/contexts/MatrixClientContext").then(m => ({ default: m.MatrixClientProvider })));
 const MyWorkView = lazyWithRetry(() => import("@/components/MyWorkView").then(m => ({ default: m.MyWorkView })));
@@ -216,7 +217,7 @@ const Index = (): React.JSX.Element => {
       case "casefiles":
         return withSectionBoundary('Vorgänge', <CaseFilesView />);
       case "dossiers":
-        return withSectionBoundary('Dossiers', <CaseFilesView mode="dossiers" />);
+        return withSectionBoundary('Wissen', <DossiersMainView />);
       case "chat":
         return withSectionBoundary('Chat', <MatrixChatView />);
       case "daten":
