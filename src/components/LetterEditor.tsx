@@ -360,7 +360,7 @@ const LetterEditor: React.FC<LetterEditorProps> = ({ letter, isOpen, onClose, on
                   </div>
                   <div className="flex-1 overflow-auto p-3">
                     <EnhancedLexicalEditor key={letter?.id || 'new'} content={draftContent || letter?.content || ''} contentNodes={draftContentNodes ?? letter?.content_nodes ?? undefined}
-                      onChange={(nextContent, nextNodes, nextHtml) => { setDraftContent(nextContent || ''); setDraftContentNodes(nextNodes && nextNodes.trim() !== '' ? nextNodes : null); setDraftContentHtml(nextHtml || null); }}
+                      onChange={({ plainText, nodesJson, html }) => { setDraftContent(plainText || ''); setDraftContentNodes(nodesJson && nodesJson.trim() !== '' ? nodesJson : null); setDraftContentHtml(html || null); }}
                       placeholder="Brieftext hier eingeben..." documentId={letter?.id} showToolbar={canEdit} editable={canEdit}
                       onMentionInsert={(userId) => pendingMentionsRef.current.add(userId)} defaultFontFamily={templateDefaultFontFamily} />
                   </div>
