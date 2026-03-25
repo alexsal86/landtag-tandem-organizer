@@ -54,7 +54,12 @@
     "test:e2e-smoke": "npm run test:role-smoke && npm run test:e2e:smoke-extended",
     "test:e2e:flows-smoke": "node scripts/e2e-smoke-flows.mjs",
     "test:e2e:smoke-required": "E2E_SMOKE_SUITE=required node scripts/e2e-smoke-flows.mjs",
-    "test:e2e:smoke-extended": "E2E_SMOKE_SUITE=extended node scripts/e2e-smoke-flows.mjs"
+    "test:e2e:smoke-extended": "E2E_SMOKE_SUITE=extended node scripts/e2e-smoke-flows.mjs",
+    "any-report:flow-auth-tenant": "node scripts/any-report-flow.mjs auth-tenant",
+    "any-report:flow-calendar-sync": "node scripts/any-report-flow.mjs calendar-sync",
+    "any-report:flow-letter-workflow": "node scripts/any-report-flow.mjs letter-workflow",
+    "any-report:flow-notifications": "node scripts/any-report-flow.mjs notifications",
+    "any-report:flow-edge-auth-role-tenant": "node scripts/any-report-flow.mjs edge-auth-role-tenant"
   },
   "dependencies": {
     "@eslint/js": "^10.0.1",
