@@ -61,6 +61,7 @@ export function useCreateEntry() {
       source_url?: string;
       file_path?: string;
       file_name?: string;
+      metadata?: Record<string, unknown>;
     }) => {
       if (!currentTenant?.id || !profileId) throw new Error("Nicht angemeldet");
       const { data, error } = await supabase
@@ -73,6 +74,7 @@ export function useCreateEntry() {
           source_url: input.source_url ?? null,
           file_path: input.file_path ?? null,
           file_name: input.file_name ?? null,
+          metadata: input.metadata ?? {},
           tenant_id: currentTenant.id,
           created_by: profileId,
         })
@@ -103,6 +105,25 @@ export function useAssignEntryToDossier() {
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["dossier-entries"] });
       toast.success("Eintrag zugeordnet");
+    },
+    onError: (err) => toast.error(`Fehler: ${err.message}`),
+  });
+}
+
+export function useDeleteEntry() {
+  const qc = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (entryId: string) => {
+      const { error } = await supabase
+        .from("dossier_entries")
+        .delete()
+        .eq("id", entryId);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["dossier-entries"] });
+      toast.success("Eintrag gelöscht");
     },
     onError: (err) => toast.error(`Fehler: ${err.message}`),
   });
