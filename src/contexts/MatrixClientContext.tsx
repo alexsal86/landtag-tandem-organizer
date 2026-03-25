@@ -9,7 +9,7 @@ import { useTenant } from '@/hooks/useTenant';
 import { supabase } from '@/integrations/supabase/client';
 import { debugConsole, isDebugConsoleEnabled } from '@/utils/debugConsole';
 import { getCoiCapabilityStatus } from '@/lib/coiRuntime';
-import type { MatrixCreateRoomOptions, MatrixMessage, MatrixReplyPreview } from '@/types/matrix';
+import type { MatrixCreateRoomOptions, MatrixMessage, MatrixReactionSummary, MatrixReplyPreview } from '@/types/matrix';
 
 // ─── Interfaces ──────────────────────────────────────────────────────────────
 
@@ -111,6 +111,50 @@ interface MatrixSasData {
   cancel: () => void;
 }
 
+type MatrixClientEventName = (typeof sdk.ClientEvent)[keyof typeof sdk.ClientEvent]
+  | (typeof sdk.RoomEvent)[keyof typeof sdk.RoomEvent]
+  | (typeof sdk.RoomMemberEvent)[keyof typeof sdk.RoomMemberEvent]
+  | (typeof sdk.MatrixEventEvent)[keyof typeof sdk.MatrixEventEvent]
+  | (typeof CryptoEvent)[keyof typeof CryptoEvent];
+
+interface MatrixEventListener {
+  event: MatrixClientEventName;
+  handler: (...args: unknown[]) => void;
+}
+
+interface MatrixReplyRelationPayload {
+  event_id: string;
+}
+
+interface MatrixRelatesToBasePayload {
+  rel_type?: string;
+  event_id?: string;
+  key?: string;
+  'm.in_reply_to'?: MatrixReplyRelationPayload;
+}
+
+interface MatrixMessageContentPayload {
+  msgtype?: string;
+  body?: string;
+  url?: string;
+  info?: unknown;
+  format?: string;
+  formatted_body?: string;
+  'm.relates_to'?: MatrixRelatesToBasePayload;
+}
+
+interface MatrixReactionPayload {
+  'm.relates_to'?: MatrixRelatesToBasePayload;
+}
+
+interface MatrixTypingPayload {
+  user_ids?: string[];
+}
+
+type MatrixRealtimePayload = MatrixMessageContentPayload | MatrixReactionPayload;
+type MatrixPresencePayload = MatrixTypingPayload;
+type MatrixEventPayload = MatrixRealtimePayload | MatrixPresencePayload;
+
 interface MatrixVerificationRequest {
   transactionId?: string;
   otherDeviceId?: string;
@@ -120,6 +164,10 @@ interface MatrixVerificationRequest {
   cancel: () => Promise<void>;
   on?: (event: 'change', handler: () => void) => void;
   off?: (event: 'change', handler: () => void) => void;
+}
+
+interface MatrixReadMarkersClient extends sdk.MatrixClient {
+  setRoomReadMarkers: (roomId: string, eventId: string, rrEventId: string) => Promise<unknown>;
 }
 
 interface MatrixClientProviderProps {
@@ -216,6 +264,17 @@ const toSafeErrorMessage = (error: unknown): string => {
   return typeof error === 'string' ? error : 'Unbekannter Fehler';
 };
 
+const toMatrixEventPayload = (event: sdk.MatrixEvent): MatrixEventPayload =>
+  (event.getContent() ?? {}) as MatrixEventPayload;
+
+const getMatrixRelatesToPayload = (event: sdk.MatrixEvent): MatrixRelatesToBasePayload | undefined => {
+  const content = toMatrixEventPayload(event);
+  if ('m.relates_to' in content) {
+    return content['m.relates_to'];
+  }
+  return undefined;
+};
+
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
@@ -225,7 +284,8 @@ const mapMatrixEventToMessage = (room: sdk.Room, event: sdk.MatrixEvent): Matrix
 
   if (!isMessageEvent) return null;
 
-  const content = event.getContent();
+  const content = toMatrixEventPayload(event);
+  if (!('msgtype' in content)) return null;
   const canReadMessageContent = Boolean(content?.msgtype);
   const isStillEncrypted = Boolean(event.isEncrypted?.()) && !canReadMessageContent;
   const relatesTo = content['m.relates_to'];
@@ -241,7 +301,7 @@ const mapMatrixEventToMessage = (room: sdk.Room, event: sdk.MatrixEvent): Matrix
       replyTo = {
         eventId: replyEvent.getId() || '',
         sender: room.getMember(replyEvent.getSender() || '')?.name || replyEvent.getSender() || '',
-        content: replyEvent.getContent().body || '',
+        content: ((replyEvent.getContent() as MatrixMessageContentPayload).body) || '',
       };
     }
   }
@@ -261,7 +321,7 @@ const mapMatrixEventToMessage = (room: sdk.Room, event: sdk.MatrixEvent): Matrix
     reactions: new Map(),
     mediaContent: !isStillEncrypted && isMedia ? {
       msgtype: content.msgtype || 'm.file',
-      body: content.body,
+      body: content.body || '',
       url: content.url,
       info: content.info,
     } : undefined,
@@ -365,10 +425,10 @@ export interface MatrixClientContextType {
   resetCryptoStore: () => Promise<void>;
 }
 
-const noopAsync = async () => {};
+const noopAsync = async (..._args: unknown[]): Promise<void> => {};
 const noopRejectSas = () => {};
-const noopRefreshMessages = () => {};
-const noopTyping = () => {};
+const noopRefreshMessages = (_roomId: string, _limit?: number) => {};
+const noopTyping = (_roomId: string, _isTyping: boolean) => {};
 
 const createDefaultE2EEDiagnostics = (): MatrixE2EEDiagnostics => {
   if (typeof window === 'undefined') {
@@ -413,9 +473,9 @@ const defaultMatrixClientContext: MatrixClientContextType = {
   refreshMessages: noopRefreshMessages,
   loadOlderMessages: noopAsync,
   totalUnreadCount: 0,
-  roomMessages: new Map(),
-  roomHistoryState: new Map(),
-  typingUsers: new Map(),
+  roomMessages: new Map<MatrixRoomId, MatrixMessage[]>(),
+  roomHistoryState: new Map<MatrixRoomId, MatrixRoomHistoryState>(),
+  typingUsers: new Map<MatrixRoomId, string[]>(),
   sendTypingNotification: noopTyping,
   sendReadReceiptForLatestVisibleEvent: noopAsync,
   addReaction: noopAsync,
@@ -471,7 +531,7 @@ export function MatrixClientProvider({ children }: MatrixClientProviderProps): R
   const isConnectedRef = useRef(false);
   const authPasswordRef = useRef<string | undefined>(undefined);
   const clientRef = useRef<sdk.MatrixClient | null>(null);
-  const listenersRef = useRef<Array<{ event: string; handler: (...args: unknown[]) => void }>>([]);
+  const listenersRef = useRef<MatrixEventListener[]>([]);
   const refreshInFlightRef = useRef<Set<string>>(new Set());
   const historyLoadInFlightRef = useRef<Set<string>>(new Set());
   const messagesRoomLruRef = useRef<string[]>([]);
@@ -782,9 +842,9 @@ export function MatrixClientProvider({ children }: MatrixClientProviderProps): R
                 createSecretStorageKey: async () => {
                   try {
                     const privateKey = decodeRecoveryKey(recoveryKey.trim());
-                    return { privateKey, encodedPrivateKey: recoveryKey.trim() } as any;
+                    return { privateKey, encodedPrivateKey: recoveryKey.trim() };
                   } catch {
-                    return {} as any;
+                    return {};
                   }
                 },
               });
@@ -803,15 +863,20 @@ export function MatrixClientProvider({ children }: MatrixClientProviderProps): R
         if (uiaPassword) {
           try {
             const localpart = creds.userId.split(':')[0].substring(1);
+            type UploadAuthRequest = (authData: {
+              type: 'm.login.password';
+              identifier: { type: 'm.id.user'; user: string };
+              password: string;
+            }) => Promise<unknown>;
             await crypto.bootstrapCrossSigning({
-              authUploadDeviceSigningKeys: async (makeRequest: any) => {
-                await (makeRequest as any)({
+              authUploadDeviceSigningKeys: async (makeRequest: UploadAuthRequest) => {
+                await makeRequest({
                   type: 'm.login.password',
                   identifier: { type: 'm.id.user', user: localpart },
                   password: uiaPassword,
                 });
               },
-            } as any);
+            });
             matrixLogger.log('Cross-Signing bootstrapped (with UIA password)');
           } catch (e) {
             matrixLogger.warn(`bootstrapCrossSigning failed: ${toSafeErrorMessage(e)}`);
@@ -831,7 +896,7 @@ export function MatrixClientProvider({ children }: MatrixClientProviderProps): R
       }
 
       // 7. Register event listeners (named references for cleanup)
-      const registeredListeners: Array<{ event: string; handler: (...args: unknown[]) => void }> = [];
+      const registeredListeners: MatrixEventListener[] = [];
 
       const onSync = (state: string) => {
         if (state === 'PREPARED') {
@@ -871,10 +936,11 @@ export function MatrixClientProvider({ children }: MatrixClientProviderProps): R
         }
 
         if (eventType === 'm.reaction') {
-          const relatesTo = event.getContent()['m.relates_to'];
+          const relatesTo = getMatrixRelatesToPayload(event);
           if (relatesTo?.rel_type === 'm.annotation') {
-            const targetEventId = relatesTo.event_id as string;
-            const emoji = relatesTo.key as string;
+            const targetEventId = relatesTo.event_id;
+            const emoji = relatesTo.key;
+            if (!targetEventId || !emoji) return;
 
             setMessages(prev => {
               const roomMessages = prev.get(room.roomId);
@@ -882,7 +948,7 @@ export function MatrixClientProvider({ children }: MatrixClientProviderProps): R
               const newRoomMessages = roomMessages.map(msg => {
                 if (msg.eventId === targetEventId) {
                   const reactions = new Map(msg.reactions);
-                  const existing = reactions.get(emoji) || { count: 0, userReacted: false };
+                  const existing: MatrixReactionSummary = reactions.get(emoji) || { count: 0, userReacted: false };
                   reactions.set(emoji, {
                     count: existing.count + 1,
                     userReacted: existing.userReacted || event.getSender() === creds.userId,
@@ -898,6 +964,10 @@ export function MatrixClientProvider({ children }: MatrixClientProviderProps): R
       };
 
       const onTyping = (_event: sdk.MatrixEvent, member: sdk.RoomMember) => {
+        const presencePayload = toMatrixEventPayload(_event);
+        if ('user_ids' in presencePayload && !Array.isArray(presencePayload.user_ids)) {
+          return;
+        }
         const roomId = member.roomId;
         const r = matrixClient.getRoom(roomId);
         if (!r) return;
@@ -917,7 +987,8 @@ export function MatrixClientProvider({ children }: MatrixClientProviderProps): R
         const roomId = event.getRoomId();
         if (!roomId) return;
 
-        const content = event.getContent();
+        const content = toMatrixEventPayload(event);
+        if (!('msgtype' in content)) return;
         if (!content?.msgtype) return;
         const r = matrixClient.getRoom(roomId);
         if (!r) return;
@@ -936,7 +1007,7 @@ export function MatrixClientProvider({ children }: MatrixClientProviderProps): R
           reactions: new Map(),
           mediaContent: isMedia ? {
             msgtype: content.msgtype,
-            body: content.body,
+            body: content.body || '',
             url: content.url,
             info: content.info,
           } : undefined,
@@ -1024,15 +1095,15 @@ export function MatrixClientProvider({ children }: MatrixClientProviderProps): R
 
       // Attach all listeners
       matrixClient.on(sdk.ClientEvent.Sync, onSync);
-      matrixClient.on(sdk.RoomEvent.Timeline, onTimeline as any);
-      matrixClient.on(sdk.RoomMemberEvent.Typing, onTyping as any);
+      matrixClient.on(sdk.RoomEvent.Timeline, onTimeline as (...args: unknown[]) => void);
+      matrixClient.on(sdk.RoomMemberEvent.Typing, onTyping as (...args: unknown[]) => void);
       matrixClient.on(sdk.MatrixEventEvent.Decrypted, onDecrypted);
       matrixClient.on(CryptoEvent.VerificationRequestReceived, onVerificationRequestReceived);
 
       registeredListeners.push(
         { event: sdk.ClientEvent.Sync, handler: onSync },
-        { event: sdk.RoomEvent.Timeline, handler: onTimeline as any },
-        { event: sdk.RoomMemberEvent.Typing, handler: onTyping as any },
+        { event: sdk.RoomEvent.Timeline, handler: onTimeline as (...args: unknown[]) => void },
+        { event: sdk.RoomMemberEvent.Typing, handler: onTyping as (...args: unknown[]) => void },
         { event: sdk.MatrixEventEvent.Decrypted, handler: onDecrypted },
         { event: CryptoEvent.VerificationRequestReceived, handler: onVerificationRequestReceived },
       );
@@ -1088,18 +1159,18 @@ export function MatrixClientProvider({ children }: MatrixClientProviderProps): R
         }
         // Re-register listeners on new client
         for (const l of registeredListeners) {
-          matrixClient.removeListener(l.event as any, l.handler);
+          matrixClient.removeListener(l.event, l.handler);
         }
         registeredListeners.length = 0;
         matrixClient.on(sdk.ClientEvent.Sync, onSync);
-        matrixClient.on(sdk.RoomEvent.Timeline, onTimeline as any);
-        matrixClient.on(sdk.RoomMemberEvent.Typing, onTyping as any);
+        matrixClient.on(sdk.RoomEvent.Timeline, onTimeline as (...args: unknown[]) => void);
+        matrixClient.on(sdk.RoomMemberEvent.Typing, onTyping as (...args: unknown[]) => void);
         matrixClient.on(sdk.MatrixEventEvent.Decrypted, onDecrypted);
         matrixClient.on(CryptoEvent.VerificationRequestReceived, onVerificationRequestReceived);
         registeredListeners.push(
           { event: sdk.ClientEvent.Sync, handler: onSync },
-          { event: sdk.RoomEvent.Timeline, handler: onTimeline as any },
-          { event: sdk.RoomMemberEvent.Typing, handler: onTyping as any },
+          { event: sdk.RoomEvent.Timeline, handler: onTimeline as (...args: unknown[]) => void },
+          { event: sdk.RoomMemberEvent.Typing, handler: onTyping as (...args: unknown[]) => void },
           { event: sdk.MatrixEventEvent.Decrypted, handler: onDecrypted },
           { event: CryptoEvent.VerificationRequestReceived, handler: onVerificationRequestReceived },
         );
@@ -1156,7 +1227,7 @@ export function MatrixClientProvider({ children }: MatrixClientProviderProps): R
     if (mc) {
       // Remove all registered listeners
       for (const { event, handler } of listenersRef.current) {
-        try { mc.removeListener(event as any, handler); } catch {}
+        try { mc.removeListener(event, handler); } catch {}
       }
       listenersRef.current = [];
       mc.stopClient();
@@ -1235,7 +1306,7 @@ export function MatrixClientProvider({ children }: MatrixClientProviderProps): R
     visibleOrNewEvents.forEach(event => {
       if (event.isEncrypted()) {
         try {
-          event.attemptDecryption(mc.getCrypto() as any).catch(() => {});
+          event.attemptDecryption(mc.getCrypto()).catch(() => {});
         } catch {}
       }
     });
@@ -1249,7 +1320,7 @@ export function MatrixClientProvider({ children }: MatrixClientProviderProps): R
         const id = event.getId();
         if (id && cachedFailedIds.has(id) && event.isEncrypted()) {
           try {
-            event.attemptDecryption(mc.getCrypto() as any).catch(() => {});
+            event.attemptDecryption(mc.getCrypto()).catch(() => {});
           } catch {}
         }
       });
@@ -1260,7 +1331,7 @@ export function MatrixClientProvider({ children }: MatrixClientProviderProps): R
       .filter((msg): msg is MatrixMessage => Boolean(msg));
 
     const deltaMessages: MatrixMessage[] = [];
-    const cachedById = new Map(cached.map((message) => [message.eventId, message]));
+    const cachedById = new Map<string, MatrixMessage>(cached.map((message) => [message.eventId, message]));
     for (const message of timelineMessages) {
       const existing = cachedById.get(message.eventId);
       const shouldReplace = existing != null && (
@@ -1316,7 +1387,7 @@ export function MatrixClientProvider({ children }: MatrixClientProviderProps): R
     if (!room) return;
 
     historyLoadInFlightRef.current.add(roomId);
-    setRoomHistoryState(prev => {
+    setRoomHistoryState((prev: MatrixRoomHistoryMap) => {
       const next = new Map(prev);
       const existing = next.get(roomId);
       next.set(roomId, {
@@ -1342,7 +1413,7 @@ export function MatrixClientProvider({ children }: MatrixClientProviderProps): R
       matrixLogger.warn('Matrix loadOlderMessages failed:', error);
     } finally {
       historyLoadInFlightRef.current.delete(roomId);
-      setRoomHistoryState(prev => {
+      setRoomHistoryState((prev: MatrixRoomHistoryMap) => {
         const next = new Map(prev);
         next.set(roomId, {
           isLoadingMore: false,
@@ -1364,7 +1435,7 @@ export function MatrixClientProvider({ children }: MatrixClientProviderProps): R
       throw new Error('Verschlüsselung erforderlich, aber nicht verfügbar. Seite neu laden.');
     }
 
-    const content: Record<string, unknown> = { msgtype: 'm.text', body: message };
+    const content: MatrixMessageContentPayload = { msgtype: 'm.text', body: message };
 
     if (replyToEventId) {
       const replyEvent = room?.findEventById(replyToEventId);
@@ -1378,7 +1449,7 @@ export function MatrixClientProvider({ children }: MatrixClientProviderProps): R
       }
     }
 
-    await mc.sendMessage(roomId, content as any);
+    await mc.sendMessage(roomId, content);
   }, []);
 
   // ─── sendTypingNotification ──────────────────────────────────────────────
@@ -1414,7 +1485,10 @@ export function MatrixClientProvider({ children }: MatrixClientProviderProps): R
 
       const latestEventId = latestEvent.getId();
       if (latestEventId) {
-        await (mc as any).setRoomReadMarkers(roomId, latestEventId, latestEventId);
+        const readMarkersClient = mc as MatrixReadMarkersClient;
+        if (typeof readMarkersClient.setRoomReadMarkers === 'function') {
+          await readMarkersClient.setRoomReadMarkers(roomId, latestEventId, latestEventId);
+        }
       }
     } catch (error) {
       matrixLogger.warn('Failed to send read receipt (non-critical):', error);
@@ -1426,7 +1500,7 @@ export function MatrixClientProvider({ children }: MatrixClientProviderProps): R
   const addReaction = useCallback(async (roomId: string, eventId: string, emoji: string) => {
     const mc = clientRef.current;
     if (!mc) return;
-    await (mc as any).sendEvent(roomId, 'm.reaction', {
+    await mc.sendEvent(roomId, 'm.reaction', {
       'm.relates_to': { rel_type: 'm.annotation', event_id: eventId, key: emoji },
     });
   }, []);
@@ -1445,7 +1519,7 @@ export function MatrixClientProvider({ children }: MatrixClientProviderProps): R
     const myUserId = mc.getUserId();
     const reactionEvent = timeline.find(ev => {
       if (ev.getType() !== 'm.reaction') return false;
-      const rel = ev.getContent()['m.relates_to'];
+      const rel = getMatrixRelatesToPayload(ev);
       return rel?.rel_type === 'm.annotation' &&
         rel?.event_id === eventId &&
         rel?.key === emoji &&
