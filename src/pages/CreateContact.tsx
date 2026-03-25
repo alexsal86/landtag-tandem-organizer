@@ -27,7 +27,20 @@ import { DuplicateWarning } from "@/components/DuplicateWarning";
 import { TagInput } from "@/components/ui/tag-input";
 import type { ContactCategory, ContactDuplicateCandidate, ContactPriority, EditableContact } from "@/types/contact";
 
-type ContactFormData = Pick<EditableContact, "contact_type" | "gender" | "name" | "role" | "organization_id" | "email" | "phone" | "website" | "address" | "notes" | "tags" | "industry" | "main_contact_person"> & {
+type ContactFormData = {
+  contact_type: Exclude<import("@/types/contact").ContactType, "archive">;
+  gender: string;
+  name: string;
+  role: string;
+  organization_id: string;
+  email: string;
+  phone: string;
+  website: string;
+  address: string;
+  notes: string;
+  tags: string[];
+  industry: string;
+  main_contact_person: string;
   category: ContactCategory | "";
   priority: ContactPriority | "";
   added_reason: string;
