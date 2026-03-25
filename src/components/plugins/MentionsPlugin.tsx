@@ -124,7 +124,7 @@ function MentionsTypeaheadMenuItem({
 }
 
 // Cast to avoid JSX generic syntax which breaks the build tooling
-const TypeaheadMenuPlugin = LexicalTypeaheadMenuPlugin as React.ComponentType<any>;
+const TypeaheadMenuPlugin = LexicalTypeaheadMenuPlugin as React.ComponentType<Record<string, unknown>>;
 
 export function MentionsPlugin({ onMentionInsert }: MentionsPluginProps = {}): React.JSX.Element | null {
   const [editor] = useLexicalComposerContext();

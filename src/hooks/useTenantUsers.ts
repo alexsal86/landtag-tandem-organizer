@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useTenant } from "@/hooks/useTenant";
+import { normalizeSupabaseResult } from "@/utils/typeSafety";
 
 export interface TenantUser {
   id: string;
@@ -23,12 +24,14 @@ export function useTenantUsers() {
     setLoading(true);
 
     (async () => {
-      const { data: memberships } = await supabase
+      const membershipResponse = await supabase
         .from("user_tenant_memberships")
         .select("user_id")
         .eq("tenant_id", currentTenant.id)
         .eq("is_active", true);
+      const membershipsResult = normalizeSupabaseResult(membershipResponse);
 
+      const memberships = membershipsResult.data as Array<{ user_id: string }> | null;
       if (cancelled || !memberships?.length) {
         if (!cancelled) { setUsers([]); setLoading(false); }
         return;
@@ -36,13 +39,15 @@ export function useTenantUsers() {
 
       const userIds = memberships.map((m) => m.user_id);
 
-      const { data: profiles } = await supabase
+      const profilesResponse = await supabase
         .from("profiles")
         .select("user_id, display_name, avatar_url")
         .in("user_id", userIds);
+      const profilesResult = normalizeSupabaseResult(profilesResponse);
 
       if (cancelled) return;
 
+      const profiles = profilesResult.data as Array<{ user_id: string; display_name: string | null; avatar_url: string | null }> | null;
       const mapped: TenantUser[] = (profiles || [])
         .map((p) => ({
           id: p.user_id,
