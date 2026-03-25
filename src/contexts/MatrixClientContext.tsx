@@ -864,7 +864,7 @@ export function MatrixClientProvider({ children }: MatrixClientProviderProps): R
         if (uiaPassword) {
           try {
             const localpart = creds.userId.split(':')[0].substring(1);
-            // @ts-expect-error matrix-js-sdk UIA authUploadDeviceSigningKeys callback type
+            
             await crypto.bootstrapCrossSigning({
               authUploadDeviceSigningKeys: async (makeRequest: (auth: Record<string, unknown>) => Promise<void>) => {
                 await makeRequest({
