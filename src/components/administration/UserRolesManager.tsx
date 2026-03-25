@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { debugConsole } from "@/utils/debugConsole";
+import { getErrorMessage } from "@/utils/errorHandler";
 import { useAuth } from "@/hooks/useAuth";
 import { useTenant } from "@/hooks/useTenant";
 import { useToast } from "@/components/ui/use-toast";
@@ -92,9 +93,9 @@ export function UserRolesManager() {
       const { data: newRoles } = await supabase.from("user_roles").select("user_id, role");
       setRoles((newRoles as UserRole[]) || []);
       toast({ title: "Gespeichert", description: "Rolle erfolgreich aktualisiert." });
-    } catch (e: any) {
-      debugConsole.error(e);
-      toast({ title: "Fehler", description: e?.message ?? "Änderung fehlgeschlagen.", variant: "destructive" });
+    } catch (error: unknown) {
+      debugConsole.error(error);
+      toast({ title: "Fehler", description: getErrorMessage(error) || "Änderung fehlgeschlagen.", variant: "destructive" });
     } finally {
       setBusyUserId(null);
     }
@@ -183,8 +184,8 @@ export function UserRolesManager() {
                                 if (error || !data?.success) throw new Error(data?.error || 'Löschen fehlgeschlagen');
                                 toast({ title: "Benutzer gelöscht" });
                                 loadData();
-                              } catch (err: any) {
-                                toast({ title: "Fehler", description: err.message, variant: "destructive" });
+                              } catch (error: unknown) {
+                                toast({ title: "Fehler", description: getErrorMessage(error), variant: "destructive" });
                               }
                             }}>Unwiderruflich löschen</AlertDialogAction>
                           </AlertDialogFooter>
