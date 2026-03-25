@@ -29,7 +29,7 @@ const strictNotificationsFlowFiles = [
 ];
 
 const strictFlowRules = {
-  '@typescript-eslint/no-explicit-any': 'warn',
+  '@typescript-eslint/no-explicit-any': 'error',
   '@typescript-eslint/no-unsafe-assignment': 'warn',
   '@typescript-eslint/no-unsafe-member-access': 'warn',
   '@typescript-eslint/no-unsafe-call': 'warn',
@@ -43,7 +43,7 @@ const preparedExplicitAnyErrorScopes = {
   servicesAndFeatures: ['src/services/**/*.{ts,tsx}', 'src/features/**/*.{ts,tsx}'],
 };
 
-const enablePreparedExplicitAnyErrorScopes = false;
+const enablePreparedExplicitAnyErrorScopes = true;
 
 const hardenedExplicitAnyErrorFiles = [
   'src/services/headerRenderer.ts',
@@ -92,6 +92,14 @@ export default [
       'react-refresh/only-export-components': ['warn', { allowConstantExport: true }],
       '@typescript-eslint/no-unused-vars': ['warn', { argsIgnorePattern: '^_', varsIgnorePattern: '^_', caughtErrorsIgnorePattern: '^_' }],
       '@typescript-eslint/no-explicit-any': 'warn',
+      '@typescript-eslint/ban-ts-comment': [
+        'error',
+        {
+          'ts-ignore': 'allow-with-description',
+          'ts-expect-error': 'allow-with-description',
+          minimumDescriptionLength: 12,
+        },
+      ],
       'no-undef': 'off',
     },
   },
