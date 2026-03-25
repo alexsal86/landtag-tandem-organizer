@@ -200,6 +200,13 @@ Pflegehinweis pro Batch:
 2. Im PR-Summary den Delta-Wert aus dem CI-Job „Any-Delta PR-Gate (nicht steigend)“ dokumentieren.
 3. Bei Delta `0` ist Stagnation akzeptabel; bei negativem Delta ist die Reduktion als Fortschritt im Batch-Abschnitt zu notieren.
 
+## Any-Restschulden
+
+Zentrale Liste für bewusst verbleibende `any`-/`as any`-Stellen in den aktiven Komponenten-Batches.
+
+| Datum | Batch-Scope | Datei | Entscheidung | Begründung / Abbauplan |
+| --- | --- | --- | --- | --- |
+| 2026-03-25 | `tsconfig.components-batch2-strict.json` | `src/components/calendar/ProperReactBigCalendar.tsx` | Temporär belassen (begründete Ausnahme) | `react-big-calendar` + DnD-Addon liefert aktuell keine ausreichend präzisen generischen Typen für `view`, `onEventDrop`, `onEventResize` und `eventPropGetter`; Ersetzung durch `unknown` erfordert vorgelagerte Wrapper-Typen. Geplanter Abbau: eigene typed Adapter-Props im nächsten Kalender-Strict-Teilbatch einführen. |
 
 ## Verbindliche Sprint-Abbauquote (`any`)
 
