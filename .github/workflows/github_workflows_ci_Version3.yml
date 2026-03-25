@@ -162,6 +162,13 @@ jobs:
             exit 1
           fi
 
+      - name: "Type-Safety Delta PR-Gate (Any + TS-Kommentare)"
+        if: github.event_name == 'pull_request'
+        run: |
+          set -euo pipefail
+          git fetch --no-tags --depth=1 origin "${{ github.base_ref }}"
+          npm run check:type-safety-delta -- --base="origin/${{ github.base_ref }}"
+
       - name: Mandatory Supabase edge-function security checks
         run: npm run check:edge-function-security
 

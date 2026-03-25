@@ -64,6 +64,26 @@ Zusätzlich landen im Job Summary:
 - `Delta <= 0`: Gate erfüllt.
 - `Delta > 0`: Gate blockiert den PR (keine Ausnahme über PR-Body-Marker).
 
+### Type-Safety Delta Gate (maschinenlesbare Ausnahmen)
+
+Zusätzlich wird in PRs `npm run check:type-safety-delta -- --base="origin/<base-branch>"` ausgeführt.
+
+**Blockierende Regeln auf neu hinzugefügten Diff-Zeilen:**
+
+- Neue `any`-Typisierung (`: any`, `as any`, `any[]`, `<any>`, `Map<string, any>`) ist nur erlaubt, wenn im gleichen lokalen Diff-Kontext ein maschinenlesbarer Ausnahme-Kommentar mit **Keyword + Ticket-ID** steht.
+- Format für `any`-Ausnahmen: Kommentar mit `any-exception` (oder `eslint-disable-next-line @typescript-eslint/no-explicit-any`) **und** Ticket-ID wie `ABC-123`.
+- Neue `@ts-ignore`/`@ts-expect-error` sind nur erlaubt mit **Ticket-ID und Begründung** im selben Kommentar.
+
+**Beispiel (zulässig):**
+
+```ts
+// any-exception ABC-123: Drittanbieter-Payload ohne stabilen Typ, Follow-up im Ticket
+const payload: any = legacyInput;
+
+// @ts-expect-error ABC-456: Upstream-Typdefekt in lib v1.2.3, remove after update
+legacyApi.call();
+```
+
 6. **`fast-unit-integration`**
    - `npm run test:unit-integration:ci` (schneller Vitest-Run)
 7. **`coverage-thresholds`**
