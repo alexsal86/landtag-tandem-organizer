@@ -472,7 +472,7 @@ export function DocumentsView() {
           editFolderId={editFolderId} setEditFolderId={setEditFolderId}
           documentCategories={safeCategories} tags={safeTags} folders={safeFolders}
           loading={data.loading}
-          onUpdateDocument={() => ops.handleUpdateDocument({ editingDocument, mutation: { type: "update", documentId: editingDocument?.id || "", title: editTitle, description: editDescription, category: editCategory, tags: editTags, status: editStatus, folderId: editFolderId }, onSuccess: () => { setShowEditDialog(false); setEditingDocument(null); } })}
+          onUpdateDocument={() => ops.handleUpdateDocument({ editingDocument, mutation: { type: "update", documentId: editingDocument?.id || "", title: editTitle, description: editDescription, category: editCategory, tags: editTags, status: editStatus, folderId: editFolderId }, onSuccess: () => { setShowEditDialog(false); setEditingDocument(null); } }) as any}
           showMoveFolderDialog={dialogState.showMoveFolderDialog} setShowMoveFolderDialog={setShowMoveFolderDialog}
           selectedDocument={selectedDocument} setSelectedDocument={setSelectedDocument}
           moveToFolderId={moveToFolderId} setMoveToFolderId={setMoveToFolderId}
