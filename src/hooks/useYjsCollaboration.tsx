@@ -4,23 +4,21 @@ import { supabase } from '@/integrations/supabase/client';
 import { debugConsole } from '@/utils/debugConsole';
 import * as Y from 'yjs';
 import { WebsocketProvider } from 'y-websocket';
-
-interface YjsCollaborator {
-  user_id: string;
-  user_color: string;
-  cursor_position?: any;
-  selection_state?: any;
-  profiles?: {
-    display_name: string; // Make required to match CollaborationUser
-    avatar_url?: string;
-  };
-}
+import type {
+  AwarenessState,
+  AwarenessUpdatePayload,
+  CursorPosition,
+  SelectionState,
+  SupabaseBroadcastEnvelope,
+  YjsCollaborator,
+  YjsUpdatePayload,
+} from '@/types/yjsCollaboration';
 
 interface UseYjsCollaborationProps {
   documentId: string;
   onContentChange?: (content: string) => void;
-  onCursorChange?: (cursor: any) => void;
-  onSelectionChange?: (selection: any) => void;
+  onCursorChange?: (cursor: CursorPosition | null) => void;
+  onSelectionChange?: (selection: SelectionState | null) => void;
 }
 
 export interface UseYjsCollaborationReturn {
@@ -37,28 +35,19 @@ export interface UseYjsCollaborationReturn {
   };
   ydoc: Y.Doc;
   ytext: Y.Text;
-  awareness: any; // y-websocket awareness
+  awareness: {
+    getLocalState: () => AwarenessState;
+    setLocalState: (state: AwarenessState) => void;
+    getStates: () => Map<string, AwarenessState>;
+    on: () => void;
+    off: () => void;
+    destroy: () => void;
+  } | null;
   connect: () => void;
   disconnect: () => void;
-  sendCursorUpdate: (cursor: any) => void;
-  sendSelectionUpdate: (selection: any) => void;
+  sendCursorUpdate: (cursor: CursorPosition | null) => void;
+  sendSelectionUpdate: (selection: SelectionState | null) => void;
   sendContentUpdate: (content: string) => void;
-}
-
-type YjsBroadcastEvent =
-  | { event: 'yjs-update'; payload: { userId: string; update: number[] } }
-  | {
-      event: 'awareness-update';
-      payload: {
-        user_id: string;
-        user_color: string;
-        cursor_position: unknown;
-        selection_state: unknown;
-      };
-    };
-
-interface SupabaseBroadcastEnvelope<TPayload> {
-  payload: TPayload;
 }
 
 // Generate consistent color for user based on their ID
@@ -84,14 +73,14 @@ export const useYjsCollaboration = ({
   const { user: authUser } = useAuth();
   const [connectionState, setConnectionState] = useState<'disconnected' | 'connecting' | 'connected'>('disconnected');
   const [collaborators, setCollaborators] = useState<YjsCollaborator[]>([]);
-  const [userProfiles, setUserProfiles] = useState<Record<string, any>>({});
+  const [userProfiles, setUserProfiles] = useState<Record<string, { id: string; display_name: string | null; avatar_url: string | null }>>({});
   
   // Yjs document and text
   const ydoc = useRef<Y.Doc>(null);
   const ytext = useRef<Y.Text>(null);
-  const provider = useRef<any>(null);
-  const awareness = useRef<any>(null);
-  const supabaseChannel = useRef<any>(null);
+  const provider = useRef<WebsocketProvider | null>(null);
+  const awareness = useRef<UseYjsCollaborationReturn['awareness']>(null);
+  const supabaseChannel = useRef<ReturnType<typeof supabase.channel> | null>(null);
 
   // Initialize Yjs document
   useEffect(() => {
@@ -124,12 +113,12 @@ export const useYjsCollaboration = ({
         .in('id', userIds);
       
       if (profiles) {
-        const profilesMap = profiles.reduce((acc, profile) => {
+        const profilesMap = profiles.reduce<Record<string, { id: string; display_name: string | null; avatar_url: string | null }>>((acc, profile) => {
           acc[profile.id] = profile;
           return acc;
-        }, {} as Record<string, any>);
+        }, {});
         
-        setUserProfiles(prev => ({ ...prev, ...profilesMap }));
+        setUserProfiles((prev) => ({ ...prev, ...profilesMap }));
       }
     } catch (error) {
       debugConsole.error('Error loading user profiles:', error);
@@ -183,7 +172,7 @@ export const useYjsCollaboration = ({
           cursor_position: null,
           selection_state: null
         }),
-        setLocalState: (state: any) => {
+        setLocalState: (state: AwarenessState) => {
           // Broadcast awareness state via Supabase
           supabaseChannel.current?.send({
             type: 'broadcast',
@@ -199,17 +188,17 @@ export const useYjsCollaboration = ({
 
       // Listen for Yjs updates via Supabase
       supabaseChannel.current
-        .on('broadcast', { event: 'yjs-update' }, ({ payload }: SupabaseBroadcastEnvelope<Extract<YjsBroadcastEvent, { event: 'yjs-update' }>['payload']>) => {
+        .on('broadcast', { event: 'yjs-update' }, ({ payload }: SupabaseBroadcastEnvelope<YjsUpdatePayload>) => {
           if (payload.userId !== currentUser.id && ydoc.current) {
             // Apply remote Yjs update
             const update = new Uint8Array(payload.update);
             Y.applyUpdate(ydoc.current, update);
           }
         })
-        .on('broadcast', { event: 'awareness-update' }, ({ payload }: SupabaseBroadcastEnvelope<Extract<YjsBroadcastEvent, { event: 'awareness-update' }>['payload']>) => {
+        .on('broadcast', { event: 'awareness-update' }, ({ payload }: SupabaseBroadcastEnvelope<AwarenessUpdatePayload>) => {
           if (payload.user_id !== currentUser.id) {
             // Update collaborators list
-            setCollaborators(prev => {
+            setCollaborators((prev) => {
               const filtered = prev.filter(c => c.user_id !== payload.user_id);
               return [...filtered, {
                 user_id: payload.user_id,
@@ -267,7 +256,7 @@ export const useYjsCollaboration = ({
   }, []);
 
   // Send cursor update
-  const sendCursorUpdate = useCallback((cursor: any) => {
+  const sendCursorUpdate = useCallback((cursor: CursorPosition | null) => {
     if (awareness.current) {
       awareness.current.setLocalState({
         ...awareness.current.getLocalState(),
@@ -278,7 +267,7 @@ export const useYjsCollaboration = ({
   }, [onCursorChange]);
 
   // Send selection update
-  const sendSelectionUpdate = useCallback((selection: any) => {
+  const sendSelectionUpdate = useCallback((selection: SelectionState | null) => {
     if (awareness.current) {
       awareness.current.setLocalState({
         ...awareness.current.getLocalState(),

@@ -17,6 +17,15 @@ import { debugConsole } from '@/utils/debugConsole';
 import { format } from 'date-fns';
 import { de } from 'date-fns/locale';
 import jsPDF from 'jspdf';
+import type { CheckedState } from '@radix-ui/react-checkbox';
+import type {
+  AppointmentPreparation,
+  AppointmentPreparationTemplate,
+  ChecklistItem,
+  PreparationData,
+  PreparationStatus,
+  TemplateSection,
+} from '@/types/appointmentPreparation';
 
 
 interface AppointmentPreparationSidebarProps {
@@ -27,27 +36,73 @@ interface AppointmentPreparationSidebarProps {
   onClose: () => void;
 }
 
-interface Preparation {
-  id: string;
-  title: string;
-  status: string;
-  preparation_data: any;
-  checklist_items: any[];
-  notes: string | null;
-  is_archived: boolean;
-  created_at: string;
-  template_id: string | null;
-}
+const isRecord = (value: unknown): value is Record<string, unknown> =>
+  typeof value === 'object' && value !== null;
 
-interface Template {
-  id: string;
-  name: string;
-  description: string | null;
-  template_data: any[];
-  is_default?: boolean;
-  is_active: boolean;
-  created_at: string;
-}
+const parseChecklistItem = (raw: unknown): ChecklistItem | null => {
+  if (!isRecord(raw)) return null;
+  if (typeof raw.id !== 'string' || typeof raw.label !== 'string') return null;
+  return {
+    id: raw.id,
+    label: raw.label,
+    completed: raw.completed === true,
+  };
+};
+
+const parseTemplateSections = (raw: unknown): ReadonlyArray<TemplateSection> => {
+  if (!Array.isArray(raw)) return [];
+  return raw
+    .map((entry): TemplateSection | null => {
+      if (!isRecord(entry) || typeof entry.type !== 'string' || typeof entry.title !== 'string') {
+        return null;
+      }
+
+      if (entry.type === 'section') {
+        const fields = Array.isArray(entry.fields)
+          ? entry.fields
+              .map((field) => {
+                if (
+                  isRecord(field) &&
+                  typeof field.id === 'string' &&
+                  typeof field.label === 'string' &&
+                  (field.type === 'text' || field.type === 'textarea' || field.type === 'select')
+                ) {
+                  return {
+                    id: field.id,
+                    label: field.label,
+                    type: field.type,
+                    options: Array.isArray(field.options)
+                      ? field.options.filter((option): option is string => typeof option === 'string')
+                      : undefined,
+                  };
+                }
+                return null;
+              })
+              .filter((field): field is NonNullable<typeof field> => field !== null)
+          : [];
+
+        return { id: typeof entry.id === 'string' ? entry.id : undefined, title: entry.title, type: 'section', fields };
+      }
+
+      if (entry.type === 'checklist') {
+        const items = Array.isArray(entry.items)
+          ? entry.items
+              .map((item) => {
+                if (isRecord(item) && typeof item.id === 'string' && typeof item.label === 'string') {
+                  return { id: item.id, label: item.label };
+                }
+                return null;
+              })
+              .filter((item): item is NonNullable<typeof item> => item !== null)
+          : [];
+
+        return { id: typeof entry.id === 'string' ? entry.id : undefined, title: entry.title, type: 'checklist', items };
+      }
+
+      return null;
+    })
+    .filter((section): section is TemplateSection => section !== null);
+};
 
 export default function AppointmentPreparationSidebar({
   appointmentId,
@@ -56,8 +111,8 @@ export default function AppointmentPreparationSidebar({
   isOpen,
   onClose
 }: AppointmentPreparationSidebarProps) {
-  const [preparation, setPreparation] = useState<Preparation | null>(null);
-  const [templates, setTemplates] = useState<Template[]>([]);
+  const [preparation, setPreparation] = useState<AppointmentPreparation | null>(null);
+  const [templates, setTemplates] = useState<AppointmentPreparationTemplate[]>([]);
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   const { toast } = useToast();
@@ -87,8 +142,10 @@ export default function AppointmentPreparationSidebar({
       if (data) {
         setPreparation({
           ...data,
-          preparation_data: data.preparation_data || {},
-          checklist_items: Array.isArray(data.checklist_items) ? data.checklist_items : []
+          preparation_data: isRecord(data.preparation_data) ? (data.preparation_data as PreparationData) : {},
+          checklist_items: Array.isArray(data.checklist_items)
+            ? data.checklist_items.map(parseChecklistItem).filter((item): item is ChecklistItem => item !== null)
+            : [],
         });
       }
     } catch (error) {
@@ -115,7 +172,7 @@ export default function AppointmentPreparationSidebar({
       if (error) throw error;
       setTemplates((data || []).map(template => ({
         ...template,
-        template_data: Array.isArray(template.template_data) ? template.template_data : []
+        template_data: parseTemplateSections(template.template_data),
       })));
     } catch (error) {
       debugConsole.error('Error fetching templates:', error);
@@ -137,18 +194,18 @@ export default function AppointmentPreparationSidebar({
       const templateData = template?.template_data || [];
 
       // Initialize preparation data from template
-      const preparationData: any = {};
-      const checklistItems: any[] = [];
+      const preparationData: PreparationData = {};
+      const checklistItems: ChecklistItem[] = [];
 
-      templateData.forEach((section: any) => {
+      templateData.forEach((section) => {
         if (section.type === 'section' && section.fields) {
-          section.fields.forEach((field: any) => {
+          section.fields.forEach((field) => {
             preparationData[field.id] = '';
           });
         } else if (section.type === 'checklist' && section.items) {
-          checklistItems.push(...section.items.map((item: any) => ({
+          checklistItems.push(...section.items.map((item) => ({
             ...item,
-            completed: false
+            completed: false,
           })));
         }
       });
@@ -161,7 +218,7 @@ export default function AppointmentPreparationSidebar({
           tenant_id: currentTenant.id,
           created_by: (await supabase.auth.getUser()).data.user?.id ?? '',
           title: `Vorbereitung: ${appointmentTitle || 'Termin'}`,
-          status: 'draft',
+          status: 'draft' as PreparationStatus,
           preparation_data: preparationData,
           checklist_items: checklistItems,
         }])
@@ -173,8 +230,10 @@ export default function AppointmentPreparationSidebar({
       if (data) {
         setPreparation({
           ...data,
-          preparation_data: data.preparation_data || {},
-          checklist_items: Array.isArray(data.checklist_items) ? data.checklist_items : []
+          preparation_data: isRecord(data.preparation_data) ? (data.preparation_data as PreparationData) : {},
+          checklist_items: Array.isArray(data.checklist_items)
+            ? data.checklist_items.map(parseChecklistItem).filter((item): item is ChecklistItem => item !== null)
+            : [],
         });
       }
       toast({
@@ -224,7 +283,7 @@ export default function AppointmentPreparationSidebar({
     }
   };
 
-  const updatePreparationData = (fieldId: string, value: any) => {
+  const updatePreparationData = (fieldId: string, value: string) => {
     if (!preparation) return;
 
     setPreparation({
@@ -298,11 +357,11 @@ export default function AppointmentPreparationSidebar({
       yPosition += 10;
 
       // Template sections
-      template?.template_data.forEach((section: any) => {
+      template?.template_data.forEach((section) => {
         if (section.type === 'section' && section.fields) {
           addText(section.title, 16, true);
           
-          section.fields.forEach((field: any) => {
+          section.fields.forEach((field) => {
             const value = preparation.preparation_data[field.id] || '';
             if (value) {
               addText(`${field.label}: ${value}`);
@@ -312,12 +371,12 @@ export default function AppointmentPreparationSidebar({
         }
         
         if (section.type === 'checklist') {
-          const completedItems = preparation.checklist_items.filter((item: any) => item.completed);
+          const completedItems = preparation.checklist_items.filter((item) => item.completed);
           const totalItems = preparation.checklist_items.length;
           
           addText(`${section.title} (${completedItems.length}/${totalItems})`, 16, true);
           
-          preparation.checklist_items.forEach((item: any) => {
+          preparation.checklist_items.forEach((item) => {
             const status = item.completed ? '✓' : '☐';
             addText(`${status} ${item.label}`);
           });
@@ -440,13 +499,13 @@ export default function AppointmentPreparationSidebar({
               </div>
 
               {/* Render template sections */}
-              {templates.find(t => t.id === preparation.template_id)?.template_data.map((section: any, index: number) => (
+              {templates.find((t) => t.id === preparation.template_id)?.template_data.map((section, index: number) => (
                 <Card key={section.id || index}>
                   <CardHeader>
                     <CardTitle className="text-lg">{section.title}</CardTitle>
                   </CardHeader>
                   <CardContent className="space-y-4">
-                    {section.type === 'section' && section.fields?.map((field: any) => (
+                    {section.type === 'section' && section.fields?.map((field) => (
                       <div key={field.id}>
                         <Label htmlFor={field.id}>{field.label}</Label>
                         {field.type === 'text' && (
@@ -486,13 +545,13 @@ export default function AppointmentPreparationSidebar({
 
                     {section.type === 'checklist' && (
                       <div className="space-y-2">
-                        {preparation.checklist_items.map((item: any) => (
+                        {preparation.checklist_items.map((item) => (
                           <div key={item.id} className="flex items-center space-x-2">
                             <Checkbox
                               id={item.id}
                               checked={item.completed}
-                              onCheckedChange={(checked) => 
-                                updateChecklistItem(item.id, checked as boolean)
+                              onCheckedChange={(checked: CheckedState) => 
+                                updateChecklistItem(item.id, checked === true)
                               }
                             />
                             <Label
@@ -532,7 +591,7 @@ export default function AppointmentPreparationSidebar({
                 <CardContent>
                   <Select
                     value={preparation.status}
-                    onValueChange={(value) => setPreparation({ ...preparation, status: value })}
+                    onValueChange={(value: PreparationStatus) => setPreparation({ ...preparation, status: value })}
                   >
                     <SelectTrigger>
                       <SelectValue />

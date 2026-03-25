@@ -12,37 +12,7 @@ import { toast } from "@/hooks/use-toast";
 import { debugConsole } from "@/utils/debugConsole";
 import { ReceivedMessageCard, SentMessageCard, ArchivedMessageCard, PaginationControls } from "./messages/MessageCard";
 import type { MessageItem, ParticipantSummary, PreparationSection } from "./messages/dto";
-
-type MessageStatus = "active" | "archived";
-
-interface RpcMessageRow {
-  id: string;
-  title: string;
-  content: string;
-  author_id: string;
-  is_for_all_users: boolean;
-  status: MessageStatus;
-  created_at: string;
-  has_read?: boolean;
-  author_name?: string | null;
-  author_avatar?: string | null;
-}
-
-interface ProfileRow {
-  display_name: string | null;
-  avatar_url: string | null;
-}
-
-interface RecipientRow {
-  recipient_id: string;
-  has_read: boolean;
-  read_at: string | null;
-}
-
-interface ConfirmationRow {
-  user_id: string;
-  confirmed_at: string;
-}
+import type { ConfirmationRow, ProfileRow, RecipientRow, RpcMessageRow } from "@/types/messages";
 
 const emptyParticipant = (userId: string): ParticipantSummary => ({
   userId,
