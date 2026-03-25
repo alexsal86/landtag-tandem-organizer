@@ -103,7 +103,7 @@ export function DashboardCoverImage({ userId }: DashboardCoverImageProps) {
         .update({
           dashboard_cover_image_url: imageUrl,
           dashboard_cover_image_position: imagePosition,
-          dashboard_cover_image_attribution: imageAttribution ? (imageAttribution as any) : null,
+          dashboard_cover_image_attribution: imageAttribution ?? null,
         })
         .eq("user_id", userId);
 

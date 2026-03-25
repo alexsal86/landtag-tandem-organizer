@@ -37,7 +37,7 @@ export const CompactStatusSelector: React.FC = () => {
         {statusOptions.map((option) => (
           <DropdownMenuItem
             key={option.id}
-            onClick={() => quickSetStatus(option.name as any)}
+            onClick={() => quickSetStatus(option.name)}
             className="flex items-center gap-2"
           >
             <div 

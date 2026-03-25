@@ -129,7 +129,7 @@ export function FundingDialog({ open, onOpenChange, initialContactId }: FundingD
     setParticipants(participants.filter(p => p.contact_id !== contactId));
   };
 
-  const updateParticipant = (contactId: string, field: keyof Participant, value: any) => {
+  const updateParticipant = (contactId: string, field: keyof Participant, value: string | number | undefined) => {
     setParticipants(participants.map(p => 
       p.contact_id === contactId ? { ...p, [field]: value } : p
     ));

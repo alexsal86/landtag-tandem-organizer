@@ -78,7 +78,7 @@ export function EmployeeMeetingRequestDialog() {
         <div className="space-y-4 py-4">
           <div className="space-y-2">
             <Label htmlFor="urgency">Dringlichkeit</Label>
-            <Select value={urgency} onValueChange={(v: any) => setUrgency(v)}>
+            <Select value={urgency} onValueChange={(v: "low" | "medium" | "high") => setUrgency(v)}>
               <SelectTrigger id="urgency">
                 <SelectValue />
               </SelectTrigger>

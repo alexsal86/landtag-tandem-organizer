@@ -265,7 +265,7 @@ export function UnsplashImagePicker({
         <div className="space-y-4 pt-4 border-t">
           <div className="space-y-2">
             <label className="text-sm font-medium">Bildposition</label>
-            <Select value={position} onValueChange={(val: any) => setPosition(val)}>
+            <Select value={position} onValueChange={(val: "center" | "top" | "bottom") => setPosition(val)}>
               <SelectTrigger>
                 <SelectValue />
               </SelectTrigger>

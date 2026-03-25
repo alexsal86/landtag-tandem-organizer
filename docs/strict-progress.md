@@ -230,7 +230,7 @@ Nach jedem Merge von PR A/B/C sind folgende Schritte verpflichtend und im PR/Doc
 3. `npm run --silent report:any-usage:files | head -n 40` (neue Top-Hotspots erfassen).
 4. Werte in diesem Abschnitt und im jeweiligen PR-Abschnitt mit **vorher/nachher/Delta** aktualisieren.
 
-### Fortschritts-Update (2026-03-25): Paket A/B/C/D (historisch)
+### Fortschritts-Update (2026-03-25): Paket A/B/C/D/E (historisch)
 
 | Paket | Scope | `any` vorher | `any` nachher | Delta |
 | --- | --- | ---: | ---: | ---: |
@@ -238,6 +238,12 @@ Nach jedem Merge von PR A/B/C sind folgende Schritte verpflichtend und im PR/Doc
 | Paket B | `src/hooks/useYjsCollaboration.tsx` | 15 | 0 | -15 |
 | Paket C | `src/contexts`, `src/pages`, `src/features`, `src/services`, `src/utils` (fokussierte Restbereinigung) | 66 | 33 | -33 |
 | Paket D | `src/components/administration/CaseFileTypeSettings.tsx`, `src/components/TagAdminSettings.tsx`, `src/components/DocumentCategoryAdminSettings.tsx`, `src/components/administration/SenderInformationManager.tsx`, `src/components/administration/PlanningTemplateManager.tsx` | 12 | 0 | -12 |
+| Paket E | Long-Tail (<=3 Treffer), Batch 1: `src/components/CompactStatusSelector.tsx`, `src/components/contact-import/ImportSteps.tsx`, `src/components/contacts/FundingDialog.tsx`, `src/components/CustomizableDashboard.tsx`, `src/components/dashboard/AppointmentFeedbackWidget.tsx`, `src/components/dashboard/DashboardCoverImage.tsx`, `src/components/dashboard/PerformanceMonitor.tsx`, `src/components/dashboard/UnsplashImagePicker.tsx`, `src/components/EmployeeMeetingRequestDialog.tsx`, `src/components/topics/TopicSelector.tsx` | 10 | 0 | -10 |
+
+Aktualisierte globale Baseline nach Paket E (2026-03-25): **`Any-Total = 347`**.
+Long-Tail-Arbeitsliste (<=3 Treffer) wurde neu eingefroren unter:
+
+- `docs/tech-debt/any-long-tail-lte3-2026-03-25.md`
 
 ## Any-Restschulden
 

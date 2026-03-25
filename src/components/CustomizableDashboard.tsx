@@ -53,6 +53,7 @@ import 'react-resizable/css/styles.css';
 const ResponsiveGridLayout = WidthProvider(Responsive);
 
 type DashboardMode = 'classic' | 'hybrid' | 'realtime';
+const isWidgetSize = (value: string): value is WidgetSize => /^[1-8]x[1-4]$/.test(value);
 
 export const CustomizableDashboard: React.FC = () => {
   const {
@@ -169,8 +170,8 @@ export const CustomizableDashboard: React.FC = () => {
 
   // Handle manual resize from widget overlay
   const handleWidgetResize = (widgetId: string, newSize: string) => {
-    
-    updateWidget(widgetId, { widgetSize: newSize } as any);
+    if (!isWidgetSize(newSize)) return;
+    updateWidget(widgetId, { widgetSize: newSize });
   };
 
   // Available widget types for adding

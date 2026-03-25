@@ -20,8 +20,8 @@ interface ImportStepsProps {
   skippedCount: number;
   errors: string[];
   duplicateWarnings: string[];
-  duplicateStrategy: string;
-  setDuplicateStrategy: (v: any) => void;
+  duplicateStrategy: "ask" | "skip" | "overwrite" | "merge" | "import";
+  setDuplicateStrategy: (v: "ask" | "skip" | "overwrite" | "merge" | "import") => void;
   handleFileUpload: (e: React.ChangeEvent<HTMLInputElement>) => void;
   updateFieldMapping: (index: number, targetField: string) => void;
   proceedToPreview: () => void;

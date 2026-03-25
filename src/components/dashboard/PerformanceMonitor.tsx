@@ -37,6 +37,16 @@ interface PerformanceMonitorProps {
   onPerformanceAlert: (alert: PerformanceAlert) => void;
 }
 
+interface PerformanceWithMemory extends Performance {
+  memory: {
+    usedJSHeapSize: number;
+    jsHeapSizeLimit: number;
+  };
+}
+
+const hasMemory = (perf: Performance): perf is PerformanceWithMemory =>
+  'memory' in perf;
+
 export function PerformanceMonitor({ widgets, onPerformanceAlert }: PerformanceMonitorProps) {
   const [metrics, setMetrics] = useState<PerformanceMetrics>({
     memoryUsage: 0,
@@ -80,8 +90,8 @@ export function PerformanceMonitor({ widgets, onPerformanceAlert }: PerformanceM
   };
 
   const getMemoryUsage = (): number => {
-    if ('memory' in performance) {
-      const memory = (performance as any).memory;
+    if (hasMemory(performance)) {
+      const { memory } = performance;
       return Math.round((memory.usedJSHeapSize / memory.jsHeapSizeLimit) * 100);
     }
     return 0;

@@ -598,7 +598,7 @@ export const AppointmentFeedbackWidget = ({
                             <div className="flex gap-3">
                               <div className="flex-1">
                                 <Label htmlFor="task-priority">Priorität</Label>
-                                <Select value={taskPriority} onValueChange={(v: any) => setTaskPriority(v)}>
+                                <Select value={taskPriority} onValueChange={(v: 'low' | 'medium' | 'high' | 'urgent') => setTaskPriority(v)}>
                                   <SelectTrigger id="task-priority" className="mt-1">
                                     <SelectValue />
                                   </SelectTrigger>
