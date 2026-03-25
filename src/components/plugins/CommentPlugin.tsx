@@ -65,13 +65,13 @@ class CommentMarkNode extends MarkNode {
 
   // Required for serialization
   exportJSON(): SerializedCommentMarkNode {
-    const base = super.exportJSON();
+    const base = super.exportJSON() as Record<string, unknown>;
     return {
       ...base,
       commentId: this.__commentId,
       type: 'comment-mark',
       version: 1,
-    } as SerializedCommentMarkNode;
+    } as unknown as SerializedCommentMarkNode;
   }
 
   createDOM(): HTMLElement {
