@@ -9,6 +9,7 @@
 - **Any-Total nachher (Head):** `<zahl>`
 - **Delta (Head - Base):** `<zahl>`
 - **Einordnung:** `<z. B. Reduktion / neutral / begründete Interop-Ausnahme>`
+- [ ] Pflichtfeld **Any-Delta** ist vollständig ausgefüllt.
 
 ## Tests / Checks
 
