@@ -97,7 +97,7 @@ export interface MatrixClientState {
   roomHistoryState: MatrixRoomHistoryMap;
 }
 
-interface MatrixEventWithStatus extends sdk.MatrixEvent {
+interface MatrixEventWithStatus extends Omit<sdk.MatrixEvent, 'status'> {
   status?: unknown;
 }
 
