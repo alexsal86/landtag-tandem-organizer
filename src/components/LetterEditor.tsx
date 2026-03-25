@@ -389,12 +389,12 @@ const LetterEditor: React.FC<LetterEditorProps> = ({ letter, isOpen, onClose, on
                     }}><Edit3 className="h-4 w-4 mr-2" />Editor öffnen</Button>
                   </div>
                 )}
-                <LetterEditorCanvas template={currentTemplate} subject={editedLetter.subject} salutation={editedLetter.salutation_override || computedSalutation}
-                  content={editedLetter.content_html || editedLetter.content || ''} contentNodes={editedLetter.content_nodes}
+                <LetterEditorCanvas template={currentTemplate ?? undefined} subject={editedLetter.subject} salutation={editedLetter.salutation_override || computedSalutation}
+                  content={editedLetter.content_html || editedLetter.content || ''} contentNodes={editedLetter.content_nodes as any}
                   recipientAddress={editedLetter.recipient_address ? { name: editedLetter.recipient_name, address: editedLetter.recipient_address } : undefined}
                   letterDate={editedLetter.letter_date} referenceNumber={editedLetter.reference_number} attachments={attachments}
                   showPagination={showPagination} senderInfo={senderInfos.find(s => s.id === editedLetter.sender_info_id)}
-                  informationBlock={informationBlocks.find(b => editedLetter.information_block_ids?.includes(b.id))} layoutSettings={getLayoutSettings()}
+                  informationBlock={informationBlocks.find(b => editedLetter.information_block_ids?.includes(b.id)) ? [informationBlocks.find(b => editedLetter.information_block_ids?.includes(b.id))!] : undefined} layoutSettings={getLayoutSettings()}
                   displayContentHtml={editedLetter.content_html || editedLetter.content || ''}
                   addressFieldElements={substitutedBlocks.canvasBlocks.addressField} returnAddressElements={substitutedBlocks.canvasBlocks.returnAddress}
                   infoBlockElements={substitutedBlocks.canvasBlocks.infoBlock} subjectElements={substitutedBlocks.canvasBlocks.subject}
